@@ -150,7 +150,7 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
                 switch (field) {
                     case Field::value:
                         read.construct(value_value,
-                                       constraints::minimum((-9223372036854775807LL - 1LL)),
+                                       constraints::minimum((-9223372036854775807LL - 1)),
                                        constraints::maximum(9223372036854775806ULL));
                         break;
                 }
@@ -174,7 +174,7 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
                 switch (field) {
                     case Field::value:
                         read(result.value,
-                             constraints::minimum((-9223372036854775807LL - 1LL)),
+                             constraints::minimum((-9223372036854775807LL - 1)),
                              constraints::maximum(9223372036854775806ULL));
                         break;
                 }

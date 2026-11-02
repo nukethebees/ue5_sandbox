@@ -166,7 +166,7 @@ class PackedEmitter : public CppIRBuilder {
         } else if (kind == schema::TypeDefinitionKind::union_type) {
             export_specifier = context_.declarations.unions.export_specifier[declaration_id];
         }
-        auto const record_id{add_record({.name = named(text(name_)),
+        auto const record_id{add_record({.name = this->name(text(name_)),
                                          .children = members,
                                          .bases = {base_alias},
                                          .export_specifier = export_specifier,
@@ -247,29 +247,29 @@ class PackedEmitter : public CppIRBuilder {
     }
     auto value() -> Expr { return named("value"); }
     auto stored_value() -> Expr { return named("value_"); }
-    auto external(std::string_view name, std::string_view header) -> Expr {
+    auto external(std::string_view name, std::string_view header) -> Syntax {
         return type_reference(named_type(name, NameOrigin::global, {dependency(name, header)}));
     }
-    auto invoke(std::string_view name, std::initializer_list<Expr> args = {}) -> Expr {
-        return call(named(name), args);
+    auto invoke(std::string_view name, std::initializer_list<Syntax> args = {}) -> Expr {
+        return call(this->name(name), args);
     }
     auto external_template_call(std::string_view name,
                                 std::string_view header,
                                 std::initializer_list<CppTypeId> types,
-                                std::initializer_list<Expr> args) -> Expr {
-        std::vector<Expr> arguments;
+                                std::initializer_list<Syntax> args) -> Expr {
+        std::vector<Syntax> arguments;
         for (auto const item : types) {
             arguments.push_back(type_reference(item));
         }
         return template_call(external(name, header), arguments, args);
     }
     auto extract(std::string const& field, std::optional<Expr> source = {}) -> Expr {
-        return source
-                 ? external_template_call("ioj::packed_extract",
-                                          "ioj/packed_value.h",
-                                          {descriptor_type(field)},
-                                          {*source})
-                 : template_call(named("extract"), {type_reference(descriptor_type(field))}, {});
+        return source ? external_template_call("ioj::packed_extract",
+                                               "ioj/packed_value.h",
+                                               {descriptor_type(field)},
+                                               {*source})
+                      : template_call(
+                            this->name("extract"), {type_reference(descriptor_type(field))}, {});
     }
     auto insert_member(std::string const& field, Expr source, std::optional<Expr> target = {})
         -> NodeId {
@@ -327,16 +327,17 @@ class PackedEmitter : public CppIRBuilder {
     void alias(Nodes& nodes, std::string const& name, CppTypeId target) {
         nodes.push_back(using_declaration(text(name), target));
     }
-    auto constant(Nodes& nodes, std::string const& name, CppTypeId target, Expr initializer)
+    auto constant(Nodes& nodes, std::string const& name, CppTypeId target, Syntax initializer)
         -> Expr {
         if (constants_.insert(name).second) {
             nodes.push_back(constexpr_member(target, text(name), initializer));
         }
         return named(name);
     }
-    auto
-        constant(Nodes& nodes, std::string const& name, std::string const& target, Expr initializer)
-            -> Expr {
+    auto constant(Nodes& nodes,
+                  std::string const& name,
+                  std::string const& target,
+                  Syntax initializer) -> Expr {
         return constant(nodes, name, type(target), initializer);
     }
     void field_layout(Nodes& metadata,
@@ -404,7 +405,7 @@ class PackedEmitter : public CppIRBuilder {
                        Nodes const& body,
                        bool constexpr_ = true) -> NodeId {
         return header_function(add_function({
-            .name = named(name),
+            .name = this->name(name),
             .return_type = result,
             .return_syntax =
                 result == std_types().void_ ? ReturnSyntax::direct : ReturnSyntax::trailing,
@@ -440,7 +441,7 @@ class PackedEmitter : public CppIRBuilder {
     }
     auto default_constructor(bool available) -> NodeId {
         FunctionDefinition const fn{
-            .name = named(text(name_)),
+            .name = this->name(text(name_)),
             .kind = FunctionKind::constructor,
             .implementation = {.kind = available ? FunctionImplementationKind::defaulted
                                                  : FunctionImplementationKind::deleted},
@@ -456,7 +457,7 @@ class PackedEmitter : public CppIRBuilder {
             }
             auto const decoded{!defaulted && !equality};
             FunctionDefinition const fn{
-                .name = named(equality ? "operator==" : "operator<=>"),
+                .name = this->name(equality ? "operator==" : "operator<=>"),
                 .return_type = equality ? std_types().bool_
                                         : intern_type("auto", {dependency("auto", "compare")}),
                 .parameters = {parameter(owner, decoded ? "other" : "")},
@@ -859,7 +860,7 @@ class PackedEmitter : public CppIRBuilder {
         }
         auto validity{valid_children(std::nullopt, type_, std::nullopt)};
         if (validity) {
-            auto const base_validity{call(scope_member(type("Base"), "is_valid"), {})};
+            auto const base_validity{call(scope_name(type("Base"), "is_valid"), {})};
             validity = all({base_validity, validity});
             functions_.push_back(emit_function("is_valid",
                                                std_types().bool_,
@@ -1107,7 +1108,7 @@ class PackedEmitter : public CppIRBuilder {
                 emit_function("make_" + path, name_, FunctionReceiver::static_, params, body));
         } else {
             FunctionDefinition const ctor{
-                .name = named(text(name_)),
+                .name = this->name(text(name_)),
                 .kind = FunctionKind::explicit_constructor,
                 .parameters = {params.begin(), params.end()},
                 .implementation = {.kind = FunctionImplementationKind::body,
@@ -1129,7 +1130,7 @@ class PackedEmitter : public CppIRBuilder {
         auto const decoded{extract(name + "_layout")};
         auto const decoded_type{access_type(placement)};
         body.push_back(return_stmt(
-            aggregate(placement) ? call(scope_member(decoded_type, "from_raw"),
+            aggregate(placement) ? call(scope_name(decoded_type, "from_raw"),
                                         {cast(nested_type(decoded_type, "storage_type"), decoded)})
                                  : decoded));
         functions_.push_back(emit_function(name, decoded_type, FunctionReceiver::const_, {}, body));

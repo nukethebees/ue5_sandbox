@@ -1,7 +1,7 @@
 #pragma once
 
-#include <codegen/ast/expr.h>
 #include <codegen/ast/indices.h>
+#include <codegen/ast/syntax.h>
 #include <codegen/ast/template_id.h>
 #include <lispb/indices.h>
 
@@ -13,8 +13,8 @@ namespace lispb::codegen::ir {
 
 struct Variables {
     std::vector<CppTypeId> type;
-    std::vector<Expr> name;
-    std::vector<std::optional<Expr>> initializer;
+    std::vector<Syntax> name;
+    std::vector<std::optional<Syntax>> initializer;
     std::vector<TemplateId> template_declaration;
     std::vector<std::uint8_t> is_inline;
     std::vector<std::uint8_t> is_constexpr;

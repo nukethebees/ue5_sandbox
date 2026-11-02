@@ -405,7 +405,7 @@ auto CppTypes::compose(std::span<CppTypePart const> const parts,
     return result;
 }
 
-auto CppTypes::decltype_type(Expr const operand,
+auto CppTypes::decltype_type(Syntax const operand,
                              std::span<TypeDependencyId const> const dependencies) -> CppTypeId {
     assert(operand);
     return intern_shape("",
@@ -415,9 +415,18 @@ auto CppTypes::decltype_type(Expr const operand,
                         {.form = CppTypeForm::decltype_, .operand = operand});
 }
 
-auto CppTypes::template_type(Expr const expression,
+auto CppTypes::closure_type(Expr lambda, std::span<TypeDependencyId const> dependencies)
+    -> CppTypeId {
+    return intern_shape("",
+                        dependencies,
+                        ParameterPassing::const_reference,
+                        {},
+                        {.form = CppTypeForm::closure, .operand = lambda});
+}
+
+auto CppTypes::template_type(Syntax const expression,
                              std::span<TypeDependencyId const> const dependencies) -> CppTypeId {
-    assert(expression.kind() == ExprKind::template_id);
+    assert(expression.kind() == SyntaxKind::template_id);
     return intern_shape("",
                         dependencies,
                         ParameterPassing::const_reference,

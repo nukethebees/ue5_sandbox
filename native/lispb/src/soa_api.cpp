@@ -194,10 +194,10 @@ class SoaApiLowering : public CppIRBuilder {
             header.add(using_declaration(store_text("equivalent_type"), equivalent)).new_lines(1);
             Expr expression;
             if (receiver == SoaReceiver::owner) {
-                expression = subscript(call(named("const_view")), named("index"));
+                expression = subscript(call(this->name("const_view")), named("index"));
             } else {
                 auto const constructor_id{soas.equivalent_constructor[schema]};
-                std::vector<Expr> arguments;
+                std::vector<Syntax> arguments;
                 for (auto const member : ctx.declarations.items(soas.members[schema])) {
                     std::vector<std::string> const path{
                         ctx.text(ctx.declarations.soa_members.name[member])};
@@ -210,14 +210,14 @@ class SoaApiLowering : public CppIRBuilder {
                         : init_list(arguments, named_type("equivalent_type"));
             }
             FunctionDefinition const function{
-                .name = named("operator[]"),
+                .name = this->name("operator[]"),
                 .return_type = intern_type("equivalent_type"),
                 .return_syntax = ReturnSyntax::trailing,
                 .parameters = {parameter(std_types().u32, "index")},
                 .implementation = {.kind = FunctionImplementationKind::body,
                                    .body = {assertion(binary(BinaryOperator::less,
                                                              named("index"),
-                                                             call(named("num")))),
+                                                             call(this->name("num")))),
                                             return_stmt(expression)}},
                 .receiver = FunctionReceiver::const_,
                 .flags = {.is_inline = true, .define_in_header = true}};
@@ -261,7 +261,7 @@ class SoaApiLowering : public CppIRBuilder {
                     parameters.insert(parameters.begin(), parameter("size_type", "index"));
                 }
                 FunctionDefinition const function{
-                    .name = named(name),
+                    .name = this->name(name),
                     .return_type = name == "set" ? std_types().void_ : named_type("size_type"),
                     .parameters = std::move(parameters),
                     .implementation = {.kind = FunctionImplementationKind::body,
@@ -278,7 +278,7 @@ class SoaApiLowering : public CppIRBuilder {
                 auto const name{(members.kind[row] == SoaMemberKind::nested ? "view_" : "") +
                                 ctx.text(members.name[row])};
                 FunctionDefinition const function{
-                    .name = named(name),
+                    .name = this->name(name),
                     .return_type = intern_type("auto"),
                     .parameters = {parameter(decorate_type(intern_type("auto"), "this ", "&"),
                                              "self")},
@@ -303,7 +303,7 @@ class SoaApiLowering : public CppIRBuilder {
         }
 
         std::vector<CppTypeId> parameter_types;
-        std::vector<Expr> equivalent_arguments;
+        std::vector<Syntax> equivalent_arguments;
         auto mapped{soas.equivalent_type[schema].has_value()};
         auto collect = [&](auto&& self, DeclarationHandle current, Expr value) -> void {
             for (auto member : decls.items(soas.members[current])) {
@@ -344,10 +344,10 @@ class SoaApiLowering : public CppIRBuilder {
             return true;
         };
         std::vector<FunctionParameterId> logical_parameters;
-        std::vector<Expr> logical_arguments{named("index")};
+        std::vector<Syntax> logical_arguments{named("index")};
         auto logical_assignments{node_list()};
         logical_assignments.add(
-            assertion(binary(BinaryOperator::less, named("index"), call(named("num")))));
+            assertion(binary(BinaryOperator::less, named("index"), call(this->name("num")))));
         auto collect_logical = [&](auto&& self,
                                    DeclarationHandle current,
                                    std::vector<std::string> const& path) -> void {
@@ -372,7 +372,7 @@ class SoaApiLowering : public CppIRBuilder {
                 logical_parameters.push_back(parameter(decorate_type(type, "", " const"), name));
                 logical_arguments.push_back(named(name));
                 auto const visibility{logical_column_access(
-                    ctx, schema, column, owner ? call(named("view")) : named("this"), !owner)};
+                    ctx, schema, column, owner ? call(this->name("view")) : named("this"), !owner)};
                 logical_assignments.add(
                     nested
                         ? expr_stmt(member_call(visibility, "set", {named("index"), named(name)}))
@@ -391,9 +391,9 @@ class SoaApiLowering : public CppIRBuilder {
             if (owner && !custom("add")) {
                 emit("add",
                      logical_parameters,
-                     {variable("auto const", "index", call(named("num"))),
-                      expr_stmt(call(named("add_uninitialised"), {literal(1)})),
-                      expr_stmt(call(named("set"), logical_arguments)),
+                     {variable("auto const", "index", call(this->name("num"))),
+                      expr_stmt(call(this->name("add_uninitialised"), {literal(1)})),
+                      expr_stmt(call(this->name("set"), logical_arguments)),
                       return_stmt(named("index"))});
             }
         }
@@ -402,9 +402,9 @@ class SoaApiLowering : public CppIRBuilder {
             auto const value{parameter(decorate_type(equivalent, "", " const"), "value")};
             auto set_arguments{equivalent_arguments};
             set_arguments.insert(set_arguments.begin(), named("index"));
-            emit("set", {value}, {expr_stmt(call(named("set"), set_arguments))});
+            emit("set", {value}, {expr_stmt(call(this->name("set"), set_arguments))});
             if (owner && !custom("add")) {
-                emit("add", {value}, {return_stmt(call(named("add"), equivalent_arguments))});
+                emit("add", {value}, {return_stmt(call(this->name("add"), equivalent_arguments))});
             }
         }
         return result.build();
@@ -412,8 +412,8 @@ class SoaApiLowering : public CppIRBuilder {
     auto expand_columns(LoweringContext& ctx,
                         std::string_view const body,
                         DeclarationHandle schema,
-                        SoaReceiver const receiver) -> std::vector<Expr> {
-        std::vector<Expr> result;
+                        SoaReceiver const receiver) -> std::vector<Syntax> {
+        std::vector<Syntax> result;
         std::size_t copied{};
         scan_soa_columns(
             body,
@@ -421,14 +421,14 @@ class SoaApiLowering : public CppIRBuilder {
             [&](std::size_t const begin,
                 std::size_t const end,
                 std::span<std::string const> const path) {
-                result.push_back(raw_expr(body.substr(copied, begin - copied)));
+                result.push_back(authored_fragment(body.substr(copied, begin - copied)));
                 auto const owner{receiver == SoaReceiver::owner};
                 auto const visibility{logical_column_access(
-                    ctx, schema, path, owner ? call(named("view")) : named("this"), !owner)};
+                    ctx, schema, path, owner ? call(this->name("view")) : named("this"), !owner)};
                 result.push_back(visibility);
                 copied = end;
             });
-        result.push_back(raw_expr(body.substr(copied)));
+        result.push_back(authored_fragment(body.substr(copied)));
         return result;
     }
 };

@@ -8,6 +8,7 @@
 #include <codegen/ast/render_context.h>
 #include <codegen/ast/render_state.h>
 #include <codegen/ast/resolved_name.h>
+#include <codegen/ast/syntax.h>
 #include <codegen/ast/template_id.h>
 #include <lispb/indices.h>
 
@@ -27,6 +28,7 @@ class CppRenderer {
     explicit CppRenderer(CppIR const& ir, std::string_view indent_text = default_indent);
     // Reset lookup state for each entry point; the same renderer can emit multiple files.
     auto render(Expr expr, RenderContext const& ctx = {}) -> std::string;
+    auto render(Syntax syntax, RenderContext const& ctx = {}) -> std::string;
     auto render(NodeId node, RenderContext const& ctx = {}) -> std::string;
     auto render(CppFileId file) -> std::string;
     auto render_nodes(std::span<NodeId const> values, RenderContext const& ctx, int newlines)
@@ -49,7 +51,8 @@ class CppRenderer {
                       EnvironmentId environment) -> ResolvedName;
     auto alias_scope(SymbolBinding alias) -> EnvironmentId;
     void append_name(std::string& output, std::span<StringId const> components, NameOrigin origin);
-    auto declaration_name(Expr expression) -> StringId;
+    auto declaration_name(Syntax syntax) -> StringId;
+    void declare_name(EnvironmentId environment, Syntax name, CppDeclarationId declaration);
     void collect_environment(EnvironmentId environment,
                              std::span<NodeId const> children,
                              bool bindings_known = false);
@@ -63,6 +66,13 @@ class CppRenderer {
     // Expressions and declarations
     /* **************************************** */
     auto expression(Expr expr, RenderContext const& ctx) -> std::string;
+    auto expression(Syntax syntax, RenderContext const& ctx) -> std::string;
+    auto expr_precedence(Syntax syntax) -> int;
+    void append_expr(std::string& output,
+                     Syntax syntax,
+                     RenderContext const& ctx,
+                     int minimum = 0,
+                     bool equal = false);
     auto expr_precedence(Expr expr) -> int;
     void append_expr(std::string& output,
                      Expr expr,

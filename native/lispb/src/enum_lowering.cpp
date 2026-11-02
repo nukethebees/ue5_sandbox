@@ -59,7 +59,7 @@ class EnumLowering : public CppIRBuilder {
     /* **************************************** */
     auto enum_count_specialization(CppTypeId enum_type, std::size_t const count) -> NodeId {
         FunctionDefinition const function{
-            .name = template_id(named("enum_count"), {type_reference(enum_type)}),
+            .name = template_id(this->name("enum_count"), {type_reference(enum_type)}),
             .return_type = std_types().size_t,
             .return_syntax = ReturnSyntax::trailing,
             .implementation = {.kind = FunctionImplementationKind::body,
@@ -111,7 +111,7 @@ class EnumLowering : public CppIRBuilder {
             blob.pop_back();
         }
         auto const literal_value{wide ? text_literal(blob) : string_literal(blob)};
-        std::vector<Expr> offset_values;
+        std::vector<Syntax> offset_values;
         auto const count{offsets.size()};
         for (std::size_t i{}; i < count; ++i) {
             if (wide && offsets[i] != wide_offsets[i]) {
@@ -134,7 +134,7 @@ class EnumLowering : public CppIRBuilder {
         auto const variable_id{variable(
             intern_type("auto"),
             template_id(
-                named("enum_strings"),
+                this->name("enum_strings"),
                 {type_reference(named_type(qualified, NameOrigin::global)),
                  type_reference(named_type("ioj::" + std::string{category}, NameOrigin::global))}),
             initializer,
@@ -337,13 +337,14 @@ class EnumLowering : public CppIRBuilder {
     // Construction helpers
     /* **************************************** */
     auto text_literal(std::string_view const value) -> Expr {
-        return call(named("TEXT", {dependency("TEXT", "CoreMinimal.h")}), {string_literal(value)});
+        return call(this->name("TEXT", {dependency("TEXT", "CoreMinimal.h")}),
+                    {string_literal(value)});
     }
     auto reflection_annotation(EnumReflection const reflection) -> NodeId {
         auto const macro{named("UENUM", {dependency("UENUM", "CoreMinimal.h")})};
         return declaration_macro(reflection == EnumReflection::blueprint
-                                     ? call(macro, {named("BlueprintType")})
-                                     : call(macro));
+                                     ? macro_invocation(macro, {this->name("BlueprintType")})
+                                     : macro_invocation(macro));
     }
     auto qualified_enum_name(LoweringContext& ctx,
                              ModuleSettingsId settings,
@@ -369,7 +370,7 @@ class EnumLowering : public CppIRBuilder {
                          std::string_view suffix,
                          Nodes body) -> FunctionId {
         FunctionDefinition const function{
-            .name = named(internal_name(ctx, schema, suffix)),
+            .name = this->name(internal_name(ctx, schema, suffix)),
             .return_type = decorate_type(
                 named_type("TCHAR", {dependency("TCHAR", "CoreMinimal.h")}), "", " const*"),
             .return_syntax = ReturnSyntax::trailing,
@@ -443,7 +444,7 @@ class EnumLowering : public CppIRBuilder {
         }
         body.add(return_stmt(literal(false)));
         FunctionDefinition const created_function{
-            .name = named("try_parse_serialized"),
+            .name = this->name("try_parse_serialized"),
             .return_type = std_types().bool_,
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {parameter(decorate_type(
@@ -481,12 +482,12 @@ class EnumLowering : public CppIRBuilder {
         auto const parameter_type_value{
             lexical || helper_in_type_namespace ? ctx.text(enums.name[schema]) : enum_name};
         auto const lookup{call(
-            named(internal_name(
+            this->name(internal_name(
                 ctx, schema, serialized ? "serialized_name" : (display ? "display_name" : "name"))),
             {named("value")})};
         auto create = [&](std::string_view name, CppTypeId type, bool construct = false) {
             return add_function(
-                {.name = named(name),
+                {.name = this->name(name),
                  .return_type = type,
                  .return_syntax = ReturnSyntax::trailing,
                  .parameters = {parameter(
@@ -627,7 +628,7 @@ class EnumLowering : public CppIRBuilder {
         };
         auto const variable_id{
             variable(range_type,
-                     template_id(named("enum_range"), {type_reference(enum_type)}),
+                     template_id(this->name("enum_range"), {type_reference(enum_type)}),
                      init_list({enumerator_value(first), enumerator_value(last)}),
                      {.template_declaration = template_specialization(),
                       .is_inline = true,
@@ -711,7 +712,7 @@ class EnumLowering : public CppIRBuilder {
         auto result{node_list()};
         if (std::ranges::contains(ctx.declarations.items(enums.helpers[schema]),
                                   NativeEnumHelper::traits)) {
-            std::vector<Expr> values;
+            std::vector<Syntax> values;
             values.reserve(value_count);
             for (auto const value : ctx.declarations.items(enums.values[schema])) {
                 auto const name{ctx.declarations.enumerators.name[value]};
@@ -720,11 +721,11 @@ class EnumLowering : public CppIRBuilder {
                 }
                 values.push_back(scope_member(enum_type, name));
             }
-            auto const traits{
-                add_record({.name = template_id(named("EnumTraits"), {type_reference(enum_type)}),
-                            .children = {constexpr_member(
-                                std_types().array, store_text("values"), init_list(values))},
-                            .template_declaration = template_specialization()})};
+            auto const traits{add_record(
+                {.name = template_id(this->name("EnumTraits"), {type_reference(enum_type)}),
+                 .children = {constexpr_member(
+                     std_types().array, store_text("values"), init_list(values))},
+                 .template_declaration = template_specialization()})};
             result.add(traits, 2);
         }
 
@@ -739,7 +740,7 @@ class EnumLowering : public CppIRBuilder {
         auto const enum_type{
             named_type(native_enum_name(ctx, settings, schema), NameOrigin::global)};
         auto const formatter{
-            add_record({.name = template_id(named("formatter"), {type_reference(enum_type)}),
+            add_record({.name = template_id(this->name("formatter"), {type_reference(enum_type)}),
                         .children = {},
                         .bases = {template_type(
                             named_type("ioj::EnumFormatter",
@@ -802,7 +803,7 @@ class EnumLowering : public CppIRBuilder {
         body.add(switch_stmt(named("value"), cases), 2);
         body.add(return_stmt(static_cast_expr(target_type, named("value"))));
         FunctionDefinition const function{
-            .name = named(function_name),
+            .name = this->name(function_name),
             .return_type = target_type,
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {parameter(decorate_type(named_type(source), "", " const"), "value")},

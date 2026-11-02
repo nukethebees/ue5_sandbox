@@ -15,7 +15,7 @@ struct SScriptLevelSelectViewBuilder {
 #line 8 "SScriptLevelSelectView.lispb"
         return SNew(SBorder)
             .BorderImage(body_background)
-            .Padding(24)
+            .Padding(24.0)
                 [SNew(SVerticalBox) +
                  SandboxUI::Slate::vbox_auto_slot()[std::forward<decltype(header)>(header)] +
                  SandboxUI::Slate::vbox_fill_slot(1.0f, FMargin{0.0f, 18.0f, 0.0f, 0.0f})
@@ -47,16 +47,16 @@ struct SScriptLevelSelectViewBuilder {
                SandboxUI::Slate::hbox_auto_slot()
                    [SNew(SBorder)
                         .BorderImage(frame_border)
-                        .Padding(
-                            1)[SNew(SHorizontalBox) +
-                               SandboxUI::Slate::hbox_auto_slot()[SNew(SBox).WidthOverride(
-                                   150)[std::forward<decltype(mission_button)>(mission_button)]] +
-                               SandboxUI::Slate::hbox_auto_slot()[SNew(SBox).WidthOverride(
-                                   190)[std::forward<decltype(battle_viewer_button)>(
-                                   battle_viewer_button)]] +
-                               SandboxUI::Slate::hbox_auto_slot()[SNew(SBox).WidthOverride(
-                                   160)[std::forward<decltype(benchmark_button)>(
-                                   benchmark_button)]]]];
+                        .Padding(1.0)
+                            [SNew(SHorizontalBox) +
+                             SandboxUI::Slate::hbox_auto_slot()[SNew(SBox).WidthOverride(
+                                 150.0)[std::forward<decltype(mission_button)>(mission_button)]] +
+                             SandboxUI::Slate::hbox_auto_slot()[SNew(SBox).WidthOverride(
+                                 190.0)[std::forward<decltype(battle_viewer_button)>(
+                                 battle_viewer_button)]] +
+                             SandboxUI::Slate::hbox_auto_slot()[SNew(SBox).WidthOverride(
+                                 160.0)[std::forward<decltype(benchmark_button)>(
+                                 benchmark_button)]]]];
     }
 
     auto BuildCatalog(auto&& navigation_background,
@@ -66,18 +66,18 @@ struct SScriptLevelSelectViewBuilder {
 #line 50 "SScriptLevelSelectView.lispb"
         return SNew(SBorder)
             .BorderImage(navigation_background)
-            .Padding(18)[SNew(SBox).WidthOverride(350).MinDesiredHeight(
-                400)[SNew(SVerticalBox) +
-                     SandboxUI::Slate::vbox_auto_slot(FMargin{
-                         0.0f, 0.0f, 0.0f, 4.0f})[SNew(STextBlock)
-                                                      .Text(&self_, &ThisClass::catalog_caption)
-                                                      .TextStyle(caption_style)] +
-                     SandboxUI::Slate::vbox_auto_slot(FMargin{
-                         0.0f, 0.0f, 0.0f, 16.0f})[SNew(STextBlock)
-                                                       .Text(&self_, &ThisClass::catalog_title)
-                                                       .TextStyle(heading_style)] +
-                     SandboxUI::Slate::vbox_fill_slot()[std::forward<decltype(catalog_scroll)>(
-                         catalog_scroll)]]];
+            .Padding(18.0)[SNew(SBox).WidthOverride(350.0).MinDesiredHeight(
+                400.0)[SNew(SVerticalBox) +
+                       SandboxUI::Slate::vbox_auto_slot(FMargin{
+                           0.0f, 0.0f, 0.0f, 4.0f})[SNew(STextBlock)
+                                                        .Text(&self_, &ThisClass::catalog_caption)
+                                                        .TextStyle(caption_style)] +
+                       SandboxUI::Slate::vbox_auto_slot(FMargin{
+                           0.0f, 0.0f, 0.0f, 16.0f})[SNew(STextBlock)
+                                                         .Text(&self_, &ThisClass::catalog_title)
+                                                         .TextStyle(heading_style)] +
+                       SandboxUI::Slate::vbox_fill_slot()[std::forward<decltype(catalog_scroll)>(
+                           catalog_scroll)]]];
     }
 
   private:

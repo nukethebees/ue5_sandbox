@@ -32,14 +32,14 @@ struct UScatter3DShowcaseBuilder {
                           .Label(NSLOCTEXT("Scatter3D", "PointCount", "Points"))
                           .ContentHAlign(
                               HAlign_Left)[SNew(SSpinBox<int32>)
-                                               .MinValue(1)
-                                               .MaxValue(65536)
-                                               .MinSliderValue(1)
-                                               .MaxSliderValue(65536)
+                                               .MinValue(1.0)
+                                               .MaxValue(65536.0)
+                                               .MinSliderValue(1.0)
+                                               .MaxSliderValue(65536.0)
                                                .SliderExponent(4.0f)
-                                               .Delta(1)
+                                               .Delta(1.0)
                                                .MinDesiredWidth(140.0f)
-                                               .Value(4096)
+                                               .Value(4096.0)
                                                .OnValueCommitted_Lambda(
                                                    std::forward<decltype(on_value_committed)>(
                                                        on_value_committed))]] +

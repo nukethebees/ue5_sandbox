@@ -1,5 +1,4 @@
 #pragma once
-#include <codegen/ast/expr.h>
 #include <codegen/ast/function_exception_id.h>
 #include <codegen/ast/function_flags.h>
 #include <codegen/ast/function_formatting.h>
@@ -9,6 +8,7 @@
 #include <codegen/ast/indices.h>
 #include <codegen/ast/ir/range.h>
 #include <codegen/ast/return_syntax.h>
+#include <codegen/ast/syntax.h>
 #include <codegen/ast/template_id.h>
 #include <lispb/indices.h>
 
@@ -17,7 +17,7 @@
 namespace lispb::codegen::ir {
 
 struct Functions {
-    std::vector<Expr> name;
+    std::vector<Syntax> name;
     std::vector<CppTypeId> return_type;
     std::vector<ReturnSyntax> return_syntax;
     std::vector<FunctionKind> kind;

@@ -224,7 +224,7 @@ class SettingsLowering : public CppIRBuilder {
                           CppTypeId type,
                           std::vector<FunctionParameterId> parameters,
                           Nodes body) {
-            return FunctionDefinition{.name = named(name),
+            return FunctionDefinition{.name = this->name(name),
                                       .return_type = type,
                                       .return_syntax = ReturnSyntax::trailing,
                                       .parameters = std::move(parameters),
@@ -282,7 +282,7 @@ class SettingsLowering : public CppIRBuilder {
                              template_call(type_reference(std_types().get_if),
                                            {type_reference(setting_types[index])},
                                            {unary(UnaryOperator::address_of, value)})),
-                    if_stmt(binary(BinaryOperator::equal, typed_value, literal("nullptr")),
+                    if_stmt(binary(BinaryOperator::equal, typed_value, literal(nullptr)),
                             block({return_stmt(literal(false))})),
                     assignment(member_access(state, name),
                                unary(UnaryOperator::dereference, typed_value)),
@@ -311,26 +311,26 @@ class SettingsLowering : public CppIRBuilder {
             auto const setting{settings[index]};
             auto const name{ctx.declarations.settings.name[setting]};
             FunctionDefinition const getter{
-                .name = named(name),
+                .name = this->name(name),
                 .return_type = setting_types[index],
                 .return_syntax = ReturnSyntax::trailing,
                 .implementation = {.kind = FunctionImplementationKind::body,
                                    .body = {return_stmt(member_access(
-                                       member_call(call(named("derived")), "settings_state"),
+                                       member_call(call(this->name("derived")), "settings_state"),
                                        name))}},
                 .receiver = FunctionReceiver::const_,
                 .flags = {.define_in_header = true}};
             members.add(header_function(add_function(getter)), 2);
 
             FunctionDefinition const setter{
-                .name = named("set_" + ctx.text(name)),
+                .name = this->name("set_" + ctx.text(name)),
                 .return_type = std_types().void_,
                 .parameters = {parameter(decorate_type(setting_types[index], "", " const"),
                                          "value")},
                 .implementation =
                     {.kind = FunctionImplementationKind::body,
                      .body = {expr_stmt(member_call(
-                         call(named("derived")),
+                         call(this->name("derived")),
                          "set_setting",
                          {scope_member(named_type("GameSetting"), title_case(ctx.text(name))),
                           init_list({named("value")}, intern_type("GameSettingValue"))}))}},
@@ -341,7 +341,7 @@ class SettingsLowering : public CppIRBuilder {
         for (auto const is_const : {false, true}) {
             auto const derived_type{intern_type(is_const ? "Derived const&" : "Derived&")};
             FunctionDefinition const function{
-                .name = named("derived"),
+                .name = this->name("derived"),
                 .return_type = derived_type,
                 .return_syntax = ReturnSyntax::trailing,
                 .implementation = {.kind = FunctionImplementationKind::body,
@@ -353,7 +353,7 @@ class SettingsLowering : public CppIRBuilder {
                 .formatting = {.body_layout = FunctionBodyLayout::compact}};
             members.add(header_function(add_function(function)), 1);
         }
-        auto const result{add_record({.name = named(modules.api_name[module_row]),
+        auto const result{add_record({.name = this->name(modules.api_name[module_row]),
                                       .kind = RecordKind::class_,
                                       .children = members.build(),
                                       .template_declaration = template_declaration(
@@ -480,7 +480,7 @@ class SettingsLowering : public CppIRBuilder {
                     members.add(instance_member(type, store_text(member)), 1);
                 }
                 auto const record_id{
-                    add_record({.name = named(store_text(name)),
+                    add_record({.name = this->name(store_text(name)),
                                 .children = members.build(),
                                 .export_specifier = modules.export_specifier[module_row]})};
                 emit_header(name, record_id, includes);
@@ -527,14 +527,14 @@ class SettingsLowering : public CppIRBuilder {
         }
         auto const state_name{modules.state_name[module_row]};
         FunctionDefinition const equality{
-            .name = named("operator=="),
+            .name = this->name("operator=="),
             .return_type = std_types().bool_,
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {parameter(intern_type(ctx.text(state_name) + " const&"))},
             .implementation = {.kind = FunctionImplementationKind::defaulted},
             .receiver = FunctionReceiver::const_};
         state_members.new_lines(2).add(header_function(add_function(equality)), 1);
-        auto const state{add_record({.name = named(state_name),
+        auto const state{add_record({.name = this->name(state_name),
                                      .children = state_members.build(),
                                      .export_specifier = modules.export_specifier[module_row]})};
         emit_header(ctx.text(state_name), state, {});
@@ -561,7 +561,7 @@ class SettingsLowering : public CppIRBuilder {
             return scope_member(named_type(type), name);
         };
 
-        std::vector<Expr> categories;
+        std::vector<Syntax> categories;
         for (auto const category : decls.items(modules.categories[module_row])) {
             auto const row{category_schemas.index(category)};
             categories.push_back(init_list({
@@ -569,7 +569,7 @@ class SettingsLowering : public CppIRBuilder {
                 text_value(ctx.text(category_schemas.label[row])),
             }));
         }
-        std::vector<Expr> descriptors;
+        std::vector<Syntax> descriptors;
         for (auto const setting : decls.items(modules.settings_list[module_row])) {
             auto const row{setting_schemas.index(setting)};
             auto const control_row{controls.index(setting_schemas.control[row])};
@@ -592,9 +592,9 @@ class SettingsLowering : public CppIRBuilder {
                 text_literal(ctx.text(setting_schemas.name[row])),
                 text_value(ctx.text(setting_schemas.label[row])),
                 text_value(ctx.optional_text(setting_schemas.tooltip[row]).value_or("")),
-                literal(std::format("{:.6g}", controls.minimum[control_row].value_or(0.0))),
-                literal(std::format("{:.6g}", controls.maximum[control_row].value_or(0.0))),
-                literal(std::format("{:.6g}", controls.step[control_row].value_or(0.0))),
+                literal(controls.minimum[control_row].value_or(0.0)),
+                literal(controls.maximum[control_row].value_or(0.0)),
+                literal(controls.step[control_row].value_or(0.0)),
                 text_literal(ctx.optional_text(controls.custom_row[control_row]).value_or("")),
             }));
         }

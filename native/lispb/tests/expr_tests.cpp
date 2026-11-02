@@ -39,7 +39,7 @@ namespace {
 TEST_F(ExprTest, RequiresExplicitRawAndSupportsIndependentCopies) {
     static_assert(!std::is_convertible_v<std::string, Expr>);
     static_assert(!std::is_convertible_v<char const*, Expr>);
-    auto original{ir.call(ir.named("lookup"), {ir.named("value")})};
+    auto original{ir.call(ir.name("lookup"), {ir.named("value")})};
     auto copy{original};
     original = ir.literal(false);
 
@@ -50,7 +50,7 @@ TEST_F(ExprTest, RequiresExplicitRawAndSupportsIndependentCopies) {
 
 TEST_F(ExprTest, RendersCallsCastsAndInitializerLists) {
     auto const lookup{
-        ir.call(ir.named("get_name"),
+        ir.call(ir.name("get_name"),
                 {ir.scope_member(ir.types.named("project::Mode", NameOrigin::global), "Ready")})};
     expect_rendered(ir.init_list({lookup}, types.intern("FString")),
                     "FString{get_name(project::Mode::Ready)}");
@@ -60,7 +60,7 @@ TEST_F(ExprTest, RendersCallsCastsAndInitializerLists) {
     expect_rendered(ir.static_cast_expr(types.intern("int32"),
                                         ir.scope_member(ir.types.named("Mode"), "COUNT")),
                     "static_cast<int32>(Mode::COUNT)");
-    expect_rendered(ir.call(ir.call(ir.named("factory")), {ir.literal(42)}), "factory()(42)");
+    expect_rendered(ir.call(ir.call(ir.name("factory")), {ir.literal(42)}), "factory()(42)");
 }
 
 TEST_F(ExprTest, PreservesBinaryGroupingAndPostfixBinding) {
@@ -68,7 +68,7 @@ TEST_F(ExprTest, PreservesBinaryGroupingAndPostfixBinding) {
     expect_rendered(ir.binary(BinaryOperator::equal, inner, ir.named("c")), "a == b == c");
     expect_rendered(ir.binary(BinaryOperator::equal, ir.named("c"), inner), "c == (a == b)");
     expect_rendered(ir.call(inner), "(a == b)()");
-    expect_rendered(ir.call(ir.named("f"), {inner}), "f(a == b)");
+    expect_rendered(ir.call(ir.name("f"), {inner}), "f(a == b)");
     expect_rendered(ir.static_cast_expr(types.std.bool_, inner), "static_cast<bool>(a == b)");
 }
 
@@ -80,7 +80,7 @@ TEST_F(ExprTest, RendersUnaryPointerAccessAndLogicalPrecedence) {
                                  ir.unary(UnaryOperator::logical_not, data))};
     expect_rendered(missing, "!state || !state->data");
     expect_rendered(ir.unary(UnaryOperator::logical_not, missing), "!(!state || !state->data)");
-    expect_rendered(ir.call(ir.named("test"), {missing}), "test(!state || !state->data)");
+    expect_rendered(ir.call(ir.name("test"), {missing}), "test(!state || !state->data)");
     expect_rendered(ir.binary(BinaryOperator::equal, missing, ir.literal(false)),
                     "(!state || !state->data) == false");
     expect_rendered(ir.member_access(ir.unary(UnaryOperator::dereference, pointer), "data"),
@@ -107,7 +107,7 @@ TEST_F(ExprTest, RendersUnaryPointerAccessAndLogicalPrecedence) {
 
 TEST_F(ExprTest, PreservesBitwiseAndShiftPrecedence) {
     auto const value{ir.named("value")};
-    auto const bit{ir.call(ir.named("bit"), {ir.named("field")})};
+    auto const bit{ir.call(ir.name("bit"), {ir.named("field")})};
     auto const masked{ir.binary(BinaryOperator::bitwise_and, value, bit)};
     expect_rendered(ir.binary(BinaryOperator::not_equal, masked, ir.literal(0)),
                     "(value & bit(field)) != 0");
@@ -125,7 +125,7 @@ TEST_F(ExprTest, PreservesBitwiseAndShiftPrecedence) {
 
 TEST_F(AstTest, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
     FunctionDefinition const spec{
-        .name = ir.named(ir.strings.intern("view")),
+        .name = ir.name(ir.strings.intern("view")),
         .return_type = types.intern("View"),
         .return_syntax = ReturnSyntax::trailing,
         .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
@@ -141,7 +141,7 @@ TEST_F(AstTest, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
     expect_rendered(ir.definition(ir.add_function(rvalue_spec)),
                     "auto view() const && noexcept -> View = delete;");
     FunctionDefinition const constructor_spec{
-        .name = ir.named(ir.strings.intern("View")),
+        .name = ir.name(ir.strings.intern("View")),
         .kind = FunctionKind::constructor,
         .implementation = {.kind = FunctionImplementationKind::body, .body = {}},
         .flags = {.is_inline = true, .define_in_header = true},
@@ -173,7 +173,7 @@ TEST_F(ExprTest, RendersSizeofAndPreservesArithmeticGrouping) {
 TEST_F(ExprTest, CollectsSizeofTypeDependenciesThroughArithmetic) {
     auto const element{types.intern("Element", {types.dependency("Element", "Project/Element.h")})};
     FunctionDefinition const function{
-        .name = ir.named(ir.strings.intern("bytes")),
+        .name = ir.name(ir.strings.intern("bytes")),
         .return_type = types.intern("auto"),
         .implementation = {
             .kind = FunctionImplementationKind::body,
@@ -187,11 +187,12 @@ TEST_F(ExprTest, CollectsSizeofTypeDependenciesThroughArithmetic) {
 }
 
 TEST_F(ExprTest, KeepsRawVerbatimAndProtectsNestedRawOperands) {
-    Expr const raw_expr{ir.raw_expr("left, right")};
+    Expr const raw_expr{ir.raw_expr(types.std.int_, "left, right")};
     expect_rendered(raw_expr, "left, right");
     expect_rendered(ir.return_stmt(raw_expr), "return left, right;");
-    expect_rendered(ir.call(ir.named("f"), {raw_expr}), "f((left, right))");
-    expect_rendered(ir.call(ir.raw_expr("*function_pointer")), "(*function_pointer)()");
+    expect_rendered(ir.call(ir.name("f"), {raw_expr}), "f((left, right))");
+    expect_rendered(ir.call(ir.raw_expr(types.std.int_, "*function_pointer")),
+                    "(*function_pointer)()");
     expect_rendered(ir.binary(BinaryOperator::equal, raw_expr, ir.literal(0)),
                     "(left, right) == 0");
     expect_rendered(ir.binary(BinaryOperator::equal, ir.literal(0), raw_expr),
@@ -206,7 +207,7 @@ TEST_F(ExprTest, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
     auto const element{ir.subscript(other_values, ir.named("index"))};
     expect_rendered(element, "other.values[index]");
     expect_rendered(ir.member_call(element, "size"), "other.values[index].size()");
-    expect_rendered(ir.subscript(ir.call(ir.named("get_values")), ir.named("index")),
+    expect_rendered(ir.subscript(ir.call(ir.name("get_values")), ir.named("index")),
                     "get_values()[index]");
     expect_rendered(ir.member_call(ir.named("values"), "set", {ir.named("index"), ir.literal(42)}),
                     "values.set(index, 42)");
@@ -214,8 +215,10 @@ TEST_F(ExprTest, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
     expect_rendered(ir.subscript(other_values, difference), "other.values[end - count]");
     expect_rendered(ir.subscript(difference, ir.named("index")), "(end - count)[index]");
     expect_rendered(ir.member_access(difference, "value"), "(end - count).value");
-    expect_rendered(ir.member_access(ir.raw_expr("*pointer"), "value"), "(*pointer).value");
-    expect_rendered(ir.subscript(ir.raw_expr("*pointer"), ir.raw_expr("first, last")),
+    expect_rendered(ir.member_access(ir.raw_expr(types.std.int_, "*pointer"), "value"),
+                    "(*pointer).value");
+    expect_rendered(ir.subscript(ir.raw_expr(types.std.int_, "*pointer"),
+                                 ir.raw_expr(types.std.int_, "first, last")),
                     "(*pointer)[(first, last)]");
 }
 
@@ -239,15 +242,16 @@ TEST_F(ExprTest, PreservesSubtractionAndComparisonPrecedence) {
     expect_rendered(ir.binary(BinaryOperator::greater, equality, c), "(a == b) > c");
     expect_rendered(ir.binary(BinaryOperator::greater, a, ir.binary(BinaryOperator::greater, b, c)),
                     "a > (b > c)");
-    expect_rendered(ir.binary(BinaryOperator::subtract, c, ir.raw_expr("a - b")), "c - (a - b)");
+    expect_rendered(ir.binary(BinaryOperator::subtract, c, ir.raw_expr(types.std.int_, "a - b")),
+                    "c - (a - b)");
 }
 
 TEST_F(ExprTest, CollectsMemberObjectAndSubscriptIndexDependencies) {
     auto const object{types.dependency("get_rows", "Project/Rows.h")};
     auto const index{types.dependency("get_index", "Project/Index.h")};
     auto const expression{
-        ir.subscript(ir.member_access(ir.call(ir.named("get_rows", {object})), "values"),
-                     ir.call(ir.named("get_index", {index})))};
+        ir.subscript(ir.member_access(ir.call(ir.name("get_rows", {object})), "values"),
+                     ir.call(ir.name("get_index", {index})))};
     EXPECT_EQ(collected_dependencies(ir, expression),
               (std::vector<TypeDependencyId>{object, index}));
     EXPECT_EQ(collected_dependencies(ir, ir.assignment(expression, ir.literal(42))),
@@ -279,10 +283,10 @@ TEST_F(ExprTest, CollectsDependenciesFromEveryOperandAndType) {
     auto const raw_dependency{types.dependency("macro", "Project/Macro.h")};
     auto const expression{ir.init_list(
         {ir.call(
-            ir.named("make", {callee}),
+            ir.name("make", {callee}),
             {ir.binary(BinaryOperator::equal, ir.named("left", {left}), ir.named("right", {right})),
              ir.static_cast_expr(types.intern("Count", {cast_type}),
-                                 ir.raw_expr("MACRO", {raw_dependency}))})},
+                                 ir.raw_expr(types.std.int_, "MACRO", {raw_dependency}))})},
         types.intern("Value", {list_type}))};
 
     EXPECT_EQ(
@@ -293,7 +297,7 @@ TEST_F(ExprTest, CollectsDependenciesFromEveryOperandAndType) {
 TEST_F(ExprTest, StmtsCollectInitializersAndAssignmentOperands) {
     auto const make{types.dependency("make", "Project/Make.h")};
     auto const target{types.dependency("target", "Project/Target.h")};
-    auto const expression{ir.call(ir.named("make", {make}))};
+    auto const expression{ir.call(ir.name("make", {make}))};
     EXPECT_EQ(collected_dependencies(ir, ir.expr_stmt(expression)),
               std::vector<TypeDependencyId>{make});
     EXPECT_EQ(collected_dependencies(ir, ir.return_stmt(expression)),
@@ -311,14 +315,15 @@ TEST_F(ExprTest, StmtsCollectInitializersAndAssignmentOperands) {
 
 TEST_F(ExprTest, PreservesAbsentEmptyAndStructuredInitializers) {
     expect_rendered(ir.instance_member(types.std.int_, ir.strings.intern("value")), "int value;");
-    expect_rendered(ir.instance_member(types.std.int_, ir.strings.intern("value"), ir.raw_expr("")),
-                    "int value{};");
+    expect_rendered(
+        ir.instance_member(types.std.int_, ir.strings.intern("value"), ir.init_list({})),
+        "int value{};");
     expect_rendered(ir.instance_member(types.std.int_, ir.strings.intern("value"), ir.literal(42)),
                     "int value{42};");
-    expect_rendered(ir.variable(types.std.int_, ir.strings.intern("value"), ir.raw_expr("")),
+    expect_rendered(ir.variable(types.std.int_, ir.strings.intern("value"), ir.init_list({})),
                     "int value{};");
     expect_rendered(
-        ir.variable(types.intern("auto const"), ir.strings.intern("value"), ir.call(ir.named("f"))),
+        ir.variable(types.intern("auto const"), ir.strings.intern("value"), ir.call(ir.name("f"))),
         "auto const value{f()};");
     expect_rendered(ir.return_stmt(), "return;");
 }
@@ -327,7 +332,7 @@ TEST_F(AstTest, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
     NodeListBuilder body{ir};
     body.add(ir.if_stmt(ir.named("ready"),
                         ir.block({ir.return_stmt(ir.literal(true))}),
-                        ir.block({ir.expr_stmt(ir.call(ir.named("retry")))})),
+                        ir.block({ir.expr_stmt(ir.call(ir.name("retry")))})),
              2)
         .add(ir.break_stmt());
     NodeId const statement{ir.switch_stmt(
@@ -400,7 +405,7 @@ TEST_F(AstTest, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
          ir.switch_case(std::nullopt,
                         ir.block({ir.block({ir.expr_stmt(ir.call(symbol("default_only")))})}))})};
     FunctionDefinition const spec{
-        .name = ir.named(ir.strings.intern("f")),
+        .name = ir.name(ir.strings.intern("f")),
         .return_type = types.std.void_,
         .implementation = {
             .kind = FunctionImplementationKind::body,
@@ -431,8 +436,8 @@ TEST_F(AstTest, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
 TEST_F(AstTest, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
     auto const symbol{types.dependency("make", "Project/Make.h")};
     auto const value{types.dependency("Value", "Project/Value.h")};
-    auto const expression{ir.call(ir.named("make", {symbol, value}))};
-    FunctionDefinition const function{.name = ir.named(ir.strings.intern("f")),
+    auto const expression{ir.call(ir.name("make", {symbol, value}))};
+    FunctionDefinition const function{.name = ir.name(ir.strings.intern("f")),
                                       .return_type = types.intern("auto"),
                                       .implementation = {.kind = FunctionImplementationKind::body,
                                                          .body = {ir.return_stmt(expression)}}};

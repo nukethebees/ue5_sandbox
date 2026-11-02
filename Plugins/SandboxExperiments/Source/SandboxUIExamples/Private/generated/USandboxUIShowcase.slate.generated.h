@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <utility>
 namespace SlateGenerated {
 struct USandboxUIShowcaseBuilder {
     using ThisClass = ::USandboxUIShowcase;
@@ -33,7 +32,7 @@ struct USandboxUIShowcaseBuilder {
 
     auto BuildHistogram() {
 #line 24 "SandboxUIShowcase.lispb"
-        return SNew(SHistogram).DomainMinimum(-4.0f).DomainMaximum(4.0f).BinCount(24);
+        return SNew(SHistogram).DomainMinimum(-4.0f).DomainMaximum(4.0f).BinCount(24.0);
     }
 
     auto BuildScatter(auto&& domain) {

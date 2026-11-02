@@ -42,14 +42,14 @@ class StaticTableLowering : public CppIRBuilder {
         auto const& groups{ctx.declarations.static_table_groups};
         auto const row{groups.index(group)};
         auto const result_type{ctx.resolve(groups.type[row])};
-        std::vector<Expr> arguments;
+        std::vector<Syntax> arguments;
         arguments.reserve(groups.columns[row].size());
         for (auto const column : ctx.declarations.items(groups.columns[row])) {
             arguments.push_back(subscript(named(column), named("index")));
         }
 
         FunctionDefinition const created_function{
-            .name = named("get_" + ctx.text(groups.name[row])),
+            .name = this->name("get_" + ctx.text(groups.name[row])),
             .return_type = result_type,
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {parameter(
@@ -79,7 +79,7 @@ class StaticTableLowering : public CppIRBuilder {
         }
 
         FunctionDefinition const num{
-            .name = named("num"),
+            .name = this->name("num"),
             .return_type = int32_type,
             .return_syntax = ReturnSyntax::trailing,
             .implementation = {.kind = FunctionImplementationKind::body,
@@ -111,7 +111,7 @@ class StaticTableLowering : public CppIRBuilder {
         }
 
         auto const created_record{
-            add_record({.name = named(tables.name[table_row]),
+            add_record({.name = this->name(tables.name[table_row]),
                         .children = children.build(),
                         .export_specifier = tables.export_specifier[table_row]})};
         return created_record;

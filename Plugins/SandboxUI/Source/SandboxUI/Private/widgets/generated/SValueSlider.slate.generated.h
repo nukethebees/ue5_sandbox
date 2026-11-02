@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <utility>
 namespace SlateGenerated {
 struct SValueSliderBuilder {
     using ThisClass = ::SValueSlider;

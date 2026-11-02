@@ -179,35 +179,35 @@ class CppIRBuilder {
 
     CppFileId add_file(CppFileDefinition const& definition) { return ir_.files.add(definition); }
 
-    Expr call(CppTypeId callee, std::span<Expr const> arguments = {}) {
+    Expr call(CppTypeId callee, std::span<Syntax const> arguments = {}) {
         return ir_.call(callee, arguments);
     }
 
-    Expr call(CppTypeId callee, std::initializer_list<Expr> arguments) {
+    Expr call(CppTypeId callee, std::initializer_list<Syntax> arguments) {
         return ir_.call(callee, arguments);
     }
 
-    Expr template_call(Expr callee,
-                       std::span<Expr const> template_arguments,
-                       std::span<Expr const> arguments = {}) {
+    Expr template_call(Syntax callee,
+                       std::span<Syntax const> template_arguments,
+                       std::span<Syntax const> arguments = {}) {
         return ir_.template_call(callee, template_arguments, arguments);
     }
 
-    Expr template_call(Expr callee,
-                       std::span<Expr const> template_arguments,
-                       std::initializer_list<Expr> arguments) {
+    Expr template_call(Syntax callee,
+                       std::span<Syntax const> template_arguments,
+                       std::initializer_list<Syntax> arguments) {
         return ir_.template_call(callee, template_arguments, arguments);
     }
 
-    Expr template_call(Expr callee,
-                       std::initializer_list<Expr> template_arguments,
-                       std::span<Expr const> arguments = {}) {
+    Expr template_call(Syntax callee,
+                       std::initializer_list<Syntax> template_arguments,
+                       std::span<Syntax const> arguments = {}) {
         return ir_.template_call(callee, template_arguments, arguments);
     }
 
-    Expr template_call(Expr callee,
-                       std::initializer_list<Expr> template_arguments,
-                       std::initializer_list<Expr> arguments) {
+    Expr template_call(Syntax callee,
+                       std::initializer_list<Syntax> template_arguments,
+                       std::initializer_list<Syntax> arguments) {
         return ir_.template_call(callee, template_arguments, arguments);
     }
 
@@ -314,7 +314,31 @@ class CppIRBuilder {
 
     NodeId break_stmt() { return ir_.break_stmt(); }
 
-    NodeId declaration_macro(Expr invocation) { return ir_.declaration_macro(invocation); }
+    Syntax macro_invocation(Syntax name, std::span<Syntax const> arguments = {}) {
+        return ir_.macro_invocation(name, arguments);
+    }
+
+    Syntax macro_invocation(Syntax name, std::initializer_list<Syntax> arguments) {
+        return ir_.macro_invocation(name, arguments);
+    }
+
+    NodeId macro_statement(Syntax name, std::span<Syntax const> arguments = {}) {
+        return ir_.macro_statement(name, arguments);
+    }
+
+    NodeId macro_statement(Syntax name, std::initializer_list<Syntax> arguments) {
+        return ir_.macro_statement(name, arguments);
+    }
+
+    NodeId macro_block(Syntax invocation, BlockId body) {
+        return ir_.macro_block(invocation, body);
+    }
+
+    Syntax binding_list(std::initializer_list<std::string_view> names) {
+        return ir_.binding_list(names);
+    }
+
+    NodeId declaration_macro(Syntax invocation) { return ir_.declaration_macro(invocation); }
 
     NodeId expr_stmt(Expr expr, std::span<TypeDependencyId const> dependencies = {}) {
         return ir_.expr_stmt(expr, dependencies);
@@ -324,44 +348,45 @@ class CppIRBuilder {
         return ir_.expr_stmt(expr, dependencies);
     }
 
-    NodeId return_stmt(std::optional<Expr> expr = {},
+    NodeId return_stmt(std::optional<Syntax> expr = {},
                        std::span<TypeDependencyId const> dependencies = {}) {
         return ir_.return_stmt(expr, dependencies);
     }
 
-    NodeId return_stmt(std::optional<Expr> expr,
+    NodeId return_stmt(std::optional<Syntax> expr,
                        std::initializer_list<TypeDependencyId> dependencies) {
         return ir_.return_stmt(expr, dependencies);
     }
 
     NodeId
-        assignment(Expr target, Expr value, std::span<TypeDependencyId const> dependencies = {}) {
+        assignment(Expr target, Syntax value, std::span<TypeDependencyId const> dependencies = {}) {
         return ir_.assignment(target, value, dependencies);
     }
 
-    NodeId
-        assignment(Expr target, Expr value, std::initializer_list<TypeDependencyId> dependencies) {
+    NodeId assignment(Expr target,
+                      Syntax value,
+                      std::initializer_list<TypeDependencyId> dependencies) {
         return ir_.assignment(target, value, dependencies);
     }
 
     NodeId variable(CppTypeId type,
-                    Expr name,
-                    std::optional<Expr> initializer = {},
+                    Syntax name,
+                    std::optional<Syntax> initializer = {},
                     VariableOptions options = {}) {
         return ir_.variable(type, name, initializer, options);
     }
 
-    NodeId variable(CppTypeId type, StringId name, std::optional<Expr> initializer = {}) {
+    NodeId variable(CppTypeId type, StringId name, std::optional<Syntax> initializer = {}) {
         return ir_.variable(type, name, initializer);
     }
 
-    NodeId variable(CppTypeId type, std::string_view name, std::optional<Expr> initializer = {}) {
+    NodeId variable(CppTypeId type, std::string_view name, std::optional<Syntax> initializer = {}) {
         return ir_.variable(type, name, initializer);
     }
 
     NodeId variable(std::string_view type,
                     std::string_view name,
-                    std::optional<Expr> initializer = {}) {
+                    std::optional<Syntax> initializer = {}) {
         return ir_.variable(type, name, initializer);
     }
 
@@ -407,13 +432,13 @@ class CppIRBuilder {
 
     NodeId using_import(CppTypeId qualified_name) { return ir_.using_import(qualified_name); }
 
-    NodeId instance_member(CppTypeId type, StringId name, std::optional<Expr> initializer = {}) {
+    NodeId instance_member(CppTypeId type, StringId name, std::optional<Syntax> initializer = {}) {
         return ir_.instance_member(type, name, initializer);
     }
 
     NodeId static_member(CppTypeId type,
                          StringId name,
-                         std::optional<Expr> initializer = {},
+                         std::optional<Syntax> initializer = {},
                          bool is_inline = false,
                          TemplateId template_declaration = {}) {
         return ir_.static_member(type, name, initializer, is_inline, template_declaration);
@@ -421,7 +446,7 @@ class CppIRBuilder {
 
     NodeId constexpr_member(CppTypeId type,
                             StringId name,
-                            Expr initializer,
+                            Syntax initializer,
                             TemplateId template_declaration = {}) {
         return ir_.constexpr_member(type, name, initializer, template_declaration);
     }
@@ -463,7 +488,7 @@ class CppIRBuilder {
 
     TemplateParameterId value_template_parameter(CppTypeId type,
                                                  StringId name = {},
-                                                 Expr default_value = {},
+                                                 Syntax default_value = {},
                                                  bool pack = false) {
         return ir_.value_template_parameter(type, name, default_value, pack);
     }
@@ -482,16 +507,17 @@ class CppIRBuilder {
         return ir_.raw_template_declaration(parameters);
     }
 
-    FunctionParameterId parameter(CppTypeId type, StringId name = {}, Expr default_value = {}) {
-        return ir_.parameter(type, name, default_value);
-    }
-
-    FunctionParameterId parameter(CppTypeId type, std::string_view name, Expr default_value = {}) {
+    FunctionParameterId parameter(CppTypeId type, StringId name = {}, Syntax default_value = {}) {
         return ir_.parameter(type, name, default_value);
     }
 
     FunctionParameterId
-        parameter(std::string_view type, std::string_view name = {}, Expr default_value = {}) {
+        parameter(CppTypeId type, std::string_view name, Syntax default_value = {}) {
+        return ir_.parameter(type, name, default_value);
+    }
+
+    FunctionParameterId
+        parameter(std::string_view type, std::string_view name = {}, Syntax default_value = {}) {
         return ir_.parameter(type, name, default_value);
     }
 
@@ -499,7 +525,7 @@ class CppIRBuilder {
         return ir_.member_initializer(member, value);
     }
 
-    MemberInitializerId member_initializer(StringId member, Expr value) {
+    MemberInitializerId member_initializer(StringId member, Syntax value) {
         return ir_.member_initializer(member, value);
     }
 
@@ -521,7 +547,7 @@ class CppIRBuilder {
         return ir_.raw(value, dependencies);
     }
 
-    NodeId raw_parts(std::span<Expr const> parts,
+    NodeId raw_parts(std::span<Syntax const> parts,
                      std::span<TypeDependencyId const> dependencies = {}) {
         return ir_.raw_parts(parts, dependencies);
     }
@@ -552,6 +578,44 @@ class CppIRBuilder {
         return ir_.definition(function, owner, syntax, header);
     }
 
+    Syntax name(std::string_view value, std::span<TypeDependencyId const> dependencies = {}) {
+        return ir_.name(value, dependencies);
+    }
+
+    Syntax name(StringId value, std::span<TypeDependencyId const> dependencies = {}) {
+        return ir_.name(value, dependencies);
+    }
+
+    Syntax name(std::string_view value, std::initializer_list<TypeDependencyId> dependencies) {
+        return ir_.name(value, dependencies);
+    }
+
+    Expr reference(Syntax symbol, CppTypeId type) { return ir_.reference(symbol, type); }
+
+    Expr dependent_reference(Syntax symbol) { return ir_.dependent_reference(symbol); }
+
+    CppTypeId expression_type(Expr expression) const { return ir_.expression_type(expression); }
+
+    Syntax authored_fragment(std::string_view value) { return ir_.authored_fragment(value); }
+
+    Syntax authored_fragment(StringId value) { return ir_.authored_fragment(value); }
+
+    Syntax member_name(Expr object, std::string_view member, bool through_pointer = false) {
+        return ir_.member_name(object, member, through_pointer);
+    }
+
+    Syntax member_name(Expr object, StringId member, bool through_pointer = false) {
+        return ir_.member_name(object, member, through_pointer);
+    }
+
+    Syntax scope_name(CppTypeId owner, std::string_view member) {
+        return ir_.scope_name(owner, member);
+    }
+
+    Syntax scope_name(CppTypeId owner, StringId member) { return ir_.scope_name(owner, member); }
+
+    Expr literal(CppTypeId type, std::string_view spelling) { return ir_.literal(type, spelling); }
+
     Expr named(std::string_view value, std::span<TypeDependencyId const> dependencies = {}) {
         return ir_.named(value, dependencies);
     }
@@ -570,37 +634,43 @@ class CppIRBuilder {
 
     Expr string_literal(StringId value) { return ir_.string_literal(value); }
 
-    Expr raw_expr(StringId value, std::span<TypeDependencyId const> dependencies = {}) {
-        return ir_.raw_expr(value, dependencies);
+    Expr raw_expr(CppTypeId type,
+                  StringId value,
+                  std::span<TypeDependencyId const> dependencies = {}) {
+        return ir_.raw_expr(type, value, dependencies);
     }
 
-    Expr raw_expr(std::string_view value, std::span<TypeDependencyId const> dependencies = {}) {
-        return ir_.raw_expr(value, dependencies);
+    Expr raw_expr(CppTypeId type,
+                  std::string_view value,
+                  std::span<TypeDependencyId const> dependencies = {}) {
+        return ir_.raw_expr(type, value, dependencies);
     }
 
-    Expr raw_expr(std::string_view value, std::initializer_list<TypeDependencyId> dependencies) {
-        return ir_.raw_expr(value, dependencies);
+    Expr raw_expr(CppTypeId type,
+                  std::string_view value,
+                  std::initializer_list<TypeDependencyId> dependencies) {
+        return ir_.raw_expr(type, value, dependencies);
     }
 
-    Expr call(Expr callee, std::span<Expr const> arguments = {}) {
+    Expr call(Syntax callee, std::span<Syntax const> arguments = {}) {
         return ir_.call(callee, arguments);
     }
 
-    Expr lambda(std::span<Expr const> captures,
+    Expr lambda(std::span<Syntax const> captures,
                 std::span<FunctionParameterId const> parameters,
                 BlockId body,
                 TemplateId template_declaration = {}) {
         return ir_.lambda(captures, parameters, body, template_declaration);
     }
 
-    Expr lambda(std::initializer_list<Expr> captures,
+    Expr lambda(std::initializer_list<Syntax> captures,
                 std::initializer_list<FunctionParameterId> parameters,
                 BlockId body,
                 TemplateId template_declaration = {}) {
         return ir_.lambda(captures, parameters, body, template_declaration);
     }
 
-    Expr call(Expr callee, std::initializer_list<Expr> arguments) {
+    Expr call(Syntax callee, std::initializer_list<Syntax> arguments) {
         return ir_.call(callee, arguments);
     }
 
@@ -620,59 +690,69 @@ class CppIRBuilder {
 
     Expr this_member(std::string_view member) { return ir_.this_member(member); }
 
-    Expr member_call(Expr object, std::string_view member, std::span<Expr const> arguments = {}) {
+    Expr member_call(Expr object, std::string_view member, std::span<Syntax const> arguments = {}) {
         return ir_.member_call(object, member, arguments);
     }
 
-    Expr member_call(Expr object, std::string_view member, std::initializer_list<Expr> arguments) {
+    Expr
+        member_call(Expr object, std::string_view member, std::initializer_list<Syntax> arguments) {
         return ir_.member_call(object, member, arguments);
     }
 
-    Expr member_call(Expr object, StringId member, std::span<Expr const> arguments = {}) {
+    Expr member_call(Expr object, StringId member, std::span<Syntax const> arguments = {}) {
         return ir_.member_call(object, member, arguments);
     }
 
-    Expr member_call(Expr object, StringId member, std::initializer_list<Expr> arguments) {
+    Expr member_call(Expr object, StringId member, std::initializer_list<Syntax> arguments) {
         return ir_.member_call(object, member, arguments);
     }
 
     Expr pointer_member_call(Expr object,
                              std::string_view member,
-                             std::span<Expr const> arguments = {}) {
+                             std::span<Syntax const> arguments = {}) {
         return ir_.pointer_member_call(object, member, arguments);
     }
 
     Expr pointer_member_call(Expr object,
                              std::string_view member,
-                             std::initializer_list<Expr> arguments) {
+                             std::initializer_list<Syntax> arguments) {
         return ir_.pointer_member_call(object, member, arguments);
     }
 
-    Expr pointer_member_call(Expr object, StringId member, std::span<Expr const> arguments = {}) {
+    Expr pointer_member_call(Expr object, StringId member, std::span<Syntax const> arguments = {}) {
         return ir_.pointer_member_call(object, member, arguments);
     }
 
-    Expr pointer_member_call(Expr object, StringId member, std::initializer_list<Expr> arguments) {
+    Expr
+        pointer_member_call(Expr object, StringId member, std::initializer_list<Syntax> arguments) {
         return ir_.pointer_member_call(object, member, arguments);
     }
 
-    Expr this_member_call(std::string_view member, std::span<Expr const> arguments = {}) {
+    Expr this_member_call(std::string_view member, std::span<Syntax const> arguments = {}) {
         return ir_.this_member_call(member, arguments);
     }
 
-    Expr this_member_call(std::string_view member, std::initializer_list<Expr> arguments) {
+    Expr this_member_call(std::string_view member, std::initializer_list<Syntax> arguments) {
         return ir_.this_member_call(member, arguments);
     }
 
-    Expr this_member_call(StringId member, std::span<Expr const> arguments = {}) {
+    Expr this_member_call(StringId member, std::span<Syntax const> arguments = {}) {
         return ir_.this_member_call(member, arguments);
     }
 
-    Expr this_member_call(StringId member, std::initializer_list<Expr> arguments) {
+    Expr this_member_call(StringId member, std::initializer_list<Syntax> arguments) {
         return ir_.this_member_call(member, arguments);
+    }
+
+    Syntax pack_expansion(Syntax pattern) { return ir_.pack_expansion(pattern); }
+
+    Syntax capture(std::string_view name, bool by_reference = false) {
+        return ir_.capture(name, by_reference);
     }
 
     Expr unary(UnaryOperator operation, Expr operand) { return ir_.unary(operation, operand); }
+
+    Expr address_of(Syntax symbol) { return ir_.address_of(symbol); }
 
     Expr subscript(Expr object, Expr index) { return ir_.subscript(object, index); }
 
@@ -680,25 +760,25 @@ class CppIRBuilder {
         return ir_.binary(operation, left, right, line_break_after);
     }
 
-    Expr type_reference(CppTypeId type) { return ir_.type_reference(type); }
+    Syntax type_reference(CppTypeId type) { return ir_.type_reference(type); }
 
     CppTypeId decltype_type(Expr operand) { return ir_.decltype_type(operand); }
 
-    CppTypeId template_type(CppTypeId primary, std::span<Expr const> arguments) {
+    CppTypeId template_type(CppTypeId primary, std::span<Syntax const> arguments) {
         return ir_.template_type(primary, arguments);
     }
 
-    CppTypeId template_type(CppTypeId primary, std::initializer_list<Expr> arguments) {
+    CppTypeId template_type(CppTypeId primary, std::initializer_list<Syntax> arguments) {
         return ir_.template_type(primary, arguments);
     }
 
     Expr parenthesized(Expr expr) { return ir_.parenthesized(expr); }
 
-    Expr template_id(Expr callee, std::span<Expr const> arguments) {
+    Syntax template_id(Syntax callee, std::span<Syntax const> arguments) {
         return ir_.template_id(callee, arguments);
     }
 
-    Expr template_id(Expr callee, std::initializer_list<Expr> arguments) {
+    Syntax template_id(Syntax callee, std::initializer_list<Syntax> arguments) {
         return ir_.template_id(callee, arguments);
     }
 
@@ -716,15 +796,19 @@ class CppIRBuilder {
 
     Expr sizeof_type(CppTypeId type) { return ir_.sizeof_type(type); }
 
-    Expr init_list(std::span<Expr const> elements, std::optional<CppTypeId> type = {}) {
+    Syntax init_list(std::span<Syntax const> elements) { return ir_.init_list(elements); }
+
+    Expr init_list(std::span<Syntax const> elements, CppTypeId type) {
         return ir_.init_list(elements, type);
     }
 
-    Expr designated_initializer(StringId member, Expr value) {
+    Syntax designated_initializer(StringId member, Syntax value) {
         return ir_.designated_initializer(member, value);
     }
 
-    Expr init_list(std::initializer_list<Expr> elements, std::optional<CppTypeId> type = {}) {
+    Syntax init_list(std::initializer_list<Syntax> elements) { return ir_.init_list(elements); }
+
+    Expr init_list(std::initializer_list<Syntax> elements, CppTypeId type) {
         return ir_.init_list(elements, type);
     }
 

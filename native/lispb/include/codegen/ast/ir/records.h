@@ -1,7 +1,7 @@
 #pragma once
-#include <codegen/ast/expr.h>
 #include <codegen/ast/ir/range.h>
 #include <codegen/ast/record_kind.h>
+#include <codegen/ast/syntax.h>
 #include <codegen/ast/template_id.h>
 #include <lispb/indices.h>
 
@@ -10,7 +10,7 @@
 namespace lispb::codegen::ir {
 
 struct Records {
-    std::vector<Expr> name;
+    std::vector<Syntax> name;
     std::vector<Range> children;
     std::vector<Range> bases;
     std::vector<TemplateId> template_declaration;

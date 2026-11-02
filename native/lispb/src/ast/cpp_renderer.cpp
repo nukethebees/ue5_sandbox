@@ -292,7 +292,10 @@ auto CppRenderer::in_record_scope(EnvironmentId environment) const -> bool {
 void CppRenderer::append_type(std::string& output, CppTypeId const type, RenderContext const& ctx) {
     assert(type.value != 0 && type.value <= ir_.types.shapes_.size());
     auto const shape{ir_.types.shapes_[type.value - 1]};
-    if (shape.form == CppTypeForm::raw) {
+    if (shape.form == CppTypeForm::closure) {
+        throw std::logic_error{
+            "An unnamed closure type must be named through its owning declaration"};
+    } else if (shape.form == CppTypeForm::raw) {
         output += ir_.types.spelling(type);
     } else if (shape.form == CppTypeForm::named) {
         std::vector<StringId> components;
@@ -418,15 +421,33 @@ void CppRenderer::append_name(std::string& output,
 
 /* **************************************** */
 // Environments, expressions and nodes
-auto CppRenderer::declaration_name(Expr expression) -> StringId {
-    while (expression.kind() == ExprKind::template_id) {
+auto CppRenderer::declaration_name(Syntax expression) -> StringId {
+    while (expression.kind() == SyntaxKind::template_id) {
         expression = ir_.template_id_exprs_.callee[expression.index()];
     }
-    if (expression.kind() != ExprKind::named) {
+    if (expression.kind() != SyntaxKind::name) {
         return {};
     }
     auto const text{ir_.strings.view(ir_.named_exprs_.spelling[expression.index()])};
     return ir_.strings.intern(text.substr(0, text.find_first_of("<:")));
+}
+void CppRenderer::declare_name(EnvironmentId environment,
+                               Syntax syntax,
+                               CppDeclarationId declaration) {
+    auto& environments{state_.environments};
+    if (syntax.kind() == SyntaxKind::binding_list) {
+        for (auto const name :
+             ir::range_values(ir_.binding_names_, ir_.binding_lists_[syntax.index()])) {
+            environments.declare(environment, name, declaration);
+        }
+        return;
+    }
+    auto const name{declaration_name(syntax)};
+    if (name.value != 0) {
+        environments.declare(environment, name, declaration);
+    } else {
+        environments.mark_unknown(environment);
+    }
 }
 void CppRenderer::collect_environment(EnvironmentId environment,
                                       std::span<NodeId const> children,
@@ -441,14 +462,6 @@ void CppRenderer::collect_environment(EnvironmentId environment,
                 environments.declare(environment,
                                      ir_.strings.intern(text.substr(0, text.find_first_of("<:"))),
                                      declaration);
-            }
-        };
-        auto add_expr = [&](Expr expression, CppDeclarationId declaration) {
-            auto const name{declaration_name(expression)};
-            if (name.value != 0) {
-                environments.declare(environment, name, declaration);
-            } else {
-                environments.mark_unknown(environment);
             }
         };
         auto const declaration{CppDeclarationId{node}};
@@ -556,13 +569,15 @@ void CppRenderer::collect_environment(EnvironmentId environment,
                 break;
             case NodeKind::variable_declaration_stmt:
                 if (ir_.variable_declaration_stmt_nodes_.template_declaration[i]) {
-                    add_expr(ir_.variable_declaration_stmt_nodes_.name[i], declaration);
+                    declare_name(
+                        environment, ir_.variable_declaration_stmt_nodes_.name[i], declaration);
                 }
                 break;
             case NodeKind::function:
                 if (!ir_.function_nodes_.owner[i]) {
-                    add_expr(ir_.get_view(ir_.function_nodes_.function[i]).name,
-                             CppDeclarationId{ir_.function_nodes_.function[i]});
+                    declare_name(environment,
+                                 ir_.get_view(ir_.function_nodes_.function[i]).name,
+                                 CppDeclarationId{ir_.function_nodes_.function[i]});
                 }
                 break;
             case NodeKind::raw:
@@ -678,22 +693,10 @@ void CppRenderer::append_expr(
         }
     };
     switch (expr.kind()) {
-        case ExprKind::type_reference:
-            append_type(output, ir_.type_reference_exprs_.type[index], ctx);
-            break;
         case ExprKind::parenthesized:
             output += '(';
             append_expr(output, ir_.parenthesized_exprs_.operand[index], ctx);
             output += ')';
-            break;
-        case ExprKind::template_id:
-            append_expr(output, ir_.template_id_exprs_.callee[index], ctx, 12);
-            output += '<';
-            append_arguments(ir_.template_id_exprs_.arguments[index]);
-            output += '>';
-            break;
-        case ExprKind::named:
-            output += ir_.strings.view(ir_.named_exprs_.spelling[index]);
             break;
         case ExprKind::literal:
             output += ir_.strings.view(ir_.literal_exprs_.spelling[index]);
@@ -752,11 +755,6 @@ void CppRenderer::append_expr(
             output += ir_.member_exprs_.through_pointer[index] ? "->" : ".";
             output += ir_.strings.view(ir_.member_exprs_.member[index]);
             break;
-        case ExprKind::scope_member:
-            append_expr(output, ir_.member_exprs_.object[index], ctx);
-            output += "::";
-            output += ir_.strings.view(ir_.member_exprs_.member[index]);
-            break;
         case ExprKind::subscript:
             append_expr(output, ir_.subscript_exprs_.object[index], ctx, 12);
             output += '[';
@@ -789,13 +787,8 @@ void CppRenderer::append_expr(
         case ExprKind::unary: {
             auto const operation{ir_.unary_exprs_.operation[index]};
             auto const operand{ir_.unary_exprs_.operand[index]};
-            if (operation == UnaryOperator::pack_expansion) {
-                append_expr(output, operand, ctx, 1);
-                output += "...";
-            } else {
-                output += to_serialized_string(operation);
-                append_expr(output, operand, ctx, 11, true);
-            }
+            output += to_serialized_string(operation);
+            append_expr(output, operand, ctx, 11, true);
             break;
         }
         case ExprKind::static_cast_:
@@ -826,12 +819,6 @@ void CppRenderer::append_expr(
             append_arguments(ir_.initializer_exprs_.elements[index]);
             output += '}';
             break;
-        case ExprKind::designated_initializer:
-            output += '.';
-            output += ir_.strings.view(ir_.designated_initializers_.member[index]);
-            output += " = ";
-            append_expr(output, ir_.designated_initializers_.value[index], ctx);
-            break;
         case ExprKind::lambda: {
             output += '[';
             append_arguments(ir_.lambda_exprs_.captures[index]);
@@ -859,6 +846,10 @@ void CppRenderer::append_expr(
             output += '}';
             break;
         }
+        case ExprKind::symbol_reference:
+            append_expr(output, ir_.symbol_references_[index], ctx);
+            break;
+        case ExprKind::Count:
         case ExprKind::invalid:
             std::unreachable();
     }
@@ -1131,7 +1122,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
     };
     auto type = [&](CppTypeId id) { append_type(output, id, ctx); };
     auto text = [&](StringId id) { output += ir_.strings.view(id); };
-    auto expr = [&](Expr id) { append_expr(output, id, ctx); };
+    auto expr = [&](Syntax id) { append_expr(output, id, ctx); };
     auto scoped_nodes = [&](ir::Range children) {
         EnvironmentGuard const guard{state.current, block_environment(ir_.nodes(children))};
         append_nodes(output, ir_.nodes(children), ctx.indent(), 1);
@@ -1150,9 +1141,8 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
         output += path;
         output += system ? '>' : '"';
     };
-    auto initialize = [&](Expr value) {
-        auto const direct_list{value.kind() == ExprKind::initializer_list &&
-                               !ir_.initializer_exprs_.type[value.index()]};
+    auto initialize = [&](Syntax value) {
+        auto const direct_list{value.kind() == SyntaxKind::initializer_list};
         if (!direct_list) {
             output += '{';
         }
@@ -1277,6 +1267,17 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
         case NodeKind::declaration_macro:
             indent();
             expr(ir_.declaration_macro_nodes_.invocation[i]);
+            if (auto const body{ir_.declaration_macro_nodes_.body[i]}) {
+                auto const children{ir_.nodes(ir_.block_nodes_.children[body->index()])};
+                state.current = block_environment(children);
+                output += " {\n";
+                append_nodes(output, children, ctx.indent(), 1);
+                output += '\n';
+                indent();
+                output += '}';
+            } else if (ir_.declaration_macro_nodes_.statement[i]) {
+                output += ';';
+            }
             break;
         case NodeKind::return_stmt:
             write_prefix("return");
@@ -1306,8 +1307,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             type(variables.type[i]);
             output += ' ';
             expr(variables.name[i]);
-            state.environments.declare(
-                enclosing, declaration_name(variables.name[i]), CppDeclarationId{node});
+            declare_name(enclosing, variables.name[i], CppDeclarationId{node});
             if (auto const initializer{variables.initializer[i]}) {
                 initialize(*initializer);
             } else {
@@ -1571,6 +1571,106 @@ void CppRenderer::append_nodes(std::string& output,
         if (output.size() == before_node) {
             output.resize(before_separator);
         }
+    }
+}
+
+auto CppRenderer::render(Syntax syntax, RenderContext const& ctx) -> std::string {
+    state_.clear();
+    return expression(syntax, ctx);
+}
+auto CppRenderer::expression(Syntax syntax, RenderContext const& ctx) -> std::string {
+    std::string output;
+    append_expr(output, syntax, ctx);
+    return output;
+}
+auto CppRenderer::expr_precedence(Syntax syntax) -> int {
+    return syntax.kind() == SyntaxKind::expression ? expr_precedence(syntax.expression()) : 12;
+}
+void CppRenderer::append_expr(
+    std::string& output, Syntax syntax, RenderContext const& ctx, int minimum, bool equal) {
+    auto const index{syntax.index()};
+    auto append_arguments = [&](ir::Range range) {
+        bool first{true};
+        for (auto argument : ir_.exprs(range)) {
+            if (!first) {
+                output += ", ";
+            }
+            append_expr(output, argument, ctx, 1);
+            first = false;
+        }
+    };
+    switch (syntax.kind()) {
+        case SyntaxKind::expression:
+            append_expr(output, syntax.expression(), ctx, minimum, equal);
+            break;
+        case SyntaxKind::name:
+            output += ir_.strings.view(ir_.named_exprs_.spelling[index]);
+            break;
+        case SyntaxKind::type_reference:
+            append_type(output, CppTypeId{index}, ctx);
+            break;
+        case SyntaxKind::macro_invocation:
+            append_expr(output, ir_.call_exprs_.callee[index], ctx);
+            output += '(';
+            append_arguments(ir_.call_exprs_.arguments[index]);
+            output += ')';
+            break;
+        case SyntaxKind::pack_expansion:
+            append_expr(output, ir_.pack_patterns_[index], ctx, 1);
+            output += "...";
+            break;
+        case SyntaxKind::capture:
+        case SyntaxKind::reference_capture:
+            if (syntax.kind() == SyntaxKind::reference_capture) {
+                output += '&';
+            }
+            output += ir_.strings.view(StringId{index});
+            break;
+        case SyntaxKind::binding_list: {
+            output += '[';
+            bool first{true};
+            for (auto name : ir::range_values(ir_.binding_names_, ir_.binding_lists_[index])) {
+                if (!first) {
+                    output += ", ";
+                }
+                output += ir_.strings.view(name);
+                first = false;
+            }
+            output += ']';
+            break;
+        }
+        case SyntaxKind::template_id:
+            append_expr(output, ir_.template_id_exprs_.callee[index], ctx, 12);
+            output += '<';
+            append_arguments(ir_.template_id_exprs_.arguments[index]);
+            output += '>';
+            break;
+        case SyntaxKind::member_name:
+            append_expr(output, ir_.member_exprs_.object[index], ctx, 12);
+            output += ir_.member_exprs_.through_pointer[index] ? "->" : ".";
+            output += ir_.strings.view(ir_.member_exprs_.member[index]);
+            break;
+        case SyntaxKind::scope_name:
+            append_type(output, ir_.scope_name_owners_[index], ctx);
+            output += "::";
+            output += ir_.strings.view(ir_.scope_name_members_[index]);
+            break;
+        case SyntaxKind::initializer_list:
+            output += '{';
+            append_arguments(ir_.initializer_exprs_.elements[index]);
+            output += '}';
+            break;
+        case SyntaxKind::designated_initializer:
+            output += '.';
+            output += ir_.strings.view(ir_.designated_initializers_.member[index]);
+            output += " = ";
+            append_expr(output, ir_.designated_initializers_.value[index], ctx);
+            break;
+        case SyntaxKind::authored_fragment:
+            output += ir_.strings.view(ir_.authored_fragments_[index]);
+            break;
+        case SyntaxKind::invalid:
+            std::unreachable();
     }
 }
 

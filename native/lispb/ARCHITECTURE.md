@@ -50,6 +50,19 @@ Generated templates are constructed directly; authored `#cpp` template parameter
 remain raw language-boundary inputs. Export specifiers are interned identifiers. Compiler function,
 member and output-file flags are generated packed values checked into the source tree.
 
+`Expr` identifies a C++ value expression. Construction records a non-null `CppTypeId` in parallel
+kind-specific columns; `expression_type()` always returns that type. Literal and cast types are
+concrete. Dependent references and operations retain structured `decltype` types, and each lambda
+has a distinct unnamed closure type. These symbolic types preserve C++ lookup and overload semantics
+without attempting to implement a C++ compiler inside lowering.
+
+`Syntax` identifies names, type references, template IDs, initializer clauses, captures, pack
+expansions and macro invocations. Values embed into syntax, but syntax does not implicitly become
+an expression. Use `reference(symbol, type)` for a known value or `dependent_reference(symbol)`
+for one whose type depends on generated C++ scope. Calls consume callable syntax and produce values;
+declaration and statement macros stay syntax. Opaque value expressions require an explicit type,
+while authored declaration and initializer fragments remain at the source-language boundary.
+
 C++ type references retain qualified-name components and composed type handles alongside their
 canonical spellings. `CppRenderer` owns a per-render environment store with parallel parent,
 scope-kind and symbol-table columns. A symbol identifies its declaration through a tagged

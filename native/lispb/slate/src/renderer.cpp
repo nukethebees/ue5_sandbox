@@ -79,7 +79,7 @@ class Renderer {
             children.push_back(ir_.using_declaration(ir_.strings.intern("ThisClass"),
                                                      ir_.types.intern("::" + owner)));
             lispb::codegen::FunctionDefinition const constructor{
-                .name = ir_.named(ir_.strings.intern(builder)),
+                .name = ir_.name(ir_.strings.intern(builder)),
                 .kind = lispb::codegen::FunctionKind::explicit_constructor,
                 .parameters = {ir_.parameter("ThisClass&", "self")},
                 .implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,
@@ -99,7 +99,7 @@ class Renderer {
             children.push_back(
                 ir_.instance_member(ir_.types.intern("ThisClass&"), ir_.strings.intern("self_")));
             auto const node{ir_.add_record(
-                {.name = ir_.named(ir_.strings.intern(builder)), .children = std::move(children)})};
+                {.name = ir_.name(ir_.strings.intern(builder)), .children = std::move(children)})};
             children = {node};
         }
         auto const namespace_name{library ? "SlateGenerated::" + owner
@@ -152,7 +152,7 @@ class Renderer {
         body.push_back(source_line(document_.child_span(root)));
         body.push_back(ir_.return_stmt(render_child(root)));
         lispb::codegen::FunctionDefinition const spec{
-            .name = ir_.named(text(document_.functions.names[index])),
+            .name = ir_.name(text(document_.functions.names[index])),
             .return_type = ir_.types.intern("auto"),
             .parameters = {cpp_parameters.begin(), cpp_parameters.end()},
             .implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,
@@ -180,13 +180,13 @@ class Renderer {
             }
             case ChildKind::call: {
                 auto const index{child.index()};
-                std::vector<Expr> cpp_arguments;
+                std::vector<lispb::codegen::Syntax> cpp_arguments;
                 auto const arguments{document_.calls.arguments[index]};
                 auto const end{arguments.begin + arguments.count};
                 for (auto argument{arguments.begin}; argument < end; ++argument) {
                     cpp_arguments.push_back(render_value(document_.value_lists[argument]));
                 }
-                return ir_.call(ir_.named(document_.calls.parameters[index]), cpp_arguments);
+                return ir_.call(ir_.name(document_.calls.parameters[index]), cpp_arguments);
             }
             case ChildKind::none:
                 break;
@@ -199,9 +199,9 @@ class Renderer {
         auto const assigned{document_.widgets.assigned_members[index]};
         auto const type{ir_.type_reference(ir_.types.intern(text(document_.widgets.types[index])))};
         auto result{assigned.value != 0
-                        ? ir_.call(ir_.named("SAssignNew"),
+                        ? ir_.call(ir_.name("SAssignNew"),
                                    {ir_.member_access(ir_.named("self_"), assigned), type})
-                        : ir_.call(ir_.named("SNew"), {type})};
+                        : ir_.call(ir_.name("SNew"), {type})};
         auto const arguments{document_.widgets.arguments[index]};
         auto const argument_end{arguments.begin + arguments.count};
         for (auto argument{arguments.begin}; argument < argument_end; ++argument) {
@@ -223,7 +223,7 @@ class Renderer {
     auto render_box(std::uint32_t const index) -> Expr {
         auto const vertical{document_.boxes.orientations[index] == BoxOrientation::vertical};
         auto result{ir_.call(
-            ir_.named("SNew"),
+            ir_.name("SNew"),
             {ir_.type_reference(ir_.types.intern(vertical ? "SVerticalBox" : "SHorizontalBox"))})};
         auto const slots{document_.boxes.slots[index]};
         auto const end{slots.begin + slots.count};
@@ -251,11 +251,11 @@ class Renderer {
         auto const index{value.index()};
         switch (value.kind()) {
             case ValueKind::text:
-                return ir_.call(ir_.scope_member(ir_.types.named("FText"), "FromString"),
-                                {ir_.call(ir_.named("TEXT"),
+                return ir_.call(ir_.scope_name(ir_.types.named("FText"), "FromString"),
+                                {ir_.call(ir_.name("TEXT"),
                                           {ir_.string_literal(document_.values.text[index])})});
             case ValueKind::localized_text:
-                return ir_.call(ir_.named("NSLOCTEXT"),
+                return ir_.call(ir_.name("NSLOCTEXT"),
                                 {ir_.string_literal(document_.localized.contexts[index]),
                                  ir_.string_literal(document_.localized.keys[index]),
                                  ir_.string_literal(document_.localized.text[index])});
@@ -264,21 +264,22 @@ class Renderer {
                 if (binding.value != 0) {
                     return ir_.init_list({ir_.named(binding)}, ir_.types.intern("FMargin"));
                 }
-                std::vector<Expr> elements;
+                std::vector<lispb::codegen::Syntax> elements;
                 auto const values{document_.margins.values[index]};
                 auto const end{values.begin + values.count};
                 for (auto item{values.begin}; item < end; ++item) {
-                    elements.push_back(
-                        ir_.literal(float_literal(text(document_.margin_values[item]))));
+                    elements.push_back(ir_.literal(
+                        ir_.types.std.f32, float_literal(text(document_.margin_values[item]))));
                 }
                 return ir_.init_list(elements, ir_.types.intern("FMargin"));
             }
             case ValueKind::number:
+                return ir_.literal(std::stod(text(document_.values.text[index])));
             case ValueKind::boolean:
-                return ir_.literal(document_.values.text[index]);
+                return ir_.literal(text(document_.values.text[index]) == "true");
             default:
-                return ir_.type_reference(
-                    ir_.types.reference(ir_.types.intern(text(document_.values.text[index]))));
+                return ir_.dependent_reference(ir_.type_reference(
+                    ir_.types.reference(ir_.types.intern(text(document_.values.text[index])))));
         }
     }
 
@@ -295,9 +296,8 @@ class Renderer {
                 object,
                 member,
                 {ir_.unary(lispb::codegen::UnaryOperator::address_of, ir_.named("self_")),
-                 ir_.unary(lispb::codegen::UnaryOperator::address_of,
-                           ir_.scope_member(ir_.types.named("ThisClass"),
-                                            text(document_.values.text[value.index()])))});
+                 ir_.address_of(ir_.scope_name(ir_.types.named("ThisClass"),
+                                               text(document_.values.text[value.index()])))});
         }
         return ir_.member_call(object, name, {render_value(value)});
     }
@@ -305,13 +305,14 @@ class Renderer {
     auto render_slot(std::uint32_t const slot, bool const vertical) -> Expr {
         std::string const prefix{vertical ? "SandboxUI::Slate::vbox_" : "SandboxUI::Slate::hbox_"};
         auto const margin{document_.box_slots.padding[slot]};
-        std::vector<Expr> arguments;
+        std::vector<lispb::codegen::Syntax> arguments;
         auto const fill{document_.box_slots.fill[slot] != 0};
         auto const weight{document_.box_slots.weights[slot]};
         if (fill && weight) {
             arguments.push_back(
                 weight.kind() == ValueKind::number
-                    ? ir_.literal(float_literal(text(document_.values.text[weight.index()])))
+                    ? ir_.literal(ir_.types.std.f32,
+                                  float_literal(text(document_.values.text[weight.index()])))
                     : render_value(weight));
         } else if (fill && margin) {
             arguments.push_back(ir_.literal(1.0f));

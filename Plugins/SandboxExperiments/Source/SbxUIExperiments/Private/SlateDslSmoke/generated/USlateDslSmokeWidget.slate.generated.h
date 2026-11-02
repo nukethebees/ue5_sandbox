@@ -21,9 +21,9 @@ struct USlateDslSmokeWidgetBuilder {
                                                     "This widget was generated from Slate DSL")))] +
                SandboxUI::Slate::vbox_auto_slot(FMargin{
                    8.0f, 4.0f})[SNew(SSpinBox<int32>)
-                                    .MinValue(0)
-                                    .MaxValue(100)
-                                    .Value(5)
+                                    .MinValue(0.0)
+                                    .MaxValue(100.0)
+                                    .Value(5.0)
                                     .OnValueChanged_Lambda(std::forward<decltype(on_value_changed)>(
                                         on_value_changed))] +
                SandboxUI::Slate::vbox_auto_slot(FMargin{

@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <utility>
 namespace SlateGenerated {
 struct UHeatmapRDGWidgetBuilder {
     using ThisClass = ::UHeatmapRDGWidget;

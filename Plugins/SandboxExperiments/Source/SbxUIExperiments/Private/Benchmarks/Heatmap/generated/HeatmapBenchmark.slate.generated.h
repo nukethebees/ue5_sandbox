@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <utility>
 namespace SlateGenerated::HeatmapBenchmark {
 inline auto BuildHeatmap(auto&& style) {
 #line 4 "HeatmapBenchmarkSlate.lispb"

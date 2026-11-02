@@ -219,7 +219,7 @@ class ModuleLowering : public CppIRBuilder {
         auto body{node_list()};
         body.add(return_stmt(string_literal(store_text(source))));
         FunctionDefinition const function{
-            .name = named("s7_record_constructors"),
+            .name = this->name("s7_record_constructors"),
             .return_type = std_types().string_view,
             .return_syntax = ReturnSyntax::trailing,
             .implementation = {.kind = FunctionImplementationKind::body, .body = body.build()},

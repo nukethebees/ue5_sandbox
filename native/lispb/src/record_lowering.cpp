@@ -71,9 +71,11 @@ class RecordLowering : public CppIRBuilder {
     }
   private:
     auto record_type_matches(std::string const& name) -> Expr {
-        return type_reference(template_type(
-            std_types().same_as,
-            {template_type(std_types().remove_const_t, {named_type("Self")}), named_type(name)}));
+        return reference(type_reference(template_type(
+                             std_types().same_as,
+                             {template_type(std_types().remove_const_t, {named_type("Self")}),
+                              named_type(name)})),
+                         std_types().bool_);
     }
     auto record_visitor(LoweringContext& ctx, DeclarationHandle record_id, std::string const& name)
         -> Nodes {
@@ -95,11 +97,12 @@ class RecordLowering : public CppIRBuilder {
                         block({return_stmt(parenthesized(member_access(named("self"), member)))}),
                         {},
                         true));
-            cases.push_back(switch_case(
-                field_value,
-                block({return_stmt(template_call(
-                    named("invoke_field"), {field_value}, {named("self"), forwarded_visitor}))}),
-                false));
+            cases.push_back(
+                switch_case(field_value,
+                            block({return_stmt(template_call(this->name("invoke_field"),
+                                                             {field_value},
+                                                             {named("self"), forwarded_visitor}))}),
+                            false));
         }
 
         auto result{node_list()};
@@ -108,7 +111,7 @@ class RecordLowering : public CppIRBuilder {
                                values),
                    2);
         FunctionDefinition const accessor{
-            .name = named("get_field"),
+            .name = this->name("get_field"),
             .return_type = intern_type("decltype(auto)"),
             .parameters = {parameter("Self&", fields.empty() ? "" : "self")},
             .implementation = {.kind = FunctionImplementationKind::body, .body = accessors},
@@ -132,15 +135,16 @@ class RecordLowering : public CppIRBuilder {
         result.add(header_function(add_function(accessor)), 2);
 
         FunctionDefinition const invoke{
-            .name = named("invoke_field"),
+            .name = this->name("invoke_field"),
             .return_type = std_types().void_,
             .parameters = {parameter("Self&", "self"), parameter("Visitor&&", "visitor")},
-            .implementation =
-                {.kind = FunctionImplementationKind::body,
-                 .body = {expr_stmt(template_call(
-                     member_access(forwarded_visitor, "template operator()"),
-                     {named("Selected")},
-                     {template_call(named("get_field"), {named("Selected")}, {named("self")})}))}},
+            .implementation = {.kind = FunctionImplementationKind::body,
+                               .body = {expr_stmt(template_call(
+                                   member_name(forwarded_visitor, "template operator()"),
+                                   {named("Selected")},
+                                   {template_call(this->name("get_field"),
+                                                  {named("Selected")},
+                                                  {named("self")})}))}},
             .receiver = FunctionReceiver::static_,
             .flags = {.is_constexpr = true, .define_in_header = true},
             .template_declaration = template_declaration(
@@ -150,7 +154,7 @@ class RecordLowering : public CppIRBuilder {
         result.add(header_function(add_function(invoke)), 2);
 
         FunctionDefinition const function{
-            .name = named("visit_field"),
+            .name = this->name("visit_field"),
             .return_type = std_types().void_,
             .parameters = {parameter("Self&", fields.empty() ? "" : "self"),
                            parameter("Field", "field"),
@@ -180,7 +184,7 @@ class RecordLowering : public CppIRBuilder {
         if (records.comparison[row] != RecordComparison::none) {
             auto const three_way{records.comparison[row] == RecordComparison::three_way};
             FunctionDefinition const comparison{
-                .name = named(three_way ? "operator<=>" : "operator=="),
+                .name = this->name(three_way ? "operator<=>" : "operator=="),
                 .return_type = three_way ? intern_type("auto", {dependency("auto", "compare")})
                                          : std_types().bool_,
                 .parameters = {parameter(name + " const&", "")},
@@ -207,11 +211,11 @@ class RecordLowering : public CppIRBuilder {
             members.add(instance_member(lower_member_type(ctx, member),
                                         record_members.name[member_row],
                                         initializer
-                                            ? std::optional<Expr>{raw_expr(*initializer, {})}
+                                            ? std::optional<Syntax>{authored_fragment(*initializer)}
                                             : std::nullopt),
                         1);
         }
-        auto const created_record{add_record({.name = named(store_text(name)),
+        auto const created_record{add_record({.name = this->name(store_text(name)),
                                               .children = members.build(),
                                               .export_specifier = records.export_specifier[row]})};
         return created_record;

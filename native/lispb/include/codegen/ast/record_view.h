@@ -7,7 +7,7 @@
 namespace lispb::codegen {
 
 struct RecordView {
-    Expr name{};
+    Syntax name{};
     RecordKind kind{RecordKind::struct_};
     std::span<NodeId const> children;
     std::span<CppTypeId const> bases;

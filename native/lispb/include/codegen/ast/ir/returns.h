@@ -1,7 +1,7 @@
 #pragma once
 
-#include <codegen/ast/expr.h>
 #include <codegen/ast/ir/range.h>
+#include <codegen/ast/syntax.h>
 
 #include <optional>
 #include <vector>
@@ -9,7 +9,7 @@
 namespace lispb::codegen::ir {
 
 struct Returns {
-    std::vector<std::optional<Expr>> expr;
+    std::vector<std::optional<Syntax>> expr;
     std::vector<Range> dependencies;
 };
 

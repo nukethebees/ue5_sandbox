@@ -8,7 +8,7 @@
 namespace lispb::codegen {
 
 struct FunctionView {
-    Expr name{};
+    Syntax name{};
     CppTypeId return_type{};
     ReturnSyntax return_syntax{ReturnSyntax::direct};
     FunctionKind kind{FunctionKind::ordinary};

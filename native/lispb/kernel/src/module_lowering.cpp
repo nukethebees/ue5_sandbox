@@ -107,12 +107,12 @@ auto lower_expression(lispb::codegen::CppIR& cpp,
         }
         case ExpressionKind::literal:
             return cpp.static_cast_expr(concrete_type,
-                                        cpp.literal(document.expressions.literal_id(expression)));
+                                        cpp.literal(document.expressions.number(expression)));
         case ExpressionKind::constant: {
             auto const limits{
                 cpp.types.template_type(cpp.types.std.numeric_limits, {concrete_type})};
             auto const constant = [&](std::string_view name) {
-                return cpp.call(cpp.scope_member(limits, name));
+                return cpp.call(cpp.scope_name(limits, name));
             };
             if (document.expressions.constant(expression) == ConstantKind::nan) {
                 return constant("quiet_NaN");
@@ -200,9 +200,9 @@ auto member_call(lispb::codegen::CppIR& cpp,
 }
 
 auto raw_arguments(lispb::codegen::CppIR& cpp, Document const& document, ExpandedVariantId const id)
-    -> std::vector<lispb::codegen::Expr> {
+    -> std::vector<lispb::codegen::Syntax> {
     auto const& expanded{document.expanded_variants};
-    std::vector<lispb::codegen::Expr> result;
+    std::vector<lispb::codegen::Syntax> result;
     auto const count{document.operations.operands(expanded.operation(id)).size()};
     for (std::size_t index{}; index < count; ++index) {
         for (auto const& name : operand_names(document, id, index)) {
@@ -298,7 +298,7 @@ auto overlap_helper(lispb::codegen::CppIR& cpp) -> lispb::codegen::NodeId {
     auto const lhs_address{cpp.named("lhs_address")};
     auto const rhs_address{cpp.named("rhs_address")};
     lispb::codegen::FunctionDefinition const function{
-        .name = cpp.named("ranges_overlap"),
+        .name = cpp.name("ranges_overlap"),
         .return_type = cpp.types.std.bool_,
         .parameters = {cpp.parameter(pointer_type, "lhs"),
                        cpp.parameter(size_type, "lhs_size"),
@@ -343,7 +343,7 @@ auto lower_module(lispb::codegen::CppIR& cpp,
     lispb::codegen::Nodes definitions;
     lispb::codegen::Nodes implementation;
     lispb::codegen::FunctionDefinition const invariant_failed{
-        .name = cpp.named("invariant_failed"),
+        .name = cpp.name("invariant_failed"),
         .return_type = void_type,
         .implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,
                            .body = {cpp.expr_stmt(cpp.call(cpp.types.std.abort))}},
@@ -351,7 +351,7 @@ auto lower_module(lispb::codegen::CppIR& cpp,
         .flags = {.is_noreturn = true}};
     implementation.push_back(cpp.definition(cpp.add_function(invariant_failed)));
     lispb::codegen::FunctionDefinition const require{
-        .name = cpp.named("require"),
+        .name = cpp.name("require"),
         .return_type = cpp.types.std.void_,
         .parameters = {cpp.parameter(cpp.types.decorate(cpp.types.std.bool_, "", " const"),
                                      "condition")},
@@ -359,7 +359,7 @@ auto lower_module(lispb::codegen::CppIR& cpp,
             {.kind = lispb::codegen::FunctionImplementationKind::body,
              .body = {cpp.if_stmt(
                  cpp.unary(lispb::codegen::UnaryOperator::logical_not, cpp.named("condition")),
-                 cpp.block({cpp.expr_stmt(cpp.call(cpp.named("invariant_failed"), {}))}))}},
+                 cpp.block({cpp.expr_stmt(cpp.call(cpp.name("invariant_failed"), {}))}))}},
         .exception_specification = {.kind = lispb::codegen::FunctionExceptionKind::noexcept_}};
     implementation.push_back(cpp.definition(cpp.add_function(require)));
     implementation.push_back(overlap_helper(cpp));
@@ -369,7 +369,7 @@ auto lower_module(lispb::codegen::CppIR& cpp,
     for (auto variant_index{range.offset}; variant_index < end; ++variant_index) {
         auto const id{ExpandedVariantId{variant_index}};
         lispb::codegen::FunctionDefinition const raw_function{
-            .name = cpp.named(raw_name(document, id)),
+            .name = cpp.name(raw_name(document, id)),
             .return_type = void_type,
             .parameters = parameters(cpp, document, id, true),
             .implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,
@@ -379,7 +379,7 @@ auto lower_module(lispb::codegen::CppIR& cpp,
 
         auto function_parameters{parameters(cpp, document, id, false)};
         lispb::codegen::FunctionDefinition const function{
-            .name = cpp.named(document.variants.name(expanded.variant(id))),
+            .name = cpp.name(document.variants.name(expanded.variant(id))),
             .return_type = void_type,
             .parameters = std::move(function_parameters),
             .implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,

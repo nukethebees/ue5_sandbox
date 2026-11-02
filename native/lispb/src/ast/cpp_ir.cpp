@@ -86,10 +86,10 @@ auto CppIR::save_nodes(std::span<NodeId const> values) -> ir::Range {
 auto CppIR::nodes(ir::Range range) const -> std::span<NodeId const> {
     return ir::range_values(children_, range);
 }
-auto CppIR::save_exprs(std::span<Expr const> values) -> ir::Range {
+auto CppIR::save_exprs(std::span<Syntax const> values) -> ir::Range {
     return ir::save_range(arguments_, values);
 }
-auto CppIR::exprs(ir::Range range) const -> std::span<Expr const> {
+auto CppIR::exprs(ir::Range range) const -> std::span<Syntax const> {
     return ir::range_values(arguments_, range);
 }
 auto CppIR::save_types(std::span<CppTypeId const> values) -> ir::Range {
@@ -188,14 +188,16 @@ auto CppIR::expr_stmt(Expr expr, std::span<TypeDependencyId const> dependencies)
     return ir_detail::node(NodeKind::expr_stmt, index);
 }
 
-auto CppIR::declaration_macro(Expr invocation) -> NodeId {
-    assert(invocation.kind() == ExprKind::call);
+auto CppIR::declaration_macro(Syntax invocation) -> NodeId {
+    assert(invocation.kind() == SyntaxKind::macro_invocation);
     auto const index{declaration_macro_nodes_.invocation.size()};
     declaration_macro_nodes_.invocation.push_back(invocation);
+    declaration_macro_nodes_.body.push_back({});
+    declaration_macro_nodes_.statement.push_back(false);
     return ir_detail::node(NodeKind::declaration_macro, index);
 }
 
-auto CppIR::return_stmt(std::optional<Expr> expr, std::span<TypeDependencyId const> dependencies)
+auto CppIR::return_stmt(std::optional<Syntax> expr, std::span<TypeDependencyId const> dependencies)
     -> NodeId {
     auto const index{return_stmt_nodes_.expr.size()};
     return_stmt_nodes_.expr.push_back(expr);
@@ -203,7 +205,7 @@ auto CppIR::return_stmt(std::optional<Expr> expr, std::span<TypeDependencyId con
     return ir_detail::node(NodeKind::return_stmt, index);
 }
 
-auto CppIR::assignment(Expr target, Expr value, std::span<TypeDependencyId const> dependencies)
+auto CppIR::assignment(Expr target, Syntax value, std::span<TypeDependencyId const> dependencies)
     -> NodeId {
     auto const index{assignment_stmt_nodes_.target.size()};
     assignment_stmt_nodes_.target.push_back(target);
@@ -213,8 +215,8 @@ auto CppIR::assignment(Expr target, Expr value, std::span<TypeDependencyId const
 }
 
 auto CppIR::variable(CppTypeId type,
-                     Expr name,
-                     std::optional<Expr> initializer,
+                     Syntax name,
+                     std::optional<Syntax> initializer,
                      VariableOptions const options) -> NodeId {
     auto const index{variable_declaration_stmt_nodes_.type.size()};
     variable_declaration_stmt_nodes_.type.push_back(type);
@@ -226,22 +228,23 @@ auto CppIR::variable(CppTypeId type,
     return ir_detail::node(NodeKind::variable_declaration_stmt, index);
 }
 
-auto CppIR::variable(CppTypeId type, StringId name, std::optional<Expr> initializer) -> NodeId {
-    return variable(type, named(name), initializer);
+auto CppIR::variable(CppTypeId type, StringId name, std::optional<Syntax> initializer) -> NodeId {
+    return variable(type, this->name(name), initializer);
 }
 
-auto CppIR::variable(CppTypeId type, std::string_view name, std::optional<Expr> initializer)
+auto CppIR::variable(CppTypeId type, std::string_view name, std::optional<Syntax> initializer)
     -> NodeId {
     return variable(type, strings.intern(name), initializer);
 }
 
-auto CppIR::variable(std::string_view type, std::string_view name, std::optional<Expr> initializer)
-    -> NodeId {
+auto CppIR::variable(std::string_view type,
+                     std::string_view name,
+                     std::optional<Syntax> initializer) -> NodeId {
     return variable(types.intern(type), strings.intern(name), initializer);
 }
 
 auto CppIR::static_assertion(StringId condition, StringId message) -> NodeId {
-    return static_assertion(raw_expr(condition), message);
+    return static_assertion(raw_expr(types.std.bool_, condition), message);
 }
 
 auto CppIR::static_assertion(Expr condition, StringId message) -> NodeId {
@@ -266,8 +269,8 @@ auto CppIR::include(StringId path, IncludeStyle style) -> NodeId {
 }
 
 auto CppIR::assertion(Expr condition) -> NodeId {
-    return expr_stmt(
-        call(named("assert", {types.dependency("assert", "cassert")}), {parenthesized(condition)}));
+    return macro_statement(name("assert", {types.dependency("assert", "cassert")}),
+                           {parenthesized(condition)});
 }
 
 auto CppIR::include_dependencies() -> NodeId {
@@ -316,24 +319,24 @@ auto CppIR::using_import(CppTypeId qualified_name) -> NodeId {
     return using_declaration({}, types.reference(qualified_name));
 }
 
-auto CppIR::instance_member(CppTypeId type, StringId name, std::optional<Expr> initializer)
+auto CppIR::instance_member(CppTypeId type, StringId name, std::optional<Syntax> initializer)
     -> NodeId {
     auto const index{instance_members_.name.size()};
     instance_members_.type.push_back(type);
     instance_members_.name.push_back(name);
-    instance_members_.initializer.push_back(initializer.value_or(Expr{}));
+    instance_members_.initializer.push_back(initializer.value_or(Syntax{}));
     return ir_detail::node(NodeKind::instance_member, index);
 }
 
 auto CppIR::static_member(CppTypeId type,
                           StringId name,
-                          std::optional<Expr> initializer,
+                          std::optional<Syntax> initializer,
                           bool is_inline,
                           TemplateId template_declaration) -> NodeId {
     auto const index{static_members_.name.size()};
     static_members_.type.push_back(type);
     static_members_.name.push_back(name);
-    static_members_.initializer.push_back(initializer.value_or(Expr{}));
+    static_members_.initializer.push_back(initializer.value_or(Syntax{}));
     static_members_.template_declaration.push_back(template_declaration);
     static_members_.is_inline.push_back(is_inline);
     return ir_detail::node(NodeKind::static_member, index);
@@ -341,7 +344,7 @@ auto CppIR::static_member(CppTypeId type,
 
 auto CppIR::constexpr_member(CppTypeId type,
                              StringId name,
-                             Expr initializer,
+                             Syntax initializer,
                              TemplateId template_declaration) -> NodeId {
     assert(initializer);
     auto const index{constexpr_members_.name.size()};
@@ -505,7 +508,7 @@ auto CppIR::get_view(FunctionParameterId parameter) const -> FunctionParameterVi
             .default_value = parameters_.default_value[index]};
 }
 
-auto CppIR::parameter(CppTypeId type, StringId name, Expr default_value) -> FunctionParameterId {
+auto CppIR::parameter(CppTypeId type, StringId name, Syntax default_value) -> FunctionParameterId {
     FunctionParameterId const result{static_cast<std::uint32_t>(parameters_.name.size())};
     parameters_.type.push_back(type);
     parameters_.name.push_back(name);
@@ -513,21 +516,21 @@ auto CppIR::parameter(CppTypeId type, StringId name, Expr default_value) -> Func
     return result;
 }
 
-auto CppIR::parameter(CppTypeId type, std::string_view name, Expr default_value)
+auto CppIR::parameter(CppTypeId type, std::string_view name, Syntax default_value)
     -> FunctionParameterId {
     return parameter(type, strings.intern(name), default_value);
 }
 
-auto CppIR::parameter(std::string_view type, std::string_view name, Expr default_value)
+auto CppIR::parameter(std::string_view type, std::string_view name, Syntax default_value)
     -> FunctionParameterId {
     return parameter(types.intern(type), strings.intern(name), default_value);
 }
 
 auto CppIR::member_initializer(StringId member, StringId value) -> MemberInitializerId {
-    return member_initializer(member, raw_expr(value));
+    return member_initializer(member, authored_fragment(value));
 }
 
-auto CppIR::member_initializer(StringId member, Expr value) -> MemberInitializerId {
+auto CppIR::member_initializer(StringId member, Syntax value) -> MemberInitializerId {
     MemberInitializerId const result{static_cast<std::uint32_t>(initializers_.member.size())};
     initializers_.member.push_back(member);
     initializers_.value.push_back(value);
@@ -577,6 +580,14 @@ auto CppIR::definition(FunctionId function,
     return function_node(function, owner, false, header, syntax);
 }
 void CppIR::clear() {
+    for (auto& types_for_kind : expression_types_) {
+        types_for_kind.clear();
+    }
+    symbol_references_.clear();
+    pack_patterns_.clear();
+    authored_fragments_.clear();
+    scope_name_owners_.clear();
+    scope_name_members_.clear();
     scope_bindings_.clear();
     auto clear = [](auto&... columns) { (columns.clear(), ...); };
     clear(line_directive_nodes_.line, line_directive_nodes_.path);
@@ -594,7 +605,6 @@ void CppIR::clear() {
           value_template_parameters_.pack);
     clear(templates_.parameters, templates_.authored_text);
     clear(template_id_exprs_.callee, template_id_exprs_.arguments);
-    clear(type_reference_exprs_.type);
     clear(parenthesized_exprs_.operand);
     clear(parameter_references_,
           initializer_references_,
@@ -616,7 +626,10 @@ void CppIR::clear() {
           if_stmt_nodes_.is_constexpr);
     clear(switch_stmt_nodes_.condition, switch_stmt_nodes_.cases);
     clear(expr_stmt_nodes_.expr, expr_stmt_nodes_.dependencies);
-    clear(declaration_macro_nodes_.invocation);
+    clear(declaration_macro_nodes_.invocation,
+          declaration_macro_nodes_.body,
+          declaration_macro_nodes_.statement);
+    clear(binding_names_, binding_lists_);
     clear(return_stmt_nodes_.expr, return_stmt_nodes_.dependencies);
     clear(assignment_stmt_nodes_.target,
           assignment_stmt_nodes_.value,
@@ -733,7 +746,7 @@ auto CppIR::raw(StringId value, std::span<TypeDependencyId const> dependencies) 
     raw_nodes_.dependencies.push_back(save_dependencies(dependencies));
     return ir_detail::node(NodeKind::raw, index);
 }
-auto CppIR::raw_parts(std::span<Expr const> parts, std::span<TypeDependencyId const> dependencies)
+auto CppIR::raw_parts(std::span<Syntax const> parts, std::span<TypeDependencyId const> dependencies)
     -> NodeId {
     auto const index{raw_nodes_.text.size()};
     raw_nodes_.text.push_back({});
@@ -749,7 +762,7 @@ auto CppIR::raw_lines(std::span<StringId const> lines,
     return ir_detail::node(NodeKind::raw_lines, index);
 }
 
-auto CppIR::lambda(std::span<Expr const> captures,
+auto CppIR::lambda(std::span<Syntax const> captures,
                    std::span<FunctionParameterId const> parameters,
                    BlockId body,
                    TemplateId template_declaration) -> Expr {
@@ -758,24 +771,34 @@ auto CppIR::lambda(std::span<Expr const> captures,
     lambda_exprs_.parameters.push_back(ir::save_range(parameter_references_, parameters));
     lambda_exprs_.body.push_back(block_nodes_.children[body.index()]);
     lambda_exprs_.template_declaration.push_back(template_declaration);
-    return result;
+    std::vector<TypeDependencyId> dependencies;
+    collect_dependencies(result, dependencies);
+    return finish_expression(result, types.closure_type(result, dependencies));
 }
 
-auto CppIR::named(std::string_view value, std::span<TypeDependencyId const> dependencies) -> Expr {
-    return named(strings.intern(value), dependencies);
+auto CppIR::name(std::string_view value, std::span<TypeDependencyId const> dependencies) -> Syntax {
+    return name(strings.intern(value), dependencies);
 }
-auto CppIR::named(StringId value, std::span<TypeDependencyId const> dependencies) -> Expr {
+auto CppIR::name(StringId value, std::span<TypeDependencyId const> dependencies) -> Syntax {
     assert(!strings.view(value).contains("::"));
-    auto const result{expr_detail::handle(ExprKind::named, named_exprs_.spelling.size())};
+    auto const index{static_cast<std::uint32_t>(named_exprs_.spelling.size())};
     named_exprs_.spelling.push_back(value);
     named_exprs_.dependencies.push_back(save_dependencies(dependencies));
-    return result;
+    return {SyntaxKind::name, index};
 }
-auto CppIR::spelled_literal(std::string_view value) -> Expr {
-    return spelled_literal(strings.intern(value));
+auto CppIR::named(std::string_view value, std::span<TypeDependencyId const> dependencies) -> Expr {
+    return dependent_reference(name(value, dependencies));
+}
+auto CppIR::named(StringId value, std::span<TypeDependencyId const> dependencies) -> Expr {
+    return dependent_reference(name(value, dependencies));
+}
+auto CppIR::nullptr_literal() -> Expr {
+    return literal(types.named("std::nullptr_t", {types.dependency("std::nullptr_t", "cstddef")}),
+                   "nullptr");
 }
 auto CppIR::boolean_literal(bool const value) -> Expr {
-    return expr_detail::handle(ExprKind::boolean_literal, value);
+    return finish_expression(expr_detail::handle(ExprKind::boolean_literal, value),
+                             types.std.bool_);
 }
 template <ir::NumericLiteralValue Value>
 auto CppIR::numeric_literal(Value const number) -> Expr {
@@ -797,7 +820,7 @@ auto CppIR::numeric_literal(Value const number) -> Expr {
                                                                 : types.intern("long double")};
                 auto const limits{types.template_type(types.std.numeric_limits, {scalar})};
                 auto const result{
-                    call(scope_member(limits, std::isnan(number) ? "quiet_NaN" : "infinity"))};
+                    call(scope_name(limits, std::isnan(number) ? "quiet_NaN" : "infinity"))};
                 return std::signbit(number) ? unary(UnaryOperator::negate, result) : result;
             }
             if (std::signbit(number)) {
@@ -815,10 +838,30 @@ auto CppIR::numeric_literal(Value const number) -> Expr {
             }
         }
 
-        auto const store = [number](auto& values, ExprKind const kind) {
+        auto const store = [this, number](auto& values, ExprKind const kind) {
             auto const result{expr_detail::handle(kind, values.size())};
             values.push_back(number);
-            return result;
+            CppTypeId type{};
+            if constexpr (std::same_as<Value, int>) {
+                type = types.std.int_;
+            } else if constexpr (std::same_as<Value, float>) {
+                type = types.std.f32;
+            } else if constexpr (std::same_as<Value, double>) {
+                type = types.std.f64;
+            } else if constexpr (std::same_as<Value, unsigned int>) {
+                type = types.intern("unsigned int");
+            } else if constexpr (std::same_as<Value, long>) {
+                type = types.intern("long");
+            } else if constexpr (std::same_as<Value, unsigned long>) {
+                type = types.intern("unsigned long");
+            } else if constexpr (std::same_as<Value, long long>) {
+                type = types.intern("long long");
+            } else if constexpr (std::same_as<Value, unsigned long long>) {
+                type = types.intern("unsigned long long");
+            } else if constexpr (std::same_as<Value, long double>) {
+                type = types.intern("long double");
+            }
+            return finish_expression(result, type);
         };
         if constexpr (std::same_as<Value, int>) {
             return store(numeric_literal_exprs_.ints, ExprKind::int_literal);
@@ -857,10 +900,14 @@ template auto CppIR::numeric_literal(float) -> Expr;
 template auto CppIR::numeric_literal(double) -> Expr;
 template auto CppIR::numeric_literal(long double) -> Expr;
 
-auto CppIR::spelled_literal(StringId value) -> Expr {
+auto CppIR::literal(CppTypeId type, std::string_view spelling) -> Expr {
+    if (spelling.starts_with('-')) {
+        return unary(UnaryOperator::negate, literal(type, spelling.substr(1)));
+    }
+    auto const value{strings.intern(spelling)};
     auto const result{expr_detail::handle(ExprKind::literal, literal_exprs_.spelling.size())};
     literal_exprs_.spelling.push_back(value);
-    return result;
+    return finish_expression(result, type);
 }
 auto CppIR::string_literal(std::string_view value) -> Expr {
     return string_literal(strings.intern(value));
@@ -868,23 +915,28 @@ auto CppIR::string_literal(std::string_view value) -> Expr {
 auto CppIR::string_literal(StringId value) -> Expr {
     auto const result{expr_detail::handle(ExprKind::string_literal, string_literal_exprs_.size())};
     string_literal_exprs_.push_back(value);
-    return result;
+    return finish_expression(
+        result,
+        types.decorate(
+            types.std.char_, "", " const[" + std::to_string(strings.view(value).size() + 1) + "]"));
 }
-auto CppIR::raw_expr(std::string_view value, std::span<TypeDependencyId const> dependencies)
+auto CppIR::raw_expr(CppTypeId type,
+                     std::string_view value,
+                     std::span<TypeDependencyId const> dependencies) -> Expr {
+    return raw_expr(type, strings.intern(value), dependencies);
+}
+auto CppIR::raw_expr(CppTypeId type, StringId value, std::span<TypeDependencyId const> dependencies)
     -> Expr {
-    return raw_expr(strings.intern(value), dependencies);
-}
-auto CppIR::raw_expr(StringId value, std::span<TypeDependencyId const> dependencies) -> Expr {
     auto const result{expr_detail::handle(ExprKind::raw, raw_exprs_.text.size())};
     raw_exprs_.text.push_back(value);
     raw_exprs_.dependencies.push_back(save_dependencies(dependencies));
-    return result;
+    return finish_expression(result, type);
 }
-auto CppIR::call(Expr callee, std::span<Expr const> arguments) -> Expr {
+auto CppIR::call(Syntax callee, std::span<Syntax const> arguments) -> Expr {
     auto const result{expr_detail::handle(ExprKind::call, call_exprs_.callee.size())};
     call_exprs_.callee.push_back(callee);
     call_exprs_.arguments.push_back(save_exprs(arguments));
-    return result;
+    return dependent_expression(result);
 }
 auto CppIR::member_access(Expr object, std::string_view member) -> Expr {
     return member_access(object, strings.intern(member));
@@ -894,17 +946,23 @@ auto CppIR::member_access(Expr object, StringId member) -> Expr {
     member_exprs_.object.push_back(object);
     member_exprs_.member.push_back(member);
     member_exprs_.through_pointer.push_back(false);
-    return result;
+    return dependent_expression(result);
 }
 auto CppIR::scope_member(CppTypeId const owner, std::string_view const member) -> Expr {
     return scope_member(owner, strings.intern(member));
 }
+auto CppIR::scope_name(CppTypeId owner, std::string_view member) -> Syntax {
+    return scope_name(owner, strings.intern(member));
+}
+auto CppIR::scope_name(CppTypeId owner, StringId member) -> Syntax {
+    assert(owner.value != 0);
+    auto const index{static_cast<std::uint32_t>(scope_name_owners_.size())};
+    scope_name_owners_.push_back(owner);
+    scope_name_members_.push_back(member);
+    return {SyntaxKind::scope_name, index};
+}
 auto CppIR::scope_member(CppTypeId const owner, StringId const member) -> Expr {
-    auto const result{expr_detail::handle(ExprKind::scope_member, member_exprs_.object.size())};
-    member_exprs_.object.push_back(type_reference(owner));
-    member_exprs_.member.push_back(member);
-    member_exprs_.through_pointer.push_back(false);
-    return result;
+    return dependent_reference(scope_name(owner, member));
 }
 auto CppIR::pointer_member_access(Expr object, std::string_view member) -> Expr {
     return pointer_member_access(object, strings.intern(member));
@@ -918,13 +976,19 @@ auto CppIR::unary(UnaryOperator operation, Expr operand) -> Expr {
     auto const result{expr_detail::handle(ExprKind::unary, unary_exprs_.operation.size())};
     unary_exprs_.operation.push_back(operation);
     unary_exprs_.operand.push_back(operand);
-    return result;
+    return dependent_expression(result);
 }
 auto CppIR::subscript(Expr object, Expr index) -> Expr {
     auto const result{expr_detail::handle(ExprKind::subscript, subscript_exprs_.object.size())};
     subscript_exprs_.object.push_back(object);
     subscript_exprs_.index.push_back(index);
-    return result;
+    return dependent_expression(result);
+}
+auto CppIR::address_of(Syntax symbol) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::unary, unary_exprs_.operation.size())};
+    unary_exprs_.operation.push_back(UnaryOperator::address_of);
+    unary_exprs_.operand.push_back(symbol);
+    return dependent_expression(result);
 }
 auto CppIR::binary(BinaryOperator operation, Expr left, Expr right, bool line_break_after) -> Expr {
     auto const result{expr_detail::handle(ExprKind::binary, binary_exprs_.operation.size())};
@@ -932,7 +996,7 @@ auto CppIR::binary(BinaryOperator operation, Expr left, Expr right, bool line_br
     binary_exprs_.left.push_back(left);
     binary_exprs_.right.push_back(right);
     binary_exprs_.line_break_after.push_back(line_break_after);
-    return result;
+    return dependent_expression(result);
 }
 auto CppIR::conditional(Expr condition, Expr when_true, Expr when_false) -> Expr {
     auto const result{
@@ -940,52 +1004,58 @@ auto CppIR::conditional(Expr condition, Expr when_true, Expr when_false) -> Expr
     conditional_exprs_.condition.push_back(condition);
     conditional_exprs_.when_true.push_back(when_true);
     conditional_exprs_.when_false.push_back(when_false);
-    return result;
+    return dependent_expression(result);
 }
 auto CppIR::static_cast_expr(CppTypeId type, Expr operand) -> Expr {
     auto const result{expr_detail::handle(ExprKind::static_cast_, cast_exprs_.type.size())};
     cast_exprs_.type.push_back(type);
     cast_exprs_.operand.push_back(operand);
-    return result;
+    return finish_expression(result, type);
 }
 auto CppIR::sizeof_type(CppTypeId type) -> Expr {
     auto const result{expr_detail::handle(ExprKind::sizeof_type, sizeof_exprs_.type.size())};
     sizeof_exprs_.type.push_back(type);
-    return result;
+    return finish_expression(result, types.std.size_t);
 }
 auto CppIR::reinterpret_cast_expr(CppTypeId type, Expr operand) -> Expr {
     auto const result{expr_detail::handle(ExprKind::reinterpret_cast_, cast_exprs_.type.size())};
     cast_exprs_.type.push_back(type);
     cast_exprs_.operand.push_back(operand);
-    return result;
+    return finish_expression(result, type);
 }
-auto CppIR::init_list(std::span<Expr const> elements, std::optional<CppTypeId> type) -> Expr {
+auto CppIR::init_list(std::span<Syntax const> elements) -> Syntax {
+    auto const index{static_cast<std::uint32_t>(initializer_exprs_.type.size())};
+    initializer_exprs_.type.push_back(std::nullopt);
+    initializer_exprs_.elements.push_back(save_exprs(elements));
+    return {SyntaxKind::initializer_list, index};
+}
+auto CppIR::init_list(std::span<Syntax const> elements, CppTypeId type) -> Expr {
+    assert(type.value != 0);
     auto const result{
         expr_detail::handle(ExprKind::initializer_list, initializer_exprs_.type.size())};
     initializer_exprs_.type.push_back(type);
     initializer_exprs_.elements.push_back(save_exprs(elements));
-    return result;
+    // Preserve deduction when the written type is a template name such as std::array.
+    return dependent_expression(result);
 }
-auto CppIR::designated_initializer(StringId member, Expr value) -> Expr {
+auto CppIR::designated_initializer(StringId member, Syntax value) -> Syntax {
     assert(member.value != 0 && value);
-    auto const result{expr_detail::handle(ExprKind::designated_initializer,
-                                          designated_initializers_.member.size())};
+    auto const result{Syntax{SyntaxKind::designated_initializer,
+                             static_cast<std::uint32_t>(designated_initializers_.member.size())}};
     designated_initializers_.member.push_back(member);
     designated_initializers_.value.push_back(value);
     return result;
 }
-auto CppIR::type_reference(CppTypeId type) -> Expr {
-    auto const result{
-        expr_detail::handle(ExprKind::type_reference, type_reference_exprs_.type.size())};
-    type_reference_exprs_.type.push_back(type);
-    return result;
+auto CppIR::type_reference(CppTypeId type) -> Syntax {
+    assert(type.value != 0);
+    return {SyntaxKind::type_reference, type.value};
 }
 auto CppIR::decltype_type(Expr const operand) -> CppTypeId {
     std::vector<TypeDependencyId> dependencies;
     collect_dependencies(operand, dependencies);
     return types.decltype_type(operand, dependencies);
 }
-auto CppIR::template_type(CppTypeId const primary, std::span<Expr const> const arguments)
+auto CppIR::template_type(CppTypeId const primary, std::span<Syntax const> const arguments)
     -> CppTypeId {
     auto const expression{template_id(type_reference(primary), arguments)};
     std::vector<TypeDependencyId> dependencies;
@@ -996,10 +1066,15 @@ auto CppIR::parenthesized(Expr expr) -> Expr {
     auto const result{
         expr_detail::handle(ExprKind::parenthesized, parenthesized_exprs_.operand.size())};
     parenthesized_exprs_.operand.push_back(expr);
-    return result;
+    auto const type{expression_type(expr)};
+    if (types.shapes_[type.value - 1].form == CppTypeForm::closure) {
+        return finish_expression(result, type);
+    }
+    return dependent_expression(result);
 }
-auto CppIR::template_id(Expr callee, std::span<Expr const> arguments) -> Expr {
-    auto const result{expr_detail::handle(ExprKind::template_id, template_id_exprs_.callee.size())};
+auto CppIR::template_id(Syntax callee, std::span<Syntax const> arguments) -> Syntax {
+    auto const result{Syntax{SyntaxKind::template_id,
+                             static_cast<std::uint32_t>(template_id_exprs_.callee.size())}};
     template_id_exprs_.callee.push_back(callee);
     template_id_exprs_.arguments.push_back(save_exprs(arguments));
     return result;
@@ -1014,7 +1089,7 @@ auto CppIR::type_template_parameter(StringId name, CppTypeId default_type, bool 
     return TemplateParameterId{(static_cast<std::uint32_t>(TemplateParameterKind::type) << 24) |
                                index};
 }
-auto CppIR::value_template_parameter(CppTypeId type, StringId name, Expr default_value, bool pack)
+auto CppIR::value_template_parameter(CppTypeId type, StringId name, Syntax default_value, bool pack)
     -> TemplateParameterId {
     auto const index{static_cast<std::uint32_t>(value_template_parameters_.name.size())};
     value_template_parameters_.type.push_back(type);
@@ -1121,6 +1196,11 @@ void CppIR::for_each_child(NodeId node, std::function<void(NodeId)> const& visit
     };
     auto const i{node.index()};
     switch (node.kind()) {
+        case NodeKind::declaration_macro:
+            if (auto const body{declaration_macro_nodes_.body[i]}) {
+                visit_range(block_nodes_.children[body->index()]);
+            }
+            break;
         case NodeKind::block:
             visit_range(block_nodes_.children[i]);
             break;
@@ -1319,20 +1399,8 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
         result.insert(result.end(), values.begin(), values.end());
     };
     switch (expr.kind()) {
-        case ExprKind::type_reference:
-            append(types.dependencies(type_reference_exprs_.type[index]));
-            break;
         case ExprKind::parenthesized:
             collect_dependencies(parenthesized_exprs_.operand[index], result);
-            break;
-        case ExprKind::template_id:
-            collect_dependencies(template_id_exprs_.callee[index], result);
-            for (auto const argument : exprs(template_id_exprs_.arguments[index])) {
-                collect_dependencies(argument, result);
-            }
-            break;
-        case ExprKind::named:
-            append(dependency_list(named_exprs_.dependencies[index]));
             break;
         case ExprKind::raw:
             append(dependency_list(raw_exprs_.dependencies[index]));
@@ -1344,7 +1412,6 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
             }
             break;
         case ExprKind::member_access:
-        case ExprKind::scope_member:
             collect_dependencies(member_exprs_.object[index], result);
             break;
         case ExprKind::subscript:
@@ -1395,9 +1462,6 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
                 collect_dependencies(child, result);
             }
             break;
-        case ExprKind::designated_initializer:
-            collect_dependencies(designated_initializers_.value[index], result);
-            break;
         case ExprKind::literal:
         case ExprKind::boolean_literal:
         case ExprKind::int_literal:
@@ -1411,6 +1475,10 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
         case ExprKind::long_double_literal:
         case ExprKind::string_literal:
             break;
+        case ExprKind::symbol_reference:
+            collect_dependencies(symbol_references_[index], result);
+            break;
+        case ExprKind::Count:
         case ExprKind::invalid:
             std::unreachable();
     }
@@ -1446,6 +1514,150 @@ void CppIR::collect_dependencies(TemplateId declaration,
                 break;
         }
     }
+}
+
+auto CppIR::expression_type(Expr expression) const -> CppTypeId {
+    assert(expression);
+    auto const& types_for_kind{expression_types_[static_cast<std::size_t>(expression.kind())]};
+    assert(expression.index() < types_for_kind.size());
+    auto const type{types_for_kind[expression.index()]};
+    assert(type.value != 0);
+    return type;
+}
+auto CppIR::finish_expression(Expr expression, CppTypeId type) -> Expr {
+    assert(type.value != 0);
+    auto& types_for_kind{expression_types_[static_cast<std::size_t>(expression.kind())]};
+    if (types_for_kind.size() <= expression.index()) {
+        types_for_kind.resize(expression.index() + 1);
+    }
+    types_for_kind[expression.index()] = type;
+    return expression;
+}
+auto CppIR::dependent_expression(Expr expression) -> Expr {
+    std::vector<TypeDependencyId> dependencies;
+    collect_dependencies(expression, dependencies);
+    return finish_expression(expression, types.decltype_type(expression, dependencies));
+}
+auto CppIR::reference(Syntax symbol, CppTypeId type) -> Expr {
+    assert(symbol.kind() == SyntaxKind::name || symbol.kind() == SyntaxKind::scope_name ||
+           symbol.kind() == SyntaxKind::member_name ||
+           symbol.kind() == SyntaxKind::type_reference || symbol.kind() == SyntaxKind::template_id);
+    auto const result{expr_detail::handle(ExprKind::symbol_reference, symbol_references_.size())};
+    symbol_references_.push_back(symbol);
+    return finish_expression(result, type);
+}
+auto CppIR::dependent_reference(Syntax symbol) -> Expr {
+    std::vector<TypeDependencyId> dependencies;
+    collect_dependencies(symbol, dependencies);
+    return reference(symbol, types.decltype_type(symbol, dependencies));
+}
+auto CppIR::authored_fragment(std::string_view value) -> Syntax {
+    return authored_fragment(strings.intern(value));
+}
+auto CppIR::authored_fragment(StringId value) -> Syntax {
+    auto const index{static_cast<std::uint32_t>(authored_fragments_.size())};
+    authored_fragments_.push_back(value);
+    return {SyntaxKind::authored_fragment, index};
+}
+auto CppIR::member_name(Expr object, std::string_view member, bool through_pointer) -> Syntax {
+    return member_name(object, strings.intern(member), through_pointer);
+}
+auto CppIR::member_name(Expr object, StringId member, bool through_pointer) -> Syntax {
+    auto const index{static_cast<std::uint32_t>(member_exprs_.object.size())};
+    member_exprs_.object.push_back(object);
+    member_exprs_.member.push_back(member);
+    member_exprs_.through_pointer.push_back(through_pointer);
+    return {SyntaxKind::member_name, index};
+}
+
+void CppIR::collect_dependencies(Syntax syntax, std::vector<TypeDependencyId>& result) const {
+    auto const index{syntax.index()};
+    auto append = [&](std::span<TypeDependencyId const> dependencies) {
+        result.insert(result.end(), dependencies.begin(), dependencies.end());
+    };
+    switch (syntax.kind()) {
+        case SyntaxKind::expression:
+            collect_dependencies(syntax.expression(), result);
+            break;
+        case SyntaxKind::name:
+            append(dependency_list(named_exprs_.dependencies[index]));
+            break;
+        case SyntaxKind::type_reference:
+            append(types.dependencies(CppTypeId{index}));
+            break;
+        case SyntaxKind::macro_invocation:
+            collect_dependencies(call_exprs_.callee[index], result);
+            for (auto argument : exprs(call_exprs_.arguments[index])) {
+                collect_dependencies(argument, result);
+            }
+            break;
+        case SyntaxKind::pack_expansion:
+            collect_dependencies(pack_patterns_[index], result);
+            break;
+        case SyntaxKind::capture:
+        case SyntaxKind::reference_capture:
+        case SyntaxKind::binding_list:
+            break;
+        case SyntaxKind::template_id:
+            collect_dependencies(template_id_exprs_.callee[index], result);
+            for (auto argument : exprs(template_id_exprs_.arguments[index])) {
+                collect_dependencies(argument, result);
+            }
+            break;
+        case SyntaxKind::member_name:
+            collect_dependencies(member_exprs_.object[index], result);
+            break;
+        case SyntaxKind::scope_name:
+            append(types.dependencies(scope_name_owners_[index]));
+            break;
+        case SyntaxKind::initializer_list:
+            for (auto element : exprs(initializer_exprs_.elements[index])) {
+                collect_dependencies(element, result);
+            }
+            break;
+        case SyntaxKind::designated_initializer:
+            collect_dependencies(designated_initializers_.value[index], result);
+            break;
+        case SyntaxKind::authored_fragment:
+            break;
+        case SyntaxKind::invalid:
+            std::unreachable();
+    }
+}
+
+auto CppIR::macro_invocation(Syntax name, std::span<Syntax const> arguments) -> Syntax {
+    auto const index{static_cast<std::uint32_t>(call_exprs_.callee.size())};
+    call_exprs_.callee.push_back(name);
+    call_exprs_.arguments.push_back(save_exprs(arguments));
+    return {SyntaxKind::macro_invocation, index};
+}
+auto CppIR::macro_statement(Syntax name, std::span<Syntax const> arguments) -> NodeId {
+    auto const result{declaration_macro(macro_invocation(name, arguments))};
+    declaration_macro_nodes_.statement[result.index()] = true;
+    return result;
+}
+auto CppIR::macro_block(Syntax invocation, BlockId body) -> NodeId {
+    auto const result{declaration_macro(invocation)};
+    declaration_macro_nodes_.body[result.index()] = body;
+    return result;
+}
+auto CppIR::pack_expansion(Syntax pattern) -> Syntax {
+    auto const index{static_cast<std::uint32_t>(pack_patterns_.size())};
+    pack_patterns_.push_back(pattern);
+    return {SyntaxKind::pack_expansion, index};
+}
+auto CppIR::capture(std::string_view name, bool by_reference) -> Syntax {
+    return {by_reference ? SyntaxKind::reference_capture : SyntaxKind::capture,
+            strings.intern(name).value};
+}
+auto CppIR::binding_list(std::initializer_list<std::string_view> names) -> Syntax {
+    auto const first{static_cast<std::uint32_t>(binding_names_.size())};
+    for (auto name : names) {
+        binding_names_.push_back(strings.intern(name));
+    }
+    auto const index{static_cast<std::uint32_t>(binding_lists_.size())};
+    binding_lists_.push_back({first, static_cast<std::uint32_t>(names.size())});
+    return {SyntaxKind::binding_list, index};
 }
 
 } // namespace lispb::codegen

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <codegen/ast/expr.h>
 #include <codegen/ast/function_definition_flags.h>
 #include <codegen/ast/function_exception_specification.h>
 #include <codegen/ast/function_formatting.h>
@@ -9,6 +8,7 @@
 #include <codegen/ast/function_receiver.h>
 #include <codegen/ast/indices.h>
 #include <codegen/ast/return_syntax.h>
+#include <codegen/ast/syntax.h>
 #include <codegen/ast/template_id.h>
 #include <lispb/indices.h>
 
@@ -18,7 +18,7 @@ namespace lispb::codegen {
 
 // Assemble locally, then publish an immutable function with CppIR::add_function().
 struct FunctionDefinition {
-    Expr name{};
+    Syntax name{};
     CppTypeId return_type{};
     ReturnSyntax return_syntax{ReturnSyntax::direct};
     FunctionKind kind{FunctionKind::ordinary};

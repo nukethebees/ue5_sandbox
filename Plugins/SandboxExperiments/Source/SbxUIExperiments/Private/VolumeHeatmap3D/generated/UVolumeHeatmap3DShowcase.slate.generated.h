@@ -44,9 +44,9 @@ struct UVolumeHeatmap3DShowcaseBuilder {
 #line 29 "VolumeHeatmap3DShowcase.lispb"
         auto const rotation_padding{FMargin{0.0f, 0.0f, 0.0f, 8.0f}};
 #line 30 "VolumeHeatmap3DShowcase.lispb"
-        auto const control_width{100};
+        auto const control_width{100.0};
 #line 31 "VolumeHeatmap3DShowcase.lispb"
-        auto const rotation_control_width{90};
+        auto const rotation_control_width{90.0};
 #line 32 "VolumeHeatmap3DShowcase.lispb"
         auto const preview_size{512.0f};
 
@@ -76,12 +76,12 @@ struct UVolumeHeatmap3DShowcaseBuilder {
                           .LabelMinWidth(label_min_width)
                               [SNew(SHorizontalBox) +
                                SandboxUI::Slate::hbox_auto_slot(
-                                   FMargin{grid_button_padding})[grid_button(16)] +
+                                   FMargin{grid_button_padding})[grid_button(16.0)] +
                                SandboxUI::Slate::hbox_auto_slot(
-                                   FMargin{grid_button_padding})[grid_button(32)] +
+                                   FMargin{grid_button_padding})[grid_button(32.0)] +
                                SandboxUI::Slate::hbox_auto_slot(
-                                   FMargin{grid_button_padding})[grid_button(64)] +
-                               SandboxUI::Slate::hbox_auto_slot()[grid_button(128)]]] +
+                                   FMargin{grid_button_padding})[grid_button(64.0)] +
+                               SandboxUI::Slate::hbox_auto_slot()[grid_button(128.0)]]] +
                  SandboxUI::Slate::vbox_auto_slot(FMargin{control_padding})
                      [SNew(SHorizontalBox) +
                       SandboxUI::Slate::hbox_auto_slot()
@@ -90,13 +90,13 @@ struct UVolumeHeatmap3DShowcaseBuilder {
                                .LabelMinWidth(label_min_width)
                                .ContentHAlign(
                                    HAlign_Left)[SNew(SSpinBox<int32>)
-                                                    .MinValue(8)
-                                                    .MaxValue(256)
-                                                    .MinSliderValue(8)
-                                                    .MaxSliderValue(256)
-                                                    .Delta(8)
+                                                    .MinValue(8.0)
+                                                    .MaxValue(256.0)
+                                                    .MinSliderValue(8.0)
+                                                    .MaxSliderValue(256.0)
+                                                    .Delta(8.0)
                                                     .MinDesiredWidth(control_width)
-                                                    .Value(96)
+                                                    .Value(96.0)
                                                     .OnValueCommitted_Lambda(
                                                         std::forward<decltype(set_slice_count)>(
                                                             set_slice_count))]] +
@@ -124,13 +124,13 @@ struct UVolumeHeatmap3DShowcaseBuilder {
                                .LabelMinWidth(label_min_width)
                                .ContentHAlign(HAlign_Left)
                                    [SNew(SSpinBox<float>)
-                                        .MinValue(-180)
-                                        .MaxValue(180)
-                                        .MinSliderValue(-180)
-                                        .MaxSliderValue(180)
-                                        .Delta(1)
+                                        .MinValue(-180.0)
+                                        .MaxValue(180.0)
+                                        .MinSliderValue(-180.0)
+                                        .MaxSliderValue(180.0)
+                                        .Delta(1.0)
                                         .MinDesiredWidth(rotation_control_width)
-                                        .Value(-51)
+                                        .Value(-51.0)
                                         .OnValueCommitted_Lambda(
                                             std::forward<decltype(set_yaw)>(set_yaw))]] +
                       SandboxUI::Slate::hbox_auto_slot(FMargin{paired_control_padding})
@@ -139,13 +139,13 @@ struct UVolumeHeatmap3DShowcaseBuilder {
                                .LabelMinWidth(label_min_width)
                                .ContentHAlign(HAlign_Left)
                                    [SNew(SSpinBox<float>)
-                                        .MinValue(-85)
-                                        .MaxValue(85)
-                                        .MinSliderValue(-85)
-                                        .MaxSliderValue(85)
-                                        .Delta(1)
+                                        .MinValue(-85.0)
+                                        .MaxValue(85.0)
+                                        .MinSliderValue(-85.0)
+                                        .MaxSliderValue(85.0)
+                                        .Delta(1.0)
                                         .MinDesiredWidth(rotation_control_width)
-                                        .Value(29)
+                                        .Value(29.0)
                                         .OnValueCommitted_Lambda(
                                             std::forward<decltype(set_pitch)>(set_pitch))]]] +
                  SandboxUI::Slate::vbox_auto_slot()

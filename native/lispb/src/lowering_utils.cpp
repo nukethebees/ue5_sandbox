@@ -144,13 +144,13 @@ class FunctionLowering : public CppIRBuilder {
         return template_type(std_types().array, {element, intern_type(std::to_string(*count))});
     }
     auto column_apply_arrays_function(std::vector<std::string> const& columns) -> NodeId {
-        std::vector<Expr> arguments;
+        std::vector<Syntax> arguments;
         arguments.reserve(columns.size());
         for (auto const& column : columns) {
             arguments.push_back(member_access(named("self"), column));
         }
         FunctionDefinition const created_function{
-            .name = named("apply_arrays"),
+            .name = this->name("apply_arrays"),
             .return_type = intern_type("decltype(auto)"),
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {parameter("this auto&&", "self"), parameter("TFunc&&", "func")},
@@ -162,14 +162,14 @@ class FunctionLowering : public CppIRBuilder {
         return header_function(add_function(created_function));
     }
     auto column_apply_array_pairs_function(std::vector<std::string> const& columns) -> NodeId {
-        std::vector<Expr> arguments;
+        std::vector<Syntax> arguments;
         arguments.reserve(columns.size() * 2);
         for (auto const& column : columns) {
             arguments.push_back(member_access(named("self"), column));
             arguments.push_back(member_access(named("other"), column));
         }
         FunctionDefinition const created_function{
-            .name = named("apply_array_pairs"),
+            .name = this->name("apply_array_pairs"),
             .return_type = intern_type("decltype(auto)"),
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {parameter("this Self&&", "self"),
@@ -202,9 +202,10 @@ class FunctionLowering : public CppIRBuilder {
             if (parameter_schemas.is_pack[parameter_id]) {
                 type = decorate_type(type, "", "...");
             }
-            parameters.push_back(parameter(type,
-                                           parameter_schemas.name[parameter_id],
-                                           default_value ? raw_expr(*default_value) : Expr{}));
+            parameters.push_back(
+                parameter(type,
+                          parameter_schemas.name[parameter_id],
+                          default_value ? authored_fragment(*default_value) : Syntax{}));
         }
         std::vector<TypeDependencyId> dependencies;
         for (auto const key : decls.items(functions.dependencies[schema])) {
@@ -219,7 +220,7 @@ class FunctionLowering : public CppIRBuilder {
         auto const template_parameters{functions.template_parameters[row]};
         auto const constraint{functions.requires_clause[row]};
         return {
-            .name = named(functions.name[row]),
+            .name = this->name(functions.name[row]),
             .return_type = return_type,
             .return_syntax = trailing ? ReturnSyntax::trailing : ReturnSyntax::direct,
             .parameters = std::move(parameters),
@@ -242,13 +243,13 @@ class FunctionLowering : public CppIRBuilder {
                       .define_in_header = define_in_header},
             .template_declaration =
                 template_parameters ? raw_template_declaration(*template_parameters) : TemplateId{},
-            .requires_clause = constraint ? raw_expr(*constraint) : Expr{}};
+            .requires_clause = constraint ? raw_expr(std_types().bool_, *constraint) : Expr{}};
     }
   private:
     /* **************************************** */
     // Construction helpers
     /* **************************************** */
-    auto call_array_callback(std::span<Expr const> const arguments) -> Expr {
+    auto call_array_callback(std::span<Syntax const> const arguments) -> Expr {
         auto const forwarded{template_call(type_reference(std_types().forward),
                                            {type_reference(intern_type("TFunc"))},
                                            {named("func")})};

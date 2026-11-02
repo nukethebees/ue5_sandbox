@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <format>
 #include <iterator>
+#include <limits>
 #include <set>
 #include <stdexcept>
 
@@ -80,7 +81,7 @@ class RecordReaderLowering : public CppIRBuilder {
                                    std::vector<FunctionParameterId> const& parameters,
                                    Nodes body) {
             FunctionDefinition const function{
-                .name = named(method),
+                .name = this->name(method),
                 .return_type = return_type,
                 .parameters = {parameters.begin(), parameters.end()},
                 .implementation = {.kind = FunctionImplementationKind::body, .body = body},
@@ -117,8 +118,8 @@ class RecordReaderLowering : public CppIRBuilder {
                                       values),
                           2);
             }
-            std::vector<Expr> names;
-            std::vector<Expr> required;
+            std::vector<Syntax> names;
+            std::vector<Syntax> required;
             auto const named_fields{records.generate_visitor[row]
                                         ? ctx.declarations.items(records.members[row])
                                         : std::span<ChildOccurrenceId const>{fields}};
@@ -141,7 +142,7 @@ class RecordReaderLowering : public CppIRBuilder {
                 decls.add(
                     constexpr_member(intern_type("auto"),
                                      store_text("required"),
-                                     template_call(named("required_fields"),
+                                     template_call(this->name("required_fields"),
                                                    {type_reference(named_type("Field")),
                                                     member_call(named("field_names"), "size")},
                                                    {init_list(required)})),
@@ -150,7 +151,7 @@ class RecordReaderLowering : public CppIRBuilder {
         }
         std::array const inherited_names{store_text("value_type"), store_text("read")};
         auto const specialization{add_record(
-            {.name = template_id(named("TypeReader"), {type_reference(value_type)}),
+            {.name = template_id(this->name("TypeReader"), {type_reference(value_type)}),
              .children = decls.build(),
              .bases = {template_type(
                  named_type("ioj::s7::RecordReader",
@@ -176,15 +177,16 @@ class RecordReaderLowering : public CppIRBuilder {
     /* **************************************** */
     // Construction helpers
     /* **************************************** */
-    auto bound_literal(LoweringContext& ctx, StringId const bound) -> std::string {
+    auto bound_literal(LoweringContext& ctx, StringId const bound) -> Expr {
         auto text{ctx.text(bound)};
         if (text.contains('.')) {
-            return text;
+            return literal(std_types().f64, text);
         }
         if (text == "-9223372036854775808") {
-            return "(-9223372036854775807LL - 1LL)";
+            return literal(std::numeric_limits<long long>::min());
         }
-        return text + (text.starts_with('-') ? "LL" : "ULL");
+        return literal(intern_type(text.starts_with('-') ? "long long" : "unsigned long long"),
+                       text + (text.starts_with('-') ? "LL" : "ULL"));
     }
     auto field_name(LoweringContext& ctx, ChildOccurrenceId const member) -> std::string {
         auto const& members{ctx.declarations.child_occurrences};
@@ -208,10 +210,11 @@ class RecordReaderLowering : public CppIRBuilder {
         }
         return result;
     }
-    auto constraint_arguments(LoweringContext& ctx, ChildOccurrenceId field) -> std::vector<Expr> {
+    auto constraint_arguments(LoweringContext& ctx, ChildOccurrenceId field)
+        -> std::vector<Syntax> {
         auto const& members{ctx.declarations.child_occurrences};
         auto const& options{members.s7[members.index(field)]};
-        std::vector<Expr> checks;
+        std::vector<Syntax> checks;
         auto reference = [&](std::string_view name) {
             return type_reference(
                 named_type("ioj::s7::constraints::" + std::string{name}, NameOrigin::global));
@@ -233,12 +236,10 @@ class RecordReaderLowering : public CppIRBuilder {
             constraint("nonempty");
         }
         if (options.minimum) {
-            checks.push_back(
-                call(reference("minimum"), {literal(bound_literal(ctx, *options.minimum))}));
+            checks.push_back(call(reference("minimum"), {bound_literal(ctx, *options.minimum)}));
         }
         if (options.maximum) {
-            checks.push_back(
-                call(reference("maximum"), {literal(bound_literal(ctx, *options.maximum))}));
+            checks.push_back(call(reference("maximum"), {bound_literal(ctx, *options.maximum)}));
         }
         return checks;
     }
@@ -250,7 +251,7 @@ class RecordReaderLowering : public CppIRBuilder {
         arguments.insert(arguments.begin(), destination);
         auto const reader{named("read")};
         return expr_stmt(
-            call(constructing ? member_access(reader, "construct") : reader, arguments));
+            call(constructing ? member_name(reader, "construct") : Syntax{reader}, arguments));
     }
     auto field_value(StringId name) -> Expr { return scope_member(named_type("Field"), name); }
     auto member_reader(LoweringContext& ctx, DeclarationHandle record_id) -> Expr {
@@ -291,7 +292,7 @@ class RecordReaderLowering : public CppIRBuilder {
                 body.push_back(if_stmt(group.condition, block({group.action}), {}, true));
             }
         }
-        return lambda({unary(UnaryOperator::address_of, named("read"))},
+        return lambda({capture("read", true)},
                       {parameter("auto&", "member")},
                       block(body),
                       template_declaration(
@@ -314,10 +315,10 @@ class RecordReaderLowering : public CppIRBuilder {
             for (auto const field : fields) {
                 auto const name{ctx.text(members.name[members.index(field)])};
                 body.add(variable(template_type(std_types().optional,
-                                                {decltype_type(type_reference(
-                                                    named_type("value_type::" + name)))}),
+                                                {decltype_type(dependent_reference(type_reference(
+                                                    named_type("value_type::" + name))))}),
                                   "value_" + name,
-                                  literal("")));
+                                  init_list({})));
             }
         }
 
@@ -355,8 +356,8 @@ class RecordReaderLowering : public CppIRBuilder {
                     named_type("ioj::s7::FieldReader", NameOrigin::global))};
                 auto arguments{constraint_arguments(ctx, field)};
                 arguments.insert(arguments.begin(), destination);
-                body.add(expr_stmt(
-                    call(constructing ? member_access(reader, "construct") : reader, arguments)));
+                body.add(expr_stmt(call(
+                    constructing ? member_name(reader, "construct") : Syntax{reader}, arguments)));
             }
         } else {
             Expr visitor;
@@ -364,23 +365,23 @@ class RecordReaderLowering : public CppIRBuilder {
                 visitor = lambda({}, {parameter("Field"), parameter("auto const&")}, block({}));
             } else if (records.generate_visitor[row] && !constructing) {
                 visitor = lambda(
-                    {unary(UnaryOperator::address_of, named("result"))},
+                    {capture("result", true)},
                     {parameter("Field", "selected"), parameter("auto const&", "read")},
                     block({expr_stmt(call(
-                        scope_member(named_type("value_type"), "visit_field"),
+                        scope_name(named_type("value_type"), "visit_field"),
                         {named("result"), named("selected"), member_reader(ctx, record_id)}))}));
             } else {
                 std::vector<SwitchCaseId> cases;
-                std::vector<Expr> captures;
+                std::vector<Syntax> captures;
                 if (!constructing) {
-                    captures.push_back(unary(UnaryOperator::address_of, named("result")));
+                    captures.push_back(capture("result", true));
                 }
                 for (auto const field : fields) {
                     auto const name{ctx.text(members.name[members.index(field)])};
                     auto const destination{constructing ? named("value_" + name)
                                                         : member_access(named("result"), name)};
                     if (constructing) {
-                        captures.push_back(unary(UnaryOperator::address_of, destination));
+                        captures.push_back(capture("value_" + name, true));
                     }
                     cases.push_back(switch_case(
                         field_value(members.name[field]),
@@ -397,17 +398,17 @@ class RecordReaderLowering : public CppIRBuilder {
                                             parameter("auto const&", "read")};
                 visitor = lambda(captures, parameters, block({switch_stmt(named("field"), cases)}));
             }
-            std::vector<Expr> arguments{named("ctx"),
-                                        string_literal(ctx.text(*records.s7_tag[row])),
-                                        named("field_names"),
-                                        visitor};
+            std::vector<Syntax> arguments{named("ctx"),
+                                          string_literal(ctx.text(*records.s7_tag[row])),
+                                          named("field_names"),
+                                          visitor};
             if (std::ranges::any_of(fields, [&](auto const field) {
                     return members.s7[members.index(field)].required;
                 })) {
                 arguments.push_back(named("required"));
             }
             body.add(expr_stmt(template_call(
-                named("decode_record"), {type_reference(named_type("Field"))}, arguments)));
+                name("decode_record"), {type_reference(named_type("Field"))}, arguments)));
         }
         if (!constructing) {
             return body.build();
@@ -416,7 +417,7 @@ class RecordReaderLowering : public CppIRBuilder {
             if_stmt(unary(UnaryOperator::logical_not, member_call(errors, "empty")),
                     block({return_stmt(unexpected)}))};
         body.add(return_errors, 2);
-        std::vector<Expr> initializers;
+        std::vector<Syntax> initializers;
         for (auto const field : fields) {
             auto const index{members.index(field)};
             if (positional || members.s7[index].required) {

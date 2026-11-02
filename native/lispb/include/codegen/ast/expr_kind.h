@@ -6,7 +6,6 @@ namespace lispb::codegen {
 
 enum class ExprKind : std::uint8_t {
     invalid,
-    named,
     literal,
     boolean_literal,
     int_literal,
@@ -21,7 +20,6 @@ enum class ExprKind : std::uint8_t {
     string_literal,
     call,
     member_access,
-    scope_member,
     subscript,
     binary,
     conditional,
@@ -31,11 +29,10 @@ enum class ExprKind : std::uint8_t {
     reinterpret_cast_,
     sizeof_type,
     initializer_list,
-    designated_initializer,
     raw,
-    template_id,
-    type_reference,
-    parenthesized
+    parenthesized,
+    symbol_reference,
+    Count
 };
 
 } // namespace lispb::codegen

@@ -64,7 +64,6 @@
 #include <codegen/ast/ir/switches.h>
 #include <codegen/ast/ir/template_id_exprs.h>
 #include <codegen/ast/ir/templates.h>
-#include <codegen/ast/ir/type_reference_exprs.h>
 #include <codegen/ast/ir/type_template_parameters.h>
 #include <codegen/ast/ir/unary_exprs.h>
 #include <codegen/ast/ir/using_declarations.h>
@@ -152,34 +151,44 @@ class CppIR {
     }
     auto break_stmt() -> NodeId;
     // Annotate the following declaration without introducing bindings into its scope.
-    auto declaration_macro(Expr invocation) -> NodeId;
+    auto declaration_macro(Syntax invocation) -> NodeId;
+    auto macro_invocation(Syntax name, std::span<Syntax const> arguments = {}) -> Syntax;
+    auto macro_invocation(Syntax name, std::initializer_list<Syntax> arguments) -> Syntax {
+        return macro_invocation(name, std::span<Syntax const>{arguments});
+    }
+    auto macro_statement(Syntax name, std::span<Syntax const> arguments = {}) -> NodeId;
+    auto macro_statement(Syntax name, std::initializer_list<Syntax> arguments) -> NodeId {
+        return macro_statement(name, std::span<Syntax const>{arguments});
+    }
+    auto macro_block(Syntax invocation, BlockId body) -> NodeId;
+    auto binding_list(std::initializer_list<std::string_view> names) -> Syntax;
     auto expr_stmt(Expr expr, std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
     auto expr_stmt(Expr expr, std::initializer_list<TypeDependencyId> dependencies) -> NodeId {
         return expr_stmt(expr, std::span<TypeDependencyId const>{dependencies});
     }
-    auto return_stmt(std::optional<Expr> expr = {},
+    auto return_stmt(std::optional<Syntax> expr = {},
                      std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
-    auto return_stmt(std::optional<Expr> expr, std::initializer_list<TypeDependencyId> dependencies)
-        -> NodeId {
+    auto return_stmt(std::optional<Syntax> expr,
+                     std::initializer_list<TypeDependencyId> dependencies) -> NodeId {
         return return_stmt(expr, std::span<TypeDependencyId const>{dependencies});
     }
-    auto assignment(Expr target, Expr value, std::span<TypeDependencyId const> dependencies = {})
+    auto assignment(Expr target, Syntax value, std::span<TypeDependencyId const> dependencies = {})
         -> NodeId;
-    auto assignment(Expr target, Expr value, std::initializer_list<TypeDependencyId> dependencies)
+    auto assignment(Expr target, Syntax value, std::initializer_list<TypeDependencyId> dependencies)
         -> NodeId {
         return assignment(target, value, std::span<TypeDependencyId const>{dependencies});
     }
     auto variable(CppTypeId type,
-                  Expr name,
-                  std::optional<Expr> initializer = {},
+                  Syntax name,
+                  std::optional<Syntax> initializer = {},
                   VariableOptions options = {}) -> NodeId;
-    auto variable(CppTypeId type, StringId name, std::optional<Expr> initializer = {}) -> NodeId;
-    auto variable(CppTypeId type, std::string_view name, std::optional<Expr> initializer = {})
+    auto variable(CppTypeId type, StringId name, std::optional<Syntax> initializer = {}) -> NodeId;
+    auto variable(CppTypeId type, std::string_view name, std::optional<Syntax> initializer = {})
         -> NodeId;
     // Text type overloads intern spellings without dependencies; use CppTypeId for resolved types.
     auto variable(std::string_view type,
                   std::string_view name,
-                  std::optional<Expr> initializer = {}) -> NodeId;
+                  std::optional<Syntax> initializer = {}) -> NodeId;
     auto static_assertion(StringId condition, StringId message) -> NodeId;
     auto static_assertion(Expr condition, StringId message = {}) -> NodeId;
     auto assertion(Expr condition) -> NodeId;
@@ -197,17 +206,17 @@ class CppIR {
     auto friend_type(CppTypeId type) -> NodeId;
     auto using_declaration(StringId name, CppTypeId type, TemplateId declaration = {}) -> NodeId;
     auto using_import(CppTypeId qualified_name) -> NodeId;
-    auto instance_member(CppTypeId type, StringId name, std::optional<Expr> initializer = {})
+    auto instance_member(CppTypeId type, StringId name, std::optional<Syntax> initializer = {})
         -> NodeId;
     auto static_member(CppTypeId type,
                        StringId name,
-                       std::optional<Expr> initializer = {},
+                       std::optional<Syntax> initializer = {},
                        bool is_inline = false,
                        TemplateId template_declaration = {}) -> NodeId;
     // Require a nonempty initializer expression.
     auto constexpr_member(CppTypeId type,
                           StringId name,
-                          Expr initializer,
+                          Syntax initializer,
                           TemplateId template_declaration = {}) -> NodeId;
     auto enumerator(StringId name,
                     std::optional<StringId> initializer = {},
@@ -234,7 +243,7 @@ class CppIR {
         -> TemplateParameterId;
     auto value_template_parameter(CppTypeId type,
                                   StringId name = {},
-                                  Expr default_value = {},
+                                  Syntax default_value = {},
                                   bool pack = false) -> TemplateParameterId;
     auto template_declaration(std::span<TemplateParameterId const> parameters) -> TemplateId;
     auto template_declaration(std::initializer_list<TemplateParameterId> parameters) -> TemplateId {
@@ -255,18 +264,18 @@ class CppIR {
     auto get_view(RecordId record) const -> RecordView;
     auto get_view(FunctionId function) const -> FunctionView;
     auto get_view(FunctionParameterId parameter) const -> FunctionParameterView;
-    auto parameter(CppTypeId type, StringId name = {}, Expr default_value = {})
+    auto parameter(CppTypeId type, StringId name = {}, Syntax default_value = {})
         -> FunctionParameterId;
-    auto parameter(CppTypeId type, std::string_view name, Expr default_value = {})
+    auto parameter(CppTypeId type, std::string_view name, Syntax default_value = {})
         -> FunctionParameterId;
-    auto parameter(std::string_view type, std::string_view name = {}, Expr default_value = {})
+    auto parameter(std::string_view type, std::string_view name = {}, Syntax default_value = {})
         -> FunctionParameterId;
     auto member_initializer(StringId member, StringId value) -> MemberInitializerId;
-    auto member_initializer(StringId member, Expr value) -> MemberInitializerId;
+    auto member_initializer(StringId member, Syntax value) -> MemberInitializerId;
     auto raw(StringId value, std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
-    // Interleave authored text (raw expressions) with structured substitutions at final emission.
-    auto raw_parts(std::span<Expr const> parts, std::span<TypeDependencyId const> dependencies = {})
-        -> NodeId;
+    // Interleave authored text fragments with structured substitutions at final emission.
+    auto raw_parts(std::span<Syntax const> parts,
+                   std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
     auto raw_lines(std::span<StringId const> lines,
                    std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
     auto raw(std::string_view value, std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
@@ -283,6 +292,19 @@ class CppIR {
                     std::optional<ReturnSyntax> syntax = {},
                     bool header = false) -> NodeId;
     // Refer to a local name. Use type_reference with structured CppTypes for qualified symbols.
+    auto name(std::string_view value, std::span<TypeDependencyId const> dependencies = {})
+        -> Syntax;
+    auto name(StringId value, std::span<TypeDependencyId const> dependencies = {}) -> Syntax;
+    auto name(std::string_view value, std::initializer_list<TypeDependencyId> dependencies)
+        -> Syntax {
+        return name(value, std::span<TypeDependencyId const>{dependencies});
+    }
+    auto reference(Syntax symbol, CppTypeId type) -> Expr;
+    auto dependent_reference(Syntax symbol) -> Expr;
+    // Return the concrete or symbolic C++ type of a value expression.
+    auto expression_type(Expr expression) const -> CppTypeId;
+    auto authored_fragment(std::string_view value) -> Syntax;
+    auto authored_fragment(StringId value) -> Syntax;
     auto named(std::string_view value, std::span<TypeDependencyId const> dependencies = {}) -> Expr;
     auto named(StringId value, std::span<TypeDependencyId const> dependencies = {}) -> Expr;
     auto named(std::string_view value, std::initializer_list<TypeDependencyId> dependencies)
@@ -293,72 +315,81 @@ class CppIR {
         using Value = std::remove_cvref_t<decltype(value)>;
         if constexpr (std::same_as<Value, bool>) {
             return boolean_literal(value);
-        } else if constexpr (std::same_as<Value, StringId>) {
-            return spelled_literal(value);
+        } else if constexpr (std::same_as<Value, std::nullptr_t>) {
+            return nullptr_literal();
         } else if constexpr (ir::NumericLiteralValue<Value>) {
             return numeric_literal(value);
-        } else if constexpr (std::convertible_to<decltype(value), std::string_view>) {
-            return spelled_literal(std::string_view{std::forward<decltype(value)>(value)});
         } else {
             static_assert(false, "Unsupported literal type");
         }
     }
+    // Require a C++ literal spelling with exactly the supplied type.
+    auto literal(CppTypeId type, std::string_view spelling) -> Expr;
     auto string_literal(std::string_view value) -> Expr;
     auto string_literal(StringId value) -> Expr;
-    auto raw_expr(StringId value, std::span<TypeDependencyId const> dependencies = {}) -> Expr;
-    auto raw_expr(std::string_view value, std::span<TypeDependencyId const> dependencies = {})
-        -> Expr;
-    auto raw_expr(std::string_view value, std::initializer_list<TypeDependencyId> dependencies)
-        -> Expr {
-        return raw_expr(value, std::span<TypeDependencyId const>{dependencies});
+    auto raw_expr(CppTypeId type,
+                  StringId value,
+                  std::span<TypeDependencyId const> dependencies = {}) -> Expr;
+    auto raw_expr(CppTypeId type,
+                  std::string_view value,
+                  std::span<TypeDependencyId const> dependencies = {}) -> Expr;
+    auto raw_expr(CppTypeId type,
+                  std::string_view value,
+                  std::initializer_list<TypeDependencyId> dependencies) -> Expr {
+        return raw_expr(type, value, std::span<TypeDependencyId const>{dependencies});
     }
-    auto call(Expr callee, std::span<Expr const> arguments = {}) -> Expr;
-    auto call(CppTypeId callee, std::span<Expr const> arguments = {}) -> Expr {
+    auto call(Syntax callee, std::span<Syntax const> arguments = {}) -> Expr;
+    auto call(CppTypeId callee, std::span<Syntax const> arguments = {}) -> Expr {
         return call(type_reference(callee), arguments);
     }
-    auto call(CppTypeId callee, std::initializer_list<Expr> arguments) -> Expr {
-        return call(callee, std::span<Expr const>{arguments});
+    auto call(CppTypeId callee, std::initializer_list<Syntax> arguments) -> Expr {
+        return call(callee, std::span<Syntax const>{arguments});
     }
-    auto template_call(Expr callee,
-                       std::span<Expr const> template_arguments,
-                       std::span<Expr const> arguments = {}) -> Expr {
+    auto template_call(Syntax callee,
+                       std::span<Syntax const> template_arguments,
+                       std::span<Syntax const> arguments = {}) -> Expr {
         return call(template_id(callee, template_arguments), arguments);
     }
-    auto template_call(Expr callee,
-                       std::initializer_list<Expr> template_arguments,
-                       std::span<Expr const> arguments = {}) -> Expr {
-        return template_call(callee, std::span<Expr const>{template_arguments}, arguments);
+    auto template_call(Syntax callee,
+                       std::initializer_list<Syntax> template_arguments,
+                       std::span<Syntax const> arguments = {}) -> Expr {
+        return template_call(callee, std::span<Syntax const>{template_arguments}, arguments);
     }
-    auto template_call(Expr callee,
-                       std::span<Expr const> template_arguments,
-                       std::initializer_list<Expr> arguments) -> Expr {
-        return template_call(callee, template_arguments, std::span<Expr const>{arguments});
+    auto template_call(Syntax callee,
+                       std::span<Syntax const> template_arguments,
+                       std::initializer_list<Syntax> arguments) -> Expr {
+        return template_call(callee, template_arguments, std::span<Syntax const>{arguments});
     }
-    auto template_call(Expr callee,
-                       std::initializer_list<Expr> template_arguments,
-                       std::initializer_list<Expr> arguments) -> Expr {
-        return template_call(
-            callee, std::span<Expr const>{template_arguments}, std::span<Expr const>{arguments});
+    auto template_call(Syntax callee,
+                       std::initializer_list<Syntax> template_arguments,
+                       std::initializer_list<Syntax> arguments) -> Expr {
+        return template_call(callee,
+                             std::span<Syntax const>{template_arguments},
+                             std::span<Syntax const>{arguments});
     }
     // Capture local names by value or apply address_of for explicit reference captures.
-    auto lambda(std::span<Expr const> captures,
+    auto lambda(std::span<Syntax const> captures,
                 std::span<FunctionParameterId const> parameters,
                 BlockId body,
                 TemplateId template_declaration = {}) -> Expr;
-    auto lambda(std::initializer_list<Expr> captures,
+    auto lambda(std::initializer_list<Syntax> captures,
                 std::initializer_list<FunctionParameterId> parameters,
                 BlockId body,
                 TemplateId template_declaration = {}) -> Expr {
-        return lambda(std::span<Expr const>{captures},
+        return lambda(std::span<Syntax const>{captures},
                       std::span<FunctionParameterId const>{parameters},
                       body,
                       template_declaration);
     }
-    auto call(Expr callee, std::initializer_list<Expr> arguments) -> Expr {
-        return call(callee, std::span<Expr const>{arguments});
+    auto call(Syntax callee, std::initializer_list<Syntax> arguments) -> Expr {
+        return call(callee, std::span<Syntax const>{arguments});
     }
     auto member_access(Expr object, std::string_view member) -> Expr;
     auto member_access(Expr object, StringId member) -> Expr;
+    auto member_name(Expr object, StringId member, bool through_pointer = false) -> Syntax;
+    auto member_name(Expr object, std::string_view member, bool through_pointer = false) -> Syntax;
+    auto scope_name(CppTypeId owner, StringId member) -> Syntax;
+    auto scope_name(CppTypeId owner, std::string_view member) -> Syntax;
     auto scope_member(CppTypeId owner, std::string_view member) -> Expr;
     auto scope_member(CppTypeId owner, StringId member) -> Expr;
     auto pointer_member_access(Expr object, std::string_view member) -> Expr;
@@ -366,76 +397,85 @@ class CppIR {
     auto this_member(std::string_view member) -> Expr {
         return pointer_member_access(named("this"), member);
     }
-    auto member_call(Expr object, std::string_view member, std::span<Expr const> arguments = {})
+    auto member_call(Expr object, std::string_view member, std::span<Syntax const> arguments = {})
         -> Expr {
-        return call(member_access(object, member), arguments);
+        return call(member_name(object, member), arguments);
     }
-    auto member_call(Expr object, std::string_view member, std::initializer_list<Expr> arguments)
+    auto member_call(Expr object, std::string_view member, std::initializer_list<Syntax> arguments)
         -> Expr {
-        return member_call(object, member, std::span<Expr const>{arguments});
+        return member_call(object, member, std::span<Syntax const>{arguments});
     }
-    auto member_call(Expr object, StringId member, std::span<Expr const> arguments = {}) -> Expr {
-        return call(member_access(object, member), arguments);
+    auto member_call(Expr object, StringId member, std::span<Syntax const> arguments = {}) -> Expr {
+        return call(member_name(object, member), arguments);
     }
-    auto member_call(Expr object, StringId member, std::initializer_list<Expr> arguments) -> Expr {
-        return member_call(object, member, std::span<Expr const>{arguments});
+    auto member_call(Expr object, StringId member, std::initializer_list<Syntax> arguments)
+        -> Expr {
+        return member_call(object, member, std::span<Syntax const>{arguments});
     }
     auto pointer_member_call(Expr object,
                              std::string_view member,
-                             std::span<Expr const> arguments = {}) -> Expr {
-        return call(pointer_member_access(object, member), arguments);
+                             std::span<Syntax const> arguments = {}) -> Expr {
+        return call(member_name(object, member, true), arguments);
     }
     auto pointer_member_call(Expr object,
                              std::string_view member,
-                             std::initializer_list<Expr> arguments) -> Expr {
-        return pointer_member_call(object, member, std::span<Expr const>{arguments});
+                             std::initializer_list<Syntax> arguments) -> Expr {
+        return pointer_member_call(object, member, std::span<Syntax const>{arguments});
     }
-    auto pointer_member_call(Expr object, StringId member, std::span<Expr const> arguments = {})
+    auto pointer_member_call(Expr object, StringId member, std::span<Syntax const> arguments = {})
         -> Expr {
-        return call(pointer_member_access(object, member), arguments);
+        return call(member_name(object, member, true), arguments);
     }
-    auto pointer_member_call(Expr object, StringId member, std::initializer_list<Expr> arguments)
+    auto pointer_member_call(Expr object, StringId member, std::initializer_list<Syntax> arguments)
         -> Expr {
-        return pointer_member_call(object, member, std::span<Expr const>{arguments});
+        return pointer_member_call(object, member, std::span<Syntax const>{arguments});
     }
-    auto this_member_call(std::string_view member, std::span<Expr const> arguments = {}) -> Expr {
+    auto this_member_call(std::string_view member, std::span<Syntax const> arguments = {}) -> Expr {
         return pointer_member_call(named("this"), member, arguments);
     }
-    auto this_member_call(std::string_view member, std::initializer_list<Expr> arguments) -> Expr {
-        return this_member_call(member, std::span<Expr const>{arguments});
+    auto this_member_call(std::string_view member, std::initializer_list<Syntax> arguments)
+        -> Expr {
+        return this_member_call(member, std::span<Syntax const>{arguments});
     }
-    auto this_member_call(StringId member, std::span<Expr const> arguments = {}) -> Expr {
+    auto this_member_call(StringId member, std::span<Syntax const> arguments = {}) -> Expr {
         return pointer_member_call(named("this"), member, arguments);
     }
-    auto this_member_call(StringId member, std::initializer_list<Expr> arguments) -> Expr {
-        return this_member_call(member, std::span<Expr const>{arguments});
+    auto this_member_call(StringId member, std::initializer_list<Syntax> arguments) -> Expr {
+        return this_member_call(member, std::span<Syntax const>{arguments});
     }
+    auto pack_expansion(Syntax pattern) -> Syntax;
+    auto capture(std::string_view name, bool by_reference = false) -> Syntax;
     auto unary(UnaryOperator operation, Expr operand) -> Expr;
+    auto address_of(Syntax symbol) -> Expr;
     auto subscript(Expr object, Expr index) -> Expr;
     auto binary(BinaryOperator operation, Expr left, Expr right, bool line_break_after = false)
         -> Expr;
-    auto type_reference(CppTypeId type) -> Expr;
+    auto type_reference(CppTypeId type) -> Syntax;
     auto decltype_type(Expr operand) -> CppTypeId;
-    auto template_type(CppTypeId primary, std::span<Expr const> arguments) -> CppTypeId;
-    auto template_type(CppTypeId primary, std::initializer_list<Expr> arguments) -> CppTypeId {
-        return template_type(primary, std::span<Expr const>{arguments});
+    auto template_type(CppTypeId primary, std::span<Syntax const> arguments) -> CppTypeId;
+    auto template_type(CppTypeId primary, std::initializer_list<Syntax> arguments) -> CppTypeId {
+        return template_type(primary, std::span<Syntax const>{arguments});
     }
     auto parenthesized(Expr expr) -> Expr;
-    auto template_id(Expr callee, std::span<Expr const> arguments) -> Expr;
-    auto template_id(Expr callee, std::initializer_list<Expr> arguments) -> Expr {
-        return template_id(callee, std::span<Expr const>{arguments});
+    auto template_id(Syntax callee, std::span<Syntax const> arguments) -> Syntax;
+    auto template_id(Syntax callee, std::initializer_list<Syntax> arguments) -> Syntax {
+        return template_id(callee, std::span<Syntax const>{arguments});
     }
     auto static_cast_expr(CppTypeId type, Expr operand) -> Expr;
     auto reinterpret_cast_expr(CppTypeId type, Expr operand) -> Expr;
     auto conditional(Expr condition, Expr when_true, Expr when_false) -> Expr;
     auto sizeof_type(CppTypeId type) -> Expr;
-    auto init_list(std::span<Expr const> elements, std::optional<CppTypeId> type = {}) -> Expr;
+    auto init_list(std::span<Syntax const> elements) -> Syntax;
+    auto init_list(std::span<Syntax const> elements, CppTypeId type) -> Expr;
     // Use designated initializers only as initializer-list elements.
-    auto designated_initializer(StringId member, Expr value) -> Expr;
-    auto init_list(std::initializer_list<Expr> elements, std::optional<CppTypeId> type = {})
-        -> Expr {
-        return init_list(std::span<Expr const>{elements}, type);
+    auto designated_initializer(StringId member, Syntax value) -> Syntax;
+    auto init_list(std::initializer_list<Syntax> elements, CppTypeId type) -> Expr {
+        return init_list(std::span<Syntax const>{elements}, type);
     }
+    auto init_list(std::initializer_list<Syntax> elements) -> Syntax {
+        return init_list(std::span<Syntax const>{elements});
+    }
+    void collect_dependencies(Syntax syntax, std::vector<TypeDependencyId>& result) const;
     void collect_dependencies(Expr expr, std::vector<TypeDependencyId>& result) const;
     void collect_dependencies(NodeId node, std::vector<TypeDependencyId>& result) const;
     void for_each_child(NodeId node, std::function<void(NodeId)> const& visit) const;
@@ -446,11 +486,12 @@ class CppIR {
     void merge_adjacent_namespaces(CppFileId file);
   private:
     friend class CppRenderer;
+    auto finish_expression(Expr expression, CppTypeId type) -> Expr;
+    auto dependent_expression(Expr expression) -> Expr;
     auto boolean_literal(bool value) -> Expr;
+    auto nullptr_literal() -> Expr;
     template <ir::NumericLiteralValue Value>
     auto numeric_literal(Value value) -> Expr;
-    auto spelled_literal(std::string_view value) -> Expr;
-    auto spelled_literal(StringId value) -> Expr;
     auto merge_adjacent_namespaces(std::vector<NodeId>& values) -> bool;
     void collect_dependencies(TemplateId declaration, std::vector<TypeDependencyId>& result) const;
     ir::TypeTemplateParameters type_template_parameters_;
@@ -458,7 +499,6 @@ class CppIR {
     ir::Templates templates_;
     std::vector<TemplateParameterId> template_parameter_references_;
     ir::TemplateIdExprs template_id_exprs_;
-    ir::TypeReferenceExprs type_reference_exprs_;
     ir::ParenthesizedExprs parenthesized_exprs_;
     auto function_node(FunctionId function,
                        std::optional<CppTypeId> owner,
@@ -466,11 +506,11 @@ class CppIR {
                        bool header,
                        std::optional<ReturnSyntax> return_syntax) -> NodeId;
     auto save_nodes(std::span<NodeId const> values) -> ir::Range;
-    auto save_exprs(std::span<Expr const> values) -> ir::Range;
+    auto save_exprs(std::span<Syntax const> values) -> ir::Range;
     auto save_types(std::span<CppTypeId const> values) -> ir::Range;
     auto save_dependencies(std::span<TypeDependencyId const> values) -> ir::Range;
     auto nodes(ir::Range range) const -> std::span<NodeId const>;
-    auto exprs(ir::Range range) const -> std::span<Expr const>;
+    auto exprs(ir::Range range) const -> std::span<Syntax const>;
     auto type_list(ir::Range range) const -> std::span<CppTypeId const>;
     auto dependency_list(ir::Range range) const -> std::span<TypeDependencyId const>;
     std::unordered_map<std::uint32_t, std::vector<StringId>> scope_bindings_;
@@ -479,7 +519,15 @@ class CppIR {
     std::vector<SwitchCaseId> case_references_;
     std::vector<EnumValueId> enumerator_references_;
     std::vector<NodeId> children_;
-    std::vector<Expr> arguments_;
+    std::vector<Syntax> arguments_;
+    std::array<std::vector<CppTypeId>, static_cast<std::size_t>(ExprKind::Count)> expression_types_;
+    std::vector<Syntax> symbol_references_;
+    std::vector<Syntax> pack_patterns_;
+    std::vector<StringId> authored_fragments_;
+    std::vector<CppTypeId> scope_name_owners_;
+    std::vector<StringId> scope_name_members_;
+    std::vector<StringId> binding_names_;
+    std::vector<ir::Range> binding_lists_;
     std::vector<CppTypeId> type_references_;
     std::vector<TypeDependencyId> dependencies_;
     ir::RawNodes raw_nodes_;

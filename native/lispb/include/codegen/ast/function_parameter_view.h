@@ -1,7 +1,7 @@
 #pragma once
 
-#include <codegen/ast/expr.h>
 #include <codegen/ast/indices.h>
+#include <codegen/ast/syntax.h>
 #include <lispb/indices.h>
 
 namespace lispb::codegen {
@@ -9,7 +9,7 @@ namespace lispb::codegen {
 struct FunctionParameterView {
     CppTypeId type{};
     StringId name{};
-    Expr default_value{};
+    Syntax default_value{};
 };
 
 }

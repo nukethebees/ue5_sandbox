@@ -11,9 +11,9 @@ struct Expr {
     static constexpr std::uint32_t kind_shift{24};
 
     std::uint32_t value{};
-    explicit operator bool() const { return value != 0; }
-    auto kind() const -> ExprKind { return static_cast<ExprKind>(value >> kind_shift); }
-    auto index() const -> std::uint32_t { return value & index_mask; }
+    explicit constexpr operator bool() const { return value != 0; }
+    constexpr auto kind() const -> ExprKind { return static_cast<ExprKind>(value >> kind_shift); }
+    constexpr auto index() const -> std::uint32_t { return value & index_mask; }
     auto operator==(Expr const&) const -> bool = default;
 };
 

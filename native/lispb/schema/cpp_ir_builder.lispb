@@ -124,26 +124,26 @@
         (parameter definition "CppFileDefinition const&"))
       (method call "Expr"
         (parameter callee "CppTypeId")
-        (parameter arguments "std::span<Expr const>" :default "{}"))
+        (parameter arguments "std::span<Syntax const>" :default "{}"))
       (method call "Expr"
         (parameter callee "CppTypeId")
-        (parameter arguments "std::initializer_list<Expr>"))
+        (parameter arguments "std::initializer_list<Syntax>"))
       (method template_call "Expr"
-        (parameter callee "Expr")
-        (parameter template_arguments "std::span<Expr const>")
-        (parameter arguments "std::span<Expr const>" :default "{}"))
+        (parameter callee "Syntax")
+        (parameter template_arguments "std::span<Syntax const>")
+        (parameter arguments "std::span<Syntax const>" :default "{}"))
       (method template_call "Expr"
-        (parameter callee "Expr")
-        (parameter template_arguments "std::span<Expr const>")
-        (parameter arguments "std::initializer_list<Expr>"))
+        (parameter callee "Syntax")
+        (parameter template_arguments "std::span<Syntax const>")
+        (parameter arguments "std::initializer_list<Syntax>"))
       (method template_call "Expr"
-        (parameter callee "Expr")
-        (parameter template_arguments "std::initializer_list<Expr>")
-        (parameter arguments "std::span<Expr const>" :default "{}"))
+        (parameter callee "Syntax")
+        (parameter template_arguments "std::initializer_list<Syntax>")
+        (parameter arguments "std::span<Syntax const>" :default "{}"))
       (method template_call "Expr"
-        (parameter callee "Expr")
-        (parameter template_arguments "std::initializer_list<Expr>")
-        (parameter arguments "std::initializer_list<Expr>"))
+        (parameter callee "Syntax")
+        (parameter template_arguments "std::initializer_list<Syntax>")
+        (parameter arguments "std::initializer_list<Syntax>"))
       (method node_list "NodeListBuilder")
       (method lowering_storage "LoweringStorage&")
       (method clear "void")
@@ -224,8 +224,25 @@
         (parameter condition "Expr")
         (parameter cases "std::initializer_list<SwitchCaseId>"))
       (method break_stmt "NodeId")
+      (method macro_invocation "Syntax"
+        (parameter name "Syntax")
+        (parameter arguments "std::span<Syntax const>" :default "{}"))
+      (method macro_invocation "Syntax"
+        (parameter name "Syntax")
+        (parameter arguments "std::initializer_list<Syntax>"))
+      (method macro_statement "NodeId"
+        (parameter name "Syntax")
+        (parameter arguments "std::span<Syntax const>" :default "{}"))
+      (method macro_statement "NodeId"
+        (parameter name "Syntax")
+        (parameter arguments "std::initializer_list<Syntax>"))
+      (method macro_block "NodeId"
+        (parameter invocation "Syntax")
+        (parameter body "BlockId"))
+      (method binding_list "Syntax"
+        (parameter names "std::initializer_list<std::string_view>"))
       (method declaration_macro "NodeId"
-        (parameter invocation "Expr"))
+        (parameter invocation "Syntax"))
       (method expr_stmt "NodeId"
         (parameter expr "Expr")
         (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))
@@ -233,36 +250,36 @@
         (parameter expr "Expr")
         (parameter dependencies "std::initializer_list<TypeDependencyId>"))
       (method return_stmt "NodeId"
-        (parameter expr "std::optional<Expr>" :default "{}")
+        (parameter expr "std::optional<Syntax>" :default "{}")
         (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))
       (method return_stmt "NodeId"
-        (parameter expr "std::optional<Expr>")
+        (parameter expr "std::optional<Syntax>")
         (parameter dependencies "std::initializer_list<TypeDependencyId>"))
       (method assignment "NodeId"
         (parameter target "Expr")
-        (parameter value "Expr")
+        (parameter value "Syntax")
         (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))
       (method assignment "NodeId"
         (parameter target "Expr")
-        (parameter value "Expr")
+        (parameter value "Syntax")
         (parameter dependencies "std::initializer_list<TypeDependencyId>"))
       (method variable "NodeId"
         (parameter type "CppTypeId")
-        (parameter name "Expr")
-        (parameter initializer "std::optional<Expr>" :default "{}")
+        (parameter name "Syntax")
+        (parameter initializer "std::optional<Syntax>" :default "{}")
         (parameter options "VariableOptions" :default "{}"))
       (method variable "NodeId"
         (parameter type "CppTypeId")
         (parameter name "StringId")
-        (parameter initializer "std::optional<Expr>" :default "{}"))
+        (parameter initializer "std::optional<Syntax>" :default "{}"))
       (method variable "NodeId"
         (parameter type "CppTypeId")
         (parameter name "std::string_view")
-        (parameter initializer "std::optional<Expr>" :default "{}"))
+        (parameter initializer "std::optional<Syntax>" :default "{}"))
       (method variable "NodeId"
         (parameter type "std::string_view")
         (parameter name "std::string_view")
-        (parameter initializer "std::optional<Expr>" :default "{}"))
+        (parameter initializer "std::optional<Syntax>" :default "{}"))
       (method static_assertion "NodeId"
         (parameter condition "StringId")
         (parameter message "StringId"))
@@ -298,17 +315,17 @@
       (method instance_member "NodeId"
         (parameter type "CppTypeId")
         (parameter name "StringId")
-        (parameter initializer "std::optional<Expr>" :default "{}"))
+        (parameter initializer "std::optional<Syntax>" :default "{}"))
       (method static_member "NodeId"
         (parameter type "CppTypeId")
         (parameter name "StringId")
-        (parameter initializer "std::optional<Expr>" :default "{}")
+        (parameter initializer "std::optional<Syntax>" :default "{}")
         (parameter is_inline "bool" :default "false")
         (parameter template_declaration "TemplateId" :default "{}"))
       (method constexpr_member "NodeId"
         (parameter type "CppTypeId")
         (parameter name "StringId")
-        (parameter initializer "Expr")
+        (parameter initializer "Syntax")
         (parameter template_declaration "TemplateId" :default "{}"))
       (method enumerator "EnumValueId"
         (parameter name "StringId")
@@ -339,7 +356,7 @@
       (method value_template_parameter "TemplateParameterId"
         (parameter type "CppTypeId")
         (parameter name "StringId" :default "{}")
-        (parameter default_value "Expr" :default "{}")
+        (parameter default_value "Syntax" :default "{}")
         (parameter pack "bool" :default "false"))
       (method template_declaration "TemplateId"
         (parameter parameters "std::span<TemplateParameterId const>"))
@@ -351,21 +368,21 @@
       (method parameter "FunctionParameterId"
         (parameter type "CppTypeId")
         (parameter name "StringId" :default "{}")
-        (parameter default_value "Expr" :default "{}"))
+        (parameter default_value "Syntax" :default "{}"))
       (method parameter "FunctionParameterId"
         (parameter type "CppTypeId")
         (parameter name "std::string_view")
-        (parameter default_value "Expr" :default "{}"))
+        (parameter default_value "Syntax" :default "{}"))
       (method parameter "FunctionParameterId"
         (parameter type "std::string_view")
         (parameter name "std::string_view" :default "{}")
-        (parameter default_value "Expr" :default "{}"))
+        (parameter default_value "Syntax" :default "{}"))
       (method member_initializer "MemberInitializerId"
         (parameter member "StringId")
         (parameter value "StringId"))
       (method member_initializer "MemberInitializerId"
         (parameter member "StringId")
-        (parameter value "Expr"))
+        (parameter value "Syntax"))
       (method get_view "FunctionView" :const true
         (parameter function "FunctionId"))
       (method get_view "FunctionParameterView" :const true
@@ -378,7 +395,7 @@
         (parameter value "StringId")
         (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))
       (method raw_parts "NodeId"
-        (parameter parts "std::span<Expr const>")
+        (parameter parts "std::span<Syntax const>")
         (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))
       (method raw_lines "NodeId"
         (parameter lines "std::span<StringId const>")
@@ -400,6 +417,43 @@
         (parameter owner "std::optional<CppTypeId>" :default "{}")
         (parameter syntax "std::optional<ReturnSyntax>" :default "{}")
         (parameter header "bool" :default "false"))
+      (method name "Syntax"
+        (parameter value "std::string_view")
+        (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))
+      (method name "Syntax"
+        (parameter value "StringId")
+        (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))
+      (method name "Syntax"
+        (parameter value "std::string_view")
+        (parameter dependencies "std::initializer_list<TypeDependencyId>"))
+      (method reference "Expr"
+        (parameter symbol "Syntax")
+        (parameter type "CppTypeId"))
+      (method dependent_reference "Expr"
+        (parameter symbol "Syntax"))
+      (method expression_type "CppTypeId" :const true
+        (parameter expression "Expr"))
+      (method authored_fragment "Syntax"
+        (parameter value "std::string_view"))
+      (method authored_fragment "Syntax"
+        (parameter value "StringId"))
+      (method member_name "Syntax"
+        (parameter object "Expr")
+        (parameter member "std::string_view")
+        (parameter through_pointer "bool" :default "false"))
+      (method member_name "Syntax"
+        (parameter object "Expr")
+        (parameter member "StringId")
+        (parameter through_pointer "bool" :default "false"))
+      (method scope_name "Syntax"
+        (parameter owner "CppTypeId")
+        (parameter member "std::string_view"))
+      (method scope_name "Syntax"
+        (parameter owner "CppTypeId")
+        (parameter member "StringId"))
+      (method literal "Expr"
+        (parameter type "CppTypeId")
+        (parameter spelling "std::string_view"))
       (method named "Expr"
         (parameter value "std::string_view")
         (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))
@@ -416,30 +470,33 @@
       (method string_literal "Expr"
         (parameter value "StringId"))
       (method raw_expr "Expr"
+        (parameter type "CppTypeId")
         (parameter value "StringId")
         (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))
       (method raw_expr "Expr"
+        (parameter type "CppTypeId")
         (parameter value "std::string_view")
         (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))
       (method raw_expr "Expr"
+        (parameter type "CppTypeId")
         (parameter value "std::string_view")
         (parameter dependencies "std::initializer_list<TypeDependencyId>"))
       (method call "Expr"
-        (parameter callee "Expr")
-        (parameter arguments "std::span<Expr const>" :default "{}"))
+        (parameter callee "Syntax")
+        (parameter arguments "std::span<Syntax const>" :default "{}"))
       (method lambda "Expr"
-        (parameter captures "std::span<Expr const>")
+        (parameter captures "std::span<Syntax const>")
         (parameter parameters "std::span<FunctionParameterId const>")
         (parameter body "BlockId")
         (parameter template_declaration "TemplateId" :default "{}"))
       (method lambda "Expr"
-        (parameter captures "std::initializer_list<Expr>")
+        (parameter captures "std::initializer_list<Syntax>")
         (parameter parameters "std::initializer_list<FunctionParameterId>")
         (parameter body "BlockId")
         (parameter template_declaration "TemplateId" :default "{}"))
       (method call "Expr"
-        (parameter callee "Expr")
-        (parameter arguments "std::initializer_list<Expr>"))
+        (parameter callee "Syntax")
+        (parameter arguments "std::initializer_list<Syntax>"))
       (method member_access "Expr"
         (parameter object "Expr")
         (parameter member "std::string_view"))
@@ -457,50 +514,55 @@
       (method member_call "Expr"
         (parameter object "Expr")
         (parameter member "std::string_view")
-        (parameter arguments "std::span<Expr const>" :default "{}"))
+        (parameter arguments "std::span<Syntax const>" :default "{}"))
       (method member_call "Expr"
         (parameter object "Expr")
         (parameter member "std::string_view")
-        (parameter arguments "std::initializer_list<Expr>"))
+        (parameter arguments "std::initializer_list<Syntax>"))
       (method member_call "Expr"
         (parameter object "Expr")
         (parameter member "StringId")
-        (parameter arguments "std::span<Expr const>" :default "{}"))
+        (parameter arguments "std::span<Syntax const>" :default "{}"))
       (method member_call "Expr"
         (parameter object "Expr")
         (parameter member "StringId")
-        (parameter arguments "std::initializer_list<Expr>"))
+        (parameter arguments "std::initializer_list<Syntax>"))
       (method pointer_member_call "Expr"
         (parameter object "Expr")
         (parameter member "std::string_view")
-        (parameter arguments "std::span<Expr const>" :default "{}"))
+        (parameter arguments "std::span<Syntax const>" :default "{}"))
       (method pointer_member_call "Expr"
         (parameter object "Expr")
         (parameter member "std::string_view")
-        (parameter arguments "std::initializer_list<Expr>"))
+        (parameter arguments "std::initializer_list<Syntax>"))
       (method pointer_member_call "Expr"
         (parameter object "Expr")
         (parameter member "StringId")
-        (parameter arguments "std::span<Expr const>" :default "{}"))
+        (parameter arguments "std::span<Syntax const>" :default "{}"))
       (method pointer_member_call "Expr"
         (parameter object "Expr")
         (parameter member "StringId")
-        (parameter arguments "std::initializer_list<Expr>"))
+        (parameter arguments "std::initializer_list<Syntax>"))
       (method this_member_call "Expr"
         (parameter member "std::string_view")
-        (parameter arguments "std::span<Expr const>" :default "{}"))
+        (parameter arguments "std::span<Syntax const>" :default "{}"))
       (method this_member_call "Expr"
         (parameter member "std::string_view")
-        (parameter arguments "std::initializer_list<Expr>"))
+        (parameter arguments "std::initializer_list<Syntax>"))
       (method this_member_call "Expr"
         (parameter member "StringId")
-        (parameter arguments "std::span<Expr const>" :default "{}"))
+        (parameter arguments "std::span<Syntax const>" :default "{}"))
       (method this_member_call "Expr"
         (parameter member "StringId")
-        (parameter arguments "std::initializer_list<Expr>"))
+        (parameter arguments "std::initializer_list<Syntax>"))
+      (method pack_expansion "Syntax" (parameter pattern "Syntax"))
+      (method capture "Syntax"
+        (parameter name "std::string_view")
+        (parameter by_reference "bool" :default "false"))
       (method unary "Expr"
         (parameter operation "UnaryOperator")
         (parameter operand "Expr"))
+      (method address_of "Expr" (parameter symbol "Syntax"))
       (method subscript "Expr"
         (parameter object "Expr")
         (parameter index "Expr"))
@@ -509,24 +571,24 @@
         (parameter left "Expr")
         (parameter right "Expr")
         (parameter line_break_after "bool" :default "false"))
-      (method type_reference "Expr"
+      (method type_reference "Syntax"
         (parameter type "CppTypeId"))
       (method decltype_type "CppTypeId"
         (parameter operand "Expr"))
       (method template_type "CppTypeId"
         (parameter primary "CppTypeId")
-        (parameter arguments "std::span<Expr const>"))
+        (parameter arguments "std::span<Syntax const>"))
       (method template_type "CppTypeId"
         (parameter primary "CppTypeId")
-        (parameter arguments "std::initializer_list<Expr>"))
+        (parameter arguments "std::initializer_list<Syntax>"))
       (method parenthesized "Expr"
         (parameter expr "Expr"))
-      (method template_id "Expr"
-        (parameter callee "Expr")
-        (parameter arguments "std::span<Expr const>"))
-      (method template_id "Expr"
-        (parameter callee "Expr")
-        (parameter arguments "std::initializer_list<Expr>"))
+      (method template_id "Syntax"
+        (parameter callee "Syntax")
+        (parameter arguments "std::span<Syntax const>"))
+      (method template_id "Syntax"
+        (parameter callee "Syntax")
+        (parameter arguments "std::initializer_list<Syntax>"))
       (method static_cast_expr "Expr"
         (parameter type "CppTypeId")
         (parameter operand "Expr"))
@@ -539,15 +601,19 @@
         (parameter when_false "Expr"))
       (method sizeof_type "Expr"
         (parameter type "CppTypeId"))
+      (method init_list "Syntax"
+        (parameter elements "std::span<Syntax const>"))
       (method init_list "Expr"
-        (parameter elements "std::span<Expr const>")
-        (parameter type "std::optional<CppTypeId>" :default "{}"))
-      (method designated_initializer "Expr"
+        (parameter elements "std::span<Syntax const>")
+        (parameter type "CppTypeId"))
+      (method designated_initializer "Syntax"
         (parameter member "StringId")
-        (parameter value "Expr"))
+        (parameter value "Syntax"))
+      (method init_list "Syntax"
+        (parameter elements "std::initializer_list<Syntax>"))
       (method init_list "Expr"
-        (parameter elements "std::initializer_list<Expr>")
-        (parameter type "std::optional<CppTypeId>" :default "{}"))
+        (parameter elements "std::initializer_list<Syntax>")
+        (parameter type "CppTypeId"))
       (method set_scope_bindings "void"
         (parameter node "NodeId")
         (parameter names "std::span<StringId const>")))))

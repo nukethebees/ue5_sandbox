@@ -47,7 +47,7 @@ class FacadeLowering : public CppIRBuilder {
         auto const reference_target{facades.reference_target[row]};
         auto const target_name{facades.target_member_name[row]};
         FunctionDefinition const binding{
-            .name = named(reference_target ? facades.name[row] : store_text("bind")),
+            .name = this->name(reference_target ? facades.name[row] : store_text("bind")),
             .return_type = reference_target ? CppTypeId{} : std_types().void_,
             .kind = reference_target ? FunctionKind::constructor : FunctionKind::ordinary,
             .parameters = {parameter(decorate_type(target_type, "", "&"), "new_target")},
@@ -66,7 +66,7 @@ class FacadeLowering : public CppIRBuilder {
         for (auto const method : decls.items(facades.methods[row])) {
             auto const method_row{method_schemas.index(method)};
             std::vector<FunctionParameterId> parameters;
-            std::vector<Expr> arguments;
+            std::vector<Syntax> arguments;
             for (auto const parameter_id : decls.items(method_schemas.parameters[method_row])) {
                 auto const parameter_row{parameter_schemas.index(parameter_id)};
                 auto type{ctx.resolve(parameter_schemas.type[parameter_row])};
@@ -76,20 +76,19 @@ class FacadeLowering : public CppIRBuilder {
                     type = decorate_type(type, "", "...");
                 }
                 auto const name{parameter_schemas.name[parameter_row]};
-                parameters.push_back(
-                    parameter(type,
-                              name,
-                              parameter_schemas.default_value[parameter_row]
-                                  ? raw_expr(*parameter_schemas.default_value[parameter_row])
-                                  : Expr{}));
+                parameters.push_back(parameter(
+                    type,
+                    name,
+                    parameter_schemas.default_value[parameter_row]
+                        ? authored_fragment(*parameter_schemas.default_value[parameter_row])
+                        : Syntax{}));
                 auto argument{named(name)};
                 if (forwarding) {
                     argument = template_call(type_reference(std_types().forward),
                                              {type_reference(decltype_type(argument))},
                                              {argument});
                 }
-                arguments.push_back(is_pack ? unary(UnaryOperator::pack_expansion, argument)
-                                            : argument);
+                arguments.push_back(is_pack ? pack_expansion(argument) : Syntax{argument});
             }
             std::vector<TypeDependencyId> validation_dependencies;
             for (auto const key : decls.items(facades.validation_dependencies[row])) {
@@ -102,15 +101,18 @@ class FacadeLowering : public CppIRBuilder {
             auto const target{named(target_name)};
             auto const method_name{
                 method_schemas.target_name[method_row].value_or(method_schemas.name[method_row])};
-            auto member{target};
+            auto object{target};
+            auto path{ctx.text(method_name)};
             bool pointer{!reference_target};
-            for (auto const component : ctx.text(method_name) | std::views::split('.')) {
-                auto const name{std::string_view{component.begin(), component.end()}};
-                member =
-                    pointer ? pointer_member_access(member, name) : member_access(member, name);
+            for (auto separator{path.find('.')}; separator != std::string::npos;
+                 separator = path.find('.')) {
+                auto const component{path.substr(0, separator)};
+                object = pointer ? pointer_member_access(object, component)
+                                 : member_access(object, component);
+                path.erase(0, separator + 1);
                 pointer = false;
             }
-            auto const call_expr{call(member, std::move(arguments))};
+            auto const call_expr{call(member_name(object, path, pointer), arguments)};
             auto const return_type{ctx.resolve(method_schemas.return_type[method_row])};
             if (type_spelling(return_type) == "void") {
                 body.add(expr_stmt(call_expr, std::move(validation_dependencies)));
@@ -118,7 +120,7 @@ class FacadeLowering : public CppIRBuilder {
                 body.add(return_stmt(call_expr, std::move(validation_dependencies)));
             }
             FunctionDefinition const function{
-                .name = named(method_schemas.name[method_row]),
+                .name = this->name(method_schemas.name[method_row]),
                 .return_type = return_type,
                 .parameters = std::move(parameters),
                 .implementation = {.kind = FunctionImplementationKind::body, .body = body.build()},
@@ -178,10 +180,10 @@ class FacadeLowering : public CppIRBuilder {
                             ? instance_member(decorate_type(target_type, "", "&"), target_name)
                             : instance_member(decorate_type(target_type, "", "*"),
                                               target_name,
-                                              literal("nullptr")));
+                                              literal(nullptr)));
 
         auto const declaration_node{
-            add_record({.name = named(facades.name[row]),
+            add_record({.name = this->name(facades.name[row]),
                         .kind = RecordKind::class_,
                         .children = class_nodes.build(),
                         .export_specifier = facades.export_specifier[row]})};

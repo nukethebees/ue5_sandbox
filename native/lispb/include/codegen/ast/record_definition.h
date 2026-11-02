@@ -1,9 +1,9 @@
 #pragma once
 
-#include <codegen/ast/expr.h>
 #include <codegen/ast/indices.h>
 #include <codegen/ast/node_id.h>
 #include <codegen/ast/record_kind.h>
+#include <codegen/ast/syntax.h>
 #include <codegen/ast/template_id.h>
 #include <lispb/indices.h>
 
@@ -13,7 +13,7 @@
 namespace lispb::codegen {
 
 struct RecordDefinition {
-    Expr name{};
+    Syntax name{};
     RecordKind kind{RecordKind::struct_};
     std::vector<NodeId> children;
     std::vector<CppTypeId> bases;

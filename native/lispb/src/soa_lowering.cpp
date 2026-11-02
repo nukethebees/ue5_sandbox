@@ -86,7 +86,8 @@ class SoaLowering : public CppIRBuilder {
                 term =
                     binary(BinaryOperator::multiply,
                            term,
-                           raw_expr(dimensions.extent[dimensions.index(selected[extent_index])]));
+                           raw_expr(std_types().size_t,
+                                    dimensions.extent[dimensions.index(selected[extent_index])]));
             }
             result = index == 0 ? term : binary(BinaryOperator::add, result, term);
         }
@@ -152,7 +153,7 @@ class SoaLowering : public CppIRBuilder {
                                                dimensions.index_name[dimensions.index(dimension)]));
             }
             FunctionDefinition const function{
-                .name = named(name + "_field"),
+                .name = this->name(name + "_field"),
                 .return_type = enum_type,
                 .return_syntax = ReturnSyntax::trailing,
                 .parameters = {parameters.begin(), parameters.end()},
@@ -172,8 +173,8 @@ class SoaLowering : public CppIRBuilder {
             children.new_lines(1).add(header_function(add_function(function)));
         }
 
-        auto const mask{
-            add_record({.name = named(mask_name), .children = children.build(), .bases = {base}})};
+        auto const mask{add_record(
+            {.name = this->name(mask_name), .children = children.build(), .bases = {base}})};
 
         auto const mask_type{named_type(ctx.text(mask_name))};
         auto result{node_list()};
@@ -183,8 +184,9 @@ class SoaLowering : public CppIRBuilder {
             .add(static_assertion(binary(BinaryOperator::equal,
                                          sizeof_type(mask_type),
                                          sizeof_type(nested_type(mask_type, "storage_type")))))
-            .add(static_assertion(
-                type_reference(template_type(std_types().is_trivially_copyable_v, {mask_type}))));
+            .add(static_assertion(reference(
+                type_reference(template_type(std_types().is_trivially_copyable_v, {mask_type})),
+                std_types().bool_)));
         return result.build();
     }
 };

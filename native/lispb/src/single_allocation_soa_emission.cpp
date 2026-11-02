@@ -91,7 +91,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                 "layout_bytes"}) {
             inherited.push_back(store_text(name));
         }
-        auto const layout{add_record({.name = named(store_text("Layout")),
+        auto const layout{add_record({.name = this->name(store_text("Layout")),
                                       .children = children.build(),
                                       .bases = {base},
                                       .scope_bindings = inherited})};
@@ -143,7 +143,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                 source.append(api.source).new_lines(2);
             }
             auto const record_id{add_record(
-                {.name = named(store_text(name)),
+                {.name = this->name(store_text(name)),
                  .children = children.build(),
                  .bases = {base},
                  .export_specifier =
@@ -203,13 +203,13 @@ class SingleAllocationEmitter : public CppIRBuilder {
                 .new_lines(1);
         }
         FunctionDefinition const bytes{
-            .name = named("layout_bytes"),
+            .name = this->name("layout_bytes"),
             .return_type = named_type("byte_size_type"),
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {parameter("byte_size_type", "blocks")},
             .implementation = {.kind = FunctionImplementationKind::body,
                                .body = {return_stmt(
-                                   call(scope_member(named_type("Layout"), "layout_bytes"),
+                                   call(scope_name(named_type("Layout"), "layout_bytes"),
                                         {named("blocks")}))}},
             .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
             .receiver = FunctionReceiver::static_,
@@ -241,7 +241,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                  store_text("resource_"),
                                  init_list({})));
         auto const created_record{add_record(
-            {.name = named(owner_name),
+            {.name = this->name(owner_name),
              .children = children.build(),
              .bases = {decorate_type(
                            named_type("ioj::native_soa::StorageState", NameOrigin::global),
@@ -364,10 +364,10 @@ class SingleAllocationEmitter : public CppIRBuilder {
         auto const owner_type{named_type(ctx.text(owner_name))};
         auto const copy_parameter{parameter(decorate_type(owner_type, "", " const&"))};
         auto const move_parameter{parameter(decorate_type(owner_type, "", "&&"), "other")};
-        auto const free_data{call(scope_member(named_type("Operations"), "release_storage"),
+        auto const free_data{call(scope_name(named_type("Operations"), "release_storage"),
                                   {unary(UnaryOperator::dereference, named("this"))})};
         FunctionDefinition const default_constructor{
-            .name = named(owner_name),
+            .name = this->name(owner_name),
             .kind = FunctionKind::constructor,
             .implementation = {.kind = FunctionImplementationKind::body,
                                .body = {},
@@ -378,7 +378,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
             .flags = {.is_inline = true, .define_in_header = true}};
         FunctionDefinition const resource_constructor{
-            .name = named(owner_name),
+            .name = this->name(owner_name),
             .kind = FunctionKind::explicit_constructor,
             .parameters = {parameter(decorate_type(std_types().pmr.memory_resource, "", "&"),
                                      "resource")},
@@ -390,7 +390,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
             .flags = {.is_inline = true, .define_in_header = true}};
         FunctionDefinition const resource_accessor{
-            .name = named("memory_resource"),
+            .name = this->name("memory_resource"),
             .return_type = decorate_type(std_types().pmr.memory_resource, "", "*"),
             .return_syntax = ReturnSyntax::trailing,
             .implementation = {.kind = FunctionImplementationKind::body,
@@ -400,44 +400,44 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .flags = {.is_inline = true, .define_in_header = true},
             .formatting = {.body_layout = FunctionBodyLayout::compact}};
         FunctionDefinition const destructor_value{
-            .name = named("~" + std::string{text_view(owner_name)}),
+            .name = this->name("~" + std::string{text_view(owner_name)}),
             .kind = FunctionKind::destructor,
             .implementation = {.kind = FunctionImplementationKind::body,
                                .body = {expr_stmt(free_data)}},
             .flags = {.is_inline = true, .define_in_header = true},
             .formatting = {.body_layout = FunctionBodyLayout::compact}};
         FunctionDefinition const copy_constructor{
-            .name = named(owner_name),
+            .name = this->name(owner_name),
             .kind = FunctionKind::constructor,
             .parameters = {copy_parameter},
             .implementation = {.kind = FunctionImplementationKind::deleted}};
         FunctionDefinition const copy_assignment{
-            .name = named("operator="),
+            .name = this->name("operator="),
             .return_type = decorate_type(owner_type, "", "&"),
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {copy_parameter},
             .implementation = {.kind = FunctionImplementationKind::deleted}};
         FunctionDefinition const move_constructor{
-            .name = named(owner_name),
+            .name = this->name(owner_name),
             .kind = FunctionKind::constructor,
             .parameters = {move_parameter},
             .implementation =
                 {.kind = FunctionImplementationKind::body,
                  .body = {expr_stmt(
-                     call(scope_member(named_type("Operations"), "take_storage"),
+                     call(scope_name(named_type("Operations"), "take_storage"),
                           {unary(UnaryOperator::dereference, named("this")), named("other")}))},
                  .initializers = {member_initializer(store_text("resource_"),
                                                      member_access(named("other"), "resource_"))}},
             .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
             .flags = {.is_inline = true, .define_in_header = true}};
         FunctionDefinition const move_assignment{
-            .name = named("operator="),
+            .name = this->name("operator="),
             .return_type = decorate_type(owner_type, "", "&"),
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {move_parameter},
             .implementation = {.kind = FunctionImplementationKind::body,
                                .body = {return_stmt(
-                                   call(scope_member(named_type("Operations"), "move_assign"),
+                                   call(scope_name(named_type("Operations"), "move_assign"),
                                         {unary(UnaryOperator::dereference, named("this")),
                                          named("other")}))}},
             .flags = {.is_inline = true, .define_in_header = true}};
@@ -477,17 +477,17 @@ class SingleAllocationEmitter : public CppIRBuilder {
                 init_list({})));
         }
 
-        std::vector<Expr> arguments;
+        std::vector<Syntax> arguments;
         for (auto const column : lowering_storage().items(model_store.columns[model_store_index])) {
             arguments.push_back(member_access(
                 named("self"), column_store.flattened_identifier[column_store.index(column)]));
         }
         FunctionDefinition const visit{
-            .name = named("with_columns"),
+            .name = this->name("with_columns"),
             .return_type = intern_type("decltype(auto)"),
             .parameters = {parameter("Self&", "self"), parameter("Func&&", "func")},
             .implementation = {.kind = FunctionImplementationKind::body,
-                               .body = {return_stmt(call(named("func"), arguments))}},
+                               .body = {return_stmt(call(this->name("func"), arguments))}},
             .receiver = FunctionReceiver::static_,
             .flags = {.is_inline = true, .define_in_header = true},
             .template_declaration =
@@ -495,7 +495,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                       type_template_parameter(store_text("Func"))})};
         children.new_lines(1).add(header_function(add_function(visit)));
 
-        auto const created_record{add_record({.name = named(store_text("DataPointers")),
+        auto const created_record{add_record({.name = this->name(store_text("DataPointers")),
                                               .children = children.build(),
                                               .template_declaration = template_declaration(
                                                   {type_template_parameter(store_text("Byte"))})})};
@@ -525,14 +525,14 @@ class SingleAllocationEmitter : public CppIRBuilder {
         auto const& columns{lowering_storage().single_allocation_columns};
         auto body{node_list()};
         std::map<LoweringPathId, StringId> groups;
-        std::vector<Expr> arguments;
+        std::vector<Syntax> arguments;
         for (auto const column : lowering_storage().items(models.columns[models.index(model)])) {
             arguments.push_back(column_access(
                 ctx, columns.member_path[columns.index(column)], "source", groups, body));
         }
-        body.add(return_stmt(call(named("func"), arguments)));
+        body.add(return_stmt(call(this->name("func"), arguments)));
         FunctionDefinition const function{
-            .name = named("with_columns"),
+            .name = this->name("with_columns"),
             .return_type = intern_type("auto"),
             .parameters = {parameter("Columns const&", "source"), parameter("Func&&", "func")},
             .implementation = {.kind = FunctionImplementationKind::body, .body = body.build()},
@@ -541,7 +541,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .template_declaration =
                 template_declaration({type_template_parameter(store_text("Columns")),
                                       type_template_parameter(store_text("Func"))})};
-        return add_record({.name = named(store_text("Schema")),
+        return add_record({.name = this->name(store_text("Schema")),
                            .children = {header_function(add_function(function))}});
     }
     auto shared_view_type(LoweringContext& ctx, DeclarationHandle schema, bool resolved)
@@ -565,9 +565,9 @@ class SingleAllocationEmitter : public CppIRBuilder {
         auto const selected{lowering_storage().items(models.columns[model_row])};
         auto const strided{is_strided_schema(ctx, schema)};
         auto children{node_list()};
-        auto accessor = [&](std::string_view name, Expr value, CppTypeId type = {}) {
+        auto accessor = [&](std::string_view name, Syntax value, CppTypeId type = {}) {
             FunctionDefinition const function{
-                .name = named(name),
+                .name = this->name(name),
                 .return_type = type.value != 0 ? type : intern_type("auto"),
                 .return_syntax = type.value != 0 ? ReturnSyntax::trailing : ReturnSyntax::direct,
                 .implementation = {.kind = FunctionImplementationKind::body,
@@ -622,7 +622,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                    layout_column(ctx, nested_columns[1])}),
                              type);
                 } else {
-                    std::vector<Expr> pointers;
+                    std::vector<Syntax> pointers;
                     for (auto const column : nested_columns) {
                         pointers.push_back(
                             resolved
@@ -679,7 +679,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                named_type(scope + "::Schema", NameOrigin::global))}));
 
         FunctionDefinition const conversion{
-            .name = named(store_text(implementation)),
+            .name = this->name(store_text(implementation)),
             .kind = FunctionKind::constructor,
             .parameters = {parameter(
                 decorate_type(template_type(named_type(implementation), {intern_type("false")}),
@@ -698,7 +698,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
 
         children.append(view_accessor_nodes(ctx, model, true));
         auto const record_id{
-            add_record({.name = named(store_text(implementation)),
+            add_record({.name = this->name(store_text(implementation)),
                         .children = children.build(),
                         .bases = {base},
                         .template_declaration = template_declaration(
@@ -725,8 +725,9 @@ class SingleAllocationEmitter : public CppIRBuilder {
             if (!api.source.empty()) {
                 source.append(api.source).new_lines(1);
             }
-            auto const type{add_record(
-                {.name = named(store_text(name)), .children = wrapper.build(), .bases = {base}})};
+            auto const type{add_record({.name = this->name(store_text(name)),
+                                        .children = wrapper.build(),
+                                        .bases = {base}})};
             result.add(type).new_lines(1);
         }
         return result.build();
@@ -770,12 +771,12 @@ class SingleAllocationEmitter : public CppIRBuilder {
                 store_text("State"),
                 template_type(std_types().conditional_t,
                               {named_type("Const"), decorate_type(state, "", " const"), state})));
-            std::vector<Expr> arguments{named("state"), named("offset"), named("count")};
+            std::vector<Syntax> arguments{named("state"), named("offset"), named("count")};
             for (auto const column : selected.first(2)) {
                 arguments.push_back(layout_column(ctx, column));
             }
             FunctionDefinition const constructor{
-                .name = named(store_text("ViewImpl")),
+                .name = this->name(store_text("ViewImpl")),
                 .kind = FunctionKind::constructor,
                 .parameters = {parameter("State*", "state"),
                                parameter(std_types().u32, "offset"),
@@ -795,7 +796,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
             children.new_lines(1).add(header_function(add_function(constructor)));
         }
         FunctionDefinition const conversion{
-            .name = named(store_text("ViewImpl")),
+            .name = this->name(store_text("ViewImpl")),
             .kind = FunctionKind::constructor,
             .parameters = {parameter(
                 decorate_type(
@@ -812,7 +813,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
         children.new_lines(1).add(header_function(add_function(conversion)));
         children.append(view_accessor_nodes(ctx, model, false));
         auto const record_id{
-            add_record({.name = named(store_text("ViewImpl")),
+            add_record({.name = this->name(store_text("ViewImpl")),
                         .children = children.build(),
                         .bases = {base},
                         .template_declaration = template_declaration(
@@ -826,7 +827,8 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                    : named_type("ioj::soa_storage_detail::validate_compact_view",
                                                 NameOrigin::global)),
             {type_reference(named_type(name))})};
-        return {static_assertion(strided ? validation : call(validation))};
+        return {static_assertion(strided ? reference(validation, std_types().bool_)
+                                         : call(validation))};
     }
     auto storage_implementation_nodes(LoweringContext& ctx, SingleAllocationModelId model)
         -> Nodes {

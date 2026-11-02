@@ -124,8 +124,9 @@ class CppTypes {
   private:
     friend class CppIR;
     friend class CppRenderer;
-    auto decltype_type(Expr operand, std::span<TypeDependencyId const> dependencies) -> CppTypeId;
-    auto template_type(Expr expression, std::span<TypeDependencyId const> dependencies)
+    auto decltype_type(Syntax operand, std::span<TypeDependencyId const> dependencies) -> CppTypeId;
+    auto closure_type(Expr lambda, std::span<TypeDependencyId const> dependencies) -> CppTypeId;
+    auto template_type(Syntax expression, std::span<TypeDependencyId const> dependencies)
         -> CppTypeId;
     void initialise_standard_types();
     auto append(StringId spelling,

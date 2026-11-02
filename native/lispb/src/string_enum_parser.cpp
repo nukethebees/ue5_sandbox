@@ -39,7 +39,7 @@ class StringEnumParserLowering : public CppIRBuilder {
                                   bool const indexed) -> NodeId {
         auto const input{named(parameter_name)};
         FunctionDefinition const function{
-            .name = named(function_name),
+            .name = this->name(function_name),
             .return_type = template_type(std_types().optional, {named_type(enum_type)}),
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {parameter(decorate_type(std_types().string_view, "", " const"),
@@ -56,14 +56,14 @@ class StringEnumParserLowering : public CppIRBuilder {
     auto character_literal(unsigned char const character) -> Expr {
         auto const value{static_cast<char>(character)};
         if (ioj::needs_char_literal_escape(value)) {
-            return literal(std::format("'\\{}'", value));
+            return literal(std_types().char_, std::format("'\\{}'", value));
         }
         if (ioj::isprint(value)) {
-            return literal(std::format("'{}'", value));
+            return literal(std_types().char_, std::format("'{}'", value));
         }
 
         // Keep the byte value positive regardless of whether plain char is signed.
-        return literal(std::format("U'\\x{:02x}'", character));
+        return literal(intern_type("char32_t"), std::format("U'\\x{:02x}'", character));
     }
     auto common_prefix(Entries const& entries) -> std::string_view {
         auto prefix{entries.front().key};
@@ -175,7 +175,7 @@ class StringEnumParserLowering : public CppIRBuilder {
                                       NameOrigin::global,
                                       {dependency("ioj::try_parse_enum", "ioj/parse_enum.h")})),
             {type_reference(named_type(enum_type))})};
-        std::vector<Expr> names;
+        std::vector<Syntax> names;
         names.reserve(entries.size());
         for (auto const& entry : entries) {
             names.push_back(string_literal(entry.key));
