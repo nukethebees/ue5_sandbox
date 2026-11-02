@@ -8,7 +8,6 @@
 #include "soa_receiver.h"
 
 #include <codegen/ast/cpp_ir.h>
-#include <codegen/ast/cpp_renderer.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/function_body_layout.h>
 #include <codegen/ast/function_receiver.h>
@@ -264,17 +263,16 @@ auto compact_row_api(LoweringContext& context,
 auto expand_columns(LoweringContext& context,
                     std::string_view const body,
                     DeclarationHandle schema,
-                    SoaReceiver const receiver) -> std::string {
-    std::string result;
-    result.reserve(body.size());
+                    SoaReceiver const receiver) -> std::vector<Expr> {
+    auto& ir{context.ir};
+    std::vector<Expr> result;
     std::size_t copied{};
     scan_soa_columns(body,
                      context.declarations.strings().view(context.declarations.soas.name[schema]),
                      [&](std::size_t const begin,
                          std::size_t const end,
                          std::span<std::string const> const path) {
-                         result.append(body.substr(copied, begin - copied));
-                         auto& ir{context.ir};
+                         result.push_back(ir.raw_expr(body.substr(copied, begin - copied)));
                          auto const owner{receiver == SoaReceiver::owner};
                          auto const access{logical_column_access(context,
                                                                  schema,
@@ -282,10 +280,10 @@ auto expand_columns(LoweringContext& context,
                                                                  owner ? ir.call(ir.named("view"))
                                                                        : ir.named("this"),
                                                                  !owner)};
-                         result += CppRenderer{ir}.render(access);
+                         result.push_back(access);
                          copied = end;
                      });
-    result.append(body.substr(copied));
+    result.push_back(ir.raw_expr(body.substr(copied)));
     return result;
 }
 }

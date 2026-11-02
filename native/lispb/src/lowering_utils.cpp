@@ -186,7 +186,7 @@ auto column_apply_array_pairs_function(CppIR& ir, std::vector<std::string> const
 
 auto lower_schema_function(LoweringContext& context,
                            FunctionSchemaId schema,
-                           std::optional<std::string_view> body) -> FunctionId {
+                           std::optional<std::span<Expr const>> body) -> FunctionId {
     auto& ir{context.ir};
     auto const& decls{context.declarations};
     auto const& functions{decls.functions};
@@ -209,7 +209,7 @@ auto lower_schema_function(LoweringContext& context,
     ir.set_function_parameters(created_function, std::move(parameters));
     ir.set_function_body(
         created_function,
-        {body ? ir.raw(*body, dependencies)
+        {body ? ir.raw_parts(*body, dependencies)
               : ir.raw_lines(decls.items(functions.body_lines[schema]), dependencies)});
     if (trailing) {
         ir.set_function_return_type(created_function, return_type, ReturnSyntax::trailing);
