@@ -13,6 +13,7 @@ enum class ExprKind : std::uint8_t {
     member_access,
     subscript,
     binary,
+    conditional,
     unary,
     static_cast_,
     sizeof_type,

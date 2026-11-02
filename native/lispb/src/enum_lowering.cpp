@@ -196,8 +196,12 @@ auto enum_strings_specialization(CppIR& ir,
     auto const count{offsets.size()};
     for (std::size_t i{}; i < count; ++i) {
         if (wide && offsets[i] != wide_offsets[i]) {
-            offset_values.push_back(ir.raw_expr(
-                std::format("(sizeof(TCHAR) == 2 ? {} : {})", wide_offsets[i], offsets[i])));
+            offset_values.push_back(
+                ir.conditional(ir.binary(BinaryOperator::equal,
+                                         ir.sizeof_type(ir.types.named("TCHAR")),
+                                         ir.literal("2")),
+                               ir.literal(std::to_string(wide_offsets[i])),
+                               ir.literal(std::to_string(offsets[i]))));
         } else {
             offset_values.push_back(ir.literal(std::to_string(offsets[i])));
         }

@@ -538,6 +538,7 @@ auto CppRenderer::expression(Expr expr, RenderContext const& context) -> std::st
 auto CppRenderer::expr_precedence(Expr expr) -> int {
     switch (expr.kind()) {
         case ExprKind::raw:
+        case ExprKind::conditional:
             return 0;
         case ExprKind::binary:
             return expr_detail::binary_precedence(ir_.binary_exprs_.operation[expr.index()]);
@@ -645,6 +646,13 @@ void CppRenderer::append_expr(
             output += ">(";
             append_expr(output, ir_.cast_exprs_.operand[index], context, 1);
             output += ')';
+            break;
+        case ExprKind::conditional:
+            append_expr(output, ir_.conditional_exprs_.condition[index], context, 1);
+            output += " ? ";
+            append_expr(output, ir_.conditional_exprs_.when_true[index], context);
+            output += " : ";
+            append_expr(output, ir_.conditional_exprs_.when_false[index], context);
             break;
         case ExprKind::sizeof_type:
             output += "sizeof(";

@@ -746,6 +746,8 @@ void CppIR::clear() {
           binary_exprs_.line_break_after);
     clear(unary_exprs_.operation, unary_exprs_.operand);
     clear(cast_exprs_.type, cast_exprs_.operand);
+    clear(
+        conditional_exprs_.condition, conditional_exprs_.when_true, conditional_exprs_.when_false);
     clear(sizeof_exprs_.type);
     clear(initializer_exprs_.type, initializer_exprs_.elements);
     clear(raw_exprs_.text, raw_exprs_.dependencies);
@@ -866,6 +868,14 @@ auto CppIR::binary(BinaryOperator operation, Expr left, Expr right, bool line_br
     binary_exprs_.left.push_back(left);
     binary_exprs_.right.push_back(right);
     binary_exprs_.line_break_after.push_back(line_break_after);
+    return result;
+}
+auto CppIR::conditional(Expr condition, Expr when_true, Expr when_false) -> Expr {
+    auto const result{
+        expr_detail::handle(ExprKind::conditional, conditional_exprs_.condition.size())};
+    conditional_exprs_.condition.push_back(condition);
+    conditional_exprs_.when_true.push_back(when_true);
+    conditional_exprs_.when_false.push_back(when_false);
     return result;
 }
 auto CppIR::static_cast_expr(CppTypeId type, Expr operand) -> Expr {
@@ -1250,6 +1260,11 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
         case ExprKind::static_cast_:
             append(types.dependencies(cast_exprs_.type[index]));
             collect_dependencies(cast_exprs_.operand[index], result);
+            break;
+        case ExprKind::conditional:
+            collect_dependencies(conditional_exprs_.condition[index], result);
+            collect_dependencies(conditional_exprs_.when_true[index], result);
+            collect_dependencies(conditional_exprs_.when_false[index], result);
             break;
         case ExprKind::sizeof_type:
             append(types.dependencies(sizeof_exprs_.type[index]));

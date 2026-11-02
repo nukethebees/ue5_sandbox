@@ -19,6 +19,7 @@
 #include <codegen/ast/ir/blocks.h>
 #include <codegen/ast/ir/calls.h>
 #include <codegen/ast/ir/casts.h>
+#include <codegen/ast/ir/conditional_exprs.h>
 #include <codegen/ast/ir/constexpr_members.h>
 #include <codegen/ast/ir/enumerators.h>
 #include <codegen/ast/ir/enums.h>
@@ -377,6 +378,7 @@ class CppIR {
         return template_id(callee, std::span<Expr const>{arguments});
     }
     auto static_cast_expr(CppTypeId type, Expr operand) -> Expr;
+    auto conditional(Expr condition, Expr when_true, Expr when_false) -> Expr;
     auto sizeof_type(CppTypeId type) -> Expr;
     auto init_list(std::span<Expr const> elements, std::optional<CppTypeId> type = {}) -> Expr;
     auto init_list(std::initializer_list<Expr> elements, std::optional<CppTypeId> type = {})
@@ -462,6 +464,7 @@ class CppIR {
     ir::BinaryExprs binary_exprs_;
     ir::UnaryExprs unary_exprs_;
     ir::Casts cast_exprs_;
+    ir::ConditionalExprs conditional_exprs_;
     ir::SizeofExprs sizeof_exprs_;
     ir::InitializerExprs initializer_exprs_;
     ir::RawExprs raw_exprs_;
