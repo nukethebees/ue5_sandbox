@@ -141,13 +141,13 @@ class SoaApiLowering : public CppIRBuilder {
                     }
                     auto const index{named(index_name)};
                     auto append_body{node_list()};
-                    append_body.add(variable("auto const", index_name, call(this_member("num"))))
-                        .add(expr_stmt(call(this_member("add_defaulted"), {literal("1")})));
+                    append_body.add(variable("auto const", index_name, this_member_call("num")))
+                        .add(expr_stmt(this_member_call("add_defaulted", {literal("1")})));
                     auto const count{columns.size()};
                     for (std::size_t column{}; column < count; ++column) {
                         append_body.add(
-                            assignment(subscript(call(member_access(call(this_member("view")),
-                                                                    ctx.text(columns[column]))),
+                            assignment(subscript(member_call(this_member_call("view"),
+                                                             ctx.text(columns[column])),
                                                  index),
                                        named(parameter_schemas.name[parameters[column]])));
                     }
@@ -283,8 +283,8 @@ class SoaApiLowering : public CppIRBuilder {
                     .parameters = {parameter(decorate_type(intern_type("auto"), "this ", "&"),
                                              "self")},
                     .implementation = {.kind = FunctionImplementationKind::body,
-                                       .body = {return_stmt(call(member_access(
-                                           call(member_access(named("self"), "view")), name)))}},
+                                       .body = {return_stmt(
+                                           member_call(member_call(named("self"), "view"), name))}},
                     .flags = {.define_in_header = true},
                     .formatting = {.body_layout = FunctionBodyLayout::compact}};
                 result.add(header_function(add_function(function))).new_lines(1);
@@ -374,9 +374,9 @@ class SoaApiLowering : public CppIRBuilder {
                 auto const visibility{logical_column_access(
                     ctx, schema, column, owner ? call(named("view")) : named("this"), !owner)};
                 logical_assignments.add(
-                    nested ? expr_stmt(call(member_access(visibility, "set"),
-                                            {named("index"), named(name)}))
-                           : assignment(subscript(visibility, named("index")), named(name)));
+                    nested
+                        ? expr_stmt(member_call(visibility, "set", {named("index"), named(name)}))
+                        : assignment(subscript(visibility, named("index")), named(name)));
             }
         };
         collect_logical(collect_logical, schema, {});

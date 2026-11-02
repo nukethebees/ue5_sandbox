@@ -417,7 +417,7 @@ class EnumLowering : public CppIRBuilder {
                 {type_reference(named_type("ioj::" + std::string{category}, NameOrigin::global))}),
             {named("value")})};
         return lookup_function(
-            ctx, schema, qualified, suffix, {return_stmt(call(member_access(lookup, "data")))});
+            ctx, schema, qualified, suffix, {return_stmt(member_call(lookup, "data"))});
     }
     auto serialized_parser(LoweringContext& ctx,
                            ModuleSettingsId settings,

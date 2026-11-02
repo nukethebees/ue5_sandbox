@@ -122,7 +122,7 @@ TEST_F(ExprTest, PreservesBitwiseAndShiftPrecedence) {
                               ir.binary(BinaryOperator::add, ir.named("index"), ir.literal("1"))),
                     "(value | bit(field)) << index + 1");
     expect_rendered(ir.unary(UnaryOperator::bitwise_not, combined), "~(value | bit(field))");
-    expect_rendered(ir.call(ir.member_access(combined, "test")), "(value | bit(field)).test()");
+    expect_rendered(ir.member_call(combined, "test"), "(value | bit(field)).test()");
 }
 
 TEST_F(AstTest, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
@@ -207,11 +207,11 @@ TEST_F(ExprTest, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
     auto const other_values{ir.member_access(ir.named("other"), "values")};
     auto const element{ir.subscript(other_values, ir.named("index"))};
     expect_rendered(element, "other.values[index]");
-    expect_rendered(ir.call(ir.member_access(element, "size")), "other.values[index].size()");
+    expect_rendered(ir.member_call(element, "size"), "other.values[index].size()");
     expect_rendered(ir.subscript(ir.call(ir.named("get_values")), ir.named("index")),
                     "get_values()[index]");
     expect_rendered(
-        ir.call(ir.member_access(ir.named("values"), "set"), {ir.named("index"), ir.literal("42")}),
+        ir.member_call(ir.named("values"), "set", {ir.named("index"), ir.literal("42")}),
         "values.set(index, 42)");
     auto const difference{ir.binary(BinaryOperator::subtract, ir.named("end"), ir.named("count"))};
     expect_rendered(ir.subscript(other_values, difference), "other.values[end - count]");

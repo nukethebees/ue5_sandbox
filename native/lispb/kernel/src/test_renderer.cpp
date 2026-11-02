@@ -47,7 +47,7 @@ auto pascal_case(std::string_view const name) -> std::string {
 auto span_argument(lispb::codegen::CppIR& cpp,
                    lispb::codegen::CppTypeId const type,
                    lispb::StringId const name) -> lispb::codegen::Expr {
-    auto const data{cpp.call(cpp.member_access(cpp.named(name), "data"))};
+    auto const data{cpp.member_call(cpp.named(name), "data")};
     return cpp.init_list({data, cpp.named("Count")},
                          cpp.types.template_type(cpp.types.std.span, {type}));
 }
@@ -181,9 +181,10 @@ void append_case(lispb::codegen::CppIR& cpp,
             : document.operations.output(expanded.operation(id))};
     if (document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place) {
         body.push_back(cpp.variable(array_type, destination));
-        body.push_back(
-            cpp.expr_stmt(cpp.call(cpp.member_access(cpp.named(destination), "fill"),
-                                   {cpp.static_cast_expr(element_type, cpp.literal("-12345"))})));
+        body.push_back(cpp.expr_stmt(
+            cpp.member_call(cpp.named(destination),
+                            "fill",
+                            {cpp.static_cast_expr(element_type, cpp.literal("-12345"))})));
     }
     body.push_back(cpp.variable("auto const&",
                                 "expected",
@@ -198,13 +199,12 @@ void append_case(lispb::codegen::CppIR& cpp,
 
     auto expect_result{cpp.type_reference(cpp.types.named(std::string{suite} + "::expect_result",
                                                           lispb::codegen::NameOrigin::global))};
-    body.push_back(
-        cpp.expr_stmt(cpp.call(expect_result,
-                               {cpp.call(cpp.member_access(cpp.named(destination), "data")),
-                                cpp.call(cpp.member_access(cpp.named("expected"), "data")),
-                                cpp.call(cpp.member_access(cpp.named("before"), "data")),
-                                cpp.named("Count"),
-                                cpp.call(cpp.member_access(cpp.named(destination), "size"))})));
+    body.push_back(cpp.expr_stmt(cpp.call(expect_result,
+                                          {cpp.member_call(cpp.named(destination), "data"),
+                                           cpp.member_call(cpp.named("expected"), "data"),
+                                           cpp.member_call(cpp.named("before"), "data"),
+                                           cpp.named("Count"),
+                                           cpp.member_call(cpp.named(destination), "size")})));
 }
 
 }

@@ -215,9 +215,8 @@ class Renderer {
         auto const slots{document_.widgets.named_slots[index]};
         auto const slot_end{slots.begin + slots.count};
         for (auto slot{slots.begin}; slot < slot_end; ++slot) {
-            result = ir_.subscript(
-                ir_.call(ir_.member_access(result, document_.named_slots.names[slot])),
-                render_child(document_.named_slots.children[slot]));
+            result = ir_.subscript(ir_.member_call(result, document_.named_slots.names[slot]),
+                                   render_child(document_.named_slots.children[slot]));
         }
         return result;
     }
@@ -234,12 +233,12 @@ class Renderer {
             auto const horizontal{document_.box_slots.horizontal[slot]};
             auto const vertical_alignment{document_.box_slots.vertical[slot]};
             if (horizontal.kind != AlignmentKind::none) {
-                slot_expression = ir_.call(ir_.member_access(slot_expression, "HAlign"),
-                                           {alignment(horizontal, true)});
+                slot_expression =
+                    ir_.member_call(slot_expression, "HAlign", {alignment(horizontal, true)});
             }
             if (vertical_alignment.kind != AlignmentKind::none) {
-                slot_expression = ir_.call(ir_.member_access(slot_expression, "VAlign"),
-                                           {alignment(vertical_alignment, false)});
+                slot_expression = ir_.member_call(
+                    slot_expression, "VAlign", {alignment(vertical_alignment, false)});
             }
             result = ir_.binary(
                 lispb::codegen::BinaryOperator::add,
@@ -290,13 +289,13 @@ class Renderer {
         auto const value{document_.arguments.values[argument]};
         if (value.kind() == ValueKind::callback) {
             auto const parameter{text(document_.values.text[value.index()])};
-            return ir_.call(ir_.member_access(object, name + "_Lambda"),
-                            {forward_parameter(parameter)});
+            return ir_.member_call(object, name + "_Lambda", {forward_parameter(parameter)});
         }
         if (ioj::is_any(value.kind(), {ValueKind::method, ValueKind::uobject})) {
             auto const member{name + (value.kind() == ValueKind::uobject ? "_UObject" : "")};
-            return ir_.call(
-                ir_.member_access(object, member),
+            return ir_.member_call(
+                object,
+                member,
                 {ir_.unary(lispb::codegen::UnaryOperator::address_of, ir_.named("self_")),
                  ir_.unary(lispb::codegen::UnaryOperator::address_of,
                            ir_.type_reference(ir_.types.decorate(
@@ -304,7 +303,7 @@ class Renderer {
                                "",
                                "::" + text(document_.values.text[value.index()]))))});
         }
-        return ir_.call(ir_.member_access(object, name), {render_value(value)});
+        return ir_.member_call(object, name, {render_value(value)});
     }
 
     auto render_slot(std::uint32_t const slot, bool const vertical) -> Expr {

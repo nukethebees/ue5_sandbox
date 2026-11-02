@@ -196,7 +196,7 @@ auto raw_body(lispb::codegen::CppIR& cpp, Document const& document, ExpandedVari
 auto member_call(lispb::codegen::CppIR& cpp,
                  std::string_view const object,
                  std::string_view const member) -> lispb::codegen::Expr {
-    return cpp.call(cpp.member_access(cpp.named(object), member));
+    return cpp.member_call(cpp.named(object), member);
 }
 
 auto raw_arguments(lispb::codegen::CppIR& cpp, Document const& document, ExpandedVariantId const id)

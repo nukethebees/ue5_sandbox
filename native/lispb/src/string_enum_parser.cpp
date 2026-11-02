@@ -143,16 +143,15 @@ class StringEnumParserLowering : public CppIRBuilder {
         auto const prefix{common_prefix(all)};
         auto suffix{input};
         if (!prefix.empty()) {
-            body.add(
-                if_stmt(unary(UnaryOperator::logical_not,
-                              call(member_access(input, "starts_with"), {string_literal(prefix)})),
-                        block({return_stmt(type_reference(std_types().nullopt))})),
-                2);
-            body.add(variable("auto const",
-                              "suffix",
-                              call(member_access(input, "substr"),
-                                   {literal(std::to_string(prefix.size()))})),
+            body.add(if_stmt(unary(UnaryOperator::logical_not,
+                                   member_call(input, "starts_with", {string_literal(prefix)})),
+                             block({return_stmt(type_reference(std_types().nullopt))})),
                      2);
+            body.add(
+                variable("auto const",
+                         "suffix",
+                         member_call(input, "substr", {literal(std::to_string(prefix.size()))})),
+                2);
             suffix = named("suffix");
         }
 
@@ -167,7 +166,7 @@ class StringEnumParserLowering : public CppIRBuilder {
                             block(length_bucket(suffix, length, group, prefix.size()))));
         }
         cases.push_back(switch_case({}, block({return_stmt(type_reference(std_types().nullopt))})));
-        body.add(switch_stmt(call(member_access(suffix, "size")), cases));
+        body.add(switch_stmt(member_call(suffix, "size"), cases));
         return body.build();
     }
     auto indexed_parser_body(Expr input,

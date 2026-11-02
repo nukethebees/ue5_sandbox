@@ -479,6 +479,50 @@
         (parameter member "StringId"))
       (method this_member "Expr"
         (parameter member "std::string_view"))
+      (method member_call "Expr"
+        (parameter object "Expr")
+        (parameter member "std::string_view")
+        (parameter arguments "std::span<Expr const>" :default "{}"))
+      (method member_call "Expr"
+        (parameter object "Expr")
+        (parameter member "std::string_view")
+        (parameter arguments "std::initializer_list<Expr>"))
+      (method member_call "Expr"
+        (parameter object "Expr")
+        (parameter member "StringId")
+        (parameter arguments "std::span<Expr const>" :default "{}"))
+      (method member_call "Expr"
+        (parameter object "Expr")
+        (parameter member "StringId")
+        (parameter arguments "std::initializer_list<Expr>"))
+      (method pointer_member_call "Expr"
+        (parameter object "Expr")
+        (parameter member "std::string_view")
+        (parameter arguments "std::span<Expr const>" :default "{}"))
+      (method pointer_member_call "Expr"
+        (parameter object "Expr")
+        (parameter member "std::string_view")
+        (parameter arguments "std::initializer_list<Expr>"))
+      (method pointer_member_call "Expr"
+        (parameter object "Expr")
+        (parameter member "StringId")
+        (parameter arguments "std::span<Expr const>" :default "{}"))
+      (method pointer_member_call "Expr"
+        (parameter object "Expr")
+        (parameter member "StringId")
+        (parameter arguments "std::initializer_list<Expr>"))
+      (method this_member_call "Expr"
+        (parameter member "std::string_view")
+        (parameter arguments "std::span<Expr const>" :default "{}"))
+      (method this_member_call "Expr"
+        (parameter member "std::string_view")
+        (parameter arguments "std::initializer_list<Expr>"))
+      (method this_member_call "Expr"
+        (parameter member "StringId")
+        (parameter arguments "std::span<Expr const>" :default "{}"))
+      (method this_member_call "Expr"
+        (parameter member "StringId")
+        (parameter arguments "std::initializer_list<Expr>"))
       (method unary "Expr"
         (parameter operation "UnaryOperator")
         (parameter operand "Expr"))

@@ -140,14 +140,14 @@ class RecordReaderLowering : public CppIRBuilder {
                 {std_types().string_view, intern_type(std::to_string(named_fields.size()))})};
             decls.add(constexpr_member(array_type, store_text("field_names"), init_list(names)), 1);
             if (!required.empty()) {
-                decls.add(constexpr_member(
-                              intern_type("auto"),
-                              store_text("required"),
-                              call(template_id(named("required_fields"),
-                                               {type_reference(named_type("Field")),
-                                                call(member_access(named("field_names"), "size"))}),
-                                   {init_list(required)})),
-                          1);
+                decls.add(
+                    constexpr_member(intern_type("auto"),
+                                     store_text("required"),
+                                     call(template_id(named("required_fields"),
+                                                      {type_reference(named_type("Field")),
+                                                       member_call(named("field_names"), "size")}),
+                                          {init_list(required)})),
+                    1);
             }
         }
         auto const specialization{
@@ -341,7 +341,7 @@ class RecordReaderLowering : public CppIRBuilder {
                 unary(UnaryOperator::logical_not, named("arguments")),
                 block({expr_stmt(call(
                            type_reference(named_type("ioj::s7::append_errors", NameOrigin::global)),
-                           {errors, call(member_access(named("arguments"), "error"))})),
+                           {errors, member_call(named("arguments"), "error")})),
                        constructing ? return_stmt(unexpected) : return_stmt()})));
             std::size_t index{};
             for (auto const field : fields) {
@@ -424,7 +424,7 @@ class RecordReaderLowering : public CppIRBuilder {
             return body.build();
         }
         auto const return_errors{
-            if_stmt(unary(UnaryOperator::logical_not, call(member_access(errors, "empty"))),
+            if_stmt(unary(UnaryOperator::logical_not, member_call(errors, "empty")),
                     block({return_stmt(unexpected)}))};
         body.add(return_errors, 2);
         std::vector<Expr> initializers;

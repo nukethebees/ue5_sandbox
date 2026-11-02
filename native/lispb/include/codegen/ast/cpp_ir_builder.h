@@ -656,6 +656,58 @@ class CppIRBuilder {
 
     Expr this_member(std::string_view member) { return ir_.this_member(member); }
 
+    Expr member_call(Expr object, std::string_view member, std::span<Expr const> arguments = {}) {
+        return ir_.member_call(object, member, arguments);
+    }
+
+    Expr member_call(Expr object, std::string_view member, std::initializer_list<Expr> arguments) {
+        return ir_.member_call(object, member, arguments);
+    }
+
+    Expr member_call(Expr object, StringId member, std::span<Expr const> arguments = {}) {
+        return ir_.member_call(object, member, arguments);
+    }
+
+    Expr member_call(Expr object, StringId member, std::initializer_list<Expr> arguments) {
+        return ir_.member_call(object, member, arguments);
+    }
+
+    Expr pointer_member_call(Expr object,
+                             std::string_view member,
+                             std::span<Expr const> arguments = {}) {
+        return ir_.pointer_member_call(object, member, arguments);
+    }
+
+    Expr pointer_member_call(Expr object,
+                             std::string_view member,
+                             std::initializer_list<Expr> arguments) {
+        return ir_.pointer_member_call(object, member, arguments);
+    }
+
+    Expr pointer_member_call(Expr object, StringId member, std::span<Expr const> arguments = {}) {
+        return ir_.pointer_member_call(object, member, arguments);
+    }
+
+    Expr pointer_member_call(Expr object, StringId member, std::initializer_list<Expr> arguments) {
+        return ir_.pointer_member_call(object, member, arguments);
+    }
+
+    Expr this_member_call(std::string_view member, std::span<Expr const> arguments = {}) {
+        return ir_.this_member_call(member, arguments);
+    }
+
+    Expr this_member_call(std::string_view member, std::initializer_list<Expr> arguments) {
+        return ir_.this_member_call(member, arguments);
+    }
+
+    Expr this_member_call(StringId member, std::span<Expr const> arguments = {}) {
+        return ir_.this_member_call(member, arguments);
+    }
+
+    Expr this_member_call(StringId member, std::initializer_list<Expr> arguments) {
+        return ir_.this_member_call(member, arguments);
+    }
+
     Expr unary(UnaryOperator operation, Expr operand) { return ir_.unary(operation, operand); }
 
     Expr subscript(Expr object, Expr index) { return ir_.subscript(object, index); }

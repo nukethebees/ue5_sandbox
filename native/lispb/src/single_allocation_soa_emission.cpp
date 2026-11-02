@@ -584,13 +584,13 @@ class SingleAllocationEmitter : public CppIRBuilder {
             auto const index{std::find(selected.begin(), selected.end(), column) -
                              selected.begin()};
             if (resolved) {
-                return call(
-                    this_member("column"),
+                return this_member_call(
+                    "column",
                     {member_access(this_member("columns_"),
                                    ctx.text(columns.flattened_identifier[columns.index(column)]))});
             }
             if (strided) {
-                return call(this_member("column"), {literal(std::to_string(index))});
+                return this_member_call("column", {literal(std::to_string(index))});
             }
             return call(template_id(this_member("template column"),
                                     {type_reference(columns.type[columns.index(column)])}),
@@ -606,12 +606,11 @@ class SingleAllocationEmitter : public CppIRBuilder {
                 auto const nested_strided{is_strided_schema(ctx, nested)};
                 auto const type{shared_view_type(ctx, nested, resolved || !nested_strided)};
                 if (!resolved && nested_strided && strided) {
-                    accessor(
-                        "view_" + name,
-                        init_list({call(member_access(column_span(nested_columns.front()), "data")),
-                                   call(this_member("byte_stride")),
-                                   call(this_member("num"))}),
-                        type);
+                    accessor("view_" + name,
+                             init_list({member_call(column_span(nested_columns.front()), "data"),
+                                        this_member_call("byte_stride"),
+                                        this_member_call("num")}),
+                             type);
                 } else if (!resolved && nested_strided) {
                     auto const factory{template_id(
                         type_reference(named_type("ioj::soa_storage_detail::make_strided_view",
@@ -621,7 +620,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                              call(factory,
                                   {this_member("state_"),
                                    this_member("offset_"),
-                                   call(this_member("num")),
+                                   this_member_call("num"),
                                    layout_column(ctx, nested_columns[0]),
                                    layout_column(ctx, nested_columns[1])}),
                              type);
@@ -633,9 +632,9 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                 ? member_access(
                                       this_member("columns_"),
                                       ctx.text(columns.flattened_identifier[columns.index(column)]))
-                                : call(member_access(column_span(column), "data")));
+                                : member_call(column_span(column), "data"));
                     }
-                    pointers.push_back(call(this_member("num")));
+                    pointers.push_back(this_member_call("num"));
                     accessor("view_" + name, init_list(pointers), type);
                 }
             } else {

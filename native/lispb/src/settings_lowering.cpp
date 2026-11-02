@@ -316,10 +316,10 @@ class SettingsLowering : public CppIRBuilder {
                 .name = named(name),
                 .return_type = setting_types[index],
                 .return_syntax = ReturnSyntax::trailing,
-                .implementation =
-                    {.kind = FunctionImplementationKind::body,
-                     .body = {return_stmt(member_access(
-                         call(member_access(call(named("derived")), "settings_state")), name))}},
+                .implementation = {.kind = FunctionImplementationKind::body,
+                                   .body = {return_stmt(member_access(
+                                       member_call(call(named("derived")), "settings_state"),
+                                       name))}},
                 .receiver = FunctionReceiver::const_,
                 .flags = {.define_in_header = true}};
             members.add(header_function(add_function(getter)), 2);
@@ -331,8 +331,9 @@ class SettingsLowering : public CppIRBuilder {
                                          "value")},
                 .implementation =
                     {.kind = FunctionImplementationKind::body,
-                     .body = {expr_stmt(call(
-                         member_access(call(named("derived")), "set_setting"),
+                     .body = {expr_stmt(member_call(
+                         call(named("derived")),
+                         "set_setting",
                          {type_reference(decorate_type(
                               named_type("GameSetting"), "", "::" + title_case(ctx.text(name)))),
                           init_list({named("value")}, intern_type("GameSettingValue"))}))}},

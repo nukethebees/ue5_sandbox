@@ -307,11 +307,6 @@ class PackedEmitter : public CppIRBuilder {
     auto cast(std::string const& target, Expr source) -> Expr {
         return static_cast_expr(type(target), source);
     }
-    auto member_call(Expr target,
-                     std::string_view member,
-                     std::initializer_list<Expr> arguments = {}) -> Expr {
-        return call(member_access(target, member), arguments);
-    }
     auto all(std::span<Predicate const> predicates) -> Predicate {
         Predicate result;
         for (auto const predicate : predicates) {

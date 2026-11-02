@@ -348,6 +348,50 @@ class CppIR {
     auto this_member(std::string_view member) -> Expr {
         return pointer_member_access(named("this"), member);
     }
+    auto member_call(Expr object, std::string_view member, std::span<Expr const> arguments = {})
+        -> Expr {
+        return call(member_access(object, member), arguments);
+    }
+    auto member_call(Expr object, std::string_view member, std::initializer_list<Expr> arguments)
+        -> Expr {
+        return member_call(object, member, std::span<Expr const>{arguments});
+    }
+    auto member_call(Expr object, StringId member, std::span<Expr const> arguments = {}) -> Expr {
+        return call(member_access(object, member), arguments);
+    }
+    auto member_call(Expr object, StringId member, std::initializer_list<Expr> arguments) -> Expr {
+        return member_call(object, member, std::span<Expr const>{arguments});
+    }
+    auto pointer_member_call(Expr object,
+                             std::string_view member,
+                             std::span<Expr const> arguments = {}) -> Expr {
+        return call(pointer_member_access(object, member), arguments);
+    }
+    auto pointer_member_call(Expr object,
+                             std::string_view member,
+                             std::initializer_list<Expr> arguments) -> Expr {
+        return pointer_member_call(object, member, std::span<Expr const>{arguments});
+    }
+    auto pointer_member_call(Expr object, StringId member, std::span<Expr const> arguments = {})
+        -> Expr {
+        return call(pointer_member_access(object, member), arguments);
+    }
+    auto pointer_member_call(Expr object, StringId member, std::initializer_list<Expr> arguments)
+        -> Expr {
+        return pointer_member_call(object, member, std::span<Expr const>{arguments});
+    }
+    auto this_member_call(std::string_view member, std::span<Expr const> arguments = {}) -> Expr {
+        return pointer_member_call(named("this"), member, arguments);
+    }
+    auto this_member_call(std::string_view member, std::initializer_list<Expr> arguments) -> Expr {
+        return this_member_call(member, std::span<Expr const>{arguments});
+    }
+    auto this_member_call(StringId member, std::span<Expr const> arguments = {}) -> Expr {
+        return pointer_member_call(named("this"), member, arguments);
+    }
+    auto this_member_call(StringId member, std::initializer_list<Expr> arguments) -> Expr {
+        return this_member_call(member, std::span<Expr const>{arguments});
+    }
     auto unary(UnaryOperator operation, Expr operand) -> Expr;
     auto subscript(Expr object, Expr index) -> Expr;
     auto binary(BinaryOperator operation, Expr left, Expr right, bool line_break_after = false)
