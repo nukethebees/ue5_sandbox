@@ -41,7 +41,7 @@ TEST_F(ExprTest, RequiresExplicitRawAndSupportsIndependentCopies) {
     static_assert(!std::is_convertible_v<char const*, Expr>);
     auto original{ir.call(ir.named("lookup"), {ir.named("value")})};
     auto copy{original};
-    original = ir.literal("false");
+    original = ir.literal(false);
 
     expect_rendered(copy, "lookup(value)");
     expect_rendered(original, "false");
@@ -81,7 +81,7 @@ TEST_F(ExprTest, RendersUnaryPointerAccessAndLogicalPrecedence) {
     expect_rendered(missing, "!state || !state->data");
     expect_rendered(ir.unary(UnaryOperator::logical_not, missing), "!(!state || !state->data)");
     expect_rendered(ir.call(ir.named("test"), {missing}), "test(!state || !state->data)");
-    expect_rendered(ir.binary(BinaryOperator::equal, missing, ir.literal("false")),
+    expect_rendered(ir.binary(BinaryOperator::equal, missing, ir.literal(false)),
                     "(!state || !state->data) == false");
     expect_rendered(ir.member_access(ir.unary(UnaryOperator::dereference, pointer), "data"),
                     "(*state).data");
@@ -328,14 +328,14 @@ TEST_F(ExprTest, PreservesAbsentEmptyAndStructuredInitializers) {
 TEST_F(AstTest, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
     NodeListBuilder body{ir};
     body.add(ir.if_stmt(ir.named("ready"),
-                        ir.block({ir.return_stmt(ir.literal("true"))}),
+                        ir.block({ir.return_stmt(ir.literal(true))}),
                         ir.block({ir.expr_stmt(ir.call(ir.named("retry")))})),
              2)
         .add(ir.break_stmt());
     NodeId const statement{ir.switch_stmt(
         ir.named("mode"),
         {ir.switch_case(ir.scope_member(ir.types.named("Mode"), "Ready"), ir.block(body.build())),
-         ir.switch_case(std::nullopt, ir.block({ir.return_stmt(ir.literal("false"))}))})};
+         ir.switch_case(std::nullopt, ir.block({ir.return_stmt(ir.literal(false))}))})};
 
     EXPECT_EQ(CppRenderer{ir}.render(statement, {.indent_level = 1}),
               "    switch (mode) {\n"

@@ -289,6 +289,8 @@ class CppIR {
         return named(value, std::span<TypeDependencyId const>{dependencies});
     }
     auto literal(std::string_view value) -> Expr;
+    auto literal(char const* value) -> Expr { return literal(std::string_view{value}); }
+    auto literal(bool value) -> Expr;
     auto literal(StringId value) -> Expr;
     auto string_literal(std::string_view value) -> Expr;
     auto string_literal(StringId value) -> Expr;

@@ -265,7 +265,7 @@ class SettingsLowering : public CppIRBuilder {
                                  named_type("GameSettingValue"),
                                  {parameter(state_name + " const&", "state"), id_parameter},
                                  {switch_stmt(id, getter_cases),
-                                  assertion(literal("false")),
+                                  assertion(literal(false)),
                                   return_stmt(init_list({member_access(state, first_name)},
                                                         intern_type("GameSettingValue")))})};
 
@@ -283,10 +283,10 @@ class SettingsLowering : public CppIRBuilder {
                                            {type_reference(setting_types[index])},
                                            {unary(UnaryOperator::address_of, value)})),
                     if_stmt(binary(BinaryOperator::equal, typed_value, literal("nullptr")),
-                            block({return_stmt(literal("false"))})),
+                            block({return_stmt(literal(false))})),
                     assignment(member_access(state, name),
                                unary(UnaryOperator::dereference, typed_value)),
-                    return_stmt(literal("true")),
+                    return_stmt(literal(true)),
                 })));
         }
         auto const setter{create("set_game_setting_value",
@@ -294,7 +294,7 @@ class SettingsLowering : public CppIRBuilder {
                                  {parameter(state_name + "&", "state"),
                                   id_parameter,
                                   parameter("GameSettingValue const&", "value")},
-                                 {switch_stmt(id, setter_cases), return_stmt(literal("false"))})};
+                                 {switch_stmt(id, setter_cases), return_stmt(literal(false))})};
 
         return add_functions(categories, descriptors, descriptor, getter, setter);
     }

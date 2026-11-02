@@ -310,7 +310,7 @@ auto overlap_helper(lispb::codegen::CppIR& cpp) -> lispb::codegen::NodeId {
                           cpp.binary(BinaryOperator::logical_or,
                                      cpp.binary(BinaryOperator::equal, lhs_size, cpp.literal("0")),
                                      cpp.binary(BinaryOperator::equal, rhs_size, cpp.literal("0"))),
-                          cpp.block({cpp.return_stmt(cpp.literal("false"))})),
+                          cpp.block({cpp.return_stmt(cpp.literal(false))})),
                       cpp.variable("auto const",
                                    "lhs_address",
                                    cpp.reinterpret_cast_expr(address_type, cpp.named("lhs"))),

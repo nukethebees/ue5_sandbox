@@ -412,6 +412,10 @@
       (method literal "Expr"
         (parameter value "std::string_view"))
       (method literal "Expr"
+        (parameter value "char const*"))
+      (method literal "Expr"
+        (parameter value "bool"))
+      (method literal "Expr"
         (parameter value "StringId"))
       (method string_literal "Expr"
         (parameter value "std::string_view"))

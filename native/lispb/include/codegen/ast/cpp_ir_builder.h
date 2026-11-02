@@ -565,6 +565,10 @@ class CppIRBuilder {
 
     Expr literal(std::string_view value) { return ir_.literal(value); }
 
+    Expr literal(char const* value) { return ir_.literal(value); }
+
+    Expr literal(bool value) { return ir_.literal(value); }
+
     Expr literal(StringId value) { return ir_.literal(value); }
 
     Expr string_literal(std::string_view value) { return ir_.string_literal(value); }

@@ -8,6 +8,7 @@ enum class ExprKind : std::uint8_t {
     invalid,
     named,
     literal,
+    boolean_literal,
     string_literal,
     call,
     member_access,

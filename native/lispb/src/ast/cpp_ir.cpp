@@ -763,6 +763,9 @@ auto CppIR::named(StringId value, std::span<TypeDependencyId const> dependencies
 auto CppIR::literal(std::string_view value) -> Expr {
     return literal(strings.intern(value));
 }
+auto CppIR::literal(bool const value) -> Expr {
+    return expr_detail::handle(ExprKind::boolean_literal, value);
+}
 auto CppIR::literal(StringId value) -> Expr {
     auto const result{expr_detail::handle(ExprKind::literal, literal_exprs_.spelling.size())};
     literal_exprs_.spelling.push_back(value);
@@ -1305,6 +1308,7 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
             collect_dependencies(designated_initializers_.value[index], result);
             break;
         case ExprKind::literal:
+        case ExprKind::boolean_literal:
         case ExprKind::string_literal:
             break;
         case ExprKind::invalid:

@@ -438,10 +438,10 @@ class EnumLowering : public CppIRBuilder {
                              block({assignment(named("result"),
                                                scope_member(named_type(enum_name),
                                                             enumerators.name[value])),
-                                    return_stmt(literal("true"))})),
+                                    return_stmt(literal(true))})),
                      1);
         }
-        body.add(return_stmt(literal("false")));
+        body.add(return_stmt(literal(false)));
         FunctionDefinition const created_function{
             .name = named("try_parse_serialized"),
             .return_type = std_types().bool_,

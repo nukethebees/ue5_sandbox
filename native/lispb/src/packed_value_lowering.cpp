@@ -327,9 +327,9 @@ class PackedEmitter : public CppIRBuilder {
             }
             result = result ? binary(BinaryOperator::logical_or, *result, *predicate) : *predicate;
         }
-        return result.value_or(literal("false"));
+        return result.value_or(literal(false));
     }
-    auto boolean(Predicate predicate) -> Expr { return predicate.value_or(literal("true")); }
+    auto boolean(Predicate predicate) -> Expr { return predicate.value_or(literal(true)); }
     void assert_if(Nodes& body, Predicate predicate) {
         if (predicate) {
             body.push_back(assertion(*predicate));
@@ -1193,7 +1193,7 @@ class PackedEmitter : public CppIRBuilder {
             return unary(UnaryOperator::logical_not, call(std_types().isfinite, {value}));
         };
         auto const fail_if = [&](Expr condition) {
-            return if_stmt(condition, block({return_stmt(literal("false"))}));
+            return if_stmt(condition, block({return_stmt(literal(false))}));
         };
         Expr minimum;
         Expr maximum;
@@ -1299,7 +1299,7 @@ class PackedEmitter : public CppIRBuilder {
             // The largest 64-bit code rounds to 2^64 as a double; handle it before casting.
             body.push_back(if_stmt(
                 binary(BinaryOperator::greater_equal, rounded, cast(std_types().f64, upper)),
-                block({assignment(named("out_raw"), upper), return_stmt(literal("true"))})));
+                block({assignment(named("out_raw"), upper), return_stmt(literal(true))})));
         }
         body.push_back(fail_if(
             binary(BinaryOperator::logical_or,
@@ -1314,7 +1314,7 @@ class PackedEmitter : public CppIRBuilder {
             body.push_back(fail_if(unary(UnaryOperator::logical_not, *valid)));
         }
         body.push_back(assignment(named("out_raw"), named("raw")));
-        body.push_back(return_stmt(literal("true")));
+        body.push_back(return_stmt(literal(true)));
         functions_.push_back(emit_function(encode_name,
                                            std_types().bool_,
                                            FunctionReceiver::static_,

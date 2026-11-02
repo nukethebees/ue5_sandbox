@@ -672,6 +672,9 @@ void CppRenderer::append_expr(
         case ExprKind::literal:
             output += ir_.strings.view(ir_.literal_exprs_.spelling[index]);
             break;
+        case ExprKind::boolean_literal:
+            output += index != 0 ? "true" : "false";
+            break;
         case ExprKind::string_literal:
             output += '"';
             append_escaped_cpp_string(output, ir_.strings.view(ir_.string_literal_exprs_[index]));

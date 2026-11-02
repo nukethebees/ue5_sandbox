@@ -158,7 +158,7 @@ class RecordLowering : public CppIRBuilder {
             .implementation = {.kind = FunctionImplementationKind::body,
                                .body = {switch_stmt(named("field"), cases),
                                         assertion(binary(BinaryOperator::logical_and,
-                                                         literal("false"),
+                                                         literal(false),
                                                          string_literal("Invalid record field"))),
                                         expr_stmt(call(std_types().unreachable))}},
             .receiver = FunctionReceiver::static_,
