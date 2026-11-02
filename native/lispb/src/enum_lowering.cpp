@@ -54,6 +54,13 @@ auto text_literal(CppIR& ir, std::string_view const value) -> Expr {
                    {ir.string_literal(value)});
 }
 
+auto reflection_annotation(CppIR& ir, EnumReflection const reflection) -> NodeId {
+    auto const macro{ir.named("UENUM", {ir.types.dependency("UENUM", "CoreMinimal.h")})};
+    return ir.declaration_macro(reflection == EnumReflection::blueprint
+                                    ? ir.call(macro, {ir.named("BlueprintType")})
+                                    : ir.call(macro));
+}
+
 auto qualified_enum_name(LoweringContext& context,
                          ModuleSettingsId settings,
                          DeclarationHandle schema) -> std::string {
@@ -635,10 +642,7 @@ auto unreal_projection_header(LoweringContext& context,
 
     NodeListBuilder decls{ir};
     decls.add(enum_bit_width_comment(context, schema), 1);
-    decls.add(ir.raw(projections.reflection[projection] == EnumReflection::blueprint
-                         ? "UENUM(BlueprintType)"
-                         : "UENUM()"),
-              1);
+    decls.add(reflection_annotation(ir, projections.reflection[projection]), 1);
     decls.add(ir.enumeration(
                   projections.name[projection], underlying, enum_values(context, schema, true)),
               2);
@@ -812,11 +816,7 @@ auto lower_enum(LoweringContext& context,
     }
     decls.add(enum_bit_width_comment(context, schema), 1);
     if (reflected) {
-        decls.add(ir.raw(enums.reflection[schema] == EnumReflection::blueprint
-                             ? "UENUM(BlueprintType)"
-                             : "UENUM()",
-                         {ir.types.dependency("UENUM", "CoreMinimal.h")}),
-                  1);
+        decls.add(reflection_annotation(ir, enums.reflection[schema]), 1);
         emission.header_generated_include = {ir.include(
             ir.store_text(std::filesystem::path{context.text(settings_store.header[settings])}
                               .stem()

@@ -42,6 +42,7 @@ enum class NodeKind : NodeKindUnderlying {
     namespace_,
     line_directive,
     for_stmt,
+    declaration_macro,
 };
 
 } // namespace lispb::codegen
@@ -49,5 +50,5 @@ enum class NodeKind : NodeKindUnderlying {
 namespace ioj {
 template <>
 inline constexpr MinMax<lispb::codegen::NodeKind> enum_range<lispb::codegen::NodeKind>{
-    lispb::codegen::NodeKind::invalid, lispb::codegen::NodeKind::for_stmt};
+    lispb::codegen::NodeKind::invalid, lispb::codegen::NodeKind::declaration_macro};
 } // namespace ioj

@@ -1187,6 +1187,10 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             expr(ir_.expr_stmt_nodes_.expr[i]);
             output += ';';
             break;
+        case NodeKind::declaration_macro:
+            indent();
+            expr(ir_.declaration_macro_nodes_.invocation[i]);
+            break;
         case NodeKind::return_stmt:
             write_prefix("return");
             if (auto const value{ir_.return_stmt_nodes_.expr[i]}) {

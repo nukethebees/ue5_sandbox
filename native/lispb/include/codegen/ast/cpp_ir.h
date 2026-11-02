@@ -21,6 +21,7 @@
 #include <codegen/ast/ir/casts.h>
 #include <codegen/ast/ir/conditional_exprs.h>
 #include <codegen/ast/ir/constexpr_members.h>
+#include <codegen/ast/ir/declaration_macros.h>
 #include <codegen/ast/ir/designated_initializers.h>
 #include <codegen/ast/ir/enumerators.h>
 #include <codegen/ast/ir/enums.h>
@@ -138,6 +139,8 @@ class CppIR {
         return switch_stmt(condition, std::span<SwitchCaseId const>{cases});
     }
     auto break_stmt() -> NodeId;
+    // Annotate the following declaration without introducing bindings into its scope.
+    auto declaration_macro(Expr invocation) -> NodeId;
     auto expr_stmt(Expr expr, std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
     auto expr_stmt(Expr expr, std::initializer_list<TypeDependencyId> dependencies) -> NodeId {
         return expr_stmt(expr, std::span<TypeDependencyId const>{dependencies});
@@ -461,6 +464,7 @@ class CppIR {
     ir::ForStmts for_stmt_nodes_;
     ir::Switches switch_stmt_nodes_;
     ir::ExprStmts expr_stmt_nodes_;
+    ir::DeclarationMacros declaration_macro_nodes_;
     ir::Returns return_stmt_nodes_;
     ir::Assignments assignment_stmt_nodes_;
     ir::Variables variable_declaration_stmt_nodes_;

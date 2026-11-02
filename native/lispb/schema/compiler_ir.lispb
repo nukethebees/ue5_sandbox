@@ -102,6 +102,7 @@
     (value namespace_)
     (value line_directive)
     (value for_stmt)
+    (value declaration_macro)
     (projections (cpp))))
 
 (module compiler_function_flags

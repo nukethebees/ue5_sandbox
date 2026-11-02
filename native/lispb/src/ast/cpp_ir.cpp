@@ -186,6 +186,13 @@ auto CppIR::expr_stmt(Expr expr, std::span<TypeDependencyId const> dependencies)
     return ir_detail::node(NodeKind::expr_stmt, index);
 }
 
+auto CppIR::declaration_macro(Expr invocation) -> NodeId {
+    assert(invocation.kind() == ExprKind::call);
+    auto const index{declaration_macro_nodes_.invocation.size()};
+    declaration_macro_nodes_.invocation.push_back(invocation);
+    return ir_detail::node(NodeKind::declaration_macro, index);
+}
+
 auto CppIR::return_stmt(std::optional<Expr> expr, std::span<TypeDependencyId const> dependencies)
     -> NodeId {
     auto const index{return_stmt_nodes_.expr.size()};
@@ -679,6 +686,7 @@ void CppIR::clear() {
           if_stmt_nodes_.is_constexpr);
     clear(switch_stmt_nodes_.condition, switch_stmt_nodes_.cases);
     clear(expr_stmt_nodes_.expr, expr_stmt_nodes_.dependencies);
+    clear(declaration_macro_nodes_.invocation);
     clear(return_stmt_nodes_.expr, return_stmt_nodes_.dependencies);
     clear(assignment_stmt_nodes_.target,
           assignment_stmt_nodes_.value,
@@ -1131,6 +1139,9 @@ void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& res
         case NodeKind::expr_stmt:
             append(dependency_list(expr_stmt_nodes_.dependencies[i]));
             collect_dependencies(expr_stmt_nodes_.expr[i], result);
+            break;
+        case NodeKind::declaration_macro:
+            collect_dependencies(declaration_macro_nodes_.invocation[i], result);
             break;
         case NodeKind::return_stmt:
             append(dependency_list(return_stmt_nodes_.dependencies[i]));
