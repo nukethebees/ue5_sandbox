@@ -9,6 +9,7 @@
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
+#include <codegen/ast/function_body_layout.h>
 #include <codegen/ast/function_receiver.h>
 #include <codegen/ast/indices.h>
 #include <codegen/ast/node_list_builder.h>
@@ -122,10 +123,16 @@ auto compact_row_api(LoweringContext& context,
             auto const row{members.index(member)};
             auto const name{(members.kind[row] == SoaMemberKind::nested ? "view_" : "") +
                             context.text(members.name[row])};
-            result
-                .add(ir.raw("auto " + name + "(this auto& self) { return self.view()." + name +
-                            "(); }"))
-                .new_lines(1);
+            auto const function{ir.function(name, "auto")};
+            ir.set_function_parameters(
+                function,
+                {ir.parameter(ir.types.decorate(ir.types.intern("auto"), "this ", "&"), "self")});
+            ir.set_function_body(function,
+                                 {ir.return_stmt(ir.call(ir.member_access(
+                                     ir.call(ir.member_access(ir.named("self"), "view")), name)))});
+            ir.function_flags(function).set_define_in_header(true);
+            ir.function_formatting(function).body_layout = FunctionBodyLayout::compact;
+            result.add(ir.header_function(function)).new_lines(1);
         }
     }
     if ((!owner && !mutable_view) || custom("set")) {
