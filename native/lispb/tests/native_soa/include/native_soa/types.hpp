@@ -189,7 +189,7 @@ struct Counts
   public:
     auto count(this auto& self) { return self.view().count(); }
     using RowOperations = soa_storage_detail::
-        OwnerRowOperations<Counts, counts::Layout::column_types, native_soa::StorageOperations>;
+        OwnerRowOperations<Counts, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
@@ -366,9 +366,8 @@ struct PointerA
     using DataPointers = pointer_a::DataPointers<Byte>;
   public:
     auto others(this auto& self) { return self.view().others(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<PointerA,
-                                                                 pointer_a::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<PointerA, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
@@ -527,9 +526,8 @@ struct PointerB
     using DataPointers = pointer_b::DataPointers<Byte>;
   public:
     auto others(this auto& self) { return self.view().others(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<PointerB,
-                                                                 pointer_b::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<PointerB, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
@@ -690,9 +688,8 @@ struct MixedRows
     using DataPointers = mixed_rows::DataPointers<Byte>;
   public:
     auto records(this auto& self) { return self.view().records(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<MixedRows,
-                                                                 mixed_rows::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<MixedRows, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
@@ -867,9 +864,8 @@ struct PairRows
   public:
     auto pairs(this auto& self) { return self.view().pairs(); }
     auto pointers(this auto& self) { return self.view().pointers(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<PairRows,
-                                                                 pair_rows::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<PairRows, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
@@ -1047,7 +1043,7 @@ struct Vectors
     auto ys(this auto& self) { return self.view().ys(); }
     auto zs(this auto& self) { return self.view().zs(); }
     using RowOperations = soa_storage_detail::
-        OwnerRowOperations<Vectors, vectors::Layout::column_types, native_soa::StorageOperations>;
+        OwnerRowOperations<Vectors, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
@@ -1524,9 +1520,8 @@ struct SingleRows
     auto values(this auto& self) { return self.view().values(); }
     auto view_positions(this auto& self) { return self.view().view_positions(); }
     auto view_velocities(this auto& self) { return self.view().view_velocities(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<SingleRows,
-                                                                 single_rows::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<SingleRows, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
@@ -1802,10 +1797,9 @@ struct SingleAlignmentRows
     auto view_nested(this auto& self) { return self.view().view_nested(); }
     auto aligned64(this auto& self) { return self.view().aligned64(); }
     auto aligned256(this auto& self) { return self.view().aligned256(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<SingleAlignmentRows,
-                                               single_alignment_rows::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<SingleAlignmentRows,
+                                                                 Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
@@ -2209,10 +2203,8 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
     auto values(this auto& self) { return self.view().values(); }
     auto masks(this auto& self) { return self.view().masks(); }
     auto view_positions(this auto& self) { return self.view().view_positions(); }
-    using RowOperations = ioj::soa_storage_detail::OwnerRowOperations<
-        ApiOwner,
-        ioj::native_soa_fixture::api_owner::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations = ioj::soa_storage_detail::
+        OwnerRowOperations<ApiOwner, Layout::column_types, ioj::native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -2445,10 +2437,8 @@ struct EquivalentOwner
   public:
     auto xs(this auto& self) { return self.view().xs(); }
     auto ys(this auto& self) { return self.view().ys(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<EquivalentOwner,
-                                               equivalent_owner::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<EquivalentOwner, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, ApiPair const value) { set(index, value.x, value.y); }
@@ -2664,10 +2654,8 @@ struct AccessorOwner
     auto horizontal(this auto& self) { return self.view().horizontal(); }
     auto vertical(this auto& self) { return self.view().vertical(); }
     auto depth(this auto& self) { return self.view().depth(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<AccessorOwner,
-                                               accessor_owner::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<AccessorOwner, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Vector3f const value) { set(index, value.x(), value.y(), value.z()); }

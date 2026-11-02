@@ -309,10 +309,9 @@ struct LevelTurretSpawnEvents
     auto teams(this auto& self) { return self.view().teams(); }
     auto healths(this auto& self) { return self.view().healths(); }
     auto laser_damages(this auto& self) { return self.view().laser_damages(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<LevelTurretSpawnEvents,
-                                               level_turret_spawn_events::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<LevelTurretSpawnEvents,
+                                                                 Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

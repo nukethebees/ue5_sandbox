@@ -271,10 +271,8 @@ struct CapitalEntityData
     auto view_locations(this auto& self) { return self.view().view_locations(); }
     auto view_rotations(this auto& self) { return self.view().view_rotations(); }
     auto teams(this auto& self) { return self.view().teams(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<CapitalEntityData,
-                                               capital_entity_data::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<CapitalEntityData, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

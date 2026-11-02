@@ -211,9 +211,8 @@ struct CellCoords
     auto xs(this auto& self) { return self.view().xs(); }
     auto ys(this auto& self) { return self.view().ys(); }
     auto zs(this auto& self) { return self.view().zs(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<CellCoords,
-                                                                 cell_coords::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<CellCoords, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, CellCoord const value) {

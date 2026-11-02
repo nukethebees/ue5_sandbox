@@ -199,10 +199,8 @@ struct RelationshipTable
     auto field(this auto& self) { return self.view().field(); }
     auto relationship(this auto& self) { return self.view().relationship(); }
     auto metrics(this auto& self) { return self.view().metrics(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<RelationshipTable,
-                                               relationship_table::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<RelationshipTable, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();

@@ -279,9 +279,8 @@ struct ScalarTable
     auto fixed_encoding(this auto& self) { return self.view().fixed_encoding(); }
     auto float_encoding(this auto& self) { return self.view().float_encoding(); }
     auto varint_encoding(this auto& self) { return self.view().varint_encoding(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<ScalarTable,
-                                                                 scalar_table::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<ScalarTable, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append(lispb::schema::TypeId value);

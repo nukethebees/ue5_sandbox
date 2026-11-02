@@ -183,10 +183,8 @@ struct DirectDamageEvents
     auto damaged_entities(this auto& self) { return self.view().damaged_entities(); }
     auto damage_amounts(this auto& self) { return self.view().damage_amounts(); }
     auto instigators(this auto& self) { return self.view().instigators(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<DirectDamageEvents,
-                                               direct_damage_events::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<DirectDamageEvents, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::set;
     void add(EntityId const damaged_entity,
              std::int32_t const damage_amount,

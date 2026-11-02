@@ -226,9 +226,8 @@ struct LineTraces
   public:
     auto view_starts(this auto& self) { return self.view().view_starts(); }
     auto view_ends(this auto& self) { return self.view().view_ends(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<LineTraces,
-                                                                 line_traces::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<LineTraces, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) {

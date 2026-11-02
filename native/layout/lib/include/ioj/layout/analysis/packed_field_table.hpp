@@ -445,10 +445,8 @@ struct PackedFieldTable
     auto minimum_required_bits(this auto& self) { return self.view().minimum_required_bits(); }
     auto unused_codes(this auto& self) { return self.view().unused_codes(); }
     auto codes(this auto& self) { return self.view().codes(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<PackedFieldTable,
-                                               packed_field_table::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<PackedFieldTable, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();

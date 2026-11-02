@@ -238,10 +238,8 @@ struct EntityHistory
     auto life_state(this auto& self) { return self.view().life_state(); }
     auto death_ticks(this auto& self) { return self.view().death_ticks(); }
     auto death_locations(this auto& self) { return self.view().death_locations(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<EntityHistory,
-                                               entity_history::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<EntityHistory, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

@@ -248,9 +248,8 @@ struct TraceHits
     auto entities(this auto& self) { return self.view().entities(); }
     auto static_geometry_indices(this auto& self) { return self.view().static_geometry_indices(); }
     auto hits(this auto& self) { return self.view().hits(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<TraceHits,
-                                                                 trace_hits::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<TraceHits, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

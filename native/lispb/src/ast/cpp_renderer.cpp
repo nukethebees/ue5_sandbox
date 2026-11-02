@@ -269,16 +269,12 @@ void CppRenderer::append_type(std::string& output, CppTypeId const type) {
     if (shape.form == CppTypeForm::raw) {
         output += ir_.types.spelling(type);
     } else if (shape.form == CppTypeForm::named) {
-        if (shape.parts.count == 1) {
-            output += ir_.types.spelling(type);
-            return;
-        }
         std::vector<StringId> components;
         for (auto const component :
              std::span{ir_.types.name_components_}.subspan(shape.parts.begin, shape.parts.count)) {
             components.push_back(component);
         }
-        append_name(output, components);
+        append_name(output, components, shape.origin);
     } else {
         for (auto const part :
              std::span{ir_.types.parts_}.subspan(shape.parts.begin, shape.parts.count)) {
@@ -290,7 +286,60 @@ void CppRenderer::append_type(std::string& output, CppTypeId const type) {
         }
     }
 }
-void CppRenderer::append_name(std::string& output, std::span<StringId const> components) {
+auto CppRenderer::alias_scope(SymbolBinding alias) -> EnvironmentId {
+    auto const shape{ir_.types.shapes_[alias.aliased_type.value - 1]};
+    if (shape.form != CppTypeForm::named) {
+        return {};
+    }
+    auto const components{
+        std::span{ir_.types.name_components_}.subspan(shape.parts.begin, shape.parts.count)};
+    auto const resolved{resolve_name(components, shape.origin, alias.declaring_scope)};
+    if (resolved.prefix_size != components.size()) {
+        return {};
+    }
+    return resolved.symbol.aliased_type.value != 0 ? alias_scope(resolved.symbol)
+                                                   : resolved.symbol.introduced_scope;
+}
+
+auto CppRenderer::resolve_name(std::span<StringId const> components,
+                               NameOrigin origin,
+                               EnvironmentId environment) -> ResolvedName {
+    auto& environments{state_.environments};
+    auto const start{origin == NameOrigin::global ? environments.global() : environment};
+    auto const first{environments.lookup(start, components.first(1))};
+    if (first.status != LookupStatus::found) {
+        return origin == NameOrigin::global
+                 ? ResolvedName{environments.reference(start, components), components.size()}
+                 : ResolvedName{};
+    }
+
+    ResolvedName result{first.symbol, 1};
+    auto const count{components.size()};
+    while (result.prefix_size < count) {
+        auto scope{result.symbol.introduced_scope};
+        if (result.symbol.aliased_type.value != 0) {
+            scope = alias_scope(result.symbol);
+        }
+        if (scope.is_null()) {
+            return result;
+        }
+        auto const next{environments.lookup_local(scope, components[result.prefix_size])};
+        if (next.status != LookupStatus::found) {
+            if (origin == NameOrigin::global) {
+                return {environments.reference(scope, components.subspan(result.prefix_size)),
+                        count};
+            }
+            return result;
+        }
+        result.symbol = next.symbol;
+        ++result.prefix_size;
+    }
+    return result;
+}
+
+void CppRenderer::append_name(std::string& output,
+                              std::span<StringId const> components,
+                              NameOrigin origin) {
     std::string canonical;
     for (auto const component : components) {
         if (!canonical.empty()) {
@@ -298,12 +347,18 @@ void CppRenderer::append_name(std::string& output, std::span<StringId const> com
         }
         canonical += ir_.strings.view(component);
     }
-    auto const target{state_.environments.reference(components)};
+    auto const target{resolve_name(components, origin, state_.current)};
+    if (target.prefix_size == 0) {
+        output += canonical;
+        return;
+    }
 
     auto const count{components.size()};
-    for (auto first{count - 1};; --first) {
-        auto const result{state_.environments.lookup(state_.current, components.subspan(first))};
-        if (result.status == LookupStatus::found && result.symbol.same_declaration(target)) {
+    for (auto first{target.prefix_size - 1};; --first) {
+        auto const candidate{components.subspan(first, target.prefix_size - first)};
+        auto const result{resolve_name(candidate, NameOrigin::enclosing, state_.current)};
+        if (result.prefix_size == candidate.size() &&
+            result.symbol.same_declaration(target.symbol)) {
             for (auto component{first}; component < count; ++component) {
                 if (component != first) {
                     output += "::";
@@ -314,7 +369,9 @@ void CppRenderer::append_name(std::string& output, std::span<StringId const> com
         }
         if (first == 0) {
             // Preserve authored qualification when the complete name cannot be checked.
-            if (result.status != LookupStatus::unknown) {
+            if (origin == NameOrigin::global &&
+                state_.environments.lookup(state_.current, components.first(1)).status !=
+                    LookupStatus::unknown) {
                 output += "::";
             }
             output += canonical;
@@ -425,15 +482,31 @@ void CppRenderer::collect_environment(EnvironmentId environment,
                 break;
             case NodeKind::using_declaration:
                 if (ir_.using_declaration_nodes_.name[i].value != 0) {
-                    add_name(ir_.using_declaration_nodes_.name[i], declaration);
+                    environments.declare(environment,
+                                         ir_.using_declaration_nodes_.name[i],
+                                         declaration,
+                                         {},
+                                         ir_.using_declaration_nodes_.type[i]);
                 } else {
                     auto const type{ir_.using_declaration_nodes_.type[i]};
                     auto const shape{ir_.types.shapes_[type.value - 1]};
                     assert(shape.form == CppTypeForm::named && shape.parts.count > 1);
                     auto const components{std::span{ir_.types.name_components_}.subspan(
                         shape.parts.begin, shape.parts.count)};
-                    auto const target{environments.reference(components)};
-                    environments.bind(environment, components.back(), target);
+                    auto const qualifier{resolve_name(
+                        components.first(components.size() - 1), shape.origin, environment)};
+                    auto const inherited_constructor{
+                        qualifier.prefix_size == components.size() - 1 &&
+                        qualifier.symbol.aliased_type.value != 0 &&
+                        components.back() == components[components.size() - 2]};
+                    if (!inherited_constructor) {
+                        auto const target{resolve_name(components, shape.origin, environment)};
+                        if (target.prefix_size == components.size()) {
+                            environments.bind(environment, components.back(), target.symbol);
+                        } else {
+                            add_name(components.back(), declaration);
+                        }
+                    }
                 }
                 break;
             case NodeKind::instance_member:
@@ -1223,12 +1296,14 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
                 auto const shape{ir_.types.shapes_[imported.value - 1]};
                 auto const components{std::span{ir_.types.name_components_}.subspan(
                     shape.parts.begin, shape.parts.count)};
-                auto const target{state_.environments.reference(components)};
-                if (target.declaring_scope == state_.current) {
+                auto const target{resolve_name(components, shape.origin, state_.current)};
+                if (target.prefix_size == components.size() &&
+                    target.symbol.declaring_scope == state_.current &&
+                    !in_record_scope(state_.current)) {
                     break;
                 }
                 write_prefix("using ");
-                append_name(output, components.first(components.size() - 1));
+                append_name(output, components.first(components.size() - 1), shape.origin);
                 output += "::";
                 text(components.back());
                 output += ';';

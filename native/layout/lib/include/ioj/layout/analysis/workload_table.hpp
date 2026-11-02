@@ -342,10 +342,8 @@ struct WorkloadTable
     }
     auto allocated_payload_bytes(this auto& self) { return self.view().allocated_payload_bytes(); }
     auto capacity_slack_bytes(this auto& self) { return self.view().capacity_slack_bytes(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<WorkloadTable,
-                                               workload_table::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<WorkloadTable, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     WorkloadId

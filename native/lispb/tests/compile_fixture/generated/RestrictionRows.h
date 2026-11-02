@@ -172,7 +172,7 @@ struct SingleRestrictionRows
     auto restricted(this auto& self) { return self.view().restricted(); }
     using RowOperations =
         ioj::soa_storage_detail::OwnerRowOperations<SingleRestrictionRows,
-                                                    single_restriction_rows::Layout::column_types,
+                                                    Layout::column_types,
                                                     ioj::native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;

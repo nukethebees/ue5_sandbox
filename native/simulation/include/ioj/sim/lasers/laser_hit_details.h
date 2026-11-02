@@ -256,10 +256,8 @@ struct LaserHitDetails
         return self.view().view_emission_directions();
     }
     auto sources(this auto& self) { return self.view().sources(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<LaserHitDetails,
-                                               laser_hit_details::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<LaserHitDetails, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

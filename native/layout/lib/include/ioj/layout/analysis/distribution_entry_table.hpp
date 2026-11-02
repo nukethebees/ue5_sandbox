@@ -241,10 +241,9 @@ struct DistributionEntryTable
     auto slack_bytes(this auto& self) { return self.view().slack_bytes(); }
     auto weighted_extent_bytes(this auto& self) { return self.view().weighted_extent_bytes(); }
     auto weighted_slack_bytes(this auto& self) { return self.view().weighted_slack_bytes(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<DistributionEntryTable,
-                                               distribution_entry_table::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<DistributionEntryTable,
+                                                                 Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

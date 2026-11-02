@@ -503,10 +503,8 @@ struct TurretEntityData
     auto target_ids(this auto& self) { return self.view().target_ids(); }
     auto view_target_locations(this auto& self) { return self.view().view_target_locations(); }
     auto view_target_velocities(this auto& self) { return self.view().view_target_velocities(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<TurretEntityData,
-                                               turret_entity_data::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<TurretEntityData, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

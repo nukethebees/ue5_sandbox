@@ -178,9 +178,8 @@ struct Positions
   public:
     auto xs(this auto& self) { return self.view().xs(); }
     auto ys(this auto& self) { return self.view().ys(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<Positions,
-                                                                 positions::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<Positions, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

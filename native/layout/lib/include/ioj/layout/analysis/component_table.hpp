@@ -270,10 +270,8 @@ struct ComponentTable
     auto extent_bytes(this auto& self) { return self.view().extent_bytes(); }
     auto padding_before_bytes(this auto& self) { return self.view().padding_before_bytes(); }
     auto slack_bytes(this auto& self) { return self.view().slack_bytes(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<ComponentTable,
-                                               component_table::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<ComponentTable, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();

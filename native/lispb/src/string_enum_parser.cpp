@@ -65,7 +65,7 @@ auto comparisons(CppIR& ir,
                                       ir.string_literal(entry.key.substr(prefix_size))),
                             ir.block({ir.return_stmt(entry.value)})));
     }
-    body.add(ir.return_stmt(ir.type_reference(ir.types.named("std::nullopt"))));
+    body.add(ir.return_stmt(ir.type_reference(ir.types.named("std::nullopt", NameOrigin::global))));
     return body.build();
 }
 
@@ -102,8 +102,9 @@ auto length_bucket(CppIR& ir,
             character_literal(ir, character),
             ir.block(length_bucket(ir, input, length, group, prefix_size, position + 1))));
     }
-    cases.push_back(ir.switch_case(
-        {}, ir.block({ir.return_stmt(ir.type_reference(ir.types.named("std::nullopt")))})));
+    cases.push_back(ir.switch_case({},
+                                   ir.block({ir.return_stmt(ir.type_reference(
+                                       ir.types.named("std::nullopt", NameOrigin::global)))})));
     auto const selected_character{ir.static_cast_expr(
         ir.types.std.unsigned_char, ir.subscript(input, ir.literal(std::to_string(position))))};
     return {ir.switch_stmt(selected_character, cases)};
@@ -124,11 +125,11 @@ auto parser_body(CppIR& ir, Expr const input, std::span<StringEnumEntry const> c
     auto const prefix{common_prefix(all)};
     auto suffix{input};
     if (!prefix.empty()) {
-        body.add(ir.if_stmt(
-                     ir.unary(UnaryOperator::logical_not,
-                              ir.call(ir.member_access(input, "starts_with"),
-                                      {ir.string_literal(prefix)})),
-                     ir.block({ir.return_stmt(ir.type_reference(ir.types.named("std::nullopt")))})),
+        body.add(ir.if_stmt(ir.unary(UnaryOperator::logical_not,
+                                     ir.call(ir.member_access(input, "starts_with"),
+                                             {ir.string_literal(prefix)})),
+                            ir.block({ir.return_stmt(ir.type_reference(
+                                ir.types.named("std::nullopt", NameOrigin::global)))})),
                  2);
         body.add(ir.variable("auto const",
                              "suffix",
@@ -148,8 +149,9 @@ auto parser_body(CppIR& ir, Expr const input, std::span<StringEnumEntry const> c
             ir.switch_case(ir.literal(std::to_string(length)),
                            ir.block(length_bucket(ir, suffix, length, group, prefix.size()))));
     }
-    cases.push_back(ir.switch_case(
-        {}, ir.block({ir.return_stmt(ir.type_reference(ir.types.named("std::nullopt")))})));
+    cases.push_back(ir.switch_case({},
+                                   ir.block({ir.return_stmt(ir.type_reference(
+                                       ir.types.named("std::nullopt", NameOrigin::global)))})));
     body.add(ir.switch_stmt(ir.call(ir.member_access(suffix, "size")), cases));
     return body.build();
 }
@@ -161,6 +163,7 @@ auto indexed_parser_body(CppIR& ir,
     auto const lookup{
         ir.template_id(ir.type_reference(ir.types.named(
                            "ioj::try_parse_enum",
+                           NameOrigin::global,
                            {ir.types.dependency("ioj::try_parse_enum", "ioj/parse_enum.h")})),
                        {ir.type_reference(ir.types.named(enum_type))})};
     std::vector<Expr> names;

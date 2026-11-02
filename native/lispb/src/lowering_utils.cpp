@@ -128,9 +128,11 @@ auto title_case_identifier(std::string_view const identifier) -> std::string {
 }
 auto call_array_callback(CppIR& ir, std::span<Expr const> const arguments) -> Expr {
     auto const forwarded{ir.call(
-        ir.template_id(ir.type_reference(ir.types.named(
-                           "std::forward", {ir.types.dependency("std::forward", "utility")})),
-                       {ir.type_reference(ir.types.intern("TFunc"))}),
+        ir.template_id(
+            ir.type_reference(ir.types.named("std::forward",
+                                             NameOrigin::global,
+                                             {ir.types.dependency("std::forward", "utility")})),
+            {ir.type_reference(ir.types.intern("TFunc"))}),
         {ir.named("func")})};
     return ir.call(forwarded, arguments);
 }

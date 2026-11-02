@@ -191,10 +191,11 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     ir.set_function_body(
         default_constructor,
         {},
-        {ir.member_initializer(owner_name,
-                               ir.unary(UnaryOperator::dereference,
-                                        ir.call(ir.type_reference(
-                                            ir.types.named("std::pmr::get_default_resource")))))});
+        {ir.member_initializer(
+            owner_name,
+            ir.unary(UnaryOperator::dereference,
+                     ir.call(ir.type_reference(
+                         ir.types.named("std::pmr::get_default_resource", NameOrigin::global)))))});
     auto const resource_constructor{ir.constructor(owner_name, true)};
     ir.set_function_parameters(
         resource_constructor,
@@ -365,8 +366,9 @@ auto shared_view_type(LoweringContext& context, DeclarationHandle schema, bool r
     return types.template_type(
         types.std.conditional_t,
         {types.named("Const"),
-         types.named(scope + (resolved ? "::ResolvedConstView" : "::ConstView")),
-         types.named(scope + (resolved ? "::ResolvedView" : "::View"))});
+         types.named(scope + (resolved ? "::ResolvedConstView" : "::ConstView"),
+                     NameOrigin::global),
+         types.named(scope + (resolved ? "::ResolvedView" : "::View"), NameOrigin::global)});
 }
 
 auto view_accessor_nodes(LoweringContext& context, SingleAllocationModelId model, bool resolved)
@@ -422,7 +424,8 @@ auto view_accessor_nodes(LoweringContext& context, SingleAllocationModelId model
                          type);
             } else if (!resolved && nested_strided) {
                 auto const factory{ir.template_id(
-                    ir.type_reference(ir.types.named("ioj::soa_storage_detail::make_strided_view")),
+                    ir.type_reference(ir.types.named("ioj::soa_storage_detail::make_strided_view",
+                                                     NameOrigin::global)),
                     {ir.type_reference(type), ir.type_reference(ir.types.intern("Layout"))})};
                 accessor("view_" + name,
                          ir.call(factory,
@@ -473,23 +476,24 @@ auto emit_resolved_views(LoweringContext& context,
     result.append(section_header(context, "Resolved views")).new_lines(1);
 
     auto const scope{schema_namespace(context, schema)};
-    auto const base{
-        ir.types.template_type(ir.types.named("ioj::soa_storage_detail::ResolvedViewBase"),
-                               {ir.types.decorate(ir.types.named("Layout"), "", "::column_types"),
-                                ir.types.named("DataPointers"),
-                                ir.types.named("Const")})};
+    auto const base{ir.types.template_type(
+        ir.types.named("ioj::soa_storage_detail::ResolvedViewBase", NameOrigin::global),
+        {ir.types.decorate(ir.types.named("Layout"), "", "::column_types"),
+         ir.types.named("DataPointers"),
+         ir.types.named("Const")})};
     NodeListBuilder children{ir};
     children.append(adjacent(
         context,
         {ir.using_declaration(ir.strings.intern("Base"), base),
-         ir.raw("using Base::Base;"),
-         ir.using_declaration(ir.strings.intern("Layout"), ir.types.named(scope + "::Layout")),
+         ir.using_import(ir.types.named("Base::Base")),
+         ir.using_declaration(ir.strings.intern("Layout"),
+                              ir.types.named(scope + "::Layout", NameOrigin::global)),
          ir.using_declaration(ir.strings.intern("view_type"),
-                              ir.types.named(scope + "::" + mutable_name)),
+                              ir.types.named(scope + "::" + mutable_name, NameOrigin::global)),
          ir.using_declaration(ir.strings.intern("const_view_type"),
-                              ir.types.named(scope + "::" + const_name)),
+                              ir.types.named(scope + "::" + const_name, NameOrigin::global)),
          ir.using_declaration(ir.strings.intern("soa_schema"),
-                              ir.types.named(scope + "::Schema"))}));
+                              ir.types.named(scope + "::Schema", NameOrigin::global))}));
 
     auto const conversion{ir.constructor(ir.strings.intern(implementation))};
     ir.set_function_parameters(
@@ -530,7 +534,7 @@ auto emit_resolved_views(LoweringContext& context,
         NodeListBuilder wrapper{ir};
         wrapper.add(ir.using_declaration(ir.strings.intern("Base"), base))
             .new_lines(1)
-            .add(ir.raw("using Base::Base;"))
+            .add(ir.using_import(ir.types.named("Base::Base")))
             .new_lines(1);
         auto api{lower_soa_api(context, schema, receiver, name, base)};
         wrapper.append(api.header);
@@ -555,26 +559,32 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
     auto const selected{ir.lowering.items(models.columns[model_row])};
     auto const strided{is_strided_schema(context, schema)};
     auto const base{
-        strided ? ir.types.template_type(
-                      ir.types.named("ioj::soa_storage_detail::StridedViewBase"),
-                      {columns.type[columns.index(selected.front())], ir.types.named("Const")})
-                : ir.types.template_type(ir.types.named("ioj::soa_storage_detail::CompactViewBase"),
-                                         {ir.types.named("Const")})};
+        strided
+            ? ir.types.template_type(
+                  ir.types.named("ioj::soa_storage_detail::StridedViewBase", NameOrigin::global),
+                  {columns.type[columns.index(selected.front())], ir.types.named("Const")})
+            : ir.types.template_type(
+                  ir.types.named("ioj::soa_storage_detail::CompactViewBase", NameOrigin::global),
+                  {ir.types.named("Const")})};
     NodeListBuilder children{ir};
     children.append(adjacent(
         context,
-        {ir.using_declaration(ir.strings.intern("soa_schema"),
-                              ir.types.named(schema_namespace(context, schema) + "::Schema")),
+        {ir.using_declaration(
+             ir.strings.intern("soa_schema"),
+             ir.types.named(schema_namespace(context, schema) + "::Schema", NameOrigin::global)),
          ir.using_declaration(ir.strings.intern("Base"), base),
-         ir.raw("using Base::Base;"),
-         ir.using_declaration(ir.strings.intern("Layout"), ir.types.named(scope + "::Layout")),
-         ir.using_declaration(ir.strings.intern("view_type"), ir.types.named(scope + "::View")),
+         ir.using_import(ir.types.named("Base::Base")),
+         ir.using_declaration(ir.strings.intern("Layout"),
+                              ir.types.named(scope + "::Layout", NameOrigin::global)),
+         ir.using_declaration(ir.strings.intern("view_type"),
+                              ir.types.named(scope + "::View", NameOrigin::global)),
          ir.using_declaration(ir.strings.intern("const_view_type"),
-                              ir.types.named(scope + "::ConstView")),
+                              ir.types.named(scope + "::ConstView", NameOrigin::global)),
          ir.using_declaration(ir.strings.intern("resolved_view_type"),
                               shared_view_type(context, schema, true))}));
     if (strided && !context.declarations.soas.layout_only[schema_row]) {
-        auto const state{ir.types.named("ioj::soa_storage_detail::StorageState")};
+        auto const state{
+            ir.types.named("ioj::soa_storage_detail::StorageState", NameOrigin::global)};
         children.new_lines(1).add(ir.using_declaration(
             ir.store_text("State"),
             ir.types.template_type(
@@ -594,10 +604,11 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
             {},
             {ir.member_initializer(
                 ir.strings.intern("Base"),
-                ir.call(ir.template_id(ir.type_reference(ir.types.named(
-                                           "ioj::soa_storage_detail::make_strided_view")),
-                                       {ir.type_reference(ir.types.named("Base")),
-                                        ir.type_reference(ir.types.named("Layout"))}),
+                ir.call(ir.template_id(
+                            ir.type_reference(ir.types.named(
+                                "ioj::soa_storage_detail::make_strided_view", NameOrigin::global)),
+                            {ir.type_reference(ir.types.named("Base")),
+                             ir.type_reference(ir.types.named("Layout"))}),
                         arguments))});
         children.new_lines(1).add(inline_function(context, constructor));
     }
@@ -632,9 +643,9 @@ auto view_validation_nodes(LoweringContext& context, std::string const& name, bo
     -> Nodes {
     auto& ir{context.ir};
     auto const validation{ir.template_id(
-        ir.type_reference(ir.types.named(strided
-                                             ? "std::is_trivially_copyable_v"
-                                             : "ioj::soa_storage_detail::validate_compact_view")),
+        ir.type_reference(ir.types.named(strided ? "std::is_trivially_copyable_v"
+                                                 : "ioj::soa_storage_detail::validate_compact_view",
+                                         NameOrigin::global)),
         {ir.type_reference(ir.types.named(name))})};
     return {ir.static_assertion(strided ? validation : ir.call(validation))};
 }
@@ -654,6 +665,7 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
     auto const base{ir.types.template_type(
         ir.types.named(
             "ioj::single_allocation_layout::ColumnLayouts",
+            NameOrigin::global,
             {ir.types.dependency("single_allocation_layout", "ioj/single_allocation/layout.h")}),
         types)};
     NodeListBuilder children{ir};
@@ -703,9 +715,10 @@ auto storage_implementation_nodes(LoweringContext& context, SingleAllocationMode
     children
         .append(adjacent(
             context,
-            {ir.using_declaration(ir.strings.intern("View"), ir.types.named(scope + "::View")),
+            {ir.using_declaration(ir.strings.intern("View"),
+                                  ir.types.named(scope + "::View", NameOrigin::global)),
              ir.using_declaration(ir.strings.intern("ConstView"),
-                                  ir.types.named(scope + "::ConstView"))}))
+                                  ir.types.named(scope + "::ConstView", NameOrigin::global))}))
         .new_lines(2)
         .append(storage_lifetime_nodes(context, model))
         .new_lines(1)
@@ -713,7 +726,7 @@ auto storage_implementation_nodes(LoweringContext& context, SingleAllocationMode
         .new_lines(1)
         .add(ir.using_declaration(
             ir.strings.intern("DataPointers"),
-            ir.types.template_type(ir.types.named(scope + "::DataPointers"),
+            ir.types.template_type(ir.types.named(scope + "::DataPointers", NameOrigin::global),
                                    {ir.types.named("Byte")}),
             ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Byte"))})));
 
@@ -758,7 +771,7 @@ auto emit_single_allocation_views(LoweringContext& context,
         NodeListBuilder children{ir};
         children.add(ir.using_declaration(ir.strings.intern("Base"), base))
             .new_lines(1)
-            .add(ir.raw("using Base::Base;"))
+            .add(ir.using_import(ir.types.named("Base::Base")))
             .new_lines(1);
         auto api{lower_soa_api(context, schema, receiver, name, base)};
         children.append(api.header);
@@ -791,17 +804,25 @@ auto emit_single_allocation_container(LoweringContext& context,
     auto& ir{context.ir};
     NodeListBuilder children{ir};
     auto const operations{std::string{"ioj::native_soa::StorageOperations"}};
-    auto const row_operations{soa_row_operations(
-        context, schema, SoaReceiver::owner, context.text(owner_name), ir.types.named(operations))};
+    auto const row_operations{soa_row_operations(context,
+                                                 schema,
+                                                 SoaReceiver::owner,
+                                                 context.text(owner_name),
+                                                 ir.types.named(operations, NameOrigin::global))};
     children
         .add(ir.using_declaration(
             ir.strings.intern("soa_schema"),
             ir.types.named(schema_namespace(context, model_store.schema[model_store_index]) +
-                           "::Schema")))
+                               "::Schema",
+                           NameOrigin::global)))
         .new_lines(1);
-    children.add(ir.using_declaration(ir.strings.intern("Operations"), ir.types.named(operations)))
+    children
+        .add(ir.using_declaration(ir.strings.intern("Operations"),
+                                  ir.types.named(operations, NameOrigin::global)))
         .new_lines(1);
-    children.add(ir.using_declaration(ir.store_text("Layout"), ir.types.named(scope + "::Layout")))
+    children
+        .add(ir.using_declaration(ir.store_text("Layout"),
+                                  ir.types.named(scope + "::Layout", NameOrigin::global)))
         .new_lines(1);
     for (auto const name : {"size_type", "byte_size_type"}) {
         children
@@ -853,7 +874,8 @@ auto emit_single_allocation_container(LoweringContext& context,
         .new_lines(1)
         .add(ir.friend_type(ir.types.intern("Operations")))
         .new_lines(1)
-        .add(ir.friend_type(ir.types.named("ioj::soa_storage_detail::StorageRequirements")))
+        .add(ir.friend_type(
+            ir.types.named("ioj::soa_storage_detail::StorageRequirements", NameOrigin::global)))
         .new_lines(1)
         .add(ir.instance_member(ir.types.decorate(ir.types.std.pmr.memory_resource, "", "*"),
                                 ir.strings.intern("resource_"),
@@ -862,7 +884,8 @@ auto emit_single_allocation_container(LoweringContext& context,
     describe_compact_scope(context, created_record, model_store.schema[model_store_index]);
     ir.set_record_bases(
         created_record,
-        {ir.types.decorate(ir.types.named("ioj::native_soa::StorageState"), "protected ", ""),
+        {ir.types.decorate(
+             ir.types.named("ioj::native_soa::StorageState", NameOrigin::global), "protected ", ""),
          row_operations});
     ir.set_record_export_specifier(
         created_record,

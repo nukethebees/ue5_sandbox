@@ -251,10 +251,9 @@ struct LevelSpinnerSpawnEvents
     auto initial_fire_point_indices(this auto& self) {
         return self.view().initial_fire_point_indices();
     }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<LevelSpinnerSpawnEvents,
-                                               level_spinner_spawn_events::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<LevelSpinnerSpawnEvents,
+                                                                 Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

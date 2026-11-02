@@ -45,9 +45,11 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     std::vector<SwitchCaseId> cases;
     Nodes accessors;
     auto const forwarded_visitor{ir.call(
-        ir.template_id(ir.type_reference(ir.types.named(
-                           "std::forward", {ir.types.dependency("std::forward", "utility")})),
-                       {ir.type_reference(ir.types.named("Visitor"))}),
+        ir.template_id(
+            ir.type_reference(ir.types.named("std::forward",
+                                             NameOrigin::global,
+                                             {ir.types.dependency("std::forward", "utility")})),
+            {ir.type_reference(ir.types.named("Visitor"))}),
         {ir.named("visitor")})};
     for (auto const field : fields) {
         auto const member{members.name[members.index(field)]};
@@ -86,11 +88,13 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
             ir.binary(BinaryOperator::less,
                       ir.call(ir.type_reference(ir.types.named(
                                   "std::to_underlying",
+                                  NameOrigin::global,
                                   {ir.types.dependency("std::to_underlying", "utility")})),
                               {ir.named("Selected")}),
                       ir.call(ir.template_id(
                           ir.type_reference(ir.types.named(
                               "ioj::enum_count",
+                              NameOrigin::global,
                               {ir.types.dependency("ioj::enum_count", "ioj/enum_traits.h")})),
                           {ir.type_reference(ir.types.decorate(
                               ir.types.named("Self"), "typename ", "::Field"))}))))));
@@ -142,8 +146,10 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
                               {ir.binary(BinaryOperator::logical_and,
                                          ir.literal("false"),
                                          ir.string_literal("Invalid record field"))})),
-         ir.expr_stmt(ir.call(ir.type_reference(ir.types.named(
-             "std::unreachable", {ir.types.dependency("std::unreachable", "utility")}))))});
+         ir.expr_stmt(ir.call(ir.type_reference(
+             ir.types.named("std::unreachable",
+                            NameOrigin::global,
+                            {ir.types.dependency("std::unreachable", "utility")}))))});
     result.add(ir.header_function(function), 2);
     return result.build();
 }
@@ -216,7 +222,8 @@ auto lower_record(LoweringContext& context, DeclarationHandle schema) -> Declara
         }
         result.header_global.push_back(ir.namespace_node(
             ir.strings.intern("ioj"),
-            {enum_count_specialization(ir, ir.types.named(qualified), fields.size())}));
+            {enum_count_specialization(
+                ir, ir.types.named(qualified, NameOrigin::global), fields.size())}));
         result.header_global.push_back(enum_strings_specialization(ir, qualified, "Name", names));
     }
     if (auto const policy{records.constraint_policy[row]}) {
@@ -225,6 +232,7 @@ auto lower_record(LoweringContext& context, DeclarationHandle schema) -> Declara
         auto const constrained{ir.types.template_type(
             ir.types.named(
                 "ioj::ConstrainedValue",
+                NameOrigin::global,
                 {ir.types.dependency("ioj::ConstrainedValue", "ioj/constrained_value.h")}),
             {ir.types.named(name + "Value"),
              ir.types.reference(ir.types.intern(context.text(*policy)))})};

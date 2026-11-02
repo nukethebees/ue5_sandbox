@@ -230,10 +230,8 @@ struct SelectionTable
     auto cache(this auto& self) { return self.view().cache(); }
     auto pages(this auto& self) { return self.view().pages(); }
     auto capacity_slack_bytes(this auto& self) { return self.view().capacity_slack_bytes(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<SelectionTable,
-                                               selection_table::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<SelectionTable, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append(std::size_t selected_source, AccessOperation selected_operation);

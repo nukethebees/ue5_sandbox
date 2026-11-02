@@ -180,10 +180,8 @@ struct LevelSpawnGroups
     auto types(this auto& self) { return self.view().types(); }
     auto offsets(this auto& self) { return self.view().offsets(); }
     auto counts(this auto& self) { return self.view().counts(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<LevelSpawnGroups,
-                                               level_spawn_groups::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<LevelSpawnGroups, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

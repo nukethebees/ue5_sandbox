@@ -232,9 +232,8 @@ struct WorldAABBs
   public:
     auto view_min_points(this auto& self) { return self.view().view_min_points(); }
     auto view_max_points(this auto& self) { return self.view().view_max_points(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<WorldAABBs,
-                                                                 world_aab_bs::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<WorldAABBs, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) {

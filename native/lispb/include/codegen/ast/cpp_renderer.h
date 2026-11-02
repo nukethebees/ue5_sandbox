@@ -3,9 +3,11 @@
 #include <codegen/ast/expr.h>
 #include <codegen/ast/indices.h>
 #include <codegen/ast/ir/range.h>
+#include <codegen/ast/name_origin.h>
 #include <codegen/ast/node_id.h>
 #include <codegen/ast/render_context.h>
 #include <codegen/ast/render_state.h>
+#include <codegen/ast/resolved_name.h>
 #include <codegen/ast/template_id.h>
 #include <lispb/indices.h>
 
@@ -43,7 +45,11 @@ class CppRenderer {
     // Types and environments
     /* **************************************** */
     void append_type(std::string& output, CppTypeId type);
-    void append_name(std::string& output, std::span<StringId const> components);
+    auto resolve_name(std::span<StringId const> components,
+                      NameOrigin origin,
+                      EnvironmentId environment) -> ResolvedName;
+    auto alias_scope(SymbolBinding alias) -> EnvironmentId;
+    void append_name(std::string& output, std::span<StringId const> components, NameOrigin origin);
     auto declaration_name(Expr expression) -> StringId;
     void collect_environment(EnvironmentId environment,
                              std::span<NodeId const> children,

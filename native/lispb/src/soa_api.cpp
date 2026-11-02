@@ -144,9 +144,10 @@ auto compact_row_api(LoweringContext& context,
     if (owner) {
         result.add(ir.using_declaration(ir.strings.intern("RowOperations"), base)).new_lines(1);
     }
-    result.add(ir.raw(owner ? "using RowOperations::set;" : "using Base::set;")).new_lines(1);
+    result.add(ir.using_import(ir.types.named(owner ? "RowOperations::set" : "Base::set")))
+        .new_lines(1);
     if (owner && !custom("add")) {
-        result.add(ir.raw("using RowOperations::add;")).new_lines(1);
+        result.add(ir.using_import(ir.types.named("RowOperations::add"))).new_lines(1);
     }
 
     std::vector<CppTypeId> parameter_types;
@@ -303,9 +304,11 @@ auto soa_row_operations(LoweringContext& context,
                                                          : "ViewRowOperations"};
     return types.template_type(
         types.named("ioj::soa_storage_detail::" + std::string{operations},
+                    NameOrigin::global,
                     {types.dependency(operations, "ioj/single_allocation/view.h")}),
         {types.named(type_name),
-         types.named(schema_namespace(context, schema) + "::Layout::column_types"),
+         types.named(schema_namespace(context, schema) + "::Layout::column_types",
+                     NameOrigin::global),
          base});
 }
 

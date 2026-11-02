@@ -261,10 +261,8 @@ struct SpinnerEntityData
     auto yaws(this auto& self) { return self.view().yaws(); }
     auto laser_cooldowns(this auto& self) { return self.view().laser_cooldowns(); }
     auto next_fire_point_indices(this auto& self) { return self.view().next_fire_point_indices(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<SpinnerEntityData,
-                                               spinner_entity_data::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<SpinnerEntityData, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

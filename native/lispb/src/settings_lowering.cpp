@@ -215,7 +215,8 @@ auto build_functions(LoweringContext& context,
             ir.block({
                 ir.variable("auto const*",
                             "typed_value",
-                            ir.call(ir.template_id(ir.type_reference(ir.types.named("std::get_if")),
+                            ir.call(ir.template_id(ir.type_reference(ir.types.named(
+                                                       "std::get_if", NameOrigin::global)),
                                                    {ir.type_reference(setting_types[index])}),
                                     {ir.unary(UnaryOperator::address_of, value)})),
                 ir.if_stmt(ir.binary(BinaryOperator::equal, typed_value, ir.literal("nullptr")),

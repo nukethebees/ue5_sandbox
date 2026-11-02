@@ -49,9 +49,10 @@ TEST_F(ExprTest, RequiresExplicitRawAndSupportsIndependentCopies) {
 }
 
 TEST_F(ExprTest, RendersCallsCastsAndInitializerLists) {
-    auto const lookup{ir.call(
-        ir.named("get_name"),
-        {ir.type_reference(ir.types.decorate(ir.types.named("project::Mode"), "", "::Ready"))})};
+    auto const lookup{
+        ir.call(ir.named("get_name"),
+                {ir.type_reference(ir.types.decorate(
+                    ir.types.named("project::Mode", NameOrigin::global), "", "::Ready"))})};
     expect_rendered(ir.init_list({lookup}, types.intern("FString")),
                     "FString{get_name(project::Mode::Ready)}");
     expect_rendered(ir.init_list({ir.literal("1"), ir.literal("2")}), "{1, 2}");

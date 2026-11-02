@@ -228,10 +228,8 @@ struct RangeQueryMatches
     auto entities(this auto& self) { return self.view().entities(); }
     auto distances(this auto& self) { return self.view().distances(); }
     auto view_directions(this auto& self) { return self.view().view_directions(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<RangeQueryMatches,
-                                               range_query_matches::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<RangeQueryMatches, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

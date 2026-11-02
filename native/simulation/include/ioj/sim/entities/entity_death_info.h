@@ -184,10 +184,8 @@ struct EntityDeathInfo
     auto victims(this auto& self) { return self.view().victims(); }
     auto killers(this auto& self) { return self.view().killers(); }
     auto locations(this auto& self) { return self.view().locations(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<EntityDeathInfo,
-                                               entity_death_info::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<EntityDeathInfo, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

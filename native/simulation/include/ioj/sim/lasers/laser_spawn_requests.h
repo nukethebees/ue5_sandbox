@@ -362,10 +362,8 @@ struct LaserSpawnRequests
     auto max_distances(this auto& self) { return self.view().max_distances(); }
     auto instigator_ids(this auto& self) { return self.view().instigator_ids(); }
     auto sources(this auto& self) { return self.view().sources(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<LaserSpawnRequests,
-                                               laser_spawn_requests::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<LaserSpawnRequests, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

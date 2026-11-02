@@ -165,7 +165,8 @@ class Renderer {
 
     auto forward_parameter(std::string const& parameter) -> Expr {
         auto const type{ir_.types.intern("decltype(" + parameter + ")")};
-        return ir_.call(ir_.template_id(ir_.type_reference(ir_.types.named("std::forward")),
+        return ir_.call(ir_.template_id(ir_.type_reference(ir_.types.named(
+                                            "std::forward", lispb::codegen::NameOrigin::global)),
                                         {ir_.type_reference(type)}),
                         {ir_.named(parameter)});
     }

@@ -209,12 +209,14 @@ auto enum_strings_specialization(CppIR& ir,
     auto const initializer{ir.init_list(
         {literal, ir.init_list(offset_values, offsets_type)},
         ir.types.named("ioj::PackedStrings",
+                       NameOrigin::global,
                        {ir.types.dependency("ioj::PackedStrings", "ioj/enum_strings.h")}))};
     auto const variable{ir.variable(
         ir.types.intern("auto"),
         ir.template_id(ir.named("enum_strings"),
-                       {ir.type_reference(ir.types.named(qualified)),
-                        ir.type_reference(ir.types.named("ioj::" + std::string{category}))}),
+                       {ir.type_reference(ir.types.named(qualified, NameOrigin::global)),
+                        ir.type_reference(
+                            ir.types.named("ioj::" + std::string{category}, NameOrigin::global))}),
         initializer,
         {.template_declaration = ir.template_specialization(),
          .is_inline = true,
@@ -232,8 +234,9 @@ auto string_lookup(LoweringContext& context,
     auto const qualified{qualified_enum_name(context, settings, schema)};
     auto& ir{context.ir};
     auto const lookup{ir.call(
-        ir.template_id(ir.type_reference(ir.types.named("ioj::enum_string")),
-                       {ir.type_reference(ir.types.named("ioj::" + std::string{category}))}),
+        ir.template_id(ir.type_reference(ir.types.named("ioj::enum_string", NameOrigin::global)),
+                       {ir.type_reference(
+                           ir.types.named("ioj::" + std::string{category}, NameOrigin::global))}),
         {ir.named("value")})};
     return lookup_function(context,
                            schema,
@@ -463,12 +466,15 @@ auto enum_range_declaration(LoweringContext& context,
     }
 
     auto const range_type{ir.types.template_type(
-        ir.types.named("ioj::MinMax", {ir.types.dependency("ioj::MinMax", "ioj/min_max.h")}),
+        ir.types.named("ioj::MinMax",
+                       NameOrigin::global,
+                       {ir.types.dependency("ioj::MinMax", "ioj/min_max.h")}),
         {enum_type})};
     auto enumerator = [&](EnumeratorId const value) {
         return ir.type_reference(
             ir.types.named(std::string{ir.types.spelling(enum_type)} +
-                           "::" + context.text(context.declarations.enumerators.name[value])));
+                               "::" + context.text(context.declarations.enumerators.name[value]),
+                           NameOrigin::global));
     };
     auto const variable{
         ir.variable(range_type,
@@ -572,7 +578,8 @@ auto native_enum_traits(LoweringContext& context,
                 continue;
             }
             values.push_back(ir.type_reference(ir.types.named(
-                std::string{ir.types.spelling(enum_type)} + "::" + context.text(name))));
+                std::string{ir.types.spelling(enum_type)} + "::" + context.text(name),
+                NameOrigin::global)));
         }
         auto const traits{
             ir.record(ir.template_id(ir.named("EnumTraits"), {ir.type_reference(enum_type)}),
@@ -592,7 +599,8 @@ auto native_enum_formatter(LoweringContext& context,
                            ModuleSettingsId settings,
                            DeclarationHandle schema) -> NodeId {
     auto& ir{context.ir};
-    auto const enum_type{ir.types.named(native_enum_name(context, settings, schema))};
+    auto const enum_type{
+        ir.types.named(native_enum_name(context, settings, schema), NameOrigin::global)};
     auto const formatter{
         ir.record(ir.template_id(ir.named("formatter"), {ir.type_reference(enum_type)}), {})};
     ir.set_record_template(formatter, ir.template_specialization());
@@ -600,6 +608,7 @@ auto native_enum_formatter(LoweringContext& context,
         formatter,
         {ir.types.template_type(
             ir.types.named("ioj::EnumFormatter",
+                           NameOrigin::global,
                            {ir.types.dependency("ioj::EnumFormatter", "ioj/enum_formatter.h")}),
             {enum_type})});
     return ir.namespace_node(ir.strings.intern("std"), {formatter});
@@ -725,7 +734,8 @@ auto lower_enum(LoweringContext& context,
         return emission;
     }
     auto const qualified{qualified_enum_name(context, settings, schema)};
-    auto const enum_type{ir.types.named(qualified.contains("::") ? qualified : "::" + qualified)};
+    auto const enum_type{ir.types.named(qualified.contains("::") ? qualified : "::" + qualified,
+                                        NameOrigin::global)};
     emission.source_dependencies = false;
     if (enums.native_api[schema]) {
         NodeListBuilder prefix{ir};

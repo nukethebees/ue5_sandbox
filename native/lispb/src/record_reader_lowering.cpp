@@ -68,7 +68,8 @@ auto constraint_arguments(LoweringContext& context, ChildOccurrenceId field) -> 
     auto const& options{members.s7[members.index(field)]};
     std::vector<Expr> checks;
     auto reference = [&](std::string_view name) {
-        return ir.type_reference(ir.types.named("ioj::s7::constraints::" + std::string{name}));
+        return ir.type_reference(
+            ir.types.named("ioj::s7::constraints::" + std::string{name}, NameOrigin::global));
     };
     auto const constraint{[&](std::string_view check) { checks.push_back(reference(check)); }};
     if (options.nonzero) {
@@ -140,10 +141,10 @@ auto member_reader(LoweringContext& context, DeclarationHandle record) -> Expr {
         if (group != groups.end()) {
             group->condition = ir.binary(BinaryOperator::logical_or, group->condition, condition);
         } else {
-            auto const action{
-                options.exclude
-                    ? ir.expr_stmt(ir.call(ir.type_reference(ir.types.named("std::unreachable"))))
-                    : read_field(context, field, ir.named("member"))};
+            auto const action{options.exclude
+                                  ? ir.expr_stmt(ir.call(ir.type_reference(
+                                        ir.types.named("std::unreachable", NameOrigin::global))))
+                                  : read_field(context, field, ir.named("member"))};
             groups.push_back({options, condition, action});
         }
     }
@@ -173,7 +174,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     auto const ctx{ir.named("context")};
     auto const errors{ir.member_access(ctx, "errors")};
     auto move = [&](Expr value) {
-        return ir.call(ir.type_reference(ir.types.named("std::move")), {value});
+        return ir.call(ir.type_reference(ir.types.named("std::move", NameOrigin::global)), {value});
     };
     auto const unexpected{ir.init_list({move(errors)}, ir.types.std.unexpected)};
     NodeListBuilder body{ir};
@@ -193,20 +194,21 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     }
 
     if (positional) {
-        body.add(
-            ir.variable("auto const",
-                        "arguments",
-                        ir.call(ir.type_reference(ir.types.named("ioj::s7::positional_arguments")),
-                                {ir.member_access(ctx, "reader"),
-                                 ir.member_access(ctx, "node"),
-                                 ir.string_literal(context.text(*records.s7_tag[row])),
-                                 ir.member_access(ctx, "path"),
-                                 ir.literal(std::to_string(fields.size()))})),
-            2);
+        body.add(ir.variable("auto const",
+                             "arguments",
+                             ir.call(ir.type_reference(ir.types.named(
+                                         "ioj::s7::positional_arguments", NameOrigin::global)),
+                                     {ir.member_access(ctx, "reader"),
+                                      ir.member_access(ctx, "node"),
+                                      ir.string_literal(context.text(*records.s7_tag[row])),
+                                      ir.member_access(ctx, "path"),
+                                      ir.literal(std::to_string(fields.size()))})),
+                 2);
         body.add(ir.if_stmt(
             ir.unary(UnaryOperator::logical_not, ir.named("arguments")),
             ir.block({ir.expr_stmt(ir.call(
-                          ir.type_reference(ir.types.named("ioj::s7::append_errors")),
+                          ir.type_reference(
+                              ir.types.named("ioj::s7::append_errors", NameOrigin::global)),
                           {errors, ir.call(ir.member_access(ir.named("arguments"), "error"))})),
                       constructing ? ir.return_stmt(unexpected) : ir.return_stmt()})));
         std::size_t index{};
@@ -226,7 +228,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
                      path,
                      ir.member_access(ctx, "mode"),
                      errors})},
-                ir.types.named("ioj::s7::FieldReader"))};
+                ir.types.named("ioj::s7::FieldReader", NameOrigin::global))};
             auto arguments{constraint_arguments(context, field)};
             arguments.insert(arguments.begin(), destination);
             body.add(ir.expr_stmt(
@@ -266,10 +268,11 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
             }
             if (records.generate_visitor[row]) {
                 // Stage construction before an object exists; excluded fields cannot be looked up.
-                cases.push_back(ir.switch_case({},
-                                               ir.block({ir.expr_stmt(ir.call(ir.type_reference(
-                                                   ir.types.named("std::unreachable"))))}),
-                                               false));
+                cases.push_back(
+                    ir.switch_case({},
+                                   ir.block({ir.expr_stmt(ir.call(ir.type_reference(
+                                       ir.types.named("std::unreachable", NameOrigin::global))))}),
+                                   false));
             }
             std::array const parameters{ir.parameter("Field const", "field"),
                                         ir.parameter("auto const&", "read")};
@@ -333,7 +336,8 @@ void lower_record_reader(LoweringContext& context,
     auto const empty{fields.empty()};
     auto const type{context.semantic.find_declared(context.module, records.name[row]).value()};
     auto const name{context.text(context.semantic.cpp_spelling(type))};
-    auto const config_type{ir.types.named(name + (records.constraint_policy[row] ? "Value" : ""))};
+    auto const config_type{
+        ir.types.named(name + (records.constraint_policy[row] ? "Value" : ""), NameOrigin::global)};
     auto const value_type{config_type};
     auto const& members{context.declarations.child_occurrences};
     if (std::ranges::any_of(fields, [&](auto field) {
@@ -380,11 +384,12 @@ void lower_record_reader(LoweringContext& context,
             auto const index{members.index(field)};
             return !members.initializer[index].has_value();
         })) {
-        add_function("construct",
-                     ir.types.template_type(ir.types.named("ioj::s7::ReadResult"),
-                                            {ir.types.named("value_type")}),
-                     read_parameters,
-                     record_reader::fields_body(context, record, true));
+        add_function(
+            "construct",
+            ir.types.template_type(ir.types.named("ioj::s7::ReadResult", NameOrigin::global),
+                                   {ir.types.named("value_type")}),
+            read_parameters,
+            record_reader::fields_body(context, record, true));
     }
     auto decode_parameters{read_parameters};
     decode_parameters.push_back(ir.parameter("value_type&", empty ? "" : "result"));
@@ -450,6 +455,7 @@ void lower_record_reader(LoweringContext& context,
     ir.set_record_bases(
         specialization,
         {ir.types.template_type(ir.types.named("ioj::s7::RecordReader",
+                                               NameOrigin::global,
                                                {ir.types.dependency("ioj::s7::RecordReader",
                                                                     "ioj/s7/record_reader.h")}),
                                 {value_type})});

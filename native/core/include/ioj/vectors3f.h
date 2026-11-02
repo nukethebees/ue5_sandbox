@@ -208,9 +208,8 @@ struct Vectors3f
     auto xs(this auto& self) { return self.view().xs(); }
     auto ys(this auto& self) { return self.view().ys(); }
     auto zs(this auto& self) { return self.view().zs(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<Vectors3f,
-                                                                 vectors3f::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<Vectors3f, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Vector3f const value) { set(index, value.x(), value.y(), value.z()); }

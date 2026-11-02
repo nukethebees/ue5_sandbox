@@ -89,7 +89,8 @@ TEST_F(AstTest, RendersStaticAssertionsWithOptionalMessages) {
     expect_rendered(with_message, R"(static_assert(valid<Value>, "Value must be \"valid\".");)");
 
     auto const dependency{ir.types.dependency("a::valid", "a/validation.h")};
-    auto const predicate{ir.call(ir.type_reference(ir.types.named("a::valid", {dependency})), {})};
+    auto const predicate{ir.call(
+        ir.type_reference(ir.types.named("a::valid", NameOrigin::global, {dependency})), {})};
     auto const assertion{ir.static_assertion(predicate)};
     auto const shadowed{
         ir.record(ir.strings.intern("Value"),
@@ -517,7 +518,8 @@ TEST_F(AstTest, RendersQualifiedTrailingReturnAndDefaultedConstructor) {
                     "FValue::FValue() = default;");
 
     auto const dependency{types.dependency("a::make_value", "a/value.h")};
-    auto const factory{ir.call(ir.type_reference(types.named("a::make_value", {dependency})), {})};
+    auto const factory{ir.call(
+        ir.type_reference(types.named("a::make_value", NameOrigin::global, {dependency})), {})};
     auto const initialized{ir.constructor(ir.strings.intern("Initialized"))};
     ir.set_function_parameters(initialized, {ir.parameter(ir.types.std.int_, "make_value")});
     ir.set_function_body(
@@ -653,7 +655,8 @@ TEST_P(NamespaceRendering, ShortensOnlyVisibleNamespaceComponents) {
         for (auto const name : test.hidden) {
             members.add(ir.instance_member(types.std.int_, ir.strings.intern(name)));
         }
-        members.add(ir.instance_member(types.named(test.target), ir.strings.intern("value")));
+        members.add(ir.instance_member(types.named(test.target, NameOrigin::global),
+                                       ir.strings.intern("value")));
         auto const record{ir.record(ir.strings.intern("Holder"), members.build())};
         auto const output{CppRenderer{ir}.render(in_namespace(ir, test.current, record, nested))};
         EXPECT_NE(output.find(std::string{test.expected} + " value;"), std::string::npos) << output;
@@ -676,7 +679,7 @@ INSTANTIATE_TEST_SUITE_P(
                     NamespaceCase{"a::b", "::a::b::Token", "::a::b::Token", {}}));
 
 TEST_F(AstTest, RestoresNamespaceContextAndRetainsAnonymousLookup) {
-    auto const type{ir.types.named("a::b::Token")};
+    auto const type{ir.types.named("a::b::Token", NameOrigin::global)};
     auto const member{ir.variable(type, "value")};
     auto const local{in_namespace(ir, "a::b", ir.namespace_node(ir.strings.intern(""), {member}))};
     auto const output{renderer.render_nodes(std::vector<NodeId>{local, member}, {}, 1)};
@@ -688,7 +691,8 @@ TEST_F(AstTest, RestoresNamespaceContextAndRetainsAnonymousLookup) {
 
 TEST_F(AstTest, OmitsImportsIntoTheirOwningNamespaceAndRetainsOtherImports) {
     auto const dependency{ir.types.dependency("a::lookup", "Lookup.h")};
-    auto const imported{ir.using_import(ir.types.named("a::lookup", {dependency}))};
+    auto const imported{
+        ir.using_import(ir.types.named("a::lookup", NameOrigin::global, {dependency}))};
     expect_rendered(in_namespace(ir, "a", imported), "namespace a {\n\n} // namespace a");
     EXPECT_NE(renderer.render(in_namespace(ir, "b", imported)).find("using a::lookup;"),
               std::string::npos);
@@ -723,7 +727,8 @@ TEST_F(AstTest, RetainsTypeStructureAndPoliciesAcrossCompositionAndDependencies)
 
 TEST_F(AstTest, PreservesQualificationAcrossOpaqueScopesUnlessBindingsAreProvided) {
     auto const raw{ir.raw("using Hidden = int;")};
-    auto const member{ir.instance_member(ir.types.named("a::Token"), ir.strings.intern("value"))};
+    auto const member{ir.instance_member(ir.types.named("a::Token", NameOrigin::global),
+                                         ir.strings.intern("value"))};
     auto const record{ir.record(ir.strings.intern("Holder"), {raw, member})};
     auto const wrapped{in_namespace(ir, "a", record)};
     EXPECT_NE(renderer.render(wrapped).find("a::Token value;"), std::string::npos);
@@ -734,7 +739,7 @@ TEST_F(AstTest, PreservesQualificationAcrossOpaqueScopesUnlessBindingsAreProvide
 }
 
 TEST_F(AstTest, AccountsForReopenedAndAnonymousNamespaceBindings) {
-    auto const token{ir.types.named("a::Token")};
+    auto const token{ir.types.named("a::Token", NameOrigin::global)};
     auto const declaration{ir.record(ir.strings.intern("Token"))};
     auto const member{ir.variable(token, "value")};
     for (auto const nested : {false, true}) {
@@ -784,7 +789,7 @@ TEST_F(AstTest, AccountsForReopenedAndAnonymousNamespaceBindings) {
 }
 
 TEST_F(AstTest, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
-    auto const token{ir.types.named("a::Token")};
+    auto const token{ir.types.named("a::Token", NameOrigin::global)};
     auto const make{ir.function("make", token)};
     ir.set_function_parameters(make, {ir.parameter(token, "argument")});
     ir.set_function_body(make, {ir.return_stmt(ir.init_list({}, token))});
@@ -823,9 +828,9 @@ TEST_F(AstTest, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
 
 TEST_F(AstTest, DistinguishesDeclarationsWhenNodesAreReusedAcrossNamespaces) {
     auto const alias{ir.using_declaration(ir.strings.intern("Token"), ir.types.std.int_)};
-    auto const record{
-        ir.record(ir.strings.intern("Holder"),
-                  {ir.instance_member(ir.types.named("a::Token"), ir.strings.intern("value"))})};
+    auto const record{ir.record(ir.strings.intern("Holder"),
+                                {ir.instance_member(ir.types.named("a::Token", NameOrigin::global),
+                                                    ir.strings.intern("value"))})};
     auto const output{CppRenderer{ir}.render_nodes(
         std::vector{ir.namespace_node(ir.strings.intern("a"), {alias, record}),
                     ir.namespace_node(ir.strings.intern("b"), {alias, record})},
@@ -841,7 +846,7 @@ TEST_F(AstTest, DistinguishesDeclarationsWhenNodesAreReusedAcrossNamespaces) {
 }
 
 TEST_F(AstTest, TracksLocalHidingAtTheDeclarationAndRestoresEnclosingLookup) {
-    auto const token{ir.types.named("a::Token")};
+    auto const token{ir.types.named("a::Token", NameOrigin::global)};
     auto const function{ir.function("use", ir.types.std.void_)};
     ir.set_function_body(
         function,
@@ -859,7 +864,7 @@ TEST_F(AstTest, TracksLocalHidingAtTheDeclarationAndRestoresEnclosingLookup) {
 }
 
 TEST_F(AstTest, ResolvesNestedClassOwnersAndForwardDeclaredInjectedNames) {
-    auto const token{ir.types.named("a::Token")};
+    auto const token{ir.types.named("a::Token", NameOrigin::global)};
     auto const make{ir.function("make", token)};
     ir.set_function_parameters(make, {ir.parameter(token, "value")});
     ir.set_function_body(make, {ir.return_stmt(ir.init_list({}, token))});
@@ -867,10 +872,11 @@ TEST_F(AstTest, ResolvesNestedClassOwnersAndForwardDeclaredInjectedNames) {
                                {ir.using_declaration(ir.strings.intern("Token"), ir.types.std.int_),
                                 ir.declaration(make)})};
     auto const outer{ir.record(ir.strings.intern("Outer"), {inner})};
-    auto const self{
-        ir.record(ir.strings.intern("Self"),
-                  {ir.instance_member(ir.types.decorate(ir.types.named("a::Self"), "", " const*"),
-                                      ir.strings.intern("next"))})};
+    auto const self{ir.record(
+        ir.strings.intern("Self"),
+        {ir.instance_member(
+            ir.types.decorate(ir.types.named("a::Self", NameOrigin::global), "", " const*"),
+            ir.strings.intern("next"))})};
     auto const output{CppRenderer{ir}.render(
         ir.namespace_node(ir.strings.intern("a"),
                           {outer,
@@ -884,7 +890,7 @@ TEST_F(AstTest, ResolvesNestedClassOwnersAndForwardDeclaredInjectedNames) {
 }
 
 TEST_F(AstTest, KeepsTemplateHeadersIndependentOfFunctionParameters) {
-    auto const token{ir.types.named("a::Token")};
+    auto const token{ir.types.named("a::Token", NameOrigin::global)};
     auto const function{ir.function("use", token)};
     ir.set_function_template(
         function,
@@ -899,9 +905,9 @@ TEST_F(AstTest, KeepsTemplateHeadersIndependentOfFunctionParameters) {
 }
 
 TEST_F(AstTest, PreservesQualificationForAuthoredRecordNames) {
-    auto const record{
-        ir.record(ir.raw_expr("Holder"),
-                  {ir.instance_member(ir.types.named("a::Token"), ir.strings.intern("value"))})};
+    auto const record{ir.record(ir.raw_expr("Holder"),
+                                {ir.instance_member(ir.types.named("a::Token", NameOrigin::global),
+                                                    ir.strings.intern("value"))})};
 
     EXPECT_NE(CppRenderer{ir}.render(in_namespace(ir, "a", record)).find("a::Token value;"),
               std::string::npos);

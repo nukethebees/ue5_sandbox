@@ -35,7 +35,8 @@ class Environments {
     auto declare(EnvironmentId environment,
                  StringId name,
                  CppDeclarationId declaration,
-                 EnvironmentId introduced_scope = {}) -> SymbolBinding;
+                 EnvironmentId introduced_scope = {},
+                 CppTypeId aliased_type = {}) -> SymbolBinding;
     // Preserve declaration ownership for injected names and anonymous namespace imports.
     auto bind(EnvironmentId environment, StringId name, SymbolBinding symbol) -> SymbolBinding;
     auto named(EnvironmentId parent,
@@ -50,7 +51,7 @@ class Environments {
     auto lookup_local(EnvironmentId environment, StringId name) const -> SymbolLookup;
     // Register names supplied by includes without claiming knowledge of their contents.
     // Allocate scopes only for qualifiers; throw length_error if external IDs are exhausted.
-    auto reference(std::span<StringId const> name) -> SymbolBinding;
+    auto reference(EnvironmentId environment, std::span<StringId const> name) -> SymbolBinding;
     // Ignore unknown contents when locating an already registered owner scope.
     // Return null when no such scope exists.
     auto find_environment(EnvironmentId environment, std::span<StringId const> name) const

@@ -342,10 +342,8 @@ struct SoaColumnTable
         return self.view().complete_elements_per_page();
     }
     auto cache_line_tiling(this auto& self) { return self.view().cache_line_tiling(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<SoaColumnTable,
-                                               soa_column_table::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<SoaColumnTable, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();

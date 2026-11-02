@@ -329,10 +329,9 @@ struct LevelCapitalSpawnEvents
         return self.view().initial_fighter_spawn_delays();
     }
     auto fighter_spawn_cooldowns(this auto& self) { return self.view().fighter_spawn_cooldowns(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<LevelCapitalSpawnEvents,
-                                               level_capital_spawn_events::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<LevelCapitalSpawnEvents,
+                                                                 Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

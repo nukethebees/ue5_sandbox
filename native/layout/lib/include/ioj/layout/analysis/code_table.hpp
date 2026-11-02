@@ -210,9 +210,8 @@ struct CodeTable
     auto count_sentinel(this auto& self) { return self.view().count_sentinel(); }
     auto code(this auto& self) { return self.view().code(); }
     auto integer_value(this auto& self) { return self.view().integer_value(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<CodeTable,
-                                                                 code_table::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<CodeTable, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();

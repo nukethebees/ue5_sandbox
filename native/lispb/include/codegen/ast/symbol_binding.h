@@ -8,6 +8,7 @@ struct SymbolBinding {
     // Distinguish declarations when an IR node is reused in another environment.
     EnvironmentId declaring_scope;
     EnvironmentId introduced_scope;
+    CppTypeId aliased_type;
     bool ambiguous{};
 
     auto same_declaration(SymbolBinding const& other) const -> bool {

@@ -75,7 +75,7 @@ CppTypes::CppTypes(Strings& strings)
 }
 void CppTypes::initialise_standard_types() {
     auto library = [&](std::string_view name, std::string_view header) {
-        return named(name, {dependency(name, header)});
+        return named(name, NameOrigin::global, {dependency(name, header)});
     };
     std = {
         .u8 = library("std::uint8_t", "cstdint"),
@@ -216,7 +216,7 @@ auto CppTypes::find(StringId const spelling,
         auto const candidate{current->second};
         auto const index{candidate.value - 1};
         auto const candidate_shape{shapes_[index]};
-        if (candidate_shape.form != shape.form ||
+        if (candidate_shape.form != shape.form || candidate_shape.origin != shape.origin ||
             (shape.form == CppTypeForm::composed &&
              !std::ranges::equal(std::span{parts_}.subspan(shape.parts.begin, shape.parts.count),
                                  std::span{parts_}.subspan(candidate_shape.parts.begin,
@@ -305,6 +305,12 @@ auto CppTypes::intern_shape(std::string_view const spelling,
 auto CppTypes::named(std::string_view const spelling,
                      std::span<TypeDependencyId const> const dependencies,
                      std::optional<ParameterPassing> const passing) -> CppTypeId {
+    return named(spelling, NameOrigin::enclosing, dependencies, passing);
+}
+auto CppTypes::named(std::string_view const spelling,
+                     NameOrigin const origin,
+                     std::span<TypeDependencyId const> const dependencies,
+                     std::optional<ParameterPassing> const passing) -> CppTypeId {
     // Keep explicitly global references explicitly global.
     if (spelling.starts_with("::")) {
         return intern(spelling, dependencies, passing);
@@ -312,7 +318,8 @@ auto CppTypes::named(std::string_view const spelling,
     std::string const name{spelling};
     auto const policy{passing.value_or(cpp_type_detail::default_parameter_passing(name))};
     CppTypeShape shape{.form = CppTypeForm::named,
-                       .parts = {static_cast<std::uint32_t>(name_components_.size()), 0}};
+                       .parts = {static_cast<std::uint32_t>(name_components_.size()), 0},
+                       .origin = origin};
     std::size_t begin{};
     do {
         auto const separator{name.find("::", begin)};
@@ -392,7 +399,7 @@ auto CppTypes::reference(CppTypeId const type) -> CppTypeId {
             return type;
         }
     }
-    auto const structured{named(name)};
+    auto const structured{named(name, NameOrigin::global)};
     return intern_shape(
         name, dependencies(type), parameter_passing(type), type, shapes_[structured.value - 1]);
 }

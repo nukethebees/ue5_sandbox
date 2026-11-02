@@ -136,7 +136,8 @@ auto fixture_array(lispb::codegen::CppIR& cpp,
     }
 
     auto const name{"fixture_values_" + std::to_string(arrays.size())};
-    auto const symbol{cpp.types.named(std::string{suite} + "::" + name)};
+    auto const symbol{
+        cpp.types.named(std::string{suite} + "::" + name, lispb::codegen::NameOrigin::global)};
     arrays.push_back({type, cpp.strings.intern(name), symbol, &values});
     return cpp.type_reference(symbol);
 }
@@ -190,11 +191,12 @@ void append_case(lispb::codegen::CppIR& cpp,
     body.push_back(cpp.variable("auto const", "before", cpp.named(destination)));
     auto const function{cpp.type_reference(
         cpp.types.named(document.text(document.emissions.cpp_namespace(emission)) +
-                        "::" + document.text(document.variants.name(expanded.variant(id)))))};
+                            "::" + document.text(document.variants.name(expanded.variant(id))),
+                        lispb::codegen::NameOrigin::global))};
     body.push_back(cpp.expr_stmt(cpp.call(function, test_arguments(cpp, document, id))));
 
-    auto const expect_result{
-        cpp.type_reference(cpp.types.named(std::string{suite} + "::expect_result"))};
+    auto const expect_result{cpp.type_reference(cpp.types.named(
+        std::string{suite} + "::expect_result", lispb::codegen::NameOrigin::global))};
     body.push_back(
         cpp.expr_stmt(cpp.call(expect_result,
                                {cpp.call(cpp.member_access(cpp.named(destination), "data")),
@@ -252,16 +254,20 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
         cpp.block({cpp.expr_stmt(cpp.call(cpp.named("EXPECT_FLOAT_EQ"), {actual, expected}))}),
         cpp.block({cpp.expr_stmt(cpp.call(cpp.named("EXPECT_DOUBLE_EQ"), {actual, expected}))}),
         true)};
-    auto const infinite{
-        cpp.if_stmt(cpp.call(cpp.type_reference(cpp.types.named("std::isinf")), {expected}),
-                    cpp.block({equal}),
-                    cpp.block({floating_equal}))};
-    auto const nan{
-        cpp.if_stmt(cpp.call(cpp.type_reference(cpp.types.named("std::isnan")), {expected}),
-                    cpp.block({cpp.expr_stmt(cpp.call(
-                        cpp.named("EXPECT_TRUE"),
-                        {cpp.call(cpp.type_reference(cpp.types.named("std::isnan")), {actual})}))}),
-                    cpp.block({infinite}))};
+    auto const infinite{cpp.if_stmt(cpp.call(cpp.type_reference(cpp.types.named(
+                                                 "std::isinf", lispb::codegen::NameOrigin::global)),
+                                             {expected}),
+                                    cpp.block({equal}),
+                                    cpp.block({floating_equal}))};
+    auto const nan{cpp.if_stmt(cpp.call(cpp.type_reference(cpp.types.named(
+                                            "std::isnan", lispb::codegen::NameOrigin::global)),
+                                        {expected}),
+                               cpp.block({cpp.expr_stmt(cpp.call(
+                                   cpp.named("EXPECT_TRUE"),
+                                   {cpp.call(cpp.type_reference(cpp.types.named(
+                                                 "std::isnan", lispb::codegen::NameOrigin::global)),
+                                             {actual})}))}),
+                               cpp.block({infinite}))};
     cpp.set_function_body(
         expect_value,
         {cpp.if_stmt(
@@ -293,7 +299,8 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                                                {cpp.subscript(cpp.named("actual"), index),
                                                 cpp.subscript(cpp.named("expected"), index)}))})),
          cpp.expr_stmt(cpp.call(cpp.named("EXPECT_EQ"),
-                                {cpp.call(cpp.type_reference(cpp.types.named("std::memcmp")),
+                                {cpp.call(cpp.type_reference(cpp.types.named(
+                                              "std::memcmp", lispb::codegen::NameOrigin::global)),
                                           {cpp.binary(lispb::codegen::BinaryOperator::add,
                                                       cpp.named("actual"),
                                                       cpp.named("count")),
@@ -372,7 +379,7 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     declarations.push_back(cpp.using_declaration(
         cpp.strings.intern(suite),
         cpp.types.template_type(
-            cpp.types.named("testing::TestWithParam"),
+            cpp.types.named("testing::TestWithParam", lispb::codegen::NameOrigin::global),
             {cpp.types.template_type(cpp.types.std.tuple,
                                      {cpp.types.named("KernelCase"), cpp.types.std.size_t})})));
     declarations.push_back(cpp.lines(2));

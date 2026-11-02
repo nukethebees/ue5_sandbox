@@ -346,10 +346,8 @@ struct EntityCellData
     auto view_min_cells(this auto& self) { return self.view().view_min_cells(); }
     auto view_max_cells(this auto& self) { return self.view().view_max_cells(); }
     auto entity_ids(this auto& self) { return self.view().entity_ids(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<EntityCellData,
-                                               entity_cell_data::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<EntityCellData, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

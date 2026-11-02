@@ -390,10 +390,8 @@ struct LaserEntities
     auto instigator_ids(this auto& self) { return self.view().instigator_ids(); }
     auto initial_lifetimes(this auto& self) { return self.view().initial_lifetimes(); }
     auto spawn_times(this auto& self) { return self.view().spawn_times(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<LaserEntities,
-                                               laser_entities::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<LaserEntities, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

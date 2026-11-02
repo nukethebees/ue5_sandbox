@@ -54,12 +54,14 @@ void Environments::mark_unknown(EnvironmentId environment) {
 auto Environments::declare(EnvironmentId environment,
                            StringId name,
                            CppDeclarationId declaration,
-                           EnvironmentId introduced_scope) -> SymbolBinding {
+                           EnvironmentId introduced_scope,
+                           CppTypeId aliased_type) -> SymbolBinding {
     return bind(environment,
                 name,
                 {.declaration = declaration,
                  .declaring_scope = environment,
-                 .introduced_scope = introduced_scope});
+                 .introduced_scope = introduced_scope,
+                 .aliased_type = aliased_type});
 }
 auto Environments::bind(EnvironmentId environment, StringId name, SymbolBinding symbol)
     -> SymbolBinding {
@@ -139,9 +141,9 @@ auto Environments::lookup(EnvironmentId environment, std::span<StringId const> n
     }
     return result;
 }
-auto Environments::reference(std::span<StringId const> name) -> SymbolBinding {
+auto Environments::reference(EnvironmentId environment, std::span<StringId const> name)
+    -> SymbolBinding {
     assert(!name.empty());
-    auto environment{global()};
     auto const count{name.size()};
     for (std::size_t component{}; component + 1 < count; ++component) {
         environment = named(environment, EnvironmentKind::external, name[component]);

@@ -284,10 +284,8 @@ struct DistributionTable
     auto expected_selected_slack_bytes(this auto& self) {
         return self.view().expected_selected_slack_bytes();
     }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<DistributionTable,
-                                               distribution_table::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<DistributionTable, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     DistributionId append(AnalysisId owner, RowRange samples, std::uint64_t count);

@@ -208,9 +208,8 @@ struct Rotators3f
     auto pitches(this auto& self) { return self.view().pitches(); }
     auto yaws(this auto& self) { return self.view().yaws(); }
     auto rolls(this auto& self) { return self.view().rolls(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<Rotators3f,
-                                                                 rotators3f::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<Rotators3f, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Rotator3f const value) {

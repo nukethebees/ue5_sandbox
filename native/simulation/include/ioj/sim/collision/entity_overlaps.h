@@ -186,10 +186,9 @@ struct EntityEntityOverlaps
   public:
     auto first_entities(this auto& self) { return self.view().first_entities(); }
     auto second_entities(this auto& self) { return self.view().second_entities(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<EntityEntityOverlaps,
-                                               entity_entity_overlaps::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<EntityEntityOverlaps,
+                                                                 Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
@@ -360,10 +359,9 @@ struct EntityStaticOverlaps
   public:
     auto entities(this auto& self) { return self.view().entities(); }
     auto static_geometry_indices(this auto& self) { return self.view().static_geometry_indices(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<EntityStaticOverlaps,
-                                               entity_static_overlaps::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<EntityStaticOverlaps,
+                                                                 Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

@@ -56,12 +56,12 @@ auto value_type(LoweringContext& context, schema::TypeId type, std::uint32_t bit
     auto const kind{definition.kind()};
     auto const& definitions{graph.definitions()};
     if (composite(kind) && schema::is_packed_projection(graph, type)) {
-        return types.named(context.text(graph.cpp_spelling(type)));
+        return types.named(context.text(graph.cpp_spelling(type)), NameOrigin::global);
     }
     if (kind == schema::TypeDefinitionKind::enumeration) {
         auto const declaration{graph.source_declaration(type)};
         if (context.declarations.enums.cpp_projection[declaration]) {
-            return types.named(context.text(graph.cpp_spelling(type)));
+            return types.named(context.text(graph.cpp_spelling(type)), NameOrigin::global);
         }
     }
     if (context.text(graph.cpp_spelling(type)) == "bool") {
@@ -144,11 +144,12 @@ class PackedEmitter {
         auto default_value{ir_.types.intern("0")};
         auto const base{
             ir_.types.named("ioj::PackedValueBase",
+                            NameOrigin::global,
                             {ir_.types.dependency("ioj::PackedValueBase", "ioj/packed_value.h")})};
         auto const storage_type{ir_.types.std.integer(layout_.storage_bits)};
         if (layout_.default_raw_value.value_or(0) != 0) {
             auto const default_name{soa_namespace_name(name_) + "_default_raw_value"};
-            auto const default_symbol{type(detail_namespace + default_name)};
+            auto const default_symbol{type(detail_namespace + default_name, NameOrigin::global)};
             detail_members.push_back(
                 ir_.variable(ir_.types.decorate(storage_type, "inline constexpr ", ""),
                              text(default_name),
@@ -157,6 +158,7 @@ class PackedEmitter {
         }
         auto const descriptor{ir_.types.template_type(
             ir_.types.named("ioj::PackedStorage",
+                            NameOrigin::global,
                             {ir_.types.dependency("ioj::PackedStorage", "ioj/packed_value.h")}),
             {storage_type, ir_.types.intern(std::to_string(*layout_.encoded_bits))})};
         auto const storage{ir_.types.compose({{.type = descriptor},
@@ -165,13 +167,14 @@ class PackedEmitter {
                                               {.text = text("}")}})};
         auto const base_type{ir_.types.template_type(base, {type(name_), storage})};
         auto const base_name{name_ + "Base"};
-        auto const base_alias{type(detail_namespace + base_name)};
+        auto const base_alias{type(detail_namespace + base_name, NameOrigin::global)};
         detail_members.push_back(ir_.using_declaration(text(base_name), base_type));
         metadata_.push_back(ir_.line_comment("Storage"));
         metadata_.push_back(ir_.using_declaration(text("Base"), base_alias));
         metadata_.push_back(ir_.using_declaration(
             text("packed_integer_tag"),
             ir_.types.named(scalar_ ? "ioj::packed::scalar_tag" : "ioj::packed::integer_tag",
+                            NameOrigin::global,
                             {ir_.types.dependency("ioj::PackedStorage", "ioj/packed_value.h")})));
         packed_members();
         Nodes members{ir_.access()};
@@ -247,9 +250,10 @@ class PackedEmitter {
         }
     }
     auto text(std::string_view value) -> StringId { return ir_.store_text(value); }
-    auto type(std::string_view value) -> CppTypeId {
+    auto type(std::string_view value, NameOrigin origin = NameOrigin::enclosing) -> CppTypeId {
         return ir_.types.named(
             value,
+            origin,
             value.starts_with("std::")
                 ? std::initializer_list<TypeDependencyId>{ir_.types.dependency(value, "cstdint")}
                 : std::initializer_list<TypeDependencyId>{});
@@ -264,7 +268,8 @@ class PackedEmitter {
     auto value() -> Expr { return ir_.named("value"); }
     auto raw() -> Expr { return ir_.named("value_"); }
     auto external(std::string_view name, std::string_view header) -> Expr {
-        return ir_.type_reference(ir_.types.named(name, {ir_.types.dependency(name, header)}));
+        return ir_.type_reference(
+            ir_.types.named(name, NameOrigin::global, {ir_.types.dependency(name, header)}));
     }
     auto invoke(std::string_view name, std::initializer_list<Expr> args = {}) -> Expr {
         return ir_.call(ir_.named(name), args);
@@ -416,8 +421,10 @@ class PackedEmitter {
             initializer = ir_.init_list(
                 {ir_.init_list({cast(decoded, integer(lower)), cast(decoded, integer(upper))})});
         }
-        auto const packed{ir_.types.named(
-            "ioj::PackedField", {ir_.types.dependency("ioj::PackedField", "ioj/packed_value.h")})};
+        auto const packed{
+            ir_.types.named("ioj::PackedField",
+                            NameOrigin::global,
+                            {ir_.types.dependency("ioj::PackedField", "ioj/packed_value.h")})};
         auto const descriptor{ir_.types.template_type(
             packed,
             {type("storage_type"),
@@ -615,7 +622,8 @@ class PackedEmitter {
                     auto const enumerator_value{
                         projected
                             ? ir_.type_reference(type(context_.text(graph_.cpp_spelling(scalar)) +
-                                                      "::" + enumerator))
+                                                          "::" + enumerator,
+                                                      NameOrigin::global))
                             : cast(decoded,
                                    integer(PackedIntegerValue::from_parts(code->negative,
                                                                           code->magnitude)))};
@@ -798,7 +806,7 @@ class PackedEmitter {
             return type("value_type");
         }
         return aggregate(placement) && schema::is_packed_projection(graph_, placement.type)
-                 ? type(context_.text(graph_.cpp_spelling(placement.type)))
+                 ? type(context_.text(graph_.cpp_spelling(placement.type)), NameOrigin::global)
                  : descriptor_value(field_name(placement) + "_layout");
     }
     auto record_invalid(schema::TypeId record) const -> std::optional<std::uint64_t> {
@@ -929,9 +937,10 @@ class PackedEmitter {
         for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
             auto const code{domains.code(domain, ordinal)};
             if (code && !code->negative && code->magnitude == guard.value) {
-                return ir_.type_reference(type(
-                    context_.text(graph_.cpp_spelling(guard.enumeration)) +
-                    "::" + context_.text(context_.declarations.enumerators.name[values[ordinal]])));
+                return ir_.type_reference(
+                    type(context_.text(graph_.cpp_spelling(guard.enumeration)) + "::" +
+                             context_.text(context_.declarations.enumerators.name[values[ordinal]]),
+                         NameOrigin::global));
             }
         }
         std::unreachable();

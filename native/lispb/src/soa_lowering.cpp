@@ -111,11 +111,12 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
                                              {.text = ir.store_text(")")}})};
     auto const base{ir.types.template_type(
         ir.types.named("ioj::FieldMask",
+                       NameOrigin::global,
                        {ir.types.dependency("ioj::FieldMask", "ioj/field_mask.h")}),
         {enum_type, field_count})};
     NodeListBuilder children{ir};
     children.add(ir.using_declaration(ir.store_text("Base"), base))
-        .add(ir.raw("using Base::Base;"));
+        .add(ir.using_import(ir.types.named("Base::Base")));
 
     for (auto const member : selected) {
         auto const member_row{members.index(member)};

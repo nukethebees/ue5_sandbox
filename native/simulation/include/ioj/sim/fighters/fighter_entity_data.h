@@ -879,10 +879,8 @@ struct FighterEntityData
     auto target_distance_sq(this auto& self) { return self.view().target_distance_sq(); }
     auto target_distances(this auto& self) { return self.view().target_distances(); }
     auto target_radii(this auto& self) { return self.view().target_radii(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<FighterEntityData,
-                                               fighter_entity_data::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<FighterEntityData, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

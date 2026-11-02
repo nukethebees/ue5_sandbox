@@ -246,10 +246,8 @@ struct TypeAnalysisTable
     auto aggregate(this auto& self) { return self.view().aggregate(); }
     auto packed(this auto& self) { return self.view().packed(); }
     auto soa(this auto& self) { return self.view().soa(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<TypeAnalysisTable,
-                                               type_analysis_table::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<TypeAnalysisTable, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     AnalysisId append(lispb::schema::TypeId type, ScenarioId scenario_id);

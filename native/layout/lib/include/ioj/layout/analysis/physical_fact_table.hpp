@@ -228,10 +228,8 @@ struct PhysicalFactTable
     auto unsigned_value_bits(this auto& self) { return self.view().unsigned_value_bits(); }
     auto provenance(this auto& self) { return self.view().provenance(); }
     auto origin(this auto& self) { return self.view().origin(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<PhysicalFactTable,
-                                               physical_fact_table::Layout::column_types,
-                                               native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<PhysicalFactTable, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

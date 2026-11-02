@@ -57,7 +57,7 @@ class CppTypes {
                 std::string_view spelling,
                 std::span<TypeDependencyId const> dependencies) -> CppTypeId;
 
-    // Require a qualified identifier; namespace components remain available during rendering.
+    // Resolve names from the enclosing scope unless a global origin is supplied.
     auto named(std::string_view spelling,
                std::span<TypeDependencyId const> dependencies = {},
                std::optional<ParameterPassing> passing = std::nullopt) -> CppTypeId;
@@ -65,6 +65,16 @@ class CppTypes {
                std::initializer_list<TypeDependencyId> dependencies,
                std::optional<ParameterPassing> passing = std::nullopt) -> CppTypeId {
         return named(spelling, std::span<TypeDependencyId const>{dependencies}, passing);
+    }
+    auto named(std::string_view spelling,
+               NameOrigin origin,
+               std::span<TypeDependencyId const> dependencies = {},
+               std::optional<ParameterPassing> passing = std::nullopt) -> CppTypeId;
+    auto named(std::string_view spelling,
+               NameOrigin origin,
+               std::initializer_list<TypeDependencyId> dependencies,
+               std::optional<ParameterPassing> passing = std::nullopt) -> CppTypeId {
+        return named(spelling, origin, std::span<TypeDependencyId const>{dependencies}, passing);
     }
     // Structure a simple qualified identifier at an authored type boundary; otherwise retain it
     // raw.

@@ -313,9 +313,8 @@ struct HistoryRows
     auto kills(this auto& self) { return self.view().kills(); }
     auto active_lasers(this auto& self) { return self.view().active_lasers(); }
     auto lasers_fired(this auto& self) { return self.view().lasers_fired(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<HistoryRows,
-                                                                 history_rows::Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<HistoryRows, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
