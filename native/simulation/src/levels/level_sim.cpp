@@ -270,6 +270,7 @@ void LevelSim::think_tick(float const tick_period,
     fighters::NavigationCounters navigation_counters{};
     fighters::ThinkingInputs const fighter_inputs{
         .clock = clock_,
+        .task_manager = task_manager_,
         .collision_radius = collision_pipeline_.queries().entity_type_radius(EntityType::Fighter),
         .spatial_query_manager = collision_pipeline_.queries(),
         .scratch_resource = phase_memory,

@@ -63,6 +63,7 @@ struct Sim {
     void update_entity_lookup_table();
     void prepare_tick(PreparationInputs inputs);
     void think(ThinkingInputs const inputs);
+    void plan_instructions(tasks::TaskManager const& manager);
     void plan_movement(ThinkingInputs const inputs);
     void apply_movement(ActionInputs const inputs);
     void generate_fire_commands(ThinkingInputs const inputs);

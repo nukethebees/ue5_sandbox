@@ -26,6 +26,10 @@ namespace ioj::sim::lasers {
 struct Sim;
 }
 
+namespace ioj::sim::tasks {
+class TaskManager;
+}
+
 namespace ioj::sim::fighters {
 struct NavigationCounters;
 
@@ -37,6 +41,7 @@ struct PreparationInputs {
 
 struct ThinkingInputs {
     SimClock const& clock;
+    tasks::TaskManager const& task_manager;
     float collision_radius;
     SpatialQueryManager const& spatial_query_manager;
     FrameMemoryResource& scratch_resource;

@@ -20,6 +20,7 @@
 #include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
+#include <ioj/sim/tasks/task_manager.h>
 #include <ioj/tick_countdown.h>
 #include <ioj/vector_math.h>
 #include <ioj/vector_normalization.h>
@@ -35,6 +36,27 @@
 #include <span>
 
 namespace ioj::sim::fighters {
+
+static auto is_instruction_complete(tasks::Instruction const instruction) -> bool {
+    switch (instruction.kind()) {
+        case tasks::InstructionKind::Idle:
+            return false;
+        case tasks::InstructionKind::MoveTo:
+            // TODO: Check arrival at the destination.
+            return false;
+        case tasks::InstructionKind::Kill:
+            // TODO: Check completion against the target's state.
+            return false;
+        default:
+            assert(false && "Invalid instruction kind");
+            break;
+    }
+    return false;
+}
+
+static void advance_instruction(tasks::InstructionHandle&) {
+    // TODO: Advance once program-end semantics are defined.
+}
 
 static void publish_navigation_counters(NavigationCounters const& counters) {
     profiling::plot("Sandbox/FightersAvoiding", counters.avoiding_fighter_count);
@@ -115,6 +137,7 @@ void Sim::commit_spawns(PreparationInputs const inputs) {
     inputs.ledger.record_spawns(EntityType::Fighter, teams, config_.settings.health, entity_ids);
     entity_tables_.health.initialise_entities<EntityType::Fighter>(entity_ids,
                                                                    config_.settings.health);
+    entity_tables_.executors.initialise_entities<EntityType::Fighter>(entity_ids);
     make_deterministic_biases(
         std::span<EntityId const>{data.entity_ids()}.subspan(n_cur, n_new),
         std::span<std::uint32_t>{data.integral_biases()}.subspan(n_cur, n_new),
@@ -151,9 +174,56 @@ void Sim::prepare_tick(PreparationInputs const inputs) {
 void Sim::think(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::think");
     inputs.navigation_counters = {};
+    plan_instructions(inputs.task_manager);
     refresh_target_data(inputs);
     plan_movement(inputs);
     publish_navigation_counters(inputs.navigation_counters);
+}
+void Sim::plan_instructions(tasks::TaskManager const& manager) {
+    auto const data{entities_.view()};
+    auto const executors{entity_tables_.executors.view<EntityType::Fighter>()};
+    auto const entity_ids{data.entity_ids()};
+    auto const locations{data.view_locations().resolve()};
+    auto const destinations{data.view_desired_move_locations().resolve()};
+    auto const target_ids{data.target_ids()};
+    auto const cleanup_task{[&](std::uint32_t const row) {
+        target_ids[row] = {};
+        set_vector(destinations, row, vector_at(locations, row));
+    }};
+
+    auto const count{data.num()};
+    for (std::uint32_t row{}; row < count; ++row) {
+        auto const index{entity_ids[row].index()};
+        auto& current_instruction{executors.current_instructions[index]};
+        auto& pending_task{executors.pending_tasks[index]};
+        if (pending_task.is_valid()) {
+            cleanup_task(row);
+            executors.current_tasks[index] = pending_task;
+            current_instruction = manager.first_instruction(pending_task);
+            pending_task = {};
+            continue;
+        }
+
+        auto const instruction{manager.instruction(current_instruction)};
+        if (is_instruction_complete(instruction)) {
+            advance_instruction(current_instruction);
+            continue;
+        }
+
+        switch (instruction.kind()) {
+            case tasks::InstructionKind::Idle:
+                break;
+            case tasks::InstructionKind::MoveTo:
+                // TODO: Plan movement using the instruction's location index.
+                break;
+            case tasks::InstructionKind::Kill:
+                // TODO: Plan combat against the instruction's target.
+                break;
+            default:
+                assert(false && "Invalid instruction kind");
+                break;
+        }
+    }
 }
 void Sim::plan_movement(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::plan_movement");
