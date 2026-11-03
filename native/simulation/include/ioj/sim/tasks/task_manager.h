@@ -15,7 +15,6 @@
 
 #include <cstddef>
 #include <initializer_list>
-#include <limits>
 #include <memory_resource>
 #include <span>
 #include <vector>
@@ -44,23 +43,6 @@ class TaskManager {
     void allocate(TaskAllocationContext ctx);
 
   private:
-    [[nodiscard]] static constexpr auto is_valid_program_size(std::size_t const count) noexcept
-        -> bool {
-        return count != 0 && count <= (std::numeric_limits<InstructionCount>::max)();
-    }
-
-    [[nodiscard]] static constexpr auto fits_instruction_range(std::size_t const first,
-                                                               std::size_t const count) noexcept
-        -> bool {
-        return first < InstructionHandle::invalid_value &&
-               count <= InstructionHandle::invalid_value - first;
-    }
-
-    [[nodiscard]] static constexpr auto is_valid_program_index(std::size_t const index) noexcept
-        -> bool {
-        return index < ProgramHandle::invalid_value;
-    }
-
     std::pmr::vector<Instruction> instructions_;
     InstructionData instruction_data_;
     Programs programs_;

@@ -2,9 +2,24 @@
 
 #include <array>
 #include <cassert>
+#include <limits>
 #include <utility>
 
 namespace ioj::sim::tasks {
+[[nodiscard]] constexpr auto is_valid_program_size(std::size_t const count) noexcept -> bool {
+    return count != 0 && count <= (std::numeric_limits<InstructionCount>::max)();
+}
+
+[[nodiscard]] constexpr auto fits_instruction_range(std::size_t const first,
+                                                    std::size_t const count) noexcept -> bool {
+    return first < InstructionHandle::invalid_value &&
+           count <= InstructionHandle::invalid_value - first;
+}
+
+[[nodiscard]] constexpr auto is_valid_program_index(std::size_t const index) noexcept -> bool {
+    return index < ProgramHandle::invalid_value;
+}
+
 TaskManager::TaskManager(std::pmr::memory_resource& resource)
     : instructions_{&resource}
     , instruction_data_{resource}
