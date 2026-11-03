@@ -13,9 +13,7 @@ struct BattleChangeMask {
     std::uint32_t shots{};
     std::uint32_t hits{};
     std::uint32_t damage_dealt{};
-    std::uint32_t damage_received{};
     std::uint32_t kills{};
-    std::uint64_t kill_matrix{};
     bool active_lasers{};
     bool lasers_fired{};
 };

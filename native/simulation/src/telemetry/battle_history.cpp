@@ -73,9 +73,7 @@ void BattleHistory::append(BattleSample const& sample) {
     append_group(combat.shots, shots_, mask.shots);
     append_group(combat.hits, hits_, mask.hits);
     append_group(combat.damage_dealt, damage_dealt_, mask.damage_dealt);
-    append_group(combat.damage_received, damage_received_, mask.damage_received);
     append_group(combat.kills, kills_, mask.kills);
-    append_group(combat.kill_matrix, kill_matrix_, mask.kill_matrix);
     append_value(sample.active_lasers, active_lasers_, mask.active_lasers);
     append_value(sample.lasers_fired, lasers_fired_, mask.lasers_fired);
     masks_.emplace_back(mask);
@@ -92,9 +90,7 @@ auto BattleHistory::materialize() const -> std::vector<BattleSample> {
     auto shots{cursors(shots_)};
     auto hits{cursors(hits_)};
     auto damage_dealt{cursors(damage_dealt_)};
-    auto damage_received{cursors(damage_received_)};
     auto kills{cursors(kills_)};
-    auto kill_matrix{cursors(kill_matrix_)};
     auto active_lasers{active_lasers_.begin()};
     auto lasers_fired{lasers_fired_.begin()};
     auto masks{masks_.begin()};
@@ -109,9 +105,7 @@ auto BattleHistory::materialize() const -> std::vector<BattleSample> {
         read_group(sample.combat.shots, shots, mask.shots);
         read_group(sample.combat.hits, hits, mask.hits);
         read_group(sample.combat.damage_dealt, damage_dealt, mask.damage_dealt);
-        read_group(sample.combat.damage_received, damage_received, mask.damage_received);
         read_group(sample.combat.kills, kills, mask.kills);
-        read_group(sample.combat.kill_matrix, kill_matrix, mask.kill_matrix);
         if (mask.active_lasers) {
             sample.active_lasers = *active_lasers++;
         }

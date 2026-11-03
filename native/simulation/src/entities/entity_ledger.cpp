@@ -128,7 +128,7 @@ void EntityLedger::record_deaths(EntityDeathInfo::ConstView const deaths, SimTic
         auto const killer_row{require_history_index(killer)};
         killed_by[row] = killer;
         ++kills[killer_row];
-        statistics_.record_kill(teams[killer_row], killer.entity_type(), team);
+        statistics_.record_kill(teams[killer_row], killer.entity_type());
     }
 }
 void EntityLedger::record_damage(DirectDamageEvents::ConstView const events,
@@ -149,10 +149,8 @@ void EntityLedger::record_damage(DirectDamageEvents::ConstView const events,
         }
 
         auto const victim{victims[index]};
-        auto const victim_row{require_history_index(victim)};
+        [[maybe_unused]] auto const victim_row{require_history_index(victim)};
         assert(life_states[victim_row] == LifeState::Alive);
-        statistics_.record_damage_received(
-            teams[victim_row], victim.entity_type(), static_cast<double>(damage));
         auto const attacker{attackers[index]};
         if (attacker.is_valid()) {
             auto const attacker_row{require_history_index(attacker)};

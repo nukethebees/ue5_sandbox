@@ -17,7 +17,6 @@ using Uint64EntityTypeCounts = EnumArray<EntityType, std::uint64_t>;
 using Uint64EntityCounts = EnumArray<Team, Uint64EntityTypeCounts>;
 using DoubleEntityTypeCounts = EnumArray<EntityType, double>;
 using DoubleEntityCounts = EnumArray<Team, DoubleEntityTypeCounts>;
-using KillMatrix = EnumArray<Team, EnumArray<Team, std::uint64_t>>;
 
 struct CombatTelemetryCounters {
     Uint64EntityCounts spawned{};
@@ -25,8 +24,6 @@ struct CombatTelemetryCounters {
     Uint64EntityCounts shots{};
     Uint64EntityCounts hits{};
     DoubleEntityCounts damage_dealt{};
-    DoubleEntityCounts damage_received{};
     Uint64EntityCounts kills{};
-    KillMatrix kill_matrix{};
 };
 } // namespace ioj::sim::telemetry

@@ -50,12 +50,6 @@ void LevelTelemetryManager::initialise() {
     auto const tick{clock_.get_completed_ticks().value()};
     assert(interval_ticks_ <= std::numeric_limits<std::uint64_t>::max() - tick);
     next_sample_tick_ = tick + interval_ticks_;
-    if (config_.duration) {
-        auto const duration{
-            level_telemetry_detail::quantize_ticks(*config_.duration, clock_.tick_rate())};
-        assert(duration <= std::numeric_limits<std::uint64_t>::max() - tick);
-        end_tick_ = tick + duration;
-    }
     state_ = State::Recording;
     record_sample();
 }
@@ -67,7 +61,6 @@ void LevelTelemetryManager::reset() {
     state_ = State::Uninitialised;
     interval_ticks_ = 0;
     next_sample_tick_ = 0;
-    end_tick_.reset();
 }
 
 /* **************************************** */
@@ -79,10 +72,7 @@ void LevelTelemetryManager::tick() {
         return;
     }
     auto const tick{clock_.get_completed_ticks().value()};
-    if (end_tick_ && tick > *end_tick_) {
-        return;
-    }
-    if (tick < next_sample_tick_ && (!end_tick_ || tick != *end_tick_)) {
+    if (tick < next_sample_tick_) {
         return;
     }
     record_sample();
@@ -90,7 +80,7 @@ void LevelTelemetryManager::tick() {
     next_sample_tick_ = tick + std::min(interval_ticks_, remaining);
 }
 void LevelTelemetryManager::record_sample() {
-    if (!config_.enabled || (end_tick_ && clock_.get_completed_ticks().value() > *end_tick_)) {
+    if (!config_.enabled) {
         return;
     }
     history_.append(sample_state());

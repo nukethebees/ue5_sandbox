@@ -19,7 +19,7 @@ TEST(BattleHistory, ReconstructsIndependentlyChangedFieldsAcrossSegments) {
         if (tick % 9 == 0) {
             sample.combat.damage_dealt[Team::Blue][EntityType::Turret] += 0.5;
         }
-        sample.combat.kill_matrix[Team::Yellow][Team::Green] = tick / 5;
+        sample.combat.kills[Team::Yellow][EntityType::Fighter] = tick / 5;
         history.append(sample);
     }
     auto const samples{history.materialize()};
@@ -33,7 +33,7 @@ TEST(BattleHistory, ReconstructsIndependentlyChangedFieldsAcrossSegments) {
         EXPECT_EQ(row.combat.shots[Team::Blue][EntityType::Turret], index / 7 * 2);
         EXPECT_EQ(row.combat.damage_dealt[Team::Blue][EntityType::Turret],
                   static_cast<double>(index / 9) * 0.5);
-        EXPECT_EQ(row.combat.kill_matrix[Team::Yellow][Team::Green], index / 5);
+        EXPECT_EQ(row.combat.kills[Team::Yellow][EntityType::Fighter], index / 5);
     }
     EXPECT_LT(memory.used_bytes(), samples.size() * sizeof(BattleSample));
     auto const analysis{analyze({.battle_samples = samples})};

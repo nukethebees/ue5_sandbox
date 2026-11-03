@@ -10,7 +10,7 @@
 
 namespace ioj::sim::telemetry {
 struct RunRecord {
-    static constexpr std::int32_t schema_version{12};
+    static constexpr std::int32_t schema_version{13};
 
     RunMetadata metadata{};
     Frequency tick_rate_hz{Frequency::make(60.0)};

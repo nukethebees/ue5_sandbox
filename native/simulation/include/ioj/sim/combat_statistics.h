@@ -13,8 +13,7 @@ class CombatStatistics {
     void apply_alive_transition(
         Team old_team, Team new_team, EntityType type, bool old_alive, bool new_alive) noexcept;
     void record_destroyed(Team team, EntityType type) noexcept;
-    void record_kill(Team killer_team, EntityType killer_type, Team victim_team) noexcept;
-    void record_damage_received(Team victim_team, EntityType victim_type, double damage) noexcept;
+    void record_kill(Team killer_team, EntityType killer_type) noexcept;
     void record_hit(Team attacker_team, EntityType attacker_type, double damage) noexcept;
     void record_shot(Team attacker_team, EntityType attacker_type) noexcept;
 

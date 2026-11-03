@@ -196,9 +196,7 @@ auto write_combat(CombatTelemetryCounters const& source) -> Json {
         {"shots", write_counts(source.shots)},
         {"hits", write_counts(source.hits)},
         {"damage_dealt", write_counts(source.damage_dealt)},
-        {"damage_received", write_counts(source.damage_received)},
         {"kills", write_counts(source.kills)},
-        {"kill_matrix", write_counts(source.kill_matrix)},
     };
 }
 
@@ -208,9 +206,7 @@ void read_combat(Json const& source, std::string_view const path, CombatTelemetr
     read_counts(source, "shots", path, output.shots);
     read_counts(source, "hits", path, output.hits);
     read_counts(source, "damage_dealt", path, output.damage_dealt);
-    read_counts(source, "damage_received", path, output.damage_received);
     read_counts(source, "kills", path, output.kills);
-    read_counts(source, "kill_matrix", path, output.kill_matrix);
 }
 
 auto write_sample(BattleSample const& sample) -> Json {

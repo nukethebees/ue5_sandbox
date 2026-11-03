@@ -95,9 +95,7 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     events.queue_damage(queued);
 
     auto const red{Team::Red};
-    auto const blue{Team::Blue};
     auto const turret_type{EntityType::Turret};
-    auto const fighter_type{EntityType::Fighter};
     EXPECT_EQ(ledger.combat_telemetry().hits[red][turret_type], 0u);
 
     FrameMemoryResource frame_memory{4096};
@@ -137,7 +135,6 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     auto const& telemetry{ledger.combat_telemetry()};
     EXPECT_EQ(telemetry.hits[red][turret_type], 2u);
     EXPECT_DOUBLE_EQ(telemetry.damage_dealt[red][turret_type], 10.0);
-    EXPECT_DOUBLE_EQ(telemetry.damage_received[blue][fighter_type], 10.0);
 }
 
 TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
@@ -190,7 +187,6 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     EXPECT_EQ(telemetry.shots[green][turret_type], 1u);
     EXPECT_EQ(telemetry.hits[green][turret_type], 1u);
     EXPECT_DOUBLE_EQ(telemetry.damage_dealt[green][turret_type], 17.0);
-    EXPECT_DOUBLE_EQ(telemetry.damage_received[yellow][capital_type], 17.0);
     EXPECT_EQ(telemetry.kills[green][turret_type], 2u);
     EXPECT_EQ(telemetry.destroyed[yellow][capital_type], 1u);
 
@@ -208,9 +204,9 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
 }
 TEST(CombatStatistics, DerivesKillTotalAcrossTeamsAndTypesAndResetsCounters) {
     CombatStatistics statistics;
-    statistics.record_kill(Team::Blue, EntityType::Fighter, Team::Red);
-    statistics.record_kill(Team::Blue, EntityType::CapitalShip, Team::Yellow);
-    statistics.record_kill(Team::Green, EntityType::Turret, Team::Red);
+    statistics.record_kill(Team::Blue, EntityType::Fighter);
+    statistics.record_kill(Team::Blue, EntityType::CapitalShip);
+    statistics.record_kill(Team::Green, EntityType::Turret);
     statistics.record_destroyed(Team::Red, EntityType::Fighter);
     statistics.record_destroyed(Team::Yellow, EntityType::CapitalShip);
 
@@ -219,14 +215,12 @@ TEST(CombatStatistics, DerivesKillTotalAcrossTeamsAndTypesAndResetsCounters) {
     EXPECT_EQ(counters.kills[Team::Blue][EntityType::Fighter], 1u);
     EXPECT_EQ(counters.kills[Team::Blue][EntityType::CapitalShip], 1u);
     EXPECT_EQ(counters.kills[Team::Green][EntityType::Turret], 1u);
-    EXPECT_EQ(counters.kill_matrix[Team::Blue][Team::Yellow], 1u);
     EXPECT_EQ(counters.destroyed[Team::Red][EntityType::Fighter], 1u);
 
     statistics.reset();
     EXPECT_EQ(statistics.cumulative_kill_count(), 0);
     EXPECT_EQ(counters.kills, telemetry::Uint64EntityCounts{});
     EXPECT_EQ(counters.destroyed, telemetry::Uint64EntityCounts{});
-    EXPECT_EQ(counters.kill_matrix, telemetry::KillMatrix{});
 }
 
 } // namespace ioj::sim::tests

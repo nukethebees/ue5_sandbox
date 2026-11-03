@@ -67,21 +67,6 @@ TEST(LevelTelemetryManager, DefaultsToOneHertzAndAllowsEveryTickSampling) {
     EXPECT_EQ(every_tick.manager.recorded_sample_count(), 5);
 }
 
-TEST(LevelTelemetryManager, DurationIncludesItsEndpointAndDoesNotExtendHistory) {
-    TelemetryFixture fixture{{.interval_ticks = 3, .duration = Duration::make(0.5)}, 10.0};
-    for (std::uint64_t tick{1}; tick <= 10; ++tick) {
-        fixture.tick(tick);
-    }
-    fixture.manager.finalize(telemetry::RunEndReason::WorldEnd);
-    auto const samples{fixture.manager.materialize_history()};
-    ASSERT_EQ(samples.size(), 3);
-    EXPECT_EQ(samples[1].completed_tick, SimTick{3});
-    EXPECT_EQ(samples[2].completed_tick, SimTick{5});
-    auto const record{fixture.manager.take_finalized_run(fixture.clock.tick_rate())};
-    ASSERT_TRUE(record);
-    EXPECT_EQ(record->final_state.completed_tick, SimTick{10});
-}
-
 TEST(LevelTelemetryManager, DisabledRecordingRetainsLiveAndFinalResults) {
     TelemetryFixture fixture{{.enabled = false}};
     fixture.spawn();
@@ -103,29 +88,6 @@ TEST(LevelTelemetryManager, DisabledRecordingRetainsLiveAndFinalResults) {
     auto decoded{telemetry::deserialize_report(*serialized)};
     ASSERT_TRUE(decoded) << decoded.error();
     EXPECT_EQ(telemetry::summarize_run(*decoded).active_entities, 1);
-}
-
-TEST(LevelTelemetryManager, DurationLimitPreservesFinalResultsAndNeverExtendsGraphs) {
-    TelemetryFixture fixture{{.interval_ticks = 1, .duration = Duration::make(0.0)}};
-    fixture.spawn();
-    fixture.tick(1);
-    fixture.spawn();
-    fixture.tick(2);
-    auto const snapshot{fixture.manager.make_snapshot()};
-    EXPECT_EQ(snapshot.active_entities, 2);
-    EXPECT_EQ(snapshot.active_entity_count_data.last_time(), 0);
-    EXPECT_EQ(snapshot.active_entity_count_data.last_value(), 0);
-    fixture.manager.finalize(telemetry::RunEndReason::WorldEnd);
-    auto record{fixture.manager.take_finalized_run(fixture.clock.tick_rate())};
-    ASSERT_TRUE(record);
-    EXPECT_EQ(record->battle_samples.size(), 1);
-    auto report{telemetry::make_run_report(std::move(*record), {}, true)};
-    EXPECT_EQ(telemetry::summarize_run(report).active_entities, 2);
-    auto serialized{telemetry::serialize_report(report)};
-    ASSERT_TRUE(serialized);
-    auto decoded{telemetry::deserialize_report(*serialized)};
-    ASSERT_TRUE(decoded) << decoded.error();
-    EXPECT_EQ(telemetry::summarize_run(*decoded).active_entities, 2);
 }
 
 TEST(LevelTelemetryManager, ResetReusesStorageAndRestartsSchedule) {

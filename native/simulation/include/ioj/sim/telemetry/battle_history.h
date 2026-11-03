@@ -39,9 +39,7 @@ class BattleHistory {
         group(shots_);
         group(hits_);
         group(damage_dealt_);
-        group(damage_received_);
         group(kills_);
-        group(kill_matrix_);
         func(active_lasers_);
         func(lasers_fired_);
         func(ticks_);
@@ -54,9 +52,7 @@ class BattleHistory {
     Columns<std::uint64_t> shots_;
     Columns<std::uint64_t> hits_;
     Columns<double> damage_dealt_;
-    Columns<double> damage_received_;
     Columns<std::uint64_t> kills_;
-    Columns<std::uint64_t, team_count * team_count> kill_matrix_;
     LinkedVector<std::int32_t> active_lasers_;
     LinkedVector<std::int32_t> lasers_fired_;
     LinkedVector<SimTick> ticks_;

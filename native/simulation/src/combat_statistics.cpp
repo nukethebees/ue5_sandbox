@@ -51,24 +51,11 @@ void CombatStatistics::record_destroyed(Team const team, EntityType const type) 
     ++combat_telemetry_.destroyed[team][type];
 }
 
-void CombatStatistics::record_kill(Team const killer_team,
-                                   EntityType const killer_type,
-                                   Team const victim_team) noexcept {
+void CombatStatistics::record_kill(Team const killer_team, EntityType const killer_type) noexcept {
     assert(is_valid(killer_team));
     assert(is_valid(killer_type));
-    assert(is_valid(victim_team));
 
     ++combat_telemetry_.kills[killer_team][killer_type];
-    ++combat_telemetry_.kill_matrix[killer_team][victim_team];
-}
-
-void CombatStatistics::record_damage_received(Team const victim_team,
-                                              EntityType const victim_type,
-                                              double const damage) noexcept {
-    assert(is_valid(victim_team));
-    assert(is_valid(victim_type));
-
-    combat_telemetry_.damage_received[victim_team][victim_type] += damage;
 }
 
 void CombatStatistics::record_hit(Team const attacker_team,

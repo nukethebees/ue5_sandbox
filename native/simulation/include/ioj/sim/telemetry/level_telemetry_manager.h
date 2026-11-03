@@ -64,6 +64,5 @@ class LevelTelemetryManager {
     State state_{State::Uninitialised};
     std::uint64_t interval_ticks_{};
     std::uint64_t next_sample_tick_{};
-    std::optional<std::uint64_t> end_tick_;
 };
 }
