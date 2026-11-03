@@ -20,7 +20,7 @@ TEST(TelemetryAnalysis, EmptyAndSingleSampleRunsDoNotInventIntervals) {
     for (auto const battle_samples : cases) {
         SCOPED_TRACE(battle_samples.size());
         auto const analysis{analyze({.battle_samples = battle_samples})};
-        ASSERT_EQ(analysis.metrics.size(), static_cast<std::size_t>(Metric::Count));
+        ASSERT_EQ(analysis.metrics.size(), enum_count<Metric>());
         for (auto const& series : analysis.metrics) {
             EXPECT_TRUE(series.values.empty());
             EXPECT_TRUE(series.simulated_elapsed_seconds.empty());

@@ -30,8 +30,6 @@ auto metric_title(Metric const metric) noexcept -> std::string_view {
             return "Kill rate";
         case Metric::LaserFireRate:
             return "Laser-fire rate";
-        case Metric::Count:
-            return {};
     }
     return {};
 }
@@ -42,8 +40,6 @@ auto metric_units(Metric const metric) noexcept -> std::string_view {
         case Metric::KillRate:
         case Metric::LaserFireRate:
             return "/s";
-        case Metric::Count:
-            return {};
         default:
             return "count";
     }

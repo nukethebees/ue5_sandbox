@@ -1452,7 +1452,6 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
         case ExprKind::symbol_reference:
             collect_dependencies(symbol_references_[index], result);
             break;
-        case ExprKind::Count:
         case ExprKind::invalid:
             std::unreachable();
     }

@@ -1,3 +1,38 @@
+(module compiler_expr_kind
+  :header "expr_kind.h"
+  :namespace lispb::codegen
+  (enum ExprKind std::uint8_t
+    :enum-array true
+    (value invalid)
+    (value literal)
+    (value boolean_literal)
+    (value i8_literal)
+    (value i16_literal)
+    (value i32_literal)
+    (value i64_literal)
+    (value u8_literal)
+    (value u16_literal)
+    (value u32_literal)
+    (value u64_literal)
+    (value f32_literal)
+    (value f64_literal)
+    (value string_literal)
+    (value call)
+    (value member_access)
+    (value subscript)
+    (value binary)
+    (value conditional)
+    (value lambda)
+    (value unary)
+    (value static_cast_)
+    (value reinterpret_cast_)
+    (value sizeof_type)
+    (value initializer_list)
+    (value raw)
+    (value parenthesized)
+    (value symbol_reference)
+    (projections (cpp))))
+
 (module compiler_type_operation
   :header "type_operation.h"
   :namespace lispb::codegen

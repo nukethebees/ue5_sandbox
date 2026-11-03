@@ -3,6 +3,7 @@
 #include <ioj/sim/telemetry/analysis_input.h>
 #include <ioj/sim/telemetry/metric_series.h>
 
+#include <string_view>
 #include <vector>
 
 namespace ioj::sim::telemetry {
@@ -17,4 +18,6 @@ struct Analysis {
 };
 
 [[nodiscard]] auto analyze(AnalysisInput input) -> Analysis;
+[[nodiscard]] auto metric_title(Metric metric) noexcept -> std::string_view;
+[[nodiscard]] auto metric_units(Metric metric) noexcept -> std::string_view;
 }

@@ -1320,7 +1320,6 @@ void CppRenderer::append_expr(
         case ExprKind::symbol_reference:
             append_expr(output, ir_.symbol_references_[index], ctx);
             break;
-        case ExprKind::Count:
         case ExprKind::invalid:
             std::unreachable();
     }

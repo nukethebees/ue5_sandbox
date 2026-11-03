@@ -166,6 +166,7 @@ native/simulation/include/ioj/sim/tasks/program_handle.h
 native/simulation/include/ioj/sim/tasks/task_id.h
 native/simulation/include/ioj/sim/telemetry/current_state.h
 native/simulation/include/ioj/sim/telemetry/history.h
+native/simulation/include/ioj/sim/telemetry/metric.h
 native/simulation/include/ioj/sim/telemetry/run_end_reason.h
 native/simulation/include/ioj/sim/turrets/phase_interface.h
 native/simulation/include/ioj/sim/turrets/spawn_interface.h

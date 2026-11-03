@@ -293,7 +293,7 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
         ioj::sim::telemetry::Metric::LaserFireRate,
     };
     static_assert(UE_ARRAY_COUNT(workload_metrics) + UE_ARRAY_COUNT(activity_metrics) ==
-                  static_cast<int32>(ioj::sim::telemetry::Metric::Count));
+                  static_cast<int32>(ioj::enum_count<ioj::sim::telemetry::Metric>()));
 
     workload_section_ = telemetry_dashboard_view::metric_section(
         *style_,
