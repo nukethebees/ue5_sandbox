@@ -18,9 +18,7 @@ auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profil
     auto const& metadata{simulation.level_metadata()};
     auto const& objectives{simulation.mission().objectives()};
     std::int32_t kills{};
-    for (auto const count : simulation.entity_ledger()
-                                .combat_telemetry()
-                                .kills[static_cast<std::size_t>(completion->team)]) {
+    for (auto const count : simulation.entity_ledger().combat_telemetry().kills[completion->team]) {
         kills += static_cast<std::int32_t>(count);
     }
     CompletionPublication publication{
