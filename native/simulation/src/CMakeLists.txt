@@ -173,7 +173,7 @@ target_sources(native-simulation
     levels/level_memory_manager.cpp
     levels/level_read_access.cpp
     levels/level_sim.cpp
-    telemetry/manager.cpp
+    telemetry/level_telemetry_manager.cpp
     missions/mission.cpp
     missions/objectives.cpp
     overlap_handler.cpp
