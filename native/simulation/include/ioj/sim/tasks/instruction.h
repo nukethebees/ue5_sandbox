@@ -132,39 +132,39 @@ struct Instruction : detail::InstructionBase {
         return extract<decltype(kind_layout)>();
     }
     [[nodiscard]] constexpr auto data_kill() const noexcept -> EntityId {
-        assert((extract<decltype(kind_layout)>() == InstructionKind::Kill));
+        assert((kind() == InstructionKind::Kill));
         return EntityId::from_raw(
             static_cast<EntityId::storage_type>(extract<decltype(data_kill_layout)>()));
     }
     constexpr void set_data_kill(EntityId const value) noexcept {
-        assert((extract<decltype(kind_layout)>() == InstructionKind::Kill));
+        assert((kind() == InstructionKind::Kill));
         assert((value.is_valid()));
         insert<decltype(data_kill_layout)>(static_cast<storage_type>(value.raw_value()));
     }
     [[nodiscard]] constexpr auto data_kill_index() const noexcept -> std::uint32_t {
-        assert((extract<decltype(kind_layout)>() == InstructionKind::Kill));
+        assert((kind() == InstructionKind::Kill));
         return extract<decltype(data_kill_index_layout)>();
     }
     constexpr void set_data_kill_index(std::uint32_t const value) noexcept {
-        assert((extract<decltype(kind_layout)>() == InstructionKind::Kill));
+        assert((kind() == InstructionKind::Kill));
         assert((is_valid_data_kill_index(value)));
         insert<decltype(data_kill_index_layout)>(value);
     }
     [[nodiscard]] constexpr auto data_kill_entity_type() const noexcept -> EntityType {
-        assert((extract<decltype(kind_layout)>() == InstructionKind::Kill));
+        assert((kind() == InstructionKind::Kill));
         return extract<decltype(data_kill_entity_type_layout)>();
     }
     constexpr void set_data_kill_entity_type(EntityType const value) noexcept {
-        assert((extract<decltype(kind_layout)>() == InstructionKind::Kill));
+        assert((kind() == InstructionKind::Kill));
         assert((is_valid_data_kill_entity_type(value)));
         insert<decltype(data_kill_entity_type_layout)>(value);
     }
     [[nodiscard]] constexpr auto data_move_to_location_index() const noexcept -> std::uint32_t {
-        assert((extract<decltype(kind_layout)>() == InstructionKind::MoveTo));
+        assert((kind() == InstructionKind::MoveTo));
         return extract<decltype(data_move_to_location_index_layout)>();
     }
     constexpr void set_data_move_to_location_index(std::uint32_t const value) noexcept {
-        assert((extract<decltype(kind_layout)>() == InstructionKind::MoveTo));
+        assert((kind() == InstructionKind::MoveTo));
         insert<decltype(data_move_to_location_index_layout)>(value);
     }
 };

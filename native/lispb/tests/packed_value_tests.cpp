@@ -213,7 +213,8 @@ TEST(PackedRecord, TaggedAlternativesResolveGuardsAndDirectNestedAccessors) {
                         {"payload_kill_entity_target_index()",
                          "set_payload_kill_entity_target_index(",
                          "make_payload_kill_entity(",
-                         "payload_kill_entity_target()"});
+                         "payload_kill_entity_target()",
+                         "assert((opcode() == Opcode::KillEntity));"});
     expect_contains_none(output, {"set_opcode(", "payload_kill_entity_target().index()"});
 }
 

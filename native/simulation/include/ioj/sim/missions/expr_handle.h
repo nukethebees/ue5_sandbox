@@ -111,38 +111,38 @@ struct ExprHandle : detail::ExprHandleBase {
         return extract<decltype(kind_layout)>();
     }
     [[nodiscard]] constexpr auto data_composite_kind() const noexcept -> CompositeKind {
-        assert((extract<decltype(kind_layout)>() == ExprKind::Composite));
+        assert((kind() == ExprKind::Composite));
         return extract<decltype(data_composite_kind_layout)>();
     }
     constexpr void set_data_composite_kind(CompositeKind const value) noexcept {
-        assert((extract<decltype(kind_layout)>() == ExprKind::Composite));
+        assert((kind() == ExprKind::Composite));
         assert((is_valid_data_composite_kind(value)));
         insert<decltype(data_composite_kind_layout)>(value);
     }
     [[nodiscard]] constexpr auto data_composite_index() const noexcept -> std::uint32_t {
-        assert((extract<decltype(kind_layout)>() == ExprKind::Composite));
+        assert((kind() == ExprKind::Composite));
         return extract<decltype(data_composite_index_layout)>();
     }
     constexpr void set_data_composite_index(std::uint32_t const value) noexcept {
-        assert((extract<decltype(kind_layout)>() == ExprKind::Composite));
+        assert((kind() == ExprKind::Composite));
         assert((is_valid_data_composite_index(value)));
         insert<decltype(data_composite_index_layout)>(value);
     }
     [[nodiscard]] constexpr auto data_leaf_kind() const noexcept -> LeafKind {
-        assert((extract<decltype(kind_layout)>() == ExprKind::Leaf));
+        assert((kind() == ExprKind::Leaf));
         return extract<decltype(data_leaf_kind_layout)>();
     }
     constexpr void set_data_leaf_kind(LeafKind const value) noexcept {
-        assert((extract<decltype(kind_layout)>() == ExprKind::Leaf));
+        assert((kind() == ExprKind::Leaf));
         assert((is_valid_data_leaf_kind(value)));
         insert<decltype(data_leaf_kind_layout)>(value);
     }
     [[nodiscard]] constexpr auto data_leaf_index() const noexcept -> std::uint32_t {
-        assert((extract<decltype(kind_layout)>() == ExprKind::Leaf));
+        assert((kind() == ExprKind::Leaf));
         return extract<decltype(data_leaf_index_layout)>();
     }
     constexpr void set_data_leaf_index(std::uint32_t const value) noexcept {
-        assert((extract<decltype(kind_layout)>() == ExprKind::Leaf));
+        assert((kind() == ExprKind::Leaf));
         assert((is_valid_data_leaf_index(value)));
         insert<decltype(data_leaf_index_layout)>(value);
     }

@@ -546,49 +546,49 @@ struct Instruction : detail::InstructionBase {
         return extract<decltype(opcode_layout)>();
     }
     [[nodiscard]] constexpr auto payload_kill_entity_target() const noexcept -> EntityId {
-        assert((extract<decltype(opcode_layout)>() == Opcode::KillEntity));
+        assert((opcode() == Opcode::KillEntity));
         return EntityId::from_raw(static_cast<EntityId::storage_type>(
             extract<decltype(payload_kill_entity_target_layout)>()));
     }
     constexpr void set_payload_kill_entity_target(EntityId const value) noexcept {
-        assert((extract<decltype(opcode_layout)>() == Opcode::KillEntity));
+        assert((opcode() == Opcode::KillEntity));
         assert((value.is_valid()));
         insert<decltype(payload_kill_entity_target_layout)>(
             static_cast<storage_type>(value.raw_value()));
     }
     [[nodiscard]] constexpr auto payload_kill_entity_target_index() const noexcept
         -> std::uint32_t {
-        assert((extract<decltype(opcode_layout)>() == Opcode::KillEntity));
+        assert((opcode() == Opcode::KillEntity));
         return extract<decltype(payload_kill_entity_target_index_layout)>();
     }
     constexpr void set_payload_kill_entity_target_index(std::uint32_t const value) noexcept {
-        assert((extract<decltype(opcode_layout)>() == Opcode::KillEntity));
+        assert((opcode() == Opcode::KillEntity));
         assert((is_valid_payload_kill_entity_target_index(value)));
         insert<decltype(payload_kill_entity_target_index_layout)>(value);
     }
     [[nodiscard]] constexpr auto payload_kill_entity_target_entity_type() const noexcept
         -> std::uint8_t {
-        assert((extract<decltype(opcode_layout)>() == Opcode::KillEntity));
+        assert((opcode() == Opcode::KillEntity));
         return extract<decltype(payload_kill_entity_target_entity_type_layout)>();
     }
     constexpr void set_payload_kill_entity_target_entity_type(std::uint8_t const value) noexcept {
-        assert((extract<decltype(opcode_layout)>() == Opcode::KillEntity));
+        assert((opcode() == Opcode::KillEntity));
         insert<decltype(payload_kill_entity_target_entity_type_layout)>(value);
     }
     [[nodiscard]] constexpr auto payload_move_to_destination() const noexcept -> std::uint32_t {
-        assert((extract<decltype(opcode_layout)>() == Opcode::MoveTo));
+        assert((opcode() == Opcode::MoveTo));
         return extract<decltype(payload_move_to_destination_layout)>();
     }
     constexpr void set_payload_move_to_destination(std::uint32_t const value) noexcept {
-        assert((extract<decltype(opcode_layout)>() == Opcode::MoveTo));
+        assert((opcode() == Opcode::MoveTo));
         insert<decltype(payload_move_to_destination_layout)>(value);
     }
     [[nodiscard]] constexpr auto payload_jump_destination() const noexcept -> std::uint32_t {
-        assert((extract<decltype(opcode_layout)>() == Opcode::Jump));
+        assert((opcode() == Opcode::Jump));
         return extract<decltype(payload_jump_destination_layout)>();
     }
     constexpr void set_payload_jump_destination(std::uint32_t const value) noexcept {
-        assert((extract<decltype(opcode_layout)>() == Opcode::Jump));
+        assert((opcode() == Opcode::Jump));
         assert((is_valid_payload_jump_destination(value)));
         insert<decltype(payload_jump_destination_layout)>(value);
     }
@@ -724,35 +724,35 @@ struct IndependentUnions : detail::IndependentUnionsBase {
         return extract<decltype(opcode_b_layout)>();
     }
     [[nodiscard]] constexpr auto payload_a_kill_entity() const noexcept -> std::uint8_t {
-        assert((extract<decltype(opcode_a_layout)>() == Opcode::KillEntity));
+        assert((opcode_a() == Opcode::KillEntity));
         return extract<decltype(payload_a_kill_entity_layout)>();
     }
     constexpr void set_payload_a_kill_entity(std::uint8_t const value) noexcept {
-        assert((extract<decltype(opcode_a_layout)>() == Opcode::KillEntity));
+        assert((opcode_a() == Opcode::KillEntity));
         insert<decltype(payload_a_kill_entity_layout)>(value);
     }
     [[nodiscard]] constexpr auto payload_a_move_to() const noexcept -> std::uint8_t {
-        assert((extract<decltype(opcode_a_layout)>() == Opcode::MoveTo));
+        assert((opcode_a() == Opcode::MoveTo));
         return extract<decltype(payload_a_move_to_layout)>();
     }
     constexpr void set_payload_a_move_to(std::uint8_t const value) noexcept {
-        assert((extract<decltype(opcode_a_layout)>() == Opcode::MoveTo));
+        assert((opcode_a() == Opcode::MoveTo));
         insert<decltype(payload_a_move_to_layout)>(value);
     }
     [[nodiscard]] constexpr auto payload_b_kill_entity() const noexcept -> std::uint8_t {
-        assert((extract<decltype(opcode_b_layout)>() == Opcode::KillEntity));
+        assert((opcode_b() == Opcode::KillEntity));
         return extract<decltype(payload_b_kill_entity_layout)>();
     }
     constexpr void set_payload_b_kill_entity(std::uint8_t const value) noexcept {
-        assert((extract<decltype(opcode_b_layout)>() == Opcode::KillEntity));
+        assert((opcode_b() == Opcode::KillEntity));
         insert<decltype(payload_b_kill_entity_layout)>(value);
     }
     [[nodiscard]] constexpr auto payload_b_move_to() const noexcept -> std::uint8_t {
-        assert((extract<decltype(opcode_b_layout)>() == Opcode::MoveTo));
+        assert((opcode_b() == Opcode::MoveTo));
         return extract<decltype(payload_b_move_to_layout)>();
     }
     constexpr void set_payload_b_move_to(std::uint8_t const value) noexcept {
-        assert((extract<decltype(opcode_b_layout)>() == Opcode::MoveTo));
+        assert((opcode_b() == Opcode::MoveTo));
         insert<decltype(payload_b_move_to_layout)>(value);
     }
 };
@@ -918,20 +918,20 @@ struct TaggedProjected : detail::TaggedProjectedBase {
         insert<decltype(unrelated_layout)>(value);
     }
     [[nodiscard]] constexpr auto payload_kill_entity() const noexcept -> std::uint8_t {
-        assert((extract<decltype(opcode_layout)>() == Opcode::KillEntity));
+        assert((opcode() == Opcode::KillEntity));
         return extract<decltype(payload_kill_entity_layout)>();
     }
     constexpr void set_payload_kill_entity(std::uint8_t const value) noexcept {
-        assert((extract<decltype(opcode_layout)>() == Opcode::KillEntity));
+        assert((opcode() == Opcode::KillEntity));
         assert((is_valid_payload_kill_entity(value)));
         insert<decltype(payload_kill_entity_layout)>(value);
     }
     [[nodiscard]] constexpr auto payload_move_to() const noexcept -> std::uint8_t {
-        assert((extract<decltype(opcode_layout)>() == Opcode::MoveTo));
+        assert((opcode() == Opcode::MoveTo));
         return extract<decltype(payload_move_to_layout)>();
     }
     constexpr void set_payload_move_to(std::uint8_t const value) noexcept {
-        assert((extract<decltype(opcode_layout)>() == Opcode::MoveTo));
+        assert((opcode() == Opcode::MoveTo));
         insert<decltype(payload_move_to_layout)>(value);
     }
 };

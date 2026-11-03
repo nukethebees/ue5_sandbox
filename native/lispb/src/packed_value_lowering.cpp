@@ -895,9 +895,8 @@ class PackedEmitter : public CppIRBuilder {
         }
         std::unreachable();
     }
-    auto guard_check(schema::BitGuard const& guard, std::optional<Expr> source = {}) -> Expr {
-        return binary(
-            BinaryOperator::equal, extract(guard.path + "_layout", source), guard_code(guard));
+    auto guard_check(schema::BitGuard const& guard, Expr discriminator) -> Expr {
+        return binary(BinaryOperator::equal, discriminator, guard_code(guard));
     }
     auto value_check(schema::BitPlacement const& placement, Expr expression, bool stored = false)
         -> Predicate {
@@ -940,7 +939,7 @@ class PackedEmitter : public CppIRBuilder {
                                                   })) {
                     continue;
                 }
-                check = all({guard_check(guard, source), check});
+                check = all({guard_check(guard, extract(guard.path + "_layout", source)), check});
             }
             if (union_) {
                 alternatives[placement.child].push_back(check);
@@ -1124,7 +1123,7 @@ class PackedEmitter : public CppIRBuilder {
         auto const name{field_name(placement)};
         Nodes guards;
         for (auto const& guard : placement.guards) {
-            guards.push_back(assertion(guard_check(guard)));
+            guards.push_back(assertion(guard_check(guard, invoke(guard.path))));
         }
         auto body{guards};
         auto const decoded{extract(name + "_layout")};
