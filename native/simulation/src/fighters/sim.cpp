@@ -196,6 +196,7 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
         auto const index{entity_ids[row].index()};
         auto& current_instruction{executors.current_instructions[index]};
         auto& pending_task{executors.pending_tasks[index]};
+
         if (pending_task.is_valid()) {
             cleanup_task(row);
             executors.current_tasks[index] = pending_task;
