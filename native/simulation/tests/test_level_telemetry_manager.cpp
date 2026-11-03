@@ -219,18 +219,19 @@ TEST(LevelTelemetryManager, ExtractsSnapshotSeriesAcrossBlocksWithoutMutatingHis
         {.block_bytes = telemetry::history_rows::Layout::layout_bytes(1)}};
     manager.initialise();
 
+    EntityDeathInfo deaths;
+    deaths.add_defaulted(1);
+    auto const rows{deaths.view()};
+    auto const victims{rows.victims()};
+    rows.killers()[0] = killer;
+    rows.reasons()[0] = DeathReason::Combat;
+    auto const death_rows{deaths.const_view()};
+
     for (std::uint64_t tick{1}; tick <= 64; ++tick) {
         clock.completed_ticks = SimTick{tick};
-        EntityId victim;
-        ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, {&victim, 1});
+        ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, victims);
         if (tick % 2 == 0) {
-            EntityDeathInfo deaths;
-            deaths.add_defaulted(1);
-            auto const rows{deaths.view()};
-            rows.victims()[0] = victim;
-            rows.killers()[0] = killer;
-            rows.reasons()[0] = DeathReason::Combat;
-            ledger.record_deaths(deaths.const_view(), SimTick{tick});
+            ledger.record_deaths(death_rows, SimTick{tick});
         }
         manager.tick();
     }

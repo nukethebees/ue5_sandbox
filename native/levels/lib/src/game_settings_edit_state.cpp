@@ -190,9 +190,9 @@ void apply_graphics_preset(GameSettingsState& state, GameGraphicsPreset const pr
 void GameSettingsEditState::begin(GameSettingsState applied, GameSettingsState defaults) {
     applied.overall_quality = graphics_preset(applied);
     defaults.overall_quality = graphics_preset(defaults);
-    applied_ = std::move(applied);
+    applied_ = applied;
     pending_ = applied_;
-    defaults_ = std::move(defaults);
+    defaults_ = defaults;
 }
 
 void GameSettingsEditState::cancel() {

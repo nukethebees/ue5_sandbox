@@ -46,7 +46,8 @@ TEST(NativeSimulation, GameMemoryTest) {
         EXPECT_EQ(retained[0], std::byte{42});
 
         std::array<std::jthread, 4> workers;
-        for (std::size_t index{}; index < workers.size(); ++index) {
+        auto const worker_count{workers.size()};
+        for (std::size_t index{}; index < worker_count; ++index) {
             workers[index] = std::jthread{[&, index] {
                 auto& resource{index % 2 == 0 ? tick : phase};
                 for (int iteration{}; iteration < 64; ++iteration) {

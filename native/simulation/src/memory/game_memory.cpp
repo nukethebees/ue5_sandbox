@@ -11,11 +11,11 @@ GameMemory::~GameMemory() {
     assert(stats_.live_allocation_count == 0);
 }
 auto GameMemory::stats() const noexcept -> memory::Statistics {
-    std::lock_guard lock{mutex_};
+    std::scoped_lock lock{mutex_};
     return stats_;
 }
 auto GameMemory::do_allocate(std::size_t const bytes, std::size_t const alignment) -> void* {
-    std::lock_guard lock{mutex_};
+    std::scoped_lock lock{mutex_};
     auto* const allocation{upstream_.allocate(bytes, alignment)};
     stats_.live_bytes += bytes;
     ++stats_.live_allocation_count;
@@ -27,7 +27,7 @@ auto GameMemory::do_allocate(std::size_t const bytes, std::size_t const alignmen
 void GameMemory::do_deallocate(void* const allocation,
                                std::size_t const bytes,
                                std::size_t const alignment) {
-    std::lock_guard lock{mutex_};
+    std::scoped_lock lock{mutex_};
     upstream_.deallocate(allocation, bytes, alignment);
     stats_.live_bytes -= bytes;
     --stats_.live_allocation_count;

@@ -24,7 +24,7 @@ auto resolve_document_settings(std::string_view const base_source,
 auto SourceSession::read(settings::Settings base, std::filesystem::path const& library_root) const
     -> std::expected<LevelDefinition, Diagnostics> {
     return read_replay(std::move(base), library_root).transform([](SourceReplay&& replay) {
-        return std::move(replay.definition);
+        return std::move(replay).definition;
     });
 }
 
