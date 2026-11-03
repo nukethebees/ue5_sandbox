@@ -72,14 +72,14 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     };
     TimeSeriesData<DamageSample> samples;
     harness.on_end_tick = [&](LevelSim& level) {
-        auto const& telemetry{level.level_telemetry_manager().active_entity_count_data()};
+        auto const telemetry{level.level_telemetry_manager().make_snapshot()};
         auto const state{observe_entity(level, damaged_handle)};
         samples.add(harness.time(),
                     DamageSample{
                         .capital_count = level.capital_ships().num_instances(),
                         .ledger_alive_count = harness.ledger().count_alive(),
                         .health = state ? state->health.value() : 0,
-                        .telemetry_active_count = telemetry.last_value(),
+                        .telemetry_active_count = telemetry.active_entities,
                     });
     };
     harness.timeline.at(nonlethal_damage_time,

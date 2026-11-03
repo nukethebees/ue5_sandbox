@@ -35,8 +35,6 @@ class LevelTelemetryManager {
     };
 
     using tick_type = SimTick;
-    using ActiveEntityCountData = telemetry::Snapshot::ActiveEntityCountData;
-    using CumulativeKillCountData = telemetry::Snapshot::CumulativeKillCountData;
 
     /* **************************************** */
     // Construction and lifecycle
@@ -71,12 +69,6 @@ class LevelTelemetryManager {
     auto state() const noexcept -> State { return state_; }
     auto make_snapshot() const -> telemetry::Snapshot;
 
-    auto active_entity_count_data() const noexcept -> ActiveEntityCountData const& {
-        return active_entity_count_data_;
-    }
-    auto cumulative_kill_count_data() const noexcept -> CumulativeKillCountData const& {
-        return cumulative_kill_count_data_;
-    }
     auto current_state() const noexcept -> telemetry::CurrentState const& { return current_state_; }
     auto history_stats() const noexcept -> telemetry::HistoryStats;
     auto materialize_tick_series() const -> telemetry::TickSeries;
@@ -91,6 +83,7 @@ class LevelTelemetryManager {
     void sample_series();
     void sample_battle_state();
     auto append_history_row(tick_type completed_tick) -> telemetry::HistoryRows::View;
+    auto materialize_tick_series(telemetry::HistoryFieldMask fields) const -> telemetry::TickSeries;
 
     /* **************************************** */
     // State
@@ -105,8 +98,6 @@ class LevelTelemetryManager {
     telemetry::RunMetadata metadata_{};
     telemetry::RunCompletion completion_{};
     std::vector<telemetry::BattleSample> battle_samples_{};
-    ActiveEntityCountData active_entity_count_data_{};
-    CumulativeKillCountData cumulative_kill_count_data_{};
 
     State state_{State::Uninitialised};
 

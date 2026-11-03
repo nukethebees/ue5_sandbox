@@ -102,7 +102,8 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     {
         auto const* const level{test_driver->orchestrator.get_level_simulation()};
         check(level);
-        auto const& telemetry{level->get_level_telemetry_manager().get_active_entity_count_data()};
+        auto const series{level->level_telemetry_manager().materialize_tick_series()};
+        auto const& telemetry{series.active_entities};
         checks.is_true(!telemetry.is_empty(), TEXT("Initial level telemetry is populated"));
     }
     auto const resources{test_driver->orchestrator.get_presentation_resources()};
@@ -127,7 +128,8 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     test_driver->orchestrator.SetActorTickEnabled(false);
     auto const* const level{test_driver->orchestrator.get_level_simulation()};
     check(level);
-    auto const& telemetry{level->get_level_telemetry_manager().get_active_entity_count_data()};
+    auto const series{level->level_telemetry_manager().materialize_tick_series()};
+    auto const& telemetry{series.active_entities};
     checks.are_equal(uint32{1}, telemetry.num(), TEXT("Restart records one telemetry baseline"));
     checks.are_equal(uint64{0}, telemetry.last_time(), TEXT("Restart baseline uses tick zero"));
     checks.are_equal(test_driver->get_ledger().count_alive(),

@@ -49,9 +49,9 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     };
 
     telemetry_manager.initialise();
-    auto const& active_count_data{telemetry_manager.active_entity_count_data()};
-    auto const& kill_count_data{telemetry_manager.cumulative_kill_count_data()};
     auto tick_series{telemetry_manager.materialize_tick_series()};
+    auto const& active_count_data{tick_series.active_entities};
+    auto const& kill_count_data{tick_series.kills};
     auto const& initial_state{telemetry_manager.current_state()};
     EXPECT_EQ(active_count_data.num(), 1);
     EXPECT_EQ(active_count_data.last_time(), 0);
@@ -102,12 +102,14 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EXPECT_EQ(laser_snapshot.cumulative_kill_count_data.last_value(), 0);
 
     telemetry_manager.reset();
+    tick_series = telemetry_manager.materialize_tick_series();
     EXPECT_TRUE(active_count_data.is_empty());
     EXPECT_TRUE(kill_count_data.is_empty());
     EXPECT_EQ(telemetry_manager.current_state().active_lasers, 0);
 
     clock.initialise({});
     telemetry_manager.initialise();
+    tick_series = telemetry_manager.materialize_tick_series();
     EXPECT_EQ(active_count_data.num(), 1);
     EXPECT_EQ(active_count_data.last_time(), 0);
 
@@ -140,6 +142,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
 
     clock.completed_ticks = SimTick{3};
     telemetry_manager.tick();
+    tick_series = telemetry_manager.materialize_tick_series();
     EXPECT_EQ(active_count_data.num(), 2);
 
     clock.tick_loop.tick_rate = ioj::Frequency::make(2.0);
@@ -191,6 +194,77 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     boundary_manager.reset();
     EXPECT_EQ(boundary_manager.history_stats().used_sample_count, 0);
     EXPECT_EQ(boundary_manager.history_stats().total_sample_capacity, grown_capacity);
+}
+
+TEST(LevelTelemetryManager, ExtractsSnapshotSeriesAcrossBlocksWithoutMutatingHistory) {
+    SimClock clock;
+    clock.initialise({});
+    EntityLedger ledger;
+    EntityId killer;
+    ledger.record_spawns(EntityType::Turret, Team::Blue, Health{1}, {&killer, 1});
+    lasers::Sim lasers;
+    LevelTelemetryManager manager{
+        clock,
+        ledger,
+        lasers,
+        *std::pmr::new_delete_resource(),
+        {.block_bytes = telemetry::history_rows::Layout::layout_bytes(1)}};
+    manager.initialise();
+
+    for (std::uint64_t tick{1}; tick <= 64; ++tick) {
+        clock.completed_ticks = SimTick{tick};
+        EntityId victim;
+        ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, {&victim, 1});
+        if (tick % 2 == 0) {
+            EntityDeathInfo deaths;
+            deaths.add_defaulted(1);
+            auto const rows{deaths.view()};
+            rows.victims()[0] = victim;
+            rows.killers()[0] = killer;
+            rows.reasons()[0] = DeathReason::Combat;
+            ledger.record_deaths(deaths.const_view(), SimTick{tick});
+        }
+        manager.tick();
+    }
+
+    EXPECT_EQ(manager.history_stats().acquired_block_count, 2);
+    auto const history_rows{manager.history_stats().used_sample_count};
+    auto const series{manager.materialize_tick_series()};
+    auto const compare_series{[](auto const& expected, auto const& actual, std::uint64_t tick) {
+        auto const count{expected.num()};
+        ASSERT_EQ(actual.num(), count + (expected.last_time() < tick ? 1 : 0));
+        for (std::uint32_t index{}; index < count; ++index) {
+            EXPECT_EQ(actual.time_at(index), expected.time_at(index));
+            EXPECT_EQ(actual.value_at(index), expected.value_at(index));
+        }
+        EXPECT_EQ(actual.last_time(), tick);
+        EXPECT_EQ(actual.last_value(), expected.last_value());
+    }};
+
+    for (auto const tick : {std::uint64_t{64}, std::uint64_t{65}}) {
+        clock.completed_ticks = SimTick{tick};
+        manager.tick();
+        auto const snapshot{manager.make_snapshot()};
+        compare_series(series.active_entities, snapshot.active_entity_count_data, tick);
+        compare_series(series.kills, snapshot.cumulative_kill_count_data, tick);
+        EXPECT_EQ(snapshot.active_entities, 33);
+        EXPECT_EQ(snapshot.kills, 32);
+        EXPECT_EQ(manager.history_stats().used_sample_count, history_rows);
+    }
+
+    manager.finalize(telemetry::RunEndReason::WorldEnd);
+    auto const finalized{manager.make_snapshot()};
+    EXPECT_EQ(finalized.cumulative_kill_count_data.last_value(), 32);
+    manager.reset();
+    ledger.reset();
+    clock.initialise({});
+    EXPECT_TRUE(manager.materialize_tick_series().kills.is_empty());
+    manager.initialise();
+    auto const restarted{manager.make_snapshot()};
+    EXPECT_EQ(restarted.active_entity_count_data.num(), 1);
+    EXPECT_EQ(restarted.active_entity_count_data.last_time(), 0);
+    EXPECT_EQ(restarted.active_entity_count_data.last_value(), 0);
+    EXPECT_EQ(restarted.cumulative_kill_count_data.last_value(), 0);
 }
 
 } // namespace ioj::sim::tests

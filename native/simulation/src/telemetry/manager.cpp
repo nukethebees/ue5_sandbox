@@ -26,8 +26,7 @@ using FieldMask = telemetry::HistoryFieldMask;
 
 template <typename Data>
 auto snapshot_with_terminal_sample(
-    Data const& source, LevelTelemetryManager::tick_type::value_type const completed_tick) -> Data {
-    auto result{source};
+    Data result, LevelTelemetryManager::tick_type::value_type const completed_tick) -> Data {
     if (!result.is_empty() && result.last_time() < completed_tick) {
         auto const terminal_value{result.last_value()};
         result.add(completed_tick, terminal_value);
@@ -85,8 +84,6 @@ void LevelTelemetryManager::reset() {
     metadata_ = {};
     completion_ = {};
     battle_samples_.clear();
-    active_entity_count_data_.reset();
-    cumulative_kill_count_data_.reset();
     state_ = State::Uninitialised;
     battle_sample_timer_.reset();
 }
@@ -113,8 +110,12 @@ auto LevelTelemetryManager::make_snapshot() const -> telemetry::Snapshot {
     assert(state_ != State::Uninitialised);
     auto const completed_tick{clock_.get_completed_ticks()};
     auto const tick_rate_hz{clock_.tick_rate()};
-    auto const& active_entity_count_data{active_entity_count_data_};
-    auto const& cumulative_kill_count_data{cumulative_kill_count_data_};
+    telemetry::HistoryFieldMask fields;
+    fields.set(telemetry::HistoryField::ActiveEntities);
+    fields.set(telemetry::HistoryField::Kills);
+    auto series{materialize_tick_series(fields)};
+    auto& active_entity_count_data{series.active_entities};
+    auto& cumulative_kill_count_data{series.kills};
     assert((!active_entity_count_data.is_empty() && !cumulative_kill_count_data.is_empty()) &&
            "Level telemetry must be initialised before creating a snapshot.");
     assert((active_entity_count_data.last_time() <= completed_tick.value() &&
@@ -140,9 +141,9 @@ auto LevelTelemetryManager::make_snapshot() const -> telemetry::Snapshot {
     snapshot.active_lasers = current_state_.active_lasers;
     snapshot.lasers_fired = current_state_.lasers_fired;
     snapshot.active_entity_count_data =
-        snapshot_with_terminal_sample(active_entity_count_data, completed_tick.value());
-    snapshot.cumulative_kill_count_data =
-        snapshot_with_terminal_sample(cumulative_kill_count_data, completed_tick.value());
+        snapshot_with_terminal_sample(std::move(active_entity_count_data), completed_tick.value());
+    snapshot.cumulative_kill_count_data = snapshot_with_terminal_sample(
+        std::move(cumulative_kill_count_data), completed_tick.value());
     return snapshot;
 }
 
@@ -204,7 +205,6 @@ void LevelTelemetryManager::sample_live_series() {
 
     if (mask.has(Field::ActiveEntities)) {
         columns.active_entities()[row] = current_state_.active_entities;
-        active_entity_count_data_.add(tick.value(), current_state_.active_entities);
     }
     auto const counts_by_type{columns.active_entities_by_type()};
     auto const counts_by_team_and_type{columns.active_entities_by_team_and_type()};
@@ -223,7 +223,6 @@ void LevelTelemetryManager::sample_live_series() {
     }
     if (mask.has(Field::Kills)) {
         columns.kills()[row] = current_state_.kills;
-        cumulative_kill_count_data_.add(tick.value(), current_state_.kills);
     }
 
     last_sampled_state_.active_entities = current_state_.active_entities;
@@ -316,12 +315,18 @@ auto LevelTelemetryManager::history_stats() const noexcept -> telemetry::History
 }
 
 auto LevelTelemetryManager::materialize_tick_series() const -> telemetry::TickSeries {
+    constexpr auto all_fields{(std::uint64_t{1} << telemetry::HistoryFieldMask::field_count) - 1};
+    return materialize_tick_series(telemetry::HistoryFieldMask{all_fields});
+}
+
+auto LevelTelemetryManager::materialize_tick_series(telemetry::HistoryFieldMask const fields) const
+    -> telemetry::TickSeries {
     using namespace level_telemetry_detail;
     std::array<std::uint32_t, FieldMask::field_count> sample_counts{};
-    history_.for_each_block([&sample_counts](auto const block) {
+    history_.for_each_block([&sample_counts, fields](auto const block) {
         auto const rows{block};
         for (auto const mask : rows.validity_masks()) {
-            auto remaining{mask.value()};
+            auto remaining{mask.value() & fields.value()};
             while (remaining != 0) {
                 auto const field{static_cast<std::int32_t>(std::countr_zero(remaining))};
                 ++sample_counts[field];
@@ -348,7 +353,7 @@ auto LevelTelemetryManager::materialize_tick_series() const -> telemetry::TickSe
     result.active_lasers.reserve(sample_counts[FieldMask::index(Field::ActiveLasers)]);
     result.lasers_fired.reserve(sample_counts[FieldMask::index(Field::LasersFired)]);
 
-    history_.for_each_block([&result](auto const block) {
+    history_.for_each_block([&result, fields](auto const block) {
         auto const rows{block};
         auto const row_count{rows.num()};
         auto const completed_ticks{rows.completed_ticks()};
@@ -364,7 +369,7 @@ auto LevelTelemetryManager::materialize_tick_series() const -> telemetry::TickSe
 
         for (std::uint32_t row{}; row < row_count; ++row) {
             auto const tick{completed_ticks[row]};
-            auto const mask{validity_masks[row]};
+            FieldMask const mask{validity_masks[row].value() & fields.value()};
             if (mask.has(Field::ActiveEntities)) {
                 result.active_entities.add(tick.value(), active_entities[row]);
             }
