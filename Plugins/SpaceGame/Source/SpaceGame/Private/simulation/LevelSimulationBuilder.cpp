@@ -151,11 +151,11 @@ auto FLevelSimulationBuild::bind_proxy_entities(sim::LevelSim const& simulation)
     -> FProxyEntityMap {
     FProxyEntityMap bindings;
     level_simulation_builder::bind_proxies(
-        capital_proxies, simulation.get_capital_ships().get_entities().entity_ids(), bindings);
+        capital_proxies, simulation.capital_ships().get_entities().entity_ids(), bindings);
     level_simulation_builder::bind_proxies(
-        turret_proxies, simulation.get_turrets().get_entities().entity_ids(), bindings);
+        turret_proxies, simulation.turrets().get_entities().entity_ids(), bindings);
     level_simulation_builder::bind_proxies(
-        spinner_proxies, simulation.get_spinners().get_entities().entity_ids(), bindings);
+        spinner_proxies, simulation.spinners().get_entities().entity_ids(), bindings);
     return bindings;
 }
 

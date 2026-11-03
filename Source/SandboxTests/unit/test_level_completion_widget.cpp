@@ -63,7 +63,7 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
                               FString{TEXT("Border Skirmish")});
         auto const& snapshot{widget->get_stats_snapshot()};
         TestRunner->TestEqual(TEXT("Completion report retains elapsed time"),
-                              snapshot.elapsed_seconds.get_seconds(),
+                              snapshot.elapsed_seconds.seconds(),
                               3723.0);
         TestRunner->TestEqual(TEXT("Completion report retains kills"), snapshot.kills, 6);
         TestRunner->TestEqual(

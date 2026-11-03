@@ -194,7 +194,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         ship_->start_emergency_brake();
         ship_->start_fire_laser();
         contexts_.set_control_context(::ioj::levels::ControlContext::None);
-        auto const& intent{ship_simulation_.get_flight_intent()};
+        auto const& intent{ship_simulation_.flight_intent()};
         TestRunner->TestTrue(TEXT("Translation and rotation clear"),
                              intent.translation == ioj::Vector3d{} &&
                                  intent.rotation == ioj::Vector3d{});

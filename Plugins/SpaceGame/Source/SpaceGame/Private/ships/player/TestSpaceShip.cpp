@@ -158,7 +158,7 @@ void ATestSpaceShip::set_actor_config(FPlayerShipConfig const* const new_config)
 }
 
 auto ATestSpaceShip::get_kills() const -> int32 {
-    return simulation().get_kills();
+    return simulation().kills();
 }
 
 /* **************************************** */
@@ -193,7 +193,7 @@ void ATestSpaceShip::select_flight_model_slot(::ioj::sim::player::FlightModelSlo
     }
 }
 auto ATestSpaceShip::get_active_flight_model_slot() const -> ::ioj::sim::player::FlightModelSlot {
-    return bound_simulation ? bound_simulation->get_active_flight_model_slot()
+    return bound_simulation ? bound_simulation->active_flight_model_slot()
                             : flight_models_.initial_slot;
 }
 
@@ -213,7 +213,7 @@ auto ATestSpaceShip::get_active_flight_model_profile() const
         return ::ioj::sim::player::flight_model_profile(flight_models_,
                                                         flight_models_.initial_slot);
     }
-    return bound_simulation->get_active_flight_model_profile();
+    return bound_simulation->active_flight_model_profile();
 }
 
 void ATestSpaceShip::start_boost() {
@@ -240,7 +240,7 @@ void ATestSpaceShip::stop_brake() {
 }
 
 auto ATestSpaceShip::get_velocity() const -> FVector {
-    return bound_simulation ? ioj::to_unreal(bound_simulation->get_physical_state().velocity)
+    return bound_simulation ? ioj::to_unreal(bound_simulation->physical_state().velocity)
                             : FVector::ZeroVector;
 }
 
@@ -249,15 +249,15 @@ auto ATestSpaceShip::GetVelocity() const -> FVector {
 }
 
 auto ATestSpaceShip::get_speed() const -> float {
-    return simulation().get_speed();
+    return simulation().speed();
 }
 
 auto ATestSpaceShip::get_persistent_forward_target_speed() const -> float {
-    return simulation().get_controller_state().persistent_forward_target_speed;
+    return simulation().controller_state().persistent_forward_target_speed;
 }
 
 auto ATestSpaceShip::get_sampled_target_speed_scale() const -> FVector2D {
-    return ioj::to_unreal(simulation().get_sampled_target_speed_scale());
+    return ioj::to_unreal(simulation().sampled_target_speed_scale());
 }
 
 /* **************************************** */
@@ -268,7 +268,7 @@ auto ATestSpaceShip::energy_is_full() const -> bool {
 }
 
 auto ATestSpaceShip::get_energy() const -> float {
-    return simulation().get_energy();
+    return simulation().energy();
 }
 
 void ATestSpaceShip::start_fire_laser() {
@@ -320,7 +320,7 @@ auto ATestSpaceShip::get_health_info() const -> FShipHealth {
     if (!bound_simulation) {
         return FShipHealth{initial_.health.get().value()};
     }
-    auto const native_health{bound_simulation->get_health()};
+    auto const native_health{bound_simulation->health()};
     return {native_health.health.value(), native_health.max_health.value()};
 }
 

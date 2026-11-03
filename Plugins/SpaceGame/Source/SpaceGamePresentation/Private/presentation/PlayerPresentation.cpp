@@ -15,7 +15,7 @@ FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
                                          ioj::settings::PlayerPresentation const& settings,
                                          ::ioj::sim::player::Sim const& initial_state)
     : resources_{MoveTemp(resources)}
-    , boost_start_sequence_{initial_state.get_presentation_state().boost_start_sequence} {
+    , boost_start_sequence_{initial_state.presentation_state().boost_start_sequence} {
     if (!resources_.pulse.IsValid() || !resources_.engine.IsValid() || !resources_.mesh.IsValid() ||
         !resources_.space_dust.IsValid()) {
         UE_LOG(LogSandbox, Error, TEXT("Player visual resources are incomplete"));
@@ -33,9 +33,9 @@ FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
     tick(initial_state);
 }
 void FPlayerPresentation::tick(::ioj::sim::player::Sim const& state) {
-    auto const& physical{state.get_physical_state()};
-    auto const& presentation{state.get_presentation_state()};
-    auto const action{state.get_controller_state().effective_action};
+    auto const& physical{state.physical_state()};
+    auto const& presentation{state.presentation_state()};
+    auto const action{state.controller_state().effective_action};
     if (!resources_.root.IsValid() || !resources_.mesh.IsValid() || !resources_.pulse.IsValid() ||
         !resources_.engine.IsValid() || !resources_.space_dust.IsValid()) {
         return;

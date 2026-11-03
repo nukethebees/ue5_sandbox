@@ -8,7 +8,7 @@ void advance_simulation(ATestBatchOrchestrator& orchestrator, double const dt, O
     orchestrator.SetActorTickEnabled(false);
     auto const* const level{orchestrator.get_level_simulation()};
     check(level);
-    auto const& clock{level->get_clock()};
+    auto const& clock{level->clock()};
     auto const previous_tick{clock.get_completed_ticks()};
     orchestrator.tick(dt);
     if (clock.get_completed_ticks() != previous_tick) {

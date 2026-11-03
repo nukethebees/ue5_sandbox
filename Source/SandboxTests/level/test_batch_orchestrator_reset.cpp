@@ -147,11 +147,10 @@ void FTestBatchOrchestratorResetScenario::check_reset() {
     checks.are_equal(
         0, test_driver->get_ledger().count_alive(), TEXT("Reset clears ledger entities"));
     checks.are_equal(
-        0u, level->get_capital_ships().get_num_instances(), TEXT("Reset clears capital instances"));
+        0u, level->capital_ships().num_instances(), TEXT("Reset clears capital instances"));
+    checks.are_equal(0u, level->fighters().num_instances(), TEXT("Reset clears fighter instances"));
     checks.are_equal(
-        0u, level->get_fighters().get_num_instances(), TEXT("Reset clears fighter instances"));
-    checks.are_equal(
-        0u, level->get_lasers().get_num_instances(), TEXT("Reset clears projectile instances"));
+        0u, level->lasers().num_instances(), TEXT("Reset clears projectile instances"));
 
     for (auto const& blocker : blockers) {
         checks.is_true(!is_actor_in_world(*test_driver->get_world(), blocker.Get()),

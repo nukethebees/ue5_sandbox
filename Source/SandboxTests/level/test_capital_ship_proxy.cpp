@@ -75,7 +75,7 @@ void FTestCapitalShipProxyScenario::check_proxy_healths() {
     auto const& simulation{*driver.orchestrator.get_level_simulation()};
 
     checks.are_equal(
-        2u, capitals.get_num_instances(), TEXT("Two capital ships are spawned from the proxies"));
+        2u, capitals.num_instances(), TEXT("Two capital ships are spawned from the proxies"));
     checks.is_true(sim::entity_is_alive(simulation, default_health_id),
                    TEXT("Default-health proxy ID is alive"));
     checks.is_true(sim::entity_is_alive(simulation, overridden_health_id),

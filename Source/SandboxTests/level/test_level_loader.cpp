@@ -168,10 +168,10 @@ void FLevelLoaderCameraScenario::load_fixture() {
                        TEXT("Exiting benchmark retains the camera transform"));
     }
 
+    context_.orchestrator.start_simulation();
     begin_timed_sampling(
         0.05,
         FSimulationSampleCallback::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime));
-    context_.orchestrator.start_simulation();
     context_.orchestrator.SetActorTickEnabled(false);
 }
 
@@ -267,7 +267,7 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
     checks.is_true(static_cast<bool>(player_result), TEXT("Headless loading accepts a player"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     orchestrator.start_simulation();
-    checks.is_true(orchestrator.get_level_simulation()->get_player_ship_simulation() != nullptr,
+    checks.is_true(orchestrator.get_level_simulation()->player_ship_simulation() != nullptr,
                    TEXT("Headless startup initializes the native player from class geometry"));
     checks.are_equal(0,
                      count_actors<ATestSpaceShip>(context_.world),
@@ -292,7 +292,7 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
     orchestrator.start_simulation();
     checks.is_true(orchestrator.get_level_simulation() && !orchestrator.is_presentation_enabled(),
                    TEXT("Headless startup has no presentation state"));
-    checks.is_true(orchestrator.get_level_simulation()->get_player_ship_simulation() == nullptr,
+    checks.is_true(orchestrator.get_level_simulation()->player_ship_simulation() == nullptr,
                    TEXT("Playerless battle does not create a dummy player simulation"));
     checks.are_equal(0,
                      count_actors<ACameraActor>(context_.world),
@@ -395,9 +395,9 @@ void FLevelLoaderScenario::load_fixture() {
                          TEXT("Loader applies the player position"));
     }
 
+    context_.orchestrator.start_simulation();
     begin_timed_sampling(
         0.05, FSimulationSampleCallback::CreateRaw(this, &FLevelLoaderScenario::sample_runtime));
-    context_.orchestrator.start_simulation();
     context_.orchestrator.SetActorTickEnabled(false);
 }
 

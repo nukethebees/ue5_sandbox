@@ -68,7 +68,7 @@ void FSpinnerPresentation::update_ismc_transforms() {
 
     auto const& spinner_simulation{simulation()};
     auto const& entities{spinner_simulation.get_entities()};
-    auto const n{static_cast<int32>(spinner_simulation.get_num_instances())};
+    auto const n{static_cast<int32>(spinner_simulation.num_instances())};
     ismc_transforms.Reset();
     ismc_transforms.AddUninitialized(n);
 
@@ -96,7 +96,7 @@ void FSpinnerPresentation::update_ismc() {
 void FSpinnerPresentation::validate_array_sizes() const {
     simulation().get_entities().validate();
     ioj::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(static_cast<int32>(simulation().get_num_instances())),
+        SANDBOX_NAMED_NUM(static_cast<int32>(simulation().num_instances())),
         SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });

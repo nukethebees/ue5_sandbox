@@ -88,7 +88,6 @@ auto FLevelPresentationHost::make_resources(FLevelVisualConfig const& config,
 
 void FLevelPresentationHost::update_collision_bounds(
     ioj::sim::SpatialQueryManager const& spatial_queries) {
-    components_.collision_grid->update_collision_bounds(
-        spatial_queries.get_entity_collision_bounds(),
-        spatial_queries.get_static_collision_bounds());
+    components_.collision_grid->update_collision_bounds(spatial_queries.entity_collision_bounds(),
+                                                        spatial_queries.static_collision_bounds());
 }

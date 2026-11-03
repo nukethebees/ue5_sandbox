@@ -658,7 +658,7 @@ auto ASpaceGamePlayerController::open_pause_menu() -> bool {
     check(level);
 
     ioj::FPauseMenuData pause_data;
-    pause_data.telemetry = level->get_level_telemetry_manager().make_snapshot();
+    pause_data.telemetry = level->level_telemetry_manager().make_snapshot();
     pause_data.alive_per_team_and_type = entity_counts.alive_per_team_and_type;
     pause_data.top_killers = kill_data.top_killers;
     pause_data.team_kill_matrix = kill_data.team_kill_matrix;
@@ -764,7 +764,7 @@ void ASpaceGamePlayerController::on_mission_completed(FMissionCompletion const& 
     auto const* const level{orchestrator->get_level_simulation()};
     check(level);
     if (!modal_ui_.show_completion(
-            *this, completion, level->get_level_telemetry_manager().make_snapshot())) {
+            *this, completion, level->level_telemetry_manager().make_snapshot())) {
         resume_game();
     }
 }
@@ -790,7 +790,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
     return_to_level_select_pending_ = true;
     auto const* const level{orchestrator->get_level_simulation()};
     check(level);
-    auto const preferred_level_id{level->get_level_metadata().id.value};
+    auto const preferred_level_id{level->level_metadata().id.value};
     if (!subsystem->return_to_level_select(FName{UTF8_TO_TCHAR(preferred_level_id.c_str())})) {
         return_to_level_select_pending_ = false;
         return;

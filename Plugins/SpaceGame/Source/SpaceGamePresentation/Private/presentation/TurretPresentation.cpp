@@ -79,7 +79,7 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
 void FTurretPresentation::update_visual_data() {
     auto const colours{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
-    for (auto const& change : simulation().get_frame_changes()) {
+    for (auto const& change : simulation().frame_changes()) {
         if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
             ismc_transforms.RemoveAtSwap(change.index, EAllowShrinking::No);
             instances->RemoveInstance(change.index);
@@ -153,7 +153,7 @@ void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transfo
 }
 
 void FTurretPresentation::trigger_death_effects() {
-    auto const& death_locations{simulation().get_death_locations()};
+    auto const& death_locations{simulation().death_locations()};
     auto const n{static_cast<int32>(death_locations.size())};
     auto* world{instances->GetWorld()};
     auto* explosion_system{actor_config->death_effect.Get()};
@@ -185,7 +185,7 @@ void FTurretPresentation::trigger_death_effects() {
 void FTurretPresentation::validate_array_sizes() const {
     simulation().get_entities().validate();
     ioj::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(static_cast<int32>(simulation().get_num_instances())),
+        SANDBOX_NAMED_NUM(static_cast<int32>(simulation().num_instances())),
         SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
@@ -196,8 +196,8 @@ void FTurretPresentation::draw_debugging_shapes() const {
 
     auto const& turret_simulation{simulation()};
     auto const entities{turret_simulation.get_entities()};
-    auto const healths{turret_simulation.get_healths()};
-    auto const n{static_cast<int32>(turret_simulation.get_num_instances())};
+    auto const healths{turret_simulation.healths()};
+    auto const n{static_cast<int32>(turret_simulation.num_instances())};
     auto const text_offset{actor_config->debug_status_text_offset};
 
     auto& drawer{debug_drawer};

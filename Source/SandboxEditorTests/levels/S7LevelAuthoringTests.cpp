@@ -1730,19 +1730,19 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                 auto const initial_capitals{observer ? 1 : 0};
                 auto const* const level{orchestrator.get_level_simulation()};
                 check(level);
-                auto const& clock{level->get_clock()};
+                auto const& clock{level->clock()};
                 TestRunner->TestEqual(TEXT("Delayed entity is absent at startup"),
-                                      level->get_capital_ships().get_num_instances(),
+                                      level->capital_ships().num_instances(),
                                       initial_capitals);
                 TestRunner->TestTrue(TEXT("Startup precedes scheduled spawn"),
-                                     clock.get_simulation_time() < 4.0);
-                orchestrator.tick(FMath::Max(0.0, 4.0 - clock.get_simulation_time()));
+                                     clock.simulation_time() < 4.0);
+                orchestrator.tick(FMath::Max(0.0, 4.0 - clock.simulation_time()));
                 TestRunner->TestEqual(TEXT("Delayed entity remains absent before its time"),
-                                      level->get_capital_ships().get_num_instances(),
+                                      level->capital_ships().num_instances(),
                                       initial_capitals);
                 orchestrator.tick(1.1);
                 TestRunner->TestEqual(TEXT("Existing authored scheduler spawns the entity"),
-                                      level->get_capital_ships().get_num_instances(),
+                                      level->capital_ships().num_instances(),
                                       initial_capitals + 1);
             })
             .Then([this, fixture] {

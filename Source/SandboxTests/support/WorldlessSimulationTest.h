@@ -35,9 +35,9 @@ class FWorldlessSimulationTest {
     auto get_simulation() -> ::ioj::sim::LevelSim& { return simulation_; }
     auto get_simulation() const -> ::ioj::sim::LevelSim const& { return simulation_; }
     auto get_ledger() const -> ::ioj::sim::EntityLedger const& {
-        return simulation_.get_entity_ledger();
+        return simulation_.entity_ledger();
     }
-    auto get_time() const -> time_type { return simulation_.get_clock().get_simulation_time(); }
+    auto get_time() const -> time_type { return simulation_.clock().simulation_time(); }
 
     void finish_initialisation();
     void queue_damage(std::span<sim::EntityId const> targets,

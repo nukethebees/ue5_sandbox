@@ -18,8 +18,8 @@ void FSimulationTestScenario::advance_sample() {
         return;
     }
 
-    auto const& clock{context_.orchestrator.get_level_simulation()->get_clock()};
-    auto const dt{clock.get_tick_period() / clock.get_time_scale().get()};
+    auto const& clock{context_.orchestrator.get_level_simulation()->clock()};
+    auto const dt{clock.tick_period() / clock.time_scale().get()};
     advance_simulation(context_.orchestrator, dt, [this](ATestBatchOrchestrator& orchestrator) {
         sample_callback_.ExecuteIfBound(orchestrator);
         test_driver->advance_timeline();

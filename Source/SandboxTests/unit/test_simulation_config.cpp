@@ -30,8 +30,8 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         for (auto const rotation :
              {FRotator3f::ZeroRotator, FRotator3f{0.f, 90.f, 0.f}, FRotator3f{23.f, 47.f, -16.f}}) {
             FBox3f expected{ForceInit};
-            auto const centre{ioj::to_unreal(bounds.get_centre(type))};
-            auto const extent{bounds.get_half_extents(type)};
+            auto const centre{ioj::to_unreal(bounds.centre(type))};
+            auto const extent{bounds.half_extents(type)};
             for (int32 corner{}; corner < 8; ++corner) {
                 FVector3f const offset{(corner & 1) ? extent.x() : -extent.x(),
                                        (corner & 2) ? extent.y() : -extent.y(),

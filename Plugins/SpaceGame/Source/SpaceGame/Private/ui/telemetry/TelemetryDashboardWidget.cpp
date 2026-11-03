@@ -124,21 +124,21 @@ void UTelemetryDashboardWidget::rebuild_state() {
                                             summary.completion_reason});
         }
     }};
-    append_summaries(catalog_.get_runs(), state_.runs);
-    for (auto const& label : catalog_.get_level_filters()) {
+    append_summaries(catalog_.runs(), state_.runs);
+    for (auto const& label : catalog_.level_filters()) {
         state_.level_filters.Add(to_fstring(label));
     }
-    append_summaries(catalog_.get_baseline_candidates(), state_.baseline_runs);
-    state_.selected_baseline_run_id = to_fstring(catalog_.get_baseline_run_id());
-    state_.selected_run_id = to_fstring(catalog_.get_selected_run_id());
-    state_.selected_level_filter = to_fstring(catalog_.get_level_filter());
-    state_.unreadable_files = static_cast<int32>(catalog_.get_unreadable_file_count());
-    state_.error = to_fstring(catalog_.get_selected_error());
+    append_summaries(catalog_.baseline_candidates(), state_.baseline_runs);
+    state_.selected_baseline_run_id = to_fstring(catalog_.baseline_run_id());
+    state_.selected_run_id = to_fstring(catalog_.selected_run_id());
+    state_.selected_level_filter = to_fstring(catalog_.level_filter());
+    state_.unreadable_files = static_cast<int32>(catalog_.unreadable_file_count());
+    state_.error = to_fstring(catalog_.selected_error());
     if (!external_error_.IsEmpty()) {
         state_.error =
             state_.error.IsEmpty() ? external_error_ : external_error_ + TEXT("\n") + state_.error;
     }
-    auto const* const record{catalog_.get_selected_record()};
+    auto const* const record{catalog_.selected_record()};
     if (!record) {
         return;
     }
@@ -157,11 +157,11 @@ void UTelemetryDashboardWidget::rebuild_state() {
         record->presentation_enabled ? TEXT("visual") : TEXT("simulation_only"),
         record->run.metadata.requested_duration_seconds.has_value()
             ? *FString::Printf(TEXT("%.3fs"),
-                               record->run.metadata.requested_duration_seconds->get_seconds())
+                               record->run.metadata.requested_duration_seconds->seconds())
             : TEXT("unlimited"),
         UTF8_TO_TCHAR(record->run.metadata.run_id.c_str())));
     state_.analysis = analyze_level_telemetry_run(*record);
-    auto const* const baseline{catalog_.get_baseline_record()};
+    auto const* const baseline{catalog_.baseline_record()};
     if (baseline) {
         state_.baseline_analysis = analyze_level_telemetry_run(*baseline);
         TArray<FString> warnings;

@@ -123,7 +123,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
         return;
     }
     if (level_simulation_.IsSet()) {
-        simulation_tick_settings.time_scale = level_simulation_->get_clock().get_time_scale();
+        simulation_tick_settings.time_scale = level_simulation_->clock().time_scale();
     }
 
     release_level(ioj::sim::telemetry::RunEndReason::OrchestratorReset);
@@ -345,9 +345,9 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
 
     auto const grid_geometry{build->data.collision.grid_geometry};
     level_simulation_.Emplace(MoveTemp(build->data), game_subsystem->get_memory_resource());
-    auto const* const player_simulation{level_simulation_->get_player_ship_simulation()};
+    auto const* const player_simulation{level_simulation_->player_ship_simulation()};
     if (IsValid(player_ship) && player_simulation) {
-        player_ship->bind_simulation(*level_simulation_->get_player_ship_commands(),
+        player_ship->bind_simulation(*level_simulation_->player_ship_commands(),
                                      *player_simulation);
     }
 
@@ -364,9 +364,9 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     if (presentation_enabled) {
         presentation_host_.initialise(resources.config,
                                       resources.player,
-                                      level_simulation_->get_read_access(),
-                                      level_simulation_->get_mission(),
-                                      level_simulation_->get_spatial_query_manager(),
+                                      level_simulation_->read_access(),
+                                      level_simulation_->mission(),
+                                      level_simulation_->spatial_query_manager(),
                                       MoveTemp(build->initial_turret_transforms));
         if (IsValid(player_ship)) {
             if (auto* const controller{
@@ -461,13 +461,13 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         return;
     }
 
-    auto const& clk{level_simulation_->get_clock()};
+    auto const& clk{level_simulation_->clock()};
     auto const previous_tick{clk.get_completed_ticks()};
     level_simulation_->advance(dt);
     presentation_host_.tick(
-        dt, level_simulation_->get_read_access(), level_simulation_->get_spatial_query_manager());
+        dt, level_simulation_->read_access(), level_simulation_->spatial_query_manager());
 
-    if (auto player{level_simulation_->get_player_ship_commands()};
+    if (auto player{level_simulation_->player_ship_commands()};
         player && player->consume_death_notification()) {
         if (IsValid(player_ship)) {
             player_ship->handle_simulation_death();
@@ -475,7 +475,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     }
 
     if (clk.get_completed_ticks() != previous_tick) {
-        auto const& mission{level_simulation_->get_mission()};
+        auto const& mission{level_simulation_->mission()};
         for (auto const& completion : mission.completions()) {
             if (completion.outcome == ioj::MissionOutcome::Victory &&
                 completion.tick > previous_tick) {

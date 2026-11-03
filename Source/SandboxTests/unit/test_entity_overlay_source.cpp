@@ -19,7 +19,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
         std::array const batches{ioj::presentation::AgentDisplayBatch{
             ioj::sim::EntityType::Turret,
             ids,
-            positions.get_const_view(),
+            positions.const_view(),
             {},
             ioj::sim::HealthConstView{ioj::sim::EntityType::Turret, healths},
             teams}};

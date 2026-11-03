@@ -74,7 +74,7 @@ void FCapitalPresentation::begin_play_presentation() {
 void FCapitalPresentation::update_visual_data(ioj::sim::EntityLedger const& ledger) {
     auto const colours{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
-    for (auto const& change : simulation().get_frame_changes()) {
+    for (auto const& change : simulation().frame_changes()) {
         if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
             instances->RemoveInstance(change.index);
         } else {
@@ -157,8 +157,8 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
 }
 
 void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& ledger) {
-    auto const deaths{ledger.get_frame_deaths(ioj::sim::EntityType::CapitalShip)};
-    auto const history{ledger.get_unique_entities()};
+    auto const deaths{ledger.frame_deaths(ioj::sim::EntityType::CapitalShip)};
+    auto const history{ledger.unique_entities()};
     auto const death_ticks{history.death_ticks()};
     auto const death_locations{history.death_locations()};
     auto const n{static_cast<int32>(deaths.size())};
@@ -232,7 +232,7 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
 void FCapitalPresentation::validate_array_sizes() const {
     simulation().get_entities().validate();
     ioj::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(static_cast<int32>(simulation().get_num_instances())),
+        SANDBOX_NAMED_NUM(static_cast<int32>(simulation().num_instances())),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }

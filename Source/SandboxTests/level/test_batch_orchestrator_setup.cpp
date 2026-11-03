@@ -61,7 +61,7 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
                              orchestrator->IsActorTickEnabled());
         TestRunner->TestEqual(
             TEXT("Starting does not immediately advance simulation"),
-            orchestrator->get_level_simulation()->get_clock().get_completed_ticks().value(),
+            orchestrator->get_level_simulation()->clock().get_completed_ticks().value(),
             uint64{0});
     });
 }
@@ -88,13 +88,13 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
         };
         TimeSeriesData<FFrameObservation> observations;
         auto const observe{[&observations](ATestBatchOrchestrator& owner) {
-            auto const& clock{owner.get_level_simulation()->get_clock()};
+            auto const& clock{owner.get_level_simulation()->clock()};
             observations.add(
-                clock.get_simulation_time(),
+                clock.simulation_time(),
                 FFrameObservation{clock.get_completed_ticks().value(),
                                   owner.get_level_presentation()->get_last_completed_tick()});
         }};
-        auto const dt{orchestrator.get_level_simulation()->get_clock().get_tick_period()};
+        auto const dt{orchestrator.get_level_simulation()->clock().tick_period()};
         advance_simulation(orchestrator, 0.0, observe);
         checks.are_equal(uint64{0},
                          presentation->get_last_completed_tick(),

@@ -79,8 +79,8 @@ void FFighterPresentation::configure_ismc() {
 void FFighterPresentation::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_ismc);
 
-    auto const healths{simulation().get_healths()};
-    auto const data{simulation().get_entities()};
+    auto const healths{simulation().healths()};
+    auto const data{simulation().entities()};
     auto const count{static_cast<int32>(data.num())};
     auto const locations{data.view_locations()};
     auto const ids{data.entity_ids()};
@@ -130,7 +130,7 @@ void FFighterPresentation::update_ismc() {
 void FFighterPresentation::draw_debug_shapes() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::draw_debug_shapes);
 
-    auto const data{simulation().get_entities()};
+    auto const data{simulation().entities()};
     auto const n{static_cast<int32>(data.num())};
     auto const locations{data.view_locations()};
     auto const targets{data.target_ids()};
@@ -149,7 +149,7 @@ void FFighterPresentation::draw_debug_shapes() {
 }
 
 void FFighterPresentation::validate_array_sizes() const {
-    simulation().get_entities().validate();
+    simulation().entities().validate();
     ioj::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(visible_indices_.Num()),
         SANDBOX_NAMED_NUM(instances->get_instance_count()),

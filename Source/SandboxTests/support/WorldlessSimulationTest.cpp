@@ -58,13 +58,13 @@ void FWorldlessSimulationTest::finish_initialisation() {
 }
 
 void FWorldlessSimulationTest::advance(time_type const dt) {
-    auto const previous_tick{simulation_.get_clock().get_completed_ticks().value()};
+    auto const previous_tick{simulation_.clock().get_completed_ticks().value()};
     simulation_.advance(dt);
-    if (simulation_.get_clock().get_completed_ticks().value() != previous_tick) {
+    if (simulation_.clock().get_completed_ticks().value() != previous_tick) {
         if (on_end_tick) {
             on_end_tick(simulation_);
         }
-        timeline.tick(simulation_.get_clock().get_simulation_time());
+        timeline.tick(simulation_.clock().simulation_time());
     }
 }
 
@@ -76,7 +76,7 @@ void FWorldlessSimulationTest::queue_damage(std::span<sim::EntityId const> const
     for (auto const target : targets) {
         events.add(target, damage, instigator);
     }
-    sim::LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
+    sim::LevelSimTestAccess::queue_direct_damage_events(simulation_, events.const_view());
 }
 void FWorldlessSimulationTest::queue_kills(std::span<sim::EntityId const> const targets,
                                            sim::EntityId const instigator) {
@@ -87,14 +87,14 @@ void FWorldlessSimulationTest::queue_kills(std::span<sim::EntityId const> const 
         check(state);
         events.add(target, FMath::Max(1, state->health.value()), instigator);
     }
-    sim::LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
+    sim::LevelSimTestAccess::queue_direct_damage_events(simulation_, events.const_view());
 }
 
 auto FWorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {
     check(maximum_time > 0.0);
-    check(simulation_.get_state() == sim::LevelState::Paused);
+    check(simulation_.state() == sim::LevelState::Paused);
     simulation_.start();
-    auto const tick_period{simulation_.get_clock().get_tick_period()};
+    auto const tick_period{simulation_.clock().tick_period()};
     auto const maximum_ticks{static_cast<uint64>(FMath::CeilToDouble(maximum_time / tick_period))};
     for (uint64 tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
         advance(tick_period);

@@ -163,9 +163,9 @@ void FLaserPresentation::queue_hit_sparks() {
         return;
     }
 
-    auto const hit_details{simulation().get_hits()};
-    auto const hit_ticks{simulation().get_hit_ticks()};
-    auto const hit_ordinals{simulation().get_hit_ordinals()};
+    auto const hit_details{simulation().hits()};
+    auto const hit_ticks{simulation().hit_ticks()};
+    auto const hit_ordinals{simulation().hit_ordinals()};
     auto const count{ioj::num(hit_details)};
     auto const& style{actor_config->impact_sparks};
     auto const locations{hit_details.view_locations()};

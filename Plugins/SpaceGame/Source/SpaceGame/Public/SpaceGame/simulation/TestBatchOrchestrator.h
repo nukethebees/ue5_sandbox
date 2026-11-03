@@ -76,7 +76,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Simulation state and timing
     /* **************************************** */
     auto get_state() const noexcept -> ioj::sim::LevelState {
-        return level_simulation_.IsSet() ? level_simulation_->get_state()
+        return level_simulation_.IsSet() ? level_simulation_->state()
                                          : ioj::sim::LevelState::Uninitialised;
     }
     auto get_level_simulation() const -> ioj::sim::LevelSim const* {
@@ -91,7 +91,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
             return NullOpt;
         }
 
-        auto const& clk{level_simulation_->get_clock()};
+        auto const& clk{level_simulation_->clock()};
         auto const end_tick{
             clk.duration_to_tick_period(
                    ioj::Duration::make(launch_options_.simulated_duration_seconds.value()))

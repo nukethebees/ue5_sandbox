@@ -18,7 +18,7 @@ auto make_graph_series(FText name,
     auto const sample_count{static_cast<int32>(data.num())};
     series.x.Reserve(sample_count);
     series.y.Reserve(sample_count);
-    auto const tick_rate_hz{tick_rate.get_hz()};
+    auto const tick_rate_hz{tick_rate.hz()};
     for (int32 index{}; index < sample_count; ++index) {
         series.x.Add(static_cast<float>(static_cast<double>(data.time_at(index)) / tick_rate_hz));
         series.y.Add(static_cast<float>(data.value_at(index)));
@@ -29,7 +29,7 @@ auto make_graph_series(FText name,
 
 namespace ioj::level_telemetry_presentation {
 auto format_elapsed_time(Duration const elapsed) -> FText {
-    auto const total_seconds{FMath::FloorToInt64(elapsed.get_seconds())};
+    auto const total_seconds{FMath::FloorToInt64(elapsed.seconds())};
     auto const seconds{total_seconds % 60};
     auto const total_minutes{total_seconds / 60};
     auto const minutes{total_minutes % 60};
@@ -82,7 +82,7 @@ void update_activity_graph(SGraphPlot& graph,
                                  kills_color));
     graph.set_series(MoveTemp(series));
 
-    auto const x_max{FMath::Max(snapshot.elapsed_seconds.get_seconds(), 1.0)};
+    auto const x_max{FMath::Max(snapshot.elapsed_seconds.seconds(), 1.0)};
     (void)graph.set_axis_settings(
         {.range_mode = EGraphRangeMode::Fixed, .fixed_range = {0.0, x_max}},
         {.range_mode = EGraphRangeMode::AutoIncludeZero});

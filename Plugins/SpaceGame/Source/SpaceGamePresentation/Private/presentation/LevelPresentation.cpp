@@ -23,7 +23,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     auto const& config{config_};
     resources.sparks->initialise(config.sparks);
     sparks.clear();
-    auto const* player{view.get_player()};
+    auto const* player{view.player()};
     if (resources.player.IsSet() && player != nullptr) {
         player_.Emplace(resources.player.GetValue(),
                         config.player_ship,
@@ -49,12 +49,12 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
         [](auto const&... systems) { (systems.ValidateOptionalAssets(), ...); }};
     ValidateOptionalAssets(capital_ships, turrets);
 
-    capital_ships.simulation_ = &view.get_capitals();
-    capital_ship_fighters.simulation_ = &view.get_fighters();
-    turrets.simulation_ = &view.get_turrets();
-    spinners.simulation_ = &view.get_spinners();
-    lasers.simulation_ = &view.get_lasers();
-    last_completed_tick_ = view.get_clock().get_completed_ticks();
+    capital_ships.simulation_ = &view.capitals();
+    capital_ship_fighters.simulation_ = &view.fighters();
+    turrets.simulation_ = &view.turrets();
+    spinners.simulation_ = &view.spinners();
+    lasers.simulation_ = &view.lasers();
+    last_completed_tick_ = view.clock().get_completed_ticks();
     lasers.player_colours_ =
         UTestTeamVisualData::build_team_colour_cache(config.player_ship.team_visual_data);
     lasers.fighter_colours_ =
@@ -75,7 +75,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
 }
 
 void FLevelPresentation::tick(float const dt, ::ioj::sim::LevelReadAccess const& view) {
-    auto const completed_tick{view.get_clock().get_completed_ticks()};
+    auto const completed_tick{view.clock().get_completed_ticks()};
     if (last_completed_tick_ == completed_tick) {
         sparks.commit(dt);
         effects.update_spawns(dt, *lasers.instances->GetWorld());
@@ -83,11 +83,11 @@ void FLevelPresentation::tick(float const dt, ::ioj::sim::LevelReadAccess const&
     }
 
     last_completed_tick_ = completed_tick;
-    auto const* player{view.get_player()};
+    auto const* player{view.player()};
     if (player_.IsSet() && player != nullptr) {
         player_->tick(*player);
     }
-    capital_ships.update_visual_data(view.get_entity_ledger());
+    capital_ships.update_visual_data(view.entity_ledger());
     turrets.update_visual_data();
     capital_ship_fighters.update_visual_data();
     spinners.update_visual_data();

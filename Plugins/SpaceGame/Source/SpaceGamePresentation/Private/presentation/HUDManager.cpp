@@ -61,8 +61,8 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
     radar_style_.objective_ring_padding_pixels = radar_settings_.objective_ring_padding_pixels;
     radar_style_.objective_ring_thickness_pixels = radar_settings_.objective_ring_thickness_pixels;
     auto const& spatial_queries{new_spatial_query_manager};
-    auto const fighter_radius{spatial_queries.get_entity_type_radius(sim::EntityType::Fighter)};
-    auto const capital_radius{spatial_queries.get_entity_type_radius(sim::EntityType::CapitalShip)};
+    auto const fighter_radius{spatial_queries.entity_type_radius(sim::EntityType::Fighter)};
+    auto const capital_radius{spatial_queries.entity_type_radius(sim::EntityType::CapitalShip)};
     entity_overlay_style_ = {
         .bar_size_pixels = FVector2f{ioj::to_unreal(overlay.bar_size_pixels)},
         .screen_offset_pixels = FVector2f{ioj::to_unreal(overlay.screen_offset_pixels)},
@@ -310,7 +310,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
     controller->GetPlayerViewPoint(camera_location, camera_rotation);
 
     auto const batches{model_.display_batches()};
-    auto const& entity_radii{spatial_query_manager->get_entity_type_radii()};
+    auto const& entity_radii{spatial_query_manager->entity_type_radii()};
     ioj::presentation::SoftTargetResult soft_target;
     if (auto const* player_ship{registration.ship_hud.IsValid() ? model_.player_for_collection()
                                                                 : nullptr}) {
@@ -327,7 +327,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
                                 .camera_right = FVector3f{camera_transform.GetUnitAxis(EAxis::Y)},
                                 .camera_up = FVector3f{camera_transform.GetUnitAxis(EAxis::Z)},
                                 .player_team = to_unreal(player_ship->team),
-                                .effective_weapon_range = player_ship->get_laser_effective_range(),
+                                .effective_weapon_range = player_ship->laser_effective_range(),
                                 .maximum_overlay_range = entity_overlay_settings_.maximum_range},
                                soft_target_selection_settings_,
                                registration.soft_targets.current_target());
@@ -532,7 +532,7 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
         std::span{entity_overlay_objective_roles_.GetData(),
                   static_cast<std::size_t>(entity_overlay_objective_roles_.Num())},
         radar_contact_colours_,
-        player_ship->get_physical_state().transform,
+        player_ship->physical_state().transform,
         player_ship->unique_entity_id,
         player_ship->team,
         radar_settings_,

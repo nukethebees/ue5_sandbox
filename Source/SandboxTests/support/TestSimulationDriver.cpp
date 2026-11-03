@@ -36,7 +36,7 @@ auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
 auto TestSimulationDriver::get_ledger() const -> ::ioj::sim::EntityLedger const& {
     auto const* const level{orchestrator.get_level_simulation()};
     check(level);
-    return level->get_entity_ledger();
+    return level->entity_ledger();
 }
 
 auto TestSimulationDriver::get_player_ship() const -> ATestSpaceShip const& {
@@ -47,12 +47,12 @@ auto TestSimulationDriver::get_player_ship() const -> ATestSpaceShip const& {
 auto TestSimulationDriver::get_capital_ships() const -> ::ioj::sim::capital_ships::Sim const& {
     auto const* const level{orchestrator.get_level_simulation()};
     check(level);
-    return level->get_capital_ships();
+    return level->capital_ships();
 }
 auto TestSimulationDriver::get_fighters() const -> ::ioj::sim::fighters::Sim const& {
     auto const* const level{orchestrator.get_level_simulation()};
     check(level);
-    return level->get_fighters();
+    return level->fighters();
 }
 
 void TestSimulationDriver::queue_damage(std::span<sim::EntityId const> const targets,
@@ -67,7 +67,7 @@ void TestSimulationDriver::queue_damage(std::span<sim::EntityId const> const tar
     }
 
     FTestBatchOrchestratorTestAccess::queue_direct_damage_events(orchestrator,
-                                                                 damage_events.get_const_view());
+                                                                 damage_events.const_view());
 }
 void TestSimulationDriver::queue_kills(std::span<sim::EntityId const> const targets,
                                        sim::EntityId const instigator) {
@@ -76,8 +76,7 @@ void TestSimulationDriver::queue_kills(std::span<sim::EntityId const> const targ
     for (auto const id : targets) {
         events.add(id, std::numeric_limits<int32>::max(), instigator);
     }
-    FTestBatchOrchestratorTestAccess::queue_direct_damage_events(orchestrator,
-                                                                 events.get_const_view());
+    FTestBatchOrchestratorTestAccess::queue_direct_damage_events(orchestrator, events.const_view());
 }
 bool TestSimulationDriver::should_export_results() const {
 #if WITH_EDITOR
@@ -90,18 +89,18 @@ bool TestSimulationDriver::should_export_results() const {
 
 void TestSimulationDriver::set_wait_until_tick_from_now(uint64 wait_cycles) {
     auto const* const level{orchestrator.get_level_simulation()};
-    auto const completed_ticks{level ? level->get_clock().get_completed_ticks().value() : 0};
+    auto const completed_ticks{level ? level->clock().get_completed_ticks().value() : 0};
     tick_wait_end = completed_ticks + wait_cycles;
 }
 bool TestSimulationDriver::tick_wait_completed() const {
     auto const* const level{orchestrator.get_level_simulation()};
-    auto const completed_ticks{level ? level->get_clock().get_completed_ticks().value() : 0};
+    auto const completed_ticks{level ? level->clock().get_completed_ticks().value() : 0};
     return completed_ticks >= tick_wait_end;
 }
 
 auto TestSimulationDriver::get_time() const -> time_type {
     auto const* const level{orchestrator.get_level_simulation()};
-    return level ? level->get_clock().get_simulation_time() : 0.0;
+    return level ? level->clock().simulation_time() : 0.0;
 }
 void TestSimulationDriver::set_delta_time_wait(time_type dt) {
     check(dt > time_type{0});

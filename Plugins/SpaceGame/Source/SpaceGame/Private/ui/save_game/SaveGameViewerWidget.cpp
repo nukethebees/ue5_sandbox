@@ -257,7 +257,7 @@ void USaveGameViewerWidget::show_create_profile_error(FText const& error) {
 void USaveGameViewerWidget::rebuild_profiles() {
     view_state_ = FSaveGameViewState{};
     auto* const browser{resolve_browser()};
-    auto const profiles{browser ? browser->get_summaries()
+    auto const profiles{browser ? browser->summaries()
                                 : std::span<profiles::ProfileSummary const>{}};
     if (profiles.empty()) {
         show_empty_profiles();
@@ -268,7 +268,7 @@ void USaveGameViewerWidget::rebuild_profiles() {
     auto const profile_count{static_cast<int32>(profiles.size())};
     view_state_.profiles.Reserve(profile_count);
     for (auto const& profile : profiles) {
-        auto const active{profile.profile_id == browser->get_active_profile_id()};
+        auto const active{profile.profile_id == browser->active_profile_id()};
         auto const marker{active ? TEXT("ACTIVE // ") : TEXT("")};
         view_state_.profiles.Add(FSaveProfileViewRow{
             .profile_id = to_fstring(profile.profile_id),
@@ -302,7 +302,7 @@ void USaveGameViewerWidget::apply_profile_selection(FString const& profile_id) {
         return;
     }
 
-    auto const profiles{browser->get_summaries()};
+    auto const profiles{browser->summaries()};
     auto const profile_count{static_cast<int32>(profiles.size())};
     for (int32 index{}; index < profile_count; ++index) {
         auto const& profile{profiles[index]};
@@ -316,10 +316,10 @@ void USaveGameViewerWidget::apply_profile_selection(FString const& profile_id) {
         if (profile_changed) {
             selected_outcome_id_.Reset();
         }
-        show_profile(profile, browser->get_active_profile_id());
+        show_profile(profile, browser->active_profile_id());
 
         if (browser->load_profile_report(TCHAR_TO_UTF8(*profile_id))) {
-            auto const* const report{browser->get_loaded_profile_report()};
+            auto const* const report{browser->loaded_profile_report()};
             if (report) {
                 rebuild_outcomes(*report);
             }
@@ -375,7 +375,7 @@ void USaveGameViewerWidget::select_outcome(FString const& outcome_id) {
 
 void USaveGameViewerWidget::apply_outcome_selection(FString const& outcome_id) {
     auto* const browser{resolve_browser()};
-    auto const* const report{browser ? browser->get_loaded_profile_report() : nullptr};
+    auto const* const report{browser ? browser->loaded_profile_report() : nullptr};
     if (!report || report->profile_id != TCHAR_TO_UTF8(*selected_profile_id_)) {
         return;
     }

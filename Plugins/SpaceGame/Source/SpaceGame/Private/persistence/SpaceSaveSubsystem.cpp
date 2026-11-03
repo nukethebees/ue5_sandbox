@@ -67,13 +67,13 @@ void USpaceSaveSubsystem::Deinitialize() {
     Super::Deinitialize();
 }
 auto USpaceSaveSubsystem::get_active_profile_id() const -> std::string const& {
-    return profile_manager_.get_active_profile_id();
+    return profile_manager_.active_profile_id();
 }
 auto USpaceSaveSubsystem::get_level_progress(ioj::FLevelId level_id) const
     -> ioj::profiles::LevelProgressSummary {
     return ioj::profiles::summarize_level_progress(
         ioj::levels::LevelId{TCHAR_TO_UTF8(*level_id.value.ToString())},
-        profile_manager_.get_active_records());
+        profile_manager_.active_records());
 }
 auto USpaceSaveSubsystem::is_level_completed(ioj::FLevelId level_id) const -> bool {
     return get_level_progress(level_id).state() == ioj::profiles::LevelProgressState::Completed;
@@ -116,9 +116,9 @@ void USpaceSaveSubsystem::log_save_data() const {
     UE_LOG(LogSandboxSubsystem,
            Display,
            TEXT("Native save profile %s: %llu profiles, %llu outcomes"),
-           *ioj::to_fstring(profile_manager_.get_active_profile_id()),
-           static_cast<unsigned long long>(profile_manager_.get_profiles().size()),
-           static_cast<unsigned long long>(profile_manager_.get_active_records().size()));
+           *ioj::to_fstring(profile_manager_.active_profile_id()),
+           static_cast<unsigned long long>(profile_manager_.profiles().size()),
+           static_cast<unsigned long long>(profile_manager_.active_records().size()));
 }
 auto USpaceSaveSubsystem::make_storage() -> ioj::profiles::ProfileStorage {
     auto const local_root{FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"))};

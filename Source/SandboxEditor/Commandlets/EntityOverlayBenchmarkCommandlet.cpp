@@ -23,12 +23,12 @@ namespace {
 auto make_view(::ioj::sim::TurretEntityData const& entities,
                ::ioj::sim::HealthTable const& health_table)
     -> std::array<::ioj::presentation::AgentDisplayBatch, 1> {
-    auto const data{entities.get_const_view()};
+    auto const data{entities.const_view()};
     return {{{::ioj::sim::EntityType::Turret,
               data.entity_ids(),
               data.view_locations(),
               {},
-              health_table.get_const_view<::ioj::sim::EntityType::Turret>(),
+              health_table.const_view<::ioj::sim::EntityType::Turret>(),
               data.teams()}}};
 }
 
@@ -75,15 +75,14 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     auto const count{UE_ARRAY_COUNT(positions)};
     entities.add_defaulted(count);
     for (int32 index{0}; index < count; ++index) {
-        entities.get_view().entity_ids()[index] =
+        entities.view().entity_ids()[index] =
             ::ioj::sim::EntityId(static_cast<std::uint32_t>(index), ::ioj::sim::EntityType::Turret);
-        ::ioj::set_vector(
-            entities.get_view().view_locations(), index, ioj::Vector3f{positions[index]});
-        entities.get_view().teams()[index] =
+        ::ioj::set_vector(entities.view().view_locations(), index, ioj::Vector3f{positions[index]});
+        entities.view().teams()[index] =
             static_cast<::ioj::Team>(index % ioj::enum_count<::ioj::Team>());
     }
     health_table.initialise_entities<::ioj::sim::EntityType::Turret>(
-        entities.get_const_view().entity_ids(), health);
+        entities.const_view().entity_ids(), health);
 
     FMatrix44f projection{FMatrix44f::Identity};
     FMemory::Memzero(projection.M, sizeof(projection.M));
@@ -123,7 +122,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         return false;
     }
 
-    ::ioj::set_vector(entities.get_view().view_locations(), count - 1, {100.0f, 50.0f, 50.0f});
+    ::ioj::set_vector(entities.view().view_locations(), count - 1, {100.0f, 50.0f, 50.0f});
     auto& moved_frame{frame_store->next()};
     static_cast<void>(ioj::presentation::collect_entity_overlay_instances(
         make_view(entities, health_table),
