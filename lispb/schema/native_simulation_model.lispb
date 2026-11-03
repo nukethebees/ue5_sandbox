@@ -465,11 +465,11 @@
     (member hit bool :initializer "false")
     (projections (cpp))))
 
-(module native_navigation_telemetry
-  :header "native/simulation/include/ioj/sim/telemetry/navigation_telemetry.h"
-  :header-include "ioj/sim/telemetry/navigation_telemetry.h"
-  :namespace ioj::sim::telemetry
-  (record FighterNavigationSnapshot
+(module native_fighter_navigation_counters
+  :header "native/simulation/include/ioj/sim/fighters/navigation_counters.h"
+  :header-include "ioj/sim/fighters/navigation_counters.h"
+  :namespace ioj::sim::fighters
+  (record NavigationCounters
     (member separating_fighter_count std::int32_t :initializer "")
     (member avoiding_fighter_count std::int32_t :initializer "")
     (member clear_risk_count std::int32_t :initializer "")

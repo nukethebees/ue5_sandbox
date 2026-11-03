@@ -36,6 +36,21 @@
 
 namespace ioj::sim::fighters {
 
+static void publish_navigation_counters(NavigationCounters const& counters) {
+    profiling::plot("Sandbox/FightersAvoiding", counters.avoiding_fighter_count);
+    profiling::plot("Sandbox/FighterNavigationTraces", counters.hard_trace_count);
+    profiling::plot("Sandbox/FightersSeparating", counters.separating_fighter_count);
+    profiling::plot("Sandbox/FighterSeparationQueries", counters.separation_query_count);
+    profiling::plot("Sandbox/FighterSeparationCandidates", counters.separation_candidate_count);
+    profiling::plot("Sandbox/FighterDenseDirectionSelections",
+                    counters.dense_direction_selection_count);
+    profiling::plot("Sandbox/FighterSteeringMemory", counters.steering_memory_fighter_count);
+    profiling::plot("Sandbox/FighterNavigationClear", counters.clear_risk_count);
+    profiling::plot("Sandbox/FighterNavigationNearby", counters.nearby_risk_count);
+    profiling::plot("Sandbox/FighterNavigationActive", counters.active_risk_count);
+    profiling::plot("Sandbox/FighterNavigationImmediate", counters.immediate_risk_count);
+}
+
 /* **************************************** */
 // Configuration
 /* **************************************** */
@@ -44,17 +59,7 @@ void Sim::initialise(FighterSimConfig const& new_config, SimClock const& clock) 
     SANDBOX_PROFILE_SCOPE("fighters::Sim::initialise");
     config_ = RuntimeConfig{new_config, clock};
     profiling::plot("Sandbox/FighterCount", 0);
-    profiling::plot("Sandbox/FightersAvoiding", 0);
-    profiling::plot("Sandbox/FighterNavigationTraces", 0);
-    profiling::plot("Sandbox/FightersSeparating", 0);
-    profiling::plot("Sandbox/FighterSeparationQueries", 0);
-    profiling::plot("Sandbox/FighterSeparationCandidates", 0);
-    profiling::plot("Sandbox/FighterDenseDirectionSelections", 0);
-    profiling::plot("Sandbox/FighterSteeringMemory", 0);
-    profiling::plot("Sandbox/FighterNavigationClear", 0);
-    profiling::plot("Sandbox/FighterNavigationNearby", 0);
-    profiling::plot("Sandbox/FighterNavigationActive", 0);
-    profiling::plot("Sandbox/FighterNavigationImmediate", 0);
+    publish_navigation_counters({});
     attack_cleaner_ = 0;
     assert(config_.settings.fire_point_distance >= 0.f);
 }
@@ -145,8 +150,10 @@ void Sim::prepare_tick(PreparationInputs const inputs) {
 // Thinking
 void Sim::think(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::think");
+    inputs.navigation_counters = {};
     refresh_target_data(inputs);
     plan_movement(inputs);
+    publish_navigation_counters(inputs.navigation_counters);
 }
 void Sim::plan_movement(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::plan_movement");
@@ -383,8 +390,7 @@ void Sim::update_navigation_steering(ThinkingInputs const inputs) {
     auto const active_update_interval{static_cast<float>(
         config_.navigation_tick_periods[NavigationRiskTier::Active] * inputs.clock.tick_period())};
     auto const safe_progress_time{active_update_interval * 1.25f};
-    navigation_telemetry_ = {};
-    NavigationScratch scratch{scratch_resource};
+    NavigationScratch scratch{scratch_resource, inputs.navigation_counters};
 
     // Only expired countdowns observe the world. Held steering is applied to every mover.
     collect_navigation_updates(scratch);
@@ -398,7 +404,6 @@ void Sim::update_navigation_steering(ThinkingInputs const inputs) {
         scratch, clearance, avoidance_lookahead_time, minimum_lookahead_distance, inputs);
     select_navigation_alternatives(scratch, safe_progress_time);
     apply_navigation_choices(scratch);
-    publish_navigation_telemetry();
 }
 void Sim::collect_navigation_updates(NavigationScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::collect_navigation_updates");
@@ -476,8 +481,8 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
                                                                            fighter_id,
                                                                            nearby_fighters,
                                                                            scratch_resource)};
-        ++navigation_telemetry_.separation_query_count;
-        navigation_telemetry_.separation_candidate_count += n_nearby;
+        ++scratch.counters.separation_query_count;
+        scratch.counters.separation_candidate_count += n_nearby;
 
         // Bind the varying result count returned by this fighter's scan.
         // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
@@ -521,7 +526,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
                 .float_bias = float_biases[fighter_index],
             })};
         if (observation.dense_direction_selected) {
-            ++navigation_telemetry_.dense_direction_selection_count;
+            ++scratch.counters.dense_direction_selection_count;
         }
         set_vector(separation_steering, fighter_index, observation.steering_memory);
         scratch.observed_risk_tiers[fighter_index] =
@@ -695,7 +700,7 @@ void Sim::execute_navigation_sweeps(NavigationScratch& scratch,
         scratch.trace_hits.view(),
         {},
         collision::TraceEntityFilter::ExcludeFighters);
-    navigation_telemetry_.hard_trace_count += trace_count;
+    scratch.counters.hard_trace_count += trace_count;
 }
 void Sim::select_navigation_alternatives(NavigationScratch& scratch,
                                          float const safe_progress_time) {
@@ -778,56 +783,38 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
         auto const element{static_cast<std::size_t>(index)};
         auto const steering{vector_at(separation_steering, index)};
         if (!native_math::is_nearly_zero(steering.x(), steering.y(), steering.z(), 1.e-4f)) {
-            ++navigation_telemetry_.separating_fighter_count;
-            ++navigation_telemetry_.steering_memory_fighter_count;
+            ++scratch.counters.separating_fighter_count;
+            ++scratch.counters.steering_memory_fighter_count;
         }
         auto const choice{choices[element].value()};
         if (is_avoidance_direction_choice(choice)) {
             auto const frame{
                 make_avoidance_frame(vector_at(movement_directions, index), float_biases[element])};
             set_vector(movement_directions, index, make_avoidance_direction(frame, choice));
-            ++navigation_telemetry_.avoiding_fighter_count;
+            ++scratch.counters.avoiding_fighter_count;
         } else if (choice == AvoidanceChoice::StopMovement) {
             set_vector(movement_directions, index, Vector3f{0.f, 0.f, 0.f});
-            ++navigation_telemetry_.avoiding_fighter_count;
+            ++scratch.counters.avoiding_fighter_count;
         }
 
         switch (static_cast<NavigationRiskTier>(risk_tiers[element].value())) {
             case NavigationRiskTier::Clear:
-                ++navigation_telemetry_.clear_risk_count;
+                ++scratch.counters.clear_risk_count;
                 break;
             case NavigationRiskTier::Nearby:
-                ++navigation_telemetry_.nearby_risk_count;
+                ++scratch.counters.nearby_risk_count;
                 break;
             case NavigationRiskTier::Active:
-                ++navigation_telemetry_.active_risk_count;
+                ++scratch.counters.active_risk_count;
                 break;
             case NavigationRiskTier::Immediate:
-                ++navigation_telemetry_.immediate_risk_count;
+                ++scratch.counters.immediate_risk_count;
                 break;
             default:
                 assert(false);
                 break;
         }
     }
-}
-void Sim::publish_navigation_telemetry() const {
-    profiling::plot("Sandbox/FightersAvoiding", navigation_telemetry_.avoiding_fighter_count);
-    profiling::plot("Sandbox/FighterNavigationTraces", navigation_telemetry_.hard_trace_count);
-    profiling::plot("Sandbox/FightersSeparating", navigation_telemetry_.separating_fighter_count);
-    profiling::plot("Sandbox/FighterSeparationQueries",
-                    navigation_telemetry_.separation_query_count);
-    profiling::plot("Sandbox/FighterSeparationCandidates",
-                    navigation_telemetry_.separation_candidate_count);
-    profiling::plot("Sandbox/FighterDenseDirectionSelections",
-                    navigation_telemetry_.dense_direction_selection_count);
-    profiling::plot("Sandbox/FighterSteeringMemory",
-                    navigation_telemetry_.steering_memory_fighter_count);
-    profiling::plot("Sandbox/FighterNavigationClear", navigation_telemetry_.clear_risk_count);
-    profiling::plot("Sandbox/FighterNavigationNearby", navigation_telemetry_.nearby_risk_count);
-    profiling::plot("Sandbox/FighterNavigationActive", navigation_telemetry_.active_risk_count);
-    profiling::plot("Sandbox/FighterNavigationImmediate",
-                    navigation_telemetry_.immediate_risk_count);
 }
 
 /* **************************************** */

@@ -120,6 +120,7 @@ native/simulation/include/ioj/sim/entities/entity_type.h
 native/simulation/include/ioj/sim/fighters/fighter_entity_data.h
 native/simulation/include/ioj/sim/fighters/fighter_navigation_types.h
 native/simulation/include/ioj/sim/fighters/fighter_spawn_queue.h
+native/simulation/include/ioj/sim/fighters/navigation_counters.h
 native/simulation/include/ioj/sim/fighters/navigation_records.h
 native/simulation/include/ioj/sim/fighters/phase_interface.h
 native/simulation/include/ioj/sim/index_span.h
@@ -165,7 +166,6 @@ native/simulation/include/ioj/sim/tasks/program_handle.h
 native/simulation/include/ioj/sim/tasks/task_id.h
 native/simulation/include/ioj/sim/telemetry/current_state.h
 native/simulation/include/ioj/sim/telemetry/history.h
-native/simulation/include/ioj/sim/telemetry/navigation_telemetry.h
 native/simulation/include/ioj/sim/telemetry/run_end_reason.h
 native/simulation/include/ioj/sim/turrets/phase_interface.h
 native/simulation/include/ioj/sim/turrets/spawn_interface.h

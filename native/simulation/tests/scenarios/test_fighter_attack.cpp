@@ -19,6 +19,28 @@ auto contains(Vector3f const minimum, Vector3f const maximum, Vector3f const poi
 }
 }
 
+TEST(WorldlessSpaceGameSimulation, NavigationCountersFollowExecutedTicks) {
+    auto const config{tests::make_fixture()};
+    LevelSim simulation{tests::make_simulation_data(config)};
+    simulation.finish_initialisation();
+    fighters::NavigationCounters counters{.separation_query_count = 7, .hard_trace_count = 9};
+    auto const tick_period{simulation.clock().tick_period()};
+
+    simulation.advance(tick_period, &counters);
+    EXPECT_EQ(counters.separation_query_count, 7);
+    EXPECT_EQ(counters.hard_trace_count, 9);
+
+    simulation.start();
+    simulation.advance(0.0, &counters);
+    EXPECT_EQ(counters.separation_query_count, 7);
+    EXPECT_EQ(counters.hard_trace_count, 9);
+
+    simulation.advance(tick_period * 2.5, &counters);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{2});
+    EXPECT_EQ(counters.separation_query_count, 0);
+    EXPECT_EQ(counters.hard_trace_count, 0);
+}
+
 TEST(WorldlessSpaceGameSimulation, FightersObstacleAvoidance) {
     auto const config{tests::make_fixture()};
     constexpr float source_x{-15000.f};
@@ -151,8 +173,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationCapitalObstruction) {
         maximum_lateral_distance =
             std::max(maximum_lateral_distance, std::hypot(location.y(), location.z()));
         maximum_x = std::max(maximum_x, location.x());
-        saw_avoidance =
-            saw_avoidance || fighters.get_navigation_telemetry().avoiding_fighter_count > 0;
+        saw_avoidance = saw_avoidance || harness.navigation_counters.avoiding_fighter_count > 0;
     };
     harness.timeline.finish_at(14.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(15.0))
@@ -189,10 +210,9 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationClearPath) {
         if (!recorded_first) {
             first_location = last_location;
             recorded_first = true;
-            scanned_before_first_movement =
-                fighters.get_navigation_telemetry().hard_trace_count > 0;
+            scanned_before_first_movement = harness.navigation_counters.hard_trace_count > 0;
         }
-        auto const& telemetry{fighters.get_navigation_telemetry()};
+        auto const& telemetry{harness.navigation_counters};
         saw_separation = saw_separation || telemetry.separating_fighter_count > 0;
         saw_avoidance = saw_avoidance || telemetry.avoiding_fighter_count > 0;
     };
@@ -234,7 +254,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationSeparation) {
             initial_distance = final_distance;
         }
         saw_separation =
-            saw_separation || fighters.get_navigation_telemetry().separating_fighter_count == 2;
+            saw_separation || harness.navigation_counters.separating_fighter_count == 2;
     };
     harness.timeline.finish_at(1.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(2.0))
@@ -322,7 +342,7 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     harness.finish_initialisation();
     auto const& fighters{harness.simulation().fighters()};
     harness.on_end_tick = [&](LevelSim&) {
-        auto const& telemetry{fighters.get_navigation_telemetry()};
+        auto const& telemetry{harness.navigation_counters};
         result.query_count += telemetry.separation_query_count;
         result.saw_immediate_risk = result.saw_immediate_risk || telemetry.immediate_risk_count > 0;
     };
@@ -426,7 +446,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationHardAvoidanceAuthority) {
                                                        expanded_min, expanded_max, location);
             maximum_x = std::max(maximum_x, location.x());
         }
-        auto const& telemetry{fighters.get_navigation_telemetry()};
+        auto const& telemetry{harness.navigation_counters};
         saw_separation = saw_separation || telemetry.separating_fighter_count > 0;
         auto const avoiding{telemetry.avoiding_fighter_count > 0};
         saw_avoidance = saw_avoidance || avoiding;
@@ -453,11 +473,10 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationFrequency) {
                                           Vector3f{{20000.f, 0.f, 0.f}})};
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& fighters{harness.simulation().fighters()};
     std::int32_t clear_queries{};
     bool saw_clear{};
     harness.on_end_tick = [&](LevelSim&) {
-        auto const& telemetry{fighters.get_navigation_telemetry()};
+        auto const& telemetry{harness.navigation_counters};
         clear_queries += telemetry.separation_query_count;
         saw_clear = saw_clear || telemetry.clear_risk_count > 0;
     };

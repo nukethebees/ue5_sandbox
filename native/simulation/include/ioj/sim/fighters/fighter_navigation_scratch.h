@@ -3,6 +3,7 @@
 #include "ioj/frame_array.h"
 #include "ioj/sim/collision/collision_grid.h"
 #include "ioj/sim/collision/trace_hits.h"
+#include "ioj/sim/fighters/navigation_counters.h"
 #include "ioj/vectors3f.h"
 
 #include <cstdint>
@@ -10,7 +11,8 @@
 
 namespace ioj::sim::fighters {
 struct NavigationScratch {
-    explicit NavigationScratch(std::pmr::memory_resource* const scratch_resource)
+    NavigationScratch(std::pmr::memory_resource* const scratch_resource,
+                      NavigationCounters& counters)
         : ready_fighter_indices{scratch_resource}
         , line_of_sight_starts{*scratch_resource}
         , line_of_sight_ends{*scratch_resource}
@@ -19,7 +21,8 @@ struct NavigationScratch {
         , blocked_fighter_indices{scratch_resource}
         , trace_fighter_indices{scratch_resource}
         , trace_choice_indices{scratch_resource}
-        , observed_risk_tiers{scratch_resource} {}
+        , observed_risk_tiers{scratch_resource}
+        , counters{counters} {}
 
     FrameArray<std::uint32_t> ready_fighter_indices;
     Vectors3f line_of_sight_starts;
@@ -30,5 +33,6 @@ struct NavigationScratch {
     FrameArray<std::uint32_t> trace_fighter_indices;
     FrameArray<std::int8_t> trace_choice_indices;
     FrameArray<std::uint8_t> observed_risk_tiers;
+    NavigationCounters& counters;
 };
 }

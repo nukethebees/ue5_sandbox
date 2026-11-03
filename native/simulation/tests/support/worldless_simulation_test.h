@@ -20,6 +20,7 @@ class WorldlessSimulationTest {
     auto run_until_timeline_finished(time_type maximum_time) -> bool;
     std::function<void(LevelSim&)> on_end_tick;
     FTestTimeline timeline;
+    fighters::NavigationCounters navigation_counters;
   private:
     LevelSim simulation_;
 };

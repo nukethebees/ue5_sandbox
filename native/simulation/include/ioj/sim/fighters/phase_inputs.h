@@ -27,6 +27,8 @@ struct Sim;
 }
 
 namespace ioj::sim::fighters {
+struct NavigationCounters;
+
 struct PreparationInputs {
     EntityLedger& ledger;
     std::span<Team const> participating_teams;
@@ -39,6 +41,7 @@ struct ThinkingInputs {
     SpatialQueryManager const& spatial_query_manager;
     FrameMemoryResource& scratch_resource;
     FrameArray<std::uint32_t>& pending_fire_indices;
+    NavigationCounters& navigation_counters;
 };
 
 struct ActionInputs {

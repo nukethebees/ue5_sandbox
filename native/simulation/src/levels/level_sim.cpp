@@ -152,7 +152,7 @@ auto LevelSim::take_finalized_telemetry_run() -> std::optional<telemetry::RunRec
 /* **************************************** */
 // Simulation
 /* **************************************** */
-void LevelSim::advance(time_type const dt) {
+void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const navigation_output) {
     SANDBOX_PROFILE_SCOPE("LevelSim::advance");
     if (state_ != LevelState::Running) {
         return;
@@ -168,11 +168,11 @@ void LevelSim::advance(time_type const dt) {
     while (clock_.tick_loop.try_tick()) {
         auto const tick_period{static_cast<float>(clock_.tick_loop.get_tick_period())};
         if (!player_ship_simulation_) {
-            advance_tick<TickPlayerShipState::NotPresent>(tick_period);
+            advance_tick<TickPlayerShipState::NotPresent>(tick_period, navigation_output);
         } else if (player_ship_simulation_->is_alive()) {
-            advance_tick<TickPlayerShipState::PresentAlive>(tick_period);
+            advance_tick<TickPlayerShipState::PresentAlive>(tick_period, navigation_output);
         } else {
-            advance_tick<TickPlayerShipState::PresentDead>(tick_period);
+            advance_tick<TickPlayerShipState::PresentDead>(tick_period, navigation_output);
         }
 
         profiling::mark_frame("Simulation");
@@ -187,14 +187,16 @@ void LevelSim::advance(time_type const dt) {
 // Tick phases
 /* **************************************** */
 template <TickPlayerShipState PlayerState>
-void LevelSim::advance_tick(float const tick_period) {
+void LevelSim::advance_tick(float const tick_period,
+                            fighters::NavigationCounters* const navigation_output) {
     prepare_tick<PlayerState>(tick_period);
     {
         std::pmr::vector<lasers::LaserIndex> laser_removal_indices{&memory_manager_.tick_memory()};
         {
             FrameArray<std::uint32_t> fighter_fire_indices{&memory_manager_.tick_memory()};
             FrameArray<std::uint32_t> spinner_fire_indices{&memory_manager_.tick_memory()};
-            think_tick<PlayerState>(tick_period, fighter_fire_indices, spinner_fire_indices);
+            think_tick<PlayerState>(
+                tick_period, fighter_fire_indices, spinner_fire_indices, navigation_output);
             act_tick<PlayerState>(
                 tick_period, fighter_fire_indices, spinner_fire_indices, laser_removal_indices);
         }
@@ -247,7 +249,8 @@ void LevelSim::prepare_tick(float const tick_period) {
 template <TickPlayerShipState PlayerState>
 void LevelSim::think_tick(float const tick_period,
                           FrameArray<std::uint32_t>& fighter_fire_indices,
-                          FrameArray<std::uint32_t>& spinner_fire_indices) {
+                          FrameArray<std::uint32_t>& spinner_fire_indices,
+                          fighters::NavigationCounters* const navigation_output) {
     fighters::PhaseInterface fighters_phase{fighters_simulation_};
     turrets::PhaseInterface turrets_phase{turrets_simulation_};
     spinners::PhaseInterface spinners_phase{spinners_simulation_};
@@ -264,15 +267,20 @@ void LevelSim::think_tick(float const tick_period,
 
     turrets::ThinkingInputs const turret_inputs{
         collision_pipeline_.queries(), lasers_simulation_, phase_memory};
+    fighters::NavigationCounters navigation_counters{};
     fighters::ThinkingInputs const fighter_inputs{
         .clock = clock_,
         .collision_radius = collision_pipeline_.queries().entity_type_radius(EntityType::Fighter),
         .spatial_query_manager = collision_pipeline_.queries(),
         .scratch_resource = phase_memory,
-        .pending_fire_indices = fighter_fire_indices};
+        .pending_fire_indices = fighter_fire_indices,
+        .navigation_counters = navigation_counters};
 
     turrets_phase.think(turret_inputs);
     fighters_phase.think(fighter_inputs);
+    if (navigation_output) {
+        *navigation_output = navigation_counters;
+    }
     if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
         player::PhaseInterface{*player_ship_simulation_}.think(tick_period);
     }

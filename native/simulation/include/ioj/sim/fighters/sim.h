@@ -9,7 +9,6 @@
 #include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/fighters/phase_inputs.h>
 #include <ioj/sim/fighters/runtime_config.h>
-#include <ioj/sim/telemetry/navigation_telemetry.h>
 
 #include <cassert>
 #include <cstddef>
@@ -39,9 +38,6 @@ struct Sim {
     auto num_instances() const noexcept -> std::uint32_t;
     auto healths() const -> HealthConstView {
         return entity_tables_.health.const_view<EntityType::Fighter>();
-    }
-    auto get_navigation_telemetry() const noexcept -> telemetry::FighterNavigationSnapshot const& {
-        return navigation_telemetry_;
     }
 
     /* **************************************** */
@@ -99,7 +95,6 @@ struct Sim {
                                    ThinkingInputs const inputs);
     void select_navigation_alternatives(NavigationScratch& scratch, float safe_progress_time);
     void apply_navigation_choices(NavigationScratch const& scratch);
-    void publish_navigation_telemetry() const;
 
     /* **************************************** */
     // Combat
@@ -131,6 +126,5 @@ struct Sim {
     EntityStorage entities_{};
     EntityTables& entity_tables_;
     FighterSpawnQueue spawn_queue_;
-    telemetry::FighterNavigationSnapshot navigation_telemetry_;
 };
 } // namespace ioj::sim::fighters

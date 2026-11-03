@@ -71,6 +71,7 @@ set(fighters_headers
   fighter_entity_data.h
   fighter_navigation.h
   fighter_navigation_scratch.h
+  navigation_counters.h
   fighter_spawn_queue.h
 )
 
@@ -134,7 +135,6 @@ set(telemetry_headers
   current_state.h
   history_stats.h
   level_telemetry_manager.h
-  navigation_telemetry.h
   run_data.h
   snapshot.h
 )

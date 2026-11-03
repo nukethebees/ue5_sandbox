@@ -60,7 +60,8 @@ struct LevelSim {
     /* **************************************** */
     // Simulation
     /* **************************************** */
-    void advance(time_type dt);
+    // Return the last executed tick's counters; leave the output unchanged if no tick runs.
+    void advance(time_type dt, fighters::NavigationCounters* navigation_output = nullptr);
     auto read_access() const -> LevelReadAccess { return LevelReadAccess{*this}; }
 
     /* **************************************** */
@@ -132,13 +133,14 @@ struct LevelSim {
     // Tick phases
     /* **************************************** */
     template <TickPlayerShipState PlayerState>
-    void advance_tick(float tick_period);
+    void advance_tick(float tick_period, fighters::NavigationCounters* navigation_output);
     template <TickPlayerShipState PlayerState>
     void prepare_tick(float tick_period);
     template <TickPlayerShipState PlayerState>
     void think_tick(float tick_period,
                     FrameArray<std::uint32_t>& fighter_fire_indices,
-                    FrameArray<std::uint32_t>& spinner_fire_indices);
+                    FrameArray<std::uint32_t>& spinner_fire_indices,
+                    fighters::NavigationCounters* navigation_output);
     template <TickPlayerShipState PlayerState>
     void act_tick(float tick_period,
                   std::span<std::uint32_t const> fighter_fire_indices,

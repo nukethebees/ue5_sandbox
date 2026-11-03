@@ -12,7 +12,7 @@ WorldlessSimulationTest::WorldlessSimulationTest(LevelSimInitData data)
 
 void WorldlessSimulationTest::advance(time_type const dt) {
     auto const previous_tick{simulation_.clock().get_completed_ticks()};
-    simulation_.advance(dt);
+    simulation_.advance(dt, &navigation_counters);
     if (simulation_.clock().get_completed_ticks() != previous_tick) {
         if (on_end_tick) {
             on_end_tick(simulation_);
