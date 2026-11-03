@@ -18,14 +18,14 @@
 
 namespace ioj {
 namespace {
-static std::array<GameSettingCategoryDescriptor, 5> const category_descriptors{
+std::array<GameSettingCategoryDescriptor, 5> const category_descriptors{
     {{GameSettingCategory::Video, "Video"},
      {GameSettingCategory::Gameplay, "Gameplay"},
      {GameSettingCategory::Audio, "Audio"},
      {GameSettingCategory::Controls, "Controls"},
      {GameSettingCategory::Accessibility, "Accessibility"}}};
 
-static std::array<GameSettingDescriptor, 33> const descriptors{
+std::array<GameSettingDescriptor, 33> const descriptors{
     {{GameSetting::Resolution,
       GameSettingCategory::Video,
       GameSettingValueType::IntPoint,

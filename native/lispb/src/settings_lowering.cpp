@@ -608,13 +608,13 @@ class SettingsLowering : public CppIRBuilder {
                 " const");
         };
         globals
-            .add(static_member(array_type("GameSettingCategoryDescriptor", categories.size()),
-                               store_text("category_descriptors"),
-                               init_list({init_list(categories)})),
+            .add(instance_member(array_type("GameSettingCategoryDescriptor", categories.size()),
+                                 store_text("category_descriptors"),
+                                 init_list({init_list(categories)})),
                  2)
-            .add(static_member(array_type("GameSettingDescriptor", descriptors.size()),
-                               store_text("descriptors"),
-                               init_list({init_list(descriptors)})));
+            .add(instance_member(array_type("GameSettingDescriptor", descriptors.size()),
+                                 store_text("descriptors"),
+                                 init_list({init_list(descriptors)})));
         auto source{node_list()};
         source.add(namespace_node(store_text(""), globals.build()), 2);
         for (auto function_id : functions) {
