@@ -40,12 +40,9 @@ namespace ioj::sim::fighters {
 static auto is_instruction_complete(tasks::Instruction const instruction) -> bool {
     switch (instruction.kind()) {
         case tasks::InstructionKind::Idle:
-            return false;
         case tasks::InstructionKind::MoveTo:
-            // TODO: Check arrival at the destination.
-            return false;
         case tasks::InstructionKind::Kill:
-            // TODO: Check completion against the target's state.
+            // TODO: Check MoveTo arrival and Kill target state; keep Idle incomplete.
             return false;
         default:
             assert(false && "Invalid instruction kind");
@@ -213,12 +210,9 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
 
         switch (instruction.kind()) {
             case tasks::InstructionKind::Idle:
-                break;
             case tasks::InstructionKind::MoveTo:
-                // TODO: Plan movement using the instruction's location index.
-                break;
             case tasks::InstructionKind::Kill:
-                // TODO: Plan combat against the instruction's target.
+                // TODO: Plan MoveTo movement and Kill combat; leave Idle inactive.
                 break;
             default:
                 assert(false && "Invalid instruction kind");

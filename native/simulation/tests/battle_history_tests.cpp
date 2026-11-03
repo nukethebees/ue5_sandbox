@@ -23,8 +23,9 @@ TEST(BattleHistory, ReconstructsIndependentlyChangedFieldsAcrossSegments) {
         history.append(sample);
     }
     auto const samples{history.materialize()};
-    ASSERT_EQ(samples.size(), 101);
-    for (std::size_t index{}; index < samples.size(); ++index) {
+    auto const sample_count{samples.size()};
+    ASSERT_EQ(sample_count, 101);
+    for (std::size_t index{}; index < sample_count; ++index) {
         auto const& row{samples[index]};
         EXPECT_EQ(row.completed_tick.value(), index);
         EXPECT_EQ(row.alive[Team::Red][EntityType::Fighter], index);

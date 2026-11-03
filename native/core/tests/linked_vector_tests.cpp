@@ -105,6 +105,7 @@ TEST(LinkedVector, DestroysExactlyOnceAndTransfersResourceOnMove) {
         EXPECT_EQ(live, 2);
         auto* first{&*source.begin()};
         LinkedVector<TrackedLinkedValue> moved{std::move(source)};
+        // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
         EXPECT_TRUE(source.empty());
         EXPECT_EQ(&*moved.begin(), first);
         LinkedVector<TrackedLinkedValue> target;
