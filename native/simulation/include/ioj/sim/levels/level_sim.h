@@ -150,6 +150,7 @@ struct LevelSim {
     LevelState state_{LevelState::Uninitialised};
     SimClock clock_;
     TeamList participating_teams_;
+    std::int32_t fighter_per_team_limit_{};
 
     LevelMemoryManager memory_manager_;
     EntityLedger entity_ledger_;

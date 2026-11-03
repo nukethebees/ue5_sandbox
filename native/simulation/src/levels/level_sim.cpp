@@ -97,8 +97,11 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
     auto const player_team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
                                                    : std::nullopt};
     participating_teams_ = event_manager_.participating_teams(player_team);
-    fighters::PhaseInterface{fighters_simulation_}.initialise(
-        data.fighters, {.participating_teams = participating_teams_, .clock = clock_});
+    assert(std::in_range<std::int32_t>(participating_teams_.num()));
+    auto const participant_count{static_cast<std::int32_t>(participating_teams_.num())};
+    fighter_per_team_limit_ =
+        participant_count == 0 ? 0 : data.fighters.max_live_fighters.get() / participant_count;
+    fighters::PhaseInterface{fighters_simulation_}.initialise(data.fighters, clock_);
     turrets::PhaseInterface{turrets_simulation_}.initialise(data.turrets, clock_);
     spinners::PhaseInterface{spinners_simulation_}.initialise(data.spinners, clock_);
     lasers::PhaseInterface{lasers_simulation_}.initialise(data.lasers);
@@ -215,7 +218,10 @@ void LevelSim::prepare_tick(float const tick_period) {
     event_manager_.execute_tick(SimTick{clock_.completed_ticks.value() + 1},
                                 {entity_ledger_, clock_});
 
-    fighters_phase.commit_spawns({.ledger = entity_ledger_});
+    fighters::PreparationInputs const fighter_inputs{.ledger = entity_ledger_,
+                                                     .participating_teams = participating_teams_,
+                                                     .per_team_limit = fighter_per_team_limit_};
+    fighters_phase.commit_spawns(fighter_inputs);
 
     lasers_phase.commit_spawns({clock_, combat_events_});
 
@@ -232,7 +238,7 @@ void LevelSim::prepare_tick(float const tick_period) {
         player_ship_simulation_->update_entity_lookup_table();
     }
     capital_ships_phase.prepare_tick();
-    fighters_phase.prepare_tick();
+    fighters_phase.prepare_tick(fighter_inputs);
     turrets_phase.prepare_tick();
     spinners_phase.prepare_tick(tick_period);
 
@@ -254,7 +260,7 @@ void LevelSim::think_tick(float const tick_period,
 
     task_manager_.plan_tasks({.active_teams = participating_teams_, .mission = mission_});
 
-    event_manager_.queue_fighter_spawns(tick_period, phase_memory);
+    event_manager_.queue_fighter_spawns(tick_period, phase_memory, participating_teams_);
 
     turrets::ThinkingInputs const turret_inputs{
         collision_pipeline_.queries(), lasers_simulation_, phase_memory};

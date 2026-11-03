@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/frame_array.h>
+#include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/sim_tick.h>
 
@@ -28,6 +29,8 @@ struct Sim;
 namespace ioj::sim::fighters {
 struct PreparationInputs {
     EntityLedger& ledger;
+    std::span<Team const> participating_teams;
+    std::int32_t per_team_limit;
 };
 
 struct ThinkingInputs {

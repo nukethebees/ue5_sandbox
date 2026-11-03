@@ -6,6 +6,7 @@
 #include "ioj/sim/fighters/fighter_sim_config.h"
 #include "ioj/sim/fighters/phase_inputs.h"
 #include "ioj/sim/fighters/sim.h"
+#include "ioj/sim/sim_clock.h"
 
 namespace ioj::sim::fighters {
 class PhaseInterface {
@@ -13,13 +14,13 @@ class PhaseInterface {
     PhaseInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void initialise(FighterSimConfig const& config, FighterLevelData level_data) {
-        simulation.initialise(config, level_data);
+    void initialise(FighterSimConfig const& config, SimClock const& clock) {
+        simulation.initialise(config, clock);
     }
 
     void update_entity_lookup_table() { simulation.update_entity_lookup_table(); }
 
-    void prepare_tick() { simulation.prepare_tick(); }
+    void prepare_tick(PreparationInputs const inputs) { simulation.prepare_tick(inputs); }
 
     void think(ThinkingInputs const inputs) { simulation.think(inputs); }
 

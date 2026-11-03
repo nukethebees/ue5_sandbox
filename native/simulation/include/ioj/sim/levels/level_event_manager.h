@@ -26,8 +26,10 @@ class LevelEventManager {
 
     void begin(SpawnContext context, EntityId player_id = {});
     void execute_tick(SimTick tick, SpawnContext context);
-    void queue_fighter_spawns(float dt, FrameMemoryResource& scratch_resource) {
-        spawn_manager_.queue_fighter_spawns(dt, scratch_resource);
+    void queue_fighter_spawns(float dt,
+                              FrameMemoryResource& scratch_resource,
+                              std::span<Team const> participating_teams) {
+        spawn_manager_.queue_fighter_spawns(dt, scratch_resource, participating_teams);
     }
     auto spawned_ids() const -> std::span<EntityId const>;
     auto entity_ids() const -> std::span<EntityId const> { return spawn_manager_.entity_ids(); }

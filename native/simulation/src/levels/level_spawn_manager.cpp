@@ -97,7 +97,8 @@ void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEvents::ConstView const 
 }
 
 void LevelSpawnManager::queue_fighter_spawns(float const dt,
-                                             FrameMemoryResource& scratch_resource) {
+                                             FrameMemoryResource& scratch_resource,
+                                             std::span<Team const> const participating_teams) {
     auto const capitals{capital_ships_.get_entities()};
     auto const ids{capitals.entity_ids()};
     std::erase_if(fighter_spawn_sources_, [ids](FighterSpawnSource const& source) {
@@ -139,7 +140,7 @@ void LevelSpawnManager::queue_fighter_spawns(float const dt,
                      spawn_rotation.roll,
                      teams[index]);
         }
-        fighters_.queue_spawns(wave.const_view());
+        fighters_.queue_spawns(wave.const_view(), participating_teams);
         source.remaining_delay = source.cooldown;
     }
 }

@@ -131,9 +131,10 @@
     :target-storage reference
     (method initialise void
       (parameter config (type-ref ioj::sim::FighterSimConfig :suffix " const&"))
-      (parameter level_data @fighter_level_data))
+      (parameter clock (type-ref @sim_clock :suffix " const&")))
     (method update_entity_lookup_table void)
-    (method prepare_tick void)
+    (method prepare_tick void
+      (parameter inputs (type-ref @fighters_preparation_inputs :suffix " const")))
     (method think void
       (parameter inputs (type-ref @fighters_thinking_inputs :suffix " const")))
     (method apply_movement void

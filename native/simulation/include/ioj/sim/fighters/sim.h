@@ -5,9 +5,9 @@
 #include <ioj/sim/fighters/fighter_entity_data.h>
 #include <ioj/sim/fighters/fighter_navigation.h>
 #include <ioj/sim/fighters/fighter_navigation_scratch.h>
-#include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/fighters/phase_inputs.h>
+#include <ioj/sim/fighters/runtime_config.h>
 #include <ioj/sim/telemetry/navigation_telemetry.h>
 
 #include <array>
@@ -22,11 +22,6 @@ struct LevelSim;
 
 namespace ioj::sim::fighters {
 class PhaseInterface;
-
-struct FighterLevelData {
-    std::span<Team const> participating_teams;
-    SimClock const& clock;
-};
 
 struct Sim {
     using EntityStorage = FighterEntityData;
@@ -53,7 +48,8 @@ struct Sim {
     // Spawning
     /* **************************************** */
     // Queue a single-team wave for the next Preparation, subject to the team's live cap.
-    auto queue_spawns(FighterSpawnQueue::ConstView new_spawns) -> std::uint32_t;
+    auto queue_spawns(FighterSpawnQueue::ConstView new_spawns,
+                      std::span<Team const> participating_teams) -> std::uint32_t;
 
   private:
     using NavigationScratch = fighters::NavigationScratch;
@@ -65,16 +61,11 @@ struct Sim {
     static constexpr std::uint32_t max_separation_neighbours_{separation_neighbour_limit};
 
     /* **************************************** */
-    // Navigation
-    /* **************************************** */
-    auto navigation_tick_period(NavigationRiskTier tier) const -> std::int16_t;
-
-    /* **************************************** */
     // Sim phases
     /* **************************************** */
-    void initialise(FighterSimConfig const& new_config, FighterLevelData level_data);
+    void initialise(FighterSimConfig const& new_config, SimClock const& clock);
     void update_entity_lookup_table();
-    void prepare_tick();
+    void prepare_tick(PreparationInputs inputs);
     void think(ThinkingInputs const inputs);
     void plan_movement(ThinkingInputs const inputs);
     void apply_movement(ActionInputs const inputs);
@@ -118,7 +109,8 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto accept_spawn_count(std::span<Team const> teams) -> std::uint32_t;
+    auto accept_spawn_count(std::span<Team const> teams, std::span<Team const> participating_teams)
+        -> std::uint32_t;
     void commit_spawns(PreparationInputs inputs);
 
     /* **************************************** */
@@ -133,14 +125,8 @@ struct Sim {
 
     friend class PhaseInterface;
 
-    FighterSimConfig config_{};
-    std::array<std::uint8_t, enum_count<Team>()> participant_mask_{};
+    RuntimeConfig config_{};
     std::array<std::int32_t, enum_count<Team>()> remaining_team_capacity_{};
-    std::int32_t per_team_limit_{};
-    NonNegative<std::int16_t> attack_retry_cooldown_tick_value_{};
-    std::array<std::int16_t, enum_count<NavigationRiskTier>()> navigation_tick_periods_{};
-    float minimum_navigation_lookahead_time_{};
-    NonNegative<std::int16_t> attack_restart_ticks_{};
     std::int16_t attack_cleaner_{};
     EntityStorage entities_{};
     EntityTables& entity_tables_;

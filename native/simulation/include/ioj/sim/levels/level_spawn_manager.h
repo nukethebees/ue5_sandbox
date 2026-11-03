@@ -59,7 +59,9 @@ class LevelSpawnManager {
                     LevelSpinnerSpawnEvents::ConstView spinner_payloads);
     void set_entity_id(LevelEntityIndex entity_index, EntityId id);
     void spawn(LevelSpawnGroups::ConstView groups, SpawnContext context);
-    void queue_fighter_spawns(float dt, FrameMemoryResource& scratch_resource);
+    void queue_fighter_spawns(float dt,
+                              FrameMemoryResource& scratch_resource,
+                              std::span<Team const> participating_teams);
     void reset_tick_output() { spawned_ids_this_tick_.clear(); }
     auto spawned_ids() const -> std::span<EntityId const> { return spawned_ids_this_tick_; }
     auto id(LevelEntityIndex entity_index) const -> EntityId;
