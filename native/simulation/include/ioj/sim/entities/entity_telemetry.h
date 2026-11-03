@@ -1,24 +1,23 @@
 #pragma once
 
+#include <ioj/enum_array.h>
 #include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_type.h>
 
-#include <array>
-#include <cstddef>
 #include <cstdint>
 
 namespace ioj::sim::telemetry {
 inline constexpr auto team_count{enum_count<Team>()};
 inline constexpr auto entity_type_count{enum_count<EntityType>()};
 
-using TeamCounts = std::array<std::int32_t, team_count>;
-using EntityTypeCounts = std::array<std::int32_t, entity_type_count>;
-using EntityCounts = std::array<EntityTypeCounts, team_count>;
-using Uint64EntityTypeCounts = std::array<std::uint64_t, entity_type_count>;
-using Uint64EntityCounts = std::array<Uint64EntityTypeCounts, team_count>;
-using DoubleEntityTypeCounts = std::array<double, entity_type_count>;
-using DoubleEntityCounts = std::array<DoubleEntityTypeCounts, team_count>;
-using KillMatrix = std::array<std::array<std::uint64_t, team_count>, team_count>;
+using TeamCounts = EnumArray<Team, std::int32_t>;
+using EntityTypeCounts = EnumArray<EntityType, std::int32_t>;
+using EntityCounts = EnumArray<Team, EntityTypeCounts>;
+using Uint64EntityTypeCounts = EnumArray<EntityType, std::uint64_t>;
+using Uint64EntityCounts = EnumArray<Team, Uint64EntityTypeCounts>;
+using DoubleEntityTypeCounts = EnumArray<EntityType, double>;
+using DoubleEntityCounts = EnumArray<Team, DoubleEntityTypeCounts>;
+using KillMatrix = EnumArray<Team, EnumArray<Team, std::uint64_t>>;
 
 struct CombatTelemetryCounters {
     Uint64EntityCounts spawned{};

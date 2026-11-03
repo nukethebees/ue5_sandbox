@@ -45,10 +45,8 @@ TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
     EXPECT_FALSE(hud.player_flight_data());
     EXPECT_FALSE(hud.sampled_speed_view());
     auto const& counts{hud.entity_count_data().alive_per_team_and_type};
-    EXPECT_EQ(counts[std::to_underlying(Team::Blue)][std::to_underlying(EntityType::CapitalShip)],
-              1);
-    EXPECT_EQ(counts[std::to_underlying(Team::Red)][std::to_underlying(EntityType::CapitalShip)],
-              1);
+    EXPECT_EQ(counts[Team::Blue][EntityType::CapitalShip], 1);
+    EXPECT_EQ(counts[Team::Red][EntityType::CapitalShip], 1);
     auto const changes{hud.force_sample()};
     EXPECT_FALSE(changes.mission);
     EXPECT_FALSE(changes.entity_counts);
@@ -74,8 +72,8 @@ TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
     simulation.start();
     harness.advance(0.05);
 
-    auto const team{std::to_underlying(Team::Red)};
-    auto const type{std::to_underlying(EntityType::CapitalShip)};
+    auto const team{Team::Red};
+    auto const type{EntityType::CapitalShip};
     EXPECT_FALSE(hud.tick(14).entity_counts);
     EXPECT_EQ(hud.entity_count_data().alive_per_team_and_type[team][type], 1);
     EXPECT_TRUE(hud.tick(1).entity_counts);
@@ -173,12 +171,8 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
     EXPECT_EQ(kills.top_killers[0].team, Team::Blue);
     EXPECT_EQ(kills.top_killers[0].kills, 1);
     EXPECT_EQ(kills.top_killers[1].entity_id, rival);
-    EXPECT_EQ(kills.team_kill_matrix[std::to_underlying(Team::Blue)]
-                                    [std::to_underlying(EntityType::CapitalShip)],
-              1);
-    EXPECT_EQ(kills.team_kill_matrix[std::to_underlying(Team::Red)]
-                                    [std::to_underlying(EntityType::CapitalShip)],
-              1);
+    EXPECT_EQ(kills.team_kill_matrix[Team::Blue][EntityType::CapitalShip], 1);
+    EXPECT_EQ(kills.team_kill_matrix[Team::Red][EntityType::CapitalShip], 1);
     harness.queue_kills(std::array{player_id});
     harness.advance(0.05);
     hud.force_sample();

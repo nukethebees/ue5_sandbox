@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/enum_array.h>
 #include <ioj/sim/combat_statistics.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/entity_death_info.h>
@@ -7,7 +8,6 @@
 #include <ioj/sim/entities/entity_id_allocator.h>
 #include <ioj/sim/entities/health.h>
 
-#include <array>
 #include <vector>
 
 namespace ioj::sim {
@@ -43,7 +43,7 @@ class EntityLedger {
     }
     // Borrow history rows in publication order until the next frame or ledger mutation.
     auto frame_deaths(EntityType type) const -> std::span<HistoryIndex const> {
-        return frame_deaths_[std::to_underlying(type)];
+        return frame_deaths_[type];
     }
     auto history_index(EntityId id) const noexcept -> std::uint32_t {
         return ids_.history_index(id);
@@ -83,6 +83,6 @@ class EntityLedger {
     EntityHistory history_;
     EntityIdAllocator ids_;
     CombatStatistics statistics_;
-    std::array<std::vector<HistoryIndex>, enum_count<EntityType>()> frame_deaths_;
+    EnumArray<EntityType, std::vector<HistoryIndex>> frame_deaths_;
 };
 }

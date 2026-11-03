@@ -54,9 +54,9 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     report.run.tick_series.active_entities.add(240, 1);
     telemetry::BattleSample sample;
     sample.completed_tick = SimTick{240};
-    sample.alive[0][0] = 1;
-    sample.combat.shots[0][0] = 3;
-    sample.combat.damage_dealt[0][0] = 12.5;
+    sample.alive[Team::White][EntityType::PlayerShip] = 1;
+    sample.combat.shots[Team::White][EntityType::PlayerShip] = 3;
+    sample.combat.damage_dealt[Team::White][EntityType::PlayerShip] = 12.5;
     report.run.battle_samples.push_back(sample);
 
     auto const serialized{telemetry::serialize_report(report)};

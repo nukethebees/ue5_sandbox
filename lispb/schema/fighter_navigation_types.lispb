@@ -3,6 +3,8 @@
   :header-include "ioj/sim/fighters/fighter_navigation_types.h"
   :namespace ioj::sim::fighters
   (enum NavigationRiskTier @native_uint8
+    :native-api true
+    :helpers (traits)
     :enum-array true
     (value Clear :value "0")
     (value Nearby :value "1")

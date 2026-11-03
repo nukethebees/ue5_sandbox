@@ -26,7 +26,7 @@ void CombatStatistics::record_spawn(Team const team,
     assert(is_valid(team));
     assert(is_valid(type));
 
-    ++combat_telemetry_.spawned[std::to_underlying(team)][std::to_underlying(type)];
+    ++combat_telemetry_.spawned[team][type];
     if (alive) {
         adjust_alive_count(team, type, 1);
     }
@@ -49,10 +49,8 @@ void CombatStatistics::record_destroyed(Team const team, EntityType const type) 
     assert(is_valid(team));
     assert(is_valid(type));
 
-    auto const team_index{std::to_underlying(team)};
-    auto const type_index{std::to_underlying(type)};
-    ++combat_telemetry_.destroyed[team_index][type_index];
-    ++combat_telemetry_.losses[team_index][type_index];
+    ++combat_telemetry_.destroyed[team][type];
+    ++combat_telemetry_.losses[team][type];
 }
 
 void CombatStatistics::record_kill(Team const killer_team,
@@ -63,9 +61,8 @@ void CombatStatistics::record_kill(Team const killer_team,
     assert(is_valid(victim_team));
 
     ++cumulative_kill_count_;
-    ++combat_telemetry_.kills[std::to_underlying(killer_team)][std::to_underlying(killer_type)];
-    ++combat_telemetry_
-          .kill_matrix[std::to_underlying(killer_team)][std::to_underlying(victim_team)];
+    ++combat_telemetry_.kills[killer_team][killer_type];
+    ++combat_telemetry_.kill_matrix[killer_team][victim_team];
 }
 
 void CombatStatistics::record_damage_received(Team const victim_team,
@@ -74,9 +71,7 @@ void CombatStatistics::record_damage_received(Team const victim_team,
     assert(is_valid(victim_team));
     assert(is_valid(victim_type));
 
-    combat_telemetry_
-        .damage_received[std::to_underlying(victim_team)][std::to_underlying(victim_type)] +=
-        damage;
+    combat_telemetry_.damage_received[victim_team][victim_type] += damage;
 }
 
 void CombatStatistics::record_hit(Team const attacker_team,
@@ -85,10 +80,8 @@ void CombatStatistics::record_hit(Team const attacker_team,
     assert(is_valid(attacker_team));
     assert(is_valid(attacker_type));
 
-    auto const team_index{std::to_underlying(attacker_team)};
-    auto const type_index{std::to_underlying(attacker_type)};
-    ++combat_telemetry_.hits[team_index][type_index];
-    combat_telemetry_.damage_dealt[team_index][type_index] += damage;
+    ++combat_telemetry_.hits[attacker_team][attacker_type];
+    combat_telemetry_.damage_dealt[attacker_team][attacker_type] += damage;
 }
 
 void CombatStatistics::record_shot(Team const attacker_team,
@@ -96,7 +89,7 @@ void CombatStatistics::record_shot(Team const attacker_team,
     assert(is_valid(attacker_team));
     assert(is_valid(attacker_type));
 
-    ++combat_telemetry_.shots[std::to_underlying(attacker_team)][std::to_underlying(attacker_type)];
+    ++combat_telemetry_.shots[attacker_team][attacker_type];
 }
 
 auto CombatStatistics::alive_count() const noexcept -> std::int32_t {
@@ -115,19 +108,17 @@ auto CombatStatistics::count_alive(EntityType const type) const noexcept -> std:
     assert(is_valid(type));
 
     auto total{std::int32_t{}};
-    auto const type_index{std::to_underlying(type)};
     for (auto const& team_counts : alive_counts_) {
-        total += team_counts[type_index];
+        total += team_counts[type];
     }
     return total;
 }
 
 auto CombatStatistics::count_alive_per_team() const noexcept -> telemetry::TeamCounts {
     telemetry::TeamCounts counts{};
-    for (std::size_t team_index{}; team_index < telemetry::team_count; ++team_index) {
-        auto const& type_counts{alive_counts_[team_index]};
-        counts[team_index] =
-            std::accumulate(type_counts.begin(), type_counts.end(), std::int32_t{});
+    for (auto const team : EnumTraits<Team>::values) {
+        auto const& type_counts{alive_counts_[team]};
+        counts[team] = std::accumulate(type_counts.begin(), type_counts.end(), std::int32_t{});
     }
     return counts;
 }
@@ -142,7 +133,7 @@ auto CombatStatistics::count_alive_not_on_team(Team const team) const noexcept -
         return alive_count();
     }
 
-    auto const& counts{alive_counts_[std::to_underlying(team)]};
+    auto const& counts{alive_counts_[team]};
     return alive_count() - std::accumulate(counts.begin(), counts.end(), std::int32_t{});
 }
 
@@ -157,7 +148,7 @@ void CombatStatistics::adjust_alive_count(Team const team,
     assert(is_valid(team));
     assert(is_valid(type));
 
-    auto& count{alive_counts_[std::to_underlying(team)][std::to_underlying(type)]};
+    auto& count{alive_counts_[team][type]};
     count += delta;
     assert(count >= 0);
 }

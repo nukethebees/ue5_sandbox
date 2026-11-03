@@ -33,20 +33,20 @@ TEST(TelemetryAnalysis, EmptyAndSingleSampleRunsDoNotInventIntervals) {
 TEST(TelemetryAnalysis, DerivesBattleForcesCombatAndProjectileRates) {
     std::array<telemetry::BattleSample, 2> samples{};
     auto& begin{samples[0]};
-    begin.alive[0][0] = 2;
-    begin.combat.spawned[0][0] = 2;
+    begin.alive[Team::White][EntityType::PlayerShip] = 2;
+    begin.combat.spawned[Team::White][EntityType::PlayerShip] = 2;
     begin.active_lasers = 3;
     begin.lasers_fired = 10;
     auto& end{samples[1]};
     end = begin;
     end.completed_tick = SimTick{60};
-    end.alive[0][0] = 3;
-    end.combat.spawned[0][0] = 5;
-    end.combat.shots[0][0] = 5;
-    end.combat.hits[0][0] = 2;
-    end.combat.damage_dealt[0][0] = 50;
-    end.combat.destroyed[0][0] = 2;
-    end.combat.kills[0][0] = 1;
+    end.alive[Team::White][EntityType::PlayerShip] = 3;
+    end.combat.spawned[Team::White][EntityType::PlayerShip] = 5;
+    end.combat.shots[Team::White][EntityType::PlayerShip] = 5;
+    end.combat.hits[Team::White][EntityType::PlayerShip] = 2;
+    end.combat.damage_dealt[Team::White][EntityType::PlayerShip] = 50;
+    end.combat.destroyed[Team::White][EntityType::PlayerShip] = 2;
+    end.combat.kills[Team::White][EntityType::PlayerShip] = 1;
     end.active_lasers = 4;
     end.lasers_fired = 15;
 
@@ -64,7 +64,7 @@ TEST(TelemetryAnalysis, DerivesBattleForcesCombatAndProjectileRates) {
     EXPECT_EQ(analysis.battle_damage_dealt, (std::vector<float>{0.f, 50.f}));
     EXPECT_EQ(analysis.battle_kills, (std::vector<float>{0.f, 1.f}));
 
-    end.alive[0][0] = 2;
+    end.alive[Team::White][EntityType::PlayerShip] = 2;
     auto const baseline{analyze({.battle_samples = samples})};
     auto const& baseline_active{metric(baseline, Metric::ActiveEntities)};
     EXPECT_EQ(baseline_active.simulated_elapsed_seconds, active.simulated_elapsed_seconds);
@@ -75,17 +75,17 @@ TEST(TelemetryAnalysis, SampledGaugesSurviveRegressingCounterIntervals) {
     std::array<telemetry::BattleSample, 2> samples{};
     auto& begin{samples[0]};
     begin.completed_tick = SimTick{30};
-    begin.alive[0][0] = 7;
-    begin.combat.spawned[0][0] = 10;
-    begin.combat.destroyed[0][0] = 10;
-    begin.combat.kills[0][0] = 10;
+    begin.alive[Team::White][EntityType::PlayerShip] = 7;
+    begin.combat.spawned[Team::White][EntityType::PlayerShip] = 10;
+    begin.combat.destroyed[Team::White][EntityType::PlayerShip] = 10;
+    begin.combat.kills[Team::White][EntityType::PlayerShip] = 10;
     begin.lasers_fired = 10;
     auto& end{samples[1]};
     end = begin;
     end.completed_tick = SimTick{150};
-    end.combat.spawned[0][0] = 5;
-    end.combat.destroyed[0][0] = 5;
-    end.combat.kills[0][0] = 5;
+    end.combat.spawned[Team::White][EntityType::PlayerShip] = 5;
+    end.combat.destroyed[Team::White][EntityType::PlayerShip] = 5;
+    end.combat.kills[Team::White][EntityType::PlayerShip] = 5;
     end.lasers_fired = 5;
 
     auto const analysis{analyze({.battle_samples = samples})};
@@ -106,11 +106,10 @@ TEST(TelemetryAnalysis, WeightsEntityCountsByIntervalDurationAcrossTeams) {
                                Metric::CapitalShips,
                                Metric::CapitalShipFighters,
                                Metric::TubeSpinners};
-    auto const type_count{types.size()};
-    for (std::size_t type{}; type < type_count; ++type) {
-        samples[1].alive[0][type] = 1;
-        samples[1].alive[1][type] = 2;
-        samples[2].alive[0][type] = 5;
+    for (auto const type : EnumTraits<EntityType>::values) {
+        samples[1].alive[Team::White][type] = 1;
+        samples[1].alive[Team::Red][type] = 2;
+        samples[2].alive[Team::White][type] = 5;
     }
 
     auto const analysis{analyze({.battle_samples = samples})};

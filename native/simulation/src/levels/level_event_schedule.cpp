@@ -1,9 +1,9 @@
 #include <ioj/sim/levels/level_event_schedule.h>
 
 #include <ioj/diagnostics.h>
+#include <ioj/enum_array.h>
 
 #include <algorithm>
-#include <array>
 #include <cassert>
 #include <cstdint>
 #include <format>
@@ -17,12 +17,12 @@ namespace ioj::sim {
 /* **************************************** */
 auto LevelEventSchedule::get_participating_teams(std::optional<Team> const player_team) const
     -> TeamList {
-    std::array<std::uint8_t, enum_count<Team>()> included{};
+    EnumArray<Team, std::uint8_t> included{};
     auto const included_count{included.size()};
     auto include = [&included](Team const team) {
         auto const team_index{static_cast<std::int32_t>(team)};
         if (team_index >= 0 && static_cast<std::size_t>(team_index) < included_count) {
-            included[team_index] = 1;
+            included[team] = 1;
         } else {
             log_error(std::format("Ignoring invalid participating team {}", team_index));
         }
@@ -39,10 +39,9 @@ auto LevelEventSchedule::get_participating_teams(std::optional<Team> const playe
     }
 
     TeamList result;
-    for (std::int32_t team_index{}; static_cast<std::size_t>(team_index) < included_count;
-         ++team_index) {
-        if (included[team_index] != 0) {
-            result.add(static_cast<Team>(team_index));
+    for (auto const team : EnumTraits<Team>::values) {
+        if (included[team] != 0) {
+            result.add(team);
         }
     }
 

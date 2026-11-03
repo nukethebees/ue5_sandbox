@@ -10,6 +10,7 @@
 #include "ioj/parse_enum.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -47,6 +48,11 @@ struct EnumTraits<levels::EntityArchetype> {
                                        levels::EntityArchetype::CapitalShip,
                                        levels::EntityArchetype::StaticTurret};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<levels::EntityArchetype>() noexcept -> std::size_t {
+    return 3ULL;
+}
 
 template <>
 inline constexpr auto enum_strings<levels::EntityArchetype, Name>{PackedStrings{

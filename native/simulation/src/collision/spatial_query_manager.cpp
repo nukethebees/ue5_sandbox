@@ -2,6 +2,7 @@
 
 #include <ioj/column_math.h>
 #include <ioj/diagnostics.h>
+#include <ioj/enum_array.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/line_trace_batch.h>
@@ -185,11 +186,11 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     }
     visited.set_num(total_count);
     auto const radius_squared{radius * radius};
-    std::array<std::span<EntityInstanceHandle const>, EntityTypeSizes::size()> handles;
+    EnumArray<EntityType, std::span<EntityInstanceHandle const>> handles;
     for (auto const type : EnumTraits<EntityType>::values) {
         // Bind each type's table once before scanning.
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-        handles[std::to_underlying(type)] = agents.lookups.for_type(type).entries();
+        handles[type] = agents.lookups.for_type(type).entries();
     }
     std::uint32_t count{};
     auto const max_x{max_coord.x()};
@@ -204,7 +205,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                 for (auto const id : grid.cell_entities({x, y, z})) {
                     // Select the candidate type's already-bound lookup span.
                     // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-                    auto const handle{handles[std::to_underlying(id.entity_type())][id.index()]};
+                    auto const handle{handles[id.entity_type()][id.index()]};
                     if (!include_entity(id, handle.team())) {
                         continue;
                     }

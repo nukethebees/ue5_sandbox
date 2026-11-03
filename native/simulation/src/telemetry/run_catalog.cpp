@@ -37,7 +37,7 @@ auto summarize_run(Report const& report) -> RunStatistics {
                             run.completion.reason == RunEndReason::MissionFailed};
     if (!run.battle_samples.empty()) {
         auto const sum{[](auto const& counts) {
-            using Value = std::remove_cvref_t<decltype(counts[0][0])>;
+            using Value = std::remove_cvref_t<decltype(*counts.begin()->begin())>;
             Value total{};
             for (auto const& row : counts) {
                 for (auto const value : row) {

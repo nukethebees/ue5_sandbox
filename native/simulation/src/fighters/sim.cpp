@@ -127,15 +127,12 @@ void Sim::prepare_tick(PreparationInputs const inputs) {
     tick_periodic_countdowns<std::int16_t>(data.navigation_update_countdowns_remaining_ticks());
     spawn_queue_.reset();
 
-    for (auto& capacity : remaining_team_capacity_) {
-        capacity = inputs.per_team_limit;
-    }
+    remaining_team_capacity_.fill(inputs.per_team_limit);
     for (auto const team : data.teams()) {
         auto const team_index{static_cast<std::uint32_t>(team)};
         if (team_index < remaining_team_capacity_.size() &&
             std::ranges::contains(inputs.participating_teams, team)) {
-            remaining_team_capacity_[team_index] =
-                std::max(0, remaining_team_capacity_[team_index] - 1);
+            remaining_team_capacity_[team] = std::max(0, remaining_team_capacity_[team] - 1);
         } else {
             log_error(
                 std::format("Live fighter has invalid or non-participating team {}", team_index));
@@ -896,7 +893,7 @@ auto Sim::accept_spawn_count(std::span<Team const> const teams,
         }
     }
 
-    auto& capacity{remaining_team_capacity_[team_index]};
+    auto& capacity{remaining_team_capacity_[team]};
     assert(capacity >= 0);
     auto const accepted_count{
         std::min(static_cast<std::uint32_t>(teams.size()), static_cast<std::uint32_t>(capacity))};

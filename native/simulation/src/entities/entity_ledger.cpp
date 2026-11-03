@@ -119,7 +119,7 @@ void EntityLedger::record_deaths(EntityDeathInfo::ConstView const deaths, SimTic
         life_states[row] = static_cast<LifeState>(reasons[index]);
         death_ticks[row] = tick;
         death_locations[row] = locations[index];
-        frame_deaths_[std::to_underlying(victim.entity_type())].push_back(row);
+        frame_deaths_[victim.entity_type()].push_back(row);
         statistics_.record_destroyed(team, victim.entity_type());
         auto const killer{killers[index]};
         if (!killer.is_valid()) {

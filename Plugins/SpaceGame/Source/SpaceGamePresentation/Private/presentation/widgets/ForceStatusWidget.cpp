@@ -68,17 +68,16 @@ auto UForceStatusWidget::build_content() const -> TSharedRef<SWidget> {
     auto const category_count{categories.Num()};
     for (int32 category_index{}; category_index < category_count; ++category_index) {
         auto const& category{categories[category_index]};
-        auto const type_index{std::to_underlying(category.type)};
         int32 total{};
         constexpr int32 team_count{ioj::enum_count<ETestTeam>()};
         for (int32 team_index{}; team_index < team_count; ++team_index) {
-            total += entity_counts_[team_index][type_index];
+            total += entity_counts_[static_cast<ioj::Team>(team_index)][category.type];
         }
 
         auto segments{SNew(SVerticalBox)};
         if (total > 0) {
             for (int32 team_index{}; team_index < team_count; ++team_index) {
-                auto const count{entity_counts_[team_index][type_index]};
+                auto const count{entity_counts_[static_cast<ioj::Team>(team_index)][category.type]};
                 if (count <= 0) {
                     continue;
                 }

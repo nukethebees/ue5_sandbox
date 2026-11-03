@@ -89,21 +89,17 @@ auto sum_counts(Counts const& counts) -> float {
 
 auto analyze(AnalysisInput const input) -> Analysis {
     Analysis result;
-    std::array<MetricBuilder, static_cast<std::size_t>(Metric::Count)> builders{
-        MetricBuilder{Metric::ActiveEntities},
-        MetricBuilder{Metric::PlayerShips},
-        MetricBuilder{Metric::Turrets},
-        MetricBuilder{Metric::CapitalShips},
-        MetricBuilder{Metric::CapitalShipFighters},
-        MetricBuilder{Metric::TubeSpinners},
-        MetricBuilder{Metric::ActiveLasers},
-        MetricBuilder{Metric::SpawnRate},
-        MetricBuilder{Metric::DestructionRate},
-        MetricBuilder{Metric::KillRate},
-        MetricBuilder{Metric::LaserFireRate}};
-    auto const builder{[&builders](Metric const metric) -> MetricBuilder& {
-        return builders[static_cast<std::size_t>(metric)];
-    }};
+    EnumArray<Metric, MetricBuilder> builders{std::array{MetricBuilder{Metric::ActiveEntities},
+                                                         MetricBuilder{Metric::PlayerShips},
+                                                         MetricBuilder{Metric::Turrets},
+                                                         MetricBuilder{Metric::CapitalShips},
+                                                         MetricBuilder{Metric::CapitalShipFighters},
+                                                         MetricBuilder{Metric::TubeSpinners},
+                                                         MetricBuilder{Metric::ActiveLasers},
+                                                         MetricBuilder{Metric::SpawnRate},
+                                                         MetricBuilder{Metric::DestructionRate},
+                                                         MetricBuilder{Metric::KillRate},
+                                                         MetricBuilder{Metric::LaserFireRate}}};
     auto const tick_rate_hz{input.tick_rate_hz.hz()};
 
     result.battle_simulated_seconds.reserve(input.battle_samples.size());
@@ -123,15 +119,15 @@ auto analyze(AnalysisInput const input) -> Analysis {
     }
 
     if (input.battle_samples.size() >= 2) {
-        constexpr std::array type_metrics{Metric::PlayerShips,
-                                          Metric::Turrets,
-                                          Metric::CapitalShips,
-                                          Metric::CapitalShipFighters,
-                                          Metric::TubeSpinners};
-        auto const type_total{[](EntityCounts const& counts, std::int32_t const type) {
+        constexpr EnumArray<EntityType, Metric> type_metrics{std::array{Metric::PlayerShips,
+                                                                        Metric::Turrets,
+                                                                        Metric::CapitalShips,
+                                                                        Metric::CapitalShipFighters,
+                                                                        Metric::TubeSpinners}};
+        auto const type_total{[](EntityCounts const& counts, EntityType const type) {
             std::int32_t total{};
             for (auto const& team : counts) {
-                total += team[static_cast<std::size_t>(type)];
+                total += team[type];
             }
             return total;
         }};
@@ -146,16 +142,15 @@ auto analyze(AnalysisInput const input) -> Analysis {
                 continue;
             }
             auto const time{static_cast<double>(end.completed_tick.value()) / tick_rate_hz};
-            builder(Metric::ActiveEntities).add(time, sum_counts(end.alive), duration);
-            for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
-                builder(type_metrics[static_cast<std::size_t>(type)])
-                    .add(time, type_total(end.alive, type), duration);
+            builders[Metric::ActiveEntities].add(time, sum_counts(end.alive), duration);
+            for (auto const type : EnumTraits<EntityType>::values) {
+                builders[type_metrics[type]].add(time, type_total(end.alive, type), duration);
             }
-            builder(Metric::ActiveLasers).add(time, end.active_lasers, duration);
+            builders[Metric::ActiveLasers].add(time, end.active_lasers, duration);
             auto const add_battle_rate{
                 [&](Metric const metric, double const start, double const finish) {
                     if (finish >= start) {
-                        builder(metric).add(time, (finish - start) / duration, duration);
+                        builders[metric].add(time, (finish - start) / duration, duration);
                     }
                 }};
             add_battle_rate(Metric::SpawnRate,

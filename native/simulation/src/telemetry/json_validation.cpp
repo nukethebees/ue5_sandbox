@@ -135,19 +135,21 @@ auto validate_level_telemetry_json_record(RunRecord const& record)
         }
     }
 
-    for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
-        auto const valid{
-            validate_series(record.tick_series.active_entities_by_type[type],
-                            std::format("tick_series.active_entities_by_type[{}]", type))};
+    for (auto const type : EnumTraits<EntityType>::values) {
+        auto const valid{validate_series(
+            record.tick_series.active_entities_by_type[type],
+            std::format("tick_series.active_entities_by_type[{}]", std::to_underlying(type)))};
         if (!valid) {
             return valid;
         }
     }
-    for (std::int32_t team{}; team < TickSeries::team_count; ++team) {
-        for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
-            auto const valid{validate_series(
-                record.tick_series.active_entities_by_team_and_type[team][type],
-                std::format("tick_series.active_entities_by_team_and_type[{}][{}]", team, type))};
+    for (auto const team : EnumTraits<Team>::values) {
+        for (auto const type : EnumTraits<EntityType>::values) {
+            auto const valid{
+                validate_series(record.tick_series.active_entities_by_team_and_type[team][type],
+                                std::format("tick_series.active_entities_by_team_and_type[{}][{}]",
+                                            std::to_underlying(team),
+                                            std::to_underlying(type)))};
             if (!valid) {
                 return valid;
             }

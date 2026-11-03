@@ -7,10 +7,12 @@
 #include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 
+#include <array>
 #include <cassert>
 #include <compare>
 #include <cstddef>
 #include <cstdint>
+
 namespace ioj::sim::fighters {
 using NavigationRiskTierUnderlying = std::uint8_t;
 
@@ -156,6 +158,14 @@ struct AvoidanceChoice : detail::AvoidanceChoiceBase {
 static_assert(valid_packed_value_layout<AvoidanceChoice>());
 } // namespace ioj::sim::fighters
 namespace ioj {
+template <>
+struct EnumTraits<sim::fighters::NavigationRiskTier> {
+    static constexpr std::array values{sim::fighters::NavigationRiskTier::Clear,
+                                       sim::fighters::NavigationRiskTier::Nearby,
+                                       sim::fighters::NavigationRiskTier::Active,
+                                       sim::fighters::NavigationRiskTier::Immediate};
+};
+
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::fighters::NavigationRiskTier>() noexcept
     -> std::size_t {

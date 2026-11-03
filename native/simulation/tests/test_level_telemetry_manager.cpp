@@ -122,22 +122,15 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EXPECT_EQ(active_count_data.last_value(), 3);
     EXPECT_EQ(active_count_data.last_time(), 2);
     auto const& entity_state{telemetry_manager.current_state()};
-    EXPECT_EQ(entity_state.active_entities_by_team_and_type[std::to_underlying(
-                  Team::Green)][std::to_underlying(EntityType::PlayerShip)],
+    EXPECT_EQ(entity_state.active_entities_by_team_and_type[Team::Green][EntityType::PlayerShip],
               1);
-    EXPECT_EQ(entity_state.active_entities_by_team_and_type[std::to_underlying(
-                  Team::Red)][std::to_underlying(EntityType::CapitalShip)],
-              1);
-    EXPECT_EQ(entity_state.active_entities_by_team_and_type[std::to_underlying(
-                  Team::Red)][std::to_underlying(EntityType::Fighter)],
-              1);
-    auto const green_index{std::to_underlying(Team::Green)};
-    auto const player_ship_index{std::to_underlying(EntityType::PlayerShip)};
-    auto const white_index{std::to_underlying(Team::White)};
-    EXPECT_EQ(tick_series.active_entities_by_team_and_type[green_index][player_ship_index].num(),
-              2);
-    EXPECT_EQ(tick_series.active_entities_by_team_and_type[white_index][player_ship_index].num(),
-              1);
+    EXPECT_EQ(entity_state.active_entities_by_team_and_type[Team::Red][EntityType::CapitalShip], 1);
+    EXPECT_EQ(entity_state.active_entities_by_team_and_type[Team::Red][EntityType::Fighter], 1);
+    auto const green{Team::Green};
+    auto const player_ship{EntityType::PlayerShip};
+    auto const white{Team::White};
+    EXPECT_EQ(tick_series.active_entities_by_team_and_type[green][player_ship].num(), 2);
+    EXPECT_EQ(tick_series.active_entities_by_team_and_type[white][player_ship].num(), 1);
 
     EXPECT_EQ(entity_state.spawned_entities, 3);
     auto const entity_change_columns{
@@ -173,9 +166,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     auto const& samples{record->battle_samples};
     ASSERT_EQ(samples.size(), 3);
     EXPECT_EQ(samples.back().completed_tick, SimTick{3});
-    EXPECT_EQ(samples.back()
-                  .alive[std::to_underlying(Team::Red)][std::to_underlying(EntityType::Fighter)],
-              2);
+    EXPECT_EQ(samples.back().alive[Team::Red][EntityType::Fighter], 2);
     EXPECT_FALSE(telemetry_manager.take_finalized_run(clock.tick_rate()));
 
     LevelTelemetryManager boundary_manager{

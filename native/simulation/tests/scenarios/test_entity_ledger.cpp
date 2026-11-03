@@ -7,7 +7,7 @@ using ioj::testing::structurally_equal;
 enum class EntityLedgerScenario : std::uint8_t { TeamCounts, OnePlayerKill, TwoPlayerKills };
 
 namespace {
-constexpr std::array<std::int32_t, 6> expected_team_counts{0, 1, 2, 3, 4, 5};
+constexpr telemetry::TeamCounts expected_team_counts{std::array{0, 1, 2, 3, 4, 5}};
 }
 
 void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config,
@@ -19,15 +19,14 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         tests::add_player_spawn(data, tests::make_player_spawn(config));
     }
     std::int32_t actor_index{};
-    auto const team_count{static_cast<std::int32_t>(expected_team_counts.size())};
-    for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
-        auto const team_entity_count{expected_team_counts[team_index]};
+    for (auto const team : EnumTraits<Team>::values) {
+        auto const team_entity_count{expected_team_counts[team]};
         for (std::int32_t i{}; i < team_entity_count; ++i) {
             tests::add_capital_spawn(data,
                                      Vector3f{static_cast<float>(actor_index * 5000),
-                                              static_cast<float>(team_index * 5000),
+                                              static_cast<float>(std::to_underlying(team) * 5000),
                                               4360.f},
-                                     static_cast<Team>(team_index),
+                                     team,
                                      5.f,
                                      60.f);
             ++actor_index;
@@ -46,9 +45,8 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         harness.timeline.finish_at(0.1);
         EXPECT_TRUE(harness.run_until_timeline_finished(1.0)) << "Team-count timeline completes";
         telemetry::EntityCounts expected_type_counts{};
-        for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
-            expected_type_counts[team_index][std::to_underlying(EntityType::CapitalShip)] =
-                expected_team_counts[team_index];
+        for (auto const team : EnumTraits<Team>::values) {
+            expected_type_counts[team][EntityType::CapitalShip] = expected_team_counts[team];
         }
         EXPECT_PRED_FORMAT2(structurally_equal, expected_team_counts, counts);
         EXPECT_PRED_FORMAT2(structurally_equal, expected_type_counts, type_counts);

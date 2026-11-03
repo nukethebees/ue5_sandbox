@@ -202,8 +202,7 @@ void HudModel::collect_kill_data() {
     for (std::uint32_t index{}; index < count; ++index) {
         if (killed_by[index].is_valid()) {
             auto const killer{ledger.history_index(killed_by[index])};
-            ++kill_data_.team_kill_matrix[std::to_underlying(teams[killer])]
-                                         [std::to_underlying(types[index])];
+            ++kill_data_.team_kill_matrix[teams[killer]][types[index]];
         }
     }
 }

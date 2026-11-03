@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/enum_array.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/entities/entity_tables.h>
@@ -10,7 +11,6 @@
 #include <ioj/sim/fighters/runtime_config.h>
 #include <ioj/sim/telemetry/navigation_telemetry.h>
 
-#include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -126,7 +126,7 @@ struct Sim {
     friend class PhaseInterface;
 
     RuntimeConfig config_{};
-    std::array<std::int32_t, enum_count<Team>()> remaining_team_capacity_{};
+    EnumArray<Team, std::int32_t> remaining_team_capacity_{};
     std::int16_t attack_cleaner_{};
     EntityStorage entities_{};
     EntityTables& entity_tables_;

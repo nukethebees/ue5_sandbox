@@ -165,8 +165,6 @@ void LevelTelemetryManager::update_current_state() {
 
 void LevelTelemetryManager::sample_live_series() {
     using namespace level_telemetry_detail;
-    constexpr auto team_count{telemetry::TickSeries::team_count};
-    constexpr auto entity_type_count{telemetry::TickSeries::entity_type_count};
     telemetry::EntityTypeCounts active_entities_by_type{};
     telemetry::EntityTypeCounts last_active_entities_by_type{};
     auto const initial_sample{state_ == State::Uninitialised};
@@ -176,24 +174,19 @@ void LevelTelemetryManager::sample_live_series() {
         mask.set(Field::ActiveEntities);
     }
 
-    for (std::int32_t entity_type_index{}; entity_type_index < entity_type_count;
-         ++entity_type_index) {
-        for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
-            auto const value{
-                current_state_.active_entities_by_team_and_type[team_index][entity_type_index]};
-            auto const last_value{
-                last_sampled_state_
-                    .active_entities_by_team_and_type[team_index][entity_type_index]};
-            active_entities_by_type[entity_type_index] += value;
-            last_active_entities_by_type[entity_type_index] += last_value;
+    for (auto const type : EnumTraits<EntityType>::values) {
+        for (auto const team : EnumTraits<Team>::values) {
+            auto const value{current_state_.active_entities_by_team_and_type[team][type]};
+            auto const last_value{last_sampled_state_.active_entities_by_team_and_type[team][type]};
+            active_entities_by_type[type] += value;
+            last_active_entities_by_type[type] += last_value;
             if (initial_sample || value != last_value) {
-                mask.set(FieldMask::active_entities_by_team_and_type_field(team_index,
-                                                                           entity_type_index));
+                mask.set(FieldMask::active_entities_by_team_and_type_field(
+                    std::to_underlying(team), std::to_underlying(type)));
             }
         }
-        if (initial_sample || active_entities_by_type[entity_type_index] !=
-                                  last_active_entities_by_type[entity_type_index]) {
-            mask.set(FieldMask::active_entities_by_type_field(entity_type_index));
+        if (initial_sample || active_entities_by_type[type] != last_active_entities_by_type[type]) {
+            mask.set(FieldMask::active_entities_by_type_field(std::to_underlying(type)));
         }
     }
 
@@ -215,17 +208,16 @@ void LevelTelemetryManager::sample_live_series() {
     }
     auto const counts_by_type{columns.active_entities_by_type()};
     auto const counts_by_team_and_type{columns.active_entities_by_team_and_type()};
-    for (std::int32_t entity_type_index{}; entity_type_index < entity_type_count;
-         ++entity_type_index) {
-        if (mask.has(FieldMask::active_entities_by_type_field(entity_type_index))) {
-            counts_by_type[row][entity_type_index] = active_entities_by_type[entity_type_index];
+    for (auto const type : EnumTraits<EntityType>::values) {
+        if (mask.has(FieldMask::active_entities_by_type_field(std::to_underlying(type)))) {
+            counts_by_type[row][type] = active_entities_by_type[type];
         }
-        for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
-            auto const field{
-                FieldMask::active_entities_by_team_and_type_field(team_index, entity_type_index)};
+        for (auto const team : EnumTraits<Team>::values) {
+            auto const field{FieldMask::active_entities_by_team_and_type_field(
+                std::to_underlying(team), std::to_underlying(type))};
             if (mask.has(field)) {
-                counts_by_team_and_type[row][team_index][entity_type_index] =
-                    current_state_.active_entities_by_team_and_type[team_index][entity_type_index];
+                counts_by_team_and_type[row][team][type] =
+                    current_state_.active_entities_by_team_and_type[team][type];
             }
         }
     }
@@ -340,16 +332,13 @@ auto LevelTelemetryManager::materialize_tick_series() const -> telemetry::TickSe
 
     telemetry::TickSeries result;
     result.active_entities.reserve(sample_counts[FieldMask::index(Field::ActiveEntities)]);
-    constexpr auto team_count{telemetry::TickSeries::team_count};
-    constexpr auto entity_type_count{telemetry::TickSeries::entity_type_count};
-    for (std::int32_t entity_type_index{}; entity_type_index < entity_type_count;
-         ++entity_type_index) {
-        result.active_entities_by_type[entity_type_index].reserve(sample_counts[FieldMask::index(
-            FieldMask::active_entities_by_type_field(entity_type_index))]);
-        for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
-            auto const field{
-                FieldMask::active_entities_by_team_and_type_field(team_index, entity_type_index)};
-            result.active_entities_by_team_and_type[team_index][entity_type_index].reserve(
+    for (auto const type : EnumTraits<EntityType>::values) {
+        result.active_entities_by_type[type].reserve(sample_counts[FieldMask::index(
+            FieldMask::active_entities_by_type_field(std::to_underlying(type)))]);
+        for (auto const team : EnumTraits<Team>::values) {
+            auto const field{FieldMask::active_entities_by_team_and_type_field(
+                std::to_underlying(team), std::to_underlying(type))};
+            result.active_entities_by_team_and_type[team][type].reserve(
                 sample_counts[FieldMask::index(field)]);
         }
     }
@@ -379,20 +368,19 @@ auto LevelTelemetryManager::materialize_tick_series() const -> telemetry::TickSe
             if (mask.has(Field::ActiveEntities)) {
                 result.active_entities.add(tick.value(), active_entities[row]);
             }
-            for (std::int32_t entity_type_index{}; entity_type_index < entity_type_count;
-                 ++entity_type_index) {
-                auto const type_field{FieldMask::active_entities_by_type_field(entity_type_index)};
+            for (auto const type : EnumTraits<EntityType>::values) {
+                auto const type_field{
+                    FieldMask::active_entities_by_type_field(std::to_underlying(type))};
                 if (mask.has(type_field)) {
-                    result.active_entities_by_type[entity_type_index].add(
-                        tick.value(), active_entities_by_type[row][entity_type_index]);
+                    result.active_entities_by_type[type].add(tick.value(),
+                                                             active_entities_by_type[row][type]);
                 }
-                for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
+                for (auto const team : EnumTraits<Team>::values) {
                     auto const field{FieldMask::active_entities_by_team_and_type_field(
-                        team_index, entity_type_index)};
+                        std::to_underlying(team), std::to_underlying(type))};
                     if (mask.has(field)) {
-                        result.active_entities_by_team_and_type[team_index][entity_type_index].add(
-                            tick.value(),
-                            active_entities_by_team_and_type[row][team_index][entity_type_index]);
+                        result.active_entities_by_team_and_type[team][type].add(
+                            tick.value(), active_entities_by_team_and_type[row][team][type]);
                     }
                 }
             }

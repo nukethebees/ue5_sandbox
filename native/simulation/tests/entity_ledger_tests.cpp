@@ -94,10 +94,10 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     CombatEvents events{ledger};
     events.queue_damage(queued);
 
-    auto const red{std::to_underlying(Team::Red)};
-    auto const blue{std::to_underlying(Team::Blue)};
-    auto const turret_type{std::to_underlying(EntityType::Turret)};
-    auto const fighter_type{std::to_underlying(EntityType::Fighter)};
+    auto const red{Team::Red};
+    auto const blue{Team::Blue};
+    auto const turret_type{EntityType::Turret};
+    auto const fighter_type{EntityType::Fighter};
     EXPECT_EQ(ledger.combat_telemetry().hits[red][turret_type], 0u);
 
     FrameMemoryResource frame_memory{4096};
@@ -181,11 +181,11 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     EXPECT_EQ(ledger.unique_entities().killed_by()[ledger.history_index(second_victim)], killer);
 
     auto const& telemetry{ledger.combat_telemetry()};
-    auto const red{std::to_underlying(Team::Red)};
-    auto const green{std::to_underlying(Team::Green)};
-    auto const yellow{std::to_underlying(Team::Yellow)};
-    auto const turret_type{std::to_underlying(EntityType::Turret)};
-    auto const capital_type{std::to_underlying(EntityType::CapitalShip)};
+    auto const red{Team::Red};
+    auto const green{Team::Green};
+    auto const yellow{Team::Yellow};
+    auto const turret_type{EntityType::Turret};
+    auto const capital_type{EntityType::CapitalShip};
     EXPECT_EQ(telemetry.shots[red][turret_type], 1u);
     EXPECT_EQ(telemetry.shots[green][turret_type], 1u);
     EXPECT_EQ(telemetry.hits[green][turret_type], 1u);

@@ -264,19 +264,18 @@ auto write_tick_series(TickSeries const& source) -> Json {
         {"lasers_fired", write_series(source.lasers_fired)},
     };
     auto by_type = Json::object();
-    for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
-        by_type[to_serialized_string(static_cast<EntityType>(type))] =
-            write_series(source.active_entities_by_type[type]);
+    for (auto const type : EnumTraits<EntityType>::values) {
+        by_type[to_serialized_string(type)] = write_series(source.active_entities_by_type[type]);
     }
     result["active_entities_by_type"] = std::move(by_type);
     auto by_team = Json::object();
-    for (std::int32_t team{}; team < TickSeries::team_count; ++team) {
+    for (auto const team : EnumTraits<Team>::values) {
         auto row = Json::object();
-        for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
-            row[to_serialized_string(static_cast<EntityType>(type))] =
+        for (auto const type : EnumTraits<EntityType>::values) {
+            row[to_serialized_string(type)] =
                 write_series(source.active_entities_by_team_and_type[team][type]);
         }
-        by_team[to_serialized_string(static_cast<Team>(team))] = std::move(row);
+        by_team[to_serialized_string(team)] = std::move(row);
     }
     result["active_entities_by_team_and_type"] = std::move(by_team);
     return result;
@@ -291,21 +290,21 @@ void read_tick_series(Json const& source, TickSeries& output) {
     read_series(source, "lasers_fired", "tick_series", output.lasers_fired);
 
     auto const& by_type{required_object(source, "active_entities_by_type", "tick_series")};
-    for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
+    for (auto const type : EnumTraits<EntityType>::values) {
         read_series(by_type,
-                    to_serialized_string(static_cast<EntityType>(type)),
+                    to_serialized_string(type),
                     "tick_series.active_entities_by_type",
                     output.active_entities_by_type[type]);
     }
     auto const& by_team{required_object(source, "active_entities_by_team_and_type", "tick_series")};
-    for (std::int32_t team{}; team < TickSeries::team_count; ++team) {
-        auto const name{to_serialized_string(static_cast<Team>(team))};
+    for (auto const team : EnumTraits<Team>::values) {
+        auto const name{to_serialized_string(team)};
         auto const path{field_path("tick_series.active_entities_by_team_and_type", name)};
         auto const& row{
             required_object(by_team, name, "tick_series.active_entities_by_team_and_type")};
-        for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
+        for (auto const type : EnumTraits<EntityType>::values) {
             read_series(row,
-                        to_serialized_string(static_cast<EntityType>(type)),
+                        to_serialized_string(type),
                         path,
                         output.active_entities_by_team_and_type[team][type]);
         }

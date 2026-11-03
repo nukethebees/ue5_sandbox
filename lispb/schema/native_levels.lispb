@@ -63,6 +63,7 @@
   :namespace ioj::levels
   (enum EntityArchetype std::uint8_t
     :native-api true
+    :enum-array true
     :helpers (to-string traits to-serialized-string try-parse-serialized formatter)
     (value PlayerFighter :serialized-name "player-fighter")
     (value CapitalShip :serialized-name "capital-ship")

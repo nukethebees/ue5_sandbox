@@ -4,7 +4,6 @@
 #include "ioj/sim/sim_tick.h"
 #include "ioj/time_series_data.h"
 
-#include <array>
 #include <cstdint>
 
 namespace ioj::sim::telemetry {
@@ -22,8 +21,8 @@ struct TickSeries {
         static_cast<std::int32_t>(telemetry::entity_type_count)};
 
     using Int32Data = XYSeriesData<SimTick::value_type, std::int32_t>;
-    using ActiveEntitiesByTypeData = std::array<Int32Data, entity_type_count>;
-    using ActiveEntitiesByTeamAndTypeData = std::array<ActiveEntitiesByTypeData, team_count>;
+    using ActiveEntitiesByTypeData = EnumArray<EntityType, Int32Data>;
+    using ActiveEntitiesByTeamAndTypeData = EnumArray<Team, ActiveEntitiesByTypeData>;
 
     Int32Data active_entities{};
     ActiveEntitiesByTypeData active_entities_by_type{};

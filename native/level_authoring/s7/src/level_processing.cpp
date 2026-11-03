@@ -1,8 +1,8 @@
 #include "level_processing.h"
 
 #include "mission_processing.h"
+#include <ioj/enum_array.h>
 
-#include <array>
 #include <format>
 #include <unordered_set>
 
@@ -17,16 +17,13 @@ void assign_generated_entity_ids(std::vector<EntitySpawnDefinition>& entities) {
         }
     }
 
-    std::array<std::array<std::size_t, EnumTraits<EntityArchetype>::values.size()>,
-               EnumTraits<Team>::values.size()>
-        next_indices{};
+    EnumArray<Team, EnumArray<EntityArchetype, std::size_t>> next_indices{};
     for (auto& entity : entities) {
         if (!entity.id.empty()) {
             continue;
         }
 
-        auto& index{next_indices[static_cast<std::size_t>(entity.team)]
-                                [static_cast<std::size_t>(entity.archetype)]};
+        auto& index{next_indices[entity.team][entity.archetype]};
         // Reserve explicit IDs before generating names, including IDs on later entities.
         do {
             entity.id =

@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cstddef>
 
 namespace ioj::sim::fighters {
 RuntimeConfig::RuntimeConfig(FighterSimConfig const& new_settings, SimClock const& clock)
@@ -13,15 +12,14 @@ RuntimeConfig::RuntimeConfig(FighterSimConfig const& new_settings, SimClock cons
           Duration::make(settings.attack_retry_cooldown))}
     , fire_cooldown_ticks{clock.duration_to_tick_period<std::int16_t>(
           Duration::make(settings.laser.fire_cooldown))} {
-    std::array<float, enum_count<NavigationRiskTier>()> const frequencies{
-        settings.avoidance_clear_update_frequency,
-        settings.avoidance_update_frequency,
-        settings.avoidance_active_update_frequency,
-        settings.avoidance_immediate_update_frequency};
-    auto const count{frequencies.size()};
-    for (std::size_t index{}; index < count; ++index) {
-        navigation_tick_periods[static_cast<NavigationRiskTier>(index)] =
-            clock.frequency_to_tick_period<std::int16_t>(Frequency::make(frequencies[index]));
+    EnumArray<NavigationRiskTier, float> const frequencies{
+        std::array{settings.avoidance_clear_update_frequency.get(),
+                   settings.avoidance_update_frequency.get(),
+                   settings.avoidance_active_update_frequency.get(),
+                   settings.avoidance_immediate_update_frequency.get()}};
+    for (auto const tier : EnumTraits<NavigationRiskTier>::values) {
+        navigation_tick_periods[tier] =
+            clock.frequency_to_tick_period<std::int16_t>(Frequency::make(frequencies[tier]));
     }
     auto const clear_update_interval{static_cast<float>(
         navigation_tick_periods[NavigationRiskTier::Clear] * clock.tick_period())};
