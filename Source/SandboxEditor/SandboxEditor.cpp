@@ -1,24 +1,18 @@
 #include "SandboxEditor/SandboxEditor.h"
 
-#include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include "SandboxEditor/levels/S7LevelScriptEditor.h"
-#include "SandboxEditor/slate/StrongTypedefPreview.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 #include "Editor.h"
 #include "Editor/EditorEngine.h"
 #include "EditorModeManager.h"
 #include "Framework/Docking/TabManager.h"
-#include "Framework/Docking/WorkspaceItem.h"
-#include "Framework/MultiBox/MultiBoxBuilder.h"
-#include "LevelEditor.h"
 #include "Misc/CoreDelegates.h"
 #include "Modules/ModuleManager.h"
-#include "PropertyEditorModule.h"
 #include "ToolMenus.h"
 #include "Widgets/Docking/SDockTab.h"
 #include "WorkspaceMenuStructure.h"
@@ -27,11 +21,6 @@
 #include <Features/IModularFeatures.h>
 
 #define LOCTEXT_NAMESPACE "FSandboxEditorModule"
-
-namespace ioj::detail {
-auto null_action{
-    FUIAction(FExecuteAction::CreateLambda([]() { UE_LOG(LogTemp, Warning, TEXT("Foo")); }))};
-}
 
 FName const FSandboxEditorModule::s7_level_script_editor_tab_id{
     TEXT("Sandbox.S7LevelScriptEditor")};
@@ -69,8 +58,6 @@ void FSandboxEditorModule::StartupModule() {
             }
         });
     }
-    register_custom_properties();
-    create_sandbox_editor_menus();
 }
 void FSandboxEditorModule::ShutdownModule() {
     IModularFeatures::Get().UnregisterModularFeature(IPIEAuthorizer::GetModularFeatureName(), this);
@@ -78,20 +65,12 @@ void FSandboxEditorModule::ShutdownModule() {
     if (IsValid(GEditor) && GEditor->PlayWorld != nullptr) {
         GEditor->EndPlayMap();
     }
-    unregister_custom_properties();
 
     if (auto script_editor{s7_level_script_editor_.Pin()}) {
         script_editor->release_mode();
     }
     s7_level_script_editor_.Reset();
     FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(s7_level_script_editor_tab_id);
-
-    if (FModuleManager::Get().IsModuleLoaded("LevelEditor")) {
-        auto& level_editor_module{
-            FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor")};
-        level_editor_module.GetAllLevelViewportContextMenuExtenders().RemoveAll(
-            [&](auto const& delegate) { return delegate.GetHandle() == context_menu_delegate; });
-    }
 }
 
 auto FSandboxEditorModule::IsPIEAuthorizedInternal(bool) const -> TValueOrError<bool, FText> {
@@ -136,55 +115,6 @@ auto FSandboxEditorModule::spawn_s7_level_script_editor(FSpawnTabArgs const&)
     return SNew(SDockTab).TabRole(ETabRole::NomadTab)[script_editor];
 }
 
-void FSandboxEditorModule::create_sandbox_editor_menus() {
-    auto& level_editor_module{FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor")};
-    auto const toolbar_menu_extender{MakeShared<FExtender>()};
-
-    toolbar_menu_extender->AddMenuBarExtension(
-        "Help",
-        EExtensionHook::After,
-        nullptr,
-        FMenuBarExtensionDelegate::CreateRaw(
-            this, &FSandboxEditorModule::create_sandbox_editor_toolbar_menu_pulldown));
-    auto extensibility_manager{level_editor_module.GetMenuExtensibilityManager()};
-    extensibility_manager->AddExtender(toolbar_menu_extender);
-
-    auto& extenders{level_editor_module.GetAllLevelViewportContextMenuExtenders()};
-    extenders.Add(FLevelEditorModule::FLevelViewportMenuExtender_SelectedActors::CreateStatic(
-        &FSandboxEditorModule::on_extend_level_editor_menu));
-    context_menu_delegate = extenders.Last().GetHandle();
-}
-
-// Editor toolbar menu
-void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_pulldown(
-    FMenuBarBuilder& menu_bar_builder) {
-    menu_bar_builder.AddPullDownMenu(
-        FText::FromString("Sandbox"),
-        FText::FromString("Sandbox Utilities"),
-        FNewMenuDelegate::CreateRaw(
-            this, &FSandboxEditorModule::create_sandbox_editor_toolbar_menu_items));
-}
-void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_items(FMenuBuilder& menu_builder) {
-    menu_builder.AddSubMenu(FText::FromName(TEXT("Example Submenu")),
-                            FText::FromName(TEXT("Example Submenu Tooltip")),
-                            FNewMenuDelegate::CreateLambda([](FMenuBuilder& submenu_builder) {
-                                submenu_builder.AddMenuEntry(
-                                    FText::FromName(TEXT("Example Button")),
-                                    FText::FromName(TEXT("Example Button Tooltip")),
-                                    FSlateIcon(),
-                                    ioj::detail::null_action);
-                            }));
-}
-
-// Editor context menu
-auto
-    FSandboxEditorModule::on_extend_level_editor_menu(TSharedRef<FUICommandList> const command_list,
-                                                      TArray<AActor*> selected_actors)
-        -> TSharedRef<FExtender> {
-    auto extender(MakeShared<FExtender>());
-
-    return extender;
-}
 // Menu Extensions
 void FSandboxEditorModule::register_menu_extensions() {
     constexpr auto logger{NestedLogger<"register_menu_extensions">()};
@@ -204,75 +134,8 @@ void FSandboxEditorModule::register_menu_extensions() {
         FText::FromString("Open the bidirectional S7 level-authoring mode"),
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Edit")));
 
-    section.AddEntry(FToolMenuEntry::InitToolBarButton(
-        "GenerateTypedefs",
-        FUIAction(FExecuteAction::CreateRaw(this, &FSandboxEditorModule::on_generate_typedefs)),
-        FText::FromString("Generate Typedefs"),
-        FText::FromString("Generate strong typedef wrapper structs"),
-        FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Recompile")));
-
     logger.log_log(TEXT("Registered menu extensions"));
 }
-void FSandboxEditorModule::on_generate_typedefs() {
-    constexpr auto logger{NestedLogger<"on_generate_typedefs">()};
-    logger.log_log(TEXT("Generating strong typedefs..."));
-
-    bool const success{FTypedefCodeGenerator::generate_typedefs()};
-
-    if (success) {
-        logger.log_log(TEXT("Typedef generation completed successfully!"));
-    } else {
-        logger.log_error(TEXT("Typedef generation failed!"));
-    }
-}
-
-namespace {
-struct Adder {
-    FPropertyEditorModule& editor_mod;
-    TArray<FName>& registered_properties;
-    TArray<FName>& registered_class_layouts;
-
-    template <typename T>
-    void add_property(FName property_name) {
-        editor_mod.RegisterCustomPropertyTypeLayout(
-            property_name, FOnGetPropertyTypeCustomizationInstance::CreateStatic(&T::MakeInstance));
-        registered_properties.Add(property_name);
-    }
-
-    template <typename T>
-    void add_class_layout(FName property_name) {
-        editor_mod.RegisterCustomClassLayout(
-            property_name, FOnGetDetailCustomizationInstance::CreateStatic(&T::MakeInstance));
-        registered_class_layouts.Add(property_name);
-    }
-};
-}
-
-// Custom properties
-void FSandboxEditorModule::register_custom_properties() {
-    auto& property_module{
-        FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor")};
-
-    Adder adder{property_module, registered_properties, registered_class_layouts};
-
-    adder.add_property<FStrongTypedefPreview>(TEXT("Dimensions"));
-}
-void FSandboxEditorModule::unregister_custom_properties() {
-    // ToolMenus are automatically cleaned up when the module is unloaded
-    if (FModuleManager::Get().IsModuleLoaded("PropertyEditor")) {
-        auto& property_module{
-            FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor")};
-
-        for (FName p : registered_properties) {
-            property_module.UnregisterCustomPropertyTypeLayout(p);
-        }
-
-        for (FName cl : registered_class_layouts) {
-            property_module.UnregisterCustomClassLayout(cl);
-        }
-    }
-}
-
 #undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FSandboxEditorModule, SandboxEditor)

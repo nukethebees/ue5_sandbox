@@ -1,7 +1,6 @@
 {
   "include": [
-    "tools",
-    "Source/SandboxEditor/codegen"
+    "tools"
   ],
   "pythonVersion": "3.14",
   "typeCheckingMode": "strict",

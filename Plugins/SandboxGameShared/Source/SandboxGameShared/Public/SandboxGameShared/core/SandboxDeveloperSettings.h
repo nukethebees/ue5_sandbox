@@ -11,11 +11,6 @@ class SANDBOXGAMESHARED_API USandboxDeveloperSettings : public UDeveloperSetting
   public:
     USandboxDeveloperSettings();
 
-    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "AI")
-    bool visualise_ai_vision_cones{false};
-    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "AI")
-    bool visualise_all_patrol_paths{true};
-
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Collision")
     bool show_collision{true};
