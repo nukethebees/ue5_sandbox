@@ -44,6 +44,7 @@ void TaskManager::reset() {
     }
 
     static_cast<void>(add_program({Instruction::make_data_idle()}));
+    static_cast<void>(add_task(idle_program));
 }
 
 void TaskManager::reserve_instructions(std::size_t const count) {
@@ -72,7 +73,7 @@ auto TaskManager::add_program(std::initializer_list<Instruction> const program) 
 }
 
 auto TaskManager::add_task(ProgramHandle const program) -> TaskId {
-    assert(program.is_valid());
+    assert(program.index() < programs_.starts.size());
 
     auto const index{task_programs_.size()};
     assert(index < TaskId::invalid_value);

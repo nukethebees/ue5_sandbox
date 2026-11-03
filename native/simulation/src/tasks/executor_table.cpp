@@ -1,5 +1,6 @@
 #include <ioj/sim/tasks/executor_table.h>
 
+#include <ioj/sim/tasks/task_manager.h>
 #include <ioj/subspan.h>
 
 #include <cassert>
@@ -32,9 +33,9 @@ void ExecutorTable::initialise_entities(EntityType const type,
     for (auto const id : ids) {
         assert(id.is_valid() && id.entity_type() == type && id.index() < view.current_tasks.size());
         auto const index{id.index()};
-        view.current_tasks[index] = TaskId{};
+        view.current_tasks[index] = TaskManager::idle_task;
         view.pending_tasks[index] = TaskId{};
-        view.current_instructions[index] = InstructionHandle{};
+        view.current_instructions[index] = TaskManager::idle_instruction;
     }
 }
 }

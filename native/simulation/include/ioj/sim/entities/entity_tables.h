@@ -3,6 +3,7 @@
 #include <ioj/sim/entities/entity_lookup_tables.h>
 #include <ioj/sim/entities/health_table.h>
 #include <ioj/sim/phase_checks.h>
+#include <ioj/sim/tasks/executor_table.h>
 
 namespace ioj::sim {
 struct EntityTables {
@@ -25,5 +26,6 @@ struct EntityTables {
 
     EntityLookupTables lookups;
     HealthTable health;
+    tasks::ExecutorTable executors;
 };
 }
