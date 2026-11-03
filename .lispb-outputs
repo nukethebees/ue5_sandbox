@@ -1,5 +1,4 @@
 lispb-outputs-v1
-Plugins/ShooterGame/Source/ShooterGame/Public/ShooterGame/players/CharacterCameraMode.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/MissionOutcome.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/MissionOutcomeConversion.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcome.h
