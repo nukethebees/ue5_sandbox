@@ -545,9 +545,12 @@ class EnumLowering : public CppIRBuilder {
         std::vector<EnumValueId> values;
         values.reserve(decls.enums.values[schema].size());
         for (auto const value : decls.items(decls.enums.values[schema])) {
-            values.push_back(enumerator(enumerators.name[value],
-                                        enumerators.initializer[value],
-                                        store_optional_text(annotation(ctx, value, reflected))));
+            values.push_back(
+                enumerator(enumerators.name[value],
+                           enumerators.initializer[value]
+                               ? std::optional{authored_fragment(*enumerators.initializer[value])}
+                               : std::nullopt,
+                           store_optional_text(annotation(ctx, value, reflected))));
         }
         return values;
     }

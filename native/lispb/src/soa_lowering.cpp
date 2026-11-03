@@ -23,6 +23,7 @@
 #include <lispb/strings.h>
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -58,20 +59,21 @@ class SoaLowering : public CppIRBuilder {
         return {.header = header.build(), .source = lowered.source, .format_generated = true};
     }
   private:
-    auto mask_field_width(LoweringContext& ctx, SoaMemberId member) -> std::string {
+    auto mask_field_width(LoweringContext& ctx, SoaMemberId member) -> Expr {
         auto const& decls{ctx.declarations};
         auto const& members{decls.soa_members};
         auto const& dimensions{decls.soa_mask_dimensions};
         auto const selected{decls.items(members.mask_dimensions[members.index(member)])};
         if (selected.empty()) {
-            return "1";
+            return literal(1);
         }
-        std::vector<std::string> extents;
-        extents.reserve(selected.size());
+        Expr result;
         for (auto const dimension : selected) {
-            extents.push_back("(" + ctx.text(dimensions.extent[dimensions.index(dimension)]) + ")");
+            auto const extent{parenthesized(
+                raw_expr(std_types().size_t, dimensions.extent[dimensions.index(dimension)]))};
+            result = result ? binary(BinaryOperator::multiply, result, extent) : extent;
         }
-        return join(extents, " * ");
+        return result;
     }
     auto mask_index_expression(LoweringContext& ctx, SoaMemberId member) -> Expr {
         auto const& decls{ctx.declarations};
@@ -110,12 +112,13 @@ class SoaLowering : public CppIRBuilder {
         auto const int32_type{std_types().i32};
         auto const enum_type{intern_type(enum_name)};
         std::vector<EnumValueId> values;
-        std::string previous_name;
-        std::string previous_width;
+        std::optional<Expr> previous;
+        Expr previous_width;
         auto next_value = [&] {
-            return previous_name.empty()
-                     ? std::string{"0"}
-                     : "static_cast<std::uint8_t>(" + previous_name + ") + " + previous_width;
+            return previous ? binary(BinaryOperator::add,
+                                     static_cast_expr(uint8_type, *previous),
+                                     previous_width)
+                            : literal(0);
         };
         for (auto const member : selected) {
             auto const member_row{members.index(member)};
@@ -123,11 +126,11 @@ class SoaLowering : public CppIRBuilder {
                 continue;
             }
             auto const name{title_case_identifier(ctx.text(members.name[member_row]))};
-            values.push_back(enumerator(store_text(name), store_text(next_value())));
-            previous_name = name;
+            values.push_back(enumerator(store_text(name), next_value()));
+            previous = reference(this->name(name), enum_type);
             previous_width = mask_field_width(ctx, member);
         }
-        values.push_back(enumerator(store_text("Count"), store_text(next_value())));
+        values.push_back(enumerator(store_text("Count"), next_value()));
 
         auto const field_count{
             static_cast_expr(std_types().size_t, scope_member(enum_type, "Count"))};

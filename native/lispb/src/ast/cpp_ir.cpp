@@ -356,7 +356,7 @@ auto CppIR::constexpr_member(CppTypeId type,
 }
 
 auto CppIR::enumerator(StringId name,
-                       std::optional<StringId> initializer,
+                       std::optional<Syntax> initializer,
                        std::optional<StringId> annotation) -> EnumValueId {
     EnumValueId const result{static_cast<std::uint32_t>(enumerators_.name.size())};
     enumerators_.name.push_back(name);
@@ -1339,6 +1339,12 @@ void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& res
         case NodeKind::enum_:
             if (enum_nodes_.underlying_type[i].value != 0) {
                 type(enum_nodes_.underlying_type[i]);
+            }
+            for (auto const value :
+                 ir::range_values(enumerator_references_, enum_nodes_.values[i])) {
+                if (auto const initializer{enumerators_.initializer[value.value]}) {
+                    collect_dependencies(*initializer, result);
+                }
             }
             break;
         case NodeKind::struct_:

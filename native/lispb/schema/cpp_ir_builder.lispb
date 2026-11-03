@@ -329,7 +329,7 @@
         (parameter template_declaration "TemplateId" :default "{}"))
       (method enumerator "EnumValueId"
         (parameter name "StringId")
-        (parameter initializer "std::optional<StringId>" :default "{}")
+        (parameter initializer "std::optional<Syntax>" :default "{}")
         (parameter annotation "std::optional<StringId>" :default "{}"))
       (method enumeration "NodeId"
         (parameter name "StringId")

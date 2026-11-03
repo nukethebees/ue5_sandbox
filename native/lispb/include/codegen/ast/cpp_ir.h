@@ -219,7 +219,7 @@ class CppIR {
                           Syntax initializer,
                           TemplateId template_declaration = {}) -> NodeId;
     auto enumerator(StringId name,
-                    std::optional<StringId> initializer = {},
+                    std::optional<Syntax> initializer = {},
                     std::optional<StringId> annotation = {}) -> EnumValueId;
     auto enumeration(StringId name,
                      CppTypeId underlying_type,

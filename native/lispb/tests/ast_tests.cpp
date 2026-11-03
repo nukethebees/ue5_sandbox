@@ -631,7 +631,7 @@ TEST_F(AstTest, RendersEnumsAndExportedFreeFunctions) {
         ir.enumeration(ir.strings.intern("EMode"),
                        types.intern("uint8", {types.dependency("uint8", "CoreMinimal.h")}),
                        {
-                           ir.enumerator(ir.strings.intern("First"), ir.store_text("1")),
+                           ir.enumerator(ir.strings.intern("First"), ir.literal(1)),
                            ir.enumerator(ir.strings.intern("Second"),
                                          std::nullopt,
                                          ir.store_text("UMETA(DisplayName = \"Second Value\")")),

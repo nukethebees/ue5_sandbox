@@ -18,9 +18,9 @@
 #include <filesystem>
 #include <format>
 #include <iterator>
-#include <limits>
 #include <set>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace lispb::codegen::detail {
@@ -185,11 +185,10 @@ class RecordReaderLowering : public CppIRBuilder {
         if (text.contains('.')) {
             return literal(std_types().f64, text);
         }
-        if (text == "-9223372036854775808") {
-            return literal(std::numeric_limits<std::int64_t>::min());
+        if (text.starts_with('-')) {
+            return literal(static_cast<std::int64_t>(std::stoll(text)));
         }
-        return literal(intern_type(text.starts_with('-') ? "long long" : "unsigned long long"),
-                       text + (text.starts_with('-') ? "LL" : "ULL"));
+        return literal(static_cast<std::uint64_t>(std::stoull(text)));
     }
     auto field_name(LoweringContext& ctx, ChildOccurrenceId const member) -> std::string {
         auto const& members{ctx.declarations.child_occurrences};

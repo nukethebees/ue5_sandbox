@@ -92,26 +92,14 @@ auto untemplated(std::string_view name) -> std::string {
 }
 
 namespace expr_detail {
-template <typename Value>
-void append_numeric_literal(std::string& output, Value const value) {
+template <std::floating_point Value>
+void append_floating_literal(std::string& output, Value const value) {
     auto spelling{std::format("{}", value)};
-    if constexpr (std::floating_point<Value>) {
-        if (spelling.find_first_of(".eE") == std::string::npos) {
-            spelling += ".0";
-        }
+    if (spelling.find_first_of(".eE") == std::string::npos) {
+        spelling += ".0";
     }
     output += spelling;
-    if constexpr (std::same_as<Value, unsigned int>) {
-        output += 'U';
-    } else if constexpr (std::same_as<Value, long>) {
-        output += 'L';
-    } else if constexpr (std::same_as<Value, unsigned long>) {
-        output += "UL";
-    } else if constexpr (std::same_as<Value, long long>) {
-        output += "LL";
-    } else if constexpr (std::same_as<Value, unsigned long long>) {
-        output += "ULL";
-    } else if constexpr (std::same_as<Value, float>) {
+    if constexpr (std::same_as<Value, float>) {
         output += 'f';
     }
 }
@@ -851,28 +839,84 @@ auto CppRenderer::integer_constant(Expr const value) const -> std::optional<Inte
             return std::nullopt;
     }
 }
-void CppRenderer::append_integer_constant(std::string& output, IntegerConstant const value) const {
-    if (value.negative && value.magnitude == (std::uint64_t{1} << 63)) {
-        output += "(-9223372036854775807 - 1)";
-        return;
+auto CppRenderer::append_integer_constant(std::string& output,
+                                          IntegerConstant const value,
+                                          IntegerEmission const emission,
+                                          TypeDestination const destination,
+                                          RenderContext const& ctx) -> bool {
+    auto const resolved{destination_type(destination.type, destination.scope)};
+    auto const fits{
+        ir_.types.integer_type(resolved.type).contains(value.magnitude, value.negative)};
+    if (emission == IntegerEmission::initializer && !fits) {
+        return false;
+    }
+
+    auto const preserve_type{emission == IntegerEmission::preserve_type || !fits};
+    bool const small{preserve_type && value.type.bits < 32};
+    bool const conversion{emission == IntegerEmission::conversion};
+    bool const braces{conversion &&
+                      brace_integer_type(destination.type, destination.scope)
+                          .contains(value.magnitude, value.negative) &&
+                      ir_.types.spelling(destination.type).find_first_of(" \t\r\n*&") ==
+                          std::string_view::npos};
+    if (conversion) {
+        if (!braces) {
+            output += "static_cast<";
+        }
+        append_type(output, destination.type, ctx);
+        output += braces ? "{" : ">(";
+    }
+    if (small) {
+        auto const& types{ir_.types.std};
+        auto const type{value.type.is_signed ? (value.type.bits == 8 ? types.i8 : types.i16)
+                                             : (value.type.bits == 8 ? types.u8 : types.u16)};
+        append_type(output, type, ctx);
+        output += '{';
+    }
+
+    std::string_view suffix;
+    if (preserve_type && !small) {
+        if (value.type.bits == 64) {
+            if (value.type.is_signed) {
+                if constexpr (std::same_as<std::int64_t, long>) {
+                    suffix = "L";
+                } else {
+                    suffix = "LL";
+                }
+            } else {
+                if constexpr (std::same_as<std::uint64_t, unsigned long>) {
+                    suffix = "UL";
+                } else {
+                    suffix = "ULL";
+                }
+            }
+        } else if (!value.type.is_signed) {
+            suffix = "U";
+        }
+    } else if (!value.negative && value.magnitude > std::numeric_limits<std::int64_t>::max()) {
+        suffix = "ULL";
+    }
+
+    bool const signed_minimum{value.negative && value.type.bits >= 32 &&
+                              value.magnitude == value.type.maximum() + 1 &&
+                              (preserve_type || value.type.bits == 64)};
+    if (signed_minimum) {
+        output += '(';
     }
     if (value.negative) {
         output += '-';
     }
-    std::format_to(std::back_inserter(output), "{}", value.magnitude);
-    if (!value.negative && value.magnitude > std::numeric_limits<std::int64_t>::max()) {
-        output += "ULL";
+    std::format_to(std::back_inserter(output), "{}", value.magnitude - (signed_minimum ? 1 : 0));
+    output += suffix;
+    if (signed_minimum) {
+        output += " - 1)";
     }
-}
-auto CppRenderer::append_initializer_literal(std::string& output,
-                                             Expr const value,
-                                             CppTypeId const destination) -> bool {
-    auto const type{ir_.types.integer_type(destination)};
-    auto const constant{integer_constant(value)};
-    if (!constant || !type.contains(constant->magnitude, constant->negative)) {
-        return false;
+    if (small) {
+        output += '}';
     }
-    append_integer_constant(output, *constant);
+    if (conversion) {
+        output += braces ? '}' : ')';
+    }
     return true;
 }
 auto CppRenderer::append_conditional_initializer(std::string& output,
@@ -905,6 +949,7 @@ auto CppRenderer::append_conditional_initializer(std::string& output,
             constant.magnitude = (std::uint64_t{0} - constant.magnitude) & common.maximum();
             constant.negative = false;
         }
+        constant.type = common;
     };
     convert(*when_true);
     convert(*when_false);
@@ -920,9 +965,11 @@ auto CppRenderer::append_conditional_initializer(std::string& output,
     }
     append_expr(output, ir_.conditional_exprs_.condition[index], ctx, 1);
     output += " ? ";
-    append_integer_constant(output, *when_true);
+    append_integer_constant(
+        output, *when_true, IntegerEmission::initializer, {destination, state_.current}, ctx);
     output += " : ";
-    append_integer_constant(output, *when_false);
+    append_integer_constant(
+        output, *when_false, IntegerEmission::initializer, {destination, state_.current}, ctx);
     if (minimum > 0) {
         output += ')';
     }
@@ -1011,8 +1058,12 @@ void CppRenderer::append_initializer(std::string& output,
                                      int const minimum) {
     destination = destination_type(destination.type, destination.scope);
     if (value.kind() == SyntaxKind::expression) {
-        if (append_initializer_literal(output, value.expression(), destination.type) ||
-            append_conditional_initializer(
+        if (auto const constant{integer_constant(value.expression())};
+            constant && append_integer_constant(
+                            output, *constant, IntegerEmission::initializer, destination, ctx)) {
+            return;
+        }
+        if (append_conditional_initializer(
                 output, value.expression(), destination.type, ctx, minimum)) {
             return;
         }
@@ -1092,12 +1143,6 @@ void CppRenderer::append_expr(
             first = false;
         }
     };
-    auto append_small_literal = [&](auto value) {
-        append_type(output, ir_.expression_type(expr), ctx);
-        output += '{';
-        expr_detail::append_numeric_literal(output, +value);
-        output += '}';
-    };
     switch (expr.kind()) {
         case ExprKind::parenthesized:
             output += '(';
@@ -1111,34 +1156,21 @@ void CppRenderer::append_expr(
             output += index != 0 ? "true" : "false";
             break;
         case ExprKind::i8_literal:
-            append_small_literal(ir_.numeric_literal_exprs_.i8[index]);
-            break;
         case ExprKind::i16_literal:
-            append_small_literal(ir_.numeric_literal_exprs_.i16[index]);
-            break;
         case ExprKind::i32_literal:
-            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.i32[index]);
-            break;
         case ExprKind::i64_literal:
-            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.i64[index]);
-            break;
         case ExprKind::u8_literal:
-            append_small_literal(ir_.numeric_literal_exprs_.u8[index]);
-            break;
         case ExprKind::u16_literal:
-            append_small_literal(ir_.numeric_literal_exprs_.u16[index]);
-            break;
         case ExprKind::u32_literal:
-            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.u32[index]);
-            break;
         case ExprKind::u64_literal:
-            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.u64[index]);
+            append_integer_constant(
+                output, *integer_constant(expr), IntegerEmission::preserve_type, {}, ctx);
             break;
         case ExprKind::f32_literal:
-            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.f32[index]);
+            expr_detail::append_floating_literal(output, ir_.numeric_literal_exprs_.f32[index]);
             break;
         case ExprKind::f64_literal:
-            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.f64[index]);
+            expr_detail::append_floating_literal(output, ir_.numeric_literal_exprs_.f64[index]);
             break;
         case ExprKind::string_literal:
             output += '"';
@@ -1212,16 +1244,12 @@ void CppRenderer::append_expr(
             auto const target{ir_.cast_exprs_.type[index]};
             auto const operand{ir_.cast_exprs_.operand[index]};
             if (expr.kind() == ExprKind::static_cast_) {
-                auto const constant{integer_constant(operand)};
-                auto const integer{brace_integer_type(target, state_.current)};
-                auto const spelling{ir_.types.spelling(target)};
-                // A multiword or qualified type-id cannot be written as T{value} directly.
-                if (constant && integer.contains(constant->magnitude, constant->negative) &&
-                    spelling.find_first_of(" \t\r\n*&") == std::string_view::npos) {
-                    append_type(output, target, ctx);
-                    output += '{';
-                    append_integer_constant(output, *constant);
-                    output += '}';
+                if (auto const constant{integer_constant(operand)}) {
+                    append_integer_constant(output,
+                                            *constant,
+                                            IntegerEmission::conversion,
+                                            {target, state_.current},
+                                            ctx);
                     break;
                 }
             }
@@ -1942,7 +1970,8 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
                 append_indented(output, ir_.strings.view(ir_.enumerators_.name[row]), ctx.indent());
                 if (auto const initializer{ir_.enumerators_.initializer[row]}) {
                     output += " = ";
-                    text(*initializer);
+                    append_initializer(
+                        output, *initializer, ir_.enum_nodes_.underlying_type[i], ctx);
                 }
                 if (auto const annotation{ir_.enumerators_.annotation[row]}) {
                     output += ' ';

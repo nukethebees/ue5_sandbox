@@ -85,6 +85,51 @@ TEST_F(ExprTest, PreservesConditionalConversionsAndArithmeticIntermediates) {
                     "std::int64_t value{0ULL - 1ULL};");
 }
 
+TEST_F(ExprTest, SharesIntegerEmissionAcrossWidthsAndConversions) {
+    auto check =
+        [&](auto number, std::string_view standalone, CppTypeId type, std::string_view converted) {
+            auto const value{ir.literal(number)};
+            expect_rendered(value, standalone);
+            expect_rendered(ir.variable(types.std.i32, ir.name("value"), value),
+                            "std::int32_t value{7};");
+            expect_rendered(ir.static_cast_expr(type, value), converted);
+        };
+    check(std::int8_t{7}, "std::int8_t{7}", types.std.i8, "std::int8_t{7}");
+    check(std::int16_t{7}, "std::int16_t{7}", types.std.i16, "std::int16_t{7}");
+    check(std::int32_t{7}, "7", types.std.i32, "std::int32_t{7}");
+    check(std::int64_t{7}, "7LL", types.std.i64, "std::int64_t{7}");
+    check(std::uint8_t{7}, "std::uint8_t{7}", types.std.u8, "std::uint8_t{7}");
+    check(std::uint16_t{7}, "std::uint16_t{7}", types.std.u16, "std::uint16_t{7}");
+    check(std::uint32_t{7}, "7U", types.std.u32, "std::uint32_t{7}");
+    check(std::uint64_t{7}, "7ULL", types.std.u64, "std::uint64_t{7}");
+
+    expect_rendered(ir.static_cast_expr(types.std.u32, ir.literal(std::int8_t{-1})),
+                    "static_cast<std::uint32_t>(std::int8_t{-1})");
+    expect_rendered(
+        ir.static_cast_expr(types.std.i32, ir.literal(std::numeric_limits<std::int64_t>::min())),
+        "static_cast<std::int32_t>((-9223372036854775807LL - 1))");
+}
+
+TEST_F(ExprTest, UsesEnumUnderlyingTypeForStructuredInitializers) {
+    auto const values{
+        ir.enumeration(ir.store_text("Value"),
+                       types.std.u8,
+                       {ir.enumerator(ir.store_text("First"), ir.literal(std::uint64_t{7})),
+                        ir.enumerator(ir.store_text("Second"), ir.authored_fragment("1 << 3"))})};
+    expect_rendered(values,
+                    "enum class Value : std::uint8_t {\n"
+                    "    First = 7,\n"
+                    "    Second = 1 << 3,\n"
+                    "};");
+    auto const dependency{types.dependency("external_value", "external.h")};
+    auto const dependent{ir.enumeration(
+        ir.store_text("Dependent"),
+        types.std.int_,
+        {ir.enumerator(ir.store_text("Value"),
+                       ir.reference(ir.name("external_value", {dependency}), types.std.int_))})};
+    EXPECT_EQ(collected_dependencies(ir, dependent), std::vector<TypeDependencyId>{dependency});
+}
+
 TEST_F(ExprTest, ResolvesAliasesDefaultsReturnsAndAssignments) {
     auto const alias{ir.using_declaration(ir.strings.intern("Count"), types.std.u8)};
     auto const count_type{types.named("Count")};

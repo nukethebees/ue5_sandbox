@@ -452,7 +452,7 @@ class CppIRBuilder {
     }
 
     EnumValueId enumerator(StringId name,
-                           std::optional<StringId> initializer = {},
+                           std::optional<Syntax> initializer = {},
                            std::optional<StringId> annotation = {}) {
         return ir_.enumerator(name, initializer, annotation);
     }

@@ -36,6 +36,8 @@ class CppRenderer {
     auto render_nodes(std::span<NodeId const> values, RenderContext const& ctx, int newlines)
         -> std::string;
   private:
+    enum class IntegerEmission { preserve_type, initializer, conversion };
+
     /* **************************************** */
     // Formatting
     /* **************************************** */
@@ -83,7 +85,11 @@ class CppRenderer {
     auto expr_precedence(Expr expr) -> int;
     auto integer_constant(Expr value) const -> std::optional<IntegerConstant>;
     auto brace_integer_type(CppTypeId type, EnvironmentId scope) -> IntegerType;
-    void append_integer_constant(std::string& output, IntegerConstant value) const;
+    auto append_integer_constant(std::string& output,
+                                 IntegerConstant value,
+                                 IntegerEmission emission,
+                                 TypeDestination destination,
+                                 RenderContext const& ctx) -> bool;
     void append_initializer(std::string& output,
                             Syntax value,
                             CppTypeId destination,
@@ -98,7 +104,6 @@ class CppRenderer {
                             TypeDestination destination,
                             RenderContext const& ctx,
                             int minimum = 0);
-    auto append_initializer_literal(std::string& output, Expr value, CppTypeId destination) -> bool;
     auto append_conditional_initializer(std::string& output,
                                         Expr value,
                                         CppTypeId destination,
