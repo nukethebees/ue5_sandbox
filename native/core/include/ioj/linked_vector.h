@@ -1,7 +1,5 @@
 #pragma once
 
-#include <ioj/memory/bounded_resource.h>
-
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
@@ -119,10 +117,6 @@ class LinkedVector {
     explicit LinkedVector(
         std::pmr::memory_resource& resource = *std::pmr::get_default_resource()) noexcept
         : resource_{&resource} {}
-    // Use this overload for allocation failure without exceptions, including exception-free builds.
-    explicit LinkedVector(memory::BoundedResource& resource) noexcept
-        : resource_{&resource}
-        , bounded_{&resource} {}
     ~LinkedVector() { release(); }
     LinkedVector(LinkedVector const&) = delete;
     LinkedVector(LinkedVector&& other) noexcept { take_storage(other); }
@@ -151,32 +145,17 @@ class LinkedVector {
         return *--it;
     }
 
-    [[nodiscard]] auto try_reserve(std::size_t const count) -> bool {
+    void reserve(std::size_t const count) {
         if (count <= capacity_) {
-            return true;
+            return;
         }
         if (count > max_capacity) {
-            return false;
+            allocation_failure();
         }
+
         auto const added{count - capacity_};
         auto const bytes{data_offset + added * sizeof(T)};
-        void* allocation{};
-        if (bounded_ != nullptr) {
-            allocation = bounded_->try_allocate(bytes, allocation_alignment);
-        } else {
-#if defined(__cpp_exceptions)
-            try {
-                allocation = resource_->allocate(bytes, allocation_alignment);
-            } catch (std::bad_alloc const&) {
-                return false;
-            }
-#else
-            allocation = resource_->allocate(bytes, allocation_alignment);
-#endif
-        }
-        if (allocation == nullptr) {
-            return false;
-        }
+        auto* const allocation{resource_->allocate(bytes, allocation_alignment)};
         auto* const segment{std::construct_at(static_cast<Segment*>(allocation))};
         segment->previous = tail_;
         segment->capacity = added;
@@ -187,24 +166,17 @@ class LinkedVector {
         }
         tail_ = segment;
         capacity_ = count;
-        return true;
-    }
-    void reserve(std::size_t const count) {
-        if (!try_reserve(count)) {
-            allocation_failure();
-        }
     }
     template <typename... Args>
-    [[nodiscard]] auto try_emplace_back(Args&&... args) -> T* {
+    auto emplace_back(Args&&... args) -> T& {
         if (size_ == capacity_) {
             if (capacity_ == max_capacity) {
-                return nullptr;
+                allocation_failure();
             }
             auto const growth{capacity_ == 0 ? 1 : std::min(capacity_, max_capacity - capacity_)};
-            if (!try_reserve(capacity_ + growth)) {
-                return nullptr;
-            }
+            reserve(capacity_ + growth);
         }
+
         auto* segment{size_ == 0 ? head_ : active_};
         while (segment->size == segment->capacity) {
             segment = segment->next;
@@ -214,14 +186,6 @@ class LinkedVector {
         ++segment->size;
         ++size_;
         active_ = segment;
-        return result;
-    }
-    template <typename... Args>
-    auto emplace_back(Args&&... args) -> T& {
-        auto* const result{try_emplace_back(std::forward<Args>(args)...)};
-        if (result == nullptr) {
-            allocation_failure();
-        }
         return *result;
     }
     void pop_back() {
@@ -264,7 +228,6 @@ class LinkedVector {
     }
     void take_storage(LinkedVector& other) noexcept {
         resource_ = other.resource_;
-        bounded_ = other.bounded_;
         head_ = std::exchange(other.head_, nullptr);
         tail_ = std::exchange(other.tail_, nullptr);
         active_ = std::exchange(other.active_, nullptr);
@@ -273,7 +236,6 @@ class LinkedVector {
     }
 
     std::pmr::memory_resource* resource_{};
-    memory::BoundedResource* bounded_{};
     Segment* head_{};
     Segment* tail_{};
     Segment* active_{};

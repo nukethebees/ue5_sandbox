@@ -26,7 +26,6 @@ target_sources(native-core
     include/ioj/monotonic_clock.h
     include/ioj/memory/allocation.h
     include/ioj/memory/bump_resource.h
-    include/ioj/memory/bounded_resource.h
     include/ioj/linked_vector.h
     include/ioj/memory/statistics.h
     include/ioj/speed_response.h
@@ -70,7 +69,6 @@ target_sources(native-core
     src/trigonometry.cpp
     src/frame_memory_resource.cpp
     src/bump_resource.cpp
-    src/bounded_resource.cpp
     src/projectile_intercept.cpp
     src/rotation.cpp
     src/structural_diff.cpp

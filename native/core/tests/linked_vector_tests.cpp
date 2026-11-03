@@ -1,4 +1,5 @@
 #include <ioj/linked_vector.h>
+#include <ioj/memory/bump_resource.h>
 
 #include <gtest/gtest.h>
 
@@ -48,7 +49,7 @@ TEST(LinkedVector, ReserveClearAndRepeatedGrowthReuseEverySegment) {
         for (int i{}; i < 20; ++i) {
             values.emplace_back(i);
         }
-        EXPECT_EQ(std::ranges::distance(values), 20);
+        EXPECT_EQ(std::ranges::distance(values.begin(), values.end()), 20);
         EXPECT_EQ(values.back(), 19);
         auto const capacity{values.capacity()};
         values.clear();
@@ -68,7 +69,7 @@ TEST(LinkedVector, PopsAcrossEmptyAndReservedSegmentsAndAppendsAgain) {
     for (int i{16}; i >= 0; --i) {
         EXPECT_EQ(values.back(), i);
         values.pop_back();
-        EXPECT_EQ(std::ranges::distance(values), i);
+        EXPECT_EQ(std::ranges::distance(values.begin(), values.end()), i);
     }
     EXPECT_EQ(values.begin(), values.end());
     for (int i{}; i < 200; ++i) {
@@ -94,7 +95,7 @@ struct TrackedLinkedValue {
 
 TEST(LinkedVector, DestroysExactlyOnceAndTransfersResourceOnMove) {
     int live{};
-    memory::BoundedResource resource{4096};
+    memory::BumpResource resource{4096};
     {
         LinkedVector<TrackedLinkedValue> source{resource};
         source.emplace_back(live, 1);
@@ -125,54 +126,56 @@ struct alignas(256) AlignedLinkedValue {
     int value{};
 };
 
-TEST(LinkedVector, AlignsElementsAndStopsAtFixedBudgetWithoutLosingValues) {
-    memory::BoundedResource resource{4096};
+TEST(LinkedVector, AlignsElementsAndReusesSegmentsAfterClear) {
+    memory::BumpResource resource{4096};
     LinkedVector<AlignedLinkedValue> values{resource};
-    int count{};
-    while (auto* value{values.try_emplace_back(count)}) {
-        EXPECT_EQ(reinterpret_cast<std::uintptr_t>(value) % alignof(AlignedLinkedValue), 0);
-        ++count;
+    std::vector<AlignedLinkedValue*> addresses;
+    for (int i{}; i < 100; ++i) {
+        auto& value{values.emplace_back(i)};
+        EXPECT_EQ(reinterpret_cast<std::uintptr_t>(&value) % alignof(AlignedLinkedValue), 0);
+        addresses.push_back(&value);
     }
-    ASSERT_GT(count, 0);
-    EXPECT_EQ(values.size(), count);
-    EXPECT_EQ(std::ranges::distance(values), count);
-    auto const used{resource.used_bytes()};
-    EXPECT_EQ(values.try_emplace_back(100), nullptr);
-    EXPECT_EQ(resource.used_bytes(), used);
-    int expected{};
-    for (auto const& value : values) {
-        EXPECT_EQ(value.value, expected++);
-    }
+    EXPECT_EQ(values.size(), 100);
+    EXPECT_EQ(std::ranges::distance(values.begin(), values.end()), 100);
     values.clear();
-    for (int i{}; i < count; ++i) {
-        ASSERT_NE(values.try_emplace_back(i), nullptr);
+    for (int i{}; i < 100; ++i) {
+        EXPECT_EQ(&values.emplace_back(i), addresses[i]);
     }
-    EXPECT_EQ(resource.used_bytes(), used);
     values.release();
     resource.reset();
-    EXPECT_NE(values.try_emplace_back(7), nullptr);
+    EXPECT_EQ(values.emplace_back(7).value, 7);
 }
 
-TEST(LinkedVector, RejectsUnrepresentableReserveAndHandlesUpstreamFailure) {
-    LinkedVector<int> values{*std::pmr::null_memory_resource()};
-    EXPECT_FALSE(values.try_reserve(1));
-    EXPECT_FALSE(values.try_reserve(std::numeric_limits<std::size_t>::max()));
-    EXPECT_EQ(values.try_emplace_back(1), nullptr);
-    EXPECT_TRUE(values.empty());
-    EXPECT_EQ(values.capacity(), 0);
-}
+TEST(LinkedVector, RejectsUnrepresentableReserveAndPreservesValuesOnAllocationFailure) {
+    LinkedVector<int> empty{*std::pmr::null_memory_resource()};
+    EXPECT_THROW(empty.reserve(1), std::bad_alloc);
+    EXPECT_THROW(empty.reserve(std::numeric_limits<std::size_t>::max()), std::bad_alloc);
+    EXPECT_THROW(empty.emplace_back(1), std::bad_alloc);
+    EXPECT_TRUE(empty.empty());
+    EXPECT_EQ(empty.capacity(), 0);
 
-TEST(BoundedResource, ExactCapacityFailureAndReset) {
-    memory::BoundedResource resource{64};
-    EXPECT_NE(resource.try_allocate(64, 64), nullptr);
-    EXPECT_EQ(resource.used_bytes(), 64);
-    EXPECT_EQ(resource.try_allocate(1, 1), nullptr);
-    EXPECT_EQ(resource.used_bytes(), 64);
-    resource.reset();
-    EXPECT_NE(resource.try_allocate(1, 1), nullptr);
-    EXPECT_EQ(resource.try_allocate(64, 64), nullptr);
-    EXPECT_EQ(resource.used_bytes(), 1);
-    memory::BoundedResource empty{0};
-    EXPECT_EQ(empty.try_allocate(1, 1), nullptr);
+    std::array<std::byte, 1024> buffer;
+    std::pmr::monotonic_buffer_resource resource{
+        buffer.data(), buffer.size(), std::pmr::null_memory_resource()};
+    LinkedVector<int> values{resource};
+    bool exhausted{};
+    for (int i{}; i < 1024; ++i) {
+        try {
+            values.emplace_back(i);
+        } catch (std::bad_alloc const&) {
+            exhausted = true;
+            break;
+        }
+    }
+    ASSERT_TRUE(exhausted);
+    auto const count{values.size()};
+    ASSERT_GT(count, 0);
+    EXPECT_EQ(values.back(), count - 1);
+    EXPECT_EQ(std::ranges::distance(values.begin(), values.end()), count);
+    values.clear();
+    for (std::size_t i{}; i < count; ++i) {
+        values.emplace_back(static_cast<int>(i));
+    }
+    EXPECT_EQ(values.size(), count);
 }
 }
