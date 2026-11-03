@@ -122,9 +122,9 @@ struct AvoidanceChoice : detail::AvoidanceChoiceBase {
     // value
     using value_type = std::int8_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{
-        {static_cast<value_type>(0), static_cast<value_type>(7)}};
-    static constexpr value_type DirectMovement{static_cast<value_type>(-1)};
-    static constexpr value_type StopMovement{static_cast<value_type>(-2)};
+        {value_type{0}, value_type{7}}};
+    static constexpr value_type DirectMovement{value_type{-1}};
+    static constexpr value_type StopMovement{value_type{-2}};
 
     constexpr AvoidanceChoice() noexcept = default;
     constexpr explicit AvoidanceChoice(value_type const value) noexcept

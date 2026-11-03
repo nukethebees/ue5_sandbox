@@ -774,6 +774,19 @@ auto CppRenderer::expr_precedence(Expr expr) -> int {
             return 12;
     }
 }
+auto CppRenderer::brace_integer_type(CppTypeId type, EnvironmentId scope) -> IntegerType {
+    auto const shape{ir_.types.shapes_[type.value - 1]};
+    if (shape.unqualified_type.value != 0) {
+        return {};
+    }
+    if (auto const integer{ir_.types.integer_type(type)}; integer.bits != 0) {
+        return integer;
+    }
+    auto const symbol{type_symbol(type, scope)};
+    return symbol.aliased_type.value != 0
+             ? brace_integer_type(symbol.aliased_type, symbol.declaring_scope)
+             : IntegerType{};
+}
 auto CppRenderer::integer_constant(Expr const value) const -> std::optional<IntegerConstant> {
     auto constant = [&](auto const number) -> IntegerConstant {
         bool const negative{std::cmp_less(number, 0)};
@@ -1080,11 +1093,10 @@ void CppRenderer::append_expr(
         }
     };
     auto append_small_literal = [&](auto value) {
-        output += "static_cast<";
         append_type(output, ir_.expression_type(expr), ctx);
-        output += ">(";
+        output += '{';
         expr_detail::append_numeric_literal(output, +value);
-        output += ')';
+        output += '}';
     };
     switch (expr.kind()) {
         case ExprKind::parenthesized:
@@ -1196,18 +1208,34 @@ void CppRenderer::append_expr(
             break;
         }
         case ExprKind::static_cast_:
-        case ExprKind::reinterpret_cast_:
+        case ExprKind::reinterpret_cast_: {
+            auto const target{ir_.cast_exprs_.type[index]};
+            auto const operand{ir_.cast_exprs_.operand[index]};
+            if (expr.kind() == ExprKind::static_cast_) {
+                auto const constant{integer_constant(operand)};
+                auto const integer{brace_integer_type(target, state_.current)};
+                auto const spelling{ir_.types.spelling(target)};
+                // A multiword or qualified type-id cannot be written as T{value} directly.
+                if (constant && integer.contains(constant->magnitude, constant->negative) &&
+                    spelling.find_first_of(" \t\r\n*&") == std::string_view::npos) {
+                    append_type(output, target, ctx);
+                    output += '{';
+                    append_integer_constant(output, *constant);
+                    output += '}';
+                    break;
+                }
+            }
             output += expr.kind() == ExprKind::static_cast_ ? "static_cast<" : "reinterpret_cast<";
-            append_type(output, ir_.cast_exprs_.type[index], ctx);
+            append_type(output, target, ctx);
             output += ">(";
             if (expr.kind() == ExprKind::static_cast_) {
-                append_initializer(
-                    output, ir_.cast_exprs_.operand[index], ir_.cast_exprs_.type[index], ctx, 1);
+                append_initializer(output, operand, target, ctx, 1);
             } else {
-                append_expr(output, ir_.cast_exprs_.operand[index], ctx, 1);
+                append_expr(output, operand, ctx, 1);
             }
             output += ')';
             break;
+        }
         case ExprKind::conditional:
             append_expr(output, ir_.conditional_exprs_.condition[index], ctx, 1);
             output += " ? ";

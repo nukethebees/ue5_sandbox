@@ -26,8 +26,8 @@ struct StaticGeometryIndex : detail::StaticGeometryIndexBase {
     // value
     using value_type = std::uint32_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{
-        {static_cast<value_type>(0), static_cast<value_type>(4294967294)}};
-    static constexpr value_type Invalid{static_cast<value_type>(4294967295)};
+        {value_type{0}, value_type{4294967294}}};
+    static constexpr value_type Invalid{value_type{4294967295}};
 
     constexpr StaticGeometryIndex() noexcept = default;
     constexpr explicit StaticGeometryIndex(value_type const value) noexcept
@@ -63,8 +63,8 @@ struct CellIndex : detail::CellIndexBase {
     // value
     using value_type = std::uint32_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{
-        {static_cast<value_type>(0), static_cast<value_type>(4294967294)}};
-    static constexpr value_type Invalid{static_cast<value_type>(4294967295)};
+        {value_type{0}, value_type{4294967294}}};
+    static constexpr value_type Invalid{value_type{4294967295}};
 
     constexpr CellIndex() noexcept = default;
     constexpr explicit CellIndex(value_type const value) noexcept

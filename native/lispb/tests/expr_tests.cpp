@@ -43,7 +43,15 @@ TEST_F(ExprTest, UsesIntegerDestinationsWithoutChangingStandaloneLiterals) {
     auto const qualified{types.decorate(types.std.u8, "", " const")};
     expect_rendered(ir.variable(qualified, ir.name("count"), value),
                     "std::uint8_t const count{255};");
-    expect_rendered(ir.static_cast_expr(types.std.u8, value), "static_cast<std::uint8_t>(255)");
+    expect_rendered(ir.static_cast_expr(types.std.u8, value), "std::uint8_t{255}");
+    expect_rendered(ir.static_cast_expr(types.std.u8, ir.literal(0)), "std::uint8_t{0}");
+    expect_rendered(ir.static_cast_expr(types.intern("unsigned int"), ir.literal(0)),
+                    "static_cast<unsigned int>(0)");
+    expect_rendered(
+        ir.static_cast_expr(types.decorate(types.std.i32, "", " const&"), ir.literal(0)),
+        "static_cast<std::int32_t const&>(0)");
+    expect_rendered(ir.static_cast_expr(types.named("T::value_type"), ir.literal(0)),
+                    "static_cast<T::value_type>(0)");
     expect_rendered(ir.static_cast_expr(types.std.u8, ir.literal(std::uint64_t{256})),
                     "static_cast<std::uint8_t>(256ULL)");
     expect_rendered(value, "255ULL");

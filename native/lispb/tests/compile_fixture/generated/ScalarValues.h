@@ -26,7 +26,7 @@ struct RegisteredInt : detail::RegisteredIntBase {
     // value
     using value_type = std::int8_t;
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
-        value_layout{{static_cast<value_type>(-100), static_cast<value_type>(100)}};
+        value_layout{{value_type{-100}, value_type{100}}};
 
     constexpr RegisteredInt() noexcept = default;
     constexpr explicit RegisteredInt(value_type const value) noexcept
@@ -71,7 +71,7 @@ struct StandardInt : detail::StandardIntBase {
     // value
     using value_type = std::int8_t;
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
-        value_layout{{static_cast<value_type>(-100), static_cast<value_type>(100)}};
+        value_layout{{value_type{-100}, value_type{100}}};
 
     constexpr StandardInt() noexcept = default;
     constexpr explicit StandardInt(value_type const value) noexcept
@@ -116,8 +116,8 @@ struct DamageCode : detail::DamageCodeBase {
     // value
     using value_type = std::uint8_t;
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
-        value_layout{{static_cast<value_type>(0), static_cast<value_type>(10)}};
-    static constexpr value_type Laser{static_cast<value_type>(1)};
+        value_layout{{value_type{0}, value_type{10}}};
+    static constexpr value_type Laser{value_type{1}};
 
     constexpr DamageCode() noexcept = default;
     constexpr explicit DamageCode(value_type const value) noexcept
@@ -159,10 +159,10 @@ struct DamageReason : detail::DamageReasonBase {
     // value
     using value_type = std::uint8_t;
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
-        value_layout{{static_cast<value_type>(0), static_cast<value_type>(10)}};
-    static constexpr value_type Unknown{static_cast<value_type>(0)};
-    static constexpr value_type Laser{static_cast<value_type>(1)};
-    static constexpr value_type Invalid{static_cast<value_type>(255)};
+        value_layout{{value_type{0}, value_type{10}}};
+    static constexpr value_type Unknown{value_type{0}};
+    static constexpr value_type Laser{value_type{1}};
+    static constexpr value_type Invalid{value_type{255}};
 
     constexpr DamageReason() noexcept = default;
     constexpr explicit DamageReason(value_type const value) noexcept
@@ -204,7 +204,7 @@ struct Health : detail::HealthBase {
     // value
     using value_type = std::uint16_t;
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
-        value_layout{{static_cast<value_type>(0), static_cast<value_type>(1000)}};
+        value_layout{{value_type{0}, value_type{1000}}};
 
     constexpr Health() noexcept = default;
     constexpr explicit Health(value_type const value) noexcept

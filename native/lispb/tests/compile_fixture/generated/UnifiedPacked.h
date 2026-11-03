@@ -774,7 +774,7 @@ struct CheckedPayload : detail::CheckedPayloadBase {
 
     // kill_entity
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8> kill_entity_layout{
-        {static_cast<std::uint8_t>(0), static_cast<std::uint8_t>(10)}};
+        {std::uint8_t{0}, std::uint8_t{10}}};
 
     // move_to
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8> move_to_layout{};
@@ -840,11 +840,11 @@ struct TaggedProjected : detail::TaggedProjectedBase {
 
     // unrelated
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 14, 8> unrelated_layout{
-        {static_cast<std::uint8_t>(0), static_cast<std::uint8_t>(10)}};
+        {std::uint8_t{0}, std::uint8_t{10}}};
 
     // payload_kill_entity
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 6, 8> payload_kill_entity_layout{
-        {static_cast<std::uint8_t>(0), static_cast<std::uint8_t>(10)}};
+        {std::uint8_t{0}, std::uint8_t{10}}};
 
     // payload_move_to
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 6, 8> payload_move_to_layout{};
@@ -1030,17 +1030,15 @@ struct Optionals : detail::OptionalsBase {
     // sentinel
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8> sentinel_encoded_layout{};
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8>
-        sentinel_encoded_payload_layout{
-            {static_cast<std::uint8_t>(0), static_cast<std::uint8_t>(100)}};
-    static constexpr std::uint8_t sentinel_encoded_payload_Absent{static_cast<std::uint8_t>(255)};
-    static constexpr std::uint8_t sentinel_encoded_sentinel{static_cast<std::uint8_t>(255)};
+        sentinel_encoded_payload_layout{{std::uint8_t{0}, std::uint8_t{100}}};
+    static constexpr std::uint8_t sentinel_encoded_payload_Absent{std::uint8_t{255}};
+    static constexpr std::uint8_t sentinel_encoded_sentinel{std::uint8_t{255}};
 
     // present
     static constexpr ioj::PackedField<storage_type, std::uint16_t, 8, 9> present_encoded_layout{};
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8>
-        present_encoded_payload_layout{
-            {static_cast<std::uint8_t>(0), static_cast<std::uint8_t>(100)}};
-    static constexpr std::uint8_t present_encoded_payload_Absent{static_cast<std::uint8_t>(255)};
+        present_encoded_payload_layout{{std::uint8_t{0}, std::uint8_t{100}}};
+    static constexpr std::uint8_t present_encoded_payload_Absent{std::uint8_t{255}};
 
     constexpr Optionals() noexcept = default;
     constexpr explicit Optionals(std::uint8_t const sentinel_encoded_value,

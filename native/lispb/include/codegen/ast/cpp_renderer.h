@@ -82,6 +82,7 @@ class CppRenderer {
                      bool equal = false);
     auto expr_precedence(Expr expr) -> int;
     auto integer_constant(Expr value) const -> std::optional<IntegerConstant>;
+    auto brace_integer_type(CppTypeId type, EnvironmentId scope) -> IntegerType;
     void append_integer_constant(std::string& output, IntegerConstant value) const;
     void append_initializer(std::string& output,
                             Syntax value,

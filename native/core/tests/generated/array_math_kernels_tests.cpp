@@ -739,7 +739,7 @@ inline constexpr std::array<double, 31> fixture_values_45{
 
 void add_int32_array_scalar_in_place_raw(std::size_t const Count) {
     auto data{fixture_values_0};
-    auto const value{static_cast<std::int32_t>(-4)};
+    auto const value{std::int32_t{-4}};
     auto const& expected{fixture_values_1};
     auto const before{data};
     ioj::add_in_place(std::span<std::int32_t>{data.data(), Count}, value);
@@ -766,7 +766,7 @@ void add_double_array_scalar_in_place_raw(std::size_t const Count) {
 
 void subtract_int32_array_scalar_in_place_raw(std::size_t const Count) {
     auto data{fixture_values_0};
-    auto const value{static_cast<std::int32_t>(-4)};
+    auto const value{std::int32_t{-4}};
     auto const& expected{fixture_values_6};
     auto const before{data};
     ioj::subtract_in_place(std::span<std::int32_t>{data.data(), Count}, value);
@@ -795,7 +795,7 @@ void multiply_int32_array_array_raw(std::size_t const Count) {
     auto lhs{fixture_values_0};
     auto rhs{fixture_values_9};
     std::array<std::int32_t, 31> out{};
-    out.fill(static_cast<std::int32_t>(-12345));
+    out.fill(std::int32_t{-12345});
     auto const& expected{fixture_values_10};
     auto const before{out};
     ioj::multiply(std::span<std::int32_t const>{lhs.data(), Count},
@@ -806,9 +806,9 @@ void multiply_int32_array_array_raw(std::size_t const Count) {
 
 void multiply_int32_array_scalar_raw(std::size_t const Count) {
     auto lhs{fixture_values_0};
-    auto const rhs{static_cast<std::int32_t>(-4)};
+    auto const rhs{std::int32_t{-4}};
     std::array<std::int32_t, 31> out{};
-    out.fill(static_cast<std::int32_t>(-12345));
+    out.fill(std::int32_t{-12345});
     auto const& expected{fixture_values_11};
     auto const before{out};
     ioj::multiply(std::span<std::int32_t const>{lhs.data(), Count},
@@ -879,7 +879,7 @@ void multiply_int32_array_array_in_place_raw(std::size_t const Count) {
 
 void multiply_int32_array_scalar_in_place_raw(std::size_t const Count) {
     auto lhs{fixture_values_0};
-    auto const rhs{static_cast<std::int32_t>(-4)};
+    auto const rhs{std::int32_t{-4}};
     auto const& expected{fixture_values_11};
     auto const before{lhs};
     ioj::multiply_in_place(std::span<std::int32_t>{lhs.data(), Count}, rhs);
@@ -926,7 +926,7 @@ void multiply_double_array_scalar_in_place_raw(std::size_t const Count) {
 
 void divide_int32_array_scalar_in_place_raw(std::size_t const Count) {
     auto data{fixture_values_0};
-    auto const value{static_cast<std::int32_t>(-4)};
+    auto const value{std::int32_t{-4}};
     auto const& expected{fixture_values_18};
     auto const before{data};
     ioj::divide_in_place(std::span<std::int32_t>{data.data(), Count}, value);
@@ -955,7 +955,7 @@ void add_arrays_int32_array_array_raw(std::size_t const Count) {
     auto lhs{fixture_values_0};
     auto rhs{fixture_values_9};
     std::array<std::int32_t, 31> out{};
-    out.fill(static_cast<std::int32_t>(-12345));
+    out.fill(std::int32_t{-12345});
     auto const& expected{fixture_values_21};
     auto const before{out};
     ioj::add_arrays(std::span<std::int32_t const>{lhs.data(), Count},
