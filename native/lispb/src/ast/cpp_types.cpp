@@ -250,7 +250,7 @@ auto CppTypes::find(StringId const spelling,
         }
 
         bool same_operations{true};
-        for (std::size_t operation{}; operation < operations_.size(); ++operation) {
+        for (auto const operation : ioj::EnumTraits<TypeOperation>::values) {
             auto const name{operation_source ? operations_[operation][operation_source->value - 1]
                                              : StringId{}};
             auto const policy{operation_source
@@ -315,7 +315,7 @@ auto CppTypes::intern_shape(std::string_view const spelling,
 
     auto const result{append(name, dependencies, passing, shape)};
     if (operation_source) {
-        for (std::size_t operation{}; operation < operations_.size(); ++operation) {
+        for (auto const operation : ioj::EnumTraits<TypeOperation>::values) {
             operations_[operation][result.value - 1] =
                 operations_[operation][operation_source->value - 1];
             operation_passing_[operation][result.value - 1] =
@@ -539,7 +539,7 @@ auto CppTypes::with_dependencies(CppTypeId const base,
 auto CppTypes::clone(CppTypeId const base) -> CppTypeId {
     auto const result{append(
         spelling_id(base), dependencies(base), parameter_passing(base), shapes_[base.value - 1])};
-    for (std::size_t operation{}; operation < operations_.size(); ++operation) {
+    for (auto const operation : ioj::EnumTraits<TypeOperation>::values) {
         operations_[operation][result.value - 1] = operations_[operation][base.value - 1];
         operation_passing_[operation][result.value - 1] =
             operation_passing_[operation][base.value - 1];
@@ -602,23 +602,22 @@ void CppTypes::set_parameter_passing(CppTypeId const type, ParameterPassing cons
 auto CppTypes::operation(CppTypeId const type, TypeOperation const operation) const
     -> std::optional<std::string_view> {
     assert(type.value != 0 && type.value <= spellings_.size());
-    auto const name{operations_[static_cast<std::size_t>(operation)][type.value - 1]};
+    auto const name{operations_[operation][type.value - 1]};
     return name.value == 0 ? std::nullopt : std::optional{strings_.view(name)};
 }
 auto CppTypes::operation_parameter_passing(CppTypeId const type,
                                            TypeOperation const operation) const
     -> ParameterPassing {
     assert(type.value != 0 && type.value <= spellings_.size());
-    return operation_passing_[static_cast<std::size_t>(operation)][type.value - 1];
+    return operation_passing_[operation][type.value - 1];
 }
 void CppTypes::set_operation(CppTypeId const type,
                              TypeOperation const operation,
                              std::string_view const spelling,
                              ParameterPassing const passing) {
     assert(type.value != 0 && type.value <= spellings_.size());
-    auto const index{static_cast<std::size_t>(operation)};
-    operations_[index][type.value - 1] = strings_.intern(spelling);
-    operation_passing_[index][type.value - 1] = passing;
+    operations_[operation][type.value - 1] = strings_.intern(spelling);
+    operation_passing_[operation][type.value - 1] = passing;
 }
 auto CppTypes::dependency(std::string_view const spelling,
                           std::optional<std::string_view> const header) -> TypeDependencyId {

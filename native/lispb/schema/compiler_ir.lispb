@@ -3,7 +3,8 @@
   :namespace lispb::codegen
   (enum TypeOperation std::uint8_t
     :native-api true
-    :helpers (to-string to-serialized-string try-parse-serialized formatter)
+    :enum-array true
+    :helpers (to-string traits to-serialized-string try-parse-serialized formatter)
     (value add_element :serialized-name "add-element")
     (value remove_at_swap :serialized-name "remove-at-swap")
     (value set_element :serialized-name "set-element")

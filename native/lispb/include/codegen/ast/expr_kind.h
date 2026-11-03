@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/enum_traits.h>
+
 #include <cstdint>
 
 namespace lispb::codegen {
@@ -37,3 +39,10 @@ enum class ExprKind : std::uint8_t {
 };
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<lispb::codegen::ExprKind>() noexcept -> std::size_t {
+    return static_cast<std::size_t>(lispb::codegen::ExprKind::Count);
+}
+}

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/enum_array.h>
+
 #include <codegen/ast/access.h>
 #include <codegen/ast/access_indentation.h>
 #include <codegen/ast/binary_operator.h>
@@ -520,7 +522,7 @@ class CppIR {
     std::vector<EnumValueId> enumerator_references_;
     std::vector<NodeId> children_;
     std::vector<Syntax> arguments_;
-    std::array<std::vector<CppTypeId>, static_cast<std::size_t>(ExprKind::Count)> expression_types_;
+    ioj::EnumArray<ExprKind, std::vector<CppTypeId>> expression_types_;
     std::vector<Syntax> symbol_references_;
     std::vector<Syntax> pack_patterns_;
     std::vector<StringId> authored_fragments_;

@@ -10,6 +10,7 @@
 #include "ioj/parse_enum.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -39,6 +40,18 @@ namespace ioj {
 template <>
 inline constexpr MinMax<lispb::codegen::TypeOperation> enum_range<lispb::codegen::TypeOperation>{
     lispb::codegen::TypeOperation::add_element, lispb::codegen::TypeOperation::set_element};
+
+template <>
+struct EnumTraits<lispb::codegen::TypeOperation> {
+    static constexpr std::array values{lispb::codegen::TypeOperation::add_element,
+                                       lispb::codegen::TypeOperation::remove_at_swap,
+                                       lispb::codegen::TypeOperation::set_element};
+};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<lispb::codegen::TypeOperation>() noexcept -> std::size_t {
+    return 3ULL;
+}
 
 template <>
 inline constexpr auto enum_strings<lispb::codegen::TypeOperation, Name>{PackedStrings{

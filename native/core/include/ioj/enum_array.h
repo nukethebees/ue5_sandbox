@@ -23,11 +23,17 @@ class EnumArray {
     constexpr auto operator[](Enum const key) const noexcept -> T const& {
         return elements_[static_cast<std::size_t>(key)];
     }
+    auto operator==(EnumArray const&) const -> bool = default;
+
+    constexpr void fill(T const& value) { elements_.fill(value); }
+    [[nodiscard]] constexpr auto begin() noexcept { return elements_.begin(); }
+    [[nodiscard]] constexpr auto begin() const noexcept { return elements_.begin(); }
+    [[nodiscard]] constexpr auto end() noexcept { return elements_.end(); }
+    [[nodiscard]] constexpr auto end() const noexcept { return elements_.end(); }
 
     [[nodiscard]] static constexpr auto size() noexcept -> std::size_t {
         return enum_count<Enum>();
     }
-    auto operator==(EnumArray const&) const -> bool = default;
   private:
     std::array<T, enum_count<Enum>()> elements_{};
 };

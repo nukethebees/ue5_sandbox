@@ -1492,7 +1492,7 @@ void CppIR::collect_dependencies(TemplateId declaration,
 
 auto CppIR::expression_type(Expr expression) const -> CppTypeId {
     assert(expression);
-    auto const& types_for_kind{expression_types_[static_cast<std::size_t>(expression.kind())]};
+    auto const& types_for_kind{expression_types_[expression.kind()]};
     assert(expression.index() < types_for_kind.size());
     auto const type{types_for_kind[expression.index()]};
     assert(type.value != 0);
@@ -1500,7 +1500,7 @@ auto CppIR::expression_type(Expr expression) const -> CppTypeId {
 }
 auto CppIR::finish_expression(Expr expression, CppTypeId type) -> Expr {
     assert(type.value != 0);
-    auto& types_for_kind{expression_types_[static_cast<std::size_t>(expression.kind())]};
+    auto& types_for_kind{expression_types_[expression.kind()]};
     if (types_for_kind.size() <= expression.index()) {
         types_for_kind.resize(expression.index() + 1);
     }

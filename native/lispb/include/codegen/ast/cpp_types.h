@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/enum_array.h>
+
 #include <codegen/ast/cpp_type_dependency_range.h>
 #include <codegen/ast/cpp_type_part.h>
 #include <codegen/ast/cpp_type_shape.h>
@@ -11,7 +13,6 @@
 #include <codegen/ast/type_operation.h>
 #include <lispb/indices.h>
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
@@ -158,8 +159,8 @@ class CppTypes {
     std::vector<CppTypePart> parts_;
     std::vector<CppTypeDependencyRange> dependencies_;
     std::vector<ParameterPassing> passing_;
-    std::array<std::vector<StringId>, 3> operations_;
-    std::array<std::vector<ParameterPassing>, 3> operation_passing_;
+    ioj::EnumArray<TypeOperation, std::vector<StringId>> operations_;
+    ioj::EnumArray<TypeOperation, std::vector<ParameterPassing>> operation_passing_;
     std::vector<TypeDependencyId> dependency_uses_;
     std::unordered_multimap<std::size_t, CppTypeDependencyRange> dependency_lists_;
     std::unordered_multimap<std::uint32_t, CppTypeId> types_by_spelling_;
