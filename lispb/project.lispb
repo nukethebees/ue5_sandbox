@@ -67,7 +67,7 @@
       "lispb/schema/s7_starfield_settings.lispb"
       "lispb/schema/s7_presentation_settings.lispb"
       "lispb/schema/native_traces.lispb"
-      "lispb/schema/level_telemetry_history.lispb"
+      "lispb/schema/battle_change_mask.lispb"
       "lispb/schema/native_collision.lispb"
         "lispb/schema/native_entity_cell_data.lispb"
         "lispb/schema/native_world_aabbs.lispb"

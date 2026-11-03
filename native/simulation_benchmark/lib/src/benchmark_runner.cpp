@@ -231,6 +231,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         }
     }
 
+    data.telemetry_recording.enabled = options.telemetry_enabled;
     if (options.telemetry_enabled) {
         data.telemetry_metadata = sim::telemetry::RunMetadata{
             .level_id = level_components.metadata().id.value,
@@ -347,7 +348,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 
     auto const tick_memory{simulation.tick_memory_stats()};
     auto const phase_memory{simulation.phase_memory_stats()};
-    auto const telemetry_history{simulation.level_telemetry_manager().history_stats()};
+    auto const& telemetry{simulation.level_telemetry_manager()};
     [[maybe_unused]] auto telemetry_run{simulation.take_finalized_telemetry_run()};
     auto const total_simulation_ticks{simulation.clock().get_completed_ticks()};
     auto const elapsed{std::chrono::duration<double>{finished_at - started_at}.count()};
@@ -401,10 +402,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .frame_memory_total_root_claims = frame_summary.total_root_claims,
         .frame_memory_overflow_count = tick_memory.overflow_count + phase_memory.overflow_count,
         .telemetry_enabled = options.telemetry_enabled,
-        .telemetry_rows = telemetry_history.used_sample_count,
-        .telemetry_acquired_blocks = telemetry_history.acquired_block_count,
-        .telemetry_retained_blocks = telemetry_history.retained_block_count,
-        .telemetry_allocated_bytes = telemetry_history.total_byte_capacity,
+        .telemetry_rows = telemetry.recorded_sample_count(),
         .hardware_threads = std::thread::hardware_concurrency(),
         .compiler = IOJ_BENCHMARK_COMPILER_ID,
         .build_type = IOJ_BENCHMARK_BUILD_TYPE,
@@ -497,13 +495,9 @@ auto to_json(BenchmarkResult const& result) -> std::string {
           result.frame_memory_total_padding_bytes,
           result.frame_memory_total_root_claims,
           result.frame_memory_overflow_count);
-    write(R"(,"telemetry":{{"enabled":{},"rows":{},"acquired_blocks":{},)"
-          R"("retained_blocks":{},"allocated_bytes":{}}})",
+    write(R"(,"telemetry":{{"enabled":{},"rows":{}}})",
           result.telemetry_enabled,
-          result.telemetry_rows,
-          result.telemetry_acquired_blocks,
-          result.telemetry_retained_blocks,
-          result.telemetry_allocated_bytes);
+          result.telemetry_rows);
     write(
         R"(,"environment":{{"hardware_threads":{},"compiler":{},"build_type":{},"tracy_enabled":{}}}}})",
         result.hardware_threads,

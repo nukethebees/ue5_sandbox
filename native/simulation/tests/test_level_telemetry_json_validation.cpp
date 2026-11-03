@@ -32,9 +32,9 @@ TEST(LevelTelemetryJsonValidation, RejectsInvalidRecordInvariants) {
 
     EXPECT_TRUE(validate_level_telemetry_json_record(record).has_value());
 
-    record.tick_series.active_entities.add(1, -1);
+    record.final_state.active_lasers = -1;
     EXPECT_FALSE(validate_level_telemetry_json_record(record).has_value());
-    record.tick_series.active_entities = {};
+    record.final_state.active_lasers = 0;
 
     record.battle_samples.push_back({.completed_tick = SimTick{9007199254740994ULL}});
     EXPECT_FALSE(validate_level_telemetry_json_record(record).has_value());
@@ -50,14 +50,13 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     report.run.tick_rate_hz = Frequency::make(120.0);
     report.run.completion.reason = telemetry::RunEndReason::MissionSucceeded;
     report.run.completion.completed_ticks = SimTick{240};
-    report.run.tick_series.active_entities.add(0, 2);
-    report.run.tick_series.active_entities.add(240, 1);
     telemetry::BattleSample sample;
     sample.completed_tick = SimTick{240};
     sample.alive[Team::White][EntityType::PlayerShip] = 1;
     sample.combat.shots[Team::White][EntityType::PlayerShip] = 3;
     sample.combat.damage_dealt[Team::White][EntityType::PlayerShip] = 12.5;
     report.run.battle_samples.push_back(sample);
+    report.run.final_state = sample;
 
     auto const serialized{telemetry::serialize_report(report)};
     ASSERT_TRUE(serialized.has_value()) << serialized.error();
@@ -74,8 +73,8 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     EXPECT_EQ(serialized->find("presentation_mode"), std::string::npos);
     EXPECT_EQ(serialized->find("winning_team"), std::string::npos);
     EXPECT_EQ(serialized->find("objective_id"), std::string::npos);
-    EXPECT_EQ(parsed->run.tick_series.active_entities.num(), 2);
-    EXPECT_EQ(parsed->run.tick_series.active_entities.last_value(), 1);
+    EXPECT_EQ(parsed->run.final_state.alive, sample.alive);
+    EXPECT_EQ(serialized->find("tick_series"), std::string::npos);
     ASSERT_EQ(parsed->run.battle_samples.size(), 1);
     EXPECT_EQ(parsed->run.battle_samples[0].combat.shots, sample.combat.shots);
     EXPECT_EQ(parsed->run.battle_samples[0].combat.damage_dealt, sample.combat.damage_dealt);
@@ -131,6 +130,7 @@ TEST(LevelTelemetryJsonValidation, ReportsLossesFromDestroyedWithoutDuplicateJso
     sample.combat.destroyed[Team::Red][EntityType::Fighter] = 3;
     sample.combat.destroyed[Team::Yellow][EntityType::CapitalShip] = 2;
     report.run.battle_samples.push_back(sample);
+    report.run.final_state = sample;
 
     auto const serialized{telemetry::serialize_report(report)};
     ASSERT_TRUE(serialized) << serialized.error();
@@ -143,11 +143,11 @@ TEST(LevelTelemetryJsonValidation, ReportsLossesFromDestroyedWithoutDuplicateJso
     EXPECT_EQ(summarize_run(*parsed).losses, 5u);
 }
 
-TEST(LevelTelemetryJsonValidation, RejectsCorruptSparseSeriesAndBattleSamples) {
+TEST(LevelTelemetryJsonValidation, RejectsCorruptBattleHistoryAndFinalState) {
     telemetry::Report report;
     report.run.completion.completed_ticks = SimTick{1};
-    report.run.tick_series.active_entities.add(0, 1);
-    report.run.tick_series.active_entities.add(1, 0);
+    report.run.final_state.completed_tick = SimTick{1};
+    report.run.battle_samples.push_back({.completed_tick = SimTick{0}});
     report.run.battle_samples.push_back({.completed_tick = SimTick{1}, .active_lasers = 3});
     auto const serialized{telemetry::serialize_report(report)};
     ASSERT_TRUE(serialized) << serialized.error();
@@ -159,10 +159,10 @@ TEST(LevelTelemetryJsonValidation, RejectsCorruptSparseSeriesAndBattleSamples) {
     for (auto const test :
          {Case{"unknown reason",
                [](auto& json) { json["completion"]["reason"] = "future_reason"; }},
-          Case{"misaligned sparse arrays",
-               [](auto& json) { json["tick_series"]["active_entities"]["values"].push_back(1); }},
+          Case{"mismatched final tick",
+               [](auto& json) { json["final_state"]["completed_tick"] = 2; }},
           Case{"non-increasing ticks",
-               [](auto& json) { json["tick_series"]["active_entities"]["ticks"] = {0, 0}; }},
+               [](auto& json) { json["battle_samples"][1]["completed_tick"] = 0; }},
           Case{"null flattened count",
                [](auto& json) { json["battle_samples"][0]["alive"][0] = nullptr; }},
           Case{"null optional counter",

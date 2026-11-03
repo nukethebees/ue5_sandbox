@@ -927,8 +927,9 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
                      clock.simulation_time());
     EXPECT_DOUBLE_EQ(record->tick_rate_hz.hz(), clock.tick_rate().hz());
 
-    auto const& series{record->tick_series};
-    EXPECT_EQ(series.active_entities.num(), 1) << "An unchanged entity count is only stored once";
+    EXPECT_EQ(record->final_state.completed_tick, clock.get_completed_ticks());
+    EXPECT_EQ(telemetry::total_count(record->final_state.alive),
+              simulation.entity_ledger().count_alive());
 }
 
 } // namespace tests

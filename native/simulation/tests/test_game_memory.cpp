@@ -31,6 +31,7 @@ TEST(NativeSimulation, GameMemoryTest) {
 
     {
         LevelMemoryManager manager{memory, 64, 64};
+        EXPECT_EQ(manager.level_memory().capacity_bytes(), 1024 * 1024);
         auto& tick{manager.tick_memory()};
         auto& phase{manager.phase_memory()};
         auto* const retained{static_cast<std::byte*>(tick.allocate(32, 1))};
@@ -59,7 +60,7 @@ TEST(NativeSimulation, GameMemoryTest) {
         for (auto& worker : workers) {
             worker.join();
         }
-        EXPECT_EQ(manager.game_memory().stats().live_allocation_count, 2u);
+        EXPECT_EQ(manager.game_memory().stats().live_allocation_count, 3u);
         EXPECT_EQ(tick.stats().overflow_count, 128u);
         EXPECT_EQ(phase.stats().overflow_count, 128u);
 

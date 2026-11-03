@@ -13,7 +13,7 @@
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
-#include <ioj/sim/telemetry/block_history_types.h>
+#include <ioj/sim/telemetry/recording_config.h>
 #include <ioj/sim/telemetry/run_metadata.h>
 #include <ioj/sim/turrets/turret_sim_config.h>
 
@@ -41,7 +41,7 @@ struct LevelSimInitData {
     std::size_t phase_memory_capacity_bytes{256 * 1024 * 1024};
 
     telemetry::RunMetadata telemetry_metadata{};
-    telemetry::HistoryConfig telemetry_history{};
+    telemetry::RecordingConfig telemetry_recording{};
 };
 
 }

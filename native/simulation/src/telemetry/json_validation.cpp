@@ -77,32 +77,6 @@ auto validate_counts(Counts const& source, std::string_view const path)
     return {};
 }
 
-template <typename Series>
-auto validate_series(Series const& source, std::string_view const path)
-    -> std::expected<void, std::string> {
-    auto const count{source.num()};
-    SimTick::value_type previous_tick{};
-    for (std::uint32_t index{}; index < count; ++index) {
-        auto const tick_path{std::format("{}.ticks[{}]", path, index)};
-        auto const tick{source.time_at(index)};
-        auto const valid_tick{validate_json_count(tick, tick_path)};
-        if (!valid_tick) {
-            return valid_tick;
-        }
-        if (index > 0 && tick <= previous_tick) {
-            return std::unexpected{
-                error_at(tick_path, "tick coordinates must be strictly increasing")};
-        }
-        auto const value_path{std::format("{}.values[{}]", path, index)};
-        auto const valid_value{validate_json_count(source.value_at(index), value_path)};
-        if (!valid_value) {
-            return valid_value;
-        }
-        previous_tick = tick;
-    }
-    return {};
-}
-
 } // namespace
 
 auto parse_json_int32(double const value, std::string_view const path)
@@ -122,43 +96,25 @@ auto validate_level_telemetry_json_record(RunRecord const& record)
     if (!completed_ticks) {
         return completed_ticks;
     }
-    for (auto const& valid : std::array{
-             validate_series(record.tick_series.active_entities, "tick_series.active_entities"),
-             validate_series(record.tick_series.spawned_entities, "tick_series.spawned_entities"),
-             validate_series(record.tick_series.destroyed_entities,
-                             "tick_series.destroyed_entities"),
-             validate_series(record.tick_series.kills, "tick_series.kills"),
-             validate_series(record.tick_series.active_lasers, "tick_series.active_lasers"),
-             validate_series(record.tick_series.lasers_fired, "tick_series.lasers_fired")}) {
-        if (!valid) {
-            return valid;
-        }
+    auto const sample_count{record.battle_samples.size()};
+    if (record.final_state.completed_tick != record.completion.completed_ticks) {
+        return std::unexpected{"final_state tick must match completion"};
     }
-
-    for (auto const type : EnumTraits<EntityType>::values) {
-        auto const valid{validate_series(
-            record.tick_series.active_entities_by_type[type],
-            std::format("tick_series.active_entities_by_type[{}]", std::to_underlying(type)))};
-        if (!valid) {
-            return valid;
-        }
-    }
-    for (auto const team : EnumTraits<Team>::values) {
-        for (auto const type : EnumTraits<EntityType>::values) {
-            auto const valid{
-                validate_series(record.tick_series.active_entities_by_team_and_type[team][type],
-                                std::format("tick_series.active_entities_by_team_and_type[{}][{}]",
-                                            std::to_underlying(team),
-                                            std::to_underlying(type)))};
-            if (!valid) {
-                return valid;
+    std::uint64_t previous_tick{};
+    for (std::size_t index{}; index <= sample_count; ++index) {
+        auto const& sample{index == sample_count ? record.final_state
+                                                 : record.battle_samples[index]};
+        auto const path{index == sample_count ? std::string{"final_state"}
+                                              : std::format("battle_samples[{}]", index)};
+        if (index < sample_count) {
+            auto const tick{sample.completed_tick.value()};
+            if ((index != 0 && tick <= previous_tick) ||
+                tick > record.completion.completed_ticks.value()) {
+                return std::unexpected{
+                    error_at(path, "sample ticks must increase and not exceed completion")};
             }
+            previous_tick = tick;
         }
-    }
-    auto const sample_count{static_cast<std::uint32_t>(record.battle_samples.size())};
-    for (std::uint32_t index{}; index < sample_count; ++index) {
-        auto const& sample{record.battle_samples[index]};
-        auto const path{std::format("battle_samples[{}]", index)};
         auto const& cbt{sample.combat};
         auto const counts{[&path](auto const& values, std::string_view const name) {
             return validate_counts(values, std::format("{}.{}", path, name));

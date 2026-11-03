@@ -131,9 +131,8 @@ set(tasks_headers
 list(TRANSFORM tasks_headers PREPEND "../include/ioj/sim/tasks/")
 
 set(telemetry_headers
-  block_history_types.h
-  current_state.h
-  history_stats.h
+  battle_change_mask.h
+  recording_config.h
   level_telemetry_manager.h
   run_data.h
   snapshot.h

@@ -208,6 +208,18 @@ TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {
     EXPECT_EQ(result->requested_ticks.value(), 1);
     EXPECT_EQ(result->completed_ticks.value(), 1);
     EXPECT_EQ(result->alive_entities, 1);
+    EXPECT_EQ(result->telemetry_rows, 0);
+}
+
+TEST(SimulationBenchmarkRunner, EnablesSampledHistoryOnRequest) {
+    auto const level_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts" /
+                          "DevThreeSecondFailure.scm"};
+    auto const result{run_benchmark(
+        {.level_path = level_path, .simulated_seconds = 0.01, .telemetry_enabled = true})};
+    ASSERT_TRUE(result) << result.error();
+    EXPECT_TRUE(result->telemetry_enabled);
+    EXPECT_EQ(result->telemetry_rows, 2);
+    EXPECT_EQ(result->alive_entities, 1);
 }
 
 TEST(SimulationBenchmarkRunner, AdvancesOneTickPerCallAtAnyRequestedGameSpeed) {

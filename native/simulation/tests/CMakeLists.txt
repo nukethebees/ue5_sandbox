@@ -23,7 +23,7 @@ target_sources(native-simulation-tests PRIVATE
   test_unique_cell_membership.cpp
   test_bulk_range_queries.cpp
   test_fighter_live_cap.cpp
-  test_level_telemetry_block_history.cpp
+  battle_history_tests.cpp
   test_level_telemetry_manager.cpp
   telemetry_analysis_tests.cpp
   telemetry_run_catalog_tests.cpp

@@ -22,37 +22,25 @@ auto make_run_report(RunRecord record,
     return report;
 }
 auto summarize_run(Report const& report) -> RunStatistics {
-    auto const last{[](auto const& series) { return series.is_empty() ? 0 : series.last_value(); }};
     auto const& run{report.run};
+    auto const& sample{run.final_state};
+    auto const& combat{sample.combat};
     RunStatistics result{
         .simulated_seconds =
             static_cast<double>(run.completion.completed_ticks.value()) / run.tick_rate_hz.hz(),
-        .active_entities = last(run.tick_series.active_entities),
-        .active_lasers = last(run.tick_series.active_lasers),
-        .spawned_entities = last(run.tick_series.spawned_entities),
-        .destroyed_entities = last(run.tick_series.destroyed_entities),
-        .kills = last(run.tick_series.kills),
-        .lasers_fired = last(run.tick_series.lasers_fired),
+        .active_entities = total_count(sample.alive),
+        .active_lasers = sample.active_lasers,
+        .spawned_entities = static_cast<std::int32_t>(total_count(combat.spawned)),
+        .destroyed_entities = static_cast<std::int32_t>(total_count(combat.destroyed)),
+        .kills = static_cast<std::int32_t>(total_count(combat.kills)),
+        .lasers_fired = sample.lasers_fired,
         .mission_complete = run.completion.reason == RunEndReason::MissionSucceeded ||
-                            run.completion.reason == RunEndReason::MissionFailed};
-    if (!run.battle_samples.empty()) {
-        auto const sum{[](auto const& counts) {
-            using Value = std::remove_cvref_t<decltype(*counts.begin()->begin())>;
-            Value total{};
-            for (auto const& row : counts) {
-                for (auto const value : row) {
-                    total += value;
-                }
-            }
-            return total;
-        }};
-        auto const& combat{run.battle_samples.back().combat};
-        result.shots = sum(combat.shots);
-        result.hits = sum(combat.hits);
-        result.damage_dealt = sum(combat.damage_dealt);
-        result.combat_kills = sum(combat.kills);
-        result.losses = sum(combat.destroyed);
-    }
+                            run.completion.reason == RunEndReason::MissionFailed,
+        .shots = total_count(combat.shots),
+        .hits = total_count(combat.hits),
+        .damage_dealt = total_count(combat.damage_dealt),
+        .combat_kills = total_count(combat.kills),
+        .losses = total_count(combat.destroyed)};
     return result;
 }
 auto compare_run_context(Report const& baseline, Report const& candidate) -> RunComparison {

@@ -1,26 +1,15 @@
 #pragma once
-#include "ioj/sim/telemetry/snapshot.h"
-#include <ioj/periodic_timer.h>
-#include <ioj/sim/entities/entity_ledger.h>
-#include <ioj/sim/sim_tick.h>
-#include <ioj/sim/telemetry/block_history.h>
-#include <ioj/sim/telemetry/current_state.h>
-#include <ioj/sim/telemetry/history_stats.h>
-#include <ioj/sim/telemetry/run_record.h>
-#include <ioj/time_series_data.h>
 
-#include <array>
-#include <cstdint>
+#include <ioj/sim/telemetry/battle_history.h>
+#include <ioj/sim/telemetry/recording_config.h>
+#include <ioj/sim/telemetry/run_record.h>
+#include <ioj/sim/telemetry/snapshot.h>
+
 #include <optional>
-#include <span>
-#include <string_view>
-#include <vector>
 
 namespace ioj::sim {
-
+class EntityLedger;
 struct SimClock;
-struct LevelTelemetryManagerTestAccess;
-
 namespace lasers {
 struct Sim;
 }
@@ -34,73 +23,47 @@ class LevelTelemetryManager {
         RecordTaken,
     };
 
-    using tick_type = SimTick;
-
-    /* **************************************** */
-    // Construction and lifecycle
-    /* **************************************** */
     LevelTelemetryManager(SimClock const& clock,
                           EntityLedger const& entity_ledger,
                           lasers::Sim const& lasers,
                           std::pmr::memory_resource& memory,
-                          telemetry::HistoryConfig history_config = {}) noexcept;
+                          telemetry::RecordingConfig config = {}) noexcept;
     LevelTelemetryManager(LevelTelemetryManager const&) = delete;
     LevelTelemetryManager(LevelTelemetryManager&&) = delete;
     auto operator=(LevelTelemetryManager const&) -> LevelTelemetryManager& = delete;
     auto operator=(LevelTelemetryManager&&) -> LevelTelemetryManager& = delete;
 
-    // Requires Uninitialised.
     void initialise();
     void reset();
     void tick();
-
-    /* **************************************** */
-    // Run capture and completion
-    /* **************************************** */
-    // Requires Uninitialised or Recording.
     void set_run_metadata(telemetry::RunMetadata metadata);
     void finalize(telemetry::RunEndReason reason);
-    // Returns empty unless the record awaits extraction.
     auto take_finalized_run(Frequency tick_rate_hz) -> std::optional<telemetry::RunRecord>;
 
-    /* **************************************** */
-    // Snapshots and queries
-    /* **************************************** */
     auto state() const noexcept -> State { return state_; }
-    // Read live state at a stable, completed-tick boundary after initialisation.
+    // Read live totals at a completed-tick boundary; graphs end at the last recorded tick.
     auto make_snapshot() const -> telemetry::Snapshot;
+    auto materialize_history() const -> std::vector<telemetry::BattleSample> {
+        return history_.materialize();
+    }
+    auto recorded_sample_count() const noexcept -> std::size_t { return history_.size(); }
+    auto sampling_interval_ticks() const noexcept -> std::uint64_t { return interval_ticks_; }
 
-    auto history_stats() const noexcept -> telemetry::HistoryStats;
-    auto materialize_tick_series() const -> telemetry::TickSeries;
   private:
-    friend struct LevelTelemetryManagerTestAccess;
+    auto sample_state() const -> telemetry::BattleSample;
+    void record_sample();
 
-    /* **************************************** */
-    // Sampling
-    /* **************************************** */
-    auto sample_state() const -> telemetry::CurrentState;
-    void sample_live_series(telemetry::CurrentState const& current);
-    void sample_series(telemetry::CurrentState const& current);
-    void sample_battle_state(telemetry::CurrentState const& current);
-    auto append_history_row(tick_type completed_tick) -> telemetry::HistoryRows::View;
-    auto materialize_tick_series(telemetry::HistoryFieldMask fields) const -> telemetry::TickSeries;
-
-    /* **************************************** */
-    // State
-    /* **************************************** */
     SimClock const& clock_;
     EntityLedger const& entity_ledger_;
     lasers::Sim const& lasers_;
-    telemetry::CurrentState last_sampled_state_{};
-    telemetry::BlockHistory history_;
-
+    telemetry::RecordingConfig config_;
+    telemetry::BattleHistory history_;
     telemetry::RunMetadata metadata_{};
     telemetry::RunCompletion completion_{};
-    std::vector<telemetry::BattleSample> battle_samples_{};
-
+    telemetry::BattleSample final_state_{};
     State state_{State::Uninitialised};
-
-    PeriodicTimer battle_sample_timer_{PositiveFinite<double>::make(1.0)};
+    std::uint64_t interval_ticks_{};
+    std::uint64_t next_sample_tick_{};
+    std::optional<std::uint64_t> end_tick_;
 };
-
-} // namespace ioj::sim
+}

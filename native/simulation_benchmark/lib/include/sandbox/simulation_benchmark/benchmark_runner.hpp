@@ -62,10 +62,7 @@ struct BenchmarkResult {
     std::uint64_t frame_memory_total_root_claims{};
     std::uint64_t frame_memory_overflow_count{};
     bool telemetry_enabled{};
-    std::uint32_t telemetry_rows{};
-    std::uint32_t telemetry_acquired_blocks{};
-    std::uint32_t telemetry_retained_blocks{};
-    std::size_t telemetry_allocated_bytes{};
+    std::size_t telemetry_rows{};
     unsigned int hardware_threads{};
     std::string compiler{};
     std::string build_type{};

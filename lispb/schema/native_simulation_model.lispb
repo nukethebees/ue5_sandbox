@@ -501,17 +501,3 @@
     (member steering_memory_fighter_count std::int32_t :initializer "")
     (member hard_trace_count std::int32_t :initializer "")
     (projections (cpp))))
-
-(module native_level_telemetry_current_state
-  :header "native/simulation/include/ioj/sim/telemetry/current_state.h"
-  :header-include "ioj/sim/telemetry/current_state.h"
-  :namespace ioj::sim::telemetry
-  (record CurrentState
-    (member active_entities_by_team_and_type @level_telemetry_entity_counts :initializer "")
-    (member active_entities std::int32_t :initializer "")
-    (member spawned_entities std::int32_t :initializer "")
-    (member destroyed_entities std::int32_t :initializer "")
-    (member kills std::int32_t :initializer "")
-    (member active_lasers std::int32_t :initializer "")
-    (member lasers_fired std::int32_t :initializer "")
-    (projections (cpp))))

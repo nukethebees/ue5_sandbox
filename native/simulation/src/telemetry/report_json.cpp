@@ -189,45 +189,6 @@ void read_counts(Json const& parent,
     }
 }
 
-auto write_series(TickSeries::Int32Data const& series) -> Json {
-    auto ticks = Json::array();
-    auto values = Json::array();
-    auto const count{series.num()};
-    for (std::uint32_t index{}; index < count; ++index) {
-        ticks.push_back(series.time_at(index));
-        values.push_back(series.value_at(index));
-    }
-    return {{"ticks", std::move(ticks)}, {"values", std::move(values)}};
-}
-
-void read_series(Json const& parent,
-                 std::string_view const field,
-                 std::string_view const path,
-                 TickSeries::Int32Data& series) {
-    auto const& object{required_object(parent, field, path)};
-    auto const location{field_path(path, field)};
-    auto const& ticks{required_array(object, "ticks", location)};
-    auto const& values{required_array(object, "values", location)};
-    auto const count{ticks.size()};
-    if (count != values.size() || count > std::numeric_limits<std::uint32_t>::max()) {
-        fail(location, "ticks and values must be aligned and fit in a series");
-    }
-
-    series.reserve(static_cast<std::uint32_t>(count));
-    SimTick::value_type previous{};
-    for (std::size_t index{}; index < count; ++index) {
-        auto const tick{read_value<SimTick::value_type>(
-            ticks[index], std::format("{}.ticks[{}]", location, index))};
-        if (index > 0 && tick <= previous) {
-            fail(location, "tick coordinates must be strictly increasing");
-        }
-        series.add(
-            tick,
-            read_value<std::int32_t>(values[index], std::format("{}.values[{}]", location, index)));
-        previous = tick;
-    }
-}
-
 auto write_combat(CombatTelemetryCounters const& source) -> Json {
     return {
         {"spawned", write_counts(source.spawned)},
@@ -252,61 +213,22 @@ void read_combat(Json const& source, std::string_view const path, CombatTelemetr
     read_counts(source, "kill_matrix", path, output.kill_matrix);
 }
 
-auto write_tick_series(TickSeries const& source) -> Json {
-    Json result{
-        {"active_entities", write_series(source.active_entities)},
-        {"spawned_entities", write_series(source.spawned_entities)},
-        {"destroyed_entities", write_series(source.destroyed_entities)},
-        {"kills", write_series(source.kills)},
-        {"active_lasers", write_series(source.active_lasers)},
-        {"lasers_fired", write_series(source.lasers_fired)},
-    };
-    auto by_type = Json::object();
-    for (auto const type : EnumTraits<EntityType>::values) {
-        by_type[to_serialized_string(type)] = write_series(source.active_entities_by_type[type]);
-    }
-    result["active_entities_by_type"] = std::move(by_type);
-    auto by_team = Json::object();
-    for (auto const team : EnumTraits<Team>::values) {
-        auto row = Json::object();
-        for (auto const type : EnumTraits<EntityType>::values) {
-            row[to_serialized_string(type)] =
-                write_series(source.active_entities_by_team_and_type[team][type]);
-        }
-        by_team[to_serialized_string(team)] = std::move(row);
-    }
-    result["active_entities_by_team_and_type"] = std::move(by_team);
-    return result;
+auto write_sample(BattleSample const& sample) -> Json {
+    return {{"completed_tick", sample.completed_tick.value()},
+            {"alive", write_counts(sample.alive)},
+            {"combat", write_combat(sample.combat)},
+            {"active_lasers", sample.active_lasers},
+            {"lasers_fired", sample.lasers_fired}};
 }
 
-void read_tick_series(Json const& source, TickSeries& output) {
-    read_series(source, "active_entities", "tick_series", output.active_entities);
-    read_series(source, "spawned_entities", "tick_series", output.spawned_entities);
-    read_series(source, "destroyed_entities", "tick_series", output.destroyed_entities);
-    read_series(source, "kills", "tick_series", output.kills);
-    read_series(source, "active_lasers", "tick_series", output.active_lasers);
-    read_series(source, "lasers_fired", "tick_series", output.lasers_fired);
-
-    auto const& by_type{required_object(source, "active_entities_by_type", "tick_series")};
-    for (auto const type : EnumTraits<EntityType>::values) {
-        read_series(by_type,
-                    to_serialized_string(type),
-                    "tick_series.active_entities_by_type",
-                    output.active_entities_by_type[type]);
-    }
-    auto const& by_team{required_object(source, "active_entities_by_team_and_type", "tick_series")};
-    for (auto const team : EnumTraits<Team>::values) {
-        auto const name{to_serialized_string(team)};
-        auto const path{field_path("tick_series.active_entities_by_team_and_type", name)};
-        auto const& row{
-            required_object(by_team, name, "tick_series.active_entities_by_team_and_type")};
-        for (auto const type : EnumTraits<EntityType>::values) {
-            read_series(row,
-                        to_serialized_string(type),
-                        path,
-                        output.active_entities_by_team_and_type[team][type]);
-        }
-    }
+auto read_sample(Json const& source, std::string_view const path) -> BattleSample {
+    BattleSample sample;
+    sample.completed_tick = read_field<SimTick>(source, "completed_tick", path);
+    read_counts(source, "alive", path, sample.alive);
+    read_combat(required_object(source, "combat", path), field_path(path, "combat"), sample.combat);
+    sample.active_lasers = read_field<std::int32_t>(source, "active_lasers", path);
+    sample.lasers_fired = read_field<std::int32_t>(source, "lasers_fired", path);
+    return sample;
 }
 
 auto validate_report(Report const& report) -> std::expected<void, std::string> {
@@ -367,20 +289,14 @@ auto read_report(Json const& root) -> Report {
         read_enum(completion, "reason", "completion", try_parse_serialized_run_end_reason);
     result.completed_ticks = read_field<SimTick>(completion, "completed_ticks", "completion");
 
-    read_tick_series(required_object(root, "tick_series", ""), report.run.tick_series);
+    report.run.final_state = read_sample(required_object(root, "final_state", ""), "final_state");
     auto const& samples{required_array(root, "battle_samples", "")};
     report.run.battle_samples.reserve(samples.size());
     auto const count{samples.size()};
     for (std::size_t index{}; index < count; ++index) {
         auto const& source{samples[index]};
         auto const path{std::format("battle_samples[{}]", index)};
-        BattleSample sample;
-        sample.completed_tick = read_field<SimTick>(source, "completed_tick", path);
-        read_counts(source, "alive", path, sample.alive);
-        read_combat(required_object(source, "combat", path), path + ".combat", sample.combat);
-        sample.active_lasers = read_field<std::int32_t>(source, "active_lasers", path);
-        sample.lasers_fired = read_field<std::int32_t>(source, "lasers_fired", path);
-        report.run.battle_samples.push_back(sample);
+        report.run.battle_samples.push_back(read_sample(source, path));
     }
     return report;
 }
@@ -400,11 +316,7 @@ auto serialize_report(Report const& report) -> std::expected<std::string, std::s
 
         auto samples = Json::array();
         for (auto const& sample : report.run.battle_samples) {
-            samples.push_back({{"completed_tick", sample.completed_tick.value()},
-                               {"alive", write_counts(sample.alive)},
-                               {"combat", write_combat(sample.combat)},
-                               {"active_lasers", sample.active_lasers},
-                               {"lasers_fired", sample.lasers_fired}});
+            samples.push_back(write_sample(sample));
         }
         Json root{
             {"schema_version", RunRecord::schema_version},
@@ -425,7 +337,7 @@ auto serialize_report(Report const& report) -> std::expected<std::string, std::s
               {"stop_when_battle_resolved", metadata.stop_when_battle_resolved},
               {"requested_duration_seconds", write_duration(metadata.requested_duration_seconds)}}},
             {"completion", std::move(completion)},
-            {"tick_series", write_tick_series(report.run.tick_series)},
+            {"final_state", write_sample(report.run.final_state)},
             {"battle_samples", std::move(samples)},
         };
         return root.dump(2);
@@ -436,7 +348,11 @@ auto serialize_report(Report const& report) -> std::expected<std::string, std::s
 
 auto deserialize_report(std::string_view const json) -> std::expected<Report, std::string> {
     try {
-        return read_report(Json::parse(json));
+        auto report{read_report(Json::parse(json))};
+        if (auto const valid{validate_report(report)}; !valid) {
+            return std::unexpected{valid.error()};
+        }
+        return report;
     } catch (ReportParseError const& error) {
         return std::unexpected{error.message};
     } catch (Json::exception const& error) {

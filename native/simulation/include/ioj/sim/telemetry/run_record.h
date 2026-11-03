@@ -10,12 +10,12 @@
 
 namespace ioj::sim::telemetry {
 struct RunRecord {
-    static constexpr std::int32_t schema_version{11};
+    static constexpr std::int32_t schema_version{12};
 
     RunMetadata metadata{};
     Frequency tick_rate_hz{Frequency::make(60.0)};
     RunCompletion completion{};
-    TickSeries tick_series{};
+    BattleSample final_state{};
     std::vector<BattleSample> battle_samples{};
 };
 }
