@@ -125,6 +125,24 @@ TEST(LevelTelemetryJsonValidation, NativeCodecRejectsInvalidInputAndReturnsError
     EXPECT_FALSE(telemetry::serialize_report(report).has_value());
 }
 
+TEST(LevelTelemetryJsonValidation, ReportsLossesFromDestroyedWithoutDuplicateJsonField) {
+    telemetry::Report report;
+    telemetry::BattleSample sample;
+    sample.combat.destroyed[Team::Red][EntityType::Fighter] = 3;
+    sample.combat.destroyed[Team::Yellow][EntityType::CapitalShip] = 2;
+    report.run.battle_samples.push_back(sample);
+
+    auto const serialized{telemetry::serialize_report(report)};
+    ASSERT_TRUE(serialized) << serialized.error();
+    auto const json = nlohmann::json::parse(*serialized);
+    EXPECT_FALSE(json["battle_samples"][0]["combat"].contains("losses"));
+
+    auto const parsed{telemetry::deserialize_report(*serialized)};
+    ASSERT_TRUE(parsed) << parsed.error();
+    EXPECT_EQ(parsed->run.battle_samples[0].combat.destroyed, sample.combat.destroyed);
+    EXPECT_EQ(summarize_run(*parsed).losses, 5u);
+}
+
 TEST(LevelTelemetryJsonValidation, RejectsCorruptSparseSeriesAndBattleSamples) {
     telemetry::Report report;
     report.run.completion.completed_ticks = SimTick{1};

@@ -16,7 +16,6 @@ constexpr auto is_valid(Team const team) noexcept -> bool {
 
 void CombatStatistics::reset() noexcept {
     alive_counts_ = {};
-    cumulative_kill_count_ = 0;
     combat_telemetry_ = {};
 }
 
@@ -50,7 +49,6 @@ void CombatStatistics::record_destroyed(Team const team, EntityType const type) 
     assert(is_valid(type));
 
     ++combat_telemetry_.destroyed[team][type];
-    ++combat_telemetry_.losses[team][type];
 }
 
 void CombatStatistics::record_kill(Team const killer_team,
@@ -60,7 +58,6 @@ void CombatStatistics::record_kill(Team const killer_team,
     assert(is_valid(killer_type));
     assert(is_valid(victim_team));
 
-    ++cumulative_kill_count_;
     ++combat_telemetry_.kills[killer_team][killer_type];
     ++combat_telemetry_.kill_matrix[killer_team][victim_team];
 }
@@ -101,7 +98,11 @@ auto CombatStatistics::alive_count() const noexcept -> std::int32_t {
 }
 
 auto CombatStatistics::cumulative_kill_count() const noexcept -> std::int32_t {
-    return cumulative_kill_count_;
+    std::uint64_t total{};
+    for (auto const& counts : combat_telemetry_.kills) {
+        total += std::accumulate(counts.begin(), counts.end(), std::uint64_t{});
+    }
+    return static_cast<std::int32_t>(total);
 }
 
 auto CombatStatistics::count_alive(EntityType const type) const noexcept -> std::int32_t {

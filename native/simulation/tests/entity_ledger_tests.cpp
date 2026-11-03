@@ -206,4 +206,27 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     EXPECT_EQ(ledger.history_index(restarted), 0);
     EXPECT_EQ(ledger.count_alive(), 1);
 }
+TEST(CombatStatistics, DerivesKillTotalAcrossTeamsAndTypesAndResetsCounters) {
+    CombatStatistics statistics;
+    statistics.record_kill(Team::Blue, EntityType::Fighter, Team::Red);
+    statistics.record_kill(Team::Blue, EntityType::CapitalShip, Team::Yellow);
+    statistics.record_kill(Team::Green, EntityType::Turret, Team::Red);
+    statistics.record_destroyed(Team::Red, EntityType::Fighter);
+    statistics.record_destroyed(Team::Yellow, EntityType::CapitalShip);
+
+    EXPECT_EQ(statistics.cumulative_kill_count(), 3);
+    auto const& counters{statistics.combat_telemetry()};
+    EXPECT_EQ(counters.kills[Team::Blue][EntityType::Fighter], 1u);
+    EXPECT_EQ(counters.kills[Team::Blue][EntityType::CapitalShip], 1u);
+    EXPECT_EQ(counters.kills[Team::Green][EntityType::Turret], 1u);
+    EXPECT_EQ(counters.kill_matrix[Team::Blue][Team::Yellow], 1u);
+    EXPECT_EQ(counters.destroyed[Team::Red][EntityType::Fighter], 1u);
+
+    statistics.reset();
+    EXPECT_EQ(statistics.cumulative_kill_count(), 0);
+    EXPECT_EQ(counters.kills, telemetry::Uint64EntityCounts{});
+    EXPECT_EQ(counters.destroyed, telemetry::Uint64EntityCounts{});
+    EXPECT_EQ(counters.kill_matrix, telemetry::KillMatrix{});
+}
+
 } // namespace ioj::sim::tests

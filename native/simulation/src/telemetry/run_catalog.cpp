@@ -51,7 +51,7 @@ auto summarize_run(Report const& report) -> RunStatistics {
         result.hits = sum(combat.hits);
         result.damage_dealt = sum(combat.damage_dealt);
         result.combat_kills = sum(combat.kills);
-        result.losses = sum(combat.losses);
+        result.losses = sum(combat.destroyed);
     }
     return result;
 }

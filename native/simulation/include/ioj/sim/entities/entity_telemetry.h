@@ -27,7 +27,6 @@ struct CombatTelemetryCounters {
     DoubleEntityCounts damage_dealt{};
     DoubleEntityCounts damage_received{};
     Uint64EntityCounts kills{};
-    Uint64EntityCounts losses{};
     KillMatrix kill_matrix{};
 };
 } // namespace ioj::sim::telemetry

@@ -174,7 +174,6 @@ auto validate_level_telemetry_json_record(RunRecord const& record)
                  counts(cbt.damage_dealt, "combat.damage_dealt"),
                  counts(cbt.damage_received, "combat.damage_received"),
                  counts(cbt.kills, "combat.kills"),
-                 counts(cbt.losses, "combat.losses"),
                  counts(cbt.kill_matrix, "combat.kill_matrix"),
                  validate_json_count(sample.active_lasers, path + ".active_lasers"),
                  validate_json_count(sample.lasers_fired, path + ".lasers_fired")}) {
