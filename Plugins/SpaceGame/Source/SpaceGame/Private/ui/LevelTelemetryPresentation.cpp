@@ -82,7 +82,10 @@ void update_activity_graph(SGraphPlot& graph,
                                  kills_color));
     graph.set_series(MoveTemp(series));
 
-    auto const x_max{FMath::Max(snapshot.elapsed_seconds.seconds(), 1.0)};
+    auto const last_tick{snapshot.active_entity_count_data.is_empty()
+                             ? snapshot.cumulative_kill_count_data.last_time()
+                             : snapshot.active_entity_count_data.last_time()};
+    auto const x_max{FMath::Max(static_cast<double>(last_tick) / snapshot.tick_rate_hz.hz(), 1.0)};
     (void)graph.set_axis_settings(
         {.range_mode = EGraphRangeMode::Fixed, .fixed_range = {0.0, x_max}},
         {.range_mode = EGraphRangeMode::AutoIncludeZero});

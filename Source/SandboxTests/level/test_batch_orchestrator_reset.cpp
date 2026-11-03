@@ -102,9 +102,8 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     {
         auto const* const level{test_driver->orchestrator.get_level_simulation()};
         check(level);
-        auto const series{level->level_telemetry_manager().materialize_tick_series()};
-        auto const& telemetry{series.active_entities};
-        checks.is_true(!telemetry.is_empty(), TEXT("Initial level telemetry is populated"));
+        checks.is_true(level->level_telemetry_manager().recorded_sample_count() != 0,
+                       TEXT("Initial level telemetry is populated"));
     }
     auto const resources{test_driver->orchestrator.get_presentation_resources()};
     test_driver->orchestrator.reset_for_new_level();
@@ -128,12 +127,15 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     test_driver->orchestrator.SetActorTickEnabled(false);
     auto const* const level{test_driver->orchestrator.get_level_simulation()};
     check(level);
-    auto const series{level->level_telemetry_manager().materialize_tick_series()};
-    auto const& telemetry{series.active_entities};
-    checks.are_equal(uint32{1}, telemetry.num(), TEXT("Restart records one telemetry baseline"));
-    checks.are_equal(uint64{0}, telemetry.last_time(), TEXT("Restart baseline uses tick zero"));
+    auto const history{level->level_telemetry_manager().materialize_history()};
+    checks.are_equal(
+        std::size_t{1}, history.size(), TEXT("Restart records one telemetry baseline"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    auto const& baseline{history.front()};
+    checks.are_equal(
+        uint64{0}, baseline.completed_tick.value(), TEXT("Restart baseline uses tick zero"));
     checks.are_equal(test_driver->get_ledger().count_alive(),
-                     telemetry.last_value(),
+                     sim::telemetry::total_count(baseline.alive),
                      TEXT("Restart baseline records active entities"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }

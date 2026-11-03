@@ -196,19 +196,14 @@ void UTelemetryDashboardWidget::rebuild_state() {
     if (!statistics.mission_complete) {
         summary += TEXT("\nMISSION  //  INCOMPLETE");
     }
-    if (record->run.battle_samples.empty()) {
-        summary += TEXT("\nCOMBAT DETAILS  //  UNAVAILABLE");
-    } else {
-        summary +=
-            FString::Printf(TEXT("\nBATTLE SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "
-                                 "DAMAGE %.0f  KILLS %llu  LOSSES %llu"),
-                            static_cast<int32>(record->run.battle_samples.size()),
-                            statistics.shots,
-                            statistics.hits,
-                            statistics.damage_dealt,
-                            statistics.combat_kills,
-                            statistics.losses);
-    }
+    summary += FString::Printf(TEXT("\nBATTLE SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "
+                                    "DAMAGE %.0f  KILLS %llu  LOSSES %llu"),
+                               static_cast<int32>(record->run.battle_samples.size()),
+                               statistics.shots,
+                               statistics.hits,
+                               statistics.damage_dealt,
+                               statistics.combat_kills,
+                               statistics.losses);
     state_.summary = FText::FromString(MoveTemp(summary));
 }
 
