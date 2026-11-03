@@ -70,15 +70,14 @@ void LevelTelemetryManager::initialise() {
         metadata_.launched_utc = level_telemetry_detail::utc_now_iso8601();
     }
 
-    update_current_state();
-    sample_series();
+    auto const current{sample_state()};
+    sample_series(current);
 
-    sample_battle_state();
+    sample_battle_state(current);
     state_ = State::Recording;
 }
 
 void LevelTelemetryManager::reset() {
-    current_state_ = {};
     last_sampled_state_ = {};
     history_.reset();
     metadata_ = {};
@@ -93,13 +92,13 @@ void LevelTelemetryManager::reset() {
 /* **************************************** */
 void LevelTelemetryManager::tick() {
     assert(state_ != State::Uninitialised);
-    update_current_state();
-    sample_live_series();
+    auto const current{sample_state()};
+    sample_live_series(current);
 
     auto const simulated_seconds{clock_.simulation_time()};
     if (battle_sample_timer_.try_consume(simulated_seconds + 1.e-8)) {
-        sample_series();
-        sample_battle_state();
+        sample_series(current);
+        sample_battle_state(current);
     }
 }
 
@@ -108,6 +107,8 @@ void LevelTelemetryManager::tick() {
 /* **************************************** */
 auto LevelTelemetryManager::make_snapshot() const -> telemetry::Snapshot {
     assert(state_ != State::Uninitialised);
+    assert(clock_.phase() == SimulationPhase::BetweenTicks);
+    auto const current{sample_state()};
     auto const completed_tick{clock_.get_completed_ticks()};
     auto const tick_rate_hz{clock_.tick_rate()};
     telemetry::HistoryFieldMask fields;
@@ -123,23 +124,23 @@ auto LevelTelemetryManager::make_snapshot() const -> telemetry::Snapshot {
            "Level telemetry cannot contain samples after the snapshot tick.");
     assert((contains_only_nonnegative_values(active_entity_count_data) &&
             contains_only_nonnegative_values(cumulative_kill_count_data) &&
-            current_state_.spawned_entities >= 0 && current_state_.active_lasers >= 0 &&
-            current_state_.lasers_fired >= 0) &&
+            current.spawned_entities >= 0 && current.active_lasers >= 0 &&
+            current.lasers_fired >= 0) &&
            "Level telemetry snapshots cannot contain negative counts.");
 
     telemetry::Snapshot snapshot;
     snapshot.elapsed_seconds = Duration::make(static_cast<double>(completed_tick.value()) *
                                               tick_rate_hz.period().seconds());
     snapshot.tick_rate_hz = tick_rate_hz;
-    snapshot.active_entities = current_state_.active_entities;
-    snapshot.spawned_entities = current_state_.spawned_entities;
+    snapshot.active_entities = current.active_entities;
+    snapshot.spawned_entities = current.spawned_entities;
 
     assert((snapshot.spawned_entities >= snapshot.active_entities) &&
            "Spawned entity count cannot be lower than active entity count.");
-    snapshot.destroyed_entities = current_state_.destroyed_entities;
-    snapshot.kills = current_state_.kills;
-    snapshot.active_lasers = current_state_.active_lasers;
-    snapshot.lasers_fired = current_state_.lasers_fired;
+    snapshot.destroyed_entities = current.destroyed_entities;
+    snapshot.kills = current.kills;
+    snapshot.active_lasers = current.active_lasers;
+    snapshot.lasers_fired = current.lasers_fired;
     snapshot.active_entity_count_data =
         snapshot_with_terminal_sample(std::move(active_entity_count_data), completed_tick.value());
     snapshot.cumulative_kill_count_data = snapshot_with_terminal_sample(
@@ -150,34 +151,34 @@ auto LevelTelemetryManager::make_snapshot() const -> telemetry::Snapshot {
 /* **************************************** */
 // State and series sampling
 /* **************************************** */
-void LevelTelemetryManager::update_current_state() {
-    current_state_.active_entities_by_team_and_type =
-        entity_ledger_.count_alive_per_team_and_type();
-    current_state_.active_entities = entity_ledger_.count_alive();
-    current_state_.spawned_entities = entity_ledger_.num_unique_ids_issued();
-    current_state_.destroyed_entities =
-        current_state_.spawned_entities - current_state_.active_entities;
-    current_state_.kills = entity_ledger_.count_kills();
-    current_state_.active_lasers = lasers_.num_instances();
-    current_state_.lasers_fired = lasers_.get_number_spawned();
+auto LevelTelemetryManager::sample_state() const -> telemetry::CurrentState {
+    telemetry::CurrentState current;
+    current.active_entities_by_team_and_type = entity_ledger_.count_alive_per_team_and_type();
+    current.active_entities = entity_ledger_.count_alive();
+    current.spawned_entities = entity_ledger_.num_unique_ids_issued();
+    current.destroyed_entities = current.spawned_entities - current.active_entities;
+    current.kills = entity_ledger_.count_kills();
+    current.active_lasers = lasers_.num_instances();
+    current.lasers_fired = lasers_.get_number_spawned();
 
-    assert(current_state_.destroyed_entities >= 0);
+    assert(current.destroyed_entities >= 0);
+    return current;
 }
 
-void LevelTelemetryManager::sample_live_series() {
+void LevelTelemetryManager::sample_live_series(telemetry::CurrentState const& current) {
     using namespace level_telemetry_detail;
     telemetry::EntityTypeCounts active_entities_by_type{};
     telemetry::EntityTypeCounts last_active_entities_by_type{};
     auto const initial_sample{state_ == State::Uninitialised};
     FieldMask mask;
 
-    if (initial_sample || current_state_.active_entities != last_sampled_state_.active_entities) {
+    if (initial_sample || current.active_entities != last_sampled_state_.active_entities) {
         mask.set(Field::ActiveEntities);
     }
 
     for (auto const type : EnumTraits<EntityType>::values) {
         for (auto const team : EnumTraits<Team>::values) {
-            auto const value{current_state_.active_entities_by_team_and_type[team][type]};
+            auto const value{current.active_entities_by_team_and_type[team][type]};
             auto const last_value{last_sampled_state_.active_entities_by_team_and_type[team][type]};
             active_entities_by_type[type] += value;
             last_active_entities_by_type[type] += last_value;
@@ -191,7 +192,7 @@ void LevelTelemetryManager::sample_live_series() {
         }
     }
 
-    if (initial_sample || current_state_.kills != last_sampled_state_.kills) {
+    if (initial_sample || current.kills != last_sampled_state_.kills) {
         mask.set(Field::Kills);
     }
     if (mask.is_empty()) {
@@ -204,7 +205,7 @@ void LevelTelemetryManager::sample_live_series() {
     columns.validity_masks()[row].set(mask);
 
     if (mask.has(Field::ActiveEntities)) {
-        columns.active_entities()[row] = current_state_.active_entities;
+        columns.active_entities()[row] = current.active_entities;
     }
     auto const counts_by_type{columns.active_entities_by_type()};
     auto const counts_by_team_and_type{columns.active_entities_by_team_and_type()};
@@ -217,23 +218,22 @@ void LevelTelemetryManager::sample_live_series() {
                 std::to_underlying(team), std::to_underlying(type))};
             if (mask.has(field)) {
                 counts_by_team_and_type[row][team][type] =
-                    current_state_.active_entities_by_team_and_type[team][type];
+                    current.active_entities_by_team_and_type[team][type];
             }
         }
     }
     if (mask.has(Field::Kills)) {
-        columns.kills()[row] = current_state_.kills;
+        columns.kills()[row] = current.kills;
     }
 
-    last_sampled_state_.active_entities = current_state_.active_entities;
-    last_sampled_state_.active_entities_by_team_and_type =
-        current_state_.active_entities_by_team_and_type;
-    last_sampled_state_.kills = current_state_.kills;
+    last_sampled_state_.active_entities = current.active_entities;
+    last_sampled_state_.active_entities_by_team_and_type = current.active_entities_by_team_and_type;
+    last_sampled_state_.kills = current.kills;
 }
 
-void LevelTelemetryManager::sample_series() {
+void LevelTelemetryManager::sample_series(telemetry::CurrentState const& current) {
     using namespace level_telemetry_detail;
-    sample_live_series();
+    sample_live_series(current);
 
     auto const initial_sample{state_ == State::Uninitialised};
     FieldMask mask;
@@ -243,15 +243,13 @@ void LevelTelemetryManager::sample_series() {
                 mask.set(field);
             }
         }};
-    mark_changed(Field::SpawnedEntities,
-                 current_state_.spawned_entities,
-                 last_sampled_state_.spawned_entities);
-    mark_changed(Field::DestroyedEntities,
-                 current_state_.destroyed_entities,
-                 last_sampled_state_.destroyed_entities);
     mark_changed(
-        Field::ActiveLasers, current_state_.active_lasers, last_sampled_state_.active_lasers);
-    mark_changed(Field::LasersFired, current_state_.lasers_fired, last_sampled_state_.lasers_fired);
+        Field::SpawnedEntities, current.spawned_entities, last_sampled_state_.spawned_entities);
+    mark_changed(Field::DestroyedEntities,
+                 current.destroyed_entities,
+                 last_sampled_state_.destroyed_entities);
+    mark_changed(Field::ActiveLasers, current.active_lasers, last_sampled_state_.active_lasers);
+    mark_changed(Field::LasersFired, current.lasers_fired, last_sampled_state_.lasers_fired);
 
     if (!mask.is_empty()) {
         auto columns{append_history_row(clock_.get_completed_ticks())};
@@ -259,23 +257,23 @@ void LevelTelemetryManager::sample_series() {
         columns.validity_masks()[row].set(mask);
 
         if (mask.has(Field::SpawnedEntities)) {
-            columns.spawned_entities()[row] = current_state_.spawned_entities;
+            columns.spawned_entities()[row] = current.spawned_entities;
         }
         if (mask.has(Field::DestroyedEntities)) {
-            columns.destroyed_entities()[row] = current_state_.destroyed_entities;
+            columns.destroyed_entities()[row] = current.destroyed_entities;
         }
         if (mask.has(Field::ActiveLasers)) {
-            columns.active_lasers()[row] = current_state_.active_lasers;
+            columns.active_lasers()[row] = current.active_lasers;
         }
         if (mask.has(Field::LasersFired)) {
-            columns.lasers_fired()[row] = current_state_.lasers_fired;
+            columns.lasers_fired()[row] = current.lasers_fired;
         }
     }
 
-    last_sampled_state_.spawned_entities = current_state_.spawned_entities;
-    last_sampled_state_.destroyed_entities = current_state_.destroyed_entities;
-    last_sampled_state_.active_lasers = current_state_.active_lasers;
-    last_sampled_state_.lasers_fired = current_state_.lasers_fired;
+    last_sampled_state_.spawned_entities = current.spawned_entities;
+    last_sampled_state_.destroyed_entities = current.destroyed_entities;
+    last_sampled_state_.active_lasers = current.active_lasers;
+    last_sampled_state_.lasers_fired = current.lasers_fired;
 }
 
 auto LevelTelemetryManager::append_history_row(tick_type const completed_tick)
@@ -409,7 +407,7 @@ auto LevelTelemetryManager::materialize_tick_series(telemetry::HistoryFieldMask 
     return result;
 }
 
-void LevelTelemetryManager::sample_battle_state() {
+void LevelTelemetryManager::sample_battle_state(telemetry::CurrentState const& current) {
     auto const tick{clock_.get_completed_ticks()};
     auto& samples{battle_samples_};
     if (!samples.empty() && samples.back().completed_tick == tick) {
@@ -419,9 +417,9 @@ void LevelTelemetryManager::sample_battle_state() {
     samples.push_back(telemetry::BattleSample{
         .completed_tick = tick,
         .combat = entity_ledger_.combat_telemetry(),
-        .alive = current_state_.active_entities_by_team_and_type,
-        .active_lasers = current_state_.active_lasers,
-        .lasers_fired = current_state_.lasers_fired,
+        .alive = current.active_entities_by_team_and_type,
+        .active_lasers = current.active_lasers,
+        .lasers_fired = current.lasers_fired,
     });
 }
 
@@ -465,9 +463,9 @@ void LevelTelemetryManager::finalize(telemetry::RunEndReason const reason) {
 
     auto const completed_ticks{clock_.get_completed_ticks()};
 
-    update_current_state();
-    sample_series();
-    sample_battle_state();
+    auto const current{sample_state()};
+    sample_series(current);
+    sample_battle_state(current);
 
     completion_.reason = reason;
     completion_.completed_utc = level_telemetry_detail::utc_now_iso8601();

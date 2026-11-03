@@ -67,9 +67,9 @@ class LevelTelemetryManager {
     // Snapshots and queries
     /* **************************************** */
     auto state() const noexcept -> State { return state_; }
+    // Read live state at a stable, completed-tick boundary after initialisation.
     auto make_snapshot() const -> telemetry::Snapshot;
 
-    auto current_state() const noexcept -> telemetry::CurrentState const& { return current_state_; }
     auto history_stats() const noexcept -> telemetry::HistoryStats;
     auto materialize_tick_series() const -> telemetry::TickSeries;
   private:
@@ -78,10 +78,10 @@ class LevelTelemetryManager {
     /* **************************************** */
     // Sampling
     /* **************************************** */
-    void update_current_state();
-    void sample_live_series();
-    void sample_series();
-    void sample_battle_state();
+    auto sample_state() const -> telemetry::CurrentState;
+    void sample_live_series(telemetry::CurrentState const& current);
+    void sample_series(telemetry::CurrentState const& current);
+    void sample_battle_state(telemetry::CurrentState const& current);
     auto append_history_row(tick_type completed_tick) -> telemetry::HistoryRows::View;
     auto materialize_tick_series(telemetry::HistoryFieldMask fields) const -> telemetry::TickSeries;
 
@@ -91,7 +91,6 @@ class LevelTelemetryManager {
     SimClock const& clock_;
     EntityLedger const& entity_ledger_;
     lasers::Sim const& lasers_;
-    telemetry::CurrentState current_state_{};
     telemetry::CurrentState last_sampled_state_{};
     telemetry::BlockHistory history_;
 

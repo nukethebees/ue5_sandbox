@@ -37,6 +37,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
 
     SimClock clock;
     clock.initialise({});
+    clock.reset();
     EntityLedger entity_ledger;
     lasers::Sim lasers;
     auto& game_memory{*std::pmr::new_delete_resource()};
@@ -52,7 +53,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     auto tick_series{telemetry_manager.materialize_tick_series()};
     auto const& active_count_data{tick_series.active_entities};
     auto const& kill_count_data{tick_series.kills};
-    auto const& initial_state{telemetry_manager.current_state()};
+    auto const initial_state{telemetry_manager.make_snapshot()};
     EXPECT_EQ(active_count_data.num(), 1);
     EXPECT_EQ(active_count_data.last_time(), 0);
     EXPECT_EQ(active_count_data.last_value(), 0);
@@ -105,9 +106,9 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     tick_series = telemetry_manager.materialize_tick_series();
     EXPECT_TRUE(active_count_data.is_empty());
     EXPECT_TRUE(kill_count_data.is_empty());
-    EXPECT_EQ(telemetry_manager.current_state().active_lasers, 0);
 
     clock.initialise({});
+    clock.reset();
     telemetry_manager.initialise();
     tick_series = telemetry_manager.materialize_tick_series();
     EXPECT_EQ(active_count_data.num(), 1);
@@ -123,11 +124,16 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     tick_series = telemetry_manager.materialize_tick_series();
     EXPECT_EQ(active_count_data.last_value(), 3);
     EXPECT_EQ(active_count_data.last_time(), 2);
-    auto const& entity_state{telemetry_manager.current_state()};
-    EXPECT_EQ(entity_state.active_entities_by_team_and_type[Team::Green][EntityType::PlayerShip],
+    auto const entity_state{telemetry_manager.make_snapshot()};
+    EXPECT_EQ(tick_series.active_entities_by_team_and_type[Team::Green][EntityType::PlayerShip]
+                  .last_value(),
               1);
-    EXPECT_EQ(entity_state.active_entities_by_team_and_type[Team::Red][EntityType::CapitalShip], 1);
-    EXPECT_EQ(entity_state.active_entities_by_team_and_type[Team::Red][EntityType::Fighter], 1);
+    EXPECT_EQ(tick_series.active_entities_by_team_and_type[Team::Red][EntityType::CapitalShip]
+                  .last_value(),
+              1);
+    EXPECT_EQ(
+        tick_series.active_entities_by_team_and_type[Team::Red][EntityType::Fighter].last_value(),
+        1);
     auto const green{Team::Green};
     auto const player_ship{EntityType::PlayerShip};
     auto const white{Team::White};
@@ -180,6 +186,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
         {.block_bytes = telemetry::history_rows::Layout::layout_bytes(1)},
     };
     clock.initialise({});
+    clock.reset();
     boundary_manager.initialise();
     EXPECT_EQ(boundary_manager.history_stats().total_sample_capacity, 64);
     for (std::uint64_t tick{1}; tick <= 64; ++tick) {
@@ -199,6 +206,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
 TEST(LevelTelemetryManager, ExtractsSnapshotSeriesAcrossBlocksWithoutMutatingHistory) {
     SimClock clock;
     clock.initialise({});
+    clock.reset();
     EntityLedger ledger;
     EntityId killer;
     ledger.record_spawns(EntityType::Turret, Team::Blue, Health{1}, {&killer, 1});
@@ -258,6 +266,7 @@ TEST(LevelTelemetryManager, ExtractsSnapshotSeriesAcrossBlocksWithoutMutatingHis
     manager.reset();
     ledger.reset();
     clock.initialise({});
+    clock.reset();
     EXPECT_TRUE(manager.materialize_tick_series().kills.is_empty());
     manager.initialise();
     auto const restarted{manager.make_snapshot()};
@@ -265,6 +274,30 @@ TEST(LevelTelemetryManager, ExtractsSnapshotSeriesAcrossBlocksWithoutMutatingHis
     EXPECT_EQ(restarted.active_entity_count_data.last_time(), 0);
     EXPECT_EQ(restarted.active_entity_count_data.last_value(), 0);
     EXPECT_EQ(restarted.cumulative_kill_count_data.last_value(), 0);
+}
+
+TEST(LevelTelemetryManager, ReadsLiveCountsAtBoundaryWithoutResamplingHistory) {
+    SimClock clock;
+    clock.initialise({});
+    clock.reset();
+    EntityLedger ledger;
+    lasers::Sim lasers;
+    LevelTelemetryManager manager{clock, ledger, lasers, *std::pmr::new_delete_resource()};
+    manager.initialise();
+    manager.finalize(telemetry::RunEndReason::WorldEnd);
+    auto const recorded_rows{manager.history_stats().used_sample_count};
+
+    EntityId id;
+    ledger.record_spawns(EntityType::Fighter, Team::Blue, Health{1}, {&id, 1});
+    auto const snapshot{manager.make_snapshot()};
+    EXPECT_EQ(snapshot.active_entities, 1);
+    EXPECT_EQ(snapshot.spawned_entities, 1);
+    EXPECT_EQ(snapshot.destroyed_entities, 0);
+    EXPECT_EQ(manager.history_stats().used_sample_count, recorded_rows);
+    auto const record{manager.take_finalized_run(clock.tick_rate())};
+    ASSERT_TRUE(record);
+    EXPECT_EQ(record->tick_series.active_entities.last_value(), 0);
+    EXPECT_EQ(record->battle_samples.back().alive[Team::Blue][EntityType::Fighter], 0);
 }
 
 } // namespace ioj::sim::tests
