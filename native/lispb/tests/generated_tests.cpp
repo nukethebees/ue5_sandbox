@@ -1127,6 +1127,9 @@ TEST(UnifiedPacked, FactoriesPreserveAnIndependentUnionWithoutCartesianOverloads
     static_assert(value.payload_b_move_to() == 42);
     static_assert(value.raw_value() == (17U << 6) + (1U << 14) + (42U << 20));
     EXPECT_TRUE(value.is_valid());
+    EXPECT_FALSE(IndependentUnions::from_raw(value.raw_value() | 63U).is_valid());
+    EXPECT_FALSE(IndependentUnions::from_raw(value.raw_value() | (63U << 14)).is_valid());
+    EXPECT_FALSE(IndependentUnions::from_raw(2U << 14).is_valid());
 }
 
 TEST(UnifiedPacked, UntaggedAlternativesShareStorageAndArraysUseFlatAccessors) {
@@ -1169,6 +1172,8 @@ TEST(UnifiedPacked, WholeUnionSetterValidatesTheActiveCaseIndependently) {
     using unified::Opcode;
     using unified::TaggedProjected;
     static_assert(std::is_same_v<decltype(unified::PayloadPointer::value), CheckedPayload*>);
+    EXPECT_FALSE(TaggedProjected::from_raw(200U << 6).is_valid());
+    EXPECT_TRUE(TaggedProjected::from_raw((200U << 6) | 1U).is_valid());
     auto value{TaggedProjected::from_raw(255U << 14)};
     value.set_payload(CheckedPayload::make_kill_entity(7));
     EXPECT_EQ(value.opcode(), Opcode::KillEntity);

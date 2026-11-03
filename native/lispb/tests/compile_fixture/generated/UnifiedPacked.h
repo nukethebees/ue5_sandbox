@@ -537,10 +537,19 @@ struct Instruction : detail::InstructionBase {
         return result;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return Base::is_valid() && (is_valid_opcode(extract<decltype(opcode_layout)>()) &&
-                                    (extract<decltype(opcode_layout)>() == Opcode::KillEntity ||
-                                     extract<decltype(opcode_layout)>() == Opcode::MoveTo ||
-                                     extract<decltype(opcode_layout)>() == Opcode::Jump));
+        if (!Base::is_valid()) {
+            return false;
+        }
+        switch (opcode()) {
+            case Opcode::KillEntity:
+                return true;
+            case Opcode::MoveTo:
+                return true;
+            case Opcode::Jump:
+                return true;
+            default:
+                return false;
+        }
     }
     [[nodiscard]] constexpr auto opcode() const noexcept -> Opcode {
         return extract<decltype(opcode_layout)>();
@@ -710,12 +719,19 @@ struct IndependentUnions : detail::IndependentUnionsBase {
         return result;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return Base::is_valid() && (is_valid_opcode_a(extract<decltype(opcode_a_layout)>()) &&
-                                    (extract<decltype(opcode_a_layout)>() == Opcode::KillEntity ||
-                                     extract<decltype(opcode_a_layout)>() == Opcode::MoveTo) &&
-                                    is_valid_opcode_b(extract<decltype(opcode_b_layout)>()) &&
-                                    (extract<decltype(opcode_b_layout)>() == Opcode::KillEntity ||
-                                     extract<decltype(opcode_b_layout)>() == Opcode::MoveTo));
+        if (!Base::is_valid()) {
+            return false;
+        }
+        switch (opcode_a()) {
+            case Opcode::KillEntity:
+                return extract<decltype(opcode_b_layout)>() == Opcode::KillEntity ||
+                       extract<decltype(opcode_b_layout)>() == Opcode::MoveTo;
+            case Opcode::MoveTo:
+                return extract<decltype(opcode_b_layout)>() == Opcode::KillEntity ||
+                       extract<decltype(opcode_b_layout)>() == Opcode::MoveTo;
+            default:
+                return false;
+        }
     }
     [[nodiscard]] constexpr auto opcode_a() const noexcept -> Opcode {
         return extract<decltype(opcode_a_layout)>();
@@ -886,12 +902,19 @@ struct TaggedProjected : detail::TaggedProjectedBase {
         return result;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return Base::is_valid() &&
-               (is_valid_opcode(extract<decltype(opcode_layout)>()) &&
-                ((extract<decltype(opcode_layout)>() == Opcode::KillEntity &&
-                  is_valid_payload_kill_entity(extract<decltype(payload_kill_entity_layout)>())) ||
-                 extract<decltype(opcode_layout)>() == Opcode::MoveTo) &&
-                is_valid_unrelated(extract<decltype(unrelated_layout)>()));
+        if (!Base::is_valid()) {
+            return false;
+        }
+        switch (opcode()) {
+            case Opcode::KillEntity:
+                return is_valid_payload_kill_entity(
+                           extract<decltype(payload_kill_entity_layout)>()) &&
+                       is_valid_unrelated(extract<decltype(unrelated_layout)>());
+            case Opcode::MoveTo:
+                return is_valid_unrelated(extract<decltype(unrelated_layout)>());
+            default:
+                return false;
+        }
     }
     [[nodiscard]] constexpr auto opcode() const noexcept -> Opcode {
         return extract<decltype(opcode_layout)>();

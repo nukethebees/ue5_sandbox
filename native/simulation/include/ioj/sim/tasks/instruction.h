@@ -119,14 +119,21 @@ struct Instruction : detail::InstructionBase {
         return result;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return Base::is_valid() &&
-               (is_valid_kind(extract<decltype(kind_layout)>()) &&
-                ((extract<decltype(kind_layout)>() == InstructionKind::Kill &&
-                  (extract<decltype(data_kill_layout)>() != data_kill_invalid_value &&
-                   is_valid_data_kill_entity_type(
-                       extract<decltype(data_kill_entity_type_layout)>()))) ||
-                 extract<decltype(kind_layout)>() == InstructionKind::Idle ||
-                 extract<decltype(kind_layout)>() == InstructionKind::MoveTo));
+        if (!Base::is_valid()) {
+            return false;
+        }
+        switch (kind()) {
+            case InstructionKind::Kill:
+                return extract<decltype(data_kill_layout)>() != data_kill_invalid_value &&
+                       is_valid_data_kill_entity_type(
+                           extract<decltype(data_kill_entity_type_layout)>());
+            case InstructionKind::Idle:
+                return true;
+            case InstructionKind::MoveTo:
+                return true;
+            default:
+                return false;
+        }
     }
     [[nodiscard]] constexpr auto kind() const noexcept -> InstructionKind {
         return extract<decltype(kind_layout)>();

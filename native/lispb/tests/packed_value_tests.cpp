@@ -214,8 +214,14 @@ TEST(PackedRecord, TaggedAlternativesResolveGuardsAndDirectNestedAccessors) {
                          "set_payload_kill_entity_target_index(",
                          "make_payload_kill_entity(",
                          "payload_kill_entity_target()",
+                         "switch (opcode())",
+                         "case Opcode::KillEntity:",
+                         "case Opcode::MoveTo:",
                          "assert((opcode() == Opcode::KillEntity));"});
-    expect_contains_none(output, {"set_opcode(", "payload_kill_entity_target().index()"});
+    expect_contains_none(output,
+                         {"set_opcode(",
+                          "payload_kill_entity_target().index()",
+                          "is_valid_opcode(extract<decltype(opcode_layout)>())"});
 }
 
 TEST(PackedRecord, FixedEncodingsComposeWithoutStandaloneProjection) {

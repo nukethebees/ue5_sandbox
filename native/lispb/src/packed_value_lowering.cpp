@@ -858,15 +858,10 @@ class PackedEmitter : public CppIRBuilder {
                 build_constructor(static_cast<std::uint32_t>(index));
             }
         }
-        auto validity{valid_children(std::nullopt, type_, std::nullopt)};
-        if (validity) {
-            auto const base_validity{call(scope_name(type("Base"), "is_valid"), {})};
-            validity = all({base_validity, validity});
-            functions_.push_back(emit_function("is_valid",
-                                               std_types().bool_,
-                                               FunctionReceiver::const_,
-                                               {},
-                                               {return_stmt(*validity)}));
+        auto const validation{validation_body()};
+        if (!validation.empty()) {
+            functions_.push_back(emit_function(
+                "is_valid", std_types().bool_, FunctionReceiver::const_, {}, validation));
         }
         for (std::size_t index{}; index < count; ++index) {
             if (addressable(layout_.placements[index])) {
@@ -914,7 +909,8 @@ class PackedEmitter : public CppIRBuilder {
     }
     auto valid_children(std::optional<std::uint32_t> parent,
                         schema::TypeId child_type,
-                        std::optional<Expr> source) -> Predicate {
+                        std::optional<Expr> source,
+                        schema::BitGuard const* selected_guard = nullptr) -> Predicate {
         auto const union_{graph_.definition(child_type).kind() ==
                           schema::TypeDefinitionKind::union_type};
         std::vector<Predicate> checks;
@@ -922,15 +918,27 @@ class PackedEmitter : public CppIRBuilder {
         auto const count{layout_.placements.size()};
         for (std::size_t index{}; index < count; ++index) {
             auto const& placement{layout_.placements[index]};
-            if (placement.parent != parent || placement.reserved) {
+            // Tagged union cases already restrict their discriminator to live enum values.
+            if (placement.parent != parent || placement.reserved ||
+                (!union_ && placement.discriminator)) {
+                continue;
+            }
+            if (selected_guard && std::ranges::any_of(placement.guards, [&](auto const& guard) {
+                    return guard.path == selected_guard->path &&
+                           guard.value != selected_guard->value;
+                })) {
                 continue;
             }
             auto check{
                 aggregate(placement)
-                    ? valid_children(static_cast<std::uint32_t>(index), placement.type, source)
+                    ? valid_children(
+                          static_cast<std::uint32_t>(index), placement.type, source, selected_guard)
                     : value_check(
                           placement, extract(field_name(placement) + "_layout", source), true)};
             for (auto const& guard : placement.guards) {
+                if (selected_guard && guard.path == selected_guard->path) {
+                    continue;
+                }
                 if (parent && std::ranges::any_of(layout_.placements[*parent].guards,
                                                   [&](auto const& inherited) {
                                                       return inherited.offset == guard.offset &&
@@ -966,6 +974,37 @@ class PackedEmitter : public CppIRBuilder {
             }
         }
         return result;
+    }
+    auto validation_body() -> Nodes {
+        auto const base_validity{call(scope_name(type("Base"), "is_valid"), {})};
+        auto const discriminator{
+            std::ranges::find_if(layout_.placements, [&](auto const& placement) {
+                return !placement.parent && !placement.alternative && placement.discriminator &&
+                       addressable(placement);
+            })};
+        if (discriminator == layout_.placements.end()) {
+            auto const validity{valid_children(std::nullopt, type_, std::nullopt)};
+            return validity ? Nodes{return_stmt(*all({base_validity, validity}))} : Nodes{};
+        }
+
+        std::map<std::uint64_t, schema::BitGuard const*> codes;
+        for (auto const& placement : layout_.placements) {
+            for (auto const& guard : placement.guards) {
+                if (guard.path == discriminator->path) {
+                    codes.emplace(guard.value, &guard);
+                }
+            }
+        }
+        std::vector<SwitchCaseId> cases;
+        for (auto const& [code, guard] : codes) {
+            auto const validity{valid_children(std::nullopt, type_, std::nullopt, guard)};
+            cases.push_back(
+                switch_case(guard_code(*guard), block({return_stmt(boolean(validity))}), false));
+        }
+        cases.push_back(switch_case(std::nullopt, block({return_stmt(literal(false))}), false));
+        return {if_stmt(unary(UnaryOperator::logical_not, base_validity),
+                        block({return_stmt(literal(false))})),
+                switch_stmt(invoke(field_name(*discriminator)), cases)};
     }
     auto selected(std::uint32_t index, std::optional<std::uint32_t> choice) const -> bool {
         auto const& placement{layout_.placements[index]};

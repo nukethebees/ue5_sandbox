@@ -102,10 +102,17 @@ struct ExprHandle : detail::ExprHandleBase {
         return result;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return Base::is_valid() &&
-               (extract<decltype(kind_layout)>() == ExprKind::Composite ||
-                (extract<decltype(kind_layout)>() == ExprKind::Leaf &&
-                 is_valid_data_leaf_kind(extract<decltype(data_leaf_kind_layout)>())));
+        if (!Base::is_valid()) {
+            return false;
+        }
+        switch (kind()) {
+            case ExprKind::Composite:
+                return true;
+            case ExprKind::Leaf:
+                return is_valid_data_leaf_kind(extract<decltype(data_leaf_kind_layout)>());
+            default:
+                return false;
+        }
     }
     [[nodiscard]] constexpr auto kind() const noexcept -> ExprKind {
         return extract<decltype(kind_layout)>();
