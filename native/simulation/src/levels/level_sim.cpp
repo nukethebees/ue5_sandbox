@@ -266,7 +266,7 @@ void LevelSim::think_tick(float const tick_period,
     SANDBOX_PROFILE_SCOPE("Thinking");
     clock_.transition_to(SimulationPhase::Thinking);
 
-    task_manager_.plan_tasks({.active_teams = participating_teams_, .mission = mission_});
+    task_manager_.plan_tasks({.mission = mission_});
 
     event_manager_.queue_fighter_spawns(tick_period, phase_memory, participating_teams_);
 

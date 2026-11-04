@@ -85,16 +85,28 @@ auto TaskManager::add_task(std::initializer_list<Instruction> const instructions
 }
 
 void TaskManager::plan_tasks(TaskPlanningContext const ctx) {
-    auto const leaf_count{ctx.mission.leaves().num_leaves()};
+    auto const& leaves{ctx.mission.leaves()};
+    auto const leaf_count{leaves.num_leaves()};
     if (leaf_tasks_.size() < leaf_count) {
         leaf_tasks_.resize(leaf_count, TaskId{});
     }
 
-    auto const team_count{ctx.active_teams.size()};
-    for (std::size_t index{}; index < team_count; ++index) {
-        [[maybe_unused]] auto const team{ctx.active_teams[index]};
+    for (auto const leaf : leaves.active) {
+        if (!is_task(leaf.kind())) {
+            continue;
+        }
+
+        auto& task{leaf_tasks_[leaf.index()]};
+        if (!task.is_valid()) {
+            task = create_task(leaf, leaves);
+        }
     }
 }
 
 void TaskManager::allocate(TaskAllocationContext) {}
+
+auto TaskManager::create_task(LeafHandle, ExprLeaves const&) -> TaskId {
+    // TODO: Build instructions for the leaf and register its task.
+    return {};
+}
 }

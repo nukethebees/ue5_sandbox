@@ -17,6 +17,11 @@
 #include <span>
 #include <vector>
 
+namespace ioj::sim {
+struct ExprLeaves;
+struct LeafHandle;
+}
+
 namespace ioj::sim::tasks {
 class TaskManager {
   public:
@@ -52,6 +57,8 @@ class TaskManager {
     void allocate(TaskAllocationContext ctx);
 
   private:
+    [[nodiscard]] auto create_task(LeafHandle leaf, ExprLeaves const& leaves) -> TaskId;
+
     // Immutable
     std::pmr::vector<Instruction> instructions_;
     InstructionData instruction_data_;
