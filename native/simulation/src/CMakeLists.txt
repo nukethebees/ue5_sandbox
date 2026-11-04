@@ -63,6 +63,7 @@ set(entities_headers
   health_table.h
   ship_health.h
   team_checks.h
+  team_entity_array.h
 )
 
 list(TRANSFORM entities_headers PREPEND "../include/ioj/sim/entities/")

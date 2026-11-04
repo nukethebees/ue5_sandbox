@@ -1,5 +1,6 @@
 #include <ioj/sim/tasks/task_manager.h>
 
+#include <ioj/enum_array.h>
 #include <ioj/require.h>
 
 #include <array>

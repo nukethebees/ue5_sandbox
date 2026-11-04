@@ -1,7 +1,6 @@
 #pragma once
 
-#include <ioj/enum_array.h>
-#include <ioj/sim/entities/entity_type.h>
+#include <ioj/sim/entities/team_entity_array.h>
 #include <ioj/sim/tasks/instruction.h>
 #include <ioj/sim/tasks/instruction_data.h>
 #include <ioj/sim/tasks/instruction_handle.h>
@@ -60,6 +59,6 @@ class TaskManager {
 
     // Mutable
     TeamArray<std::pmr::vector<TaskId>> active_tasks_;
-    TeamArray<EnumArray<EntityType, Counts>> task_entity_allocations_;
+    TeamEntityArray<Counts> task_entity_allocations_;
 };
 }
