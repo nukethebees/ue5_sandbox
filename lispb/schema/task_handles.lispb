@@ -5,13 +5,6 @@
     (member index std::uint32_t :bits 32)
     (projections (cpp :storage std::uint32_t))))
 
-(module task_program_handle
-  :header "native/simulation/include/ioj/sim/tasks/program_handle.h"
-  :namespace ioj::sim::tasks
-  (record ProgramHandle :layout packed :bits 32 :invalid-value 0xffffffff
-    (member index std::uint32_t :bits 32)
-    (projections (cpp :storage std::uint32_t))))
-
 (module task_id
   :header "native/simulation/include/ioj/sim/tasks/task_id.h"
   :namespace ioj::sim::tasks

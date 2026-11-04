@@ -161,7 +161,6 @@ native/simulation/include/ioj/sim/spinners/spawn_interface.h
 native/simulation/include/ioj/sim/spinners/spinner_entity_data.h
 native/simulation/include/ioj/sim/tasks/instruction.h
 native/simulation/include/ioj/sim/tasks/instruction_handle.h
-native/simulation/include/ioj/sim/tasks/program_handle.h
 native/simulation/include/ioj/sim/tasks/task_id.h
 native/simulation/include/ioj/sim/telemetry/battle_change_mask.h
 native/simulation/include/ioj/sim/telemetry/metric.h

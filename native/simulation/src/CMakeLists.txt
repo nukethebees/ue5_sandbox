@@ -116,11 +116,8 @@ list(TRANSFORM spinners_headers PREPEND "../include/ioj/sim/spinners/")
 set(tasks_headers
   executor_table.h
   instruction.h
-  instruction_count.h
   instruction_data.h
   instruction_handle.h
-  program_handle.h
-  programs.h
   task_allocation_context.h
   task_entity_count.h
   task_id.h
