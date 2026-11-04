@@ -1,3 +1,55 @@
+(module grouped_enum_fixture
+  :header "GroupedEnums.h"
+  :namespace codegen_compile_fixture::groups
+  (enum Action std::uint8_t :bit-width 3 :enum-array true
+    :native-api true :helpers (traits to-string to-serialized-string try-parse-serialized)
+    :ordering (actionable)
+    (value Timer :serialized-name "timer")
+    (value Kill :groups (actionable) :serialized-name "kill")
+    (value Observe :serialized-name "observe")
+    (value Move :groups (actionable) :serialized-name "move")
+    (value Kills :groups (actionable) :serialized-name "kills")
+    (projections (cpp)))
+  (record ActionHandle :layout packed :bits 8
+    (member kind @Action)
+    (projections (cpp :storage std::uint8_t)))
+  (enum Priority std::uint8_t :enum-array true :native-api true :helpers (traits)
+    :ordering (B C A)
+    (value One :groups (A B)) (value Two :groups (A C))
+    (value Three :groups (A B C)) (value Four :groups (B))
+    (value Five :groups (C)) (value Six :groups (A))
+    (projections (cpp)))
+  (enum Automatic std::uint8_t :enum-array true :native-api true :helpers (traits)
+    :ordering auto
+    (value One :groups (A B)) (value Five :groups (C))
+    (value Six :groups (A)) (value Four :groups (B))
+    (value Two :groups (A C)) (value Three :groups (A B C))
+    (projections (cpp)))
+  (enum Manual std::uint8_t :enum-array true :native-api true :helpers (traits)
+    :ordering manual
+    (value One :groups (A B)) (value Two :groups (A C))
+    (value Three :groups (A B C)) (value Four :groups (B))
+    (value Five :groups (C)) (value Six :groups (A))
+    (projections (cpp)))
+  (enum Sparse std::int8_t :ordering manual
+    (value Positive :value 5 :groups (selected))
+    (value Negative :value -3 :groups (selected))
+    (value Next :value -2 :groups (selected))
+    (value Other :value 7)
+    (value Alias :value 5 :groups (selected))
+    (projections (cpp)))
+  (enum Fragmented std::uint8_t
+    (value A :groups (selected)) (value B)
+    (value C :groups (selected)) (value D)
+    (value E :groups (selected)) (value F)
+    (value G :groups (selected)) (value H)
+    (value I :groups (selected)) (value J)
+    (projections (cpp)))
+  (enum Symbolic std::uint8_t
+    (value One :value "1 << 1" :groups (selected))
+    (value Two :value "1 << 2")
+    (projections (cpp))))
+
 (module readers_fixture
   :header "ReadableRecords.h"
   :namespace codegen_compile_fixture

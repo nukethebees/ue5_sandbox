@@ -19,15 +19,16 @@ auto EnumeratorSchemas::append() -> EnumeratorId {
     hidden.push_back(false);
     serialized_name.push_back({});
     sentinel.push_back(false);
+    groups.push_back({});
     return EnumeratorId{index + 1};
 }
 auto EnumeratorSchemas::clone(EnumeratorId id) -> EnumeratorId {
     return detail::clone_schema_row(
-        *this, id, name, initializer, display_name, hidden, serialized_name, sentinel);
+        *this, id, name, initializer, display_name, hidden, serialized_name, sentinel, groups);
 }
 void EnumeratorSchemas::clear() {
     detail::clear_schema_columns(
-        name, initializer, display_name, hidden, serialized_name, sentinel);
+        name, initializer, display_name, hidden, serialized_name, sentinel, groups);
 }
 
 }

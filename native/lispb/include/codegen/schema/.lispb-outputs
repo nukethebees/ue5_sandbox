@@ -2,6 +2,7 @@ lispb-outputs-v1
 child_occurrence_kind.h
 declaration_kind.h
 enum_conversion.h
+enum_ordering.h
 enum_reflection.h
 fixed_point_form.h
 fixed_point_rounding.h

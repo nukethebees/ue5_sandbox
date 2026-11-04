@@ -1,6 +1,7 @@
 lispb-outputs-v1
 FieldMasks.h
 Generated.h
+GroupedEnums.h
 InlineFacade.h
 Mixed.h
 Mixed_reader.h

@@ -96,6 +96,10 @@ Unknown or duplicate helpers are errors. Existing native schemas must explicitly
 helpers they need; `:native-api true` no longer selects them automatically. Unreal enums use
 the existing `:conversions` list instead.
 
+Tag enumerators with `:groups (actionable)` to generate `is_actionable(value)`.
+Optional `:ordering (group-priority ...)` or `:ordering auto` arranges values to reduce
+membership ranges; omitted ordering preserves existing values. See [enum groups](docs/enum-groups.md).
+
 Generated enums with known numeric values also expose `ioj::enum_range<Enum>`,
 and `ioj::enum_min<Enum>` / `ioj::enum_max<Enum>`. Bounds exclude the count enumerator and include
 sentinels. Sparse enums expose bounds too; these do not imply that every intervening value is

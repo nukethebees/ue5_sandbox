@@ -18,6 +18,9 @@ auto EnumSchemas::append() -> DeclarationHandle {
     name.push_back({});
     underlying_type.push_back({});
     values.push_back({});
+    declared_values.push_back({});
+    ordering.push_back(EnumOrdering::manual);
+    group_order.push_back({});
     count.push_back({});
     conversions.push_back({});
     export_specifier.push_back({});
@@ -38,6 +41,9 @@ auto EnumSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
                                     name,
                                     underlying_type,
                                     values,
+                                    declared_values,
+                                    ordering,
+                                    group_order,
                                     count,
                                     conversions,
                                     export_specifier,
@@ -54,6 +60,9 @@ void EnumSchemas::clear() {
                                  name,
                                  underlying_type,
                                  values,
+                                 declared_values,
+                                 ordering,
+                                 group_order,
                                  count,
                                  conversions,
                                  export_specifier,

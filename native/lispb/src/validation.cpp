@@ -758,6 +758,28 @@ class Validator {
                                   "' initializer");
             }
             auto const code{domains.code(domain, index)};
+            if (enums.ordering[schema] != EnumOrdering::manual &&
+                (!code || code->negative || code->magnitude != index)) {
+                throw std::invalid_argument{
+                    enum_context + " value '" + text(enumerators.name[value]) +
+                    "' conflicts with its ordered zero-based code " + std::to_string(index)};
+            }
+            auto const groups{declarations_.items(enumerators.groups[value])};
+            for (auto const group : groups) {
+                require_identifier(text(group), enum_context + " group name");
+            }
+            if (code) {
+                for (std::size_t previous{}; previous < index; ++previous) {
+                    if (domains.code(domain, previous) == code &&
+                        !std::ranges::is_permutation(
+                            groups,
+                            declarations_.items(enumerators.groups[enum_values[previous]]))) {
+                        throw std::invalid_argument{
+                            enum_context +
+                            " aliases with the same numeric value must have identical groups"};
+                    }
+                }
+            }
             if (storage_domain.has_value() && code.has_value() &&
                 !enum_code_fits(*code, *storage_domain)) {
                 throw std::invalid_argument{enum_context + " value '" +

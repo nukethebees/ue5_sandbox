@@ -1,5 +1,7 @@
 #include "schema_parser.h"
 
+#include "enum_ordering.h"
+
 #include <codegen/ast/access.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/indices.h>
@@ -641,6 +643,7 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
                      P::native_api,
                      P::helpers,
                      P::bit_width,
+                     P::ordering,
                      P::signed_},
                     {"value", "projections"});
     std::vector<EnumeratorId> values;
@@ -649,7 +652,8 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
     for (auto const declaration : fields.declarations()) {
         if (syntax_.head(declaration) == "value") {
             Fields const value{parser_, declaration, "value", 1};
-            value.validate({P::value, P::display_name, P::hidden, P::serialized_name, P::sentinel});
+            value.validate(
+                {P::value, P::display_name, P::hidden, P::serialized_name, P::sentinel, P::groups});
             {
                 auto& records{declarations.enumerators};
                 auto const record_id{records.append()};
@@ -661,6 +665,16 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
                 records.hidden[record_index] = boolean_or(value, P::hidden);
                 records.serialized_name[record_index] = optional_text_id(value, P::serialized_name);
                 records.sentinel[record_index] = boolean_or(value, P::sentinel);
+                std::vector<StringId> groups;
+                if (auto const list{value.optional(P::groups)}) {
+                    if (!syntax_.is_list(*list)) {
+                        parser_.fail(*list, "groups must be a list");
+                    }
+                    for (auto const group : syntax_.children(*list)) {
+                        groups.push_back(parser_.identifier(group, "group name"));
+                    }
+                }
+                records.groups[record_index] = declarations.range(groups);
                 values.push_back(record_id);
             }
         }
@@ -724,6 +738,24 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
     records.enum_array[record_index] = boolean_or(fields, P::enum_array);
     records.native_api[record_index] = boolean_or(fields, P::native_api);
     records.helpers[record_index] = declarations.range(helpers);
+    if (auto const ordering{fields.optional(P::ordering)}) {
+        if (syntax_.is_list(*ordering)) {
+            records.ordering[record_index] = EnumOrdering::priority;
+            std::vector<StringId> groups;
+            for (auto const group : syntax_.children(*ordering)) {
+                groups.push_back(parser_.identifier(group, "ordering group"));
+            }
+            records.group_order[record_index] = declarations.range(groups);
+        } else {
+            auto const mode{parse_keyword(
+                parser_, *ordering, "enum ordering", try_parse_serialized_enum_ordering)};
+            if (mode == EnumOrdering::priority) {
+                parser_.fail(*ordering, "group priority ordering requires a list");
+            }
+            records.ordering[record_index] = mode;
+        }
+    }
+    order_enum_values(declarations, record_id);
     return record_id;
 }
 

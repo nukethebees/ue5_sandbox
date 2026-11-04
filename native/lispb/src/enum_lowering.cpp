@@ -166,6 +166,7 @@ class EnumLowering : public CppIRBuilder {
             emission.header_prefix = prefix.build();
             auto decls{node_list()};
             decls.append({native_enum_declaration(ctx, schema), native_enum_parsers(ctx, schema)});
+            decls.append(group_predicates(ctx, schema, enum_type));
             emission.header = decls.build();
             emission.header_immediate_global = enum_range_declaration(ctx, schema, enum_type);
             if (needs_traits) {
@@ -274,6 +275,7 @@ class EnumLowering : public CppIRBuilder {
                                conversion == EnumConversion::lex_to_serialized_string};
             (lexical ? lex_declarations : helper_declarations).add(declaration(spec), 2);
         }
+        decls.append(group_predicates(ctx, schema, enum_type));
         emission.header = decls.build();
         emission.header_after = lex_declarations.build();
         auto const tail_namespace{
@@ -638,6 +640,134 @@ class EnumLowering : public CppIRBuilder {
                       .is_constexpr = true})};
         return {namespace_node(store_text("ioj"), {variable_id})};
     }
+    auto group_predicates(LoweringContext& ctx,
+                          DeclarationHandle const schema,
+                          CppTypeId const enum_type) -> Nodes {
+        auto const& declarations{ctx.declarations};
+        auto const& enumerators{declarations.enumerators};
+        auto const& domains{ctx.semantic.enum_domains()};
+        auto const domain{domains.find(schema)};
+        auto const values{domains.values(domain)};
+        std::vector<StringId> groups;
+        for (auto const value : values) {
+            for (auto const group : declarations.items(enumerators.groups[value])) {
+                if (!std::ranges::contains(groups, group)) {
+                    groups.push_back(group);
+                }
+            }
+        }
+        auto result{node_list()};
+        if (groups.empty()) {
+            return result.build();
+        }
+
+        auto const underlying{type_spelling(enum_underlying_type(ctx, schema))};
+        auto const unsigned_storage{
+            std::ranges::any_of(fixed_width_integer_types, [&](auto const& type) {
+                return !type.is_signed &&
+                       (underlying == type.name || underlying == type.native_name);
+            })};
+        auto code = [&](std::size_t const ordinal) {
+            auto const value{*domains.code(domain, ordinal)};
+            return PackedIntegerValue::from_parts(value.negative, value.magnitude);
+        };
+        auto member = [&](std::size_t const ordinal) {
+            return scope_member(enum_type, enumerators.name[values[ordinal]]);
+        };
+        auto consecutive = [](PackedIntegerValue const left, PackedIntegerValue const right) {
+            if (left.negative) {
+                return left.magnitude == 1
+                         ? right.magnitude == 0
+                         : right.negative && right.magnitude == left.magnitude - 1;
+            }
+            return !right.negative &&
+                   left.magnitude != (std::numeric_limits<std::uint64_t>::max)() &&
+                   right.magnitude == left.magnitude + 1;
+        };
+
+        for (auto const group : groups) {
+            std::vector<std::size_t> members;
+            bool known{true};
+            auto const count{values.size()};
+            for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
+                if (std::ranges::contains(declarations.items(enumerators.groups[values[ordinal]]),
+                                          group)) {
+                    members.push_back(ordinal);
+                    known = known && domains.code(domain, ordinal).has_value();
+                }
+            }
+            std::vector<Expr> predicates;
+            Nodes body;
+            if (known) {
+                std::ranges::sort(members, [&](auto left, auto right) {
+                    return packed_integer_less(code(left), code(right));
+                });
+                auto const duplicates{std::ranges::unique(
+                    members, [&](auto left, auto right) { return code(left) == code(right); })};
+                members.erase(duplicates.begin(), duplicates.end());
+                auto const member_count{members.size()};
+                for (std::size_t first{}; first < member_count;) {
+                    auto last{first};
+                    while (last + 1 < member_count &&
+                           consecutive(code(members[last]), code(members[last + 1]))) {
+                        ++last;
+                    }
+                    auto const lower{member(members[first])};
+                    auto const upper{member(members[last])};
+                    if (first == last) {
+                        predicates.push_back(binary(BinaryOperator::equal, named("value"), lower));
+                    } else {
+                        auto const maximum{
+                            binary(BinaryOperator::less_equal, named("value"), upper)};
+                        predicates.push_back(
+                            unsigned_storage && code(members[first]).magnitude == 0
+                                ? maximum
+                                : binary(
+                                      BinaryOperator::logical_and,
+                                      binary(BinaryOperator::greater_equal, named("value"), lower),
+                                      maximum));
+                    }
+                    first = last + 1;
+                }
+                if (predicates.size() > 4) {
+                    std::vector<SwitchCaseId> cases;
+                    for (auto const ordinal : members) {
+                        cases.push_back(
+                            switch_case(member(ordinal), block({return_stmt(literal(true))})));
+                    }
+                    cases.push_back(
+                        switch_case(std::nullopt, block({return_stmt(literal(false))}), false));
+                    body = {switch_stmt(named("value"), cases)};
+                }
+            } else {
+                for (auto const ordinal : members) {
+                    predicates.push_back(
+                        binary(BinaryOperator::equal, named("value"), member(ordinal)));
+                }
+            }
+            if (body.empty()) {
+                auto predicate{predicates.front()};
+                auto const count{predicates.size()};
+                for (std::size_t index{1}; index < count; ++index) {
+                    predicate = binary(BinaryOperator::logical_or, predicate, predicates[index]);
+                }
+                body.push_back(return_stmt(predicate));
+            }
+            result.add(
+                header_function(add_function(
+                    {.name = this->name("is_" + ctx.text(group)),
+                     .return_type = std_types().bool_,
+                     .return_syntax = ReturnSyntax::trailing,
+                     .parameters = {parameter(decorate_type(enum_type, "", " const"), "value")},
+                     .implementation = {.kind = FunctionImplementationKind::body, .body = body},
+                     .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
+                     .flags = {.is_constexpr = true,
+                               .is_nodiscard = true,
+                               .define_in_header = true}})),
+                2);
+        }
+        return result.build();
+    }
     auto native_enum_declaration(LoweringContext& ctx, DeclarationHandle const schema) -> Nodes {
         auto const& enums{ctx.declarations.enums};
         auto const alias{ctx.text(enums.name[schema]) + "Underlying"};
@@ -777,6 +907,7 @@ class EnumLowering : public CppIRBuilder {
             enumeration(projections.name[projection], underlying, enum_values(ctx, schema, true)),
             2);
         decls.add(using_declaration(store_text(name + "Underlying"), underlying), 2);
+        decls.append(group_predicates(ctx, schema, named_type("::" + name, NameOrigin::global)));
         decls.append(enum_range_declaration(ctx, schema, named_type("::" + name)));
         decls.new_lines(2);
         if (projections.enum_array[projection]) {

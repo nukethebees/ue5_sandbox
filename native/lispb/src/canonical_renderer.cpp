@@ -117,6 +117,8 @@ auto CanonicalRenderer::build_enum_value(codegen::EnumeratorId const value) -> E
     result.flag("hidden", enumerators.hidden[value]);
     result.optional_field("serialized-name", enumerators.serialized_name[value], string);
     result.flag("sentinel", enumerators.sentinel[value]);
+    result.list_field(
+        "groups", items(enumerators.groups[value]), [this](auto group) { return ir_.atom(group); });
     return result.build();
 }
 auto CanonicalRenderer::build_enum_unreal_projection(
@@ -151,6 +153,13 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
                      ir_.atom(codegen::to_serialized_string(enums.reflection[schema])));
     }
     result.flag("enum-array", enums.enum_array[schema]);
+    if (enums.ordering[schema] == codegen::EnumOrdering::priority) {
+        result.field("ordering", ir_.list(items(enums.group_order[schema]), [this](auto group) {
+            return ir_.atom(group);
+        }));
+    } else if (enums.ordering[schema] == codegen::EnumOrdering::auto_) {
+        result.field("ordering", ir_.atom("auto"));
+    }
     result.optional_field(
         "count", enums.count[schema], [this](auto value) { return ir_.atom(value); });
     result.list_field("conversions", items(enums.conversions[schema]), [this](auto conversion) {
@@ -161,7 +170,9 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
     result.list_field("helpers", items(enums.helpers[schema]), [this](auto helper) {
         return ir_.atom(codegen::to_serialized_string(helper));
     });
-    for (auto const value : items(enums.values[schema])) {
+    auto const values{enums.declared_values[schema].empty() ? enums.values[schema]
+                                                            : enums.declared_values[schema]};
+    for (auto const value : items(values)) {
         result.add(build_enum_value(value));
     }
     add_projections(result, enums.cpp_projection[schema], enums.unreal_projection[schema]);

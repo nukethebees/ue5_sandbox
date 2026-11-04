@@ -292,7 +292,19 @@
     (value validation_dependencies :serialized-name "validation-dependencies")
     (value value :serialized-name "value")
     (value value_type :serialized-name "value-type")
-    (value pack :serialized-name "pack")))
+    (value pack :serialized-name "pack")
+    (value groups :serialized-name "groups")
+    (value ordering :serialized-name "ordering")))
+
+(module compiler_enum_ordering
+  :header "enum_ordering.h"
+  :namespace lispb::codegen
+  (enum EnumOrdering std::uint8_t
+    :native-api true :helpers (to-serialized-string try-parse-serialized)
+    (value manual :serialized-name "manual")
+    (value priority :serialized-name "priority")
+    (value auto_ :serialized-name "auto")
+    (projections (cpp))))
 
 (module native_enum_helper
   :header "native_enum_helper.h"

@@ -4,6 +4,7 @@
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
 #include <codegen/schema/enum_conversion.h>
+#include <codegen/schema/enum_ordering.h>
 #include <codegen/schema/enum_reflection.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/native_enum_helper.h>
@@ -31,6 +32,9 @@ struct EnumSchemas {
     Column<std::optional<CppProjection>> cpp_projection;
     Column<std::optional<TypeRefId>> underlying_type;
     Column<SchemaRange<EnumeratorId>> values;
+    Column<SchemaRange<EnumeratorId>> declared_values;
+    Column<EnumOrdering> ordering;
+    Column<SchemaRange<StringId>> group_order;
     Column<std::optional<StringId>> count;
     Column<SchemaRange<EnumConversion>> conversions;
     Column<StringId> export_specifier;

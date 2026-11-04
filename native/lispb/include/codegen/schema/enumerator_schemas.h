@@ -1,6 +1,7 @@
 #pragma once
 
 #include <codegen/schema/indices.h>
+#include <codegen/schema/schema_range.h>
 #include <lispb/indexed_column.h>
 #include <lispb/indices.h>
 
@@ -25,6 +26,7 @@ struct EnumeratorSchemas {
     Column<std::uint8_t> hidden;
     Column<std::optional<StringId>> serialized_name;
     Column<std::uint8_t> sentinel;
+    Column<SchemaRange<StringId>> groups;
 };
 
 }

@@ -72,6 +72,7 @@ target_sources(lispb-schema PRIVATE
   src/bit_layout.cpp
   src/enumerator_schemas.cpp
   src/enum_schemas.cpp
+  src/enum_ordering.cpp
   src/enum_unreal_projections.cpp
   src/facade_method_schemas.cpp
   src/facade_schemas.cpp
@@ -270,6 +271,7 @@ set(CODEGEN_COMPILE_FIXTURE_HEADERS
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/InlineFacade.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SourceFacade.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/GroupedEnums.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PackedEnums.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ScalarValues.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PackedValues.h"
@@ -323,6 +325,7 @@ add_executable(codegen-generated-tests)
 target_sources(codegen-generated-tests PRIVATE
   tests/generated_tests.cpp
   tests/packed_support_tests.cpp
+  tests/generated_enum_group_tests.cpp
   tests/generated_reader_tests.cpp
   tests/structural_diff_tests.cpp
   tests/enum_formatter_tests.cpp
@@ -340,6 +343,7 @@ target_link_libraries(codegen-generated-tests
 ioj_enable_warnings(codegen-generated-tests CODEGEN)
 
 add_executable(codegen-tests
+  tests/enum_group_tests.cpp
   tests/test_utilities.cpp
   tests/ast_tests.cpp
   tests/environment_tests.cpp
