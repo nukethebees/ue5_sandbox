@@ -58,6 +58,7 @@ class TaskManager {
     std::pmr::vector<InstructionHandle> task_entries_;
 
     // Mutable
+    std::pmr::vector<TaskId> leaf_tasks_;
     TeamArray<std::pmr::vector<TaskId>> active_tasks_;
     TeamEntityArray<Counts> task_entity_allocations_;
 };

@@ -2,6 +2,7 @@
 
 #include <ioj/enum_array.h>
 #include <ioj/require.h>
+#include <ioj/sim/missions/mission.h>
 
 #include <array>
 #include <cassert>
@@ -33,6 +34,7 @@ TaskManager::TaskManager(std::pmr::memory_resource& resource)
     : instructions_{&resource}
     , instruction_data_{resource}
     , task_entries_{&resource}
+    , leaf_tasks_{&resource}
     , active_tasks_{task_manager_detail::make_array<Team>(
           [&resource] { return std::pmr::vector<TaskId>{&resource}; })}
     , task_entity_allocations_{task_manager_detail::make_array<Team, EntityType>(
@@ -44,6 +46,7 @@ void TaskManager::reset() {
     instructions_.clear();
     instruction_data_.locations.clear();
     task_entries_.clear();
+    leaf_tasks_.clear();
     for (auto& tasks : active_tasks_) {
         tasks.clear();
     }
@@ -82,6 +85,11 @@ auto TaskManager::add_task(std::initializer_list<Instruction> const instructions
 }
 
 void TaskManager::plan_tasks(TaskPlanningContext const ctx) {
+    auto const leaf_count{ctx.mission.leaves().results.size()};
+    if (leaf_tasks_.size() < leaf_count) {
+        leaf_tasks_.resize(leaf_count, TaskId{});
+    }
+
     auto const team_count{ctx.active_teams.size()};
     for (std::size_t index{}; index < team_count; ++index) {
         [[maybe_unused]] auto const team{ctx.active_teams[index]};

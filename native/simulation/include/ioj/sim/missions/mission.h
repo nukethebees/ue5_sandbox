@@ -34,6 +34,7 @@ class Mission {
     auto completions() const -> std::span<TeamMissionCompletion const> { return completions_; }
     auto team_completion(std::optional<Team> team) const -> std::optional<TeamMissionCompletion>;
     auto objectives() const -> Objectives const& { return objectives_; }
+    auto leaves() const -> ExprLeaves const& { return leaves_; }
     auto active_objectives() const -> std::span<ObjectiveId const> { return objectives_.active(); }
     auto inactive_objectives() const -> std::span<ObjectiveId const> {
         return objectives_.inactive();
