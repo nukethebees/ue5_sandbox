@@ -124,8 +124,21 @@ void TaskManager::plan_tasks(TaskPlanningContext const ctx) {
 
 void TaskManager::allocate(TaskAllocationContext) {}
 
-auto TaskManager::create_task(LeafHandle, ExprLeaves const&) -> TaskId {
-    // TODO: Build instructions for the leaf and register its task.
-    return {};
+auto TaskManager::create_task(LeafHandle const leaf, ExprLeaves const&) -> TaskId {
+    switch (leaf.kind()) {
+        case LeafKind::EntityDestroyed: {
+            return {};
+        }
+        case LeafKind::EntityReachedPosition: {
+            return {};
+        }
+        case LeafKind::EntityKillsReached: {
+            return {};
+        }
+        default: {
+            assert(false && "Leaf kind does not support tasks");
+            return {};
+        }
+    }
 }
 }
