@@ -4,8 +4,12 @@
   (enum LeafKind std::uint8_t
     :bit-width 3
     :native-api true :enum-array true :helpers (traits)
-    (value EntityDestroyed) (value EntityReachedPosition) (value TimeElapsed)
-    (value ObjectiveResolved) (value EntityKillsReached)
+    :ordering (task)
+    (value EntityDestroyed :groups (task))
+    (value EntityReachedPosition :groups (task))
+    (value TimeElapsed)
+    (value ObjectiveResolved)
+    (value EntityKillsReached :groups (task))
     (projections (cpp))))
 
 (module mission_expr_kind

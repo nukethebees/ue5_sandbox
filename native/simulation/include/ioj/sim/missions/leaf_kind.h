@@ -17,25 +17,29 @@ using LeafKindUnderlying = std::uint8_t;
 enum class LeafKind : LeafKindUnderlying {
     EntityDestroyed,
     EntityReachedPosition,
+    EntityKillsReached,
     TimeElapsed,
     ObjectiveResolved,
-    EntityKillsReached,
 };
+
+[[nodiscard]] constexpr auto is_task(LeafKind const value) noexcept -> bool {
+    return value <= LeafKind::EntityKillsReached;
+}
 
 } // namespace ioj::sim
 
 namespace ioj {
 template <>
 inline constexpr MinMax<sim::LeafKind> enum_range<sim::LeafKind>{sim::LeafKind::EntityDestroyed,
-                                                                 sim::LeafKind::EntityKillsReached};
+                                                                 sim::LeafKind::ObjectiveResolved};
 
 template <>
 struct EnumTraits<sim::LeafKind> {
     static constexpr std::array values{sim::LeafKind::EntityDestroyed,
                                        sim::LeafKind::EntityReachedPosition,
+                                       sim::LeafKind::EntityKillsReached,
                                        sim::LeafKind::TimeElapsed,
-                                       sim::LeafKind::ObjectiveResolved,
-                                       sim::LeafKind::EntityKillsReached};
+                                       sim::LeafKind::ObjectiveResolved};
 };
 
 template <>
