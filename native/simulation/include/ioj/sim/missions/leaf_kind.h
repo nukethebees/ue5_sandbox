@@ -22,6 +22,9 @@ enum class LeafKind : LeafKindUnderlying {
     ObjectiveResolved,
 };
 
+inline constexpr std::array<LeafKind, 3ULL> leaf_kind_task_values{
+    LeafKind::EntityDestroyed, LeafKind::EntityReachedPosition, LeafKind::EntityKillsReached};
+
 [[nodiscard]] constexpr auto is_task(LeafKind const value) noexcept -> bool {
     return value <= LeafKind::EntityKillsReached;
 }

@@ -43,7 +43,7 @@ void append_type_dependencies(std::vector<TypeDependencyId>& result,
                               std::string const& key,
                               TypeRegistry const& types);
 auto title_case_identifier(std::string_view const identifier) -> std::string;
-auto snake_case_type_name(std::string_view name) -> std::string;
+auto snake_case_type_name(std::string_view name, bool strip_unreal_prefix = true) -> std::string;
 auto column_apply_arrays_function(LoweringContext& ctx, std::vector<std::string> const& columns)
     -> NodeId;
 auto column_apply_array_pairs_function(LoweringContext& ctx,

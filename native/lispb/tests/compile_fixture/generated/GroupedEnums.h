@@ -62,6 +62,9 @@ using ioj::to_string;
     }
 }
 
+inline constexpr std::array<Action, 3ULL> action_actionable_values{
+    Action::Kill, Action::Move, Action::Kills};
+
 [[nodiscard]] constexpr auto is_actionable(Action const value) noexcept -> bool {
     return value <= Action::Kills;
 }
@@ -129,13 +132,22 @@ enum class Priority : PriorityUnderlying {
     Six,
 };
 
+inline constexpr std::array<Priority, 4ULL> priority_A_values{
+    Priority::Three, Priority::One, Priority::Two, Priority::Six};
+
 [[nodiscard]] constexpr auto is_A(Priority const value) noexcept -> bool {
     return value <= Priority::One || value == Priority::Two || value == Priority::Six;
 }
 
+inline constexpr std::array<Priority, 3ULL> priority_B_values{
+    Priority::Three, Priority::One, Priority::Four};
+
 [[nodiscard]] constexpr auto is_B(Priority const value) noexcept -> bool {
     return value <= Priority::Four;
 }
+
+inline constexpr std::array<Priority, 3ULL> priority_C_values{
+    Priority::Three, Priority::Two, Priority::Five};
 
 [[nodiscard]] constexpr auto is_C(Priority const value) noexcept -> bool {
     return value == Priority::Three || (value >= Priority::Two && value <= Priority::Five);
@@ -164,13 +176,22 @@ enum class Automatic : AutomaticUnderlying {
     Five,
 };
 
+inline constexpr std::array<Automatic, 4ULL> automatic_A_values{
+    Automatic::Three, Automatic::One, Automatic::Two, Automatic::Six};
+
 [[nodiscard]] constexpr auto is_A(Automatic const value) noexcept -> bool {
     return value <= Automatic::Six;
 }
 
+inline constexpr std::array<Automatic, 3ULL> automatic_B_values{
+    Automatic::Three, Automatic::One, Automatic::Four};
+
 [[nodiscard]] constexpr auto is_B(Automatic const value) noexcept -> bool {
     return value <= Automatic::One || value == Automatic::Four;
 }
+
+inline constexpr std::array<Automatic, 3ULL> automatic_C_values{
+    Automatic::Three, Automatic::Two, Automatic::Five};
 
 [[nodiscard]] constexpr auto is_C(Automatic const value) noexcept -> bool {
     return value == Automatic::Three || value == Automatic::Two || value == Automatic::Five;
@@ -199,13 +220,20 @@ enum class Manual : ManualUnderlying {
     Six,
 };
 
+inline constexpr std::array<Manual, 4ULL> manual_A_values{
+    Manual::One, Manual::Two, Manual::Three, Manual::Six};
+
 [[nodiscard]] constexpr auto is_A(Manual const value) noexcept -> bool {
     return value <= Manual::Three || value == Manual::Six;
 }
 
+inline constexpr std::array<Manual, 3ULL> manual_B_values{Manual::One, Manual::Three, Manual::Four};
+
 [[nodiscard]] constexpr auto is_B(Manual const value) noexcept -> bool {
     return value == Manual::One || (value >= Manual::Three && value <= Manual::Four);
 }
+
+inline constexpr std::array<Manual, 3ULL> manual_C_values{Manual::Two, Manual::Three, Manual::Five};
 
 [[nodiscard]] constexpr auto is_C(Manual const value) noexcept -> bool {
     return (value >= Manual::Two && value <= Manual::Three) || value == Manual::Five;
@@ -231,6 +259,9 @@ enum class Sparse : SparseUnderlying {
     Other = 7,
     Alias = 5,
 };
+
+inline constexpr std::array<Sparse, 4ULL> sparse_selected_values{
+    Sparse::Positive, Sparse::Negative, Sparse::Next, Sparse::Alias};
 
 [[nodiscard]] constexpr auto is_selected(Sparse const value) noexcept -> bool {
     return (value >= Sparse::Negative && value <= Sparse::Next) || value == Sparse::Positive;
@@ -262,6 +293,9 @@ enum class Fragmented : FragmentedUnderlying {
     I,
     J,
 };
+
+inline constexpr std::array<Fragmented, 5ULL> fragmented_selected_values{
+    Fragmented::A, Fragmented::C, Fragmented::E, Fragmented::G, Fragmented::I};
 
 [[nodiscard]] constexpr auto is_selected(Fragmented const value) noexcept -> bool {
     switch (value) {
@@ -303,6 +337,8 @@ enum class Symbolic : SymbolicUnderlying {
     One = 1 << 1,
     Two = 1 << 2,
 };
+
+inline constexpr std::array<Symbolic, 1ULL> symbolic_selected_values{Symbolic::One};
 
 [[nodiscard]] constexpr auto is_selected(Symbolic const value) noexcept -> bool {
     return value == Symbolic::One;

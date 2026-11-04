@@ -166,7 +166,7 @@ class EnumLowering : public CppIRBuilder {
             emission.header_prefix = prefix.build();
             auto decls{node_list()};
             decls.append({native_enum_declaration(ctx, schema), native_enum_parsers(ctx, schema)});
-            decls.append(group_predicates(ctx, schema, enum_type));
+            decls.append(group_declarations(ctx, schema, enum_type, enums.name[schema]));
             emission.header = decls.build();
             emission.header_immediate_global = enum_range_declaration(ctx, schema, enum_type);
             if (needs_traits) {
@@ -275,7 +275,7 @@ class EnumLowering : public CppIRBuilder {
                                conversion == EnumConversion::lex_to_serialized_string};
             (lexical ? lex_declarations : helper_declarations).add(declaration(spec), 2);
         }
-        decls.append(group_predicates(ctx, schema, enum_type));
+        decls.append(group_declarations(ctx, schema, enum_type, enums.name[schema]));
         emission.header = decls.build();
         emission.header_after = lex_declarations.build();
         auto const tail_namespace{
@@ -640,9 +640,10 @@ class EnumLowering : public CppIRBuilder {
                       .is_constexpr = true})};
         return {namespace_node(store_text("ioj"), {variable_id})};
     }
-    auto group_predicates(LoweringContext& ctx,
-                          DeclarationHandle const schema,
-                          CppTypeId const enum_type) -> Nodes {
+    auto group_declarations(LoweringContext& ctx,
+                            DeclarationHandle const schema,
+                            CppTypeId const enum_type,
+                            StringId const enum_name) -> Nodes {
         auto const& declarations{ctx.declarations};
         auto const& enumerators{declarations.enumerators};
         auto const& domains{ctx.semantic.enum_domains()};
@@ -687,15 +688,30 @@ class EnumLowering : public CppIRBuilder {
 
         for (auto const group : groups) {
             std::vector<std::size_t> members;
+            std::vector<Syntax> array_values;
             bool known{true};
             auto const count{values.size()};
+            auto const count_name{declarations.enums.count[schema]};
             for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
                 if (std::ranges::contains(declarations.items(enumerators.groups[values[ordinal]]),
                                           group)) {
                     members.push_back(ordinal);
+                    if (!count_name || enumerators.name[values[ordinal]] != *count_name) {
+                        array_values.push_back(member(ordinal));
+                    }
                     known = known && domains.code(domain, ordinal).has_value();
                 }
             }
+            auto const array_name{snake_case_type_name(ctx.text(enum_name), false) + "_" +
+                                  ctx.text(group) + "_values"};
+            auto const array_type{template_type(
+                std_types().array, {type_reference(enum_type), literal(array_values.size())})};
+            result.add(variable(array_type,
+                                this->name(array_name),
+                                init_list(array_values),
+                                {.is_inline = true, .is_constexpr = true}),
+                       2);
+
             std::vector<Expr> predicates;
             Nodes body;
             if (known) {
@@ -907,7 +923,10 @@ class EnumLowering : public CppIRBuilder {
             enumeration(projections.name[projection], underlying, enum_values(ctx, schema, true)),
             2);
         decls.add(using_declaration(store_text(name + "Underlying"), underlying), 2);
-        decls.append(group_predicates(ctx, schema, named_type("::" + name, NameOrigin::global)));
+        decls.append(group_declarations(ctx,
+                                        schema,
+                                        named_type("::" + name, NameOrigin::global),
+                                        projections.name[projection]));
         decls.append(enum_range_declaration(ctx, schema, named_type("::" + name)));
         decls.new_lines(2);
         if (projections.enum_array[projection]) {

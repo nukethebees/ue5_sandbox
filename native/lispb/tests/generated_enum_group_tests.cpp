@@ -5,9 +5,13 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
+#include <concepts>
 #include <cstdint>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace codegen_compile_fixture::groups {
 static_assert(is_actionable(Action::Kill));
@@ -23,6 +27,10 @@ static_assert(std::to_underlying(Priority::Six) == 5);
 static_assert(std::to_underlying(Manual::One) == 0);
 static_assert(std::to_underlying(Manual::Six) == 5);
 static_assert(std::to_underlying(Automatic::Three) != 5);
+static_assert(action_actionable_values == std::array{Action::Kill, Action::Move, Action::Kills});
+static_assert(sparse_selected_values ==
+              std::array{Sparse::Positive, Sparse::Negative, Sparse::Next, Sparse::Alias});
+static_assert(symbolic_selected_values == std::array{Symbolic::One});
 
 template <typename Enum>
 class GeneratedOverlappingGroups : public testing::Test {};
@@ -31,6 +39,28 @@ TYPED_TEST_SUITE(GeneratedOverlappingGroups, OrderingModes);
 
 TYPED_TEST(GeneratedOverlappingGroups, MatchesAuthoredMembershipForEveryEnumerator) {
     using E = TypeParam;
+    auto const check_array = [](auto const& values, auto predicate) {
+        std::vector<E> expected;
+        for (auto const value : ioj::EnumTraits<E>::values) {
+            if (predicate(value)) {
+                expected.push_back(value);
+            }
+        }
+        EXPECT_TRUE(std::ranges::equal(values, expected));
+    };
+    auto const check_groups = [&](auto const& a, auto const& b, auto const& c) {
+        check_array(a, [](E value) { return is_A(value); });
+        check_array(b, [](E value) { return is_B(value); });
+        check_array(c, [](E value) { return is_C(value); });
+    };
+    if constexpr (std::same_as<E, Priority>) {
+        check_groups(priority_A_values, priority_B_values, priority_C_values);
+    } else if constexpr (std::same_as<E, Automatic>) {
+        check_groups(automatic_A_values, automatic_B_values, automatic_C_values);
+    } else {
+        check_groups(manual_A_values, manual_B_values, manual_C_values);
+    }
+
     for (auto const value : ioj::EnumTraits<E>::values) {
         EXPECT_EQ(is_A(value),
                   value == E::One || value == E::Two || value == E::Three || value == E::Six);

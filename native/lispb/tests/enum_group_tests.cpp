@@ -58,6 +58,7 @@ TEST(EnumGroups, ManualAndAbsentOrderingPreserveCodesAndUngroupedEnums) {
         EXPECT_EQ(names(ctx, graph), (std::vector<std::string>{"First", "Second", "Third"}));
         auto const files{render_test_manifest(ctx, manifest)};
         EXPECT_NE(files.front().content.find("is_selected"), std::string::npos);
+        EXPECT_NE(files.front().content.find("example_selected_values"), std::string::npos);
         EXPECT_NE(files.front().content.find("Example::First"), std::string::npos);
     }
     CompilerTestContext ctx;
@@ -153,6 +154,9 @@ TEST(EnumGroups, UnrealProjectionAndConversionsShareOrderedValues) {
         if (file.path.filename() == "Test.h" || file.path.filename() == "UE.h") {
             EXPECT_LT(file.content.find("First,"), file.content.find("Other"));
             EXPECT_NE(file.content.find("is_selected"), std::string::npos);
+            auto const array_name{file.path.filename() == "Test.h" ? "example_selected_values"
+                                                                   : "e_example_selected_values"};
+            EXPECT_NE(file.content.find(array_name), std::string::npos);
         }
     }
 }

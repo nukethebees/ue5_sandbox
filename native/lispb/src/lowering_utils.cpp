@@ -31,8 +31,10 @@
 #include <vector>
 
 namespace lispb::codegen::detail {
-auto snake_case_type_name(std::string_view const name) -> std::string {
-    auto const begin{name.size() > 1 && name.front() == 'E' && ioj::isupper(name[1])
+auto snake_case_type_name(std::string_view const name, bool const strip_unreal_prefix)
+    -> std::string {
+    auto const begin{strip_unreal_prefix && name.size() > 1 && name.front() == 'E' &&
+                             ioj::isupper(name[1])
                          ? std::size_t{1}
                          : std::size_t{0}};
     std::string result;

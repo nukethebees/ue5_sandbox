@@ -5,6 +5,12 @@ Group names are C++ identifiers; `actionable` generates `is_actionable`. Members
 on enumerators, so a group exists when at least one enumerator names it. Each enumerator may
 belong to several groups.
 
+Each group also generates an `inline constexpr std::array` named
+`<snake_case_enum_name>_<group>_values`, such as `leaf_kind_actionable_values`.
+Arrays follow the final enum declaration order, preserve named aliases, and exclude the
+declared count sentinel. They do not require enum traits. Unreal projection arrays use
+the projected enum name, including its `E` prefix.
+
 ```lisp
 (enum LeafKind std::uint8_t
   :enum-array true
