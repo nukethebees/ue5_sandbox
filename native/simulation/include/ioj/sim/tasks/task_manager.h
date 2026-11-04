@@ -59,7 +59,9 @@ class TaskManager {
     void allocate(TaskAllocationContext ctx);
 
   private:
-    [[nodiscard]] auto create_task(LeafHandle leaf, ExprLeaves const& leaves) -> TaskId;
+    [[nodiscard]] auto create_task(LeafHandle leaf,
+                                   ExprLeaves const& leaves,
+                                   std::span<EntityId const> entities) -> TaskId;
 
     // Immutable
     std::pmr::vector<Instruction> instructions_;

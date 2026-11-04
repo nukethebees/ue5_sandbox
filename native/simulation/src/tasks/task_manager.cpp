@@ -124,17 +124,30 @@ void TaskManager::plan_tasks(TaskPlanningContext const ctx) {
 
         auto& task{leaf_tasks_[index]};
         if (!task.is_valid()) {
-            task = create_task(leaf, leaves);
+            task = create_task(leaf, leaves, ctx.entities);
         }
     }
 }
 
 void TaskManager::allocate(TaskAllocationContext) {}
 
-auto TaskManager::create_task(LeafHandle const leaf, ExprLeaves const&) -> TaskId {
+auto TaskManager::create_task(LeafHandle const leaf,
+                              ExprLeaves const& leaves,
+                              std::span<EntityId const> const entities) -> TaskId {
+    auto const i{leaf.index()};
+
     switch (leaf.kind()) {
         case LeafKind::EntityDestroyed: {
-            return {};
+            auto const data{leaves.data_handles[i].index()};
+            auto const entity_index{leaves.destroyed_entities[data]};
+            assert(entity_index < entities.size());
+            auto const entity_id{entities[entity_index]};
+            if (!entity_id.is_valid()) {
+                // Leave the task invalid so planning retries after the target spawns.
+                return {};
+            }
+
+            return add_task({Instruction::make_data_kill(entity_id), jump_to_idle});
         }
         case LeafKind::EntityReachedPosition: {
             return {};
