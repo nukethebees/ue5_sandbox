@@ -172,8 +172,8 @@ void Sim::prepare_tick(PreparationInputs const inputs) {
 void Sim::think(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::think");
     inputs.navigation_counters = {};
-    plan_instructions(inputs.task_manager);
     refresh_target_data(inputs);
+    plan_instructions(inputs.task_manager);
     plan_movement(inputs);
     publish_navigation_counters(inputs.navigation_counters);
 }
