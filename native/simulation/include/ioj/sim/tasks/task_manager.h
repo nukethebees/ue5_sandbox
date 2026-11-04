@@ -12,6 +12,7 @@
 
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <memory_resource>
 #include <span>
@@ -36,6 +37,7 @@ class TaskManager {
 
     // Invalidates custom task and instruction handles while retaining allocated storage.
     void reset();
+    void initialise(Mission const& mission);
     void reserve_instructions(std::size_t count);
     // Task instructions must end with jump_to_idle. Registration is independent of team activation.
     [[nodiscard]] auto add_task(std::span<Instruction const> instructions) -> TaskId;
@@ -53,6 +55,7 @@ class TaskManager {
         return task_entries_[task.index()];
     }
 
+    // Initialise with this mission before planning, including after reset().
     void plan_tasks(TaskPlanningContext ctx);
     void allocate(TaskAllocationContext ctx);
 
@@ -63,6 +66,7 @@ class TaskManager {
     std::pmr::vector<Instruction> instructions_;
     InstructionData instruction_data_;
     std::pmr::vector<InstructionHandle> task_entries_;
+    std::pmr::vector<std::uint8_t> actionable_pass_leaves_;
 
     // Mutable
     std::pmr::vector<TaskId> leaf_tasks_;

@@ -73,6 +73,7 @@ void LevelSim::finish_initialisation() {
 
     level_telemetry_manager_.initialise();
     mission_.reset_progress();
+    task_manager_.initialise(mission_);
 
     clock_.reset();
     state_ = LevelState::Paused;

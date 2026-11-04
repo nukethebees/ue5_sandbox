@@ -8,8 +8,10 @@
 #include <ioj/sim/missions/objectives.h>
 #include <ioj/sim/missions/team_mission_completion.h>
 
+#include <cassert>
 #include <expected>
 #include <optional>
+#include <span>
 
 namespace ioj::sim {
 struct SimClock;
@@ -45,6 +47,28 @@ class Mission {
 
     auto outcome(ObjectiveId id) const -> std::optional<ObjectiveOutcome>;
     auto result(ExprHandle expression) const -> ExprResult;
+
+    // Visit the root before its descendants. Absent roots are empty; shared nodes may repeat.
+    template <typename Visitor>
+    void visit_expression_tree(ExprHandle const expression, Visitor&& visitor) const {
+        if (expression == ExprHandle{}) {
+            return;
+        }
+        assert(expression.is_valid());
+
+        visitor(expression);
+        if (expression.kind() == ExprKind::Leaf) {
+            return;
+        }
+
+        auto const index{expression.data_composite_index()};
+        assert(index < composites_.child_ranges.size());
+        auto const range{composites_.child_ranges[index]};
+        auto const children{std::span{composites_.children}.subspan(range.offset, range.count)};
+        for (auto const child : children) {
+            visit_expression_tree(child, visitor);
+        }
+    }
 
   private:
     /* **************************************** */

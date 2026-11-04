@@ -34,6 +34,7 @@ TaskManager::TaskManager(std::pmr::memory_resource& resource)
     : instructions_{&resource}
     , instruction_data_{resource}
     , task_entries_{&resource}
+    , actionable_pass_leaves_{&resource}
     , leaf_tasks_{&resource}
     , active_tasks_{task_manager_detail::make_array<Team>(
           [&resource] { return std::pmr::vector<TaskId>{&resource}; })}
@@ -46,6 +47,7 @@ void TaskManager::reset() {
     instructions_.clear();
     instruction_data_.locations.clear();
     task_entries_.clear();
+    actionable_pass_leaves_.clear();
     leaf_tasks_.clear();
     for (auto& tasks : active_tasks_) {
         tasks.clear();
@@ -55,6 +57,25 @@ void TaskManager::reset() {
     }
 
     static_cast<void>(add_task({Instruction::make_data_idle(), jump_to_idle}));
+}
+
+void TaskManager::initialise(Mission const& mission) {
+    reset();
+
+    auto const leaf_count{mission.leaves().num_leaves()};
+    leaf_tasks_.assign(leaf_count, TaskId{});
+    actionable_pass_leaves_.assign(leaf_count, std::uint8_t{0});
+
+    auto const& objectives{mission.objectives()};
+    auto const objective_count{objectives.size()};
+    for (ObjectiveId::storage_type index{}; index < objective_count; ++index) {
+        auto const root{objectives.roots(ObjectiveId{index})[ObjectiveOutcome::Passed]};
+        mission.visit_expression_tree(root, [this](ExprHandle const expression) {
+            if (expression.kind() == ExprKind::Leaf && is_task(expression.data_leaf_kind())) {
+                actionable_pass_leaves_[expression.data_leaf_index()] = 1;
+            }
+        });
+    }
 }
 
 void TaskManager::reserve_instructions(std::size_t const count) {
@@ -86,17 +107,15 @@ auto TaskManager::add_task(std::initializer_list<Instruction> const instructions
 
 void TaskManager::plan_tasks(TaskPlanningContext const ctx) {
     auto const& leaves{ctx.mission.leaves()};
-    auto const leaf_count{leaves.num_leaves()};
-    if (leaf_tasks_.size() < leaf_count) {
-        leaf_tasks_.resize(leaf_count, TaskId{});
-    }
+    assert(leaf_tasks_.size() == leaves.num_leaves());
 
     for (auto const leaf : leaves.active) {
-        if (!is_task(leaf.kind())) {
+        auto const index{leaf.index()};
+        if (!actionable_pass_leaves_[index]) {
             continue;
         }
 
-        auto& task{leaf_tasks_[leaf.index()]};
+        auto& task{leaf_tasks_[index]};
         if (!task.is_valid()) {
             task = create_task(leaf, leaves);
         }
