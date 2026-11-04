@@ -1,5 +1,7 @@
 #include <ioj/sim/tasks/task_manager.h>
 
+#include <ioj/require.h>
+
 #include <array>
 #include <cassert>
 #include <limits>
@@ -43,7 +45,7 @@ void TaskManager::reset() {
         task_entity_allocations_[type].clear();
     }
 
-    static_cast<void>(add_program({Instruction::make_data_idle()}));
+    static_cast<void>(add_program({Instruction::make_data_idle(), jump_to_idle}));
     static_cast<void>(add_task(idle_program));
 }
 
@@ -53,6 +55,7 @@ void TaskManager::reserve_instructions(std::size_t const count) {
 }
 
 auto TaskManager::add_program(std::span<Instruction const> const program) -> ProgramHandle {
+    require(!program.empty() && program.back() == jump_to_idle, "Programs must end with Jump 0");
     assert(is_valid_program_size(program.size()));
 
     auto const first{instructions_.size()};

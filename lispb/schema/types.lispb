@@ -119,6 +119,11 @@
   :header "ioj/sim/entities/entity_id.h"
   :pass-by value)
 
+(type task_instruction_handle
+  :spelling "ioj::sim::tasks::InstructionHandle"
+  :header "ioj/sim/tasks/instruction_handle.h"
+  :pass-by value)
+
 (type native_vector_3f
   :spelling "Vector3f"
   :header "ioj/math_types.h"

@@ -10,6 +10,7 @@
 #include "ioj/parse_enum.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/entities/entity_type.h"
+#include "ioj/sim/tasks/instruction_handle.h"
 
 #include <array>
 #include <cassert>
@@ -26,13 +27,14 @@ enum class InstructionKind : InstructionKindUnderlying {
     Kill = 0,
     Idle = 1,
     MoveTo = 2,
+    Jump = 3,
 };
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_instruction_kind(std::string_view const value) noexcept
     -> std::optional<InstructionKind> {
-    std::array<std::string_view, 3> constexpr names{"kill", "idle", "move-to"};
+    std::array<std::string_view, 4> constexpr names{"kill", "idle", "move-to", "jump"};
     return try_parse_enum<InstructionKind>(value, names);
 }
 
@@ -41,7 +43,7 @@ using ioj::to_serialized_string;
 namespace ioj {
 template <>
 inline constexpr MinMax<sim::tasks::InstructionKind> enum_range<sim::tasks::InstructionKind>{
-    sim::tasks::InstructionKind::Kill, sim::tasks::InstructionKind::MoveTo};
+    sim::tasks::InstructionKind::Kill, sim::tasks::InstructionKind::Jump};
 } // namespace ioj
 
 namespace ioj::sim::tasks {
@@ -70,6 +72,10 @@ struct Instruction : detail::InstructionBase {
     // data_move_to
     static constexpr PackedField<storage_type, storage_type, 8, 32> data_move_to_layout{};
 
+    // data_jump
+    static constexpr PackedField<storage_type, storage_type, 8, 32> data_jump_layout{};
+    static constexpr storage_type data_jump_invalid_value{4294967295ULL};
+
     // data_kill_index
     static constexpr PackedField<storage_type, std::uint32_t, 8, 24> data_kill_index_layout{};
 
@@ -79,6 +85,9 @@ struct Instruction : detail::InstructionBase {
     // data_move_to_location_index
     static constexpr PackedField<storage_type, std::uint32_t, 8, 32>
         data_move_to_location_index_layout{};
+
+    // data_jump_index
+    static constexpr PackedField<storage_type, std::uint32_t, 8, 32> data_jump_index_layout{};
 
     constexpr Instruction() noexcept = delete;
 
@@ -118,6 +127,15 @@ struct Instruction : detail::InstructionBase {
                                           data_move_to_location_index_value)))};
         return result;
     }
+    [[nodiscard]] static constexpr auto
+        make_data_jump(InstructionHandle const data_jump_value) noexcept -> Instruction {
+        assert((data_jump_value.is_valid()));
+        auto result{from_raw(static_cast<storage_type>(
+            packed_pack<decltype(kind_layout)>(InstructionKind::Jump) |
+            packed_pack<decltype(data_jump_layout)>(
+                static_cast<storage_type>(data_jump_value.raw_value()))))};
+        return result;
+    }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         if (!Base::is_valid()) {
             return false;
@@ -131,6 +149,8 @@ struct Instruction : detail::InstructionBase {
                 return true;
             case InstructionKind::MoveTo:
                 return true;
+            case InstructionKind::Jump:
+                return extract<decltype(data_jump_layout)>() != data_jump_invalid_value;
             default:
                 return false;
         }
@@ -147,6 +167,16 @@ struct Instruction : detail::InstructionBase {
         assert((kind() == InstructionKind::Kill));
         assert((value.is_valid()));
         insert<decltype(data_kill_layout)>(static_cast<storage_type>(value.raw_value()));
+    }
+    [[nodiscard]] constexpr auto data_jump() const noexcept -> InstructionHandle {
+        assert((kind() == InstructionKind::Jump));
+        return InstructionHandle::from_raw(
+            static_cast<InstructionHandle::storage_type>(extract<decltype(data_jump_layout)>()));
+    }
+    constexpr void set_data_jump(InstructionHandle const value) noexcept {
+        assert((kind() == InstructionKind::Jump));
+        assert((value.is_valid()));
+        insert<decltype(data_jump_layout)>(static_cast<storage_type>(value.raw_value()));
     }
     [[nodiscard]] constexpr auto data_kill_index() const noexcept -> std::uint32_t {
         assert((kind() == InstructionKind::Kill));
@@ -174,12 +204,20 @@ struct Instruction : detail::InstructionBase {
         assert((kind() == InstructionKind::MoveTo));
         insert<decltype(data_move_to_location_index_layout)>(value);
     }
+    [[nodiscard]] constexpr auto data_jump_index() const noexcept -> std::uint32_t {
+        assert((kind() == InstructionKind::Jump));
+        return extract<decltype(data_jump_index_layout)>();
+    }
+    constexpr void set_data_jump_index(std::uint32_t const value) noexcept {
+        assert((kind() == InstructionKind::Jump));
+        insert<decltype(data_jump_index_layout)>(value);
+    }
 };
 
 static_assert(valid_packed_value_layout<Instruction>());
 } // namespace ioj::sim::tasks
 namespace ioj {
 template <>
-inline constexpr auto enum_strings<sim::tasks::InstructionKind, Serialized>{
-    PackedStrings{"kill\000idle\000move-to", std::array<std::uint8_t, 4>{0, 5, 10, 18}}};
+inline constexpr auto enum_strings<sim::tasks::InstructionKind, Serialized>{PackedStrings{
+    "kill\000idle\000move-to\000jump", std::array<std::uint8_t, 5>{0, 5, 10, 18, 23}}};
 } // namespace ioj

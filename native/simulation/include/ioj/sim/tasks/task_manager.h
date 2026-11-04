@@ -28,6 +28,7 @@ class TaskManager {
     static constexpr ProgramHandle idle_program{0};
     static constexpr TaskId idle_task{0};
     static constexpr InstructionHandle idle_instruction{0};
+    static constexpr Instruction jump_to_idle{Instruction::make_data_jump(idle_instruction)};
 
     // Keep the resource alive until after this manager and its storage are destroyed.
     explicit TaskManager(std::pmr::memory_resource& resource = *std::pmr::new_delete_resource());
@@ -35,7 +36,7 @@ class TaskManager {
     // Invalidates custom program and task handles while retaining allocated storage.
     void reset();
     void reserve_instructions(std::size_t count);
-    // Program sizes must be nonzero and fit InstructionCount.
+    // Programs must end with jump_to_idle and their sizes must fit InstructionCount.
     [[nodiscard]] auto add_program(std::span<Instruction const> program) -> ProgramHandle;
     [[nodiscard]] auto add_program(std::initializer_list<Instruction> program) -> ProgramHandle;
 

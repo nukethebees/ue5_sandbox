@@ -42,6 +42,7 @@ static auto is_instruction_complete(tasks::Instruction const instruction) -> boo
         case tasks::InstructionKind::Idle:
         case tasks::InstructionKind::MoveTo:
         case tasks::InstructionKind::Kill:
+        case tasks::InstructionKind::Jump:
             // TODO: Check MoveTo arrival and Kill target state; keep Idle incomplete.
             return false;
         default:
@@ -52,7 +53,7 @@ static auto is_instruction_complete(tasks::Instruction const instruction) -> boo
 }
 
 static void advance_instruction(tasks::InstructionHandle&) {
-    // TODO: Advance once program-end semantics are defined.
+    // TODO: Advance when instruction completion is implemented.
 }
 
 static void publish_navigation_counters(NavigationCounters const& counters) {
@@ -213,6 +214,9 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
             case tasks::InstructionKind::MoveTo:
             case tasks::InstructionKind::Kill:
                 // TODO: Plan MoveTo movement and Kill combat; leave Idle inactive.
+                break;
+            case tasks::InstructionKind::Jump:
+                current_instruction = instruction.data_jump();
                 break;
             default:
                 assert(false && "Invalid instruction kind");
