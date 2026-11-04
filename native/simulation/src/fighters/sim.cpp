@@ -37,14 +37,23 @@
 
 namespace ioj::sim::fighters {
 
-static auto is_instruction_complete(tasks::Instruction const instruction) -> bool {
+static auto is_target_alive(EntityId const target, EntityLookupTables const& lookups) -> bool {
+    assert(target.is_valid());
+    auto const handles{lookups.for_type(target.entity_type()).entries()};
+    assert(target.index() < handles.size());
+    return handles[target.index()].is_valid();
+}
+
+static auto is_instruction_complete(tasks::Instruction const instruction,
+                                    EntityLookupTables const& lookups) -> bool {
     switch (instruction.kind()) {
         case tasks::InstructionKind::Idle:
         case tasks::InstructionKind::MoveTo:
-        case tasks::InstructionKind::Kill:
         case tasks::InstructionKind::Jump:
-            // TODO: Check MoveTo arrival and Kill target state; keep Idle incomplete.
+            // TODO: Check MoveTo arrival; keep Idle incomplete.
             return false;
+        case tasks::InstructionKind::Kill:
+            return !is_target_alive(instruction.data_kill(), lookups);
         default:
             assert(false && "Invalid instruction kind");
             break;
@@ -52,8 +61,8 @@ static auto is_instruction_complete(tasks::Instruction const instruction) -> boo
     return false;
 }
 
-static void advance_instruction(tasks::InstructionHandle&) {
-    // TODO: Advance when instruction completion is implemented.
+static void advance_instruction(tasks::InstructionHandle& instruction) {
+    instruction = tasks::InstructionHandle{instruction.index() + 1};
 }
 
 static void publish_navigation_counters(NavigationCounters const& counters) {
@@ -172,8 +181,9 @@ void Sim::prepare_tick(PreparationInputs const inputs) {
 void Sim::think(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::think");
     inputs.navigation_counters = {};
-    refresh_target_data(inputs);
     plan_instructions(inputs.task_manager);
+    refresh_target_data(inputs);
+    plan_attack_positions();
     plan_movement(inputs);
     publish_navigation_counters(inputs.navigation_counters);
 }
@@ -181,9 +191,15 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
     auto const data{entities_.view()};
     auto const executors{entity_tables_.executors.view<EntityType::Fighter>()};
     auto const entity_ids{data.entity_ids()};
+    auto const target_ids{data.target_ids()};
 
     auto const count{data.num()};
     for (std::uint32_t row{}; row < count; ++row) {
+        if (target_ids[row].is_valid() &&
+            !is_target_alive(target_ids[row], entity_tables_.lookups)) {
+            target_ids[row] = {};
+        }
+
         auto const index{entity_ids[row].index()};
         auto const pending_task{executors.pending_tasks[index]};
 
@@ -194,7 +210,8 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
 
         auto& current_instruction{executors.current_instructions[index]};
         auto const instruction{manager.instruction(current_instruction)};
-        if (is_instruction_complete(instruction)) {
+        if (is_instruction_complete(instruction, entity_tables_.lookups)) {
+            clear_task_intent(row);
             advance_instruction(current_instruction);
             continue;
         }
@@ -202,11 +219,15 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
         switch (instruction.kind()) {
             using enum tasks::InstructionKind;
             case Idle:
+                break;
             case MoveTo:
+                // TODO: Plan MoveTo movement.
+                break;
             case Kill:
-                // TODO: Plan MoveTo movement and Kill combat; leave Idle inactive.
+                target_ids[row] = instruction.data_kill();
                 break;
             case Jump:
+                clear_task_intent(row);
                 current_instruction = instruction.data_jump();
                 break;
             default:
@@ -218,17 +239,47 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
 void Sim::change_task(std::uint32_t const row,
                       tasks::TaskId const task,
                       tasks::TaskManager const& manager) {
+    clear_task_intent(row);
+
+    auto const executors{entity_tables_.executors.view<EntityType::Fighter>()};
+    auto const index{entities_.const_view().entity_ids()[row].index()};
+    executors.current_tasks[index] = task;
+    executors.current_instructions[index] = manager.first_instruction(task);
+    executors.pending_tasks[index] = {};
+}
+void Sim::clear_task_intent(std::uint32_t const row) {
     auto const data{entities_.view()};
     auto const locations{data.view_locations().resolve()};
     auto const destinations{data.view_desired_move_locations().resolve()};
     data.target_ids()[row] = {};
     set_vector(destinations, row, vector_at(locations, row));
+}
+void Sim::plan_attack_positions() {
+    auto const data{entities_.view()};
+    auto const target_ids{data.target_ids()};
+    auto const locations{data.view_locations().resolve()};
+    auto const target_locations{data.view_target_locations().resolve()};
+    auto const destinations{data.view_desired_move_locations().resolve()};
+    auto const laser_range{config_.settings.laser.max_distance.get()};
+    auto const minimum_distance{laser_range * RuntimeConfig::minimum_attack_distance_ratio};
+    auto const desired_distance{laser_range * RuntimeConfig::desired_attack_distance_ratio};
+    auto const maximum_distance{laser_range * RuntimeConfig::maximum_attack_distance_ratio};
+    auto const count{data.num()};
 
-    auto const executors{entity_tables_.executors.view<EntityType::Fighter>()};
-    auto const index{data.entity_ids()[row].index()};
-    executors.current_tasks[index] = task;
-    executors.current_instructions[index] = manager.first_instruction(task);
-    executors.pending_tasks[index] = {};
+    for (std::uint32_t row{}; row < count; ++row) {
+        if (!target_ids[row].is_valid()) {
+            continue;
+        }
+
+        auto const target_location{vector_at(target_locations, row)};
+        auto const destination_distance{size(target_location - vector_at(destinations, row))};
+        if (destination_distance >= minimum_distance && destination_distance <= maximum_distance) {
+            continue;
+        }
+
+        auto const direction{native_math::safe_normal(target_location - vector_at(locations, row))};
+        set_vector(destinations, row, target_location - direction * desired_distance);
+    }
 }
 void Sim::plan_movement(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::plan_movement");

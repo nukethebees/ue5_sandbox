@@ -13,6 +13,10 @@ struct SimClock;
 
 namespace ioj::sim::fighters {
 struct RuntimeConfig {
+    static constexpr float minimum_attack_distance_ratio{0.4f};
+    static constexpr float desired_attack_distance_ratio{0.5f};
+    static constexpr float maximum_attack_distance_ratio{0.6f};
+
     RuntimeConfig() = default;
     RuntimeConfig(FighterSimConfig const& new_settings, SimClock const& clock);
 
