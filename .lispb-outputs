@@ -35,6 +35,8 @@ native/levels/lib/include/ioj/levels/objective_dependency_reader.h
 native/levels/lib/include/ioj/levels/objective_outcome.h
 native/levels/lib/include/ioj/levels/objective_wins_level.h
 native/levels/lib/include/ioj/levels/team.h
+native/levels/lib/include/ioj/settings/attack_distance_band.h
+native/levels/lib/include/ioj/settings/attack_distance_band_reader.h
 native/levels/lib/include/ioj/settings/capital_presentation.h
 native/levels/lib/include/ioj/settings/capital_presentation_reader.h
 native/levels/lib/include/ioj/settings/entity_overlay.h

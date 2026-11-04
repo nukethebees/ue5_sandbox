@@ -5,6 +5,7 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
+#include "ioj/settings/attack_distance_band_reader.h"
 #include "ioj/sim/fighters/fighter_sim_config.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include <ioj/s7/field_reader.h>
@@ -22,6 +23,7 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::max_live_fighters ||
                                   field == Field::fire_dot_product_threshold ||
+                                  field == Field::attack_distance_band ||
                                   field == Field::avoidance_clear_update_frequency ||
                                   field == Field::avoidance_update_frequency ||
                                   field == Field::avoidance_active_update_frequency ||
@@ -50,10 +52,11 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 19> field_names{
+    static constexpr std::array<std::string_view, 20> field_names{
         "max-live-fighters",
         "",
         "fire-dot-product-threshold",
+        "attack-distance-band",
         "speed",
         "turn-speed-unitless",
         "avoidance-clear-update-frequency",

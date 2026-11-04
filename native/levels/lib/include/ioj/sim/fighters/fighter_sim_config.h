@@ -6,6 +6,7 @@
 #include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/settings/attack_distance_band.h"
 #include "ioj/settings/simulation_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
@@ -25,6 +26,7 @@ struct FighterSimConfig {
         max_live_fighters,
         fire_point_distance,
         fire_dot_product_threshold,
+        attack_distance_band,
         speed,
         turn_speed_unitless,
         avoidance_clear_update_frequency,
@@ -56,6 +58,9 @@ struct FighterSimConfig {
         }
         if constexpr (Selected == Field::fire_dot_product_threshold) {
             return (self.fire_dot_product_threshold);
+        }
+        if constexpr (Selected == Field::attack_distance_band) {
+            return (self.attack_distance_band);
         }
         if constexpr (Selected == Field::speed) {
             return (self.speed);
@@ -125,6 +130,9 @@ struct FighterSimConfig {
             case Field::fire_dot_product_threshold:
                 return invoke_field<Field::fire_dot_product_threshold>(
                     self, std::forward<Visitor>(visitor));
+            case Field::attack_distance_band:
+                return invoke_field<Field::attack_distance_band>(self,
+                                                                 std::forward<Visitor>(visitor));
             case Field::speed:
                 return invoke_field<Field::speed>(self, std::forward<Visitor>(visitor));
             case Field::turn_speed_unitless:
@@ -176,6 +184,7 @@ struct FighterSimConfig {
     ioj::NonNegative<std::int32_t> max_live_fighters{2000};
     float fire_point_distance{};
     settings::DotProduct fire_dot_product_threshold{0.95f};
+    settings::AttackDistanceBand attack_distance_band{};
     float speed{2000.f};
     float turn_speed_unitless{1.f};
     ioj::PositiveFinite<float> avoidance_clear_update_frequency{2.f};
@@ -197,17 +206,17 @@ struct FighterSimConfig {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::FighterSimConfig::Field>() noexcept -> std::size_t {
-    return 19ULL;
+    return 20ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<sim::FighterSimConfig::Field, Name>{PackedStrings{
-    "max_live_fighters\000fire_point_distance\000fire_dot_product_threshold\000speed\000turn_speed_"
-    "unitless\000avoidance_clear_update_frequency\000avoidance_update_frequency\000avoidance_"
-    "active_update_frequency\000avoidance_immediate_update_frequency\000avoidance_lookahead_"
-    "time\000avoidance_clearance_buffer\000separation_radius\000separation_strength\000steering_"
-    "memory_duration\000dense_traffic_neighbour_threshold\000laser\000health\000attack_retry_"
-    "cooldown\000los_check_buffer",
-    std::array<std::uint16_t, 20>{0,   18,  38,  65,  71,  91,  124, 151, 185, 222,
-                                  247, 274, 292, 312, 337, 371, 377, 384, 406, 423}}};
+    "max_live_fighters\000fire_point_distance\000fire_dot_product_threshold\000attack_distance_"
+    "band\000speed\000turn_speed_unitless\000avoidance_clear_update_frequency\000avoidance_update_"
+    "frequency\000avoidance_active_update_frequency\000avoidance_immediate_update_"
+    "frequency\000avoidance_lookahead_time\000avoidance_clearance_buffer\000separation_"
+    "radius\000separation_strength\000steering_memory_duration\000dense_traffic_neighbour_"
+    "threshold\000laser\000health\000attack_retry_cooldown\000los_check_buffer",
+    std::array<std::uint16_t, 21>{0,   18,  38,  65,  86,  92,  112, 145, 172, 206, 243,
+                                  268, 295, 313, 333, 358, 392, 398, 405, 427, 444}}};
 } // namespace ioj

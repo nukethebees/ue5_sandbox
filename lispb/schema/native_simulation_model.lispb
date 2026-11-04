@@ -180,6 +180,20 @@
     (member max @native_vector_3f)
     (projections (cpp))))
 
+(module attack_distance_band
+  :header "native/levels/lib/include/ioj/settings/attack_distance_band.h"
+  :header-include "ioj/settings/attack_distance_band.h"
+  :namespace ioj::settings
+  :prelude ("#include <ioj/settings/attack_distance_band_policy.h>")
+  (record AttackDistanceBand :generate-visitor true
+    :constraint-policy ioj::settings::attack_distance_band_policy
+    :comparison equality
+    :generate-s7-reader true :s7-tag "attack-distance-band"
+    (member minimum float :initializer 0.4f :s7-name "minimum-ratio" :required true)
+    (member desired float :initializer 0.5f :s7-name "desired-ratio" :required true)
+    (member maximum float :initializer 0.6f :s7-name "maximum-ratio" :required true)
+    (projections (cpp))))
+
 (module native_base_sim_config_laser_weapon_sim_config
   :header "native/levels/lib/include/ioj/sim/lasers/laser_weapon_sim_config.h"
   :header-include "ioj/sim/lasers/laser_weapon_sim_config.h"
@@ -225,6 +239,7 @@
     (member max_live_fighters @settings_nonnegative_int :initializer "2000")
     (member fire_point_distance float :initializer "" :s7-exclude true)
     (member fire_dot_product_threshold @settings_dot_product :initializer "0.95f")
+    (member attack_distance_band ioj::settings::AttackDistanceBand :initializer "")
     (member speed float :initializer "2000.f" :finite true)
     (member turn_speed_unitless float :initializer "1.f" :finite true)
     (member avoidance_clear_update_frequency @settings_positive_float :initializer "2.f")

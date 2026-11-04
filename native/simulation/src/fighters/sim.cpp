@@ -261,9 +261,10 @@ void Sim::plan_attack_positions() {
     auto const target_locations{data.view_target_locations().resolve()};
     auto const destinations{data.view_desired_move_locations().resolve()};
     auto const laser_range{config_.settings.laser.max_distance.get()};
-    auto const minimum_distance{laser_range * RuntimeConfig::minimum_attack_distance_ratio};
-    auto const desired_distance{laser_range * RuntimeConfig::desired_attack_distance_ratio};
-    auto const maximum_distance{laser_range * RuntimeConfig::maximum_attack_distance_ratio};
+    auto const band{config_.settings.attack_distance_band.get()};
+    auto const minimum_distance{laser_range * band.minimum};
+    auto const desired_distance{laser_range * band.desired};
+    auto const maximum_distance{laser_range * band.maximum};
     auto const count{data.num()};
 
     for (std::uint32_t row{}; row < count; ++row) {
