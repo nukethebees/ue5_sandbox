@@ -2,28 +2,42 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstdint>
+#include <cstddef>
+#include <utility>
 #include <vector>
 
 namespace ioj {
 template <typename T, typename Allocator>
 void remove_at_swap(std::vector<T, Allocator>& values,
-                    std::uint32_t const index,
-                    std::uint32_t const count) {
-
+                    std::size_t const index,
+                    std::size_t const count = 1) {
     auto const old_size{values.size()};
-    auto const index_offset{static_cast<std::size_t>(index)};
-    auto const count_size{static_cast<std::size_t>(count)};
-    assert(index_offset <= old_size);
-    assert(count_size <= old_size - index_offset);
+    assert(index <= old_size);
+    assert(count <= old_size - index);
 
-    auto const tail{old_size - index_offset - count_size};
-    auto const moved{std::min(tail, count_size)};
+    auto const tail{old_size - index - count};
+    auto const moved{std::min(tail, count)};
     auto const source{old_size - moved};
     for (std::size_t offset{}; offset < moved; ++offset) {
-        values[index_offset + offset] = values[source + offset];
+        values[index + offset] = std::move(values[source + offset]);
     }
 
-    values.resize(old_size - count_size);
+    auto const new_end{values.end() -
+                       static_cast<typename std::vector<T, Allocator>::difference_type>(count)};
+    values.erase(new_end, values.end());
+}
+
+template <typename T, typename Allocator, typename Predicate>
+auto remove_at_swap_if(std::vector<T, Allocator>& values, Predicate predicate) -> std::size_t {
+    auto const old_size{values.size()};
+    std::size_t index{};
+    while (index < values.size()) {
+        if (predicate(values[index])) {
+            ioj::remove_at_swap(values, index);
+        } else {
+            ++index;
+        }
+    }
+    return old_size - values.size();
 }
 }
