@@ -12,10 +12,6 @@
 #include <vector>
 
 namespace ioj::sim {
-inline constexpr auto has_health(EntityType const type) -> bool {
-    return type == EntityType::PlayerShip || type == EntityType::CapitalShip ||
-           type == EntityType::Fighter || type == EntityType::Turret;
-}
 namespace health_storage {
 struct Layout {
     EntityTypeSizes capacities{};
@@ -25,7 +21,7 @@ struct Layout {
 inline constexpr auto layout{[] {
     Layout result;
     for (auto const type : EnumTraits<EntityType>::values) {
-        result.capacities[type] = has_health(type) ? entity_lifetime_capacities[type] : 0;
+        result.capacities[type] = is_damageable(type) ? entity_lifetime_capacities[type] : 0;
         result.offsets[type] = result.capacity;
         result.capacity += result.capacities[type];
     }
@@ -131,11 +127,11 @@ class HealthTable : public EntityTableOperations {
     }
 
     [[nodiscard]] static constexpr auto is_supported_type(EntityType const type) noexcept -> bool {
-        return has_health(type);
+        return is_damageable(type);
     }
 
     [[nodiscard]] static auto storage_index(EntityId const id) noexcept -> std::size_t {
-        assert(is_entity_identity_offset(id) && has_health(id.entity_type()));
+        assert(is_entity_identity_offset(id) && is_damageable(id.entity_type()));
         return health_storage::layout.offsets[id.entity_type()] + id.index();
     }
 

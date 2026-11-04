@@ -10,6 +10,8 @@
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
 
+#include <span>
+
 namespace ioj {
 namespace telemetry_dashboard_view {
 auto text(FGameUiStyle const& style, FText value, EGameTextStyle const type = EGameTextStyle::Body)
@@ -94,7 +96,7 @@ auto metric_section(FGameUiStyle const& style,
                     FTelemetryRunAnalysis const& analysis,
                     FTelemetryRunAnalysis const* const baseline_analysis,
                     FString title,
-                    TConstArrayView<ioj::sim::telemetry::Metric> const metrics,
+                    std::span<ioj::sim::telemetry::Metric const> const metrics,
                     FString note,
                     FGraphPlotStyle const& graph_style,
                     FHistogramStyle const& histogram_style) -> TSharedRef<SWidget> {
@@ -277,30 +279,17 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
     combat_series.Add(MoveTemp(kills));
     combat_efficiency->set_series(MoveTemp(combat_series));
 
-    static constexpr ioj::sim::telemetry::Metric workload_metrics[]{
-        ioj::sim::telemetry::Metric::ActiveEntities,
-        ioj::sim::telemetry::Metric::PlayerShips,
-        ioj::sim::telemetry::Metric::Turrets,
-        ioj::sim::telemetry::Metric::CapitalShips,
-        ioj::sim::telemetry::Metric::CapitalShipFighters,
-        ioj::sim::telemetry::Metric::TubeSpinners,
-        ioj::sim::telemetry::Metric::ActiveLasers,
-    };
-    static constexpr ioj::sim::telemetry::Metric activity_metrics[]{
-        ioj::sim::telemetry::Metric::SpawnRate,
-        ioj::sim::telemetry::Metric::DestructionRate,
-        ioj::sim::telemetry::Metric::KillRate,
-        ioj::sim::telemetry::Metric::LaserFireRate,
-    };
-    static_assert(UE_ARRAY_COUNT(workload_metrics) + UE_ARRAY_COUNT(activity_metrics) ==
-                  static_cast<int32>(ioj::enum_count<ioj::sim::telemetry::Metric>()));
+    using ioj::sim::telemetry::metric_rate_values;
+    using ioj::sim::telemetry::metric_workload_values;
+    static_assert(metric_workload_values.size() + metric_rate_values.size() ==
+                  ioj::enum_count<ioj::sim::telemetry::Metric>());
 
     workload_section_ = telemetry_dashboard_view::metric_section(
         *style_,
         state_.analysis,
         state_.selected_baseline_run_id.IsEmpty() ? nullptr : &state_.baseline_analysis,
         TEXT("FORCES"),
-        workload_metrics,
+        metric_workload_values,
         {},
         graph_style,
         histogram_style);
@@ -309,7 +298,7 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
         state_.analysis,
         state_.selected_baseline_run_id.IsEmpty() ? nullptr : &state_.baseline_analysis,
         TEXT("COMBAT EFFICIENCY"),
-        activity_metrics,
+        metric_rate_values,
         {},
         graph_style,
         histogram_style);

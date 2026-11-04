@@ -62,8 +62,8 @@
   :namespace ioj::levels
   (enum ExprType std::uint8_t
     :native-api true :helpers (traits to-serialized-string try-parse-serialized)
-    (value All :serialized-name "all-of")
-    (value Any :serialized-name "any-of")
+    (value All :serialized-name "all-of" :groups (composite))
+    (value Any :serialized-name "any-of" :groups (composite))
     (value EntityDestroyed :serialized-name "entity-destroyed")
     (value EntityReachedPosition :serialized-name "entity-reached-position")
     (value TimeElapsed :serialized-name "time-elapsed")

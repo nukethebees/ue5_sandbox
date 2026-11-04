@@ -75,6 +75,13 @@ using ioj::to_serialized_string;
     }
 }
 
+inline constexpr std::array<ExprType, 2ULL> expr_type_composite_values{ExprType::All,
+                                                                       ExprType::Any};
+
+[[nodiscard]] constexpr auto is_composite(ExprType const value) noexcept -> bool {
+    return value <= ExprType::Any;
+}
+
 } // namespace ioj::levels
 
 namespace ioj {

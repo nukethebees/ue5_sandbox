@@ -6,6 +6,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 namespace ioj::sim::telemetry {
@@ -25,6 +26,25 @@ enum class Metric : MetricUnderlying {
     KillRate,
     LaserFireRate,
 };
+
+inline constexpr std::array<Metric, 7ULL> metric_workload_values{Metric::ActiveEntities,
+                                                                 Metric::PlayerShips,
+                                                                 Metric::Turrets,
+                                                                 Metric::CapitalShips,
+                                                                 Metric::CapitalShipFighters,
+                                                                 Metric::TubeSpinners,
+                                                                 Metric::ActiveLasers};
+
+[[nodiscard]] constexpr auto is_workload(Metric const value) noexcept -> bool {
+    return value <= Metric::ActiveLasers;
+}
+
+inline constexpr std::array<Metric, 4ULL> metric_rate_values{
+    Metric::SpawnRate, Metric::DestructionRate, Metric::KillRate, Metric::LaserFireRate};
+
+[[nodiscard]] constexpr auto is_rate(Metric const value) noexcept -> bool {
+    return value >= Metric::SpawnRate && value <= Metric::LaserFireRate;
+}
 
 } // namespace ioj::sim::telemetry
 

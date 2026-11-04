@@ -90,8 +90,7 @@ TEST(TelemetryAnalysis, SampledGaugesSurviveRegressingCounterIntervals) {
 
     auto const analysis{analyze({.battle_samples = samples})};
     EXPECT_EQ(metric(analysis, Metric::ActiveEntities).values, (std::vector<float>{7.f}));
-    for (auto const id :
-         {Metric::SpawnRate, Metric::DestructionRate, Metric::KillRate, Metric::LaserFireRate}) {
+    for (auto const id : metric_rate_values) {
         EXPECT_TRUE(metric(analysis, id).values.empty());
         EXPECT_FALSE(metric(analysis, id).weighted_mean);
     }

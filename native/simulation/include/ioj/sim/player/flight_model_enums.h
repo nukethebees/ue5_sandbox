@@ -6,6 +6,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 namespace ioj::sim::player {
 using FlightModelPresetUnderlying = std::uint8_t;
@@ -55,6 +56,14 @@ enum class TranslationSemantic : TranslationSemanticUnderlying {
     TargetVelocity,
     Acceleration,
 };
+
+inline constexpr std::array<TranslationSemantic, 2ULL> translation_semantic_velocity_target_values{
+    TranslationSemantic::TargetSpeed, TranslationSemantic::TargetVelocity};
+
+[[nodiscard]] constexpr auto is_velocity_target(TranslationSemantic const value) noexcept -> bool {
+    return value >= TranslationSemantic::TargetSpeed &&
+           value <= TranslationSemantic::TargetVelocity;
+}
 
 } // namespace ioj::sim::player
 
@@ -181,4 +190,13 @@ inline constexpr MinMax<sim::player::FlightModelConfigError>
     enum_range<sim::player::FlightModelConfigError>{
         sim::player::FlightModelConfigError::InvalidEnumValue,
         sim::player::FlightModelConfigError::InvalidSecondOrderDampingRatio};
+
+template <>
+struct EnumTraits<sim::player::FlightModelSlot> {
+    static constexpr std::array values{sim::player::FlightModelSlot::First,
+                                       sim::player::FlightModelSlot::Second,
+                                       sim::player::FlightModelSlot::Third,
+                                       sim::player::FlightModelSlot::Fourth};
+};
+
 } // namespace ioj

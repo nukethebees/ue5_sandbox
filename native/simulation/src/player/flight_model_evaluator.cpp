@@ -35,8 +35,7 @@ void seed_axis_responses(Vector3d const& velocity,
                          ScalarResponse& manual,
                          ScalarResponse& automatic) noexcept {
     auto seed = [&](TranslationChannelConfig const& channel, ScalarResponse& response) {
-        auto const targets_velocity{channel.semantic == TranslationSemantic::TargetSpeed ||
-                                    channel.semantic == TranslationSemantic::TargetVelocity};
+        auto const targets_velocity{is_velocity_target(channel.semantic)};
         if (!targets_velocity && !reset_acceleration) {
             return;
         }

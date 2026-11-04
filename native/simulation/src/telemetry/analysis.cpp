@@ -34,15 +34,7 @@ auto metric_title(Metric const metric) noexcept -> std::string_view {
     return {};
 }
 auto metric_units(Metric const metric) noexcept -> std::string_view {
-    switch (metric) {
-        case Metric::SpawnRate:
-        case Metric::DestructionRate:
-        case Metric::KillRate:
-        case Metric::LaserFireRate:
-            return "/s";
-        default:
-            return "count";
-    }
+    return is_rate(metric) ? "/s" : "count";
 }
 namespace {
 struct MetricBuilder {

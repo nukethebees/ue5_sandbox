@@ -1029,12 +1029,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                     [axis](auto& config) -> auto& { return axis(config).automatic.response; },
                     100000.f);
             }
-            auto const manual_targets{
-                current_axis.manual.semantic == TranslationSemantic::TargetSpeed ||
-                current_axis.manual.semantic == TranslationSemantic::TargetVelocity};
-            auto const automatic_targets{
-                current_axis.automatic.semantic == TranslationSemantic::TargetSpeed ||
-                current_axis.automatic.semantic == TranslationSemantic::TargetVelocity};
+            auto const manual_targets{is_velocity_target(current_axis.manual.semantic)};
+            auto const automatic_targets{is_velocity_target(current_axis.automatic.semantic)};
             auto const uses_targets{manual_targets || automatic_targets};
             auto const uses_acceleration{
                 current_axis.manual.semantic == TranslationSemantic::Acceleration ||

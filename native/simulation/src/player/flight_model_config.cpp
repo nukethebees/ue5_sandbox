@@ -64,11 +64,6 @@ namespace ioj::sim::player::flight_model_config_detail {
     return false;
 }
 
-[[nodiscard]] auto targets_velocity(TranslationSemantic const semantic) noexcept -> bool {
-    return semantic == TranslationSemantic::TargetSpeed ||
-           semantic == TranslationSemantic::TargetVelocity;
-}
-
 [[nodiscard]] auto validate_non_negative(float const value) noexcept
     -> std::expected<void, FlightModelConfigError> {
     if (!std::isfinite(value)) {
@@ -166,7 +161,8 @@ namespace ioj::sim::player::flight_model_config_detail {
     if (auto const result{validate_channel(config.automatic, true)}; !result) {
         return result;
     }
-    if (targets_velocity(config.manual.semantic) && targets_velocity(config.automatic.semantic)) {
+    if (is_velocity_target(config.manual.semantic) &&
+        is_velocity_target(config.automatic.semantic)) {
         return std::unexpected{FlightModelConfigError::AmbiguousTargetChannels};
     }
     if (auto const result{validate_drive(config.normal)}; !result) {

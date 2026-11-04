@@ -25,6 +25,12 @@ enum class EntityType : EntityTypeUnderlying {
 
 using ioj::to_serialized_string;
 using ioj::to_string;
+inline constexpr std::array<EntityType, 4ULL> entity_type_damageable_values{
+    EntityType::PlayerShip, EntityType::Turret, EntityType::CapitalShip, EntityType::Fighter};
+
+[[nodiscard]] constexpr auto is_damageable(EntityType const value) noexcept -> bool {
+    return value <= EntityType::Fighter;
+}
 
 } // namespace ioj::sim
 

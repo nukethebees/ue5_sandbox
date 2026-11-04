@@ -7,9 +7,9 @@
     :native-api true
     :helpers (to-string traits to-serialized-string)
     :enum-array true
-    (value PlayerShip :value "0" :display-name "Player Ship" :serialized-name "player_ship")
-    (value Turret :value "1" :display-name "Turret" :serialized-name "turret")
-    (value CapitalShip :value "2" :display-name "Capital Ship" :serialized-name "capital_ship")
-    (value Fighter :value "3" :display-name "Capital Ship Fighter" :serialized-name "capital_ship_fighter")
+    (value PlayerShip :value "0" :display-name "Player Ship" :serialized-name "player_ship" :groups (damageable))
+    (value Turret :value "1" :display-name "Turret" :serialized-name "turret" :groups (damageable))
+    (value CapitalShip :value "2" :display-name "Capital Ship" :serialized-name "capital_ship" :groups (damageable))
+    (value Fighter :value "3" :display-name "Capital Ship Fighter" :serialized-name "capital_ship_fighter" :groups (damageable))
     (value TubeSpinner :value "4" :display-name "Tube Spinner" :serialized-name "tube_spinner")
     (projections (cpp))))

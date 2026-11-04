@@ -128,8 +128,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
 
         for (auto const index : order) {
             auto const& expression{source.expressions[index]};
-            if (expression.type() == levels::ExprType::All ||
-                expression.type() == levels::ExprType::Any) {
+            if (is_composite(expression.type())) {
                 ExprCompositeIndex const composite{size(composites.results)};
                 auto const kind{expression.type() == levels::ExprType::All ? CompositeKind::All
                                                                            : CompositeKind::Any};

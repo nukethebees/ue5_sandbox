@@ -16,7 +16,7 @@ struct EntityTables {
                  Health const maximum) {
         auto& table{lookups.for_type(Type)};
         assert(is_preparation_mutation_allowed(lookups.clock()));
-        if constexpr (has_health(Type)) {
+        if constexpr (is_damageable(Type)) {
             auto const healths{health.const_view<Type>()};
             table.publish_rows(ids, teams, healths, maximum);
         } else {

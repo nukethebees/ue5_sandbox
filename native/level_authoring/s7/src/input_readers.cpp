@@ -31,7 +31,7 @@ auto read_expr(Reader const& reader, NodeIndex node, std::string_view path, std:
         return read_error(
             AstErrorCode::UnknownSymbol, path, std::format("Unknown mission expression '{}'", tag));
     }
-    if (*type == ExprType::All || *type == ExprType::Any) {
+    if (is_composite(*type)) {
         ExprInput result;
         if (*type == ExprType::Any) {
             result.expression.payload = AnyExpr{};

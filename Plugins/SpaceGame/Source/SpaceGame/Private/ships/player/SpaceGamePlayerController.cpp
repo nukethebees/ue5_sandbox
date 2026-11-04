@@ -288,10 +288,7 @@ void ASpaceGamePlayerController::apply_player_ship_flight_model_config(Pawn& shi
 
     auto const& loadout{settings->flight_model_loadout()};
     using ioj::sim::player::FlightModelSlot;
-    for (auto const slot : {FlightModelSlot::First,
-                            FlightModelSlot::Second,
-                            FlightModelSlot::Third,
-                            FlightModelSlot::Fourth}) {
+    for (auto const slot : ioj::EnumTraits<FlightModelSlot>::values) {
         if (!ship.set_flight_model_slot_profile(
                 slot, ioj::sim::player::flight_model_profile(loadout, slot))) {
             UE_LOG(LogSandboxController, Error, TEXT("Could not apply saved flight model slot"));

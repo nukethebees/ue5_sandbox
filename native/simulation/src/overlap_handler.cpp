@@ -34,17 +34,8 @@ void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps, Comb
 }
 
 void OverlapHandler::append_damage(EntityId const id) {
-    switch (id.entity_type()) {
-        case EntityType::PlayerShip:
-        case EntityType::Turret:
-        case EntityType::CapitalShip:
-        case EntityType::Fighter: {
-            damage_events_.add(id, damage_per_overlap_detection_, {});
-            break;
-        }
-        case EntityType::TubeSpinner: {
-            break;
-        }
+    if (is_damageable(id.entity_type())) {
+        damage_events_.add(id, damage_per_overlap_detection_, {});
     }
 }
 }

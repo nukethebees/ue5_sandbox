@@ -4,17 +4,17 @@
   :namespace ioj::sim::telemetry
   (enum Metric std::uint8_t
     :enum-array true
-    (value ActiveEntities)
-    (value PlayerShips)
-    (value Turrets)
-    (value CapitalShips)
-    (value CapitalShipFighters)
-    (value TubeSpinners)
-    (value ActiveLasers)
-    (value SpawnRate)
-    (value DestructionRate)
-    (value KillRate)
-    (value LaserFireRate)
+    (value ActiveEntities :groups (workload))
+    (value PlayerShips :groups (workload))
+    (value Turrets :groups (workload))
+    (value CapitalShips :groups (workload))
+    (value CapitalShipFighters :groups (workload))
+    (value TubeSpinners :groups (workload))
+    (value ActiveLasers :groups (workload))
+    (value SpawnRate :groups (rate))
+    (value DestructionRate :groups (rate))
+    (value KillRate :groups (rate))
+    (value LaserFireRate :groups (rate))
     (projections (cpp))))
 
 (module native_level_state
@@ -72,6 +72,7 @@
     (value Gunship)
     (projections (cpp)))
   (enum FlightModelSlot std::uint8_t
+    :native-api true :helpers (traits)
     (value First)
     (value Second)
     (value Third)
@@ -79,8 +80,8 @@
     (projections (cpp)))
   (enum TranslationSemantic std::uint8_t
     (value Disabled)
-    (value TargetSpeed)
-    (value TargetVelocity)
+    (value TargetSpeed :groups (velocity_target))
+    (value TargetVelocity :groups (velocity_target))
     (value Acceleration)
     (projections (cpp)))
   (enum RotationSemantic std::uint8_t
