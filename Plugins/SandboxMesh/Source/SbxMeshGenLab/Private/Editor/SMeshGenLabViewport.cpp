@@ -21,9 +21,8 @@ class FMeshGenLabViewportClient final : public FEditorViewportClient {
   public:
     FMeshGenLabViewportClient(FPreviewScene& preview_scene,
                               TSharedRef<SMeshGenLabViewport> const& viewport)
-        : FEditorViewportClient{nullptr,
-                                &preview_scene,
-                                StaticCastSharedRef<SEditorViewport>(viewport)}
+        : FEditorViewportClient{
+              nullptr, &preview_scene, StaticCastSharedRef<SEditorViewport>(viewport)}
         , preview_scene_{preview_scene} {
         DrawHelper.bDrawPivot = false;
         DrawHelper.bDrawWorldBox = false;

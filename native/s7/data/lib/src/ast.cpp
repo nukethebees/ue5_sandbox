@@ -11,7 +11,8 @@ void assert_range([[maybe_unused]] Node const& node, [[maybe_unused]] std::size_
     assert(node.count <= size - node.offset);
 }
 template <typename T>
-auto scalar(Node const& node, [[maybe_unused]] NodeKind const kind, std::vector<T> const& storage) -> T {
+auto scalar(Node const& node, [[maybe_unused]] NodeKind const kind, std::vector<T> const& storage)
+    -> T {
     assert(node.kind == kind);
     assert(node.count == 1);
     assert_range(node, storage.size());

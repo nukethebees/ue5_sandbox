@@ -22,11 +22,10 @@ void LoopViewConstructionCheck::registerMatchers(ast_matchers::MatchFinder* find
                      .bind("construction")),
         this);
     // Source-only traversal skips the implicit initializer of a range-for variable.
-    finder->addMatcher(
-        traverse(TK_AsIs,
-                 cxxForRangeStmt(hasLoopVariable(varDecl(hasInitializer(
-                     ignoringImplicit(cxxConstructExpr().bind("construction"))))))),
-        this);
+    finder->addMatcher(traverse(TK_AsIs,
+                                cxxForRangeStmt(hasLoopVariable(varDecl(hasInitializer(
+                                    ignoringImplicit(cxxConstructExpr().bind("construction"))))))),
+                       this);
 }
 void LoopViewConstructionCheck::check(ast_matchers::MatchFinder::MatchResult const& result) {
     auto const* expression{result.Nodes.getNodeAs<Expr>("construction")};

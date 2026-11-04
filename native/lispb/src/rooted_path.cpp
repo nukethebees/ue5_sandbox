@@ -1,6 +1,8 @@
-#include "lispb/path_base.h"
-#include <filesystem>
 #include <lispb/rooted_path.h>
+
+#include "lispb/path_base.h"
+
+#include <filesystem>
 
 namespace lispb {
 auto resolve(RootedPath const& path,
