@@ -12,6 +12,7 @@
 #include <ioj/vector.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <vector>
 
 namespace ioj::sim {
@@ -21,6 +22,8 @@ struct ExprLeaves {
         std::ranges::fill(activated_at, SimTick{});
         active.clear();
     }
+
+    [[nodiscard]] auto num_leaves() const noexcept -> std::size_t { return results.size(); }
 
     // Shared
     std::vector<ExprResult> results;

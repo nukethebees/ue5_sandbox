@@ -114,7 +114,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
         columns.assigned_teams[row] = source.team;
         columns.wins_level[row] = source.wins_level;
 
-        columns.leaf_ranges[row].offset = size(leaves.results);
+        columns.leaf_ranges[row].offset = static_cast<LeafIndex>(leaves.num_leaves());
         columns.composite_ranges[row].offset = size(composites.results);
 
         prerequisites.clear();
@@ -148,7 +148,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
                 continue;
             }
 
-            LeafIndex const leaf{size(leaves.results)};
+            auto const leaf{static_cast<LeafIndex>(leaves.num_leaves())};
             leaves.results.push_back(ExprResult::Pending);
 
             LeafKind kind{};
@@ -239,7 +239,8 @@ auto Mission::compile(levels::MissionDefinition const& definition,
             }
         }
 
-        columns.leaf_ranges[row].count = size(leaves.results) - columns.leaf_ranges[row].offset;
+        columns.leaf_ranges[row].count =
+            static_cast<LeafIndex>(leaves.num_leaves()) - columns.leaf_ranges[row].offset;
         columns.composite_ranges[row].count =
             size(composites.results) - columns.composite_ranges[row].offset;
     }

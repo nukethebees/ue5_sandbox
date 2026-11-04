@@ -85,7 +85,7 @@ auto TaskManager::add_task(std::initializer_list<Instruction> const instructions
 }
 
 void TaskManager::plan_tasks(TaskPlanningContext const ctx) {
-    auto const leaf_count{ctx.mission.leaves().results.size()};
+    auto const leaf_count{ctx.mission.leaves().num_leaves()};
     if (leaf_tasks_.size() < leaf_count) {
         leaf_tasks_.resize(leaf_count, TaskId{});
     }
