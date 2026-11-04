@@ -210,12 +210,13 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
         }
 
         switch (instruction.kind()) {
-            case tasks::InstructionKind::Idle:
-            case tasks::InstructionKind::MoveTo:
-            case tasks::InstructionKind::Kill:
+            using enum tasks::InstructionKind;
+            case Idle:
+            case MoveTo:
+            case Kill:
                 // TODO: Plan MoveTo movement and Kill combat; leave Idle inactive.
                 break;
-            case tasks::InstructionKind::Jump:
+            case Jump:
                 current_instruction = instruction.data_jump();
                 break;
             default:
