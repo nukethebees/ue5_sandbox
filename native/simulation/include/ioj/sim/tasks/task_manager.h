@@ -64,8 +64,10 @@ class TaskManager {
     // Immutable
     std::pmr::vector<Instruction> instructions_;
     InstructionData instruction_data_;
+
     std::pmr::vector<InstructionHandle> task_entries_;
-    std::pmr::vector<std::uint8_t> actionable_pass_leaves_;
+    std::pmr::vector<std::uint8_t> task_actionable_pass_leaves_;
+    std::pmr::vector<Team> task_leaf_teams_;
 
     // Mutable
     std::pmr::vector<TaskId> leaf_tasks_;
