@@ -1,6 +1,5 @@
 {
   "Roots": [
-    "Codegen",
     "native",
     "tools",
     "Source",
