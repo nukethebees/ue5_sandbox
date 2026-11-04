@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/packed_value.h"
+#include "ioj/sim/missions/leaf_data_index.h"
 #include "ioj/sim/missions/leaf_kind.h"
 
 #include <cassert>
@@ -24,13 +25,13 @@ struct LeafDataHandle : detail::LeafDataHandleBase {
     using packed_integer_tag = packed::integer_tag;
 
     // index
-    static constexpr PackedField<storage_type, std::uint32_t, 0, 24> index_layout{};
+    static constexpr PackedField<storage_type, LeafDataIndex, 0, 24> index_layout{};
 
     // kind
     static constexpr PackedField<storage_type, LeafKind, 24, 3> kind_layout{};
 
     constexpr LeafDataHandle() noexcept = default;
-    constexpr explicit LeafDataHandle(std::uint32_t const index_value,
+    constexpr explicit LeafDataHandle(LeafDataIndex const index_value,
                                       LeafKind const kind_value) noexcept
         : Base{static_cast<storage_type>(packed_pack<decltype(index_layout)>(index_value) |
                                          packed_pack<decltype(kind_layout)>(kind_value))} {
@@ -40,7 +41,7 @@ struct LeafDataHandle : detail::LeafDataHandleBase {
 
     [[nodiscard]] constexpr auto operator<=>(LeafDataHandle const&) const noexcept = default;
 
-    [[nodiscard]] static constexpr auto is_valid_index(std::uint32_t const value) noexcept -> bool {
+    [[nodiscard]] static constexpr auto is_valid_index(LeafDataIndex const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= index_layout.value_mask;
     }
     [[nodiscard]] static constexpr auto is_valid_kind(LeafKind const value) noexcept -> bool {
@@ -49,10 +50,10 @@ struct LeafDataHandle : detail::LeafDataHandleBase {
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_kind(extract<decltype(kind_layout)>());
     }
-    [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
+    [[nodiscard]] constexpr auto index() const noexcept -> LeafDataIndex {
         return extract<decltype(index_layout)>();
     }
-    constexpr void set_index(std::uint32_t const value) noexcept {
+    constexpr void set_index(LeafDataIndex const value) noexcept {
         assert((is_valid_index(value)));
         insert<decltype(index_layout)>(value);
     }

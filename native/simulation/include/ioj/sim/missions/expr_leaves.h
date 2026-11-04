@@ -1,14 +1,12 @@
 #pragma once
 
-#include <ioj/enum_array.h>
 #include <ioj/levels/expr_result.h>
 #include <ioj/levels/objective_outcome.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/level_entity_index.h>
-#include <ioj/sim/missions/expr_leaf_handle.h>
 #include <ioj/sim/missions/kill_count.h>
 #include <ioj/sim/missions/leaf_data_handle.h>
-#include <ioj/sim/missions/leaf_kind.h>
+#include <ioj/sim/missions/leaf_handle.h>
 #include <ioj/sim/missions/objective_id.h>
 #include <ioj/sim/sim_tick.h>
 #include <ioj/vector.h>
@@ -27,8 +25,7 @@ struct ExprLeaves {
     // Shared
     std::vector<ExprResult> results;
     std::vector<LeafDataHandle> data_handles;
-    EnumArray<std::vector<ExprLeafHandle>, LeafKind> leaf_handles;
-    std::vector<LeafDataHandle> active;
+    std::vector<LeafHandle> active;
 
     // EntityDestroyed
     std::vector<LevelEntityIndex> destroyed_entities;

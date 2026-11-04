@@ -1,5 +1,23 @@
 (include "common_scalars.lispb")
 
+(type mission_leaf_index
+  :spelling "ioj::sim::LeafIndex"
+  :header "ioj/sim/missions/leaf_index.h"
+  :pass-by value
+  (integer :signed false :bit-width 28))
+
+(type mission_leaf_data_index
+  :spelling "ioj::sim::LeafDataIndex"
+  :header "ioj/sim/missions/leaf_data_index.h"
+  :pass-by value
+  (integer :signed false :bit-width 24))
+
+(type mission_composite_index
+  :spelling "ioj::sim::ExprCompositeIndex"
+  :header "ioj/sim/missions/expr_composite_index.h"
+  :pass-by value
+  (integer :signed false :bit-width 28))
+
 (type ismc_packed_position
   :spelling "ioj::Vector<std::int16_t, 3>"
   :header "ioj/vector.h")
@@ -340,6 +358,10 @@
 (type mission_leaf_kind
   :spelling "ioj::sim::LeafKind"
   :header "ioj/sim/missions/leaf_kind.h"
+  :pass-by value)
+(type mission_leaf_handle
+  :spelling "ioj::sim::LeafHandle"
+  :header "ioj/sim/missions/leaf_handle.h"
   :pass-by value)
 (type mission_expr_kind
   :spelling "ioj::sim::ExprKind"

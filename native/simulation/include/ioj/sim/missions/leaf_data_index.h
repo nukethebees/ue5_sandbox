@@ -3,5 +3,5 @@
 #include <cstdint>
 
 namespace ioj::sim {
-using ExprLeafHandle = std::uint32_t;
+using LeafDataIndex = std::uint32_t;
 }

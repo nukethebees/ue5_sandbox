@@ -5,7 +5,10 @@
 
 #include "ioj/packed_value.h"
 #include "ioj/sim/missions/composite_kind.h"
+#include "ioj/sim/missions/expr_composite_index.h"
 #include "ioj/sim/missions/expr_kind.h"
+#include "ioj/sim/missions/leaf_handle.h"
+#include "ioj/sim/missions/leaf_index.h"
 #include "ioj/sim/missions/leaf_kind.h"
 
 #include <cassert>
@@ -46,13 +49,14 @@ struct ExprHandle : detail::ExprHandleBase {
     static constexpr PackedField<storage_type, CompositeKind, 1, 1> data_composite_kind_layout{};
 
     // data_composite_index
-    static constexpr PackedField<storage_type, std::uint32_t, 2, 28> data_composite_index_layout{};
-
-    // data_leaf_kind
-    static constexpr PackedField<storage_type, LeafKind, 1, 3> data_leaf_kind_layout{};
+    static constexpr PackedField<storage_type, ExprCompositeIndex, 2, 28>
+        data_composite_index_layout{};
 
     // data_leaf_index
-    static constexpr PackedField<storage_type, std::uint32_t, 4, 28> data_leaf_index_layout{};
+    static constexpr PackedField<storage_type, LeafIndex, 1, 28> data_leaf_index_layout{};
+
+    // data_leaf_kind
+    static constexpr PackedField<storage_type, LeafKind, 29, 3> data_leaf_kind_layout{};
 
     constexpr ExprHandle() noexcept = default;
 
@@ -66,20 +70,21 @@ struct ExprHandle : detail::ExprHandleBase {
         return std::to_underlying(value) <= data_composite_kind_layout.value_mask;
     }
     [[nodiscard]] static constexpr auto
-        is_valid_data_composite_index(std::uint32_t const value) noexcept -> bool {
+        is_valid_data_composite_index(ExprCompositeIndex const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= data_composite_index_layout.value_mask;
+    }
+    [[nodiscard]] static constexpr auto is_valid_data_leaf_index(LeafIndex const value) noexcept
+        -> bool {
+        return static_cast<storage_type>(value) <= data_leaf_index_layout.value_mask;
     }
     [[nodiscard]] static constexpr auto is_valid_data_leaf_kind(LeafKind const value) noexcept
         -> bool {
         return value <= data_leaf_kind_layout.range.max;
     }
-    [[nodiscard]] static constexpr auto is_valid_data_leaf_index(std::uint32_t const value) noexcept
-        -> bool {
-        return static_cast<storage_type>(value) <= data_leaf_index_layout.value_mask;
-    }
     [[nodiscard]] static constexpr auto
         make_data_composite(CompositeKind const data_composite_kind_value,
-                            std::uint32_t const data_composite_index_value) noexcept -> ExprHandle {
+                            ExprCompositeIndex const data_composite_index_value) noexcept
+        -> ExprHandle {
         assert((is_valid_data_composite_kind(data_composite_kind_value)));
         assert((is_valid_data_composite_index(data_composite_index_value)));
         auto result{from_raw(static_cast<storage_type>(
@@ -89,15 +94,13 @@ struct ExprHandle : detail::ExprHandleBase {
         assert((result.value_ != invalid_value));
         return result;
     }
-    [[nodiscard]] static constexpr auto
-        make_data_leaf(LeafKind const data_leaf_kind_value,
-                       std::uint32_t const data_leaf_index_value) noexcept -> ExprHandle {
-        assert((is_valid_data_leaf_kind(data_leaf_kind_value)));
-        assert((is_valid_data_leaf_index(data_leaf_index_value)));
+    [[nodiscard]] static constexpr auto make_data_leaf(LeafHandle const data_leaf_value) noexcept
+        -> ExprHandle {
+        assert((data_leaf_value.is_valid()));
         auto result{from_raw(static_cast<storage_type>(
             packed_pack<decltype(kind_layout)>(ExprKind::Leaf) |
-            packed_pack<decltype(data_leaf_kind_layout)>(data_leaf_kind_value) |
-            packed_pack<decltype(data_leaf_index_layout)>(data_leaf_index_value)))};
+            packed_pack<decltype(data_leaf_layout)>(
+                static_cast<storage_type>(data_leaf_value.raw_value()))))};
         assert((result.value_ != invalid_value));
         return result;
     }
@@ -117,6 +120,16 @@ struct ExprHandle : detail::ExprHandleBase {
     [[nodiscard]] constexpr auto kind() const noexcept -> ExprKind {
         return extract<decltype(kind_layout)>();
     }
+    [[nodiscard]] constexpr auto data_leaf() const noexcept -> LeafHandle {
+        assert((kind() == ExprKind::Leaf));
+        return LeafHandle::from_raw(
+            static_cast<LeafHandle::storage_type>(extract<decltype(data_leaf_layout)>()));
+    }
+    constexpr void set_data_leaf(LeafHandle const value) noexcept {
+        assert((kind() == ExprKind::Leaf));
+        assert((value.is_valid()));
+        insert<decltype(data_leaf_layout)>(static_cast<storage_type>(value.raw_value()));
+    }
     [[nodiscard]] constexpr auto data_composite_kind() const noexcept -> CompositeKind {
         assert((kind() == ExprKind::Composite));
         return extract<decltype(data_composite_kind_layout)>();
@@ -126,14 +139,23 @@ struct ExprHandle : detail::ExprHandleBase {
         assert((is_valid_data_composite_kind(value)));
         insert<decltype(data_composite_kind_layout)>(value);
     }
-    [[nodiscard]] constexpr auto data_composite_index() const noexcept -> std::uint32_t {
+    [[nodiscard]] constexpr auto data_composite_index() const noexcept -> ExprCompositeIndex {
         assert((kind() == ExprKind::Composite));
         return extract<decltype(data_composite_index_layout)>();
     }
-    constexpr void set_data_composite_index(std::uint32_t const value) noexcept {
+    constexpr void set_data_composite_index(ExprCompositeIndex const value) noexcept {
         assert((kind() == ExprKind::Composite));
         assert((is_valid_data_composite_index(value)));
         insert<decltype(data_composite_index_layout)>(value);
+    }
+    [[nodiscard]] constexpr auto data_leaf_index() const noexcept -> LeafIndex {
+        assert((kind() == ExprKind::Leaf));
+        return extract<decltype(data_leaf_index_layout)>();
+    }
+    constexpr void set_data_leaf_index(LeafIndex const value) noexcept {
+        assert((kind() == ExprKind::Leaf));
+        assert((is_valid_data_leaf_index(value)));
+        insert<decltype(data_leaf_index_layout)>(value);
     }
     [[nodiscard]] constexpr auto data_leaf_kind() const noexcept -> LeafKind {
         assert((kind() == ExprKind::Leaf));
@@ -143,15 +165,6 @@ struct ExprHandle : detail::ExprHandleBase {
         assert((kind() == ExprKind::Leaf));
         assert((is_valid_data_leaf_kind(value)));
         insert<decltype(data_leaf_kind_layout)>(value);
-    }
-    [[nodiscard]] constexpr auto data_leaf_index() const noexcept -> std::uint32_t {
-        assert((kind() == ExprKind::Leaf));
-        return extract<decltype(data_leaf_index_layout)>();
-    }
-    constexpr void set_data_leaf_index(std::uint32_t const value) noexcept {
-        assert((kind() == ExprKind::Leaf));
-        assert((is_valid_data_leaf_index(value)));
-        insert<decltype(data_leaf_index_layout)>(value);
     }
 };
 

@@ -66,18 +66,15 @@ class Mission {
     /* **************************************** */
     // Leaf evaluation
     /* **************************************** */
-    auto expression_leaf(LeafDataHandle data_handle) const -> ExprLeafHandle;
-    void resolve_leaf(LeafDataHandle data_handle, ExprResult value);
+    void resolve_leaf(LeafIndex index, ExprResult value);
     void evaluate_leaves(MissionEvaluationContext const& inputs);
 
-    void evaluate_destroyed(std::span<LeafDataHandle const> run,
+    void evaluate_destroyed(std::span<LeafHandle const> run,
                             MissionEvaluationContext const& inputs);
-    void evaluate_elapsed(std::span<LeafDataHandle const> run,
-                          MissionEvaluationContext const& inputs);
-    void evaluate_resolved(std::span<LeafDataHandle const> run);
-    void evaluate_kills(std::span<LeafDataHandle const> run,
-                        MissionEvaluationContext const& inputs);
-    void evaluate_reached_position(std::span<LeafDataHandle const> run,
+    void evaluate_elapsed(std::span<LeafHandle const> run, MissionEvaluationContext const& inputs);
+    void evaluate_resolved(std::span<LeafHandle const> run);
+    void evaluate_kills(std::span<LeafHandle const> run, MissionEvaluationContext const& inputs);
+    void evaluate_reached_position(std::span<LeafHandle const> run,
                                    MissionEvaluationContext const& inputs);
 
     /* **************************************** */
