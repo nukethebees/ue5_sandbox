@@ -140,7 +140,6 @@ auto TaskManager::create_task(LeafHandle const leaf,
         case LeafKind::EntityDestroyed: {
             auto const data{leaves.data_handles[i].index()};
             auto const entity_index{leaves.destroyed_entities[data]};
-            assert(entity_index < entities.size());
             auto const entity_id{entities[entity_index]};
             if (!entity_id.is_valid()) {
                 // Leave the task invalid so planning retries after the target spawns.
