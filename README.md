@@ -6,23 +6,47 @@ test, and measure them.
 
 ## Start here
 
-Set `UE_ROOT` to a usable Unreal Engine installation, then prepare the worktree:
+### Prerequisites
+
+- Windows with Developer Mode enabled
+- Rust via rustup (the repository pins the toolchain)
+- Clang 24, including `clang-cl` and `clang-format`
+- Visual Studio C++ tools: MSVC 14.50.35717 and Windows SDK 10.0.22621.0
+- CMake 4.4.2+, Ninja, ccache, Python 3, Git, and PowerShell 7
+- Unreal Engine 5.8
+
+Set `UE_ROOT` to the engine directory and `IOJ_ROOT` to a shared tools directory
+(for example, `C:\dev\ioj`). Add `%IOJ_ROOT%\tools\bin` and the command-line tools to PATH.
+
+### Building tools
+
+Build and install the core tools from the repository root:
 
 ```powershell
+pwsh -NoProfile -File PowerShell/InstallCoj.ps1
 coj prepare-worktree
+coj install central-tools
 ```
 
-The maintainer runs `pwsh -NoProfile -File PowerShell/InstallCoj.ps1` and manages PATH;
-agents begin new tasks with `coj prepare-worktree`.
-This clears the worktree's build output, initializes/updates submodules, and regenerates presets
-and code. It does not run a broad project/test build; build only the task's relevant targets afterward.
-Install shared per-user build tools with `coj install central-tools` when needed.
-Use `cmake --workflow --preset debug-game` to build the Editor and
-`debug-game-unit-tests` only for explicit Unreal-enabled integration validation.
-Native presets set `IOJ_WITH_UNREAL=OFF`.
+`coj` is a general purpose tool for repo management.
 
-For complete setup, build, testing, debugging, and packaging instructions, see
-[Build and test](docs/build-and-test.md).
+### Building the game
+
+#### Build only
+
+```powershell
+cmake --workflow --preset native-lean
+cmake --workflow --preset debug-game
+```
+
+#### Build and test
+
+```powershell
+# Native simulation and tests
+cmake --workflow --preset native-simulation-tests
+# Unreal Editor and unit tests
+cmake --workflow --preset debug-game-unit-tests
+```
 
 ## Repository map
 
