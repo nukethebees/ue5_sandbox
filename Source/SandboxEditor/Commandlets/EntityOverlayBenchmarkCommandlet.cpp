@@ -7,6 +7,7 @@
 #include <ioj/presentation/entity_overlay.h>
 #include <ioj/presentation/entity_overlay_health_maximums.h>
 #include <ioj/presentation/entity_overlay_team_colours.h>
+#include <ioj/team_array.h>
 
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
 #include <SandboxCoreEngine/VectorConversion.h>
@@ -33,7 +34,7 @@ auto make_view(::ioj::sim::TurretEntityData const& entities,
 }
 
 auto make_team_colours() -> ioj::presentation::EntityOverlayTeamColours {
-    ioj::EnumArray<ioj::Team, ioj::ui::Color4f> colours;
+    ioj::TeamArray<ioj::ui::Color4f> colours;
     colours[ioj::Team::White] = {1.f, 1.f, 1.f, 1.f};
     colours[ioj::Team::Red] = {1.f, 0.f, 0.f, 1.f};
     colours[ioj::Team::Green] = {0.f, 1.f, 0.f, 1.f};

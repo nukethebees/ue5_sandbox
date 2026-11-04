@@ -1,7 +1,7 @@
 #include <ioj/sim/levels/level_event_schedule.h>
 
 #include <ioj/diagnostics.h>
-#include <ioj/enum_array.h>
+#include <ioj/team_array.h>
 
 #include <algorithm>
 #include <cassert>
@@ -17,7 +17,7 @@ namespace ioj::sim {
 /* **************************************** */
 auto LevelEventSchedule::get_participating_teams(std::optional<Team> const player_team) const
     -> TeamList {
-    EnumArray<Team, std::uint8_t> included{};
+    TeamArray<std::uint8_t> included{};
     auto const included_count{included.size()};
     auto include = [&included](Team const team) {
         auto const team_index{static_cast<std::int32_t>(team)};

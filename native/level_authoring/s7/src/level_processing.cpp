@@ -2,6 +2,7 @@
 
 #include "mission_processing.h"
 #include <ioj/enum_array.h>
+#include <ioj/team_array.h>
 
 #include <format>
 #include <unordered_set>
@@ -17,7 +18,7 @@ void assign_generated_entity_ids(std::vector<EntitySpawnDefinition>& entities) {
         }
     }
 
-    EnumArray<Team, EnumArray<EntityArchetype, std::size_t>> next_indices{};
+    TeamArray<EnumArray<EntityArchetype, std::size_t>> next_indices{};
     for (auto& entity : entities) {
         if (!entity.id.empty()) {
             continue;

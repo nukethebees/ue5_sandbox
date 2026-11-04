@@ -6,6 +6,7 @@
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
 #include <ioj/sim/entities/entity_type.h>
+#include <ioj/team_array.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
@@ -80,7 +81,7 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
     };
     auto native_colours = [](UTestTeamVisualData const* data) {
         auto const colours{UTestTeamVisualData::build_team_colour_cache(data)};
-        EnumArray<Team, ui::Color4f> result;
+        TeamArray<ui::Color4f> result;
         constexpr auto count{enum_count<Team>()};
         for (std::size_t index{}; index < count; ++index) {
             auto const colour{colours[static_cast<ETestTeam>(index)]};
