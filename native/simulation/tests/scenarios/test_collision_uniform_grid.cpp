@@ -323,7 +323,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
     ASSERT_NE(player, nullptr) << "Collision-grid player ship is available";
     ASSERT_FALSE(fighter_ids.empty()) << "Collision-grid fighter is placed";
 
-    EnumArray<EntityType, EntityId> expected_ids{};
+    EnumArray<EntityId, EntityType> expected_ids{};
     expected_ids[EntityType::PlayerShip] = player->unique_entity_id;
     expected_ids[EntityType::Turret] = simulation.turrets().get_entities().entity_ids()[0];
     expected_ids[EntityType::CapitalShip] =

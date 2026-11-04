@@ -65,13 +65,11 @@ template <typename Counts>
 auto validate_counts(Counts const& source, std::string_view const path)
     -> std::expected<void, std::string> {
     std::int32_t index{};
-    for (auto const& row : source) {
-        for (auto const value : row) {
-            auto const value_path{std::format("{}[{}]", path, index++)};
-            auto const valid{validate_json_count(value, value_path)};
-            if (!valid) {
-                return valid;
-            }
+    for (auto const value : source) {
+        auto const value_path{std::format("{}[{}]", path, index++)};
+        auto const valid{validate_json_count(value, value_path)};
+        if (!valid) {
+            return valid;
         }
     }
     return {};

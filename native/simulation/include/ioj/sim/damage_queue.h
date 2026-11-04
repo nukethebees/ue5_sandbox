@@ -22,6 +22,6 @@ class DamageQueue {
     auto all_events() const -> DirectDamageEvents const& { return events_; }
   private:
     DirectDamageEvents events_;
-    EnumArray<EntityType, IndexSpan> spans_{};
+    EnumArray<IndexSpan, EntityType> spans_{};
 };
 }

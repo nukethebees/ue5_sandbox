@@ -74,10 +74,8 @@ struct MetricBuilder {
 template <typename Counts>
 auto sum_counts(Counts const& counts) -> float {
     double total{};
-    for (auto const& row : counts) {
-        for (auto const value : row) {
-            total += static_cast<double>(value);
-        }
+    for (auto const value : counts) {
+        total += static_cast<double>(value);
     }
     return static_cast<float>(total);
 }
@@ -85,7 +83,7 @@ auto sum_counts(Counts const& counts) -> float {
 
 auto analyze(AnalysisInput const input) -> Analysis {
     Analysis result;
-    EnumArray<Metric, MetricBuilder> builders{std::array{MetricBuilder{Metric::ActiveEntities},
+    EnumArray<MetricBuilder, Metric> builders{std::array{MetricBuilder{Metric::ActiveEntities},
                                                          MetricBuilder{Metric::PlayerShips},
                                                          MetricBuilder{Metric::Turrets},
                                                          MetricBuilder{Metric::CapitalShips},
@@ -115,15 +113,15 @@ auto analyze(AnalysisInput const input) -> Analysis {
     }
 
     if (input.battle_samples.size() >= 2) {
-        constexpr EnumArray<EntityType, Metric> type_metrics{std::array{Metric::PlayerShips,
+        constexpr EnumArray<Metric, EntityType> type_metrics{std::array{Metric::PlayerShips,
                                                                         Metric::Turrets,
                                                                         Metric::CapitalShips,
                                                                         Metric::CapitalShipFighters,
                                                                         Metric::TubeSpinners}};
         auto const type_total{[](EntityCounts const& counts, EntityType const type) {
             std::int32_t total{};
-            for (auto const& team : counts) {
-                total += team[type];
+            for (auto const team : EnumTraits<Team>::values) {
+                total += counts[team, type];
             }
             return total;
         }};

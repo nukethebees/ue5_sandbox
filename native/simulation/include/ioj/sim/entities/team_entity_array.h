@@ -6,5 +6,5 @@
 
 namespace ioj::sim {
 template <typename T>
-using TeamEntityArray = TeamArray<EnumArray<EntityType, T>>;
+using TeamEntityArray = EnumArray<T, Team, EntityType>;
 }

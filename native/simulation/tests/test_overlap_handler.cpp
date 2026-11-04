@@ -56,7 +56,7 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
     EXPECT_EQ(capital_count, 1) << "Capital receives its pair contribution";
     EXPECT_EQ(fighter_count, 3) << "Fighter receives all three contributions";
     EXPECT_EQ(turret_count, 1) << "Turret receives its pair contribution";
-    EXPECT_EQ(owners.ledger.combat_telemetry().hits[Team::Blue][EntityType::CapitalShip],
+    EXPECT_EQ((owners.ledger.combat_telemetry().hits[Team::Blue, EntityType::CapitalShip]),
               std::uint64_t{0})
         << "Environmental damage gives no combat hits";
 }

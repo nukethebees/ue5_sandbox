@@ -151,7 +151,7 @@ namespace {
 template <typename IncludeEntity>
 auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                                EntityTables const& agents,
-                               EnumArray<EntityType, vectors3f::ResolvedConstView> const& locations,
+                               EnumArray<vectors3f::ResolvedConstView, EntityType> const& locations,
                                FrameMemoryResource* const scratch_resource,
                                Vector3f const origin,
                                float const radius,
@@ -186,7 +186,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     }
     visited.set_num(total_count);
     auto const radius_squared{radius * radius};
-    EnumArray<EntityType, std::span<EntityInstanceHandle const>> handles;
+    EnumArray<std::span<EntityInstanceHandle const>, EntityType> handles;
     for (auto const type : EnumTraits<EntityType>::values) {
         // Bind each type's table once before scanning.
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call)

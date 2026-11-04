@@ -159,8 +159,8 @@ class CppTypes {
     std::vector<CppTypePart> parts_;
     std::vector<CppTypeDependencyRange> dependencies_;
     std::vector<ParameterPassing> passing_;
-    ioj::EnumArray<TypeOperation, std::vector<StringId>> operations_;
-    ioj::EnumArray<TypeOperation, std::vector<ParameterPassing>> operation_passing_;
+    ioj::EnumArray<std::vector<StringId>, TypeOperation> operations_;
+    ioj::EnumArray<std::vector<ParameterPassing>, TypeOperation> operation_passing_;
     std::vector<TypeDependencyId> dependency_uses_;
     std::unordered_multimap<std::size_t, CppTypeDependencyRange> dependency_lists_;
     std::unordered_multimap<std::uint32_t, CppTypeId> types_by_spelling_;

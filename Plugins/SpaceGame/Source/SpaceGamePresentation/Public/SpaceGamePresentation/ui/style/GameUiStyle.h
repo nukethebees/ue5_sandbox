@@ -196,13 +196,13 @@ class SPACEGAMEPRESENTATION_API FGameUiStyle {
   private:
     friend USpaceGameUiTheme;
 
-    TEnumArray<EGameTextStyle, FTextBlockStyle> text_styles_{};
-    TEnumArray<EGameButtonStyle, FGameButtonPresentationStyle> button_styles_{};
+    TEnumArray<FTextBlockStyle, EGameTextStyle> text_styles_{};
+    TEnumArray<FGameButtonPresentationStyle, EGameButtonStyle> button_styles_{};
     FGamePanelStyle panel_{};
     FSettingsStyle settings_{};
     FGameUiPalette palette_{};
     FGameUiChromeStyle chrome_{};
-    TEnumArray<EGameUiIcon, FSlateBrush> icons_{};
+    TEnumArray<FSlateBrush, EGameUiIcon> icons_{};
     FGameHudStyle hud_{};
 };
 

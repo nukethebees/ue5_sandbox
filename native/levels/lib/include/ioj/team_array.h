@@ -5,5 +5,5 @@
 
 namespace ioj {
 template <typename T>
-using TeamArray = EnumArray<Team, T>;
+using TeamArray = EnumArray<T, Team>;
 }

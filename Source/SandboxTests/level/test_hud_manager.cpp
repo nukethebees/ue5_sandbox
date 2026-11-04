@@ -16,10 +16,8 @@ namespace ioj {
 namespace {
 auto count_cached_hud_entities(ioj::FHUDManager const& manager) -> int32 {
     int32 count{};
-    for (auto const& team : manager.get_entity_count_data().alive_per_team_and_type) {
-        for (auto const value : team) {
-            count += value;
-        }
+    for (auto const value : manager.get_entity_count_data().alive_per_team_and_type) {
+        count += value;
     }
     return count;
 }

@@ -70,6 +70,6 @@ class EntityLookupTables {
     }
   private:
     SimClock const& clock_;
-    EnumArray<EntityType, EntityLookupTable> tables_;
+    EnumArray<EntityLookupTable, EntityType> tables_;
 };
 }

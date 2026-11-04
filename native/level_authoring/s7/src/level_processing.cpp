@@ -18,7 +18,7 @@ void assign_generated_entity_ids(std::vector<EntitySpawnDefinition>& entities) {
         }
     }
 
-    TeamArray<EnumArray<EntityArchetype, std::size_t>> next_indices{};
+    TeamArray<EnumArray<std::size_t, EntityArchetype>> next_indices{};
     for (auto& entity : entities) {
         if (!entity.id.empty()) {
             continue;

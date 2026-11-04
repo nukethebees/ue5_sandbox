@@ -133,7 +133,7 @@ nested members. Each component is validated as a C++ identifier and emitted as s
 member access.
 
 Use `:enum-array true` independently on native or Unreal enums to generate `ioj::enum_count<Enum>()` for
-`ioj::EnumArray<Enum, T>` and `ioj::FixedEnumArray<Enum>`. LispB requires known codes in declaration
+`ioj::EnumArray<T, Enums...>` and `ioj::FixedEnumArray<Enum>`. LispB requires known codes in declaration
 order from zero through count minus one; gaps, aliases, negative codes, hidden values, and count
 sentinels are rejected. Explicit numeric initializers are allowed. Other enums can remain sparse
 and do not expose the array count API. Unreal projections select their count helper separately

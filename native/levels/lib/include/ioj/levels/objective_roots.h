@@ -5,5 +5,5 @@
 #include <ioj/levels/objective_outcome.h>
 
 namespace ioj::levels {
-using ObjectiveRoots = EnumArray<ObjectiveOutcome, ExprIndex>;
+using ObjectiveRoots = EnumArray<ExprIndex, ObjectiveOutcome>;
 }

@@ -19,7 +19,7 @@ struct RuntimeConfig {
     FighterSimConfig settings{};
     NonNegative<std::int16_t> attack_retry_cooldown_ticks{};
     NonNegative<std::int16_t> fire_cooldown_ticks{};
-    EnumArray<NavigationRiskTier, std::int16_t> navigation_tick_periods{};
+    EnumArray<std::int16_t, NavigationRiskTier> navigation_tick_periods{};
     float navigation_lookahead_time{};
 };
 }

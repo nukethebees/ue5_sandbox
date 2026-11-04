@@ -27,7 +27,7 @@ struct EntityAABBs {
         return Vector3f{half_extent_xs_[type], half_extent_ys_[type], half_extent_zs_[type]};
     }
   private:
-    using Values = EnumArray<EntityType, float>;
+    using Values = EnumArray<float, EntityType>;
 
     Values centre_xs_{};
     Values centre_ys_{};

@@ -18,15 +18,13 @@ template <typename Values, typename Columns, typename Mask>
 void append_group(Values const& values, Columns& columns, Mask& mask) {
     static_assert(std::tuple_size_v<Columns> <= std::numeric_limits<Mask>::digits);
     std::size_t index{};
-    for (auto const& row : values) {
-        for (auto const value : row) {
-            bool changed{};
-            append_value(value, columns[index], changed);
-            if (changed) {
-                mask |= Mask{1} << index;
-            }
-            ++index;
+    for (auto const value : values) {
+        bool changed{};
+        append_value(value, columns[index], changed);
+        if (changed) {
+            mask |= Mask{1} << index;
         }
+        ++index;
     }
 }
 
@@ -42,13 +40,11 @@ auto cursors(std::array<LinkedVector<T>, Count> const& columns) {
 template <typename Values, typename Cursors, typename Mask>
 void read_group(Values& values, Cursors& cursors, Mask const mask) {
     std::size_t index{};
-    for (auto& row : values) {
-        for (auto& value : row) {
-            if ((mask & (Mask{1} << index)) != 0) {
-                value = *cursors[index]++;
-            }
-            ++index;
+    for (auto& value : values) {
+        if ((mask & (Mask{1} << index)) != 0) {
+            value = *cursors[index]++;
         }
+        ++index;
     }
 }
 }

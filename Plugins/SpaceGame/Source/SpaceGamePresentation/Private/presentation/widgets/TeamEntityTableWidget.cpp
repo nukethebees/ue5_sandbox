@@ -21,7 +21,7 @@ void UTeamEntityTableWidget::NativePreConstruct() {
         constexpr int32 n_types{ioj::enum_count<ioj::sim::EntityType>()};
         for (int32 team{0}; team < n_teams; ++team) {
             for (int32 type{0}; type < n_types; ++type) {
-                values[static_cast<ioj::Team>(team)][static_cast<ioj::sim::EntityType>(type)] =
+                values[static_cast<ioj::Team>(team), static_cast<ioj::sim::EntityType>(type)] =
                     10 + team + type;
             }
         }
@@ -181,7 +181,7 @@ void UTeamEntityTableWidget::rebuild_table() {
             ioj::apply_text_style(*label, hud_style_->caption_text);
         }
         for (int32 team{0}; team < n_teams; ++team) {
-            auto const value{values[static_cast<ioj::Team>(team)][type_value]};
+            auto const value{values[static_cast<ioj::Team>(team), type_value]};
             auto* count{add_text(FString::Printf(TEXT("entity_value_%d_%d"), type, team),
                                  row,
                                  first_team_column + team,
@@ -217,7 +217,7 @@ void UTeamEntityTableWidget::rebuild_table() {
     for (int32 team{0}; team < n_teams; ++team) {
         int32 total{0};
         for (int32 type{0}; type < n_types; ++type) {
-            total += values[static_cast<ioj::Team>(team)][static_cast<ioj::sim::EntityType>(type)];
+            total += values[static_cast<ioj::Team>(team), static_cast<ioj::sim::EntityType>(type)];
         }
 
         auto* const total_text{add_text(FString::Printf(TEXT("team_total_%d"), team),

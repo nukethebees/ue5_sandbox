@@ -52,14 +52,22 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     report.run.completion.completed_ticks = SimTick{240};
     telemetry::BattleSample sample;
     sample.completed_tick = SimTick{240};
-    sample.alive[Team::White][EntityType::PlayerShip] = 1;
-    sample.combat.shots[Team::White][EntityType::PlayerShip] = 3;
-    sample.combat.damage_dealt[Team::White][EntityType::PlayerShip] = 12.5;
+    sample.alive[Team::White, EntityType::PlayerShip] = 1;
+    sample.alive[Team::Red, EntityType::Turret] = 2;
+    sample.alive[Team::Yellow, EntityType::TubeSpinner] = 4;
+    sample.combat.shots[Team::White, EntityType::PlayerShip] = 3;
+    sample.combat.damage_dealt[Team::White, EntityType::PlayerShip] = 12.5;
     report.run.battle_samples.push_back(sample);
     report.run.final_state = sample;
 
     auto const serialized{telemetry::serialize_report(report)};
     ASSERT_TRUE(serialized.has_value()) << serialized.error();
+    auto const json = nlohmann::json::parse(*serialized);
+    auto const& alive{json["battle_samples"][0]["alive"]};
+    ASSERT_EQ(alive.size(), 30);
+    EXPECT_EQ(alive[0], 1);
+    EXPECT_EQ(alive[6], 2);
+    EXPECT_EQ(alive[29], 4);
     auto const parsed{telemetry::deserialize_report(*serialized)};
     ASSERT_TRUE(parsed.has_value()) << parsed.error();
     EXPECT_EQ(parsed->run.metadata.level_display_name, report.run.metadata.level_display_name);
@@ -80,7 +88,7 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     EXPECT_EQ(parsed->run.battle_samples[0].combat.damage_dealt, sample.combat.damage_dealt);
     auto const summary{summarize_run(*parsed)};
     EXPECT_EQ(summary.simulated_seconds, 2.0);
-    EXPECT_EQ(summary.active_entities, 1);
+    EXPECT_EQ(summary.active_entities, 7);
     EXPECT_TRUE(summary.mission_complete);
     EXPECT_EQ(summary.shots, 3);
     EXPECT_EQ(summary.damage_dealt, 12.5);
@@ -127,8 +135,8 @@ TEST(LevelTelemetryJsonValidation, NativeCodecRejectsInvalidInputAndReturnsError
 TEST(LevelTelemetryJsonValidation, ReportsLossesFromDestroyedWithoutDuplicateJsonField) {
     telemetry::Report report;
     telemetry::BattleSample sample;
-    sample.combat.destroyed[Team::Red][EntityType::Fighter] = 3;
-    sample.combat.destroyed[Team::Yellow][EntityType::CapitalShip] = 2;
+    sample.combat.destroyed[Team::Red, EntityType::Fighter] = 3;
+    sample.combat.destroyed[Team::Yellow, EntityType::CapitalShip] = 2;
     report.run.battle_samples.push_back(sample);
     report.run.final_state = sample;
 

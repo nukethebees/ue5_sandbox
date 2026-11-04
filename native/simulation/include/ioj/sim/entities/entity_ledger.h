@@ -83,6 +83,6 @@ class EntityLedger {
     EntityHistory history_;
     EntityIdAllocator ids_;
     CombatStatistics statistics_;
-    EnumArray<EntityType, std::vector<HistoryIndex>> frame_deaths_;
+    EnumArray<std::vector<HistoryIndex>, EntityType> frame_deaths_;
 };
 }

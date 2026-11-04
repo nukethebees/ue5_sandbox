@@ -46,7 +46,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         EXPECT_TRUE(harness.run_until_timeline_finished(1.0)) << "Team-count timeline completes";
         telemetry::EntityCounts expected_type_counts{};
         for (auto const team : EnumTraits<Team>::values) {
-            expected_type_counts[team][EntityType::CapitalShip] = expected_team_counts[team];
+            expected_type_counts[team, EntityType::CapitalShip] = expected_team_counts[team];
         }
         EXPECT_PRED_FORMAT2(structurally_equal, expected_team_counts, counts);
         EXPECT_PRED_FORMAT2(structurally_equal, expected_type_counts, type_counts);

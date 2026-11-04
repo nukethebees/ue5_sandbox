@@ -2,5 +2,5 @@
 
 #include <ioj/enum_array.h>
 
-template <typename Enum, typename T>
-using TEnumArray = ioj::EnumArray<Enum, T>;
+template <typename T, typename... Enums>
+using TEnumArray = ioj::EnumArray<T, Enums...>;

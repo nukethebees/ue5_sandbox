@@ -5,5 +5,5 @@
 #include <ioj/sim/missions/expr_handle.h>
 
 namespace ioj::sim {
-using ObjectiveRoots = EnumArray<ObjectiveOutcome, ExprHandle>;
+using ObjectiveRoots = EnumArray<ExprHandle, ObjectiveOutcome>;
 }

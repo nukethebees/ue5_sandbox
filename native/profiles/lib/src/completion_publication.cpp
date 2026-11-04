@@ -18,8 +18,9 @@ auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profil
     auto const& metadata{simulation.level_metadata()};
     auto const& objectives{simulation.mission().objectives()};
     std::int32_t kills{};
-    for (auto const count : simulation.entity_ledger().combat_telemetry().kills[completion->team]) {
-        kills += static_cast<std::int32_t>(count);
+    auto const& team_kills{simulation.entity_ledger().combat_telemetry().kills};
+    for (auto const type : EnumTraits<sim::EntityType>::values) {
+        kills += static_cast<std::int32_t>(team_kills[completion->team, type]);
     }
     CompletionPublication publication{
         .record = {.date = date,

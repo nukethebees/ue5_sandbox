@@ -71,13 +71,13 @@ auto UForceStatusWidget::build_content() const -> TSharedRef<SWidget> {
         int32 total{};
         constexpr int32 team_count{ioj::enum_count<ETestTeam>()};
         for (int32 team_index{}; team_index < team_count; ++team_index) {
-            total += entity_counts_[static_cast<ioj::Team>(team_index)][category.type];
+            total += entity_counts_[static_cast<ioj::Team>(team_index), category.type];
         }
 
         auto segments{SNew(SVerticalBox)};
         if (total > 0) {
             for (int32 team_index{}; team_index < team_count; ++team_index) {
-                auto const count{entity_counts_[static_cast<ioj::Team>(team_index)][category.type]};
+                auto const count{entity_counts_[static_cast<ioj::Team>(team_index), category.type]};
                 if (count <= 0) {
                     continue;
                 }

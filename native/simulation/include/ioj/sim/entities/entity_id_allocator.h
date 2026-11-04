@@ -50,6 +50,6 @@ class EntityIdAllocator {
     }
   private:
     EntityTypeSizes issued_counts_{};
-    EnumArray<EntityType, std::vector<std::uint32_t>> history_rows_;
+    EnumArray<std::vector<std::uint32_t>, EntityType> history_rows_;
 };
 }

@@ -12,7 +12,7 @@ RuntimeConfig::RuntimeConfig(FighterSimConfig const& new_settings, SimClock cons
           Duration::make(settings.attack_retry_cooldown))}
     , fire_cooldown_ticks{clock.duration_to_tick_period<std::int16_t>(
           Duration::make(settings.laser.fire_cooldown))} {
-    EnumArray<NavigationRiskTier, float> const frequencies{
+    EnumArray<float, NavigationRiskTier> const frequencies{
         std::array{settings.avoidance_clear_update_frequency.get(),
                    settings.avoidance_update_frequency.get(),
                    settings.avoidance_active_update_frequency.get(),

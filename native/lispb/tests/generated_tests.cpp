@@ -745,9 +745,9 @@ TEST(GeneratedFacade, Operations) {
 
 TEST(GeneratedEnum, ValuesAndConversions) {
     static_assert(ioj::enum_count<EPlainFixture>() == 2);
-    static_assert(ioj::EnumArray<EPlainFixture, float>::size() == 2);
+    static_assert(ioj::EnumArray<float, EPlainFixture>::size() == 2);
 
-    ioj::EnumArray<EPlainFixture, float> radii;
+    ioj::EnumArray<float, EPlainFixture> radii;
     radii[EPlainFixture::First] = 100.0f;
     radii[EPlainFixture::ReadableName] = 200.0f;
     EXPECT_EQ(radii[EPlainFixture::First], 100.0f);

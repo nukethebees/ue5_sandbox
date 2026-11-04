@@ -27,7 +27,7 @@ struct ExprLeaves {
     // Shared
     std::vector<ExprResult> results;
     std::vector<LeafDataHandle> data_handles;
-    EnumArray<LeafKind, std::vector<ExprLeafHandle>> leaf_handles;
+    EnumArray<std::vector<ExprLeafHandle>, LeafKind> leaf_handles;
     std::vector<LeafDataHandle> active;
 
     // EntityDestroyed

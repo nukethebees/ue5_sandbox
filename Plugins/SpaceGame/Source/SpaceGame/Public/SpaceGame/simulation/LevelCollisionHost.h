@@ -17,7 +17,7 @@ namespace ioj {
 using FEntityBoundsExtractionResult = std::expected<sim::collision::EntityAABBs, FLevelStartErrors>;
 
 struct SPACEGAME_API FLevelCollisionHost {
-    using EntityMeshes = EnumArray<sim::EntityType, UStaticMesh const*>;
+    using EntityMeshes = EnumArray<UStaticMesh const*, sim::EntityType>;
     static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityBoundsExtractionResult;
     static auto extract_static_geometry(UWorld& world,
                                         FCollisionGridConfig const& config,

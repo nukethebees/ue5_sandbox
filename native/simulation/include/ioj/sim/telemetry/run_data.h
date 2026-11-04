@@ -18,12 +18,10 @@ struct BattleSample {
 
 template <typename Counts>
 auto total_count(Counts const& counts) {
-    using Value = std::remove_cvref_t<decltype(*counts.begin()->begin())>;
+    using Value = std::remove_cvref_t<decltype(*counts.begin())>;
     Value total{};
-    for (auto const& row : counts) {
-        for (auto const value : row) {
-            total += value;
-        }
+    for (auto const value : counts) {
+        total += value;
     }
     return total;
 }

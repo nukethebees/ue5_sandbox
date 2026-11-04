@@ -6,5 +6,5 @@
 #include <cstddef>
 
 namespace ioj::sim {
-using EntityTypeRadii = EnumArray<EntityType, float>;
+using EntityTypeRadii = EnumArray<float, EntityType>;
 } // namespace ioj::sim

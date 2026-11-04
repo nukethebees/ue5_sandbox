@@ -522,7 +522,7 @@ class CppIR {
     std::vector<EnumValueId> enumerator_references_;
     std::vector<NodeId> children_;
     std::vector<Syntax> arguments_;
-    ioj::EnumArray<ExprKind, std::vector<CppTypeId>> expression_types_;
+    ioj::EnumArray<std::vector<CppTypeId>, ExprKind> expression_types_;
     std::vector<Syntax> symbol_references_;
     std::vector<Syntax> pack_patterns_;
     std::vector<StringId> authored_fragments_;

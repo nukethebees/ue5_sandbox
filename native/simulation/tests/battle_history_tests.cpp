@@ -12,14 +12,14 @@ TEST(BattleHistory, ReconstructsIndependentlyChangedFieldsAcrossSegments) {
     history.append(sample);
     for (std::uint64_t tick{1}; tick <= 100; ++tick) {
         sample.completed_tick = SimTick{tick};
-        sample.alive[Team::Red][EntityType::Fighter] = static_cast<std::int32_t>(tick);
+        sample.alive[Team::Red, EntityType::Fighter] = static_cast<std::int32_t>(tick);
         if (tick % 7 == 0) {
-            sample.combat.shots[Team::Blue][EntityType::Turret] += 2;
+            sample.combat.shots[Team::Blue, EntityType::Turret] += 2;
         }
         if (tick % 9 == 0) {
-            sample.combat.damage_dealt[Team::Blue][EntityType::Turret] += 0.5;
+            sample.combat.damage_dealt[Team::Blue, EntityType::Turret] += 0.5;
         }
-        sample.combat.kills[Team::Yellow][EntityType::Fighter] = tick / 5;
+        sample.combat.kills[Team::Yellow, EntityType::Fighter] = tick / 5;
         history.append(sample);
     }
     auto const samples{history.materialize()};
@@ -28,12 +28,12 @@ TEST(BattleHistory, ReconstructsIndependentlyChangedFieldsAcrossSegments) {
     for (std::size_t index{}; index < sample_count; ++index) {
         auto const& row{samples[index]};
         EXPECT_EQ(row.completed_tick.value(), index);
-        EXPECT_EQ(row.alive[Team::Red][EntityType::Fighter], index);
-        EXPECT_EQ(row.alive[Team::Blue][EntityType::Fighter], 0);
-        EXPECT_EQ(row.combat.shots[Team::Blue][EntityType::Turret], index / 7 * 2);
-        EXPECT_EQ(row.combat.damage_dealt[Team::Blue][EntityType::Turret],
+        EXPECT_EQ((row.alive[Team::Red, EntityType::Fighter]), index);
+        EXPECT_EQ((row.alive[Team::Blue, EntityType::Fighter]), 0);
+        EXPECT_EQ((row.combat.shots[Team::Blue, EntityType::Turret]), index / 7 * 2);
+        EXPECT_EQ((row.combat.damage_dealt[Team::Blue, EntityType::Turret]),
                   static_cast<double>(index / 9) * 0.5);
-        EXPECT_EQ(row.combat.kills[Team::Yellow][EntityType::Fighter], index / 5);
+        EXPECT_EQ((row.combat.kills[Team::Yellow, EntityType::Fighter]), index / 5);
     }
     EXPECT_LT(memory.used_bytes(), samples.size() * sizeof(BattleSample));
     auto const analysis{analyze({.battle_samples = samples})};
@@ -72,12 +72,12 @@ TEST(BattleHistory, GrowsUpstreamAndReusesAllSegmentsAfterReset) {
                 BattleSample sample;
                 for (std::uint64_t tick{}; tick < 100; ++tick) {
                     sample.completed_tick = SimTick{tick};
-                    sample.alive[Team::Red][EntityType::Fighter] = static_cast<std::int32_t>(tick);
+                    sample.alive[Team::Red, EntityType::Fighter] = static_cast<std::int32_t>(tick);
                     history.append(sample);
                 }
                 auto const samples{history.materialize()};
                 ASSERT_EQ(samples.size(), 100);
-                EXPECT_EQ(samples.back().alive[Team::Red][EntityType::Fighter], 99);
+                EXPECT_EQ((samples.back().alive[Team::Red, EntityType::Fighter]), 99);
                 EXPECT_GT(upstream.allocations, 1);
                 if (repeat == 0) {
                     first_run_allocations = upstream.allocations;

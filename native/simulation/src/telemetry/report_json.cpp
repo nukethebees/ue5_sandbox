@@ -157,10 +157,8 @@ auto write_duration(std::optional<Duration> const value) -> Json {
 template <typename Counts>
 auto write_counts(Counts const& counts) -> Json {
     auto values = Json::array();
-    for (auto const& row : counts) {
-        for (auto const value : row) {
-            values.push_back(value);
-        }
+    for (auto const value : counts) {
+        values.push_back(value);
     }
     return values;
 }
@@ -171,21 +169,15 @@ void read_counts(Json const& parent,
                  std::string_view const path,
                  Counts& counts) {
     auto const& values{required_array(parent, field, path)};
-    std::size_t expected_count{};
-    for (auto const& row : counts) {
-        expected_count += row.size();
-    }
     auto const location{field_path(path, field)};
-    if (values.size() != expected_count) {
+    if (values.size() != counts.size()) {
         fail(location, "array has the wrong number of values");
     }
     std::size_t index{};
-    for (auto& row : counts) {
-        for (auto& cell : row) {
-            using Value = std::remove_cvref_t<decltype(cell)>;
-            cell = read_value<Value>(values[index], std::format("{}[{}]", location, index));
-            ++index;
-        }
+    for (auto& cell : counts) {
+        using Value = std::remove_cvref_t<decltype(cell)>;
+        cell = read_value<Value>(values[index], std::format("{}[{}]", location, index));
+        ++index;
     }
 }
 

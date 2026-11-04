@@ -55,8 +55,8 @@ struct MatchSource {
 
 struct ScanSources {
     EntityTypeSizes offsets;
-    EnumArray<EntityType, std::span<EntityInstanceHandle const>> handles;
-    EnumArray<EntityType, vectors3f::ResolvedConstView> locations;
+    EnumArray<std::span<EntityInstanceHandle const>, EntityType> handles;
+    EnumArray<vectors3f::ResolvedConstView, EntityType> locations;
 };
 
 void collect_request_matches(collision::CollisionUniformGrid const& grid,

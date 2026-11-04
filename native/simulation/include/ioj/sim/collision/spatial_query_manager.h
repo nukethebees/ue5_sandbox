@@ -161,8 +161,8 @@ struct SpatialQueryManager {
 
     collision::CollisionSystem collision_system_;
     EntityTypeRadii entity_radii_{};
-    EnumArray<EntityType, vectors3f::ResolvedConstView> locations_;
-    EnumArray<EntityType, vectors3f::ResolvedConstView> velocities_;
+    EnumArray<vectors3f::ResolvedConstView, EntityType> locations_;
+    EnumArray<vectors3f::ResolvedConstView, EntityType> velocities_;
     PlayerSpatialData player_spatial_;
 };
 }
