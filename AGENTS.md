@@ -142,8 +142,8 @@ Retract earlier completion estimates if new issues invalidate validation or requ
 * Prefer SoA for related performance-sensitive collections. Save loop bounds as const locals.
 * Name repeated long expressions with local values/views. Keep views within storage lifetime
   and never retain them across invalidating mutations.
-* Declare non-obvious API preconditions and missing-result semantics. Assert impossible internal
-  inputs at the responsible boundary; never silently turn them into null/missing results.
+* Assert impossible internal inputs at the responsible boundary; never silently turn them into
+  null/missing results.
   Handle legitimate optional sentinels before stricter bulk operations. Reuse phase guarantees
   instead of repeating inner-loop validation. Tests must respect contracts unless testing
   invariant detection; prefer normal commands/events for simulation scenarios.
