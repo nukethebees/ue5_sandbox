@@ -1,5 +1,7 @@
 #include <ioj/sim/missions/objectives.h>
 
+#include <ioj/container_ops.h>
+
 #include <algorithm>
 #include <functional>
 
@@ -18,8 +20,7 @@ auto move_members(std::vector<ObjectiveId>& source,
 
     // Remove in reverse order to keep remaining positions tied to their original rows.
     for (auto index{positions.size()}; index > 0; --index) {
-        source[positions[index - 1]] = source.back();
-        source.pop_back();
+        remove_at_swap(source, positions[index - 1]);
     }
 
     return std::span<ObjectiveId const>{destination}.subspan(first);

@@ -1,5 +1,6 @@
 #include <ioj/sim/missions/mission.h>
 
+#include <ioj/container_ops.h>
 #include <ioj/frame_array.h>
 #include <ioj/levels/mission_validation.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
@@ -336,7 +337,7 @@ void Mission::deactivate_expressions(std::span<ObjectiveId const> const complete
         return;
     }
 
-    std::erase_if(leaves_.active, [&](LeafHandle const handle) {
+    remove_at_swap_if(leaves_.active, [&](LeafHandle const handle) {
         auto const index{handle.index()};
         return std::ranges::any_of(completed, [&](ObjectiveId const id) {
             auto const range{objectives_.leaves(id)};
@@ -470,7 +471,7 @@ void Mission::evaluate_leaves(MissionEvaluationContext const& inputs) {
     }
 
     // Stop evaluating resolved leaves on later ticks; retain their results.
-    std::erase_if(leaves_.active, [&](LeafHandle const handle) {
+    remove_at_swap_if(leaves_.active, [&](LeafHandle const handle) {
         return leaves_.results[handle.index()] != ExprResult::Pending;
     });
 }
