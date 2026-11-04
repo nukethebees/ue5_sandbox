@@ -1,5 +1,7 @@
 (include "common_scalars.lispb")
 
+; Index into shared leaf arrays across all leaf kinds within one Mission.
+; Different missions may reuse the same index.
 (type mission_leaf_index
   :spelling "ioj::sim::LeafIndex"
   :header "ioj/sim/missions/leaf_index.h"
