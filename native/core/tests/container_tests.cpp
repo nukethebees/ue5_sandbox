@@ -166,7 +166,7 @@ TEST(NativeCoreContainerOps, PredicateRemovalReturnsTheNumberRemoved) {
     EXPECT_EQ(values, (std::vector<int>{1, 3, 5}));
 }
 
-TEST(NativeCoreContainerOps, PredicateRemovalRechecksSwappedElementsAndConsecutiveMatches) {
+TEST(NativeCoreContainerOps, PredicateRemovalChecksEachElementOnceWithConsecutiveMatches) {
     std::vector<int> values{2, 4, 1, 6, 8, 3, 10, 12};
     auto const original{values};
     std::array<unsigned, 13> visits{};

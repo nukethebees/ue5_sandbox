@@ -30,12 +30,9 @@ void remove_at_swap(std::vector<T, Allocator>& values,
 template <typename T, typename Allocator, typename Predicate>
 auto remove_at_swap_if(std::vector<T, Allocator>& values, Predicate predicate) -> std::size_t {
     auto const old_size{values.size()};
-    std::size_t index{};
-    while (index < values.size()) {
-        if (predicate(values[index])) {
-            ioj::remove_at_swap(values, index);
-        } else {
-            ++index;
+    for (auto index{old_size}; index > 0; --index) {
+        if (predicate(values[index - 1])) {
+            ioj::remove_at_swap(values, index - 1);
         }
     }
     return old_size - values.size();
