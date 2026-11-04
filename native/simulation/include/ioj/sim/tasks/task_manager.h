@@ -55,7 +55,6 @@ class TaskManager {
         return task_entries_[task.index()];
     }
 
-    // Initialise with this mission before planning, including after reset().
     void plan_tasks(TaskPlanningContext ctx);
     void allocate(TaskAllocationContext ctx);
 
