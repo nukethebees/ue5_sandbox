@@ -64,6 +64,7 @@ struct Sim {
     void prepare_tick(PreparationInputs inputs);
     void think(ThinkingInputs const inputs);
     void plan_instructions(tasks::TaskManager const& manager);
+    void change_task(std::uint32_t row, tasks::TaskId task, tasks::TaskManager const& manager);
     void plan_movement(ThinkingInputs const inputs);
     void apply_movement(ActionInputs const inputs);
     void generate_fire_commands(ThinkingInputs const inputs);

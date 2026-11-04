@@ -181,28 +181,18 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
     auto const data{entities_.view()};
     auto const executors{entity_tables_.executors.view<EntityType::Fighter>()};
     auto const entity_ids{data.entity_ids()};
-    auto const locations{data.view_locations().resolve()};
-    auto const destinations{data.view_desired_move_locations().resolve()};
-    auto const target_ids{data.target_ids()};
-    auto const cleanup_task{[&](std::uint32_t const row) {
-        target_ids[row] = {};
-        set_vector(destinations, row, vector_at(locations, row));
-    }};
 
     auto const count{data.num()};
     for (std::uint32_t row{}; row < count; ++row) {
         auto const index{entity_ids[row].index()};
-        auto& current_instruction{executors.current_instructions[index]};
-        auto& pending_task{executors.pending_tasks[index]};
+        auto const pending_task{executors.pending_tasks[index]};
 
         if (pending_task.is_valid()) {
-            cleanup_task(row);
-            executors.current_tasks[index] = pending_task;
-            current_instruction = manager.first_instruction(pending_task);
-            pending_task = {};
+            change_task(row, pending_task, manager);
             continue;
         }
 
+        auto& current_instruction{executors.current_instructions[index]};
         auto const instruction{manager.instruction(current_instruction)};
         if (is_instruction_complete(instruction)) {
             advance_instruction(current_instruction);
@@ -224,6 +214,21 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
                 break;
         }
     }
+}
+void Sim::change_task(std::uint32_t const row,
+                      tasks::TaskId const task,
+                      tasks::TaskManager const& manager) {
+    auto const data{entities_.view()};
+    auto const locations{data.view_locations().resolve()};
+    auto const destinations{data.view_desired_move_locations().resolve()};
+    data.target_ids()[row] = {};
+    set_vector(destinations, row, vector_at(locations, row));
+
+    auto const executors{entity_tables_.executors.view<EntityType::Fighter>()};
+    auto const index{data.entity_ids()[row].index()};
+    executors.current_tasks[index] = task;
+    executors.current_instructions[index] = manager.first_instruction(task);
+    executors.pending_tasks[index] = {};
 }
 void Sim::plan_movement(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::plan_movement");
