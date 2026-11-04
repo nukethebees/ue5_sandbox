@@ -930,7 +930,7 @@ TEST_F(SourceLoaderTest, ExternalIntegerDomainsDriveRepresentationsAndPackedWidt
     auto const output{files.render(manifest)};
     ASSERT_EQ(output.size(), 1);
     EXPECT_FALSE(output[0].content.contains("struct NativeIndex"));
-    EXPECT_TRUE(output[0].content.contains("std::uint8_t"));
+    EXPECT_TRUE(output[0].content.contains("PackedField<storage_type, NativeIndex, 0, 8>"));
 }
 
 TEST_F(SourceLoaderTest, PackedOccurrenceCannotTruncateReusableEncoding) {

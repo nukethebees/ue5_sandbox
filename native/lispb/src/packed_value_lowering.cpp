@@ -197,6 +197,11 @@ class PackedEmitter : public CppIRBuilder {
             return std_types().bool_;
         }
         if (auto const domain{schema::integer_domain(graph, type)}) {
+            auto const spelling{ctx.text(graph.cpp_spelling(type))};
+            if (kind == schema::TypeDefinitionKind::external && !packed_unsigned_width(spelling) &&
+                !packed_signed_width(spelling)) {
+                return named_type(spelling, NameOrigin::global);
+            }
             auto const row{definitions.integer_scalars.index(*domain)};
             return std_types().integer(bits, definitions.integer_scalars.signedness[row] != 0);
         }
@@ -207,6 +212,12 @@ class PackedEmitter : public CppIRBuilder {
             return std_types().integer(bits, true);
         }
         return std_types().integer(bits);
+    }
+    auto is_signed(schema::TypeId logical, CppTypeId decoded) -> bool {
+        if (auto const domain{schema::integer_domain(graph_, logical)}) {
+            return graph_.definitions().integer_scalars.signedness[*domain] != 0;
+        }
+        return std_types().is_signed_integer(decoded);
     }
     void append_dependencies(LoweringContext& ctx,
                              schema::ChildOccurrenceId child,
@@ -369,7 +380,7 @@ class PackedEmitter : public CppIRBuilder {
                                          definitions.linear_quantized.reserved_codes[definition]};
         }
         auto initializer{init_list({})};
-        auto const signedness{std_types().is_signed_integer(value_type(context_, logical, bits))};
+        auto const signedness{is_signed(logical, value_type(context_, logical, bits))};
         auto const physical_min{PackedIntegerValue::from_parts(
             signedness, signedness ? std::uint64_t{1} << (bits - 1) : 0)};
         auto const physical_max{PackedIntegerValue{mask(bits - (signedness ? 1 : 0))}};
@@ -711,7 +722,7 @@ class PackedEmitter : public CppIRBuilder {
         if (checked_domain && domain_implies_width(logical, bits)) {
             return {};
         }
-        return std_types().is_signed_integer(decoded)
+        return is_signed(logical, decoded)
                  ? binary(BinaryOperator::equal, extract(field, pack(field, value())), value())
                  : binary(BinaryOperator::less_equal,
                           cast("storage_type", value()),
@@ -807,9 +818,7 @@ class PackedEmitter : public CppIRBuilder {
             auto const decoded{addressable(placement)
                                    ? value_type(context_, placement.type, placement.bits)
                                    : type("storage_type")};
-            if (!scalar_ && addressable(placement) &&
-                (aggregate(placement) || graph_.definition(placement.type).kind() ==
-                                             schema::TypeDefinitionKind::enumeration)) {
+            if (!scalar_ && addressable(placement)) {
                 append_dependencies(context_, placement.child, dependencies_);
             }
             if (scalar_) {
