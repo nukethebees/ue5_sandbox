@@ -86,6 +86,34 @@ using ioj::to_serialized_string;
     }
 }
 
+inline constexpr std::array<EnumConversion, 3ULL> enum_conversion_lexical_values{
+    EnumConversion::lex_to_string,
+    EnumConversion::lex_to_display_string,
+    EnumConversion::lex_to_serialized_string};
+
+[[nodiscard]] constexpr auto is_lexical(EnumConversion const value) noexcept -> bool {
+    return value == EnumConversion::lex_to_string ||
+           value == EnumConversion::lex_to_display_string ||
+           value == EnumConversion::lex_to_serialized_string;
+}
+
+inline constexpr std::array<EnumConversion, 3ULL> enum_conversion_name_values{
+    EnumConversion::lex_to_string, EnumConversion::string_view, EnumConversion::string};
+
+[[nodiscard]] constexpr auto is_name(EnumConversion const value) noexcept -> bool {
+    return value <= EnumConversion::string;
+}
+
+inline constexpr std::array<EnumConversion, 3ULL> enum_conversion_display_values{
+    EnumConversion::lex_to_display_string,
+    EnumConversion::display_string_view,
+    EnumConversion::display_string};
+
+[[nodiscard]] constexpr auto is_display(EnumConversion const value) noexcept -> bool {
+    return value >= EnumConversion::lex_to_display_string &&
+           value <= EnumConversion::display_string;
+}
+
 } // namespace lispb::codegen
 
 namespace ioj {

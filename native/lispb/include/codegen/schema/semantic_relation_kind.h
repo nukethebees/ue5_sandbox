@@ -83,6 +83,16 @@ using ioj::to_string;
     }
 }
 
+inline constexpr std::array<SemanticRelationKind, 3ULL>
+    semantic_relation_kind_unsigned_index_relation_values{SemanticRelationKind::index_into,
+                                                          SemanticRelationKind::count_of,
+                                                          SemanticRelationKind::offset_into};
+
+[[nodiscard]] constexpr auto is_unsigned_index_relation(SemanticRelationKind const value) noexcept
+    -> bool {
+    return value <= SemanticRelationKind::offset_into;
+}
+
 } // namespace lispb::codegen
 
 namespace ioj {

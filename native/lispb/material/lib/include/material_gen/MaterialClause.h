@@ -130,6 +130,39 @@ using ioj::to_serialized_string;
     }
 }
 
+inline constexpr std::array<MaterialClause, 3ULL> material_clause_required_values{
+    MaterialClause::asset, MaterialClause::domain, MaterialClause::blend};
+
+[[nodiscard]] constexpr auto is_required(MaterialClause const value) noexcept -> bool {
+    return value <= MaterialClause::blend;
+}
+
+inline constexpr std::array<MaterialClause, 9ULL> material_clause_singleton_values{
+    MaterialClause::asset,
+    MaterialClause::domain,
+    MaterialClause::blend,
+    MaterialClause::shading,
+    MaterialClause::two_sided,
+    MaterialClause::disable_depth_test,
+    MaterialClause::usage,
+    MaterialClause::adopt_existing,
+    MaterialClause::opacity_mask_clip};
+
+[[nodiscard]] constexpr auto is_singleton(MaterialClause const value) noexcept -> bool {
+    return value <= MaterialClause::opacity_mask_clip;
+}
+
+inline constexpr std::array<MaterialClause, 5ULL> material_clause_output_values{
+    MaterialClause::emissive,
+    MaterialClause::opacity,
+    MaterialClause::base_color,
+    MaterialClause::opacity_mask,
+    MaterialClause::world_position_offset};
+
+[[nodiscard]] constexpr auto is_output(MaterialClause const value) noexcept -> bool {
+    return value >= MaterialClause::emissive && value <= MaterialClause::world_position_offset;
+}
+
 } // namespace material_synth
 
 namespace ioj {

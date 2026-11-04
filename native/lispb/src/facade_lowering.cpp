@@ -2,6 +2,7 @@
 #include "lowering.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
+#include <ioj/enum_traits.h>
 
 #include <codegen/ast/access.h>
 #include <codegen/ast/access_indentation.h>
@@ -166,7 +167,7 @@ class FacadeLowering : public CppIRBuilder {
         }
         auto class_nodes{node_list()};
         std::optional<Access> last_access;
-        for (auto const visibility : {Access::public_, Access::protected_, Access::private_}) {
+        for (auto const visibility : ioj::EnumTraits<Access>::values) {
             auto const nodes{section(visibility).build()};
             if (!nodes.empty()) {
                 class_nodes.add(access(visibility, AccessIndentation::normal), 1).append(nodes);

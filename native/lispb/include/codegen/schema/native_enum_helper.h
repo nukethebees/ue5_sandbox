@@ -70,6 +70,24 @@ using ioj::to_serialized_string;
     }
 }
 
+inline constexpr std::array<NativeEnumHelper, 3ULL> native_enum_helper_string_conversion_values{
+    NativeEnumHelper::to_string,
+    NativeEnumHelper::to_display_string,
+    NativeEnumHelper::to_serialized_string};
+
+[[nodiscard]] constexpr auto is_string_conversion(NativeEnumHelper const value) noexcept -> bool {
+    return value == NativeEnumHelper::to_string ||
+           (value >= NativeEnumHelper::to_display_string &&
+            value <= NativeEnumHelper::to_serialized_string);
+}
+
+inline constexpr std::array<NativeEnumHelper, 2ULL> native_enum_helper_parser_values{
+    NativeEnumHelper::try_parse, NativeEnumHelper::try_parse_serialized};
+
+[[nodiscard]] constexpr auto is_parser(NativeEnumHelper const value) noexcept -> bool {
+    return value == NativeEnumHelper::try_parse || value == NativeEnumHelper::try_parse_serialized;
+}
+
 } // namespace lispb::codegen
 
 namespace ioj {

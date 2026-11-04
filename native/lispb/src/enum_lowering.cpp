@@ -174,9 +174,7 @@ class EnumLowering : public CppIRBuilder {
                     namespace_node(store_text("ioj"), native_enum_traits(ctx, schema, enum_type))};
             }
             auto const helpers{ctx.declarations.items(enums.helpers[schema])};
-            for (auto const helper : {NativeEnumHelper::to_string,
-                                      NativeEnumHelper::to_display_string,
-                                      NativeEnumHelper::to_serialized_string}) {
+            for (auto const helper : native_enum_helper_string_conversion_values) {
                 if (std::ranges::contains(helpers, helper)) {
                     auto const category{helper == NativeEnumHelper::to_string ? "Name"
                                         : helper == NativeEnumHelper::to_display_string
@@ -270,9 +268,7 @@ class EnumLowering : public CppIRBuilder {
             auto const spec{
                 conversion_function(ctx, settings, schema, conversion, helper_namespace)};
             conversions.push_back(spec);
-            auto const lexical{conversion == EnumConversion::lex_to_string ||
-                               conversion == EnumConversion::lex_to_display_string ||
-                               conversion == EnumConversion::lex_to_serialized_string};
+            auto const lexical{is_lexical(conversion)};
             (lexical ? lex_declarations : helper_declarations).add(declaration(spec), 2);
         }
         decls.append(group_declarations(ctx, schema, enum_type, enums.name[schema]));
@@ -291,16 +287,8 @@ class EnumLowering : public CppIRBuilder {
             auto internal{node_list()};
             auto lexical{node_list()};
             auto helpers{node_list()};
-            auto const has_display{std::ranges::any_of(conversion_kinds, [](auto const conversion) {
-                return conversion == EnumConversion::lex_to_display_string ||
-                       conversion == EnumConversion::display_string_view ||
-                       conversion == EnumConversion::display_string;
-            })};
-            auto const has_name{std::ranges::any_of(conversion_kinds, [](auto const conversion) {
-                return conversion == EnumConversion::lex_to_string ||
-                       conversion == EnumConversion::string_view ||
-                       conversion == EnumConversion::string;
-            })};
+            auto const has_display{std::ranges::any_of(conversion_kinds, is_display)};
+            auto const has_name{std::ranges::any_of(conversion_kinds, is_name)};
             if (has_name) {
                 emission.header_global.push_back(
                     packed_enum_strings(ctx, settings, schema, "Name", true));
@@ -322,10 +310,7 @@ class EnumLowering : public CppIRBuilder {
             auto const conversion_count{conversion_kinds.size()};
             for (std::size_t index{}; index < conversion_count; ++index) {
                 auto const conversion{conversion_kinds[index]};
-                auto const is_lexical{conversion == EnumConversion::lex_to_string ||
-                                      conversion == EnumConversion::lex_to_display_string ||
-                                      conversion == EnumConversion::lex_to_serialized_string};
-                (is_lexical ? lexical : helpers).add(definition(conversions[index]), 2);
+                (is_lexical(conversion) ? lexical : helpers).add(definition(conversions[index]), 2);
             }
             emission.source = lexical.build();
             emission.source_global = internal.build();
@@ -471,12 +456,9 @@ class EnumLowering : public CppIRBuilder {
             return serialized_parser(ctx, settings, schema);
         }
         auto const enum_name{qualified_enum_name(ctx, settings, schema)};
-        auto const display{conversion == EnumConversion::lex_to_display_string ||
-                           conversion == EnumConversion::display_string_view ||
-                           conversion == EnumConversion::display_string};
+        auto const display{is_display(conversion)};
         auto const serialized{conversion == EnumConversion::lex_to_serialized_string};
-        auto const lexical{conversion == EnumConversion::lex_to_string ||
-                           conversion == EnumConversion::lex_to_display_string || serialized};
+        auto const lexical{is_lexical(conversion)};
         auto const type_namespace{
             ctx.optional_text(settings_store.namespace_name[settings]).value_or("")};
         auto const helper_in_type_namespace{
@@ -794,9 +776,7 @@ class EnumLowering : public CppIRBuilder {
             enumeration(enums.name[schema], intern_type(alias), enum_values(ctx, schema, false)),
             2);
         auto const helpers{ctx.declarations.items(enums.helpers[schema])};
-        for (auto const helper : {NativeEnumHelper::to_string,
-                                  NativeEnumHelper::to_display_string,
-                                  NativeEnumHelper::to_serialized_string}) {
+        for (auto const helper : native_enum_helper_string_conversion_values) {
             if (std::ranges::contains(helpers, helper)) {
                 auto const name{helper == NativeEnumHelper::to_string ? "to_string"
                                 : helper == NativeEnumHelper::to_display_string
@@ -819,8 +799,7 @@ class EnumLowering : public CppIRBuilder {
         auto const& domains{ctx.semantic.enum_domains()};
         auto const domain{domains.find(schema)};
         auto parsers{node_list()};
-        for (auto const helper :
-             {NativeEnumHelper::try_parse, NativeEnumHelper::try_parse_serialized}) {
+        for (auto const helper : native_enum_helper_parser_values) {
             if (!std::ranges::contains(helpers, helper)) {
                 continue;
             }

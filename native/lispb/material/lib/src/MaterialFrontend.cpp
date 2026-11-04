@@ -1,7 +1,6 @@
 #include <material_gen/MaterialFrontend.h>
 
 #include "material_type_rules.h"
-#include <ioj/is_any.h>
 
 #include <codegen/sexpr/indices.h>
 #include <codegen/sexpr/reader.h>
@@ -198,17 +197,7 @@ class Analyzer {
                      "unknown material clause '" + std::string{head} + "'");
                 continue;
             }
-            if (ioj::is_any(*kind,
-                            {MaterialClause::asset,
-                             MaterialClause::domain,
-                             MaterialClause::blend,
-                             MaterialClause::shading,
-                             MaterialClause::two_sided,
-                             MaterialClause::disable_depth_test,
-                             MaterialClause::usage,
-                             MaterialClause::adopt_existing,
-                             MaterialClause::opacity_mask_clip}) &&
-                !clauses.insert(*kind).second) {
+            if (is_singleton(*kind) && !clauses.insert(*kind).second) {
                 fail(syntax_.token_span(clause),
                      "duplicate material setting '" + std::string{head} + "'");
                 continue;
@@ -247,17 +236,13 @@ class Analyzer {
                 case MaterialClause::let_:
                     parse_binding(clause);
                     break;
-                case MaterialClause::emissive:
-                case MaterialClause::opacity:
-                case MaterialClause::base_color:
-                case MaterialClause::opacity_mask:
-                case MaterialClause::world_position_offset:
+                default:
+                    assert(is_output(*kind));
                     parse_output(clause, head);
                     break;
             }
         }
-        for (auto const required :
-             {MaterialClause::asset, MaterialClause::domain, MaterialClause::blend}) {
+        for (auto const required : material_clause_required_values) {
             if (!clauses.contains(required)) {
                 fail(syntax_.token_span(form),
                      "missing material setting '" + std::string{to_serialized_string(required)} +

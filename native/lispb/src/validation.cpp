@@ -2,6 +2,7 @@
 
 #include "packed_value_internal.h"
 #include "soa_body.h"
+#include <ioj/enum_traits.h>
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/indices.h>
@@ -1113,10 +1114,7 @@ class Validator {
                                        ctx + " relationship");
             auto const relation_kind{
                 declarations_.semantic_relations.kind[*representations.relationship[scalar]]};
-            auto const requires_unsigned{relation_kind == SemanticRelationKind::index_into ||
-                                         relation_kind == SemanticRelationKind::count_of ||
-                                         relation_kind == SemanticRelationKind::offset_into};
-            if (requires_unsigned && representations.signedness[scalar]) {
+            if (is_unsigned_index_relation(relation_kind) && representations.signedness[scalar]) {
                 throw std::invalid_argument{
                     std::format("{} relationship '{:s}' requires an unsigned integer scalar",
                                 ctx,
@@ -1756,9 +1754,7 @@ class Validator {
             auto const has_range{controls.minimum[control].has_value() ||
                                  controls.maximum[control].has_value() ||
                                  controls.step[control].has_value()};
-            auto const is_range{controls.kind[control] == SettingControlKind::float_range ||
-                                controls.kind[control] == SettingControlKind::integer_range};
-            if (is_range) {
+            if (is_range(controls.kind[control])) {
                 if (!controls.minimum[control].has_value() ||
                     !controls.maximum[control].has_value() || !controls.step[control].has_value()) {
                     throw std::invalid_argument{setting_context +
@@ -2001,9 +1997,7 @@ class Validator {
             for (auto const dependency : cpp_types.dependencies(type)) {
                 validate_type_dependency(cpp_types, dependency, "Type '" + name + "' dependency");
             }
-            for (auto const operation : {TypeOperation::add_element,
-                                         TypeOperation::remove_at_swap,
-                                         TypeOperation::set_element}) {
+            for (auto const operation : ioj::EnumTraits<TypeOperation>::values) {
                 if (auto const spelling{cpp_types.operation(type, operation)}) {
                     require_identifier(std::string{*spelling},
                                        "Type '" + name + "' member operation");

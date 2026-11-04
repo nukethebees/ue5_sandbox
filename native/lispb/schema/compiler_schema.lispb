@@ -105,8 +105,8 @@
     :helpers (try-parse-serialized)
     (value toggle :serialized-name "toggle")
     (value choice :serialized-name "choice")
-    (value float_range :serialized-name "float-range")
-    (value integer_range :serialized-name "integer-range")
+    (value float_range :serialized-name "float-range" :groups (range))
+    (value integer_range :serialized-name "integer-range" :groups (range))
     (value custom :serialized-name "custom")))
 
 (module compiler_setting_apply_mode
@@ -138,9 +138,9 @@
     (projections (cpp))
     :native-api true
     :helpers (to-string to-serialized-string try-parse-serialized formatter)
-    (value index_into :serialized-name "index_into")
-    (value count_of :serialized-name "count_of")
-    (value offset_into :serialized-name "offset_into")
+    (value index_into :serialized-name "index_into" :groups (unsigned_index_relation))
+    (value count_of :serialized-name "count_of" :groups (unsigned_index_relation))
+    (value offset_into :serialized-name "offset_into" :groups (unsigned_index_relation))
     (value discriminates :serialized-name "discriminates")
     (value contains :serialized-name "contains")
     (value member_of :serialized-name "member_of")
@@ -155,13 +155,13 @@
     (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
-    (value lex_to_string :serialized-name "lex-to-string")
-    (value string_view :serialized-name "string-view")
-    (value string :serialized-name "string")
-    (value lex_to_display_string :serialized-name "lex-to-display-string")
-    (value display_string_view :serialized-name "display-string-view")
-    (value display_string :serialized-name "display-string")
-    (value lex_to_serialized_string :serialized-name "lex-to-serialized-string")
+    (value lex_to_string :serialized-name "lex-to-string" :groups (lexical name))
+    (value string_view :serialized-name "string-view" :groups (name))
+    (value string :serialized-name "string" :groups (name))
+    (value lex_to_display_string :serialized-name "lex-to-display-string" :groups (lexical display))
+    (value display_string_view :serialized-name "display-string-view" :groups (display))
+    (value display_string :serialized-name "display-string" :groups (display))
+    (value lex_to_serialized_string :serialized-name "lex-to-serialized-string" :groups (lexical))
     (value try_parse_serialized :serialized-name "try-parse-serialized")))
 
 (module compiler_schema_property
@@ -313,11 +313,11 @@
     (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
-    (value to_string :serialized-name "to-string")
-    (value try_parse :serialized-name "try-parse")
-    (value to_display_string :serialized-name "to-display-string")
-    (value to_serialized_string :serialized-name "to-serialized-string")
-    (value try_parse_serialized :serialized-name "try-parse-serialized")
+    (value to_string :serialized-name "to-string" :groups (string_conversion))
+    (value try_parse :serialized-name "try-parse" :groups (parser))
+    (value to_display_string :serialized-name "to-display-string" :groups (string_conversion))
+    (value to_serialized_string :serialized-name "to-serialized-string" :groups (string_conversion))
+    (value try_parse_serialized :serialized-name "try-parse-serialized" :groups (parser))
     (value traits :serialized-name "traits")
     (value formatter :serialized-name "formatter")))
 

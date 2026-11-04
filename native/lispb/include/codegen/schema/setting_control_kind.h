@@ -6,6 +6,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -54,6 +55,13 @@ enum class SettingControlKind : SettingControlKindUnderlying {
             return std::nullopt;
         }
     }
+}
+
+inline constexpr std::array<SettingControlKind, 2ULL> setting_control_kind_range_values{
+    SettingControlKind::float_range, SettingControlKind::integer_range};
+
+[[nodiscard]] constexpr auto is_range(SettingControlKind const value) noexcept -> bool {
+    return value >= SettingControlKind::float_range && value <= SettingControlKind::integer_range;
 }
 
 } // namespace lispb::codegen
