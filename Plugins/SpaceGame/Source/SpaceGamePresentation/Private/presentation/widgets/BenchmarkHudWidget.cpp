@@ -21,13 +21,17 @@ TOptional<FUIInputConfig> UBenchmarkHudWidget::GetDesiredInputConfig() const {
 void UBenchmarkHudWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
     if (IsValid(benchmark_title)) {
-        benchmark_title->SetText(INVTEXT("BENCHMARK RUNNING"));
+        benchmark_title->SetText(INVTEXT("RUNNING"));
     }
     if (IsValid(ticks_remaining_widget)) {
         ticks_remaining_widget->set_format_spec(TEXT("TICKS REMAINING // {0}"));
     }
+    if (IsValid(pause_resume_button)) {
+        pause_resume_button->set_text(INVTEXT("Pause"));
+        pause_resume_button->OnClicked().AddUObject(this, &ThisClass::handle_pause_requested);
+    }
     if (IsValid(end_benchmark_button)) {
-        end_benchmark_button->set_text(INVTEXT("End Benchmark"));
+        end_benchmark_button->set_text(INVTEXT("End"));
         end_benchmark_button->OnClicked().AddUObject(this, &ThisClass::handle_end_requested);
     }
 }
@@ -37,7 +41,10 @@ void UBenchmarkHudWidget::NativeDestruct() {
     if (IsValid(end_benchmark_button)) {
         end_benchmark_button->OnClicked().RemoveAll(this);
     }
-    tick_source_ = {};
+    if (IsValid(pause_resume_button)) {
+        pause_resume_button->OnClicked().RemoveAll(this);
+    }
+    state_source_ = {};
     Super::NativeDestruct();
 }
 
@@ -54,31 +61,53 @@ void UBenchmarkHudWidget::apply_ui_style(ioj::FGameUiStyle const& style) {
     }
 }
 
-void UBenchmarkHudWidget::set_tick_source(TFunction<TOptional<uint64>()> source) {
+void UBenchmarkHudWidget::set_state_source(TFunction<FRunHudState()> source) {
     clear_update_timer();
-    tick_source_ = MoveTemp(source);
-    update_ticks_remaining();
+    state_source_ = MoveTemp(source);
+    update_state();
 
     auto* const world{GetWorld()};
     if (IsValid(world)) {
         world->GetTimerManager().SetTimer(
-            update_timer_, this, &ThisClass::update_ticks_remaining, 1.0f, true);
+            update_timer_, this, &ThisClass::update_state, 1.0f, true);
     }
 }
 
-void UBenchmarkHudWidget::update_ticks_remaining() {
-    if (!tick_source_ || !IsValid(ticks_remaining_widget)) {
+void UBenchmarkHudWidget::update_state() {
+    if (!state_source_) {
         return;
     }
-    auto const ticks_remaining{tick_source_()};
-    if (ticks_remaining.IsSet()) {
-        ticks_remaining_widget->update(FNumberFormattingOptions::DefaultNoGrouping(),
-                                       ticks_remaining.GetValue());
+    auto const state{state_source_()};
+    auto const paused{state.state == ioj::sim::LevelState::Paused};
+    auto const running{state.state == ioj::sim::LevelState::Running};
+    if (IsValid(benchmark_title)) {
+        benchmark_title->SetText(paused    ? INVTEXT("PAUSED")
+                                 : running ? INVTEXT("RUNNING")
+                                           : INVTEXT("STOPPED"));
+    }
+    if (IsValid(pause_resume_button)) {
+        pause_resume_button->set_text(paused ? INVTEXT("Resume") : INVTEXT("Pause"));
+        pause_resume_button->SetIsEnabled(paused || running);
+    }
+
+    if (IsValid(ticks_remaining_widget)) {
+        ticks_remaining_widget->SetVisibility(state.ticks_remaining.IsSet()
+                                                  ? ESlateVisibility::HitTestInvisible
+                                                  : ESlateVisibility::Collapsed);
+        if (state.ticks_remaining.IsSet()) {
+            ticks_remaining_widget->update(FNumberFormattingOptions::DefaultNoGrouping(),
+                                           state.ticks_remaining.GetValue());
+        }
     }
 }
 
 void UBenchmarkHudWidget::handle_end_requested() {
     end_requested.Broadcast();
+}
+
+void UBenchmarkHudWidget::handle_pause_requested() {
+    pause_requested.Broadcast();
+    update_state();
 }
 
 void UBenchmarkHudWidget::clear_update_timer() {

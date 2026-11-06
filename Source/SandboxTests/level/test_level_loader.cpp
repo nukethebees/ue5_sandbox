@@ -12,6 +12,7 @@
 #include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
+#include <SpaceGamePresentation/ui/common/MenuButtonWidget.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -121,10 +122,8 @@ void FLevelLoaderCameraScenario::load_fixture() {
                        TEXT("Observer context does not create the player HUD"));
 
         auto const observer_transform{camera->GetActorTransform()};
-        checks.is_true(
-            player_controller->activate_playerless_camera(*camera,
-                                                          ::ioj::levels::ControlContext::Benchmark),
-            TEXT("Benchmark context can be selected when activating the playerless camera"));
+        checks.is_true(player_controller->activate_run_controls(),
+                       TEXT("Run controls can be activated independently of camera setup"));
         checks.is_true(player_controller->get_active_control_context() ==
                            ::ioj::levels::ControlContext::Benchmark,
                        TEXT("Benchmark context becomes active"));
@@ -297,6 +296,40 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
     checks.are_equal(0,
                      count_actors<ACameraActor>(context_.world),
                      TEXT("Headless observer does not require a camera"));
+    auto* const controller{
+        Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
+    if (checks.is_valid(controller, TEXT("Simulation-only UI has a player controller"))) {
+        orchestrator.pause_simulation();
+        checks.is_true(controller->activate_run_controls(),
+                       TEXT("Simulation-only run controls activate without a camera"));
+        checks.is_true(controller->get_benchmark_hud() &&
+                           controller->get_benchmark_hud()->IsActivated(),
+                       TEXT("Simulation-only run exposes the End HUD"));
+        checks.is_true(controller->ShouldShowMouseCursor(),
+                       TEXT("Simulation-only run exposes the pointer for the End button"));
+        checks.is_true(!orchestrator.get_run_ticks_remaining().IsSet(),
+                       TEXT("Untimed run has no countdown"));
+        auto* const button{Cast<UMenuButtonWidget>(
+            controller->get_benchmark_hud()->GetWidgetFromName(TEXT("pause_resume_button")))};
+        if (checks.is_true(IsValid(button), TEXT("Run HUD has a Pause/Resume button"))) {
+            checks.are_equal(FString{TEXT("Resume")},
+                             button->get_text().ToString(),
+                             TEXT("Paused starts offer Resume"));
+            button->OnClicked().Broadcast();
+            checks.is_true(orchestrator.get_state() == sim::LevelState::Running,
+                           TEXT("Resume starts the simulation"));
+            checks.are_equal(FString{TEXT("Pause")},
+                             button->get_text().ToString(),
+                             TEXT("Running simulations offer Pause"));
+            button->OnClicked().Broadcast();
+            checks.is_true(orchestrator.get_state() == sim::LevelState::Paused,
+                           TEXT("Pause suspends the simulation"));
+            checks.is_true(controller->get_benchmark_hud()->IsActivated() &&
+                               controller->get_active_control_context() ==
+                                   levels::ControlContext::Benchmark,
+                           TEXT("Pausing retains run controls without opening a modal"));
+        }
+    }
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 

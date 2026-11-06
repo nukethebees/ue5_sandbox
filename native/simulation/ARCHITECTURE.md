@@ -37,8 +37,8 @@ After advancing the simulation, the orchestrator publishes a completion only whe
 record's tick is newer than the previous completed tick. `LevelSim` stops on mission completion
 and finalizes telemetry with a neutral completion reason; Mission retains victory and defeat.
 Duration limits compile to timer-triggered stop events. Living-team counts do not end a run.
-Battle launches without an explicit duration currently use
-a 24-hour simulation-time placeholder and can be ended manually.
+Battle launches without an explicit duration have no time limit. Benchmarks and simulation-only
+runs expose an End button independently of camera setup; visual gameplay retains its pause-menu exit.
 
 `LevelEventManager` maps expression roots to ranges of packed event handles. Resolved triggers
 retire after Resolution, queueing their events once when true. `LevelSim` sorts the queue by kind

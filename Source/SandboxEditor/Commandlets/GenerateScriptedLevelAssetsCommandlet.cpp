@@ -729,8 +729,16 @@ auto generate_benchmark_widget(UClass& button_class) -> UClass* {
     auto* const ticks{
         make_widget<UValueWidget>(tree, *value_class.Get(), TEXT("ticks_remaining_widget"))};
     content->AddChildToVerticalBox(ticks)->SetPadding(FMargin{0.0f, 8.0f, 0.0f, 12.0f});
-    make_menu_button(
-        tree, *content, button_class, TEXT("end_benchmark_button"), TEXT("End Benchmark"));
+    auto* const actions{make_widget<UHorizontalBox>(tree, TEXT("run_actions"))};
+    content->AddChildToVerticalBox(actions);
+    auto* const pause_button{
+        make_widget<ioj::UMenuButtonWidget>(tree, button_class, TEXT("pause_resume_button"))};
+    pause_button->set_text(INVTEXT("Pause"));
+    actions->AddChildToHorizontalBox(pause_button)->SetPadding(FMargin{0.0f, 0.0f, 8.0f, 0.0f});
+    auto* const end_button{
+        make_widget<ioj::UMenuButtonWidget>(tree, button_class, TEXT("end_benchmark_button"))};
+    end_button->set_text(INVTEXT("End"));
+    actions->AddChildToHorizontalBox(end_button);
 
     tree.RootWidget = root;
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;

@@ -85,9 +85,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto was_launched_paused() const noexcept -> bool {
         return launch_options_.launch_mode == ioj::levels::LaunchMode::Paused;
     }
-    auto get_benchmark_ticks_remaining() const noexcept -> TOptional<tick_type> {
-        if (launch_options_.control_context != ::ioj::levels::ControlContext::Benchmark ||
-            !launch_options_.simulated_duration_seconds.has_value() || !level_simulation_.IsSet()) {
+    auto get_run_ticks_remaining() const noexcept -> TOptional<tick_type> {
+        if (!launch_options_.simulated_duration_seconds.has_value() || !level_simulation_.IsSet()) {
             return NullOpt;
         }
 

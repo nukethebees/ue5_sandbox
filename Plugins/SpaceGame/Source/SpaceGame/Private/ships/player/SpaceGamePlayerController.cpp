@@ -511,33 +511,46 @@ auto ASpaceGamePlayerController::activate_playerless_camera(
     bind_orchestrator_events();
     control_contexts_.set_camera(&camera);
     SetViewTarget(&camera);
+    if (context == ::ioj::levels::ControlContext::Benchmark) {
+        return activate_run_controls();
+    }
     if (!control_contexts_.set_control_context(context)) {
         return false;
     }
 
-    if (context == ::ioj::levels::ControlContext::Observer) {
-        hud_.shutdown_benchmark(*this);
-        if (!modal_ui_.initialise_root(*this, ui_data) ||
-            !hud_.initialise(*this,
-                             orchestrator_.Get(),
-                             ui_data,
-                             ::ioj::levels::ControlContext::Observer,
-                             control_contexts_.get_observer_speed())) {
-            control_contexts_.set_control_context(::ioj::levels::ControlContext::None);
-            return false;
-        }
-        FInputModeGameAndUI input_mode{};
-        input_mode.SetHideCursorDuringCapture(false);
-        input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-        SetInputMode(input_mode);
-        SetShowMouseCursor(true);
-    } else {
-        hud_.shutdown();
-        modal_ui_.shutdown(*this);
-        if (!hud_.initialise_benchmark(*this, orchestrator_.Get(), ui_data)) {
-            control_contexts_.set_control_context(::ioj::levels::ControlContext::None);
-            return false;
-        }
+    hud_.shutdown_benchmark(*this);
+    if (!modal_ui_.initialise_root(*this, ui_data) ||
+        !hud_.initialise(*this,
+                         orchestrator_.Get(),
+                         ui_data,
+                         ::ioj::levels::ControlContext::Observer,
+                         control_contexts_.get_observer_speed())) {
+        control_contexts_.set_control_context(::ioj::levels::ControlContext::None);
+        return false;
+    }
+    FInputModeGameAndUI input_mode{};
+    input_mode.SetHideCursorDuringCapture(false);
+    input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    SetInputMode(input_mode);
+    SetShowMouseCursor(true);
+    SetActorTickEnabled(true);
+    return true;
+}
+auto ASpaceGamePlayerController::activate_run_controls() -> bool {
+    if (!can_activate_gameplay_control()) {
+        return false;
+    }
+
+    bind_orchestrator_events();
+    if (!control_contexts_.set_control_context(::ioj::levels::ControlContext::Benchmark)) {
+        return false;
+    }
+
+    hud_.shutdown();
+    modal_ui_.shutdown(*this);
+    if (!hud_.initialise_benchmark(*this, orchestrator_.Get(), ui_data)) {
+        control_contexts_.set_control_context(::ioj::levels::ControlContext::None);
+        return false;
     }
     SetActorTickEnabled(true);
     return true;
@@ -608,6 +621,21 @@ void ASpaceGamePlayerController::toggle_pause_game() {
                    TEXT("ASpaceGamePlayerController::toggle_pause_game: Orchestrator is stopped."));
             break;
         }
+    }
+}
+void ASpaceGamePlayerController::toggle_run_pause() {
+    auto* const orchestrator{orchestrator_.Get()};
+    if (!IsValid(orchestrator)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ASpaceGamePlayerController::toggle_run_pause: Orchestrator is invalid."));
+        return;
+    }
+
+    if (orchestrator->get_state() == ioj::sim::LevelState::Running) {
+        orchestrator->pause_simulation();
+    } else if (orchestrator->get_state() == ioj::sim::LevelState::Paused) {
+        orchestrator->start_simulation();
     }
 }
 void ASpaceGamePlayerController::show_initial_pause_menu() {

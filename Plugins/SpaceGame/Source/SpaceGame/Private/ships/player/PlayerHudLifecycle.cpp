@@ -173,9 +173,13 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
         IsValid(game_subsystem)) {
         created_widget->apply_ui_style(game_subsystem->get_ui_style());
     }
-    created_widget->set_tick_source([weak = TWeakObjectPtr<ATestBatchOrchestrator>{orchestrator}] {
-        return weak.IsValid() ? weak->get_benchmark_ticks_remaining() : TOptional<uint64>{};
+    created_widget->set_state_source([weak = TWeakObjectPtr<ATestBatchOrchestrator>{orchestrator}] {
+        return weak.IsValid() ? FRunHudState{.ticks_remaining = weak->get_run_ticks_remaining(),
+                                             .state = weak->get_state()}
+                              : FRunHudState{};
     });
+    created_widget->pause_requested.AddUObject(&owner,
+                                               &ASpaceGamePlayerController::toggle_run_pause);
     created_widget->end_requested.AddUObject(&owner,
                                              &ASpaceGamePlayerController::return_to_level_select);
     created_widget->AddToPlayerScreen(100);
@@ -187,6 +191,7 @@ void FPlayerHudLifecycle::shutdown_benchmark(ASpaceGamePlayerController& owner) 
         return;
     }
     benchmark_hud_widget_->end_requested.RemoveAll(&owner);
+    benchmark_hud_widget_->pause_requested.RemoveAll(&owner);
     benchmark_hud_widget_->DeactivateWidget();
     benchmark_hud_widget_->RemoveFromParent();
     benchmark_hud_widget_ = nullptr;

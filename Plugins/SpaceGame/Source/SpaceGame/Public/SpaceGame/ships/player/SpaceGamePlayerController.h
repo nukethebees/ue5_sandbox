@@ -39,6 +39,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void show_main_menu();
     auto activate_playerless_camera(ACameraActor& camera, ::ioj::levels::ControlContext context)
         -> bool;
+    auto activate_run_controls() -> bool;
     [[nodiscard]] auto get_active_control_context() const noexcept
         -> ::ioj::levels::ControlContext {
         return control_contexts_.get_active_context();
@@ -98,6 +99,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     // Modal and simulation transitions
     /* **************************************** */
     void toggle_pause_game();
+    void toggle_run_pause();
     void show_initial_pause_menu();
     auto open_pause_menu() -> bool;
     auto suspend_gameplay_for_modal() -> bool;

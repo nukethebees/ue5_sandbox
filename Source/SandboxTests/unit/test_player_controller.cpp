@@ -69,6 +69,8 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Main menu rejects Observer activation"),
                               controller->activate_playerless_camera(
                                   *camera, ::ioj::levels::ControlContext::Observer));
+        TestRunner->TestFalse(TEXT("Main menu rejects run controls"),
+                              controller->activate_run_controls());
         TestRunner->TestTrue(TEXT("Main menu does not create a simulation HUD"),
                              controller->get_active_hud() == nullptr);
         TestRunner->TestTrue(TEXT("Main menu does not create a benchmark HUD"),

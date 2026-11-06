@@ -405,6 +405,14 @@ void ATestBatchOrchestrator::load_authored_level() {
         handle_level_start_failure(loaded.error().format(ioj::to_fstring(pending->source_path)));
         return;
     }
+    if (!presentation_enabled) {
+        auto* const controller{
+            Cast<ASpaceGamePlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0))};
+        if (!IsValid(controller) || !controller->activate_run_controls()) {
+            handle_level_start_failure(TEXT("Failed to activate simulation-only run controls"));
+            return;
+        }
+    }
     if (begin_play() && launch_options_.launch_mode == ioj::levels::LaunchMode::Paused) {
         pause_simulation();
     }
