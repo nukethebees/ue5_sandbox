@@ -41,11 +41,13 @@ Battle launches without an explicit duration have no time limit. Benchmarks and 
 runs expose an End button independently of camera setup; visual gameplay retains its pause-menu exit.
 
 `LevelEventManager` maps expression roots to ranges of packed event handles. Resolved triggers
-retire after Resolution, queueing their events once when true. `LevelSim` sorts the queue by kind
-at the completed-tick boundary: mission completion precedes duration expiry, and either discards
-pending spawns and stops catch-up. Otherwise, Preparation of the following tick routes the spawn
-span to `LevelSpawnManager`. Initial spawns and recurring carrier production remain separate
-from these one-shot events.
+retire after Resolution, queueing their events once when true. Generated kind groups route events
+to tick-end or Preparation queues; `LevelSim` sorts each queue by kind when consuming it. Mission
+completion precedes duration expiry and pause. Either completion discards pending spawns and
+stops catch-up; pause retains those spawns and leaves telemetry recording. Preparation after
+resume routes the retained spawn span to `LevelSpawnManager`. `pause()` queues a request and
+consumes it immediately only between ticks; `start()` resumes directly. Initial spawns and
+recurring carrier production remain separate from these one-shot events.
 
 Unreal lifecycle and presentation ownership are described in the
 [SpaceGame architecture](../../Plugins/SpaceGame/ARCHITECTURE.md).

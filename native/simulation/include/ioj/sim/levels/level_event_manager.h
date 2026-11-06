@@ -15,12 +15,15 @@ class LevelEventManager {
     void activate(ExprManager& expressions);
     void collect_ready(ExprManager& expressions);
     void enqueue(EventHandle event);
-    void clear_ready();
-    auto ready_events() -> std::span<EventHandle> { return ready_events_; }
+    void clear_tick_end_events();
+    void clear_preparation_events();
+    auto tick_end_events() -> std::span<EventHandle> { return tick_end_events_; }
+    auto preparation_events() -> std::span<EventHandle> { return preparation_events_; }
     auto data() const -> CompiledLevelEvents const& { return data_; }
 
   private:
     CompiledLevelEvents data_;
-    std::pmr::vector<EventHandle> ready_events_;
+    std::pmr::vector<EventHandle> tick_end_events_;
+    std::pmr::vector<EventHandle> preparation_events_;
 };
 }

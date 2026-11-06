@@ -14,9 +14,11 @@
     :bit-width 2
     :native-api true
     :helpers (traits)
-    (value MissionCompleted)
-    (value StopRun)
-    (value Spawn)
+    :ordering (tick_end preparation)
+    (value MissionCompleted :groups (tick_end))
+    (value StopRun :groups (tick_end))
+    (value Pause :groups (tick_end))
+    (value Spawn :groups (preparation))
     (projections (cpp))))
 
 (module level_event_handle

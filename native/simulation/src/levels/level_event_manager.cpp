@@ -1,5 +1,6 @@
 #include <ioj/sim/levels/level_event_manager.h>
 
+#include <ioj/diagnostics.h>
 #include <ioj/sim/expressions/expr_manager.h>
 
 #include <algorithm>
@@ -8,8 +9,13 @@
 namespace ioj::sim {
 LevelEventManager::LevelEventManager(CompiledLevelEvents data, std::pmr::memory_resource& memory)
     : data_{std::move(data)}
-    , ready_events_{&memory} {
-    ready_events_.reserve(data_.schedule.trigger_events.size() + 1);
+    , tick_end_events_{&memory}
+    , preparation_events_{&memory} {
+    auto const tick_end_count{static_cast<std::size_t>(
+        std::ranges::count_if(data_.schedule.trigger_events,
+                              [](EventHandle const event) { return is_tick_end(event.kind()); }))};
+    tick_end_events_.reserve(tick_end_count + 2);
+    preparation_events_.reserve(data_.schedule.trigger_events.size() - tick_end_count);
 }
 
 void LevelEventManager::activate(ExprManager& expressions) {
@@ -29,7 +35,9 @@ void LevelEventManager::collect_ready(ExprManager& expressions) {
         if (result == ExprResult::True) {
             auto const events{std::span{schedule.trigger_events}.subspan(trigger.events.offset,
                                                                          trigger.events.count)};
-            ready_events_.insert(ready_events_.end(), events.begin(), events.end());
+            for (auto const event : events) {
+                enqueue(event);
+            }
         }
         expressions.deactivate(trigger.condition);
         return true;
@@ -37,9 +45,17 @@ void LevelEventManager::collect_ready(ExprManager& expressions) {
 }
 
 void LevelEventManager::enqueue(EventHandle const event) {
-    ready_events_.push_back(event);
+    if (is_tick_end(event.kind())) {
+        tick_end_events_.push_back(event);
+    } else {
+        require(is_preparation(event.kind()), "Event kind must belong to a dispatch phase");
+        preparation_events_.push_back(event);
+    }
 }
-void LevelEventManager::clear_ready() {
-    ready_events_.clear();
+void LevelEventManager::clear_tick_end_events() {
+    tick_end_events_.clear();
+}
+void LevelEventManager::clear_preparation_events() {
+    preparation_events_.clear();
 }
 }

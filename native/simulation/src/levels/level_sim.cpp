@@ -1,5 +1,6 @@
 #include <ioj/sim/levels/level_sim.h>
 
+#include <ioj/diagnostics.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/fighters/phase_interface.h>
@@ -94,7 +95,10 @@ void LevelSim::start() {
 }
 void LevelSim::pause() {
     assert(state_ == LevelState::Paused || state_ == LevelState::Running);
-    state_ = LevelState::Paused;
+    event_manager_.enqueue(EventHandle{0, EventKind::Pause});
+    if (clock_.phase() == SimulationPhase::BetweenTicks) {
+        dispatch_tick_end_events();
+    }
 }
 
 /* **************************************** */
@@ -182,19 +186,16 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
 
         profiling::mark_frame("Simulation");
         clock_.transition_to(SimulationPhase::BetweenTicks);
-        dispatch_events<SimulationPhase::BetweenTicks>();
+        dispatch_tick_end_events();
         if (state_ != LevelState::Running) {
             break;
         }
     }
 }
 
-template <SimulationPhase Phase>
-void LevelSim::dispatch_events() {
-    auto const events{event_manager_.ready_events()};
-    if constexpr (Phase == SimulationPhase::BetweenTicks) {
-        std::ranges::sort(events);
-    }
+void LevelSim::dispatch_tick_end_events() {
+    auto const events{event_manager_.tick_end_events()};
+    std::ranges::sort(events);
 
     auto const& schedule{event_manager_.data().schedule};
     auto const count{events.size()};
@@ -210,26 +211,50 @@ void LevelSim::dispatch_events() {
         switch (kind) {
             case EventKind::MissionCompleted:
                 stop_run(telemetry::RunEndReason::MissionCompleted);
-                event_manager_.clear_ready();
+                event_manager_.clear_tick_end_events();
+                event_manager_.clear_preparation_events();
                 return;
             case EventKind::StopRun:
                 stop_run(schedule.stop_events[group.front().index()]);
-                event_manager_.clear_ready();
+                event_manager_.clear_tick_end_events();
+                event_manager_.clear_preparation_events();
                 return;
-            case EventKind::Spawn:
-                if constexpr (Phase == SimulationPhase::Preparation) {
-                    spawn_manager_.process_events(group,
-                                                  schedule.spawn_events,
-                                                  schedule.spawn_groups,
-                                                  {entity_ledger_, clock_});
-                }
+            case EventKind::Pause:
+                state_ = LevelState::Paused;
                 break;
+            default:
+                fatal_error("Invalid tick-end event kind");
         }
         first = end;
     }
-    if constexpr (Phase == SimulationPhase::Preparation) {
-        event_manager_.clear_ready();
+    event_manager_.clear_tick_end_events();
+}
+void LevelSim::dispatch_preparation_events() {
+    auto const events{event_manager_.preparation_events()};
+    std::ranges::sort(events);
+
+    auto const& schedule{event_manager_.data().schedule};
+    auto const count{events.size()};
+    std::size_t first{};
+    while (first < count) {
+        auto const kind{events[first].kind()};
+        auto end{first + 1};
+        while (end < count && events[end].kind() == kind) {
+            ++end;
+        }
+
+        auto const group{events.subspan(first, end - first)};
+        switch (kind) {
+            case EventKind::Spawn:
+                spawn_manager_.process_events(
+                    group, schedule.spawn_events, schedule.spawn_groups, {entity_ledger_, clock_});
+                break;
+            default:
+                fatal_error("Invalid Preparation event kind");
+        }
+        first = end;
     }
+    event_manager_.clear_preparation_events();
 }
 
 /* **************************************** */
@@ -266,7 +291,7 @@ void LevelSim::prepare_tick(float const tick_period) {
     clock_.transition_to(SimulationPhase::Preparation);
 
     auto const previous_issued_counts{entity_ledger_.issued_counts()};
-    dispatch_events<SimulationPhase::Preparation>();
+    dispatch_preparation_events();
 
     fighters::PreparationInputs const fighter_inputs{.ledger = entity_ledger_,
                                                      .participating_teams = participating_teams_,

@@ -9,6 +9,7 @@
 #include <cassert>
 #include <compare>
 #include <cstdint>
+#include <utility>
 
 namespace ioj::sim {
 struct EventHandle;
@@ -44,10 +45,7 @@ struct EventHandle : detail::EventHandleBase {
         return static_cast<storage_type>(value) <= index_layout.value_mask;
     }
     [[nodiscard]] static constexpr auto is_valid_kind(EventKind const value) noexcept -> bool {
-        return value <= kind_layout.range.max;
-    }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return Base::is_valid() && is_valid_kind(extract<decltype(kind_layout)>());
+        return std::to_underlying(value) <= kind_layout.value_mask;
     }
     [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
         return extract<decltype(index_layout)>();

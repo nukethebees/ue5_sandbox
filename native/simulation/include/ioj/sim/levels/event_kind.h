@@ -16,8 +16,22 @@ using EventKindUnderlying = std::uint8_t;
 enum class EventKind : EventKindUnderlying {
     MissionCompleted,
     StopRun,
+    Pause,
     Spawn,
 };
+
+inline constexpr std::array<EventKind, 3ULL> event_kind_tick_end_values{
+    EventKind::MissionCompleted, EventKind::StopRun, EventKind::Pause};
+
+[[nodiscard]] constexpr auto is_tick_end(EventKind const value) noexcept -> bool {
+    return value <= EventKind::Pause;
+}
+
+inline constexpr std::array<EventKind, 1ULL> event_kind_preparation_values{EventKind::Spawn};
+
+[[nodiscard]] constexpr auto is_preparation(EventKind const value) noexcept -> bool {
+    return value == EventKind::Spawn;
+}
 
 } // namespace ioj::sim
 
@@ -28,8 +42,10 @@ inline constexpr MinMax<sim::EventKind> enum_range<sim::EventKind>{sim::EventKin
 
 template <>
 struct EnumTraits<sim::EventKind> {
-    static constexpr std::array values{
-        sim::EventKind::MissionCompleted, sim::EventKind::StopRun, sim::EventKind::Spawn};
+    static constexpr std::array values{sim::EventKind::MissionCompleted,
+                                       sim::EventKind::StopRun,
+                                       sim::EventKind::Pause,
+                                       sim::EventKind::Spawn};
 };
 
 } // namespace ioj
