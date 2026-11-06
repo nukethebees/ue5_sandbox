@@ -120,6 +120,7 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     check(compiled);
     data.level_events = std::move(compiled->events);
     data.mission = std::move(compiled->mission);
+    data.expressions = std::move(compiled->expressions);
     data.level_metadata = std::move(compiled->level_metadata);
     return data;
 }
@@ -136,7 +137,7 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
     std::array const ids{ioj::levels::EntityId{"hero"}, ioj::levels::EntityId{"enemy"}};
     ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{ioj::sim::Mission::compile(definition, ids, clock)};
+    auto compiled{ioj::sim::Mission::compile(definition, ids, clock, data.expressions)};
     check(compiled);
     data.mission = std::move(*compiled);
 }
@@ -261,10 +262,11 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
                  a.teams == b.teams && a.types == b.types);
     }
     TestTrue(TEXT("Both objective outcomes match"),
-             headless.mission().outcome(ioj::sim::ObjectiveId{0}) ==
-                 visible.mission().outcome(ioj::sim::ObjectiveId{0}));
+             headless.mission().outcome(ioj::sim::ObjectiveId{0}, headless.expressions()) ==
+                 visible.mission().outcome(ioj::sim::ObjectiveId{0}, visible.expressions()));
     TestTrue(TEXT("Objective passes"),
-             headless.mission().outcome(ioj::sim::ObjectiveId{0}) == ioj::ObjectiveOutcome::Passed);
+             headless.mission().outcome(ioj::sim::ObjectiveId{0}, headless.expressions()) ==
+                 ioj::ObjectiveOutcome::Passed);
     return true;
 }
 

@@ -66,7 +66,8 @@ auto resolve_entity_index(FProxyEntityIndexMap const& entities, AActor const& ac
 
 auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
                            FProxyEntityIndexMap const& entities,
-                           sim::SimClock const& clock)
+                           sim::SimClock const& clock,
+                           sim::ExprManager& expressions)
     -> std::expected<sim::Mission, FLevelStartErrors> {
     std::vector<levels::EntityId> ids(static_cast<std::size_t>(entities.Num()));
     for (auto const& entity : entities) {
@@ -82,7 +83,7 @@ auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
         }
         ids[*index] = levels::EntityId{TCHAR_TO_UTF8(*binding.Key.ToString().ToLower())};
     }
-    auto compiled{sim::Mission::compile(definition.objectives, ids, clock)};
+    auto compiled{sim::Mission::compile(definition.objectives, ids, clock, expressions)};
     if (!compiled) {
         for (auto const& message : compiled.error()) {
             errors.add(to_fstring(message));
@@ -355,7 +356,8 @@ static auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& c
     }
     sim::SimClock clock;
     clock.initialise(build.data.clock_settings);
-    auto mission{compile_proxy_mission(mission_definition, entity_indices, clock)};
+    auto mission{
+        compile_proxy_mission(mission_definition, entity_indices, clock, build.data.expressions)};
     if (!mission) {
         return FLevelSimulationBuildResult{std::unexpect, MoveTemp(mission.error())};
     }
