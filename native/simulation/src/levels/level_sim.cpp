@@ -182,32 +182,54 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
 
         profiling::mark_frame("Simulation");
         clock_.transition_to(SimulationPhase::BetweenTicks);
-        dispatch_terminal_events();
+        dispatch_events<SimulationPhase::BetweenTicks>();
         if (state_ != LevelState::Running) {
             break;
         }
     }
 }
 
-void LevelSim::dispatch_terminal_events() {
+template <SimulationPhase Phase>
+void LevelSim::dispatch_events() {
     auto const events{event_manager_.ready_events()};
-    std::ranges::sort(events);
-    if (events.empty()) {
-        return;
+    if constexpr (Phase == SimulationPhase::BetweenTicks) {
+        std::ranges::sort(events);
     }
 
-    auto const first{events.front()};
-    switch (first.kind()) {
-        case EventKind::MissionCompleted:
-            stop_run(telemetry::RunEndReason::MissionCompleted);
-            break;
-        case EventKind::StopRun:
-            stop_run(event_manager_.data().schedule.stop_events[first.index()]);
-            break;
-        case EventKind::Spawn:
-            return;
+    auto const& schedule{event_manager_.data().schedule};
+    auto const count{events.size()};
+    std::size_t first{};
+    while (first < count) {
+        auto const kind{events[first].kind()};
+        auto end{first + 1};
+        while (end < count && events[end].kind() == kind) {
+            ++end;
+        }
+
+        auto const group{events.subspan(first, end - first)};
+        switch (kind) {
+            case EventKind::MissionCompleted:
+                stop_run(telemetry::RunEndReason::MissionCompleted);
+                event_manager_.clear_ready();
+                return;
+            case EventKind::StopRun:
+                stop_run(schedule.stop_events[group.front().index()]);
+                event_manager_.clear_ready();
+                return;
+            case EventKind::Spawn:
+                if constexpr (Phase == SimulationPhase::Preparation) {
+                    spawn_manager_.process_events(group,
+                                                  schedule.spawn_events,
+                                                  schedule.spawn_groups,
+                                                  {entity_ledger_, clock_});
+                }
+                break;
+        }
+        first = end;
     }
-    event_manager_.clear_ready();
+    if constexpr (Phase == SimulationPhase::Preparation) {
+        event_manager_.clear_ready();
+    }
 }
 
 /* **************************************** */
@@ -244,12 +266,7 @@ void LevelSim::prepare_tick(float const tick_period) {
     clock_.transition_to(SimulationPhase::Preparation);
 
     auto const previous_issued_counts{entity_ledger_.issued_counts()};
-    auto const& schedule{event_manager_.data().schedule};
-    spawn_manager_.process_events(event_manager_.ready_events(),
-                                  schedule.spawn_events,
-                                  schedule.spawn_groups,
-                                  {entity_ledger_, clock_});
-    event_manager_.clear_ready();
+    dispatch_events<SimulationPhase::Preparation>();
 
     fighters::PreparationInputs const fighter_inputs{.ledger = entity_ledger_,
                                                      .participating_teams = participating_teams_,

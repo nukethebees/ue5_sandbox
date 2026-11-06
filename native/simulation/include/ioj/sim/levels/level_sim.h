@@ -121,7 +121,8 @@ struct LevelSim {
     }
   private:
     void refresh_spatial_index();
-    void dispatch_terminal_events();
+    template <SimulationPhase Phase>
+    void dispatch_events();
     friend struct LevelSimTestAccess;
     friend class LevelReadAccess;
 
