@@ -48,7 +48,7 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     report.run.metadata.run_id = "run-1";
     report.run.metadata.level_display_name = "Convoy \"alpha\"\n\xc3\xa9";
     report.run.tick_rate_hz = Frequency::make(120.0);
-    report.run.completion.reason = telemetry::RunEndReason::MissionSucceeded;
+    report.run.completion.reason = telemetry::RunEndReason::MissionCompleted;
     report.run.completion.completed_ticks = SimTick{240};
     telemetry::BattleSample sample;
     sample.completed_tick = SimTick{240};
@@ -75,7 +75,7 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     EXPECT_TRUE(parsed->started_paused);
     EXPECT_TRUE(parsed->opens_telemetry);
     EXPECT_EQ(parsed->run.tick_rate_hz.hz(), 120.0);
-    EXPECT_EQ(parsed->run.completion.reason, telemetry::RunEndReason::MissionSucceeded);
+    EXPECT_EQ(parsed->run.completion.reason, telemetry::RunEndReason::MissionCompleted);
     EXPECT_EQ(parsed->run.completion.completed_ticks.value(), 240);
     EXPECT_EQ(serialized->find("environment"), std::string::npos);
     EXPECT_EQ(serialized->find("presentation_mode"), std::string::npos);

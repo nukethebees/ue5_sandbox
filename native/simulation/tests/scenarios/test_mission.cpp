@@ -119,7 +119,22 @@ TEST_P(WorldlessMission, ResolvesObjectiveLifecycle) {
     };
     harness.timeline.finish_at(0.3);
     EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
-    ASSERT_TRUE(harness.run_until_timeline_finished(1.0));
+    simulation.start();
+    auto const maximum_ticks{clk.duration_to_tick_period(Duration::make(1.0)).get()};
+    for (SimTick::value_type tick{}; tick < maximum_ticks; ++tick) {
+        harness.advance(clk.tick_period());
+        if (simulation.state() == LevelState::Paused) {
+            break;
+        }
+    }
+    ASSERT_EQ(simulation.state(), LevelState::Paused);
+    auto const completed_tick{clk.get_completed_ticks()};
+    harness.advance(1.0);
+    EXPECT_EQ(clk.get_completed_ticks(), completed_tick);
+    if (scenario == Scenario::SuccessIsTerminal ||
+        scenario == Scenario::OutcomeCompletionIsLatched) {
+        EXPECT_TRUE(observe_entity(simulation, hero_id));
+    }
     auto const failed{scenario == Scenario::DefenceObjective ||
                       scenario == Scenario::KillEnemiesWithinTime ||
                       scenario == Scenario::RequiredKillsTimeElapsed};

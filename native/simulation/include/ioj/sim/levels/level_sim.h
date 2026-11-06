@@ -14,8 +14,8 @@
 #include <ioj/sim/levels/level_memory_manager.h>
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/levels/level_sim_init_data.h>
+#include <ioj/sim/levels/level_spawn_manager.h>
 #include <ioj/sim/levels/level_state.h>
-#include <ioj/sim/levels/run_stop_conditions.h>
 #include <ioj/sim/levels/tick_player_ship_state.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/player/command_interface.h>
@@ -82,7 +82,6 @@ struct LevelSim {
     /* **************************************** */
     void finalize_telemetry_run(telemetry::RunEndReason reason);
     void stop_run(telemetry::RunEndReason reason);
-    void stop_run_if_requested(RunStopConditions const& conditions);
     auto player_team_completion() const -> std::optional<TeamMissionCompletion>;
     auto take_finalized_telemetry_run() -> std::optional<telemetry::RunRecord>;
 
@@ -122,6 +121,7 @@ struct LevelSim {
     }
   private:
     void refresh_spatial_index();
+    void dispatch_terminal_events();
     friend struct LevelSimTestAccess;
     friend class LevelReadAccess;
 
@@ -173,6 +173,7 @@ struct LevelSim {
     ExprManager expressions_;
     levels::LevelMetadata level_metadata_;
     LevelEventManager event_manager_;
+    LevelSpawnManager spawn_manager_;
     LevelTelemetryManager level_telemetry_manager_;
 };
 } // namespace ioj::sim

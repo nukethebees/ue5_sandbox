@@ -1,9 +1,11 @@
 #include <ioj/sim/levels/level_event_schedule.h>
 
 #include <ioj/diagnostics.h>
+#include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/team_array.h>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <format>
@@ -78,5 +80,36 @@ void LevelEventSchedule::add_spawn_group(EntityType const type,
                                          std::int32_t const offset,
                                          std::int32_t const count) {
     level_spawn_groups_detail::append(spawn_groups, type, offset, count);
+}
+
+void LevelEventSchedule::add_trigger(ExprHandle const condition,
+                                     std::span<EventHandle const> const events) {
+    IndexSpan const range{static_cast<std::uint32_t>(trigger_events.size()),
+                          static_cast<std::uint32_t>(events.size())};
+    trigger_events.insert(trigger_events.end(), events.begin(), events.end());
+    pending_triggers.push_back({condition, range});
+}
+auto LevelEventSchedule::add_timed_trigger(ExprManager& expressions,
+                                           SimClock const& clock,
+                                           Duration const duration,
+                                           std::span<EventHandle const> const events)
+    -> std::expected<void, std::vector<std::string>> {
+    std::array<levels::MissionExpr, 1> const condition{levels::MissionExpr{
+        levels::TimeElapsedExpr{NonNegativeFinite<double>::make(duration.seconds())}}};
+    auto expression{expressions.append(condition, {{}, {}, clock})};
+    if (!expression) {
+        return std::unexpected{std::move(expression.error())};
+    }
+    add_trigger(expression->handles[0], events);
+    return {};
+}
+auto LevelEventSchedule::add_duration_limit(ExprManager& expressions,
+                                            SimClock const& clock,
+                                            Duration const duration)
+    -> std::expected<void, std::vector<std::string>> {
+    auto const index{static_cast<std::uint32_t>(stop_events.size())};
+    stop_events.push_back(telemetry::RunEndReason::DurationReached);
+    std::array const events{EventHandle{index, EventKind::StopRun}};
+    return add_timed_trigger(expressions, clock, duration, events);
 }
 }

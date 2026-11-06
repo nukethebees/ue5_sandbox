@@ -23,15 +23,16 @@ inline void add_timed_spawn(LevelSimInitData& data,
                             SimTick const trigger_tick) {
     SimClock clock;
     clock.initialise(data.clock_settings);
-    std::array<levels::MissionExpr, 1> const condition{levels::MissionExpr{levels::TimeElapsedExpr{
-        NonNegativeFinite<double>::make(simulation_time(trigger_tick, clock.tick_period()))}}};
-    auto expression{data.expressions.append(condition, {{}, {}, clock})};
-    ASSERT_TRUE(expression);
-
     auto& schedule{data.level_events.schedule};
     auto const first{schedule.spawn_groups.num()};
     schedule.add_spawn_group(type, offset, count);
-    schedule.pending_spawns.push_back(
-        {expression->handles[0], {first, schedule.spawn_groups.num() - first}});
+    auto const index{static_cast<std::uint32_t>(schedule.spawn_events.size())};
+    schedule.spawn_events.push_back({first, schedule.spawn_groups.num() - first});
+    std::array const events{EventHandle{index, EventKind::Spawn}};
+    ASSERT_TRUE(schedule.add_timed_trigger(
+        data.expressions,
+        clock,
+        Duration::make(simulation_time(trigger_tick, clock.tick_period())),
+        events));
 }
 }

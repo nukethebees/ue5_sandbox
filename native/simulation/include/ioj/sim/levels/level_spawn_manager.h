@@ -1,5 +1,7 @@
 #pragma once
 #include <ioj/sim/entities/entity_id.h>
+#include <ioj/sim/index_span.h>
+#include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 #include <ioj/sim/levels/level_entity_index.h>
 #include <ioj/sim/levels/level_spawn_groups.h>
@@ -59,12 +61,13 @@ class LevelSpawnManager {
                     LevelSpinnerSpawnEvents::ConstView spinner_payloads);
     void set_entity_id(LevelEntityIndex entity_index, EntityId id);
     void spawn(LevelSpawnGroups::ConstView groups, SpawnContext context);
+    void process_events(std::span<EventHandle const> events,
+                        std::span<IndexSpan const> payloads,
+                        LevelSpawnGroups const& groups,
+                        SpawnContext context);
     void queue_fighter_spawns(float dt,
                               FrameMemoryResource& scratch_resource,
                               std::span<Team const> participating_teams);
-    void reset_tick_output() { spawned_ids_this_tick_.clear(); }
-    auto spawned_ids() const -> std::span<EntityId const> { return spawned_ids_this_tick_; }
-    auto id(LevelEntityIndex entity_index) const -> EntityId;
     auto entity_ids() const noexcept -> std::span<EntityId const> { return entity_ids_; }
   private:
     void spawn_capitals(LevelCapitalSpawnEvents::ConstView events, SpawnContext context);
@@ -79,7 +82,6 @@ class LevelSpawnManager {
     turrets::Sim& turrets_;
     spinners::Sim& spinners_;
     std::vector<EntityId> entity_ids_{};
-    std::vector<EntityId> spawned_ids_this_tick_{};
     std::vector<Transform3d> fighter_spawn_transforms_{};
     std::vector<FighterSpawnSource> fighter_spawn_sources_{};
 };

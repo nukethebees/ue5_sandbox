@@ -11,10 +11,6 @@ auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profil
         return std::nullopt;
     }
 
-    simulation.finalize_telemetry_run(completion->outcome == MissionOutcome::Victory
-                                          ? sim::telemetry::RunEndReason::MissionSucceeded
-                                          : sim::telemetry::RunEndReason::MissionFailed);
-
     auto const& metadata{simulation.level_metadata()};
     auto const& objectives{simulation.mission().objectives()};
     std::int32_t kills{};

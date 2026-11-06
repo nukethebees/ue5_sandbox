@@ -3,7 +3,6 @@
 #include <ioj/levels/mission_validation.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/expressions/expr_manager.h>
-#include <ioj/sim/levels/run_stop_conditions.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -288,40 +287,6 @@ INSTANTIATE_TEST_SUITE_P(
     [](::testing::TestParamInfo<TeamMissionCompletionCase> const& info) {
         return info.param.name;
     });
-
-struct RunStopCase {
-    char const* name;
-    RunStopConditions conditions;
-    SimTick completed_ticks;
-    std::optional<telemetry::RunEndReason> reason;
-};
-
-using RunStopping = ::testing::TestWithParam<RunStopCase>;
-
-TEST_P(RunStopping, PreservesDurationBoundaries) {
-    auto const& test_case{GetParam()};
-    SimClock clock;
-    clock.initialise({.tick_rate = Frequency::make(4.0)});
-    clock.completed_ticks = test_case.completed_ticks;
-
-    EXPECT_EQ(test_case.conditions.stop_reason(clock), test_case.reason);
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    LevelRun,
-    RunStopping,
-    ::testing::Values(RunStopCase{"Disabled", {}, SimTick{4}, std::nullopt},
-                      RunStopCase{
-                          "BeforeDuration", {Duration::make(1.0)}, SimTick{3}, std::nullopt},
-                      RunStopCase{"AtDuration",
-                                  {Duration::make(1.0)},
-                                  SimTick{4},
-                                  telemetry::RunEndReason::DurationReached},
-                      RunStopCase{"AfterDuration",
-                                  {Duration::make(1.0)},
-                                  SimTick{5},
-                                  telemetry::RunEndReason::DurationReached}),
-    [](::testing::TestParamInfo<RunStopCase> const& info) { return info.param.name; });
 
 TEST_F(MissionTest, RootAndTeamConflictPrecedenceIsDeterministic) {
     auto source{objective("conflict", timer(0))};

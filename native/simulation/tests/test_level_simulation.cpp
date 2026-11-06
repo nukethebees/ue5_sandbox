@@ -451,24 +451,28 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     EXPECT_EQ(result->triggering_objective_outcome, ObjectiveOutcome::Passed);
     EXPECT_EQ(simulation.mission().objectives().name(result->triggering_objective).value, "enemy");
     EXPECT_EQ(result->tick.value(), 3);
-    EXPECT_EQ(simulation.mission().active_objectives().size(), 1);
+    EXPECT_EQ(simulation.mission().active_objectives().size(), 2);
     EXPECT_TRUE(simulation.player_team_completion());
-    EXPECT_EQ(simulation.level_telemetry_manager().state(),
-              LevelTelemetryManager::State::Recording);
-    EXPECT_FALSE(simulation.take_finalized_telemetry_run());
+    EXPECT_EQ(simulation.state(), LevelState::Paused);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), result->tick);
+    auto const record{simulation.take_finalized_telemetry_run()};
+    ASSERT_TRUE(record);
+    EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::MissionCompleted);
+    EXPECT_EQ(record->completion.completed_ticks, result->tick);
 }
 
 TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     auto data{make_battle()};
+    SimClock setup_clock;
+    setup_clock.initialise(data.clock_settings);
+    ASSERT_TRUE(data.level_events.schedule.add_duration_limit(
+        data.expressions, setup_clock, Duration::make(setup_clock.tick_period())));
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto const& clock{simulation.clock()};
     auto const dt{clock.tick_period()};
     simulation.advance(dt * 1.25);
-    simulation.stop_run_if_requested({.duration = Duration::make(dt * 2.0)});
-    EXPECT_EQ(simulation.state(), LevelState::Running) << "Time remaining keeps the run active";
-    simulation.stop_run_if_requested({.duration = Duration::make(dt)});
     EXPECT_EQ(simulation.state(), LevelState::Paused) << "Completed run is paused";
     EXPECT_EQ(clock.get_completed_ticks().value(), std::uint64_t{1})
         << "Only one simulation tick completes";
@@ -493,6 +497,93 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
         << "Completion and restart preserve the accumulated fractional tick";
 }
 
+TEST(NativeSimulation, QuantizedDurationStopsCatchUpBeforePendingSpawns) {
+    auto data{make_scheduled_battle()};
+    SimClock clock;
+    clock.initialise(data.clock_settings);
+    ASSERT_TRUE(data.level_events.schedule.add_duration_limit(
+        data.expressions, clock, Duration::make(0.21)));
+    LevelSim simulation{std::move(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+    simulation.advance(0.2);
+    EXPECT_EQ(simulation.state(), LevelState::Running);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{2});
+
+    simulation.advance(1.0);
+    EXPECT_EQ(simulation.state(), LevelState::Paused);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{3});
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
+    EXPECT_TRUE(simulation.mission().completions().empty());
+    auto const record{simulation.take_finalized_telemetry_run()};
+    ASSERT_TRUE(record);
+    EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::DurationReached);
+    EXPECT_EQ(record->completion.completed_ticks, SimTick{3});
+    EXPECT_EQ(record->final_state.completed_tick, SimTick{3});
+}
+
+TEST(NativeSimulation, PlayerlessMissionCompletionPrecedesDurationAndPendingSpawns) {
+    auto data{make_scheduled_battle()};
+    levels::ObjectiveDefinition objective{.id = levels::ObjectiveName{"win"},
+                                          .team = Team::Blue,
+                                          .wins_level = ObjectiveWinsLevel::Yes};
+    objective.expressions = {{levels::TimeElapsedExpr{NonNegativeFinite<double>::make(0.2)}}};
+    objective.roots[ObjectiveOutcome::Passed] = 0;
+    SimClock clock;
+    clock.initialise(data.clock_settings);
+    auto mission{Mission::compile({.objectives = {objective}}, {}, clock, data.expressions)};
+    ASSERT_TRUE(mission);
+    data.mission = std::move(*mission);
+    ASSERT_TRUE(data.level_events.schedule.add_duration_limit(
+        data.expressions, clock, Duration::make(0.21)));
+    LevelSim simulation{std::move(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+    simulation.advance(1.0);
+
+    EXPECT_EQ(simulation.state(), LevelState::Paused);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{3});
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
+    EXPECT_FALSE(simulation.player_team_completion());
+    auto const completion{simulation.mission().team_completion(Team::Blue)};
+    ASSERT_TRUE(completion);
+    EXPECT_EQ(completion->outcome, MissionOutcome::Victory);
+    EXPECT_EQ(completion->tick, SimTick{3});
+    auto const record{simulation.take_finalized_telemetry_run()};
+    ASSERT_TRUE(record);
+    EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::MissionCompleted);
+    EXPECT_EQ(record->completion.completed_ticks, completion->tick);
+    simulation.advance(1.0);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{3});
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
+}
+
+TEST(NativeSimulation, DurationEventsDoNotRequireTelemetryRecording) {
+    auto data{make_battle()};
+    data.telemetry_recording.enabled = false;
+    SimClock clock;
+    clock.initialise(data.clock_settings);
+    ASSERT_TRUE(
+        data.level_events.schedule.add_duration_limit(data.expressions, clock, Duration::make(0)));
+    LevelSim simulation{std::move(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+    simulation.advance(1.0);
+    EXPECT_EQ(simulation.state(), LevelState::Paused);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{1});
+}
+
+TEST(NativeSimulation, RunsWithoutACompletionOrDurationEvent) {
+    auto data{make_battle()};
+    data.clock_settings.tick_rate = Frequency::make(10);
+    LevelSim simulation{std::move(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+    simulation.advance(1.0);
+    EXPECT_EQ(simulation.state(), LevelState::Running);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{10});
+}
+
 TEST(NativeSimulation, LevelTelemetryFinalizationPreservesMissionCompletion) {
     auto data{make_battle()};
     player::PlayerSpawnData player;
@@ -515,16 +606,13 @@ TEST(NativeSimulation, LevelTelemetryFinalizationPreservesMissionCompletion) {
     simulation.advance(dt);
 
     auto const mission_result{simulation.player_team_completion()};
-    EXPECT_EQ(simulation.state(), LevelState::Running)
-        << "Reading the mission result does not pause simulation";
+    EXPECT_EQ(simulation.state(), LevelState::Paused);
     ASSERT_TRUE(mission_result.has_value()) << "Simulation yields the completed mission";
 
-    EXPECT_FALSE(simulation.take_finalized_telemetry_run());
-    simulation.finalize_telemetry_run(telemetry::RunEndReason::MissionSucceeded);
     auto record{simulation.take_finalized_telemetry_run()};
     ASSERT_TRUE(record.has_value());
-    EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::MissionSucceeded)
-        << "Mission success selects the telemetry completion reason";
+    EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::MissionCompleted)
+        << "Telemetry records completion without duplicating the mission outcome";
     EXPECT_EQ(mission_result->outcome, MissionOutcome::Victory);
     EXPECT_TRUE(simulation.player_team_completion());
 }
@@ -532,7 +620,6 @@ TEST(NativeSimulation, LevelTelemetryFinalizationPreservesMissionCompletion) {
 TEST(NativeSimulation, LaserFrameOutputsTest) {
     auto data{make_battle()};
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
-    add_mission(data);
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto queue_shot = [](LevelSim& level, float const location) {

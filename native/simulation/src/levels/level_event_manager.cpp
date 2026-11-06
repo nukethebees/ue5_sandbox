@@ -1,65 +1,45 @@
-#include "ioj/sim/levels/level_event_manager.h"
+#include <ioj/sim/levels/level_event_manager.h>
 
 #include <ioj/sim/expressions/expr_manager.h>
-#include <ioj/sim/levels/spawn_context.h>
 
 #include <algorithm>
-#include <span>
 #include <utility>
 
 namespace ioj::sim {
-LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,
-                                     fighters::Sim& fighters,
-                                     turrets::Sim& turrets,
-                                     spinners::Sim& spinners,
-                                     std::span<Transform3d const> const fighter_spawn_transforms,
-                                     CompiledLevelEvents data)
-    : schedule_{std::move(data.schedule)}
-    , spawn_manager_{capital_ships, fighters, turrets, spinners, fighter_spawn_transforms}
-    , player_entity_index_{data.initialisation.player_entity_index} {
-    spawn_manager_.initialise(data.initialisation.entity_count,
-                              schedule_.capital_spawns.const_view(),
-                              schedule_.turret_spawns.const_view(),
-                              schedule_.spinner_spawns.const_view());
-}
-
-void LevelEventManager::begin(SpawnContext const context, EntityId const player_id) {
-    if (player_entity_index_ != invalid_level_entity_index) {
-        spawn_manager_.set_entity_id(player_entity_index_, player_id);
-    }
-    spawn_manager_.spawn(schedule_.initial_spawn_groups.const_view(), context);
+LevelEventManager::LevelEventManager(CompiledLevelEvents data, std::pmr::memory_resource& memory)
+    : data_{std::move(data)}
+    , ready_events_{&memory} {
+    ready_events_.reserve(data_.schedule.trigger_events.size() + 1);
 }
 
 void LevelEventManager::activate(ExprManager& expressions) {
-    for (auto const& event : schedule_.pending_spawns) {
-        expressions.activate(event.condition, SimTick{});
+    for (auto const& trigger : data_.schedule.pending_triggers) {
+        expressions.activate(trigger.condition, SimTick{});
     }
 }
 
-void LevelEventManager::execute_tick(ExprManager& expressions, SpawnContext const context) {
-    spawn_manager_.reset_tick_output();
-    std::erase_if(schedule_.pending_spawns, [&](LevelSpawnEvent const& event) {
-        auto const result{expressions.result(event.condition)};
+void LevelEventManager::collect_ready(ExprManager& expressions) {
+    auto& schedule{data_.schedule};
+    std::erase_if(schedule.pending_triggers, [&](EventTrigger const& trigger) {
+        auto const result{expressions.result(trigger.condition)};
         if (result == ExprResult::Pending) {
             return false;
         }
 
         if (result == ExprResult::True) {
-            spawn_manager_.spawn(schedule_.spawn_groups.const_view(event.spawn_groups.offset,
-                                                                   event.spawn_groups.count),
-                                 context);
+            auto const events{std::span{schedule.trigger_events}.subspan(trigger.events.offset,
+                                                                         trigger.events.count)};
+            ready_events_.insert(ready_events_.end(), events.begin(), events.end());
         }
-        expressions.deactivate(event.condition);
+        expressions.deactivate(trigger.condition);
         return true;
     });
 }
 
-auto LevelEventManager::spawned_ids() const -> std::span<EntityId const> {
-    return spawn_manager_.spawned_ids();
+void LevelEventManager::enqueue(EventHandle const event) {
+    ready_events_.push_back(event);
 }
-
-auto LevelEventManager::entity_id(LevelEntityIndex const entity_index) const -> EntityId {
-    return spawn_manager_.id(entity_index);
+void LevelEventManager::clear_ready() {
+    ready_events_.clear();
 }
-
 }

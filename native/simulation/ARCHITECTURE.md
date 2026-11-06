@@ -34,15 +34,18 @@ follows published deaths and precedes `ResolutionCommit`, while entity row mappi
 
 Mission completions remain available until `reset_progress()`; queries do not consume results.
 After advancing the simulation, the orchestrator publishes a completion only when the winning
-record's tick is newer than the previous completed tick. Player-result publication explicitly
-finalizes telemetry at publication time. `RunStopConditions` applies explicit duration limits;
-living-team counts do not end a run. Battle launches without an explicit duration currently use
+record's tick is newer than the previous completed tick. `LevelSim` stops on mission completion
+and finalizes telemetry with a neutral completion reason; Mission retains victory and defeat.
+Duration limits compile to timer-triggered stop events. Living-team counts do not end a run.
+Battle launches without an explicit duration currently use
 a 24-hour simulation-time placeholder and can be ended manually.
 
-Delayed spawn batches reference expression roots and spawn payload ranges. Their expressions activate at tick
-zero and evaluate during Resolution. Preparation of the following tick dispatches true roots
-and retires resolved events, deactivating any remaining nodes. Initial spawns and recurring
-carrier production remain separate from these one-shot events.
+`LevelEventManager` maps expression roots to ranges of packed event handles. Resolved triggers
+retire after Resolution, queueing their events once when true. `LevelSim` sorts the queue by kind
+at the completed-tick boundary: mission completion precedes duration expiry, and either discards
+pending spawns and stops catch-up. Otherwise, Preparation of the following tick routes the spawn
+span to `LevelSpawnManager`. Initial spawns and recurring carrier production remain separate
+from these one-shot events.
 
 Unreal lifecycle and presentation ownership are described in the
 [SpaceGame architecture](../../Plugins/SpaceGame/ARCHITECTURE.md).

@@ -134,21 +134,20 @@ auto compile_level(LevelDefinition const& level,
         } else {
             auto const seconds{
                 definition.entities()[sources[first].source_index].spawn_time_seconds};
-            std::array<MissionExpr, 1> const condition{
-                MissionExpr{TimeElapsedExpr{NonNegativeFinite<double>::make(seconds)}}};
-            auto expression{compiled.expressions.append(condition, {{}, {}, clock})};
-            if (!expression) {
-                return std::unexpected{std::move(expression.error())};
-            }
-
             auto const group_offset{schedule.spawn_groups.num()};
             schedule.add_spawn_group(
                 sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
             schedule.add_spawn_group(
                 sim::EntityType::Turret, turret_offset, turret_end - turret_offset);
-            schedule.pending_spawns.push_back(
-                {expression->handles[0],
-                 {group_offset, schedule.spawn_groups.num() - group_offset}});
+            auto const index{static_cast<std::uint32_t>(schedule.spawn_events.size())};
+            schedule.spawn_events.push_back(
+                {group_offset, schedule.spawn_groups.num() - group_offset});
+            std::array const events{sim::EventHandle{index, sim::EventKind::Spawn}};
+            auto trigger{schedule.add_timed_trigger(
+                compiled.expressions, clock, Duration::make(seconds), events)};
+            if (!trigger) {
+                return std::unexpected{std::move(trigger.error())};
+            }
         }
         first = end;
     }

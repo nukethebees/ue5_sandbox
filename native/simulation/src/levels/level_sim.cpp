@@ -10,6 +10,7 @@
 #include <ioj/sim/spinners/phase_interface.h>
 #include <ioj/sim/turrets/phase_interface.h>
 
+#include <algorithm>
 #include <cassert>
 #include <optional>
 #include <span>
@@ -35,12 +36,12 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     , mission_{std::move(data.mission)}
     , expressions_{std::move(data.expressions)}
     , level_metadata_{std::move(data.level_metadata)}
-    , event_manager_{capital_ships_simulation_,
+    , event_manager_{std::move(data.level_events), memory_manager_.level_memory()}
+    , spawn_manager_{capital_ships_simulation_,
                      fighters_simulation_,
                      turrets_simulation_,
                      spinners_simulation_,
-                     data.capital_ships.fighter_spawn_slots_relative_transforms,
-                     std::move(data.level_events)}
+                     data.capital_ships.fighter_spawn_slots_relative_transforms}
     , level_telemetry_manager_{clock_,
                                entity_ledger_,
                                lasers_simulation_,
@@ -51,10 +52,17 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
 
     initialise_subsystems(data);
 
-    SpawnContext const spawn_context{entity_ledger_, clock_};
-    event_manager_.begin(spawn_context,
-                         player_ship_simulation_ ? player_ship_simulation_->unique_entity_id
-                                                 : EntityId{});
+    auto const& events{event_manager_.data()};
+    auto const& schedule{events.schedule};
+    spawn_manager_.initialise(events.initialisation.entity_count,
+                              schedule.capital_spawns.const_view(),
+                              schedule.turret_spawns.const_view(),
+                              schedule.spinner_spawns.const_view());
+    if (events.initialisation.player_entity_index != invalid_level_entity_index) {
+        spawn_manager_.set_entity_id(events.initialisation.player_entity_index,
+                                     player_ship_simulation_->unique_entity_id);
+    }
+    spawn_manager_.spawn(schedule.initial_spawn_groups.const_view(), {entity_ledger_, clock_});
 }
 void LevelSim::finish_initialisation() {
     assert(state_ == LevelState::Uninitialised);
@@ -104,7 +112,7 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
         data.capital_ships.max_health);
     auto const player_team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
                                                    : std::nullopt};
-    participating_teams_ = event_manager_.participating_teams(player_team);
+    participating_teams_ = event_manager_.data().schedule.get_participating_teams(player_team);
     assert(std::in_range<std::int32_t>(participating_teams_.num()));
     auto const participant_count{static_cast<std::int32_t>(participating_teams_.num())};
     fighter_per_team_limit_ =
@@ -135,15 +143,6 @@ void LevelSim::finalize_telemetry_run(telemetry::RunEndReason const reason) {
 void LevelSim::stop_run(telemetry::RunEndReason const reason) {
     level_telemetry_manager_.finalize(reason);
     state_ = LevelState::Paused;
-}
-void LevelSim::stop_run_if_requested(RunStopConditions const& conditions) {
-    if (state_ != LevelState::Running) {
-        return;
-    }
-
-    if (auto const reason{conditions.stop_reason(clock_)}) {
-        stop_run(*reason);
-    }
 }
 auto LevelSim::player_team_completion() const -> std::optional<TeamMissionCompletion> {
     auto const team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
@@ -183,10 +182,32 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
 
         profiling::mark_frame("Simulation");
         clock_.transition_to(SimulationPhase::BetweenTicks);
+        dispatch_terminal_events();
         if (state_ != LevelState::Running) {
             break;
         }
     }
+}
+
+void LevelSim::dispatch_terminal_events() {
+    auto const events{event_manager_.ready_events()};
+    std::ranges::sort(events);
+    if (events.empty()) {
+        return;
+    }
+
+    auto const first{events.front()};
+    switch (first.kind()) {
+        case EventKind::MissionCompleted:
+            stop_run(telemetry::RunEndReason::MissionCompleted);
+            break;
+        case EventKind::StopRun:
+            stop_run(event_manager_.data().schedule.stop_events[first.index()]);
+            break;
+        case EventKind::Spawn:
+            return;
+    }
+    event_manager_.clear_ready();
 }
 
 /* **************************************** */
@@ -223,7 +244,12 @@ void LevelSim::prepare_tick(float const tick_period) {
     clock_.transition_to(SimulationPhase::Preparation);
 
     auto const previous_issued_counts{entity_ledger_.issued_counts()};
-    event_manager_.execute_tick(expressions_, {entity_ledger_, clock_});
+    auto const& schedule{event_manager_.data().schedule};
+    spawn_manager_.process_events(event_manager_.ready_events(),
+                                  schedule.spawn_events,
+                                  schedule.spawn_groups,
+                                  {entity_ledger_, clock_});
+    event_manager_.clear_ready();
 
     fighters::PreparationInputs const fighter_inputs{.ledger = entity_ledger_,
                                                      .participating_teams = participating_teams_,
@@ -267,9 +293,9 @@ void LevelSim::think_tick(float const tick_period,
     clock_.transition_to(SimulationPhase::Thinking);
 
     task_manager_.plan_tasks(
-        {.expressions = expressions_, .entities = event_manager_.entity_ids()});
+        {.expressions = expressions_, .entities = spawn_manager_.entity_ids()});
 
-    event_manager_.queue_fighter_spawns(tick_period, phase_memory, participating_teams_);
+    spawn_manager_.queue_fighter_spawns(tick_period, phase_memory, participating_teams_);
 
     turrets::ThinkingInputs const turret_inputs{
         collision_pipeline_.queries(), lasers_simulation_, phase_memory};
@@ -410,12 +436,16 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
         SimTick const tick{clock_.completed_ticks.value() + 1};
         expressions_.evaluate({tick,
                                entity_ledger_,
-                               event_manager_.entity_ids(),
+                               spawn_manager_.entity_ids(),
                                &collision_pipeline_.queries(),
                                &phase_memory},
                               mission_);
+        auto const completion_count{mission_.completions().size()};
         auto const changes{
             mission_.evaluate({tick, &phase_memory, participating_teams_}, expressions_)};
+        if (mission_.completions().size() != completion_count) {
+            event_manager_.enqueue(EventHandle{0, EventKind::MissionCompleted});
+        }
         auto const& objectives{mission_.objectives()};
         for (auto const id : changes.completed) {
             expressions_.deactivate(objectives.leaves(id), objectives.composites(id));
@@ -423,6 +453,7 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
         for (auto const id : changes.activated) {
             expressions_.activate(objectives.leaves(id), objectives.composites(id), tick);
         }
+        event_manager_.collect_ready(expressions_);
     }
 
     {

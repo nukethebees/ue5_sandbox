@@ -81,11 +81,20 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups,
     }
 }
 
+void LevelSpawnManager::process_events(std::span<EventHandle const> const events,
+                                       std::span<IndexSpan const> const payloads,
+                                       LevelSpawnGroups const& groups,
+                                       SpawnContext const context) {
+    for (auto const event : events) {
+        auto const range{payloads[event.index()]};
+        spawn(groups.const_view(range.offset, range.count), context);
+    }
+}
+
 void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEvents::ConstView const events,
                                        SpawnContext const context) {
     auto const count{events.num()};
     auto const ids{capital_ships::SpawnInterface{capital_ships_}.register_ships(events, context)};
-    spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     auto const entity_indices{events.entity_indices()};
     auto const initial_delays{events.initial_fighter_spawn_delays()};
     auto const cooldowns{events.fighter_spawn_cooldowns()};
@@ -148,7 +157,6 @@ void LevelSpawnManager::queue_fighter_spawns(float const dt,
 void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEvents::ConstView const events,
                                       SpawnContext const context) {
     auto const ids{turrets::SpawnInterface{turrets_}.register_turrets(events, context)};
-    spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     auto const count{events.num()};
     auto const entity_indices{events.entity_indices()};
 
@@ -162,7 +170,6 @@ void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEvents::ConstView const 
     auto const locations{events.view_locations().resolve()};
     auto const ids{spinners::SpawnInterface{spinners_}.spawn_instances(
         locations, events.yaws(), events.initial_fire_point_indices(), context)};
-    spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     auto const count{events.num()};
     auto const entity_indices{events.entity_indices()};
 
@@ -171,10 +178,4 @@ void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEvents::ConstView const 
     }
 }
 
-auto LevelSpawnManager::id(LevelEntityIndex const entity_index) const -> EntityId {
-    assert(static_cast<std::size_t>(entity_index) < entity_ids_.size());
-    auto const id{entity_ids_[entity_index]};
-    assert(id.is_valid());
-    return id;
-}
 }
