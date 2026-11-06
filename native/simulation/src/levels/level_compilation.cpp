@@ -139,10 +139,8 @@ auto compile_level(LevelDefinition const& level,
                 sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
             schedule.add_spawn_group(
                 sim::EntityType::Turret, turret_offset, turret_end - turret_offset);
-            auto const index{static_cast<std::uint32_t>(schedule.spawn_events.size())};
-            schedule.spawn_events.push_back(
-                {group_offset, schedule.spawn_groups.num() - group_offset});
-            std::array const events{sim::EventHandle{index, sim::EventKind::Spawn}};
+            std::array const events{schedule.add_spawn_event(
+                {group_offset, schedule.spawn_groups.num() - group_offset})};
             auto trigger{schedule.add_timed_trigger(
                 compiled.expressions, clock, Duration::make(seconds), events)};
             if (!trigger) {

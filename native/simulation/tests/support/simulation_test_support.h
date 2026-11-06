@@ -26,9 +26,7 @@ inline void add_timed_spawn(LevelSimInitData& data,
     auto& schedule{data.level_events.schedule};
     auto const first{schedule.spawn_groups.num()};
     schedule.add_spawn_group(type, offset, count);
-    auto const index{static_cast<std::uint32_t>(schedule.spawn_events.size())};
-    schedule.spawn_events.push_back({first, schedule.spawn_groups.num() - first});
-    std::array const events{EventHandle{index, EventKind::Spawn}};
+    std::array const events{schedule.add_spawn_event({first, schedule.spawn_groups.num() - first})};
     ASSERT_TRUE(schedule.add_timed_trigger(
         data.expressions,
         clock,

@@ -28,8 +28,15 @@ TEST(LevelEvents, ResolvingTriggersDeliversEachEventOnceAndRetiresTheExpression)
     Mission mission;
     EntityLedger ledger;
     CompiledLevelEvents data;
-    std::array const early{EventHandle{7, EventKind::Spawn}, EventHandle{2, EventKind::Spawn}};
-    std::array const late{EventHandle{0, EventKind::StopRun}};
+    std::array const early{data.schedule.add_spawn_event({7, 2}),
+                           data.schedule.add_spawn_event({2, 1})};
+    std::array const late{data.schedule.add_stop_event(telemetry::RunEndReason::DurationReached)};
+    EXPECT_EQ(data.schedule.spawn_events[early[0].index()], (IndexSpan{7, 2}));
+    EXPECT_EQ(data.schedule.spawn_events[early[1].index()], (IndexSpan{2, 1}));
+    EXPECT_EQ(early[0].kind(), EventKind::Spawn);
+    EXPECT_EQ(early[1].kind(), EventKind::Spawn);
+    EXPECT_EQ(late[0].kind(), EventKind::StopRun);
+    EXPECT_EQ(data.schedule.stop_events[late[0].index()], telemetry::RunEndReason::DurationReached);
     ASSERT_TRUE(data.schedule.add_timed_trigger(expressions, clock, Duration::make(0.2), early));
     ASSERT_TRUE(data.schedule.add_timed_trigger(expressions, clock, Duration::make(0.3), late));
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};

@@ -25,6 +25,8 @@ struct SimClock;
 struct LevelEventSchedule {
     void add_initial_spawn_group(EntityType type, std::int32_t offset, std::int32_t count);
     void add_spawn_group(EntityType type, std::int32_t offset, std::int32_t count);
+    [[nodiscard]] auto add_spawn_event(IndexSpan groups) -> EventHandle;
+    [[nodiscard]] auto add_stop_event(telemetry::RunEndReason reason) -> EventHandle;
     void add_trigger(ExprHandle condition, std::span<EventHandle const> events);
     auto add_timed_trigger(ExprManager& expressions,
                            SimClock const& clock,
