@@ -481,8 +481,8 @@ void UScriptLevelSelectWidget::handle_launch() {
                                       ? ::ioj::levels::PresentationMode::SimulationOnly
                                       : ::ioj::levels::PresentationMode::Visual;
         options.simulated_duration_seconds =
-            battle_duration_.IsSet() ? std::optional{battle_duration_.GetValue()} : std::nullopt;
-        options.stop_when_battle_resolved = true;
+            battle_duration_.IsSet() ? battle_duration_.GetValue()
+                                     : ::ioj::levels::launch::placeholder_duration_seconds;
         options.results_navigation = ::ioj::levels::ResultsNavigation::Telemetry;
     }
     launch_selected_level(MoveTemp(options));

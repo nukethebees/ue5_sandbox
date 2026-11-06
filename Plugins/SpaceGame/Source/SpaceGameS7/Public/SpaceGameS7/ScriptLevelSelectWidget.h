@@ -102,7 +102,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     LevelCatalogCategory active_category_{LevelCatalogCategory::Mission};
     TOptional<double> battle_viewer_time_scale_{1.0};
     TOptional<double> benchmark_time_scale_{10.0};
-    TOptional<double> battle_duration_{300.0};
+    TOptional<double> battle_duration_{levels::launch::placeholder_duration_seconds};
     bool battle_duration_valid_{true};
     bool battle_simulation_only_{};
 };

@@ -1,5 +1,6 @@
 #include "SScriptLevelSelectView.h"
 
+#include <ioj/levels/launch_options.h>
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/ui/common/HiveWidgets.h>
 #include <SpaceGame/ui/common/SGameButton.h>
@@ -271,7 +272,8 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
              SHorizontalBox::Slot().AutoWidth().Padding(
                  FMargin{10.0f, 0.0f})[SNew(SBox).WidthOverride(
                  80.0f)[SAssignNew(battle_duration_input_, SEditableText)
-                            .Text(FText::FromString(TEXT("300")))
+                            .Text(FText::FromString(FString::SanitizeFloat(
+                                levels::launch::placeholder_duration_seconds)))
                             .Font(style_->text(EGameTextStyle::Body).Font)
                             .ColorAndOpacity(style_->palette().text_primary)
                             .SelectAllTextWhenFocused(true)

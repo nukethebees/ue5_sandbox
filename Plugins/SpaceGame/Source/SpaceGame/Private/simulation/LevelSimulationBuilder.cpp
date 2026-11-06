@@ -443,7 +443,6 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request)
             metadata.requested_duration_seconds =
                 Duration::make(*options.simulated_duration_seconds);
         }
-        metadata.stop_when_battle_resolved = options.stop_when_battle_resolved;
     }
     return result;
 }

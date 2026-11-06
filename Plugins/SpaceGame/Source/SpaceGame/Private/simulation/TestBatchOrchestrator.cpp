@@ -486,7 +486,6 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         }
 
         level_simulation_->stop_run_if_requested({
-            .stop_when_battle_resolved = launch_options_.stop_when_battle_resolved,
             .duration = launch_options_.simulated_duration_seconds.has_value()
                           ? std::optional{ioj::Duration::make(
                                 launch_options_.simulated_duration_seconds.value())}
