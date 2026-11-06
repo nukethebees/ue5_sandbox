@@ -6,16 +6,12 @@
 #include <optional>
 
 namespace ioj::sim {
-class EntityLedger;
 struct SimClock;
 
 struct RunStopConditions {
-    auto stop_reason(SimClock const& clock,
-                     EntityLedger const& ledger,
-                     bool has_future_spawns) const noexcept
+    auto stop_reason(SimClock const& clock) const noexcept
         -> std::optional<telemetry::RunEndReason>;
 
-    bool stop_when_battle_resolved{};
     std::optional<Duration> duration;
 };
 }

@@ -27,6 +27,8 @@ class ExprManager {
         -> std::expected<Compilation, std::vector<std::string>>;
 
     void reset_progress();
+    void activate(ExprHandle root, SimTick tick);
+    void deactivate(ExprHandle root);
     void activate(IndexSpan leaves, IndexSpan composites, SimTick tick);
     void deactivate(IndexSpan leaves, IndexSpan composites);
     void evaluate(ExprEvaluationContext const& inputs, Mission const& mission);

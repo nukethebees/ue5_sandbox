@@ -15,6 +15,7 @@ namespace ioj::levels {
 namespace launch {
 inline constexpr double default_time_scale{1.0};
 inline constexpr double maximum_time_scale{100.0};
+inline constexpr double placeholder_duration_seconds{24.0 * 60.0 * 60.0};
 
 [[nodiscard]] inline auto is_valid_time_scale(double const value) noexcept -> bool {
     return std::isfinite(value) && value > 0.0 && value <= maximum_time_scale;
@@ -26,7 +27,6 @@ struct LaunchOptions {
     double requested_time_scale{launch::default_time_scale};
     PresentationMode presentation_mode{PresentationMode::Visual};
     std::optional<double> simulated_duration_seconds{};
-    bool stop_when_battle_resolved{};
     ResultsNavigation results_navigation{ResultsNavigation::None};
     ControlContext control_context{ControlContext::Player};
 };
@@ -42,9 +42,8 @@ struct LaunchOptions {
         return std::unexpected{"Simulated duration must be finite and positive."};
     }
     if (options.presentation_mode == PresentationMode::SimulationOnly &&
-        !options.simulated_duration_seconds && !options.stop_when_battle_resolved) {
-        return std::unexpected{
-            "Simulation-only launch requires a duration or battle-resolution limit."};
+        !options.simulated_duration_seconds) {
+        return std::unexpected{"Simulation-only launch requires a duration."};
     }
     return {};
 }

@@ -13,7 +13,8 @@ void initialise_spawns(LevelSimInitData& data,
                        std::span<InitialSpinner const> spinners) {
     auto& schedule{data.level_events.schedule};
     assert(schedule.capital_spawns.is_empty() && schedule.turret_spawns.is_empty() &&
-           schedule.spinner_spawns.is_empty() && schedule.spawn_groups.is_empty());
+           schedule.spinner_spawns.is_empty() && schedule.initial_spawn_groups.is_empty() &&
+           schedule.spawn_groups.is_empty());
     auto const count = [](std::size_t size) {
         assert(size <= static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()));
         return static_cast<std::int32_t>(size);

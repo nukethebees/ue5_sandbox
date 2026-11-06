@@ -24,7 +24,7 @@ preparation can reorder storage. Movement adds player and fighter candidates; th
 deduplicates them and refreshes the spatial index before overlap detection. Queries and temporary
 overlap results remain subject to the phase and scratch-lifetime contracts.
 
-Construction executes tick-zero events but leaves the level in `LevelState::Uninitialised`. The
+Construction spawns initial entities but leaves the level in `LevelState::Uninitialised`. The
 host may install static geometry before calling `finish_initialisation()`, which publishes entity lookups
 and the spatial index, begins telemetry and resets mission progress in `LevelState::StableSetup`, then enters
 `LevelState::Paused`. Setup uses Preparation for population and Thinking for stable queries, then
@@ -35,9 +35,16 @@ follows published deaths and precedes `ResolutionCommit`, while entity row mappi
 Mission completions remain available until `reset_progress()`; queries do not consume results.
 After advancing the simulation, the orchestrator publishes a completion only when the winning
 record's tick is newer than the previous completed tick. Player-result publication explicitly
-finalizes telemetry at publication time. `RunStopConditions`
-selects battle resolution before duration when both apply. These policies do not advance time
-or reschedule tick phases. Unreal lifecycle and presentation ownership are described in the
+finalizes telemetry at publication time. `RunStopConditions` applies explicit duration limits;
+living-team counts do not end a run. Battle launches without an explicit duration currently use
+a 24-hour simulation-time placeholder and can be ended manually.
+
+Delayed spawn batches reference expression roots and spawn payload ranges. Their expressions activate at tick
+zero and evaluate during Resolution. Preparation of the following tick dispatches true roots
+and retires resolved events, deactivating any remaining nodes. Initial spawns and recurring
+carrier production remain separate from these one-shot events.
+
+Unreal lifecycle and presentation ownership are described in the
 [SpaceGame architecture](../../Plugins/SpaceGame/ARCHITECTURE.md).
 
 ## Entity lookup

@@ -78,7 +78,7 @@ TEST(LaunchOptions, ValidatesTimeScaleAndHeadlessTerminationLimits) {
     }
     LaunchOptions headless{.presentation_mode = PresentationMode::SimulationOnly};
     EXPECT_FALSE(validate_launch_options(headless));
-    headless.stop_when_battle_resolved = true;
+    headless.simulated_duration_seconds = launch::placeholder_duration_seconds;
     EXPECT_TRUE(validate_launch_options(headless));
     headless.simulated_duration_seconds = -1.0;
     EXPECT_FALSE(validate_launch_options(headless));

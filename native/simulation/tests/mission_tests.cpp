@@ -292,76 +292,35 @@ INSTANTIATE_TEST_SUITE_P(
 struct RunStopCase {
     char const* name;
     RunStopConditions conditions;
-    bool future_spawns;
-    std::uint32_t living_teams;
     SimTick completed_ticks;
     std::optional<telemetry::RunEndReason> reason;
 };
 
 using RunStopping = ::testing::TestWithParam<RunStopCase>;
 
-TEST_P(RunStopping, PreservesBattlePrecedenceFutureSpawnsAndDurationBoundaries) {
+TEST_P(RunStopping, PreservesDurationBoundaries) {
     auto const& test_case{GetParam()};
     SimClock clock;
     clock.initialise({.tick_rate = Frequency::make(4.0)});
     clock.completed_ticks = test_case.completed_ticks;
-    EntityLedger ledger;
-    std::array<EntityId, 1> ids;
-    std::array const teams{Team::Blue, Team::Red};
-    auto const team_count{test_case.living_teams};
-    for (std::uint32_t index{}; index < team_count; ++index) {
-        ledger.record_spawns(EntityType::Fighter, teams[index], Health{1}, ids);
-    }
 
-    EXPECT_EQ(test_case.conditions.stop_reason(clock, ledger, test_case.future_spawns),
-              test_case.reason);
+    EXPECT_EQ(test_case.conditions.stop_reason(clock), test_case.reason);
 }
 
 INSTANTIATE_TEST_SUITE_P(
     LevelRun,
     RunStopping,
-    ::testing::Values(
-        RunStopCase{"Disabled", {}, false, 0, SimTick{4}, std::nullopt},
-        RunStopCase{"EmptyBattle",
-                    {true, {}},
-                    false,
-                    0,
-                    SimTick{0},
-                    telemetry::RunEndReason::BattleResolved},
-        RunStopCase{"SingleTeam",
-                    {true, {}},
-                    false,
-                    1,
-                    SimTick{0},
-                    telemetry::RunEndReason::BattleResolved},
-        RunStopCase{"TwoTeams", {true, {}}, false, 2, SimTick{0}, std::nullopt},
-        RunStopCase{"FutureSpawns", {true, {}}, true, 1, SimTick{0}, std::nullopt},
-        RunStopCase{
-            "BeforeDuration", {false, Duration::make(1.0)}, false, 2, SimTick{3}, std::nullopt},
-        RunStopCase{"AtDuration",
-                    {false, Duration::make(1.0)},
-                    false,
-                    2,
-                    SimTick{4},
-                    telemetry::RunEndReason::DurationReached},
-        RunStopCase{"AfterDuration",
-                    {false, Duration::make(1.0)},
-                    false,
-                    2,
-                    SimTick{5},
-                    telemetry::RunEndReason::DurationReached},
-        RunStopCase{"BattleBeforeDuration",
-                    {true, Duration::make(1.0)},
-                    false,
-                    1,
-                    SimTick{4},
-                    telemetry::RunEndReason::BattleResolved},
-        RunStopCase{"DurationWithFutureSpawns",
-                    {true, Duration::make(1.0)},
-                    true,
-                    1,
-                    SimTick{4},
-                    telemetry::RunEndReason::DurationReached}),
+    ::testing::Values(RunStopCase{"Disabled", {}, SimTick{4}, std::nullopt},
+                      RunStopCase{
+                          "BeforeDuration", {Duration::make(1.0)}, SimTick{3}, std::nullopt},
+                      RunStopCase{"AtDuration",
+                                  {Duration::make(1.0)},
+                                  SimTick{4},
+                                  telemetry::RunEndReason::DurationReached},
+                      RunStopCase{"AfterDuration",
+                                  {Duration::make(1.0)},
+                                  SimTick{5},
+                                  telemetry::RunEndReason::DurationReached}),
     [](::testing::TestParamInfo<RunStopCase> const& info) { return info.param.name; });
 
 TEST_F(MissionTest, RootAndTeamConflictPrecedenceIsDeterministic) {

@@ -195,7 +195,6 @@ target_sources(native-simulation
     fighters/fighter_navigation.cpp
     fixed_tick.cpp
     lasers/laser_frame_output.cpp
-    levels/level_event_types.cpp
     levels/level_memory_manager.cpp
     levels/level_read_access.cpp
     levels/level_sim.cpp

@@ -1,6 +1,7 @@
 #include <ioj/sim/missions/mission.h>
 
 #include <ioj/frame_array.h>
+#include <ioj/frame_memory_resource.h>
 #include <ioj/levels/mission_validation.h>
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/sim_clock.h>

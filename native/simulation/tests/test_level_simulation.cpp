@@ -170,8 +170,11 @@ TEST(NativeSimulation, ScheduledSpawnsAndObjectivesUseSimulationTicks) {
         << "A fractional authoring time rounds up to the next tick";
 
     simulation.advance(dt);
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 1)
+        << "The timer resolves before the spawn is dispatched";
+    simulation.advance(dt);
     EXPECT_EQ(simulation.capital_ships().num_instances(), 2)
-        << "The delayed entity spawns on its compiled tick";
+        << "The delayed entity spawns in the next Preparation";
     EXPECT_FALSE(
         simulation.mission().outcome(sim::ObjectiveId{0}, simulation.expressions()).has_value())
         << "Spawn alone does not complete the objective";
@@ -298,6 +301,8 @@ TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     EXPECT_TRUE(!simulation.turrets().get_entities().target_ids()[0].is_valid())
         << "Turret has no enemy before the scheduled spawn";
     simulation.advance(dt);
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
+    simulation.advance(dt);
     EXPECT_EQ(simulation.turrets().get_entities().target_ids()[0],
               simulation.capital_ships().get_entities().entity_ids()[1])
         << "Thinking acquires the entity created in Preparation";
@@ -395,6 +400,8 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     simulation.advance(0.1);
     EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
     simulation.advance(0.1);
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
+    simulation.advance(0.1);
     ASSERT_EQ(simulation.capital_ships().num_instances(), 2);
     kill_enemy(simulation);
     simulation.advance(0.1);
@@ -459,10 +466,8 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     auto const& clock{simulation.clock()};
     auto const dt{clock.tick_period()};
     simulation.advance(dt * 1.25);
-    simulation.stop_run_if_requested(
-        {.stop_when_battle_resolved = true, .duration = Duration::make(dt * 2.0)});
-    EXPECT_EQ(simulation.state(), LevelState::Running)
-        << "Two living teams and time remaining keep the run active";
+    simulation.stop_run_if_requested({.duration = Duration::make(dt * 2.0)});
+    EXPECT_EQ(simulation.state(), LevelState::Running) << "Time remaining keeps the run active";
     simulation.stop_run_if_requested({.duration = Duration::make(dt)});
     EXPECT_EQ(simulation.state(), LevelState::Paused) << "Completed run is paused";
     EXPECT_EQ(clock.get_completed_ticks().value(), std::uint64_t{1})
@@ -656,8 +661,6 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     std::ranges::fill(capital_events.initial_fighter_spawn_delays(), 0.f);
 
     auto& schedule{data.level_events.schedule};
-    schedule.execution_ticks = {SimTick{4}};
-    schedule.event_group_counts = {{}};
     auto const payload_offset{schedule.turret_spawns.num()};
     schedule.turret_spawns.add_defaulted(1);
     auto const scheduled_turret{schedule.turret_spawns.view(payload_offset, 1)};
@@ -665,7 +668,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     set_vector(scheduled_turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
     scheduled_turret.teams()[0] = Team::White;
     scheduled_turret.healths()[0] = Health{75};
-    ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, payload_offset, 1));
+    add_timed_spawn(data, EntityType::Turret, payload_offset, 1, SimTick{4});
 
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
@@ -709,6 +712,8 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     EXPECT_TRUE(is_dead(player->health().health));
     expect_entity_unregistered(simulation, player->unique_entity_id);
 
+    simulation.advance(tick_period);
+    EXPECT_EQ(simulation.turrets().num_instances(), 1);
     simulation.advance(tick_period);
     expect_health_mappings(simulation);
     EXPECT_EQ(simulation.turrets().num_instances(), 2);

@@ -2,6 +2,7 @@
 
 #include <ioj/container_ops.h>
 #include <ioj/frame_array.h>
+#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/missions/mission.h>
@@ -199,6 +200,31 @@ auto ExprManager::append(std::span<levels::MissionExpr const> const expressions,
 void ExprManager::reset_progress() {
     leaves_.reset_progress();
     composites_.reset_progress();
+}
+void ExprManager::activate(ExprHandle const root, SimTick const tick) {
+    visit_expression_tree(root, [&](ExprHandle const node) {
+        if (node.kind() == ExprKind::Leaf) {
+            activate({node.data_leaf().index(), 1}, {}, tick);
+        } else {
+            activate({}, {node.data_composite_index(), 1}, tick);
+        }
+    });
+
+    std::ranges::sort(leaves_.active);
+    leaves_.active.erase(std::unique(leaves_.active.begin(), leaves_.active.end()),
+                         leaves_.active.end());
+    std::ranges::sort(composites_.active);
+    composites_.active.erase(std::unique(composites_.active.begin(), composites_.active.end()),
+                             composites_.active.end());
+}
+void ExprManager::deactivate(ExprHandle const root) {
+    visit_expression_tree(root, [&](ExprHandle const node) {
+        if (node.kind() == ExprKind::Leaf) {
+            deactivate({node.data_leaf().index(), 1}, {});
+        } else {
+            deactivate({}, {node.data_composite_index(), 1});
+        }
+    });
 }
 void ExprManager::activate(IndexSpan const leaves, IndexSpan const composites, SimTick const tick) {
     auto const leaves_end{leaves.end()};

@@ -8,9 +8,7 @@
 #include <ioj/transform3d.h>
 
 #include <algorithm>
-#include <format>
-#include <limits>
-#include <span>
+#include <array>
 #include <utility>
 
 namespace ioj::levels {
@@ -23,39 +21,6 @@ struct EventSource {
 auto entity_index(LevelDefinition const& definition, EntityId const& id) -> sim::LevelEntityIndex {
     auto const& entity{definition.entity(id)};
     return static_cast<sim::LevelEntityIndex>(&entity - definition.entities().data());
-}
-
-auto append_spawn_groups(sim::LevelEventSchedule& schedule,
-                         std::int32_t const capital_end,
-                         std::int32_t const turret_end,
-                         std::int32_t& capital_offset,
-                         std::int32_t& turret_offset,
-                         std::string& error) -> bool {
-    auto const append = [&](sim::EntityType const type,
-                            std::int32_t const offset,
-                            std::int32_t const count,
-                            std::string_view const name) {
-        if (schedule.add_spawn_group(type, offset, count)) {
-            return true;
-        }
-        error = std::format("Level event compilation at tick {}: {} spawn count {} "
-                            "exceeds the per-tick group limit of {}",
-                            schedule.execution_ticks.back().value(),
-                            name,
-                            count,
-                            sim::max_level_event_count);
-        return false;
-    };
-    if (!append(sim::EntityType::CapitalShip,
-                capital_offset,
-                capital_end - capital_offset,
-                "CapitalShip") ||
-        !append(sim::EntityType::Turret, turret_offset, turret_end - turret_offset, "Turret")) {
-        return false;
-    }
-    capital_offset = capital_end;
-    turret_offset = turret_end;
-    return true;
 }
 
 } // namespace
@@ -149,43 +114,43 @@ auto compile_level(LevelDefinition const& level,
             }
         };
 
-    for (auto const source : sources) {
-        if (source.execution_tick.value() != 0) {
-            break;
+    auto const source_count{sources.size()};
+    std::size_t first{};
+    while (first < source_count) {
+        auto const tick{sources[first].execution_tick};
+        auto const capital_offset{capital_end};
+        auto const turret_offset{turret_end};
+        auto end{first};
+        while (end < source_count && sources[end].execution_tick == tick) {
+            append_entity(sources[end].source_index);
+            ++end;
         }
-        if (source.source_index < entity_count) {
-            append_entity(source.source_index);
-        }
-    }
-    auto capital_offset{capital_end};
-    auto turret_offset{turret_end};
-    schedule.add_initial_spawn_group(sim::EntityType::CapitalShip, 0, capital_offset);
-    schedule.add_initial_spawn_group(sim::EntityType::Turret, 0, turret_offset);
 
-    for (auto const source : sources) {
-        if (source.execution_tick.value() == 0) {
-            continue;
-        }
-        if (schedule.execution_ticks.empty() ||
-            schedule.execution_ticks.back() != source.execution_tick) {
-            if (!schedule.execution_ticks.empty()) {
-                std::string error;
-                if (!append_spawn_groups(
-                        schedule, capital_end, turret_end, capital_offset, turret_offset, error)) {
-                    return std::unexpected{LevelCompilationErrors{std::move(error)}};
-                }
+        if (tick == sim::SimTick{}) {
+            schedule.add_initial_spawn_group(
+                sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
+            schedule.add_initial_spawn_group(
+                sim::EntityType::Turret, turret_offset, turret_end - turret_offset);
+        } else {
+            auto const seconds{
+                definition.entities()[sources[first].source_index].spawn_time_seconds};
+            std::array<MissionExpr, 1> const condition{
+                MissionExpr{TimeElapsedExpr{NonNegativeFinite<double>::make(seconds)}}};
+            auto expression{compiled.expressions.append(condition, {{}, {}, clock})};
+            if (!expression) {
+                return std::unexpected{std::move(expression.error())};
             }
-            schedule.execution_ticks.push_back(source.execution_tick);
-            schedule.event_group_counts.emplace_back();
+
+            auto const group_offset{schedule.spawn_groups.num()};
+            schedule.add_spawn_group(
+                sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
+            schedule.add_spawn_group(
+                sim::EntityType::Turret, turret_offset, turret_end - turret_offset);
+            schedule.pending_spawns.push_back(
+                {expression->handles[0],
+                 {group_offset, schedule.spawn_groups.num() - group_offset}});
         }
-        append_entity(source.source_index);
-    }
-    if (!schedule.execution_ticks.empty()) {
-        std::string error;
-        if (!append_spawn_groups(
-                schedule, capital_end, turret_end, capital_offset, turret_offset, error)) {
-            return std::unexpected{LevelCompilationErrors{std::move(error)}};
-        }
+        first = end;
     }
     return compiled;
 }

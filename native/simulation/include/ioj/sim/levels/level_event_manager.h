@@ -10,6 +10,7 @@
 #include <vector>
 
 namespace ioj::sim {
+class ExprManager;
 
 class LevelEventManager {
   public:
@@ -25,7 +26,8 @@ class LevelEventManager {
     auto operator=(LevelEventManager&&) -> LevelEventManager& = delete;
 
     void begin(SpawnContext context, EntityId player_id = {});
-    void execute_tick(SimTick tick, SpawnContext context);
+    void activate(ExprManager& expressions);
+    void execute_tick(ExprManager& expressions, SpawnContext context);
     void queue_fighter_spawns(float dt,
                               FrameMemoryResource& scratch_resource,
                               std::span<Team const> participating_teams) {
@@ -34,7 +36,6 @@ class LevelEventManager {
     auto spawned_ids() const -> std::span<EntityId const>;
     auto entity_ids() const -> std::span<EntityId const> { return spawn_manager_.entity_ids(); }
     auto entity_id(LevelEntityIndex entity_index) const -> EntityId;
-    auto has_future_spawns() const noexcept -> bool;
     auto participating_teams(std::optional<Team> player_team) const -> TeamList {
         return schedule_.get_participating_teams(player_team);
     }
@@ -42,7 +43,5 @@ class LevelEventManager {
     LevelEventSchedule schedule_{};
     LevelSpawnManager spawn_manager_;
     LevelEntityIndex player_entity_index_{invalid_level_entity_index};
-    std::uint32_t next_event_index_{};
-    std::uint32_t spawn_group_offset_{};
 };
 }

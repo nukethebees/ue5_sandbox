@@ -267,7 +267,6 @@ auto read_report(Json const& root) -> Report {
     report.opens_telemetry =
         read_choice(simulation, "results_navigation", "simulation", "telemetry", "none");
     read_simulation(report.presentation_enabled, "presentation_enabled");
-    read_simulation(report.run.metadata.stop_when_battle_resolved, "stop_when_battle_resolved");
     report.run.metadata.requested_duration_seconds =
         read_duration(simulation, "requested_duration_seconds", "simulation");
 
@@ -322,7 +321,6 @@ auto serialize_report(Report const& report) -> std::expected<std::string, std::s
               {"launch_state", report.started_paused ? "paused" : "running"},
               {"results_navigation", report.opens_telemetry ? "telemetry" : "none"},
               {"presentation_enabled", report.presentation_enabled},
-              {"stop_when_battle_resolved", metadata.stop_when_battle_resolved},
               {"requested_duration_seconds", write_duration(metadata.requested_duration_seconds)}}},
             {"completion", std::move(completion)},
             {"final_state", write_sample(report.run.final_state)},

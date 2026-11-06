@@ -12,7 +12,6 @@ struct RunMetadata {
     std::string level_id{};
     std::string level_display_name{};
     std::string launched_utc{};
-    bool stop_when_battle_resolved{};
     std::string level_source{};
     std::string settings_source{};
     std::optional<Duration> requested_duration_seconds{};

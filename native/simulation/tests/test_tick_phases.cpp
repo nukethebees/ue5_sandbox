@@ -42,8 +42,6 @@ void schedule_turret(LevelSimInitData& data,
                      Vector3f const location,
                      SimTick const tick = SimTick{1}) {
     auto& schedule{data.level_events.schedule};
-    schedule.execution_ticks = {tick};
-    schedule.event_group_counts = {{}};
     auto const payload_offset{schedule.turret_spawns.num()};
     schedule.turret_spawns.add_defaulted(1);
     auto const turret_spawns{schedule.turret_spawns.view(payload_offset, 1)};
@@ -54,7 +52,7 @@ void schedule_turret(LevelSimInitData& data,
     turret_spawns.healths()[0] = Health{100};
     turret_spawns.laser_damages()[0] = 0;
 
-    ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, payload_offset, 1));
+    add_timed_spawn(data, EntityType::Turret, payload_offset, 1, tick);
 }
 
 void queue_capital_laser(LevelSim& simulation) {
@@ -136,6 +134,8 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     EXPECT_EQ(simulation.turrets().num_instances(), 0);
 
     simulation.start();
+    simulation.advance(clk_period);
+    EXPECT_EQ(simulation.turrets().num_instances(), 0);
     simulation.advance(clk_period);
 
     auto const view{simulation.read_access()};
@@ -246,10 +246,10 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
     EXPECT_EQ(player->health().health.value(), 75);
 }
 
-TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
+TEST(TickPhases, AuthoredSpawnCanBeHitOnItsDispatchTick) {
     auto data{make_world()};
     add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
-    schedule_turret(data, {{500.f, 100.f, 0.f}}, SimTick{2});
+    schedule_turret(data, {{500.f, 100.f, 0.f}}, SimTick{1});
 
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
@@ -297,6 +297,8 @@ TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
 
     simulation.start();
     simulation.advance(clk_period);
+    EXPECT_TRUE(simulation.turrets().frame_changes().empty());
+    simulation.advance(clk_period);
 
     EXPECT_EQ(simulation.turrets().num_instances(), 0);
     auto const& turret_view{simulation.read_access().turrets()};
@@ -310,7 +312,8 @@ TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
     expect_entity_unregistered(simulation, dead_id);
     EXPECT_EQ(ledger.count_alive(), 1);
     EXPECT_EQ(capitals.healths().health(capitals.get_entities().entity_ids()[0]).value(), 900);
-    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
+    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()),
+              ObjectiveOutcome::Failed);
 
     auto const& queries{simulation.spatial_query_manager()};
     EXPECT_EQ(queries.aabb_overlap_events().entity_entity_overlaps.num(), 1);

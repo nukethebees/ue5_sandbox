@@ -115,8 +115,6 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
 
     auto with_reinforcements{make_cap_battle(capitals, 7, 8)};
     auto& schedule{with_reinforcements.level_events.schedule};
-    schedule.execution_ticks = {SimTick{100}};
-    schedule.event_group_counts = {{}};
     auto const payload_offset{schedule.turret_spawns.num()};
     schedule.turret_spawns.add_defaulted(1);
     auto const turret{schedule.turret_spawns.view(payload_offset, 1)};
@@ -124,7 +122,7 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     turret.teams()[0] = Team::Red;
     turret.healths()[0] = Health{100};
     set_vector(turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
-    ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, payload_offset, 1));
+    add_timed_spawn(with_reinforcements, EntityType::Turret, payload_offset, 1, SimTick{100});
 
     LevelSim scheduled_simulation{std::move(with_reinforcements)};
     start_and_tick(scheduled_simulation);

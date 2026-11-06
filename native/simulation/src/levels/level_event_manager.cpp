@@ -1,14 +1,11 @@
 #include "ioj/sim/levels/level_event_manager.h"
 
-#include <ioj/diagnostics.h>
+#include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/levels/spawn_context.h>
 
-#include <cassert>
-#include <cstdint>
-#include <optional>
+#include <algorithm>
 #include <span>
 #include <utility>
-#include <vector>
 
 namespace ioj::sim {
 LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,
@@ -19,10 +16,7 @@ LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,
                                      CompiledLevelEvents data)
     : schedule_{std::move(data.schedule)}
     , spawn_manager_{capital_ships, fighters, turrets, spinners, fighter_spawn_transforms}
-    , player_entity_index_{data.initialisation.player_entity_index}
-    , spawn_group_offset_{schedule_.initial_spawn_group_count} {
-    assert(schedule_.execution_ticks.size() == schedule_.event_group_counts.size());
-
+    , player_entity_index_{data.initialisation.player_entity_index} {
     spawn_manager_.initialise(data.initialisation.entity_count,
                               schedule_.capital_spawns.const_view(),
                               schedule_.turret_spawns.const_view(),
@@ -33,31 +27,31 @@ void LevelEventManager::begin(SpawnContext const context, EntityId const player_
     if (player_entity_index_ != invalid_level_entity_index) {
         spawn_manager_.set_entity_id(player_entity_index_, player_id);
     }
-    spawn_manager_.spawn(schedule_.spawn_groups.const_view(0, spawn_group_offset_), context);
+    spawn_manager_.spawn(schedule_.initial_spawn_groups.const_view(), context);
 }
 
-void LevelEventManager::execute_tick(SimTick const tick, SpawnContext const context) {
-    spawn_manager_.reset_tick_output();
-    auto const event_tick_count{schedule_.execution_ticks.size()};
-    if (static_cast<std::size_t>(next_event_index_) == event_tick_count) {
-        return;
+void LevelEventManager::activate(ExprManager& expressions) {
+    for (auto const& event : schedule_.pending_spawns) {
+        expressions.activate(event.condition, SimTick{});
     }
-    auto const execution_tick{schedule_.execution_ticks[next_event_index_]};
-    if (execution_tick < tick) {
-        fatal_error("Level event dispatch skipped a scheduled tick");
-    }
-    if (execution_tick != tick) {
-        return;
-    }
+}
 
-    auto const counts{schedule_.event_group_counts[next_event_index_]};
-    if (counts.spawn_groups.value() != 0) {
-        spawn_manager_.spawn(
-            schedule_.spawn_groups.const_view(spawn_group_offset_, counts.spawn_groups.value()),
-            context);
-        spawn_group_offset_ += counts.spawn_groups.value();
-    }
-    ++next_event_index_;
+void LevelEventManager::execute_tick(ExprManager& expressions, SpawnContext const context) {
+    spawn_manager_.reset_tick_output();
+    std::erase_if(schedule_.pending_spawns, [&](LevelSpawnEvent const& event) {
+        auto const result{expressions.result(event.condition)};
+        if (result == ExprResult::Pending) {
+            return false;
+        }
+
+        if (result == ExprResult::True) {
+            spawn_manager_.spawn(schedule_.spawn_groups.const_view(event.spawn_groups.offset,
+                                                                   event.spawn_groups.count),
+                                 context);
+        }
+        expressions.deactivate(event.condition);
+        return true;
+    });
 }
 
 auto LevelEventManager::spawned_ids() const -> std::span<EntityId const> {
@@ -68,14 +62,4 @@ auto LevelEventManager::entity_id(LevelEntityIndex const entity_index) const -> 
     return spawn_manager_.id(entity_index);
 }
 
-auto LevelEventManager::has_future_spawns() const noexcept -> bool {
-    auto const event_count{schedule_.event_group_counts.size()};
-    for (std::uint32_t index{next_event_index_}; static_cast<std::size_t>(index) < event_count;
-         ++index) {
-        if (schedule_.event_group_counts[index].spawn_groups.value() != 0) {
-            return true;
-        }
-    }
-    return false;
-}
 }

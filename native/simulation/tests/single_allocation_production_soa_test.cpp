@@ -141,13 +141,11 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
     // NOLINTEND(ioj-loop-view-accessor-call)
     events.schedule.add_initial_spawn_group(EntityType::CapitalShip, 0, row_count);
     events.schedule.add_initial_spawn_group(EntityType::TubeSpinner, 0, row_count);
-    events.schedule.execution_ticks = {SimTick{1}};
-    events.schedule.event_group_counts = {{}};
-    ASSERT_TRUE(events.schedule.add_spawn_group(EntityType::Turret, 0, row_count));
+    events.schedule.add_spawn_group(EntityType::Turret, 0, row_count);
 
     CompiledLevelEvents moved{std::move(events)};
-    EXPECT_EQ(moved.schedule.initial_spawn_group_count, 2u);
-    EXPECT_EQ(moved.schedule.spawn_groups.num(), 3u);
+    EXPECT_EQ(moved.schedule.initial_spawn_groups.num(), 2u);
+    EXPECT_EQ(moved.schedule.spawn_groups.num(), 1u);
     auto const capitals{moved.schedule.capital_spawns.const_view()};
     auto const turrets{moved.schedule.turret_spawns.const_view()};
     auto const spinners{moved.schedule.spinner_spawns.const_view()};

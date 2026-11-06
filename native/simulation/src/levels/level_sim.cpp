@@ -55,7 +55,6 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     event_manager_.begin(spawn_context,
                          player_ship_simulation_ ? player_ship_simulation_->unique_entity_id
                                                  : EntityId{});
-    event_manager_.execute_tick(SimTick{}, spawn_context);
 }
 void LevelSim::finish_initialisation() {
     assert(state_ == LevelState::Uninitialised);
@@ -75,6 +74,7 @@ void LevelSim::finish_initialisation() {
     level_telemetry_manager_.initialise();
     mission_.reset_progress();
     expressions_.reset_progress();
+    event_manager_.activate(expressions_);
     task_manager_.initialise(mission_, expressions_);
 
     clock_.reset();
@@ -141,9 +141,7 @@ void LevelSim::stop_run_if_requested(RunStopConditions const& conditions) {
         return;
     }
 
-    auto const has_future_spawns{conditions.stop_when_battle_resolved &&
-                                 event_manager_.has_future_spawns()};
-    if (auto const reason{conditions.stop_reason(clock_, entity_ledger_, has_future_spawns)}) {
+    if (auto const reason{conditions.stop_reason(clock_)}) {
         stop_run(*reason);
     }
 }
@@ -225,8 +223,7 @@ void LevelSim::prepare_tick(float const tick_period) {
     clock_.transition_to(SimulationPhase::Preparation);
 
     auto const previous_issued_counts{entity_ledger_.issued_counts()};
-    event_manager_.execute_tick(SimTick{clock_.completed_ticks.value() + 1},
-                                {entity_ledger_, clock_});
+    event_manager_.execute_tick(expressions_, {entity_ledger_, clock_});
 
     fighters::PreparationInputs const fighter_inputs{.ledger = entity_ledger_,
                                                      .participating_teams = participating_teams_,
