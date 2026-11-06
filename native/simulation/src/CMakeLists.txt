@@ -68,6 +68,35 @@ set(entities_headers
 
 list(TRANSFORM entities_headers PREPEND "../include/ioj/sim/entities/")
 
+set(expressions_headers
+  expr_manager.h
+  expr_compilation_context.h
+  expr_evaluation_context.h
+  expr_leaves.h
+  expr_operators.h
+  expr_handle.h
+  expr_kind.h
+  expr_composite_index.h
+  composite_kind.h
+  leaf_handle.h
+  leaf_data_handle.h
+  leaf_index.h
+  leaf_data_index.h
+  leaf_kind.h
+  kill_count.h
+)
+
+list(TRANSFORM expressions_headers PREPEND "../include/ioj/sim/expressions/")
+
+set(missions_headers
+  mission.h
+  mission_changes.h
+  mission_evaluation_context.h
+  objectives.h
+)
+
+list(TRANSFORM missions_headers PREPEND "../include/ioj/sim/missions/")
+
 set(fighters_headers
   fighter_entity_data.h
   fighter_navigation.h
@@ -171,6 +200,7 @@ target_sources(native-simulation
     levels/level_read_access.cpp
     levels/level_sim.cpp
     telemetry/level_telemetry_manager.cpp
+    expressions/expr_manager.cpp
     missions/mission.cpp
     missions/objectives.cpp
     overlap_handler.cpp
@@ -188,6 +218,8 @@ target_sources(native-simulation
     ${capital_ships_headers}
     ${collision_headers}
     ${entities_headers}
+    ${expressions_headers}
+    ${missions_headers}
     ${fighters_headers}
     ${lasers_headers}
     ${levels_headers}

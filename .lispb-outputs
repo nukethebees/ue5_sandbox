@@ -118,6 +118,12 @@ native/simulation/include/ioj/sim/entities/entity_id.h
 native/simulation/include/ioj/sim/entities/entity_instance_handle.h
 native/simulation/include/ioj/sim/entities/entity_life_state.h
 native/simulation/include/ioj/sim/entities/entity_type.h
+native/simulation/include/ioj/sim/expressions/composite_kind.h
+native/simulation/include/ioj/sim/expressions/expr_handle.h
+native/simulation/include/ioj/sim/expressions/expr_kind.h
+native/simulation/include/ioj/sim/expressions/leaf_data_handle.h
+native/simulation/include/ioj/sim/expressions/leaf_handle.h
+native/simulation/include/ioj/sim/expressions/leaf_kind.h
 native/simulation/include/ioj/sim/fighters/fighter_entity_data.h
 native/simulation/include/ioj/sim/fighters/fighter_navigation_types.h
 native/simulation/include/ioj/sim/fighters/fighter_spawn_queue.h
@@ -137,12 +143,6 @@ native/simulation/include/ioj/sim/levels/level_spinner_spawn_events.h
 native/simulation/include/ioj/sim/levels/level_state.h
 native/simulation/include/ioj/sim/levels/level_turret_spawn_events.h
 native/simulation/include/ioj/sim/levels/tick_player_ship_state.h
-native/simulation/include/ioj/sim/missions/composite_kind.h
-native/simulation/include/ioj/sim/missions/expr_handle.h
-native/simulation/include/ioj/sim/missions/expr_kind.h
-native/simulation/include/ioj/sim/missions/leaf_data_handle.h
-native/simulation/include/ioj/sim/missions/leaf_handle.h
-native/simulation/include/ioj/sim/missions/leaf_kind.h
 native/simulation/include/ioj/sim/missions/objective_id.h
 native/simulation/include/ioj/sim/missions/objective_prerequisite.h
 native/simulation/include/ioj/sim/player/command_interface.h

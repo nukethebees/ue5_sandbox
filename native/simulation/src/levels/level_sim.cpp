@@ -33,6 +33,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     , turrets_simulation_{entity_tables_}
     , spinners_simulation_{entity_tables_}
     , mission_{std::move(data.mission)}
+    , expressions_{std::move(data.expressions)}
     , level_metadata_{std::move(data.level_metadata)}
     , event_manager_{capital_ships_simulation_,
                      fighters_simulation_,
@@ -73,7 +74,8 @@ void LevelSim::finish_initialisation() {
 
     level_telemetry_manager_.initialise();
     mission_.reset_progress();
-    task_manager_.initialise(mission_);
+    expressions_.reset_progress();
+    task_manager_.initialise(mission_, expressions_);
 
     clock_.reset();
     state_ = LevelState::Paused;
@@ -267,7 +269,8 @@ void LevelSim::think_tick(float const tick_period,
     SANDBOX_PROFILE_SCOPE("Thinking");
     clock_.transition_to(SimulationPhase::Thinking);
 
-    task_manager_.plan_tasks({.mission = mission_, .entities = event_manager_.entity_ids()});
+    task_manager_.plan_tasks(
+        {.expressions = expressions_, .entities = event_manager_.entity_ids()});
 
     event_manager_.queue_fighter_spawns(tick_period, phase_memory, participating_teams_);
 
@@ -407,12 +410,22 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
         }
 
         // Evaluate final health and deaths before invalidating row mappings.
-        mission_.evaluate({SimTick{clock_.completed_ticks.value() + 1},
-                           entity_ledger_,
-                           event_manager_.entity_ids(),
-                           &collision_pipeline_.queries(),
-                           &phase_memory,
-                           participating_teams_});
+        SimTick const tick{clock_.completed_ticks.value() + 1};
+        expressions_.evaluate({tick,
+                               entity_ledger_,
+                               event_manager_.entity_ids(),
+                               &collision_pipeline_.queries(),
+                               &phase_memory},
+                              mission_);
+        auto const changes{
+            mission_.evaluate({tick, &phase_memory, participating_teams_}, expressions_)};
+        auto const& objectives{mission_.objectives()};
+        for (auto const id : changes.completed) {
+            expressions_.deactivate(objectives.leaves(id), objectives.composites(id));
+        }
+        for (auto const id : changes.activated) {
+            expressions_.activate(objectives.leaves(id), objectives.composites(id), tick);
+        }
     }
 
     {

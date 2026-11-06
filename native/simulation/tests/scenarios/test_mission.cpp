@@ -113,20 +113,21 @@ TEST_P(WorldlessMission, ResolvesObjectiveLifecycle) {
     auto gated{false};
     harness.on_end_tick = [&](LevelSim&) {
         if (clk.simulation_time() >= 0.1 &&
-            !simulation.mission().outcome(ioj::sim::ObjectiveId{0})) {
+            !simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions())) {
             gated = true;
         }
     };
     harness.timeline.finish_at(0.3);
-    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}));
+    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
     ASSERT_TRUE(harness.run_until_timeline_finished(1.0));
     auto const failed{scenario == Scenario::DefenceObjective ||
                       scenario == Scenario::KillEnemiesWithinTime ||
                       scenario == Scenario::RequiredKillsTimeElapsed};
-    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}),
+    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()),
               failed ? ObjectiveOutcome::Failed : ObjectiveOutcome::Passed);
     if (failed) {
-        EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{1}), ObjectiveOutcome::Passed);
+        EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{1}, simulation.expressions()),
+                  ObjectiveOutcome::Passed);
     }
     EXPECT_EQ(simulation.mission().completed_objectives().size(), failed ? 2 : 1);
     if (scenario == Scenario::RequiredKillsObjective || scenario == Scenario::AuthoredKillTarget) {

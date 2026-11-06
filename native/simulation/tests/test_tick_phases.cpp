@@ -310,7 +310,7 @@ TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
     expect_entity_unregistered(simulation, dead_id);
     EXPECT_EQ(ledger.count_alive(), 1);
     EXPECT_EQ(capitals.healths().health(capitals.get_entities().entity_ids()[0]).value(), 900);
-    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}));
+    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
 
     auto const& queries{simulation.spatial_query_manager()};
     EXPECT_EQ(queries.aabb_overlap_events().entity_entity_overlaps.num(), 1);
@@ -318,7 +318,8 @@ TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
     simulation.advance(clk_period);
     EXPECT_EQ(simulation.turrets().num_instances(), 0);
     expect_entity_unregistered(simulation, dead_id);
-    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Failed);
+    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()),
+              ObjectiveOutcome::Failed);
 }
 
 TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterward) {
@@ -474,10 +475,12 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
         EXPECT_EQ(observe_entity_row(simulation, killer), 0);
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
         if (kill_tick == 1) {
-            EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}));
+            EXPECT_FALSE(
+                simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
             simulation.advance(period);
         }
-        EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
+        EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()),
+                  ObjectiveOutcome::Passed);
     }
 
     // NOLINTEND(ioj-loop-view-accessor-call)

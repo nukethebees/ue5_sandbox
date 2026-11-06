@@ -1,5 +1,5 @@
 (module mission_leaf_kind
-  :header "native/simulation/include/ioj/sim/missions/leaf_kind.h"
+  :header "native/simulation/include/ioj/sim/expressions/leaf_kind.h"
   :namespace ioj::sim
   (enum LeafKind std::uint8_t
     :bit-width 3
@@ -13,7 +13,7 @@
     (projections (cpp))))
 
 (module mission_expr_kind
-  :header "native/simulation/include/ioj/sim/missions/expr_kind.h"
+  :header "native/simulation/include/ioj/sim/expressions/expr_kind.h"
   :namespace ioj::sim
   (enum ExprKind std::uint8_t
     :bit-width 1
@@ -22,7 +22,7 @@
     (projections (cpp))))
 
 (module mission_composite_kind
-  :header "native/simulation/include/ioj/sim/missions/composite_kind.h"
+  :header "native/simulation/include/ioj/sim/expressions/composite_kind.h"
   :namespace ioj::sim
   (enum CompositeKind std::uint8_t
     :bit-width 1
@@ -46,7 +46,7 @@
     (projections (cpp :storage std::uint32_t))))
 
 (module mission_leaf_handle
-  :header "native/simulation/include/ioj/sim/missions/leaf_handle.h"
+  :header "native/simulation/include/ioj/sim/expressions/leaf_handle.h"
   :namespace ioj::sim
   (record LeafHandle :layout packed :bits 31
     (member index @mission_leaf_index :bits 28)
@@ -54,7 +54,7 @@
     (projections (cpp :storage std::uint32_t))))
 
 (module mission_expr_handle
-  :header "native/simulation/include/ioj/sim/missions/expr_handle.h"
+  :header "native/simulation/include/ioj/sim/expressions/expr_handle.h"
   :namespace ioj::sim
   (record Composite
     (member kind @mission_composite_kind)
@@ -68,7 +68,7 @@
     (projections (cpp :storage std::uint32_t))))
 
 (module mission_leaf_data_handle
-  :header "native/simulation/include/ioj/sim/missions/leaf_data_handle.h"
+  :header "native/simulation/include/ioj/sim/expressions/leaf_data_handle.h"
   :namespace ioj::sim
   (record LeafDataHandle :layout packed :bits 32
     (member index @mission_leaf_data_index :bits 24)

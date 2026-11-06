@@ -4,12 +4,12 @@
 
 namespace ioj::sim {
 struct EntityId;
-class Mission;
+class ExprManager;
 }
 
 namespace ioj::sim::tasks {
 struct TaskPlanningContext {
-    Mission const& mission;
+    ExprManager const& expressions;
     std::span<EntityId const> entities;
 };
 

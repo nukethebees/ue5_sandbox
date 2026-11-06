@@ -93,6 +93,7 @@ auto make_scheduled_battle() -> LevelSimInitData {
     assert(compiled);
     data.level_events = std::move(compiled->events);
     data.mission = std::move(compiled->mission);
+    data.expressions = std::move(compiled->expressions);
     data.level_metadata = std::move(compiled->level_metadata);
     return data;
 }
@@ -157,7 +158,8 @@ TEST(NativeSimulation, ScheduledSpawnsAndObjectivesUseSimulationTicks) {
     simulation.finish_initialisation();
     EXPECT_EQ(simulation.capital_ships().num_instances(), 1)
         << "Only tick-zero entities exist initially";
-    EXPECT_TRUE(!simulation.mission().outcome(sim::ObjectiveId{0}).has_value())
+    EXPECT_TRUE(
+        !simulation.mission().outcome(sim::ObjectiveId{0}, simulation.expressions()).has_value())
         << "Future objectives prevent early completion";
 
     simulation.start();
@@ -170,11 +172,13 @@ TEST(NativeSimulation, ScheduledSpawnsAndObjectivesUseSimulationTicks) {
     simulation.advance(dt);
     EXPECT_EQ(simulation.capital_ships().num_instances(), 2)
         << "The delayed entity spawns on its compiled tick";
-    EXPECT_FALSE(simulation.mission().outcome(sim::ObjectiveId{0}).has_value())
+    EXPECT_FALSE(
+        simulation.mission().outcome(sim::ObjectiveId{0}, simulation.expressions()).has_value())
         << "Spawn alone does not complete the objective";
     kill_enemy(simulation);
     simulation.advance(dt);
-    EXPECT_TRUE(simulation.mission().outcome(sim::ObjectiveId{0}) == ObjectiveOutcome::Passed)
+    EXPECT_TRUE(simulation.mission().outcome(sim::ObjectiveId{0}, simulation.expressions()) ==
+                ObjectiveOutcome::Passed)
         << "Destruction completes the objective";
 }
 
@@ -344,7 +348,7 @@ TEST(NativeSimulation, PositionConditionsUseLiveSpatialDataAndRemainTerminal) {
     install_mission(data, std::move(objective));
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
-    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}));
+    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
     simulation.start();
     simulation.advance(2 * simulation.clock().tick_period());
 
@@ -353,7 +357,8 @@ TEST(NativeSimulation, PositionConditionsUseLiveSpatialDataAndRemainTerminal) {
     damage.add(simulation.capital_ships().get_entities().entity_ids()[1], 100, {});
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
     simulation.advance(0.2);
-    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
+    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()),
+              ObjectiveOutcome::Passed);
     EXPECT_EQ(simulation.mission().completed_objectives().size(), 1);
 }
 
@@ -379,6 +384,7 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     ASSERT_TRUE(compiled);
     data.level_events = std::move(compiled->events);
     data.mission = std::move(compiled->mission);
+    data.expressions = std::move(compiled->expressions);
     data.level_metadata = std::move(compiled->level_metadata);
     LevelSim simulation{std::move(data)};
     auto const& metadata{simulation.level_metadata()};
@@ -387,15 +393,17 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     simulation.finish_initialisation();
     simulation.start();
     simulation.advance(0.1);
-    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}));
+    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
     simulation.advance(0.1);
     ASSERT_EQ(simulation.capital_ships().num_instances(), 2);
     kill_enemy(simulation);
     simulation.advance(0.1);
-    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
-    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{1}));
+    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()),
+              ObjectiveOutcome::Passed);
+    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{1}, simulation.expressions()));
     simulation.advance(0.1);
-    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{1}), ObjectiveOutcome::Passed);
+    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{1}, simulation.expressions()),
+              ObjectiveOutcome::Passed);
     EXPECT_FALSE(simulation.player_team_completion());
 }
 
@@ -421,7 +429,7 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     definition.objectives[1].wins_level = ObjectiveWinsLevel::Yes;
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{Mission::compile(definition, {}, clock)};
+    auto compiled{Mission::compile(definition, {}, clock, data.expressions)};
     ASSERT_TRUE(compiled);
     data.mission = std::move(*compiled);
     LevelSim simulation{std::move(data)};
@@ -864,7 +872,8 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     EXPECT_EQ(second.capital_ships().num_instances(), 2) << "Other battle is unaffected";
     auto result{first.player_team_completion()};
     EXPECT_FALSE(result.has_value()) << "Playerless simulation does not choose a player's outcome";
-    EXPECT_EQ(first.mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
+    EXPECT_EQ(first.mission().outcome(ioj::sim::ObjectiveId{0}, first.expressions()),
+              ObjectiveOutcome::Passed);
     EXPECT_FALSE(first.player_team_completion().has_value())
         << "Playerless queries leave team results available on the mission";
     EXPECT_FALSE(first.mission().completions().empty());

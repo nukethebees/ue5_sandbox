@@ -1,10 +1,10 @@
 #pragma once
 
 #include <ioj/levels/expr_result.h>
+#include <ioj/sim/expressions/composite_kind.h>
+#include <ioj/sim/expressions/expr_composite_index.h>
+#include <ioj/sim/expressions/expr_handle.h>
 #include <ioj/sim/index_span.h>
-#include <ioj/sim/missions/composite_kind.h>
-#include <ioj/sim/missions/expr_composite_index.h>
-#include <ioj/sim/missions/expr_handle.h>
 
 #include <algorithm>
 #include <vector>

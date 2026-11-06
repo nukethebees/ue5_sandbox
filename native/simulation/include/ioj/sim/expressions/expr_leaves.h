@@ -2,11 +2,11 @@
 
 #include <ioj/levels/expr_result.h>
 #include <ioj/levels/objective_outcome.h>
+#include <ioj/sim/expressions/kill_count.h>
+#include <ioj/sim/expressions/leaf_data_handle.h>
+#include <ioj/sim/expressions/leaf_handle.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/level_entity_index.h>
-#include <ioj/sim/missions/kill_count.h>
-#include <ioj/sim/missions/leaf_data_handle.h>
-#include <ioj/sim/missions/leaf_handle.h>
 #include <ioj/sim/missions/objective_id.h>
 #include <ioj/sim/sim_tick.h>
 #include <ioj/vector.h>

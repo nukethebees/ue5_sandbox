@@ -10,7 +10,7 @@ auto data() -> LevelSimInitData {
     result.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     return result;
 }
-auto defence_mission(LevelSimInitData const& data) -> Mission {
+auto defence_mission(LevelSimInitData& data) -> Mission {
     levels::MissionDefinition definition{
         .objectives = {
             {.id = levels::ObjectiveName{"defence"},
@@ -22,8 +22,11 @@ auto defence_mission(LevelSimInitData const& data) -> Mission {
                  std::array<levels::ExprIndex, 3>{0, 1, levels::absent_expression}}}}};
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{Mission::compile(
-        definition, std::array{levels::EntityId{"defended"}, levels::EntityId{"enemy"}}, clock)};
+    auto compiled{
+        Mission::compile(definition,
+                         std::array{levels::EntityId{"defended"}, levels::EntityId{"enemy"}},
+                         clock,
+                         data.expressions)};
     assert(compiled);
     return std::move(*compiled);
 }
@@ -106,7 +109,8 @@ TEST(HudModel, CachesDefenceFailureAndObjectiveMembership) {
     EXPECT_EQ(hud.mission_data().completed, 1);
     EXPECT_EQ(hud.mission_data().active, 0);
     EXPECT_TRUE(hud.mission_data().active_titles.empty());
-    EXPECT_EQ(simulation.mission().outcome(ObjectiveId{0}), ObjectiveOutcome::Failed);
+    EXPECT_EQ(simulation.mission().outcome(ObjectiveId{0}, simulation.expressions()),
+              ObjectiveOutcome::Failed);
 }
 
 TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
@@ -223,6 +227,7 @@ TEST(HudModel, MissionDisplayTimeUsesSimulationClock) {
     hud.force_sample();
     EXPECT_DOUBLE_EQ(hud.mission_data().elapsed_seconds, 0.3);
     EXPECT_EQ(hud.mission_data().completed, 1);
-    EXPECT_EQ(simulation.mission().outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
+    EXPECT_EQ(simulation.mission().outcome(ObjectiveId{0}, simulation.expressions()),
+              ObjectiveOutcome::Passed);
 }
 }

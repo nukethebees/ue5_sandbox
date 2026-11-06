@@ -4,8 +4,8 @@
 #pragma once
 
 #include "ioj/packed_value.h"
-#include "ioj/sim/missions/leaf_data_index.h"
-#include "ioj/sim/missions/leaf_kind.h"
+#include "ioj/sim/expressions/leaf_data_index.h"
+#include "ioj/sim/expressions/leaf_kind.h"
 
 #include <cassert>
 #include <compare>

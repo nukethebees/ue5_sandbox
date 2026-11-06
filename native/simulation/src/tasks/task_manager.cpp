@@ -2,6 +2,7 @@
 
 #include <ioj/enum_array.h>
 #include <ioj/require.h>
+#include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/missions/mission.h>
 
 #include <array>
@@ -61,10 +62,10 @@ void TaskManager::reset() {
     static_cast<void>(add_task({Instruction::make_data_idle(), jump_to_idle}));
 }
 
-void TaskManager::initialise(Mission const& mission) {
+void TaskManager::initialise(Mission const& mission, ExprManager const& expressions) {
     reset();
 
-    auto const leaf_count{mission.leaves().num_leaves()};
+    auto const leaf_count{expressions.leaves().num_leaves()};
     leaf_tasks_.assign(leaf_count, TaskId{});
     task_actionable_pass_leaves_.assign(leaf_count, std::uint8_t{0});
     task_leaf_teams_.assign(leaf_count, Team{});
@@ -75,7 +76,7 @@ void TaskManager::initialise(Mission const& mission) {
         auto const objective{ObjectiveId{index}};
         auto const root{objectives.roots(objective)[ObjectiveOutcome::Passed]};
         auto const team{objectives.team(objective)};
-        mission.visit_expression_tree(root, [this, team](ExprHandle const expression) {
+        expressions.visit_expression_tree(root, [this, team](ExprHandle const expression) {
             if (expression.kind() == ExprKind::Leaf && is_task(expression.data_leaf_kind())) {
                 auto const leaf_index{expression.data_leaf_index()};
                 task_actionable_pass_leaves_[leaf_index] = 1;
@@ -113,7 +114,7 @@ auto TaskManager::add_task(std::initializer_list<Instruction> const instructions
 }
 
 void TaskManager::plan_tasks(TaskPlanningContext const ctx) {
-    auto const& leaves{ctx.mission.leaves()};
+    auto const& leaves{ctx.expressions.leaves()};
     assert(leaf_tasks_.size() == leaves.num_leaves());
 
     for (auto const leaf : leaves.active) {

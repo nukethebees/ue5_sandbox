@@ -19,6 +19,8 @@
 #include <vector>
 
 namespace ioj::sim {
+class Mission;
+class ExprManager;
 struct ExprLeaves;
 struct LeafHandle;
 }
@@ -37,7 +39,7 @@ class TaskManager {
 
     // Invalidates custom task and instruction handles while retaining allocated storage.
     void reset();
-    void initialise(Mission const& mission);
+    void initialise(Mission const& mission, ExprManager const& expressions);
     void reserve_instructions(std::size_t count);
     // Task instructions must end with jump_to_idle. Registration is independent of team activation.
     [[nodiscard]] auto add_task(std::span<Instruction const> instructions) -> TaskId;

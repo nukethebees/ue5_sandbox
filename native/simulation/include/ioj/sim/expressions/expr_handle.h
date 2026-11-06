@@ -4,12 +4,12 @@
 #pragma once
 
 #include "ioj/packed_value.h"
-#include "ioj/sim/missions/composite_kind.h"
-#include "ioj/sim/missions/expr_composite_index.h"
-#include "ioj/sim/missions/expr_kind.h"
-#include "ioj/sim/missions/leaf_handle.h"
-#include "ioj/sim/missions/leaf_index.h"
-#include "ioj/sim/missions/leaf_kind.h"
+#include "ioj/sim/expressions/composite_kind.h"
+#include "ioj/sim/expressions/expr_composite_index.h"
+#include "ioj/sim/expressions/expr_kind.h"
+#include "ioj/sim/expressions/leaf_handle.h"
+#include "ioj/sim/expressions/leaf_index.h"
+#include "ioj/sim/expressions/leaf_kind.h"
 
 #include <cassert>
 #include <compare>
