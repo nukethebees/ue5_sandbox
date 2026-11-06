@@ -7,3 +7,23 @@
     :maximum 255
     :bit-width 8
     (projections (cpp :storage std::uint8_t))))
+(module level_event_kind
+  :header "native/simulation/include/ioj/sim/levels/event_kind.h"
+  :namespace ioj::sim
+  (enum EventKind std::uint8_t
+    :bit-width 2
+    :native-api true
+    :helpers (traits)
+    (value MissionCompleted)
+    (value StopRun)
+    (value Spawn)
+    (projections (cpp))))
+
+(module level_event_handle
+  :header "native/simulation/include/ioj/sim/levels/event_handle.h"
+  :namespace ioj::sim
+  (integer-scalar EventIndex :signed false :bit-width 30)
+  (record EventHandle :layout packed :bits 32
+    (member index @EventIndex)
+    (member kind @level_event_kind)
+    (projections (cpp :storage std::uint32_t))))

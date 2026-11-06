@@ -56,10 +56,9 @@
   (enum RunEndReason @native_uint8
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
-    (value MissionSucceeded :value "0" :serialized-name "mission_succeeded")
-    (value MissionFailed :value "1" :serialized-name "mission_failed")
-    (value BattleResolved :value "2" :serialized-name "battle_resolved")
-    (value DurationReached :value "3" :serialized-name "duration_reached")
-    (value OrchestratorReset :value "4" :serialized-name "orchestrator_reset")
-    (value WorldEnd :value "5" :serialized-name "world_end")
+    (value MissionCompleted :value "0" :serialized-name "mission_completed")
+    (value BattleResolved :value "1" :serialized-name "battle_resolved")
+    (value DurationReached :value "2" :serialized-name "duration_reached")
+    (value OrchestratorReset :value "3" :serialized-name "orchestrator_reset")
+    (value WorldEnd :value "4" :serialized-name "world_end")
     (projections (cpp))))

@@ -466,3 +466,7 @@
 (type int32_const_span
   :spelling "std::span<std::int32_t const>"
   :header "span")
+(type level_event_kind
+  :spelling "ioj::sim::EventKind"
+  :header "ioj/sim/levels/event_kind.h"
+  :pass-by value)

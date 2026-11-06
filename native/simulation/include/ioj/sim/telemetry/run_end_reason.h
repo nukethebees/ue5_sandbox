@@ -17,12 +17,11 @@ using RunEndReasonUnderlying = std::uint8_t;
 
 // Logical bit width: 3.
 enum class RunEndReason : RunEndReasonUnderlying {
-    MissionSucceeded = 0,
-    MissionFailed = 1,
-    BattleResolved = 2,
-    DurationReached = 3,
-    OrchestratorReset = 4,
-    WorldEnd = 5,
+    MissionCompleted = 0,
+    BattleResolved = 1,
+    DurationReached = 2,
+    OrchestratorReset = 3,
+    WorldEnd = 4,
 };
 
 using ioj::to_serialized_string;
@@ -33,12 +32,6 @@ using ioj::to_serialized_string;
         case 9ULL: {
             if (value == "world_end") {
                 return RunEndReason::WorldEnd;
-            }
-            return std::nullopt;
-        }
-        case 14ULL: {
-            if (value == "mission_failed") {
-                return RunEndReason::MissionFailed;
             }
             return std::nullopt;
         }
@@ -55,8 +48,8 @@ using ioj::to_serialized_string;
             return std::nullopt;
         }
         case 17ULL: {
-            if (value == "mission_succeeded") {
-                return RunEndReason::MissionSucceeded;
+            if (value == "mission_completed") {
+                return RunEndReason::MissionCompleted;
             }
             return std::nullopt;
         }
@@ -77,11 +70,10 @@ using ioj::to_serialized_string;
 namespace ioj {
 template <>
 inline constexpr MinMax<sim::telemetry::RunEndReason> enum_range<sim::telemetry::RunEndReason>{
-    sim::telemetry::RunEndReason::MissionSucceeded, sim::telemetry::RunEndReason::WorldEnd};
+    sim::telemetry::RunEndReason::MissionCompleted, sim::telemetry::RunEndReason::WorldEnd};
 
 template <>
-inline constexpr auto enum_strings<sim::telemetry::RunEndReason, Serialized>{
-    PackedStrings{"mission_succeeded\000mission_failed\000battle_resolved\000duration_"
-                  "reached\000orchestrator_reset\000world_end",
-                  std::array<std::uint8_t, 7>{0, 18, 33, 49, 66, 85, 95}}};
+inline constexpr auto enum_strings<sim::telemetry::RunEndReason, Serialized>{PackedStrings{
+    "mission_completed\000battle_resolved\000duration_reached\000orchestrator_reset\000world_end",
+    std::array<std::uint8_t, 6>{0, 18, 34, 51, 70, 80}}};
 } // namespace ioj

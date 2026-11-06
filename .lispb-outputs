@@ -136,6 +136,8 @@ native/simulation/include/ioj/sim/lasers/laser_hit_details.h
 native/simulation/include/ioj/sim/lasers/laser_source.h
 native/simulation/include/ioj/sim/lasers/laser_spawn_requests.h
 native/simulation/include/ioj/sim/lasers/phase_interface.h
+native/simulation/include/ioj/sim/levels/event_handle.h
+native/simulation/include/ioj/sim/levels/event_kind.h
 native/simulation/include/ioj/sim/levels/level_capital_spawn_events.h
 native/simulation/include/ioj/sim/levels/level_event_count.h
 native/simulation/include/ioj/sim/levels/level_spawn_groups.h
