@@ -480,9 +480,9 @@ void UScriptLevelSelectWidget::handle_launch() {
         options.presentation_mode = battle_simulation_only_
                                       ? ::ioj::levels::PresentationMode::SimulationOnly
                                       : ::ioj::levels::PresentationMode::Visual;
-        options.simulated_duration_seconds =
-            battle_duration_.IsSet() ? battle_duration_.GetValue()
-                                     : ::ioj::levels::launch::placeholder_duration_seconds;
+        if (battle_duration_.IsSet()) {
+            options.simulated_duration_seconds = battle_duration_.GetValue();
+        }
         options.results_navigation = ::ioj::levels::ResultsNavigation::Telemetry;
     }
     launch_selected_level(MoveTemp(options));

@@ -15,7 +15,6 @@ namespace ioj::levels {
 namespace launch {
 inline constexpr double default_time_scale{1.0};
 inline constexpr double maximum_time_scale{100.0};
-inline constexpr double placeholder_duration_seconds{24.0 * 60.0 * 60.0};
 
 [[nodiscard]] inline auto is_valid_time_scale(double const value) noexcept -> bool {
     return std::isfinite(value) && value > 0.0 && value <= maximum_time_scale;
@@ -40,10 +39,6 @@ struct LaunchOptions {
         (!std::isfinite(*options.simulated_duration_seconds) ||
          *options.simulated_duration_seconds <= 0.0)) {
         return std::unexpected{"Simulated duration must be finite and positive."};
-    }
-    if (options.presentation_mode == PresentationMode::SimulationOnly &&
-        !options.simulated_duration_seconds) {
-        return std::unexpected{"Simulation-only launch requires a duration."};
     }
     return {};
 }

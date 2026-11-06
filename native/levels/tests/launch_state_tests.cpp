@@ -65,7 +65,7 @@ TEST(LaunchState, NavigationAndLaunchFailureInvalidatePendingWork) {
     EXPECT_FALSE(state.has_launch_error());
 }
 
-TEST(LaunchOptions, ValidatesTimeScaleAndHeadlessTerminationLimits) {
+TEST(LaunchOptions, ValidatesTimeScaleAndOptionalDuration) {
     for (auto const value : {0.25, 1.0, 100.0}) {
         EXPECT_TRUE(validate_launch_options({.requested_time_scale = value}));
     }
@@ -76,14 +76,14 @@ TEST(LaunchOptions, ValidatesTimeScaleAndHeadlessTerminationLimits) {
                              std::numeric_limits<double>::quiet_NaN()}) {
         EXPECT_FALSE(validate_launch_options({.requested_time_scale = value}));
     }
-    LaunchOptions headless{.presentation_mode = PresentationMode::SimulationOnly};
-    EXPECT_FALSE(validate_launch_options(headless));
-    headless.simulated_duration_seconds = launch::placeholder_duration_seconds;
-    EXPECT_TRUE(validate_launch_options(headless));
-    headless.simulated_duration_seconds = -1.0;
-    EXPECT_FALSE(validate_launch_options(headless));
-    headless.simulated_duration_seconds = 2.0;
-    EXPECT_TRUE(validate_launch_options(headless));
+    for (auto const mode : {PresentationMode::Visual, PresentationMode::SimulationOnly}) {
+        LaunchOptions options{.presentation_mode = mode};
+        EXPECT_TRUE(validate_launch_options(options));
+        options.simulated_duration_seconds = -1.0;
+        EXPECT_FALSE(validate_launch_options(options));
+        options.simulated_duration_seconds = 2.0;
+        EXPECT_TRUE(validate_launch_options(options));
+    }
 }
 
 TEST(ModalResumeState, PreservesObserverContextAndTracksPlayerAvailabilityDuringSuspension) {

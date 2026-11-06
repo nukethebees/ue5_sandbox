@@ -272,8 +272,7 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
              SHorizontalBox::Slot().AutoWidth().Padding(
                  FMargin{10.0f, 0.0f})[SNew(SBox).WidthOverride(
                  80.0f)[SAssignNew(battle_duration_input_, SEditableText)
-                            .Text(FText::FromString(FString::SanitizeFloat(
-                                levels::launch::placeholder_duration_seconds)))
+                            .HintText(NSLOCTEXT("LevelSelect", "UnlimitedDuration", "Unlimited"))
                             .Font(style_->text(EGameTextStyle::Body).Font)
                             .ColorAndOpacity(style_->palette().text_primary)
                             .SelectAllTextWhenFocused(true)
@@ -288,7 +287,7 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
             [SAssignNew(battle_duration_error_, STextBlock)
                  .Text(NSLOCTEXT("LevelSelect",
                                  "InvalidBattleDuration",
-                                 "Enter a positive duration; blank is allowed for visual runs."))
+                                 "Enter a positive duration, or leave blank for no time limit."))
                  .TextStyle(&style_->text(EGameTextStyle::Warning))
                  .Visibility(EVisibility::Collapsed)] +
         SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 10.0f, 0.0f, 0.0f})
@@ -415,9 +414,7 @@ void SScriptLevelSelectView::handle_battle_duration_changed(FText const& text) {
     auto const blank{value_text.IsEmpty()};
     auto const numeric{value_text.IsNumeric()};
     auto const value{numeric ? FCString::Atod(*value_text) : 0.0};
-    auto const blank_allowed{category_ == LevelCatalogCategory::BattleViewer &&
-                             !battle_simulation_only_};
-    battle_duration_valid_ = (blank && blank_allowed) || (numeric && value > 0.0);
+    battle_duration_valid_ = blank || (numeric && value > 0.0);
     battle_duration_error_->SetVisibility(battle_duration_valid_ ? EVisibility::Collapsed
                                                                  : EVisibility::HitTestInvisible);
     update_launch_availability();
