@@ -484,13 +484,6 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
                 break;
             }
         }
-
-        level_simulation_->stop_run_if_requested({
-            .duration = launch_options_.simulated_duration_seconds.has_value()
-                          ? std::optional{ioj::Duration::make(
-                                launch_options_.simulated_duration_seconds.value())}
-                          : std::nullopt,
-        });
     }
     ioj::persist_finalized_level_telemetry_run(
         *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());

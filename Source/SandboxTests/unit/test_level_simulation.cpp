@@ -232,7 +232,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     headless.start();
     visible.start();
     auto const dt{headless.clock().tick_period()};
-    constexpr int32 tick_count{8};
+    constexpr int32 tick_count{3};
     for (int32 tick{}; tick < tick_count; ++tick) {
         if (tick == 2) {
             kill_enemy(headless);
@@ -248,6 +248,24 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
                   presentation.get_last_completed_tick(),
                   visible.clock().get_completed_ticks().value());
     }
+    TestEqual(TEXT("Mission completion pauses the headless simulation"),
+              headless.state(),
+              ioj::sim::LevelState::Paused);
+    TestEqual(TEXT("Mission completion pauses the visible simulation"),
+              visible.state(),
+              ioj::sim::LevelState::Paused);
+    headless_harness.advance(dt * 5);
+    visible_harness.advance(dt * 5);
+    presentation.tick(dt, visible.read_access());
+    TestEqual(TEXT("Headless simulation stops at the completion tick"),
+              headless.clock().get_completed_ticks().value(),
+              static_cast<uint64>(tick_count));
+    TestEqual(TEXT("Visible simulation stops at the completion tick"),
+              visible.clock().get_completed_ticks().value(),
+              static_cast<uint64>(tick_count));
+    TestEqual(TEXT("Presentation stays at the completion tick"),
+              presentation.get_last_completed_tick(),
+              static_cast<uint64>(tick_count));
     TestEqual(TEXT("Both executions record every tick"), headless_samples.num(), tick_count);
     TestEqual(TEXT("Both executions have matching sample counts"),
               visible_samples.num(),

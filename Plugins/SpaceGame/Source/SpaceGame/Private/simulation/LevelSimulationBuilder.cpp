@@ -438,10 +438,18 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request)
     if (request.definition) {
         metadata.level_id = request.definition->metadata().id.value;
         metadata.level_display_name = request.definition->metadata().title;
-        auto const& options{request.launch_options};
-        if (options.simulated_duration_seconds.has_value()) {
-            metadata.requested_duration_seconds =
-                Duration::make(*options.simulated_duration_seconds);
+    }
+    auto const& options{request.launch_options};
+    if (options.simulated_duration_seconds.has_value()) {
+        auto const duration{Duration::make(*options.simulated_duration_seconds)};
+        metadata.requested_duration_seconds = duration;
+        sim::SimClock clock;
+        clock.initialise(result->data.clock_settings);
+        auto limit{result->data.level_events.schedule.add_duration_limit(
+            result->data.expressions, clock, duration)};
+        if (!limit) {
+            level_simulation_builder::append_native_errors(limit.error(), errors);
+            return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
         }
     }
     return result;
