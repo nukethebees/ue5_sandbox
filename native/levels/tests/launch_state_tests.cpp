@@ -23,7 +23,7 @@ TEST(LaunchState, TransfersNativeDefinitionExactlyOnceAndClearsPreviousError) {
     state.set_pending_level(std::move(*definition),
                             "LevelScripts/Example.scm",
                             {.launch_mode = LaunchMode::Paused,
-                             .requested_time_scale = 4.0,
+                             .requested_time_scale = launch::TimeScale{4.0},
                              .control_context = ControlContext::Benchmark});
     EXPECT_FALSE(state.has_launch_error());
     auto pending{state.take_pending_level()};
@@ -31,7 +31,7 @@ TEST(LaunchState, TransfersNativeDefinitionExactlyOnceAndClearsPreviousError) {
     EXPECT_EQ(pending->source_path, "LevelScripts/Example.scm");
     EXPECT_EQ(std::get<LevelDefinition>(pending->source).metadata().title, "Native Example");
     EXPECT_EQ(pending->options.launch_mode, LaunchMode::Paused);
-    EXPECT_EQ(pending->options.requested_time_scale, 4.0);
+    EXPECT_EQ(pending->options.requested_time_scale.get(), 4.0);
     EXPECT_EQ(pending->options.control_context, ControlContext::Benchmark);
     EXPECT_FALSE(state.take_pending_level());
 }
@@ -67,22 +67,26 @@ TEST(LaunchState, NavigationAndLaunchFailureInvalidatePendingWork) {
 
 TEST(LaunchOptions, ValidatesTimeScaleAndOptionalDuration) {
     for (auto const value : {0.25, 1.0, 100.0}) {
-        EXPECT_TRUE(validate_launch_options({.requested_time_scale = value}));
+        EXPECT_TRUE(launch::TimeScale::try_make(value));
     }
     for (auto const value : {0.0,
                              -1.0,
                              100.0001,
                              std::numeric_limits<double>::infinity(),
                              std::numeric_limits<double>::quiet_NaN()}) {
-        EXPECT_FALSE(validate_launch_options({.requested_time_scale = value}));
+        EXPECT_FALSE(launch::TimeScale::try_make(value));
     }
     for (auto const mode : {PresentationMode::Visual, PresentationMode::SimulationOnly}) {
         LaunchOptions options{.presentation_mode = mode};
-        EXPECT_TRUE(validate_launch_options(options));
-        options.simulated_duration_seconds = -1.0;
-        EXPECT_FALSE(validate_launch_options(options));
-        options.simulated_duration_seconds = 2.0;
-        EXPECT_TRUE(validate_launch_options(options));
+        EXPECT_FALSE(options.simulated_duration_seconds);
+        options.simulated_duration_seconds = PositiveFinite<double>{2.0};
+        EXPECT_EQ(options.simulated_duration_seconds->get(), 2.0);
+    }
+    for (auto const value : {0.0,
+                             -1.0,
+                             std::numeric_limits<double>::infinity(),
+                             std::numeric_limits<double>::quiet_NaN()}) {
+        EXPECT_FALSE(PositiveFinite<double>::try_make(value));
     }
 }
 

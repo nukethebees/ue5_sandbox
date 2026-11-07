@@ -474,14 +474,15 @@ void UScriptLevelSelectWidget::handle_launch() {
                                : ::ioj::levels::LaunchMode::Running};
     ::ioj::levels::LaunchOptions options{
         .launch_mode = launch_mode,
-        .requested_time_scale = time_scale.GetValue(),
+        .requested_time_scale = levels::launch::TimeScale::make(time_scale.GetValue()),
     };
     if (active_category_ != LevelCatalogCategory::Mission) {
         options.presentation_mode = battle_simulation_only_
                                       ? ::ioj::levels::PresentationMode::SimulationOnly
                                       : ::ioj::levels::PresentationMode::Visual;
         if (battle_duration_.IsSet()) {
-            options.simulated_duration_seconds = battle_duration_.GetValue();
+            options.simulated_duration_seconds =
+                PositiveFinite<double>::make(battle_duration_.GetValue());
         }
         options.results_navigation = ::ioj::levels::ResultsNavigation::Telemetry;
     }

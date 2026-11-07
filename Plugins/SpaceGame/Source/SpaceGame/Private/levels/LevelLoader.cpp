@@ -169,9 +169,6 @@ auto FLevelLoader::take_pending(UGameInstance* const game_instance)
             FString{TEXT("No pending authored level was provided to GameRuntime.")}};
     }
 
-    if (auto valid{levels::validate_launch_options(pending->options)}; !valid) {
-        return std::unexpected{to_fstring(valid.error())};
-    }
     return std::move(*pending);
 }
 

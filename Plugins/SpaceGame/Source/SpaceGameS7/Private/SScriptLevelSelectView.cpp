@@ -400,7 +400,7 @@ void SScriptLevelSelectView::handle_battle_speed_changed(FText const& text) {
     value_text.TrimStartAndEndInline();
     auto const numeric{value_text.IsNumeric()};
     auto const value{numeric ? FCString::Atod(*value_text) : 0.0};
-    battle_speed_valid_ = numeric && levels::launch::is_valid_time_scale(value);
+    battle_speed_valid_ = numeric && levels::launch::TimeScale::valid(value);
     battle_speed_error_->SetVisibility(battle_speed_valid_ ? EVisibility::Collapsed
                                                            : EVisibility::HitTestInvisible);
     update_launch_availability();
@@ -414,13 +414,13 @@ void SScriptLevelSelectView::handle_battle_duration_changed(FText const& text) {
     auto const blank{value_text.IsEmpty()};
     auto const numeric{value_text.IsNumeric()};
     auto const value{numeric ? FCString::Atod(*value_text) : 0.0};
-    battle_duration_valid_ = blank || (numeric && value > 0.0);
+    auto const valid_duration{numeric && PositiveFinite<double>::valid(value)};
+    battle_duration_valid_ = blank || valid_duration;
     battle_duration_error_->SetVisibility(battle_duration_valid_ ? EVisibility::Collapsed
                                                                  : EVisibility::HitTestInvisible);
     update_launch_availability();
-    on_battle_duration_changed_.ExecuteIfBound(numeric && value > 0.0 ? TOptional<double>{value}
-                                                                      : TOptional<double>{},
-                                               battle_duration_valid_);
+    on_battle_duration_changed_.ExecuteIfBound(
+        valid_duration ? TOptional<double>{value} : TOptional<double>{}, battle_duration_valid_);
 }
 
 void SScriptLevelSelectView::handle_simulation_only_changed(ECheckBoxState const state) {

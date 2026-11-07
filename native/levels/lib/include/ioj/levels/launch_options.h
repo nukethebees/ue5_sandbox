@@ -1,14 +1,12 @@
 #pragma once
 
+#include <ioj/constrained_numbers.h>
 #include <ioj/levels/control_context.h>
 #include <ioj/levels/launch_mode.h>
 #include <ioj/levels/presentation_mode.h>
 #include <ioj/levels/results_navigation.h>
 
-#include <cmath>
-#include <expected>
 #include <optional>
-#include <string>
 
 namespace ioj::levels {
 
@@ -16,31 +14,21 @@ namespace launch {
 inline constexpr double default_time_scale{1.0};
 inline constexpr double maximum_time_scale{100.0};
 
-[[nodiscard]] inline auto is_valid_time_scale(double const value) noexcept -> bool {
-    return std::isfinite(value) && value > 0.0 && value <= maximum_time_scale;
-}
+using TimeScale = ConstrainedValue<double,
+                                   ConstrainedValuePolicy{
+                                       [](double const value) constexpr noexcept -> bool {
+                                           return value > 0.0 && value <= maximum_time_scale;
+                                       },
+                                       "Requested time scale must be finite and in (0, 100]."}>;
 }
 
 struct LaunchOptions {
     LaunchMode launch_mode{LaunchMode::Running};
-    double requested_time_scale{launch::default_time_scale};
+    launch::TimeScale requested_time_scale{launch::default_time_scale};
     PresentationMode presentation_mode{PresentationMode::Visual};
-    std::optional<double> simulated_duration_seconds{};
+    std::optional<PositiveFinite<double>> simulated_duration_seconds{};
     ResultsNavigation results_navigation{ResultsNavigation::None};
     ControlContext control_context{ControlContext::Player};
 };
-
-[[nodiscard]] inline auto validate_launch_options(LaunchOptions const& options)
-    -> std::expected<void, std::string> {
-    if (!launch::is_valid_time_scale(options.requested_time_scale)) {
-        return std::unexpected{"Requested time scale must be finite and in (0, 100]."};
-    }
-    if (options.simulated_duration_seconds &&
-        (!std::isfinite(*options.simulated_duration_seconds) ||
-         *options.simulated_duration_seconds <= 0.0)) {
-        return std::unexpected{"Simulated duration must be finite and positive."};
-    }
-    return {};
-}
 
 }
