@@ -158,10 +158,7 @@ auto compute_optional_sentinel_encoding(AnalysisContext& context, lispb::schema:
     auto const& optional{types.definition(type)};
     auto const& optional_sentinels{types.definitions().optional_sentinels};
     auto const optional_row{optional_sentinels.index(optional)};
-    auto const source{*lispb::schema::integer_domain(
-        types,
-        types.occurrences()
-            .type[types.occurrences().index(optional_sentinels.source[optional_row])])};
+    auto const source{optional_sentinels.source_domain[optional_row]};
     auto const& integer_scalars{types.definitions().integer_scalars};
     auto const source_row{integer_scalars.index(source)};
     auto const source_type{
@@ -204,10 +201,7 @@ auto compute_optional_presence_encoding(AnalysisContext& context, lispb::schema:
     auto const& optional{types.definition(type)};
     auto const& optional_presence_bits{types.definitions().optional_presence_bits};
     auto const optional_row{optional_presence_bits.index(optional)};
-    auto const source{*lispb::schema::integer_domain(
-        types,
-        types.occurrences()
-            .type[types.occurrences().index(optional_presence_bits.source[optional_row])])};
+    auto const source{optional_presence_bits.source_domain[optional_row]};
     auto const& integer_scalars{types.definitions().integer_scalars};
     auto const source_row{integer_scalars.index(source)};
     auto const source_type{
@@ -242,10 +236,7 @@ auto compute_quantized_encoding(AnalysisContext& context, lispb::schema::TypeId 
     auto const& quantized{types.definition(type)};
     auto const& linear_quantized{types.definitions().linear_quantized};
     auto const quantized_row{linear_quantized.index(quantized)};
-    auto const source{*lispb::schema::integer_domain(
-        types,
-        types.occurrences()
-            .type[types.occurrences().index(linear_quantized.source[quantized_row])])};
+    auto const source{linear_quantized.source_domain[quantized_row]};
     auto const& integer_scalars{types.definitions().integer_scalars};
     auto const source_row{integer_scalars.index(source)};
 
@@ -302,41 +293,38 @@ auto compute_fixed_encoding(AnalysisContext& context, lispb::schema::TypeId type
     auto const& fixed{types.definition(type)};
     auto const& fixed_points{types.definitions().fixed_points};
     auto const fixed_row{fixed_points.index(fixed)};
-    auto const sign_bits{fixed_points.signedness[fixed_row] ? std::uint32_t{1} : std::uint32_t{0}};
-    auto const whole_bits{fixed_points.total_bits[fixed_row] -
-                          fixed_points.fractional_bits[fixed_row] - sign_bits};
-    auto resolution{std::ldexp(1.0L, -static_cast<int>(fixed_points.fractional_bits[fixed_row]))};
-    auto scale{std::ldexp(1.0L, static_cast<int>(fixed_points.fractional_bits[fixed_row]))};
+    auto const& format{fixed_points.format[fixed_row]};
+    auto const total_bits{format.total_bits().get()};
+    auto const range_form{format.form() == lispb::codegen::FixedPointForm::range};
+    auto const fractional_bits{range_form ? 0U : format.binary().fractional_bits};
+    auto const sign_bits{format.signedness() ? std::uint32_t{1} : std::uint32_t{0}};
+    auto const whole_bits{total_bits - fractional_bits - sign_bits};
+    auto resolution{std::ldexp(1.0L, -static_cast<int>(fractional_bits))};
+    auto scale{std::ldexp(1.0L, static_cast<int>(fractional_bits))};
 
     PackedIntegerValue minimum_raw;
     PackedIntegerValue maximum_raw;
     long double minimum_value{};
     long double maximum_value{};
-    if (fixed_points.signedness[fixed_row]) {
-        auto const negative_magnitude{std::uint64_t{1} << (fixed_points.total_bits[fixed_row] - 1)};
+    if (format.signedness()) {
+        auto const negative_magnitude{std::uint64_t{1} << (total_bits - 1)};
         minimum_raw = PackedIntegerValue::from_parts(true, negative_magnitude);
         maximum_raw = PackedIntegerValue{negative_magnitude - 1};
         auto const range_limit{
-            std::ldexp(1.0L,
-                       static_cast<int>(fixed_points.total_bits[fixed_row] - 1) -
-                           static_cast<int>(fixed_points.fractional_bits[fixed_row]))};
+            std::ldexp(1.0L, static_cast<int>(total_bits - 1) - static_cast<int>(fractional_bits))};
         minimum_value = -range_limit;
         maximum_value = range_limit - resolution;
     } else {
         minimum_raw = PackedIntegerValue{0};
-        maximum_raw =
-            PackedIntegerValue{fixed_points.total_bits[fixed_row] == 64
-                                   ? maximum_unsigned_code
-                                   : (std::uint64_t{1} << fixed_points.total_bits[fixed_row]) - 1};
-        maximum_value = std::ldexp(1.0L,
-                                   static_cast<int>(fixed_points.total_bits[fixed_row]) -
-                                       static_cast<int>(fixed_points.fractional_bits[fixed_row])) -
-                        resolution;
+        maximum_raw = PackedIntegerValue{total_bits == 64 ? maximum_unsigned_code
+                                                          : (std::uint64_t{1} << total_bits) - 1};
+        maximum_value =
+            std::ldexp(1.0L, static_cast<int>(total_bits) - static_cast<int>(fractional_bits)) -
+            resolution;
     }
 
-    auto const range_form{fixed_points.form[fixed_row] == lispb::codegen::FixedPointForm::range};
     if (range_form) {
-        auto const range{fixed_points.value_range[fixed_row]};
+        auto const range{format.value_range()};
         minimum_value = range.min;
         maximum_value = range.max;
         auto const codes{static_cast<long double>(maximum_raw.magnitude)};
@@ -344,11 +332,10 @@ auto compute_fixed_encoding(AnalysisContext& context, lispb::schema::TypeId type
         scale = 1.0L / resolution;
     }
     FixedEncoding result{
-        .form = fixed_points.form[fixed_row],
-        .signedness = fixed_points.signedness[fixed_row] != 0,
-        .total_bits = fixed_points.total_bits[fixed_row],
-        .fractional_bits =
-            range_form ? std::nullopt : std::optional{fixed_points.fractional_bits[fixed_row]},
+        .form = format.form(),
+        .signedness = format.signedness(),
+        .total_bits = total_bits,
+        .fractional_bits = range_form ? std::nullopt : std::optional{fractional_bits},
         .whole_bits = range_form ? std::nullopt : std::optional{whole_bits},
         .minimum_raw_value = minimum_raw,
         .maximum_raw_value = maximum_raw,
@@ -369,24 +356,22 @@ auto compute_float_encoding(AnalysisContext& context, lispb::schema::TypeId type
 
     auto const& mini{types.definition(type)};
     auto const& mini_floats{types.definitions().mini_floats};
-    auto const mini_row{mini_floats.index(mini)};
-    auto const total_bits{mini_floats.sign_bits[mini_row] + mini_floats.exponent_bits[mini_row] +
-                          mini_floats.significand_bits[mini_row]};
-    auto const exponent_code_count{std::uint64_t{1} << mini_floats.exponent_bits[mini_row]};
+    auto const& format{mini_floats.format[mini].ref()};
+    auto const total_bits{format.sign_bits + format.exponent_bits + format.significand_bits};
+    auto const exponent_code_count{std::uint64_t{1} << format.exponent_bits};
     auto const normal_exponent_code_count{exponent_code_count - 2};
-    auto const sign_code_count{mini_floats.sign_bits[mini_row] == 0 ? std::uint64_t{1}
-                                                                    : std::uint64_t{2}};
-    auto const significand_code_count{std::uint64_t{1} << mini_floats.significand_bits[mini_row]};
-    auto const minimum_normal_exponent{std::int32_t{1} - mini_floats.exponent_bias[mini_row]};
+    auto const sign_code_count{format.sign_bits == 0 ? std::uint64_t{1} : std::uint64_t{2}};
+    auto const significand_code_count{std::uint64_t{1} << format.significand_bits};
+    auto const minimum_normal_exponent{std::int32_t{1} - format.exponent_bias};
     auto const maximum_normal_exponent{static_cast<std::int32_t>(exponent_code_count - 2) -
-                                       mini_floats.exponent_bias[mini_row]};
+                                       format.exponent_bias};
 
     FloatEncoding result{
-        .sign_bits = mini_floats.sign_bits[mini_row],
-        .exponent_bits = mini_floats.exponent_bits[mini_row],
-        .significand_bits = mini_floats.significand_bits[mini_row],
+        .sign_bits = format.sign_bits,
+        .exponent_bits = format.exponent_bits,
+        .significand_bits = format.significand_bits,
         .total_bits = total_bits,
-        .exponent_bias = mini_floats.exponent_bias[mini_row],
+        .exponent_bias = format.exponent_bias,
         .exponent_code_count = exponent_code_count,
         .normal_exponent_code_count = normal_exponent_code_count,
         .minimum_normal_exponent = minimum_normal_exponent,
@@ -398,7 +383,7 @@ auto compute_float_encoding(AnalysisContext& context, lispb::schema::TypeId type
         .nan_code_count = (significand_code_count - 1) * sign_code_count,
         .nonzero_subnormal_code_count = (significand_code_count - 1) * sign_code_count,
         .maximum_relative_rounding_error =
-            std::ldexp(1.0L, -static_cast<int>(mini_floats.significand_bits[mini_row]) - 1)};
+            std::ldexp(1.0L, -static_cast<int>(format.significand_bits) - 1)};
 
     auto retain_positive_finite =
         [&](long double const value,
@@ -415,26 +400,23 @@ auto compute_float_encoding(AnalysisContext& context, lispb::schema::TypeId type
 
     result.minimum_positive_normal = retain_positive_finite(
         std::ldexp(1.0L, minimum_normal_exponent), "Minimum positive normal value");
-    if (mini_floats.significand_bits[mini_row] != 0) {
+    if (format.significand_bits != 0) {
         result.minimum_positive_subnormal = retain_positive_finite(
-            std::ldexp(1.0L,
-                       minimum_normal_exponent -
-                           static_cast<int>(mini_floats.significand_bits[mini_row])),
+            std::ldexp(1.0L, minimum_normal_exponent - static_cast<int>(format.significand_bits)),
             "Minimum positive subnormal value");
     }
-    auto const maximum_significand{
-        2.0L - std::ldexp(1.0L, -static_cast<int>(mini_floats.significand_bits[mini_row]))};
+    auto const maximum_significand{2.0L -
+                                   std::ldexp(1.0L, -static_cast<int>(format.significand_bits))};
     result.maximum_finite = retain_positive_finite(
         std::ldexp(maximum_significand, maximum_normal_exponent), "Maximum finite value");
     if (result.maximum_finite.has_value()) {
-        result.minimum_finite = mini_floats.sign_bits[mini_row] == 0
-                                  ? std::optional<long double>{0.0L}
-                                  : std::optional{-*result.maximum_finite};
+        result.minimum_finite = format.sign_bits == 0 ? std::optional<long double>{0.0L}
+                                                      : std::optional{-*result.maximum_finite};
     }
-    if (mini_floats.exponent_bias[mini_row] >= 1 &&
-        mini_floats.exponent_bias[mini_row] <= static_cast<std::int32_t>(exponent_code_count - 2)) {
+    if (format.exponent_bias >= 1 &&
+        format.exponent_bias <= static_cast<std::int32_t>(exponent_code_count - 2)) {
         result.unit_interval_resolution =
-            std::ldexp(1.0L, -static_cast<int>(mini_floats.significand_bits[mini_row]));
+            std::ldexp(1.0L, -static_cast<int>(format.significand_bits));
     } else {
         context.report(
             {DiagnosticSeverity::warning,
@@ -450,9 +432,7 @@ auto compute_varint_encoding(AnalysisContext& context, lispb::schema::TypeId typ
     auto const& varint{types.definition(type)};
     auto const& integer_varints{types.definitions().integer_varints};
     auto const varint_row{integer_varints.index(varint)};
-    auto const source{*lispb::schema::integer_domain(
-        types,
-        types.occurrences().type[types.occurrences().index(integer_varints.source[varint_row])])};
+    auto const source{integer_varints.source_domain[varint_row]};
     auto const& integer_scalars{types.definitions().integer_scalars};
     auto const source_row{integer_scalars.index(source)};
 
