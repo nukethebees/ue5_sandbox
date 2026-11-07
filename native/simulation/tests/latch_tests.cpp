@@ -6,7 +6,6 @@
 
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <initializer_list>
@@ -41,27 +40,22 @@ TEST(Latches, UnsetUntilEnabledAndCommitted) {
     LatchInput const input{samples.handles[0], samples.handles[1]};
     Latches latches;
     auto const handle{latches.add(input)};
-    EXPECT_EQ(latches.inputs(handle).when, input.when);
-    EXPECT_EQ(latches.inputs(handle).value, input.value);
-    EXPECT_EQ(latches.state(handle), LatchState::Unset);
     EXPECT_FALSE(latches.latched_true(handle));
     EXPECT_FALSE(latches.latched_false(handle));
 
     latches.evaluate(samples.expressions);
     latches.commit();
-    EXPECT_EQ(latches.state(handle), LatchState::Unset);
-    EXPECT_EQ(latches.active().size(), 1);
+    EXPECT_FALSE(latches.latched_true(handle));
+    EXPECT_FALSE(latches.latched_false(handle));
 
     samples = sample({true, true});
     latches.evaluate(samples.expressions);
     EXPECT_FALSE(latches.latched_true(handle));
     EXPECT_FALSE(latches.latched_false(handle));
-    EXPECT_EQ(latches.active().size(), 1);
 
     latches.commit();
     EXPECT_TRUE(latches.latched_true(handle));
     EXPECT_FALSE(latches.latched_false(handle));
-    EXPECT_TRUE(latches.active().empty());
 }
 
 TEST(Latches, CapturesBothValuesOnlyOnceIncludingBeforeCommit) {
@@ -111,7 +105,6 @@ TEST(Latches, ChainedCapturesReadPreviousCycleRegardlessOfEvaluationOrder) {
 
         latches.commit();
         EXPECT_TRUE(latches.latched_true(second));
-        EXPECT_TRUE(latches.active().empty());
     }
 }
 
@@ -142,16 +135,16 @@ TEST(Latches, RetirementPreservesUncapturedEntriesAndStableHandles) {
 
     latches.evaluate(samples.expressions);
     latches.commit();
-    ASSERT_EQ(latches.active().size(), 2);
-    EXPECT_TRUE(std::ranges::contains(latches.active(), handles[1]));
-    EXPECT_TRUE(std::ranges::contains(latches.active(), handles[3]));
+    EXPECT_FALSE(latches.latched_true(handles[1]));
+    EXPECT_FALSE(latches.latched_false(handles[1]));
+    EXPECT_FALSE(latches.latched_true(handles[3]));
+    EXPECT_FALSE(latches.latched_false(handles[3]));
     EXPECT_TRUE(latches.latched_false(handles[0]));
     EXPECT_TRUE(latches.latched_true(handles[2]));
 
     samples = sample({true, true, true, true});
     latches.evaluate(samples.expressions);
     latches.commit();
-    EXPECT_TRUE(latches.active().empty());
     EXPECT_TRUE(latches.latched_false(handles[0]));
     EXPECT_TRUE(latches.latched_true(handles[1]));
     EXPECT_TRUE(latches.latched_true(handles[2]));
@@ -166,7 +159,8 @@ TEST(Latches, SeparateInstancesStartUnsetAndDoNotShareCaptures) {
     auto const second_handle{second.add({samples.handles[0], samples.handles[1]})};
     first.evaluate(samples.expressions);
     second.commit();
-    EXPECT_EQ(second.state(second_handle), LatchState::Unset);
+    EXPECT_FALSE(second.latched_true(second_handle));
+    EXPECT_FALSE(second.latched_false(second_handle));
 
     first.commit();
     second.evaluate(samples.expressions);

@@ -16,14 +16,6 @@ auto Latches::add(LatchInput const input) -> LatchHandle {
     active_.push_back(handle);
     return handle;
 }
-auto Latches::inputs(LatchHandle const handle) const -> LatchInput {
-    assert(is_valid(handle));
-    return inputs_[handle.index()];
-}
-auto Latches::state(LatchHandle const handle) const -> LatchState {
-    assert(is_valid(handle));
-    return states_[handle.index()].cached();
-}
 auto Latches::latched_true(LatchHandle const handle) const -> bool {
     return state(handle) == LatchState::True;
 }
@@ -53,6 +45,10 @@ void Latches::commit() {
             active_.pop_back();
         }
     }
+}
+auto Latches::state(LatchHandle const handle) const -> LatchState {
+    assert(is_valid(handle));
+    return states_[handle.index()].cached();
 }
 auto Latches::is_valid(LatchHandle const handle) const -> bool {
     return handle.is_valid() && handle.index() < states_.size();
