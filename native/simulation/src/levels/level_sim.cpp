@@ -89,7 +89,7 @@ void LevelSim::finish_initialisation() {
     expressions_.reset_progress();
     event_manager_.activate_trigger_expressions(expressions_);
     for (auto const timer : event_manager_.data().schedule.initial_timers) {
-        timers_.start(timer, SimTick{});
+        timers_.start(timer);
     }
     task_manager_.initialise(mission_, expressions_);
 
@@ -465,9 +465,9 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
 
         // Evaluate final health and deaths before invalidating row mappings.
         SimTick const tick{clock_.completed_ticks.value() + 1};
+        timers_.tick(SimTick{1});
         expressions_.evaluate(
             {
-                tick,
                 entity_ledger_,
                 timers_,
                 spawn_manager_.entity_ids(),
@@ -488,7 +488,7 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
         for (auto const id : changes.activated) {
             expressions_.activate(objectives.leaves(id), objectives.composites(id));
             for (auto const timer : objectives.timers(id)) {
-                timers_.start(timer, tick);
+                timers_.start(timer);
             }
         }
         event_manager_.collect_ready(expressions_);

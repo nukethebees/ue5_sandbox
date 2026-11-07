@@ -57,10 +57,12 @@ Unreal lifecycle and presentation ownership are described in the
 
 ## Timer state
 
-`LevelSim` owns `Timers` independently of expression storage. Each timer has a duration in
-simulation ticks and an optional start tick. Starting records that tick once; repeated starts
-do nothing. Elapsed observations stay false until started and the duration has passed. Timers
-have no reset operation; a fresh level owns fresh timer state.
+`LevelSim` owns `Timers` independently of expression storage. Stable timer handles identify
+internal 32-bit entries: two bits for not-started, started or finished state, and thirty bits
+for an active countdown index. Starting creates a countdown once; repeated starts do nothing.
+Resolution decrements active countdowns before evaluating expressions. Expiry marks the entry
+finished and swap-removes the countdown, repairing the moved owner's index. Finished handles
+remain readable. Timers have no reset operation; a fresh level owns fresh timer state.
 
 Compilation gives `TimeElapsed` leaves timer handles and records which callers start them.
 Scheduled-event timers start at tick zero during level initialisation. Objective timers start

@@ -62,15 +62,17 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
     manager.activate_trigger_expressions(expressions);
     for (auto const timer : manager.data().schedule.initial_timers) {
-        timers.start(timer, SimTick{});
+        timers.start(timer);
     }
 
-    expressions.evaluate({SimTick{1}, ledger, timers, {}}, mission);
+    timers.tick(SimTick{1});
+    expressions.evaluate({ledger, timers, {}}, mission);
     manager.collect_ready(expressions);
     EXPECT_TRUE(manager.preparation_events().empty());
     EXPECT_TRUE(manager.tick_end_events().empty());
 
-    expressions.evaluate({SimTick{2}, ledger, timers, {}}, mission);
+    timers.tick(SimTick{1});
+    expressions.evaluate({ledger, timers, {}}, mission);
     manager.collect_ready(expressions);
     manager.collect_ready(expressions);
     EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
@@ -78,13 +80,15 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     EXPECT_EQ(manager.consume_tick_end_event(), pause);
     EXPECT_FALSE(manager.consume_tick_end_event());
 
-    expressions.evaluate({SimTick{3}, ledger, timers, {}}, mission);
+    timers.tick(SimTick{1});
+    expressions.evaluate({ledger, timers, {}}, mission);
     manager.collect_ready(expressions);
     EXPECT_TRUE(std::ranges::equal(manager.pending_tick_end_events(), late));
     EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
     EXPECT_EQ(manager.consume_tick_end_event(), late.front());
     EXPECT_EQ(manager.consume_preparation_event(), spawn);
-    expressions.evaluate({SimTick{4}, ledger, timers, {}}, mission);
+    timers.tick(SimTick{1});
+    expressions.evaluate({ledger, timers, {}}, mission);
     manager.collect_ready(expressions);
     EXPECT_TRUE(manager.pending_preparation_events().empty());
     EXPECT_TRUE(manager.pending_tick_end_events().empty());

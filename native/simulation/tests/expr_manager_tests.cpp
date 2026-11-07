@@ -32,17 +32,19 @@ TEST(Expressions, SharedDagEvaluatesChildrenFirstWithoutRetiringSharedLeaves) {
     auto const& handles{compiled->handles};
     expressions.activate(handles[0]);
     for (auto const handle : compiled->timers) {
-        timers.start(handle, SimTick{});
+        timers.start(handle);
     }
     EXPECT_EQ(expressions.leaves().active.size(), 2);
 
-    expressions.evaluate({SimTick{10}, ledger, timers, {}}, mission);
+    timers.tick(SimTick{10});
+    expressions.evaluate({ledger, timers, {}}, mission);
     EXPECT_EQ(expressions.result(handles[2]), ExprResult::True);
     EXPECT_EQ(expressions.result(handles[4]), ExprResult::Pending);
     EXPECT_EQ(expressions.result(handles[0]), ExprResult::Pending);
     EXPECT_EQ(expressions.leaves().active.size(), 1);
 
-    expressions.evaluate({SimTick{20}, ledger, timers, {}}, mission);
+    timers.tick(SimTick{10});
+    expressions.evaluate({ledger, timers, {}}, mission);
     EXPECT_EQ(expressions.result(handles[0]), ExprResult::True);
     EXPECT_TRUE(expressions.leaves().active.empty());
 }
@@ -65,24 +67,28 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
     auto const& handles{compiled->handles};
     expressions.activate(handles[3]);
     for (auto const handle : compiled->timers) {
-        timers.start(handle, SimTick{});
+        timers.start(handle);
     }
-    expressions.evaluate({SimTick{10}, ledger, timers, entities}, mission);
+    timers.tick(SimTick{10});
+    expressions.evaluate({ledger, timers, entities}, mission);
     EXPECT_EQ(expressions.result(handles[0]), ExprResult::True);
     EXPECT_EQ(expressions.result(handles[2]), ExprResult::Pending);
-    expressions.evaluate({SimTick{20}, ledger, timers, entities}, mission);
+    timers.tick(SimTick{10});
+    expressions.evaluate({ledger, timers, entities}, mission);
     EXPECT_EQ(expressions.result(handles[2]), ExprResult::True);
     EXPECT_EQ(expressions.result(handles[3]), ExprResult::Pending);
 
     ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, entities);
-    expressions.evaluate({SimTick{21}, ledger, timers, entities}, mission);
+    timers.tick(SimTick{1});
+    expressions.evaluate({ledger, timers, entities}, mission);
     EXPECT_EQ(expressions.result(handles[1]), ExprResult::Pending);
     EntityDeathInfo deaths;
     deaths.add_defaulted(1);
     deaths.view().victims()[0] = entities[0];
     deaths.view().reasons()[0] = DeathReason::Combat;
     ledger.record_deaths(deaths.const_view(), SimTick{22});
-    expressions.evaluate({SimTick{22}, ledger, timers, entities}, mission);
+    timers.tick(SimTick{1});
+    expressions.evaluate({ledger, timers, entities}, mission);
     EXPECT_EQ(expressions.result(handles[3]), ExprResult::True);
 }
 
@@ -100,22 +106,27 @@ TEST(Expressions, ActivationDoesNotStartTimersAndStartIsVisibleOnNextEvaluation)
     auto const zero{compiled->handles[0]};
     auto const delayed{compiled->handles[1]};
     expressions.activate(compiled->leaves, compiled->composites);
-    expressions.evaluate({SimTick{100}, ledger, timers, {}}, mission);
+    timers.tick(SimTick{100});
+    expressions.evaluate({ledger, timers, {}}, mission);
     EXPECT_EQ(expressions.result(zero), ExprResult::Pending);
     EXPECT_EQ(expressions.result(delayed), ExprResult::Pending);
 
     for (auto const handle : compiled->timers) {
-        timers.start(handle, SimTick{100});
+        timers.start(handle);
     }
     EXPECT_EQ(expressions.result(zero), ExprResult::Pending);
-    expressions.evaluate({SimTick{101}, ledger, timers, {}}, mission);
+    timers.tick(SimTick{1});
+    EXPECT_EQ(expressions.result(zero), ExprResult::Pending);
+    expressions.evaluate({ledger, timers, {}}, mission);
     EXPECT_EQ(expressions.result(zero), ExprResult::True);
     EXPECT_EQ(expressions.result(delayed), ExprResult::Pending);
     expressions.deactivate(delayed);
     expressions.activate(delayed);
-    expressions.evaluate({SimTick{102}, ledger, timers, {}}, mission);
+    timers.tick(SimTick{1});
+    expressions.evaluate({ledger, timers, {}}, mission);
     EXPECT_EQ(expressions.result(delayed), ExprResult::Pending);
-    expressions.evaluate({SimTick{103}, ledger, timers, {}}, mission);
+    timers.tick(SimTick{1});
+    expressions.evaluate({ledger, timers, {}}, mission);
     EXPECT_EQ(expressions.result(delayed), ExprResult::True);
 }
 }

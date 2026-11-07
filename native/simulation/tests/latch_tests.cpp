@@ -33,7 +33,7 @@ auto sample(std::initializer_list<bool> const values) -> ExpressionSamples {
     auto const compiled{result.expressions.append(nodes, {{}, {}, clock, timers}).value()};
     result.handles.assign(compiled.handles.begin() + 2, compiled.handles.end());
     result.expressions.activate(compiled.leaves, compiled.composites);
-    result.expressions.evaluate({SimTick{}, ledger, timers, {}}, mission);
+    result.expressions.evaluate({ledger, timers, {}}, mission);
     return result;
 }
 

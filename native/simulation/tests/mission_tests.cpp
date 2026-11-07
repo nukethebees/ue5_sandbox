@@ -23,11 +23,13 @@ struct MissionTest : ::testing::Test {
     Timers timers;
     std::array<Team, 2> teams{Team::Blue, Team::Red};
     FrameMemoryResource scratch{4096};
+    SimTick::value_type previous_tick{};
 
     MissionTest() { clock.initialise({.tick_rate = Frequency::make(10.0)}); }
     void start(MissionDefinition const& definition) {
         expressions = ExprManager{};
         timers = Timers{};
+        previous_tick = 0;
         auto compiled{Mission::compile(definition, {}, clock, expressions, timers)};
         ASSERT_TRUE(compiled.has_value()) << (compiled ? "" : compiled.error().front());
         mission = std::move(*compiled);
@@ -36,7 +38,9 @@ struct MissionTest : ::testing::Test {
     }
     void tick(SimTick::value_type const tick) {
         FrameScratchScope scratch_scope{scratch};
-        expressions.evaluate({SimTick{tick}, ledger, timers, {}, nullptr, &scratch}, mission);
+        timers.tick(SimTick{tick - previous_tick});
+        previous_tick = tick;
+        expressions.evaluate({ledger, timers, {}, nullptr, &scratch}, mission);
         auto const changes{mission.evaluate({SimTick{tick}, &scratch, teams}, expressions)};
         auto const& objectives{mission.objectives()};
         for (auto const id : changes.completed) {
@@ -45,7 +49,7 @@ struct MissionTest : ::testing::Test {
         for (auto const id : changes.activated) {
             expressions.activate(objectives.leaves(id), objectives.composites(id));
             for (auto const timer : objectives.timers(id)) {
-                timers.start(timer, SimTick{tick});
+                timers.start(timer);
             }
         }
     }

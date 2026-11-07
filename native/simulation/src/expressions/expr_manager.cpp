@@ -372,7 +372,7 @@ void ExprManager::evaluate_elapsed(std::span<LeafHandle const> const run,
     for (auto const handle : run) {
         auto const leaf{handle.index()};
         auto const data{leaves.data_handles[leaf].index()};
-        if (inputs.timers.elapsed(leaves.timers[data], inputs.tick)) {
+        if (inputs.timers.elapsed(leaves.timers[data])) {
             resolve_leaf(leaf, ExprResult::True);
         }
     }

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <ioj/sim/sim_tick.h>
-
 #include <span>
 
 namespace ioj {
@@ -15,7 +13,6 @@ struct SpatialQueryManager;
 class Timers;
 
 struct ExprEvaluationContext {
-    SimTick tick{};
     EntityLedger const& ledger;
     Timers const& timers;
     std::span<EntityId const> entities;
