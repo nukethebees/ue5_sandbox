@@ -787,49 +787,60 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
         auto const edit_flight_model = [weak_settings, flight_scope](auto setter) {
             if (auto* const current{weak_settings.Get()}) {
                 auto profile{current->flight_model_profile(flight_scope)};
-                setter(profile.config);
+                if (!setter(profile.config)) {
+                    return false;
+                }
                 return current->set_flight_model_profile(flight_scope, MoveTemp(profile));
             }
             return false;
         };
-        auto const add_flight_slider =
-            [this, &flight_rows, weak_settings, flight_scope, edit_flight_model](
-                FText const& label,
-                FText const& tooltip,
-                float const minimum,
-                float const maximum,
-                float const step,
-                auto property) {
-                auto value{TAttribute<float>::CreateLambda([weak_settings, flight_scope, property] {
-                    auto const* const current{weak_settings.Get()};
-                    return current != nullptr
-                             ? property(current->flight_model_profile(flight_scope).config)
-                             : 0.f;
-                })};
-                auto value_text{
-                    TAttribute<FText>::CreateLambda([weak_settings, flight_scope, property] {
-                        auto const* const current{weak_settings.Get()};
-                        return current != nullptr
-                                 ? FText::AsNumber(
-                                       property(current->flight_model_profile(flight_scope).config))
-                                 : FText::GetEmpty();
-                    })};
-                flight_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
-                    [SNew(SSettingsSlider)
-                         .Style(&style_->settings())
-                         .Label(label)
-                         .ToolTipText(tooltip)
-                         .Value(value)
-                         .ValueText(value_text)
-                         .Minimum(minimum)
-                         .Maximum(maximum)
-                         .Step(step)
-                         .OnValueChanged_Lambda([edit_flight_model, property](float const next) {
-                             edit_flight_model([property, next](FlightConfig& config) {
-                                 property(config) = next;
-                             });
-                         })];
-            };
+        auto const add_flight_slider = [this,
+                                        &flight_rows,
+                                        weak_settings,
+                                        flight_scope,
+                                        edit_flight_model](FText const& label,
+                                                           FText const& tooltip,
+                                                           float const minimum,
+                                                           float const maximum,
+                                                           float const step,
+                                                           auto property) {
+            auto value{TAttribute<float>::CreateLambda([weak_settings, flight_scope, property] {
+                auto const* const current{weak_settings.Get()};
+                return current != nullptr
+                         ? property(current->flight_model_profile(flight_scope).config)
+                         : 0.f;
+            })};
+            auto value_text{TAttribute<FText>::CreateLambda([weak_settings,
+                                                             flight_scope,
+                                                             property] {
+                auto const* const current{weak_settings.Get()};
+                return current != nullptr
+                         ? FText::AsNumber(
+                               property(current->flight_model_profile(flight_scope).config).get())
+                         : FText::GetEmpty();
+            })};
+            flight_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
+                [SNew(SSettingsSlider)
+                     .Style(&style_->settings())
+                     .Label(label)
+                     .ToolTipText(tooltip)
+                     .Value(value)
+                     .ValueText(value_text)
+                     .Minimum(minimum)
+                     .Maximum(maximum)
+                     .Step(step)
+                     .OnValueChanged_Lambda([edit_flight_model, property](float const next) {
+                         edit_flight_model([property, next](FlightConfig& config) {
+                             using Value = std::remove_cvref_t<decltype(property(config))>;
+                             auto const checked{Value::try_make(next)};
+                             if (!checked) {
+                                 return false;
+                             }
+                             property(config) = *checked;
+                             return true;
+                         });
+                     })];
+        };
         auto const add_flight_choice = [this,
                                         &flight_rows,
                                         weak_settings,
@@ -859,6 +870,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                                  property(config) =
                                      static_cast<std::remove_cvref_t<decltype(property(config))>>(
                                          index);
+                                 return true;
                              })) {
                              request_controls_rebuild({}, false);
                          }
@@ -899,6 +911,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                                                        ? enabled_value
                                                    : value == enabled_value ? disabled_value
                                                                             : value;
+                                             return true;
                                          })) {
                                      request_controls_rebuild({}, false);
                                  }
@@ -914,8 +927,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                           "Use the largest finite float as an effective cap without changing the "
                           "requested speed."),
                 property,
-                sim::player::effectively_unlimited_speed,
-                100000.f);
+                NonNegativeFinite<float>{sim::player::effectively_unlimited_speed},
+                NonNegativeFinite<float>{100000.f});
             if (!unlimited) {
                 add_flight_slider(label, tooltip, 0.f, 1000000.f, 100.f, property);
             }

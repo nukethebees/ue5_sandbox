@@ -515,8 +515,8 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     data.player = actor->make_spawn_data();
     auto& active_profile{::ioj::sim::player::flight_model_profile(
         data.player->flight_models, data.player->flight_models.initial_slot)};
-    active_profile.config.boost.energy_drain_per_second = 20.f;
-    active_profile.config.energy_recharge_per_second = 0.f;
+    active_profile.config.boost.energy_drain_per_second = ioj::NonNegativeFinite<float>{20.f};
+    active_profile.config.energy_recharge_per_second = ioj::NonNegativeFinite<float>{0.f};
     ::ioj::sim::LevelSim simulation{MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();
