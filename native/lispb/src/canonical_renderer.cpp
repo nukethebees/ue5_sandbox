@@ -336,19 +336,17 @@ auto CanonicalRenderer::build_integer_varint(codegen::DeclarationHandle const sc
 }
 auto CanonicalRenderer::build_fixed_point(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.fixed_points};
-    auto const& format{values.format[schema]};
+    auto const& format{values.format[schema].ref()};
     auto result{ir_.form("fixed-point", {ir_.atom(values.name[schema])})};
-    auto form{ir_.form(to_serialized_string(format.form()), {})};
-    if (format.form() == codegen::FixedPointForm::binary_point) {
-        auto const& binary{format.binary()};
-        form.field("signed", binary.signedness ? ir_.atoms.true_value : ir_.atoms.false_value)
-            .field("fractional-bits", binary.fractional_bits);
+    auto form{ir_.form(to_serialized_string(format.form), {})};
+    if (format.form == codegen::FixedPointForm::binary_point) {
+        form.field("signed", format.signedness ? ir_.atoms.true_value : ir_.atoms.false_value)
+            .field("fractional-bits", format.fractional_bits);
     } else {
-        auto const& range{format.range()};
-        form.field("minimum", ir_.atom(range.minimum_spelling))
-            .field("maximum", ir_.atom(range.maximum_spelling));
+        form.field("minimum", ir_.atom(format.minimum_spelling))
+            .field("maximum", ir_.atom(format.maximum_spelling));
     }
-    result.field("total-bits", format.total_bits().get())
+    result.field("total-bits", format.total_bits.get())
         .field("form", form.build())
         .field("rounding", ir_.atom(to_serialized_string(values.rounding[schema])));
     add_projections(result, values.cpp_projection[schema]);
@@ -685,7 +683,7 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
 
         auto const& control{settings.control[row]};
         std::string_view kind;
-        switch (control.kind()) {
+        switch (control.kind) {
             case codegen::SettingControlKind::toggle:
                 kind = "toggle";
                 break;
@@ -703,15 +701,12 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
                 break;
         }
         auto control_form{ir_.form("control", {ir_.atom(kind)})};
-        control_form.optional_field("options-provider", control.options_provider(), string);
-        control_form.optional_field(
-            "availability-provider", control.availability_provider(), string);
-        if (auto const* const range{control.range()}) {
-            control_form.field("min", number(range->minimum));
-            control_form.field("max", number(range->maximum));
-            control_form.field("step", number(range->step));
-        }
-        control_form.optional_field("custom-row", control.custom_row(), string);
+        control_form.optional_field("options-provider", control.options_provider, string);
+        control_form.optional_field("availability-provider", control.availability_provider, string);
+        control_form.optional_field("min", control.minimum, number);
+        control_form.optional_field("max", control.maximum, number);
+        control_form.optional_field("step", control.step, number);
+        control_form.optional_field("custom-row", control.custom_row, string);
         child.add(control_form.build());
         result.add(child.build());
     }

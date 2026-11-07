@@ -25,7 +25,7 @@ struct DeclarationHandle;
 struct ModuleHandle;
 struct PackedIntegerValue;
 struct ExternalScalarId;
-class SettingControl;
+struct SettingControl;
 enum class Access : std::uint8_t;
 enum class RecordKind : std::uint8_t;
 enum class SchemaProperty : std::uint8_t;

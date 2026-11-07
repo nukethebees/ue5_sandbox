@@ -1612,12 +1612,12 @@ TEST_F(SourceLoaderTest, ReadsPhysicalRepresentations) {
     auto const& fixed_point{schema_at(manifest, 1, 2)};
     auto const fixed_point_row{fixed_points.index(fixed_point)};
     EXPECT_EQ(files.text(fixed_points.name[fixed_point_row]), "VelocityQ12_4");
-    EXPECT_EQ(fixed_points.format[fixed_point_row].form(), FixedPointForm::range);
-    EXPECT_FALSE(fixed_points.format[fixed_point_row].signedness());
-    EXPECT_EQ(fixed_points.format[fixed_point_row].total_bits().get(), 16U);
+    EXPECT_EQ(fixed_points.format[fixed_point_row].ref().form, FixedPointForm::range);
+    EXPECT_FALSE(fixed_points.format[fixed_point_row].ref().signedness);
+    EXPECT_EQ(fixed_points.format[fixed_point_row].ref().total_bits.get(), 16U);
     EXPECT_EQ(fixed_points.rounding[fixed_point_row], FixedPointRounding::toward_zero);
-    EXPECT_EQ(files.text(fixed_points.format[fixed_point_row].range().minimum_spelling), "-2.5");
-    EXPECT_EQ(files.text(fixed_points.format[fixed_point_row].range().maximum_spelling), "3.75");
+    EXPECT_EQ(files.text(fixed_points.format[fixed_point_row].ref().minimum_spelling), "-2.5");
+    EXPECT_EQ(files.text(fixed_points.format[fixed_point_row].ref().maximum_spelling), "3.75");
     auto const& mini_float{schema_at(manifest, 1, 3)};
     auto const mini_float_row{mini_floats.index(mini_float)};
     EXPECT_EQ(files.text(mini_floats.name[mini_float_row]), "CompactFloat");
@@ -2150,9 +2150,8 @@ TEST_F(SourceLoaderTest, LoadsSettingsControls) {
               SettingDevice::keyboard_mouse);
     auto const& control{
         settings.control[store.items(settings_modules.settings_list[module_row])[0]]};
-    EXPECT_EQ(control.kind(), SettingControlKind::float_range);
-    ASSERT_NE(control.range(), nullptr);
-    EXPECT_EQ(control.range()->step, 0.5);
+    EXPECT_EQ(control.kind, SettingControlKind::float_range);
+    EXPECT_EQ(control.step, 0.5);
 }
 
 TEST_F(SourceLoaderTest, RejectsIncompleteOrMismatchedSettingControlPayloads) {

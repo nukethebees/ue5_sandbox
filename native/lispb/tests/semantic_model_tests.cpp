@@ -509,9 +509,9 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
     codegen::expect_dependency_edge(graph, *varint, *source);
 
     auto const& fixed_point_type{graph.definition(*fixed_point)};
-    EXPECT_TRUE(fixed_points.format[fixed_point_type].signedness());
-    EXPECT_EQ(fixed_points.format[fixed_point_type].total_bits().get(), 16U);
-    EXPECT_EQ(fixed_points.format[fixed_point_type].binary().fractional_bits, 4U);
+    EXPECT_TRUE(fixed_points.format[fixed_point_type].ref().signedness);
+    EXPECT_EQ(fixed_points.format[fixed_point_type].ref().total_bits.get(), 16U);
+    EXPECT_EQ(fixed_points.format[fixed_point_type].ref().fractional_bits, 4U);
     EXPECT_EQ(fixed_points.rounding[fixed_points.index(fixed_point_type)],
               lispb::codegen::FixedPointRounding::toward_zero);
     EXPECT_TRUE(graph.dependencies_of(*fixed_point).empty());

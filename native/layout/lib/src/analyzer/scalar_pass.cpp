@@ -293,11 +293,11 @@ auto compute_fixed_encoding(AnalysisContext& context, lispb::schema::TypeId type
     auto const& fixed{types.definition(type)};
     auto const& fixed_points{types.definitions().fixed_points};
     auto const fixed_row{fixed_points.index(fixed)};
-    auto const& format{fixed_points.format[fixed_row]};
-    auto const total_bits{format.total_bits().get()};
-    auto const range_form{format.form() == lispb::codegen::FixedPointForm::range};
-    auto const fractional_bits{range_form ? 0U : format.binary().fractional_bits};
-    auto const sign_bits{format.signedness() ? std::uint32_t{1} : std::uint32_t{0}};
+    auto const& format{fixed_points.format[fixed_row].ref()};
+    auto const total_bits{format.total_bits.get()};
+    auto const range_form{format.form == lispb::codegen::FixedPointForm::range};
+    auto const fractional_bits{format.fractional_bits};
+    auto const sign_bits{format.signedness ? std::uint32_t{1} : std::uint32_t{0}};
     auto const whole_bits{total_bits - fractional_bits - sign_bits};
     auto resolution{std::ldexp(1.0L, -static_cast<int>(fractional_bits))};
     auto scale{std::ldexp(1.0L, static_cast<int>(fractional_bits))};
@@ -306,7 +306,7 @@ auto compute_fixed_encoding(AnalysisContext& context, lispb::schema::TypeId type
     PackedIntegerValue maximum_raw;
     long double minimum_value{};
     long double maximum_value{};
-    if (format.signedness()) {
+    if (format.signedness) {
         auto const negative_magnitude{std::uint64_t{1} << (total_bits - 1)};
         minimum_raw = PackedIntegerValue::from_parts(true, negative_magnitude);
         maximum_raw = PackedIntegerValue{negative_magnitude - 1};
@@ -324,7 +324,7 @@ auto compute_fixed_encoding(AnalysisContext& context, lispb::schema::TypeId type
     }
 
     if (range_form) {
-        auto const range{format.value_range()};
+        auto const& range{format.values};
         minimum_value = range.min;
         maximum_value = range.max;
         auto const codes{static_cast<long double>(maximum_raw.magnitude)};
@@ -332,8 +332,8 @@ auto compute_fixed_encoding(AnalysisContext& context, lispb::schema::TypeId type
         scale = 1.0L / resolution;
     }
     FixedEncoding result{
-        .form = format.form(),
-        .signedness = format.signedness(),
+        .form = format.form,
+        .signedness = format.signedness,
         .total_bits = total_bits,
         .fractional_bits = range_form ? std::nullopt : std::optional{fractional_bits},
         .whole_bits = range_form ? std::nullopt : std::optional{whole_bits},

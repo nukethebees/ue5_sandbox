@@ -979,7 +979,7 @@ auto SchemaParser::parse_control(sexpr::FormId const form) -> SettingControl {
         return !value.has_value() ? std::nullopt
                                   : std::optional<double>{parser_.number(*value, name)};
     };
-    auto const control{SettingControl::try_make({
+    SettingControl const control{
         .kind = kind,
         .options_provider = optional_text_id(fields, P::options_provider),
         .availability_provider = optional_text_id(fields, P::availability_provider),
@@ -987,11 +987,29 @@ auto SchemaParser::parse_control(sexpr::FormId const form) -> SettingControl {
         .maximum = optional_number(P::max),
         .step = optional_number(P::step),
         .custom_row = optional_text_id(fields, P::custom_row),
-    })};
-    if (!control) {
-        parser_.fail(form, std::format("Setting control {}", control.error()));
+    };
+    if (is_range(kind)) {
+        if (!control.minimum || !control.maximum || !control.step) {
+            parser_.fail(form, "Setting control range requires min, max, and step");
+        }
+        if (*control.minimum >= *control.maximum || *control.step <= 0.0) {
+            parser_.fail(form, "Setting control has an invalid range");
+        }
+    } else if (control.minimum || control.maximum || control.step) {
+        parser_.fail(form, "Setting control non-range control has range values");
     }
-    return *control;
+
+    if (kind == SettingControlKind::choice && !control.options_provider) {
+        parser_.fail(form, "Setting control choice requires an options provider");
+    }
+    if (kind == SettingControlKind::custom) {
+        if (!control.custom_row) {
+            parser_.fail(form, "Setting control custom control requires custom_row");
+        }
+    } else if (control.custom_row) {
+        parser_.fail(form, "Setting control non-custom control has custom_row");
+    }
+    return control;
 }
 
 auto SchemaParser::parse_setting(Declarations& declarations, sexpr::FormId const form)
@@ -1409,8 +1427,11 @@ auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId c
                                                        "fixed-point fractional width",
                                                        0,
                                                        64)};
-            auto const checked{BinaryPointFormat::try_make(
-                {total_bits, signedness, static_cast<std::uint32_t>(fractional_bits)})};
+            auto const checked{FixedPointFormat::try_make({
+                .total_bits = total_bits,
+                .signedness = signedness,
+                .fractional_bits = static_cast<std::uint32_t>(fractional_bits),
+            })};
             if (!checked) {
                 parser_.fail(representation,
                              std::format("{} fractional width must be at most {}{}",
@@ -1432,11 +1453,13 @@ auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId c
             }
             return *value;
         };
-        auto const checked{RangePointFormat::try_make(
-            {total_bits,
-             {parse_bound(minimum, "minimum"), parse_bound(maximum, "maximum")},
-             minimum,
-             maximum})};
+        auto const checked{FixedPointFormat::try_make({
+            .total_bits = total_bits,
+            .form = FixedPointForm::range,
+            .values = {parse_bound(minimum, "minimum"), parse_bound(maximum, "maximum")},
+            .minimum_spelling = minimum,
+            .maximum_spelling = maximum,
+        })};
         if (!checked) {
             parser_.fail(representation, ctx + " maximum must be greater than minimum");
         }

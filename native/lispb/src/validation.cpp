@@ -1444,26 +1444,26 @@ class Validator {
             }
             validate_type(settings.value_type[setting], setting_context + " value");
             require_identifier(text(settings.backend[setting]), setting_context + " backend");
-            if (auto const provider{control.options_provider()}) {
+            if (auto const provider{control.options_provider}) {
                 require_identifier(*provider, setting_context + " options provider");
             }
-            if (auto const provider{control.availability_provider()}) {
+            if (auto const provider{control.availability_provider}) {
                 require_identifier(*provider, setting_context + " availability provider");
             }
 
-            if (auto const custom_row{control.custom_row()}) {
+            if (auto const custom_row{control.custom_row}) {
                 require_identifier(*custom_row, setting_context + " custom row");
             }
             auto const type{
                 std::string{types.cpp_types.spelling(resolved_type(settings.value_type[setting]))}};
-            if (control.kind() == SettingControlKind::toggle && type != "bool") {
+            if (control.kind == SettingControlKind::toggle && type != "bool") {
                 throw std::invalid_argument{setting_context + " toggle value type must be bool"};
             }
-            if (control.kind() == SettingControlKind::float_range && type != "float") {
+            if (control.kind == SettingControlKind::float_range && type != "float") {
                 throw std::invalid_argument{setting_context +
                                             " float range value type must be float"};
             }
-            if (control.kind() == SettingControlKind::integer_range && type != "std::int32_t") {
+            if (control.kind == SettingControlKind::integer_range && type != "std::int32_t") {
                 throw std::invalid_argument{setting_context +
                                             " integer range value type must be std::int32_t"};
             }

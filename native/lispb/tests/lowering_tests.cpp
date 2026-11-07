@@ -921,8 +921,7 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
                 setting_categories.name[new_setting_categories] = strings.intern("video");
                 setting_categories.label[new_setting_categories] = strings.intern("Video");
             })});
-        auto const vsync{
-            settings.append(*SettingControl::try_make({.kind = SettingControlKind::toggle}))};
+        auto const vsync{settings.append({.kind = SettingControlKind::toggle})};
         settings.name[vsync] = strings.intern("vsync");
         settings.label[vsync] = strings.intern("VSync");
         settings.category[vsync] = strings.intern("video");
@@ -930,10 +929,10 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
         settings.backend[vsync] = strings.intern("engine");
         settings.apply_mode[vsync] = SettingApplyMode::deferred;
 
-        auto const frame_limit{settings.append(*SettingControl::try_make({
+        auto const frame_limit{settings.append({
             .kind = SettingControlKind::choice,
             .options_provider = strings.intern("frame_limits"),
-        }))};
+        })};
         settings.name[frame_limit] = strings.intern("frame_limit");
         settings.label[frame_limit] = strings.intern("Frame Limit");
         settings.category[frame_limit] = strings.intern("video");

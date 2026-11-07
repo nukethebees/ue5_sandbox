@@ -6,9 +6,7 @@
 #include <codegen/schema/fixed_point_form.h>
 #include <lispb/indices.h>
 
-#include <cassert>
 #include <cstdint>
-#include <variant>
 
 namespace lispb::codegen {
 using BitWidth = ioj::Bounded<std::uint32_t, 1, 64>;
@@ -31,63 +29,23 @@ inline constexpr auto mini_float_policy{ioj::ConstrainedValuePolicy{
     "Mini-float total width must not exceed 64 bits"}};
 using MiniFloatFormat = ioj::ConstrainedValue<MiniFloatFields, mini_float_policy>;
 
-struct BinaryPointFields {
+struct FixedPointFields {
     BitWidth total_bits;
-    bool signedness;
-    std::uint32_t fractional_bits;
+    FixedPointForm form{FixedPointForm::binary_point};
+    bool signedness{};
+    std::uint32_t fractional_bits{};
+    ioj::MinMax<ioj::Finite<double>> values{};
+    StringId minimum_spelling{};
+    StringId maximum_spelling{};
 };
-inline constexpr auto binary_point_policy{ioj::ConstrainedValuePolicy{
-    [](BinaryPointFields const& value) constexpr noexcept {
-        return value.fractional_bits <= value.total_bits - (value.signedness ? 1U : 0U);
+inline constexpr auto fixed_point_policy{ioj::ConstrainedValuePolicy{
+    [](FixedPointFields const& value) constexpr noexcept {
+        if (value.form == FixedPointForm::binary_point) {
+            return value.fractional_bits <= value.total_bits - (value.signedness ? 1U : 0U);
+        }
+        return value.form == FixedPointForm::range && !value.signedness &&
+               value.fractional_bits == 0 && value.values.max > value.values.min;
     },
-    "Fixed-point fractional width must fit the total width, leaving a sign bit when signed"}};
-using BinaryPointFormat = ioj::ConstrainedValue<BinaryPointFields, binary_point_policy>;
-
-struct RangePointFields {
-    BitWidth total_bits;
-    ioj::MinMax<ioj::Finite<double>> values;
-    StringId minimum_spelling;
-    StringId maximum_spelling;
-};
-inline constexpr auto range_point_policy{
-    ioj::ConstrainedValuePolicy{[](RangePointFields const& value) constexpr noexcept {
-                                    return value.values.max > value.values.min;
-                                },
-                                "Fixed-point maximum must be greater than minimum"}};
-using RangePointFormat = ioj::ConstrainedValue<RangePointFields, range_point_policy>;
-
-class FixedPointFormat {
-  public:
-    constexpr FixedPointFormat(BinaryPointFormat const value)
-        : value_{value} {}
-    constexpr FixedPointFormat(RangePointFormat const value)
-        : value_{value} {}
-
-    [[nodiscard]] auto form() const noexcept -> FixedPointForm {
-        return std::holds_alternative<BinaryPointFormat>(value_) ? FixedPointForm::binary_point
-                                                                 : FixedPointForm::range;
-    }
-    [[nodiscard]] auto total_bits() const noexcept -> BitWidth {
-        return std::visit([](auto const& value) { return value.ref().total_bits; }, value_);
-    }
-    [[nodiscard]] auto signedness() const noexcept -> bool {
-        auto const* binary{std::get_if<BinaryPointFormat>(&value_)};
-        return binary && binary->ref().signedness;
-    }
-    [[nodiscard]] auto binary() const noexcept -> BinaryPointFields const& {
-        assert(form() == FixedPointForm::binary_point);
-        return std::get<BinaryPointFormat>(value_).ref();
-    }
-    [[nodiscard]] auto range() const noexcept -> RangePointFields const& {
-        assert(form() == FixedPointForm::range);
-        return std::get<RangePointFormat>(value_).ref();
-    }
-    [[nodiscard]] auto value_range() const noexcept -> ioj::MinMax<double> {
-        auto const& values{range().values};
-        return {values.min.get(), values.max.get()};
-    }
-
-  private:
-    std::variant<BinaryPointFormat, RangePointFormat> value_;
-};
+    "Invalid fixed-point format"}};
+using FixedPointFormat = ioj::ConstrainedValue<FixedPointFields, fixed_point_policy>;
 }

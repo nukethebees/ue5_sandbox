@@ -292,7 +292,7 @@ class BitLayoutResolver {
                     break;
                 }
                 case TypeDefinitionKind::fixed_point:
-                    result = defs_.fixed_points.format[definition].total_bits();
+                    result = defs_.fixed_points.format[definition].ref().total_bits;
                     break;
                 case TypeDefinitionKind::linear_quantized:
                     result = defs_.linear_quantized.bit_width[definition];
@@ -516,7 +516,7 @@ class BitLayoutResolver {
             switch (root_kind) {
                 case TypeDefinitionKind::fixed_point:
                     names.insert({"decoded_value", "set_decoded_value", "try_encode_value"});
-                    if (defs_.fixed_points.format[root_definition].form() ==
+                    if (defs_.fixed_points.format[root_definition].ref().form ==
                         codegen::FixedPointForm::range) {
                         names.insert({"value_minimum", "value_maximum"});
                     } else {
@@ -599,7 +599,7 @@ class BitLayoutResolver {
                                          "try_encode_" + value.path + "_value"}) {
                     add_name(name);
                 }
-                if (defs_.fixed_points.format[graph_.definition(value.type)].form() ==
+                if (defs_.fixed_points.format[graph_.definition(value.type)].ref().form ==
                     codegen::FixedPointForm::range) {
                     add_name(value.path + "_minimum");
                     add_name(value.path + "_maximum");
@@ -755,7 +755,7 @@ class BitLayoutResolver {
         auto const kind{definition.kind()};
         auto const signed_encoding{
             kind == TypeDefinitionKind::fixed_point
-                ? defs_.fixed_points.format[definition].signedness() != 0
+                ? defs_.fixed_points.format[definition].ref().signedness != 0
                 : kind == TypeDefinitionKind::external &&
                       codegen::detail::packed_signed_width(
                           graph_.strings().view(graph_.cpp_spelling(placement.type)))

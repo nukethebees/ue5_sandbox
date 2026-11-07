@@ -371,8 +371,8 @@ auto valid_fixed_point_manifest(CompilerTestContext& ctx, bool const signedness 
     auto& declarations{ctx.storage.declarations};
     auto const value{first_item(
         declarations, declarations.normal_modules.declarations[manifest.modules.front()])};
-    declarations.fixed_points.format[value] =
-        *BinaryPointFormat::try_make({BitWidth{16}, signedness, 4});
+    declarations.fixed_points.format[value] = *FixedPointFormat::try_make(
+        {.total_bits = BitWidth{16}, .signedness = signedness, .fractional_bits = 4});
     return manifest;
 }
 
@@ -996,7 +996,8 @@ TEST(Validation, ValidatesMiniFloatEncodingAndEmitsNoPhysicalType) {
         auto rows{std::vector(original_items.begin(), original_items.end())};
         rows.push_back(points.append(
             floats.name[declarations.items(modules.declarations[manifest.modules.front()]).front()],
-            BinaryPointFormat{{BitWidth{16}, true, 4}},
+            FixedPointFormat{
+                {.total_bits = BitWidth{16}, .signedness = true, .fractional_bits = 4}},
             std::nullopt,
             FixedPointRounding::nearest_even));
         return declarations.range(rows);
@@ -1049,7 +1050,7 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
         rows.push_back(fixed_points.append(
             optional_sentinels
                 .name[declarations.items(normal_modules.declarations[manifest.modules[1]]).front()],
-            BinaryPointFormat{{BitWidth{8}, false, 0}},
+            FixedPointFormat{{.total_bits = BitWidth{8}}},
             std::nullopt,
             FixedPointRounding::nearest_even));
         return declarations.range(rows);
