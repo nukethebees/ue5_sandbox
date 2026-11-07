@@ -47,12 +47,6 @@ template <HasEnumRange Enum>
     return {};
 }
 
-[[nodiscard]] auto make_second_order_response() -> ResponseConfig {
-    ResponseConfig result;
-    result.mode = ResponseMode::SecondOrder;
-    return result;
-}
-
 [[nodiscard]] auto make_rate_limited_response(float const increasing_rate,
                                               float const decreasing_rate) -> ResponseConfig {
     ResponseConfig result;
@@ -89,7 +83,7 @@ void configure_common_actions(FlightModelConfig& config) {
     auto& forward{result.translation.forward};
     forward.automatic.semantic = TranslationSemantic::TargetVelocity;
     forward.automatic.automatic_value = Bounded<float, -1, 1>{1.f};
-    forward.automatic.response = make_second_order_response();
+    forward.automatic.response = {.mode = ResponseMode::SecondOrder};
     forward.normal.positive_target_speed = NonNegativeFinite<float>{12000.f};
     forward.normal.positive_speed_limit = NonNegativeFinite<float>{12000.f};
     forward.normal.negative_speed_limit = NonNegativeFinite<float>{0.f};
@@ -99,12 +93,12 @@ void configure_common_actions(FlightModelConfig& config) {
 
     result.facing_velocity.mode = FacingVelocityCoupling::LockedToFacing;
     result.boost.accelerator_activates_boost = true;
-    result.boost.response = make_second_order_response();
+    result.boost.response = {.mode = ResponseMode::SecondOrder};
     result.brake.target_speed = NonNegativeFinite<float>{1000.f};
     result.brake.deceleration = NonNegativeFinite<float>{14000.f};
-    result.brake.response = make_second_order_response();
+    result.brake.response = {.mode = ResponseMode::SecondOrder};
     result.emergency_brake.target_speed = NonNegativeFinite<float>{1000.f};
-    result.emergency_brake.response = make_second_order_response();
+    result.emergency_brake.response = {.mode = ResponseMode::SecondOrder};
     result.maximum_resultant_speed = NonNegativeFinite<float>{12000.f};
     result.boosted_maximum_resultant_speed = NonNegativeFinite<float>{30000.f};
     configure_common_actions(result);

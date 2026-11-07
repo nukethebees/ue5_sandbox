@@ -22,27 +22,18 @@ namespace {
 inline constexpr char compiler_fact_provenance[]{"Compiler-derived sizeof/alignof for this build"};
 
 template <typename T>
-auto integer_facts() -> TypeFacts {
+auto compiler_facts() -> TypeFacts {
     TypeFacts::Definition facts{.size_bytes = sizeof(T),
                                 .alignment_bytes = alignof(T),
-                                .integer_signed = std::is_signed_v<T>,
-                                .unsigned_value_bits = std::nullopt,
                                 .provenance = compiler_fact_provenance,
                                 .origin = FactOrigin::compiler_probe};
+    if constexpr (std::is_integral_v<T>) {
+        facts.integer_signed = std::is_signed_v<T>;
+    }
     if constexpr (std::is_unsigned_v<T>) {
         facts.unsigned_value_bits = std::numeric_limits<T>::digits;
     }
     return TypeFacts::make(std::move(facts));
-}
-
-template <typename T>
-auto value_facts() -> TypeFacts {
-    return TypeFacts::make({.size_bytes = sizeof(T),
-                            .alignment_bytes = alignof(T),
-                            .integer_signed = std::nullopt,
-                            .unsigned_value_bits = std::nullopt,
-                            .provenance = compiler_fact_provenance,
-                            .origin = FactOrigin::compiler_probe});
 }
 
 auto parse_error(std::size_t const line, std::string message)
@@ -151,31 +142,31 @@ auto AbiProfile::host_common() -> AbiProfile {
                              .l3_cache_bytes = std::nullopt,
                              .provenance = "Unspecified host architecture"});
 #endif
-    result.set("std::uint8_t", integer_facts<std::uint8_t>());
-    result.set("std::uint16_t", integer_facts<std::uint16_t>());
-    result.set("std::uint32_t", integer_facts<std::uint32_t>());
-    result.set("std::uint64_t", integer_facts<std::uint64_t>());
-    result.set("std::int8_t", integer_facts<std::int8_t>());
-    result.set("std::int16_t", integer_facts<std::int16_t>());
-    result.set("std::int32_t", integer_facts<std::int32_t>());
-    result.set("std::int64_t", integer_facts<std::int64_t>());
-    result.set("int", integer_facts<int>());
-    result.set("float", value_facts<float>());
-    result.set("double", value_facts<double>());
-    result.set("void*", value_facts<void*>());
+    result.set("std::uint8_t", compiler_facts<std::uint8_t>());
+    result.set("std::uint16_t", compiler_facts<std::uint16_t>());
+    result.set("std::uint32_t", compiler_facts<std::uint32_t>());
+    result.set("std::uint64_t", compiler_facts<std::uint64_t>());
+    result.set("std::int8_t", compiler_facts<std::int8_t>());
+    result.set("std::int16_t", compiler_facts<std::int16_t>());
+    result.set("std::int32_t", compiler_facts<std::int32_t>());
+    result.set("std::int64_t", compiler_facts<std::int64_t>());
+    result.set("int", compiler_facts<int>());
+    result.set("float", compiler_facts<float>());
+    result.set("double", compiler_facts<double>());
+    result.set("void*", compiler_facts<void*>());
 #if defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__) || defined(__i386__)
     result.set_object_pointer_representation("void*");
 #endif
-    result.set("bool", integer_facts<bool>());
+    result.set("bool", compiler_facts<bool>());
     return result;
 }
 
-void AbiProfile::set(std::string spelling, TypeFacts const& facts) {
+void AbiProfile::set(std::string spelling, TypeFacts facts) {
     if (spelling.empty()) {
         throw std::invalid_argument{"Physical type spelling must be nonempty."};
     }
     representations_.erase(spelling);
-    types_.insert_or_assign(std::move(spelling), facts);
+    types_.insert_or_assign(std::move(spelling), std::move(facts));
 }
 
 void AbiProfile::set_object_pointer_representation(std::string spelling) {
@@ -491,8 +482,8 @@ auto parse_abi_profile(std::string_view const source)
     }
 
     AbiProfile result{std::move(profile_name), std::move(identity)};
-    for (auto const& [spelling, facts] : types) {
-        result.set(spelling, facts);
+    for (auto& [spelling, facts] : types) {
+        result.set(spelling, std::move(facts));
     }
     for (auto const& [spelling, represented_by] : representations) {
         result.set_representation(spelling, represented_by);
