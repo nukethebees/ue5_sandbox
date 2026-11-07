@@ -75,8 +75,7 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     add_overlap(first_pairs, fighter, {});
     FrameMemoryResource memory{4096};
     FrameScratchScope scope{memory};
-    OverlapHandler handler{
-        Positive<Health::value_type>::make(OverlapResponseConfig{}.damage_per_overlap_detection)};
+    OverlapHandler handler{OverlapResponseConfig{}.damage_per_overlap_detection};
     handler.handle({first_pairs.const_view(), {}}, owners.combat_events);
     owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
 

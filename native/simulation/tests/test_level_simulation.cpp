@@ -97,7 +97,7 @@ auto make_scheduled_battle() -> LevelSimInitData {
 
 auto make_overlap_response_battle() -> LevelSimInitData {
     auto data{make_battle()};
-    data.collision.overlap_response.damage_per_overlap_detection = 50;
+    data.collision.overlap_response.damage_per_overlap_detection = Positive<std::int32_t>{50};
     std::ranges::fill(data.level_events.schedule.capital_spawns.view().healths(), Health{5000});
     add_player_spawn(data, {});
     data.player->transform.location = {-1000.0, 0.0, 0.0};

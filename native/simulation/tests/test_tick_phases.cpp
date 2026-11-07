@@ -14,7 +14,7 @@ auto make_world() -> LevelSimInitData {
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.capital_ships.fighter_spawn_slots = 0;
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(8);
-    data.collision.overlap_response.damage_per_overlap_detection = 25;
+    data.collision.overlap_response.damage_per_overlap_detection = Positive<std::int32_t>{25};
 
     for (auto const type : EnumTraits<EntityType>::values) {
         data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
@@ -273,7 +273,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsDispatchTick) {
 
 TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
     auto data{make_world()};
-    data.collision.overlap_response.damage_per_overlap_detection = 100;
+    data.collision.overlap_response.damage_per_overlap_detection = Positive<std::int32_t>{100};
     auto const capital_index{add_capital_spawn(data, {}, Team::White, 60.f, 60.f, 1000)};
     schedule_turret(data, {});
     auto const turret_index{

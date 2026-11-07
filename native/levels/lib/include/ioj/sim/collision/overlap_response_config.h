@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/math_types.h"
@@ -63,7 +64,7 @@ struct OverlapResponseConfig {
         std::unreachable();
     }
 
-    std::int32_t damage_per_overlap_detection{50};
+    ioj::Positive<std::int32_t> damage_per_overlap_detection{50};
     Vector3f level_size{2000000.f, 2000000.f, 100000.f};
     Vector3f cell_size{5000.f, 5000.f, 20000.f};
 };

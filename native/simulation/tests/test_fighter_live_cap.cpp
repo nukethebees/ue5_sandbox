@@ -19,7 +19,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
     LevelSimInitData data;
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(32);
-    data.collision.overlap_response.damage_per_overlap_detection = 1;
+    data.collision.overlap_response.damage_per_overlap_detection = Positive<std::int32_t>{1};
     data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{1000});
     data.fighters.max_live_fighters = ::ioj::NonNegative<std::int32_t>::make(max_live_fighters);
     data.capital_ships.fighter_spawn_slots = spawn_slots;

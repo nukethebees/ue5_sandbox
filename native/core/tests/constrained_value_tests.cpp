@@ -6,6 +6,7 @@
 
 #include <limits>
 #include <type_traits>
+#include <utility>
 
 namespace ioj::tests {
 static_assert(
@@ -16,6 +17,7 @@ static_assert(NonNegativeFinite<double>{0}.get() == 0);
 static_assert(!std::default_initializable<Positive<int>>);
 static_assert(!std::default_initializable<NonEmptyString>);
 static_assert(!noexcept(std::declval<NonEmptyString const&>().get()));
+static_assert(std::is_trivially_copyable_v<Positive<int>>);
 
 TEST(ConstrainedValue, OwnsNonEmptyStringsAndSupportsFormatting) {
     EXPECT_FALSE(NonEmptyString::try_make(""));
@@ -24,6 +26,17 @@ TEST(ConstrainedValue, OwnsNonEmptyStringsAndSupportsFormatting) {
     source.clear();
     EXPECT_EQ(value.ref(), std::string(100, 'x'));
     EXPECT_EQ(std::format("{}", value), value.ref());
+}
+
+TEST(ConstrainedValue, MovingAnOwnerPreservesBothInvariants) {
+    auto source{NonEmptyString::make(std::string(100, 'x'))};
+    auto destination{std::move(source)};
+    EXPECT_EQ(source.ref(), destination.ref());
+
+    auto assigned{NonEmptyString::make("original")};
+    assigned = std::move(destination);
+    EXPECT_EQ(assigned.ref(), source.ref());
+    EXPECT_EQ(destination.ref(), source.ref());
 }
 
 TEST(ConstrainedValue, RejectsNonFiniteVectorComponents) {

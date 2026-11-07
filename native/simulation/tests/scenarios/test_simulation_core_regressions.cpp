@@ -117,7 +117,7 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
 
     auto data{tests::make_simulation_data(config)};
     data.collision.overlap_response.damage_per_overlap_detection =
-        collision_damage_test::overlap_damage;
+        Positive<std::int32_t>{collision_damage_test::overlap_damage};
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     tests::add_player_spawn(data, tests::make_player_spawn(config));

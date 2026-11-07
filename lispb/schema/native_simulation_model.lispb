@@ -225,7 +225,7 @@
   (record OverlapResponseConfig :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "collision-grid"
-    (member damage_per_overlap_detection std::int32_t :initializer 50)
+    (member damage_per_overlap_detection @settings_positive_int :initializer 50)
     (member level_size @native_vector_3f :initializer "2000000.f, 2000000.f, 100000.f" :finite true)
     (member cell_size @native_vector_3f :initializer "5000.f, 5000.f, 20000.f" :finite true)
     (projections (cpp))))

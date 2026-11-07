@@ -15,8 +15,7 @@ CollisionPipeline::CollisionPipeline(EntityTables const& entities,
                                      CollisionInitData data,
                                      std::pmr::memory_resource* const resource)
     : queries_{entities, resource}
-    , overlap_handler_{
-          Positive<Health::value_type>::make(data.overlap_response.damage_per_overlap_detection)} {
+    , overlap_handler_{data.overlap_response.damage_per_overlap_detection} {
     queries_.initialise(data.grid_geometry, data.entity_bounds);
     queries_.set_static_collision(std::move(data.static_bounds));
 }

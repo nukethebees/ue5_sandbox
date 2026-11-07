@@ -89,7 +89,7 @@ TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings
     settings::Settings base;
     base.fighters.speed = 7300.f;
     base.collision_grid.level_size = {80000.f, 60000.f, 40000.f};
-    base.collision_grid.damage_per_overlap_detection = 75;
+    base.collision_grid.damage_per_overlap_detection = Positive<std::int32_t>{75};
     auto const original{base};
     auto const level{DefinitionReader{}.read_level_source(R"(
       (level :id 'grid :title "Grid" :player 'player
@@ -131,6 +131,12 @@ TEST(SimulationSettingsReader, RetainsUnknownFieldConversionAndFinalValidationEr
           Case{"(settings :fighters (fighters :speed 1e100))", InvalidNumber, "fighters.speed"},
           Case{"(settings :fighters (fighters :health 1.5))", InvalidNumber, "fighters.health"},
           Case{"(settings :fighters (fighters :health -1))", InvalidType, "fighters.health"},
+          Case{"(settings :collision-grid (collision-grid :damage-per-overlap-detection 0))",
+               InvalidNumber,
+               "collision-grid.damage-per-overlap-detection"},
+          Case{"(settings :collision-grid (collision-grid :damage-per-overlap-detection -1))",
+               InvalidNumber,
+               "collision-grid.damage-per-overlap-detection"},
           Case{"(settings :tick (tick :time-scale 0))", InvalidNumber, "tick.time-scale"},
           Case{"(settings :tick (tick :tick-rate 0))", InvalidNumber, "tick.tick-rate"},
           Case{"(settings :tick (tick :tick-rate -1))", InvalidNumber, "tick.tick-rate"}}) {

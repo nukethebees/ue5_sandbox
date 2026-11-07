@@ -401,6 +401,7 @@
 (type settings_frequency :spelling "ioj::Frequency" :header "ioj/frequency.h")
 (type settings_positive_double :spelling "ioj::PositiveFinite<double>" :header "ioj/constrained_numbers.h")
 (type settings_positive_float :spelling "ioj::PositiveFinite<float>" :header "ioj/constrained_numbers.h")
+(type settings_positive_int :spelling "ioj::Positive<std::int32_t>" :header "ioj/constrained_numbers.h")
 (type settings_nonnegative_float :spelling "ioj::NonNegativeFinite<float>" :header "ioj/constrained_numbers.h")
 (type settings_nonnegative_int :spelling "ioj::NonNegative<std::int32_t>" :header "ioj/constrained_numbers.h")
 (type settings_positive_health :spelling "ioj::settings::PositiveHealth" :header "ioj/settings/simulation_constraints.h")
