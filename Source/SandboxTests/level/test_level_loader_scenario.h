@@ -33,6 +33,7 @@ class FLevelLoaderCameraScenario final : public FSimulationTestScenario {
     void sample_runtime(ATestBatchOrchestrator& orchestrator);
     void sample_modal_transitions();
     void check_runtime();
+    void check_terminal_completion();
     void on_tear_down() override;
 
     std::optional<FModalSample> modal_sample_;

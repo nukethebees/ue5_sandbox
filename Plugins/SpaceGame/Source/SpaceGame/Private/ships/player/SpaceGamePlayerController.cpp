@@ -694,7 +694,8 @@ auto ASpaceGamePlayerController::open_pause_menu() -> bool {
 auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(orchestrator) || (orchestrator->get_state() != ioj::sim::LevelState::Running &&
-                                   orchestrator->get_state() != ioj::sim::LevelState::Paused)) {
+                                   orchestrator->get_state() != ioj::sim::LevelState::Paused &&
+                                   orchestrator->get_state() != ioj::sim::LevelState::Stopped)) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::suspend_gameplay_for_modal: Gameplay is not "
@@ -762,6 +763,12 @@ void ASpaceGamePlayerController::on_pause_menu_deactivated() {
 }
 void ASpaceGamePlayerController::on_completion_menu_deactivated() {
     modal_ui_.close_completion(*this);
+    if (auto* const orchestrator{orchestrator_.Get()};
+        IsValid(orchestrator) && orchestrator->get_state() == ioj::sim::LevelState::Stopped) {
+        modal_ui_.clear_resume();
+        return;
+    }
+
     if (is_gameplay_mode() && !return_to_level_select_pending_) {
         resume_game();
     }

@@ -3,6 +3,7 @@
 #include <ioj/levels/team.h>
 #include <SandboxTests/support/PlayerControllerTestAccess.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
+#include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
@@ -388,10 +389,37 @@ void FLevelLoaderCameraScenario::on_tear_down() {
     }
 }
 
+void FLevelLoaderCameraScenario::check_terminal_completion() {
+    auto* const controller{
+        Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
+    if (!checks.is_valid(controller, TEXT("Terminal completion has a player controller"))) {
+        return;
+    }
+
+    auto& orchestrator{context_.orchestrator};
+    FTestBatchOrchestratorTestAccess::stop_run(orchestrator,
+                                               sim::telemetry::RunEndReason::MissionCompleted);
+    FMissionCompletion completion;
+    completion.persisted = true;
+    completion.state = EMissionOutcome::Victory;
+    completion.level_display_name = TEXT("Terminal completion test");
+    FPlayerControllerTestAccess::complete(*controller, completion);
+    checks.is_true(FPlayerControllerTestAccess::has_modal(*controller),
+                   TEXT("Stopped levels can open their completion screen"));
+    FPlayerControllerTestAccess::close_completion(*controller);
+    checks.is_true(orchestrator.get_state() == sim::LevelState::Stopped &&
+                       !FPlayerControllerTestAccess::has_modal(*controller),
+                   TEXT("Closing completion leaves the level stopped"));
+    checks.is_true(controller->get_active_control_context() == levels::ControlContext::None,
+                   TEXT("Closing terminal completion does not restore gameplay input"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+}
+
 void FLevelLoaderCameraScenario::run() {
     TestCommandBuilder.Do([this] { load_fixture(); })
         .Until([this] { return advance_until_timeline_finished(); }, timeout)
         .Then([this] { check_runtime(); })
+        .Then([this] { check_terminal_completion(); })
         .Then([this] { load_headless_fixture(); });
 }
 
