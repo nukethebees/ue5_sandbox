@@ -5,7 +5,6 @@
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/levels/level_compilation.h>
-#include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/testing/laser_spawns.h>
@@ -40,6 +39,8 @@
 
 #include <algorithm>
 #include <array>
+#include <string>
+#include <utility>
 
 namespace {
 template <typename Component>
@@ -72,77 +73,37 @@ auto make_battle_config() -> ::ioj::sim::LevelSimInitData {
     return data;
 }
 
-auto make_battle() -> ::ioj::sim::LevelSimInitData {
-    auto data{make_battle_config()};
-    auto& spawn_storage{data.level_events.capital_spawns};
-    auto const group{data.level_events.spawn_groups.num()};
-    data.level_events.add_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, 2);
-    data.level_events.initial_events.push_back(
-        data.level_events.add_spawn_event({group, data.level_events.spawn_groups.num() - group}));
-    auto const add_capital{
-        [&](ioj::sim::LevelEntityRef const entity, ioj::Team const team, float const x) {
-            spawn_storage.add(entity,
-                              {x, 0.f, 0.f},
-                              {},
-                              team,
-                              ioj::sim::Health{100},
-                              ioj::NonNegativeFinite<float>{60.f},
-                              ioj::NonNegativeFinite<float>{60.f});
-        }};
-    add_capital(ioj::sim::LevelEntityRef{0}, ioj::Team::Green, -1000.f);
-    add_capital(ioj::sim::LevelEntityRef{1}, ioj::Team::White, 1000.f);
-
-    return data;
+auto make_battle() -> ioj::levels::LevelDefinitionComponents {
+    return {
+        .metadata = {.id = ioj::levels::LevelId{"battle"}, .title = "Battle"},
+        .camera =
+            ioj::levels::LevelCameraDefinition{.target_entity_ids = {ioj::levels::EntityId{"hero"}},
+                                               .offset_direction = {-1.0, 0.0, 0.0},
+                                               .distance = 1000.0},
+        .entities = {{.id = ioj::levels::EntityId{"hero"},
+                      .archetype = ioj::levels::EntityArchetype::CapitalShip,
+                      .team = ioj::Team::Green,
+                      .position = {-1000.0, 0.0, 0.0},
+                      .overrides = {.health = ioj::settings::PositiveHealth{ioj::sim::Health{100}},
+                                    .initial_spawn_delay = ioj::NonNegativeFinite<float>{60.f},
+                                    .spawn_cooldown = ioj::NonNegativeFinite<float>{60.f}}},
+                     {.id = ioj::levels::EntityId{"enemy"},
+                      .archetype = ioj::levels::EntityArchetype::CapitalShip,
+                      .team = ioj::Team::White,
+                      .position = {1000.0, 0.0, 0.0},
+                      .overrides = {.health = ioj::settings::PositiveHealth{ioj::sim::Health{100}},
+                                    .initial_spawn_delay = ioj::NonNegativeFinite<float>{60.f},
+                                    .spawn_cooldown = ioj::NonNegativeFinite<float>{60.f}}}}};
 }
 
-auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
-    auto data{make_battle_config()};
-    data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(::ioj::sim::Health{100});
-    data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
-    data.spinners.fire_point_offsets.push_back({{100.f, 0.f, 0.f}, {}});
-
-    auto const definition{ioj::levels::LevelDefinition::make(
-        {.metadata = {.id = ioj::levels::LevelId{"scheduled-battle"}, .title = "Scheduled Battle"},
-         .camera = ioj::levels::LevelCameraDefinition{.target_entity_ids = {ioj::levels::EntityId{
-                                                          "hero"}},
-                                                      .offset_direction = {-1.0, 0.0, 0.0},
-                                                      .distance = 1000.0},
-         .entities = {{.id = ioj::levels::EntityId{"hero"},
-                       .archetype = ioj::levels::EntityArchetype::CapitalShip,
-                       .team = ioj::Team::Blue,
-                       .position = {-1000.0, 0.0, 0.0}},
-                      {.id = ioj::levels::EntityId{"enemy"},
-                       .archetype = ioj::levels::EntityArchetype::CapitalShip,
-                       .team = ioj::Team::Red,
-                       .position = {1000.0, 0.0, 0.0},
-                       .spawn_time_seconds = ioj::NonNegativeFinite<double>{0.21}},
-                      {.id = ioj::levels::EntityId{"spinner"},
-                       .archetype = ioj::levels::EntityArchetype::TubeSpinner,
-                       .team = ioj::Team::White,
-                       .position = {5000.0, 0.0, 0.0},
-                       .spawn_time_seconds = ioj::NonNegativeFinite<double>{0.21}}}})};
+auto compile_battle(ioj::levels::LevelDefinitionComponents authored,
+                    ioj::sim::LevelSimInitData data = make_battle_config())
+    -> ioj::sim::LevelSimInitData {
+    auto const definition{ioj::levels::LevelDefinition::make(std::move(authored))};
     check(definition);
     auto compiled{ioj::levels::compile_level(*definition, data)};
     check(compiled);
     return data;
-}
-
-void add_mission(::ioj::sim::LevelSimInitData& data) {
-    ioj::levels::MissionDefinition definition{
-        .objectives = {{.id = ioj::levels::ObjectiveName{"primary"},
-                        .team = ioj::Team::Green,
-                        .wins_level = ioj::ObjectiveWinsLevel::Yes,
-                        .expressions = {{ioj::levels::EntityDestroyedExpr{
-                            .entity = ioj::levels::EntityId{"enemy"}}}},
-                        .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
-                            0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}}};
-    std::array const ids{ioj::levels::EntityId{"hero"}, ioj::levels::EntityId{"enemy"}};
-    ioj::sim::SimClock clock;
-    clock.initialise(data.clock_settings);
-    auto compiled{ioj::levels::compile_mission(
-        definition, ids, clock, data.expressions, data.timers, data.level_events)};
-    check(compiled);
-    data.mission = std::move(*compiled);
 }
 
 void kill_enemy(::ioj::sim::LevelSim& simulation) {
@@ -174,12 +135,17 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         owner->Destroy();
     };
     auto const resources{make_presentation_resources(*owner, config->get_visual_config())};
-    auto headless_data{make_battle()};
-    auto visible_data{make_battle()};
-    add_mission(headless_data);
-    add_mission(visible_data);
-    ioj::sim::LevelSim headless{MoveTemp(headless_data)};
-    ioj::sim::LevelSim visible{MoveTemp(visible_data)};
+    auto battle{make_battle()};
+    battle.mission = ioj::levels::MissionDefinition{
+        .objectives = {{.id = ioj::levels::ObjectiveName{"primary"},
+                        .team = ioj::Team::Green,
+                        .wins_level = ioj::ObjectiveWinsLevel::Yes,
+                        .expressions = {{ioj::levels::EntityDestroyedExpr{
+                            .entity = ioj::levels::EntityId{"enemy"}}}},
+                        .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
+                            0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}}};
+    ioj::sim::LevelSim headless{compile_battle(battle)};
+    ioj::sim::LevelSim visible{compile_battle(std::move(battle))};
     headless.finish_initialisation();
     visible.finish_initialisation();
     FLevelPresentation presentation{resources, visible.read_access()};
@@ -265,28 +231,22 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     std::array<ioj::Vector3f, 2> const locations{{{10.f, 20.f, 30.f}, {-40.f, 50.f, 60.f}}};
     std::array<ioj::Rotator3f, 2> const rotations{{{15.f, 45.f, 75.f}, {-25.f, 35.f, 5.f}}};
     auto const count{static_cast<int32>(locations.size())};
-    auto& definitions{data.level_events};
-    auto const group{definitions.spawn_groups.num()};
-    definitions.add_spawn_group(ioj::sim::EntityType::Turret, 0, count);
-    definitions.initial_events.push_back(
-        definitions.add_spawn_event({group, definitions.spawn_groups.num() - group}));
-    auto const first_entity{definitions.spawn_count()};
-    definitions.turret_spawns.add_uninitialised(count);
-    auto const turrets{definitions.turret_spawns.view()};
     TArray<FTransform> expected;
     for (int32 index{}; index < count; ++index) {
-        turrets.entity_indices()[index] =
-            ioj::sim::LevelEntityRef{first_entity + static_cast<uint32>(index)};
-        ioj::set_vector(turrets.view_locations(), index, locations[index]);
-        ioj::set_rotation(turrets.view_rotations(), index, rotations[index]);
-        turrets.teams()[index] = ioj::Team::Green;
-        turrets.healths()[index] = ioj::sim::Health{100};
-        turrets.laser_damages()[index] = ioj::NonNegative<std::int32_t>{0};
+        data.entities.push_back({
+            .id = ioj::levels::EntityId{"turret-" + std::to_string(index)},
+            .archetype = ioj::levels::EntityArchetype::StaticTurret,
+            .team = ioj::Team::Green,
+            .position = ioj::Vector3d{locations[index]},
+            .rotation = {rotations[index].pitch, rotations[index].yaw, rotations[index].roll},
+            .overrides = {.health = ioj::settings::PositiveHealth{ioj::sim::Health{100}},
+                          .laser_damage = ioj::NonNegative<std::int32_t>{0}},
+        });
         expected.Emplace(FRotator{ioj::to_unreal(rotations[index])},
                          FVector{ioj::to_unreal(locations[index])});
     }
 
-    ioj::sim::LevelSim simulation{MoveTemp(data)};
+    ioj::sim::LevelSim simulation{compile_battle(std::move(data))};
     simulation.finish_initialisation();
     auto const& clk{simulation.clock()};
     FLevelPresentationHost host;
@@ -360,14 +320,28 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     };
     auto resources{make_presentation_resources(*owner, config->get_visual_config())};
 
-    auto scheduled_battle{make_scheduled_battle()};
-    auto const scheduled_spawns{scheduled_battle.level_events.capital_spawns.view(1, 1)};
-    scheduled_spawns.view_locations().xs()[0] = -1000.f;
-    scheduled_spawns.healths()[0] = ioj::sim::Health{100};
-    scheduled_battle.level_events.capital_spawns.view().healths()[0] = ioj::sim::Health{10000};
-    scheduled_battle.collision.overlap_response.damage_per_overlap_detection =
+    auto scheduled_battle{make_battle()};
+    auto& hero{scheduled_battle.entities[0]};
+    hero.team = ioj::Team::Blue;
+    hero.overrides.health = ioj::settings::PositiveHealth{ioj::sim::Health{10000}};
+    auto& enemy{scheduled_battle.entities[1]};
+    enemy.team = ioj::Team::Red;
+    enemy.position = hero.position;
+    enemy.spawn_time_seconds = ioj::NonNegativeFinite<double>{0.21};
+    scheduled_battle.entities.push_back({
+        .id = ioj::levels::EntityId{"spinner"},
+        .archetype = ioj::levels::EntityArchetype::TubeSpinner,
+        .team = ioj::Team::White,
+        .position = {5000.0, 0.0, 0.0},
+        .spawn_time_seconds = ioj::NonNegativeFinite<double>{0.21},
+    });
+    auto scheduled_config{make_battle_config()};
+    scheduled_config.clock_settings.tick_rate = ioj::Frequency::make(10.0);
+    scheduled_config.spinners.fire_point_offsets.push_back({{100.f, 0.f, 0.f}, {}});
+    scheduled_config.collision.overlap_response.damage_per_overlap_detection =
         ioj::Positive<std::int32_t>{100};
-    ::ioj::sim::LevelSim simulation{MoveTemp(scheduled_battle)};
+    ::ioj::sim::LevelSim simulation{
+        compile_battle(std::move(scheduled_battle), std::move(scheduled_config))};
     simulation.finish_initialisation();
     FLevelPresentation presentation{resources, simulation.read_access()};
     TestEqual(TEXT("Delayed spinner has no initial visual instance"),
@@ -441,9 +415,9 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
               resources.capital_ships->GetNumInstances(),
               1);
 
-    auto death_data{make_battle()};
+    auto death_data{make_battle_config()};
     death_data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
-    ::ioj::sim::LevelSim deaths{MoveTemp(death_data)};
+    ::ioj::sim::LevelSim deaths{compile_battle(make_battle(), std::move(death_data))};
     deaths.finish_initialisation();
     resources.config.presentation.capital_ships.n_small_explosions = 3;
     auto* const explosion{LoadObject<UNiagaraSystem>(
@@ -530,16 +504,24 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     ON_SCOPE_EXIT {
         actor->Destroy();
     };
-    auto data{make_battle()};
+    auto battle{make_battle()};
+    auto data{make_battle_config()};
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
-    data.spinners.fire_point_offsets.push_back({{100.f, 0.f, 0.f}, {}});
-    data.player_entity_ref = ioj::sim::LevelEntityRef{data.level_events.spawn_count()};
     data.player = actor->make_spawn_data();
+    battle.player_entity_id = ioj::levels::EntityId{"player"};
+    battle.camera.reset();
+    battle.entities.push_back({
+        .id = battle.player_entity_id,
+        .archetype = ioj::levels::EntityArchetype::PlayerFighter,
+        .team = data.player->team,
+        .position = data.player->transform.location,
+        .rotation = data.player->transform.rotator(),
+    });
     auto& active_profile{::ioj::sim::player::flight_model_profile(
         data.player->flight_models, data.player->flight_models.initial_slot)};
     active_profile.config.boost.energy_drain_per_second = ioj::NonNegativeFinite<float>{20.f};
     active_profile.config.energy_recharge_per_second = ioj::NonNegativeFinite<float>{0.f};
-    ::ioj::sim::LevelSim simulation{MoveTemp(data)};
+    ::ioj::sim::LevelSim simulation{compile_battle(std::move(battle), std::move(data))};
     simulation.finish_initialisation();
     simulation.start();
     auto* player{simulation.player_ship_simulation()};
@@ -600,8 +582,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     component->set_static_mesh(*mesh);
     component->set_num_custom_data_floats(FLaserPresentation::n_custom_ismc_floats);
 
-    auto data{make_battle()};
-    ::ioj::sim::LevelSim simulation{MoveTemp(data)};
+    ::ioj::sim::LevelSim simulation{compile_battle(make_battle())};
     simulation.finish_initialisation();
     auto const& clk{simulation.clock()};
     auto const& lasers{simulation.lasers()};
@@ -708,7 +689,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 auto FLevelTelemetryFileAdapterTest::RunTest(FString const&) -> bool {
-    auto data{make_battle()};
+    auto data{compile_battle(make_battle())};
     data.telemetry_metadata.run_id = "12345678-1234-1234-1234-123456789abc";
     ::ioj::sim::LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
