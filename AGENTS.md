@@ -183,6 +183,8 @@ Retract earlier completion estimates if new issues invalidate validation or requ
 # Formatting
 
 * Format changed C++ with `coj format --changed`; do not invoke `clang-format` directly for normal work.
+* For long or visually crowded braced initializer lists, use one initializer per line and a
+  trailing comma. Keep short lists compact; judge readability rather than using a fixed item count.
 
 # UI
 
