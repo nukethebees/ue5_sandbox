@@ -32,13 +32,14 @@ void FSandboxEditorModule::StartupModule() {
     IModularFeatures::Get().RegisterModularFeature(IPIEAuthorizer::GetModularFeatureName(), this);
     s7_pie_handle_ = FWorldDelegates::OnWorldInitializedActors.AddLambda(
         [this](FActorsInitializedParams const& params) {
-            if (params.World->WorldType != EWorldType::PIE || !prepared_definition_) {
+            if (params.World->WorldType != EWorldType::PIE || !prepared_level_) {
                 return;
             }
-            auto prepared{ioj::editor::launch_s7_level_for_pie(
-                *params.World, std::move(*prepared_definition_), std::move(*prepared_simulation_))};
-            prepared_definition_.reset();
-            prepared_simulation_.reset();
+            auto prepared{
+                ioj::editor::launch_s7_level_for_pie(*params.World,
+                                                     std::move(prepared_level_->definition),
+                                                     std::move(prepared_level_->simulation))};
+            prepared_level_.reset();
             if (!prepared) {
                 UE_LOG(LogTemp, Error, TEXT("S7 PIE preparation failed: %s"), *prepared.error());
             }
@@ -87,8 +88,7 @@ auto FSandboxEditorModule::IsPIEAuthorizedInternal(bool) const -> TValueOrError<
 }
 
 auto FSandboxEditorModule::RequestPIEPermissionInternal(bool) const -> TValueOrError<bool, FText> {
-    prepared_definition_.reset();
-    prepared_simulation_.reset();
+    prepared_level_.reset();
     auto* const world{GEditor ? GEditor->GetEditorWorldContext().World() : nullptr};
     if (!IsValid(world)) {
         return MakeValue(true);
@@ -130,8 +130,7 @@ auto FSandboxEditorModule::RequestPIEPermissionInternal(bool) const -> TValueOrE
     if (!compiled) {
         return MakeError(FText::FromString(compiled.error()));
     }
-    prepared_definition_.emplace(std::move(*definition));
-    prepared_simulation_.emplace(std::move(*compiled));
+    prepared_level_.emplace(std::move(*definition), std::move(*compiled));
     return MakeValue(true);
 }
 

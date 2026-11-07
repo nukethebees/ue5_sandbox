@@ -17,6 +17,11 @@ class SANDBOXEDITOR_API FSandboxEditorModule
     : public IModuleInterface
     , public IPIEAuthorizer
     , public ioj::LogMsgMixin<"FSandboxEditorModule"> {
+    struct PreparedLevel {
+        ioj::levels::LevelDefinition definition;
+        ioj::sim::LevelSimInitData simulation;
+    };
+
   public:
     static FName const s7_level_script_editor_tab_id;
 
@@ -32,6 +37,5 @@ class SANDBOXEDITOR_API FSandboxEditorModule
 
     FDelegateHandle s7_pie_handle_{};
     TWeakPtr<SS7LevelScriptEditor> s7_level_script_editor_{};
-    mutable std::optional<ioj::levels::LevelDefinition> prepared_definition_;
-    mutable std::optional<ioj::sim::LevelSimInitData> prepared_simulation_;
+    mutable std::optional<PreparedLevel> prepared_level_;
 };
