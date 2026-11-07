@@ -27,8 +27,7 @@ int32 UGenerateSandboxMeshHoneycombPanelCommandlet::Main(FString const&) {
 
     auto const bounds{static_mesh->GetBounds()};
     if (bounds.Origin.ContainsNaN() || bounds.BoxExtent.ContainsNaN() ||
-        !FMath::IsNearlyEqual(
-            bounds.BoxExtent.Z, request.honeycomb_panel.ref().depth * 0.5, 0.01)) {
+        !FMath::IsNearlyEqual(bounds.BoxExtent.Z, request.honeycomb_panel.depth * 0.5, 0.01)) {
         UE_LOG(LogTemp,
                Error,
                TEXT("Generated honeycomb panel has unexpected bounds: %s"),

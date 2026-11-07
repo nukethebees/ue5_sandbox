@@ -156,7 +156,7 @@ void add_beveled_box_face(MeshData& mesh_data,
     add_projected_polygon(mesh_data, normal, std::move(positions), false);
 }
 
-void add_cylinder_side(MeshData& mesh_data, CylinderInput const& parameters) {
+void add_cylinder_side(MeshData& mesh_data, CylinderParameters const& parameters) {
     float const height{parameters.height};
     float const radius{parameters.radius};
 
@@ -188,7 +188,7 @@ void add_cylinder_side(MeshData& mesh_data, CylinderInput const& parameters) {
 }
 
 void add_cylinder_cap(MeshData& mesh_data,
-                      CylinderInput const& parameters,
+                      CylinderParameters const& parameters,
                       float const z,
                       Vec3f const normal) {
     float const radius{parameters.radius};
@@ -224,14 +224,14 @@ void add_cylinder_cap(MeshData& mesh_data,
     }
 }
 
-[[nodiscard]] auto cone_side_normal(ConeInput const& parameters, float const angle) -> Vec3f {
+[[nodiscard]] auto cone_side_normal(ConeParameters const& parameters, float const angle) -> Vec3f {
     float const height{parameters.height};
     float const radius{parameters.radius};
 
     return normalize({height * std::cos(angle), height * std::sin(angle), radius});
 }
 
-void add_cone_side(MeshData& mesh_data, ConeInput const& parameters) {
+void add_cone_side(MeshData& mesh_data, ConeParameters const& parameters) {
     float const height{parameters.height};
     float const radius{parameters.radius};
 
@@ -266,7 +266,7 @@ void add_cone_side(MeshData& mesh_data, ConeInput const& parameters) {
     }
 }
 
-void add_cone_base(MeshData& mesh_data, ConeInput const& parameters) {
+void add_cone_base(MeshData& mesh_data, ConeParameters const& parameters) {
     float const height{parameters.height};
     float const radius{parameters.radius};
 
@@ -431,8 +431,7 @@ void add_wall_segment(MeshData& mesh_data,
 
 }
 
-auto generate_box(BoxParameters const& checked) -> MeshData {
-    auto const& parameters{checked.ref()};
+auto generate_box(BoxParameters const& parameters) -> MeshData {
     MeshData mesh_data;
     mesh_data.positions.reserve(24);
     mesh_data.normals.reserve(24);
@@ -453,8 +452,7 @@ auto generate_box(BoxParameters const& checked) -> MeshData {
     return mesh_data;
 }
 
-auto generate_beveled_box(BeveledBoxParameters const& checked) -> MeshData {
-    auto const& parameters{checked.ref()};
+auto generate_beveled_box(BeveledBoxParameters const& parameters) -> MeshData {
     float const bevel_width{parameters.bevel_width};
 
     MeshData mesh_data;
@@ -528,8 +526,7 @@ auto generate_beveled_box(BeveledBoxParameters const& checked) -> MeshData {
     return mesh_data;
 }
 
-auto generate_wedge(WedgeParameters const& checked) -> MeshData {
-    auto const& parameters{checked.ref()};
+auto generate_wedge(WedgeParameters const& parameters) -> MeshData {
     float const top_length{parameters.top_length};
 
     MeshData mesh_data;
@@ -580,8 +577,7 @@ auto generate_wedge(WedgeParameters const& checked) -> MeshData {
     return mesh_data;
 }
 
-auto generate_cylinder(CylinderParameters const& checked) -> MeshData {
-    auto const& parameters{checked.ref()};
+auto generate_cylinder(CylinderParameters const& parameters) -> MeshData {
     float const height{parameters.height};
 
     MeshData mesh_data;
@@ -598,8 +594,7 @@ auto generate_cylinder(CylinderParameters const& checked) -> MeshData {
     return mesh_data;
 }
 
-auto generate_cone(ConeParameters const& checked) -> MeshData {
-    auto const& parameters{checked.ref()};
+auto generate_cone(ConeParameters const& parameters) -> MeshData {
 
     MeshData mesh_data;
     auto const vertex_count{parameters.radial_segments * 3 + 2};
@@ -613,8 +608,7 @@ auto generate_cone(ConeParameters const& checked) -> MeshData {
     return mesh_data;
 }
 
-auto generate_sphere(SphereParameters const& checked) -> MeshData {
-    auto const& parameters{checked.ref()};
+auto generate_sphere(SphereParameters const& parameters) -> MeshData {
     float const radius{parameters.radius};
 
     MeshData mesh_data;
@@ -673,8 +667,7 @@ auto generate_sphere(SphereParameters const& checked) -> MeshData {
     return mesh_data;
 }
 
-auto generate_hex_tile(HexTileParameters const& checked) -> MeshData {
-    auto const& parameters{checked.ref()};
+auto generate_hex_tile(HexTileParameters const& parameters) -> MeshData {
     float const bevel_width{parameters.bevel_width};
     float const outer_radius{parameters.outer_radius};
     float const depth{parameters.depth};
@@ -737,8 +730,7 @@ auto generate_hex_tile(HexTileParameters const& checked) -> MeshData {
     return mesh_data;
 }
 
-auto generate_hex_frame(HexFrameParameters const& checked) -> MeshData {
-    auto const& parameters{checked.ref()};
+auto generate_hex_frame(HexFrameParameters const& parameters) -> MeshData {
     float const wall_thickness{parameters.wall_thickness};
     float const outer_radius{parameters.outer_radius};
     float const depth{parameters.depth};
@@ -837,8 +829,7 @@ auto generate_hex_frame(HexFrameParameters const& checked) -> MeshData {
     return mesh_data;
 }
 
-auto generate_honeycomb_panel(HoneycombPanelParameters const& checked) -> MeshData {
-    auto const& parameters{checked.ref()};
+auto generate_honeycomb_panel(HoneycombPanelParameters const& parameters) -> MeshData {
     float const wall_thickness{parameters.wall_thickness};
     float const cell_radius{parameters.cell_radius};
     std::int32_t const rows{parameters.rows};

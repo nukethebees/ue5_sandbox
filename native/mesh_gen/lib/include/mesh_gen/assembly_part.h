@@ -9,8 +9,8 @@
 namespace mesh_gen {
 
 struct AssemblyPart {
-    GenerationRequest mesh;
-    Transform transform;
+    GenerationRequest mesh{};
+    Transform transform{};
     bool visible{true};
     bool locked{};
 };
@@ -18,6 +18,8 @@ struct AssemblyPart {
 void append_transformed_mesh(MeshData& destination,
                              MeshData const& source,
                              Transform const& transform);
+[[nodiscard]] auto validate_assembly(std::span<AssemblyPart const> parts) -> std::string;
+// Require validate_assembly(parts) to succeed before generating authored parts.
 [[nodiscard]] auto generate_assembly(std::span<AssemblyPart const> parts) -> MeshData;
 [[nodiscard]] auto describe_assembly(std::span<AssemblyPart const> parts) -> std::string;
 

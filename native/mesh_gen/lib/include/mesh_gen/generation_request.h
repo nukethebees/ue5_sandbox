@@ -13,6 +13,7 @@
 #include <mesh_gen/wedge_parameters.h>
 
 #include <string>
+#include <string_view>
 
 namespace mesh_gen {
 
@@ -20,18 +21,20 @@ struct GenerationRequest {
     Shape shape{Shape::box};
     std::string asset_name{"SM_GeneratedBox"};
     MaterialRole material_role{MaterialRole::structure};
-    BoxParameters box;
-    CylinderParameters cylinder;
-    SphereParameters sphere;
-    ConeParameters cone;
-    HexTileParameters hex_tile;
-    HexFrameParameters hex_frame;
-    HoneycombPanelParameters honeycomb_panel;
-    BeveledBoxParameters beveled_box;
-    WedgeParameters wedge;
+    BoxParameters box{};
+    CylinderParameters cylinder{};
+    SphereParameters sphere{};
+    ConeParameters cone{};
+    HexTileParameters hex_tile{};
+    HexFrameParameters hex_frame{};
+    HoneycombPanelParameters honeycomb_panel{};
+    BeveledBoxParameters beveled_box{};
+    WedgeParameters wedge{};
 };
 
 [[nodiscard]] auto make_default_request(Shape shape) -> GenerationRequest;
+[[nodiscard]] auto validate_request(GenerationRequest const& request) -> std::string_view;
+// Validate authored requests before passing them to generation algorithms.
 [[nodiscard]] auto generate_mesh(GenerationRequest const& request) -> MeshData;
 [[nodiscard]] auto describe_request(GenerationRequest const& request) -> std::string;
 

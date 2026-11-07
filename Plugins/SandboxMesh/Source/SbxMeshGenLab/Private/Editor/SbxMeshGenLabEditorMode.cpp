@@ -311,7 +311,7 @@ auto USbxMeshGenLabEditorMode::InputDelta(FEditorViewportClient* const viewport_
     auto const primary_scale{
         selected_group_index_ != INDEX_NONE
             ? get_group_world_transform(selected_group_index_).GetScale3D()
-            : SandboxMesh::to_unreal(parts_[selected_part_index_].transform.ref().scale)};
+            : SandboxMesh::to_unreal(parts_[selected_part_index_].transform.scale)};
     FVector scale_factor{FVector::OneVector};
     if (!scale.IsNearlyZero()) {
         scale_factor.X = FMath::Max(primary_scale.X + scale.X, 0.001) / primary_scale.X;
@@ -798,7 +798,7 @@ void USbxMeshGenLabEditorMode::duplicate_part() {
             }
 
             auto part{parts_[part_index]};
-            auto const& transform_data{part.transform.ref()};
+            auto const& transform_data{part.transform};
             FTransform transform{SandboxMesh::to_unreal(transform_data.rotation),
                                  SandboxMesh::to_unreal(transform_data.translation),
                                  SandboxMesh::to_unreal(transform_data.scale)};
@@ -829,9 +829,9 @@ void USbxMeshGenLabEditorMode::duplicate_part() {
             auto const local_transform{
                 transform.GetRelativeTransform(get_parent_world_transform(parent_id))};
             part.transform =
-                mesh_gen::Transform::make({SandboxMesh::to_native(local_transform.GetLocation()),
-                                           SandboxMesh::to_native(local_transform.Rotator()),
-                                           SandboxMesh::to_native(local_transform.GetScale3D())});
+                mesh_gen::Transform{SandboxMesh::to_native(local_transform.GetLocation()),
+                                    SandboxMesh::to_native(local_transform.Rotator()),
+                                    SandboxMesh::to_native(local_transform.GetScale3D())};
             if (part_index == selected_part_index_ && repeat_index == repeat_count) {
                 duplicate_primary_offset = duplicate_parts.Num();
             }
@@ -999,7 +999,7 @@ void USbxMeshGenLabEditorMode::create_group() {
 
         FVector pivot{FVector::ZeroVector};
         for (int32 const part_index : selected_part_indices_) {
-            pivot += SandboxMesh::to_unreal(parts_[part_index].transform.ref().translation);
+            pivot += SandboxMesh::to_unreal(parts_[part_index].transform.translation);
         }
         pivot /= selected_part_indices_.Num();
         FTransform const group_world{FQuat::Identity, pivot, FVector::OneVector};
@@ -1008,7 +1008,7 @@ void USbxMeshGenLabEditorMode::create_group() {
 
         for (int32 const part_index : selected_part_indices_) {
             auto& recipe_part{session_state_->parts[part_index]};
-            auto const& transform_data{parts_[part_index].transform.ref()};
+            auto const& transform_data{parts_[part_index].transform};
             FTransform const part_world{SandboxMesh::to_unreal(transform_data.rotation),
                                         SandboxMesh::to_unreal(transform_data.translation),
                                         SandboxMesh::to_unreal(transform_data.scale)};
@@ -1046,7 +1046,7 @@ void USbxMeshGenLabEditorMode::ungroup() {
         if (recipe_part.parent_id != group_id) {
             continue;
         }
-        auto const& transform_data{parts_[part_index].transform.ref()};
+        auto const& transform_data{parts_[part_index].transform};
         FTransform const part_world{SandboxMesh::to_unreal(transform_data.rotation),
                                     SandboxMesh::to_unreal(transform_data.translation),
                                     SandboxMesh::to_unreal(transform_data.scale)};
@@ -1697,7 +1697,8 @@ auto USbxMeshGenLabEditorMode::apply_settings(bool const mark_dirty) -> bool {
 
     FString validation_error;
     if (selected_group_index_ == INDEX_NONE) {
-        validation_error = SandboxMesh::validate_mesh_request(parts_[selected_part_index_].mesh);
+        validation_error =
+            SandboxMesh::validate_mesh_asset_name(parts_[selected_part_index_].mesh.asset_name);
     } else if (auto const resolved{SandboxMesh::resolve_mesh_assembly_hierarchy(
                    session_state_->parts, session_state_->groups, settings->asset_name)};
                !resolved) {
@@ -1857,7 +1858,8 @@ void USbxMeshGenLabEditorMode::add_preview_instance(int32 const part_index) {
         return;
     }
 
-    auto const validation_error{SandboxMesh::validate_mesh_request(parts_[part_index].mesh)};
+    auto const validation_error{
+        SandboxMesh::validate_mesh_asset_name(parts_[part_index].mesh.asset_name)};
     if (!validation_error.IsEmpty()) {
         status_ = FText::FromString(validation_error);
         return;
@@ -2222,9 +2224,9 @@ void USbxMeshGenLabEditorMode::set_part_world_transform(int32 const part_index,
     recipe_part.rotation = local_transform.Rotator();
     recipe_part.scale = local_transform.GetScale3D();
     parts_[part_index].transform =
-        mesh_gen::Transform::make({SandboxMesh::to_native(assembly_transform.GetLocation()),
-                                   SandboxMesh::to_native(assembly_transform.Rotator()),
-                                   SandboxMesh::to_native(assembly_transform.GetScale3D())});
+        mesh_gen::Transform{SandboxMesh::to_native(assembly_transform.GetLocation()),
+                            SandboxMesh::to_native(assembly_transform.Rotator()),
+                            SandboxMesh::to_native(assembly_transform.GetScale3D())};
 }
 
 void USbxMeshGenLabEditorMode::set_group_world_transform(int32 const group_index,
@@ -2332,7 +2334,7 @@ void USbxMeshGenLabEditorMode::apply_marquee_selection(TArray<int32> const& matc
 
 auto USbxMeshGenLabEditorMode::make_part_world_transform(FSbxMeshAssemblyPart const& part) const
     -> FTransform {
-    auto const& transform{part.transform.ref()};
+    auto const& transform{part.transform};
     return FTransform{SandboxMesh::to_unreal(transform.rotation),
                       preview_origin_ + SandboxMesh::to_unreal(transform.translation),
                       SandboxMesh::to_unreal(transform.scale)};

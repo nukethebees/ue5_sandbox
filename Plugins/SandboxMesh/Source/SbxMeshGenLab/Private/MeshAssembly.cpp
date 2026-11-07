@@ -13,14 +13,14 @@ namespace {
 }
 
 auto validate_mesh_assembly(TArray<FSbxMeshAssemblyPart> const& parts) -> FString {
-    if (parts.IsEmpty()) {
-        return TEXT("Add at least one part to the assembly.");
+    if (auto const error{mesh_gen::validate_assembly(as_span(parts))}; !error.empty()) {
+        return FString{UTF8_TO_TCHAR(error.c_str())};
     }
 
     auto const part_count{parts.Num()};
     for (int32 part_index{}; part_index < part_count; ++part_index) {
         auto const& part{parts[part_index]};
-        auto const mesh_error{validate_mesh_request(part.mesh)};
+        auto const mesh_error{validate_mesh_asset_name(part.mesh.asset_name)};
         if (!mesh_error.IsEmpty()) {
             return FString::Printf(TEXT("Part %d: %s"), part_index + 1, *mesh_error);
         }

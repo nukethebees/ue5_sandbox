@@ -273,7 +273,7 @@ class SBXMESHGENLAB_API USbxMeshGenLabSettings final : public UObject {
     // Return an error describing invalid input for the selected shape.
     [[nodiscard]] auto to_request() const -> std::expected<FSbxMeshGenerationRequest, FString>;
     [[nodiscard]] auto to_part() const -> std::expected<FSbxMeshAssemblyPart, FString>;
-    [[nodiscard]] auto to_transform() const -> FSbxMeshTransformInput;
+    [[nodiscard]] auto to_transform() const -> FSbxMeshTransform;
     void load_request(FSbxMeshGenerationRequest const& request);
-    void load_transform(FSbxMeshTransformInput const& transform);
+    void load_transform(FSbxMeshTransform const& transform);
 };

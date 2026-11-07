@@ -35,8 +35,7 @@ namespace SandboxMesh {
     -> FSbxMeshGenerationRequest;
 [[nodiscard]] SBXMESHGENLAB_API auto to_native(ESbxMeshShape shape) -> mesh_gen::Shape;
 [[nodiscard]] SBXMESHGENLAB_API auto to_unreal(mesh_gen::Shape shape) -> ESbxMeshShape;
-[[nodiscard]] SBXMESHGENLAB_API auto validate_mesh_request(FSbxMeshGenerationRequest const& request)
-    -> FString;
+[[nodiscard]] SBXMESHGENLAB_API auto validate_mesh_asset_name(std::string const& name) -> FString;
 [[nodiscard]] SBXMESHGENLAB_API auto describe_mesh_request(FSbxMeshGenerationRequest const& request)
     -> FString;
 

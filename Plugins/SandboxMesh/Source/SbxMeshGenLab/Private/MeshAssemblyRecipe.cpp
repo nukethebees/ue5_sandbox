@@ -12,49 +12,49 @@ auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,
     recipe_part.locked = part.locked;
     recipe_part.shape = SandboxMesh::to_unreal(part.mesh.shape);
     recipe_part.material_role = SandboxMesh::to_unreal(part.mesh.material_role);
-    auto const& transform{part.transform.ref()};
+    auto const& transform{part.transform};
     recipe_part.translation = SandboxMesh::to_unreal(transform.translation);
     recipe_part.rotation = SandboxMesh::to_unreal(transform.rotation);
     recipe_part.scale = SandboxMesh::to_unreal(transform.scale);
-    recipe_part.box_dimensions = SandboxMesh::to_unreal(part.mesh.box.ref().dimensions);
+    recipe_part.box_dimensions = SandboxMesh::to_unreal(part.mesh.box.dimensions);
 
-    auto const& beveled_box{part.mesh.beveled_box.ref()};
+    auto const& beveled_box{part.mesh.beveled_box};
     recipe_part.beveled_box_dimensions = SandboxMesh::to_unreal(beveled_box.dimensions);
     recipe_part.beveled_box_bevel_width = beveled_box.bevel_width;
 
-    auto const& wedge{part.mesh.wedge.ref()};
+    auto const& wedge{part.mesh.wedge};
     recipe_part.wedge_dimensions = SandboxMesh::to_unreal(wedge.dimensions);
     recipe_part.wedge_top_length = wedge.top_length;
     recipe_part.wedge_top_offset = wedge.top_offset;
 
-    auto const& cylinder{part.mesh.cylinder.ref()};
+    auto const& cylinder{part.mesh.cylinder};
     recipe_part.cylinder_radius = cylinder.radius;
     recipe_part.cylinder_height = cylinder.height;
     recipe_part.cylinder_radial_segments = cylinder.radial_segments;
 
-    auto const& sphere{part.mesh.sphere.ref()};
+    auto const& sphere{part.mesh.sphere};
     recipe_part.sphere_radius = sphere.radius;
     recipe_part.sphere_longitude_segments = sphere.longitude_segments;
     recipe_part.sphere_latitude_segments = sphere.latitude_segments;
 
-    auto const& cone{part.mesh.cone.ref()};
+    auto const& cone{part.mesh.cone};
     recipe_part.cone_radius = cone.radius;
     recipe_part.cone_height = cone.height;
     recipe_part.cone_radial_segments = cone.radial_segments;
 
-    auto const& hex_tile{part.mesh.hex_tile.ref()};
+    auto const& hex_tile{part.mesh.hex_tile};
     recipe_part.hex_tile_outer_radius = hex_tile.outer_radius;
     recipe_part.hex_tile_depth = hex_tile.depth;
     recipe_part.hex_tile_bevel_width = hex_tile.bevel_width;
     recipe_part.hex_tile_pointy_top = hex_tile.pointy_top;
 
-    auto const& hex_frame{part.mesh.hex_frame.ref()};
+    auto const& hex_frame{part.mesh.hex_frame};
     recipe_part.hex_frame_outer_radius = hex_frame.outer_radius;
     recipe_part.hex_frame_wall_thickness = hex_frame.wall_thickness;
     recipe_part.hex_frame_depth = hex_frame.depth;
     recipe_part.hex_frame_pointy_top = hex_frame.pointy_top;
 
-    auto const& honeycomb_panel{part.mesh.honeycomb_panel.ref()};
+    auto const& honeycomb_panel{part.mesh.honeycomb_panel};
     recipe_part.honeycomb_rows = honeycomb_panel.rows;
     recipe_part.honeycomb_columns = honeycomb_panel.columns;
     recipe_part.honeycomb_cell_radius = honeycomb_panel.cell_radius;
@@ -70,15 +70,14 @@ auto FSbxMeshAssemblyRecipePart::to_part(FName const output_asset_name) const
     if (!request) {
         return std::unexpected{request.error()};
     }
-    auto const input{to_transform()};
-    auto const transform{mesh_gen::Transform::try_make(input)};
-    if (!transform) {
-        return std::unexpected{FString{UTF8_TO_TCHAR(input.error().data())}};
+    auto const transform{to_transform()};
+    if (auto const error{mesh_gen::validate_transform(transform)}; !error.empty()) {
+        return std::unexpected{FString{UTF8_TO_TCHAR(error.data())}};
     }
-    return FSbxMeshAssemblyPart{std::move(*request), *transform, visible, locked};
+    return FSbxMeshAssemblyPart{std::move(*request), transform, visible, locked};
 }
 
-auto FSbxMeshAssemblyRecipePart::to_transform() const -> FSbxMeshTransformInput {
+auto FSbxMeshAssemblyRecipePart::to_transform() const -> FSbxMeshTransform {
     return {SandboxMesh::to_native(translation),
             SandboxMesh::to_native(rotation),
             SandboxMesh::to_native(scale)};
@@ -223,10 +222,13 @@ auto resolve_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& p
         if (node_ids.Contains(group.id)) {
             return std::unexpected{FString{TEXT("Assembly node IDs must be unique.")}};
         }
-        if (!ioj::PositiveFiniteVector<float, 3>::valid(SandboxMesh::to_native(group.scale))) {
-            return std::unexpected{
-                FString::Printf(TEXT("Group %d scale values must be finite and greater than zero."),
-                                group_index + 1)};
+        auto const transform_error{
+            mesh_gen::validate_transform({SandboxMesh::to_native(group.translation),
+                                          SandboxMesh::to_native(group.rotation),
+                                          SandboxMesh::to_native(group.scale)})};
+        if (!transform_error.empty()) {
+            return std::unexpected{FString::Printf(
+                TEXT("Group %d: %s"), group_index + 1, UTF8_TO_TCHAR(transform_error.data()))};
         }
         TSet<FName> connector_names;
         for (auto const& connector : group.connectors) {
@@ -305,15 +307,14 @@ auto resolve_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& p
         auto const& recipe_part{parts[part_index]};
         auto& part{resolved_parts[part_index]};
         auto const& transform{transforms.FindChecked(recipe_part.id)};
-        auto const input{mesh_gen::TransformInput{SandboxMesh::to_native(transform.GetLocation()),
-                                                  SandboxMesh::to_native(transform.Rotator()),
-                                                  SandboxMesh::to_native(transform.GetScale3D())}};
-        auto const checked_transform{mesh_gen::Transform::try_make(input)};
-        if (!checked_transform) {
-            return std::unexpected{FString::Printf(
-                TEXT("Part %d: %s"), part_index + 1, UTF8_TO_TCHAR(input.error().data()))};
+        auto const input{mesh_gen::Transform{SandboxMesh::to_native(transform.GetLocation()),
+                                             SandboxMesh::to_native(transform.Rotator()),
+                                             SandboxMesh::to_native(transform.GetScale3D())}};
+        if (auto const error{mesh_gen::validate_transform(input)}; !error.empty()) {
+            return std::unexpected{
+                FString::Printf(TEXT("Part %d: %s"), part_index + 1, UTF8_TO_TCHAR(error.data()))};
         }
-        part.transform = *checked_transform;
+        part.transform = input;
         part.visible = visibilities.FindChecked(recipe_part.id);
         part.locked = locks.FindChecked(recipe_part.id);
     }

@@ -135,7 +135,7 @@ struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipePart {
     // Return an error describing invalid input for this part's shape.
     [[nodiscard]] auto to_part(FName output_asset_name) const
         -> std::expected<FSbxMeshAssemblyPart, FString>;
-    [[nodiscard]] auto to_transform() const -> FSbxMeshTransformInput;
+    [[nodiscard]] auto to_transform() const -> FSbxMeshTransform;
 };
 
 USTRUCT()

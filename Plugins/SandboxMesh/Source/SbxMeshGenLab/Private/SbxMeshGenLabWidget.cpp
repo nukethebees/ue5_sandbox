@@ -298,7 +298,7 @@ void USbxMeshGenLabWidget::select_part(TSharedPtr<FSbxMeshAssemblyPart> const& p
     selected_part_ = part;
     auto const asset_name{settings_->asset_name};
     settings_->load_request(selected_part_->mesh);
-    settings_->load_transform(selected_part_->transform.ref());
+    settings_->load_transform(selected_part_->transform);
     settings_->asset_name = asset_name;
     last_shape_ = settings_->shape;
     refresh_shape_selector();

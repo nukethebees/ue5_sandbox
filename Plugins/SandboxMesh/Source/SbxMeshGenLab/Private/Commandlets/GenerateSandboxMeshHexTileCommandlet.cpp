@@ -15,7 +15,7 @@ UGenerateSandboxMeshHexTileCommandlet::UGenerateSandboxMeshHexTileCommandlet() {
 int32 UGenerateSandboxMeshHexTileCommandlet::Main(FString const&) {
     auto const request{SandboxMesh::make_default_mesh_request(ESbxMeshShape::HexTile)};
     auto const asset_name{SandboxMesh::to_unreal_name(request.asset_name)};
-    auto const& parameters{request.hex_tile.ref()};
+    auto const& parameters{request.hex_tile};
     FVector const expected_extent{parameters.outer_radius,
                                   parameters.outer_radius * FMath::Sqrt(3.0) * 0.5,
                                   parameters.depth * 0.5};
