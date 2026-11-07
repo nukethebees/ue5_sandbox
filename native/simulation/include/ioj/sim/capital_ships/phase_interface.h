@@ -8,22 +8,49 @@
 #include "ioj/sim/capital_ships/sim.h"
 
 namespace ioj::sim::capital_ships {
-class PhaseInterface {
+class InitialisationInterface {
   private:
-    PhaseInterface(Sim& new_target)
+    InitialisationInterface(Sim& new_target)
         : simulation{new_target} {}
 
     void initialise(settings::PositiveHealth max_health) { simulation.initialise(max_health); }
 
     void update_entity_lookup_table() { simulation.update_entity_lookup_table(); }
 
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class PreparationInterface {
+  private:
+    PreparationInterface(Sim& new_target)
+        : simulation{new_target} {}
+
     void prepare_tick() { simulation.prepare_tick(); }
+
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class ResolutionInterface {
+  private:
+    ResolutionInterface(Sim& new_target)
+        : simulation{new_target} {}
 
     void resolve_damage_events(ResolutionInputs const inputs) {
         simulation.resolve_damage_events(inputs);
     }
 
     void publish_deaths(ResolutionInputs const inputs) { simulation.publish_deaths(inputs); }
+
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class ResolutionCommitInterface {
+  private:
+    ResolutionCommitInterface(Sim& new_target)
+        : simulation{new_target} {}
 
     void remove_components(ResolutionCommitInputs const inputs) {
         simulation.remove_components(inputs);

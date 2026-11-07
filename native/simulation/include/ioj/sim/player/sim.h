@@ -32,7 +32,11 @@ struct PlayerSimTestAccess;
 }
 
 namespace ioj::sim::player {
-class PhaseInterface;
+class InitialisationInterface;
+class PreparationInterface;
+class ThinkingInterface;
+class ActionInterface;
+class ResolutionInterface;
 
 struct PlayerSpawnData {
     PlayerSimConfig config;
@@ -204,7 +208,11 @@ struct Sim {
     /* **************************************** */
     // Dependencies and internal state
     /* **************************************** */
-    friend class PhaseInterface;
+    friend class InitialisationInterface;
+    friend class PreparationInterface;
+    friend class ThinkingInterface;
+    friend class ActionInterface;
+    friend class ResolutionInterface;
     friend struct sim::LevelSim;
     friend struct sim::PlayerSimTestAccess;
 

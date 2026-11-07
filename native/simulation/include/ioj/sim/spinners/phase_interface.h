@@ -9,9 +9,9 @@
 #include "ioj/sim/spinners/spinner_sim_config.h"
 
 namespace ioj::sim::spinners {
-class PhaseInterface {
+class InitialisationInterface {
   private:
-    PhaseInterface(Sim& new_target)
+    InitialisationInterface(Sim& new_target)
         : simulation{new_target} {}
 
     void initialise(SpinnerSimConfig const& config, SimClock const& clock) {
@@ -20,15 +20,42 @@ class PhaseInterface {
 
     void update_entity_lookup_table() { simulation.update_entity_lookup_table(); }
 
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class PreparationInterface {
+  private:
+    PreparationInterface(Sim& new_target)
+        : simulation{new_target} {}
+
     void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 
-    void think(float const dt) { simulation.think(dt); }
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
 
-    void apply_movement(ActionInputs const inputs) { simulation.apply_movement(inputs); }
+class ThinkingInterface {
+  private:
+    ThinkingInterface(Sim& new_target)
+        : simulation{new_target} {}
+
+    void think(float const dt) { simulation.think(dt); }
 
     void generate_fire_commands(ThinkingInputs const inputs) {
         simulation.generate_fire_commands(inputs);
     }
+
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class ActionInterface {
+  private:
+    ActionInterface(Sim& new_target)
+        : simulation{new_target} {}
+
+    void apply_movement(ActionInputs const inputs) { simulation.apply_movement(inputs); }
 
     friend struct sim::LevelSim;
     Sim& simulation;

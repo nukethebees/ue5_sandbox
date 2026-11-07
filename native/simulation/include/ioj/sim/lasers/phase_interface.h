@@ -8,16 +8,43 @@
 #include "ioj/sim/lasers/sim.h"
 
 namespace ioj::sim::lasers {
-class PhaseInterface {
+class InitialisationInterface {
   private:
-    PhaseInterface(Sim& new_target)
+    InitialisationInterface(Sim& new_target)
         : simulation{new_target} {}
 
     void initialise(LaserSimConfig const& config) { simulation.initialise(config); }
 
-    void simulate(ActionInputs const inputs) { simulation.simulate(inputs); }
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class PreparationInterface {
+  private:
+    PreparationInterface(Sim& new_target)
+        : simulation{new_target} {}
 
     void commit_spawns(PreparationInputs const inputs) { simulation.commit_spawns(inputs); }
+
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class ActionInterface {
+  private:
+    ActionInterface(Sim& new_target)
+        : simulation{new_target} {}
+
+    void simulate(ActionInputs const inputs) { simulation.simulate(inputs); }
+
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class ResolutionCommitInterface {
+  private:
+    ResolutionCommitInterface(Sim& new_target)
+        : simulation{new_target} {}
 
     void cleanup_entities(ResolutionCommitInputs const inputs) {
         simulation.cleanup_entities(inputs);

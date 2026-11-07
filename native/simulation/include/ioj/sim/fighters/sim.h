@@ -20,7 +20,12 @@ struct LevelSim;
 }
 
 namespace ioj::sim::fighters {
-class PhaseInterface;
+class InitialisationInterface;
+class PreparationInterface;
+class ThinkingInterface;
+class ActionInterface;
+class ResolutionInterface;
+class ResolutionCommitInterface;
 
 struct Sim {
     using EntityStorage = FighterEntityData;
@@ -122,7 +127,12 @@ struct Sim {
     /* **************************************** */
     void refresh_target_data(ThinkingInputs const inputs);
 
-    friend class PhaseInterface;
+    friend class InitialisationInterface;
+    friend class PreparationInterface;
+    friend class ThinkingInterface;
+    friend class ActionInterface;
+    friend class ResolutionInterface;
+    friend class ResolutionCommitInterface;
 
     RuntimeConfig config_{};
     TeamArray<std::int32_t> remaining_team_capacity_{};

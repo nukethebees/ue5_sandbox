@@ -21,7 +21,11 @@ class LevelSpawnManager;
 }
 
 namespace ioj::sim::turrets {
-class PhaseInterface;
+class InitialisationInterface;
+class PreparationInterface;
+class ThinkingInterface;
+class ResolutionInterface;
+class ResolutionCommitInterface;
 class SpawnInterface;
 
 struct Sim {
@@ -94,7 +98,11 @@ struct Sim {
     /* **************************************** */
     void handle_dead_entities(ResolutionCommitInputs const inputs);
 
-    friend class PhaseInterface;
+    friend class InitialisationInterface;
+    friend class PreparationInterface;
+    friend class ThinkingInterface;
+    friend class ResolutionInterface;
+    friend class ResolutionCommitInterface;
     friend class SpawnInterface;
 
     TurretSimConfig config_{};

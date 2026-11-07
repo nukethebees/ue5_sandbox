@@ -9,9 +9,9 @@
 #include "ioj/sim/sim_clock.h"
 
 namespace ioj::sim::fighters {
-class PhaseInterface {
+class InitialisationInterface {
   private:
-    PhaseInterface(Sim& new_target)
+    InitialisationInterface(Sim& new_target)
         : simulation{new_target} {}
 
     void initialise(FighterSimConfig const& config, SimClock const& clock) {
@@ -20,23 +20,68 @@ class PhaseInterface {
 
     void update_entity_lookup_table() { simulation.update_entity_lookup_table(); }
 
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class PreparationInterface {
+  private:
+    PreparationInterface(Sim& new_target)
+        : simulation{new_target} {}
+
     void prepare_tick(PreparationInputs const inputs) { simulation.prepare_tick(inputs); }
 
-    void think(ThinkingInputs const inputs) { simulation.think(inputs); }
+    void commit_spawns(PreparationInputs const inputs) { simulation.commit_spawns(inputs); }
 
-    void apply_movement(ActionInputs const inputs) { simulation.apply_movement(inputs); }
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class ThinkingInterface {
+  private:
+    ThinkingInterface(Sim& new_target)
+        : simulation{new_target} {}
+
+    void think(ThinkingInputs const inputs) { simulation.think(inputs); }
 
     void generate_fire_commands(ThinkingInputs const inputs) {
         simulation.generate_fire_commands(inputs);
     }
 
-    void commit_spawns(PreparationInputs const inputs) { simulation.commit_spawns(inputs); }
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class ActionInterface {
+  private:
+    ActionInterface(Sim& new_target)
+        : simulation{new_target} {}
+
+    void apply_movement(ActionInputs const inputs) { simulation.apply_movement(inputs); }
+
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class ResolutionInterface {
+  private:
+    ResolutionInterface(Sim& new_target)
+        : simulation{new_target} {}
 
     void resolve_damage_events(ResolutionInputs const inputs) {
         simulation.resolve_damage_events(inputs);
     }
 
     void publish_deaths(ResolutionInputs const inputs) { simulation.publish_deaths(inputs); }
+
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class ResolutionCommitInterface {
+  private:
+    ResolutionCommitInterface(Sim& new_target)
+        : simulation{new_target} {}
 
     void remove_components(ResolutionCommitInputs const inputs) {
         simulation.remove_components(inputs);

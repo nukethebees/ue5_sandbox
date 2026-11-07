@@ -7,20 +7,56 @@
 #include "ioj/sim/player/sim.h"
 
 namespace ioj::sim::player {
-class PhaseInterface {
+class InitialisationInterface {
   private:
-    PhaseInterface(Sim& new_target)
+    InitialisationInterface(Sim& new_target)
         : simulation{new_target} {}
 
     void initialise(PlayerSpawnData const& spawn) { simulation.initialise(spawn); }
 
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class PreparationInterface {
+  private:
+    PreparationInterface(Sim& new_target)
+        : simulation{new_target} {}
+
     void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
+
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class ThinkingInterface {
+  private:
+    ThinkingInterface(Sim& new_target)
+        : simulation{new_target} {}
 
     void think(float const dt) { simulation.think(dt); }
 
+    void generate_fire_commands() { simulation.generate_fire_commands(); }
+
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class ActionInterface {
+  private:
+    ActionInterface(Sim& new_target)
+        : simulation{new_target} {}
+
     void apply_movement(ActionInputs const inputs) { simulation.apply_movement(inputs); }
 
-    void generate_fire_commands() { simulation.generate_fire_commands(); }
+    friend struct sim::LevelSim;
+    Sim& simulation;
+};
+
+class ResolutionInterface {
+  private:
+    ResolutionInterface(Sim& new_target)
+        : simulation{new_target} {}
 
     void resolve_damage_events(ResolutionInputs const inputs) {
         simulation.resolve_damage_events(inputs);

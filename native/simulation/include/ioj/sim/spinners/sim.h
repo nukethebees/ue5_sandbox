@@ -20,7 +20,10 @@ struct SimClock;
 }
 
 namespace ioj::sim::spinners {
-class PhaseInterface;
+class InitialisationInterface;
+class PreparationInterface;
+class ThinkingInterface;
+class ActionInterface;
 class SpawnInterface;
 
 struct Sim {
@@ -67,7 +70,10 @@ struct Sim {
     /* **************************************** */
     void fire_lasers(ThinkingInputs const inputs);
 
-    friend class PhaseInterface;
+    friend class InitialisationInterface;
+    friend class PreparationInterface;
+    friend class ThinkingInterface;
+    friend class ActionInterface;
     friend class SpawnInterface;
     friend struct SpinnerSpawnTestAccess;
 

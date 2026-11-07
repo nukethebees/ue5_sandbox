@@ -44,21 +44,49 @@
   :header "native/simulation/include/ioj/sim/player/phase_interface.h"
   :namespace ioj::sim::player
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade PhaseInterface @player_sim simulation
+  (facade InitialisationInterface @player_sim simulation
     :bind-access private
     :method-access private
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
     (method initialise void
-      (parameter spawn (type-ref @player_spawn_data :suffix " const&")))
+      (parameter spawn (type-ref @player_spawn_data :suffix " const&"))))
+
+  (facade PreparationInterface @player_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method prepare_tick void
-      (parameter dt "float const"))
+      (parameter dt "float const")))
+
+  (facade ThinkingInterface @player_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method think void
       (parameter dt "float const"))
+    (method generate_fire_commands void))
+
+  (facade ActionInterface @player_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method apply_movement void
-      (parameter inputs (type-ref @player_action_inputs :suffix " const")))
-    (method generate_fire_commands void)
+      (parameter inputs (type-ref @player_action_inputs :suffix " const"))))
+
+  (facade ResolutionInterface @player_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method resolve_damage_events void
       (parameter inputs (type-ref @player_resolution_inputs :suffix " const")))))
 
@@ -66,18 +94,39 @@
   :header "native/simulation/include/ioj/sim/lasers/phase_interface.h"
   :namespace ioj::sim::lasers
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade PhaseInterface @lasers_sim simulation
+  (facade InitialisationInterface @lasers_sim simulation
     :bind-access private
     :method-access private
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
     (method initialise void
-      (parameter config (type-ref ioj::sim::LaserSimConfig :suffix " const&")))
-    (method simulate void
-      (parameter inputs (type-ref @lasers_action_inputs :suffix " const")))
+      (parameter config (type-ref ioj::sim::LaserSimConfig :suffix " const&"))))
+
+  (facade PreparationInterface @lasers_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method commit_spawns void
-      (parameter inputs (type-ref @lasers_preparation_inputs :suffix " const")))
+      (parameter inputs (type-ref @lasers_preparation_inputs :suffix " const"))))
+
+  (facade ActionInterface @lasers_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
+    (method simulate void
+      (parameter inputs (type-ref @lasers_action_inputs :suffix " const"))))
+
+  (facade ResolutionCommitInterface @lasers_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method cleanup_entities void
       (parameter inputs (type-ref @lasers_resolution_commit_inputs :suffix " const")))
     (method finish_action void)))
@@ -86,7 +135,7 @@
   :header "native/simulation/include/ioj/sim/capital_ships/phase_interface.h"
   :namespace ioj::sim::capital_ships
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade PhaseInterface @capital_ships_sim simulation
+  (facade InitialisationInterface @capital_ships_sim simulation
     :bind-access private
     :method-access private
     :friends ("sim::LevelSim")
@@ -94,12 +143,33 @@
     :target-storage reference
     (method initialise void
       (parameter max_health @settings_positive_health))
-    (method update_entity_lookup_table void)
-    (method prepare_tick void)
+    (method update_entity_lookup_table void))
+
+  (facade PreparationInterface @capital_ships_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
+    (method prepare_tick void))
+
+  (facade ResolutionInterface @capital_ships_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method resolve_damage_events void
       (parameter inputs (type-ref @capital_ships_resolution_inputs :suffix " const")))
     (method publish_deaths void
-      (parameter inputs (type-ref @capital_ships_resolution_inputs :suffix " const")))
+      (parameter inputs (type-ref @capital_ships_resolution_inputs :suffix " const"))))
+
+  (facade ResolutionCommitInterface @capital_ships_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method remove_components void
       (parameter inputs (type-ref @capital_ships_resolution_commit_inputs :suffix " const")))
     (method remove_entities void
@@ -123,7 +193,7 @@
   :header "native/simulation/include/ioj/sim/fighters/phase_interface.h"
   :namespace ioj::sim::fighters
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade PhaseInterface @fighters_sim simulation
+  (facade InitialisationInterface @fighters_sim simulation
     :bind-access private
     :method-access private
     :friends ("sim::LevelSim")
@@ -132,21 +202,56 @@
     (method initialise void
       (parameter config (type-ref ioj::sim::FighterSimConfig :suffix " const&"))
       (parameter clock (type-ref @sim_clock :suffix " const&")))
-    (method update_entity_lookup_table void)
+    (method update_entity_lookup_table void))
+
+  (facade PreparationInterface @fighters_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method prepare_tick void
       (parameter inputs (type-ref @fighters_preparation_inputs :suffix " const")))
+    (method commit_spawns void
+      (parameter inputs (type-ref @fighters_preparation_inputs :suffix " const"))))
+
+  (facade ThinkingInterface @fighters_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method think void
       (parameter inputs (type-ref @fighters_thinking_inputs :suffix " const")))
-    (method apply_movement void
-      (parameter inputs (type-ref @fighters_action_inputs :suffix " const")))
     (method generate_fire_commands void
-      (parameter inputs (type-ref @fighters_thinking_inputs :suffix " const")))
-    (method commit_spawns void
-      (parameter inputs (type-ref @fighters_preparation_inputs :suffix " const")))
+      (parameter inputs (type-ref @fighters_thinking_inputs :suffix " const"))))
+
+  (facade ActionInterface @fighters_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
+    (method apply_movement void
+      (parameter inputs (type-ref @fighters_action_inputs :suffix " const"))))
+
+  (facade ResolutionInterface @fighters_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method resolve_damage_events void
       (parameter inputs (type-ref @fighters_resolution_inputs :suffix " const")))
     (method publish_deaths void
-      (parameter inputs (type-ref @fighters_resolution_inputs :suffix " const")))
+      (parameter inputs (type-ref @fighters_resolution_inputs :suffix " const"))))
+
+  (facade ResolutionCommitInterface @fighters_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method remove_components void
       (parameter inputs (type-ref @fighters_resolution_commit_inputs :suffix " const")))
     (method remove_entities void
@@ -157,7 +262,7 @@
   :header "native/simulation/include/ioj/sim/turrets/phase_interface.h"
   :namespace ioj::sim::turrets
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade PhaseInterface @turrets_sim simulation
+  (facade InitialisationInterface @turrets_sim simulation
     :bind-access private
     :method-access private
     :friends ("sim::LevelSim")
@@ -166,16 +271,44 @@
     (method initialise void
       (parameter config (type-ref ioj::sim::TurretSimConfig :suffix " const&"))
       (parameter clock (type-ref @sim_clock :suffix " const&")))
-    (method update_entity_lookup_table void)
-    (method prepare_tick void)
+    (method update_entity_lookup_table void))
+
+  (facade PreparationInterface @turrets_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
+    (method prepare_tick void))
+
+  (facade ThinkingInterface @turrets_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method think void
       (parameter inputs (type-ref @turrets_thinking_inputs :suffix " const")))
     (method generate_fire_commands void
-      (parameter inputs (type-ref @turrets_thinking_inputs :suffix " const")))
+      (parameter inputs (type-ref @turrets_thinking_inputs :suffix " const"))))
+
+  (facade ResolutionInterface @turrets_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method resolve_damage_events void
       (parameter inputs (type-ref @turrets_resolution_inputs :suffix " const")))
     (method publish_deaths void
-      (parameter inputs (type-ref @turrets_resolution_inputs :suffix " const")))
+      (parameter inputs (type-ref @turrets_resolution_inputs :suffix " const"))))
+
+  (facade ResolutionCommitInterface @turrets_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method remove_components void
       (parameter inputs (type-ref @turrets_resolution_commit_inputs :suffix " const")))
     (method remove_entities void
@@ -199,7 +332,7 @@
   :header "native/simulation/include/ioj/sim/spinners/phase_interface.h"
   :namespace ioj::sim::spinners
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade PhaseInterface @spinners_sim simulation
+  (facade InitialisationInterface @spinners_sim simulation
     :bind-access private
     :method-access private
     :friends ("sim::LevelSim")
@@ -208,15 +341,36 @@
     (method initialise void
       (parameter config (type-ref ioj::sim::SpinnerSimConfig :suffix " const&"))
       (parameter clock (type-ref @sim_clock :suffix " const&")))
-    (method update_entity_lookup_table void)
+    (method update_entity_lookup_table void))
+
+  (facade PreparationInterface @spinners_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method prepare_tick void
-      (parameter dt "float const"))
+      (parameter dt "float const")))
+
+  (facade ThinkingInterface @spinners_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
     (method think void
       (parameter dt "float const"))
-    (method apply_movement void
-      (parameter inputs (type-ref @spinners_action_inputs :suffix " const")))
     (method generate_fire_commands void
-      (parameter inputs (type-ref @spinners_thinking_inputs :suffix " const")))))
+      (parameter inputs (type-ref @spinners_thinking_inputs :suffix " const"))))
+
+  (facade ActionInterface @spinners_sim simulation
+    :bind-access private
+    :method-access private
+    :friends ("sim::LevelSim")
+    :friend-kind struct
+    :target-storage reference
+    (method apply_movement void
+      (parameter inputs (type-ref @spinners_action_inputs :suffix " const")))))
 
 (module spinners_spawn_interface
   :header "native/simulation/include/ioj/sim/spinners/spawn_interface.h"

@@ -15,7 +15,10 @@ struct LevelSim;
 }
 
 namespace ioj::sim::lasers {
-class PhaseInterface;
+class InitialisationInterface;
+class PreparationInterface;
+class ActionInterface;
+class ResolutionCommitInterface;
 
 struct Sim {
     using LaserSpawnRequests = lasers::LaserSpawnRequests;
@@ -77,7 +80,10 @@ struct Sim {
     /* **************************************** */
     void clear_spawn_buffers();
 
-    friend class PhaseInterface;
+    friend class InitialisationInterface;
+    friend class PreparationInterface;
+    friend class ActionInterface;
+    friend class ResolutionCommitInterface;
 
     LaserSimConfig config_{};
     EntityStorage entities_;
