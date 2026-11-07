@@ -84,6 +84,10 @@ set(expressions_headers
   leaf_data_index.h
   leaf_kind.h
   kill_count.h
+  latch_handle.h
+  latch_memory.h
+  latch_state.h
+  latches.h
 )
 
 list(TRANSFORM expressions_headers PREPEND "../include/ioj/sim/expressions/")
@@ -199,6 +203,7 @@ target_sources(native-simulation
     levels/level_sim.cpp
     telemetry/level_telemetry_manager.cpp
     expressions/expr_manager.cpp
+    expressions/latches.cpp
     missions/mission.cpp
     missions/objectives.cpp
     overlap_handler.cpp

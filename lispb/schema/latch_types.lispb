@@ -1,0 +1,23 @@
+(module latch_state
+  :header "native/simulation/include/ioj/sim/expressions/latch_state.h"
+  :namespace ioj::sim
+  (enum LatchState std::uint8_t
+    :bit-width 2
+    :native-api true :helpers ()
+    (value Unset) (value False) (value True)
+    (projections (cpp))))
+
+(module latch_handle
+  :header "native/simulation/include/ioj/sim/expressions/latch_handle.h"
+  :namespace ioj::sim
+  (record LatchHandle :layout packed :bits 32 :invalid-value 0xffffffff
+    (member index std::uint32_t :bits 32)
+    (projections (cpp :storage std::uint32_t))))
+
+(module latch_memory
+  :header "native/simulation/include/ioj/sim/expressions/latch_memory.h"
+  :namespace ioj::sim
+  (record LatchMemory :layout packed :bits 8
+    (member pending @latch_state)
+    (member cached @latch_state)
+    (projections (cpp :storage std::uint8_t))))

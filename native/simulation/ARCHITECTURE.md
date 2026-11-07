@@ -55,6 +55,19 @@ Initial spawns and recurring carrier production remain separate from these one-s
 Unreal lifecycle and presentation ownership are described in the
 [SpaceGame architecture](../../Plugins/SpaceGame/ARCHITECTURE.md).
 
+## Latch state
+
+`Latches` stores stable expression-input pairs and one byte of state per latch. Its low two bits
+hold a pending capture and the next two hold the cached observation: unset, false or true.
+Evaluation accepts sampled Boolean inputs and writes only the pending field, once. Commit
+publishes captures and swap-removes their handles from the active list without moving latch
+definitions or state. Both fields then agree. Observations always read the cached field.
+
+This is the runtime state foundation. Expression observations and `LevelSim` integration follow
+with the Boolean evaluator conversion; the existing retiring expression evaluator is unchanged.
+The integration order is commit previous captures, evaluate expressions, evaluate active latches,
+then collect triggers. Captures become observable in the following logic cycle.
+
 ## Entity lookup
 
 `EntityId` is the persistent external identity: entity type and type-local lifetime offset.

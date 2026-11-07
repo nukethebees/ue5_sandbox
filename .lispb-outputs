@@ -121,6 +121,9 @@ native/simulation/include/ioj/sim/entities/entity_type.h
 native/simulation/include/ioj/sim/expressions/composite_kind.h
 native/simulation/include/ioj/sim/expressions/expr_handle.h
 native/simulation/include/ioj/sim/expressions/expr_kind.h
+native/simulation/include/ioj/sim/expressions/latch_handle.h
+native/simulation/include/ioj/sim/expressions/latch_memory.h
+native/simulation/include/ioj/sim/expressions/latch_state.h
 native/simulation/include/ioj/sim/expressions/leaf_data_handle.h
 native/simulation/include/ioj/sim/expressions/leaf_handle.h
 native/simulation/include/ioj/sim/expressions/leaf_kind.h
