@@ -222,5 +222,4 @@ class SBXMESHGENLAB_API USbxMeshAssemblyRecipe final : public UObject {
     void set_hierarchy(FName asset_name,
                        TArray<FSbxMeshAssemblyRecipePart> const& assembly_parts,
                        TArray<FSbxMeshAssemblyRecipeGroup> const& assembly_groups);
-    [[nodiscard]] auto to_assembly() const -> std::expected<TArray<FSbxMeshAssemblyPart>, FString>;
 };

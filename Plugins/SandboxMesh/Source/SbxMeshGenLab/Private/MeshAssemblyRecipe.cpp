@@ -315,20 +315,3 @@ void USbxMeshAssemblyRecipe::set_hierarchy(
     parts = assembly_parts;
     groups = assembly_groups;
 }
-
-auto USbxMeshAssemblyRecipe::to_assembly() const
-    -> std::expected<TArray<FSbxMeshAssemblyPart>, FString> {
-    auto hierarchy_parts{parts};
-    auto const is_legacy{
-        SandboxMesh::is_legacy_mesh_assembly_recipe(hierarchy_parts, groups, format_version)};
-    if (is_legacy) {
-        for (auto& part : hierarchy_parts) {
-            part.id = FGuid::NewGuid();
-            part.parent_id.Invalidate();
-        }
-    }
-    return SandboxMesh::resolve_mesh_assembly_hierarchy(
-        hierarchy_parts,
-        is_legacy ? TArray<FSbxMeshAssemblyRecipeGroup>{} : groups,
-        output_asset_name);
-}

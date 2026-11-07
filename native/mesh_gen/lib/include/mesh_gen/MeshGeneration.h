@@ -5,6 +5,8 @@
 #include <ioj/vector.h>
 
 #include <cstdint>
+#include <optional>
+#include <source_location>
 #include <span>
 #include <string>
 #include <string_view>
@@ -56,12 +58,39 @@ struct ValidParameters {
     }
 };
 
+inline constexpr auto parameters_policy{ioj::ConstrainedValuePolicy{
+    ValidParameters{}, "Mesh parameters violate their shape constraints"}};
+
+// Keep the policy value out of native/Unreal function signatures because their mangling differs.
 template <typename Input>
-using CheckedParameters =
-    ioj::ConstrainedValue<Input,
-                          ioj::ConstrainedValuePolicy{
-                              ValidParameters{},
-                              "Mesh parameters violate their shape constraints"}>;
+class CheckedParameters : public ioj::ConstrainedValue<Input, parameters_policy> {
+    using Base = ioj::ConstrainedValue<Input, parameters_policy>;
+
+  public:
+    using Base::Base;
+
+    constexpr CheckedParameters() = default;
+
+    [[nodiscard]] static auto
+        make(Input const& input,
+             std::source_location const location = std::source_location::current())
+            -> CheckedParameters {
+        return CheckedParameters{Base::make(input, location)};
+    }
+
+    [[nodiscard]] static constexpr auto try_make(Input const& input)
+        -> std::optional<CheckedParameters> {
+        auto const checked{Base::try_make(input)};
+        if (!checked) {
+            return std::nullopt;
+        }
+        return CheckedParameters{*checked};
+    }
+
+  private:
+    explicit constexpr CheckedParameters(Base const& checked)
+        : Base{checked} {}
+};
 
 struct BoxInput {
     [[nodiscard]] constexpr auto error() const -> std::string_view {
