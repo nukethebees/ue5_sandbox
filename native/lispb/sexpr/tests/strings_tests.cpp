@@ -1,3 +1,4 @@
+#include <lispb/cpp_identifier.h>
 #include <lispb/strings.h>
 #include <lispb/temporary_string_scope.h>
 
@@ -7,6 +8,33 @@
 #include <string_view>
 
 namespace lispb {
+
+TEST(CppIdentifier, ChecksInternedSpellingAndPreservesContextPolicies) {
+    Strings strings;
+    auto const identifier{CppIdentifier<>::try_make(strings, strings.intern("value_2"))};
+    ASSERT_TRUE(identifier);
+    EXPECT_EQ(strings.view(*identifier), "value_2");
+
+    EXPECT_EQ(CppIdentifier<>::try_make(strings, strings.intern("")).error(),
+              IdentifierError::Empty);
+    EXPECT_EQ(CppIdentifier<>::try_make(strings, strings.intern("2value")).error(),
+              IdentifierError::Malformed);
+    EXPECT_EQ(CppIdentifier<>::try_make(strings, strings.intern("value-name")).error(),
+              IdentifierError::Malformed);
+    for (auto const spelling : {"class", "import", "module", "__name", "_Upper"}) {
+        EXPECT_EQ(CppIdentifier<>::try_make(strings, strings.intern(spelling)).error(),
+                  IdentifierError::Reserved);
+    }
+
+    EXPECT_FALSE(is_cpp_identifier("class", IdentifierPolicy::Keywords));
+    EXPECT_TRUE(is_cpp_identifier("module", IdentifierPolicy::Keywords));
+    EXPECT_TRUE(is_cpp_identifier("_Upper", IdentifierPolicy::Keywords));
+    EXPECT_TRUE(is_cpp_identifier("class", IdentifierPolicy::Lexical));
+    EXPECT_TRUE(is_qualified_cpp_identifier("sample::value", IdentifierPolicy::Declaration));
+    for (auto const spelling : {"::value", "sample::", "sample::::value", "sample::class"}) {
+        EXPECT_FALSE(is_qualified_cpp_identifier(spelling, IdentifierPolicy::Declaration));
+    }
+}
 
 TEST(Strings, DeduplicatesTextAndSourceSlicesWithoutCopyingSourceBytes) {
     Strings strings;

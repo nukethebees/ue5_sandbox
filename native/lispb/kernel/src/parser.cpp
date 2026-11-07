@@ -18,6 +18,7 @@
 #include <kernel_codegen/scalar_type.h>
 #include <kernel_codegen/storage_kind.h>
 #include <kernel_codegen/variant_kind.h>
+#include <lispb/cpp_identifier.h>
 #include <lispb/diagnostics.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
@@ -230,62 +231,11 @@ class Parser {
     }
 
     static auto is_identifier(std::string_view const value) -> bool {
-        static constexpr std::string_view cpp_keywords[]{
-            "alignas",       "alignof",     "and",
-            "and_eq",        "asm",         "auto",
-            "bitand",        "bitor",       "bool",
-            "break",         "case",        "catch",
-            "char",          "char8_t",     "char16_t",
-            "char32_t",      "class",       "compl",
-            "concept",       "const",       "const_cast",
-            "consteval",     "constexpr",   "constinit",
-            "continue",      "co_await",    "co_return",
-            "co_yield",      "decltype",    "default",
-            "delete",        "do",          "double",
-            "dynamic_cast",  "else",        "enum",
-            "explicit",      "export",      "extern",
-            "false",         "float",       "for",
-            "friend",        "goto",        "if",
-            "inline",        "int",         "long",
-            "mutable",       "namespace",   "new",
-            "noexcept",      "not",         "not_eq",
-            "nullptr",       "operator",    "or",
-            "or_eq",         "private",     "protected",
-            "public",        "register",    "reinterpret_cast",
-            "requires",      "return",      "short",
-            "signed",        "sizeof",      "static",
-            "static_assert", "static_cast", "struct",
-            "switch",        "template",    "this",
-            "thread_local",  "throw",       "true",
-            "try",           "typedef",     "typeid",
-            "typename",      "union",       "unsigned",
-            "using",         "virtual",     "void",
-            "volatile",      "wchar_t",     "while",
-            "xor",           "xor_eq",
-        };
-        if (value.empty() || (std::isalpha(static_cast<unsigned char>(value.front())) == 0 &&
-                              value.front() != '_')) {
-            return false;
-        }
-        return std::ranges::find(cpp_keywords, value) == std::end(cpp_keywords) &&
-               std::ranges::all_of(value, [](unsigned char const character) {
-                   return std::isalnum(character) != 0 || character == '_';
-               });
+        return lispb::is_cpp_identifier(value, lispb::IdentifierPolicy::Keywords);
     }
 
     static auto is_qualified_identifier(std::string_view const value) -> bool {
-        std::size_t start{};
-        while (true) {
-            auto const separator{value.find("::", start)};
-            auto const part{value.substr(start, separator - start)};
-            if (!is_identifier(part)) {
-                return false;
-            }
-            if (separator == std::string::npos) {
-                return true;
-            }
-            start = separator + 2;
-        }
+        return lispb::is_qualified_cpp_identifier(value, lispb::IdentifierPolicy::Keywords);
     }
 
     auto parse_expression(FormId const form,
@@ -467,7 +417,10 @@ class Parser {
                 }
                 require_size(field, 3, "'(operand name storage)'");
                 auto operand_name{atom(syntax_.children(field)[1], "expected operand name")};
-                if (!is_identifier(operand_name)) {
+                auto const checked_name{
+                    lispb::CppIdentifier<lispb::IdentifierPolicy::Keywords>::try_make(
+                        syntax_.strings(), syntax_.identifier(syntax_.children(field)[1]))};
+                if (!checked_name) {
                     fail(syntax_.token_span(syntax_.children(field)[1]),
                          "operand name must be a C++ identifier");
                 }
@@ -476,7 +429,7 @@ class Parser {
                          "duplicate operand '" + operand_name + "'");
                 }
                 auto const operand{
-                    document_.operands.add(syntax_.identifier(syntax_.children(field)[1]),
+                    document_.operands.add(*checked_name,
                                            syntax_.token_span(field),
                                            field_kind == OperationField::component_operand)};
                 parse_storage(syntax_.children(field)[2], operand);
