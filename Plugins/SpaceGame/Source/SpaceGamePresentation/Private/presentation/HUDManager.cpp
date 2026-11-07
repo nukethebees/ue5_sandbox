@@ -461,7 +461,7 @@ void FHUDManager::add_world_soft_target(presentation::SoftTargetMarker const& ta
 
     auto const visual{presentation::make_world_soft_target_visual(
         target,
-        entity_overlay_settings_.soft_target,
+        soft_target_selection_settings_,
         soft_target_mesh_vertical_radius_,
         {neutral_color.R, neutral_color.G, neutral_color.B, neutral_color.A},
         {in_range_color.R, in_range_color.G, in_range_color.B, in_range_color.A})};
