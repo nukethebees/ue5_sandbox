@@ -445,7 +445,7 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request)
         metadata.requested_duration_seconds = duration;
         sim::SimClock clock;
         clock.initialise(result->data.clock_settings);
-        auto limit{result->data.level_events.schedule.add_duration_limit(
+        auto limit{result->data.level_events.schedule.add_level_duration_limit(
             result->data.expressions, clock, duration)};
         if (!limit) {
             level_simulation_builder::append_native_errors(limit.error(), errors);

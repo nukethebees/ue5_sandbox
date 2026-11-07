@@ -5,7 +5,6 @@
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/event_trigger.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
-#include <ioj/sim/levels/level_event_types.h>
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
@@ -33,11 +32,12 @@ struct LevelEventSchedule {
                            Duration duration,
                            std::span<EventHandle const> events)
         -> std::expected<void, std::vector<std::string>>;
-    auto add_duration_limit(ExprManager& expressions, SimClock const& clock, Duration duration)
-        -> std::expected<void, std::vector<std::string>>;
+    auto
+        add_level_duration_limit(ExprManager& expressions, SimClock const& clock, Duration duration)
+            -> std::expected<void, std::vector<std::string>>;
 
     // Include future capital/turret spawns when configuring team-dependent subsystems.
-    auto get_participating_teams(std::optional<Team> player_team = {}) const -> TeamList;
+    auto collect_participating_teams(std::optional<Team> player_team = {}) const -> TeamList;
 
     LevelSpawnGroups initial_spawn_groups{};
     LevelSpawnGroups spawn_groups{};

@@ -41,7 +41,7 @@ TEST(LevelEvents, ResolvingTriggersDeliversEachEventOnceAndRetiresTheExpression)
     ASSERT_TRUE(data.schedule.add_timed_trigger(expressions, clock, Duration::make(0.2), early));
     ASSERT_TRUE(data.schedule.add_timed_trigger(expressions, clock, Duration::make(0.3), late));
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
-    manager.activate(expressions);
+    manager.activate_trigger_expressions(expressions);
 
     expressions.evaluate({SimTick{1}, ledger, {}}, mission);
     manager.collect_ready(expressions);
@@ -85,7 +85,7 @@ TEST(LevelEvents, RoutesMixedTriggerEventsToTheirPhases) {
     std::array const events{spawn, pause, stop};
     ASSERT_TRUE(data.schedule.add_timed_trigger(expressions, clock, Duration::make(0.1), events));
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
-    manager.activate(expressions);
+    manager.activate_trigger_expressions(expressions);
 
     expressions.evaluate({SimTick{1}, ledger, {}}, mission);
     manager.collect_ready(expressions);

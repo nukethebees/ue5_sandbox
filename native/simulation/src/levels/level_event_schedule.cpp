@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cstdint>
 #include <format>
+#include <limits>
 #include <optional>
 #include <span>
 #include <vector>
@@ -17,7 +18,7 @@ namespace ioj::sim {
 /* **************************************** */
 // Participating teams
 /* **************************************** */
-auto LevelEventSchedule::get_participating_teams(std::optional<Team> const player_team) const
+auto LevelEventSchedule::collect_participating_teams(std::optional<Team> const player_team) const
     -> TeamList {
     TeamArray<std::uint8_t> included{};
     auto const included_count{included.size()};
@@ -57,8 +58,9 @@ void append(LevelSpawnGroups& storage,
             std::int32_t count) {
     assert(offset >= 0 && count >= 0);
 
+    constexpr auto max_count{std::numeric_limits<LevelEventCount::value_type>::max()};
     while (count > 0) {
-        auto const added{std::min(count, static_cast<std::int32_t>(max_level_event_count))};
+        auto const added{std::min(count, static_cast<std::int32_t>(max_count))};
         auto const index{storage.num()};
         storage.add_uninitialised(1);
         auto const groups{storage.view()};
@@ -114,9 +116,9 @@ auto LevelEventSchedule::add_timed_trigger(ExprManager& expressions,
     add_trigger(expression->handles[0], events);
     return {};
 }
-auto LevelEventSchedule::add_duration_limit(ExprManager& expressions,
-                                            SimClock const& clock,
-                                            Duration const duration)
+auto LevelEventSchedule::add_level_duration_limit(ExprManager& expressions,
+                                                  SimClock const& clock,
+                                                  Duration const duration)
     -> std::expected<void, std::vector<std::string>> {
     std::array const events{add_stop_event(telemetry::RunEndReason::DurationReached)};
     return add_timed_trigger(expressions, clock, duration, events);

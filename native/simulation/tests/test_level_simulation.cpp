@@ -467,7 +467,7 @@ TEST(NativeSimulation, QuantizedDurationPrecedesPauseAndDiscardsPendingSpawns) {
     auto data{make_scheduled_battle()};
     SimClock clock;
     clock.initialise(data.clock_settings);
-    ASSERT_TRUE(data.level_events.schedule.add_duration_limit(
+    ASSERT_TRUE(data.level_events.schedule.add_level_duration_limit(
         data.expressions, clock, Duration::make(0.21)));
     std::array const pause{EventHandle{0, EventKind::Pause}};
     ASSERT_TRUE(data.level_events.schedule.add_timed_trigger(
@@ -513,7 +513,7 @@ TEST(NativeSimulation, PlayerlessMissionCompletionPrecedesDurationPauseAndSpawns
     auto mission{Mission::compile({.objectives = {objective}}, {}, clock, data.expressions)};
     ASSERT_TRUE(mission);
     data.mission = std::move(*mission);
-    ASSERT_TRUE(data.level_events.schedule.add_duration_limit(
+    ASSERT_TRUE(data.level_events.schedule.add_level_duration_limit(
         data.expressions, clock, Duration::make(0.21)));
     std::array const pause{EventHandle{0, EventKind::Pause}};
     ASSERT_TRUE(data.level_events.schedule.add_timed_trigger(
@@ -545,8 +545,8 @@ TEST(NativeSimulation, DurationEventsDoNotRequireTelemetryRecording) {
     data.telemetry_recording.enabled = false;
     SimClock clock;
     clock.initialise(data.clock_settings);
-    ASSERT_TRUE(
-        data.level_events.schedule.add_duration_limit(data.expressions, clock, Duration::make(0)));
+    ASSERT_TRUE(data.level_events.schedule.add_level_duration_limit(
+        data.expressions, clock, Duration::make(0)));
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();

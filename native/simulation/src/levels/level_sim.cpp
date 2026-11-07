@@ -81,7 +81,7 @@ void LevelSim::finish_initialisation() {
     level_telemetry_manager_.initialise();
     mission_.reset_progress();
     expressions_.reset_progress();
-    event_manager_.activate(expressions_);
+    event_manager_.activate_trigger_expressions(expressions_);
     task_manager_.initialise(mission_, expressions_);
 
     clock_.reset();
@@ -114,7 +114,7 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
         data.capital_ships.max_health);
     auto const player_team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
                                                    : std::nullopt};
-    participating_teams_ = event_manager_.data().schedule.get_participating_teams(player_team);
+    participating_teams_ = event_manager_.data().schedule.collect_participating_teams(player_team);
     assert(std::in_range<std::int32_t>(participating_teams_.num()));
     auto const participant_count{static_cast<std::int32_t>(participating_teams_.num())};
     fighter_per_team_limit_ =
@@ -479,10 +479,10 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
                                &collision_pipeline_.queries(),
                                &phase_memory},
                               mission_);
-        auto const completion_count{mission_.completions().size()};
+        auto const was_completed{mission_.mission_completed()};
         auto const changes{
             mission_.evaluate({tick, &phase_memory, participating_teams_}, expressions_)};
-        if (mission_.completions().size() != completion_count) {
+        if (!was_completed && mission_.mission_completed()) {
             event_manager_.enqueue(EventHandle{0, EventKind::MissionCompleted});
         }
         auto const& objectives{mission_.objectives()};

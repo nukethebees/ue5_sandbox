@@ -69,7 +69,7 @@
 
 (type native_level_event_count
   :spelling "LevelEventCount"
-  :header "ioj/sim/levels/level_event_types.h"
+  :header "ioj/sim/levels/level_event_count.h"
   :pass-by value)
 
 (type native_sim_tick

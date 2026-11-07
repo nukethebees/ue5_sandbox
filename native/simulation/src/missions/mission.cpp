@@ -135,9 +135,7 @@ auto Mission::evaluate_objectives(MissionEvaluationContext const& inputs,
                                   ExprManager const& expressions) -> std::span<ObjectiveId const> {
     FrameArray<ObjectiveMembershipIndex> completed{inputs.scratch};
     ObjectiveId winning_objective{};
-    auto const has_winner{std::ranges::any_of(completions_, [](auto const& completion) {
-        return completion.outcome == MissionOutcome::Victory;
-    })};
+    auto const has_winner{mission_completed()};
     auto const active{objectives_.active()};
     auto const count{static_cast<ObjectiveMembershipIndex>(active.size())};
 

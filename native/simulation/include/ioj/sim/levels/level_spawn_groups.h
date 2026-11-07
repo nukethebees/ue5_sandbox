@@ -5,7 +5,7 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_type.h"
-#include "ioj/sim/levels/level_event_types.h"
+#include "ioj/sim/levels/level_event_count.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 

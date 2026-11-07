@@ -34,6 +34,7 @@ class Mission {
     /* **************************************** */
     // Inspection
     /* **************************************** */
+    [[nodiscard]] auto mission_completed() const noexcept -> bool { return !completions_.empty(); }
     auto completions() const -> std::span<TeamMissionCompletion const> { return completions_; }
     auto team_completion(std::optional<Team> team) const -> std::optional<TeamMissionCompletion>;
     auto objectives() const -> Objectives const& { return objectives_; }

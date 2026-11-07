@@ -216,8 +216,10 @@ TEST_F(MissionTest, ReciprocalTeamCompletionsPersistUntilProgressResets) {
     defend.team = Team::Red;
     attack.wins_level = ObjectiveWinsLevel::Yes;
     start({.objectives = {attack, defend}});
+    EXPECT_FALSE(mission.mission_completed());
     tick(0);
     tick(10);
+    EXPECT_TRUE(mission.mission_completed());
     auto const completion{mission.team_completion(Team::Blue)};
     ASSERT_TRUE(completion);
     EXPECT_EQ(completion->outcome, MissionOutcome::Victory);
@@ -231,12 +233,14 @@ TEST_F(MissionTest, ReciprocalTeamCompletionsPersistUntilProgressResets) {
     mission.reset_progress();
     expressions.reset_progress();
     EXPECT_TRUE(mission.completions().empty());
+    EXPECT_FALSE(mission.mission_completed());
     EXPECT_FALSE(mission.team_completion(Team::Blue));
     tick(30);
     tick(40);
     auto const restarted{mission.team_completion(Team::Blue)};
     ASSERT_TRUE(restarted);
     EXPECT_EQ(restarted->tick, SimTick{40});
+    EXPECT_TRUE(mission.mission_completed());
 }
 
 struct TeamMissionCompletionCase {

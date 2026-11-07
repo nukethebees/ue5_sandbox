@@ -12,7 +12,7 @@ class LevelEventManager {
   public:
     explicit LevelEventManager(CompiledLevelEvents data, std::pmr::memory_resource& memory);
 
-    void activate(ExprManager& expressions);
+    void activate_trigger_expressions(ExprManager& expressions);
     void collect_ready(ExprManager& expressions);
     void enqueue(EventHandle event);
     void clear_tick_end_events();

@@ -118,7 +118,6 @@ set(lasers_headers
 list(TRANSFORM lasers_headers PREPEND "../include/ioj/sim/lasers/")
 
 set(levels_headers
-  level_event_types.h
   level_memory_manager.h
   level_read_access.h
   level_sim.h
