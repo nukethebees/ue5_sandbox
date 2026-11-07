@@ -1,25 +1,27 @@
 #include <ioj/sim/expressions/latches.h>
 
+#include <ioj/sim/expressions/expr_manager.h>
+
 #include <cassert>
 #include <cstdint>
 
 namespace ioj::sim {
-auto Latches::add(ExprHandle const when, ExprHandle const value) -> LatchHandle {
-    assert(when.is_valid() && value.is_valid());
+auto Latches::add(LatchInput const input) -> LatchHandle {
+    assert(input.when.is_valid() && input.value.is_valid());
     assert(states_.size() < LatchHandle::invalid_value);
     LatchHandle const handle{static_cast<std::uint32_t>(states_.size())};
 
-    inputs_.push_back({when, value});
+    inputs_.push_back(input);
     states_.emplace_back();
     active_.push_back(handle);
     return handle;
 }
-auto Latches::inputs(LatchHandle const handle) const -> Inputs {
-    assert(handle.index() < inputs_.size());
+auto Latches::inputs(LatchHandle const handle) const -> LatchInput {
+    assert(is_valid(handle));
     return inputs_[handle.index()];
 }
 auto Latches::state(LatchHandle const handle) const -> LatchState {
-    assert(handle.index() < states_.size());
+    assert(is_valid(handle));
     return states_[handle.index()].cached();
 }
 auto Latches::latched_true(LatchHandle const handle) const -> bool {
@@ -28,11 +30,16 @@ auto Latches::latched_true(LatchHandle const handle) const -> bool {
 auto Latches::latched_false(LatchHandle const handle) const -> bool {
     return state(handle) == LatchState::False;
 }
-void Latches::evaluate(LatchHandle const handle, bool const when, bool const value) {
-    assert(handle.index() < states_.size());
-    auto& state{states_[handle.index()]};
-    if (when && state.pending() == LatchState::Unset) {
-        state.set_pending(value ? LatchState::True : LatchState::False);
+void Latches::evaluate(ExprManager const& expressions) {
+    for (auto const handle : active_) {
+        auto const index{handle.index()};
+        auto& state{states_[index]};
+        auto const input{inputs_[index]};
+        if (state.pending() == LatchState::Unset &&
+            expressions.result(input.when) == ExprResult::True) {
+            auto const value{expressions.result(input.value) == ExprResult::True};
+            state.set_pending(value ? LatchState::True : LatchState::False);
+        }
     }
 }
 void Latches::commit() {
@@ -46,5 +53,8 @@ void Latches::commit() {
             active_.pop_back();
         }
     }
+}
+auto Latches::is_valid(LatchHandle const handle) const -> bool {
+    return handle.is_valid() && handle.index() < states_.size();
 }
 }

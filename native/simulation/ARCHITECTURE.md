@@ -59,8 +59,9 @@ Unreal lifecycle and presentation ownership are described in the
 
 `Latches` stores stable expression-input pairs and one byte of state per latch. Its low two bits
 hold a pending capture and the next two hold the cached observation: unset, false or true.
-Evaluation accepts sampled Boolean inputs and writes only the pending field, once. Commit
-publishes captures and swap-removes their handles from the active list without moving latch
+Bulk evaluation reads each active latch's sampled inputs directly from `ExprManager` and writes
+only the pending field, once. While expressions still use `ExprResult`, only `True` is satisfied.
+Commit publishes captures and swap-removes their handles from the active list without moving latch
 definitions or state. Both fields then agree. Observations always read the cached field.
 
 This is the runtime state foundation. Expression observations and `LevelSim` integration follow

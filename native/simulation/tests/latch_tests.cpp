@@ -1,30 +1,59 @@
+#include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/latches.h>
+#include <ioj/sim/missions/mission.h>
+#include <ioj/sim/sim_clock.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <initializer_list>
+#include <utility>
+#include <vector>
 
 namespace ioj::sim::latch_tests {
-inline constexpr auto when_expression{ExprHandle::make_data_composite(CompositeKind::All, 0)};
-inline constexpr auto value_expression{ExprHandle::make_data_composite(CompositeKind::Any, 1)};
+struct ExpressionSamples {
+    ExprManager expressions;
+    std::vector<ExprHandle> handles;
+};
+
+auto sample(std::initializer_list<bool> const values) -> ExpressionSamples {
+    std::vector<levels::MissionExpr> nodes{{levels::AllExpr{}}, {levels::AnyExpr{}}};
+    for (bool const value : values) {
+        nodes.emplace_back(levels::AllExpr{.children = {value ? 0u : 1u}});
+    }
+
+    SimClock clock;
+    EntityLedger ledger;
+    Mission mission;
+    ExpressionSamples result;
+    auto const compiled{result.expressions.append(nodes, {{}, {}, clock}).value()};
+    result.handles.assign(compiled.handles.begin() + 2, compiled.handles.end());
+    result.expressions.activate(compiled.leaves, compiled.composites, SimTick{});
+    result.expressions.evaluate({SimTick{}, ledger, {}}, mission);
+    return result;
+}
 
 TEST(Latches, UnsetUntilEnabledAndCommitted) {
+    auto samples{sample({false, true})};
+    LatchInput const input{samples.handles[0], samples.handles[1]};
     Latches latches;
-    auto const handle{latches.add(when_expression, value_expression)};
-    EXPECT_EQ(latches.inputs(handle).when, when_expression);
-    EXPECT_EQ(latches.inputs(handle).value, value_expression);
+    auto const handle{latches.add(input)};
+    EXPECT_EQ(latches.inputs(handle).when, input.when);
+    EXPECT_EQ(latches.inputs(handle).value, input.value);
     EXPECT_EQ(latches.state(handle), LatchState::Unset);
     EXPECT_FALSE(latches.latched_true(handle));
     EXPECT_FALSE(latches.latched_false(handle));
 
-    latches.evaluate(handle, false, true);
+    latches.evaluate(samples.expressions);
     latches.commit();
     EXPECT_EQ(latches.state(handle), LatchState::Unset);
     EXPECT_EQ(latches.active().size(), 1);
 
-    latches.evaluate(handle, true, true);
+    samples = sample({true, true});
+    latches.evaluate(samples.expressions);
     EXPECT_FALSE(latches.latched_true(handle));
     EXPECT_FALSE(latches.latched_false(handle));
     EXPECT_EQ(latches.active().size(), 1);
@@ -37,15 +66,18 @@ TEST(Latches, UnsetUntilEnabledAndCommitted) {
 
 TEST(Latches, CapturesBothValuesOnlyOnceIncludingBeforeCommit) {
     for (bool const value : {false, true}) {
+        auto samples{sample({true, value})};
         Latches latches;
-        auto const handle{latches.add(when_expression, value_expression)};
-        latches.evaluate(handle, true, value);
-        latches.evaluate(handle, true, !value);
+        auto const handle{latches.add({samples.handles[0], samples.handles[1]})};
+        latches.evaluate(samples.expressions);
+
+        samples = sample({true, !value});
+        latches.evaluate(samples.expressions);
         latches.commit();
         EXPECT_EQ(latches.latched_true(handle), value);
         EXPECT_EQ(latches.latched_false(handle), !value);
 
-        latches.evaluate(handle, true, !value);
+        latches.evaluate(samples.expressions);
         latches.commit();
         EXPECT_EQ(latches.latched_true(handle), value);
         EXPECT_EQ(latches.latched_false(handle), !value);
@@ -54,27 +86,27 @@ TEST(Latches, CapturesBothValuesOnlyOnceIncludingBeforeCommit) {
 
 TEST(Latches, ChainedCapturesReadPreviousCycleRegardlessOfEvaluationOrder) {
     for (bool const reverse : {false, true}) {
+        auto samples{sample({true, false})};
+        LatchInput const first_input{samples.handles[0], samples.handles[0]};
+        LatchInput const second_input{samples.handles[1], samples.handles[0]};
         Latches latches;
-        auto const first{latches.add(when_expression, value_expression)};
-        auto const second{latches.add(when_expression, value_expression)};
-        auto order{std::array{first, second}};
+        auto first{latches.add(reverse ? second_input : first_input)};
+        auto second{latches.add(reverse ? first_input : second_input)};
         if (reverse) {
-            std::ranges::reverse(order);
+            std::swap(first, second);
         }
 
         latches.commit();
-        for (auto const handle : order) {
-            latches.evaluate(handle, handle == first || latches.latched_true(first), true);
-        }
+        samples = sample({true, latches.latched_true(first)});
+        latches.evaluate(samples.expressions);
         EXPECT_FALSE(latches.latched_true(first));
         EXPECT_FALSE(latches.latched_true(second));
 
         latches.commit();
         EXPECT_TRUE(latches.latched_true(first));
         EXPECT_FALSE(latches.latched_true(second));
-        for (auto const handle : latches.active()) {
-            latches.evaluate(handle, latches.latched_true(first), true);
-        }
+        samples = sample({true, latches.latched_true(first)});
+        latches.evaluate(samples.expressions);
         EXPECT_FALSE(latches.latched_true(second));
 
         latches.commit();
@@ -84,11 +116,14 @@ TEST(Latches, ChainedCapturesReadPreviousCycleRegardlessOfEvaluationOrder) {
 }
 
 TEST(Latches, CapturedValueAlsoReadsOnlyCommittedState) {
+    auto samples{sample({true, false})};
     Latches latches;
-    auto const first{latches.add(when_expression, value_expression)};
-    auto const second{latches.add(when_expression, value_expression)};
-    latches.evaluate(first, true, true);
-    latches.evaluate(second, true, latches.latched_true(first));
+    auto const first{latches.add({samples.handles[0], samples.handles[0]})};
+    auto const second{latches.add({samples.handles[0], samples.handles[1]})};
+    samples = sample({true, latches.latched_true(first)});
+    latches.evaluate(samples.expressions);
+    EXPECT_FALSE(latches.latched_true(first));
+    EXPECT_FALSE(latches.latched_false(second));
     latches.commit();
 
     EXPECT_TRUE(latches.latched_true(first));
@@ -96,14 +131,16 @@ TEST(Latches, CapturedValueAlsoReadsOnlyCommittedState) {
 }
 
 TEST(Latches, RetirementPreservesUncapturedEntriesAndStableHandles) {
+    auto samples{sample({true, false, true, false})};
     Latches latches;
-    std::array<LatchHandle, 4> handles;
-    for (auto& handle : handles) {
-        handle = latches.add(when_expression, value_expression);
-    }
+    std::array const handles{
+        latches.add({samples.handles[0], samples.handles[1]}),
+        latches.add({samples.handles[1], samples.handles[0]}),
+        latches.add({samples.handles[2], samples.handles[0]}),
+        latches.add({samples.handles[3], samples.handles[0]}),
+    };
 
-    latches.evaluate(handles[0], true, false);
-    latches.evaluate(handles[2], true, true);
+    latches.evaluate(samples.expressions);
     latches.commit();
     ASSERT_EQ(latches.active().size(), 2);
     EXPECT_TRUE(std::ranges::contains(latches.active(), handles[1]));
@@ -111,9 +148,8 @@ TEST(Latches, RetirementPreservesUncapturedEntriesAndStableHandles) {
     EXPECT_TRUE(latches.latched_false(handles[0]));
     EXPECT_TRUE(latches.latched_true(handles[2]));
 
-    for (auto const handle : latches.active()) {
-        latches.evaluate(handle, true, true);
-    }
+    samples = sample({true, true, true, true});
+    latches.evaluate(samples.expressions);
     latches.commit();
     EXPECT_TRUE(latches.active().empty());
     EXPECT_TRUE(latches.latched_false(handles[0]));
@@ -123,16 +159,17 @@ TEST(Latches, RetirementPreservesUncapturedEntriesAndStableHandles) {
 }
 
 TEST(Latches, SeparateInstancesStartUnsetAndDoNotShareCaptures) {
+    auto const samples{sample({true, false})};
     Latches first;
-    auto const first_handle{first.add(when_expression, value_expression)};
+    auto const first_handle{first.add({samples.handles[0], samples.handles[0]})};
     Latches second;
-    auto const second_handle{second.add(when_expression, value_expression)};
-    first.evaluate(first_handle, true, true);
+    auto const second_handle{second.add({samples.handles[0], samples.handles[1]})};
+    first.evaluate(samples.expressions);
     second.commit();
     EXPECT_EQ(second.state(second_handle), LatchState::Unset);
 
     first.commit();
-    second.evaluate(second_handle, true, false);
+    second.evaluate(samples.expressions);
     second.commit();
     EXPECT_TRUE(first.latched_true(first_handle));
     EXPECT_TRUE(second.latched_false(second_handle));
