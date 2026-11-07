@@ -123,7 +123,7 @@ auto add_player_spawn(SimulationScenario& data, player::PlayerSpawnData spawn) -
         .position = spawn.transform.location,
         .rotation = spawn.transform.rotator(),
     });
-    data.runtime.player.emplace(std::move(spawn));
+    data.runtime.player.emplace(spawn);
     return index;
 }
 auto add_capital_spawn(SimulationScenario& data,
