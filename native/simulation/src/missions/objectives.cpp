@@ -35,7 +35,8 @@ Objectives::Objectives(std::size_t const count)
     , roots_(count)
     , leaf_ranges_(count)
     , composite_ranges_(count)
-    , prerequisite_ranges_(count) {
+    , prerequisite_ranges_(count)
+    , timer_ranges_(count) {
     assert(count <= ObjectiveId::invalid_value);
     reset_progress();
 }
@@ -81,5 +82,14 @@ void Objectives::add_prerequisites(ObjectiveId const id,
     at(prerequisite_ranges_, id) = {static_cast<std::uint32_t>(prerequisites_.size()),
                                     static_cast<std::uint32_t>(prerequisites.size())};
     prerequisites_.append_range(prerequisites);
+}
+auto Objectives::timers(ObjectiveId const id) const -> std::span<TimerHandle const> {
+    auto const range{at(timer_ranges_, id)};
+    return std::span<TimerHandle const>{timers_}.subspan(range.offset, range.count);
+}
+void Objectives::add_timers(ObjectiveId const id, std::span<TimerHandle const> const timers) {
+    at(timer_ranges_, id) = {static_cast<std::uint32_t>(timers_.size()),
+                             static_cast<std::uint32_t>(timers.size())};
+    timers_.append_range(timers);
 }
 }

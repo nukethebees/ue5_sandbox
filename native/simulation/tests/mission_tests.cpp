@@ -2,6 +2,7 @@
 #include <ioj/levels/mission_validation.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/expressions/expr_manager.h>
+#include <ioj/sim/expressions/timers.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -19,13 +20,15 @@ struct MissionTest : ::testing::Test {
     EntityLedger ledger;
     Mission mission;
     ExprManager expressions;
+    Timers timers;
     std::array<Team, 2> teams{Team::Blue, Team::Red};
     FrameMemoryResource scratch{4096};
 
     MissionTest() { clock.initialise({.tick_rate = Frequency::make(10.0)}); }
     void start(MissionDefinition const& definition) {
         expressions = ExprManager{};
-        auto compiled{Mission::compile(definition, {}, clock, expressions)};
+        timers = Timers{};
+        auto compiled{Mission::compile(definition, {}, clock, expressions, timers)};
         ASSERT_TRUE(compiled.has_value()) << (compiled ? "" : compiled.error().front());
         mission = std::move(*compiled);
         mission.reset_progress();
@@ -33,14 +36,17 @@ struct MissionTest : ::testing::Test {
     }
     void tick(SimTick::value_type const tick) {
         FrameScratchScope scratch_scope{scratch};
-        expressions.evaluate({SimTick{tick}, ledger, {}, nullptr, &scratch}, mission);
+        expressions.evaluate({SimTick{tick}, ledger, timers, {}, nullptr, &scratch}, mission);
         auto const changes{mission.evaluate({SimTick{tick}, &scratch, teams}, expressions)};
         auto const& objectives{mission.objectives()};
         for (auto const id : changes.completed) {
             expressions.deactivate(objectives.leaves(id), objectives.composites(id));
         }
         for (auto const id : changes.activated) {
-            expressions.activate(objectives.leaves(id), objectives.composites(id), SimTick{tick});
+            expressions.activate(objectives.leaves(id), objectives.composites(id));
+            for (auto const timer : objectives.timers(id)) {
+                timers.start(timer, SimTick{tick});
+            }
         }
     }
 };
@@ -108,7 +114,7 @@ TEST_F(MissionTest, RelativeTimerStartsOnlyAfterAllMatchingPrerequisites) {
     EXPECT_FALSE(mission.outcome(ObjectiveId{3}, expressions));
 }
 
-TEST_F(MissionTest, TeamCompletionsPersistUntilProgressResets) {
+TEST_F(MissionTest, TeamCompletionsPersistUntilFreshConstruction) {
     auto winner{objective("winner", timer(1))};
     winner.wins_level = ObjectiveWinsLevel::Yes;
     start({.objectives = {winner}});
@@ -129,8 +135,7 @@ TEST_F(MissionTest, TeamCompletionsPersistUntilProgressResets) {
     EXPECT_EQ(mission.team_completion(Team::Blue)->tick, victory->tick);
     EXPECT_EQ(mission.completions().size(), 2);
 
-    mission.reset_progress();
-    expressions.reset_progress();
+    start({.objectives = {winner}});
     EXPECT_FALSE(mission.mission_completed());
     EXPECT_TRUE(mission.completions().empty());
     tick(30);
@@ -185,6 +190,7 @@ TEST(MissionValidation, DistinguishesObservationFromActivationCyclesAndRejectsIn
     std::array const names{levels::EntityId{"target"}};
     SimClock clock;
     ExprManager expressions;
-    EXPECT_FALSE(Mission::compile({.objectives = {a}}, names, clock, expressions));
+    Timers timers;
+    EXPECT_FALSE(Mission::compile({.objectives = {a}}, names, clock, expressions, timers));
 }
 }

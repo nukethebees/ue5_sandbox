@@ -46,8 +46,8 @@ auto compile_level(LevelDefinition const& level,
         for (auto const& entity : definition.entities()) {
             entities.push_back(entity.id);
         }
-        auto mission{
-            sim::Mission::compile(*definition.mission(), entities, clock, compiled.expressions)};
+        auto mission{sim::Mission::compile(
+            *definition.mission(), entities, clock, compiled.expressions, compiled.timers)};
         if (!mission) {
             return std::unexpected{std::move(mission.error())};
         }
@@ -142,7 +142,7 @@ auto compile_level(LevelDefinition const& level,
             std::array const events{schedule.add_spawn_event(
                 {group_offset, schedule.spawn_groups.num() - group_offset})};
             auto trigger{schedule.add_timed_trigger(
-                compiled.expressions, clock, Duration::make(seconds), events)};
+                compiled.expressions, compiled.timers, clock, Duration::make(seconds), events)};
             if (!trigger) {
                 return std::unexpected{std::move(trigger.error())};
             }

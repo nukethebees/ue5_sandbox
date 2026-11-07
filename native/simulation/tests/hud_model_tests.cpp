@@ -26,7 +26,8 @@ auto defence_mission(LevelSimInitData& data) -> Mission {
         Mission::compile(definition,
                          std::array{levels::EntityId{"defended"}, levels::EntityId{"enemy"}},
                          clock,
-                         data.expressions)};
+                         data.expressions,
+                         data.timers)};
     assert(compiled);
     return std::move(*compiled);
 }

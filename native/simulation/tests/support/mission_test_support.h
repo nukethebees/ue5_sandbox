@@ -28,7 +28,7 @@ inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition 
     }
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{Mission::compile(definition, names, clock, data.expressions)};
+    auto compiled{Mission::compile(definition, names, clock, data.expressions, data.timers)};
     ASSERT_TRUE(compiled.has_value());
     data.mission = std::move(*compiled);
 }

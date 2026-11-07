@@ -88,6 +88,8 @@ set(expressions_headers
   latch_memory.h
   latch_state.h
   latches.h
+  timer_handle.h
+  timers.h
 )
 
 list(TRANSFORM expressions_headers PREPEND "../include/ioj/sim/expressions/")
@@ -204,6 +206,7 @@ target_sources(native-simulation
     telemetry/level_telemetry_manager.cpp
     expressions/expr_manager.cpp
     expressions/latches.cpp
+    expressions/timers.cpp
     missions/mission.cpp
     missions/objectives.cpp
     overlap_handler.cpp

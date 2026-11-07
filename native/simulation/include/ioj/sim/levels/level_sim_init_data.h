@@ -8,6 +8,7 @@
 #include <ioj/sim/collision/collision_init_data.h>
 #include <ioj/sim/entities/team_list.h>
 #include <ioj/sim/expressions/expr_manager.h>
+#include <ioj/sim/expressions/timers.h>
 #include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/levels/compiled_level_events.h>
@@ -35,6 +36,7 @@ struct LevelSimInitData {
     CompiledLevelEvents level_events;
     Mission mission;
     ExprManager expressions;
+    Timers timers;
     levels::LevelMetadata level_metadata;
 
     CollisionInitData collision;

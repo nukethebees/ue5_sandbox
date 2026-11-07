@@ -110,6 +110,7 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     check(compiled);
     data.level_events = std::move(compiled->events);
     data.expressions = std::move(compiled->expressions);
+    data.timers = std::move(compiled->timers);
     data.level_metadata = std::move(compiled->level_metadata);
     return data;
 }
@@ -126,7 +127,8 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
     std::array const ids{ioj::levels::EntityId{"hero"}, ioj::levels::EntityId{"enemy"}};
     ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{ioj::sim::Mission::compile(definition, ids, clock, data.expressions)};
+    auto compiled{
+        ioj::sim::Mission::compile(definition, ids, clock, data.expressions, data.timers)};
     check(compiled);
     data.mission = std::move(*compiled);
 }

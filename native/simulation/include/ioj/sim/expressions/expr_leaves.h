@@ -5,10 +5,10 @@
 #include <ioj/sim/expressions/kill_count.h>
 #include <ioj/sim/expressions/leaf_data_handle.h>
 #include <ioj/sim/expressions/leaf_handle.h>
+#include <ioj/sim/expressions/timer_handle.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/level_entity_index.h>
 #include <ioj/sim/missions/objective_id.h>
-#include <ioj/sim/sim_tick.h>
 #include <ioj/vector.h>
 
 #include <algorithm>
@@ -19,7 +19,6 @@ namespace ioj::sim {
 struct ExprLeaves {
     void reset_progress() {
         std::ranges::fill(results, ExprResult::Pending);
-        std::ranges::fill(activated_at, SimTick{});
         active.clear();
     }
 
@@ -39,8 +38,7 @@ struct ExprLeaves {
     std::vector<double> radius_squared;
 
     // TimeElapsed
-    std::vector<SimTick> durations;
-    std::vector<SimTick> activated_at;
+    std::vector<TimerHandle> timers;
 
     // ObjectiveResolved
     std::vector<ObjectiveId> observed_objectives;

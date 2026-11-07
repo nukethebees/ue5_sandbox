@@ -17,8 +17,8 @@ namespace ioj::sim {
 auto Mission::compile(levels::MissionDefinition const& definition,
                       std::span<levels::EntityId const> const entities,
                       SimClock const& clock,
-                      ExprManager& expressions)
-    -> std::expected<Mission, std::vector<std::string>> {
+                      ExprManager& expressions,
+                      Timers& timers) -> std::expected<Mission, std::vector<std::string>> {
     auto errors{levels::validate_mission(definition, entities)};
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
@@ -58,12 +58,14 @@ auto Mission::compile(levels::MissionDefinition const& definition,
         }
         result.objectives_.add_prerequisites(owner, prerequisites);
 
-        auto compiled{expressions.append(source.expressions, {entity_indices, objectives, clock})};
+        auto compiled{
+            expressions.append(source.expressions, {entity_indices, objectives, clock, timers})};
         if (!compiled) {
             return std::unexpected{std::move(compiled.error())};
         }
         columns.leaf_ranges[row] = compiled->leaves;
         columns.composite_ranges[row] = compiled->composites;
+        result.objectives_.add_timers(owner, compiled->timers);
 
         for (auto const root : EnumTraits<ObjectiveOutcome>::values) {
             if (source.roots[root] != levels::absent_expression) {

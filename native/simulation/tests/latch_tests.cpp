@@ -1,6 +1,7 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/latches.h>
+#include <ioj/sim/expressions/timers.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -25,13 +26,14 @@ auto sample(std::initializer_list<bool> const values) -> ExpressionSamples {
     }
 
     SimClock clock;
+    Timers timers;
     EntityLedger ledger;
     Mission mission;
     ExpressionSamples result;
-    auto const compiled{result.expressions.append(nodes, {{}, {}, clock}).value()};
+    auto const compiled{result.expressions.append(nodes, {{}, {}, clock, timers}).value()};
     result.handles.assign(compiled.handles.begin() + 2, compiled.handles.end());
-    result.expressions.activate(compiled.leaves, compiled.composites, SimTick{});
-    result.expressions.evaluate({SimTick{}, ledger, {}}, mission);
+    result.expressions.activate(compiled.leaves, compiled.composites);
+    result.expressions.evaluate({SimTick{}, ledger, timers, {}}, mission);
     return result;
 }
 

@@ -37,6 +37,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     , spinners_simulation_{entity_tables_}
     , mission_{std::move(data.mission)}
     , expressions_{std::move(data.expressions)}
+    , timers_{std::move(data.timers)}
     , level_metadata_{std::move(data.level_metadata)}
     , event_manager_{std::move(data.level_events), memory_manager_.level_memory()}
     , spawn_manager_{
@@ -87,6 +88,9 @@ void LevelSim::finish_initialisation() {
     mission_.reset_progress();
     expressions_.reset_progress();
     event_manager_.activate_trigger_expressions(expressions_);
+    for (auto const timer : event_manager_.data().schedule.initial_timers) {
+        timers_.start(timer, SimTick{});
+    }
     task_manager_.initialise(mission_, expressions_);
 
     clock_.reset();
@@ -465,6 +469,7 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
             {
                 tick,
                 entity_ledger_,
+                timers_,
                 spawn_manager_.entity_ids(),
                 &collision_pipeline_.queries(),
                 &phase_memory,
@@ -481,7 +486,10 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
             expressions_.deactivate(objectives.leaves(id), objectives.composites(id));
         }
         for (auto const id : changes.activated) {
-            expressions_.activate(objectives.leaves(id), objectives.composites(id), tick);
+            expressions_.activate(objectives.leaves(id), objectives.composites(id));
+            for (auto const timer : objectives.timers(id)) {
+                timers_.start(timer, tick);
+            }
         }
         event_manager_.collect_ready(expressions_);
     }

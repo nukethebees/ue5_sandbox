@@ -1,6 +1,7 @@
 #pragma once
 #include <ioj/duration.h>
 #include <ioj/sim/entities/team_list.h>
+#include <ioj/sim/expressions/timer_handle.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/event_trigger.h>
@@ -20,6 +21,7 @@
 namespace ioj::sim {
 class ExprManager;
 struct SimClock;
+class Timers;
 
 struct LevelEventSchedule {
     void add_initial_spawn_group(EntityType type, std::int32_t offset, std::int32_t count);
@@ -28,13 +30,16 @@ struct LevelEventSchedule {
     [[nodiscard]] auto add_stop_event(telemetry::RunEndReason reason) -> EventHandle;
     void add_trigger(ExprHandle condition, std::span<EventHandle const> events);
     auto add_timed_trigger(ExprManager& expressions,
+                           Timers& timers,
                            SimClock const& clock,
                            Duration duration,
                            std::span<EventHandle const> events)
         -> std::expected<void, std::vector<std::string>>;
-    auto
-        add_level_duration_limit(ExprManager& expressions, SimClock const& clock, Duration duration)
-            -> std::expected<void, std::vector<std::string>>;
+    auto add_level_duration_limit(ExprManager& expressions,
+                                  Timers& timers,
+                                  SimClock const& clock,
+                                  Duration duration)
+        -> std::expected<void, std::vector<std::string>>;
 
     // Include future capital/turret spawns when configuring team-dependent subsystems.
     auto collect_participating_teams(std::optional<Team> player_team = {}) const -> TeamList;
@@ -48,5 +53,6 @@ struct LevelEventSchedule {
     std::vector<EventHandle> trigger_events{};
     std::vector<IndexSpan> spawn_events{};
     std::vector<telemetry::RunEndReason> stop_events{};
+    std::vector<TimerHandle> initial_timers{};
 };
 }

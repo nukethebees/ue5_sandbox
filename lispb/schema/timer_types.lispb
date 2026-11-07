@@ -1,0 +1,6 @@
+(module timer_handle
+  :header "native/simulation/include/ioj/sim/expressions/timer_handle.h"
+  :namespace ioj::sim
+  (record TimerHandle :layout packed :bits 32 :invalid-value 0xffffffff
+    (member index std::uint32_t :bits 32)
+    (projections (cpp :storage std::uint32_t))))

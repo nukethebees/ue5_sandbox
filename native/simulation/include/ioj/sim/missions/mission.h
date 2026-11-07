@@ -13,6 +13,7 @@
 namespace ioj::sim {
 class ExprManager;
 struct SimClock;
+class Timers;
 
 class Mission {
   public:
@@ -24,8 +25,8 @@ class Mission {
     static auto compile(levels::MissionDefinition const& definition,
                         std::span<levels::EntityId const> entities,
                         SimClock const& clock,
-                        ExprManager& expressions)
-        -> std::expected<Mission, std::vector<std::string>>;
+                        ExprManager& expressions,
+                        Timers& timers) -> std::expected<Mission, std::vector<std::string>>;
 
     void reset_progress();
     auto evaluate(MissionEvaluationContext const& inputs, ExprManager const& expressions)

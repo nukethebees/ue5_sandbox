@@ -173,6 +173,7 @@ struct LevelSim {
     tasks::TaskManager task_manager_;
     Mission mission_;
     ExprManager expressions_;
+    Timers timers_;
     levels::LevelMetadata level_metadata_;
     LevelEventManager event_manager_;
     LevelSpawnManager spawn_manager_;

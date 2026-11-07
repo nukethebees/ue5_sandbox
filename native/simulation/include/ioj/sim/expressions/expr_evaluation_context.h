@@ -12,10 +12,12 @@ namespace ioj::sim {
 struct EntityId;
 class EntityLedger;
 struct SpatialQueryManager;
+class Timers;
 
 struct ExprEvaluationContext {
     SimTick tick{};
     EntityLedger const& ledger;
+    Timers const& timers;
     std::span<EntityId const> entities;
     SpatialQueryManager const* spatial{};
     FrameMemoryResource* scratch{};

@@ -55,6 +55,19 @@ Initial spawns and recurring carrier production remain separate from these one-s
 Unreal lifecycle and presentation ownership are described in the
 [SpaceGame architecture](../../Plugins/SpaceGame/ARCHITECTURE.md).
 
+## Timer state
+
+`LevelSim` owns `Timers` independently of expression storage. Each timer has a duration in
+simulation ticks and an optional start tick. Starting records that tick once; repeated starts
+do nothing. Elapsed observations stay false until started and the duration has passed. Timers
+have no reset operation; a fresh level owns fresh timer state.
+
+Compilation gives `TimeElapsed` leaves timer handles and records which callers start them.
+Scheduled-event timers start at tick zero during level initialisation. Objective timers start
+when their objective activates. Expression activation only schedules evaluation and does not
+start or restart timers. Expressions retain the current `Pending`/`True` semantics until the
+Boolean conversion; starting a timer becomes visible on the next expression evaluation.
+
 ## Latch state
 
 `Latches` stores stable expression-input pairs and one byte of state per latch. Its low two bits

@@ -5,6 +5,7 @@
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/expressions/timers.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/vector_value_math.h>
@@ -139,7 +140,7 @@ auto ExprManager::append(std::span<levels::MissionExpr const> const expressions,
             case levels::ExprType::TimeElapsed: {
                 auto const& condition{std::get<levels::TimeElapsedExpr>(expression.payload)};
                 kind = LeafKind::TimeElapsed;
-                data_index = static_cast<LeafDataIndex>(leaves.durations.size());
+                data_index = static_cast<LeafDataIndex>(leaves.timers.size());
 
                 auto const ticks{condition.seconds.get() * ctx.clock.tick_rate().hz()};
                 if (ticks >= static_cast<double>(std::numeric_limits<SimTick::value_type>::max())) {
@@ -147,10 +148,11 @@ auto ExprManager::append(std::span<levels::MissionExpr const> const expressions,
                         std::vector<std::string>{"Expression timer exceeds tick range"}};
                 }
 
-                leaves.durations.emplace_back(
+                auto const timer{ctx.timers.add(SimTick{
                     ctx.clock.duration_to_tick_period(Duration::make(condition.seconds.get()))
-                        .get());
-                leaves.activated_at.emplace_back();
+                        .get()})};
+                leaves.timers.push_back(timer);
+                compiled.timers.push_back(timer);
                 break;
             }
 
@@ -201,12 +203,12 @@ void ExprManager::reset_progress() {
     leaves_.reset_progress();
     composites_.reset_progress();
 }
-void ExprManager::activate(ExprHandle const root, SimTick const tick) {
+void ExprManager::activate(ExprHandle const root) {
     visit_expression_tree(root, [&](ExprHandle const node) {
         if (node.kind() == ExprKind::Leaf) {
-            activate({node.data_leaf().index(), 1}, {}, tick);
+            activate({node.data_leaf().index(), 1}, {});
         } else {
-            activate({}, {node.data_composite_index(), 1}, tick);
+            activate({}, {node.data_composite_index(), 1});
         }
     });
 
@@ -226,13 +228,10 @@ void ExprManager::deactivate(ExprHandle const root) {
         }
     });
 }
-void ExprManager::activate(IndexSpan const leaves, IndexSpan const composites, SimTick const tick) {
+void ExprManager::activate(IndexSpan const leaves, IndexSpan const composites) {
     auto const leaves_end{leaves.end()};
     for (LeafIndex leaf{leaves.start()}; leaf < leaves_end; ++leaf) {
         auto const data_handle{leaves_.data_handles[leaf]};
-        if (data_handle.kind() == LeafKind::TimeElapsed) {
-            leaves_.activated_at[data_handle.index()] = tick;
-        }
         leaves_.active.emplace_back(leaf, data_handle.kind());
     }
 
@@ -373,10 +372,7 @@ void ExprManager::evaluate_elapsed(std::span<LeafHandle const> const run,
     for (auto const handle : run) {
         auto const leaf{handle.index()};
         auto const data{leaves.data_handles[leaf].index()};
-        auto const activated{leaves.activated_at[data]};
-        assert(inputs.tick >= activated);
-
-        if (inputs.tick.value() - activated.value() >= leaves.durations[data].value()) {
+        if (inputs.timers.elapsed(leaves.timers[data], inputs.tick)) {
             resolve_leaf(leaf, ExprResult::True);
         }
     }

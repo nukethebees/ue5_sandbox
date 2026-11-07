@@ -20,7 +20,7 @@ LevelEventManager::LevelEventManager(CompiledLevelEvents data, std::pmr::memory_
 
 void LevelEventManager::activate_trigger_expressions(ExprManager& expressions) {
     for (auto const& trigger : data_.schedule.pending_triggers) {
-        expressions.activate(trigger.condition, SimTick{});
+        expressions.activate(trigger.condition);
     }
 }
 

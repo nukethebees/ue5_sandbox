@@ -195,6 +195,7 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
     inputs.level_events = std::move(compiled->events);
     inputs.mission = std::move(compiled->mission);
     inputs.expressions = std::move(compiled->expressions);
+    inputs.timers = std::move(compiled->timers);
     inputs.level_metadata = std::move(compiled->level_metadata);
     if (auto valid{validate_level_simulation_init_data(inputs)}; !valid) {
         return std::unexpected{std::move(valid.error())};

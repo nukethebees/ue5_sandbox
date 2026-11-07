@@ -29,6 +29,7 @@ inline void add_timed_spawn(LevelSimInitData& data,
     std::array const events{schedule.add_spawn_event({first, schedule.spawn_groups.num() - first})};
     ASSERT_TRUE(schedule.add_timed_trigger(
         data.expressions,
+        data.timers,
         clock,
         Duration::make(simulation_time(trigger_tick, clock.tick_period())),
         events));

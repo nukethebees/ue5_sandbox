@@ -219,6 +219,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     data.level_events = std::move(compiled->events);
     data.mission = std::move(compiled->mission);
     data.expressions = std::move(compiled->expressions);
+    data.timers = std::move(compiled->timers);
     data.level_metadata = std::move(compiled->level_metadata);
 
     if (options.fighter_stress_cap.has_value()) {

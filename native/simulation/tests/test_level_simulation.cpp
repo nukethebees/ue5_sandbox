@@ -91,6 +91,7 @@ auto make_scheduled_battle() -> LevelSimInitData {
     assert(compiled);
     data.level_events = std::move(compiled->events);
     data.expressions = std::move(compiled->expressions);
+    data.timers = std::move(compiled->timers);
     data.level_metadata = std::move(compiled->level_metadata);
     return data;
 }
@@ -342,6 +343,7 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     data.level_events = std::move(compiled->events);
     data.mission = std::move(compiled->mission);
     data.expressions = std::move(compiled->expressions);
+    data.timers = std::move(compiled->timers);
     data.level_metadata = std::move(compiled->level_metadata);
     LevelSim simulation{std::move(data)};
     auto const& metadata{simulation.level_metadata()};
@@ -388,7 +390,7 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     definition.objectives[1].wins_level = ObjectiveWinsLevel::Yes;
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{Mission::compile(definition, {}, clock, data.expressions)};
+    auto compiled{Mission::compile(definition, {}, clock, data.expressions, data.timers)};
     ASSERT_TRUE(compiled);
     data.mission = std::move(*compiled);
     LevelSim simulation{std::move(data)};
@@ -426,7 +428,8 @@ TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumed
     auto const first{schedule.add_spawn_event({0, 1})};
     auto const second{schedule.add_spawn_event({1, 1})};
     std::array const events{second, first};
-    ASSERT_TRUE(schedule.add_timed_trigger(data.expressions, clock, Duration::make(0), events));
+    ASSERT_TRUE(schedule.add_timed_trigger(
+        data.expressions, data.timers, clock, Duration::make(0), events));
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
@@ -455,7 +458,7 @@ TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendin
     EventHandle const pause{0, EventKind::Pause};
     std::array const events{pause, first, second, pause};
     ASSERT_TRUE(data.level_events.schedule.add_timed_trigger(
-        data.expressions, clock, Duration::make(0.21), events));
+        data.expressions, data.timers, clock, Duration::make(0.21), events));
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
@@ -501,14 +504,15 @@ TEST(NativeSimulation, PlayerlessMissionCompletionStopsDispatchAndRetainsLaterEv
     objective.roots[ObjectiveOutcome::Passed] = 0;
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto mission{Mission::compile({.objectives = {objective}}, {}, clock, data.expressions)};
+    auto mission{
+        Mission::compile({.objectives = {objective}}, {}, clock, data.expressions, data.timers)};
     ASSERT_TRUE(mission);
     data.mission = std::move(*mission);
     ASSERT_TRUE(data.level_events.schedule.add_level_duration_limit(
-        data.expressions, clock, Duration::make(0.21)));
+        data.expressions, data.timers, clock, Duration::make(0.21)));
     std::array const pause{EventHandle{0, EventKind::Pause}};
     ASSERT_TRUE(data.level_events.schedule.add_timed_trigger(
-        data.expressions, clock, Duration::make(0.21), pause));
+        data.expressions, data.timers, clock, Duration::make(0.21), pause));
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
@@ -540,7 +544,7 @@ TEST(NativeSimulation, DurationEventsDoNotRequireTelemetryRecording) {
     SimClock clock;
     clock.initialise(data.clock_settings);
     ASSERT_TRUE(data.level_events.schedule.add_level_duration_limit(
-        data.expressions, clock, Duration::make(0)));
+        data.expressions, data.timers, clock, Duration::make(0)));
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
@@ -567,7 +571,7 @@ TEST(NativeSimulation, QueuedPausePreservesPendingSpawnsAndTelemetryUntilResume)
     clock.initialise(data.clock_settings);
     std::array const pause{EventHandle{0, EventKind::Pause}};
     ASSERT_TRUE(data.level_events.schedule.add_timed_trigger(
-        data.expressions, clock, Duration::make(0.21), pause));
+        data.expressions, data.timers, clock, Duration::make(0.21), pause));
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
