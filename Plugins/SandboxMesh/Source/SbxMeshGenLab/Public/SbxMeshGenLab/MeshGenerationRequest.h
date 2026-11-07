@@ -10,6 +10,7 @@
 #include "SbxMeshGenLab/MeshMaterialRole.h"
 #include "SbxMeshGenLab/SphereGenerator.h"
 #include "SbxMeshGenLab/WedgeGenerator.h"
+#include <mesh_gen/generation_request.h>
 
 #include "MeshGenerationRequest.generated.h"
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SbxMeshGenLab/MeshGenerationRequest.h"
+#include <mesh_gen/assembly_part.h>
 
 using FSbxMeshTransformInput = mesh_gen::TransformInput;
 using FSbxMeshAssemblyPart = mesh_gen::AssemblyPart;

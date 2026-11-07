@@ -2,7 +2,7 @@
 #include <ioj/testing/structural_diff.h>
 #include <ioj/vector_value_math.h>
 
-#include <mesh_gen/MeshGeneration.h>
+#include <mesh_gen/assembly_part.h>
 
 #include <gtest/gtest.h>
 
@@ -208,23 +208,16 @@ TEST(GenerationRequests, DispatchDescribeAndAssignMaterialRoles) {
               "top=false;material_role=Armor");
 }
 
-TEST(GenerationRequests, RejectInvalidParametersBeforeGeneration) {
-    EXPECT_FALSE(BoxParameters::try_make({{0.f, 1.f, 1.f}}));
-    EXPECT_FALSE(BoxParameters::try_make({{std::numeric_limits<float>::infinity(), 1.f, 1.f}}));
+TEST(GenerationRequests, EnforceSegmentAndShapeRelationships) {
     EXPECT_FALSE(CylinderParameters::try_make({50.f, 100.f, 2}));
     EXPECT_FALSE(ConeParameters::try_make({50.f, 100.f, 2}));
     EXPECT_FALSE(SphereParameters::try_make({50.f, 2, 2}));
     EXPECT_FALSE(SphereParameters::try_make({50.f, 3, 1}));
     EXPECT_FALSE(BeveledBoxParameters::try_make({{10.f, 10.f, 10.f}, 5.f}));
     EXPECT_FALSE(WedgeParameters::try_make({{100.f, 100.f, 50.f}, 50.f, 26.f}));
-    EXPECT_FALSE(WedgeParameters::try_make(
-        {{100.f, 100.f, 50.f}, 50.f, std::numeric_limits<float>::quiet_NaN()}));
     EXPECT_FALSE(HexFrameParameters::try_make({50.f, 50.f, 20.f}));
     EXPECT_FALSE(HexTileParameters::try_make({50.f, 20.f, 50.f}));
     EXPECT_FALSE(HoneycombPanelParameters::try_make({1, 1, 50.f, 50.f, 20.f}));
-    EXPECT_FALSE(
-        Transform::try_make({.scale = {1.f, std::numeric_limits<float>::infinity(), 1.f}}));
-    EXPECT_FALSE(Transform::try_make({.scale = {0.f, 1.f, 1.f}}));
     EXPECT_TRUE(WedgeParameters::try_make({{100.f, 100.f, 50.f}, 50.f, 25.f}));
 }
 

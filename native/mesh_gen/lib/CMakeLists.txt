@@ -1,6 +1,6 @@
 set(MESH_GEN_SOURCES
-  src/MeshGeneration.cpp
-  src/PrimitiveGenerators.cpp
+  src/mesh_generation.cpp
+  src/primitive_generators.cpp
 )
 
 add_library(mesh-gen STATIC ${MESH_GEN_SOURCES})

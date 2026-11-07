@@ -1,6 +1,7 @@
 #pragma once
 
-#include <mesh_gen/MeshGeneration.h>
+#include <mesh_gen/rotatorf.h>
+#include <mesh_gen/vector_types.h>
 
 #include <cmath>
 

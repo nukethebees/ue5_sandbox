@@ -1,6 +1,14 @@
-#include "MeshMath.h"
+#include "mesh_math.h"
 
-#include <mesh_gen/MeshGeneration.h>
+#include <mesh_gen/beveled_box_parameters.h>
+#include <mesh_gen/box_parameters.h>
+#include <mesh_gen/cone_parameters.h>
+#include <mesh_gen/cylinder_parameters.h>
+#include <mesh_gen/hex_frame_parameters.h>
+#include <mesh_gen/hex_tile_parameters.h>
+#include <mesh_gen/honeycomb_panel_parameters.h>
+#include <mesh_gen/sphere_parameters.h>
+#include <mesh_gen/wedge_parameters.h>
 
 #include <algorithm>
 #include <array>

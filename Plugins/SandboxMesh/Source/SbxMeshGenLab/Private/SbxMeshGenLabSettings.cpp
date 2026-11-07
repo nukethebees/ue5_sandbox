@@ -31,34 +31,50 @@ void USbxMeshGenLabSettings::load_request(FSbxMeshGenerationRequest const& reque
     asset_name = FName{UTF8_TO_TCHAR(request.asset_name.c_str())};
     material_role = SandboxMesh::to_unreal(request.material_role);
     box_dimensions = SandboxMesh::to_unreal(request.box.ref().dimensions);
-    beveled_box_dimensions = SandboxMesh::to_unreal(request.beveled_box.ref().dimensions);
-    beveled_box_bevel_width = request.beveled_box.ref().bevel_width;
-    wedge_dimensions = SandboxMesh::to_unreal(request.wedge.ref().dimensions);
-    wedge_top_length = request.wedge.ref().top_length;
-    wedge_top_offset = request.wedge.ref().top_offset;
-    cylinder_radius = request.cylinder.ref().radius;
-    cylinder_height = request.cylinder.ref().height;
-    cylinder_radial_segments = request.cylinder.ref().radial_segments;
-    sphere_radius = request.sphere.ref().radius;
-    sphere_longitude_segments = request.sphere.ref().longitude_segments;
-    sphere_latitude_segments = request.sphere.ref().latitude_segments;
-    cone_radius = request.cone.ref().radius;
-    cone_height = request.cone.ref().height;
-    cone_radial_segments = request.cone.ref().radial_segments;
-    hex_tile_outer_radius = request.hex_tile.ref().outer_radius;
-    hex_tile_depth = request.hex_tile.ref().depth;
-    hex_tile_bevel_width = request.hex_tile.ref().bevel_width;
-    hex_tile_pointy_top = request.hex_tile.ref().pointy_top;
-    hex_frame_outer_radius = request.hex_frame.ref().outer_radius;
-    hex_frame_wall_thickness = request.hex_frame.ref().wall_thickness;
-    hex_frame_depth = request.hex_frame.ref().depth;
-    hex_frame_pointy_top = request.hex_frame.ref().pointy_top;
-    honeycomb_rows = request.honeycomb_panel.ref().rows;
-    honeycomb_columns = request.honeycomb_panel.ref().columns;
-    honeycomb_cell_radius = request.honeycomb_panel.ref().cell_radius;
-    honeycomb_wall_thickness = request.honeycomb_panel.ref().wall_thickness;
-    honeycomb_depth = request.honeycomb_panel.ref().depth;
-    honeycomb_pointy_top = request.honeycomb_panel.ref().pointy_top;
+
+    auto const& beveled_box{request.beveled_box.ref()};
+    beveled_box_dimensions = SandboxMesh::to_unreal(beveled_box.dimensions);
+    beveled_box_bevel_width = beveled_box.bevel_width;
+
+    auto const& wedge{request.wedge.ref()};
+    wedge_dimensions = SandboxMesh::to_unreal(wedge.dimensions);
+    wedge_top_length = wedge.top_length;
+    wedge_top_offset = wedge.top_offset;
+
+    auto const& cylinder{request.cylinder.ref()};
+    cylinder_radius = cylinder.radius;
+    cylinder_height = cylinder.height;
+    cylinder_radial_segments = cylinder.radial_segments;
+
+    auto const& sphere{request.sphere.ref()};
+    sphere_radius = sphere.radius;
+    sphere_longitude_segments = sphere.longitude_segments;
+    sphere_latitude_segments = sphere.latitude_segments;
+
+    auto const& cone{request.cone.ref()};
+    cone_radius = cone.radius;
+    cone_height = cone.height;
+    cone_radial_segments = cone.radial_segments;
+
+    auto const& hex_tile{request.hex_tile.ref()};
+    hex_tile_outer_radius = hex_tile.outer_radius;
+    hex_tile_depth = hex_tile.depth;
+    hex_tile_bevel_width = hex_tile.bevel_width;
+    hex_tile_pointy_top = hex_tile.pointy_top;
+
+    auto const& hex_frame{request.hex_frame.ref()};
+    hex_frame_outer_radius = hex_frame.outer_radius;
+    hex_frame_wall_thickness = hex_frame.wall_thickness;
+    hex_frame_depth = hex_frame.depth;
+    hex_frame_pointy_top = hex_frame.pointy_top;
+
+    auto const& honeycomb_panel{request.honeycomb_panel.ref()};
+    honeycomb_rows = honeycomb_panel.rows;
+    honeycomb_columns = honeycomb_panel.columns;
+    honeycomb_cell_radius = honeycomb_panel.cell_radius;
+    honeycomb_wall_thickness = honeycomb_panel.wall_thickness;
+    honeycomb_depth = honeycomb_panel.depth;
+    honeycomb_pointy_top = honeycomb_panel.pointy_top;
 }
 
 void USbxMeshGenLabSettings::load_transform(FSbxMeshTransformInput const& transform) {

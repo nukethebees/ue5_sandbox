@@ -798,9 +798,10 @@ void USbxMeshGenLabEditorMode::duplicate_part() {
             }
 
             auto part{parts_[part_index]};
-            FTransform transform{SandboxMesh::to_unreal(part.transform.ref().rotation),
-                                 SandboxMesh::to_unreal(part.transform.ref().translation),
-                                 SandboxMesh::to_unreal(part.transform.ref().scale)};
+            auto const& transform_data{part.transform.ref()};
+            FTransform transform{SandboxMesh::to_unreal(transform_data.rotation),
+                                 SandboxMesh::to_unreal(transform_data.translation),
+                                 SandboxMesh::to_unreal(transform_data.scale)};
             auto const relative_location{transform.GetLocation() - pivot};
             transform.SetLocation(pivot + rotation_delta.RotateVector(relative_location) +
                                   translation_step * repeat_index);
@@ -1007,10 +1008,10 @@ void USbxMeshGenLabEditorMode::create_group() {
 
         for (int32 const part_index : selected_part_indices_) {
             auto& recipe_part{session_state_->parts[part_index]};
-            FTransform const part_world{
-                SandboxMesh::to_unreal(parts_[part_index].transform.ref().rotation),
-                SandboxMesh::to_unreal(parts_[part_index].transform.ref().translation),
-                SandboxMesh::to_unreal(parts_[part_index].transform.ref().scale)};
+            auto const& transform_data{parts_[part_index].transform.ref()};
+            FTransform const part_world{SandboxMesh::to_unreal(transform_data.rotation),
+                                        SandboxMesh::to_unreal(transform_data.translation),
+                                        SandboxMesh::to_unreal(transform_data.scale)};
             recipe_part.parent_id = group.id;
             auto const local_transform{part_world.GetRelativeTransform(group_world)};
             recipe_part.translation = local_transform.GetLocation();
@@ -1045,10 +1046,10 @@ void USbxMeshGenLabEditorMode::ungroup() {
         if (recipe_part.parent_id != group_id) {
             continue;
         }
-        FTransform const part_world{
-            SandboxMesh::to_unreal(parts_[part_index].transform.ref().rotation),
-            SandboxMesh::to_unreal(parts_[part_index].transform.ref().translation),
-            SandboxMesh::to_unreal(parts_[part_index].transform.ref().scale)};
+        auto const& transform_data{parts_[part_index].transform.ref()};
+        FTransform const part_world{SandboxMesh::to_unreal(transform_data.rotation),
+                                    SandboxMesh::to_unreal(transform_data.translation),
+                                    SandboxMesh::to_unreal(transform_data.scale)};
         auto const local_transform{part_world.GetRelativeTransform(parent_world)};
         recipe_part.parent_id = parent_id;
         recipe_part.translation = local_transform.GetLocation();
@@ -2331,9 +2332,10 @@ void USbxMeshGenLabEditorMode::apply_marquee_selection(TArray<int32> const& matc
 
 auto USbxMeshGenLabEditorMode::make_part_world_transform(FSbxMeshAssemblyPart const& part) const
     -> FTransform {
-    return FTransform{SandboxMesh::to_unreal(part.transform.ref().rotation),
-                      preview_origin_ + SandboxMesh::to_unreal(part.transform.ref().translation),
-                      SandboxMesh::to_unreal(part.transform.ref().scale)};
+    auto const& transform{part.transform.ref()};
+    return FTransform{SandboxMesh::to_unreal(transform.rotation),
+                      preview_origin_ + SandboxMesh::to_unreal(transform.translation),
+                      SandboxMesh::to_unreal(transform.scale)};
 }
 
 #undef LOCTEXT_NAMESPACE

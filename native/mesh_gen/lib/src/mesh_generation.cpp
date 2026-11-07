@@ -1,7 +1,7 @@
-#include <mesh_gen/MeshGeneration.h>
-
-#include "MeshMath.h"
+#include "mesh_math.h"
 #include <ioj/format_writer.h>
+
+#include <mesh_gen/assembly_part.h>
 
 #include <cassert>
 #include <cmath>
@@ -170,61 +170,76 @@ auto describe_request(GenerationRequest const& request) -> std::string {
         case Shape::box:
             write("box;dimensions={}", format_vec(request.box.ref().dimensions));
             break;
-        case Shape::cylinder:
+        case Shape::cylinder: {
+            auto const& parameters{request.cylinder.ref()};
             write("cylinder;radius={};height={};segments={}",
-                  format_number(request.cylinder.ref().radius),
-                  format_number(request.cylinder.ref().height),
-                  request.cylinder.ref().radial_segments);
+                  format_number(parameters.radius),
+                  format_number(parameters.height),
+                  parameters.radial_segments);
             break;
-        case Shape::sphere:
+        }
+        case Shape::sphere: {
+            auto const& parameters{request.sphere.ref()};
             write("sphere;radius={};longitude_segments={};latitude_segments={}",
-                  format_number(request.sphere.ref().radius),
-                  request.sphere.ref().longitude_segments,
-                  request.sphere.ref().latitude_segments);
+                  format_number(parameters.radius),
+                  parameters.longitude_segments,
+                  parameters.latitude_segments);
             break;
-        case Shape::cone:
+        }
+        case Shape::cone: {
+            auto const& parameters{request.cone.ref()};
             write("cone;radius={};height={};segments={}",
-                  format_number(request.cone.ref().radius),
-                  format_number(request.cone.ref().height),
-                  request.cone.ref().radial_segments);
+                  format_number(parameters.radius),
+                  format_number(parameters.height),
+                  parameters.radial_segments);
             break;
-        case Shape::hex_tile:
+        }
+        case Shape::hex_tile: {
+            auto const& parameters{request.hex_tile.ref()};
             write("hex_tile;outer_radius={};depth={};bevel_width={};pointy_top={}",
-                  format_number(request.hex_tile.ref().outer_radius),
-                  format_number(request.hex_tile.ref().depth),
-                  format_number(request.hex_tile.ref().bevel_width),
-                  request.hex_tile.ref().pointy_top);
+                  format_number(parameters.outer_radius),
+                  format_number(parameters.depth),
+                  format_number(parameters.bevel_width),
+                  parameters.pointy_top);
             break;
-        case Shape::hex_frame:
+        }
+        case Shape::hex_frame: {
+            auto const& parameters{request.hex_frame.ref()};
             write("hex_frame;outer_radius={};wall_thickness={};depth={};pointy_top={};uv_mode={}",
-                  format_number(request.hex_frame.ref().outer_radius),
-                  format_number(request.hex_frame.ref().wall_thickness),
-                  format_number(request.hex_frame.ref().depth),
-                  request.hex_frame.ref().pointy_top,
-                  request.hex_frame.ref().uv_mode == HexFrameUvMode::perimeter ? "perimeter"
-                                                                               : "per_face");
+                  format_number(parameters.outer_radius),
+                  format_number(parameters.wall_thickness),
+                  format_number(parameters.depth),
+                  parameters.pointy_top,
+                  parameters.uv_mode == HexFrameUvMode::perimeter ? "perimeter" : "per_face");
             break;
-        case Shape::honeycomb_panel:
+        }
+        case Shape::honeycomb_panel: {
+            auto const& parameters{request.honeycomb_panel.ref()};
             write("honeycomb_panel;rows={};columns={};cell_radius={};wall_thickness={};"
                   "depth={};pointy_top={}",
-                  request.honeycomb_panel.ref().rows,
-                  request.honeycomb_panel.ref().columns,
-                  format_number(request.honeycomb_panel.ref().cell_radius),
-                  format_number(request.honeycomb_panel.ref().wall_thickness),
-                  format_number(request.honeycomb_panel.ref().depth),
-                  request.honeycomb_panel.ref().pointy_top);
+                  parameters.rows,
+                  parameters.columns,
+                  format_number(parameters.cell_radius),
+                  format_number(parameters.wall_thickness),
+                  format_number(parameters.depth),
+                  parameters.pointy_top);
             break;
-        case Shape::beveled_box:
+        }
+        case Shape::beveled_box: {
+            auto const& parameters{request.beveled_box.ref()};
             write("beveled_box;dimensions={};bevel_width={}",
-                  format_vec(request.beveled_box.ref().dimensions),
-                  format_number(request.beveled_box.ref().bevel_width));
+                  format_vec(parameters.dimensions),
+                  format_number(parameters.bevel_width));
             break;
-        case Shape::wedge:
+        }
+        case Shape::wedge: {
+            auto const& parameters{request.wedge.ref()};
             write("wedge;dimensions={};top_length={};top_offset={}",
-                  format_vec(request.wedge.ref().dimensions),
-                  format_number(request.wedge.ref().top_length),
-                  format_number(request.wedge.ref().top_offset));
+                  format_vec(parameters.dimensions),
+                  format_number(parameters.top_length),
+                  format_number(parameters.top_offset));
             break;
+        }
     }
     write(";material_role={}", role_name(request.material_role));
     return description;
@@ -303,12 +318,13 @@ auto describe_assembly(std::span<AssemblyPart const> const parts) -> std::string
     auto write{ioj::FormatWriter{std::back_inserter(description)}};
     for (std::size_t part_index{}; part_index < parts.size(); ++part_index) {
         auto const& part{parts[part_index]};
+        auto const& transform{part.transform.ref()};
         write(";part{}={{{};translation={};rotation={};scale={};visible={}}}",
               part_index,
               describe_request(part.mesh),
-              format_vec(part.transform.ref().translation),
-              format_rotator(part.transform.ref().rotation),
-              format_vec(part.transform.ref().scale),
+              format_vec(transform.translation),
+              format_rotator(transform.rotation),
+              format_vec(transform.scale),
               part.visible);
     }
     return description;

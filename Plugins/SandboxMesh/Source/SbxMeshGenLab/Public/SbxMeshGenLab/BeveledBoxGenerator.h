@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SbxMeshGenLab/MeshData.h"
+#include <mesh_gen/beveled_box_parameters.h>
 
 using FSbxBeveledBoxParameters = mesh_gen::BeveledBoxParameters;
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mesh_gen/MeshGeneration.h>
+#include <mesh_gen/material_role.h>
 
 #include "CoreMinimal.h"
 

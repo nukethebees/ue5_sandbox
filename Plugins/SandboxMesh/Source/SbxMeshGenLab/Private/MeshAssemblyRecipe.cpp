@@ -12,39 +12,55 @@ auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,
     recipe_part.locked = part.locked;
     recipe_part.shape = SandboxMesh::to_unreal(part.mesh.shape);
     recipe_part.material_role = SandboxMesh::to_unreal(part.mesh.material_role);
-    recipe_part.translation = SandboxMesh::to_unreal(part.transform.ref().translation);
-    recipe_part.rotation = SandboxMesh::to_unreal(part.transform.ref().rotation);
-    recipe_part.scale = SandboxMesh::to_unreal(part.transform.ref().scale);
+    auto const& transform{part.transform.ref()};
+    recipe_part.translation = SandboxMesh::to_unreal(transform.translation);
+    recipe_part.rotation = SandboxMesh::to_unreal(transform.rotation);
+    recipe_part.scale = SandboxMesh::to_unreal(transform.scale);
     recipe_part.box_dimensions = SandboxMesh::to_unreal(part.mesh.box.ref().dimensions);
-    recipe_part.beveled_box_dimensions =
-        SandboxMesh::to_unreal(part.mesh.beveled_box.ref().dimensions);
-    recipe_part.beveled_box_bevel_width = part.mesh.beveled_box.ref().bevel_width;
-    recipe_part.wedge_dimensions = SandboxMesh::to_unreal(part.mesh.wedge.ref().dimensions);
-    recipe_part.wedge_top_length = part.mesh.wedge.ref().top_length;
-    recipe_part.wedge_top_offset = part.mesh.wedge.ref().top_offset;
-    recipe_part.cylinder_radius = part.mesh.cylinder.ref().radius;
-    recipe_part.cylinder_height = part.mesh.cylinder.ref().height;
-    recipe_part.cylinder_radial_segments = part.mesh.cylinder.ref().radial_segments;
-    recipe_part.sphere_radius = part.mesh.sphere.ref().radius;
-    recipe_part.sphere_longitude_segments = part.mesh.sphere.ref().longitude_segments;
-    recipe_part.sphere_latitude_segments = part.mesh.sphere.ref().latitude_segments;
-    recipe_part.cone_radius = part.mesh.cone.ref().radius;
-    recipe_part.cone_height = part.mesh.cone.ref().height;
-    recipe_part.cone_radial_segments = part.mesh.cone.ref().radial_segments;
-    recipe_part.hex_tile_outer_radius = part.mesh.hex_tile.ref().outer_radius;
-    recipe_part.hex_tile_depth = part.mesh.hex_tile.ref().depth;
-    recipe_part.hex_tile_bevel_width = part.mesh.hex_tile.ref().bevel_width;
-    recipe_part.hex_tile_pointy_top = part.mesh.hex_tile.ref().pointy_top;
-    recipe_part.hex_frame_outer_radius = part.mesh.hex_frame.ref().outer_radius;
-    recipe_part.hex_frame_wall_thickness = part.mesh.hex_frame.ref().wall_thickness;
-    recipe_part.hex_frame_depth = part.mesh.hex_frame.ref().depth;
-    recipe_part.hex_frame_pointy_top = part.mesh.hex_frame.ref().pointy_top;
-    recipe_part.honeycomb_rows = part.mesh.honeycomb_panel.ref().rows;
-    recipe_part.honeycomb_columns = part.mesh.honeycomb_panel.ref().columns;
-    recipe_part.honeycomb_cell_radius = part.mesh.honeycomb_panel.ref().cell_radius;
-    recipe_part.honeycomb_wall_thickness = part.mesh.honeycomb_panel.ref().wall_thickness;
-    recipe_part.honeycomb_depth = part.mesh.honeycomb_panel.ref().depth;
-    recipe_part.honeycomb_pointy_top = part.mesh.honeycomb_panel.ref().pointy_top;
+
+    auto const& beveled_box{part.mesh.beveled_box.ref()};
+    recipe_part.beveled_box_dimensions = SandboxMesh::to_unreal(beveled_box.dimensions);
+    recipe_part.beveled_box_bevel_width = beveled_box.bevel_width;
+
+    auto const& wedge{part.mesh.wedge.ref()};
+    recipe_part.wedge_dimensions = SandboxMesh::to_unreal(wedge.dimensions);
+    recipe_part.wedge_top_length = wedge.top_length;
+    recipe_part.wedge_top_offset = wedge.top_offset;
+
+    auto const& cylinder{part.mesh.cylinder.ref()};
+    recipe_part.cylinder_radius = cylinder.radius;
+    recipe_part.cylinder_height = cylinder.height;
+    recipe_part.cylinder_radial_segments = cylinder.radial_segments;
+
+    auto const& sphere{part.mesh.sphere.ref()};
+    recipe_part.sphere_radius = sphere.radius;
+    recipe_part.sphere_longitude_segments = sphere.longitude_segments;
+    recipe_part.sphere_latitude_segments = sphere.latitude_segments;
+
+    auto const& cone{part.mesh.cone.ref()};
+    recipe_part.cone_radius = cone.radius;
+    recipe_part.cone_height = cone.height;
+    recipe_part.cone_radial_segments = cone.radial_segments;
+
+    auto const& hex_tile{part.mesh.hex_tile.ref()};
+    recipe_part.hex_tile_outer_radius = hex_tile.outer_radius;
+    recipe_part.hex_tile_depth = hex_tile.depth;
+    recipe_part.hex_tile_bevel_width = hex_tile.bevel_width;
+    recipe_part.hex_tile_pointy_top = hex_tile.pointy_top;
+
+    auto const& hex_frame{part.mesh.hex_frame.ref()};
+    recipe_part.hex_frame_outer_radius = hex_frame.outer_radius;
+    recipe_part.hex_frame_wall_thickness = hex_frame.wall_thickness;
+    recipe_part.hex_frame_depth = hex_frame.depth;
+    recipe_part.hex_frame_pointy_top = hex_frame.pointy_top;
+
+    auto const& honeycomb_panel{part.mesh.honeycomb_panel.ref()};
+    recipe_part.honeycomb_rows = honeycomb_panel.rows;
+    recipe_part.honeycomb_columns = honeycomb_panel.columns;
+    recipe_part.honeycomb_cell_radius = honeycomb_panel.cell_radius;
+    recipe_part.honeycomb_wall_thickness = honeycomb_panel.wall_thickness;
+    recipe_part.honeycomb_depth = honeycomb_panel.depth;
+    recipe_part.honeycomb_pointy_top = honeycomb_panel.pointy_top;
     return recipe_part;
 }
 
