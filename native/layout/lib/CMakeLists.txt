@@ -108,5 +108,6 @@ target_link_libraries(native-layout
     native-core-headers
   PRIVATE
     lispb-project
+    native-core
 )
 ioj_enable_warnings(native-layout)

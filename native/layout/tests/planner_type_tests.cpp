@@ -102,12 +102,12 @@ TEST(AnalysisBatch, ExternalFactsApplyOnlyToTheirRequestedTarget) {
     ASSERT_TRUE(document.valid());
     auto const type{document.find_type("test", "Value").value()};
     auto supplied{AbiProfile::host_common()};
-    TypeFacts facts{};
+    TypeFacts::Definition facts{};
     facts.size_bytes = 12;
     facts.alignment_bytes = 4;
     facts.origin = FactOrigin::manual_assumption;
     facts.provenance = "SDK assumption";
-    supplied.set("OpaqueVector", facts);
+    supplied.set("OpaqueVector", TypeFacts::make(facts));
     auto const unknown{AbiProfile::host_common()};
     std::array<AnalysisRequest, 2> requests{
         {{.type = type, .abi = &supplied}, {.type = type, .abi = &unknown}}};

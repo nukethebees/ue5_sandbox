@@ -70,17 +70,18 @@ auto main(int argc, char** argv) -> int {
                      sizeof(std::array<float, 3> const*),
                      alignof(std::array<float, 3> const*)}}) {
         auto const pointer{profile->find(spelling)};
-        if (!pointer || pointer->size_bytes != size || pointer->alignment_bytes != alignment ||
-            pointer->origin != ioj::layout::FactOrigin::compiler_probe) {
+        if (!pointer || pointer->data().size_bytes != size ||
+            pointer->data().alignment_bytes != alignment ||
+            pointer->data().origin != ioj::layout::FactOrigin::compiler_probe) {
             std::cerr << "Exact pointer measurement missing without generic ABI policy: "
                       << spelling << '\n';
             return 1;
         }
     }
     return !profile->object_pointer_representation() && facts &&
-                   facts->size_bytes == sizeof(std::array<float, 3>) &&
-                   facts->alignment_bytes == alignof(std::array<float, 3>) &&
-                   facts->origin == ioj::layout::FactOrigin::compiler_probe &&
+                   facts->data().size_bytes == sizeof(std::array<float, 3>) &&
+                   facts->data().alignment_bytes == alignof(std::array<float, 3>) &&
+                   facts->data().origin == ioj::layout::FactOrigin::compiler_probe &&
                    profile->identity().platform == "fixture-platform" &&
                    profile->identity().architecture == "fixture-arch" &&
                    profile->identity().build_configuration == "fixture-config"

@@ -1,10 +1,12 @@
 #include <ioj/layout/type_facts.hpp>
 
+#include <ioj/require.h>
+
 #include <bit>
 
 namespace ioj::layout {
 
-auto validate_type_facts(TypeFacts const& facts) -> std::expected<void, std::string> {
+auto TypeFacts::try_make(Definition facts) -> std::expected<TypeFacts, std::string> {
     if (facts.size_bytes == 0 || !std::has_single_bit(facts.alignment_bytes)) {
         return std::unexpected{
             "Complete-object size must be nonzero and alignment a nonzero power of two."};
@@ -21,7 +23,15 @@ auto validate_type_facts(TypeFacts const& facts) -> std::expected<void, std::str
                 "Unsigned value bits require an unsigned integer and must fit its physical width."};
         }
     }
-    return {};
+    return TypeFacts{std::move(facts)};
+}
+
+auto TypeFacts::make(Definition facts) -> TypeFacts {
+    auto checked{try_make(std::move(facts))};
+    if (!checked) {
+        require(false, checked.error());
+    }
+    return std::move(*checked);
 }
 
 } // namespace ioj::layout

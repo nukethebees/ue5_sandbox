@@ -110,11 +110,11 @@ AnalysisCase const cases[]{
          auto const abi{AbiProfile::host_common()};
          auto wide{abi};
          wide.set("std::uint32_t",
-                  {.size_bytes = 8,
-                   .alignment_bytes = 8,
-                   .integer_signed = false,
-                   .unsigned_value_bits = 32,
-                   .provenance = {}});
+                  TypeFacts::make({.size_bytes = 8,
+                                   .alignment_bytes = 8,
+                                   .integer_signed = false,
+                                   .unsigned_value_bits = 32,
+                                   .provenance = {}}));
          AccessSet const accesses{{"wide", AccessOperation::read}};
          std::array<AnalysisRequest, 2> const requests{
              {{.type = type,

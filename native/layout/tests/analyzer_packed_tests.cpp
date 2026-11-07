@@ -227,11 +227,11 @@ AnalysisCase const cases[]{
          auto const abi{AbiProfile::host_common()};
          auto wide{abi};
          wide.set("std::uint32_t",
-                  {.size_bytes = 8,
-                   .alignment_bytes = 8,
-                   .integer_signed = false,
-                   .unsigned_value_bits = 32,
-                   .provenance = {}});
+                  TypeFacts::make({.size_bytes = 8,
+                                   .alignment_bytes = 8,
+                                   .integer_signed = false,
+                                   .unsigned_value_bits = 32,
+                                   .provenance = {}}));
          AbiProfile const unknown{"unknown"};
          std::array<AnalysisRequest, 4> const requests{
              {{.type = type, .abi = &abi, .element_count = 100},

@@ -8,9 +8,12 @@
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 namespace ioj::layout::analyzer_common_tests {
+
+static_assert(!std::is_default_constructible_v<TypeFacts>);
 
 TEST(Analyzer, ReportsFactualNumericDeltas) {
     EXPECT_EQ(numeric_delta(100, 150), (NumericDelta{NumericDeltaDirection::increased, 50, 50.0}));
@@ -27,20 +30,20 @@ TEST(AbiProfile, ResolvesSchemaRepresentationsWithoutGuessingCycles) {
     abi.set_representation("CycleA", "CycleB");
     abi.set_representation("CycleB", "CycleA");
 
-    EXPECT_EQ(abi.find("EntityId")->size_bytes, 4);
+    EXPECT_EQ(abi.find("EntityId")->data().size_bytes, 4);
     EXPECT_FALSE(abi.find("CycleA").has_value());
     EXPECT_FALSE(abi.find("Unknown").has_value());
 }
 
-TEST(AbiProfile, RejectsImpossibleCompleteObjectsWithoutReplacingFacts) {
+TEST(AbiProfile, RejectsImpossibleCompleteObjectsAtConstruction) {
     AbiProfile profile{"test"};
-    TypeFacts facts{};
+    TypeFacts::Definition facts{};
     facts.size_bytes = 4;
     facts.alignment_bytes = 4;
-    profile.set("Value", facts);
+    profile.set("Value", TypeFacts::make(facts));
     facts.size_bytes = 3;
-    EXPECT_THROW(profile.set("Value", facts), std::invalid_argument);
-    EXPECT_EQ(profile.find("Value")->size_bytes, 4);
+    EXPECT_FALSE(TypeFacts::try_make(facts));
+    EXPECT_EQ(profile.find("Value")->data().size_bytes, 4);
     auto const parsed{parse_abi_profile("ioj-layout-profile 1\nname \"test\"\ntype \"Value\" 3 4 "
                                         "non-integer unknown \"import\"\n")};
     EXPECT_FALSE(parsed.has_value());
@@ -48,35 +51,35 @@ TEST(AbiProfile, RejectsImpossibleCompleteObjectsWithoutReplacingFacts) {
 
 TEST(AbiProfile, RoundTripsExtendedAlignmentOriginsAndExplicitPointerPolicy) {
     auto profile{AbiProfile::host_common()};
-    TypeFacts aligned{};
+    TypeFacts::Definition aligned{};
     aligned.size_bytes = 128;
     aligned.alignment_bytes = 64;
     aligned.origin = FactOrigin::manual_assumption;
     aligned.provenance = "vendor documentation, not measured";
-    profile.set("Aligned", aligned);
+    profile.set("Aligned", TypeFacts::make(aligned));
     auto const parsed{parse_abi_profile(serialize_abi_profile(profile))};
     ASSERT_TRUE(parsed.has_value()) << parsed.error().message;
-    EXPECT_EQ(parsed->find("Aligned"), aligned);
+    EXPECT_EQ(parsed->find("Aligned"), TypeFacts::make(aligned));
     EXPECT_EQ(parsed->object_pointer_representation(), profile.object_pointer_representation());
-    EXPECT_EQ(parsed->find("float")->origin, FactOrigin::compiler_probe);
+    EXPECT_EQ(parsed->find("float")->data().origin, FactOrigin::compiler_probe);
     EXPECT_THROW(profile.set_object_pointer_representation("missing"), std::invalid_argument);
     EXPECT_THROW(profile.set_object_pointer_representation("std::uint64_t"), std::invalid_argument);
 }
 
-TEST(AbiProfile, ValidatesIntegerMetadataOnBothEntryPaths) {
+TEST(AbiProfile, ChecksIntegerMetadataBeforeProfileInsertion) {
     AbiProfile profile{"test"};
-    TypeFacts facts{};
+    TypeFacts::Definition facts{};
     facts.size_bytes = 1;
     facts.alignment_bytes = 1;
     facts.unsigned_value_bits = 9;
-    EXPECT_THROW(profile.set("Value", facts), std::invalid_argument);
+    EXPECT_FALSE(TypeFacts::try_make(facts));
     facts.integer_signed = false;
-    EXPECT_THROW(profile.set("Value", facts), std::invalid_argument);
+    EXPECT_FALSE(TypeFacts::try_make(facts));
     facts.unsigned_value_bits.reset();
-    profile.set("Value", facts);
+    profile.set("Value", TypeFacts::make(facts));
     auto const parsed{parse_abi_profile(serialize_abi_profile(profile))};
     ASSERT_TRUE(parsed.has_value()) << parsed.error().message;
-    EXPECT_EQ(parsed->find("Value"), facts);
+    EXPECT_EQ(parsed->find("Value"), TypeFacts::make(facts));
 }
 
 TEST(AbiProfile, ExposesExplicitX86MemoryFactsWithProvenance) {
@@ -91,10 +94,10 @@ TEST(AbiProfile, ExposesExplicitX86MemoryFactsWithProvenance) {
     EXPECT_EQ(abi.memory_facts().cache_line_bytes, 64);
     EXPECT_EQ(abi.memory_facts().page_bytes, 4'096);
     EXPECT_FALSE(abi.memory_facts().provenance.empty());
-    EXPECT_FALSE(abi.find("std::uint8_t")->provenance.empty());
-    EXPECT_EQ(abi.find("std::uint8_t")->integer_signed, false);
-    EXPECT_EQ(abi.find("std::int8_t")->integer_signed, true);
-    EXPECT_FALSE(abi.find("float")->integer_signed.has_value());
+    EXPECT_FALSE(abi.find("std::uint8_t")->data().provenance.empty());
+    EXPECT_EQ(abi.find("std::uint8_t")->data().integer_signed, false);
+    EXPECT_EQ(abi.find("std::int8_t")->data().integer_signed, true);
+    EXPECT_FALSE(abi.find("float")->data().integer_signed.has_value());
 }
 
 TEST(AbiProfile, RetainsFullyDescribedIdentitySeparatelyFromFactProvenance) {
@@ -105,16 +108,16 @@ TEST(AbiProfile, RetainsFullyDescribedIdentitySeparatelyFromFactProvenance) {
                                       .build_configuration = "Shipping"};
     AbiProfile abi{"Windows shipping", identity};
     abi.set("word",
-            {.size_bytes = 8,
-             .alignment_bytes = 8,
-             .integer_signed = false,
-             .unsigned_value_bits = 64,
-             .provenance = "generated probe output"});
+            TypeFacts::make({.size_bytes = 8,
+                             .alignment_bytes = 8,
+                             .integer_signed = false,
+                             .unsigned_value_bits = 64,
+                             .provenance = "generated probe output"}));
     abi.set_memory_facts(
         {.cache_line_bytes = 64, .page_bytes = 4'096, .provenance = "selected machine profile"});
 
     EXPECT_EQ(abi.identity(), identity);
-    EXPECT_EQ(abi.find("word")->provenance, "generated probe output");
+    EXPECT_EQ(abi.find("word")->data().provenance, "generated probe output");
     EXPECT_EQ(abi.memory_facts().provenance, "selected machine profile");
 }
 
@@ -123,14 +126,14 @@ TEST(AbiProfile, LeavesUnspecifiedIdentityAndFactsUnknown) {
     identity.architecture = "x86-64";
     AbiProfile abi{"partial", std::move(identity)};
     abi.set("word",
-            {.size_bytes = 8,
-             .alignment_bytes = 8,
-             .integer_signed = false,
-             .unsigned_value_bits = 64,
-             .provenance = {}});
+            TypeFacts::make({.size_bytes = 8,
+                             .alignment_bytes = 8,
+                             .integer_signed = false,
+                             .unsigned_value_bits = 64,
+                             .provenance = {}}));
 
     EXPECT_EQ(abi.identity(), (AbiProfileIdentity{.architecture = "x86-64"}));
-    EXPECT_TRUE(abi.find("word")->provenance.empty());
+    EXPECT_TRUE(abi.find("word")->data().provenance.empty());
     EXPECT_EQ(abi.memory_facts(), MemoryFacts{});
 }
 
@@ -163,12 +166,12 @@ memory-provenance "machine profile"
                                   .compiler = "MSVC 19.44",
                                   .build_configuration = "Debug"}));
     EXPECT_EQ(parsed->find("EntityId"),
-              (TypeFacts{.size_bytes = 4,
-                         .alignment_bytes = 4,
-                         .integer_signed = false,
-                         .unsigned_value_bits = 32,
-                         .provenance = "probe uint32"}));
-    EXPECT_EQ(parsed->find("float")->integer_signed, std::nullopt);
+              (TypeFacts::make({.size_bytes = 4,
+                                .alignment_bytes = 4,
+                                .integer_signed = false,
+                                .unsigned_value_bits = 32,
+                                .provenance = "probe uint32"})));
+    EXPECT_EQ(parsed->find("float")->data().integer_signed, std::nullopt);
     EXPECT_EQ(parsed->memory_facts(),
               (MemoryFacts{.cache_line_bytes = 64,
                            .page_bytes = 4096,
@@ -195,7 +198,7 @@ memory-provenance ""
     EXPECT_EQ(parsed->identity(), (AbiProfileIdentity{.architecture = "arm64"}));
     EXPECT_EQ(parsed->memory_facts(), MemoryFacts{});
     EXPECT_EQ(parsed->find("word"),
-              (TypeFacts{.size_bytes = 8, .alignment_bytes = 8, .integer_signed = true}));
+              (TypeFacts::make({.size_bytes = 8, .alignment_bytes = 8, .integer_signed = true})));
     EXPECT_FALSE(parsed->find("unknown").has_value());
 }
 
