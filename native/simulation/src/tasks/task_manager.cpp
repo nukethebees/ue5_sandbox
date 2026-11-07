@@ -31,6 +31,9 @@ auto make_array(Factory&& factory) {
     return index < TaskId::invalid_value;
 }
 
+/* **************************************** */
+// Lifecycle
+/* **************************************** */
 TaskManager::TaskManager(std::pmr::memory_resource& resource)
     : instructions_{&resource}
     , instruction_data_{resource}
@@ -44,7 +47,6 @@ TaskManager::TaskManager(std::pmr::memory_resource& resource)
           [&resource] { return Counts{&resource}; })} {
     reset();
 }
-
 void TaskManager::reset() {
     instructions_.clear();
     instruction_data_.locations.clear();
@@ -61,7 +63,6 @@ void TaskManager::reset() {
 
     static_cast<void>(add_task({Instruction::make_data_idle(), jump_to_idle}));
 }
-
 void TaskManager::initialise(Mission const& mission, ExprManager const& expressions) {
     reset();
 
@@ -86,11 +87,13 @@ void TaskManager::initialise(Mission const& mission, ExprManager const& expressi
     }
 }
 
+/* **************************************** */
+// Task registration
+/* **************************************** */
 void TaskManager::reserve_instructions(std::size_t const count) {
     assert(fits_instruction_range(0, count));
     instructions_.reserve(count);
 }
-
 auto TaskManager::add_task(std::span<Instruction const> const instructions) -> TaskId {
     require(!instructions.empty() && instructions.back() == jump_to_idle,
             "Task instructions must end with Jump 0");
@@ -108,11 +111,13 @@ auto TaskManager::add_task(std::span<Instruction const> const instructions) -> T
     }
     return TaskId{static_cast<TaskId::storage_type>(index)};
 }
-
 auto TaskManager::add_task(std::initializer_list<Instruction> const instructions) -> TaskId {
     return add_task(std::span<Instruction const>{instructions.begin(), instructions.size()});
 }
 
+/* **************************************** */
+// Planning and allocation
+/* **************************************** */
 void TaskManager::plan_tasks(TaskPlanningContext const ctx) {
     auto const& leaves{ctx.expressions.leaves()};
     assert(leaf_tasks_.size() == leaves.num_leaves());
@@ -129,9 +134,7 @@ void TaskManager::plan_tasks(TaskPlanningContext const ctx) {
         }
     }
 }
-
 void TaskManager::allocate(TaskAllocationContext) {}
-
 auto TaskManager::create_task(LeafHandle const leaf,
                               ExprLeaves const& leaves,
                               std::span<EntityId const> const entities) -> TaskId {

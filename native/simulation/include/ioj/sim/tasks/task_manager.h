@@ -34,17 +34,27 @@ class TaskManager {
     static constexpr InstructionHandle idle_instruction{0};
     static constexpr Instruction jump_to_idle{Instruction::make_data_jump(idle_instruction)};
 
+    /* **************************************** */
+    // Lifecycle
+    /* **************************************** */
     // Keep the resource alive until after this manager and its storage are destroyed.
     explicit TaskManager(std::pmr::memory_resource& resource = *std::pmr::new_delete_resource());
 
     // Invalidates custom task and instruction handles while retaining allocated storage.
     void reset();
     void initialise(Mission const& mission, ExprManager const& expressions);
+
+    /* **************************************** */
+    // Task registration
+    /* **************************************** */
     void reserve_instructions(std::size_t count);
     // Task instructions must end with jump_to_idle. Registration is independent of team activation.
     [[nodiscard]] auto add_task(std::span<Instruction const> instructions) -> TaskId;
     [[nodiscard]] auto add_task(std::initializer_list<Instruction> instructions) -> TaskId;
 
+    /* **************************************** */
+    // Accessors
+    /* **************************************** */
     [[nodiscard]] auto instruction(InstructionHandle const handle) const -> Instruction {
         assert(handle.index() < instructions_.size());
         return instructions_[handle.index()];
@@ -57,6 +67,9 @@ class TaskManager {
         return task_entries_[task.index()];
     }
 
+    /* **************************************** */
+    // Planning and allocation
+    /* **************************************** */
     void plan_tasks(TaskPlanningContext ctx);
     void allocate(TaskAllocationContext ctx);
 
