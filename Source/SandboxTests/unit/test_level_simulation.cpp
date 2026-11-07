@@ -95,15 +95,6 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
                                                           "hero"}},
                                                       .offset_direction = {-1.0, 0.0, 0.0},
                                                       .distance = 1000.0},
-         .mission =
-             ioj::levels::MissionDefinition{
-                 .objectives =
-                     {{.id = ioj::levels::ObjectiveName{"primary"},
-                       .team = ioj::Team::Blue,
-                       .expressions = {{ioj::levels::EntityDestroyedExpr{
-                           .entity = ioj::levels::EntityId{"enemy"}}}},
-                       .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
-                           0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}}},
          .entities = {{.id = ioj::levels::EntityId{"hero"},
                        .archetype = ioj::levels::EntityArchetype::CapitalShip,
                        .team = ioj::Team::Blue,
@@ -119,7 +110,6 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     auto compiled{ioj::levels::compile_level(*definition, clock, data.capital_ships, data.turrets)};
     check(compiled);
     data.level_events = std::move(compiled->events);
-    data.mission = std::move(compiled->mission);
     data.expressions = std::move(compiled->expressions);
     data.level_metadata = std::move(compiled->level_metadata);
     return data;
@@ -651,7 +641,6 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     component->set_num_custom_data_floats(FLaserPresentation::n_custom_ismc_floats);
 
     auto data{make_battle()};
-    add_mission(data);
     ::ioj::sim::LevelSim simulation{MoveTemp(data)};
     simulation.finish_initialisation();
     auto const& clk{simulation.clock()};
