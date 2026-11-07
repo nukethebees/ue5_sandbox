@@ -11,15 +11,35 @@
 #include <memory_resource>
 
 namespace ioj::sim::tests {
-TEST(LevelEvents, PackedHandlesSortByKindBeforePayloadIndex) {
+TEST(LevelEvents, ConsumptionPreservesFifoHistoryAndIndependentStreams) {
     static_assert(sizeof(EventHandle) == sizeof(std::uint32_t));
-    EventHandle const mission{EventHandle::index_layout.value_mask, EventKind::MissionCompleted};
-    EventHandle const stop{EventHandle::index_layout.value_mask, EventKind::StopRun};
+    CompiledLevelEvents data;
+    auto const spawn_first{data.schedule.add_spawn_event({0, 1})};
+    auto const spawn_second{data.schedule.add_spawn_event({1, 1})};
+    auto const stop{data.schedule.add_stop_event(telemetry::RunEndReason::DurationReached)};
     EventHandle const pause{0, EventKind::Pause};
-    EventHandle const spawn{0, EventKind::Spawn};
-    std::array events{spawn, pause, stop, mission};
-    std::ranges::sort(events);
-    EXPECT_EQ(events, (std::array{mission, stop, pause, spawn}));
+    LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
+    EXPECT_FALSE(manager.consume_tick_end_event());
+    EXPECT_FALSE(manager.consume_preparation_event());
+
+    for (auto const event : std::array{pause, spawn_second, stop, spawn_first}) {
+        manager.enqueue(event);
+    }
+    EXPECT_EQ(manager.consume_preparation_event(), spawn_second);
+    EXPECT_EQ(manager.consume_tick_end_event(), pause);
+    EXPECT_TRUE(std::ranges::equal(manager.pending_preparation_events(), std::array{spawn_first}));
+    EXPECT_TRUE(std::ranges::equal(manager.pending_tick_end_events(), std::array{stop}));
+    EXPECT_EQ(manager.consume_tick_end_event(), stop);
+    EXPECT_FALSE(manager.consume_tick_end_event());
+    EXPECT_EQ(manager.consume_preparation_event(), spawn_first);
+    EXPECT_FALSE(manager.consume_preparation_event());
+
+    manager.enqueue(pause);
+    EXPECT_EQ(manager.consume_tick_end_event(), pause);
+    EXPECT_FALSE(manager.consume_tick_end_event());
+    EXPECT_TRUE(std::ranges::equal(manager.tick_end_events(), std::array{pause, stop, pause}));
+    EXPECT_TRUE(
+        std::ranges::equal(manager.preparation_events(), std::array{spawn_second, spawn_first}));
 }
 
 TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
@@ -48,18 +68,21 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     manager.collect_ready(expressions);
     EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
     EXPECT_TRUE(std::ranges::equal(manager.tick_end_events(), std::array{pause}));
-    manager.clear_tick_end_events();
+    EXPECT_EQ(manager.consume_tick_end_event(), pause);
+    EXPECT_FALSE(manager.consume_tick_end_event());
 
     expressions.evaluate({SimTick{3}, ledger, {}}, mission);
     manager.collect_ready(expressions);
-    EXPECT_TRUE(std::ranges::equal(manager.tick_end_events(), late));
+    EXPECT_TRUE(std::ranges::equal(manager.pending_tick_end_events(), late));
     EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
-    manager.clear_tick_end_events();
-    manager.clear_preparation_events();
+    EXPECT_EQ(manager.consume_tick_end_event(), late.front());
+    EXPECT_EQ(manager.consume_preparation_event(), spawn);
     expressions.evaluate({SimTick{4}, ledger, {}}, mission);
     manager.collect_ready(expressions);
-    EXPECT_TRUE(manager.preparation_events().empty());
-    EXPECT_TRUE(manager.tick_end_events().empty());
+    EXPECT_TRUE(manager.pending_preparation_events().empty());
+    EXPECT_TRUE(manager.pending_tick_end_events().empty());
+    EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
+    EXPECT_TRUE(std::ranges::equal(manager.tick_end_events(), std::array{pause, late.front()}));
 }
 
 }

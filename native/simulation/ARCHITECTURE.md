@@ -42,9 +42,11 @@ runs expose an End button independently of camera setup; visual gameplay retains
 
 `LevelEventManager` maps expression roots to ranges of packed event handles. Resolved triggers
 retire after Resolution, queueing their events once when true. Generated kind groups route events
-to tick-end or Preparation queues; `LevelSim` sorts each queue by kind when consuming it. Mission
-completion precedes duration expiry and pause. Either completion discards pending spawns and
-stops catch-up; pause retains those spawns and leaves telemetry recording. Preparation after
+to tick-end or Preparation streams. Each stream retains its append-only event storage and advances
+an independent read cursor in FIFO order. The first dispatched terminal event enters
+`LevelState::Stopped` and stops catch-up and dispatch; later events remain stored and unconsumed.
+Stopped levels append no further events and cannot resume. Pause retains pending spawns and
+leaves telemetry recording. Preparation after
 resume routes the retained spawn span to `LevelSpawnManager`. `pause()` only queues a request;
 `advance()` consumes tick-end events before accumulating elapsed time and after each completed
 tick. Paused calls process queued events without accumulating time; `start()` resumes directly.

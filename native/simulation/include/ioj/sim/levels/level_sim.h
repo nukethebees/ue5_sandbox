@@ -102,6 +102,7 @@ struct LevelSim {
     auto entity_tables() const -> EntityTables const& { return entity_tables_; }
     auto mission() const -> Mission const& { return mission_; }
     auto expressions() const -> ExprManager const& { return expressions_; }
+    auto events() const -> LevelEventManager const& { return event_manager_; }
     auto task_manager() const -> tasks::TaskManager const& { return task_manager_; }
     auto level_metadata() const -> levels::LevelMetadata const& { return level_metadata_; }
     auto spatial_query_manager() const -> SpatialQueryManager const& {

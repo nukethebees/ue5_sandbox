@@ -11,7 +11,7 @@
 #include <ioj/sim/spinners/phase_interface.h>
 #include <ioj/sim/turrets/phase_interface.h>
 
-#include <algorithm>
+#include <array>
 #include <cassert>
 #include <optional>
 #include <span>
@@ -146,7 +146,7 @@ void LevelSim::finalize_telemetry_run(telemetry::RunEndReason const reason) {
 }
 void LevelSim::stop_run(telemetry::RunEndReason const reason) {
     level_telemetry_manager_.finalize(reason);
-    state_ = LevelState::Paused;
+    state_ = LevelState::Stopped;
 }
 auto LevelSim::player_team_completion() const -> std::optional<TeamMissionCompletion> {
     auto const team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
@@ -163,6 +163,10 @@ auto LevelSim::take_finalized_telemetry_run() -> std::optional<telemetry::RunRec
 /* **************************************** */
 void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const navigation_output) {
     SANDBOX_PROFILE_SCOPE("LevelSim::advance");
+    if (state_ == LevelState::Stopped) {
+        return;
+    }
+
     dispatch_tick_end_events();
     if (state_ != LevelState::Running) {
         return;
@@ -195,30 +199,14 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
 }
 
 void LevelSim::dispatch_tick_end_events() {
-    auto const events{event_manager_.tick_end_events()};
-    std::ranges::sort(events);
-
     auto const& schedule{event_manager_.data().schedule};
-    auto const count{events.size()};
-    std::size_t first{};
-    while (first < count) {
-        auto const kind{events[first].kind()};
-        auto end{first + 1};
-        while (end < count && events[end].kind() == kind) {
-            ++end;
-        }
-
-        auto const group{events.subspan(first, end - first)};
-        switch (kind) {
+    while (auto const event = event_manager_.consume_tick_end_event()) {
+        switch (event->kind()) {
             case EventKind::MissionCompleted:
                 stop_run(telemetry::RunEndReason::MissionCompleted);
-                event_manager_.clear_tick_end_events();
-                event_manager_.clear_preparation_events();
                 return;
             case EventKind::StopRun:
-                stop_run(schedule.stop_events[group.front().index()]);
-                event_manager_.clear_tick_end_events();
-                event_manager_.clear_preparation_events();
+                stop_run(schedule.stop_events[event->index()]);
                 return;
             case EventKind::Pause:
                 state_ = LevelState::Paused;
@@ -226,35 +214,21 @@ void LevelSim::dispatch_tick_end_events() {
             default:
                 fatal_error("Invalid tick-end event kind");
         }
-        first = end;
     }
-    event_manager_.clear_tick_end_events();
 }
 void LevelSim::dispatch_preparation_events() {
-    auto const events{event_manager_.preparation_events()};
-    std::ranges::sort(events);
-
     auto const& schedule{event_manager_.data().schedule};
-    auto const count{events.size()};
-    std::size_t first{};
-    while (first < count) {
-        auto const kind{events[first].kind()};
-        auto end{first + 1};
-        while (end < count && events[end].kind() == kind) {
-            ++end;
-        }
-
-        auto const group{events.subspan(first, end - first)};
-        switch (kind) {
-            case EventKind::Spawn:
-                spawn_manager_.process_events(group, schedule, {entity_ledger_, clock_});
+    while (auto const event = event_manager_.consume_preparation_event()) {
+        switch (event->kind()) {
+            case EventKind::Spawn: {
+                std::array const events{*event};
+                spawn_manager_.process_events(events, schedule, {entity_ledger_, clock_});
                 break;
+            }
             default:
                 fatal_error("Invalid Preparation event kind");
         }
-        first = end;
     }
-    event_manager_.clear_preparation_events();
 }
 
 /* **************************************** */

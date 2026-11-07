@@ -34,6 +34,6 @@ TEST(WorldlessSpaceGameSimulation, KillThresholdWaitsForFinalCreditedDeath) {
     EXPECT_EQ(simulation.entity_ledger().kills(killer), 2);
     EXPECT_EQ(simulation.mission().outcome(ObjectiveId{0}, simulation.expressions()),
               ObjectiveOutcome::Passed);
-    EXPECT_EQ(simulation.state(), LevelState::Paused);
+    EXPECT_EQ(simulation.state(), LevelState::Stopped);
 }
 }

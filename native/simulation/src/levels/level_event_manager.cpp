@@ -52,10 +52,18 @@ void LevelEventManager::enqueue(EventHandle const event) {
         preparation_events_.push_back(event);
     }
 }
-void LevelEventManager::clear_tick_end_events() {
-    tick_end_events_.clear();
+auto LevelEventManager::consume_tick_end_event() -> std::optional<EventHandle> {
+    if (tick_end_cursor_ == tick_end_events_.size()) {
+        return std::nullopt;
+    }
+
+    return tick_end_events_[tick_end_cursor_++];
 }
-void LevelEventManager::clear_preparation_events() {
-    preparation_events_.clear();
+auto LevelEventManager::consume_preparation_event() -> std::optional<EventHandle> {
+    if (preparation_cursor_ == preparation_events_.size()) {
+        return std::nullopt;
+    }
+
+    return preparation_events_[preparation_cursor_++];
 }
 }
