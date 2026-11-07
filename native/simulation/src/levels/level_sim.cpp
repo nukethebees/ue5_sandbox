@@ -55,15 +55,13 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
 
     auto const& events{event_manager_.data()};
     auto const& schedule{events.schedule};
-    spawn_manager_.initialise(events.initialisation.entity_count,
-                              schedule.capital_spawns.const_view(),
-                              schedule.turret_spawns.const_view(),
-                              schedule.spinner_spawns.const_view());
+    spawn_manager_.initialise(events.initialisation.entity_count);
     if (events.initialisation.player_entity_index != invalid_level_entity_index) {
         spawn_manager_.set_entity_id(events.initialisation.player_entity_index,
                                      player_ship_simulation_->unique_entity_id);
     }
-    spawn_manager_.spawn(schedule.initial_spawn_groups.const_view(), {entity_ledger_, clock_});
+    spawn_manager_.spawn(
+        schedule.initial_spawn_groups.const_view(), schedule, {entity_ledger_, clock_});
 }
 void LevelSim::finish_initialisation() {
     assert(state_ == LevelState::Uninitialised);
@@ -246,8 +244,7 @@ void LevelSim::dispatch_preparation_events() {
         auto const group{events.subspan(first, end - first)};
         switch (kind) {
             case EventKind::Spawn:
-                spawn_manager_.process_events(
-                    group, schedule.spawn_events, schedule.spawn_groups, {entity_ledger_, clock_});
+                spawn_manager_.process_events(group, schedule, {entity_ledger_, clock_});
                 break;
             default:
                 fatal_error("Invalid Preparation event kind");

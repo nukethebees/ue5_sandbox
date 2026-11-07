@@ -1,6 +1,5 @@
 #pragma once
 #include <ioj/sim/entities/entity_id.h>
-#include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 #include <ioj/sim/levels/level_entity_index.h>
@@ -10,7 +9,6 @@
 #include <ioj/transform3d.h>
 
 #include <cstdint>
-#include <optional>
 #include <span>
 #include <vector>
 
@@ -35,6 +33,7 @@ class FrameMemoryResource;
 }
 
 namespace ioj::sim {
+struct LevelEventSchedule;
 struct SpawnContext;
 
 class LevelSpawnManager {
@@ -55,15 +54,13 @@ class LevelSpawnManager {
     auto operator=(LevelSpawnManager const&) -> LevelSpawnManager& = delete;
     auto operator=(LevelSpawnManager&&) -> LevelSpawnManager& = delete;
 
-    void initialise(std::uint32_t entity_count,
-                    LevelCapitalSpawnEvents::ConstView capital_payloads,
-                    LevelTurretSpawnEvents::ConstView turret_payloads,
-                    LevelSpinnerSpawnEvents::ConstView spinner_payloads);
+    void initialise(std::uint32_t entity_count);
     void set_entity_id(LevelEntityIndex entity_index, EntityId id);
-    void spawn(LevelSpawnGroups::ConstView groups, SpawnContext context);
+    void spawn(LevelSpawnGroups::ConstView groups,
+               LevelEventSchedule const& schedule,
+               SpawnContext context);
     void process_events(std::span<EventHandle const> events,
-                        std::span<IndexSpan const> payloads,
-                        LevelSpawnGroups const& groups,
+                        LevelEventSchedule const& schedule,
                         SpawnContext context);
     void queue_fighter_spawns(float dt,
                               FrameMemoryResource& scratch_resource,
@@ -74,9 +71,6 @@ class LevelSpawnManager {
     void spawn_turrets(LevelTurretSpawnEvents::ConstView events, SpawnContext context);
     void spawn_spinners(LevelSpinnerSpawnEvents::ConstView events, SpawnContext context);
 
-    LevelCapitalSpawnEvents::ConstView capital_payloads_{};
-    LevelTurretSpawnEvents::ConstView turret_payloads_{};
-    LevelSpinnerSpawnEvents::ConstView spinner_payloads_{};
     capital_ships::Sim& capital_ships_;
     fighters::Sim& fighters_;
     turrets::Sim& turrets_;

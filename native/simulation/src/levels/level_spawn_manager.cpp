@@ -6,6 +6,7 @@
 #include <ioj/sim/capital_ships/spawn_interface.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/levels/level_entity_index.h>
+#include <ioj/sim/levels/level_event_schedule.h>
 #include <ioj/sim/levels/spawn_context.h>
 #include <ioj/sim/spinners/spawn_interface.h>
 #include <ioj/sim/turrets/spawn_interface.h>
@@ -30,13 +31,7 @@ LevelSpawnManager::LevelSpawnManager(capital_ships::Sim& capital_ships,
     , spinners_{spinners}
     , fighter_spawn_transforms_{fighter_spawn_transforms.begin(), fighter_spawn_transforms.end()} {}
 
-void LevelSpawnManager::initialise(std::uint32_t const entity_count,
-                                   LevelCapitalSpawnEvents::ConstView const capital_payloads,
-                                   LevelTurretSpawnEvents::ConstView const turret_payloads,
-                                   LevelSpinnerSpawnEvents::ConstView const spinner_payloads) {
-    capital_payloads_ = capital_payloads;
-    turret_payloads_ = turret_payloads;
-    spinner_payloads_ = spinner_payloads;
+void LevelSpawnManager::initialise(std::uint32_t const entity_count) {
     entity_ids_.clear();
     entity_ids_.resize(static_cast<std::size_t>(entity_count));
 }
@@ -48,6 +43,7 @@ void LevelSpawnManager::set_entity_id(LevelEntityIndex const entity_index, Entit
 }
 
 void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups,
+                              LevelEventSchedule const& schedule,
                               SpawnContext const context) {
     auto const group_count{groups.num()};
     auto const types{groups.types()};
@@ -60,17 +56,17 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups,
             case EntityType::CapitalShip: {
                 // Spawn groups select distinct payload ranges.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-                spawn_capitals(capital_payloads_.const_view(offset, count), context);
+                spawn_capitals(schedule.capital_spawns.const_view(offset, count), context);
                 break;
             }
             case EntityType::Turret: {
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
-                spawn_turrets(turret_payloads_.const_view(offset, count), context);
+                spawn_turrets(schedule.turret_spawns.const_view(offset, count), context);
                 break;
             }
             case EntityType::TubeSpinner: {
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
-                spawn_spinners(spinner_payloads_.const_view(offset, count), context);
+                spawn_spinners(schedule.spinner_spawns.const_view(offset, count), context);
                 break;
             }
             default: {
@@ -82,12 +78,11 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups,
 }
 
 void LevelSpawnManager::process_events(std::span<EventHandle const> const events,
-                                       std::span<IndexSpan const> const payloads,
-                                       LevelSpawnGroups const& groups,
+                                       LevelEventSchedule const& schedule,
                                        SpawnContext const context) {
     for (auto const event : events) {
-        auto const range{payloads[event.index()]};
-        spawn(groups.const_view(range.offset, range.count), context);
+        auto const range{schedule.spawn_events[event.index()]};
+        spawn(schedule.spawn_groups.const_view(range.offset, range.count), schedule, context);
     }
 }
 
