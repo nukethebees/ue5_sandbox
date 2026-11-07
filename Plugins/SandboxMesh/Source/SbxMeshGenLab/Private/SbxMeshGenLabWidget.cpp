@@ -134,8 +134,7 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
 
     parts_.Reset();
     selected_part_ = MakeShared<FSbxMeshAssemblyPart>();
-    selected_part_->mesh = settings_->to_request().value();
-    selected_part_->transform = settings_->to_transform();
+    *selected_part_ = settings_->to_part().value();
     parts_.Add(selected_part_);
 
     FDetailsViewArgs details_arguments{};
@@ -299,7 +298,7 @@ void USbxMeshGenLabWidget::select_part(TSharedPtr<FSbxMeshAssemblyPart> const& p
     selected_part_ = part;
     auto const asset_name{settings_->asset_name};
     settings_->load_request(selected_part_->mesh);
-    settings_->load_transform(selected_part_->transform);
+    settings_->load_transform(selected_part_->transform.ref());
     settings_->asset_name = asset_name;
     last_shape_ = settings_->shape;
     refresh_shape_selector();
@@ -447,14 +446,14 @@ auto USbxMeshGenLabWidget::sync_selected_part_from_settings() -> bool {
         return false;
     }
 
-    auto request{settings_->to_request()};
-    if (!request) {
-        status_text_->SetText(FText::FromString(request.error()));
+    auto part{settings_->to_part()};
+    if (!part) {
+        status_text_->SetText(FText::FromString(part.error()));
         return false;
     }
 
-    selected_part_->mesh = std::move(*request);
-    selected_part_->transform = settings_->to_transform();
+    selected_part_->mesh = std::move(part->mesh);
+    selected_part_->transform = part->transform;
     return true;
 }
 

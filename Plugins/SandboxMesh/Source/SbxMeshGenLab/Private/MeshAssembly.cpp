@@ -24,17 +24,11 @@ auto validate_mesh_assembly(TArray<FSbxMeshAssemblyPart> const& parts) -> FStrin
         if (!mesh_error.IsEmpty()) {
             return FString::Printf(TEXT("Part %d: %s"), part_index + 1, *mesh_error);
         }
-        if (part.transform.scale.x() <= 0.0f || part.transform.scale.y() <= 0.0f ||
-            part.transform.scale.z() <= 0.0f) {
-            return FString::Printf(TEXT("Part %d: all scale values must be greater than zero."),
-                                   part_index + 1);
-        }
     }
     return {};
 }
 
 auto generate_mesh_assembly(TArray<FSbxMeshAssemblyPart> const& parts) -> FSbxMeshData {
-    check(validate_mesh_assembly(parts).IsEmpty());
     return mesh_gen::generate_assembly(as_span(parts));
 }
 

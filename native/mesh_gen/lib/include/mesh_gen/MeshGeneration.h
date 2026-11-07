@@ -1,11 +1,13 @@
 #pragma once
 
 #include <ioj/constrained_numbers.h>
+#include <ioj/constrained_vectors.h>
 #include <ioj/vector.h>
 
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace mesh_gen {
@@ -48,67 +50,190 @@ struct MeshData {
     std::vector<MaterialRole> triangle_material_roles;
 };
 
-struct BoxParameters {
-    Vec3f dimensions{100.0f, 100.0f, 100.0f};
+struct ValidParameters {
+    [[nodiscard]] constexpr auto operator()(auto const& input) const -> bool {
+        return input.error().empty();
+    }
 };
 
-struct BeveledBoxParameters {
-    Vec3f dimensions{100.0f, 100.0f, 100.0f};
-    ioj::PositiveFinite<float> bevel_width{10.0f};
-};
+template <typename Input>
+using CheckedParameters =
+    ioj::ConstrainedValue<Input,
+                          ioj::ConstrainedValuePolicy{
+                              ValidParameters{},
+                              "Mesh parameters violate their shape constraints"}>;
 
-struct WedgeParameters {
+struct BoxInput {
+    [[nodiscard]] constexpr auto error() const -> std::string_view {
+        return ioj::PositiveFiniteVector<float, 3>::valid(dimensions)
+                 ? ""
+                 : "All box dimensions must be finite and greater than zero.";
+    }
+
+    Vec3f dimensions{100.0f, 100.0f, 100.0f};
+};
+using BoxParameters = CheckedParameters<BoxInput>;
+
+struct BeveledBoxInput {
+    [[nodiscard]] constexpr auto error() const -> std::string_view {
+        if (!ioj::PositiveFiniteVector<float, 3>::valid(dimensions) ||
+            !ioj::PositiveFinite<float>::valid(bevel_width)) {
+            return "Beveled-box dimensions and bevel width must be finite and positive.";
+        }
+        for (auto const dimension : dimensions.elements) {
+            if (bevel_width >= dimension * 0.5f) {
+                return "Beveled-box bevel width must be less than half its smallest dimension.";
+            }
+        }
+        return {};
+    }
+
+    Vec3f dimensions{100.0f, 100.0f, 100.0f};
+    float bevel_width{10.0f};
+};
+using BeveledBoxParameters = CheckedParameters<BeveledBoxInput>;
+
+struct WedgeInput {
+    [[nodiscard]] constexpr auto error() const -> std::string_view {
+        if (!ioj::PositiveFiniteVector<float, 3>::valid(dimensions) ||
+            !ioj::PositiveFinite<float>::valid(top_length)) {
+            return "Wedge dimensions and top length must be finite and positive.";
+        }
+        if (!ioj::Finite<float>::valid(top_offset)) {
+            return "Wedge top offset must be finite.";
+        }
+        auto const offset{top_offset < 0.f ? -top_offset : top_offset};
+        if (top_length > dimensions.x() || offset + top_length * 0.5f > dimensions.x() * 0.5f) {
+            return "Wedge top length and offset must keep the top within its base.";
+        }
+        return {};
+    }
+
     Vec3f dimensions{100.0f, 100.0f, 50.0f};
-    ioj::PositiveFinite<float> top_length{50.0f};
+    float top_length{50.0f};
     float top_offset{};
 };
+using WedgeParameters = CheckedParameters<WedgeInput>;
 
-struct CylinderParameters {
-    ioj::PositiveFinite<float> radius{50.0f};
-    ioj::PositiveFinite<float> height{100.0f};
+struct CylinderInput {
+    [[nodiscard]] constexpr auto error() const -> std::string_view {
+        if (!ioj::PositiveFinite<float>::valid(radius) ||
+            !ioj::PositiveFinite<float>::valid(height)) {
+            return "Cylinder radius and height must be finite and positive.";
+        }
+        return radial_segments >= 3
+                 ? ""
+                 : "Cylinder radius and height must be positive, with at least 3 segments.";
+    }
+
+    float radius{50.0f};
+    float height{100.0f};
     std::int32_t radial_segments{32};
 };
+using CylinderParameters = CheckedParameters<CylinderInput>;
 
-struct ConeParameters {
-    ioj::PositiveFinite<float> radius{50.0f};
-    ioj::PositiveFinite<float> height{100.0f};
+struct ConeInput {
+    [[nodiscard]] constexpr auto error() const -> std::string_view {
+        if (!ioj::PositiveFinite<float>::valid(radius) ||
+            !ioj::PositiveFinite<float>::valid(height)) {
+            return "Cone radius and height must be finite and positive.";
+        }
+        return radial_segments >= 3
+                 ? ""
+                 : "Cone radius and height must be positive, with at least 3 segments.";
+    }
+
+    float radius{50.0f};
+    float height{100.0f};
     std::int32_t radial_segments{32};
 };
+using ConeParameters = CheckedParameters<ConeInput>;
 
-struct SphereParameters {
-    ioj::PositiveFinite<float> radius{50.0f};
+struct SphereInput {
+    [[nodiscard]] constexpr auto error() const -> std::string_view {
+        if (!ioj::PositiveFinite<float>::valid(radius)) {
+            return "Sphere radius must be finite and positive.";
+        }
+        return longitude_segments >= 3 && latitude_segments >= 2
+                 ? ""
+                 : "Sphere radius must be positive, with at least 3 longitude and 2 latitude "
+                   "segments.";
+    }
+
+    float radius{50.0f};
     std::int32_t longitude_segments{32};
     std::int32_t latitude_segments{16};
 };
+using SphereParameters = CheckedParameters<SphereInput>;
 
-struct HexTileParameters {
-    ioj::PositiveFinite<float> outer_radius{50.0f};
-    ioj::PositiveFinite<float> depth{20.0f};
-    ioj::PositiveFinite<float> bevel_width{5.0f};
+struct HexTileInput {
+    [[nodiscard]] constexpr auto error() const -> std::string_view {
+        if (!ioj::PositiveFinite<float>::valid(outer_radius) ||
+            !ioj::PositiveFinite<float>::valid(depth) ||
+            !ioj::PositiveFinite<float>::valid(bevel_width)) {
+            return "Hex-tile radius, depth, and bevel width must be finite and positive.";
+        }
+        return bevel_width < outer_radius && bevel_width < depth * 0.5f
+                 ? ""
+                 : "Hex-tile bevel width must be less than its radius and half-depth.";
+    }
+
+    float outer_radius{50.0f};
+    float depth{20.0f};
+    float bevel_width{5.0f};
     bool pointy_top{};
 };
+using HexTileParameters = CheckedParameters<HexTileInput>;
 
 enum class HexFrameUvMode : std::uint8_t {
     per_face,
     perimeter,
 };
 
-struct HexFrameParameters {
-    ioj::PositiveFinite<float> outer_radius{50.0f};
-    ioj::PositiveFinite<float> wall_thickness{10.0f};
-    ioj::PositiveFinite<float> depth{20.0f};
+struct HexFrameInput {
+    [[nodiscard]] constexpr auto error() const -> std::string_view {
+        if (!ioj::PositiveFinite<float>::valid(outer_radius) ||
+            !ioj::PositiveFinite<float>::valid(wall_thickness) ||
+            !ioj::PositiveFinite<float>::valid(depth)) {
+            return "Hex-frame radius, wall thickness, and depth must be finite and positive.";
+        }
+        if (wall_thickness >= outer_radius) {
+            return "Hex-frame wall thickness must be less than its outer radius.";
+        }
+        return uv_mode == HexFrameUvMode::per_face || uv_mode == HexFrameUvMode::perimeter
+                 ? ""
+                 : "Hex-frame UV mode is invalid.";
+    }
+
+    float outer_radius{50.0f};
+    float wall_thickness{10.0f};
+    float depth{20.0f};
     bool pointy_top{};
     HexFrameUvMode uv_mode{HexFrameUvMode::per_face};
 };
+using HexFrameParameters = CheckedParameters<HexFrameInput>;
 
-struct HoneycombPanelParameters {
-    ioj::Positive<std::int32_t> rows{3};
-    ioj::Positive<std::int32_t> columns{4};
-    ioj::PositiveFinite<float> cell_radius{50.0f};
-    ioj::PositiveFinite<float> wall_thickness{8.0f};
-    ioj::PositiveFinite<float> depth{20.0f};
+struct HoneycombPanelInput {
+    [[nodiscard]] constexpr auto error() const -> std::string_view {
+        if (rows <= 0 || columns <= 0 || !ioj::PositiveFinite<float>::valid(cell_radius) ||
+            !ioj::PositiveFinite<float>::valid(wall_thickness) ||
+            !ioj::PositiveFinite<float>::valid(depth)) {
+            return "Honeycomb rows and columns must be positive; radius, wall thickness, and depth "
+                   "must be finite and positive.";
+        }
+        return wall_thickness < cell_radius
+                 ? ""
+                 : "Honeycomb wall thickness must be less than its cell radius.";
+    }
+
+    std::int32_t rows{3};
+    std::int32_t columns{4};
+    float cell_radius{50.0f};
+    float wall_thickness{8.0f};
+    float depth{20.0f};
     bool pointy_top{};
 };
+using HoneycombPanelParameters = CheckedParameters<HoneycombPanelInput>;
 
 struct GenerationRequest {
     Shape shape{Shape::box};
@@ -125,11 +250,18 @@ struct GenerationRequest {
     WedgeParameters wedge;
 };
 
-struct Transform {
+struct TransformInput {
+    [[nodiscard]] constexpr auto error() const -> std::string_view {
+        return ioj::PositiveFiniteVector<float, 3>::valid(scale)
+                 ? ""
+                 : "all scale values must be finite and greater than zero.";
+    }
+
     Vec3f translation{};
     Rotatorf rotation{};
     Vec3f scale{1.0f, 1.0f, 1.0f};
 };
+using Transform = CheckedParameters<TransformInput>;
 
 struct AssemblyPart {
     GenerationRequest mesh;
@@ -138,7 +270,6 @@ struct AssemblyPart {
     bool locked{};
 };
 
-// Require positive dimensions and the shape-specific relationships checked by validate_request.
 [[nodiscard]] auto generate_box(BoxParameters const& parameters = {}) -> MeshData;
 [[nodiscard]] auto generate_beveled_box(BeveledBoxParameters const& parameters = {}) -> MeshData;
 [[nodiscard]] auto generate_wedge(WedgeParameters const& parameters = {}) -> MeshData;
@@ -151,8 +282,6 @@ struct AssemblyPart {
     -> MeshData;
 
 [[nodiscard]] auto make_default_request(Shape shape) -> GenerationRequest;
-[[nodiscard]] auto validate_request(GenerationRequest const& request) -> std::string;
-// Require validate_request(request) to succeed before generating an authored request.
 [[nodiscard]] auto generate_mesh(GenerationRequest const& request) -> MeshData;
 [[nodiscard]] auto describe_request(GenerationRequest const& request) -> std::string;
 
@@ -160,7 +289,6 @@ struct AssemblyPart {
 void append_transformed_mesh(MeshData& destination,
                              MeshData const& source,
                              Transform const& transform);
-[[nodiscard]] auto validate_assembly(std::span<AssemblyPart const> parts) -> std::string;
 [[nodiscard]] auto generate_assembly(std::span<AssemblyPart const> parts) -> MeshData;
 [[nodiscard]] auto describe_assembly(std::span<AssemblyPart const> parts) -> std::string;
 

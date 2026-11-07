@@ -2,7 +2,7 @@
 
 #include "SbxMeshGenLab/MeshGenerationRequest.h"
 
-using FSbxMeshTransform = mesh_gen::Transform;
+using FSbxMeshTransformInput = mesh_gen::TransformInput;
 using FSbxMeshAssemblyPart = mesh_gen::AssemblyPart;
 
 namespace SandboxMesh {

@@ -27,8 +27,7 @@ auto validate_mesh_request(FSbxMeshGenerationRequest const& request) -> FString 
             TEXT("Invalid asset name '%s': %s"), *asset_name, *invalid_name_reason.ToString());
     }
 
-    auto const error{mesh_gen::validate_request(request)};
-    return FString{UTF8_TO_TCHAR(error.c_str())};
+    return {};
 }
 
 auto describe_mesh_request(FSbxMeshGenerationRequest const& request) -> FString {

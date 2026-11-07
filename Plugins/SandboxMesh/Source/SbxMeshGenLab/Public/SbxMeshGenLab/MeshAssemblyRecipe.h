@@ -135,7 +135,7 @@ struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipePart {
     // Return an error describing invalid input for this part's shape.
     [[nodiscard]] auto to_part(FName output_asset_name) const
         -> std::expected<FSbxMeshAssemblyPart, FString>;
-    [[nodiscard]] auto to_transform() const -> FSbxMeshTransform;
+    [[nodiscard]] auto to_transform() const -> FSbxMeshTransformInput;
 };
 
 USTRUCT()
@@ -196,13 +196,10 @@ namespace SandboxMesh {
                                    TArray<FSbxMeshAssemblyRecipeGroup> const& groups,
                                    int32 format_version) -> bool;
 [[nodiscard]] SBXMESHGENLAB_API auto
-    validate_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& parts,
-                                     TArray<FSbxMeshAssemblyRecipeGroup> const& groups) -> FString;
-// Require validate_mesh_assembly_hierarchy(parts, groups) to succeed.
-[[nodiscard]] SBXMESHGENLAB_API auto
     resolve_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& parts,
                                     TArray<FSbxMeshAssemblyRecipeGroup> const& groups,
-                                    FName output_asset_name) -> TArray<FSbxMeshAssemblyPart>;
+                                    FName output_asset_name)
+        -> std::expected<TArray<FSbxMeshAssemblyPart>, FString>;
 
 }
 
@@ -225,5 +222,5 @@ class SBXMESHGENLAB_API USbxMeshAssemblyRecipe final : public UObject {
     void set_hierarchy(FName asset_name,
                        TArray<FSbxMeshAssemblyRecipePart> const& assembly_parts,
                        TArray<FSbxMeshAssemblyRecipeGroup> const& assembly_groups);
-    [[nodiscard]] auto to_assembly() const -> TArray<FSbxMeshAssemblyPart>;
+    [[nodiscard]] auto to_assembly() const -> std::expected<TArray<FSbxMeshAssemblyPart>, FString>;
 };
