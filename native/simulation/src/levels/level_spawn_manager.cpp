@@ -1,10 +1,12 @@
 #include "ioj/sim/levels/level_spawn_manager.h"
 
 #include <ioj/column_math.h>
+#include <ioj/diagnostics.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/spawn_interface.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/levels/level_entity_index.h>
+#include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/spawn_context.h>
 #include <ioj/sim/spinners/spawn_interface.h>
 #include <ioj/sim/turrets/spawn_interface.h>
@@ -37,6 +39,38 @@ void LevelSpawnManager::set_entity_id(LevelEntityIndex const entity_index, Entit
     assert(static_cast<std::size_t>(entity_index) < entity_ids_.size());
     assert(id.is_valid());
     entity_ids_[entity_index] = id;
+}
+
+void LevelSpawnManager::process_event(EventHandle const event,
+                                      LevelEventManager const& events,
+                                      SpawnContext const context) {
+    assert(event.kind() == EventKind::Spawn);
+
+    auto const& definitions{events.data()};
+    auto const range{definitions.spawn_events[event.index()]};
+    auto const groups{definitions.spawn_groups.const_view(range.offset, range.count)};
+    auto const types{groups.types()};
+    auto const offsets{groups.offsets()};
+    auto const counts{groups.counts()};
+    auto const group_count{groups.num()};
+
+    for (std::uint32_t index{}; index < group_count; ++index) {
+        auto const offset{offsets[index]};
+        auto const count{counts[index].value()};
+        switch (types[index]) {
+            case EntityType::CapitalShip:
+                spawn_capitals(definitions.capital_spawns.const_view(offset, count), context);
+                break;
+            case EntityType::Turret:
+                spawn_turrets(definitions.turret_spawns.const_view(offset, count), context);
+                break;
+            case EntityType::TubeSpinner:
+                spawn_spinners(definitions.spinner_spawns.const_view(offset, count), context);
+                break;
+            default:
+                fatal_error("Unsupported level spawn entity type");
+        }
+    }
 }
 
 void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEvents::ConstView const events,

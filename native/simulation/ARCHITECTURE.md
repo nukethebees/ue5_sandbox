@@ -52,7 +52,8 @@ resume routes the retained spawn span to `LevelSpawnManager`. `pause()` only que
 `advance()` consumes tick-end events before accumulating elapsed time and after each completed
 tick. Paused calls process queued events without accumulating time; `start()` resumes directly.
 Initial and delayed level spawns use the same event payloads and dispatch path. The event manager
-owns those payloads; `LevelSim` resolves spawn groups and passes typed views to `LevelSpawnManager`.
+owns those payloads; `LevelSim` routes each spawn event to `LevelSpawnManager`, which resolves
+spawn groups and dispatches typed payload views privately.
 Recurring carrier production remains separate from these one-shot events. Unreal proxy binding
 occurs after initial event dispatch, before the proxies are destroyed; static collision extraction
 excludes those retained source actors.
@@ -75,6 +76,8 @@ to triggers. Expression compilation only receives existing timer handles; it nei
 timers nor creates effects. Mission compilation also belongs to the level compiler, keeping
 runtime `Mission` independent of timer and event storage. `CompiledLevelEvents` holds the
 resulting trigger and effect definitions directly; there is no separate schedule object.
+The compiler fills gameplay fields directly in the builder's fresh `LevelSimInitData`, using
+the configuration already supplied there. Failed compilation discards that construction input.
 Initial events are queued during event-manager construction. Initialisation dispatches queued
 Preparation events before publishing entity lookups, then drains tick-end events immediately
 before returning. Timer starts therefore occur at tick zero without evaluating logic or advancing

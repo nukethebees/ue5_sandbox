@@ -221,39 +221,11 @@ void LevelSim::dispatch_tick_end_events() {
     }
 }
 void LevelSim::dispatch_preparation_events() {
-    auto const& definitions{event_manager_.data()};
     while (auto const event = event_manager_.consume_preparation_event()) {
         switch (event->kind()) {
-            case EventKind::Spawn: {
-                auto const range{definitions.spawn_events[event->index()]};
-                auto const groups{definitions.spawn_groups.const_view(range.offset, range.count)};
-                auto const types{groups.types()};
-                auto const offsets{groups.offsets()};
-                auto const counts{groups.counts()};
-                auto const group_count{groups.num()};
-                SpawnContext const context{entity_ledger_, clock_};
-                for (std::uint32_t index{}; index < group_count; ++index) {
-                    auto const offset{offsets[index]};
-                    auto const count{counts[index].value()};
-                    switch (types[index]) {
-                        case EntityType::CapitalShip:
-                            spawn_manager_.spawn_capitals(
-                                definitions.capital_spawns.const_view(offset, count), context);
-                            break;
-                        case EntityType::Turret:
-                            spawn_manager_.spawn_turrets(
-                                definitions.turret_spawns.const_view(offset, count), context);
-                            break;
-                        case EntityType::TubeSpinner:
-                            spawn_manager_.spawn_spinners(
-                                definitions.spinner_spawns.const_view(offset, count), context);
-                            break;
-                        default:
-                            fatal_error("Unsupported level spawn entity type");
-                    }
-                }
+            case EventKind::Spawn:
+                spawn_manager_.process_event(*event, event_manager_, {entity_ledger_, clock_});
                 break;
-            }
             default:
                 fatal_error("Invalid Preparation event kind");
         }
