@@ -1,14 +1,12 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
 
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/levels/initial_spawns.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/sim/missions/mission.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -32,7 +30,6 @@
 #include <vector>
 
 namespace ioj::level_simulation_builder {
-using FProxyEntityIndexMap = TMap<AActor const*, uint32>;
 
 void modify_editor_actor(AActor& actor) {
 #if WITH_EDITOR
@@ -50,73 +47,6 @@ void configure_proxy_actors(UWorld& world, TConfig const& config) {
     for (TActorIterator<TActor> it{&world}; it; ++it) {
         modify_editor_actor(**it);
         it->set_actor_config(&config);
-    }
-}
-
-template <typename T>
-auto to_optional(TOptional<T> const& value) -> std::optional<T> {
-    return value.IsSet() ? std::optional<T>{value.GetValue()} : std::nullopt;
-}
-
-auto resolve_entity_index(FProxyEntityIndexMap const& entities, AActor const& actor) -> uint32 {
-    auto const* const index{entities.Find(&actor)};
-    check(index);
-    return *index;
-}
-
-auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
-                           FProxyEntityIndexMap const& entities,
-                           sim::SimClock const& clock,
-                           sim::ExprManager& expressions,
-                           sim::Timers& timers,
-                           sim::CompiledLevelEvents& events)
-    -> std::expected<sim::Mission, FLevelStartErrors> {
-    std::vector<levels::EntityId> ids(static_cast<std::size_t>(entities.Num()));
-    for (auto const& entity : entities) {
-        ids[entity.Value] = levels::EntityId{"proxy-" + std::to_string(entity.Value)};
-    }
-    FLevelStartErrors errors;
-    for (auto const& binding : definition.entity_bindings) {
-        auto const* index{entities.Find(binding.Value)};
-        if (!index) {
-            errors.add(FString::Printf(TEXT("Mission binding '%s' has no simulation entity."),
-                                       *binding.Key.ToString()));
-            return std::unexpected{MoveTemp(errors)};
-        }
-        ids[*index] = levels::EntityId{TCHAR_TO_UTF8(*binding.Key.ToString().ToLower())};
-    }
-    auto compiled{
-        levels::compile_mission(definition.objectives, ids, clock, expressions, timers, events)};
-    if (!compiled) {
-        for (auto const& message : compiled.error()) {
-            errors.add(to_fstring(message));
-        }
-        return std::unexpected{MoveTemp(errors)};
-    }
-    return std::move(*compiled);
-}
-
-template <typename TProxy>
-auto collect_proxy_actors(UWorld& world) -> TArray<TProxy*> {
-    TArray<TProxy*> result;
-    for (TActorIterator<TProxy> it{&world}; it; ++it) {
-        result.Add(*it);
-    }
-    return result;
-}
-
-template <typename TProxy, typename TEntityIds>
-void bind_proxies(TArray<TProxy*> const& proxies,
-                  TEntityIds const& entity_ids,
-                  FProxyEntityMap& bindings) {
-    auto const count{proxies.Num()};
-    for (int32 index{}; index < count; ++index) {
-        auto* const proxy{proxies[index]};
-        check(IsValid(proxy));
-        auto const id{entity_ids[index]};
-        check(id.is_valid());
-        proxy->set_unique_id(id);
-        bindings.Add(proxy, id);
     }
 }
 
@@ -141,32 +71,18 @@ void apply_level_actor_configuration(UWorld& world,
     if (IsValid(player)) {
         configure_player_actor(*player, config);
     }
-    for (TActorIterator<ATestCapitalShipProxy> it{&world}; it; ++it) {
-        level_simulation_builder::modify_editor_actor(**it);
-        it->set_level_config_asset(&config);
+#if WITH_EDITOR
+    if (!world.IsGameWorld()) {
+        for (TActorIterator<ATestCapitalShipProxy> it{&world}; it; ++it) {
+            level_simulation_builder::modify_editor_actor(**it);
+            it->set_level_config_asset(&config);
+        }
+        level_simulation_builder::configure_proxy_actors<ATestStaticTurretsProxy>(world,
+                                                                                  config.turrets);
+        level_simulation_builder::configure_proxy_actors<ATestTubeSpinnerProxy>(
+            world, config.tube_spinners);
     }
-    level_simulation_builder::configure_proxy_actors<ATestStaticTurretsProxy>(world,
-                                                                              config.turrets);
-    level_simulation_builder::configure_proxy_actors<ATestTubeSpinnerProxy>(world,
-                                                                            config.tube_spinners);
-}
-
-auto FLevelSimulationBuild::bind_proxy_entities(sim::LevelSim const& simulation) const
-    -> FProxyEntityMap {
-    FProxyEntityMap bindings;
-    level_simulation_builder::bind_proxies(
-        capital_proxies, simulation.capital_ships().get_entities().entity_ids(), bindings);
-    level_simulation_builder::bind_proxies(
-        turret_proxies, simulation.turrets().get_entities().entity_ids(), bindings);
-    level_simulation_builder::bind_proxies(
-        spinner_proxies, simulation.spinners().get_entities().entity_ids(), bindings);
-    return bindings;
-}
-
-void FLevelSimulationBuild::destroy_proxy_actors() const {
-    destroy_all_actors(capital_proxies);
-    destroy_all_actors(turret_proxies);
-    destroy_all_actors(spinner_proxies);
+#endif
 }
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
@@ -264,126 +180,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     return FLevelSimBuildResult{std::in_place, std::move(*native)};
 }
 
-static auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                                  settings::TickSettings const& clock_settings,
-                                                  UWorld& world,
-                                                  ::FLevelMissionDefinition& mission_definition,
-                                                  TOptional<sim::player::PlayerSpawnData> player,
-                                                  AActor const* const player_actor,
-                                                  UStaticMesh const* const player_collision_mesh)
-    -> FLevelSimulationBuildResult {
-    using namespace level_simulation_builder;
-
-    auto base_result{make_level_simulation_init_data(
-        config, clock_settings, MoveTemp(player), player_collision_mesh)};
-    if (!base_result) {
-        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(base_result.error())};
-    }
-
-    FLevelSimulationBuildResult result{std::in_place};
-    auto& build{result.value()};
-    build.data = MoveTemp(base_result.value());
-    build.capital_proxies = collect_proxy_actors<ATestCapitalShipProxy>(world);
-    build.turret_proxies = collect_proxy_actors<ATestStaticTurretsProxy>(world);
-    build.spinner_proxies = collect_proxy_actors<ATestTubeSpinnerProxy>(world);
-
-    auto& initialisation{build.data};
-    FProxyEntityIndexMap entity_indices;
-    auto allocate_entity_index{[&](AActor const& actor) {
-        auto const index{initialisation.entity_count++};
-        check(!entity_indices.Contains(&actor));
-        entity_indices.Add(&actor, index);
-        return index;
-    }};
-    if (build.data.player.has_value()) {
-        check(IsValid(player_actor));
-        initialisation.player_entity_index = allocate_entity_index(*player_actor);
-    }
-
-    for (auto const* proxy : build.capital_proxies) {
-        allocate_entity_index(*proxy);
-    }
-    for (auto const* proxy : build.turret_proxies) {
-        allocate_entity_index(*proxy);
-    }
-    for (auto const* proxy : build.spinner_proxies) {
-        allocate_entity_index(*proxy);
-    }
-
-    std::vector<sim::InitialCapital> capitals;
-    capitals.reserve(build.capital_proxies.Num());
-    for (auto const* proxy : build.capital_proxies) {
-        auto const& transform{proxy->GetActorTransform()};
-        capitals.push_back({
-            .entity = resolve_entity_index(entity_indices, *proxy),
-            .location = Vector3f{transform.GetLocation()},
-            .rotation = Rotator3f{transform.Rotator()},
-            .team = to_native(proxy->get_team()),
-            .health = to_optional(proxy->get_health()),
-            .initial_spawn_delay = to_optional(proxy->get_initial_spawn_delay()),
-            .spawn_cooldown = to_optional(proxy->get_spawn_cooldown()),
-        });
-    }
-    std::vector<sim::InitialTurret> turrets;
-    turrets.reserve(build.turret_proxies.Num());
-    for (auto const* proxy : build.turret_proxies) {
-        auto const transform{proxy->GetActorTransform()};
-        build.initial_turret_transforms.Add(transform);
-        turrets.push_back({
-            .entity = resolve_entity_index(entity_indices, *proxy),
-            .location = Vector3f{transform.GetLocation()},
-            .rotation = Rotator3f{transform.Rotator()},
-            .team = to_native(proxy->get_team()),
-            .health = to_optional(proxy->get_health()),
-            .laser_damage = to_optional(proxy->get_laser_damage()),
-        });
-    }
-    std::vector<sim::InitialSpinner> spinners;
-    spinners.reserve(build.spinner_proxies.Num());
-    for (auto const* proxy : build.spinner_proxies) {
-        auto const& transform{proxy->GetActorTransform()};
-        spinners.push_back({
-            .entity = resolve_entity_index(entity_indices, *proxy),
-            .location = Vector3f{transform.GetLocation()},
-            .yaw = static_cast<float>(transform.Rotator().Yaw),
-            .initial_fire_point = proxy->get_initial_active_fire_point(),
-        });
-    }
-    sim::initialise_spawns(build.data, capitals, turrets, spinners);
-
-    if (mission_definition.level_id.IsNone()) {
-        mission_definition.level_id = FName{UGameplayStatics::GetCurrentLevelName(&world)};
-    }
-    if (mission_definition.level_display_name.IsEmpty()) {
-        mission_definition.level_display_name = mission_definition.level_id.ToString();
-    }
-    sim::SimClock clock;
-    clock.initialise(build.data.clock_settings);
-    auto mission{compile_proxy_mission(mission_definition,
-                                       entity_indices,
-                                       clock,
-                                       build.data.expressions,
-                                       build.data.timers,
-                                       build.data.level_events)};
-    if (!mission) {
-        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(mission.error())};
-    }
-    build.data.mission = std::move(*mission);
-    build.data.level_metadata = {
-        .id = levels::LevelId{TCHAR_TO_UTF8(*mission_definition.level_id.ToString())},
-        .title = TCHAR_TO_UTF8(*mission_definition.level_display_name)};
-
-    if (auto valid{sim::validate_level_simulation_init_data(build.data)}; !valid) {
-        FLevelStartErrors errors;
-        append_native_errors(valid.error(), errors);
-        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
-    }
-
-    return result;
-}
-
-auto prepare_level_simulation(FLevelSimulationRequest const& request)
-    -> FLevelSimulationBuildResult {
+auto prepare_level_simulation(FLevelSimulationRequest const& request) -> FLevelSimBuildResult {
     auto const& config{request.config};
     auto const has_player{IsValid(request.player)};
     auto const presentation_enabled{request.launch_options.presentation_mode ==
@@ -396,15 +193,15 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request)
         errors.add(TEXT("player_ship.team_visual_data is null"));
     }
     if (errors.has_errors()) {
-        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
+        return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
     }
-    auto const needs_player{request.definition && !request.definition->player_entity_id().empty()};
+    auto const needs_player{!request.definition.player_entity_id().empty()};
     auto const* player_source{has_player ? request.player : nullptr};
     if (!player_source && needs_player) {
         player_source = config.classes.player_ship_class.GetDefaultObject();
         if (!IsValid(player_source)) {
             errors.add(TEXT("Player geometry requires a configured player ship class"));
-            return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
+            return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
         }
     }
     TOptional<sim::player::PlayerSpawnData> player;
@@ -412,52 +209,36 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request)
         player.Emplace(player_source->make_spawn_data());
     }
     auto const* const player_mesh{player_source ? player_source->get_collision_mesh() : nullptr};
-    auto result{[&]() -> FLevelSimulationBuildResult {
-        if (!request.definition) {
-            return make_proxy_level_simulation_init_data(config,
-                                                         request.clock_settings,
-                                                         request.world,
-                                                         request.mission,
-                                                         MoveTemp(player),
-                                                         request.player,
-                                                         player_mesh);
-        }
-
-        auto data{make_level_simulation_init_data(config,
-                                                  request.clock_settings,
-                                                  *request.definition,
-                                                  MoveTemp(player),
-                                                  {},
-                                                  player_mesh)};
-        if (!data) {
-            return FLevelSimulationBuildResult{std::unexpect, MoveTemp(data.error())};
-        }
-        return FLevelSimulationBuild{.data = MoveTemp(*data)};
-    }()};
+    auto result{make_level_simulation_init_data(
+        config, request.clock_settings, request.definition, MoveTemp(player), {}, player_mesh)};
     if (!result) {
         return result;
     }
 
-    auto& metadata{result->data.telemetry_metadata};
-    metadata = make_level_telemetry_run_metadata(request.world, request.mission);
-    metadata.level_source = to_string(request.level_source);
-    metadata.settings_source = to_string(request.settings_source);
-    if (request.definition) {
-        metadata.level_id = request.definition->metadata().id.value;
-        metadata.level_display_name = request.definition->metadata().title;
-    }
-    auto const& options{request.launch_options};
+    return result;
+}
+
+auto configure_level_run(sim::LevelSimInitData& data,
+                         UWorld const& world,
+                         levels::LevelMetadata const& definition,
+                         levels::LaunchOptions const& options,
+                         FString const& level_source,
+                         FString const& settings_source) -> std::expected<void, FLevelStartErrors> {
+    FLevelStartErrors errors;
+    auto& metadata{data.telemetry_metadata};
+    metadata = make_level_telemetry_run_metadata(world, definition);
+    metadata.level_source = to_string(level_source);
+    metadata.settings_source = to_string(settings_source);
     if (options.simulated_duration_seconds.has_value()) {
         auto const duration{Duration::make(*options.simulated_duration_seconds)};
         metadata.requested_duration_seconds = duration;
         sim::SimClock clock;
-        clock.initialise(result->data.clock_settings);
+        clock.initialise(data.clock_settings);
         auto const ticks{levels::compile_timer_duration(duration, clock)};
         if (!ticks) {
             level_simulation_builder::append_native_errors(ticks.error(), errors);
-            return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
+            return std::unexpected{MoveTemp(errors)};
         }
-        auto& data{result->data};
         auto& events{data.level_events};
         auto const timer{data.timers.add()};
         auto const elapsed{data.expressions.add_timer_elapsed(timer)};
@@ -466,6 +247,6 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request)
             events.add_stop_event(sim::telemetry::RunEndReason::DurationReached)};
         events.add_trigger(elapsed, effects);
     }
-    return result;
+    return {};
 }
 }

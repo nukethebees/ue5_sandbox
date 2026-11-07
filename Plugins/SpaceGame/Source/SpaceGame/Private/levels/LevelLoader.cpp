@@ -1,11 +1,10 @@
 #include "SpaceGame/levels/LevelLoader.h"
 
 #include <ioj/presentation/observer_camera.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -156,22 +155,6 @@ auto FLevelLoadErrors::format(FStringView const source_path) const -> FString {
                            *FString::Join(messages, TEXT("\n")));
 }
 
-auto FLevelLoader::take_pending(UGameInstance* const game_instance)
-    -> std::expected<session::PendingLevel, FString> {
-    auto* const subsystem{UGameSubsystem::get(game_instance)};
-    if (!IsValid(subsystem)) {
-        return std::unexpected{
-            FString{TEXT("Cannot load authored level: game subsystem is invalid")}};
-    }
-    auto pending{subsystem->take_pending_level()};
-    if (!pending) {
-        return std::unexpected{
-            FString{TEXT("No pending authored level was provided to GameRuntime.")}};
-    }
-
-    return std::move(*pending);
-}
-
 void FLevelLoader::report_failure(UWorld* const world, FString message) {
     UE_LOG(LogSandbox, Error, TEXT("%s"), *message);
 #if WITH_EDITOR
@@ -220,9 +203,7 @@ auto FLevelLoader::load(FLevelActorLoadRequest const& request)
         return result;
     }
 
-    if (IsValid(request.player) || world_contains<ATestSpaceShip>(world) ||
-        world_contains<ATestCapitalShipProxy>(world) ||
-        world_contains<ATestStaticTurretsProxy>(world)) {
+    if (IsValid(request.player) || world_contains<ATestSpaceShip>(world)) {
         add_error(errors,
                   ELevelLoadErrorCode::ExistingLevelActors,
                   TEXT("World already contains authored gameplay actors"));

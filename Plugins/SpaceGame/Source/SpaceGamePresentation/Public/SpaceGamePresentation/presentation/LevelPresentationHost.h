@@ -33,8 +33,7 @@ class SPACEGAMEPRESENTATION_API FLevelPresentationHost {
                     TOptional<FPlayerPresentationResources> player,
                     ioj::sim::LevelReadAccess const& view,
                     ioj::sim::Mission const& mission,
-                    ioj::sim::SpatialQueryManager const& spatial_queries,
-                    TArray<FTransform> initial_turret_transforms);
+                    ioj::sim::SpatialQueryManager const& spatial_queries);
     void reset();
     void tick(double dt,
               ioj::sim::LevelReadAccess const& view,

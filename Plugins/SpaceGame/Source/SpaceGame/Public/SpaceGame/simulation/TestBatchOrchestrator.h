@@ -1,9 +1,7 @@
 #pragma once
 #include <ioj/levels/launch_options.h>
 #include <ioj/sim/levels/level_sim.h>
-#include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/levels/LevelLoader.h>
-#include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGame/missions/MissionCompletion.h>
 #include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -23,7 +21,6 @@ class USparkRendererComponent;
 
 class ATestBatchOrchestrator;
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnProxyEntitiesBound, FProxyEntityMap const&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnOrchestratorReset, ATestBatchOrchestrator&);
 
 UENUM(BlueprintType)
@@ -64,8 +61,12 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     }
     auto get_settings_file() const -> FString const& { return settings_file.FilePath; }
     void set_start_mode(EOrchestratorStartMode mode);
+    void set_level_script(FString path);
     auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
     void set_presentation_enabled(bool enabled);
+    void set_initialisation_data(ioj::sim::LevelSimInitData data) {
+        initialisation_data_.emplace(std::move(data));
+    }
     auto get_level_definition() const -> ioj::levels::LevelDefinition const& {
         check(prepared_level_.IsSet() && prepared_level_->level.has_value());
         return *prepared_level_->level;
@@ -103,14 +104,12 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Player actor
     /* **************************************** */
     auto get_player_ship() const -> ATestSpaceShip const*;
-    void set_player_ship(ATestSpaceShip& new_player_ship);
     void clear_player_ship();
 
     /* **************************************** */
     // Testing and level preparation
     /* **************************************** */
 
-    auto prepare_level(ioj::levels::LevelSource const* source = nullptr) -> bool;
     auto load_level(ioj::levels::LevelSource const& source,
                     ::ioj::levels::ControlContext playerless_control_context =
                         ::ioj::levels::ControlContext::Observer)
@@ -119,7 +118,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Events, results, and presentation
     /* **************************************** */
-    auto get_mission_definition() -> FLevelMissionDefinition& { return mission_definition; }
     auto get_hud_manager() noexcept -> ioj::FHUDManager& {
         return presentation_host_.get_hud_manager();
     }
@@ -138,9 +136,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UFUNCTION(CallInEditor, Category = "Sandbox|Assets")
     void apply_level_config();
 
-    UFUNCTION(CallInEditor, Category = "Sandbox")
-    void prepare_level_button();
-
     UFUNCTION(CallInEditor,
               Category = "Sandbox|Settings",
               meta = (DisplayName = "Create level settings..."))
@@ -150,6 +145,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Level initialization
     /* **************************************** */
+    auto prepare_level(ioj::levels::LevelSource const& source) -> bool;
     auto begin_play() -> bool;
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
@@ -188,7 +184,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
     TObjectPtr<UInstancedStaticMeshComponent> soft_target_instances_;
   public:
-    static FOnProxyEntitiesBound on_proxy_entities_bound;
     FOnOrchestratorReset on_reset;
     FSimpleMulticastDelegate on_simulation_paused;
     FOnMissionCompleted on_mission_completed;
@@ -198,6 +193,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
               Category = "Sandbox|Settings",
               meta = (FilePathFilter = "scm", RelativeToGameDir))
     FFilePath settings_file{TEXT("LevelScripts/Settings/base.scm")};
+    UPROPERTY(EditAnywhere,
+              Category = "Sandbox",
+              meta = (FilePathFilter = "scm", RelativeToGameDir))
+    FFilePath level_script;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Presentation")
@@ -209,12 +208,11 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FLevelPresentationHost presentation_host_;
     TOptional<ioj::sim::LevelSim> level_simulation_;
     TOptional<FLoadedGameSettings> prepared_level_;
+    std::optional<ioj::sim::LevelSimInitData> initialisation_data_;
     ioj::levels::LaunchOptions launch_options_{};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
-    UPROPERTY(Transient)
-    FLevelMissionDefinition mission_definition;
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Sandbox")

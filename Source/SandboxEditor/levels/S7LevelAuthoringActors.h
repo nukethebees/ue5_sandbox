@@ -1,6 +1,7 @@
 #pragma once
 
-#include <SpaceGame/levels/LevelEntityResolution.h>
+#include <ioj/levels/entity_archetype.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
 #include <CoreMinimal.h>
 
@@ -9,20 +10,19 @@ class USpaceGameLevelConfig;
 
 namespace ioj::editor {
 struct FS7LevelResolvedActor {
-    EResolvedLevelArchetype archetype{};
+    levels::EntityArchetype archetype{};
     Team team{};
 };
 
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor>;
-auto s7_level_actor_class(EResolvedLevelArchetype archetype, USpaceGameLevelConfig const& config)
+auto s7_level_actor_class(levels::EntityArchetype archetype, USpaceGameLevelConfig const& config)
     -> UClass*;
 void configure_s7_level_actor(AActor& actor,
-                              EResolvedLevelArchetype archetype,
+                              levels::EntityArchetype archetype,
                               ETestTeam team,
                               USpaceGameLevelConfig& config,
                               FTransform const& transform,
                               FName label);
 auto canonical_s7_level_entity_id(FStringView text, FStringView fallback) -> FName;
 auto is_canonical_s7_level_entity_id(FStringView id) -> bool;
-auto is_canonical_s7_level_entity_id(FName id) -> bool;
 }

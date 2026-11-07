@@ -87,6 +87,13 @@ void FSpinnerPresentation::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::update_ismc);
 
     update_ismc_transforms();
+    auto const previous_count{instances->GetNumInstances()};
+    auto const count{ismc_transforms.Num()};
+    check(count >= previous_count);
+    for (auto index{previous_count}; index < count; ++index) {
+        instances->AddInstance(ismc_transforms[index], is_world_space);
+    }
+
     constexpr bool mark_render_state_dirty{false};
     constexpr bool teleport{false};
     instances->BatchUpdateInstancesTransforms(

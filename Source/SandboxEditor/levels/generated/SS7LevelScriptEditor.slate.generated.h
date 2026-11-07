@@ -31,15 +31,15 @@ struct SS7LevelScriptEditorBuilder {
                         [SNew(SHorizontalBox) +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
-                                  .Text(NSLOCTEXT(
-                                      "SS7LevelScriptEditor", "Preview", "Replay and Preview"))
-                                  .IsEnabled(&self_, &ThisClass::can_preview_buffer)
-                                  .OnClicked(&self_, &ThisClass::preview_buffer)] +
+                                  .Text(
+                                      NSLOCTEXT("SS7LevelScriptEditor", "Import", "Import Source"))
+                                  .IsEnabled(&self_, &ThisClass::can_import_source)
+                                  .OnClicked(&self_, &ThisClass::import_source)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
-                                  .Text(NSLOCTEXT("SS7LevelScriptEditor", "Apply", "Apply Preview"))
-                                  .IsEnabled(&self_, &ThisClass::can_apply_preview)
-                                  .OnClicked(&self_, &ThisClass::apply_preview)]] +
+                                  .Text(NSLOCTEXT("SS7LevelScriptEditor", "Export", "Export Scene"))
+                                  .IsEnabled(&self_, &ThisClass::can_export_scene)
+                                  .OnClicked(&self_, &ThisClass::export_scene)]] +
                     SandboxUI::Slate::vbox_auto_slot()
                         [SNew(SHorizontalBox) +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
@@ -47,21 +47,6 @@ struct SS7LevelScriptEditorBuilder {
                                   .Text(NSLOCTEXT("SS7LevelScriptEditor", "Save", "Save Buffer"))
                                   .IsEnabled(&self_, &ThisClass::can_save_buffer)
                                   .OnClicked(&self_, &ThisClass::save_buffer)] +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                             [SNew(SButton)
-                                  .Text(
-                                      NSLOCTEXT("SS7LevelScriptEditor", "SaveAs", "Save Buffer As"))
-                                  .IsEnabled(&self_, &ThisClass::can_save_buffer_as)
-                                  .OnClicked(&self_, &ThisClass::save_buffer_as)]] +
-                    SandboxUI::Slate::vbox_auto_slot()
-                        [SNew(SHorizontalBox) +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                             [SNew(SButton)
-                                  .Text(NSLOCTEXT("SS7LevelScriptEditor",
-                                                  "SaveCanonical",
-                                                  "Save Canonical from Scene"))
-                                  .IsEnabled(&self_, &ThisClass::can_save_canonical)
-                                  .OnClicked(&self_, &ThisClass::save_canonical)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})[SNew(SSpacer)]]] +
                SandboxUI::Slate::vbox_auto_slot(
                    FMargin{4.0f, 0.0f})[SAssignNew(self_.state_, STextBlock).AutoWrapText(true)] +

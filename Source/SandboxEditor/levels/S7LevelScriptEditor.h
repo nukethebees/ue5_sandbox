@@ -32,18 +32,14 @@ class SS7LevelScriptEditor final : public SCompoundWidget {
     [[nodiscard]] auto reload_text() const -> FText;
     [[nodiscard]] auto can_load_source() const -> bool;
     [[nodiscard]] auto can_reload_source() const -> bool;
-    [[nodiscard]] auto can_preview_buffer() const -> bool;
-    [[nodiscard]] auto can_apply_preview() const -> bool;
+    [[nodiscard]] auto can_import_source() const -> bool;
     [[nodiscard]] auto can_save_buffer() const -> bool;
-    [[nodiscard]] auto can_save_buffer_as() const -> bool;
-    [[nodiscard]] auto can_save_canonical() const -> bool;
+    [[nodiscard]] auto can_export_scene() const -> bool;
     auto load_source() -> FReply;
     auto reload_source() -> FReply;
-    auto preview_buffer() -> FReply;
-    auto apply_preview() -> FReply;
+    auto import_source() -> FReply;
     auto save_buffer() -> FReply;
-    auto save_buffer_as() -> FReply;
-    auto save_canonical() -> FReply;
+    auto export_scene() -> FReply;
 
     TWeakObjectPtr<US7LevelAuthoringMode> mode_{};
     FDelegateHandle mode_changed_handle_{};

@@ -2,6 +2,7 @@
 #include <ioj/sim/telemetry/level_telemetry_manager.h>
 #include <SandboxTests/support/simulation_step.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
@@ -32,7 +33,9 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
             return;
         }
 
-        auto& world{context_.world};
+        if (!load_player_test_level(*orchestrator, checks)) {
+            return;
+        }
 
         TestRunner->TestTrue(TEXT("Paused test start mode defers orchestrator initialisation"),
                              orchestrator->get_state() == sim::LevelState::Uninitialised);
@@ -73,6 +76,9 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
         FTestBatchOrchestratorTestAccess::use_settings_file(orchestrator,
                                                             TEXT("LevelScripts/Settings/base.scm"));
         orchestrator.set_presentation_enabled(true);
+        if (!load_player_test_level(orchestrator, checks)) {
+            return;
+        }
         orchestrator.start_simulation();
         auto const* presentation{orchestrator.get_level_presentation()};
         if (!checks.is_true(presentation != nullptr,

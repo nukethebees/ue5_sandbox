@@ -44,7 +44,7 @@ void FTurretPresentation::clear_runtime_state_presentation() {
     ismc_transforms.Reset();
 }
 
-void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_transforms) {
+void FTurretPresentation::begin_play_presentation() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::begin_play_presentation);
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FTurretPresentation actor_config is nullptr."));
@@ -58,7 +58,6 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
     debug_drawer.world = instances->GetWorld();
 
     configure_ismc();
-    ismc_transforms = MoveTemp(initial_transforms);
     auto const entities{simulation().get_entities()};
     auto const count{static_cast<int32>(entities.num())};
     ismc_transforms.Reserve(count);
@@ -67,7 +66,7 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
     auto const pitches{rotations.pitches()};
     auto const yaws{rotations.yaws()};
     auto const rolls{rotations.rolls()};
-    for (auto i{ismc_transforms.Num()}; i < count; ++i) {
+    for (int32 i{}; i < count; ++i) {
         ismc_transforms.Emplace(
             FRotator{ioj::to_unreal(::ioj::Rotator3f{pitches[i], yaws[i], rolls[i]})},
             FVector{ioj::to_unreal(::ioj::vector_at(locations, i))});

@@ -72,28 +72,7 @@ auto FS7LevelSourceSession::save() -> std::expected<void, FString> {
     }
     return result(session_.save());
 }
-auto FS7LevelSourceSession::save_as(FStringView const source_path,
-                                    ES7SourceOverwritePolicy const overwrite)
-    -> std::expected<void, FString> {
-    if (!document_.IsValid()) {
-        session_.detach();
-    }
-    return result(session_.save_as(s7_source_session_detail::path(source_path), overwrite));
-}
-auto FS7LevelSourceSession::save_replacement(FString source, FStringView const synchronized_source)
-    -> std::expected<void, FString> {
-    return result(session_.save_replacement(text(source), text(synchronized_source)));
-}
-auto FS7LevelSourceSession::save_replacement_as(FString source,
-                                                FStringView const source_path,
-                                                FStringView const synchronized_source,
-                                                ES7SourceOverwritePolicy const overwrite)
-    -> std::expected<void, FString> {
-    return result(session_.save_replacement_as(text(source),
-                                               s7_source_session_detail::path(source_path),
-                                               text(synchronized_source),
-                                               overwrite));
-}
+
 auto FS7LevelSourceSession::refresh_external_conflict() -> std::expected<void, FString> {
     if (!document_.IsValid()) {
         session_.detach();
@@ -121,34 +100,10 @@ auto FS7LevelSourceSession::is_dirty() const -> bool {
 auto FS7LevelSourceSession::has_external_conflict() const -> bool {
     return session_.state().disk_conflict;
 }
-auto FS7LevelSourceSession::has_unapplied_buffer(FStringView const synchronized_source) const
-    -> bool {
-    return session_.state().unapplied(text(synchronized_source));
-}
 
 auto FS7LevelSourceSession::read(settings::Settings base) const
     -> std::expected<levels::LevelDefinition, levels::Diagnostics> {
-    return read_replay(std::move(base)).transform([](FS7LevelReadResult&& result) {
-        return std::move(result.definition);
-    });
+    return session_.read(std::move(base));
 }
 
-auto FS7LevelSourceSession::read_replay(settings::Settings base) const
-    -> std::expected<FS7LevelReadResult, levels::Diagnostics> {
-    if (!is_attached()) {
-        return std::unexpected{
-            levels::Diagnostics{{levels::DiagnosticCode::ExpectedRecord,
-                                 "$",
-                                 "The source buffer is not attached to the current level."}}};
-    }
-    auto const root{
-        session_.path().empty()
-            ? s7_source_session_detail::path(levels::authoring::default_level_script_directory())
-            : session_.path().parent_path()};
-    return session_.read_replay(std::move(base), root / "Libraries")
-        .transform([](levels::authoring::SourceReplay&& replay) {
-            return FS7LevelReadResult{std::move(replay.definition),
-                                      to_fstring(replay.evaluated_source)};
-        });
-}
 }

@@ -27,18 +27,16 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
   private:
     auto grid_summary() const -> FText;
     auto create_document() -> FReply;
-    auto repair_and_adopt_entities() -> FReply;
+    auto adopt_entities() -> FReply;
     auto rename_selected_entity() -> FReply;
     auto open_level_config() -> FReply;
     auto validate_playable_level() -> FReply;
     auto set_up_playable_level() -> FReply;
     auto load_s7() -> FReply;
     auto open_script_editor() -> FReply;
-    auto preview_apply() -> FReply;
-    auto apply_preview() -> FReply;
+    auto import_source() -> FReply;
     auto save() -> FReply;
-    auto save_as() -> FReply;
-    auto save_canonical_from_scene() -> FReply;
+    auto export_scene() -> FReply;
 
     TWeakObjectPtr<US7LevelAuthoringMode> mode_{};
     TWeakObjectPtr<AS7LevelAuthoringDocument> displayed_document_{};

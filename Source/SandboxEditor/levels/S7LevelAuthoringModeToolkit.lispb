@@ -19,14 +19,11 @@
             (authoring-action "New" "New" create_document)
             (authoring-action "Load" "Load & Apply S7" load_s7))
           (authoring-row
-            (authoring-action "Preview" "Preview Apply" preview_apply)
-            (authoring-action "Apply" "Apply Preview" apply_preview))
+            (authoring-action "Preview" "Import Source" import_source)
+            (authoring-action "Export" "Export Scene" export_scene))
           (authoring-row
-            (authoring-action "RepairAndAdopt" "Repair / Adopt Actors" repair_and_adopt_entities)
+            (authoring-action "Adopt" "Adopt Entities" adopt_entities)
             (authoring-action "Save" "Save Source" save))
-          (authoring-row
-            (authoring-action "SaveAs" "Save Source As" save_as)
-            (authoring-action "SaveCanonical" "Save Canonical from Scene" save_canonical_from_scene))
           (authoring-row
             (authoring-action "OpenScriptEditor" "Open Script Editor" open_script_editor)
             (SBox))

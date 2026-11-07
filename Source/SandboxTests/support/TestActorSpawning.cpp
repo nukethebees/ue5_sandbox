@@ -1,11 +1,7 @@
 #include "TestActorSpawning.h"
 
-#include "SoftTestAssertions.h"
 #include <SandboxTests/SandboxTestLogCategories.h>
-#include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <Engine/World.h>
 #include <Kismet/GameplayStatics.h>
@@ -44,75 +40,4 @@ auto spawn_player_ship(UWorld& world,
     return player_ship;
 }
 
-void resolve_proxy_entity_bindings(FProxyEntityMap const& proxy_entities,
-                                   TArray<FProxyEntityBinding> const& bindings,
-                                   FSoftTestAssertions& checks) {
-    for (FProxyEntityBinding const& binding : bindings) {
-        if (!checks.is_true(binding.id != nullptr,
-                            FString::Printf(TEXT("Proxy binding '%s' has an output"),
-                                            *binding.test_name.ToString()))) {
-            continue;
-        }
-        if (!checks.is_true(!binding.test_name.IsNone(), TEXT("Proxy binding has a test name"))) {
-            continue;
-        }
-
-        int32 matches{0};
-        sim::EntityId const* matched_id{nullptr};
-        for (auto const& [actor, id] : proxy_entities) {
-            auto const* const entity{Cast<ITestEntity>(actor)};
-            if (!entity || entity->get_test_name() != binding.test_name) {
-                continue;
-            }
-
-            ++matches;
-            matched_id = &id;
-        }
-
-        if (!checks.are_equal(1,
-                              matches,
-                              FString::Printf(TEXT("Exactly one proxy is named '%s'"),
-                                              *binding.test_name.ToString()))) {
-            continue;
-        }
-
-        check(matched_id);
-        *binding.id = *matched_id;
-    }
-}
-
-auto spawn_capital_proxy(UWorld& world,
-                         USpaceGameLevelConfig const& config,
-                         FSoftTestAssertions& checks,
-                         FName const test_name,
-                         FVector const& location) -> ATestCapitalShipProxy* {
-    return spawn_capital_proxy(
-        world, config, checks, test_name, FTransform{FRotator::ZeroRotator, location});
-}
-
-auto spawn_capital_proxy(UWorld& world,
-                         USpaceGameLevelConfig const& config,
-                         FSoftTestAssertions& checks,
-                         FName const test_name,
-                         FTransform const& transform) -> ATestCapitalShipProxy* {
-    auto const proxy_class{config.classes.capital_ship_proxy_class};
-    if (!checks.is_true(IsValid(proxy_class), TEXT("Capital proxy actor class is available"))) {
-        return nullptr;
-    }
-
-    auto* const proxy{world.SpawnActorDeferred<ATestCapitalShipProxy>(proxy_class, transform)};
-    if (!checks.is_valid(proxy, TEXT("Deferred capital proxy is spawned"))) {
-        return nullptr;
-    }
-
-    proxy->set_actor_config(&config.capital_ships);
-    proxy->set_test_name(test_name);
-
-    auto* finished_actor{UGameplayStatics::FinishSpawningActor(proxy, transform)};
-    if (!checks.is_valid(finished_actor, TEXT("Finish spawning succeeded."))) {
-        return nullptr;
-    }
-
-    return proxy;
-}
 }

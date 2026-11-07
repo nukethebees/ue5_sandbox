@@ -77,7 +77,8 @@ void FS7LevelAuthoringModeToolkit::refresh(ioj::settings::Settings const* settin
 
     std::expected<ioj::settings::Settings, FString> resolved{std::unexpect};
     if (!settings) {
-        resolved = ioj::editor::read_s7_document_settings(*document);
+        resolved = ioj::editor::read_s7_authored_level(*document).transform(
+            [](auto const& level) { return level.settings(); });
         if (!resolved) {
             grid_summary_ = FText::FromString(resolved.error());
             return;
@@ -105,13 +106,13 @@ void FS7LevelAuthoringModeToolkit::refresh(ioj::settings::Settings const* settin
     }
 
 FORWARD_ACTION(create_document)
-FORWARD_ACTION(repair_and_adopt_entities)
+FORWARD_ACTION(adopt_entities)
 FORWARD_ACTION(open_level_config)
 FORWARD_ACTION(validate_playable_level)
 FORWARD_ACTION(set_up_playable_level)
 auto FS7LevelAuthoringModeToolkit::load_s7() -> FReply {
-    if (mode_.IsValid() && mode_->load_s7()) {
-        mode_->apply_preview();
+    if (mode_.IsValid()) {
+        mode_->load_s7();
     }
     return FReply::Handled();
 }
@@ -125,16 +126,14 @@ auto FS7LevelAuthoringModeToolkit::open_script_editor() -> FReply {
     FSandboxEditorModule::open_s7_level_script_editor();
     return FReply::Handled();
 }
-FORWARD_ACTION(preview_apply)
-FORWARD_ACTION(apply_preview)
+FORWARD_ACTION(import_source)
 auto FS7LevelAuthoringModeToolkit::save() -> FReply {
     if (mode_.IsValid()) {
         mode_->save();
     }
     return FReply::Handled();
 }
-FORWARD_ACTION(save_as)
-FORWARD_ACTION(save_canonical_from_scene)
+FORWARD_ACTION(export_scene)
 
 #undef FORWARD_ACTION
 #undef LOCTEXT_NAMESPACE

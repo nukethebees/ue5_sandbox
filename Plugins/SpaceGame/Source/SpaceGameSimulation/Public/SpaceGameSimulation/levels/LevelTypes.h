@@ -27,30 +27,4 @@ inline auto GetTypeHash(FCampaignId const& id) -> uint32 {
     return GetTypeHash(id.value);
 }
 
-struct FLevelEntityId {
-    FName value{NAME_None};
-
-    auto operator==(FLevelEntityId const&) const -> bool = default;
-    auto is_set() const noexcept -> bool { return !value.IsNone(); }
-};
-
-inline auto GetTypeHash(FLevelEntityId const& id) -> uint32 {
-    return GetTypeHash(id.value);
-}
-
-struct FEntityArchetypeId {
-    FName value{NAME_None};
-
-    auto operator==(FEntityArchetypeId const&) const -> bool = default;
-};
-
-inline auto GetTypeHash(FEntityArchetypeId const& id) -> uint32 {
-    return GetTypeHash(id.value);
-}
-
-namespace level_archetypes {
-inline FEntityArchetypeId const player_fighter{FName{TEXT("player-fighter")}};
-inline FEntityArchetypeId const capital_ship{FName{TEXT("capital-ship")}};
-inline FEntityArchetypeId const static_turret{FName{TEXT("static-turret")}};
-}
 }

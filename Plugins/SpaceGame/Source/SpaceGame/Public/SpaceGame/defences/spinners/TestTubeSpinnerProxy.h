@@ -25,6 +25,7 @@ class ATestTubeSpinnerProxy
     ATestTubeSpinnerProxy();
 
     auto get_initial_active_fire_point() const { return initial_active_fire_point; }
+    void set_initial_active_fire_point(int32 const value) { initial_active_fire_point = value; }
     void set_actor_config(FTubeSpinnerConfig const* const new_config) noexcept {
         actor_config = new_config;
     }
@@ -69,6 +70,7 @@ class ATestTubeSpinnerProxy
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TArray<TObjectPtr<UArrowComponent>> fire_points{};
 
+    UPROPERTY(EditAnywhere, Category = "Proxy")
     int32 initial_active_fire_point{0};
 
 #if WITH_EDITORONLY_DATA

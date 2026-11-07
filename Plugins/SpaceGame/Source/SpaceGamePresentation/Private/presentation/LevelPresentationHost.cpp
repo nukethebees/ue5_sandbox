@@ -33,13 +33,12 @@ void FLevelPresentationHost::initialise(FLevelVisualConfig const& config,
                                         TOptional<FPlayerPresentationResources> player,
                                         ioj::sim::LevelReadAccess const& view,
                                         ioj::sim::Mission const& mission,
-                                        ioj::sim::SpatialQueryManager const& spatial_queries,
-                                        TArray<FTransform> initial_turret_transforms) {
+                                        ioj::sim::SpatialQueryManager const& spatial_queries) {
     check(!presentation_.IsSet());
     check(components_.is_valid());
 
     auto const resources{make_resources(config, MoveTemp(player))};
-    presentation_.Emplace(resources, view, MoveTemp(initial_turret_transforms));
+    presentation_.Emplace(resources, view);
     update_collision_bounds(spatial_queries);
     hud_manager_.initialise(mission, view, spatial_queries, config, components_.soft_targets);
 }

@@ -1,6 +1,6 @@
 #include "test_hud_manager_scenario.h"
 #include <SandboxTests/support/SoftTestAssertions.h>
-#include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/test_setup.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -30,12 +30,9 @@ FTestHUDManagerScenario::FTestHUDManagerScenario(FSimulationTestContext& context
 // Registration
 /* ------------------------------------------------------------------------------------------ */
 void FTestHUDManagerScenario::registration_process_samples() {
-    auto* const player{spawn_player_ship(
-        context_.world, context_.config.classes.player_ship_class, &context_.config.player_ship)};
-    if (!checks.is_valid(player, TEXT("Player exists for overlay and radar collection"))) {
+    if (!load_player_test_level(context_.orchestrator, checks)) {
         return;
     }
-    context_.orchestrator.set_player_ship(*player);
     context_.orchestrator.start_simulation();
     auto* const orchestrator{&context_.orchestrator};
     auto const* const level{orchestrator->get_level_simulation()};

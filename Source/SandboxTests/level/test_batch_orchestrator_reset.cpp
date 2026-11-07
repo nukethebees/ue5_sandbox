@@ -4,8 +4,6 @@
 #include <ioj/sim/lasers/sim.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
-#include <SandboxTests/support/TestActorSpawning.h>
-#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
@@ -39,12 +37,6 @@ void FTestBatchOrchestratorResetScenario::spawn_blockers(UWorld& world) {
         }
 
         blockers[i] = blocker;
-    }
-
-    auto* const capital{spawn_capital_proxy(
-        world, context_.config, checks, TEXT("reset_capital"), FVector{5000.f, 0.f, 0.f})};
-    if (IsValid(capital)) {
-        capital->set_initial_spawn_delay(60.f);
     }
 }
 
@@ -90,6 +82,9 @@ void FTestBatchOrchestratorResetScenario::start_initial_simulation() {
     initialise_test_driver();
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
+    if (!load_player_test_level(test_driver->orchestrator, checks)) {
+        return;
+    }
     test_driver->orchestrator.start_simulation();
     test_driver->orchestrator.SetActorTickEnabled(false);
 }
@@ -123,6 +118,9 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     }
     checks.is_true(test_driver->orchestrator.get_level_simulation() == nullptr,
                    TEXT("Level reset destroys the previous simulation"));
+    if (!load_player_test_level(test_driver->orchestrator, checks)) {
+        return;
+    }
     test_driver->orchestrator.start_simulation();
     test_driver->orchestrator.SetActorTickEnabled(false);
     auto const* const level{test_driver->orchestrator.get_level_simulation()};
@@ -146,8 +144,9 @@ void FTestBatchOrchestratorResetScenario::check_reset() {
     checks.is_true(count_actors(*test_driver->get_world()) < initial_actor_count,
                    TEXT("Reset removes transient level actors"));
     checks.are_equal(1, initial_ledger_alive, TEXT("Initial simulation contains one entity"));
-    checks.are_equal(
-        0, test_driver->get_ledger().count_alive(), TEXT("Reset clears ledger entities"));
+    checks.are_equal(1,
+                     test_driver->get_ledger().count_alive(),
+                     TEXT("Reload creates only the authored player"));
     checks.are_equal(
         0u, level->capital_ships().num_instances(), TEXT("Reset clears capital instances"));
     checks.are_equal(0u, level->fighters().num_instances(), TEXT("Reset clears fighter instances"));

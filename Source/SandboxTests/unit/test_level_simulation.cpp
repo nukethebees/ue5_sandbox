@@ -80,11 +80,11 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     data.level_events.initial_events.push_back(
         data.level_events.add_spawn_event({group, data.level_events.spawn_groups.num() - group}));
     auto const add_capital{
-        [&](ioj::sim::LevelEntityIndex const entity, ioj::Team const team, float const x) {
+        [&](ioj::sim::LevelEntityRef const entity, ioj::Team const team, float const x) {
             spawn_storage.add(entity, {x, 0.f, 0.f}, {}, team, ioj::sim::Health{100}, 60.f, 60.f);
         }};
-    add_capital(0, ioj::Team::Green, -1000.f);
-    add_capital(1, ioj::Team::White, 1000.f);
+    add_capital(ioj::sim::LevelEntityRef{0}, ioj::Team::Green, -1000.f);
+    add_capital(ioj::sim::LevelEntityRef{1}, ioj::Team::White, 1000.f);
 
     data.entity_count = 2;
     return data;
@@ -94,6 +94,7 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     auto data{make_battle_config()};
     data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(::ioj::sim::Health{100});
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
+    data.spinners.fire_point_offsets.push_back({{100.f, 0.f, 0.f}, {}});
 
     auto const definition{ioj::levels::LevelDefinition::make(
         {.metadata = {.id = ioj::levels::LevelId{"scheduled-battle"}, .title = "Scheduled Battle"},
@@ -109,6 +110,11 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
                        .archetype = ioj::levels::EntityArchetype::CapitalShip,
                        .team = ioj::Team::Red,
                        .position = {1000.0, 0.0, 0.0},
+                       .spawn_time_seconds = 0.21},
+                      {.id = ioj::levels::EntityId{"spinner"},
+                       .archetype = ioj::levels::EntityArchetype::TubeSpinner,
+                       .team = ioj::Team::White,
+                       .position = {5000.0, 0.0, 0.0},
                        .spawn_time_seconds = 0.21}}})};
     check(definition);
     auto compiled{ioj::levels::compile_level(*definition, data)};
@@ -171,7 +177,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     ioj::sim::LevelSim visible{MoveTemp(visible_data)};
     headless.finish_initialisation();
     visible.finish_initialisation();
-    FLevelPresentation presentation{resources, visible.read_access(), {}};
+    FLevelPresentation presentation{resources, visible.read_access()};
     headless.start();
     visible.start();
     auto const dt{headless.clock().tick_period()};
@@ -263,7 +269,7 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     auto const turrets{definitions.turret_spawns.view()};
     TArray<FTransform> expected;
     for (int32 index{}; index < count; ++index) {
-        turrets.entity_indices()[index] = data.entity_count++;
+        turrets.entity_indices()[index] = ioj::sim::LevelEntityRef{data.entity_count++};
         ioj::set_vector(turrets.view_locations(), index, locations[index]);
         ioj::set_rotation(turrets.view_rotations(), index, rotations[index]);
         turrets.teams()[index] = ioj::Team::Green;
@@ -278,13 +284,12 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     auto const& clk{simulation.clock()};
     FLevelPresentationHost host;
     host.bind_components(components);
-    auto const initialise{[&](TArray<FTransform> transforms) {
+    auto const initialise{[&]() {
         host.initialise(resources.config,
                         {},
                         simulation.read_access(),
                         simulation.mission(),
-                        simulation.spatial_query_manager(),
-                        MoveTemp(transforms));
+                        simulation.spatial_query_manager());
     }};
     auto const check_transforms{[&] {
         TestEqual(TEXT("Initial native turret count is presented"),
@@ -300,7 +305,7 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
         }
     }};
 
-    initialise({});
+    initialise();
     check_transforms();
     TestEqual(TEXT("Presentation startup activates the HUD"),
               host.get_hud_manager().get_state(),
@@ -319,8 +324,7 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     TestEqual(
         TEXT("Reset clears capital instances"), components.capital_ships->GetNumInstances(), 0);
 
-    expected[0].SetScale3D(FVector{2.0, 3.0, 4.0});
-    initialise({expected[0]});
+    initialise();
     check_transforms();
     TestTrue(TEXT("Reinitialisation retains actor-owned components"),
              host.make_resources(resources.config, {}).turrets == components.turrets);
@@ -358,7 +362,10 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
         ioj::Positive<std::int32_t>{100};
     ::ioj::sim::LevelSim simulation{MoveTemp(scheduled_battle)};
     simulation.finish_initialisation();
-    FLevelPresentation presentation{resources, simulation.read_access(), {}};
+    FLevelPresentation presentation{resources, simulation.read_access()};
+    TestEqual(TEXT("Delayed spinner has no initial visual instance"),
+              resources.spinners->GetNumInstances(),
+              0);
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
     simulation.advance(dt * 4.25);
@@ -393,6 +400,9 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Spawned and destroyed instance is reconciled"),
               resources.capital_ships->GetNumInstances(),
               1);
+    TestEqual(TEXT("Delayed spinner creates its visual instance"),
+              resources.spinners->GetNumInstances(),
+              1);
     TestTrue(TEXT("Fractional simulation time remains available"),
              FMath::IsNearlyEqual(frame.interpolation_alpha(), 0.25));
 
@@ -414,7 +424,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     TestEqual(
         TEXT("Zero-step frame preserves instances"), resources.capital_ships->GetNumInstances(), 1);
 
-    FLevelPresentation attached{resources, simulation.read_access(), {}};
+    FLevelPresentation attached{resources, simulation.read_access()};
     TestEqual(TEXT("Late attachment starts from live state"),
               resources.capital_ships->GetNumInstances(),
               1);
@@ -438,7 +448,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     resources.config.capital_ships.main_death_explosion = explosion;
     resources.config.presentation.capital_ships.time_between_explosions = 10.f;
     resources.config.presentation.capital_ships.large_explosion_delay = 100.f;
-    FLevelPresentation death_effects{resources, deaths.read_access(), {}};
+    FLevelPresentation death_effects{resources, deaths.read_access()};
     ::ioj::sim::DirectDamageEvents damage;
     damage.add(deaths.capital_ships().get_entities().entity_ids()[0],
                MAX_int32,
@@ -515,7 +525,8 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     };
     auto data{make_battle()};
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
-    data.player_entity_index = data.entity_count++;
+    data.spinners.fire_point_offsets.push_back({{100.f, 0.f, 0.f}, {}});
+    data.player_entity_ref = ioj::sim::LevelEntityRef{data.entity_count++};
     data.player = actor->make_spawn_data();
     auto& active_profile{::ioj::sim::player::flight_model_profile(
         data.player->flight_models, data.player->flight_models.initial_slot)};

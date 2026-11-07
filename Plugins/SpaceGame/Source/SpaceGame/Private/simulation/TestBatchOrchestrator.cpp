@@ -1,11 +1,9 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
 
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/launch_options.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/settings/LevelSettingsFile.h>
-#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -23,9 +21,8 @@
 #include <CoreGlobals.h>
 #include <Engine/World.h>
 #include <Kismet/GameplayStatics.h>
+#include <Misc/Paths.h>
 #include <SandboxISMCComponent.h>
-
-FOnProxyEntitiesBound ATestBatchOrchestrator::on_proxy_entities_bound;
 
 /* **************************************** */
 // Lifecycle and simulation control
@@ -68,10 +65,8 @@ void ATestBatchOrchestrator::PostLoad() {
 void ATestBatchOrchestrator::BeginPlay() {
     Super::BeginPlay();
 
-    if (start_mode == EOrchestratorStartMode::AuthoredLevel) {
+    if (start_mode == EOrchestratorStartMode::AuthoredLevel || should_initialise_in_begin_play()) {
         load_authored_level();
-    } else if (should_initialise_in_begin_play()) {
-        begin_play();
     } else {
         SetActorTickEnabled(false);
     }
@@ -99,6 +94,7 @@ void ATestBatchOrchestrator::release_level(ioj::sim::telemetry::RunEndReason con
     }
 
     prepared_level_.Reset();
+    initialisation_data_.reset();
 }
 void ATestBatchOrchestrator::start_simulation() {
     if (!level_simulation_.IsSet() && !begin_play()) {
@@ -130,15 +126,9 @@ void ATestBatchOrchestrator::reset_for_new_level() {
 
     release_level(ioj::sim::telemetry::RunEndReason::OrchestratorReset);
     launch_options_ = {};
-    ioj::reset_level_world(*world,
-                           *this,
-                           player_ship,
-                           mission_definition,
-                           IsValid(level_config) ? &level_config->player_ship : nullptr);
+    clear_player_ship();
+    ioj::reset_level_world(*world, *this);
 
-    if (should_initialise_in_begin_play()) {
-        begin_play();
-    }
     on_reset.Broadcast(*this);
 }
 
@@ -172,6 +162,10 @@ auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> 
     }
     return true;
 }
+void ATestBatchOrchestrator::set_level_script(FString path) {
+    level_script.FilePath = FPaths::ConvertRelativePathToFull(path);
+    FPaths::MakePathRelativeTo(level_script.FilePath, *FPaths::ProjectDir());
+}
 void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
     if (get_state() != ioj::sim::LevelState::Uninitialised) {
         UE_LOG(LogSandbox, Error, TEXT("Cannot change start mode after simulation initialisation"));
@@ -195,16 +189,6 @@ void ATestBatchOrchestrator::set_presentation_enabled(bool const enabled) {
 auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
     return player_ship.Get();
 }
-void ATestBatchOrchestrator::set_player_ship(ATestSpaceShip& new_player_ship) {
-    if (level_simulation_.IsSet()) {
-        UE_LOG(LogSandbox, Error, TEXT("Reset the level simulation before replacing its player"));
-        return;
-    }
-    if (IsValid(player_ship)) {
-        player_ship->unbind_simulation();
-    }
-    player_ship = &new_player_ship;
-}
 void ATestBatchOrchestrator::clear_player_ship() {
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
@@ -215,16 +199,12 @@ void ATestBatchOrchestrator::clear_player_ship() {
 /* **************************************** */
 // Level preparation and startup
 /* **************************************** */
-auto ATestBatchOrchestrator::prepare_level(ioj::levels::LevelSource const* const source) -> bool {
+auto ATestBatchOrchestrator::prepare_level(ioj::levels::LevelSource const& source) -> bool {
     check(get_state() == ioj::sim::LevelState::Uninitialised);
-    if (prepared_level_.IsSet() && !source) {
-        return true;
-    }
-
     auto* const world{GetWorld()};
     ioj::fatal_if_uobject_ptrs_invalid(
         {SANDBOX_NAMED_UOBJECT_PTR(world), SANDBOX_NAMED_UOBJECT_PTR(level_config)});
-    auto loaded{read_game_settings(settings_file.FilePath, source, *level_config, this)};
+    auto loaded{read_game_settings(settings_file.FilePath, &source, *level_config, this)};
     if (!loaded) {
         handle_level_start_failure(loaded.error());
         return false;
@@ -241,12 +221,6 @@ auto ATestBatchOrchestrator::prepare_level(ioj::levels::LevelSource const* const
     presentation_host_.get_hud_manager().configure(loaded->simulation.hud);
     prepared_level_.Emplace(MoveTemp(*loaded));
 
-    if (!IsValid(player_ship)) {
-        player_ship = ioj::get_first_actor<ATestSpaceShip>(*world);
-        if (IsValid(player_ship)) {
-            ioj::configure_player_actor(*player_ship, *level_config);
-        }
-    }
     return true;
 }
 auto ATestBatchOrchestrator::load_level(
@@ -267,7 +241,7 @@ auto ATestBatchOrchestrator::load_level(
     if (!IsValid(world)) {
         return fail(ioj::ELevelLoadErrorCode::InvalidWorld, TEXT("Orchestrator world is invalid"));
     }
-    if (!prepare_level(&source)) {
+    if (!prepare_level(source)) {
         return fail(ioj::ELevelLoadErrorCode::InvalidLevelConfig,
                     TEXT("Failed to resolve game settings"));
     }
@@ -307,31 +281,42 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         handle_level_start_failure(TEXT("Cannot start level: level configuration is invalid"));
         return false;
     }
-    if (!prepared_level_.IsSet() && !prepare_level()) {
+    if (!prepared_level_.IsSet()) {
+        handle_level_start_failure(
+            TEXT("Load a Scheme level definition before starting the simulation."));
         return false;
     }
 
-    auto const authored{prepared_level_->level.has_value()};
     auto options{launch_options_};
     options.presentation_mode = presentation_enabled
                                   ? ioj::levels::PresentationMode::Visual
                                   : ioj::levels::PresentationMode::SimulationOnly;
-    auto build{ioj::prepare_level_simulation({
-        .world = *world,
-        .config = *level_config,
-        .clock_settings = simulation_tick_settings,
-        .mission = mission_definition,
-        .launch_options = options,
-        .level_source = prepared_level_->level_source,
-        .settings_source = prepared_level_->source,
-        .definition = authored ? &*prepared_level_->level : nullptr,
-        .player = player_ship.Get(),
-    })};
+    auto build{initialisation_data_
+                   ? ioj::FLevelSimBuildResult{std::in_place, std::move(*initialisation_data_)}
+                   : ioj::prepare_level_simulation({
+                         .config = *level_config,
+                         .clock_settings = simulation_tick_settings,
+                         .launch_options = options,
+                         .definition = *prepared_level_->level,
+                         .player = player_ship.Get(),
+                     })};
     if (!build) {
         handle_level_start_failure(
             FString::Printf(TEXT("Cannot start level:\n%s"), *build.error().format()));
         return false;
     }
+
+    auto configured{ioj::configure_level_run(*build,
+                                             *world,
+                                             get_level_definition().metadata(),
+                                             options,
+                                             prepared_level_->level_source,
+                                             prepared_level_->source)};
+    if (!configured) {
+        handle_level_start_failure(configured.error().format());
+        return false;
+    }
+    build->clock_settings = simulation_tick_settings;
 
     auto const resources{get_presentation_resources()};
     if (presentation_enabled && !resources.is_valid()) {
@@ -345,42 +330,26 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         return false;
     }
 
-    auto const grid_geometry{build->data.collision.grid_geometry};
-    level_simulation_.Emplace(MoveTemp(build->data), game_subsystem->get_memory_resource());
+    auto const grid_geometry{(*build).collision.grid_geometry};
+    level_simulation_.Emplace(MoveTemp((*build)), game_subsystem->get_memory_resource());
     auto const* const player_simulation{level_simulation_->player_ship_simulation()};
     if (IsValid(player_ship) && player_simulation) {
         player_ship->bind_simulation(*level_simulation_->player_ship_commands(),
                                      *player_simulation);
     }
 
-    TArray<AActor const*> proxy_actors;
-    for (auto const actor : build->capital_proxies) {
-        proxy_actors.Add(actor);
-    }
-    for (auto const actor : build->turret_proxies) {
-        proxy_actors.Add(actor);
-    }
-    for (auto const actor : build->spinner_proxies) {
-        proxy_actors.Add(actor);
-    }
+    initialisation_data_.reset();
     auto const static_bounds{ioj::FLevelCollisionHost::extract_static_geometry(
-        *world, level_config->collision_grid, grid_geometry, proxy_actors)};
+        *world, level_config->collision_grid, grid_geometry)};
     level_simulation_->set_static_collision(static_bounds);
     level_simulation_->finish_initialisation();
-
-    if (!authored) {
-        auto const proxy_entities{build->bind_proxy_entities(*level_simulation_)};
-        on_proxy_entities_bound.Broadcast(proxy_entities);
-        build->destroy_proxy_actors();
-    }
 
     if (presentation_enabled) {
         presentation_host_.initialise(resources.config,
                                       resources.player,
                                       level_simulation_->read_access(),
                                       level_simulation_->mission(),
-                                      level_simulation_->spatial_query_manager(),
-                                      MoveTemp(build->initial_turret_transforms));
+                                      level_simulation_->spatial_query_manager());
         if (IsValid(player_ship)) {
             if (auto* const controller{
                     Cast<ASpaceGamePlayerController>(player_ship->GetController())};
@@ -404,9 +373,28 @@ void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
     ioj::FLevelLoader::report_failure(GetWorld(), MoveTemp(message));
 }
 void ATestBatchOrchestrator::load_authored_level() {
-    auto pending{ioj::FLevelLoader::take_pending(GetGameInstance())};
+    auto* const game{ioj::UGameSubsystem::get(GetGameInstance())};
+    check(game);
+    auto pending{game->take_pending_level()};
+    if (!pending && !level_script.FilePath.IsEmpty()) {
+        auto const path{
+            FPaths::ConvertRelativePathToFull(FPaths::ProjectDir(), level_script.FilePath)};
+        auto definition{ioj::levels::authoring::DefinitionReader{}.read_level_file(
+            std::filesystem::path{*path})};
+        if (!definition) {
+            handle_level_start_failure(
+                ioj::to_fstring(ioj::levels::format_diagnostics(definition.error())));
+            return;
+        }
+        ioj::levels::LaunchOptions options;
+        options.control_context = definition->camera() ? ioj::levels::ControlContext::Observer
+                                                       : ioj::levels::ControlContext::Player;
+        pending.emplace(
+            ioj::session::PendingLevel{std::move(*definition), ioj::to_string(path), options});
+    }
     if (!pending) {
-        handle_level_start_failure(pending.error());
+        handle_level_start_failure(
+            TEXT("No Scheme level entry point or prepared level was provided."));
         return;
     }
     launch_options_ = pending->options;
@@ -537,8 +525,5 @@ void ATestBatchOrchestrator::create_level_settings() {
     prepared_level_.Reset();
     MarkPackageDirty();
     UE_LOG(LogSandbox, Display, TEXT("Assigned level settings '%s'."), *path.GetValue());
-}
-void ATestBatchOrchestrator::prepare_level_button() {
-    prepare_level();
 }
 #endif

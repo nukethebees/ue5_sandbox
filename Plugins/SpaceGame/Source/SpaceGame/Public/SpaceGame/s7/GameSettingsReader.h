@@ -13,7 +13,6 @@ class USpaceGameLevelConfig;
 struct FLoadedSettingsSource {
     ioj::settings::Settings settings;
     FString source;
-    FString evaluated_source;
 };
 
 struct FLoadedGameSettings {

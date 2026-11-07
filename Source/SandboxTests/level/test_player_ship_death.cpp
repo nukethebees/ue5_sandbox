@@ -4,7 +4,6 @@
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
-#include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -18,45 +17,18 @@
 
 namespace ioj {
 FTestPlayerShipDeathScenario::FTestPlayerShipDeathScenario(FSimulationTestContext& context)
-    : FSimulationTestScenario{context} {
-    TestCommandBuilder.Do([this] {
-        auto& world{context_.world};
-        auto const& config{context_.config};
-        player_ship_pre_begin_play(world, config);
-        auto* const orchestrator{&context_.orchestrator};
-        if (checks.is_valid(orchestrator, TEXT("Orchestrator is available"))) {
-            player_ship_post_orchestrator_spawn(world, config, *orchestrator);
-        }
-    });
-}
+    : FSimulationTestScenario{context} {}
 
 void FTestPlayerShipDeathScenario::run() {
     run_until_timeline_finished(
         [this] { queue_player_ship_death(); }, timeout, [this] { check_player_ship_death(); });
 }
 
-void FTestPlayerShipDeathScenario::player_ship_pre_begin_play(UWorld& world,
-                                                              USpaceGameLevelConfig const& config) {
-    auto* const spawned_player_ship{
-        spawn_player_ship(world, config.classes.player_ship_class, &config.player_ship)};
-    if (!checks.is_valid(spawned_player_ship, TEXT("Player ship is spawned"))) {
-        return;
-    }
-
-    player_ship = spawned_player_ship;
-}
-
-void FTestPlayerShipDeathScenario::player_ship_post_orchestrator_spawn(
-    UWorld& world, USpaceGameLevelConfig const& config, ATestBatchOrchestrator& orchestrator) {
-    if (!checks.is_true(player_ship.IsValid(), TEXT("Player ship is available"))) {
-        return;
-    }
-
-    orchestrator.set_player_ship(*const_cast<ATestSpaceShip*>(player_ship.Get()));
-}
-
 void FTestPlayerShipDeathScenario::queue_player_ship_death() {
     initialise_test_driver();
+    if (!load_player_test_level(test_driver->orchestrator, checks)) {
+        return;
+    }
     test_driver->orchestrator.start_simulation();
 
     auto* const ship{test_driver->orchestrator.get_player_ship()};

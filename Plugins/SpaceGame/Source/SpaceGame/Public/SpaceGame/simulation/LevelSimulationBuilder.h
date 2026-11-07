@@ -3,8 +3,6 @@
 #include <ioj/levels/level_definition.h>
 #include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/levels/level_sim.h>
-#include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
 
 #include <expected>
@@ -12,42 +10,30 @@
 class USpaceGameLevelConfig;
 class UStaticMesh;
 class UWorld;
-class ATestCapitalShipProxy;
-class ATestStaticTurretsProxy;
-class ATestTubeSpinnerProxy;
 class ATestSpaceShip;
 
 namespace ioj {
 
 using FLevelSimBuildResult = std::expected<sim::LevelSimInitData, FLevelStartErrors>;
 
-struct SPACEGAME_API FLevelSimulationBuild {
-    auto bind_proxy_entities(sim::LevelSim const& simulation) const -> FProxyEntityMap;
-    void destroy_proxy_actors() const;
-
-    sim::LevelSimInitData data;
-    TArray<FTransform> initial_turret_transforms;
-    TArray<ATestCapitalShipProxy*> capital_proxies;
-    TArray<ATestStaticTurretsProxy*> turret_proxies;
-    TArray<ATestTubeSpinnerProxy*> spinner_proxies;
-};
-
-using FLevelSimulationBuildResult = std::expected<FLevelSimulationBuild, FLevelStartErrors>;
-
 struct FLevelSimulationRequest {
-    UWorld& world;
     USpaceGameLevelConfig const& config;
     settings::TickSettings const& clock_settings;
-    ::FLevelMissionDefinition& mission;
     levels::LaunchOptions const& launch_options;
-    FString const& level_source;
-    FString const& settings_source;
-    levels::LevelDefinition const* definition{};
+    levels::LevelDefinition const& definition;
     ATestSpaceShip* player{};
 };
 
 SPACEGAME_API auto prepare_level_simulation(FLevelSimulationRequest const& request)
-    -> FLevelSimulationBuildResult;
+    -> FLevelSimBuildResult;
+
+SPACEGAME_API auto configure_level_run(sim::LevelSimInitData& data,
+                                       UWorld const& world,
+                                       levels::LevelMetadata const& definition,
+                                       levels::LaunchOptions const& options,
+                                       FString const& level_source,
+                                       FString const& settings_source)
+    -> std::expected<void, FLevelStartErrors>;
 
 SPACEGAME_API void configure_player_actor(ATestSpaceShip& player,
                                           USpaceGameLevelConfig const& config);

@@ -384,7 +384,6 @@ void FLevelLoaderCameraScenario::on_tear_down() {
         orchestrator.reset_for_new_level();
         orchestrator.set_presentation_enabled(true);
         orchestrator.set_level_config(*original_config_);
-        orchestrator.prepare_level();
         original_config_.Reset();
     }
 }

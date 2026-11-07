@@ -118,21 +118,11 @@ auto SS7LevelScriptEditor::state_text() const -> FText {
     if (state.source_dirty) {
         lines.Add(TEXT("Unsaved buffer"));
     }
-    if (state.unapplied_buffer) {
-        lines.Add(TEXT("Unapplied buffer"));
-    }
-    if (state.scene_dirty) {
-        lines.Add(TEXT("Scene dirty"));
-    }
+
     if (state.disk_conflict) {
         lines.Add(TEXT("Disk conflict"));
     }
-    if (state.preview_valid) {
-        lines.Add(TEXT("Preview valid"));
-    }
-    if (state.preview_stale) {
-        lines.Add(TEXT("Preview stale"));
-    }
+
     if (state.detached) {
         lines.Add(TEXT("Detached document"));
     }
@@ -150,14 +140,9 @@ auto SS7LevelScriptEditor::can_reload_source() const -> bool {
     return IsValid(mode) && mode->document() != nullptr;
 }
 
-auto SS7LevelScriptEditor::can_preview_buffer() const -> bool {
+auto SS7LevelScriptEditor::can_import_source() const -> bool {
     auto* const mode{active_mode()};
     return IsValid(mode) && !mode->script_editor_state().detached;
-}
-
-auto SS7LevelScriptEditor::can_apply_preview() const -> bool {
-    auto* const mode{active_mode()};
-    return IsValid(mode) && mode->script_editor_state().preview_valid;
 }
 
 auto SS7LevelScriptEditor::can_save_buffer() const -> bool {
@@ -167,18 +152,13 @@ auto SS7LevelScriptEditor::can_save_buffer() const -> bool {
            !mode->source_session().has_external_conflict();
 }
 
-auto SS7LevelScriptEditor::can_save_buffer_as() const -> bool {
-    auto* const mode{active_mode()};
-    return IsValid(mode) && !mode->source_session().buffer().TrimStartAndEnd().IsEmpty();
-}
-
-auto SS7LevelScriptEditor::can_save_canonical() const -> bool {
+auto SS7LevelScriptEditor::can_export_scene() const -> bool {
     auto* const mode{active_mode()};
     if (!IsValid(mode)) {
         return false;
     }
     auto const state{mode->script_editor_state()};
-    return !state.detached && !state.unapplied_buffer && !state.disk_conflict;
+    return !state.detached;
 }
 
 auto SS7LevelScriptEditor::load_source() -> FReply {
@@ -195,16 +175,9 @@ auto SS7LevelScriptEditor::reload_source() -> FReply {
     return FReply::Handled();
 }
 
-auto SS7LevelScriptEditor::preview_buffer() -> FReply {
+auto SS7LevelScriptEditor::import_source() -> FReply {
     if (auto* const mode{active_mode()}; IsValid(mode)) {
-        mode->preview_apply();
-    }
-    return FReply::Handled();
-}
-
-auto SS7LevelScriptEditor::apply_preview() -> FReply {
-    if (auto* const mode{active_mode()}; IsValid(mode)) {
-        mode->apply_preview();
+        mode->import_source();
     }
     return FReply::Handled();
 }
@@ -216,16 +189,9 @@ auto SS7LevelScriptEditor::save_buffer() -> FReply {
     return FReply::Handled();
 }
 
-auto SS7LevelScriptEditor::save_buffer_as() -> FReply {
+auto SS7LevelScriptEditor::export_scene() -> FReply {
     if (auto* const mode{active_mode()}; IsValid(mode)) {
-        mode->save_as();
-    }
-    return FReply::Handled();
-}
-
-auto SS7LevelScriptEditor::save_canonical() -> FReply {
-    if (auto* const mode{active_mode()}; IsValid(mode)) {
-        mode->save_canonical_from_scene();
+        mode->export_scene();
     }
     return FReply::Handled();
 }

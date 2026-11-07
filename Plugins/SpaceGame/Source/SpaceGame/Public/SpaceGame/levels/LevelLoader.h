@@ -1,6 +1,7 @@
 #pragma once
 
-#include <SpaceGame/system/GameSubsystem.h>
+#include <ioj/levels/control_context.h>
+#include <ioj/levels/level_definition.h>
 
 #include <CoreMinimal.h>
 
@@ -49,8 +50,6 @@ struct FLevelActorLoadRequest {
 
 class SPACEGAME_API FLevelLoader {
   public:
-    static auto take_pending(UGameInstance* game_instance)
-        -> std::expected<session::PendingLevel, FString>;
     static auto load(FLevelActorLoadRequest const& request)
         -> std::expected<void, FLevelLoadErrors>;
     static void report_failure(UWorld* world, FString message);

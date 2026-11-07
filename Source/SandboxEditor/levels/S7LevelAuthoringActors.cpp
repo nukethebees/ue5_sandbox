@@ -1,6 +1,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 
 #include <ioj/levels/authoring/identifiers.h>
+#include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -13,17 +14,20 @@
 namespace ioj::editor {
 
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor> {
-    EResolvedLevelArchetype archetype{};
+    levels::EntityArchetype archetype{};
     ETestTeam team{};
     if (auto const* const player{Cast<ATestSpaceShip>(&actor)}) {
-        archetype = EResolvedLevelArchetype::PlayerFighter;
+        archetype = levels::EntityArchetype::PlayerFighter;
         team = player->get_team();
     } else if (auto const* const capital{Cast<ATestCapitalShipProxy>(&actor)}) {
-        archetype = EResolvedLevelArchetype::CapitalShip;
+        archetype = levels::EntityArchetype::CapitalShip;
         team = capital->get_team();
     } else if (auto const* const turret{Cast<ATestStaticTurretsProxy>(&actor)}) {
-        archetype = EResolvedLevelArchetype::StaticTurret;
+        archetype = levels::EntityArchetype::StaticTurret;
         team = turret->get_team();
+    } else if (Cast<ATestTubeSpinnerProxy>(&actor)) {
+        archetype = levels::EntityArchetype::TubeSpinner;
+        team = ETestTeam::White;
     } else {
         return NullOpt;
     }
@@ -35,39 +39,43 @@ auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedAc
     return FS7LevelResolvedActor{archetype, native_team};
 }
 
-auto s7_level_actor_class(EResolvedLevelArchetype const archetype,
+auto s7_level_actor_class(levels::EntityArchetype const archetype,
                           USpaceGameLevelConfig const& config) -> UClass* {
     switch (archetype) {
-        case EResolvedLevelArchetype::PlayerFighter:
+        case levels::EntityArchetype::PlayerFighter:
             return config.classes.player_ship_class.Get();
-        case EResolvedLevelArchetype::CapitalShip:
+        case levels::EntityArchetype::CapitalShip:
             return config.classes.capital_ship_proxy_class.Get();
-        case EResolvedLevelArchetype::StaticTurret:
+        case levels::EntityArchetype::StaticTurret:
             return config.classes.static_turret_proxy_class.Get();
+        case levels::EntityArchetype::TubeSpinner:
+            return ATestTubeSpinnerProxy::StaticClass();
     }
     return nullptr;
 }
 
 void configure_s7_level_actor(AActor& actor,
-                              EResolvedLevelArchetype const archetype,
+                              levels::EntityArchetype const archetype,
                               ETestTeam const team,
                               USpaceGameLevelConfig& config,
                               FTransform const& transform,
                               FName const label) {
     actor.Modify();
     actor.SetActorTransform(transform);
-    if (archetype == EResolvedLevelArchetype::PlayerFighter) {
+    if (archetype == levels::EntityArchetype::PlayerFighter) {
         auto& player{*CastChecked<ATestSpaceShip>(&actor)};
         player.set_actor_config(&config.player_ship);
         player.set_team(team);
-    } else if (archetype == EResolvedLevelArchetype::CapitalShip) {
+    } else if (archetype == levels::EntityArchetype::CapitalShip) {
         auto& capital{*CastChecked<ATestCapitalShipProxy>(&actor)};
         capital.set_level_config_asset(&config);
         capital.set_team(team);
-    } else {
+    } else if (archetype == levels::EntityArchetype::StaticTurret) {
         auto& turret{*CastChecked<ATestStaticTurretsProxy>(&actor)};
         turret.set_actor_config(&config.turrets);
         turret.set_team(team);
+    } else {
+        CastChecked<ATestTubeSpinnerProxy>(&actor)->set_actor_config(&config.tube_spinners);
     }
     actor.RerunConstructionScripts();
     actor.PostEditMove(true);
@@ -83,7 +91,4 @@ auto is_canonical_s7_level_entity_id(FStringView const value) -> bool {
     return levels::authoring::is_canonical_symbol(TCHAR_TO_UTF8(*FString{value}));
 }
 
-auto is_canonical_s7_level_entity_id(FName const id) -> bool {
-    return is_canonical_s7_level_entity_id(FStringView{id.ToString()});
-}
 }

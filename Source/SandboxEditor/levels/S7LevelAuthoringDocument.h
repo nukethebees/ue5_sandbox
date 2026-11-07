@@ -14,13 +14,21 @@ struct FS7LevelEntityBinding {
     GENERATED_BODY()
 
     UPROPERTY(VisibleAnywhere, Category = "Level Authoring")
-    FName id{NAME_None};
+    FString id;
 
     UPROPERTY(VisibleAnywhere, Category = "Level Authoring")
     TObjectPtr<AActor> actor{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.0", Units = "s"))
     double spawn_time_seconds{};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Level Authoring",
+              meta = (DisplayName = "Export", ToolTip = "Save this entity to editor-config.scm."))
+    bool export_to_script{true};
+
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "1"))
+    TOptional<int32> player_health;
 };
 
 USTRUCT()
@@ -57,32 +65,8 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
 
     bool IsEditorOnly() const override { return true; }
 
-    UPROPERTY(EditAnywhere, Category = "Document")
+    UPROPERTY(VisibleAnywhere, Category = "Document")
     FString source_path{};
-
-    UPROPERTY()
-    FString synchronized_source{};
-
-    UPROPERTY()
-    FString synchronized_base_settings_source{};
-
-    UPROPERTY()
-    FString evaluated_level_source{};
-
-    UPROPERTY()
-    FString evaluated_base_settings_source{};
-
-    UPROPERTY()
-    FString synchronized_scene_source{};
-
-    UPROPERTY()
-    FName level_id{NAME_None};
-
-    UPROPERTY()
-    FString title{};
-
-    UPROPERTY()
-    FString description{};
 
     UPROPERTY(VisibleAnywhere,
               Category = "Level",

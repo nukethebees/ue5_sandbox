@@ -23,13 +23,10 @@
               :IsEnabled (method can_reload_source)
               :OnClicked (method reload_source)))
           (s7-row
-            (s7-action "Preview" "Replay and Preview" can_preview_buffer preview_buffer)
-            (s7-action "Apply" "Apply Preview" can_apply_preview apply_preview))
+            (s7-action "Import" "Import Source" can_import_source import_source)
+            (s7-action "Export" "Export Scene" can_export_scene export_scene))
           (s7-row
             (s7-action "Save" "Save Buffer" can_save_buffer save_buffer)
-            (s7-action "SaveAs" "Save Buffer As" can_save_buffer_as save_buffer_as))
-          (s7-row
-            (s7-action "SaveCanonical" "Save Canonical from Scene" can_save_canonical save_canonical)
             (SSpacer))))
       (auto :padding (4 0)
         (assign state_ STextBlock :AutoWrapText true))

@@ -54,6 +54,9 @@ class FTestBatchOrchestratorLevelSetup {
     int32 construction_count{0};
 };
 
+auto load_player_test_level(ATestBatchOrchestrator& orchestrator, FSoftTestAssertions& checks)
+    -> bool;
+
 auto get_editor_world() -> std::expected<UWorld*, FErrorMsg>;
 auto spawn_visibility_blocker(UWorld& world, FTransform const& transform, FName name) -> AActor*;
 }

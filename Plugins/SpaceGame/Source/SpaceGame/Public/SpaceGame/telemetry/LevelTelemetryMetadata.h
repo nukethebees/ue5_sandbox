@@ -5,9 +5,10 @@
 #include <HAL/Platform.h>
 
 class UWorld;
-struct FLevelMissionDefinition;
+namespace ioj::levels {
+struct LevelMetadata;
+}
 
-SPACEGAME_API auto
-    make_level_telemetry_run_metadata(UWorld const& world,
-                                      FLevelMissionDefinition const& mission_definition)
-        -> ::ioj::sim::telemetry::RunMetadata;
+SPACEGAME_API auto make_level_telemetry_run_metadata(UWorld const& world,
+                                                     ioj::levels::LevelMetadata const& level)
+    -> ::ioj::sim::telemetry::RunMetadata;

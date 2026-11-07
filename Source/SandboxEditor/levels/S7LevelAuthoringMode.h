@@ -1,8 +1,6 @@
 #pragma once
 
-#include "SandboxEditor/levels/S7LevelAuthoringPreview.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
-#include "SandboxEditor/levels/S7LevelReconciliation.h"
 #include "SandboxEditor/levels/S7LevelSourceSession.h"
 
 #include <Tools/LegacyEdModeWidgetHelpers.h>
@@ -18,11 +16,7 @@ namespace ioj::editor {}
 struct SANDBOXEDITOR_API FS7LevelScriptEditorState {
     FString path{};
     bool source_dirty{};
-    bool unapplied_buffer{};
-    bool scene_dirty{};
     bool disk_conflict{};
-    bool preview_valid{};
-    bool preview_stale{};
     bool detached{};
 };
 
@@ -56,7 +50,6 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
 
     void create_document();
     void adopt_entities();
-    void repair_and_adopt_entities();
     void rename_selected_entity(FString id);
     void open_level_config();
     void validate_playable_level();
@@ -64,31 +57,18 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     auto load_s7() -> bool;
     void reload_s7();
     void set_source_buffer(FString source);
-    void preview_apply();
-    void apply_preview();
-    [[nodiscard]] auto prepare_for_play() -> bool;
+    void import_source();
     void save();
-    void save_as();
-    void save_canonical_from_scene();
+    void export_scene();
   private:
     auto current_level() const -> ULevel*;
     void refresh_document();
     void set_status(FText text);
-    void clear_preview(
-        ioj::levels::authoring::PreviewState state = ioj::levels::authoring::PreviewState::None);
     void notify_changed(ioj::settings::Settings const* settings = nullptr);
-    void update_document_source_path();
-    void save_source_buffer(bool select_path);
-    auto prepare_source_replay() -> bool;
-    auto apply_current_source(bool require_review) -> bool;
 
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
     ioj::editor::FS7LevelSourceSession source_session_{};
-    TOptional<ioj::editor::FS7LevelAuthoringPreview> preview_{};
     FText status_{};
     FOnS7LevelAuthoringChanged changed_{};
     float refresh_elapsed_seconds_{};
-    TOptional<ioj::levels::authoring::SceneSnapshot> observed_scene_{};
-    FString observed_scene_source_{};
-    int32 observed_actor_count_{-1};
 };

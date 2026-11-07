@@ -72,8 +72,6 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
             return;
         }
         session.set_buffer(TEXT("unsaved buffer"));
-        session.state().scene_dirty = true;
-        session.state().preview = ioj::levels::authoring::PreviewState::Valid;
         auto const preserved{session.buffer()};
 
         auto const switched{session.attach(*second)};
@@ -82,10 +80,6 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Detachment is distinct from disk conflict"),
                               session.has_external_conflict());
         TestRunner->TestEqual(TEXT("Dirty buffer is preserved"), session.buffer(), preserved);
-        TestRunner->TestFalse(TEXT("Switch clears stale scene-dirty state"),
-                              session.state().scene_dirty);
-        TestRunner->TestTrue(TEXT("Switch clears the previous preview"),
-                             session.state().preview == ioj::levels::authoring::PreviewState::None);
 
         auto const discarded{session.discard_and_attach(*second)};
         if (!TestRunner->TestTrue(TEXT("Explicit discard permits switch"), discarded.has_value())) {

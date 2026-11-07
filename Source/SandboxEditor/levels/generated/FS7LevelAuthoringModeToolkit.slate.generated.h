@@ -32,39 +32,25 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT(
-                                      "FS7LevelAuthoringModeToolkit", "Preview", "Preview Apply"))
-                                  .OnClicked(&self_, &ThisClass::preview_apply)] +
+                                      "FS7LevelAuthoringModeToolkit", "Preview", "Import Source"))
+                                  .OnClicked(&self_, &ThisClass::import_source)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT(
-                                      "FS7LevelAuthoringModeToolkit", "Apply", "Apply Preview"))
-                                  .OnClicked(&self_, &ThisClass::apply_preview)]] +
+                                      "FS7LevelAuthoringModeToolkit", "Export", "Export Scene"))
+                                  .OnClicked(&self_, &ThisClass::export_scene)]] +
                     SandboxUI::Slate::vbox_auto_slot()
                         [SNew(SHorizontalBox) +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
-                                  .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                  "RepairAndAdopt",
-                                                  "Repair / Adopt Actors"))
-                                  .OnClicked(&self_, &ThisClass::repair_and_adopt_entities)] +
+                                  .Text(NSLOCTEXT(
+                                      "FS7LevelAuthoringModeToolkit", "Adopt", "Adopt Entities"))
+                                  .OnClicked(&self_, &ThisClass::adopt_entities)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT(
                                       "FS7LevelAuthoringModeToolkit", "Save", "Save Source"))
                                   .OnClicked(&self_, &ThisClass::save)]] +
-                    SandboxUI::Slate::vbox_auto_slot()
-                        [SNew(SHorizontalBox) +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                             [SNew(SButton)
-                                  .Text(NSLOCTEXT(
-                                      "FS7LevelAuthoringModeToolkit", "SaveAs", "Save Source As"))
-                                  .OnClicked(&self_, &ThisClass::save_as)] +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                             [SNew(SButton)
-                                  .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                  "SaveCanonical",
-                                                  "Save Canonical from Scene"))
-                                  .OnClicked(&self_, &ThisClass::save_canonical_from_scene)]] +
                     SandboxUI::Slate::vbox_auto_slot()
                         [SNew(SHorizontalBox) +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})

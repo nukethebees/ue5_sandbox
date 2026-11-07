@@ -6,6 +6,7 @@
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include "SandboxEditor/levels/S7LevelScriptEditor.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include "Editor.h"
 #include "Editor/EditorEngine.h"
@@ -18,7 +19,9 @@
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
 #include <Engine/World.h>
+#include <EngineUtils.h>
 #include <Features/IModularFeatures.h>
+#include <HAL/FileManager.h>
 
 #define LOCTEXT_NAMESPACE "FSandboxEditorModule"
 
@@ -28,8 +31,14 @@ FName const FSandboxEditorModule::s7_level_script_editor_tab_id{
 void FSandboxEditorModule::StartupModule() {
     IModularFeatures::Get().RegisterModularFeature(IPIEAuthorizer::GetModularFeatureName(), this);
     s7_pie_handle_ = FWorldDelegates::OnWorldInitializedActors.AddLambda(
-        [](FActorsInitializedParams const& params) {
-            auto const prepared{ioj::editor::prepare_s7_level_for_pie(*params.World)};
+        [this](FActorsInitializedParams const& params) {
+            if (params.World->WorldType != EWorldType::PIE || !prepared_definition_) {
+                return;
+            }
+            auto prepared{ioj::editor::launch_s7_level_for_pie(
+                *params.World, std::move(*prepared_definition_), std::move(*prepared_simulation_))};
+            prepared_definition_.reset();
+            prepared_simulation_.reset();
             if (!prepared) {
                 UE_LOG(LogTemp, Error, TEXT("S7 PIE preparation failed: %s"), *prepared.error());
             }
@@ -78,30 +87,52 @@ auto FSandboxEditorModule::IsPIEAuthorizedInternal(bool) const -> TValueOrError<
 }
 
 auto FSandboxEditorModule::RequestPIEPermissionInternal(bool) const -> TValueOrError<bool, FText> {
-    auto* mode{Cast<US7LevelAuthoringMode>(
-        GLevelEditorModeTools().GetActiveScriptableMode(US7LevelAuthoringMode::mode_id))};
-    if (!mode) {
-        auto* const world{GEditor ? GEditor->GetEditorWorldContext().World() : nullptr};
-        auto* const level{IsValid(world) ? world->GetCurrentLevel() : nullptr};
-        if (!IsValid(level)) {
-            return MakeValue(true);
-        }
-        auto const document{ioj::editor::find_level_authoring_document(*level)};
-        if (!document) {
-            return MakeError(FText::FromString(document.error()));
-        }
-        if (!*document || (*document)->source_path.IsEmpty()) {
-            return MakeValue(true);
-        }
-        GLevelEditorModeTools().ActivateMode(US7LevelAuthoringMode::mode_id);
-        mode = Cast<US7LevelAuthoringMode>(
-            GLevelEditorModeTools().GetActiveScriptableMode(US7LevelAuthoringMode::mode_id));
-        if (!mode) {
-            return MakeError(LOCTEXT("S7ReplayUnavailable",
-                                     "Could not open the S7 authoring document before play."));
-        }
+    prepared_definition_.reset();
+    prepared_simulation_.reset();
+    auto* const world{GEditor ? GEditor->GetEditorWorldContext().World() : nullptr};
+    if (!IsValid(world)) {
+        return MakeValue(true);
     }
-    return MakeValue(mode->prepare_for_play());
+    ATestBatchOrchestrator* orchestrator{};
+    for (TActorIterator<ATestBatchOrchestrator> it{world}; it; ++it) {
+        auto const mode{it->get_start_mode()};
+        if (mode != EOrchestratorStartMode::AuthoredLevel &&
+            mode != EOrchestratorStartMode::Automatic) {
+            continue;
+        }
+        if (orchestrator) {
+            return MakeError(
+                FText::FromString(TEXT("Playable maps require one level orchestrator.")));
+        }
+        orchestrator = *it;
+    }
+    if (!orchestrator) {
+        return MakeValue(true);
+    }
+    auto document{ioj::editor::find_level_authoring_document(*orchestrator->GetLevel())};
+    if (!document) {
+        return MakeError(FText::FromString(document.error()));
+    }
+    if (!*document || !IFileManager::Get().FileExists(*(*document)->source_path)) {
+        return MakeError(FText::FromString(
+            TEXT("Configure this playable map with an existing Scheme entry point before PIE.")));
+    }
+    auto exported{ioj::editor::export_s7_editor_config(*orchestrator->GetLevel(), **document)};
+    if (!exported) {
+        return MakeError(FText::FromString(exported.error()));
+    }
+    auto definition{ioj::editor::read_s7_authored_level(**document)};
+    if (!definition) {
+        return MakeError(FText::FromString(definition.error()));
+    }
+    auto compiled{
+        ioj::editor::compile_playable_s7_definition(*definition, *(*document)->level_config)};
+    if (!compiled) {
+        return MakeError(FText::FromString(compiled.error()));
+    }
+    prepared_definition_.emplace(std::move(*definition));
+    prepared_simulation_.emplace(std::move(*compiled));
+    return MakeValue(true);
 }
 
 auto FSandboxEditorModule::open_s7_level_script_editor() -> TSharedPtr<SDockTab> {
@@ -131,7 +162,7 @@ void FSandboxEditorModule::register_menu_extensions() {
             FSandboxEditorModule::open_s7_level_script_editor();
         })),
         FText::FromString("Space Game Level"),
-        FText::FromString("Open the bidirectional S7 level-authoring mode"),
+        FText::FromString("Open the S7 level-authoring mode"),
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Edit")));
 
     logger.log_log(TEXT("Registered menu extensions"));

@@ -6,12 +6,13 @@ and teardown. Simulation policy and presentation work belong to the owners below
 
 | Owner | Responsibility |
 |---|---|
-| `prepare_level_simulation` | Validate effective configuration and produce native initialization data from an authored definition or live proxies, including mission and telemetry metadata |
+| `prepare_level_simulation` | Validate effective configuration and compile an authored definition with Unreal mesh and collision resources into native initialization data |
+| `configure_level_run` | Apply run metadata and optional duration-limit events to initialization data |
 | `FLevelLoader` | Validate launch options and create authored player/camera actors using an optional visual context with a controller reference |
 | `ioj::sim::LevelSim` | Own the worldless simulation and execute its fixed-tick phases |
 | `FLevelPresentationHost` | Bind actor-owned components, maintain HUD and presentation, and display collision snapshots |
 | `LevelTelemetryIntegration` | Consume finalized native reports, persist them and navigate to results |
-| `reset_level_world` | Replace the player and remove transient world actors while retaining framework actors |
+| `reset_level_world` | Remove gameplay actors while retaining framework actors; the level loader constructs the next authored level |
 
 The presentation host belongs to `SpaceGamePresentation` and receives native read access and
 explicit resources. It does not depend on the orchestrator or SpaceGame actor classes. Component
@@ -22,17 +23,20 @@ validity flags. An absent visual context selects headless loading.
 
 ## Startup and lifetime
 
-Native construction creates the tick-zero entities but leaves initialization open. Bind the
-player's commands, assign proxy entity IDs and broadcast those bindings while the proxy actors
-are still live. Destroy the proxies before harvesting static geometry so their collision does
-not become a second, static representation of simulated entities.
+Every playable level uses a Scheme entry point or a definition already decoded from that entry
+point. Editor export writes the generated configuration included by the human-owned root. PIE
+validates and compiles that composed definition before launch and hands its initialization data
+to the orchestrator. Packaged and native launches use the same definition and native compiler.
+Editor proxies are authoring objects and never initialize simulation entities.
 
-Install the harvested bounds before `LevelSim::finish_initialisation()`. That boundary publishes
-lookup rows and the spatial index, enters `LevelState::StableSetup`, initializes telemetry and the
+Native construction creates the player but leaves initialization open. Bind the player's commands
+and harvest static geometry after the editor proxies have been removed from the PIE world.
+
+Install the harvested bounds before `LevelSim::finish_initialisation()`. That boundary dispatches
+initial events, publishes entity lookup rows and the spatial index, initializes telemetry and the
 mission, then resets its clock to tick zero and `BetweenTicks` and enters `LevelState::Paused`.
 Initialize presentation and HUD afterward, then activate controls and apply the requested start
-mode. Proxy turret transforms retain authored
-scale; authored levels derive initial turret transforms from the initialized native state.
+mode. Presentation derives initial entity transforms from the initialized native state.
 
 Use `get_level_simulation()` for native timing, entity simulations, queries, mission and telemetry.
 It returns null before construction and after release. Actor accessors cover configuration,
@@ -50,9 +54,9 @@ that state during initialization without queueing a pause request.
 
 During reset or world teardown, finalize the run and release HUD/player bindings before destroying
 the native level. Reset the presentation host while its components and simulation are still
-alive. Persist the finalized report before clearing launch options. World reset publishes the
-replacement player and mission references before finishing deferred spawning, and applies player
-configuration before `BeginPlay`. Notify reset subscribers only after the replacement is ready.
+alive. Persist the finalized report before clearing launch options. World reset removes gameplay
+actors and clears prepared data. The next explicit authored load constructs its player and camera
+through the usual loader. Reset subscribers observe the cleared world.
 Automation leaves finalized telemetry available for explicit test inspection.
 
 ## Collision and spawning

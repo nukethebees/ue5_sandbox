@@ -55,6 +55,18 @@ auto spawn_visibility_blocker(UWorld& world, FTransform const& transform, FName 
     return blocker;
 }
 
+auto load_player_test_level(ATestBatchOrchestrator& orchestrator, FSoftTestAssertions& checks)
+    -> bool {
+    auto const loaded{orchestrator.load_level(std::string{R"(
+        (level :id 'player-test :title "Player test"
+          :player 'player
+          :entities (list (entity :id 'player :archetype 'player-fighter
+                                  :team 'blue :position '(0 0 0)))))"})};
+    return checks.is_true(static_cast<bool>(loaded),
+                          loaded ? TEXT("Authored player level loads")
+                                 : loaded.error().format(TEXT("player-test")));
+}
+
 auto get_editor_world() -> std::expected<UWorld*, FErrorMsg> {
     if (!GEditor) {
         return std::unexpected(FErrorMsg{TEXT("GEditor is nullptr")});
@@ -97,11 +109,6 @@ void FTestBatchOrchestratorLevelSetup::end_test() {
 
     orchestrator->pause_simulation();
 
-    auto* const player_ship{const_cast<ATestSpaceShip*>(orchestrator->get_player_ship())};
-    if (IsValid(player_ship)) {
-        player_ship->Destroy();
-    }
-    orchestrator->clear_player_ship();
     orchestrator->reset_for_new_level();
 
     reset_test_configuration();
@@ -196,7 +203,6 @@ auto FTestBatchOrchestratorLevelSetup::spawn_orchestrator(UWorld& world) -> bool
 
     new_orchestrator->set_start_mode(EOrchestratorStartMode::PausedInTest);
     new_orchestrator->set_level_config(*config);
-    new_orchestrator->prepare_level();
     auto* const finished_orchestrator{
         UGameplayStatics::FinishSpawningActor(new_orchestrator, FTransform::Identity)};
     if (!IsValid(finished_orchestrator)) {

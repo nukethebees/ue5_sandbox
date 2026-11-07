@@ -25,8 +25,7 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentationResources {
 
 struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     FLevelPresentation(FLevelPresentationResources const& resources,
-                       ::ioj::sim::LevelReadAccess const& view,
-                       TArray<FTransform> turret_transforms);
+                       ::ioj::sim::LevelReadAccess const& view);
     FLevelPresentation(FLevelPresentation const&) = delete;
     FLevelPresentation(FLevelPresentation&&) = delete;
     auto operator=(FLevelPresentation const&) -> FLevelPresentation& = delete;

@@ -5,7 +5,6 @@
 #include <ioj/levels/launch_options.h>
 #include <ioj/s7/simulation_settings_reader.h>
 #include <Sandbox/environment/effects/ShipPostProcessing.h>
-#include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -27,113 +26,59 @@ namespace ioj::editor {
 namespace s7_level_playable_setup_detail {
 inline constexpr TCHAR game_mode_class_path[]{
     TEXT("/Game/GameModes/BP_SpaceShipGameMode.BP_SpaceShipGameMode_C")};
-// Resolve the optional player only after collecting and validating the scene.
-auto find_player(AS7LevelAuthoringDocument const& document, levels::EntityId const& id)
-    -> ATestSpaceShip* {
-    if (id.empty()) {
-        return nullptr;
-    }
-    auto const* const binding{document.entities.FindByPredicate(
-        [name = FName{to_fstring(id.value)}](auto const& candidate) {
-            return candidate.id == name;
-        })};
-    check(binding);
-    return CastChecked<ATestSpaceShip>(binding->actor.Get());
-}
 
 }
 
-auto prepare_s7_level_for_pie(UWorld& world) -> std::expected<void, FString> {
-    if (world.WorldType != EWorldType::PIE) {
-        return {};
-    }
+auto launch_s7_level_for_pie(UWorld& world,
+                             levels::LevelDefinition definition,
+                             sim::LevelSimInitData data) -> std::expected<void, FString> {
     AS7LevelAuthoringDocument* document{};
     ATestBatchOrchestrator* orchestrator{};
-    int32 documents{}, orchestrators{};
-    for (auto* const level : world.GetLevels()) {
-        for (auto const actor : level->Actors) {
-            if (auto* const found{Cast<AS7LevelAuthoringDocument>(actor.Get())}; IsValid(found)) {
-                document = found;
-                ++documents;
-            }
-            if (auto* const found{Cast<ATestBatchOrchestrator>(actor.Get())}; IsValid(found)) {
-                orchestrator = found;
-                ++orchestrators;
-            }
-        }
+    for (TActorIterator<AS7LevelAuthoringDocument> it{&world}; it; ++it) {
+        document = *it;
     }
-    if (documents == 0 || orchestrators == 0 ||
-        (orchestrators == 1 &&
-         orchestrator->get_start_mode() != EOrchestratorStartMode::AuthoredLevel &&
-         orchestrator->get_start_mode() != EOrchestratorStartMode::Automatic)) {
-        return {};
+    for (TActorIterator<ATestBatchOrchestrator> it{&world}; it; ++it) {
+        orchestrator = *it;
     }
-    // Keep failed authoring launches paused instead of entering the proxy or missing-pending path.
-    auto fail{[&](FString message) -> std::expected<void, FString> {
-        for (TActorIterator<ATestBatchOrchestrator> it{&world}; it; ++it) {
-            it->set_start_mode(EOrchestratorStartMode::Paused);
-        }
-        return std::unexpected{MoveTemp(message)};
-    }};
-    if (documents != 1 || orchestrators != 1) {
-        return fail(TEXT("PIE authoring requires one document and one orchestrator."));
-    }
-    auto definition{collect_s7_editor_level(*document->GetLevel(), *document)};
-    if (!definition) {
-        return fail(definition.error());
-    }
+    check(document && orchestrator);
     auto* const game{UGameSubsystem::get(world.GetGameInstance())};
     if (!IsValid(game)) {
-        return fail(TEXT("The PIE game subsystem is unavailable."));
+        return std::unexpected{TEXT("The PIE game subsystem is unavailable.")};
     }
-
-    ::ioj::levels::LaunchOptions options;
-    options.control_context = definition->camera() ? ::ioj::levels::ControlContext::Observer
-                                                   : ::ioj::levels::ControlContext::Player;
-    // Upgrade old authoring maps in the PIE copy without changing their saved actors.
-    orchestrator->set_start_mode(EOrchestratorStartMode::AuthoredLevel);
+    levels::LaunchOptions options;
+    options.control_context =
+        definition.camera() ? levels::ControlContext::Observer : levels::ControlContext::Player;
     orchestrator->clear_player_ship();
     for (auto const& binding : document->entities) {
-        if (!world.DestroyActor(binding.actor.Get(), false, false)) {
-            return fail(TEXT("Could not remove a duplicated authoring actor before PIE."));
+        if (IsValid(binding.actor) && !world.DestroyActor(binding.actor.Get(), false, false)) {
+            return std::unexpected{TEXT("Could not remove an authoring preview actor before PIE.")};
         }
     }
-    game->set_pending_level(*definition, TEXT("PIE scene"), options);
+    orchestrator->set_initialisation_data(std::move(data));
+    game->set_pending_level(std::move(definition), document->source_path, options);
     return {};
 }
 
 auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
     -> std::expected<FString, FString> {
-    auto* const world{level.OwningWorld.Get()};
-    if (!IsValid(world) || document.GetLevel() != &level) {
-        return std::unexpected{TEXT("The current editor level is unavailable.")};
+    auto exported{export_s7_editor_config(level, document)};
+    if (!exported) {
+        return std::unexpected{exported.error()};
     }
-    auto const definition{collect_s7_editor_level(level, document)};
+    auto definition{read_s7_authored_level(document)};
     if (!definition) {
         return std::unexpected{definition.error()};
     }
-    auto* const player{
-        s7_level_playable_setup_detail::find_player(document, definition->player_entity_id())};
-    return validate_playable_s7_definition(*definition, *document.level_config, player);
+    auto compiled{compile_playable_s7_definition(*definition, *document.level_config)};
+    if (!compiled) {
+        return std::unexpected{compiled.error()};
+    }
+    return TEXT("The composed Scheme level passed compilation and initialization validation.");
 }
 
-auto validate_playable_s7_definition(levels::LevelDefinition const& definition,
-                                     USpaceGameLevelConfig const& resources,
-                                     ATestSpaceShip const* player)
-    -> std::expected<FString, FString> {
-    if (!definition.player_entity_id().empty() && !player) {
-        player = resources.classes.player_ship_class.GetDefaultObject();
-        if (!IsValid(player)) {
-            return std::unexpected{TEXT("The player ship class is unavailable.")};
-        }
-    }
-
-    TOptional<sim::player::PlayerSpawnData> player_spawn;
-    UStaticMesh const* player_mesh{};
-    if (player) {
-        player_spawn.Emplace(player->make_spawn_data());
-        player_mesh = player->get_collision_mesh();
-    }
+auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
+                                    USpaceGameLevelConfig const& resources)
+    -> std::expected<sim::LevelSimInitData, FString> {
     TStrongObjectPtr<USpaceGameLevelConfig> effective_config{
         DuplicateObject<USpaceGameLevelConfig>(&resources, GetTransientPackage())};
     if (!effective_config.IsValid()) {
@@ -145,21 +90,15 @@ auto validate_playable_s7_definition(levels::LevelDefinition const& definition,
     }
     effective_config->apply_settings(*simulation);
     effective_config->presentation = definition.settings().presentation;
-    if (!effective_config->is_valid(true)) {
-        return std::unexpected{TEXT("The authored level configuration is invalid.")};
-    }
-    auto const build{make_level_simulation_init_data(*effective_config,
-                                                     definition.settings().tick,
-                                                     definition,
-                                                     MoveTemp(player_spawn),
-                                                     {},
-                                                     player_mesh)};
+    levels::LaunchOptions const options;
+    auto build{prepare_level_simulation({.config = *effective_config,
+                                         .clock_settings = definition.settings().tick,
+                                         .launch_options = options,
+                                         .definition = definition})};
     if (!build) {
         return std::unexpected{build.error().format()};
     }
-    return FString::Printf(
-        TEXT("Entity, fighter spawn, and collision grid checks passed using %s."),
-        *resources.GetName());
+    return std::move(*build);
 }
 
 auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
@@ -263,6 +202,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
     new_orchestrator->Modify();
     new_orchestrator->set_start_mode(EOrchestratorStartMode::AuthoredLevel);
     new_orchestrator->set_presentation_enabled(true);
+    new_orchestrator->set_level_script(document.source_path);
     new_orchestrator->clear_player_ship();
     new_orchestrator->set_level_config(*document.level_config);
 

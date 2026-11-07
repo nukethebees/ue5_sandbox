@@ -2,7 +2,6 @@
 
 #include <ioj/files.h>
 #include <ioj/levels/authoring/definition_reader.h>
-#include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/levels/level_definition.h>
 #include <ioj/s7/simulation_settings_reader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -37,10 +36,8 @@ auto read_game_settings_source(FStringView const path, USpaceGameLevelConfig con
             *absolute_path,
             UTF8_TO_TCHAR(ioj::levels::format_diagnostics(settings.error()).c_str()))};
     }
-    auto const evaluated{ioj::levels::authoring::emit_evaluated_source(*ast, ast->root)};
     return FLoadedSettingsSource{.settings = std::move(*settings),
-                                 .source = UTF8_TO_TCHAR(text->c_str()),
-                                 .evaluated_source = ioj::to_fstring(evaluated)};
+                                 .source = UTF8_TO_TCHAR(text->c_str())};
 }
 
 auto read_game_settings(FStringView const path,

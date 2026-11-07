@@ -11,8 +11,7 @@ auto FLevelPresentationResources::is_valid() const -> bool {
            IsValid(spinners) && IsValid(sparks);
 }
 FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resources,
-                                       ::ioj::sim::LevelReadAccess const& view,
-                                       TArray<FTransform> turret_transforms)
+                                       ::ioj::sim::LevelReadAccess const& view)
     : config_{resources.config}
     , sparks{*resources.sparks}
     , lasers{*resources.lasers}
@@ -69,7 +68,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     spinners.clear_runtime_state_presentation();
     capital_ships.begin_play_presentation();
     capital_ship_fighters.begin_play_presentation();
-    turrets.begin_play_presentation(MoveTemp(turret_transforms));
+    turrets.begin_play_presentation();
     spinners.begin_play_presentation();
     lasers.begin_play_presentation();
 }

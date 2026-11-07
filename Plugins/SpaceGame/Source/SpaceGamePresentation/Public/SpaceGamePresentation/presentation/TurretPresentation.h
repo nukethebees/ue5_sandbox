@@ -22,7 +22,7 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     auto simulation() const -> ::ioj::sim::turrets::Sim const& { return *simulation_; }
     void ValidateOptionalAssets() const;
     void clear_runtime_state_presentation();
-    void begin_play_presentation(TArray<FTransform> initial_transforms);
+    void begin_play_presentation();
     void update_visual_data();
     void commit_visual_data();
     void end_tick_presentation();
