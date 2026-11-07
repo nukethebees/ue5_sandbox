@@ -12,7 +12,7 @@ auto ParameterSchemas::index(ParameterId id) const -> std::uint32_t {
     return row;
 }
 auto ParameterSchemas::append(TypeRefId const type_value,
-                              CppIdentifier<> const name_value,
+                              StringId const name_value,
                               std::optional<StringId> const default_expression,
                               bool const pack) -> ParameterId {
     auto const index{static_cast<std::uint32_t>(type.size())};

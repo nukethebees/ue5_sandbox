@@ -2211,16 +2211,14 @@ TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
                 functions_schemas.return_type[new_functions] = make_test_type_ref(ctx, "void");
                 functions_schemas.parameters[new_functions] =
                     declarations.range<lispb::codegen::ParameterId>(
-                        {parameters_schemas.append(
-                             make_test_type_ref(ctx, "int32"),
-                             *lispb::CppIdentifier<>::try_make(strings, strings.intern("value")),
-                             std::nullopt,
-                             false),
-                         parameters_schemas.append(
-                             make_test_type_ref(ctx, "float"),
-                             *lispb::CppIdentifier<>::try_make(strings, strings.intern("value")),
-                             std::nullopt,
-                             false)});
+                        {parameters_schemas.append(make_test_type_ref(ctx, "int32"),
+                                                   strings.intern("value"),
+                                                   std::nullopt,
+                                                   false),
+                         parameters_schemas.append(make_test_type_ref(ctx, "float"),
+                                                   strings.intern("value"),
+                                                   std::nullopt,
+                                                   false)});
             })});
 
     expect_invalid_module(ctx, module);
@@ -2243,16 +2241,14 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
                 functions_schemas.return_type[new_functions] = make_test_type_ref(ctx, "void");
                 functions_schemas.parameters[new_functions] =
                     declarations.range<lispb::codegen::ParameterId>(
-                        {parameters_schemas.append(
-                             make_test_type_ref(ctx, "int32"),
-                             *lispb::CppIdentifier<>::try_make(strings, strings.intern("first")),
-                             strings.intern("0"),
-                             false),
-                         parameters_schemas.append(
-                             make_test_type_ref(ctx, "int32"),
-                             *lispb::CppIdentifier<>::try_make(strings, strings.intern("second")),
-                             std::nullopt,
-                             false)});
+                        {parameters_schemas.append(make_test_type_ref(ctx, "int32"),
+                                                   strings.intern("first"),
+                                                   strings.intern("0"),
+                                                   false),
+                         parameters_schemas.append(make_test_type_ref(ctx, "int32"),
+                                                   strings.intern("second"),
+                                                   std::nullopt,
+                                                   false)});
             })});
 
     expect_invalid_module(ctx, module);
@@ -2264,11 +2260,11 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
                 functions_schemas.name[new_functions] = strings.intern("set");
                 functions_schemas.return_type[new_functions] = make_test_type_ref(ctx, "void");
                 functions_schemas.parameters[new_functions] =
-                    declarations.range<lispb::codegen::ParameterId>({parameters_schemas.append(
-                        make_test_type_ref(ctx, "int32"),
-                        *lispb::CppIdentifier<>::try_make(strings, strings.intern("value")),
-                        strings.intern(" \t"),
-                        false)});
+                    declarations.range<lispb::codegen::ParameterId>(
+                        {parameters_schemas.append(make_test_type_ref(ctx, "int32"),
+                                                   strings.intern("value"),
+                                                   strings.intern(" \t"),
+                                                   false)});
             })});
 
     expect_invalid_module(ctx, module);
@@ -2506,15 +2502,9 @@ TEST(Validation, RejectsDuplicateFacadeMethodParameters) {
         facades.methods[first_item(declarations, normal_modules.declarations[module])])] =
         declarations.range<lispb::codegen::ParameterId>(
             {parameters_schemas.append(
-                 make_test_type_ref(ctx, "int32"),
-                 *lispb::CppIdentifier<>::try_make(strings, strings.intern("value")),
-                 std::nullopt,
-                 false),
+                 make_test_type_ref(ctx, "int32"), strings.intern("value"), std::nullopt, false),
              parameters_schemas.append(
-                 make_test_type_ref(ctx, "float"),
-                 *lispb::CppIdentifier<>::try_make(strings, strings.intern("value")),
-                 std::nullopt,
-                 false)});
+                 make_test_type_ref(ctx, "float"), strings.intern("value"), std::nullopt, false)});
 
     expect_invalid_module(ctx, module);
 }
@@ -2588,11 +2578,11 @@ TEST(Validation, RejectsFacadeMethodsCollidingWithBind) {
                 facade_methods.name[new_facade_methods] = strings.intern("bind");
                 facade_methods.return_type[new_facade_methods] = make_test_type_ref(ctx, "void");
                 facade_methods.parameters[new_facade_methods] =
-                    declarations.range<lispb::codegen::ParameterId>({parameters_schemas.append(
-                        make_test_type_ref(ctx, "FTarget&"),
-                        *lispb::CppIdentifier<>::try_make(strings, strings.intern("target")),
-                        std::nullopt,
-                        false)});
+                    declarations.range<lispb::codegen::ParameterId>(
+                        {parameters_schemas.append(make_test_type_ref(ctx, "FTarget&"),
+                                                   strings.intern("target"),
+                                                   std::nullopt,
+                                                   false)});
             })});
 
     expect_invalid_module(ctx, module);
@@ -2611,16 +2601,12 @@ TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
         declarations,
         facades.methods[first_item(declarations, normal_modules.declarations[module])])] =
         declarations.range<lispb::codegen::ParameterId>(
-            {parameters_schemas.append(
-                 make_test_type_ref(ctx, "int32"),
-                 *lispb::CppIdentifier<>::try_make(strings, strings.intern("first")),
-                 strings.intern("0"),
-                 false),
+            {parameters_schemas.append(make_test_type_ref(ctx, "int32"),
+                                       strings.intern("first"),
+                                       strings.intern("0"),
+                                       false),
              parameters_schemas.append(
-                 make_test_type_ref(ctx, "int32"),
-                 *lispb::CppIdentifier<>::try_make(strings, strings.intern("second")),
-                 std::nullopt,
-                 false)});
+                 make_test_type_ref(ctx, "int32"), strings.intern("second"), std::nullopt, false)});
 
     expect_invalid_module(ctx, module);
 }

@@ -177,7 +177,8 @@
   :namespace lispb::codegen
   (enum CppKeyword std::uint8_t
     :native-api true
-    :helpers (to-serialized-string try-parse-serialized)
+    :enum-array true
+    :helpers (to-serialized-string)
     (value alignas_ :serialized-name "alignas")
     (value alignof_ :serialized-name "alignof")
     (value and_ :serialized-name "and")

@@ -1,10 +1,9 @@
 #pragma once
 
 #include <codegen/ast/cpp_keyword.h>
-#include <lispb/strings.h>
 
 #include <cctype>
-#include <expected>
+#include <cstddef>
 #include <format>
 #include <optional>
 #include <string>
@@ -46,9 +45,14 @@ enum class IdentifierError { Empty, Malformed, Reserved };
     if (policy == IdentifierPolicy::Lexical) {
         return std::nullopt;
     }
-    if (auto const keyword{codegen::try_parse_serialized_cpp_keyword(value)};
-        keyword && (policy == IdentifierPolicy::Declaration || !codegen::is_contextual(*keyword))) {
-        return IdentifierError::Reserved;
+    auto const& keywords{ioj::enum_strings<codegen::CppKeyword, ioj::Serialized>};
+    auto const count{keywords.offsets.size() - 1};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const keyword{static_cast<codegen::CppKeyword>(index)};
+        if (keywords(keyword) == value &&
+            (policy == IdentifierPolicy::Declaration || !codegen::is_contextual(keyword))) {
+            return IdentifierError::Reserved;
+        }
     }
     if (policy == IdentifierPolicy::Declaration &&
         (value.starts_with("__") || (value.size() > 1 && value.front() == '_' &&
@@ -76,25 +80,5 @@ enum class IdentifierError { Empty, Malformed, Reserved };
         value.remove_prefix(separator + 2);
     }
 }
-
-template <IdentifierPolicy Policy = IdentifierPolicy::Declaration>
-class CppIdentifier {
-  public:
-    [[nodiscard]] static auto try_make(Strings const& strings, StringId const id)
-        -> std::expected<CppIdentifier, IdentifierError> {
-        if (auto const error{identifier_error(strings.view(id), Policy)}) {
-            return std::unexpected{*error};
-        }
-        return CppIdentifier{id};
-    }
-
-    [[nodiscard]] operator StringId() const noexcept { return id_; }
-
-  private:
-    explicit CppIdentifier(StringId const id)
-        : id_{id} {}
-
-    StringId id_;
-};
 
 }

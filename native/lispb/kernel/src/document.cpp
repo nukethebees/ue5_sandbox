@@ -16,7 +16,7 @@ auto is_tail(lispb::codegen::sexpr::HandleRange const range, Container const& co
 }
 
 }
-auto Operands::add(lispb::CppIdentifier<lispb::IdentifierPolicy::Keywords> const name,
+auto Operands::add(lispb::StringId const name,
                    lispb::codegen::sexpr::SourceSpan const span,
                    bool const is_component) -> OperandId {
     auto const id{OperandId{static_cast<std::uint32_t>(name_.size())}};

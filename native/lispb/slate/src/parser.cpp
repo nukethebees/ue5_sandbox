@@ -193,20 +193,16 @@ class Parser {
         }
         return syntax_.text_id(form);
     }
-    auto validate_name(FormId const token, std::string_view const subject) const
-        -> lispb::CppIdentifier<lispb::IdentifierPolicy::Lexical> {
-        auto const name{lispb::CppIdentifier<lispb::IdentifierPolicy::Lexical>::try_make(
-            syntax_.strings(), syntax_.identifier(token))};
-        if (!name) {
+    void validate_name(FormId const token, std::string_view const subject) const {
+        if (!is_identifier(syntax_.text(token))) {
             fail(syntax_.token_span(token), std::format("{} must be a C++ identifier", subject));
         }
-        return *name;
     }
 
     void parse_function(FormId const form) {
         require_count(form, 4, "expected 'params' declaration after function name");
         auto const name{atom(syntax_.children(form)[1], "expected generated function name")};
-        auto const checked_name{validate_name(name, "generated function name")};
+        validate_name(name, "generated function name");
         parameter_states_.clear();
         binding_names_.clear();
         auto const parameter_form{syntax_.children(form)[2]};
@@ -238,7 +234,7 @@ class Parser {
                                  syntax_.strings().view(parameter)));
             }
         }
-        document_.functions.names.push_back(checked_name);
+        document_.functions.names.push_back(syntax_.identifier(name));
         document_.functions.parameters.push_back(parameters);
         document_.functions.bindings.push_back(bindings);
         document_.functions.roots.push_back(root);

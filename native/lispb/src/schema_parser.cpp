@@ -43,6 +43,7 @@
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
 #include <codegen/sexpr/token_kind.h>
+#include <lispb/cpp_identifier.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
 
@@ -298,15 +299,15 @@ auto SchemaParser::parse_parameter(Declarations& declarations, sexpr::FormId con
     Fields const fields{parser_, form, "parameter", 2};
     fields.validate({P::default_, P::pack});
     auto const name_form{fields.positional(0)};
-    auto const name_id{parser_.identifier(name_form, "parameter name")};
-    auto const name{CppIdentifier<>::try_make(syntax_.strings(), name_id)};
-    if (!name) {
-        parser_.fail(name_form,
-                     identifier_error_message(
-                         name.error(), syntax_.strings().view(name_id), "parameter name"));
+    auto const name{parser_.identifier(name_form, "parameter name")};
+    if (auto const error{
+            identifier_error(syntax_.strings().view(name), IdentifierPolicy::Declaration)}) {
+        parser_.fail(
+            name_form,
+            identifier_error_message(*error, syntax_.strings().view(name), "parameter name"));
     }
     return declarations.parameters.append(parse_type_ref(declarations, fields.positional(1)),
-                                          *name,
+                                          name,
                                           optional_text_id(fields, P::default_),
                                           boolean_or(fields, P::pack));
 }

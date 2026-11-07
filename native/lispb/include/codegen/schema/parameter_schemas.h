@@ -1,7 +1,6 @@
 #pragma once
 
 #include <codegen/schema/indices.h>
-#include <lispb/cpp_identifier.h>
 #include <lispb/indexed_column.h>
 #include <lispb/indices.h>
 
@@ -15,7 +14,7 @@ struct ParameterSchemas {
     using Column = IndexedColumn<T, Indexing>;
 
     [[nodiscard]] auto append(TypeRefId type_value,
-                              CppIdentifier<> name_value,
+                              StringId name_value,
                               std::optional<StringId> default_expression,
                               bool pack) -> ParameterId;
     [[nodiscard]] auto clone(ParameterId id) -> ParameterId;
@@ -23,7 +22,7 @@ struct ParameterSchemas {
     void clear();
 
     Column<TypeRefId> type;
-    Column<CppIdentifier<>> name;
+    Column<StringId> name;
     Column<std::optional<StringId>> default_value;
     Column<bool> is_pack;
 };

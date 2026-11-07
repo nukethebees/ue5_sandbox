@@ -417,10 +417,7 @@ class Parser {
                 }
                 require_size(field, 3, "'(operand name storage)'");
                 auto operand_name{atom(syntax_.children(field)[1], "expected operand name")};
-                auto const checked_name{
-                    lispb::CppIdentifier<lispb::IdentifierPolicy::Keywords>::try_make(
-                        syntax_.strings(), syntax_.identifier(syntax_.children(field)[1]))};
-                if (!checked_name) {
+                if (!is_identifier(operand_name)) {
                     fail(syntax_.token_span(syntax_.children(field)[1]),
                          "operand name must be a C++ identifier");
                 }
@@ -429,7 +426,7 @@ class Parser {
                          "duplicate operand '" + operand_name + "'");
                 }
                 auto const operand{
-                    document_.operands.add(*checked_name,
+                    document_.operands.add(syntax_.identifier(syntax_.children(field)[1]),
                                            syntax_.token_span(field),
                                            field_kind == OperationField::component_operand)};
                 parse_storage(syntax_.children(field)[2], operand);

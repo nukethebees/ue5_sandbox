@@ -9,20 +9,15 @@
 
 namespace lispb {
 
-TEST(CppIdentifier, ChecksInternedSpellingAndPreservesContextPolicies) {
-    Strings strings;
-    auto const identifier{CppIdentifier<>::try_make(strings, strings.intern("value_2"))};
-    ASSERT_TRUE(identifier);
-    EXPECT_EQ(strings.view(*identifier), "value_2");
-
-    EXPECT_EQ(CppIdentifier<>::try_make(strings, strings.intern("")).error(),
-              IdentifierError::Empty);
-    EXPECT_EQ(CppIdentifier<>::try_make(strings, strings.intern("2value")).error(),
+TEST(CppIdentifiers, PreserveContextPolicies) {
+    EXPECT_TRUE(is_cpp_identifier("value_2", IdentifierPolicy::Declaration));
+    EXPECT_EQ(identifier_error("", IdentifierPolicy::Declaration), IdentifierError::Empty);
+    EXPECT_EQ(identifier_error("2value", IdentifierPolicy::Declaration),
               IdentifierError::Malformed);
-    EXPECT_EQ(CppIdentifier<>::try_make(strings, strings.intern("value-name")).error(),
+    EXPECT_EQ(identifier_error("value-name", IdentifierPolicy::Declaration),
               IdentifierError::Malformed);
     for (auto const spelling : {"class", "import", "module", "__name", "_Upper"}) {
-        EXPECT_EQ(CppIdentifier<>::try_make(strings, strings.intern(spelling)).error(),
+        EXPECT_EQ(identifier_error(spelling, IdentifierPolicy::Declaration),
                   IdentifierError::Reserved);
     }
 
