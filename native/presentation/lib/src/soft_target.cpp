@@ -72,12 +72,33 @@ auto is_supported_entity_type(::ioj::sim::EntityType const type) -> bool {
 
 }
 
+SoftTargetConfig::SoftTargetConfig()
+    : SoftTargetConfig{settings::SoftTarget{}} {}
+
+SoftTargetConfig::SoftTargetConfig(settings::SoftTarget settings)
+    : values_{settings} {
+    values_.acquisition_radius_pixels = std::max(values_.acquisition_radius_pixels, 1.f);
+    values_.retention_radius_pixels =
+        std::max(values_.retention_radius_pixels, values_.acquisition_radius_pixels);
+    values_.centre_tie_radius_pixels = std::max(values_.centre_tie_radius_pixels, 0.f);
+    values_.switch_improvement_ratio = std::clamp(values_.switch_improvement_ratio, 0.f, 1.f);
+    values_.minimum_radius_pixels = std::max(values_.minimum_radius_pixels, 1.f);
+    values_.maximum_radius_pixels =
+        std::max(values_.maximum_radius_pixels, values_.minimum_radius_pixels);
+    values_.bounds_padding_pixels = std::max(values_.bounds_padding_pixels, 0.f);
+    values_.range_transition_start_multiplier =
+        std::max(values_.range_transition_start_multiplier, 1.f);
+    values_.bracket_start_radius_multiplier =
+        std::max(values_.bracket_start_radius_multiplier, 1.f);
+}
+
 auto make_world_soft_target_visual(SoftTargetMarker const& marker,
-                                   settings::SoftTarget const& settings,
+                                   SoftTargetConfig const& config,
                                    float const mesh_vertical_radius,
                                    ui::Color4f const neutral_colour,
                                    ui::Color4f const in_range_colour)
     -> std::optional<WorldSoftTargetVisual> {
+    auto const& settings{config.values()};
     auto const& visual{marker.visual};
     if (!marker.location || marker.visibility <= 0.f || visual.world_units_per_pixel <= 1.e-8f ||
         mesh_vertical_radius <= 1.e-8f) {
@@ -85,8 +106,7 @@ auto make_world_soft_target_visual(SoftTargetMarker const& marker,
     }
 
     auto const range_alpha{visual.range_alpha.get()};
-    auto const closing_scale{
-        std::lerp(std::max(settings.bracket_start_radius_multiplier, 1.f), 1.f, range_alpha)};
+    auto const closing_scale{std::lerp(settings.bracket_start_radius_multiplier, 1.f, range_alpha)};
     auto const scale{visual.radius_pixels * visual.world_units_per_pixel * closing_scale /
                      mesh_vertical_radius};
     if (!std::isfinite(scale) || scale <= 1.e-8f) {
@@ -189,7 +209,7 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
                         ::ioj::sim::EntityTypeRadii const& entity_type_radii,
                         std::span<ui::entity_overlay::ObjectiveRole const> const objective_roles,
                         SoftTargetContext const& context,
-                        settings::SoftTarget const& settings,
+                        SoftTargetConfig const& config,
                         ::ioj::sim::EntityId const current_target) -> SoftTargetResult {
     assert(objective_roles.size() == ::ioj::presentation::display_entity_count(batches));
     if (!context.view.is_valid()) {
@@ -201,19 +221,10 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
         return {};
     }
 
-    auto const acquisition_radius{std::max(settings.acquisition_radius_pixels, 1.0f)};
-    auto const retention_radius{std::max(settings.retention_radius_pixels, acquisition_radius)};
-    auto const centre_tie_radius{std::max(settings.centre_tie_radius_pixels, 0.0f)};
-    auto const switch_ratio{std::clamp(settings.switch_improvement_ratio, 0.0f, 1.0f)};
-    auto const minimum_indicator_radius{std::max(settings.minimum_radius_pixels, 1.0f)};
-    auto const maximum_indicator_radius{
-        std::max(settings.maximum_radius_pixels, minimum_indicator_radius)};
-    auto const bounds_padding{std::max(settings.bounds_padding_pixels, 0.0f)};
+    auto const& settings{config.values()};
     auto const maximum_overlay_range{std::max(context.maximum_overlay_range, 0.0f)};
     auto const maximum_overlay_range_squared{maximum_overlay_range * maximum_overlay_range};
     auto const effective_range{std::max(context.effective_weapon_range, 0.0f)};
-    auto const transition_start_multiplier{
-        std::max(settings.range_transition_start_multiplier, 1.0f)};
 
     SoftTargetCandidate best_candidate;
     SoftTargetCandidate current_candidate;
@@ -289,15 +300,17 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
             }
 
             auto const centre_distance{size(projected_entity.pixels - projected_aim.pixels)};
-            auto const centre_score{std::max(centre_distance - centre_tie_radius, 0.0f)};
+            auto const centre_score{
+                std::max(centre_distance - settings.centre_tie_radius_pixels, 0.0f)};
             auto const surface_distance{
                 std::max(size(context.aim_origin - position) - world_radius, 0.0f)};
             float range_alpha{};
             if (effective_range > 0.0f) {
                 if (surface_distance <= effective_range) {
                     range_alpha = 1.0f;
-                } else if (transition_start_multiplier > 1.0f) {
-                    auto const transition_start{effective_range * transition_start_multiplier};
+                } else if (settings.range_transition_start_multiplier > 1.0f) {
+                    auto const transition_start{effective_range *
+                                                settings.range_transition_start_multiplier};
                     range_alpha = std::clamp((transition_start - surface_distance) /
                                                  (transition_start - effective_range),
                                              0.0f,
@@ -305,22 +318,23 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
                 }
             }
 
-            SoftTargetCandidate const candidate{.id = batch.ids[index],
-                                                .centre_distance_pixels = centre_distance,
-                                                .centre_score_pixels = centre_score,
-                                                .surface_distance = surface_distance,
-                                                .range_alpha = range_alpha,
-                                                .indicator_radius_pixels =
-                                                    std::clamp(projected_radius + bounds_padding,
-                                                               minimum_indicator_radius,
-                                                               maximum_indicator_radius),
-                                                .world_units_per_pixel = world_units_per_pixel};
+            SoftTargetCandidate const candidate{
+                .id = batch.ids[index],
+                .centre_distance_pixels = centre_distance,
+                .centre_score_pixels = centre_score,
+                .surface_distance = surface_distance,
+                .range_alpha = range_alpha,
+                .indicator_radius_pixels =
+                    std::clamp(projected_radius + settings.bounds_padding_pixels,
+                               settings.minimum_radius_pixels,
+                               settings.maximum_radius_pixels),
+                .world_units_per_pixel = world_units_per_pixel};
 
             if (candidate.id == current_target) {
                 current_candidate = candidate;
                 has_current_candidate = true;
             }
-            if (centre_distance <= acquisition_radius &&
+            if (centre_distance <= settings.acquisition_radius_pixels &&
                 (!has_best_candidate || is_better_candidate(candidate, best_candidate))) {
                 best_candidate = candidate;
                 has_best_candidate = true;
@@ -330,16 +344,19 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
 
     SoftTargetCandidate selected_candidate;
     bool has_selected_candidate{false};
-    if (has_current_candidate && current_candidate.centre_distance_pixels <= retention_radius) {
+    if (has_current_candidate &&
+        current_candidate.centre_distance_pixels <= settings.retention_radius_pixels) {
         selected_candidate = current_candidate;
         has_selected_candidate = true;
         if (has_best_candidate && best_candidate.id != current_candidate.id) {
             auto const screen_improvement{best_candidate.centre_score_pixels <
-                                          current_candidate.centre_score_pixels * switch_ratio};
+                                          current_candidate.centre_score_pixels *
+                                              settings.switch_improvement_ratio};
             auto const tied_centres{best_candidate.centre_score_pixels ==
                                     current_candidate.centre_score_pixels};
             auto const depth_improvement{best_candidate.surface_distance <
-                                         current_candidate.surface_distance * switch_ratio};
+                                         current_candidate.surface_distance *
+                                             settings.switch_improvement_ratio};
             if (screen_improvement || (tied_centres && depth_improvement)) {
                 selected_candidate = best_candidate;
             }

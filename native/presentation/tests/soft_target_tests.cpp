@@ -281,9 +281,10 @@ TEST(SoftTargetVisual, SizesBracketAndCombinesRangePulseAndFade) {
     settings.bracket_start_radius_multiplier = 3.f;
     settings.opacity = 0.6f;
     settings.pulse_opacity_boost = 0.2f;
+    SoftTargetConfig const config{settings};
     auto const sample{[&] {
         return make_world_soft_target_visual(
-            marker, settings, 4.f, {1.f, 0.f, 0.f, 0.5f}, {0.f, 1.f, 0.f, 1.f});
+            marker, config, 4.f, {1.f, 0.f, 0.f, 0.5f}, {0.f, 1.f, 0.f, 1.f});
     }};
     auto visual{sample()};
     ASSERT_TRUE(visual);
@@ -305,6 +306,32 @@ TEST(SoftTargetVisual, SizesBracketAndCombinesRangePulseAndFade) {
     marker.visibility = 1.f;
     marker.location.reset();
     EXPECT_FALSE(sample());
+}
+
+TEST(SoftTargetConfig, NormalizesSelectionAndIndicatorRangesBeforeUse) {
+    settings::SoftTarget authored{
+        .acquisition_radius_pixels = 30.f,
+        .retention_radius_pixels = 10.f,
+        .centre_tie_radius_pixels = -1.f,
+        .switch_improvement_ratio = 2.f,
+        .range_transition_start_multiplier = 0.f,
+        .minimum_radius_pixels = 20.f,
+        .maximum_radius_pixels = 10.f,
+        .bounds_padding_pixels = -3.f,
+        .bracket_start_radius_multiplier = 0.f,
+    };
+    SoftTargetConfig const config{authored};
+    authored.acquisition_radius_pixels = 100.f;
+    auto const& values{config.values()};
+    EXPECT_EQ(values.acquisition_radius_pixels, 30.f);
+    EXPECT_EQ(values.retention_radius_pixels, 30.f);
+    EXPECT_EQ(values.minimum_radius_pixels, 20.f);
+    EXPECT_EQ(values.maximum_radius_pixels, 20.f);
+    EXPECT_EQ(values.centre_tie_radius_pixels, 0.f);
+    EXPECT_EQ(values.bounds_padding_pixels, 0.f);
+    EXPECT_EQ(values.switch_improvement_ratio, 1.f);
+    EXPECT_EQ(values.range_transition_start_multiplier, 1.f);
+    EXPECT_EQ(values.bracket_start_radius_multiplier, 1.f);
 }
 
 TEST_F(EntityOverlaySource, TiesUseEntityIdentityRegardlessOfBatchOrdering) {

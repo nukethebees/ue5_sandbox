@@ -231,9 +231,9 @@ auto HudModel::collect_player_flight_data() -> bool {
         auto const& controller{player->controller_state()};
         auto const& profile{player->active_flight_model_profile()};
         auto const forward_limit{
-            std::max(profile.config.translation.forward.normal.positive_speed_limit, 1.f)};
+            std::max(profile.config.translation.forward.normal.positive_speed_limit.get(), 1.f)};
         auto const right_limit{
-            std::max(profile.config.translation.right.normal.positive_speed_limit, 1.f)};
+            std::max(profile.config.translation.right.normal.positive_speed_limit.get(), 1.f)};
         data.flight_vector_debug = {
             .turn_input = {intent.rotation.y(), intent.rotation.x()},
             .move_input = {intent.translation.y(), intent.translation.x()},

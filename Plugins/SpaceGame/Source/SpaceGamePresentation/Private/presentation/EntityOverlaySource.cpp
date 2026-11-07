@@ -11,7 +11,7 @@ auto select_soft_target(
     ioj::sim::EntityTypeRadii const& entity_type_radii,
     std::span<ioj::ui::entity_overlay::ObjectiveRole const> const objective_roles,
     FSoftTargetSelectionContext const& context,
-    ioj::settings::SoftTarget const& settings,
+    ioj::presentation::SoftTargetConfig const& settings,
     ioj::sim::EntityId const current_target) -> ioj::presentation::SoftTargetResult {
     if (!context.view.is_valid()) {
         return {};

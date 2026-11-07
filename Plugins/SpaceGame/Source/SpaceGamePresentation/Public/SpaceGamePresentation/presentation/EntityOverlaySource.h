@@ -26,5 +26,5 @@ struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionContext {
                        ::ioj::sim::EntityTypeRadii const& entity_type_radii,
                        std::span<ioj::ui::entity_overlay::ObjectiveRole const> objective_roles,
                        FSoftTargetSelectionContext const& context,
-                       ioj::settings::SoftTarget const& settings,
+                       ioj::presentation::SoftTargetConfig const& settings,
                        ::ioj::sim::EntityId current_target) -> ioj::presentation::SoftTargetResult;

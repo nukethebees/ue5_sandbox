@@ -98,7 +98,7 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
         .fighter = level_config.fighters.simulation.health.get().value(),
         .turret = level_config.turrets.simulation.max_health.get().value(),
     };
-    soft_target_selection_settings_ = overlay.soft_target;
+    soft_target_selection_settings_ = presentation::SoftTargetConfig{overlay.soft_target};
     entity_overlay_objective_roles_.Reset();
 
     for (auto const& registration : registered_huds) {
@@ -338,8 +338,8 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
         batches,
         soft_target,
         {ioj::NonNegativeFinite<float>::make(delta_seconds > 0.f ? delta_seconds : 0.f),
-         soft_target_selection_settings_.pulse_duration,
-         soft_target_selection_settings_.fade_out_duration})};
+         soft_target_selection_settings_.values().pulse_duration,
+         soft_target_selection_settings_.values().fade_out_duration})};
 
     if (render_world_target) {
         auto const neutral_color{hud->get_soft_target_neutral_colour()};
