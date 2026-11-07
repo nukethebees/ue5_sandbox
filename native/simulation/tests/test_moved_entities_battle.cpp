@@ -114,6 +114,7 @@ TEST(MovedEntitiesBattle, HeadlessBattleTracksFighterTransformsAcrossLongBattle)
         harness.advance(tick_period);
     }
     simulation.pause();
+    simulation.advance(0.0);
 
     EXPECT_EQ(observed_ticks, tick_count) << "Every requested battle tick was observed";
     EXPECT_TRUE(observed_empty_tick) << "Battle includes an initially quiet movement tick";

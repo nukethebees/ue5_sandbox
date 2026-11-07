@@ -345,6 +345,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         simulation.stop_run(sim::telemetry::RunEndReason::DurationReached);
     } else {
         simulation.pause();
+        simulation.advance(0.0);
     }
 
     auto const tick_memory{simulation.tick_memory_stats()};

@@ -601,6 +601,8 @@ TEST(NativeSimulation, QueuedPausePreservesPendingSpawnsAndTelemetryUntilResume)
               LevelTelemetryManager::State::Recording);
 
     simulation.pause();
+    EXPECT_EQ(simulation.state(), LevelState::Running);
+    simulation.advance(0.0);
     EXPECT_EQ(simulation.state(), LevelState::Paused);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{5});
     EXPECT_FALSE(simulation.take_finalized_telemetry_run());
@@ -942,6 +944,7 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
         << "Default metadata permits telemetry recording";
     first.pause();
     first.pause();
+    first.advance(0.0);
     EXPECT_TRUE(first.player_ship_simulation() == nullptr) << "No player is needed";
     EXPECT_EQ(first.entity_ledger().count_alive(), 2) << "Both capitals are registered";
     first.start();

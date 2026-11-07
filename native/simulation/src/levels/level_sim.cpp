@@ -94,9 +94,6 @@ void LevelSim::start() {
 void LevelSim::pause() {
     assert(state_ == LevelState::Paused || state_ == LevelState::Running);
     event_manager_.enqueue(EventHandle{0, EventKind::Pause});
-    if (clock_.phase() == SimulationPhase::BetweenTicks) {
-        dispatch_tick_end_events();
-    }
 }
 
 /* **************************************** */
@@ -161,6 +158,7 @@ auto LevelSim::take_finalized_telemetry_run() -> std::optional<telemetry::RunRec
 /* **************************************** */
 void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const navigation_output) {
     SANDBOX_PROFILE_SCOPE("LevelSim::advance");
+    dispatch_tick_end_events();
     if (state_ != LevelState::Running) {
         return;
     }
