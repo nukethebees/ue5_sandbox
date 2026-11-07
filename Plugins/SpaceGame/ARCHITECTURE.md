@@ -42,6 +42,12 @@ A running Unreal frame advances the native fixed ticks before presenting the com
 Presentation observes the final tick of a catch-up frame. Player death and mission-completion
 notifications follow presentation; telemetry persistence follows native finalization.
 
+The actor keeps ticking while the level is paused. Every ready-level frame calls `advance()` to
+consume between-tick requests, while paused calls leave simulation time and presentation unchanged.
+Pause requests take effect on the next advance; the orchestrator then notifies the controller to
+open a pending pause menu and refresh run controls. Resume remains direct. Paused launches enter
+that state during initialization without queueing a pause request.
+
 During reset or world teardown, finalize the run and release HUD/player bindings before destroying
 the native level. Reset the presentation host while its components and simulation are still
 alive. Persist the finalized report before clearing launch options. World reset publishes the

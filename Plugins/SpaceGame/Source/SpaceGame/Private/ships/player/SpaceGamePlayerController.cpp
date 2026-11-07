@@ -370,11 +370,13 @@ void ASpaceGamePlayerController::bind_orchestrator_events() {
     orchestrator->on_reset.AddUObject(this, &ThisClass::on_orchestrator_reset);
     orchestrator->on_mission_completed.RemoveAll(this);
     orchestrator->on_mission_completed.AddUObject(this, &ThisClass::on_mission_completed);
+    orchestrator->on_simulation_paused.AddUObject(this, &ThisClass::on_simulation_paused);
 }
 void ASpaceGamePlayerController::unbind_orchestrator_events() {
     if (auto* const orchestrator{orchestrator_.Get()}; IsValid(orchestrator)) {
         orchestrator->on_reset.RemoveAll(this);
         orchestrator->on_mission_completed.RemoveAll(this);
+        orchestrator->on_simulation_paused.RemoveAll(this);
     }
     orchestrator_.Reset();
 }
@@ -594,16 +596,15 @@ void ASpaceGamePlayerController::toggle_pause_game() {
         case ioj::sim::LevelState::StableSetup:
             break;
         case ioj::sim::LevelState::Running: {
-            if (return_to_level_select_pending_ || (modal_ui_.is_completion_active())) {
+            if (return_to_level_select_pending_ || modal_ui_.is_completion_active() ||
+                modal_ui_.is_resume_pending()) {
                 return;
             }
             if (!suspend_gameplay_for_modal()) {
                 return;
             }
 
-            if (!open_pause_menu()) {
-                resume_game();
-            }
+            orchestrator->pause_simulation();
             break;
         }
         case ioj::sim::LevelState::Uninitialised:
@@ -692,19 +693,18 @@ auto ASpaceGamePlayerController::open_pause_menu() -> bool {
 }
 auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {
     auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator) || orchestrator->get_state() != ioj::sim::LevelState::Running) {
+    if (!IsValid(orchestrator) || (orchestrator->get_state() != ioj::sim::LevelState::Running &&
+                                   orchestrator->get_state() != ioj::sim::LevelState::Paused)) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::suspend_gameplay_for_modal: Gameplay is not "
-                    "running."));
+                    "ready."));
         return false;
     }
 
     modal_ui_.begin_suspend(get_active_control_context());
-    orchestrator->pause_simulation();
     if (!control_contexts_.set_control_context(::ioj::levels::ControlContext::None)) {
         modal_ui_.clear_resume();
-        orchestrator->start_simulation();
         return false;
     }
     hud_.hide_for_modal();
@@ -763,6 +763,20 @@ void ASpaceGamePlayerController::on_pause_menu_deactivated() {
 void ASpaceGamePlayerController::on_completion_menu_deactivated() {
     modal_ui_.close_completion(*this);
     if (is_gameplay_mode() && !return_to_level_select_pending_) {
+        resume_game();
+    }
+}
+void ASpaceGamePlayerController::on_simulation_paused() {
+    if (!is_gameplay_mode() || return_to_level_select_pending_) {
+        return;
+    }
+
+    hud_.update_run_controls();
+    if (!modal_ui_.is_resume_pending() || modal_ui_.has_modal()) {
+        return;
+    }
+
+    if (!open_pause_menu()) {
         resume_game();
     }
 }

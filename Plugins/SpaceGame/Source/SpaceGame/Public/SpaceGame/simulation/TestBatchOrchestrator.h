@@ -190,6 +190,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
   public:
     static FOnProxyEntitiesBound on_proxy_entities_bound;
     FOnOrchestratorReset on_reset;
+    FSimpleMulticastDelegate on_simulation_paused;
     FOnMissionCompleted on_mission_completed;
   private:
     ioj::settings::TickSettings simulation_tick_settings{};

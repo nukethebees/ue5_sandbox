@@ -112,7 +112,6 @@ void ATestBatchOrchestrator::pause_simulation() {
     if (level_simulation_.IsSet()) {
         level_simulation_->pause();
     }
-    SetActorTickEnabled(false);
 }
 void ATestBatchOrchestrator::reset_for_new_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::reset_for_new_level);
@@ -380,10 +379,10 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         start_mode == EOrchestratorStartMode::Automatic ||
         start_mode == EOrchestratorStartMode::AuthoredLevel ||
         (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting)};
-    if (automatic) {
+    if (automatic && launch_options_.launch_mode == ioj::levels::LaunchMode::Running) {
         level_simulation_->start();
     }
-    SetActorTickEnabled(automatic);
+    SetActorTickEnabled(true);
     return true;
 }
 void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
@@ -413,9 +412,7 @@ void ATestBatchOrchestrator::load_authored_level() {
             return;
         }
     }
-    if (begin_play() && launch_options_.launch_mode == ioj::levels::LaunchMode::Paused) {
-        pause_simulation();
-    }
+    begin_play();
 }
 auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {
     return start_mode == EOrchestratorStartMode::Automatic ||
@@ -465,36 +462,44 @@ void ATestBatchOrchestrator::Tick(float dt) {
     tick(static_cast<time_type>(dt));
 }
 void ATestBatchOrchestrator::tick(time_type const dt) {
-    if (get_state() != ioj::sim::LevelState::Running) {
+    auto const state{get_state()};
+    if (state != ioj::sim::LevelState::Running && state != ioj::sim::LevelState::Paused) {
         return;
     }
 
     auto const& clk{level_simulation_->clock()};
     auto const previous_tick{clk.get_completed_ticks()};
     level_simulation_->advance(dt);
-    presentation_host_.tick(
-        dt, level_simulation_->read_access(), level_simulation_->spatial_query_manager());
+    if (get_state() == ioj::sim::LevelState::Running ||
+        clk.get_completed_ticks() != previous_tick) {
+        presentation_host_.tick(
+            dt, level_simulation_->read_access(), level_simulation_->spatial_query_manager());
 
-    if (auto player{level_simulation_->player_ship_commands()};
-        player && player->consume_death_notification()) {
-        if (IsValid(player_ship)) {
-            player_ship->handle_simulation_death();
-        }
-    }
-
-    if (clk.get_completed_ticks() != previous_tick) {
-        auto const& mission{level_simulation_->mission()};
-        for (auto const& completion : mission.completions()) {
-            if (completion.outcome == ioj::MissionOutcome::Victory &&
-                completion.tick > previous_tick) {
-                ioj::publish_mission_completion(
-                    *level_simulation_, GetGameInstance(), on_mission_completed);
-                break;
+        if (auto player{level_simulation_->player_ship_commands()};
+            player && player->consume_death_notification()) {
+            if (IsValid(player_ship)) {
+                player_ship->handle_simulation_death();
             }
         }
+
+        if (clk.get_completed_ticks() != previous_tick) {
+            auto const& mission{level_simulation_->mission()};
+            for (auto const& completion : mission.completions()) {
+                if (completion.outcome == ioj::MissionOutcome::Victory &&
+                    completion.tick > previous_tick) {
+                    ioj::publish_mission_completion(
+                        *level_simulation_, GetGameInstance(), on_mission_completed);
+                    break;
+                }
+            }
+        }
+        ioj::persist_finalized_level_telemetry_run(
+            *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
     }
-    ioj::persist_finalized_level_telemetry_run(
-        *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
+
+    if (state == ioj::sim::LevelState::Running && get_state() == ioj::sim::LevelState::Paused) {
+        on_simulation_paused.Broadcast();
+    }
 }
 /* **************************************** */
 // Editor commands

@@ -212,6 +212,10 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
     FModalSample sample;
     auto& orchestrator{context_.orchestrator};
     FPlayerControllerTestAccess::toggle_pause(*controller);
+    checks.is_true(orchestrator.get_state() == sim::LevelState::Running &&
+                       !FPlayerControllerTestAccess::has_modal(*controller),
+                   TEXT("Pause waits for the next simulation advance before opening its menu"));
+    orchestrator.tick(0.0);
     sample.pause_open = FPlayerControllerTestAccess::has_modal(*controller);
     sample.pause_rejects_activation = rejects_activation();
     sample.pause_suspended =
@@ -227,6 +231,8 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
     completion.persisted = true;
     completion.state = EMissionOutcome::Victory;
     completion.level_display_name = TEXT("Controller modal test");
+    orchestrator.pause_simulation();
+    orchestrator.tick(0.0);
     FPlayerControllerTestAccess::complete(*controller, completion);
     sample.completion_open = FPlayerControllerTestAccess::has_modal(*controller);
     sample.completion_rejects_activation = rejects_activation();
@@ -300,6 +306,9 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
         Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
     if (checks.is_valid(controller, TEXT("Simulation-only UI has a player controller"))) {
         orchestrator.pause_simulation();
+        checks.is_true(orchestrator.IsActorTickEnabled(),
+                       TEXT("A pause request leaves actor ticking enabled"));
+        orchestrator.tick(0.0);
         checks.is_true(controller->activate_run_controls(),
                        TEXT("Simulation-only run controls activate without a camera"));
         checks.is_true(controller->get_benchmark_hud() &&
@@ -322,8 +331,16 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
                              button->get_text().ToString(),
                              TEXT("Running simulations offer Pause"));
             button->OnClicked().Broadcast();
+            checks.is_true(orchestrator.get_state() == sim::LevelState::Running,
+                           TEXT("Pause queues the state change"));
+            orchestrator.tick(0.0);
             checks.is_true(orchestrator.get_state() == sim::LevelState::Paused,
                            TEXT("Pause suspends the simulation"));
+            checks.is_true(orchestrator.IsActorTickEnabled(),
+                           TEXT("Paused simulations keep actor ticking enabled"));
+            checks.are_equal(FString{TEXT("Resume")},
+                             button->get_text().ToString(),
+                             TEXT("Applied pause immediately updates the run controls"));
             checks.is_true(controller->get_benchmark_hud()->IsActivated() &&
                                controller->get_active_control_context() ==
                                    levels::ControlContext::Benchmark,
@@ -488,6 +505,7 @@ void FLevelLoaderScenario::sample_controller_lifecycle() {
     sample.hud_created_after_initialisation =
         Cast<UShipHudWidget>(controller->get_active_hud()) != nullptr;
     FPlayerControllerTestAccess::toggle_pause(*controller);
+    orchestrator.tick(0.0);
     controller->UnPossess();
     sample.unpossessed_while_paused =
         orchestrator.get_state() == sim::LevelState::Paused && !IsValid(controller->GetPawn()) &&
@@ -501,6 +519,7 @@ void FLevelLoaderScenario::sample_controller_lifecycle() {
         controller->get_active_control_context() == ::ioj::levels::ControlContext::Player;
 
     FPlayerControllerTestAccess::toggle_pause(*controller);
+    orchestrator.tick(0.0);
     controller->UnPossess();
     controller->Possess(ship);
     sample.possession_stayed_suspended =

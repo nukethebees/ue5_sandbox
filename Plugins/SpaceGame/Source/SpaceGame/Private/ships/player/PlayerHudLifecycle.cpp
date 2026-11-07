@@ -196,6 +196,11 @@ void FPlayerHudLifecycle::shutdown_benchmark(ASpaceGamePlayerController& owner) 
     benchmark_hud_widget_->RemoveFromParent();
     benchmark_hud_widget_ = nullptr;
 }
+void FPlayerHudLifecycle::update_run_controls() {
+    if (IsValid(benchmark_hud_widget_)) {
+        benchmark_hud_widget_->update_state();
+    }
+}
 void FPlayerHudLifecycle::hide_for_modal() {
     if (restore_pending_ || !IsValid(hud_widget_)) {
         return;

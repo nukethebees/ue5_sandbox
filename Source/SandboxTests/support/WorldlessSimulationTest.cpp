@@ -100,6 +100,7 @@ auto FWorldlessSimulationTest::run_until_timeline_finished(time_type const maxim
         advance(tick_period);
     }
     simulation_.pause();
+    simulation_.advance(0.0);
     return timeline.is_finished();
 }
 }

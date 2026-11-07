@@ -28,6 +28,7 @@ class SPACEGAMEPRESENTATION_API UBenchmarkHudWidget : public UCommonActivatableW
   public:
     void apply_ui_style(ioj::FGameUiStyle const& style);
     void set_state_source(TFunction<FRunHudState()> source);
+    void update_state();
 
     TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
 
@@ -55,7 +56,6 @@ class SPACEGAMEPRESENTATION_API UBenchmarkHudWidget : public UCommonActivatableW
     UPROPERTY(meta = (BindWidget))
     ioj::UMenuButtonWidget* end_benchmark_button{nullptr};
   private:
-    void update_state();
     void handle_end_requested();
     void handle_pause_requested();
     void clear_update_timer();
