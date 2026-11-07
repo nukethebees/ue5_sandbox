@@ -390,7 +390,8 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     definition.objectives[1].wins_level = ObjectiveWinsLevel::Yes;
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{Mission::compile(definition, {}, clock, data.expressions, data.timers)};
+    auto compiled{Mission::compile(
+        definition, {}, clock, data.expressions, data.timers, data.level_events.schedule)};
     ASSERT_TRUE(compiled);
     data.mission = std::move(*compiled);
     LevelSim simulation{std::move(data)};
@@ -459,6 +460,8 @@ TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendin
     std::array const events{pause, first, second, pause};
     ASSERT_TRUE(data.level_events.schedule.add_timed_trigger(
         data.expressions, data.timers, clock, Duration::make(0.21), events));
+    auto expected_history{schedule.initial_events};
+    expected_history.append_range(events);
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
@@ -477,7 +480,7 @@ TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendin
     EXPECT_EQ(record->completion.completed_ticks, SimTick{3});
     EXPECT_EQ(record->final_state.completed_tick, SimTick{3});
     EXPECT_FALSE(simulation.take_finalized_telemetry_run());
-    EXPECT_TRUE(std::ranges::equal(simulation.events().tick_end_events(), events));
+    EXPECT_TRUE(std::ranges::equal(simulation.events().tick_end_events(), expected_history));
     EXPECT_TRUE(std::ranges::equal(simulation.events().pending_tick_end_events(),
                                    std::array{second, pause}));
     ASSERT_EQ(simulation.events().pending_preparation_events().size(), 1);
@@ -488,7 +491,7 @@ TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendin
     EXPECT_EQ(simulation.state(), LevelState::Stopped);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{3});
     EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
-    EXPECT_TRUE(std::ranges::equal(simulation.events().tick_end_events(), events));
+    EXPECT_TRUE(std::ranges::equal(simulation.events().tick_end_events(), expected_history));
     EXPECT_TRUE(std::ranges::equal(simulation.events().pending_tick_end_events(),
                                    std::array{second, pause}));
     EXPECT_EQ(simulation.events().pending_preparation_events().size(), 1);
@@ -504,8 +507,12 @@ TEST(NativeSimulation, PlayerlessMissionCompletionStopsDispatchAndRetainsLaterEv
     objective.roots[ObjectiveOutcome::Passed] = 0;
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto mission{
-        Mission::compile({.objectives = {objective}}, {}, clock, data.expressions, data.timers)};
+    auto mission{Mission::compile({.objectives = {objective}},
+                                  {},
+                                  clock,
+                                  data.expressions,
+                                  data.timers,
+                                  data.level_events.schedule)};
     ASSERT_TRUE(mission);
     data.mission = std::move(*mission);
     ASSERT_TRUE(data.level_events.schedule.add_level_duration_limit(
@@ -530,7 +537,7 @@ TEST(NativeSimulation, PlayerlessMissionCompletionStopsDispatchAndRetainsLaterEv
     ASSERT_TRUE(record);
     EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::MissionCompleted);
     EXPECT_EQ(record->completion.completed_ticks, completion->tick);
-    EXPECT_EQ(simulation.events().tick_end_events().size(), 3);
+    EXPECT_EQ(simulation.events().tick_end_events().size(), 7);
     EXPECT_EQ(simulation.events().pending_tick_end_events().size(), 2);
     EXPECT_EQ(simulation.events().pending_preparation_events().size(), 1);
     simulation.advance(1.0);
@@ -551,6 +558,92 @@ TEST(NativeSimulation, DurationEventsDoNotRequireTelemetryRecording) {
     simulation.advance(1.0);
     EXPECT_EQ(simulation.state(), LevelState::Stopped);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{1});
+}
+
+TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancingLogicDuringSetup) {
+    auto data{make_battle()};
+    data.clock_settings.tick_rate = Frequency::make(10);
+    SimClock clock;
+    clock.initialise(data.clock_settings);
+    auto& schedule{data.level_events.schedule};
+    std::array const nodes{
+        levels::MissionExpr{levels::TimeElapsedExpr{NonNegativeFinite<double>::make(0.2)}},
+        levels::MissionExpr{levels::TimeElapsedExpr{NonNegativeFinite<double>::make(0.3)}},
+    };
+    auto const compiled{data.expressions.append(nodes, {{}, {}, clock, data.timers, schedule})};
+    ASSERT_TRUE(compiled);
+    auto const initial_start{compiled->start_events[0]};
+    auto const later_start{compiled->start_events[1]};
+    schedule.initial_events.push_back(initial_start);
+    schedule.add_trigger(compiled->handles[0], std::array{later_start});
+    auto const stop{schedule.add_stop_event(telemetry::RunEndReason::DurationReached)};
+    schedule.add_trigger(compiled->handles[1], std::array{stop});
+
+    LevelSim simulation{std::move(data)};
+    EXPECT_TRUE(std::ranges::equal(simulation.events().pending_tick_end_events(),
+                                   std::array{initial_start}));
+    simulation.finish_initialisation();
+    EXPECT_EQ(simulation.state(), LevelState::Paused);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
+    EXPECT_EQ(simulation.expressions().result(compiled->handles[0]), ExprResult::Pending);
+    EXPECT_TRUE(simulation.events().pending_tick_end_events().empty());
+    simulation.advance(10.0);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
+
+    simulation.start();
+    simulation.advance(0.1);
+    EXPECT_TRUE(
+        std::ranges::equal(simulation.events().tick_end_events(), std::array{initial_start}));
+    simulation.advance(0.1);
+    EXPECT_TRUE(std::ranges::equal(simulation.events().tick_end_events(),
+                                   std::array{initial_start, later_start}));
+    EXPECT_EQ(simulation.expressions().result(compiled->handles[1]), ExprResult::Pending);
+    simulation.advance(0.2);
+    EXPECT_EQ(simulation.state(), LevelState::Running);
+    simulation.advance(0.1);
+    EXPECT_EQ(simulation.state(), LevelState::Stopped);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{5});
+    EXPECT_TRUE(std::ranges::equal(simulation.events().tick_end_events(),
+                                   std::array{initial_start, later_start, stop}));
+}
+
+TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTerminalDispatch) {
+    auto data{make_battle()};
+    auto& schedule{data.level_events.schedule};
+    schedule.initial_spawn_groups = {};
+    schedule.add_spawn_group(EntityType::CapitalShip, 0, 1);
+    schedule.add_spawn_group(EntityType::CapitalShip, 1, 1);
+    auto const first_spawn{schedule.add_spawn_event({0, 1})};
+    auto const second_spawn{schedule.add_spawn_event({1, 1})};
+    auto const start{schedule.add_start_timer_event({data.timers.add(), SimTick{1}})};
+    auto const stop{schedule.add_stop_event(telemetry::RunEndReason::WorldEnd)};
+    auto const stranded{schedule.add_start_timer_event({data.timers.add(), SimTick{1}})};
+    schedule.initial_events = {second_spawn, first_spawn, start, stop, stranded};
+
+    LevelSim simulation{std::move(data)};
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 0);
+    simulation.finish_initialisation();
+    EXPECT_EQ(simulation.state(), LevelState::Stopped);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 2);
+    expect_health_mappings(simulation);
+    EXPECT_TRUE(std::ranges::equal(simulation.entity_ledger().unique_entities().teams(),
+                                   std::array{Team::White, Team::Green}));
+    EXPECT_TRUE(std::ranges::equal(simulation.events().preparation_events(),
+                                   std::array{second_spawn, first_spawn}));
+    EXPECT_TRUE(simulation.events().pending_preparation_events().empty());
+    EXPECT_TRUE(std::ranges::equal(simulation.events().tick_end_events(),
+                                   std::array{start, stop, stranded}));
+    EXPECT_TRUE(
+        std::ranges::equal(simulation.events().pending_tick_end_events(), std::array{stranded}));
+    auto const record{simulation.take_finalized_telemetry_run()};
+    ASSERT_TRUE(record);
+    EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::WorldEnd);
+    EXPECT_EQ(record->completion.completed_ticks, SimTick{});
+    simulation.advance(1.0);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
+    EXPECT_TRUE(
+        std::ranges::equal(simulation.events().pending_tick_end_events(), std::array{stranded}));
 }
 
 TEST(NativeSimulation, RunsWithoutACompletionOrDurationEvent) {

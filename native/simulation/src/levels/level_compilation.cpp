@@ -46,8 +46,12 @@ auto compile_level(LevelDefinition const& level,
         for (auto const& entity : definition.entities()) {
             entities.push_back(entity.id);
         }
-        auto mission{sim::Mission::compile(
-            *definition.mission(), entities, clock, compiled.expressions, compiled.timers)};
+        auto mission{sim::Mission::compile(*definition.mission(),
+                                           entities,
+                                           clock,
+                                           compiled.expressions,
+                                           compiled.timers,
+                                           schedule)};
         if (!mission) {
             return std::unexpected{std::move(mission.error())};
         }

@@ -14,8 +14,11 @@ LevelEventManager::LevelEventManager(CompiledLevelEvents data, std::pmr::memory_
     auto const tick_end_count{static_cast<std::size_t>(
         std::ranges::count_if(data_.schedule.trigger_events,
                               [](EventHandle const event) { return is_tick_end(event.kind()); }))};
-    tick_end_events_.reserve(tick_end_count + 2);
+    tick_end_events_.reserve(tick_end_count + data_.schedule.initial_events.size() + 2);
     preparation_events_.reserve(data_.schedule.trigger_events.size() - tick_end_count);
+    for (auto const event : data_.schedule.initial_events) {
+        enqueue(event);
+    }
 }
 
 void LevelEventManager::activate_trigger_expressions(ExprManager& expressions) {

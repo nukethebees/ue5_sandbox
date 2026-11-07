@@ -3,6 +3,7 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/timers.h>
+#include <ioj/sim/levels/level_event_schedule.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -21,6 +22,7 @@ struct MissionTest : ::testing::Test {
     Mission mission;
     ExprManager expressions;
     Timers timers;
+    LevelEventSchedule events;
     std::array<Team, 2> teams{Team::Blue, Team::Red};
     FrameMemoryResource scratch{4096};
     SimTick::value_type previous_tick{};
@@ -29,8 +31,9 @@ struct MissionTest : ::testing::Test {
     void start(MissionDefinition const& definition) {
         expressions = ExprManager{};
         timers = Timers{};
+        events = LevelEventSchedule{};
         previous_tick = 0;
-        auto compiled{Mission::compile(definition, {}, clock, expressions, timers)};
+        auto compiled{Mission::compile(definition, {}, clock, expressions, timers, events)};
         ASSERT_TRUE(compiled.has_value()) << (compiled ? "" : compiled.error().front());
         mission = std::move(*compiled);
         mission.reset_progress();
@@ -48,8 +51,9 @@ struct MissionTest : ::testing::Test {
         }
         for (auto const id : changes.activated) {
             expressions.activate(objectives.leaves(id), objectives.composites(id));
-            for (auto const timer : objectives.timers(id)) {
-                timers.start(timer);
+            for (auto const handle : objectives.activation_events(id)) {
+                auto const& event{events.start_timer_events[handle.index()]};
+                timers.start(event.timer, event.duration);
             }
         }
     }
@@ -195,6 +199,7 @@ TEST(MissionValidation, DistinguishesObservationFromActivationCyclesAndRejectsIn
     SimClock clock;
     ExprManager expressions;
     Timers timers;
-    EXPECT_FALSE(Mission::compile({.objectives = {a}}, names, clock, expressions, timers));
+    LevelEventSchedule events;
+    EXPECT_FALSE(Mission::compile({.objectives = {a}}, names, clock, expressions, timers, events));
 }
 }

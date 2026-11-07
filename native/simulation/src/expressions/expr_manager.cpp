@@ -6,6 +6,7 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/expressions/timers.h>
+#include <ioj/sim/levels/level_event_schedule.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/vector_value_math.h>
@@ -148,11 +149,13 @@ auto ExprManager::append(std::span<levels::MissionExpr const> const expressions,
                         std::vector<std::string>{"Expression timer exceeds tick range"}};
                 }
 
-                auto const timer{ctx.timers.add(SimTick{
+                SimTick const duration{
                     ctx.clock.duration_to_tick_period(Duration::make(condition.seconds.get()))
-                        .get()})};
+                        .get()};
+                auto const timer{ctx.timers.add()};
                 leaves.timers.push_back(timer);
-                compiled.timers.push_back(timer);
+                compiled.start_events.push_back(
+                    ctx.events.add_start_timer_event({timer, duration}));
                 break;
             }
 

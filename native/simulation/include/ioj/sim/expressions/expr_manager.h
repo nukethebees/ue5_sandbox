@@ -5,6 +5,7 @@
 #include <ioj/sim/expressions/expr_evaluation_context.h>
 #include <ioj/sim/expressions/expr_leaves.h>
 #include <ioj/sim/expressions/expr_operators.h>
+#include <ioj/sim/levels/event_handle.h>
 
 #include <cassert>
 #include <expected>
@@ -19,7 +20,7 @@ class ExprManager {
   public:
     struct Compilation {
         std::vector<ExprHandle> handles;
-        std::vector<TimerHandle> timers;
+        std::vector<EventHandle> start_events;
         IndexSpan leaves;
         IndexSpan composites;
     };

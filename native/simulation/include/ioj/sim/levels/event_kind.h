@@ -12,19 +12,20 @@
 namespace ioj::sim {
 using EventKindUnderlying = std::uint8_t;
 
-// Logical bit width: 2.
+// Logical bit width: 3.
 enum class EventKind : EventKindUnderlying {
     MissionCompleted,
     StopRun,
     Pause,
+    StartTimer,
     Spawn,
 };
 
-inline constexpr std::array<EventKind, 3ULL> event_kind_tick_end_values{
-    EventKind::MissionCompleted, EventKind::StopRun, EventKind::Pause};
+inline constexpr std::array<EventKind, 4ULL> event_kind_tick_end_values{
+    EventKind::MissionCompleted, EventKind::StopRun, EventKind::Pause, EventKind::StartTimer};
 
 [[nodiscard]] constexpr auto is_tick_end(EventKind const value) noexcept -> bool {
-    return value <= EventKind::Pause;
+    return value <= EventKind::StartTimer;
 }
 
 inline constexpr std::array<EventKind, 1ULL> event_kind_preparation_values{EventKind::Spawn};
@@ -45,6 +46,7 @@ struct EnumTraits<sim::EventKind> {
     static constexpr std::array values{sim::EventKind::MissionCompleted,
                                        sim::EventKind::StopRun,
                                        sim::EventKind::Pause,
+                                       sim::EventKind::StartTimer,
                                        sim::EventKind::Spawn};
 };
 

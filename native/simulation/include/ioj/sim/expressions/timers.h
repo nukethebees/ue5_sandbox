@@ -9,15 +9,14 @@
 namespace ioj::sim {
 class Timers {
   public:
-    auto add(SimTick duration) -> TimerHandle;
-    void start(TimerHandle handle);
+    auto add() -> TimerHandle;
+    void start(TimerHandle handle, SimTick duration);
     void tick(SimTick ticks);
     auto elapsed(TimerHandle handle) const -> bool;
 
   private:
     auto is_valid(TimerHandle handle) const -> bool;
 
-    std::vector<SimTick> durations_;
     std::vector<detail::TimerEntry> entries_;
 
     std::vector<SimTick::value_type> remaining_ticks_;

@@ -94,6 +94,11 @@ auto LevelEventSchedule::add_stop_event(telemetry::RunEndReason const reason) ->
     stop_events.push_back(reason);
     return EventHandle{index, EventKind::StopRun};
 }
+auto LevelEventSchedule::add_start_timer_event(StartTimerEvent const event) -> EventHandle {
+    auto const index{static_cast<std::uint32_t>(start_timer_events.size())};
+    start_timer_events.push_back(event);
+    return EventHandle{index, EventKind::StartTimer};
+}
 
 void LevelEventSchedule::add_trigger(ExprHandle const condition,
                                      std::span<EventHandle const> const events) {
@@ -110,12 +115,12 @@ auto LevelEventSchedule::add_timed_trigger(ExprManager& expressions,
     -> std::expected<void, std::vector<std::string>> {
     std::array<levels::MissionExpr, 1> const condition{levels::MissionExpr{
         levels::TimeElapsedExpr{NonNegativeFinite<double>::make(duration.seconds())}}};
-    auto expression{expressions.append(condition, {{}, {}, clock, timers})};
+    auto expression{expressions.append(condition, {{}, {}, clock, timers, *this})};
     if (!expression) {
         return std::unexpected{std::move(expression.error())};
     }
     add_trigger(expression->handles[0], events);
-    initial_timers.append_range(expression->timers);
+    initial_events.append_range(expression->start_events);
     return {};
 }
 auto LevelEventSchedule::add_level_duration_limit(ExprManager& expressions,

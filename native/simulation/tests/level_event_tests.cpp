@@ -61,22 +61,26 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
         data.schedule.add_timed_trigger(expressions, timers, clock, Duration::make(0.3), late));
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
     manager.activate_trigger_expressions(expressions);
-    for (auto const timer : manager.data().schedule.initial_timers) {
-        timers.start(timer);
+    auto const& initial_events{manager.data().schedule.initial_events};
+    for (auto const handle : initial_events) {
+        ASSERT_EQ(manager.consume_tick_end_event(), handle);
+        auto const& event{manager.data().schedule.start_timer_events[handle.index()]};
+        timers.start(event.timer, event.duration);
     }
 
     timers.tick(SimTick{1});
     expressions.evaluate({ledger, timers, {}}, mission);
     manager.collect_ready(expressions);
     EXPECT_TRUE(manager.preparation_events().empty());
-    EXPECT_TRUE(manager.tick_end_events().empty());
+    EXPECT_TRUE(std::ranges::equal(manager.tick_end_events(), initial_events));
+    EXPECT_TRUE(manager.pending_tick_end_events().empty());
 
     timers.tick(SimTick{1});
     expressions.evaluate({ledger, timers, {}}, mission);
     manager.collect_ready(expressions);
     manager.collect_ready(expressions);
     EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
-    EXPECT_TRUE(std::ranges::equal(manager.tick_end_events(), std::array{pause}));
+    EXPECT_TRUE(std::ranges::equal(manager.pending_tick_end_events(), std::array{pause}));
     EXPECT_EQ(manager.consume_tick_end_event(), pause);
     EXPECT_FALSE(manager.consume_tick_end_event());
 
@@ -93,7 +97,10 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     EXPECT_TRUE(manager.pending_preparation_events().empty());
     EXPECT_TRUE(manager.pending_tick_end_events().empty());
     EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
-    EXPECT_TRUE(std::ranges::equal(manager.tick_end_events(), std::array{pause, late.front()}));
+    EXPECT_TRUE(
+        std::ranges::equal(manager.tick_end_events().first(initial_events.size()), initial_events));
+    EXPECT_TRUE(std::ranges::equal(manager.tick_end_events().subspan(initial_events.size()),
+                                   std::array{pause, late.front()}));
 }
 
 }

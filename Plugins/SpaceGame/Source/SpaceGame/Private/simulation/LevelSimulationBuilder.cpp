@@ -68,7 +68,9 @@ auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
                            FProxyEntityIndexMap const& entities,
                            sim::SimClock const& clock,
                            sim::ExprManager& expressions,
-                           sim::Timers& timers) -> std::expected<sim::Mission, FLevelStartErrors> {
+                           sim::Timers& timers,
+                           sim::LevelEventSchedule& events)
+    -> std::expected<sim::Mission, FLevelStartErrors> {
     std::vector<levels::EntityId> ids(static_cast<std::size_t>(entities.Num()));
     for (auto const& entity : entities) {
         ids[entity.Value] = levels::EntityId{"proxy-" + std::to_string(entity.Value)};
@@ -83,7 +85,8 @@ auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
         }
         ids[*index] = levels::EntityId{TCHAR_TO_UTF8(*binding.Key.ToString().ToLower())};
     }
-    auto compiled{sim::Mission::compile(definition.objectives, ids, clock, expressions, timers)};
+    auto compiled{
+        sim::Mission::compile(definition.objectives, ids, clock, expressions, timers, events)};
     if (!compiled) {
         for (auto const& message : compiled.error()) {
             errors.add(to_fstring(message));
@@ -356,8 +359,12 @@ static auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& c
     }
     sim::SimClock clock;
     clock.initialise(build.data.clock_settings);
-    auto mission{compile_proxy_mission(
-        mission_definition, entity_indices, clock, build.data.expressions, build.data.timers)};
+    auto mission{compile_proxy_mission(mission_definition,
+                                       entity_indices,
+                                       clock,
+                                       build.data.expressions,
+                                       build.data.timers,
+                                       build.data.level_events.schedule)};
     if (!mission) {
         return FLevelSimulationBuildResult{std::unexpect, MoveTemp(mission.error())};
     }

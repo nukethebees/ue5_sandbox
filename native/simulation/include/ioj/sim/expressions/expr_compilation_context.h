@@ -10,11 +10,13 @@
 namespace ioj::sim {
 struct SimClock;
 class Timers;
+struct LevelEventSchedule;
 
 struct ExprCompilationContext {
     std::unordered_map<levels::EntityId, LevelEntityIndex> const& entities;
     std::unordered_map<levels::ObjectiveName, ObjectiveId> const& objectives;
     SimClock const& clock;
     Timers& timers;
+    LevelEventSchedule& events;
 };
 }

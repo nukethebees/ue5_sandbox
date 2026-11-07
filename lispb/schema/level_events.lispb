@@ -11,20 +11,21 @@
   :header "native/simulation/include/ioj/sim/levels/event_kind.h"
   :namespace ioj::sim
   (enum EventKind std::uint8_t
-    :bit-width 2
+    :bit-width 3
     :native-api true
     :helpers (traits)
     :ordering (tick_end preparation)
     (value MissionCompleted :groups (tick_end))
     (value StopRun :groups (tick_end))
     (value Pause :groups (tick_end))
+    (value StartTimer :groups (tick_end))
     (value Spawn :groups (preparation))
     (projections (cpp))))
 
 (module level_event_handle
   :header "native/simulation/include/ioj/sim/levels/event_handle.h"
   :namespace ioj::sim
-  (integer-scalar EventIndex :signed false :bit-width 30)
+  (integer-scalar EventIndex :signed false :bit-width 29)
   (record EventHandle :layout packed :bits 32
     (member index @EventIndex)
     (member kind @level_event_kind)

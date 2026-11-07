@@ -1,7 +1,6 @@
 #pragma once
 #include <ioj/duration.h>
 #include <ioj/sim/entities/team_list.h>
-#include <ioj/sim/expressions/timer_handle.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/event_trigger.h>
@@ -9,6 +8,7 @@
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
+#include <ioj/sim/levels/start_timer_event.h>
 #include <ioj/sim/telemetry/run_end_reason.h>
 
 #include <cstdint>
@@ -28,6 +28,7 @@ struct LevelEventSchedule {
     void add_spawn_group(EntityType type, std::int32_t offset, std::int32_t count);
     [[nodiscard]] auto add_spawn_event(IndexSpan groups) -> EventHandle;
     [[nodiscard]] auto add_stop_event(telemetry::RunEndReason reason) -> EventHandle;
+    [[nodiscard]] auto add_start_timer_event(StartTimerEvent event) -> EventHandle;
     void add_trigger(ExprHandle condition, std::span<EventHandle const> events);
     auto add_timed_trigger(ExprManager& expressions,
                            Timers& timers,
@@ -53,6 +54,7 @@ struct LevelEventSchedule {
     std::vector<EventHandle> trigger_events{};
     std::vector<IndexSpan> spawn_events{};
     std::vector<telemetry::RunEndReason> stop_events{};
-    std::vector<TimerHandle> initial_timers{};
+    std::vector<StartTimerEvent> start_timer_events{};
+    std::vector<EventHandle> initial_events{};
 };
 }

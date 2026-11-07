@@ -1,6 +1,7 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/timers.h>
+#include <ioj/sim/levels/level_event_schedule.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -21,18 +22,20 @@ TEST(Expressions, SharedDagEvaluatesChildrenFirstWithoutRetiringSharedLeaves) {
     EntityLedger ledger;
     ExprManager expressions;
     Timers timers;
+    LevelEventSchedule events;
     Mission mission;
     std::array const nodes{MissionExpr{AllExpr{.children = {1, 2}}},
                            MissionExpr{AllExpr{.children = {3, 3, 4}}},
                            MissionExpr{AnyExpr{.children = {3, 4}}},
                            timer(1),
                            timer(2)};
-    auto const compiled{expressions.append(nodes, {{}, {}, clock, timers})};
+    auto const compiled{expressions.append(nodes, {{}, {}, clock, timers, events})};
     ASSERT_TRUE(compiled);
     auto const& handles{compiled->handles};
     expressions.activate(handles[0]);
-    for (auto const handle : compiled->timers) {
-        timers.start(handle);
+    for (auto const handle : compiled->start_events) {
+        auto const& event{events.start_timer_events[handle.index()]};
+        timers.start(event.timer, event.duration);
     }
     EXPECT_EQ(expressions.leaves().active.size(), 2);
 
@@ -55,6 +58,7 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
     EntityLedger ledger;
     ExprManager expressions;
     Timers timers;
+    LevelEventSchedule events;
     Mission mission;
     std::array<EntityId, 1> entities;
     std::array const nodes{timer(1),
@@ -62,12 +66,13 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
                            timer(2),
                            MissionExpr{AllExpr{.children = {0, 1, 2}}}};
     auto const compiled{
-        expressions.append(nodes, {{{levels::EntityId{"future"}, 0}}, {}, clock, timers})};
+        expressions.append(nodes, {{{levels::EntityId{"future"}, 0}}, {}, clock, timers, events})};
     ASSERT_TRUE(compiled);
     auto const& handles{compiled->handles};
     expressions.activate(handles[3]);
-    for (auto const handle : compiled->timers) {
-        timers.start(handle);
+    for (auto const handle : compiled->start_events) {
+        auto const& event{events.start_timer_events[handle.index()]};
+        timers.start(event.timer, event.duration);
     }
     timers.tick(SimTick{10});
     expressions.evaluate({ledger, timers, entities}, mission);
@@ -98,11 +103,12 @@ TEST(Expressions, ActivationDoesNotStartTimersAndStartIsVisibleOnNextEvaluation)
     EntityLedger ledger;
     ExprManager expressions;
     Timers timers;
+    LevelEventSchedule events;
     Mission mission;
     std::array const nodes{timer(0), timer(0.21)};
-    auto const compiled{expressions.append(nodes, {{}, {}, clock, timers})};
+    auto const compiled{expressions.append(nodes, {{}, {}, clock, timers, events})};
     ASSERT_TRUE(compiled);
-    ASSERT_EQ(compiled->timers.size(), 2);
+    ASSERT_EQ(compiled->start_events.size(), 2);
     auto const zero{compiled->handles[0]};
     auto const delayed{compiled->handles[1]};
     expressions.activate(compiled->leaves, compiled->composites);
@@ -111,8 +117,9 @@ TEST(Expressions, ActivationDoesNotStartTimersAndStartIsVisibleOnNextEvaluation)
     EXPECT_EQ(expressions.result(zero), ExprResult::Pending);
     EXPECT_EQ(expressions.result(delayed), ExprResult::Pending);
 
-    for (auto const handle : compiled->timers) {
-        timers.start(handle);
+    for (auto const handle : compiled->start_events) {
+        auto const& event{events.start_timer_events[handle.index()]};
+        timers.start(event.timer, event.duration);
     }
     EXPECT_EQ(expressions.result(zero), ExprResult::Pending);
     timers.tick(SimTick{1});

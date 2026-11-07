@@ -72,6 +72,8 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
 void LevelSim::finish_initialisation() {
     assert(state_ == LevelState::Uninitialised);
 
+    dispatch_preparation_events();
+
     if (player_ship_simulation_) {
         player_ship_simulation_->update_entity_lookup_table();
     }
@@ -88,13 +90,11 @@ void LevelSim::finish_initialisation() {
     mission_.reset_progress();
     expressions_.reset_progress();
     event_manager_.activate_trigger_expressions(expressions_);
-    for (auto const timer : event_manager_.data().schedule.initial_timers) {
-        timers_.start(timer);
-    }
     task_manager_.initialise(mission_, expressions_);
 
     clock_.reset();
     state_ = LevelState::Paused;
+    dispatch_tick_end_events();
 }
 void LevelSim::start() {
     assert(state_ == LevelState::Paused);
@@ -206,6 +206,11 @@ void LevelSim::dispatch_tick_end_events() {
     auto const& schedule{event_manager_.data().schedule};
     while (auto const event = event_manager_.consume_tick_end_event()) {
         switch (event->kind()) {
+            case EventKind::StartTimer: {
+                auto const& start{schedule.start_timer_events[event->index()]};
+                timers_.start(start.timer, start.duration);
+                break;
+            }
             case EventKind::MissionCompleted:
                 stop_run(telemetry::RunEndReason::MissionCompleted);
                 return;
@@ -487,8 +492,8 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
         }
         for (auto const id : changes.activated) {
             expressions_.activate(objectives.leaves(id), objectives.composites(id));
-            for (auto const timer : objectives.timers(id)) {
-                timers_.start(timer);
+            for (auto const event : objectives.activation_events(id)) {
+                event_manager_.enqueue(event);
             }
         }
         event_manager_.collect_ready(expressions_);

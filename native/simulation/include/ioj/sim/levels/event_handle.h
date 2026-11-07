@@ -9,7 +9,6 @@
 #include <cassert>
 #include <compare>
 #include <cstdint>
-#include <utility>
 
 namespace ioj::sim {
 struct EventHandle;
@@ -25,10 +24,10 @@ struct EventHandle : detail::EventHandleBase {
     using packed_integer_tag = packed::integer_tag;
 
     // index
-    static constexpr PackedField<storage_type, std::uint32_t, 0, 30> index_layout{};
+    static constexpr PackedField<storage_type, std::uint32_t, 0, 29> index_layout{};
 
     // kind
-    static constexpr PackedField<storage_type, EventKind, 30, 2> kind_layout{};
+    static constexpr PackedField<storage_type, EventKind, 29, 3> kind_layout{};
 
     constexpr EventHandle() noexcept = default;
     constexpr explicit EventHandle(std::uint32_t const index_value,
@@ -45,7 +44,10 @@ struct EventHandle : detail::EventHandleBase {
         return static_cast<storage_type>(value) <= index_layout.value_mask;
     }
     [[nodiscard]] static constexpr auto is_valid_kind(EventKind const value) noexcept -> bool {
-        return std::to_underlying(value) <= kind_layout.value_mask;
+        return value <= kind_layout.range.max;
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return Base::is_valid() && is_valid_kind(extract<decltype(kind_layout)>());
     }
     [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
         return extract<decltype(index_layout)>();

@@ -59,15 +59,20 @@ Unreal lifecycle and presentation ownership are described in the
 
 `LevelSim` owns `Timers` independently of expression storage. Stable timer handles identify
 internal 32-bit entries: two bits for not-started, started or finished state, and thirty bits
-for an active countdown index. Starting creates a countdown once; repeated starts do nothing.
+for an active countdown index. `StartTimer` event payloads own durations; the timer collection
+stores no duration before dispatch. Starting creates a countdown once; repeated starts do nothing.
 Resolution decrements active countdowns before evaluating expressions. Expiry marks the entry
 finished and swap-removes the countdown, repairing the moved owner's index. Finished handles
 remain readable. Timers have no reset operation; a fresh level owns fresh timer state.
 
-Compilation gives `TimeElapsed` leaves timer handles and records which callers start them.
-Scheduled-event timers start at tick zero during level initialisation. Objective timers start
-when their objective activates. Expression activation only schedules evaluation and does not
-start or restart timers. Expressions retain the current `Pending`/`True` semantics until the
+Compilation gives `TimeElapsed` leaves timer handles and creates their start events.
+Initial events are queued during event-manager construction. Initialisation dispatches queued
+Preparation events before publishing entity lookups, then drains tick-end events immediately
+before returning. Timer starts therefore occur at tick zero without evaluating logic or advancing
+countdowns. Terminal events retain their stopping behaviour during initialisation.
+Objective activation queues timer-start events for tick-end dispatch. Expression activation
+only schedules evaluation and does not start or restart timers. Expressions retain the current
+`Pending`/`True` semantics until the
 Boolean conversion; starting a timer becomes visible on the next expression evaluation.
 
 ## Latch state

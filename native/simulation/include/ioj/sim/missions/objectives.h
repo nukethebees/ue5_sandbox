@@ -4,8 +4,8 @@
 #include <ioj/levels/objective_outcome.h>
 #include <ioj/levels/objective_wins_level.h>
 #include <ioj/levels/team.h>
-#include <ioj/sim/expressions/timer_handle.h>
 #include <ioj/sim/index_span.h>
+#include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/missions/objective_id.h>
 #include <ioj/sim/missions/objective_membership_index.h>
 #include <ioj/sim/missions/objective_prerequisite.h>
@@ -52,8 +52,8 @@ class Objectives {
     auto composites(ObjectiveId id) const -> IndexSpan { return at(composite_ranges_, id); }
     auto prerequisites(ObjectiveId id) const -> std::span<ObjectivePrerequisite const>;
     void add_prerequisites(ObjectiveId id, std::span<ObjectivePrerequisite const> prerequisites);
-    auto timers(ObjectiveId id) const -> std::span<TimerHandle const>;
-    void add_timers(ObjectiveId id, std::span<TimerHandle const> timers);
+    auto activation_events(ObjectiveId id) const -> std::span<EventHandle const>;
+    void add_activation_events(ObjectiveId id, std::span<EventHandle const> events);
     auto wins_level(ObjectiveId id) const -> ObjectiveWinsLevel { return at(wins_level_, id); }
   private:
     auto is_valid(ObjectiveId id) const -> bool { return id.is_valid() && id.index() < size(); }
@@ -74,8 +74,8 @@ class Objectives {
     std::vector<IndexSpan> composite_ranges_;
     std::vector<IndexSpan> prerequisite_ranges_;
     std::vector<ObjectivePrerequisite> prerequisites_;
-    std::vector<IndexSpan> timer_ranges_;
-    std::vector<TimerHandle> timers_;
+    std::vector<IndexSpan> activation_event_ranges_;
+    std::vector<EventHandle> activation_events_;
 
     // Mutable
     std::vector<ObjectiveId> inactive_;

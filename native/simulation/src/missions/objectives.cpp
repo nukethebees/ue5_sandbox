@@ -36,7 +36,7 @@ Objectives::Objectives(std::size_t const count)
     , leaf_ranges_(count)
     , composite_ranges_(count)
     , prerequisite_ranges_(count)
-    , timer_ranges_(count) {
+    , activation_event_ranges_(count) {
     assert(count <= ObjectiveId::invalid_value);
     reset_progress();
 }
@@ -83,13 +83,14 @@ void Objectives::add_prerequisites(ObjectiveId const id,
                                     static_cast<std::uint32_t>(prerequisites.size())};
     prerequisites_.append_range(prerequisites);
 }
-auto Objectives::timers(ObjectiveId const id) const -> std::span<TimerHandle const> {
-    auto const range{at(timer_ranges_, id)};
-    return std::span<TimerHandle const>{timers_}.subspan(range.offset, range.count);
+auto Objectives::activation_events(ObjectiveId const id) const -> std::span<EventHandle const> {
+    auto const range{at(activation_event_ranges_, id)};
+    return std::span<EventHandle const>{activation_events_}.subspan(range.offset, range.count);
 }
-void Objectives::add_timers(ObjectiveId const id, std::span<TimerHandle const> const timers) {
-    at(timer_ranges_, id) = {static_cast<std::uint32_t>(timers_.size()),
-                             static_cast<std::uint32_t>(timers.size())};
-    timers_.append_range(timers);
+void Objectives::add_activation_events(ObjectiveId const id,
+                                       std::span<EventHandle const> const events) {
+    at(activation_event_ranges_, id) = {static_cast<std::uint32_t>(activation_events_.size()),
+                                        static_cast<std::uint32_t>(events.size())};
+    activation_events_.append_range(events);
 }
 }
