@@ -204,10 +204,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         data.player = player;
     }
 
-    sim::SimClock compilation_clock;
-    compilation_clock.initialise(data.clock_settings);
-    auto compiled{
-        levels::compile_level(level, compilation_clock, data.capital_ships, data.turrets)};
+    auto compiled{levels::compile_level(level, data)};
     if (!compiled) {
         std::string output;
         auto write{ioj::FormatWriter{std::back_inserter(output)}};
@@ -216,13 +213,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         }
         return std::unexpected{std::move(output)};
     }
-    data.level_events = std::move(compiled->events);
-    data.entity_count = compiled->entity_count;
-    data.player_entity_index = compiled->player_entity_index;
-    data.mission = std::move(compiled->mission);
-    data.expressions = std::move(compiled->expressions);
-    data.timers = std::move(compiled->timers);
-    data.level_metadata = std::move(compiled->level_metadata);
 
     if (options.fighter_stress_cap.has_value()) {
         auto const team_count{data.level_events

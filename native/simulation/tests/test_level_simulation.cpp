@@ -46,11 +46,19 @@ static_assert(
         decltype(std::declval<lasers::Sim const&>().get_entities().lifetimes_remaining()[0])>>);
 
 namespace {
-auto make_battle() -> LevelSimInitData {
+auto make_battle_config() -> LevelSimInitData {
     LevelSimInitData data;
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.capital_ships.fighter_spawn_slots = 0;
+    for (auto const type : EnumTraits<EntityType>::values) {
+        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+    }
+    return data;
+}
+
+auto make_battle() -> LevelSimInitData {
+    auto data{make_battle_config()};
     data.entity_count = 2;
     std::array<InitialCapital, 2> capitals{{{.entity = 0,
                                              .location = {{-1000.f, 0.f, 0.f}},
@@ -67,14 +75,11 @@ auto make_battle() -> LevelSimInitData {
                                              .initial_spawn_delay = 60.f,
                                              .spawn_cooldown = 60.f}}};
     initialise_spawns(data, capitals, {}, {});
-    for (auto const type : EnumTraits<EntityType>::values) {
-        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
-    }
     return data;
 }
 
 auto make_scheduled_battle() -> LevelSimInitData {
-    auto data{make_battle()};
+    auto data{make_battle_config()};
     data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.clock_settings.tick_rate = Frequency::make(10.0);
     auto definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
@@ -85,16 +90,8 @@ auto make_scheduled_battle() -> LevelSimInitData {
             (entity :id 'enemy :archetype 'capital-ship :team 'red :position '(1000 0 0)
               :spawn-at 0.21))))")};
     assert(definition);
-    SimClock clock;
-    clock.initialise(data.clock_settings);
-    auto compiled{levels::compile_level(*definition, clock, data.capital_ships, data.turrets)};
+    auto compiled{levels::compile_level(*definition, data)};
     assert(compiled);
-    data.entity_count = compiled->entity_count;
-    data.player_entity_index = compiled->player_entity_index;
-    data.level_events = std::move(compiled->events);
-    data.expressions = std::move(compiled->expressions);
-    data.timers = std::move(compiled->timers);
-    data.level_metadata = std::move(compiled->level_metadata);
     return data;
 }
 
@@ -338,20 +335,11 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
             :depends-on (list (objective-resolved 'destroy 'passed))
             :pass (all-of (entity-destroyed 'enemy) (objective-resolved 'destroy 'passed)))))))")};
     ASSERT_TRUE(authored);
-    auto data{make_battle()};
+    auto data{make_battle_config()};
     data.clock_settings.tick_rate = Frequency::make(10.0);
     data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{100});
-    SimClock clock;
-    clock.initialise(data.clock_settings);
-    auto compiled{levels::compile_level(*authored, clock, data.capital_ships, data.turrets)};
+    auto compiled{levels::compile_level(*authored, data)};
     ASSERT_TRUE(compiled);
-    data.entity_count = compiled->entity_count;
-    data.player_entity_index = compiled->player_entity_index;
-    data.level_events = std::move(compiled->events);
-    data.mission = std::move(compiled->mission);
-    data.expressions = std::move(compiled->expressions);
-    data.timers = std::move(compiled->timers);
-    data.level_metadata = std::move(compiled->level_metadata);
     LevelSim simulation{std::move(data)};
     auto const& metadata{simulation.level_metadata()};
     EXPECT_EQ(metadata.id.value, "future-objective");

@@ -186,19 +186,10 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
             inputs.player->health = {health, health};
         }
     }
-    SimClock clock;
-    clock.initialise(inputs.clock_settings);
-    auto compiled{levels::compile_level(definition, clock, inputs.capital_ships, inputs.turrets)};
+    auto compiled{levels::compile_level(definition, inputs)};
     if (!compiled) {
         return std::unexpected{std::move(compiled.error())};
     }
-    inputs.level_events = std::move(compiled->events);
-    inputs.entity_count = compiled->entity_count;
-    inputs.player_entity_index = compiled->player_entity_index;
-    inputs.mission = std::move(compiled->mission);
-    inputs.expressions = std::move(compiled->expressions);
-    inputs.timers = std::move(compiled->timers);
-    inputs.level_metadata = std::move(compiled->level_metadata);
     if (auto valid{validate_level_simulation_init_data(inputs)}; !valid) {
         return std::unexpected{std::move(valid.error())};
     }

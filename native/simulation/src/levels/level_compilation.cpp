@@ -111,18 +111,19 @@ auto compile_mission(MissionDefinition const& definition,
     return sim::Mission{std::move(objectives)};
 }
 
-auto compile_level(LevelDefinition const& level,
-                   sim::SimClock const& clock,
-                   sim::CapitalShipSimConfig const& capital_config,
-                   sim::TurretSimConfig const& turret_config) -> LevelCompilationResult {
+auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
+    -> std::expected<void, LevelCompilationErrors> {
     auto const& definition{level};
 
-    sim::CompiledLevel compiled;
-    auto& definitions{compiled.events};
-    compiled.level_metadata = definition.metadata();
-    compiled.entity_count = static_cast<std::uint32_t>(definition.entities().size());
+    sim::SimClock clock;
+    clock.initialise(output.clock_settings);
+    auto const& capital_config{output.capital_ships};
+    auto const& turret_config{output.turrets};
+    auto& definitions{output.level_events};
+    output.level_metadata = definition.metadata();
+    output.entity_count = static_cast<std::uint32_t>(definition.entities().size());
     if (!definition.player_entity_id().empty()) {
-        compiled.player_entity_index = entity_index(definition, definition.player_entity_id());
+        output.player_entity_index = entity_index(definition, definition.player_entity_id());
     }
 
     if (definition.mission()) {
@@ -133,13 +134,13 @@ auto compile_level(LevelDefinition const& level,
         auto mission{compile_mission(*definition.mission(),
                                      entities,
                                      clock,
-                                     compiled.expressions,
-                                     compiled.timers,
+                                     output.expressions,
+                                     output.timers,
                                      definitions)};
         if (!mission) {
             return std::unexpected{std::move(mission.error())};
         }
-        compiled.mission = std::move(*mission);
+        output.mission = std::move(*mission);
     }
 
     std::vector<EventSource> sources;
@@ -225,13 +226,13 @@ auto compile_level(LevelDefinition const& level,
         if (tick == sim::SimTick{}) {
             definitions.initial_events.push_back(spawn);
         } else {
-            auto const timer{compiled.timers.add()};
-            auto const elapsed{compiled.expressions.add_timer_elapsed(timer)};
+            auto const timer{output.timers.add()};
+            auto const elapsed{output.expressions.add_timer_elapsed(timer)};
             definitions.initial_events.push_back(definitions.add_start_timer_event({timer, tick}));
             definitions.add_trigger(elapsed, std::array{spawn});
         }
         first = end;
     }
-    return compiled;
+    return {};
 }
 } // namespace levels

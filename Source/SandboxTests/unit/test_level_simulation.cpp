@@ -61,11 +61,19 @@ auto make_presentation_resources(AActor& owner, FLevelVisualConfig const& config
             .config = config};
 }
 
-auto make_battle() -> ::ioj::sim::LevelSimInitData {
+auto make_battle_config() -> ::ioj::sim::LevelSimInitData {
     ::ioj::sim::LevelSimInitData data;
     data.collision.grid_geometry = {{16, 16, 4}, {1000.f, 1000.f, 1000.f}};
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.capital_ships.fighter_spawn_slots = 0;
+    for (auto const type : ioj::EnumTraits<::ioj::sim::EntityType>::values) {
+        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+    }
+    return data;
+}
+
+auto make_battle() -> ::ioj::sim::LevelSimInitData {
+    auto data{make_battle_config()};
     auto& spawn_storage{data.level_events.capital_spawns};
     auto const group{data.level_events.spawn_groups.num()};
     data.level_events.add_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, 2);
@@ -79,16 +87,12 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     add_capital(1, ioj::Team::White, 1000.f);
 
     data.entity_count = 2;
-    for (auto const type : ioj::EnumTraits<::ioj::sim::EntityType>::values) {
-        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
-    }
     return data;
 }
 
 auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
-    auto data{make_battle()};
+    auto data{make_battle_config()};
     data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(::ioj::sim::Health{100});
-    data.level_events = {};
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
 
     auto const definition{ioj::levels::LevelDefinition::make(
@@ -107,16 +111,8 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
                        .position = {1000.0, 0.0, 0.0},
                        .spawn_time_seconds = 0.21}}})};
     check(definition);
-    ::ioj::sim::SimClock clock;
-    clock.initialise(data.clock_settings);
-    auto compiled{ioj::levels::compile_level(*definition, clock, data.capital_ships, data.turrets)};
+    auto compiled{ioj::levels::compile_level(*definition, data)};
     check(compiled);
-    data.entity_count = compiled->entity_count;
-    data.player_entity_index = compiled->player_entity_index;
-    data.level_events = std::move(compiled->events);
-    data.expressions = std::move(compiled->expressions);
-    data.timers = std::move(compiled->timers);
-    data.level_metadata = std::move(compiled->level_metadata);
     return data;
 }
 

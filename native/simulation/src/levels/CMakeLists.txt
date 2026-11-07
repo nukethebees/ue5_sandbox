@@ -3,7 +3,6 @@ target_sources(native-simulation
     ../../include/ioj/sim/levels/event_handle.h
     ../../include/ioj/sim/levels/event_kind.h
     ../../include/ioj/sim/levels/event_trigger.h
-    ../../include/ioj/sim/levels/compiled_level.h
     ../../include/ioj/sim/levels/compiled_level_events.h
     ../../include/ioj/sim/levels/fighter_spawn_slot_validation.h
     ../../include/ioj/sim/levels/level_compilation.h
