@@ -9,6 +9,7 @@
 namespace ioj::sim::collision {
 class GridGeometry {
   public:
+    GridGeometry() noexcept = default;
     GridGeometry(CellCoord dimensions, Vector3f cell_dimensions);
 
     [[nodiscard]] static auto try_make(CellCoord dimensions, Vector3f cell_dimensions) noexcept
@@ -25,9 +26,9 @@ class GridGeometry {
                  Vector3f half_size,
                  GridCellCount cell_count) noexcept;
 
-    CellCoord dimensions_;
-    Vector3f cell_dimensions_;
-    Vector3f half_size_;
-    GridCellCount cell_count_;
+    CellCoord dimensions_{1, 1, 1};
+    Vector3f cell_dimensions_{1.f, 1.f, 1.f};
+    Vector3f half_size_{0.5f, 0.5f, 0.5f};
+    GridCellCount cell_count_{1};
 };
 } // namespace ioj::sim::collision

@@ -125,9 +125,10 @@ auto to_cell_centre(GridGeometry const& geometry, CellCoord const coordinate) no
 /* **************************************** */
 auto is_cell_coord_in_bounds(GridGeometry const& geometry, CellCoord const coordinate) noexcept
     -> bool {
-    return coordinate.x() >= 0 && coordinate.x() < geometry.dimensions().x() &&
-           coordinate.y() >= 0 && coordinate.y() < geometry.dimensions().y() &&
-           coordinate.z() >= 0 && coordinate.z() < geometry.dimensions().z();
+    auto const dimensions{geometry.dimensions()};
+    return coordinate.x() >= 0 && coordinate.x() < dimensions.x() && coordinate.y() >= 0 &&
+           coordinate.y() < dimensions.y() && coordinate.z() >= 0 &&
+           coordinate.z() < dimensions.z();
 }
 void are_spheres_in_bounds(GridGeometry const& geometry,
                            vectors3f::ResolvedConstView const centres,

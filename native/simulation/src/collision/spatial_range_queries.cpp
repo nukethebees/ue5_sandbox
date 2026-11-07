@@ -209,7 +209,6 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
     {
         SANDBOX_PROFILE_SCOPE("scan_requests");
         auto const& grid{collision_system_.uniform_grid_};
-        assert(grid.is_configured());
         auto const max_grid_coord{grid.max_grid_coord()};
         auto const absolute_radius{std::abs(radius)};
         auto const radius_extent{Vector3f{absolute_radius, absolute_radius, absolute_radius}};

@@ -28,12 +28,15 @@ namespace ioj::sim::collision {
 /* **************************************** */
 // Construction and lifecycle
 /* **************************************** */
+CollisionUniformGrid::CollisionUniformGrid() {
+    reset();
+}
 void CollisionUniformGrid::reset() {
-    geometry_.reset();
+    geometry_ = {};
 
     auto& storage{entity_storage_};
-    storage.cell_offsets.clear();
-    storage.cell_counts.clear();
+    storage.cell_offsets.assign(1, 0);
+    storage.cell_counts.assign(1, 0);
     storage.non_empty_cell_indices.clear();
     storage.entities.clear();
     storage.aabbs.reset();
@@ -42,39 +45,37 @@ void CollisionUniformGrid::reset() {
     storage.entity_row_to_aabb_row = {};
 
     static_storage_.reset();
+    rebuild_static_grid();
 }
 
 /* **************************************** */
 // Grid geometry
 /* **************************************** */
-auto CollisionUniformGrid::is_configured() const noexcept -> bool {
-    return geometry_.has_value();
-}
 void CollisionUniformGrid::set_geometry(GridGeometry const geometry) noexcept {
     geometry_ = geometry;
 }
 auto CollisionUniformGrid::grid_dims() const noexcept -> collision::CellCoord {
-    return geometry_ ? geometry_->dimensions() : CellCoord{};
+    return geometry_.dimensions();
 }
 auto CollisionUniformGrid::max_grid_coord() const noexcept -> collision::CellCoord {
     return geometry().dimensions() - 1;
 }
 auto CollisionUniformGrid::cell_dims() const noexcept -> Vector3f {
-    return geometry_ ? geometry_->cell_dimensions() : Vector3f{};
+    return geometry_.cell_dimensions();
 }
 auto CollisionUniformGrid::num_cells() const -> GridCellCount {
-    return geometry_ ? geometry_->cell_count() : GridCellCount{};
+    return geometry_.cell_count();
 }
 auto CollisionUniformGrid::to_cell_coord(Vector3f const pos) const -> collision::CellCoord {
-    return collision::to_cell_coord(*geometry_, pos);
+    return collision::to_cell_coord(geometry_, pos);
 }
 auto CollisionUniformGrid::to_cell_coord_bounds(Vector3f const min_point,
                                                 Vector3f const max_point) const -> CellCoordBounds {
-    auto const bounds{collision::to_cell_coord_bounds(*geometry_, min_point, max_point)};
+    auto const bounds{collision::to_cell_coord_bounds(geometry_, min_point, max_point)};
     return {bounds.min, bounds.max};
 }
 auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const coord) const -> bool {
-    return collision::is_cell_coord_in_bounds(*geometry_, coord);
+    return collision::is_cell_coord_in_bounds(geometry_, coord);
 }
 auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const min_coord,
                                                    collision::CellCoord const max_coord) const
@@ -91,7 +92,7 @@ void CollisionUniformGrid::are_spheres_in_bounds(
     assert(radius >= 0.f);
 
     collision::are_spheres_in_bounds(
-        *geometry_,
+        geometry_,
         centres,
         radius,
         {out_results.data(), static_cast<std::size_t>(out_results.size())});
@@ -106,10 +107,6 @@ auto CollisionUniformGrid::to_string(collision::CellCoord const value) -> std::s
 void CollisionUniformGrid::set_static_aabbs(collision::WorldAABBs static_aabbs) {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::set_static_aabbs");
 
-    if (!is_configured()) {
-        fatal_error("Cannot build static geometry for an unconfigured grid");
-    }
-
     static_storage_.set_aabbs(std::move(static_aabbs));
     rebuild_static_grid();
 }
@@ -117,7 +114,6 @@ auto CollisionUniformGrid::add_static_aabb(Vector3f const min_point, Vector3f co
     -> StaticGeometryIndex {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::add_static_aabb");
 
-    assert(is_configured());
     [[maybe_unused]] auto const [min_coord, max_coord]{to_cell_coord_bounds(min_point, max_point)};
     assert(is_cell_coord_in_bounds(min_coord, max_coord));
     assert(std::isfinite(min_point.x()) && std::isfinite(min_point.y()) &&
@@ -132,7 +128,7 @@ auto CollisionUniformGrid::add_static_aabb(Vector3f const min_point, Vector3f co
 void CollisionUniformGrid::rebuild_static_grid() {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::rebuild_static_grid");
 
-    auto const result{static_storage_.rebuild(*geometry_)};
+    auto const result{static_storage_.rebuild(geometry_)};
     if (!result) {
         auto const error{result.error()};
         fatal_error(
@@ -244,11 +240,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     finish_entity_grid();
 }
 void CollisionUniformGrid::begin_entity_grid() {
-    if (!is_configured()) {
-        fatal_error("Cannot rebuild an unconfigured collision grid");
-    }
-
-    auto const& geometry{*geometry_};
+    auto const& geometry{geometry_};
     auto& storage{entity_storage_};
 
     {
@@ -273,7 +265,7 @@ void CollisionUniformGrid::write_entity_bounds(entity_cell_data::ResolvedView co
                                                std::uint32_t const output_row,
                                                EntityId const id,
                                                WorldAABB const bounds) {
-    auto const& geometry{*geometry_};
+    auto const& geometry{geometry_};
     auto& storage{entity_storage_};
     auto const row_stride{geometry.dimensions().x()};
     auto const plane_stride{row_stride * geometry.dimensions().y()};
@@ -321,7 +313,7 @@ void CollisionUniformGrid::write_entity_bounds(entity_cell_data::ResolvedView co
     }
 }
 void CollisionUniformGrid::finish_entity_grid() {
-    auto const& geometry{*geometry_};
+    auto const& geometry{geometry_};
     auto& storage{entity_storage_};
     auto const row_stride{geometry.dimensions().x()};
     auto const plane_stride{row_stride * geometry.dimensions().y()};

@@ -13,7 +13,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 #include <span>
 #include <string>
 
@@ -27,7 +26,7 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Construction and lifecycle
     /* **************************************** */
-    CollisionUniformGrid() = default;
+    CollisionUniformGrid();
     CollisionUniformGrid(CollisionUniformGrid const&) = delete;
     CollisionUniformGrid(CollisionUniformGrid&&) = delete;
     auto operator=(CollisionUniformGrid const&) -> CollisionUniformGrid& = delete;
@@ -37,11 +36,7 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Grid geometry
     /* **************************************** */
-    auto is_configured() const noexcept -> bool;
-    auto geometry() const noexcept -> GridGeometry {
-        assert(geometry_);
-        return *geometry_;
-    }
+    auto geometry() const noexcept -> GridGeometry { return geometry_; }
     // Rebuild entity and static grids after changing geometry, before querying them.
     void set_geometry(GridGeometry geometry) noexcept;
     auto grid_dims() const noexcept -> CellCoord;
@@ -166,7 +161,7 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // State
     /* **************************************** */
-    std::optional<GridGeometry> geometry_;
+    GridGeometry geometry_;
     CollisionGridEntityStorage entity_storage_;
     CollisionGridStaticStorage static_storage_;
 };

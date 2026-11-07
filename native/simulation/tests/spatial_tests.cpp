@@ -60,18 +60,19 @@ TEST(CollisionGrid, RejectsInvalidGeometryAtConstruction) {
         {4, 1, 1}, Vector3f{{std::numeric_limits<float>::max(), 1.f, 1.f}}));
 }
 
-TEST(CollisionGrid, ResetLeavesGridUnconfiguredUntilGeometryIsAssigned) {
+TEST(CollisionGrid, DefaultAndResetGridRemainQueryable) {
     collision::CollisionUniformGrid grid;
-    EXPECT_FALSE(grid.is_configured());
-    grid.set_geometry({{2, 3, 4}, Vector3f{10.f, 20.f, 30.f}});
-    EXPECT_EQ(grid.num_cells().value(), 24u);
-    EXPECT_EQ(grid.geometry().half_size(), (Vector3f{10.f, 30.f, 60.f}));
+    collision::WorldAABB const bounds{{-0.25f, -0.25f, -0.25f}, {0.25f, 0.25f, 0.25f}};
+    EXPECT_TRUE(grid.cell_entities({}).empty());
+    EXPECT_EQ(grid.count_overlaps(bounds, {}).static_geometry, 0u);
+    grid.add_static_aabb(bounds.min, bounds.max);
+    EXPECT_EQ(grid.count_overlaps(bounds, {}).static_geometry, 1u);
 
     grid.reset();
-    EXPECT_FALSE(grid.is_configured());
-    EXPECT_EQ(grid.num_cells().value(), 0u);
+    EXPECT_EQ(grid.num_cells().value(), 1u);
+    EXPECT_TRUE(grid.cell_entities({}).empty());
+    EXPECT_EQ(grid.count_overlaps(bounds, {}).static_geometry, 0u);
     grid.set_geometry({{1, 2, 3}, Vector3f{2.f, 4.f, 6.f}});
-    EXPECT_TRUE(grid.is_configured());
     EXPECT_EQ(grid.num_cells().value(), 6u);
 }
 
