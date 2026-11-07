@@ -14,7 +14,7 @@ Unreal Engine 5.8 project.
   `coj <command> --help`. Prefer supported workflows over manual equivalents; skip unrelated help.
 * Run `coj prepare-worktree` in the current worktree once at the start of a fresh LLM session.
   Do not repeat it for new tasks, follow-ups, context compaction, or delegated agents within
-  the same session. The maintainer installs and updates `coj` and manages PATH; invoke it by name.
+  the same session. Invoke `coj` by name; ask the maintainer before installing/updating it or changing PATH.
   If it cannot launch or is missing,
   halt and report it. If broken, report once; use a minimal alternative only under explicit
   maintainer instruction. Do not repeatedly retry or bypass it.
@@ -64,9 +64,11 @@ Unreal Engine 5.8 project.
 * Use the native unity presets for normal development work; their default batch size is 8.
   Preserve target-specific unity exclusions and use non-unity builds for include-isolation
   checks or unity-specific failures. Keep Unreal's configured unity policy unless measuring it separately.
-* Set `IOJ_ROOT` to the absolute shared-tools/temp root. The maintainer installs stable tools
-  under `%IOJ_ROOT%\tools\<ToolName>\bin`; invoke them from PATH. Never auto-install/update tools
-  or construct local fallbacks. Report missing commands; use `--version` for manual source/install
+* Set `IOJ_ROOT` to the absolute shared-tools/temp root. Install stable tools
+  under `%IOJ_ROOT%\tools\<ToolName>\bin`; invoke them from PATH. Installing a new tool or updating
+  an existing tool is allowed with maintainer approval, including tools not mentioned here.
+  Ask before installing or updating unless already authorized in the current task. Do not
+  construct local fallbacks. Report missing commands; use `--version` for manual source/install
   comparison when needed. CMake privately builds revision-local game-package-tools,
   native-binary-tools, and benchmark-tools on demand.
 * Use `%IOJ_ROOT%\tmp\<worktree-name>` for Windows temporary files. Allow that directory in the
