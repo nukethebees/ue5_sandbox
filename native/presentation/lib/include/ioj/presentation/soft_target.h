@@ -10,16 +10,7 @@
 #include <optional>
 
 namespace ioj::presentation {
-class SoftTargetConfig {
-  public:
-    SoftTargetConfig();
-    explicit SoftTargetConfig(settings::SoftTarget settings);
-
-    [[nodiscard]] auto values() const noexcept -> settings::SoftTarget const& { return values_; }
-
-  private:
-    settings::SoftTarget values_;
-};
+void normalize_soft_target_settings(settings::SoftTarget& settings);
 
 struct OverlayView {
     auto is_valid() const noexcept -> bool { return size.x() > 0 && size.y() > 0; }
@@ -84,7 +75,7 @@ struct WorldSoftTargetVisual {
 };
 
 auto make_world_soft_target_visual(SoftTargetMarker const& marker,
-                                   SoftTargetConfig const& config,
+                                   settings::SoftTarget const& settings,
                                    float mesh_vertical_radius,
                                    ui::Color4f neutral_colour,
                                    ui::Color4f in_range_colour)
@@ -108,6 +99,6 @@ auto select_soft_target(std::span<AgentDisplayBatch const> batches,
                         sim::EntityTypeRadii const& entity_type_radii,
                         std::span<ui::entity_overlay::ObjectiveRole const> objective_roles,
                         SoftTargetContext const& context,
-                        SoftTargetConfig const& config,
+                        settings::SoftTarget const& settings,
                         sim::EntityId current_target) -> SoftTargetResult;
 }

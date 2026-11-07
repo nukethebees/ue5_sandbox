@@ -72,33 +72,28 @@ auto is_supported_entity_type(::ioj::sim::EntityType const type) -> bool {
 
 }
 
-SoftTargetConfig::SoftTargetConfig()
-    : SoftTargetConfig{settings::SoftTarget{}} {}
-
-SoftTargetConfig::SoftTargetConfig(settings::SoftTarget settings)
-    : values_{settings} {
-    values_.acquisition_radius_pixels = std::max(values_.acquisition_radius_pixels, 1.f);
-    values_.retention_radius_pixels =
-        std::max(values_.retention_radius_pixels, values_.acquisition_radius_pixels);
-    values_.centre_tie_radius_pixels = std::max(values_.centre_tie_radius_pixels, 0.f);
-    values_.switch_improvement_ratio = std::clamp(values_.switch_improvement_ratio, 0.f, 1.f);
-    values_.minimum_radius_pixels = std::max(values_.minimum_radius_pixels, 1.f);
-    values_.maximum_radius_pixels =
-        std::max(values_.maximum_radius_pixels, values_.minimum_radius_pixels);
-    values_.bounds_padding_pixels = std::max(values_.bounds_padding_pixels, 0.f);
-    values_.range_transition_start_multiplier =
-        std::max(values_.range_transition_start_multiplier, 1.f);
-    values_.bracket_start_radius_multiplier =
-        std::max(values_.bracket_start_radius_multiplier, 1.f);
+void normalize_soft_target_settings(settings::SoftTarget& settings) {
+    settings.acquisition_radius_pixels = std::max(settings.acquisition_radius_pixels, 1.f);
+    settings.retention_radius_pixels =
+        std::max(settings.retention_radius_pixels, settings.acquisition_radius_pixels);
+    settings.centre_tie_radius_pixels = std::max(settings.centre_tie_radius_pixels, 0.f);
+    settings.switch_improvement_ratio = std::clamp(settings.switch_improvement_ratio, 0.f, 1.f);
+    settings.minimum_radius_pixels = std::max(settings.minimum_radius_pixels, 1.f);
+    settings.maximum_radius_pixels =
+        std::max(settings.maximum_radius_pixels, settings.minimum_radius_pixels);
+    settings.bounds_padding_pixels = std::max(settings.bounds_padding_pixels, 0.f);
+    settings.range_transition_start_multiplier =
+        std::max(settings.range_transition_start_multiplier, 1.f);
+    settings.bracket_start_radius_multiplier =
+        std::max(settings.bracket_start_radius_multiplier, 1.f);
 }
 
 auto make_world_soft_target_visual(SoftTargetMarker const& marker,
-                                   SoftTargetConfig const& config,
+                                   settings::SoftTarget const& settings,
                                    float const mesh_vertical_radius,
                                    ui::Color4f const neutral_colour,
                                    ui::Color4f const in_range_colour)
     -> std::optional<WorldSoftTargetVisual> {
-    auto const& settings{config.values()};
     auto const& visual{marker.visual};
     if (!marker.location || marker.visibility <= 0.f || visual.world_units_per_pixel <= 1.e-8f ||
         mesh_vertical_radius <= 1.e-8f) {
@@ -209,7 +204,7 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
                         ::ioj::sim::EntityTypeRadii const& entity_type_radii,
                         std::span<ui::entity_overlay::ObjectiveRole const> const objective_roles,
                         SoftTargetContext const& context,
-                        SoftTargetConfig const& config,
+                        settings::SoftTarget const& settings,
                         ::ioj::sim::EntityId const current_target) -> SoftTargetResult {
     assert(objective_roles.size() == ::ioj::presentation::display_entity_count(batches));
     if (!context.view.is_valid()) {
@@ -221,7 +216,6 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
         return {};
     }
 
-    auto const& settings{config.values()};
     auto const maximum_overlay_range{std::max(context.maximum_overlay_range, 0.0f)};
     auto const maximum_overlay_range_squared{maximum_overlay_range * maximum_overlay_range};
     auto const effective_range{std::max(context.effective_weapon_range, 0.0f)};

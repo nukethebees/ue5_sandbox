@@ -281,10 +281,9 @@ TEST(SoftTargetVisual, SizesBracketAndCombinesRangePulseAndFade) {
     settings.bracket_start_radius_multiplier = 3.f;
     settings.opacity = 0.6f;
     settings.pulse_opacity_boost = 0.2f;
-    SoftTargetConfig const config{settings};
     auto const sample{[&] {
         return make_world_soft_target_visual(
-            marker, config, 4.f, {1.f, 0.f, 0.f, 0.5f}, {0.f, 1.f, 0.f, 1.f});
+            marker, settings, 4.f, {1.f, 0.f, 0.f, 0.5f}, {0.f, 1.f, 0.f, 1.f});
     }};
     auto visual{sample()};
     ASSERT_TRUE(visual);
@@ -308,8 +307,8 @@ TEST(SoftTargetVisual, SizesBracketAndCombinesRangePulseAndFade) {
     EXPECT_FALSE(sample());
 }
 
-TEST(SoftTargetConfig, NormalizesSelectionAndIndicatorRangesBeforeUse) {
-    settings::SoftTarget authored{
+TEST(SoftTargetSettings, NormalizesSelectionAndIndicatorRangesBeforeUse) {
+    settings::SoftTarget values{
         .acquisition_radius_pixels = 30.f,
         .retention_radius_pixels = 10.f,
         .centre_tie_radius_pixels = -1.f,
@@ -320,9 +319,7 @@ TEST(SoftTargetConfig, NormalizesSelectionAndIndicatorRangesBeforeUse) {
         .bounds_padding_pixels = -3.f,
         .bracket_start_radius_multiplier = 0.f,
     };
-    SoftTargetConfig const config{authored};
-    authored.acquisition_radius_pixels = 100.f;
-    auto const& values{config.values()};
+    normalize_soft_target_settings(values);
     EXPECT_EQ(values.acquisition_radius_pixels, 30.f);
     EXPECT_EQ(values.retention_radius_pixels, 30.f);
     EXPECT_EQ(values.minimum_radius_pixels, 20.f);

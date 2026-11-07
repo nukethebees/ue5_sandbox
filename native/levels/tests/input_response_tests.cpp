@@ -2,14 +2,16 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
+
 namespace ioj::input::tests {
 TEST(NativeInputResponse, RemapsScalarDeadZoneAndAppliesSelectedDeviceInversion) {
-    ResponseSettings const settings{{.mouse_turn_sensitivity = 0.5f,
+    GameSettingsState const settings{.mouse_turn_sensitivity = 0.5f,
                                      .gamepad_turn_sensitivity = 2.0f,
                                      .gamepad_turn_dead_zone = 0.25f,
                                      .gamepad_move_dead_zone = 0.5f,
                                      .invert_mouse_pitch = true,
-                                     .invert_gamepad_yaw = true}};
+                                     .invert_gamepad_yaw = true};
     EXPECT_FLOAT_EQ(apply_response(0.25f, Response::GamepadTurn, Axis::Yaw, settings), 0.0f);
     EXPECT_FLOAT_EQ(apply_response(0.625f, Response::GamepadTurn, Axis::Yaw, settings), -1.0f);
     EXPECT_FLOAT_EQ(apply_response(-0.625f, Response::GamepadTurn, Axis::Pitch, settings), -1.0f);
@@ -20,9 +22,9 @@ TEST(NativeInputResponse, RemapsScalarDeadZoneAndAppliesSelectedDeviceInversion)
 }
 
 TEST(NativeInputResponse, RadialDeadZonePreservesDirectionSaturatesAndInvertsOnlyY) {
-    ResponseSettings const settings{{.gamepad_turn_sensitivity = 2.0f,
+    GameSettingsState const settings{.gamepad_turn_sensitivity = 2.0f,
                                      .gamepad_turn_dead_zone = 0.25f,
-                                     .invert_gamepad_pitch = true}};
+                                     .invert_gamepad_pitch = true};
     EXPECT_EQ(apply_response(Vector2d{0.1, 0.1}, Response::GamepadTurn, Axis::Pitch, settings),
               Vector2d{});
     auto const remapped{
@@ -37,15 +39,19 @@ TEST(NativeInputResponse, RadialDeadZonePreservesDirectionSaturatesAndInvertsOnl
 }
 
 TEST(NativeInputResponse, ClampsTuningWithoutRestrictingPointerMagnitude) {
-    ResponseSettings const settings{{.mouse_turn_sensitivity = 2.0f,
+    GameSettingsState const settings{.mouse_turn_sensitivity = 2.0f,
                                      .gamepad_turn_sensitivity = 1.0f,
-                                     .gamepad_turn_dead_zone = 1.0f}};
+                                     .gamepad_turn_dead_zone = clamp_dead_zone(1.0f)};
     EXPECT_FLOAT_EQ(apply_response(800.0f, Response::TurnPointerDelta, Axis::None, settings), 4.0f);
     EXPECT_FLOAT_EQ(apply_response(1.0f, Response::GamepadTurn, Axis::None, settings), 1.0f);
     EXPECT_EQ(apply_response(Vector3d{}, Response::GamepadMove, Axis::None, settings), Vector3d{});
-    ResponseSettings const negative{
-        {.mouse_turn_sensitivity = -2.f, .gamepad_move_dead_zone = -1.f}};
-    EXPECT_FLOAT_EQ(apply_response(400.f, Response::TurnPointerDelta, Axis::None, negative), 0.f);
-    EXPECT_FLOAT_EQ(apply_response(0.5f, Response::GamepadMove, Axis::None, negative), 0.5f);
+    EXPECT_FLOAT_EQ(clamp_sensitivity(-2.f), 0.f);
+    EXPECT_FLOAT_EQ(clamp_dead_zone(-1.f), 0.f);
+    for (auto const invalid : {std::numeric_limits<float>::quiet_NaN(),
+                               std::numeric_limits<float>::infinity(),
+                               -std::numeric_limits<float>::infinity()}) {
+        EXPECT_FLOAT_EQ(clamp_sensitivity(invalid), 0.f);
+        EXPECT_FLOAT_EQ(clamp_dead_zone(invalid), 0.f);
+    }
 }
 }

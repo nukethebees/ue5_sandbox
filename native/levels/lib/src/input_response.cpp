@@ -2,54 +2,52 @@
 #include "ioj/vector_value_math.h"
 
 #include <algorithm>
-#include <cassert>
 #include <cmath>
 
 namespace ioj::input {
-ResponseSettings::ResponseSettings(GameSettingsState const& settings) noexcept
-    : sensitivities_{std::max(0.f, settings.mouse_turn_sensitivity),
-                     std::max(0.f, settings.gamepad_turn_sensitivity)}
-    , dead_zones_{std::clamp(settings.gamepad_turn_dead_zone, 0.f, 0.95f),
-                  std::clamp(settings.gamepad_move_dead_zone, 0.f, 0.95f)}
-    , inverted_{{{false, settings.invert_mouse_pitch, settings.invert_mouse_yaw, false, false},
-                 {false,
-                  settings.invert_gamepad_pitch,
-                  settings.invert_gamepad_yaw,
-                  settings.invert_gamepad_roll,
-                  settings.invert_gamepad_vertical_translation}}} {}
-
-auto ResponseSettings::sensitivity(Response const response) const noexcept -> float {
-    return sensitivities_[response == Response::TurnPointerDelta ? 0 : 1];
-}
-auto ResponseSettings::dead_zone(Response const response) const noexcept -> float {
-    return dead_zones_[response == Response::GamepadTurn ? 0 : 1];
-}
-auto ResponseSettings::inverted(Response const response, Axis const axis) const noexcept -> bool {
-    assert(static_cast<std::size_t>(axis) < inverted_.front().size());
-    return inverted_[response == Response::TurnPointerDelta ? 0 : 1]
-                    [static_cast<std::size_t>(axis)];
-}
-
 namespace {
-auto scale(Response const response, ResponseSettings const& settings) noexcept -> double {
+auto inverted(Response const response, Axis const axis, GameSettingsState const& settings) noexcept
+    -> bool {
+    auto const pointer{response == Response::TurnPointerDelta};
+    switch (axis) {
+        case Axis::Pitch:
+            return pointer ? settings.invert_mouse_pitch : settings.invert_gamepad_pitch;
+        case Axis::Yaw:
+            return pointer ? settings.invert_mouse_yaw : settings.invert_gamepad_yaw;
+        case Axis::Roll:
+            return !pointer && settings.invert_gamepad_roll;
+        case Axis::VerticalTranslation:
+            return !pointer && settings.invert_gamepad_vertical_translation;
+        case Axis::None:
+            return false;
+    }
+    return false;
+}
+
+auto scale(Response const response, GameSettingsState const& settings) noexcept -> double {
     switch (response) {
         case Response::TurnPointerDelta:
-            return settings.sensitivity(response) / 400.0;
+            return settings.mouse_turn_sensitivity / 400.0;
         case Response::GamepadTurn:
-            return settings.sensitivity(response);
+            return settings.gamepad_turn_sensitivity;
         case Response::GamepadMove:
             return 1.0;
     }
     return 1.0;
 }
 
+auto dead_zone(Response const response, GameSettingsState const& settings) noexcept -> double {
+    return response == Response::GamepadTurn ? settings.gamepad_turn_dead_zone
+                                             : settings.gamepad_move_dead_zone;
+}
+
 template <std::size_t N>
 auto apply_vector_response(Vector<double, N> value,
                            Response const response,
                            Axis const axis,
-                           ResponseSettings const& settings) noexcept -> Vector<double, N> {
+                           GameSettingsState const& settings) noexcept -> Vector<double, N> {
     if (response != Response::TurnPointerDelta) {
-        auto const threshold{static_cast<double>(settings.dead_zone(response))};
+        auto const threshold{dead_zone(response, settings)};
         auto const magnitude{size(value)};
         if (magnitude <= threshold) {
             return {};
@@ -58,37 +56,44 @@ auto apply_vector_response(Vector<double, N> value,
         value *= output_magnitude / magnitude;
     }
     value *= scale(response, settings);
-    if (settings.inverted(response, axis)) {
+    if (inverted(response, axis, settings)) {
         value.y() = -value.y();
     }
     return value;
 }
 }
 
+auto clamp_sensitivity(float const value) noexcept -> float {
+    return std::isfinite(value) ? std::max(0.0f, value) : 0.f;
+}
+auto clamp_dead_zone(float const value) noexcept -> float {
+    return std::isfinite(value) ? std::clamp(value, 0.0f, 0.95f) : 0.f;
+}
+
 auto apply_response(float value,
                     Response const response,
                     Axis const axis,
-                    ResponseSettings const& settings) noexcept -> float {
+                    GameSettingsState const& settings) noexcept -> float {
     if (response != Response::TurnPointerDelta) {
-        auto const threshold{static_cast<double>(settings.dead_zone(response))};
+        auto const threshold{dead_zone(response, settings)};
         auto const magnitude{std::abs(value)};
         value = magnitude <= threshold ? 0.0f
                                        : static_cast<float>(std::copysign(
                                              (magnitude - threshold) / (1.0 - threshold), value));
     }
     return static_cast<float>(value * scale(response, settings) *
-                              (settings.inverted(response, axis) ? -1.0 : 1.0));
+                              (inverted(response, axis, settings) ? -1.0 : 1.0));
 }
 auto apply_response(Vector2d const value,
                     Response const response,
                     Axis const axis,
-                    ResponseSettings const& settings) noexcept -> Vector2d {
+                    GameSettingsState const& settings) noexcept -> Vector2d {
     return apply_vector_response(value, response, axis, settings);
 }
 auto apply_response(Vector3d const value,
                     Response const response,
                     Axis const axis,
-                    ResponseSettings const& settings) noexcept -> Vector3d {
+                    GameSettingsState const& settings) noexcept -> Vector3d {
     return apply_vector_response(value, response, axis, settings);
 }
 }

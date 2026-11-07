@@ -62,7 +62,17 @@ auto USpaceGameInputModifier::ModifyRaw_Implementation(
     if (settings == nullptr) {
         return current_value;
     }
-    auto const& values{settings->response_settings()};
+    GameSettingsState const values{.mouse_turn_sensitivity = settings->mouse_turn_sensitivity(),
+                                   .gamepad_turn_sensitivity = settings->gamepad_turn_sensitivity(),
+                                   .gamepad_turn_dead_zone = settings->gamepad_turn_dead_zone(),
+                                   .gamepad_move_dead_zone = settings->gamepad_move_dead_zone(),
+                                   .invert_mouse_pitch = settings->invert_mouse_pitch(),
+                                   .invert_mouse_yaw = settings->invert_mouse_yaw(),
+                                   .invert_gamepad_pitch = settings->invert_gamepad_pitch(),
+                                   .invert_gamepad_yaw = settings->invert_gamepad_yaw(),
+                                   .invert_gamepad_roll = settings->invert_gamepad_roll(),
+                                   .invert_gamepad_vertical_translation =
+                                       settings->invert_gamepad_vertical_translation()};
     auto const response_type{native_response(response)};
     auto const response_axis{native_axis(axis)};
     switch (current_value.GetValueType()) {

@@ -128,7 +128,6 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     presentation::EntityOverlayTeamColours entity_overlay_team_colours_;
     presentation::EntityOverlayHealthMaximums entity_overlay_maximum_health_;
     TArray<ui::entity_overlay::ObjectiveRole> entity_overlay_objective_roles_;
-    presentation::SoftTargetConfig soft_target_selection_settings_;
     TWeakObjectPtr<UInstancedStaticMeshComponent> soft_target_instances_;
     float soft_target_mesh_vertical_radius_{0.0f};
     bool warned_multiple_world_target_views_{false};

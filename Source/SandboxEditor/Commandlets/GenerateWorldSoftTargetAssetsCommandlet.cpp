@@ -65,11 +65,11 @@ int32 UGenerateWorldSoftTargetAssetsCommandlet::Main(FString const&) {
         return 1;
     }
     auto const mesh_data{SandboxMesh::generate_hex_frame(
-        mesh_gen::HexFrameParameters::make({.outer_radius = 50.0f,
-                                            .wall_thickness = 5.0f,
-                                            .depth = 2.0f,
-                                            .pointy_top = false,
-                                            .uv_mode = mesh_gen::HexFrameUvMode::perimeter}))};
+        mesh_gen::HexFrameParameters{.outer_radius = 50.0f,
+                                     .wall_thickness = 5.0f,
+                                     .depth = 2.0f,
+                                     .pointy_top = false,
+                                     .uv_mode = mesh_gen::HexFrameUvMode::perimeter})};
     auto* const mesh{SandboxMesh::write_static_mesh_asset(
         mesh_data,
         mesh_object_path,

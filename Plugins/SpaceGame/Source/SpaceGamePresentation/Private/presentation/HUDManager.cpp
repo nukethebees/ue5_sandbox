@@ -98,7 +98,6 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
         .fighter = level_config.fighters.simulation.health.get().value(),
         .turret = level_config.turrets.simulation.max_health.get().value(),
     };
-    soft_target_selection_settings_ = presentation::SoftTargetConfig{overlay.soft_target};
     entity_overlay_objective_roles_.Reset();
 
     for (auto const& registration : registered_huds) {
@@ -330,7 +329,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
                                 .player_team = to_unreal(player_ship->team),
                                 .effective_weapon_range = player_ship->laser_effective_range(),
                                 .maximum_overlay_range = entity_overlay_settings_.maximum_range},
-                               soft_target_selection_settings_,
+                               entity_overlay_settings_.soft_target,
                                registration.soft_targets.current_target());
     }
 
@@ -338,8 +337,8 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
         batches,
         soft_target,
         {ioj::NonNegativeFinite<float>::make(delta_seconds > 0.f ? delta_seconds : 0.f),
-         soft_target_selection_settings_.values().pulse_duration,
-         soft_target_selection_settings_.values().fade_out_duration})};
+         entity_overlay_settings_.soft_target.pulse_duration,
+         entity_overlay_settings_.soft_target.fade_out_duration})};
 
     if (render_world_target) {
         auto const neutral_color{hud->get_soft_target_neutral_colour()};
@@ -461,7 +460,7 @@ void FHUDManager::add_world_soft_target(presentation::SoftTargetMarker const& ta
 
     auto const visual{presentation::make_world_soft_target_visual(
         target,
-        soft_target_selection_settings_,
+        entity_overlay_settings_.soft_target,
         soft_target_mesh_vertical_radius_,
         {neutral_color.R, neutral_color.G, neutral_color.B, neutral_color.A},
         {in_range_color.R, in_range_color.G, in_range_color.B, in_range_color.A})};
