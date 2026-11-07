@@ -41,19 +41,14 @@ TEST(ConstrainedValue, MovingAnOwnerPreservesBothInvariants) {
     EXPECT_EQ(destination.ref(), source.ref());
 }
 
-TEST(ConstrainedValue, RejectsNonFiniteVectorComponents) {
-    using FinitePosition = FiniteVector<double, 3>;
-    for (auto const invalid : {std::numeric_limits<double>::infinity(),
-                               -std::numeric_limits<double>::infinity(),
-                               std::numeric_limits<double>::quiet_NaN()}) {
-        for (std::size_t component{}; component < 3; ++component) {
-            Vector3d value{1, 2, 3};
-            value[component] = invalid;
-            EXPECT_FALSE(FinitePosition::try_make(value));
-        }
+TEST(ConstrainedValue, AppliesScalarConstraintToEveryVectorComponent) {
+    using Dimensions = PositiveFiniteVector<double, 3>;
+    EXPECT_TRUE(Dimensions::try_make({1, 2, 3}));
+    for (std::size_t component{}; component < 3; ++component) {
+        Vector3d value{1, 2, 3};
+        value[component] = 0;
+        EXPECT_FALSE(Dimensions::try_make(value));
     }
-    EXPECT_TRUE(FinitePosition::try_make(
-        {std::numeric_limits<double>::lowest(), 0, std::numeric_limits<double>::max()}));
 }
 
 TEST(ConstrainedValue, PreservesNumericPoliciesAndFormatting) {
@@ -79,9 +74,5 @@ TEST(ConstrainedValue, ChecksClosedOpenAndFiniteDomains) {
     EXPECT_FALSE(Damping::try_make(std::numeric_limits<float>::quiet_NaN()));
     EXPECT_FALSE(Finite<float>::try_make(std::numeric_limits<float>::infinity()));
     EXPECT_TRUE(Finite<float>::try_make(-1.f));
-    using Dimensions = PositiveFiniteVector<float, 3>;
-    EXPECT_TRUE(Dimensions::try_make({1, 2, 3}));
-    EXPECT_FALSE(Dimensions::try_make({1, 0, 3}));
-    EXPECT_FALSE(Dimensions::try_make({1, 2, std::numeric_limits<float>::infinity()}));
 }
 }

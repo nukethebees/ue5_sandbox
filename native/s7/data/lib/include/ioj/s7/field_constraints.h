@@ -7,7 +7,6 @@
 
 #include <cmath>
 #include <limits>
-#include <optional>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -48,33 +47,28 @@ inline constexpr auto nonzero{FieldConstraint{[]<typename U>(U const& number) {
                                                   return number != 0;
                                               },
                                               "Expected a nonzero value"}};
-inline constexpr auto positive{FieldConstraint{
-    []<typename U>(U const& number) { return Positive<U>::try_make(number).has_value(); },
-    "Expected a positive value"}};
-inline constexpr auto nonnegative{FieldConstraint{
-    []<typename U>(U const& number) { return NonNegative<U>::try_make(number).has_value(); },
-    "Expected a nonnegative value"}};
+inline constexpr auto positive{
+    FieldConstraint{[]<typename U>(U const& number) { return Positive<U>::valid(number); },
+                    "Expected a positive value"}};
+inline constexpr auto nonnegative{
+    FieldConstraint{[]<typename U>(U const& number) { return NonNegative<U>::valid(number); },
+                    "Expected a nonnegative value"}};
 inline constexpr auto finite{FieldConstraint{
     []<typename U>(U const& number) {
         if constexpr (requires { number.elements; }) {
-            return ConstrainedValue<U, ioj::detail::finite_vector_policy>::try_make(number)
-                .has_value();
-        } else if constexpr (std::floating_point<U>) {
-            return std::isfinite(number);
+            return ioj::detail::EveryComponent<Finite<typename U::value_type>>{}(number);
         } else {
-            static_assert(std::integral<U> && !std::same_as<U, bool>,
-                          "finite requires a number or vector");
-            return true;
+            return Finite<U>::valid(number);
         }
     },
     "Expected a finite value"}};
-inline constexpr auto nonempty{
-    FieldConstraint{[]<typename U>(U const& text) {
-                        static_assert(std::same_as<U, std::string>, "nonempty requires a string");
-                        return NonEmptyString::try_make(text).has_value();
-                    },
-                    "Expected a nonempty string",
-                    AstErrorCode::InvalidType}};
+inline constexpr auto nonempty{FieldConstraint{[]<typename U>(U const& text) {
+                                                   static_assert(std::same_as<U, std::string>,
+                                                                 "nonempty requires a string");
+                                                   return NonEmptyString::valid(text);
+                                               },
+                                               "Expected a nonempty string",
+                                               AstErrorCode::InvalidType}};
 
 template <typename Bound>
 auto minimum(Bound const bound) {
