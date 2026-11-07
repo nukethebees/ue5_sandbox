@@ -26,6 +26,7 @@ class ATestStaticTurretsProxy : public AActor {
         level_config_asset = config;
     }
     void set_team(ETestTeam const new_team) noexcept { team = new_team; }
+
   protected:
     void OnConstruction(FTransform const& transform) override;
     void configure_component(UPrimitiveComponent& component);
@@ -53,6 +54,16 @@ class ATestStaticTurretsProxy : public AActor {
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TObjectPtr<UArrowComponent> fire_point{nullptr};
 
-    UPROPERTY(Transient)
+    UPROPERTY(EditAnywhere, Category = "Level Authoring")
     ETestTeam team{ETestTeam::White};
+
+  public:
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.0", Units = "s"))
+    double spawn_time_seconds{};
+
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "1"))
+    TOptional<int32> health;
+
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0"))
+    TOptional<int32> laser_damage;
 };

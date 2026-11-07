@@ -133,6 +133,7 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
 #if !UE_BUILD_SHIPPING
     void apply_space_dust_debug_preset(FStringView preset);
 #endif
+
   private:
     /* **************************************** */
     // Simulation access and presentation
@@ -150,7 +151,7 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     /* **************************************** */
     FPlayerShipConfig const* actor_config{nullptr};
 
-    UPROPERTY(Transient)
+    UPROPERTY(EditAnywhere, Category = "Level Authoring")
     ETestTeam team{ETestTeam::White};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
@@ -181,4 +182,8 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
 
     std::optional<::ioj::sim::player::CommandInterface> bound_commands_;
     ::ioj::sim::player::Sim const* bound_simulation{nullptr};
+
+  public:
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "1"))
+    TOptional<int32> health_override;
 };

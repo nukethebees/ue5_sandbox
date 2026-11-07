@@ -38,6 +38,7 @@ class ATestCapitalShipProxy : public AActor {
     void diagnose_fighter_spawn_points();
 
 #endif
+
   protected:
     void OnConstruction(FTransform const& transform) override;
 
@@ -50,7 +51,7 @@ class ATestCapitalShipProxy : public AActor {
     UPROPERTY(EditAnywhere, Category = "Ship")
     TArray<TObjectPtr<UArrowComponent>> fighter_spawn_slots;
 
-    UPROPERTY(Transient)
+    UPROPERTY(EditAnywhere, Category = "Level Authoring")
     ETestTeam team{ETestTeam::White};
 
 #if WITH_EDITORONLY_DATA
@@ -68,4 +69,17 @@ class ATestCapitalShipProxy : public AActor {
     void draw_fighter_spawn_preview();
     FString spawn_preview_error;
 #endif
+
+  public:
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.0", Units = "s"))
+    double spawn_time_seconds{};
+
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "1"))
+    TOptional<int32> health;
+
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.0"))
+    TOptional<float> initial_spawn_delay;
+
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.0"))
+    TOptional<float> spawn_cooldown;
 };

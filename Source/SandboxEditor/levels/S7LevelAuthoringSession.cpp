@@ -124,12 +124,15 @@ auto adopt_unbound_level_entities(ULevel& level, AS7LevelAuthoringDocument& docu
             to_string(actor->GetActorLabel()), to_serialized_string(resolved->archetype), ids)};
         actor->Modify();
         actor->bIsEditorOnlyActor = true;
-        document.entities.Add(
-            {.id = to_fstring(entity_id.value), .actor = actor, .team = to_unreal(resolved->team)});
+        auto const name{to_fstring(entity_id.value)};
+        document.entities.Add({.id = name, .actor = actor});
+        configure_s7_level_actor(*actor,
+                                 resolved->archetype,
+                                 to_unreal(resolved->team),
+                                 *document.level_config,
+                                 actor->GetActorTransform(),
+                                 FName{name});
         ++count;
-    }
-    if (count > 0) {
-        document.refresh_entity_previews();
     }
     return count;
 }
@@ -163,7 +166,7 @@ auto collect_s7_editor_input(ULevel const& level, AS7LevelAuthoringDocument cons
             return std::unexpected{TEXT("Unsupported actor in an exported entity binding.")};
         }
         auto const rotation{actor->GetActorRotation()};
-        auto const spawn_at{NonNegativeFinite<double>::try_make(binding.spawn_time_seconds)};
+        auto const spawn_at{NonNegativeFinite<double>::try_make(resolved->spawn_time_seconds)};
         if (!spawn_at) {
             return std::unexpected{FString::Printf(
                 TEXT("Entity '%s' requires a finite nonnegative spawn time."), *binding.id)};
@@ -171,7 +174,7 @@ auto collect_s7_editor_input(ULevel const& level, AS7LevelAuthoringDocument cons
         levels::authoring::EntityInput entity{
             .id = entity_id,
             .archetype = resolved->archetype,
-            .team = to_native(binding.team),
+            .team = resolved->team,
             .position = Vector3d{actor->GetActorLocation()},
             .rotation = {rotation.Pitch, rotation.Yaw, rotation.Roll},
             .spawn_at = *spawn_at};
@@ -188,20 +191,27 @@ auto collect_s7_editor_input(ULevel const& level, AS7LevelAuthoringDocument cons
             }
             return output.has_value();
         }};
-        if (!convert(entity.health, binding.health, TEXT("health")) ||
-            !convert(entity.laser_damage, binding.laser_damage, TEXT("laser damage")) ||
-            !convert(entity.initial_spawn_delay,
-                     binding.initial_spawn_delay,
-                     TEXT("initial spawn delay")) ||
-            !convert(entity.spawn_cooldown, binding.spawn_cooldown, TEXT("spawn cooldown")) ||
-            !convert(entity.initial_fire_point,
-                     binding.initial_fire_point,
-                     TEXT("initial fire point"))) {
+        bool valid{};
+        if (auto const* player{Cast<ATestSpaceShip>(actor)}) {
+            input.player = entity_id;
+            valid = convert(entity.health, player->health_override, TEXT("health"));
+        } else if (auto const* capital{Cast<ATestCapitalShipProxy>(actor)}) {
+            valid = convert(entity.health, capital->health, TEXT("health")) &&
+                    convert(entity.initial_spawn_delay,
+                            capital->initial_spawn_delay,
+                            TEXT("initial spawn delay")) &&
+                    convert(entity.spawn_cooldown, capital->spawn_cooldown, TEXT("spawn cooldown"));
+        } else if (auto const* turret{Cast<ATestStaticTurretsProxy>(actor)}) {
+            valid = convert(entity.health, turret->health, TEXT("health")) &&
+                    convert(entity.laser_damage, turret->laser_damage, TEXT("laser damage"));
+        } else {
+            auto const& spinner{*CastChecked<ATestTubeSpinnerProxy>(actor)};
+            valid = convert(
+                entity.initial_fire_point, spinner.initial_fire_point, TEXT("initial fire point"));
+        }
+        if (!valid) {
             return std::unexpected{FString::Printf(
                 TEXT("Entity '%s' has an invalid %s override."), *binding.id, invalid_field)};
-        }
-        if (Cast<ATestSpaceShip>(actor)) {
-            input.player = entity_id;
         }
         input.entities.push_back(std::move(entity));
     }
@@ -371,22 +381,29 @@ auto import_s7_level(ULevel& level,
         }
         actor->Modify();
         actor->bIsEditorOnlyActor = true;
+        if (auto* player{Cast<ATestSpaceShip>(actor)}) {
+            player->health_override = optional(entity.health);
+        } else if (auto* capital{Cast<ATestCapitalShipProxy>(actor)}) {
+            capital->spawn_time_seconds = entity.spawn_at.get();
+            capital->health = optional(entity.health);
+            capital->initial_spawn_delay = optional(entity.initial_spawn_delay);
+            capital->spawn_cooldown = optional(entity.spawn_cooldown);
+        } else if (auto* turret{Cast<ATestStaticTurretsProxy>(actor)}) {
+            turret->spawn_time_seconds = entity.spawn_at.get();
+            turret->health = optional(entity.health);
+            turret->laser_damage = optional(entity.laser_damage);
+        } else {
+            auto& spinner{*CastChecked<ATestTubeSpinnerProxy>(actor)};
+            spinner.spawn_time_seconds = entity.spawn_at.get();
+            spinner.initial_fire_point = optional(entity.initial_fire_point);
+        }
         configure_s7_level_actor(*actor,
                                  entity.archetype,
                                  to_unreal(entity.team),
                                  *document.level_config,
                                  transform,
                                  FName{name});
-        bindings.Add({.id = name,
-                      .actor = actor,
-                      .team = to_unreal(entity.team),
-                      .spawn_time_seconds = entity.spawn_at.get(),
-                      .export_to_script = export_entity,
-                      .health = optional(entity.health),
-                      .laser_damage = optional(entity.laser_damage),
-                      .initial_spawn_delay = optional(entity.initial_spawn_delay),
-                      .spawn_cooldown = optional(entity.spawn_cooldown),
-                      .initial_fire_point = optional(entity.initial_fire_point)});
+        bindings.Add({.id = name, .actor = actor, .export_to_script = export_entity});
         existing.Remove(name);
     }
     for (auto const& entry : existing) {

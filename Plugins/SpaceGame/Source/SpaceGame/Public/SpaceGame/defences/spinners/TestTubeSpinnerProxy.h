@@ -55,4 +55,11 @@ class ATestTubeSpinnerProxy : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TArray<TObjectPtr<UArrowComponent>> fire_points{};
+
+  public:
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.0", Units = "s"))
+    double spawn_time_seconds{};
+
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0"))
+    TOptional<int32> initial_fire_point;
 };

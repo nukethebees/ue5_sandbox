@@ -12,6 +12,7 @@ namespace ioj::editor {
 struct FS7LevelResolvedActor {
     levels::EntityArchetype archetype{};
     Team team{};
+    double spawn_time_seconds{};
 };
 
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor>;
