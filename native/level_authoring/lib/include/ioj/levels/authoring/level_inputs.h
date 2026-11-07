@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/levels/authoring/expr_input.h"
@@ -124,10 +125,10 @@ struct EntityInput {
     Vector3d position{};
     Vector3d rotation{};
     double spawn_at{};
-    std::optional<std::int32_t> health{};
-    std::optional<std::int32_t> laser_damage{};
-    std::optional<float> initial_spawn_delay{};
-    std::optional<float> spawn_cooldown{};
+    std::optional<ioj::Positive<std::int32_t>> health{};
+    std::optional<ioj::NonNegative<std::int32_t>> laser_damage{};
+    std::optional<ioj::NonNegativeFinite<float>> initial_spawn_delay{};
+    std::optional<ioj::NonNegativeFinite<float>> spawn_cooldown{};
 };
 
 struct ObjectiveInput {

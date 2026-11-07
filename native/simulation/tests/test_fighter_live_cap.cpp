@@ -22,7 +22,6 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
     data.collision.overlap_response.damage_per_overlap_detection = Positive<std::int32_t>{1};
     data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{1000});
     data.fighters.max_live_fighters = ::ioj::NonNegative<std::int32_t>::make(max_live_fighters);
-    data.capital_ships.fighter_spawn_slots = spawn_slots;
     for (std::int32_t slot_index{}; slot_index < spawn_slots; ++slot_index) {
         data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(
             {.location = {100.0 + slot_index * 10.0, 0.0, 0.0}});

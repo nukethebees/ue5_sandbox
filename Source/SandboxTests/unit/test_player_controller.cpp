@@ -116,7 +116,7 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
             *world_result.value(), config->classes.player_ship_class, &config->player_ship)};
         auto profile{::ioj::sim::player::make_flight_model_profile(
             ::ioj::sim::player::FlightModelPreset::Fighter)};
-        profile.config.translation.forward.passive_drag = 321.f;
+        profile.config.translation.forward.passive_drag = ioj::NonNegativeFinite<float>{321.f};
 
         TestRunner->TestFalse(TEXT("New ship is not yet bound to native simulation"),
                               ship->has_simulation());

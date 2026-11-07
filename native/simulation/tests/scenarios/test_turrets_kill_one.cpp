@@ -39,7 +39,6 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
     static std::vector<Team> const teams{
         Team::Blue, Team::Blue, Team::Blue, Team::Blue, Team::Blue, Team::Blue, Team::Red};
     auto data{tests::make_simulation_data(config)};
-    data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const damage{scenario == TurretCombatScenario::ZeroDamage ? 0 : data.turrets.laser.damage};
     add_worldless_turrets(
@@ -82,7 +81,6 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
 TEST(WorldlessSpaceGameSimulation, TurretsLineOfSightBlocking) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
-    data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     std::vector<Vector3f> const locations{{{-5000.f, 0.f, 0.f}}, {{5000.f, 0.f, 0.f}}};
     std::vector<Team> const teams{Team::Blue, Team::Red};
@@ -109,7 +107,6 @@ TEST(WorldlessSpaceGameSimulation, TurretsLineOfSightBlocking) {
 TEST(WorldlessSpaceGameSimulation, TurretsSearchRequiresLineOfSight) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
-    data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     std::vector<Vector3f> const locations{
         {{-1000.f, 0.f, 0.f}}, {{1000.f, 0.f, 0.f}}, {{1000.f, 1000.f, 0.f}}};

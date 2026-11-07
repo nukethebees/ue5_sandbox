@@ -3,7 +3,6 @@
 #include <gtest/gtest.h>
 
 #include <array>
-#include <limits>
 
 namespace ioj::sim::player::tests {
 using enum FlightModelConfigError;
@@ -66,7 +65,7 @@ TEST(FlightModelConfig, ValidationRejectsInvalidEnumsAndIgnoredChannelFields) {
     EXPECT_EQ(validate_flight_model_config(config).error(), InvalidEnumValue);
 
     config = make_flight_model_profile(FlightModelPreset::Gunship).config;
-    config.translation.forward.manual.automatic_value = 0.5f;
+    config.translation.forward.manual.automatic_value = Bounded<float, -1, 1>{0.5f};
     EXPECT_EQ(validate_flight_model_config(config).error(), InvalidManualChannel);
 
     config = make_flight_model_profile(FlightModelPreset::Skater).config;
@@ -76,10 +75,6 @@ TEST(FlightModelConfig, ValidationRejectsInvalidEnumsAndIgnoredChannelFields) {
     config = make_flight_model_profile(FlightModelPreset::Starfox).config;
     config.translation.forward.automatic.input_source = TranslationInputSource::Accelerator;
     EXPECT_EQ(validate_flight_model_config(config).error(), InvalidAutomaticChannel);
-
-    config = make_flight_model_profile(FlightModelPreset::Starfox).config;
-    config.translation.forward.automatic.automatic_value = 1.01f;
-    EXPECT_EQ(validate_flight_model_config(config).error(), InputValueOutOfRange);
 
     config = make_flight_model_profile(FlightModelPreset::Fighter).config;
     config.translation.forward.passive_drag_reference_frame = static_cast<ReferenceFrame>(255);
@@ -97,7 +92,7 @@ TEST(FlightModelConfig, ValidationDefinesManualAndAutomaticComposition) {
     EXPECT_EQ(validate_flight_model_config(config).error(), AmbiguousTargetChannels);
 
     config.translation.forward.automatic.semantic = TranslationSemantic::Acceleration;
-    config.translation.forward.automatic.automatic_value = 0.5f;
+    config.translation.forward.automatic.automatic_value = Bounded<float, -1, 1>{0.5f};
     EXPECT_TRUE(validate_flight_model_config(config).has_value());
 
     config.translation.forward.manual.semantic = TranslationSemantic::Acceleration;
@@ -110,26 +105,9 @@ TEST(FlightModelConfig, AcceleratorInputSourceIsValidOnEveryManualAxis) {
              &config.translation.forward, &config.translation.right, &config.translation.up}) {
         axis->manual.semantic = TranslationSemantic::Acceleration;
         axis->manual.input_source = TranslationInputSource::Accelerator;
-        axis->normal.positive_acceleration = 100.f;
+        axis->normal.positive_acceleration = NonNegativeFinite<float>{100.f};
     }
     EXPECT_TRUE(validate_flight_model_config(config).has_value());
 }
 
-TEST(FlightModelConfig, ValidationRejectsUnsafeSecondOrderAndNumericValues) {
-    auto config{make_flight_model_profile(FlightModelPreset::Starfox).config};
-    config.translation.forward.automatic.response.second_order.settling_time = 0.f;
-    EXPECT_EQ(validate_flight_model_config(config).error(), InvalidSecondOrderSettlingTime);
-
-    config = make_flight_model_profile(FlightModelPreset::Starfox).config;
-    config.translation.forward.automatic.response.second_order.damping_ratio = 1.f;
-    EXPECT_EQ(validate_flight_model_config(config).error(), InvalidSecondOrderDampingRatio);
-
-    config = make_flight_model_profile(FlightModelPreset::Skater).config;
-    config.translation.forward.normal.positive_acceleration = -1.f;
-    EXPECT_EQ(validate_flight_model_config(config).error(), NegativeValue);
-
-    config = make_flight_model_profile(FlightModelPreset::Gunship).config;
-    config.maximum_resultant_speed = std::numeric_limits<float>::infinity();
-    EXPECT_EQ(validate_flight_model_config(config).error(), NonFiniteValue);
-}
 }

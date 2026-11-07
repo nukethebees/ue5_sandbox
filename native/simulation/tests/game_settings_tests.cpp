@@ -154,7 +154,8 @@ TEST(GameSettings, DisplayRevertKeepsAppliedControlsAndFlightModel) {
     ASSERT_TRUE(session.set_setting(GameSetting::Resolution, ScreenResolution{1280, 720}));
     ASSERT_TRUE(session.set_setting(GameSetting::MouseTurnSensitivity, 1.5f));
     auto profile{loadout.profiles[0]};
-    profile.config.translation.forward.passive_drag += 1.f;
+    profile.config.translation.forward.passive_drag =
+        NonNegativeFinite<float>::make(profile.config.translation.forward.passive_drag + 1.f);
     ASSERT_TRUE(session.set_flight_model_profile(sim::player::FlightModelSlot::First, profile));
     EXPECT_EQ(session.apply(10.0), GameSettingsApplyResult::ConfirmDisplay);
     EXPECT_TRUE(session.is_editing());
@@ -187,7 +188,7 @@ TEST(GameSettings, DisplayRevertKeepsAppliedControlsAndFlightModel) {
 
 TEST(GameSettings, FlightModelCodecRejectsCorruptionWithoutChangingOutput) {
     auto original{sim::player::make_flight_model_profile(sim::player::FlightModelPreset::Gunship)};
-    original.config.translation.up.passive_drag = 123.f;
+    original.config.translation.up.passive_drag = NonNegativeFinite<float>{123.f};
     original.customized = true;
     auto const encoded{flight_model_settings_codec::encode(original)};
     auto profile{sim::player::make_flight_model_profile(sim::player::FlightModelPreset::Starfox)};
@@ -200,11 +201,28 @@ TEST(GameSettings, FlightModelCodecRejectsCorruptionWithoutChangingOutput) {
         EXPECT_FALSE(flight_model_settings_codec::decode(invalid, profile));
         EXPECT_EQ(profile, original);
     }
-    auto invalid{original};
-    invalid.config.translation.up.passive_drag = std::numeric_limits<float>::quiet_NaN();
-    EXPECT_FALSE(
-        flight_model_settings_codec::decode(flight_model_settings_codec::encode(invalid), profile));
-    EXPECT_EQ(profile, original);
+    struct Corruption {
+        std::size_t byte_offset;
+        std::string_view hex;
+    };
+    for (auto const corruption : {
+             Corruption{0, "ff"},
+             Corruption{2, "ff"},
+             Corruption{9, "ff"},
+             Corruption{5, "00000040"},
+             Corruption{10, "000080bf"},
+             Corruption{10, "0000807f"},
+             Corruption{10, "0000c07f"},
+             Corruption{18, "00000000"},
+             Corruption{22, "0000803f"},
+         }) {
+        auto invalid{encoded};
+        invalid.replace(std::string_view{"flight-model:2:"}.size() + corruption.byte_offset * 2,
+                        corruption.hex.size(),
+                        corruption.hex);
+        EXPECT_FALSE(flight_model_settings_codec::decode(invalid, profile));
+        EXPECT_EQ(profile, original);
+    }
 
     auto const loadout{flight_model_settings_codec::decode_loadout({"", "", encoded, encoded})};
     EXPECT_TRUE(loadout.invalid_slots[2]);

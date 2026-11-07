@@ -169,17 +169,12 @@ inline constexpr MinMax<sim::player::FacingVelocityCoupling>
 namespace ioj::sim::player {
 using FlightModelConfigErrorUnderlying = std::uint8_t;
 
-// Logical bit width: 4.
+// Logical bit width: 2.
 enum class FlightModelConfigError : FlightModelConfigErrorUnderlying {
     InvalidEnumValue,
-    NonFiniteValue,
-    NegativeValue,
-    InputValueOutOfRange,
     InvalidManualChannel,
     InvalidAutomaticChannel,
     AmbiguousTargetChannels,
-    InvalidSecondOrderSettlingTime,
-    InvalidSecondOrderDampingRatio,
 };
 
 } // namespace ioj::sim::player
@@ -189,7 +184,7 @@ template <>
 inline constexpr MinMax<sim::player::FlightModelConfigError>
     enum_range<sim::player::FlightModelConfigError>{
         sim::player::FlightModelConfigError::InvalidEnumValue,
-        sim::player::FlightModelConfigError::InvalidSecondOrderDampingRatio};
+        sim::player::FlightModelConfigError::AmbiguousTargetChannels};
 
 template <>
 struct EnumTraits<sim::player::FlightModelSlot> {

@@ -979,7 +979,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 using ioj::EShipControlScope;
                 using namespace ioj::sim::player;
                 auto tuned{settings->flight_model_profile(EShipControlScope::Gunship)};
-                tuned.config.translation.up.normal.positive_target_speed += 100.f;
+                auto& speed{tuned.config.translation.up.normal.positive_target_speed};
+                speed = ioj::NonNegativeFinite<float>::make(speed + 100.f);
                 tuned.config.translation.up.manual.response.mode = ResponseMode::SecondOrder;
                 checks.is_true(
                     settings->set_flight_model_profile(EShipControlScope::Gunship, tuned),

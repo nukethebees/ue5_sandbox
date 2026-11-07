@@ -88,7 +88,7 @@ void seed_translation_responses(PlayerSimulationState& state,
 [[nodiscard]] auto target_speed_for(float const input, TranslationDriveConfig const& drive) noexcept
     -> float {
     auto const requested{input >= 0.f ? drive.positive_target_speed : drive.negative_target_speed};
-    return std::min(requested, limit_for(input, drive));
+    return std::min(requested.get(), limit_for(input, drive));
 }
 
 [[nodiscard]] auto clamp_target_speed(float const target,
@@ -123,7 +123,7 @@ void apply_target_channel(float const dt,
     auto const current{static_cast<float>(dot(velocity, axis))};
     auto const controlled{std::clamp(response.update(dt, target, response_config),
                                      -drive.negative_speed_limit,
-                                     drive.positive_speed_limit)};
+                                     drive.positive_speed_limit.get())};
     velocity += axis * (controlled - current);
 }
 
@@ -148,7 +148,7 @@ void apply_acceleration_channel(float const dt,
     auto const smoothed{response.update(dt, acceleration, response_config)};
     auto const component{dot(velocity, axis)};
     auto const limit{limit_for(input, drive)};
-    if (std::isfinite(limit) && std::abs(component) >= limit && component * smoothed > 0.0) {
+    if (std::abs(component) >= limit && component * smoothed > 0.0) {
         return;
     }
     velocity += axis * (smoothed * dt);
@@ -247,7 +247,7 @@ void apply_brake(float const dt, BrakeConfig const& brake, PlayerSimulationState
     auto const engagement{std::clamp(
         state.controller.brake_engagement_response.update(dt, 1.f, brake.response), 0.f, 1.f)};
     auto const target_speed{
-        std::max(brake.target_speed, speed - brake.deceleration * engagement * dt)};
+        std::max(brake.target_speed.get(), speed - brake.deceleration * engagement * dt)};
     velocity = velocity * (target_speed / speed);
 }
 
@@ -270,9 +270,9 @@ void apply_facing_coupling(float const dt,
     physical.velocity = move_towards(physical.velocity, target, alignment_rate * dt);
 }
 
-void apply_resultant_limit(float const limit, Vector3d& velocity) noexcept {
+void apply_resultant_limit(NonNegativeFinite<float> const limit, Vector3d& velocity) noexcept {
     auto const speed{size(velocity)};
-    if (!std::isfinite(limit) || speed <= limit || speed <= 1.e-8) {
+    if (speed <= limit || speed <= 1.e-8) {
         return;
     }
     velocity = velocity * (limit / speed);

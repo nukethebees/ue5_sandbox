@@ -59,6 +59,20 @@ class Archive {
         return *this;
     }
 
+    template <typename T, ConstrainedValuePolicy Policy>
+    auto operator<<(ConstrainedValue<T, Policy>& value) -> Archive& {
+        auto raw{value.get()};
+        *this << raw;
+        if (loading_) {
+            if (auto const checked{ConstrainedValue<T, Policy>::try_make(raw)}) {
+                value = *checked;
+            } else {
+                invalidate();
+            }
+        }
+        return *this;
+    }
+
     auto loading() const -> bool { return loading_; }
     auto complete() const -> bool { return valid_ && cursor_ == input_.size(); }
     auto take_output() -> std::string { return std::move(output_); }
@@ -89,7 +103,12 @@ void transfer_enum(Archive& archive, Enum& value) {
     std::uint8_t raw{static_cast<std::uint8_t>(value)};
     archive << raw;
     if (archive.loading()) {
-        value = static_cast<Enum>(raw);
+        if (raw < static_cast<std::uint8_t>(enum_min<Enum>) ||
+            raw > static_cast<std::uint8_t>(enum_max<Enum>)) {
+            archive.invalidate();
+        } else {
+            value = static_cast<Enum>(raw);
+        }
     }
 }
 
@@ -205,8 +224,7 @@ auto decode(std::string_view const data, sim::player::FlightModelProfile& profil
     detail::Archive archive{data};
     auto candidate{profile};
     detail::transfer(archive, candidate);
-    if (!archive.complete() || candidate.base_preset > sim::player::FlightModelPreset::Gunship ||
-        !sim::player::validate_flight_model_config(candidate.config)) {
+    if (!archive.complete() || !sim::player::validate_flight_model_config(candidate.config)) {
         return false;
     }
     profile = candidate;

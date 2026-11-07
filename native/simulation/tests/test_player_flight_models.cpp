@@ -35,7 +35,6 @@ auto make_data(player::FlightModelPreset const preset) -> LevelSimInitData {
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.tick_memory_capacity_bytes = 1024 * 1024;
     data.phase_memory_capacity_bytes = 1024 * 1024;
-    data.capital_ships.fighter_spawn_slots = 0;
     data.clock_settings.tick_rate = ioj::Frequency::make(60.0);
     for (auto const type : EnumTraits<EntityType>::values) {
         data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
@@ -100,8 +99,8 @@ auto turned_velocity_after_tick(player::FlightModelConfig const& config,
 auto brake_speed_after_tick(player::ResponseConfig const& response, float const deceleration)
     -> double {
     player::FlightModelConfig config;
-    config.brake.target_speed = 0.f;
-    config.brake.deceleration = deceleration;
+    config.brake.target_speed = NonNegativeFinite<float>{0.f};
+    config.brake.deceleration = NonNegativeFinite<float>::make(deceleration);
     config.brake.response = response;
 
     player::PlayerSimulationState state;
@@ -346,8 +345,8 @@ TEST_F(SkaterFlightModelTest, SwitchingClearsPersistentTargetsAndSamplingState) 
     auto& forward{profile.config.translation.forward};
     forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
     forward.manual.input_source = player::TranslationInputSource::Axis;
-    forward.normal.positive_target_speed = 1000.f;
-    forward.normal.negative_target_speed = 500.f;
+    forward.normal.positive_target_speed = NonNegativeFinite<float>{1000.f};
+    forward.normal.negative_target_speed = NonNegativeFinite<float>{500.f};
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
     sim_player.start_sampling();
     sim_player.set_ship_2d_control({0.5, 0.75});
@@ -380,8 +379,10 @@ TEST_F(SkaterFlightModelTest, SwitchingRecomputesActionsFromHeldIntent) {
 TEST_F(SkaterFlightModelTest, SlotReplacementAppliesRuntimeConfigWithoutReconstruction) {
     auto profile{sim_player.active_flight_model_profile()};
     profile.customized = true;
-    profile.config.translation.forward.normal.positive_acceleration = 1234.f;
-    profile.config.maximum_resultant_speed = player::effectively_unlimited_speed;
+    profile.config.translation.forward.normal.positive_acceleration =
+        NonNegativeFinite<float>{1234.f};
+    profile.config.maximum_resultant_speed =
+        NonNegativeFinite<float>::make(player::effectively_unlimited_speed);
     EXPECT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
     EXPECT_EQ(sim_player.active_flight_model_profile(), profile);
 
@@ -420,8 +421,9 @@ TEST(NativeSimulationFlightModels, PassiveDragAndNeutralStabilizationRemainDisti
         auto commands{simulation.player_ship_commands()};
         auto profile{player_sim(simulation).active_flight_model_profile()};
         auto& forward{profile.config.translation.forward};
-        forward.passive_drag = use_passive_drag ? 1000.f : 0.f;
-        forward.active_stabilization_rate = use_passive_drag ? 0.f : 1000.f;
+        forward.passive_drag = NonNegativeFinite<float>::make(use_passive_drag ? 1000.f : 0.f);
+        forward.active_stabilization_rate =
+            NonNegativeFinite<float>::make(use_passive_drag ? 0.f : 1000.f);
         EXPECT_TRUE(
             commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
         commands->set_accelerator(1.f);
@@ -441,7 +443,7 @@ TEST(NativeSimulationFlightModels, PassiveDragAndNeutralStabilizationRemainDisti
 TEST(NativeSimulationFlightModels, PassiveDragUsesItsExplicitReferenceFrame) {
     auto evaluate = [](player::ReferenceFrame const frame) {
         player::FlightModelConfig config;
-        config.translation.forward.passive_drag = 40.f;
+        config.translation.forward.passive_drag = NonNegativeFinite<float>{40.f};
         config.translation.forward.passive_drag_reference_frame = frame;
 
         return turned_velocity_after_tick(config);
@@ -454,7 +456,7 @@ TEST(NativeSimulationFlightModels, PassiveDragUsesItsExplicitReferenceFrame) {
 TEST(NativeSimulationFlightModels, ActiveStabilizationUsesItsExplicitReferenceFrame) {
     auto evaluate = [](player::ReferenceFrame const frame) {
         player::FlightModelConfig config;
-        config.translation.forward.active_stabilization_rate = 40.f;
+        config.translation.forward.active_stabilization_rate = NonNegativeFinite<float>{40.f};
         config.translation.forward.active_stabilization_reference_frame = frame;
 
         return turned_velocity_after_tick(config);
@@ -469,9 +471,9 @@ TEST(NativeSimulationFlightModels, DisabledManualFrameCannotAffectAxisLevelDampi
         player::FlightModelConfig config;
         auto& forward{config.translation.forward};
         forward.manual.reference_frame = unused_manual_frame;
-        forward.passive_drag = 10.f;
+        forward.passive_drag = NonNegativeFinite<float>{10.f};
         forward.passive_drag_reference_frame = player::ReferenceFrame::World;
-        forward.active_stabilization_rate = 20.f;
+        forward.active_stabilization_rate = NonNegativeFinite<float>{20.f};
         forward.active_stabilization_reference_frame = player::ReferenceFrame::World;
 
         return turned_velocity_after_tick(config);
@@ -490,9 +492,9 @@ TEST(NativeSimulationFlightModels, AutomaticAccelerationAndPassiveDragKeepIndepe
         auto& forward{config.translation.forward};
         forward.automatic.semantic = player::TranslationSemantic::Acceleration;
         forward.automatic.reference_frame = automatic_frame;
-        forward.automatic.automatic_value = 1.f;
-        forward.normal.positive_acceleration = 10.f;
-        forward.passive_drag = 20.f;
+        forward.automatic.automatic_value = Bounded<float, -1, 1>{1.f};
+        forward.normal.positive_acceleration = NonNegativeFinite<float>{10.f};
+        forward.passive_drag = NonNegativeFinite<float>{20.f};
         forward.passive_drag_reference_frame = drag_frame;
 
         return turned_velocity_after_tick(config, {50.0, 50.0, 0.0});
@@ -511,7 +513,8 @@ TEST(NativeSimulationFlightModels, AutomaticAccelerationAndPassiveDragKeepIndepe
 TEST_F(SkaterFlightModelTest, BoostResponseChangesWithoutDiscardingAccelerationState) {
     auto profile{sim_player.active_flight_model_profile()};
     profile.config.boost.response.mode = player::ResponseMode::RateLimited;
-    profile.config.boost.response.rate_limited = {1000.f, 1000.f};
+    profile.config.boost.response.rate_limited = {NonNegativeFinite<float>{1000.f},
+                                                  NonNegativeFinite<float>{1000.f}};
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
     commands->set_accelerator(1.f);
     advance_ticks(simulation, 1);
@@ -536,7 +539,7 @@ TEST_F(SkaterFlightModelTest, PartialFacingCouplingBendsVelocityWithoutLockingIt
 
     auto profile{sim_player.active_flight_model_profile()};
     profile.config.facing_velocity.mode = player::FacingVelocityCoupling::AlignToFacing;
-    profile.config.facing_velocity.alignment_rate = 1000.f;
+    profile.config.facing_velocity.alignment_rate = NonNegativeFinite<float>{1000.f};
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
     advance_ticks(simulation, 30);
 
@@ -548,11 +551,13 @@ TEST_F(SkaterFlightModelTest, PartialFacingCouplingBendsVelocityWithoutLockingIt
 
 TEST(NativeSimulationFlightModels, EffectivelyUnlimitedLimitRemainsFinite) {
     player::FlightModelConfig config;
-    config.maximum_resultant_speed = player::effectively_unlimited_speed;
-    config.boosted_maximum_resultant_speed = player::effectively_unlimited_speed;
+    config.maximum_resultant_speed =
+        NonNegativeFinite<float>::make(player::effectively_unlimited_speed);
+    config.boosted_maximum_resultant_speed =
+        NonNegativeFinite<float>::make(player::effectively_unlimited_speed);
     config.translation.forward.manual.semantic = player::TranslationSemantic::Acceleration;
     config.translation.forward.manual.input_source = player::TranslationInputSource::Axis;
-    config.translation.forward.normal.positive_acceleration = 120.f;
+    config.translation.forward.normal.positive_acceleration = NonNegativeFinite<float>{120.f};
     player::PlayerSimulationState state;
     state.physical.velocity = {1.e12, -1.e12, 1.e12};
     player::seed_flight_model_responses(state, config);
@@ -575,7 +580,7 @@ TEST(NativeSimulationFlightModels, DirectBrakeStrengthUsesConfiguredDeceleration
 TEST(NativeSimulationFlightModels, RateLimitedBrakeStrengthUsesConfiguredDeceleration) {
     player::ResponseConfig response;
     response.mode = player::ResponseMode::RateLimited;
-    response.rate_limited = {2.f, 2.f};
+    response.rate_limited = {NonNegativeFinite<float>{2.f}, NonNegativeFinite<float>{2.f}};
 
     EXPECT_GT(brake_speed_after_tick(response, 400.f), brake_speed_after_tick(response, 800.f));
     EXPECT_NEAR(brake_speed_after_tick(response, 400.f), 950.0, 1.e-4);
@@ -584,7 +589,7 @@ TEST(NativeSimulationFlightModels, RateLimitedBrakeStrengthUsesConfiguredDeceler
 TEST(NativeSimulationFlightModels, SecondOrderBrakeStrengthUsesConfiguredDeceleration) {
     player::ResponseConfig response;
     response.mode = player::ResponseMode::SecondOrder;
-    response.second_order = {.settling_time = 1.f, .damping_ratio = 0.5f};
+    response.second_order = {PositiveFinite<float>{1.f}, OpenInterval<float, 0, 1>{0.5f}};
 
     auto const normal{brake_speed_after_tick(response, 400.f)};
     auto const heavy{brake_speed_after_tick(response, 800.f)};
@@ -594,7 +599,7 @@ TEST(NativeSimulationFlightModels, SecondOrderBrakeStrengthUsesConfiguredDeceler
 
 TEST_F(SkaterFlightModelTest, EnergyFallbackRespectsHeldIntentAndAvailability) {
     auto profile{sim_player.active_flight_model_profile()};
-    profile.config.emergency_brake.energy_drain_per_second = 60.f;
+    profile.config.emergency_brake.energy_drain_per_second = NonNegativeFinite<float>{60.f};
     profile.config.brake.available = false;
     profile.config.boost.available = false;
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
@@ -608,8 +613,8 @@ TEST_F(SkaterFlightModelTest, EnergyFallbackRespectsHeldIntentAndAvailability) {
 
 TEST_F(SkaterFlightModelTest, EnergyFallbackUsesOnlyAvailableIndependentlyHeldActions) {
     auto profile{sim_player.active_flight_model_profile()};
-    profile.config.emergency_brake.energy_drain_per_second = 60.f;
-    profile.config.brake.energy_drain_per_second = 0.f;
+    profile.config.emergency_brake.energy_drain_per_second = NonNegativeFinite<float>{60.f};
+    profile.config.brake.energy_drain_per_second = NonNegativeFinite<float>{0.f};
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     commands->start_boost();
@@ -642,7 +647,7 @@ TEST_F(SkaterFlightModelTest, AcceleratorCanDriveEveryTranslationAxis) {
          std::array{&profile.config.translation.right, &profile.config.translation.up}) {
         axis->manual.semantic = player::TranslationSemantic::Acceleration;
         axis->manual.input_source = player::TranslationInputSource::Accelerator;
-        axis->normal.positive_acceleration = 120.f;
+        axis->normal.positive_acceleration = NonNegativeFinite<float>{120.f};
     }
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
@@ -659,10 +664,12 @@ TEST_F(SkaterFlightModelTest, TargetVelocityUsesInputScaleNotUnlimitedCap) {
     auto& forward{profile.config.translation.forward};
     forward.manual.semantic = player::TranslationSemantic::TargetVelocity;
     forward.manual.input_source = player::TranslationInputSource::Axis;
-    forward.normal.positive_target_speed = 2000.f;
-    forward.normal.negative_target_speed = 500.f;
-    forward.normal.positive_speed_limit = player::effectively_unlimited_speed;
-    forward.normal.negative_speed_limit = player::effectively_unlimited_speed;
+    forward.normal.positive_target_speed = NonNegativeFinite<float>{2000.f};
+    forward.normal.negative_target_speed = NonNegativeFinite<float>{500.f};
+    forward.normal.positive_speed_limit =
+        NonNegativeFinite<float>::make(player::effectively_unlimited_speed);
+    forward.normal.negative_speed_limit =
+        NonNegativeFinite<float>::make(player::effectively_unlimited_speed);
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     commands->set_forward_input(0.5f);
@@ -677,10 +684,12 @@ TEST_F(SkaterFlightModelTest, TargetSpeedUsesAsymmetricScalesAndTrimBounds) {
     auto& forward{profile.config.translation.forward};
     forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
     forward.manual.input_source = player::TranslationInputSource::Axis;
-    forward.normal.positive_target_speed = 1000.f;
-    forward.normal.negative_target_speed = 400.f;
-    forward.normal.positive_speed_limit = player::effectively_unlimited_speed;
-    forward.normal.negative_speed_limit = player::effectively_unlimited_speed;
+    forward.normal.positive_target_speed = NonNegativeFinite<float>{1000.f};
+    forward.normal.negative_target_speed = NonNegativeFinite<float>{400.f};
+    forward.normal.positive_speed_limit =
+        NonNegativeFinite<float>::make(player::effectively_unlimited_speed);
+    forward.normal.negative_speed_limit =
+        NonNegativeFinite<float>::make(player::effectively_unlimited_speed);
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     sim_player.start_sampling();
@@ -705,7 +714,7 @@ TEST_F(SkaterFlightModelTest, ProfileReplacementClampsTargetsAndReseedsResponses
     auto& forward{profile.config.translation.forward};
     forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
     forward.manual.input_source = player::TranslationInputSource::Axis;
-    forward.normal.positive_target_speed = 1000.f;
+    forward.normal.positive_target_speed = NonNegativeFinite<float>{1000.f};
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
     sim_player.start_sampling();
     sim_player.set_ship_2d_control({0.0, 0.8});
@@ -714,8 +723,8 @@ TEST_F(SkaterFlightModelTest, ProfileReplacementClampsTargetsAndReseedsResponses
     ASSERT_NEAR(velocity(simulation).x(), 800.0, 1.e-5);
     auto const physical{sim_player.physical_state()};
 
-    forward.normal.positive_target_speed = 300.f;
-    forward.normal.positive_speed_limit = 250.f;
+    forward.normal.positive_target_speed = NonNegativeFinite<float>{300.f};
+    forward.normal.positive_speed_limit = NonNegativeFinite<float>{250.f};
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     EXPECT_FLOAT_EQ(controller.persistent_forward_target_speed, 250.f);
@@ -728,8 +737,8 @@ TEST_F(SkaterFlightModelTest, LeavingBoostImmediatelyClampsPersistentTarget) {
     auto& forward{profile.config.translation.forward};
     forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
     forward.manual.input_source = player::TranslationInputSource::Axis;
-    forward.normal.positive_target_speed = 100.f;
-    forward.boosted.positive_target_speed = 500.f;
+    forward.normal.positive_target_speed = NonNegativeFinite<float>{100.f};
+    forward.boosted.positive_target_speed = NonNegativeFinite<float>{500.f};
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     commands->start_boost();
@@ -746,7 +755,8 @@ TEST_F(SkaterFlightModelTest, LeavingBoostImmediatelyClampsPersistentTarget) {
 TEST_F(SkaterFlightModelTest, BrakeResponseStateDoesNotSurviveActionTransition) {
     auto profile{sim_player.active_flight_model_profile()};
     profile.config.brake.response.mode = player::ResponseMode::RateLimited;
-    profile.config.brake.response.rate_limited = {1.f, 1.f};
+    profile.config.brake.response.rate_limited = {NonNegativeFinite<float>{1.f},
+                                                  NonNegativeFinite<float>{1.f}};
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
     commands->set_accelerator(1.f);
     advance_ticks(simulation, 30);
@@ -764,10 +774,10 @@ TEST(NativeSimulationFlightModels, ValidTargetAndAccelerationChannelsComposeAddi
     player::FlightModelConfig config;
     auto& forward{config.translation.forward};
     forward.manual.semantic = player::TranslationSemantic::TargetVelocity;
-    forward.normal.positive_target_speed = 1000.f;
+    forward.normal.positive_target_speed = NonNegativeFinite<float>{1000.f};
     forward.automatic.semantic = player::TranslationSemantic::Acceleration;
-    forward.automatic.automatic_value = 0.5f;
-    forward.normal.positive_acceleration = 120.f;
+    forward.automatic.automatic_value = Bounded<float, -1, 1>{0.5f};
+    forward.normal.positive_acceleration = NonNegativeFinite<float>{120.f};
 
     player::PlayerSimulationState state;
     player::seed_flight_model_responses(state, config);
@@ -782,9 +792,9 @@ TEST(NativeSimulationFlightModels, ActiveStabilizationDoesNotFightAutomaticInten
     player::FlightModelConfig config;
     auto& forward{config.translation.forward};
     forward.automatic.semantic = player::TranslationSemantic::Acceleration;
-    forward.automatic.automatic_value = 0.5f;
-    forward.normal.positive_acceleration = 120.f;
-    forward.active_stabilization_rate = 1000.f;
+    forward.automatic.automatic_value = Bounded<float, -1, 1>{0.5f};
+    forward.normal.positive_acceleration = NonNegativeFinite<float>{120.f};
+    forward.active_stabilization_rate = NonNegativeFinite<float>{1000.f};
 
     player::PlayerSimulationState state;
     player::seed_flight_model_responses(state, config);
@@ -812,10 +822,10 @@ TEST(NativeSimulationFlightModels, SkaterUnlimitedResultantCapPreservesExistingC
 TEST(NativeSimulationFlightModels, RotationStabilizationDelayIsIndependentPerAxis) {
     player::FlightModelConfig config;
     config.rotation.yaw.manual_semantic = player::RotationSemantic::TargetAngularVelocity;
-    config.rotation.yaw.maximum_rate = 30.f;
+    config.rotation.yaw.maximum_rate = NonNegativeFinite<float>{30.f};
     config.rotation.roll.stabilization.enabled = true;
-    config.rotation.roll.stabilization.target_angle = 0.f;
-    config.rotation.roll.stabilization.delay = 0.5f;
+    config.rotation.roll.stabilization.target_angle = Finite<float>{0.f};
+    config.rotation.roll.stabilization.delay = NonNegativeFinite<float>{0.5f};
 
     player::PlayerSimulationState state;
     state.physical.transform.rotation = to_quaternion(Rotator3d{0.0, 0.0, 30.0});
@@ -840,7 +850,8 @@ TEST(NativeSimulationFlightModels, AuthoredInputTopologyAllowsTuningButRejectsCh
         SCOPED_TRACE(static_cast<int>(preset));
         auto const authored{make_flight_model_profile(preset).config};
         auto edited{authored};
-        edited.translation.forward.normal.positive_target_speed += 100.f;
+        auto& speed{edited.translation.forward.normal.positive_target_speed};
+        speed = NonNegativeFinite<float>::make(speed + 100.f);
         edited.translation.forward.manual.response.mode = ResponseMode::RateLimited;
         EXPECT_TRUE(matches_authored_flight_model_topology(edited, preset));
 

@@ -109,14 +109,9 @@
     (projections (cpp)))
   (enum FlightModelConfigError std::uint8_t
     (value InvalidEnumValue)
-    (value NonFiniteValue)
-    (value NegativeValue)
-    (value InputValueOutOfRange)
     (value InvalidManualChannel)
     (value InvalidAutomaticChannel)
     (value AmbiguousTargetChannels)
-    (value InvalidSecondOrderSettlingTime)
-    (value InvalidSecondOrderDampingRatio)
     (projections (cpp))))
 
 (module native_fighters_navigation_records
@@ -163,15 +158,6 @@
     (member max @native_cell_coord)
     (projections (cpp))))
 
-(module native_collision_grid_geometry_grid_geometry
-  :header "native/simulation/include/ioj/sim/collision/grid_geometry.h"
-  :header-include "ioj/sim/collision/grid_geometry.h"
-  :namespace ioj::sim::collision
-  (record GridGeometry
-    (member dimensions @native_cell_coord)
-    (member cell_dimensions @native_vector_3f)
-    (projections (cpp))))
-
 (module native_collision_world_aabb
   :header "native/simulation/include/ioj/sim/collision/world_aabb.h"
   :header-include "ioj/sim/collision/world_aabb.h"
@@ -202,7 +188,7 @@
   (record LaserWeaponSimConfig :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "laser"
-    (member damage std::int32_t :initializer "5")
+    (member damage @settings_nonnegative_int :initializer "5")
     (member projectile_speed @settings_positive_float :initializer "10000.f")
     (member max_distance @settings_positive_float :initializer "10000.f")
     (member fire_cooldown @settings_nonnegative_float :initializer "0.33f")
@@ -266,13 +252,13 @@
   :prelude ("#include <ioj/sim/player/flight_model_constants.h>")
   (record RateLimitedResponseConfig
     :comparison equality
-    (member increasing_rate float :initializer "")
-    (member decreasing_rate float :initializer "")
+    (member increasing_rate @settings_nonnegative_float :initializer "")
+    (member decreasing_rate @settings_nonnegative_float :initializer "")
     (projections (cpp)))
   (record SecondOrderResponseConfig
     :comparison equality
-    (member settling_time float :initializer "3.f")
-    (member damping_ratio float :initializer "0.5f")
+    (member settling_time @settings_positive_float :initializer "3.f")
+    (member damping_ratio @settings_unit_open_float :initializer "0.5f")
     (projections (cpp)))
   (record ResponseConfig
     :comparison equality
@@ -285,17 +271,17 @@
     (member semantic ioj::sim::player::TranslationSemantic :initializer "TranslationSemantic::Disabled")
     (member reference_frame ioj::sim::player::ReferenceFrame :initializer "ReferenceFrame::Ship")
     (member input_source ioj::sim::player::TranslationInputSource :initializer "TranslationInputSource::Axis")
-    (member automatic_value float :initializer "")
+    (member automatic_value @settings_unit_signed_float :initializer "")
     (member response ioj::sim::player::ResponseConfig :initializer "")
     (projections (cpp)))
   (record TranslationDriveConfig
     :comparison equality
-    (member positive_target_speed float :initializer "")
-    (member negative_target_speed float :initializer "")
-    (member positive_speed_limit float :initializer "effectively_unlimited_speed")
-    (member negative_speed_limit float :initializer "effectively_unlimited_speed")
-    (member positive_acceleration float :initializer "")
-    (member negative_acceleration float :initializer "")
+    (member positive_target_speed @settings_nonnegative_float :initializer "")
+    (member negative_target_speed @settings_nonnegative_float :initializer "")
+    (member positive_speed_limit @settings_nonnegative_float :initializer "effectively_unlimited_speed")
+    (member negative_speed_limit @settings_nonnegative_float :initializer "effectively_unlimited_speed")
+    (member positive_acceleration @settings_nonnegative_float :initializer "")
+    (member negative_acceleration @settings_nonnegative_float :initializer "")
     (projections (cpp)))
   (record TranslationAxisConfig
     :comparison equality
@@ -303,9 +289,9 @@
     (member automatic ioj::sim::player::TranslationChannelConfig :initializer "")
     (member normal ioj::sim::player::TranslationDriveConfig :initializer "")
     (member boosted ioj::sim::player::TranslationDriveConfig :initializer "")
-    (member passive_drag float :initializer "")
+    (member passive_drag @settings_nonnegative_float :initializer "")
     (member passive_drag_reference_frame ioj::sim::player::ReferenceFrame :initializer "ReferenceFrame::Ship")
-    (member active_stabilization_rate float :initializer "")
+    (member active_stabilization_rate @settings_nonnegative_float :initializer "")
     (member active_stabilization_reference_frame ioj::sim::player::ReferenceFrame :initializer "ReferenceFrame::Ship")
     (projections (cpp)))
   (record TranslationAxesConfig
@@ -317,15 +303,15 @@
   (record RotationStabilizationConfig
     :comparison equality
     (member enabled bool :initializer "")
-    (member target_angle float :initializer "")
-    (member delay float :initializer "")
+    (member target_angle @settings_finite_float :initializer "")
+    (member delay @settings_nonnegative_float :initializer "")
     (member response ioj::sim::player::ResponseConfig :initializer "")
     (projections (cpp)))
   (record RotationAxisConfig
     :comparison equality
     (member manual_semantic ioj::sim::player::RotationSemantic :initializer "RotationSemantic::Disabled")
-    (member maximum_rate float :initializer "")
-    (member acceleration float :initializer "")
+    (member maximum_rate @settings_nonnegative_float :initializer "")
+    (member acceleration @settings_nonnegative_float :initializer "")
     (member response ioj::sim::player::ResponseConfig :initializer "")
     (member stabilization ioj::sim::player::RotationStabilizationConfig :initializer "")
     (projections (cpp)))
@@ -338,22 +324,22 @@
   (record FacingVelocityConfig
     :comparison equality
     (member mode ioj::sim::player::FacingVelocityCoupling :initializer "FacingVelocityCoupling::Independent")
-    (member alignment_rate float :initializer "")
+    (member alignment_rate @settings_nonnegative_float :initializer "")
     (member response ioj::sim::player::ResponseConfig :initializer "")
     (projections (cpp)))
   (record BoostConfig
     :comparison equality
     (member available bool :initializer "")
     (member accelerator_activates_boost bool :initializer "")
-    (member energy_drain_per_second float :initializer "")
+    (member energy_drain_per_second @settings_nonnegative_float :initializer "")
     (member response ioj::sim::player::ResponseConfig :initializer "")
     (projections (cpp)))
   (record BrakeConfig
     :comparison equality
     (member available bool :initializer "")
-    (member target_speed float :initializer "")
-    (member deceleration float :initializer "")
-    (member energy_drain_per_second float :initializer "")
+    (member target_speed @settings_nonnegative_float :initializer "")
+    (member deceleration @settings_nonnegative_float :initializer "")
+    (member energy_drain_per_second @settings_nonnegative_float :initializer "")
     (member response ioj::sim::player::ResponseConfig :initializer "")
     (projections (cpp)))
   (record FlightModelConfig
@@ -364,9 +350,9 @@
     (member boost ioj::sim::player::BoostConfig :initializer "")
     (member brake ioj::sim::player::BrakeConfig :initializer "")
     (member emergency_brake ioj::sim::player::BrakeConfig :initializer "")
-    (member energy_recharge_per_second float :initializer "")
-    (member maximum_resultant_speed float :initializer "effectively_unlimited_speed")
-    (member boosted_maximum_resultant_speed float :initializer "effectively_unlimited_speed")
+    (member energy_recharge_per_second @settings_nonnegative_float :initializer "")
+    (member maximum_resultant_speed @settings_nonnegative_float :initializer "effectively_unlimited_speed")
+    (member boosted_maximum_resultant_speed @settings_nonnegative_float :initializer "effectively_unlimited_speed")
     (projections (cpp)))
   (record FlightModelProfile
     :comparison equality

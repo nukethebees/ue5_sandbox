@@ -24,7 +24,6 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
                                               SimulationCoreRegressionScenario const scenario) {
     auto data{tests::make_simulation_data(config)};
     if (scenario == SimulationCoreRegressionScenario::DamageLifecycle) {
-        data.capital_ships.fighter_spawn_slots = 0;
         data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
         tests::add_capital_spawn(data, {}, Team::White, 60.f, 60.f, initial_health);
     }
@@ -118,7 +117,6 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     auto data{tests::make_simulation_data(config)};
     data.collision.overlap_response.damage_per_overlap_detection =
         Positive<std::int32_t>{collision_damage_test::overlap_damage};
-    data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     tests::add_player_spawn(data, tests::make_player_spawn(config));
     data.player->health = {Health{collision_damage_test::player_health},

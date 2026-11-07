@@ -1,11 +1,10 @@
 #include "validation.h"
 
 #include <cmath>
-#include <format>
 
 namespace ioj::levels::detail {
 void validate_camera(LevelCameraDefinition const& camera,
-                     EntityValidationState const& entities,
+                     IdSet const& entities,
                      Diagnostics& result) {
     if (camera.target_entity_ids.empty()) {
         result.emplace_back(DiagnosticCode::MissingCameraTarget,
@@ -23,7 +22,7 @@ void validate_camera(LevelCameraDefinition const& camera,
                                     " duplicates entity '" + id.value + "'");
             continue;
         }
-        if (id.empty() || !entities.by_id.contains(id)) {
+        if (!entities.contains(id)) {
             result.emplace_back(DiagnosticCode::CameraTargetNotFound,
                                 "level.camera.look-at",
                                 "Initial camera target '" + id.value + "' is not declared");

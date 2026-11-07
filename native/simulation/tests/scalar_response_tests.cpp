@@ -16,7 +16,7 @@ TEST(ScalarResponse, RateLimitedUsesConfiguredIncreaseAndDecreaseRates) {
     ScalarResponse response;
     ResponseConfig config;
     config.mode = ResponseMode::RateLimited;
-    config.rate_limited = {.increasing_rate = 4.f, .decreasing_rate = 10.f};
+    config.rate_limited = {NonNegativeFinite<float>{4.f}, NonNegativeFinite<float>{10.f}};
 
     response.reset(0.f);
     EXPECT_FLOAT_EQ(response.update(0.5f, 10.f, config), 2.f);
@@ -27,7 +27,7 @@ TEST(ScalarResponse, SecondOrderRetainsExistingDampedResponse) {
     ScalarResponse response;
     ResponseConfig config;
     config.mode = ResponseMode::SecondOrder;
-    config.second_order = {.settling_time = 3.f, .damping_ratio = 0.5f};
+    config.second_order = {PositiveFinite<float>{3.f}, OpenInterval<float, 0, 1>{0.5f}};
 
     response.reset(0.f);
     EXPECT_NEAR(response.update(3.f, 1.f, config), 1.0745906f, 1.e-6f);
@@ -38,7 +38,7 @@ TEST(ScalarResponse, SwitchingModesStartsFromCurrentOutput) {
     ScalarResponse response;
     ResponseConfig rate_limited;
     rate_limited.mode = ResponseMode::RateLimited;
-    rate_limited.rate_limited = {.increasing_rate = 4.f, .decreasing_rate = 4.f};
+    rate_limited.rate_limited = {NonNegativeFinite<float>{4.f}, NonNegativeFinite<float>{4.f}};
 
     response.reset(0.f);
     EXPECT_FLOAT_EQ(response.update(0.5f, 10.f, rate_limited), 2.f);

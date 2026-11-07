@@ -12,7 +12,6 @@ enum class TurretAcquisitionRegressionScenario : std::uint8_t {
 void run_worldless_turret_acquisition_regression(
     tests::SimulationFixture const& config, TurretAcquisitionRegressionScenario const scenario) {
     auto data{tests::make_simulation_data(config)};
-    data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const count{scenario == TurretAcquisitionRegressionScenario::NoOtherEntity ? 1 : 2};
     for (std::int32_t i{}; i < count; ++i) {

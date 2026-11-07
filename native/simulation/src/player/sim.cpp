@@ -231,7 +231,7 @@ void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
     auto const& model{active_flight_model_config()};
     refresh_effective_action(state);
 
-    auto energy_change{model.energy_recharge_per_second};
+    auto energy_change{model.energy_recharge_per_second.get()};
     switch (controller.effective_action) {
         case BoostBrakeState::None:
             break;

@@ -110,8 +110,6 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
         player::InitialisationInterface{simulation}.initialise(*data.player);
     }
 
-    assert(static_cast<std::size_t>(data.capital_ships.fighter_spawn_slots) ==
-           data.capital_ships.fighter_spawn_slots_relative_transforms.size());
     capital_ships::InitialisationInterface{capital_ships_simulation_}.initialise(
         data.capital_ships.max_health);
     auto const player_team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}

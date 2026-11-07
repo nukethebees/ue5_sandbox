@@ -21,7 +21,8 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
         source->set_motion_blur_enabled(true);
         source->set_master_volume(0.35f);
         auto loadout{ioj::sim::player::make_default_flight_model_loadout()};
-        loadout.profiles[3].config.translation.up.normal.positive_target_speed = 1234.f;
+        loadout.profiles[3].config.translation.up.normal.positive_target_speed =
+            ioj::NonNegativeFinite<float>{1234.f};
         source->set_flight_model_loadout(loadout);
 
         auto const config_path{FPaths::CreateTempFilename(

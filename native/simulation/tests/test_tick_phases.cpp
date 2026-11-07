@@ -12,7 +12,6 @@ auto make_world() -> LevelSimInitData {
     LevelSimInitData data{};
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
-    data.capital_ships.fighter_spawn_slots = 0;
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(8);
     data.collision.overlap_response.damage_per_overlap_detection = Positive<std::int32_t>{25};
 
@@ -30,8 +29,8 @@ void add_moving_player(LevelSimInitData& data, Vector3d const location = {}) {
     auto& gunship{
         player::flight_model_profile(spawn.flight_models, player::FlightModelSlot::Fourth)};
     gunship.config.translation.right.manual.response.mode = player::ResponseMode::Direct;
-    gunship.config.translation.right.normal.positive_speed_limit = 1000.f;
-    gunship.config.translation.right.normal.negative_speed_limit = 1000.f;
+    gunship.config.translation.right.normal.positive_speed_limit = NonNegativeFinite<float>{1000.f};
+    gunship.config.translation.right.normal.negative_speed_limit = NonNegativeFinite<float>{1000.f};
     spawn.health = {Health{100}, Health{100}};
     spawn.team = Team::Green;
 
@@ -165,7 +164,6 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
 
     add_capital_spawn(data, {}, Team::Green, 0.f, 60.f, 100);
     add_capital_spawn(data, {{2000.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
-    data.capital_ships.fighter_spawn_slots = 1;
     data.capital_ships.fighter_spawn_slots_relative_transforms = {{}};
     data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.fighters.speed = 0.f;
@@ -424,7 +422,6 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
             add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::Green, 0.f, 60.f, 100)};
         auto const second{
             add_capital_spawn(data, {{2000.f, 0.f, 0.f}}, Team::White, 0.f, 60.f, 100)};
-        data.capital_ships.fighter_spawn_slots = 1;
         data.capital_ships.fighter_spawn_slots_relative_transforms = {
             {.location = {0.0, 500.0, 0.0}}};
 

@@ -25,18 +25,8 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
             "entity",
             field_names,
             [&result](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
-                    if constexpr (field == Field::id || field == Field::archetype ||
-                                  field == Field::team || field == Field::position ||
-                                  field == Field::rotation || field == Field::spawn_at ||
-                                  field == Field::health || field == Field::laser_damage) {
-                        read(member);
-                    }
-                    if constexpr (field == Field::initial_spawn_delay ||
-                                  field == Field::spawn_cooldown) {
-                        read(member, constraints::finite);
-                    }
-                });
+                value_type::visit_field(
+                    result, selected, [&read]<Field field>(auto& member) { read(member); });
             },
             required);
     }

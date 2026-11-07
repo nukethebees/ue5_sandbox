@@ -23,7 +23,6 @@ struct CapitalShipSimConfig {
 
     enum class Field : std::uint8_t {
         spawn_delay,
-        fighter_spawn_slots,
         fighter_spawn_slots_relative_transforms,
         max_health,
     };
@@ -35,9 +34,6 @@ struct CapitalShipSimConfig {
     {
         if constexpr (Selected == Field::spawn_delay) {
             return (self.spawn_delay);
-        }
-        if constexpr (Selected == Field::fighter_spawn_slots) {
-            return (self.fighter_spawn_slots);
         }
         if constexpr (Selected == Field::fighter_spawn_slots_relative_transforms) {
             return (self.fighter_spawn_slots_relative_transforms);
@@ -59,9 +55,6 @@ struct CapitalShipSimConfig {
         switch (field) {
             case Field::spawn_delay:
                 return invoke_field<Field::spawn_delay>(self, std::forward<Visitor>(visitor));
-            case Field::fighter_spawn_slots:
-                return invoke_field<Field::fighter_spawn_slots>(self,
-                                                                std::forward<Visitor>(visitor));
             case Field::fighter_spawn_slots_relative_transforms:
                 return invoke_field<Field::fighter_spawn_slots_relative_transforms>(
                     self, std::forward<Visitor>(visitor));
@@ -73,7 +66,6 @@ struct CapitalShipSimConfig {
     }
 
     float spawn_delay{5.f};
-    std::int32_t fighter_spawn_slots{};
     std::vector<ioj::Transform3d> fighter_spawn_slots_relative_transforms{};
     settings::PositiveHealth max_health{Health{5000}};
 };
@@ -82,11 +74,11 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::CapitalShipSimConfig::Field>() noexcept
     -> std::size_t {
-    return 4ULL;
+    return 3ULL;
 }
 
 template <>
-inline constexpr auto enum_strings<sim::CapitalShipSimConfig::Field, Name>{PackedStrings{
-    "spawn_delay\000fighter_spawn_slots\000fighter_spawn_slots_relative_transforms\000max_health",
-    std::array<std::uint8_t, 5>{0, 12, 32, 72, 83}}};
+inline constexpr auto enum_strings<sim::CapitalShipSimConfig::Field, Name>{
+    PackedStrings{"spawn_delay\000fighter_spawn_slots_relative_transforms\000max_health",
+                  std::array<std::uint8_t, 4>{0, 12, 52, 63}}};
 } // namespace ioj

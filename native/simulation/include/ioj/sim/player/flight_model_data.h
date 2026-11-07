@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/sim/player/flight_model_enums.h"
 #include <ioj/sim/player/flight_model_constants.h>
 
@@ -12,15 +13,15 @@ namespace ioj::sim::player {
 struct RateLimitedResponseConfig {
     bool operator==(RateLimitedResponseConfig const&) const = default;
 
-    float increasing_rate{};
-    float decreasing_rate{};
+    ioj::NonNegativeFinite<float> increasing_rate{};
+    ioj::NonNegativeFinite<float> decreasing_rate{};
 };
 
 struct SecondOrderResponseConfig {
     bool operator==(SecondOrderResponseConfig const&) const = default;
 
-    float settling_time{3.f};
-    float damping_ratio{0.5f};
+    ioj::PositiveFinite<float> settling_time{3.f};
+    ioj::OpenInterval<float, 0, 1> damping_ratio{0.5f};
 };
 
 struct ResponseConfig {
@@ -37,19 +38,19 @@ struct TranslationChannelConfig {
     TranslationSemantic semantic{TranslationSemantic::Disabled};
     ReferenceFrame reference_frame{ReferenceFrame::Ship};
     TranslationInputSource input_source{TranslationInputSource::Axis};
-    float automatic_value{};
+    ioj::Bounded<float, -1, 1> automatic_value{};
     ResponseConfig response{};
 };
 
 struct TranslationDriveConfig {
     bool operator==(TranslationDriveConfig const&) const = default;
 
-    float positive_target_speed{};
-    float negative_target_speed{};
-    float positive_speed_limit{effectively_unlimited_speed};
-    float negative_speed_limit{effectively_unlimited_speed};
-    float positive_acceleration{};
-    float negative_acceleration{};
+    ioj::NonNegativeFinite<float> positive_target_speed{};
+    ioj::NonNegativeFinite<float> negative_target_speed{};
+    ioj::NonNegativeFinite<float> positive_speed_limit{effectively_unlimited_speed};
+    ioj::NonNegativeFinite<float> negative_speed_limit{effectively_unlimited_speed};
+    ioj::NonNegativeFinite<float> positive_acceleration{};
+    ioj::NonNegativeFinite<float> negative_acceleration{};
 };
 
 struct TranslationAxisConfig {
@@ -59,9 +60,9 @@ struct TranslationAxisConfig {
     TranslationChannelConfig automatic{};
     TranslationDriveConfig normal{};
     TranslationDriveConfig boosted{};
-    float passive_drag{};
+    ioj::NonNegativeFinite<float> passive_drag{};
     ReferenceFrame passive_drag_reference_frame{ReferenceFrame::Ship};
-    float active_stabilization_rate{};
+    ioj::NonNegativeFinite<float> active_stabilization_rate{};
     ReferenceFrame active_stabilization_reference_frame{ReferenceFrame::Ship};
 };
 
@@ -77,8 +78,8 @@ struct RotationStabilizationConfig {
     bool operator==(RotationStabilizationConfig const&) const = default;
 
     bool enabled{};
-    float target_angle{};
-    float delay{};
+    ioj::Finite<float> target_angle{};
+    ioj::NonNegativeFinite<float> delay{};
     ResponseConfig response{};
 };
 
@@ -86,8 +87,8 @@ struct RotationAxisConfig {
     bool operator==(RotationAxisConfig const&) const = default;
 
     RotationSemantic manual_semantic{RotationSemantic::Disabled};
-    float maximum_rate{};
-    float acceleration{};
+    ioj::NonNegativeFinite<float> maximum_rate{};
+    ioj::NonNegativeFinite<float> acceleration{};
     ResponseConfig response{};
     RotationStabilizationConfig stabilization{};
 };
@@ -104,7 +105,7 @@ struct FacingVelocityConfig {
     bool operator==(FacingVelocityConfig const&) const = default;
 
     FacingVelocityCoupling mode{FacingVelocityCoupling::Independent};
-    float alignment_rate{};
+    ioj::NonNegativeFinite<float> alignment_rate{};
     ResponseConfig response{};
 };
 
@@ -113,7 +114,7 @@ struct BoostConfig {
 
     bool available{};
     bool accelerator_activates_boost{};
-    float energy_drain_per_second{};
+    ioj::NonNegativeFinite<float> energy_drain_per_second{};
     ResponseConfig response{};
 };
 
@@ -121,9 +122,9 @@ struct BrakeConfig {
     bool operator==(BrakeConfig const&) const = default;
 
     bool available{};
-    float target_speed{};
-    float deceleration{};
-    float energy_drain_per_second{};
+    ioj::NonNegativeFinite<float> target_speed{};
+    ioj::NonNegativeFinite<float> deceleration{};
+    ioj::NonNegativeFinite<float> energy_drain_per_second{};
     ResponseConfig response{};
 };
 
@@ -136,9 +137,9 @@ struct FlightModelConfig {
     BoostConfig boost{};
     BrakeConfig brake{};
     BrakeConfig emergency_brake{};
-    float energy_recharge_per_second{};
-    float maximum_resultant_speed{effectively_unlimited_speed};
-    float boosted_maximum_resultant_speed{effectively_unlimited_speed};
+    ioj::NonNegativeFinite<float> energy_recharge_per_second{};
+    ioj::NonNegativeFinite<float> maximum_resultant_speed{effectively_unlimited_speed};
+    ioj::NonNegativeFinite<float> boosted_maximum_resultant_speed{effectively_unlimited_speed};
 };
 
 struct FlightModelProfile {

@@ -36,7 +36,6 @@
   (record CapitalShipSimConfig :comparison equality :generate-visitor true
     :generate-s7-reader true :s7-tag "capital-ships"
     (member spawn_delay float :initializer 5.f :finite true)
-    (member fighter_spawn_slots std::int32_t :initializer "" :s7-exclude true)
     (member fighter_spawn_slots_relative_transforms @settings_spawn_transforms :initializer "" :s7-exclude true)
     (member max_health @settings_positive_health :initializer "Health{5000}")
     (projections (cpp))))
