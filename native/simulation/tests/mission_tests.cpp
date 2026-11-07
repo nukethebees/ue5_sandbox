@@ -52,6 +52,7 @@ struct MissionTest : ::testing::Test {
         }
         for (auto const id : changes.activated) {
             expressions.activate(objectives.leaves(id), objectives.composites(id));
+            // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- range depends on id.
             for (auto const handle : objectives.activation_events(id)) {
                 auto const& event{events.start_timer_events[handle.index()]};
                 timers.start(event.timer, event.duration);

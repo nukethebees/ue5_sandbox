@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <unordered_map>
 
 namespace ioj::sim::expression_tests {
 using namespace ioj::levels;
@@ -60,8 +61,9 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
                            timer(),
                            MissionExpr{AllExpr{.children = {0, 1, 2}}}};
     std::array const timer_handles{first, TimerHandle{}, second, TimerHandle{}};
-    auto const compiled{expressions.append(
-        nodes, {{{levels::EntityId{"future"}, LevelEntityRef{0}}}, {}, timer_handles})};
+    std::unordered_map<levels::EntityId, LevelEntityRef> entity_refs;
+    entity_refs.emplace(levels::EntityId{"future"}, LevelEntityRef{0});
+    auto const compiled{expressions.append(nodes, {entity_refs, {}, timer_handles})};
     auto const& handles{compiled.handles};
     expressions.activate(handles[3]);
     timers.start(first, SimTick{10});

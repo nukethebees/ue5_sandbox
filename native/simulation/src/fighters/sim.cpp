@@ -219,7 +219,6 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
         switch (instruction.kind()) {
             using enum tasks::InstructionKind;
             case Idle:
-                break;
             case MoveTo:
                 // TODO: Plan MoveTo movement.
                 break;

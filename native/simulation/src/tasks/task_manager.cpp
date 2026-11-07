@@ -73,8 +73,8 @@ void TaskManager::initialise(Mission const& mission, ExprManager const& expressi
 
     auto const& objectives{mission.objectives()};
     auto const objective_count{objectives.size()};
-    for (ObjectiveId::storage_type index{}; index < objective_count; ++index) {
-        auto const objective{ObjectiveId{index}};
+    for (std::size_t index{}; index < objective_count; ++index) {
+        auto const objective{ObjectiveId{static_cast<ObjectiveId::storage_type>(index)}};
         auto const root{objectives.roots(objective)[ObjectiveOutcome::Passed]};
         auto const team{objectives.team(objective)};
         expressions.visit_expression_tree(root, [this, team](ExprHandle const expression) {
@@ -152,9 +152,7 @@ auto TaskManager::create_task(LeafHandle const leaf,
 
             return add_task({Instruction::make_data_kill(entity_id), jump_to_idle});
         }
-        case LeafKind::EntityReachedPosition: {
-            return {};
-        }
+        case LeafKind::EntityReachedPosition:
         case LeafKind::EntityKillsReached: {
             return {};
         }

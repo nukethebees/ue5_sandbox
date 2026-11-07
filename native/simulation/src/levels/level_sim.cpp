@@ -484,6 +484,7 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
         }
         for (auto const id : changes.activated) {
             expressions_.activate(objectives.leaves(id), objectives.composites(id));
+            // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- range depends on id.
             for (auto const event : objectives.activation_events(id)) {
                 event_manager_.enqueue(event);
             }

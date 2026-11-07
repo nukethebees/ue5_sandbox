@@ -135,8 +135,9 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
     auto const spinners{data.level_events.spinner_spawns.const_view()};
     auto const spinner_count{spinners.num()};
     auto const spinner_yaws{spinners.yaws()};
+    auto const initial_fire_points{spinners.initial_fire_point_indices()};
     for (std::uint32_t row{}; row < spinner_count; ++row) {
-        auto const fire_point{spinners.initial_fire_point_indices()[row]};
+        auto const fire_point{initial_fire_points[row]};
         if (fire_point < 0 ||
             static_cast<std::size_t>(fire_point) >= data.spinners.fire_point_offsets.size()) {
             errors.emplace_back("Spinner initial fire point is outside its configured fire points");
