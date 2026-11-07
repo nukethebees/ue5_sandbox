@@ -6,25 +6,19 @@
 #include "ioj/settings/laser_presentation.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<settings::LaserPresentation> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             settings::LaserPresentation const& value,
-                                             settings::LaserPresentation const* base) {
-        auto form{ir.form("laser-projectiles-presentation")};
+struct TypeWriter<settings::LaserPresentation> : RecordWriter<settings::LaserPresentation> {
+    static constexpr std::string_view tag() { return "laser-projectiles-presentation"; }
 
-        write_property(ir,
-                       form,
-                       "min-cull-distance",
-                       value.min_cull_distance,
-                       (base ? &(*base).min_cull_distance : nullptr));
-        write_property(ir,
-                       form,
-                       "max-cull-distance",
-                       value.max_cull_distance,
-                       (base ? &(*base).max_cull_distance : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::settings::LaserPresentation;
+
+        visit("min-cull-distance", &T::min_cull_distance);
+        visit("max-cull-distance", &T::max_cull_distance);
     }
 };
 

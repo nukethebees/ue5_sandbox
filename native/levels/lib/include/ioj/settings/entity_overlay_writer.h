@@ -7,65 +7,29 @@
 #include "ioj/settings/soft_target_writer.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<settings::EntityOverlay> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             settings::EntityOverlay const& value,
-                                             settings::EntityOverlay const* base) {
-        auto form{ir.form("entity-overlay")};
+struct TypeWriter<settings::EntityOverlay> : RecordWriter<settings::EntityOverlay> {
+    static constexpr std::string_view tag() { return "entity-overlay"; }
 
-        write_property(ir, form, "enabled", value.enabled, (base ? &(*base).enabled : nullptr));
-        write_property(ir,
-                       form,
-                       "maximum-range",
-                       value.maximum_range,
-                       (base ? &(*base).maximum_range : nullptr));
-        write_property(ir,
-                       form,
-                       "bar-size-pixels",
-                       value.bar_size_pixels,
-                       (base ? &(*base).bar_size_pixels : nullptr));
-        write_property(ir,
-                       form,
-                       "screen-offset-pixels",
-                       value.screen_offset_pixels,
-                       (base ? &(*base).screen_offset_pixels : nullptr));
-        write_property(ir,
-                       form,
-                       "minimum-bar-scale",
-                       value.minimum_bar_scale,
-                       (base ? &(*base).minimum_bar_scale : nullptr));
-        write_property(ir,
-                       form,
-                       "maximum-bar-scale",
-                       value.maximum_bar_scale,
-                       (base ? &(*base).maximum_bar_scale : nullptr));
-        write_property(
-            ir, form, "inset-pixels", value.inset_pixels, (base ? &(*base).inset_pixels : nullptr));
-        write_property(ir,
-                       form,
-                       "maximum-inset-height-ratio",
-                       value.maximum_inset_height_ratio,
-                       (base ? &(*base).maximum_inset_height_ratio : nullptr));
-        write_property(ir,
-                       form,
-                       "objective-frame-pixels",
-                       value.objective_frame_pixels,
-                       (base ? &(*base).objective_frame_pixels : nullptr));
-        write_property(ir,
-                       form,
-                       "objective-bar-height-scale",
-                       value.objective_bar_height_scale,
-                       (base ? &(*base).objective_bar_height_scale : nullptr));
-        write_property(ir,
-                       form,
-                       "screen-edge-padding-pixels",
-                       value.screen_edge_padding_pixels,
-                       (base ? &(*base).screen_edge_padding_pixels : nullptr));
-        write_property(
-            ir, form, "soft-target", value.soft_target, (base ? &(*base).soft_target : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::settings::EntityOverlay;
+
+        visit("enabled", &T::enabled);
+        visit("maximum-range", &T::maximum_range);
+        visit("bar-size-pixels", &T::bar_size_pixels);
+        visit("screen-offset-pixels", &T::screen_offset_pixels);
+        visit("minimum-bar-scale", &T::minimum_bar_scale);
+        visit("maximum-bar-scale", &T::maximum_bar_scale);
+        visit("inset-pixels", &T::inset_pixels);
+        visit("maximum-inset-height-ratio", &T::maximum_inset_height_ratio);
+        visit("objective-frame-pixels", &T::objective_frame_pixels);
+        visit("objective-bar-height-scale", &T::objective_bar_height_scale);
+        visit("screen-edge-padding-pixels", &T::screen_edge_padding_pixels);
+        visit("soft-target", &T::soft_target);
     }
 };
 

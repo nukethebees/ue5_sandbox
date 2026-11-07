@@ -9,97 +9,82 @@
 #include "ioj/levels/level_camera_definition_writer.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<levels::authoring::EntityInput> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             levels::authoring::EntityInput const& value,
-                                             levels::authoring::EntityInput const* base) {
-        auto form{ir.form("entity")};
+struct TypeWriter<levels::authoring::EntityInput> : RecordWriter<levels::authoring::EntityInput> {
+    static constexpr std::string_view tag() { return "entity"; }
 
-        write_property(ir, form, "id", value.id, (base ? &(*base).id : nullptr));
-        write_property(
-            ir, form, "archetype", value.archetype, (base ? &(*base).archetype : nullptr));
-        write_property(ir, form, "team", value.team, (base ? &(*base).team : nullptr));
-        write_property(ir, form, "position", value.position, (base ? &(*base).position : nullptr));
-        write_property(ir, form, "rotation", value.rotation, (base ? &(*base).rotation : nullptr));
-        write_property(ir, form, "spawn-at", value.spawn_at, (base ? &(*base).spawn_at : nullptr));
-        write_property(ir, form, "health", value.health, (base ? &(*base).health : nullptr));
-        write_property(
-            ir, form, "laser-damage", value.laser_damage, (base ? &(*base).laser_damage : nullptr));
-        write_property(ir,
-                       form,
-                       "initial-spawn-delay",
-                       value.initial_spawn_delay,
-                       (base ? &(*base).initial_spawn_delay : nullptr));
-        write_property(ir,
-                       form,
-                       "spawn-cooldown",
-                       value.spawn_cooldown,
-                       (base ? &(*base).spawn_cooldown : nullptr));
-        write_property(ir,
-                       form,
-                       "initial-fire-point",
-                       value.initial_fire_point,
-                       (base ? &(*base).initial_fire_point : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::levels::authoring::EntityInput;
+
+        visit("id", &T::id);
+        visit("archetype", &T::archetype);
+        visit("team", &T::team);
+        visit("position", &T::position);
+        visit("rotation", &T::rotation);
+        visit("spawn-at", &T::spawn_at);
+        visit("health", &T::health);
+        visit("laser-damage", &T::laser_damage);
+        visit("initial-spawn-delay", &T::initial_spawn_delay);
+        visit("spawn-cooldown", &T::spawn_cooldown);
+        visit("initial-fire-point", &T::initial_fire_point);
     }
 };
 
 template <>
-struct TypeWriter<levels::authoring::ObjectiveInput> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             levels::authoring::ObjectiveInput const& value,
-                                             levels::authoring::ObjectiveInput const* base) {
-        auto form{ir.form("objective")};
+struct TypeWriter<levels::authoring::ObjectiveInput>
+    : RecordWriter<levels::authoring::ObjectiveInput> {
+    static constexpr std::string_view tag() { return "objective"; }
 
-        write_property(ir, form, "id", value.id, (base ? &(*base).id : nullptr));
-        write_property(ir, form, "title", value.title, (base ? &(*base).title : nullptr));
-        write_property(ir, form, "team", value.team, (base ? &(*base).team : nullptr));
-        write_property(
-            ir, form, "wins-level", value.wins_level, (base ? &(*base).wins_level : nullptr));
-        write_property(ir, form, "nodes", value.nodes, (base ? &(*base).nodes : nullptr));
-        write_property(ir, form, "pass", value.pass, (base ? &(*base).pass : nullptr));
-        write_property(ir, form, "fail", value.fail, (base ? &(*base).fail : nullptr));
-        write_property(ir, form, "expire", value.expire, (base ? &(*base).expire : nullptr));
-        write_property(
-            ir, form, "depends-on", value.depends_on, (base ? &(*base).depends_on : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::levels::authoring::ObjectiveInput;
+
+        visit("id", &T::id);
+        visit("title", &T::title);
+        visit("team", &T::team);
+        visit("wins-level", &T::wins_level);
+        visit("nodes", &T::nodes);
+        visit("pass", &T::pass);
+        visit("fail", &T::fail);
+        visit("expire", &T::expire);
+        visit("depends-on", &T::depends_on);
     }
 };
 
 template <>
-struct TypeWriter<levels::authoring::MissionInput> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             levels::authoring::MissionInput const& value,
-                                             levels::authoring::MissionInput const* base) {
-        auto form{ir.form("mission")};
+struct TypeWriter<levels::authoring::MissionInput> : RecordWriter<levels::authoring::MissionInput> {
+    static constexpr std::string_view tag() { return "mission"; }
 
-        write_property(
-            ir, form, "objectives", value.objectives, (base ? &(*base).objectives : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::levels::authoring::MissionInput;
+
+        visit("objectives", &T::objectives);
     }
 };
 
 template <>
-struct TypeWriter<levels::authoring::LevelInput> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             levels::authoring::LevelInput const& value,
-                                             levels::authoring::LevelInput const* base) {
-        auto form{ir.form("level")};
+struct TypeWriter<levels::authoring::LevelInput> : RecordWriter<levels::authoring::LevelInput> {
+    static constexpr std::string_view tag() { return "level"; }
 
-        write_property(ir, form, "id", value.id, (base ? &(*base).id : nullptr));
-        write_property(ir, form, "title", value.title, (base ? &(*base).title : nullptr));
-        write_property(
-            ir, form, "description", value.description, (base ? &(*base).description : nullptr));
-        write_property(ir, form, "par-time", value.par_time, (base ? &(*base).par_time : nullptr));
-        write_property(ir, form, "unlock", value.unlock, (base ? &(*base).unlock : nullptr));
-        write_property(ir, form, "player", value.player, (base ? &(*base).player : nullptr));
-        write_property(ir, form, "camera", value.camera, (base ? &(*base).camera : nullptr));
-        write_property(ir, form, "settings", value.settings, (base ? &(*base).settings : nullptr));
-        write_property(ir, form, "mission", value.mission, (base ? &(*base).mission : nullptr));
-        write_property(ir, form, "entities", value.entities, (base ? &(*base).entities : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::levels::authoring::LevelInput;
+
+        visit("id", &T::id);
+        visit("title", &T::title);
+        visit("description", &T::description);
+        visit("par-time", &T::par_time);
+        visit("unlock", &T::unlock);
+        visit("player", &T::player);
+        visit("camera", &T::camera);
+        visit("settings", &T::settings);
+        visit("mission", &T::mission);
+        visit("entities", &T::entities);
     }
 };
 

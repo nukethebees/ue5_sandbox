@@ -7,18 +7,20 @@
 #include "ioj/levels/campaign_definition.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<levels::CampaignDefinition> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             levels::CampaignDefinition const& value,
-                                             levels::CampaignDefinition const* base) {
-        auto form{ir.form("campaign")};
+struct TypeWriter<levels::CampaignDefinition> : RecordWriter<levels::CampaignDefinition> {
+    static constexpr std::string_view tag() { return "campaign"; }
 
-        write_property(ir, form, "id", value.id, (base ? &(*base).id : nullptr));
-        write_property(ir, form, "title", value.title, (base ? &(*base).title : nullptr));
-        write_property(ir, form, "levels", value.level_ids, (base ? &(*base).level_ids : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::levels::CampaignDefinition;
+
+        visit("id", &T::id);
+        visit("title", &T::title);
+        visit("levels", &T::level_ids);
     }
 };
 

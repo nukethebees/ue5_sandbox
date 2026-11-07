@@ -6,28 +6,21 @@
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<sim::LaserWeaponSimConfig> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             sim::LaserWeaponSimConfig const& value,
-                                             sim::LaserWeaponSimConfig const* base) {
-        auto form{ir.form("laser")};
+struct TypeWriter<sim::LaserWeaponSimConfig> : RecordWriter<sim::LaserWeaponSimConfig> {
+    static constexpr std::string_view tag() { return "laser"; }
 
-        write_property(ir, form, "damage", value.damage, (base ? &(*base).damage : nullptr));
-        write_property(ir,
-                       form,
-                       "projectile-speed",
-                       value.projectile_speed,
-                       (base ? &(*base).projectile_speed : nullptr));
-        write_property(
-            ir, form, "max-distance", value.max_distance, (base ? &(*base).max_distance : nullptr));
-        write_property(ir,
-                       form,
-                       "fire-cooldown",
-                       value.fire_cooldown,
-                       (base ? &(*base).fire_cooldown : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::sim::LaserWeaponSimConfig;
+
+        visit("damage", &T::damage);
+        visit("projectile-speed", &T::projectile_speed);
+        visit("max-distance", &T::max_distance);
+        visit("fire-cooldown", &T::fire_cooldown);
     }
 };
 

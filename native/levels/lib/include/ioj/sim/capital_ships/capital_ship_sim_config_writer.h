@@ -6,19 +6,19 @@
 #include "ioj/sim/capital_ships/capital_ship_sim_config.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<sim::CapitalShipSimConfig> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             sim::CapitalShipSimConfig const& value,
-                                             sim::CapitalShipSimConfig const* base) {
-        auto form{ir.form("capital-ships")};
+struct TypeWriter<sim::CapitalShipSimConfig> : RecordWriter<sim::CapitalShipSimConfig> {
+    static constexpr std::string_view tag() { return "capital-ships"; }
 
-        write_property(
-            ir, form, "spawn-delay", value.spawn_delay, (base ? &(*base).spawn_delay : nullptr));
-        write_property(
-            ir, form, "max-health", value.max_health, (base ? &(*base).max_health : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::sim::CapitalShipSimConfig;
+
+        visit("spawn-delay", &T::spawn_delay);
+        visit("max-health", &T::max_health);
     }
 };
 

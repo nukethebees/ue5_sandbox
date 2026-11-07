@@ -6,76 +6,30 @@
 #include "ioj/settings/soft_target.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<settings::SoftTarget> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             settings::SoftTarget const& value,
-                                             settings::SoftTarget const* base) {
-        auto form{ir.form("soft-target")};
+struct TypeWriter<settings::SoftTarget> : RecordWriter<settings::SoftTarget> {
+    static constexpr std::string_view tag() { return "soft-target"; }
 
-        write_property(ir,
-                       form,
-                       "acquisition-radius-pixels",
-                       value.acquisition_radius_pixels,
-                       (base ? &(*base).acquisition_radius_pixels : nullptr));
-        write_property(ir,
-                       form,
-                       "retention-radius-pixels",
-                       value.retention_radius_pixels,
-                       (base ? &(*base).retention_radius_pixels : nullptr));
-        write_property(ir,
-                       form,
-                       "centre-tie-radius-pixels",
-                       value.centre_tie_radius_pixels,
-                       (base ? &(*base).centre_tie_radius_pixels : nullptr));
-        write_property(ir,
-                       form,
-                       "switch-improvement-ratio",
-                       value.switch_improvement_ratio,
-                       (base ? &(*base).switch_improvement_ratio : nullptr));
-        write_property(ir,
-                       form,
-                       "range-transition-start-multiplier",
-                       value.range_transition_start_multiplier,
-                       (base ? &(*base).range_transition_start_multiplier : nullptr));
-        write_property(ir,
-                       form,
-                       "minimum-radius-pixels",
-                       value.minimum_radius_pixels,
-                       (base ? &(*base).minimum_radius_pixels : nullptr));
-        write_property(ir,
-                       form,
-                       "maximum-radius-pixels",
-                       value.maximum_radius_pixels,
-                       (base ? &(*base).maximum_radius_pixels : nullptr));
-        write_property(ir,
-                       form,
-                       "bounds-padding-pixels",
-                       value.bounds_padding_pixels,
-                       (base ? &(*base).bounds_padding_pixels : nullptr));
-        write_property(ir,
-                       form,
-                       "bracket-start-radius-multiplier",
-                       value.bracket_start_radius_multiplier,
-                       (base ? &(*base).bracket_start_radius_multiplier : nullptr));
-        write_property(ir, form, "opacity", value.opacity, (base ? &(*base).opacity : nullptr));
-        write_property(ir,
-                       form,
-                       "pulse-opacity-boost",
-                       value.pulse_opacity_boost,
-                       (base ? &(*base).pulse_opacity_boost : nullptr));
-        write_property(ir,
-                       form,
-                       "pulse-duration",
-                       value.pulse_duration,
-                       (base ? &(*base).pulse_duration : nullptr));
-        write_property(ir,
-                       form,
-                       "fade-out-duration",
-                       value.fade_out_duration,
-                       (base ? &(*base).fade_out_duration : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::settings::SoftTarget;
+
+        visit("acquisition-radius-pixels", &T::acquisition_radius_pixels);
+        visit("retention-radius-pixels", &T::retention_radius_pixels);
+        visit("centre-tie-radius-pixels", &T::centre_tie_radius_pixels);
+        visit("switch-improvement-ratio", &T::switch_improvement_ratio);
+        visit("range-transition-start-multiplier", &T::range_transition_start_multiplier);
+        visit("minimum-radius-pixels", &T::minimum_radius_pixels);
+        visit("maximum-radius-pixels", &T::maximum_radius_pixels);
+        visit("bounds-padding-pixels", &T::bounds_padding_pixels);
+        visit("bracket-start-radius-multiplier", &T::bracket_start_radius_multiplier);
+        visit("opacity", &T::opacity);
+        visit("pulse-opacity-boost", &T::pulse_opacity_boost);
+        visit("pulse-duration", &T::pulse_duration);
+        visit("fade-out-duration", &T::fade_out_duration);
     }
 };
 

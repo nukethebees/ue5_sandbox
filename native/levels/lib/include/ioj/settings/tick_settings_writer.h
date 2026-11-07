@@ -6,19 +6,19 @@
 #include "ioj/settings/tick_settings.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<settings::TickSettings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             settings::TickSettings const& value,
-                                             settings::TickSettings const* base) {
-        auto form{ir.form("tick")};
+struct TypeWriter<settings::TickSettings> : RecordWriter<settings::TickSettings> {
+    static constexpr std::string_view tag() { return "tick"; }
 
-        write_property(
-            ir, form, "tick-rate", value.tick_rate, (base ? &(*base).tick_rate : nullptr));
-        write_property(
-            ir, form, "time-scale", value.time_scale, (base ? &(*base).time_scale : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::settings::TickSettings;
+
+        visit("tick-rate", &T::tick_rate);
+        visit("time-scale", &T::time_scale);
     }
 };
 

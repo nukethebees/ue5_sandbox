@@ -6,45 +6,23 @@
 #include "ioj/settings/capital_presentation.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<settings::CapitalPresentation> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             settings::CapitalPresentation const& value,
-                                             settings::CapitalPresentation const* base) {
-        auto form{ir.form("capital-ships-presentation")};
+struct TypeWriter<settings::CapitalPresentation> : RecordWriter<settings::CapitalPresentation> {
+    static constexpr std::string_view tag() { return "capital-ships-presentation"; }
 
-        write_property(ir,
-                       form,
-                       "n-small-explosions",
-                       value.n_small_explosions,
-                       (base ? &(*base).n_small_explosions : nullptr));
-        write_property(ir,
-                       form,
-                       "time-between-explosions",
-                       value.time_between_explosions,
-                       (base ? &(*base).time_between_explosions : nullptr));
-        write_property(ir,
-                       form,
-                       "min-small-explosion-range",
-                       value.min_small_explosion_range,
-                       (base ? &(*base).min_small_explosion_range : nullptr));
-        write_property(ir,
-                       form,
-                       "max-small-explosion-range",
-                       value.max_small_explosion_range,
-                       (base ? &(*base).max_small_explosion_range : nullptr));
-        write_property(ir,
-                       form,
-                       "large-explosion-delay",
-                       value.large_explosion_delay,
-                       (base ? &(*base).large_explosion_delay : nullptr));
-        write_property(ir,
-                       form,
-                       "proxy-arrow-size",
-                       value.proxy_arrow_size,
-                       (base ? &(*base).proxy_arrow_size : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::settings::CapitalPresentation;
+
+        visit("n-small-explosions", &T::n_small_explosions);
+        visit("time-between-explosions", &T::time_between_explosions);
+        visit("min-small-explosion-range", &T::min_small_explosion_range);
+        visit("max-small-explosion-range", &T::max_small_explosion_range);
+        visit("large-explosion-delay", &T::large_explosion_delay);
+        visit("proxy-arrow-size", &T::proxy_arrow_size);
     }
 };
 

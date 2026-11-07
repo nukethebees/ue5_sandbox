@@ -7,21 +7,19 @@
 #include "ioj/sim/spinners/spinner_sim_config.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<sim::SpinnerSimConfig> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             sim::SpinnerSimConfig const& value,
-                                             sim::SpinnerSimConfig const* base) {
-        auto form{ir.form("tube-spinners")};
+struct TypeWriter<sim::SpinnerSimConfig> : RecordWriter<sim::SpinnerSimConfig> {
+    static constexpr std::string_view tag() { return "tube-spinners"; }
 
-        write_property(ir,
-                       form,
-                       "yaw-rotation-speed-degrees",
-                       value.yaw_rotation_speed_degrees,
-                       (base ? &(*base).yaw_rotation_speed_degrees : nullptr));
-        write_property(ir, form, "laser", value.laser, (base ? &(*base).laser : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::sim::SpinnerSimConfig;
+
+        visit("yaw-rotation-speed-degrees", &T::yaw_rotation_speed_degrees);
+        visit("laser", &T::laser);
     }
 };
 

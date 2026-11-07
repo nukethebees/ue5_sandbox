@@ -7,28 +7,21 @@
 #include "ioj/sim/turrets/turret_sim_config.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<sim::TurretSimConfig> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             sim::TurretSimConfig const& value,
-                                             sim::TurretSimConfig const* base) {
-        auto form{ir.form("turrets")};
+struct TypeWriter<sim::TurretSimConfig> : RecordWriter<sim::TurretSimConfig> {
+    static constexpr std::string_view tag() { return "turrets"; }
 
-        write_property(ir,
-                       form,
-                       "detection-radius",
-                       value.detection_radius,
-                       (base ? &(*base).detection_radius : nullptr));
-        write_property(ir,
-                       form,
-                       "target-refresh-frequency",
-                       value.target_refresh_frequency,
-                       (base ? &(*base).target_refresh_frequency : nullptr));
-        write_property(ir, form, "laser", value.laser, (base ? &(*base).laser : nullptr));
-        write_property(
-            ir, form, "max-health", value.max_health, (base ? &(*base).max_health : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::sim::TurretSimConfig;
+
+        visit("detection-radius", &T::detection_radius);
+        visit("target-refresh-frequency", &T::target_refresh_frequency);
+        visit("laser", &T::laser);
+        visit("max-health", &T::max_health);
     }
 };
 

@@ -7,17 +7,19 @@
 #include "ioj/levels/objective_dependency.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<levels::ObjectiveDependency> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             levels::ObjectiveDependency const& value,
-                                             levels::ObjectiveDependency const*) {
-        auto form{ir.form("objective-resolved")};
+struct TypeWriter<levels::ObjectiveDependency> : RecordWriter<levels::ObjectiveDependency, true> {
+    static constexpr std::string_view tag() { return "objective-resolved"; }
 
-        form.add(s7::write(ir, value.objective));
-        form.add(s7::write(ir, value.outcome));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::levels::ObjectiveDependency;
+
+        visit("objective", &T::objective);
+        visit("outcome", &T::outcome);
     }
 };
 

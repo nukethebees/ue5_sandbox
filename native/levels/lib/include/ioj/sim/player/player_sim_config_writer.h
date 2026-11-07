@@ -7,53 +7,28 @@
 #include "ioj/sim/player/player_sim_config.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<sim::PlayerSimConfig> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             sim::PlayerSimConfig const& value,
-                                             sim::PlayerSimConfig const* base) {
-        auto form{ir.form("player-ship")};
+struct TypeWriter<sim::PlayerSimConfig> : RecordWriter<sim::PlayerSimConfig> {
+    static constexpr std::string_view tag() { return "player-ship"; }
 
-        write_property(ir,
-                       form,
-                       "thrust-energy-max",
-                       value.thrust_energy_max,
-                       (base ? &(*base).thrust_energy_max : nullptr));
-        write_property(ir,
-                       form,
-                       "pitch-angle-max",
-                       value.pitch_angle_max,
-                       (base ? &(*base).pitch_angle_max : nullptr));
-        write_property(
-            ir, form, "pitch-speed", value.pitch_speed, (base ? &(*base).pitch_speed : nullptr));
-        write_property(ir,
-                       form,
-                       "yaw-angle-max",
-                       value.yaw_angle_max,
-                       (base ? &(*base).yaw_angle_max : nullptr));
-        write_property(
-            ir, form, "yaw-speed", value.yaw_speed, (base ? &(*base).yaw_speed : nullptr));
-        write_property(ir,
-                       form,
-                       "turn-bank-angle-max",
-                       value.turn_bank_angle_max,
-                       (base ? &(*base).turn_bank_angle_max : nullptr));
-        write_property(ir,
-                       form,
-                       "turn-bank-speed",
-                       value.turn_bank_speed,
-                       (base ? &(*base).turn_bank_speed : nullptr));
-        write_property(ir, form, "laser", value.laser, (base ? &(*base).laser : nullptr));
-        write_property(ir, form, "health", value.health, (base ? &(*base).health : nullptr));
-        write_property(
-            ir, form, "laser-mode", value.laser_mode, (base ? &(*base).laser_mode : nullptr));
-        write_property(ir,
-                       form,
-                       "laser-fire-rate",
-                       value.laser_fire_rate,
-                       (base ? &(*base).laser_fire_rate : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::sim::PlayerSimConfig;
+
+        visit("thrust-energy-max", &T::thrust_energy_max);
+        visit("pitch-angle-max", &T::pitch_angle_max);
+        visit("pitch-speed", &T::pitch_speed);
+        visit("yaw-angle-max", &T::yaw_angle_max);
+        visit("yaw-speed", &T::yaw_speed);
+        visit("turn-bank-angle-max", &T::turn_bank_angle_max);
+        visit("turn-bank-speed", &T::turn_bank_speed);
+        visit("laser", &T::laser);
+        visit("health", &T::health);
+        visit("laser-mode", &T::laser_mode);
+        visit("laser-fire-rate", &T::laser_fire_rate);
     }
 };
 

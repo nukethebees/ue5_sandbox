@@ -17,45 +17,28 @@
 #include "ioj/sim/turrets/turret_sim_config_writer.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<settings::SettingsValues> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             settings::SettingsValues const& value,
-                                             settings::SettingsValues const* base) {
-        auto form{ir.form("settings")};
+struct TypeWriter<settings::SettingsValues> : RecordWriter<settings::SettingsValues> {
+    static constexpr std::string_view tag() { return "settings"; }
 
-        write_property(ir, form, "tick", value.tick, (base ? &(*base).tick : nullptr));
-        write_property(
-            ir, form, "player-ship", value.player_ship, (base ? &(*base).player_ship : nullptr));
-        write_property(ir,
-                       form,
-                       "laser-projectiles",
-                       value.laser_projectiles,
-                       (base ? &(*base).laser_projectiles : nullptr));
-        write_property(ir,
-                       form,
-                       "capital-ships",
-                       value.capital_ships,
-                       (base ? &(*base).capital_ships : nullptr));
-        write_property(ir, form, "fighters", value.fighters, (base ? &(*base).fighters : nullptr));
-        write_property(ir, form, "turrets", value.turrets, (base ? &(*base).turrets : nullptr));
-        write_property(ir,
-                       form,
-                       "tube-spinners",
-                       value.tube_spinners,
-                       (base ? &(*base).tube_spinners : nullptr));
-        write_property(ir,
-                       form,
-                       "collision-grid",
-                       value.collision_grid,
-                       (base ? &(*base).collision_grid : nullptr));
-        write_property(ir, form, "hud", value.hud, (base ? &(*base).hud : nullptr));
-        write_property(
-            ir, form, "presentation", value.presentation, (base ? &(*base).presentation : nullptr));
-        write_property(
-            ir, form, "starfield", value.starfield, (base ? &(*base).starfield : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::settings::SettingsValues;
+
+        visit("tick", &T::tick);
+        visit("player-ship", &T::player_ship);
+        visit("laser-projectiles", &T::laser_projectiles);
+        visit("capital-ships", &T::capital_ships);
+        visit("fighters", &T::fighters);
+        visit("turrets", &T::turrets);
+        visit("tube-spinners", &T::tube_spinners);
+        visit("collision-grid", &T::collision_grid);
+        visit("hud", &T::hud);
+        visit("presentation", &T::presentation);
+        visit("starfield", &T::starfield);
     }
 };
 

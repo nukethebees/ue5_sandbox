@@ -6,20 +6,18 @@
 #include "ioj/settings/player_presentation.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<settings::PlayerPresentation> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             settings::PlayerPresentation const& value,
-                                             settings::PlayerPresentation const* base) {
-        auto form{ir.form("player-ship-presentation")};
+struct TypeWriter<settings::PlayerPresentation> : RecordWriter<settings::PlayerPresentation> {
+    static constexpr std::string_view tag() { return "player-ship-presentation"; }
 
-        write_property(ir,
-                       form,
-                       "boost-effect-colour-intensity",
-                       value.boost_effect_colour_intensity,
-                       (base ? &(*base).boost_effect_colour_intensity : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::settings::PlayerPresentation;
+
+        visit("boost-effect-colour-intensity", &T::boost_effect_colour_intensity);
     }
 };
 

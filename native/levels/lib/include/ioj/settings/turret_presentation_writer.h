@@ -6,20 +6,18 @@
 #include "ioj/settings/turret_presentation.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<settings::TurretPresentation> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             settings::TurretPresentation const& value,
-                                             settings::TurretPresentation const* base) {
-        auto form{ir.form("turrets-presentation")};
+struct TypeWriter<settings::TurretPresentation> : RecordWriter<settings::TurretPresentation> {
+    static constexpr std::string_view tag() { return "turrets-presentation"; }
 
-        write_property(ir,
-                       form,
-                       "death-effect-scale",
-                       value.death_effect_scale,
-                       (base ? &(*base).death_effect_scale : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::settings::TurretPresentation;
+
+        visit("death-effect-scale", &T::death_effect_scale);
     }
 };
 

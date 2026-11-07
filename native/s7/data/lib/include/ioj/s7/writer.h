@@ -10,6 +10,7 @@
 #include <codegen/sexpr/sexpr_renderer.h>
 #include <lispb/strings.h>
 
+#include <algorithm>
 #include <array>
 #include <concepts>
 #include <optional>
@@ -30,20 +31,69 @@ auto write(SExprIR& ir, T const& value, T const* base = nullptr) -> Expr {
 }
 
 template <typename T>
-void write_property(SExprIR& ir,
-                    lispb::codegen::sexpr::FormBuilder& form,
-                    std::string_view const key,
-                    T const& value,
-                    T const* base) {
-    if constexpr (requires { TypeWriter<T>::omitted(value); }) {
-        if (!base && TypeWriter<T>::omitted(value)) {
-            return;
-        }
-    }
-    if (!base || value != *base) {
-        form.field(key, write(ir, value, base));
+auto equivalent(T const& value, T const& base) -> bool {
+    if constexpr (requires { TypeWriter<T>::equivalent(value, base); }) {
+        return TypeWriter<T>::equivalent(value, base);
+    } else {
+        return value == base;
     }
 }
+
+template <typename Record, bool Positional = false>
+class PropertyWriter {
+  public:
+    PropertyWriter(SExprIR& ir,
+                   lispb::codegen::sexpr::FormBuilder& form,
+                   Record const& source,
+                   Record const* base)
+        : ir_{ir}
+        , form_{form}
+        , source_{source}
+        , base_{base} {}
+
+    template <typename T>
+    void operator()(std::string_view key, T Record::* member) const {
+        auto const& value{source_.*member};
+        if constexpr (Positional) {
+            form_.add(s7::write(ir_, value));
+        } else {
+            if constexpr (requires { TypeWriter<T>::omitted(value); }) {
+                if (!base_ && TypeWriter<T>::omitted(value)) {
+                    return;
+                }
+            }
+            auto const* base{base_ ? &(base_->*member) : nullptr};
+            if (!base || !s7::equivalent(value, *base)) {
+                form_.field(key, s7::write(ir_, value, base));
+            }
+        }
+    }
+
+  private:
+    SExprIR& ir_;
+    lispb::codegen::sexpr::FormBuilder& form_;
+    Record const& source_;
+    Record const* base_;
+};
+
+template <typename T, bool Positional = false>
+struct RecordWriter {
+    static auto write(SExprIR& ir, T const& value, T const* base) -> Expr {
+        auto form{ir.form(TypeWriter<T>::tag())};
+        PropertyWriter<T, Positional> writer{ir, form, value, base};
+        TypeWriter<T>::properties(writer);
+        return form.build();
+    }
+
+    static auto equivalent(T const& value, T const& base) -> bool {
+        auto result{true};
+        auto compare{[&](std::string_view, auto member) {
+            result = result && s7::equivalent(value.*member, base.*member);
+        }};
+        TypeWriter<T>::properties(compare);
+        return result;
+    }
+};
 
 template <std::integral T>
 struct TypeWriter<T> {
@@ -85,6 +135,10 @@ struct TypeWriter<ConstrainedValue<T, Policy>> {
                       ConstrainedValue<T, Policy> const*) -> Expr {
         return s7::write(ir, value.get());
     }
+    static auto equivalent(ConstrainedValue<T, Policy> const& value,
+                           ConstrainedValue<T, Policy> const& base) -> bool {
+        return s7::equivalent(value.get(), base.get());
+    }
 };
 
 template <typename T>
@@ -106,6 +160,9 @@ struct TypeWriter<std::optional<T>> {
         -> Expr {
         return value ? s7::write(ir, *value, base && *base ? &**base : nullptr) : ir.atom(":none");
     }
+    static auto equivalent(std::optional<T> const& value, std::optional<T> const& base) -> bool {
+        return value.has_value() == base.has_value() && (!value || s7::equivalent(*value, *base));
+    }
 };
 
 template <typename T>
@@ -116,6 +173,10 @@ struct TypeWriter<std::vector<T>> {
             result.add(s7::write(ir, value));
         }
         return result.build();
+    }
+    static auto equivalent(std::vector<T> const& value, std::vector<T> const& base) -> bool {
+        return std::ranges::equal(
+            value, base, [](T const& left, T const& right) { return s7::equivalent(left, right); });
     }
 };
 
@@ -128,6 +189,10 @@ struct TypeWriter<std::array<T, N>> {
             result.add(s7::write(ir, value));
         }
         return result.build();
+    }
+    static auto equivalent(std::array<T, N> const& value, std::array<T, N> const& base) -> bool {
+        return std::ranges::equal(
+            value, base, [](T const& left, T const& right) { return s7::equivalent(left, right); });
     }
 };
 

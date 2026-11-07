@@ -6,24 +6,20 @@
 #include "ioj/sim/collision/overlap_response_config.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<sim::OverlapResponseConfig> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             sim::OverlapResponseConfig const& value,
-                                             sim::OverlapResponseConfig const* base) {
-        auto form{ir.form("collision-grid")};
+struct TypeWriter<sim::OverlapResponseConfig> : RecordWriter<sim::OverlapResponseConfig> {
+    static constexpr std::string_view tag() { return "collision-grid"; }
 
-        write_property(ir,
-                       form,
-                       "damage-per-overlap-detection",
-                       value.damage_per_overlap_detection,
-                       (base ? &(*base).damage_per_overlap_detection : nullptr));
-        write_property(
-            ir, form, "level-size", value.level_size, (base ? &(*base).level_size : nullptr));
-        write_property(
-            ir, form, "cell-size", value.cell_size, (base ? &(*base).cell_size : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::sim::OverlapResponseConfig;
+
+        visit("damage-per-overlap-detection", &T::damage_per_overlap_detection);
+        visit("level-size", &T::level_size);
+        visit("cell-size", &T::cell_size);
     }
 };
 

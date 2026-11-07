@@ -6,20 +6,18 @@
 #include "ioj/sim/lasers/laser_sim_config.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<sim::LaserSimConfig> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             sim::LaserSimConfig const& value,
-                                             sim::LaserSimConfig const* base) {
-        auto form{ir.form("laser-projectiles")};
+struct TypeWriter<sim::LaserSimConfig> : RecordWriter<sim::LaserSimConfig> {
+    static constexpr std::string_view tag() { return "laser-projectiles"; }
 
-        write_property(ir,
-                       form,
-                       "n-preallocated-instances",
-                       value.n_preallocated_instances,
-                       (base ? &(*base).n_preallocated_instances : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::sim::LaserSimConfig;
+
+        visit("n-preallocated-instances", &T::n_preallocated_instances);
     }
 };
 

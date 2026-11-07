@@ -12,34 +12,23 @@
 #include "ioj/settings/turret_presentation_writer.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<settings::Presentation> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             settings::Presentation const& value,
-                                             settings::Presentation const* base) {
-        auto form{ir.form("presentation")};
+struct TypeWriter<settings::Presentation> : RecordWriter<settings::Presentation> {
+    static constexpr std::string_view tag() { return "presentation"; }
 
-        write_property(
-            ir, form, "player-ship", value.player_ship, (base ? &(*base).player_ship : nullptr));
-        write_property(ir,
-                       form,
-                       "laser-projectiles",
-                       value.laser_projectiles,
-                       (base ? &(*base).laser_projectiles : nullptr));
-        write_property(ir,
-                       form,
-                       "capital-ships",
-                       value.capital_ships,
-                       (base ? &(*base).capital_ships : nullptr));
-        write_property(ir, form, "turrets", value.turrets, (base ? &(*base).turrets : nullptr));
-        write_property(ir,
-                       form,
-                       "entity-overlay",
-                       value.entity_overlay,
-                       (base ? &(*base).entity_overlay : nullptr));
-        write_property(ir, form, "radar", value.radar, (base ? &(*base).radar : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::settings::Presentation;
+
+        visit("player-ship", &T::player_ship);
+        visit("laser-projectiles", &T::laser_projectiles);
+        visit("capital-ships", &T::capital_ships);
+        visit("turrets", &T::turrets);
+        visit("entity-overlay", &T::entity_overlay);
+        visit("radar", &T::radar);
     }
 };
 

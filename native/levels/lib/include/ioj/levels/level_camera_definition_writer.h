@@ -7,26 +7,20 @@
 #include "ioj/levels/level_camera_definition.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<levels::LevelCameraDefinition> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             levels::LevelCameraDefinition const& value,
-                                             levels::LevelCameraDefinition const* base) {
-        auto form{ir.form("camera")};
+struct TypeWriter<levels::LevelCameraDefinition> : RecordWriter<levels::LevelCameraDefinition> {
+    static constexpr std::string_view tag() { return "camera"; }
 
-        write_property(ir,
-                       form,
-                       "look-at",
-                       value.target_entity_ids,
-                       (base ? &(*base).target_entity_ids : nullptr));
-        write_property(ir,
-                       form,
-                       "offset-direction",
-                       value.offset_direction,
-                       (base ? &(*base).offset_direction : nullptr));
-        write_property(ir, form, "distance", value.distance, (base ? &(*base).distance : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::levels::LevelCameraDefinition;
+
+        visit("look-at", &T::target_entity_ids);
+        visit("offset-direction", &T::offset_direction);
+        visit("distance", &T::distance);
     }
 };
 

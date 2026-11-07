@@ -139,12 +139,16 @@ Unreal retains resource references and colour controls. The former `settings-sch
 mapping and flattened assignment representation have been removed.
 
 Add `:generate-s7-writer true` alongside reader generation to emit `Example_writer.h` with a
-typed `TypeWriter<project::Example>` specialization. Use equality-comparable authored records
-(`:comparison equality`) and `ioj::s7::serialize(value)` for complete evaluable Scheme source.
+typed `TypeWriter<project::Example>` specialization. Use `ioj::s7::serialize(value)` for complete
+evaluable Scheme source. Generated writers share `RecordWriter` and supply one property
+traversal used by both serialization and authored-value comparison; records do not need
+equality operators for serialization.
 The writer shares the existing S-expression IR and renderer. It preserves floating-point
 precision, emits escaped strings and quoted enum symbols, and uses `list` for collections
 containing record constructors. Field ordering follows the schema; collection ordering is
-preserved. `:s7-exclude` also excludes a field from serialization.
+preserved. `:s7-exclude` excludes a field from both serialization and baseline comparison,
+including within nested records and collections. Unreal-derived resource fields therefore
+cannot produce otherwise empty nested overrides.
 
 `serialize(value, base)` emits differing fields. Ordinary nested records emit sparse overrides;
 collections replace whole fields. Optionals use `:none` for clearing and constrain their nested

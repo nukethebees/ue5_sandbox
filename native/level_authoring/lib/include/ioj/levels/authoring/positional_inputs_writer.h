@@ -8,41 +8,46 @@
 #include "ioj/levels/level_camera_definition_writer.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<levels::authoring::NamedExprInput> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             levels::authoring::NamedExprInput const& value,
-                                             levels::authoring::NamedExprInput const*) {
-        auto form{ir.form("named-expr")};
+struct TypeWriter<levels::authoring::NamedExprInput>
+    : RecordWriter<levels::authoring::NamedExprInput, true> {
+    static constexpr std::string_view tag() { return "named-expr"; }
 
-        form.add(s7::write(ir, value.name));
-        form.add(s7::write(ir, value.value));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::levels::authoring::NamedExprInput;
+
+        visit("name", &T::name);
+        visit("value", &T::value);
     }
 };
 
 template <>
-struct TypeWriter<levels::authoring::UnlockInput> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             levels::authoring::UnlockInput const& value,
-                                             levels::authoring::UnlockInput const*) {
-        auto form{ir.form("level-completed")};
+struct TypeWriter<levels::authoring::UnlockInput>
+    : RecordWriter<levels::authoring::UnlockInput, true> {
+    static constexpr std::string_view tag() { return "level-completed"; }
 
-        form.add(s7::write(ir, value.level));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::levels::authoring::UnlockInput;
+
+        visit("level-id", &T::level);
     }
 };
 
 template <>
-struct TypeWriter<levels::authoring::ExprReferenceInput> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             levels::authoring::ExprReferenceInput const& value,
-                                             levels::authoring::ExprReferenceInput const*) {
-        auto form{ir.form("expr-ref")};
+struct TypeWriter<levels::authoring::ExprReferenceInput>
+    : RecordWriter<levels::authoring::ExprReferenceInput, true> {
+    static constexpr std::string_view tag() { return "expr-ref"; }
 
-        form.add(s7::write(ir, value.name));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::levels::authoring::ExprReferenceInput;
+
+        visit("name", &T::name);
     }
 };
 

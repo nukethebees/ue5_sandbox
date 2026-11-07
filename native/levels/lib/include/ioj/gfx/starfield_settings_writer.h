@@ -6,233 +6,164 @@
 #include "ioj/gfx/starfield_settings.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<starfield::GenerationSettings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             starfield::GenerationSettings const& value,
-                                             starfield::GenerationSettings const* base) {
-        auto form{ir.form("generation")};
+struct TypeWriter<starfield::GenerationSettings> : RecordWriter<starfield::GenerationSettings> {
+    static constexpr std::string_view tag() { return "generation"; }
 
-        write_property(
-            ir, form, "star-count", value.star_count, (base ? &(*base).star_count : nullptr));
-        write_property(
-            ir, form, "random-seed", value.random_seed, (base ? &(*base).random_seed : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::starfield::GenerationSettings;
+
+        visit("star-count", &T::star_count);
+        visit("random-seed", &T::random_seed);
     }
 };
 
 template <>
-struct TypeWriter<starfield::StarSettings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             starfield::StarSettings const& value,
-                                             starfield::StarSettings const* base) {
-        auto form{ir.form("star")};
+struct TypeWriter<starfield::StarSettings> : RecordWriter<starfield::StarSettings> {
+    static constexpr std::string_view tag() { return "star"; }
 
-        write_property(ir, form, "scale", value.scale, (base ? &(*base).scale : nullptr));
-        write_property(ir,
-                       form,
-                       "size-multiplier",
-                       value.size_multiplier,
-                       (base ? &(*base).size_multiplier : nullptr));
-        write_property(ir,
-                       form,
-                       "global-brightness",
-                       value.global_brightness,
-                       (base ? &(*base).global_brightness : nullptr));
-        write_property(ir,
-                       form,
-                       "colour-variation-strength",
-                       value.colour_variation_strength,
-                       (base ? &(*base).colour_variation_strength : nullptr));
-        write_property(ir,
-                       form,
-                       "parallax-strength",
-                       value.parallax_strength,
-                       (base ? &(*base).parallax_strength : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::starfield::StarSettings;
+
+        visit("scale", &T::scale);
+        visit("size-multiplier", &T::size_multiplier);
+        visit("global-brightness", &T::global_brightness);
+        visit("colour-variation-strength", &T::colour_variation_strength);
+        visit("parallax-strength", &T::parallax_strength);
     }
 };
 
 template <>
-struct TypeWriter<starfield::GalacticBandSettings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             starfield::GalacticBandSettings const& value,
-                                             starfield::GalacticBandSettings const* base) {
-        auto form{ir.form("galactic-band")};
+struct TypeWriter<starfield::GalacticBandSettings> : RecordWriter<starfield::GalacticBandSettings> {
+    static constexpr std::string_view tag() { return "galactic-band"; }
 
-        write_property(ir, form, "strength", value.strength, (base ? &(*base).strength : nullptr));
-        write_property(ir,
-                       form,
-                       "width-degrees",
-                       value.width_degrees,
-                       (base ? &(*base).width_degrees : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::starfield::GalacticBandSettings;
+
+        visit("strength", &T::strength);
+        visit("width-degrees", &T::width_degrees);
     }
 };
 
 template <>
-struct TypeWriter<starfield::StellarClusterSettings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             starfield::StellarClusterSettings const& value,
-                                             starfield::StellarClusterSettings const* base) {
-        auto form{ir.form("stellar-cluster")};
+struct TypeWriter<starfield::StellarClusterSettings>
+    : RecordWriter<starfield::StellarClusterSettings> {
+    static constexpr std::string_view tag() { return "stellar-cluster"; }
 
-        write_property(ir, form, "strength", value.strength, (base ? &(*base).strength : nullptr));
-        write_property(ir,
-                       form,
-                       "width-degrees",
-                       value.width_degrees,
-                       (base ? &(*base).width_degrees : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::starfield::StellarClusterSettings;
+
+        visit("strength", &T::strength);
+        visit("width-degrees", &T::width_degrees);
     }
 };
 
 template <>
-struct TypeWriter<starfield::DustLaneSettings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             starfield::DustLaneSettings const& value,
-                                             starfield::DustLaneSettings const* base) {
-        auto form{ir.form("dust-lane")};
+struct TypeWriter<starfield::DustLaneSettings> : RecordWriter<starfield::DustLaneSettings> {
+    static constexpr std::string_view tag() { return "dust-lane"; }
 
-        write_property(ir, form, "strength", value.strength, (base ? &(*base).strength : nullptr));
-        write_property(ir,
-                       form,
-                       "width-degrees",
-                       value.width_degrees,
-                       (base ? &(*base).width_degrees : nullptr));
-        write_property(
-            ir, form, "irregularity", value.irregularity, (base ? &(*base).irregularity : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::starfield::DustLaneSettings;
+
+        visit("strength", &T::strength);
+        visit("width-degrees", &T::width_degrees);
+        visit("irregularity", &T::irregularity);
     }
 };
 
 template <>
-struct TypeWriter<starfield::BrightStarSettings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             starfield::BrightStarSettings const& value,
-                                             starfield::BrightStarSettings const* base) {
-        auto form{ir.form("bright-star")};
+struct TypeWriter<starfield::BrightStarSettings> : RecordWriter<starfield::BrightStarSettings> {
+    static constexpr std::string_view tag() { return "bright-star"; }
 
-        write_property(ir, form, "fraction", value.fraction, (base ? &(*base).fraction : nullptr));
-        write_property(ir,
-                       form,
-                       "size-multiplier",
-                       value.size_multiplier,
-                       (base ? &(*base).size_multiplier : nullptr));
-        write_property(ir,
-                       form,
-                       "brightness-multiplier",
-                       value.brightness_multiplier,
-                       (base ? &(*base).brightness_multiplier : nullptr));
-        write_property(ir,
-                       form,
-                       "shape-strength",
-                       value.shape_strength,
-                       (base ? &(*base).shape_strength : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::starfield::BrightStarSettings;
+
+        visit("fraction", &T::fraction);
+        visit("size-multiplier", &T::size_multiplier);
+        visit("brightness-multiplier", &T::brightness_multiplier);
+        visit("shape-strength", &T::shape_strength);
     }
 };
 
 template <>
-struct TypeWriter<starfield::TwinkleSettings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             starfield::TwinkleSettings const& value,
-                                             starfield::TwinkleSettings const* base) {
-        auto form{ir.form("twinkle")};
+struct TypeWriter<starfield::TwinkleSettings> : RecordWriter<starfield::TwinkleSettings> {
+    static constexpr std::string_view tag() { return "twinkle"; }
 
-        write_property(ir, form, "strength", value.strength, (base ? &(*base).strength : nullptr));
-        write_property(ir, form, "speed", value.speed, (base ? &(*base).speed : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::starfield::TwinkleSettings;
+
+        visit("strength", &T::strength);
+        visit("speed", &T::speed);
     }
 };
 
 template <>
-struct TypeWriter<starfield::GalacticHazeSettings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             starfield::GalacticHazeSettings const& value,
-                                             starfield::GalacticHazeSettings const* base) {
-        auto form{ir.form("galactic-haze")};
+struct TypeWriter<starfield::GalacticHazeSettings> : RecordWriter<starfield::GalacticHazeSettings> {
+    static constexpr std::string_view tag() { return "galactic-haze"; }
 
-        write_property(ir, form, "strength", value.strength, (base ? &(*base).strength : nullptr));
-        write_property(ir,
-                       form,
-                       "width-degrees",
-                       value.width_degrees,
-                       (base ? &(*base).width_degrees : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::starfield::GalacticHazeSettings;
+
+        visit("strength", &T::strength);
+        visit("width-degrees", &T::width_degrees);
     }
 };
 
 template <>
-struct TypeWriter<starfield::GalacticCoreSettings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             starfield::GalacticCoreSettings const& value,
-                                             starfield::GalacticCoreSettings const* base) {
-        auto form{ir.form("galactic-core")};
+struct TypeWriter<starfield::GalacticCoreSettings> : RecordWriter<starfield::GalacticCoreSettings> {
+    static constexpr std::string_view tag() { return "galactic-core"; }
 
-        write_property(ir, form, "strength", value.strength, (base ? &(*base).strength : nullptr));
-        write_property(ir,
-                       form,
-                       "width-degrees",
-                       value.width_degrees,
-                       (base ? &(*base).width_degrees : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::starfield::GalacticCoreSettings;
+
+        visit("strength", &T::strength);
+        visit("width-degrees", &T::width_degrees);
     }
 };
 
 template <>
-struct TypeWriter<starfield::NebularKnotSettings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             starfield::NebularKnotSettings const& value,
-                                             starfield::NebularKnotSettings const* base) {
-        auto form{ir.form("nebular-knot")};
+struct TypeWriter<starfield::NebularKnotSettings> : RecordWriter<starfield::NebularKnotSettings> {
+    static constexpr std::string_view tag() { return "nebular-knot"; }
 
-        write_property(ir, form, "strength", value.strength, (base ? &(*base).strength : nullptr));
-        write_property(
-            ir, form, "size-degrees", value.size_degrees, (base ? &(*base).size_degrees : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::starfield::NebularKnotSettings;
+
+        visit("strength", &T::strength);
+        visit("size-degrees", &T::size_degrees);
     }
 };
 
 template <>
-struct TypeWriter<starfield::Settings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             starfield::Settings const& value,
-                                             starfield::Settings const* base) {
-        auto form{ir.form("starfield")};
+struct TypeWriter<starfield::Settings> : RecordWriter<starfield::Settings> {
+    static constexpr std::string_view tag() { return "starfield"; }
 
-        write_property(
-            ir, form, "generation", value.generation, (base ? &(*base).generation : nullptr));
-        write_property(ir, form, "star", value.star, (base ? &(*base).star : nullptr));
-        write_property(ir,
-                       form,
-                       "galactic-band",
-                       value.galactic_band,
-                       (base ? &(*base).galactic_band : nullptr));
-        write_property(ir,
-                       form,
-                       "stellar-cluster",
-                       value.stellar_cluster,
-                       (base ? &(*base).stellar_cluster : nullptr));
-        write_property(
-            ir, form, "dust-lane", value.dust_lane, (base ? &(*base).dust_lane : nullptr));
-        write_property(
-            ir, form, "bright-star", value.bright_star, (base ? &(*base).bright_star : nullptr));
-        write_property(ir, form, "twinkle", value.twinkle, (base ? &(*base).twinkle : nullptr));
-        write_property(ir,
-                       form,
-                       "galactic-haze",
-                       value.galactic_haze,
-                       (base ? &(*base).galactic_haze : nullptr));
-        write_property(ir,
-                       form,
-                       "galactic-core",
-                       value.galactic_core,
-                       (base ? &(*base).galactic_core : nullptr));
-        write_property(
-            ir, form, "nebular-knot", value.nebular_knot, (base ? &(*base).nebular_knot : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::starfield::Settings;
+
+        visit("generation", &T::generation);
+        visit("star", &T::star);
+        visit("galactic-band", &T::galactic_band);
+        visit("stellar-cluster", &T::stellar_cluster);
+        visit("dust-lane", &T::dust_lane);
+        visit("bright-star", &T::bright_star);
+        visit("twinkle", &T::twinkle);
+        visit("galactic-haze", &T::galactic_haze);
+        visit("galactic-core", &T::galactic_core);
+        visit("nebular-knot", &T::nebular_knot);
     }
 };
 

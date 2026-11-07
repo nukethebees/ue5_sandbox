@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <vector>
 
 namespace lispb::codegen::detail {
 auto writer_header_path(std::string_view const header) -> std::string {
@@ -37,59 +38,53 @@ class RecordWriterLowering : public CppIRBuilder {
                                          NameOrigin::global)};
         auto const positional{records.s7_positional[record] != 0};
         auto body{node_list()};
-        body.add(variable("auto",
-                          "form",
-                          member_call(named("ir"),
-                                      "form",
-                                      {string_literal(ctx.text(*records.s7_tag[record]))})),
-                 2);
+        auto empty{true};
         for (auto const field : ctx.declarations.items(records.members[record])) {
             auto const& options{members.s7[field]};
             if (options.exclude) {
                 continue;
+            }
+            if (empty) {
+                body.add(using_declaration(store_text("T"), value_type), 2);
             }
             auto const member{members.name[field]};
             auto key{ctx.text(options.name.value_or(member))};
             if (!options.name) {
                 std::ranges::replace(key, '_', '-');
             }
-            auto const value{member_access(named("value"), member)};
-            if (positional) {
-                body.add(
-                    expr_stmt(member_call(named("form"),
-                                          "add",
-                                          {call(named_type("ioj::s7::write", NameOrigin::global),
-                                                {named("ir"), value})})));
-            } else {
-                auto const base{conditional(
-                    named("base"),
-                    unary(UnaryOperator::address_of,
-                          member_access(unary(UnaryOperator::dereference, named("base")), member)),
-                    named("nullptr"))};
-                body.add(expr_stmt(
-                    call(named_type("ioj::s7::write_property", NameOrigin::global),
-                         {named("ir"), named("form"), string_literal(key), value, base})));
-            }
+            body.add(expr_stmt(
+                call(named("visit"),
+                     {string_literal(key),
+                      unary(UnaryOperator::address_of, scope_member(named_type("T"), member))})));
+            empty = false;
         }
-        body.add(return_stmt(member_call(named("form"), "build")), 2);
-        FunctionDefinition const function{
-            .name = name("write"),
-            .return_type = named_type("lispb::codegen::sexpr::Expr", NameOrigin::global),
-            .parameters = {parameter(decorate_type(named_type("lispb::codegen::sexpr::SExprIR",
-                                                              NameOrigin::global),
-                                                   "",
-                                                   "&"),
-                                     "ir"),
-                           parameter(decorate_type(value_type, "", " const&"), "value"),
-                           parameter(decorate_type(value_type, "", " const*"),
-                                     positional ? "" : "base")},
+        FunctionDefinition const tag{.name = name("tag"),
+                                     .return_type = std_types().string_view,
+                                     .implementation = {.kind = FunctionImplementationKind::body,
+                                                        .body = {return_stmt(string_literal(
+                                                            ctx.text(*records.s7_tag[record])))}},
+                                     .receiver = FunctionReceiver::static_,
+                                     .flags = {.is_constexpr = true, .define_in_header = true}};
+        FunctionDefinition const properties{
+            .name = name("properties"),
+            .return_type = std_types().void_,
+            .parameters = {parameter("Visitor&", empty ? "" : "visit")},
             .implementation = {.kind = FunctionImplementationKind::body, .body = body.build()},
             .receiver = FunctionReceiver::static_,
-            .flags = {.define_in_header = true}};
-        emission.writer_declarations.push_back(
-            add_record({.name = template_id(name("TypeWriter"), {type_reference(value_type)}),
-                        .children = {header_function(add_function(function))},
-                        .template_declaration = template_specialization()}));
+            .flags = {.define_in_header = true},
+            .template_declaration =
+                template_declaration({type_template_parameter(store_text("Visitor"))})};
+        std::vector<Syntax> base_arguments{type_reference(value_type)};
+        if (positional) {
+            base_arguments.push_back(literal(true));
+        }
+        emission.writer_declarations.push_back(add_record(
+            {.name = template_id(name("TypeWriter"), {type_reference(value_type)}),
+             .children = {header_function(add_function(tag)),
+                          header_function(add_function(properties))},
+             .bases = {template_type(named_type("ioj::s7::RecordWriter", NameOrigin::global),
+                                     base_arguments)},
+             .template_declaration = template_specialization()}));
         auto const includes{ctx.declarations.items(records.s7_writer_includes[record])};
         emission.writer_includes.insert(
             emission.writer_includes.end(), includes.begin(), includes.end());

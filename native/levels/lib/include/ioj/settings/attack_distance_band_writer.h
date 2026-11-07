@@ -6,21 +6,21 @@
 #include "ioj/settings/attack_distance_band.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<settings::AttackDistanceBandValue> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             settings::AttackDistanceBandValue const& value,
-                                             settings::AttackDistanceBandValue const* base) {
-        auto form{ir.form("attack-distance-band")};
+struct TypeWriter<settings::AttackDistanceBandValue>
+    : RecordWriter<settings::AttackDistanceBandValue> {
+    static constexpr std::string_view tag() { return "attack-distance-band"; }
 
-        write_property(
-            ir, form, "minimum-ratio", value.minimum, (base ? &(*base).minimum : nullptr));
-        write_property(
-            ir, form, "desired-ratio", value.desired, (base ? &(*base).desired : nullptr));
-        write_property(
-            ir, form, "maximum-ratio", value.maximum, (base ? &(*base).maximum : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::settings::AttackDistanceBandValue;
+
+        visit("minimum-ratio", &T::minimum);
+        visit("desired-ratio", &T::desired);
+        visit("maximum-ratio", &T::maximum);
     }
 };
 

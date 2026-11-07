@@ -6,30 +6,20 @@
 #include "ioj/sim/levels/hud_settings.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<sim::HudSettings> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             sim::HudSettings const& value,
-                                             sim::HudSettings const* base) {
-        auto form{ir.form("hud")};
+struct TypeWriter<sim::HudSettings> : RecordWriter<sim::HudSettings> {
+    static constexpr std::string_view tag() { return "hud"; }
 
-        write_property(ir,
-                       form,
-                       "player-status-update-period",
-                       value.player_status_update_period,
-                       (base ? &(*base).player_status_update_period : nullptr));
-        write_property(ir,
-                       form,
-                       "entity-count-update-period",
-                       value.entity_count_update_period,
-                       (base ? &(*base).entity_count_update_period : nullptr));
-        write_property(ir,
-                       form,
-                       "mission-status-update-period",
-                       value.mission_status_update_period,
-                       (base ? &(*base).mission_status_update_period : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::sim::HudSettings;
+
+        visit("player-status-update-period", &T::player_status_update_period);
+        visit("entity-count-update-period", &T::entity_count_update_period);
+        visit("mission-status-update-period", &T::mission_status_update_period);
     }
 };
 

@@ -8,98 +8,36 @@
 #include "ioj/sim/lasers/laser_weapon_sim_config_writer.h"
 #include <ioj/s7/writer.h>
 
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
-struct TypeWriter<sim::FighterSimConfig> {
-    static lispb::codegen::sexpr::Expr write(lispb::codegen::sexpr::SExprIR& ir,
-                                             sim::FighterSimConfig const& value,
-                                             sim::FighterSimConfig const* base) {
-        auto form{ir.form("fighters")};
+struct TypeWriter<sim::FighterSimConfig> : RecordWriter<sim::FighterSimConfig> {
+    static constexpr std::string_view tag() { return "fighters"; }
 
-        write_property(ir,
-                       form,
-                       "max-live-fighters",
-                       value.max_live_fighters,
-                       (base ? &(*base).max_live_fighters : nullptr));
-        write_property(ir,
-                       form,
-                       "fire-dot-product-threshold",
-                       value.fire_dot_product_threshold,
-                       (base ? &(*base).fire_dot_product_threshold : nullptr));
-        write_property(ir,
-                       form,
-                       "attack-distance-band",
-                       value.attack_distance_band,
-                       (base ? &(*base).attack_distance_band : nullptr));
-        write_property(ir, form, "speed", value.speed, (base ? &(*base).speed : nullptr));
-        write_property(ir,
-                       form,
-                       "turn-speed-unitless",
-                       value.turn_speed_unitless,
-                       (base ? &(*base).turn_speed_unitless : nullptr));
-        write_property(ir,
-                       form,
-                       "avoidance-clear-update-frequency",
-                       value.avoidance_clear_update_frequency,
-                       (base ? &(*base).avoidance_clear_update_frequency : nullptr));
-        write_property(ir,
-                       form,
-                       "avoidance-update-frequency",
-                       value.avoidance_update_frequency,
-                       (base ? &(*base).avoidance_update_frequency : nullptr));
-        write_property(ir,
-                       form,
-                       "avoidance-active-update-frequency",
-                       value.avoidance_active_update_frequency,
-                       (base ? &(*base).avoidance_active_update_frequency : nullptr));
-        write_property(ir,
-                       form,
-                       "avoidance-immediate-update-frequency",
-                       value.avoidance_immediate_update_frequency,
-                       (base ? &(*base).avoidance_immediate_update_frequency : nullptr));
-        write_property(ir,
-                       form,
-                       "avoidance-lookahead-time",
-                       value.avoidance_lookahead_time,
-                       (base ? &(*base).avoidance_lookahead_time : nullptr));
-        write_property(ir,
-                       form,
-                       "avoidance-clearance-buffer",
-                       value.avoidance_clearance_buffer,
-                       (base ? &(*base).avoidance_clearance_buffer : nullptr));
-        write_property(ir,
-                       form,
-                       "separation-radius",
-                       value.separation_radius,
-                       (base ? &(*base).separation_radius : nullptr));
-        write_property(ir,
-                       form,
-                       "separation-strength",
-                       value.separation_strength,
-                       (base ? &(*base).separation_strength : nullptr));
-        write_property(ir,
-                       form,
-                       "steering-memory-duration",
-                       value.steering_memory_duration,
-                       (base ? &(*base).steering_memory_duration : nullptr));
-        write_property(ir,
-                       form,
-                       "dense-traffic-neighbour-threshold",
-                       value.dense_traffic_neighbour_threshold,
-                       (base ? &(*base).dense_traffic_neighbour_threshold : nullptr));
-        write_property(ir, form, "laser", value.laser, (base ? &(*base).laser : nullptr));
-        write_property(ir, form, "health", value.health, (base ? &(*base).health : nullptr));
-        write_property(ir,
-                       form,
-                       "attack-retry-cooldown",
-                       value.attack_retry_cooldown,
-                       (base ? &(*base).attack_retry_cooldown : nullptr));
-        write_property(ir,
-                       form,
-                       "los-check-buffer",
-                       value.los_check_buffer,
-                       (base ? &(*base).los_check_buffer : nullptr));
-        return form.build();
+    template <typename Visitor>
+    static void properties(Visitor& visit) {
+        using T = ioj::sim::FighterSimConfig;
+
+        visit("max-live-fighters", &T::max_live_fighters);
+        visit("fire-dot-product-threshold", &T::fire_dot_product_threshold);
+        visit("attack-distance-band", &T::attack_distance_band);
+        visit("speed", &T::speed);
+        visit("turn-speed-unitless", &T::turn_speed_unitless);
+        visit("avoidance-clear-update-frequency", &T::avoidance_clear_update_frequency);
+        visit("avoidance-update-frequency", &T::avoidance_update_frequency);
+        visit("avoidance-active-update-frequency", &T::avoidance_active_update_frequency);
+        visit("avoidance-immediate-update-frequency", &T::avoidance_immediate_update_frequency);
+        visit("avoidance-lookahead-time", &T::avoidance_lookahead_time);
+        visit("avoidance-clearance-buffer", &T::avoidance_clearance_buffer);
+        visit("separation-radius", &T::separation_radius);
+        visit("separation-strength", &T::separation_strength);
+        visit("steering-memory-duration", &T::steering_memory_duration);
+        visit("dense-traffic-neighbour-threshold", &T::dense_traffic_neighbour_threshold);
+        visit("laser", &T::laser);
+        visit("health", &T::health);
+        visit("attack-retry-cooldown", &T::attack_retry_cooldown);
+        visit("los-check-buffer", &T::los_check_buffer);
     }
 };
 
