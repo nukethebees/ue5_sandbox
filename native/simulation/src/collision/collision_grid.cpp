@@ -43,14 +43,6 @@ GridGeometry::GridGeometry(CellCoord const dimensions, Vector3f const cell_dimen
             "finite extents");
     *this = *geometry;
 }
-GridGeometry::GridGeometry(CellCoord const dimensions,
-                           Vector3f const cell_dimensions,
-                           Vector3f const half_size,
-                           GridCellCount const cell_count) noexcept
-    : dimensions_{dimensions}
-    , cell_dimensions_{cell_dimensions}
-    , half_size_{half_size}
-    , cell_count_{cell_count} {}
 auto GridGeometry::try_make(CellCoord const dimensions, Vector3f const cell_dimensions) noexcept
     -> std::optional<GridGeometry> {
     if (!levels::grid_cell_count_fits(dimensions.x(), dimensions.y(), dimensions.z()) ||
@@ -61,10 +53,12 @@ auto GridGeometry::try_make(CellCoord const dimensions, Vector3f const cell_dime
     if (!is_finite(half_size)) {
         return std::nullopt;
     }
-    return GridGeometry{dimensions,
-                        cell_dimensions,
-                        half_size,
-                        GridCellCount{dimensions.product<GridCellCount::value_type>()}};
+    GridGeometry result;
+    result.dimensions_ = dimensions;
+    result.cell_dimensions_ = cell_dimensions;
+    result.half_size_ = half_size;
+    result.cell_count_ = GridCellCount{dimensions.product<GridCellCount::value_type>()};
+    return result;
 }
 auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_size) noexcept
     -> CellCoord {

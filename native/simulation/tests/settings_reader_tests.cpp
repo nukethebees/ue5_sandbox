@@ -32,20 +32,20 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
     FighterSimConfig const expected_fighters{
         .laser = {.damage = NonNegative<std::int32_t>{31},
                   .max_distance = PositiveFinite<float>{50000.f}}};
-    EXPECT_PRED_FORMAT2(structurally_equal, expected_fighters, resolved->values().fighters);
+    EXPECT_PRED_FORMAT2(structurally_equal, expected_fighters, resolved->fighters);
     EXPECT_PRED_FORMAT2(structurally_equal,
                         TurretSimConfig{.laser = {.damage = NonNegative<std::int32_t>{23}}},
-                        resolved->values().turrets);
-    EXPECT_PRED_FORMAT2(structurally_equal, defaults.player, resolved->values().player);
+                        resolved->turrets);
+    EXPECT_PRED_FORMAT2(structurally_equal, defaults.player, resolved->player);
 }
 
 TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
     auto const root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
     auto const base{s7::read_simulation_settings(root / "Settings/base.scm", root)};
     ASSERT_TRUE(base);
-    EXPECT_EQ(base->values().fighters.speed, 4500);
-    EXPECT_EQ(base->values().fighters.laser.damage, 10);
-    EXPECT_EQ(base->values().spinners.laser.damage, 2);
+    EXPECT_EQ(base->fighters.speed, 4500);
+    EXPECT_EQ(base->fighters.laser.damage, 10);
+    EXPECT_EQ(base->spinners.laser.damage, 2);
 
     auto const base_values{DefinitionReader{root}.read_settings_file(root / "Settings/base.scm")};
     ASSERT_TRUE(base_values);
@@ -66,7 +66,7 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
     auto expected{*base_values};
     expected.fighters.laser.damage = ioj::NonNegative<std::int32_t>{77};
     EXPECT_PRED_FORMAT2(structurally_equal, expected, level->settings());
-    EXPECT_PRED_FORMAT2(structurally_equal, expected.fighters, resolved->values().fighters);
+    EXPECT_PRED_FORMAT2(structurally_equal, expected.fighters, resolved->fighters);
     EXPECT_EQ(level->mission(), mission);
 
     for (auto const field : {"", ":settings (settings)", ":settings (settings-layers)"}) {
@@ -106,8 +106,7 @@ TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings
     EXPECT_PRED_FORMAT2(structurally_equal, original, base);
     auto const resolved{sim::resolve_simulation_settings(level->settings())};
     ASSERT_TRUE(resolved) << levels::format_diagnostics(resolved.error());
-    EXPECT_PRED_FORMAT2(
-        structurally_equal, original.collision_grid, resolved->values().overlap_response);
+    EXPECT_PRED_FORMAT2(structurally_equal, original.collision_grid, resolved->overlap_response);
 
     auto const legacy{DefinitionReader{}.read_level_source(R"(
       (level :id 'grid :title "Grid" :player 'player

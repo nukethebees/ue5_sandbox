@@ -191,7 +191,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
     }
 
-    auto const prepared{sim::PreparedSimulationSettings::prepare({
+    sim::SimulationSettings const settings{
         .clock = clock_settings,
         .player = config.player_ship.simulation,
         .lasers = config.laser_projectiles.simulation,
@@ -200,9 +200,9 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         .turrets = config.turrets.simulation,
         .spinners = config.tube_spinners.simulation,
         .overlap_response = config.overlap_response,
-    })};
-    if (!prepared) {
-        for (auto const& error : prepared.error()) {
+    };
+    if (auto valid{sim::validate_settings(settings)}; !valid) {
+        for (auto const& error : valid.error()) {
             errors.add(to_fstring(std::format("{}: {}", error.node_path, error.message)));
         }
         return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
@@ -210,7 +210,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
 
     FLevelSimBuildResult result{std::in_place};
     auto& data{result.value()};
-    sim::apply_settings(*prepared, data);
+    sim::apply_settings(settings, data);
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     for (auto const& transform : config.capital_ships.fighter_spawn_slots_relative_transforms) {
         data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(to_native(transform));

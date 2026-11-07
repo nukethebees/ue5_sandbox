@@ -83,7 +83,7 @@ auto read_game_settings(FStringView const path,
 
     auto* const config{DuplicateObject<USpaceGameLevelConfig>(&resources, outer)};
     check(config);
-    config->apply_settings(simulation->values());
+    config->apply_settings(*simulation);
 
     config->presentation = effective.presentation;
     auto const* const level_text{level ? std::get_if<std::string>(level) : nullptr};

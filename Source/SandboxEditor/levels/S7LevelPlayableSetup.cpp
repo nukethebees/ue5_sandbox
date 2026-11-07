@@ -143,7 +143,7 @@ auto validate_playable_s7_definition(levels::LevelDefinition const& definition,
     if (!simulation) {
         return std::unexpected{to_fstring(levels::format_diagnostics(simulation.error()))};
     }
-    effective_config->apply_settings(simulation->values());
+    effective_config->apply_settings(*simulation);
     effective_config->presentation = definition.settings().presentation;
     if (!effective_config->is_valid(true)) {
         return std::unexpected{TEXT("The authored level configuration is invalid.")};

@@ -96,7 +96,7 @@ TEST(SimulationSettings, AcceptsFrequenciesAboveTickRate) {
     }
     fast.turrets.target_refresh_frequency =
         ::ioj::PositiveFinite<float>::make(std::numeric_limits<float>::max());
-    EXPECT_TRUE(PreparedSimulationSettings::prepare(fast));
+    EXPECT_TRUE(validate_settings(fast));
 }
 
 TEST(SimulationSettings, ChecksCountdownFrequencyBoundsBeforeNarrowing) {
@@ -104,10 +104,10 @@ TEST(SimulationSettings, ChecksCountdownFrequencyBoundsBeforeNarrowing) {
         SimulationSettings settings;
         settings.clock.tick_rate = Frequency::make(maximum);
         assign(settings, 1.f);
-        EXPECT_TRUE(PreparedSimulationSettings::prepare(settings));
+        EXPECT_TRUE(validate_settings(settings));
 
         settings.clock.tick_rate = Frequency::make(settings.clock.tick_rate.hz() + 0.25);
-        auto const result{PreparedSimulationSettings::prepare(settings)};
+        auto const result{validate_settings(settings)};
         ASSERT_FALSE(result);
         EXPECT_TRUE(std::ranges::any_of(
             result.error(), [&](auto const& error) { return error.node_path == path; }));
@@ -131,11 +131,11 @@ TEST(SimulationSettings, ChecksCountdownDurationBoundsBeforeNarrowing) {
         SimulationSettings settings;
         settings.clock.tick_rate = Frequency::make(1.0);
         assign(settings, static_cast<float>(std::numeric_limits<std::int16_t>::max()));
-        EXPECT_TRUE(PreparedSimulationSettings::prepare(settings));
+        EXPECT_TRUE(validate_settings(settings));
         assign(settings, 32767.5f);
-        EXPECT_FALSE(PreparedSimulationSettings::prepare(settings));
+        EXPECT_FALSE(validate_settings(settings));
         assign(settings, 0.f);
-        EXPECT_TRUE(PreparedSimulationSettings::prepare(settings));
+        EXPECT_TRUE(validate_settings(settings));
     };
     check_boundary([](auto& s, float value) {
         s.fighters.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(value);
@@ -151,17 +151,19 @@ TEST(SimulationSettings, ChecksCountdownDurationBoundsBeforeNarrowing) {
     });
 }
 
-TEST(SimulationSettings, PreparesAfterApplyingClockOverride) {
+TEST(SimulationSettings, ValidatesAuthoredClockAndOverride) {
     settings::Settings source;
     source.tick.tick_rate = Frequency{1.e9};
     EXPECT_FALSE(resolve_simulation_settings(source));
-    auto const prepared{resolve_simulation_settings(source, settings::TickSettings{})};
-    ASSERT_TRUE(prepared);
-    EXPECT_EQ(prepared->values().clock.tick_rate, settings::TickSettings{}.tick_rate);
+    EXPECT_FALSE(resolve_simulation_settings(source, settings::TickSettings{}));
 
     source.tick = {};
     EXPECT_FALSE(
         resolve_simulation_settings(source, settings::TickSettings{.tick_rate = Frequency{1.e9}}));
+    auto const resolved{
+        resolve_simulation_settings(source, settings::TickSettings{.tick_rate = Frequency{30.0}})};
+    ASSERT_TRUE(resolved);
+    EXPECT_EQ(resolved->clock.tick_rate, Frequency{30.0});
 }
 
 } // namespace tests

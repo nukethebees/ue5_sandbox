@@ -9,9 +9,9 @@
 namespace ioj::sim {
 auto resolve_simulation_settings(settings::Settings const& source,
                                  std::optional<settings::TickSettings> const clock_override)
-    -> std::expected<PreparedSimulationSettings, levels::Diagnostics> {
-    return PreparedSimulationSettings::prepare({
-        .clock = clock_override.value_or(source.tick),
+    -> std::expected<SimulationSettings, levels::Diagnostics> {
+    SimulationSettings result{
+        .clock = source.tick,
         .player = source.player_ship,
         .lasers = source.laser_projectiles,
         .capital_ships = source.capital_ships,
@@ -20,11 +20,17 @@ auto resolve_simulation_settings(settings::Settings const& source,
         .spinners = source.tube_spinners,
         .overlap_response = source.collision_grid,
         .hud = source.hud,
-    });
+    };
+    if (auto valid{validate_settings(result, clock_override)}; !valid) {
+        return std::unexpected{std::move(valid.error())};
+    }
+    result.clock = clock_override.value_or(result.clock);
+    return result;
 }
 
-auto PreparedSimulationSettings::prepare(SimulationSettings settings)
-    -> std::expected<PreparedSimulationSettings, levels::Diagnostics> {
+auto validate_settings(SimulationSettings const& settings,
+                       std::optional<settings::TickSettings> const clock_override)
+    -> std::expected<void, levels::Diagnostics> {
     levels::Diagnostics errors;
     auto check =
         [&](bool const valid, std::string_view const path, std::string_view const message) {
@@ -33,44 +39,45 @@ auto PreparedSimulationSettings::prepare(SimulationSettings settings)
                     levels::DiagnosticCode::InvalidNumber, std::string{path}, std::string{message});
             }
         };
-    auto tick_period = [&](double const ticks,
-                           double const maximum,
-                           std::string_view const path,
-                           double const minimum = 0) {
-        auto const period{std::ceil(ticks)};
-        check(std::isfinite(period) && period >= minimum && period <= maximum,
-              path,
-              "Tick period is outside the countdown range");
+    auto tick_period =
+        [&](double const ticks, std::string_view const path, double const minimum = 0) {
+            auto const period{std::ceil(ticks)};
+            check(std::isfinite(period) && period >= minimum &&
+                      period <= std::numeric_limits<std::int16_t>::max(),
+                  path,
+                  "Tick period is outside the countdown range");
+        };
+    auto validate_countdowns = [&](double const tick_rate) {
+        auto frequency = [&](PositiveFinite<float> const value, std::string_view const path) {
+            tick_period(tick_rate / value, path, 1);
+        };
+        auto cooldown = [&](NonNegativeFinite<float> const value, std::string_view const path) {
+            tick_period(value * tick_rate, path);
+        };
+
+        auto const& fighters{settings.fighters};
+        frequency(settings.turrets.target_refresh_frequency, "turrets.target-refresh-frequency");
+        frequency(fighters.avoidance_clear_update_frequency,
+                  "fighters.avoidance-clear-update-frequency");
+        frequency(fighters.avoidance_update_frequency, "fighters.avoidance-update-frequency");
+        frequency(fighters.avoidance_active_update_frequency,
+                  "fighters.avoidance-active-update-frequency");
+        frequency(fighters.avoidance_immediate_update_frequency,
+                  "fighters.avoidance-immediate-update-frequency");
+        cooldown(fighters.attack_retry_cooldown, "fighters.attack-retry-cooldown");
+        cooldown(fighters.laser.fire_cooldown, "fighters.laser.fire-cooldown");
+        cooldown(settings.turrets.laser.fire_cooldown, "turrets.laser.fire-cooldown");
+        cooldown(settings.spinners.laser.fire_cooldown, "tube-spinners.laser.fire-cooldown");
     };
-    auto frequency = [&](PositiveFinite<float> const value,
-                         std::string_view const path,
-                         double const maximum = std::numeric_limits<std::int16_t>::max()) {
-        tick_period(settings.clock.tick_rate.hz() / value, maximum, path, 1);
-    };
-    auto cooldown = [&](NonNegativeFinite<float> const value, std::string_view const path) {
-        tick_period(
-            value * settings.clock.tick_rate.hz(), std::numeric_limits<std::int16_t>::max(), path);
-    };
+    validate_countdowns(settings.clock.tick_rate.hz());
 
     auto const& fighters{settings.fighters};
-    frequency(settings.turrets.target_refresh_frequency, "turrets.target-refresh-frequency");
-    frequency(fighters.avoidance_clear_update_frequency,
-              "fighters.avoidance-clear-update-frequency");
-    frequency(fighters.avoidance_update_frequency, "fighters.avoidance-update-frequency");
-    frequency(fighters.avoidance_active_update_frequency,
-              "fighters.avoidance-active-update-frequency");
-    frequency(fighters.avoidance_immediate_update_frequency,
-              "fighters.avoidance-immediate-update-frequency");
     check(fighters.avoidance_clear_update_frequency <= fighters.avoidance_update_frequency &&
               fighters.avoidance_update_frequency <= fighters.avoidance_active_update_frequency &&
               fighters.avoidance_active_update_frequency <=
                   fighters.avoidance_immediate_update_frequency,
           "fighters.avoidance-update-frequency",
           "Avoidance frequencies must increase with risk");
-    cooldown(fighters.attack_retry_cooldown, "fighters.attack-retry-cooldown");
-    cooldown(fighters.laser.fire_cooldown, "fighters.laser.fire-cooldown");
-    cooldown(settings.turrets.laser.fire_cooldown, "turrets.laser.fire-cooldown");
-    cooldown(settings.spinners.laser.fire_cooldown, "tube-spinners.laser.fire-cooldown");
 
     auto const dimensions{collision::calculate_grid_dimensions(
         settings.overlap_response.level_size, settings.overlap_response.cell_size)};
@@ -80,14 +87,17 @@ auto PreparedSimulationSettings::prepare(SimulationSettings settings)
           "collision-grid",
           "Expected positive grid dimensions with a representable cell count and finite extents");
 
+    if (errors.empty() && clock_override && clock_override->tick_rate != settings.clock.tick_rate) {
+        validate_countdowns(clock_override->tick_rate.hz());
+    }
+
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
-    return PreparedSimulationSettings{std::move(settings), *geometry};
+    return {};
 }
 
-void apply_settings(PreparedSimulationSettings const& prepared, LevelSimInitData& target) {
-    auto const& settings{prepared.values()};
+void apply_settings(SimulationSettings const& settings, LevelSimInitData& target) {
     target.clock_settings = settings.clock;
     target.lasers = settings.lasers;
     target.collision.overlap_response = settings.overlap_response;
@@ -108,14 +118,16 @@ void apply_settings(PreparedSimulationSettings const& prepared, LevelSimInitData
     target.spinners = settings.spinners;
     target.spinners.fire_point_offsets = std::move(spinner_fire_points);
 
-    target.collision.grid_geometry = prepared.grid_geometry();
+    target.collision.grid_geometry = {
+        collision::calculate_grid_dimensions(settings.overlap_response.level_size,
+                                             settings.overlap_response.cell_size),
+        settings.overlap_response.cell_size};
     if (target.player) {
-        apply_settings(prepared, *target.player);
+        apply_settings(settings, *target.player);
     }
 }
 
-void apply_settings(PreparedSimulationSettings const& prepared, player::PlayerSpawnData& target) {
-    auto const& settings{prepared.values()};
+void apply_settings(SimulationSettings const& settings, player::PlayerSpawnData& target) {
     target.config = settings.player;
     target.health = ShipHealth{settings.player.health};
     target.laser_mode = settings.player.laser_mode;

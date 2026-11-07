@@ -113,7 +113,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     if (!loaded_settings) {
         return std::unexpected{levels::format_diagnostics(loaded_settings.error())};
     }
-    auto const& settings{loaded_settings->values()};
+    auto const& settings{*loaded_settings};
     auto const tick_rate_hz{settings.clock.tick_rate};
     auto const requested_ticks{calculate_tick_count(options.simulated_seconds, tick_rate_hz)};
     if (!requested_ticks) {

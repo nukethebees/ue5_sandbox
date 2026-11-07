@@ -84,11 +84,10 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Prebuilt settings do not claim unrelated source text"),
                              loaded->source.IsEmpty());
         TestRunner->TestEqual(TEXT("Runtime uses resolved fighter speed"),
-                              loaded->simulation.values().fighters.speed,
+                              loaded->simulation.fighters.speed,
                               input.settings.fighters.speed);
         TestRunner->TestTrue(TEXT("Runtime uses resolved collision dimensions"),
-                             loaded->simulation.values().overlap_response ==
-                                 input.settings.collision_grid);
+                             loaded->simulation.overlap_response == input.settings.collision_grid);
     }
 
     TEST_METHOD(DuplicatePreservesNestedValuesAndAssetReferences)

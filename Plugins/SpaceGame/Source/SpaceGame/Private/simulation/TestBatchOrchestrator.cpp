@@ -230,12 +230,12 @@ auto ATestBatchOrchestrator::prepare_level(ioj::levels::LevelSource const* const
         return false;
     }
 
-    simulation_tick_settings = loaded->simulation.values().clock;
+    simulation_tick_settings = loaded->simulation.clock;
     if (start_mode == EOrchestratorStartMode::AuthoredLevel) {
         simulation_tick_settings.time_scale =
             ioj::PositiveFinite<time_type>::make(launch_options_.requested_time_scale);
     }
-    presentation_host_.get_hud_manager().configure(loaded->simulation.values().hud);
+    presentation_host_.get_hud_manager().configure(loaded->simulation.hud);
     prepared_level_.Emplace(MoveTemp(*loaded));
 
     if (!IsValid(player_ship)) {

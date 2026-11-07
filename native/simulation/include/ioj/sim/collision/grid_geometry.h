@@ -21,11 +21,6 @@ class GridGeometry {
     [[nodiscard]] auto cell_count() const noexcept -> GridCellCount { return cell_count_; }
 
   private:
-    GridGeometry(CellCoord dimensions,
-                 Vector3f cell_dimensions,
-                 Vector3f half_size,
-                 GridCellCount cell_count) noexcept;
-
     CellCoord dimensions_{1, 1, 1};
     Vector3f cell_dimensions_{1.f, 1.f, 1.f};
     Vector3f half_size_{0.5f, 0.5f, 0.5f};
