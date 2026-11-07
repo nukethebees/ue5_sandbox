@@ -23,6 +23,9 @@ struct CompiledLevelEvents {
     auto add_start_timer_event(StartTimerEvent event) -> EventHandle;
     void add_trigger(ExprHandle condition, std::span<EventHandle const> events);
     auto collect_participating_teams(std::optional<Team> player_team = {}) const -> TeamList;
+    auto spawn_count() const -> std::uint32_t {
+        return capital_spawns.num() + turret_spawns.num() + spinner_spawns.num();
+    }
 
     LevelSpawnGroups spawn_groups{};
     LevelCapitalSpawnEvents capital_spawns{};

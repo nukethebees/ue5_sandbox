@@ -384,5 +384,5 @@
     (method spawn_instances @spawned_entity_span
       (parameter locations (type-ref @resolved_locations_view :suffix " const"))
       (parameter yaws (type-ref @float_const_span :suffix " const"))
-      (parameter fire_point_indices (type-ref @int32_const_span :suffix " const"))
+      (parameter fire_point_indices (type-ref @nonnegative_int32_const_span :suffix " const"))
       (parameter context (type-ref @spawn_context :suffix " const")))))

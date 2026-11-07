@@ -2,20 +2,20 @@
   :header "native/level_authoring/lib/include/ioj/levels/authoring/positional_inputs.h"
   :header-include "ioj/levels/authoring/positional_inputs.h"
   :namespace ioj::levels::authoring
-  (record NamedExprInput :comparison equality :generate-s7-writer true
+  (record NamedExprInput :generate-s7-writer true
     :s7-writer-includes ("ioj/levels/authoring/input_writers.h" "ioj/levels/level_camera_definition_writer.h")
     :generate-s7-reader true :s7-tag "named-expr" :s7-positional true
     :s7-reader-includes ("ioj/levels/authoring/input_readers.h")
     (member name @input_objective_name :initializer "")
     (member value @input_expr :initializer "")
     (projections (cpp)))
-  (record UnlockInput :comparison equality :generate-s7-writer true
+  (record UnlockInput :generate-s7-writer true
     :s7-writer-includes ("ioj/levels/authoring/input_writers.h" "ioj/levels/level_camera_definition_writer.h")
     :generate-s7-reader true :s7-tag "level-completed" :s7-positional true
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
     (member level @input_level_id :initializer "" :s7-name "level-id")
     (projections (cpp)))
-  (record ExprReferenceInput :comparison equality :generate-s7-writer true
+  (record ExprReferenceInput :generate-s7-writer true
     :s7-writer-includes ("ioj/levels/authoring/input_writers.h" "ioj/levels/level_camera_definition_writer.h")
     :generate-s7-reader true :s7-tag "expr-ref" :s7-positional true
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
@@ -26,7 +26,7 @@
   :header "native/level_authoring/lib/include/ioj/levels/authoring/level_inputs.h"
   :header-include "ioj/levels/authoring/level_inputs.h"
   :namespace ioj::levels::authoring
-  (record EntityInput :comparison equality :generate-s7-writer true
+  (record EntityInput :generate-s7-writer true
     :s7-writer-includes ("ioj/levels/authoring/input_writers.h" "ioj/levels/authoring/positional_inputs_writer.h" "ioj/levels/level_camera_definition_writer.h")
     :generate-visitor true :generate-s7-reader true :s7-tag "entity"
     :s7-reader-includes ("ioj/levels/authoring/input_readers.h"
@@ -36,14 +36,14 @@
     (member team ioj::Team :initializer "" :required true)
     (member position @native_vector3d :initializer "" :required true)
     (member rotation @native_vector3d :initializer "")
-    (member spawn_at double :initializer "")
-    (member health @input_optional_int :initializer "")
-    (member laser_damage @input_optional_int :initializer "")
-    (member initial_spawn_delay @input_optional_float :initializer "" :finite true)
-    (member spawn_cooldown @input_optional_float :initializer "" :finite true)
-    (member initial_fire_point @input_optional_int :initializer "")
+    (member spawn_at @input_spawn_time :initializer "")
+    (member health @input_optional_health :initializer "")
+    (member laser_damage @input_optional_nonnegative_int :initializer "")
+    (member initial_spawn_delay @input_optional_delay :initializer "")
+    (member spawn_cooldown @input_optional_delay :initializer "")
+    (member initial_fire_point @input_optional_nonnegative_int :initializer "")
     (projections (cpp)))
-  (record ObjectiveInput :comparison equality :generate-s7-writer true
+  (record ObjectiveInput :generate-s7-writer true
     :s7-writer-includes ("ioj/levels/authoring/input_writers.h" "ioj/levels/authoring/positional_inputs_writer.h" "ioj/levels/level_camera_definition_writer.h")
     :generate-s7-reader true :s7-tag "objective"
     (member id @input_objective_name :initializer "" :required true)
@@ -56,12 +56,12 @@
     (member expire @input_optional_expr :initializer "")
     (member depends_on @input_dependencies :initializer "")
     (projections (cpp)))
-  (record MissionInput :comparison equality :generate-s7-writer true
+  (record MissionInput :generate-s7-writer true
     :s7-writer-includes ("ioj/levels/authoring/input_writers.h" "ioj/levels/authoring/positional_inputs_writer.h" "ioj/levels/level_camera_definition_writer.h")
     :generate-s7-reader true :s7-tag "mission"
     (member objectives @input_objectives :initializer "" :required true)
     (projections (cpp)))
-  (record LevelInput :comparison equality :generate-s7-writer true
+  (record LevelInput :generate-s7-writer true
     :s7-writer-includes ("ioj/levels/authoring/input_writers.h" "ioj/levels/authoring/positional_inputs_writer.h" "ioj/levels/level_camera_definition_writer.h")
     :generate-s7-reader true :s7-tag "level"
     :s7-reader-includes ("ioj/levels/level_camera_definition_reader.h")

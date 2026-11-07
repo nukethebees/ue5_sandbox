@@ -385,7 +385,10 @@
 (type input_entity_id :spelling "ioj::levels::EntityId" :header "ioj/levels/identifiers.h")
 (type input_level_id :spelling "ioj::levels::LevelId" :header "ioj/levels/identifiers.h")
 (type input_objective_name :spelling "ioj::levels::ObjectiveName" :header "ioj/levels/objective_name.h")
-(type input_optional_int :spelling "std::optional<std::int32_t>" :header "optional")
+(type input_optional_health :spelling "std::optional<ioj::settings::PositiveHealth>" :header "ioj/settings/simulation_constraints.h")
+(type input_optional_nonnegative_int :spelling "std::optional<ioj::NonNegative<std::int32_t>>" :header "ioj/constrained_numbers.h")
+(type input_optional_delay :spelling "std::optional<ioj::NonNegativeFinite<float>>" :header "ioj/constrained_numbers.h")
+(type input_spawn_time :spelling "ioj::NonNegativeFinite<double>" :header "ioj/constrained_numbers.h")
 (type input_optional_float :spelling "std::optional<float>" :header "optional")
 (type input_optional_string :spelling "std::optional<std::string>" :header "optional")
 (type input_optional_expr :spelling "std::optional<ioj::levels::authoring::ExprInput>" :header "ioj/levels/authoring/expr_input.h")
@@ -481,3 +484,5 @@
   :spelling "ioj::sim::EventKind"
   :header "ioj/sim/levels/event_kind.h"
   :pass-by value)
+
+(type nonnegative_int32_const_span :spelling "std::span<ioj::NonNegative<std::int32_t> const>" :header "ioj/constrained_numbers.h")

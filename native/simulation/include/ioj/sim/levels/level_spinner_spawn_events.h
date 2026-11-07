@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
@@ -12,7 +13,6 @@
 
 #include <cassert>
 #include <cstddef>
-#include <cstdint>
 #include <memory_resource>
 #include <type_traits>
 
@@ -28,8 +28,12 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::
-          ColumnLayouts<LevelEntityRef, float, float, float, float, std::int32_t> {
+    : single_allocation_layout::ColumnLayouts<LevelEntityRef,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              ioj::NonNegative<std::int32_t>> {
     static constexpr std::size_t entity_indices_column{0ULL};
     static constexpr std::size_t locations_xs_column{1ULL};
     static constexpr std::size_t locations_ys_column{2ULL};
@@ -50,7 +54,7 @@ struct DataPointers {
     Element<float>* locations_ys{};
     Element<float>* locations_zs{};
     Element<float>* yaws{};
-    Element<std::int32_t>* initial_fire_point_indices{};
+    Element<ioj::NonNegative<std::int32_t>>* initial_fire_point_indices{};
     template <typename Self, typename Func>
     static decltype(auto) with_columns(Self& self, Func&& func) {
         return func(self.entity_indices,
@@ -121,7 +125,7 @@ struct ResolvedView
              ioj::sim::LevelEntityRef const new_entity_indices,
              Vector3f const new_locations,
              float const new_yaws,
-             std::int32_t const new_initial_fire_point_indices) const {
+             ioj::NonNegative<std::int32_t> const new_initial_fire_point_indices) const {
         assert((index < num()));
         this->entity_indices()[index] = new_entity_indices;
         this->view_locations().set(index, new_locations);
@@ -161,7 +165,8 @@ struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
     }
     auto yaws() const { return this->template column<float>(Layout::yaws_column); }
     auto initial_fire_point_indices() const {
-        return this->template column<std::int32_t>(Layout::initial_fire_point_indices_column);
+        return this->template column<ioj::NonNegative<std::int32_t>>(
+            Layout::initial_fire_point_indices_column);
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -180,7 +185,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              ioj::sim::LevelEntityRef const new_entity_indices,
              Vector3f const new_locations,
              float const new_yaws,
-             std::int32_t const new_initial_fire_point_indices) const {
+             ioj::NonNegative<std::int32_t> const new_initial_fire_point_indices) const {
         assert((index < num()));
         this->entity_indices()[index] = new_entity_indices;
         this->view_locations().set(index, new_locations);
@@ -201,7 +206,7 @@ static_assert(soa_storage_detail::validate_compact_view<View>());
 // locations_ys: float
 // locations_zs: float
 // yaws: float
-// initial_fire_point_indices: std::int32_t
+// initial_fire_point_indices: ioj::NonNegative<std::int32_t>
 struct LevelSpinnerSpawnEvents
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<LevelSpinnerSpawnEvents,
@@ -260,7 +265,7 @@ struct LevelSpinnerSpawnEvents
              LevelEntityRef const new_entity_indices,
              Vector3f const new_locations,
              float const new_yaws,
-             std::int32_t const new_initial_fire_point_indices) {
+             ioj::NonNegative<std::int32_t> const new_initial_fire_point_indices) {
         assert((index < num()));
         view().entity_indices()[index] = new_entity_indices;
         view().view_locations().set(index, new_locations);
@@ -270,7 +275,7 @@ struct LevelSpinnerSpawnEvents
     size_type add(LevelEntityRef const new_entity_indices,
                   Vector3f const new_locations,
                   float const new_yaws,
-                  std::int32_t const new_initial_fire_point_indices) {
+                  ioj::NonNegative<std::int32_t> const new_initial_fire_point_indices) {
         auto const index{num()};
         add_uninitialised(1);
         set(index, new_entity_indices, new_locations, new_yaws, new_initial_fire_point_indices);

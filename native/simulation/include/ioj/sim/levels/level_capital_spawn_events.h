@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/levels/team.h"
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
@@ -40,8 +41,8 @@ struct Layout
                                               float,
                                               ::ioj::Team,
                                               Health,
-                                              float,
-                                              float> {
+                                              ioj::NonNegativeFinite<float>,
+                                              ioj::NonNegativeFinite<float>> {
     static constexpr std::size_t entity_indices_column{0ULL};
     static constexpr std::size_t locations_xs_column{1ULL};
     static constexpr std::size_t locations_ys_column{2ULL};
@@ -71,8 +72,8 @@ struct DataPointers {
     Element<float>* rotations_rolls{};
     Element<::ioj::Team>* teams{};
     Element<Health>* healths{};
-    Element<float>* initial_fighter_spawn_delays{};
-    Element<float>* fighter_spawn_cooldowns{};
+    Element<ioj::NonNegativeFinite<float>>* initial_fighter_spawn_delays{};
+    Element<ioj::NonNegativeFinite<float>>* fighter_spawn_cooldowns{};
     template <typename Self, typename Func>
     static decltype(auto) with_columns(Self& self, Func&& func) {
         return func(self.entity_indices,
@@ -167,8 +168,8 @@ struct ResolvedView
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams,
              Health const new_healths,
-             float const new_initial_fighter_spawn_delays,
-             float const new_fighter_spawn_cooldowns) const {
+             ioj::NonNegativeFinite<float> const new_initial_fighter_spawn_delays,
+             ioj::NonNegativeFinite<float> const new_fighter_spawn_cooldowns) const {
         assert((index < num()));
         this->entity_indices()[index] = new_entity_indices;
         this->view_locations().set(index, new_locations);
@@ -222,10 +223,12 @@ struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
     auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
     auto healths() const { return this->template column<Health>(Layout::healths_column); }
     auto initial_fighter_spawn_delays() const {
-        return this->template column<float>(Layout::initial_fighter_spawn_delays_column);
+        return this->template column<ioj::NonNegativeFinite<float>>(
+            Layout::initial_fighter_spawn_delays_column);
     }
     auto fighter_spawn_cooldowns() const {
-        return this->template column<float>(Layout::fighter_spawn_cooldowns_column);
+        return this->template column<ioj::NonNegativeFinite<float>>(
+            Layout::fighter_spawn_cooldowns_column);
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -246,8 +249,8 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams,
              Health const new_healths,
-             float const new_initial_fighter_spawn_delays,
-             float const new_fighter_spawn_cooldowns) const {
+             ioj::NonNegativeFinite<float> const new_initial_fighter_spawn_delays,
+             ioj::NonNegativeFinite<float> const new_fighter_spawn_cooldowns) const {
         assert((index < num()));
         this->entity_indices()[index] = new_entity_indices;
         this->view_locations().set(index, new_locations);
@@ -275,8 +278,8 @@ static_assert(soa_storage_detail::validate_compact_view<View>());
 // rotations_rolls: float
 // teams: ::ioj::Team
 // healths: Health
-// initial_fighter_spawn_delays: float
-// fighter_spawn_cooldowns: float
+// initial_fighter_spawn_delays: ioj::NonNegativeFinite<float>
+// fighter_spawn_cooldowns: ioj::NonNegativeFinite<float>
 struct LevelCapitalSpawnEvents
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<LevelCapitalSpawnEvents,
@@ -340,8 +343,8 @@ struct LevelCapitalSpawnEvents
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams,
              Health const new_healths,
-             float const new_initial_fighter_spawn_delays,
-             float const new_fighter_spawn_cooldowns) {
+             ioj::NonNegativeFinite<float> const new_initial_fighter_spawn_delays,
+             ioj::NonNegativeFinite<float> const new_fighter_spawn_cooldowns) {
         assert((index < num()));
         view().entity_indices()[index] = new_entity_indices;
         view().view_locations().set(index, new_locations);
@@ -356,8 +359,8 @@ struct LevelCapitalSpawnEvents
                   Rotator3f const new_rotations,
                   ::ioj::Team const new_teams,
                   Health const new_healths,
-                  float const new_initial_fighter_spawn_delays,
-                  float const new_fighter_spawn_cooldowns) {
+                  ioj::NonNegativeFinite<float> const new_initial_fighter_spawn_delays,
+                  ioj::NonNegativeFinite<float> const new_fighter_spawn_cooldowns) {
         auto const index{num()};
         add_uninitialised(1);
         set(index,

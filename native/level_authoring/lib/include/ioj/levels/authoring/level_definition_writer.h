@@ -5,6 +5,7 @@
 #include <string>
 
 namespace ioj::levels::authoring {
+[[nodiscard]] auto make_entity_input(EntitySpawnDefinition const& entity) -> EntityInput;
 [[nodiscard]] auto make_level_input(LevelDefinition const& level) -> LevelInput;
 [[nodiscard]] auto emit_level_source(LevelInput const& level) -> std::string;
 }

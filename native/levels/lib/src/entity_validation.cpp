@@ -16,15 +16,6 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
     -> EntityValidationState {
     EntityValidationState state;
     state.by_id.reserve(definition.entities.size());
-    auto const require_number =
-        [&](bool const valid, std::string_view const property, std::string_view const message) {
-            if (!valid) {
-                result.emplace_back(DiagnosticCode::InvalidNumber,
-                                    std::format("level.entities.{}", property),
-                                    std::string{message});
-            }
-        };
-
     auto const entity_count{definition.entities.size()};
     for (std::size_t index{}; index < entity_count; ++index) {
         auto const& entity{definition.entities[index]};
@@ -69,11 +60,6 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
                                 "level.entities.position",
                                 entity_owner + " has a non-finite position or rotation");
         }
-        if (!std::isfinite(entity.spawn_time_seconds) || entity.spawn_time_seconds < 0.0) {
-            result.emplace_back(DiagnosticCode::InvalidSpawnTime,
-                                "level.entities.spawn-at",
-                                entity_owner + " has an invalid spawn time");
-        }
         if (is_player && entity.spawn_time_seconds != 0.0) {
             result.emplace_back(DiagnosticCode::DelayedPlayerSpawn,
                                 "level.entities.spawn-at",
@@ -86,9 +72,6 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
                                 "level.entities.initial-fire-point",
                                 "Initial fire point requires a tube spinner");
         }
-        require_number(!overrides.initial_fire_point || *overrides.initial_fire_point >= 0,
-                       "initial-fire-point",
-                       "Initial fire point must be nonnegative");
         if (entity.archetype == EntityArchetype::TubeSpinner) {
             if (entity.team != Team::White) {
                 result.emplace_back(DiagnosticCode::UnsupportedTeam,
@@ -106,26 +89,11 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
                                     "Tube spinners do not support health overrides");
             }
         }
-        require_number(!overrides.health || *overrides.health > 0,
-                       "health",
-                       "Initial health must be positive");
-        require_number(!overrides.laser_damage || *overrides.laser_damage >= 0,
-                       "laser-damage",
-                       "Laser damage must be nonnegative");
         if (overrides.laser_damage && entity.archetype != EntityArchetype::StaticTurret) {
             result.emplace_back(DiagnosticCode::UnknownProperty,
                                 "level.entities.laser-damage",
                                 "Laser damage overrides require a static turret");
         }
-        require_number(!overrides.initial_spawn_delay ||
-                           (std::isfinite(*overrides.initial_spawn_delay) &&
-                            *overrides.initial_spawn_delay >= 0.0f),
-                       "initial-spawn-delay",
-                       "Initial spawn delay must be finite and nonnegative");
-        require_number(!overrides.spawn_cooldown || (std::isfinite(*overrides.spawn_cooldown) &&
-                                                     *overrides.spawn_cooldown >= 0.0f),
-                       "spawn-cooldown",
-                       "Spawn cooldown must be finite and nonnegative");
         if (entity.archetype != EntityArchetype::CapitalShip &&
             (overrides.initial_spawn_delay || overrides.spawn_cooldown)) {
             result.emplace_back(DiagnosticCode::UnknownProperty,

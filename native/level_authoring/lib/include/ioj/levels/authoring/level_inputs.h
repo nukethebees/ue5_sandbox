@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/levels/authoring/expr_input.h"
@@ -17,6 +18,7 @@
 #include "ioj/levels/team.h"
 #include "ioj/s7/raw_node.h"
 #include "ioj/settings/settings.h"
+#include "ioj/settings/simulation_constraints.h"
 #include "ioj/vector_value_math.h"
 
 #include <array>
@@ -32,8 +34,6 @@
 
 namespace ioj::levels::authoring {
 struct EntityInput {
-    bool operator==(EntityInput const&) const = default;
-
     enum class Field : std::uint8_t {
         id,
         archetype,
@@ -132,17 +132,15 @@ struct EntityInput {
     Team team{};
     Vector3d position{};
     Vector3d rotation{};
-    double spawn_at{};
-    std::optional<std::int32_t> health{};
-    std::optional<std::int32_t> laser_damage{};
-    std::optional<float> initial_spawn_delay{};
-    std::optional<float> spawn_cooldown{};
-    std::optional<std::int32_t> initial_fire_point{};
+    ioj::NonNegativeFinite<double> spawn_at{};
+    std::optional<ioj::settings::PositiveHealth> health{};
+    std::optional<ioj::NonNegative<std::int32_t>> laser_damage{};
+    std::optional<ioj::NonNegativeFinite<float>> initial_spawn_delay{};
+    std::optional<ioj::NonNegativeFinite<float>> spawn_cooldown{};
+    std::optional<ioj::NonNegative<std::int32_t>> initial_fire_point{};
 };
 
 struct ObjectiveInput {
-    bool operator==(ObjectiveInput const&) const = default;
-
     ObjectiveName id{};
     std::string title{};
     Team team{};
@@ -155,14 +153,10 @@ struct ObjectiveInput {
 };
 
 struct MissionInput {
-    bool operator==(MissionInput const&) const = default;
-
     std::vector<ioj::levels::authoring::ObjectiveInput> objectives{};
 };
 
 struct LevelInput {
-    bool operator==(LevelInput const&) const = default;
-
     LevelId id{};
     std::string title{};
     std::string description{};

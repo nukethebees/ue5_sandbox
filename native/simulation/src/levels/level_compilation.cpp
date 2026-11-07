@@ -121,7 +121,6 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     auto const& turret_config{output.turrets};
     auto& definitions{output.level_events};
     output.level_metadata = definition.metadata();
-    output.entity_count = static_cast<std::uint32_t>(definition.entities().size());
     if (!definition.player_entity_id().empty()) {
         output.player_entity_ref = entity_index(definition, definition.player_entity_id());
     }
@@ -190,29 +189,30 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
                 set_vector(capital_events.view_locations(), row, Vector3f{entity.position});
                 set_rotation(capital_events.view_rotations(), row, Rotator3f{entity.rotation});
                 capital_events.teams()[row] = entity.team;
-                capital_events.healths()[row] = sim::Health{
-                    entity.overrides.health.value_or(capital_config.max_health.get().value())};
+                capital_events.healths()[row] =
+                    entity.overrides.health.value_or(capital_config.max_health).get();
                 capital_events.initial_fighter_spawn_delays()[row] =
-                    entity.overrides.initial_spawn_delay.value_or(0.0f);
+                    entity.overrides.initial_spawn_delay.value_or(NonNegativeFinite<float>{});
                 capital_events.fighter_spawn_cooldowns()[row] =
-                    entity.overrides.spawn_cooldown.value_or(capital_config.spawn_delay);
+                    entity.overrides.spawn_cooldown.value_or(
+                        NonNegativeFinite<float>::make(capital_config.spawn_delay));
             } else if (entity.archetype == EntityArchetype::StaticTurret) {
                 auto const row{turret_end++};
                 turret_events.entity_indices()[row] = entity_index_value;
                 set_vector(turret_events.view_locations(), row, Vector3f{entity.position});
                 set_rotation(turret_events.view_rotations(), row, Rotator3f{entity.rotation});
                 turret_events.teams()[row] = entity.team;
-                turret_events.healths()[row] = sim::Health{
-                    entity.overrides.health.value_or(turret_config.max_health.get().value())};
-                turret_events.laser_damages()[row] =
-                    entity.overrides.laser_damage.value_or(turret_config.laser.damage);
+                turret_events.healths()[row] =
+                    entity.overrides.health.value_or(turret_config.max_health).get();
+                turret_events.laser_damages()[row] = entity.overrides.laser_damage.value_or(
+                    NonNegative<std::int32_t>::make(turret_config.laser.damage));
             } else if (entity.archetype == EntityArchetype::TubeSpinner) {
                 auto const row{spinner_end++};
                 spinner_events.entity_indices()[row] = entity_index_value;
                 set_vector(spinner_events.view_locations(), row, Vector3f{entity.position});
                 spinner_events.yaws()[row] = static_cast<float>(entity.rotation.yaw);
                 spinner_events.initial_fire_point_indices()[row] =
-                    entity.overrides.initial_fire_point.value_or(0);
+                    entity.overrides.initial_fire_point.value_or(NonNegative<std::int32_t>{});
             }
         };
 

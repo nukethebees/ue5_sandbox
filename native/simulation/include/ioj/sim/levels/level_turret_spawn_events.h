@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/levels/team.h"
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
@@ -16,7 +17,6 @@
 
 #include <cassert>
 #include <cstddef>
-#include <cstdint>
 #include <memory_resource>
 #include <type_traits>
 
@@ -41,7 +41,7 @@ struct Layout
                                               float,
                                               ::ioj::Team,
                                               Health,
-                                              std::int32_t> {
+                                              ioj::NonNegative<std::int32_t>> {
     static constexpr std::size_t entity_indices_column{0ULL};
     static constexpr std::size_t locations_xs_column{1ULL};
     static constexpr std::size_t locations_ys_column{2ULL};
@@ -70,7 +70,7 @@ struct DataPointers {
     Element<float>* rotations_rolls{};
     Element<::ioj::Team>* teams{};
     Element<Health>* healths{};
-    Element<std::int32_t>* laser_damages{};
+    Element<ioj::NonNegative<std::int32_t>>* laser_damages{};
     template <typename Self, typename Func>
     static decltype(auto) with_columns(Self& self, Func&& func) {
         return func(self.entity_indices,
@@ -158,7 +158,7 @@ struct ResolvedView
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams,
              Health const new_healths,
-             std::int32_t const new_laser_damages) const {
+             ioj::NonNegative<std::int32_t> const new_laser_damages) const {
         assert((index < num()));
         this->entity_indices()[index] = new_entity_indices;
         this->view_locations().set(index, new_locations);
@@ -211,7 +211,7 @@ struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
     auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
     auto healths() const { return this->template column<Health>(Layout::healths_column); }
     auto laser_damages() const {
-        return this->template column<std::int32_t>(Layout::laser_damages_column);
+        return this->template column<ioj::NonNegative<std::int32_t>>(Layout::laser_damages_column);
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -232,7 +232,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams,
              Health const new_healths,
-             std::int32_t const new_laser_damages) const {
+             ioj::NonNegative<std::int32_t> const new_laser_damages) const {
         assert((index < num()));
         this->entity_indices()[index] = new_entity_indices;
         this->view_locations().set(index, new_locations);
@@ -259,7 +259,7 @@ static_assert(soa_storage_detail::validate_compact_view<View>());
 // rotations_rolls: float
 // teams: ::ioj::Team
 // healths: Health
-// laser_damages: std::int32_t
+// laser_damages: ioj::NonNegative<std::int32_t>
 struct LevelTurretSpawnEvents
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<LevelTurretSpawnEvents,
@@ -320,7 +320,7 @@ struct LevelTurretSpawnEvents
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams,
              Health const new_healths,
-             std::int32_t const new_laser_damages) {
+             ioj::NonNegative<std::int32_t> const new_laser_damages) {
         assert((index < num()));
         view().entity_indices()[index] = new_entity_indices;
         view().view_locations().set(index, new_locations);
@@ -334,7 +334,7 @@ struct LevelTurretSpawnEvents
                   Rotator3f const new_rotations,
                   ::ioj::Team const new_teams,
                   Health const new_healths,
-                  std::int32_t const new_laser_damages) {
+                  ioj::NonNegative<std::int32_t> const new_laser_damages) {
         auto const index{num()};
         add_uninitialised(1);
         set(index,

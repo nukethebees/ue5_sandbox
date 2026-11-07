@@ -20,6 +20,20 @@ auto expression_input(ObjectiveDefinition const& objective, ExprIndex const inde
 }
 }
 
+auto make_entity_input(EntitySpawnDefinition const& entity) -> EntityInput {
+    return {.id = entity.id,
+            .archetype = entity.archetype,
+            .team = entity.team,
+            .position = entity.position,
+            .rotation = {entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll},
+            .spawn_at = entity.spawn_time_seconds,
+            .health = entity.overrides.health,
+            .laser_damage = entity.overrides.laser_damage,
+            .initial_spawn_delay = entity.overrides.initial_spawn_delay,
+            .spawn_cooldown = entity.overrides.spawn_cooldown,
+            .initial_fire_point = entity.overrides.initial_fire_point};
+}
+
 auto make_level_input(LevelDefinition const& level) -> LevelInput {
     auto const& metadata{level.metadata()};
     LevelInput result{.id = metadata.id,
@@ -56,18 +70,7 @@ auto make_level_input(LevelDefinition const& level) -> LevelInput {
         }
     }
     for (auto const& entity : level.entities()) {
-        result.entities.push_back(
-            {.id = entity.id,
-             .archetype = entity.archetype,
-             .team = entity.team,
-             .position = entity.position,
-             .rotation = {entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll},
-             .spawn_at = entity.spawn_time_seconds,
-             .health = entity.overrides.health,
-             .laser_damage = entity.overrides.laser_damage,
-             .initial_spawn_delay = entity.overrides.initial_spawn_delay,
-             .spawn_cooldown = entity.overrides.spawn_cooldown,
-             .initial_fire_point = entity.overrides.initial_fire_point});
+        result.entities.push_back(make_entity_input(entity));
     }
     return result;
 }
@@ -78,6 +81,22 @@ auto emit_level_source(LevelInput const& level) -> std::string {
 }
 
 namespace ioj::s7 {
+auto TypeWriter<levels::authoring::ExprInput>::equivalent(levels::authoring::ExprInput const& value,
+                                                          levels::authoring::ExprInput const& base)
+    -> bool {
+    if (value.reference || base.reference) {
+        return value.reference == base.reference;
+    }
+    auto const type{value.expression.type()};
+    if (type != base.expression.type()) {
+        return false;
+    }
+    if (type == levels::ExprType::All || type == levels::ExprType::Any) {
+        return s7::equivalent(value.children, base.children);
+    }
+    return value.expression == base.expression;
+}
+
 auto TypeWriter<levels::authoring::ExprInput>::write(SExprIR& ir,
                                                      levels::authoring::ExprInput const& value,
                                                      levels::authoring::ExprInput const*) -> Expr {

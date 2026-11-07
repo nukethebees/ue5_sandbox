@@ -58,7 +58,8 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
 
     initialise_subsystems(data);
 
-    spawn_manager_.initialise(data.entity_count);
+    spawn_manager_.initialise(event_manager_.data().spawn_count() +
+                              static_cast<std::uint32_t>(player_ship_simulation_.has_value()));
     if (data.player_entity_ref.is_valid()) {
         spawn_manager_.set_entity_id(data.player_entity_ref,
                                      player_ship_simulation_->unique_entity_id);

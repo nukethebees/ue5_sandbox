@@ -33,7 +33,6 @@ struct LevelSimInitData {
     SpinnerSimConfig spinners;
 
     std::optional<player::PlayerSpawnData> player;
-    std::uint32_t entity_count{};
     LevelEntityRef player_entity_ref{};
     CompiledLevelEvents level_events;
     Mission mission;

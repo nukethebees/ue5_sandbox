@@ -3,7 +3,7 @@
   :header-include "ioj/levels/level_camera_definition.h"
   :namespace ioj::levels
   :prelude ("#include <vector>")
-  (record LevelCameraDefinition :comparison equality :generate-visitor true :generate-s7-reader true :generate-s7-writer true :s7-tag "camera"
+  (record LevelCameraDefinition :generate-visitor true :generate-s7-reader true :generate-s7-writer true :s7-tag "camera"
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
     :s7-writer-includes ("ioj/levels/authoring/identifier_writer.h")
     (member target_entity_ids @native_entity_ids :initializer "" :required true :s7-name "look-at")
@@ -16,7 +16,7 @@
   :header-include "ioj/levels/campaign_definition.h"
   :namespace ioj::levels
   :prelude ("#include <vector>")
-  (record CampaignDefinition :comparison equality :generate-visitor true :generate-s7-reader true :generate-s7-writer true :s7-tag "campaign"
+  (record CampaignDefinition :generate-visitor true :generate-s7-reader true :generate-s7-writer true :s7-tag "campaign"
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
     :s7-writer-includes ("ioj/levels/authoring/identifier_writer.h")
     (member id @native_campaign_id :initializer "" :required true)

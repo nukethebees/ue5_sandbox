@@ -11,5 +11,7 @@ struct TypeWriter<levels::authoring::ExprInput> {
     static auto write(SExprIR& ir,
                       levels::authoring::ExprInput const& value,
                       levels::authoring::ExprInput const*) -> Expr;
+    static auto equivalent(levels::authoring::ExprInput const& value,
+                           levels::authoring::ExprInput const& base) -> bool;
 };
 }

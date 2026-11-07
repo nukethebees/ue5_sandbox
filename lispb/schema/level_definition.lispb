@@ -16,8 +16,8 @@
     (member rotations nested @native_rotators_3f)
     (member teams array @native_team)
     (member healths array @native_health)
-    (member initial_fighter_spawn_delays array float)
-    (member fighter_spawn_cooldowns array float)
+    (member initial_fighter_spawn_delays array @settings_nonnegative_float)
+    (member fighter_spawn_cooldowns array @settings_nonnegative_float)
 ))
 
 (module level_runtime_events_level_turret_spawn_events
@@ -29,7 +29,7 @@
     (member rotations nested @native_rotators_3f)
     (member teams array @native_team)
     (member healths array @native_health)
-    (member laser_damages array int32)
+    (member laser_damages array @settings_nonnegative_int)
 ))
 
 (module level_runtime_events_level_spinner_spawn_events
@@ -39,5 +39,5 @@
     (member entity_indices array ioj::sim::LevelEntityRef)
     (member locations nested @native_vectors_3f)
     (member yaws array float)
-    (member initial_fire_point_indices array int32)
+    (member initial_fire_point_indices array @settings_nonnegative_int)
 ))

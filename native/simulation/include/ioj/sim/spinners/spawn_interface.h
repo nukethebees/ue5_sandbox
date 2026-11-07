@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/sim/levels/spawn_context.h"
 #include "ioj/sim/spinners/sim.h"
 #include "ioj/vectors3f.h"
@@ -18,7 +19,7 @@ class SpawnInterface {
     std::span<ioj::sim::EntityId const>
         spawn_instances(vectors3f::ResolvedConstView const locations,
                         std::span<float const> const yaws,
-                        std::span<std::int32_t const> const fire_point_indices,
+                        std::span<ioj::NonNegative<std::int32_t> const> const fire_point_indices,
                         SpawnContext const context) {
         return simulation.spawn_instances(locations, yaws, fire_point_indices, context);
     }

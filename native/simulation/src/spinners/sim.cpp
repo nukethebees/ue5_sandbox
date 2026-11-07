@@ -87,7 +87,7 @@ auto Sim::num_instances() const noexcept -> std::uint32_t {
 /* **************************************** */
 auto Sim::spawn_instances(vectors3f::ResolvedConstView const new_locations,
                           std::span<float const> const new_yaws,
-                          std::span<std::int32_t const> const new_fire_point_indices,
+                          std::span<NonNegative<std::int32_t> const> const new_fire_point_indices,
                           SpawnContext const context) -> std::span<EntityId const> {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::spawn_instances");
     assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
