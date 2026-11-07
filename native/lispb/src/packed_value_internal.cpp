@@ -1,10 +1,36 @@
 #include "packed_value_internal.h"
 
+#include <codegen/ast/cpp_types.h>
 #include <codegen/fixed_width_integer_types.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/enum_schemas.h>
+#include <codegen/schema/fixed_point_schemas.h>
+#include <codegen/schema/fixed_point_value.h>
+#include <codegen/schema/indices.h>
+#include <codegen/schema/integer_scalar_schemas.h>
+#include <codegen/schema/linear_quantized_schemas.h>
+#include <codegen/schema/manifest.h>
+#include <codegen/schema/mini_float_schemas.h>
+#include <codegen/schema/module_handle.h>
+#include <codegen/schema/packed_bit_order.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/packed_named_code_schemas.h>
+#include <codegen/schema/type_refs.h>
+#include <lispb/schema/enum_domains.h>
+#include <lispb/schema/external_types.h>
+#include <lispb/schema/integer_domain.h>
+#include <lispb/schema/integer_scalar_types.h>
 #include <lispb/schema/type_graph.h>
+#include <lispb/strings.h>
 
+#include <algorithm>
+#include <cstdint>
+#include <limits>
 #include <optional>
+#include <stdexcept>
+#include <string>
 #include <string_view>
+#include <utility>
 
 namespace lispb::codegen::detail {
 namespace {
@@ -59,6 +85,20 @@ auto find_mini_float(TypeRefId reference,
                      lispb::schema::TypeGraph const& graph,
                      ModuleHandle module) -> std::optional<lispb::codegen::DeclarationHandle> {
     return referenced_declaration(reference, graph, module, DeclarationKind::mini_float);
+}
+
+auto find_integer_domain(TypeRefId const reference,
+                         lispb::schema::TypeGraph const& graph,
+                         ModuleHandle const module) -> std::optional<schema::TypeDefinitionId> {
+    auto const& decls{graph.declarations()};
+    auto const& references{decls.type_refs};
+    auto const row{references.index(reference)};
+    if (!decls.strings().view(references.suffix[row]).empty() || references.nested[row]) {
+        return std::nullopt;
+    }
+    auto const occurrence{graph.resolved(module, reference)};
+    auto const& occurrences{graph.occurrences()};
+    return schema::integer_domain(graph, occurrences.type[occurrences.index(occurrence)]);
 }
 
 }

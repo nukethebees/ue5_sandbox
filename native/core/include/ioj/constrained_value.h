@@ -37,10 +37,6 @@ class ConstrainedValue {
         }
     }
 
-    // Copy constrained owners so moving cannot invalidate the source's invariant.
-    constexpr ConstrainedValue(ConstrainedValue const&) = default;
-    constexpr auto operator=(ConstrainedValue const&) -> ConstrainedValue& = default;
-
     [[nodiscard]] static constexpr auto
         valid(value_type const& value) noexcept(noexcept(policy.predicate(value))) -> bool {
         return policy.predicate(value);
@@ -59,7 +55,6 @@ class ConstrainedValue {
     // Return nullopt if the value violates the policy.
     [[nodiscard]] static constexpr auto
         try_make(value_type value) noexcept(std::is_nothrow_move_constructible_v<value_type> &&
-                                            std::is_nothrow_copy_constructible_v<value_type> &&
                                             noexcept(valid(value)))
             -> std::optional<ConstrainedValue> {
         if (!valid(value)) {

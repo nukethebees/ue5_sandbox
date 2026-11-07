@@ -13,22 +13,28 @@ namespace {
 }
 
 auto validate_mesh_assembly(TArray<FSbxMeshAssemblyPart> const& parts) -> FString {
-    if (auto const error{mesh_gen::validate_assembly(as_span(parts))}; !error.empty()) {
-        return FString{UTF8_TO_TCHAR(error.c_str())};
+    if (parts.IsEmpty()) {
+        return TEXT("Add at least one part to the assembly.");
     }
 
     auto const part_count{parts.Num()};
     for (int32 part_index{}; part_index < part_count; ++part_index) {
         auto const& part{parts[part_index]};
-        auto const mesh_error{validate_mesh_asset_name(part.mesh.asset_name)};
+        auto const mesh_error{validate_mesh_request(part.mesh)};
         if (!mesh_error.IsEmpty()) {
             return FString::Printf(TEXT("Part %d: %s"), part_index + 1, *mesh_error);
+        }
+        if (part.transform.scale.x() <= 0.0f || part.transform.scale.y() <= 0.0f ||
+            part.transform.scale.z() <= 0.0f) {
+            return FString::Printf(TEXT("Part %d: all scale values must be greater than zero."),
+                                   part_index + 1);
         }
     }
     return {};
 }
 
 auto generate_mesh_assembly(TArray<FSbxMeshAssemblyPart> const& parts) -> FSbxMeshData {
+    check(validate_mesh_assembly(parts).IsEmpty());
     return mesh_gen::generate_assembly(as_span(parts));
 }
 

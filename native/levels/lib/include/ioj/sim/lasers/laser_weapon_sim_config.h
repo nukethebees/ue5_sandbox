@@ -68,7 +68,7 @@ struct LaserWeaponSimConfig {
         std::unreachable();
     }
 
-    ioj::NonNegative<std::int32_t> damage{5};
+    std::int32_t damage{5};
     ioj::PositiveFinite<float> projectile_speed{10000.f};
     ioj::PositiveFinite<float> max_distance{10000.f};
     ioj::NonNegativeFinite<float> fire_cooldown{0.33f};

@@ -6,6 +6,7 @@ auto make_reference_level_simulation_data() -> ReferenceLevelSimulationData {
     ReferenceLevelSimulationData fixture;
     auto& data{fixture.data};
     auto& player{fixture.player};
+    data.capital_ships.fighter_spawn_slots = 6;
     data.fighters.fire_point_distance = 1.807294556e+03f;
     data.turrets.fire_point_offset = {{0.000000000e+00f, 0.000000000e+00f, 1.560000000e+03f}};
     player.transform = {

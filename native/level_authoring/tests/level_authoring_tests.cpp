@@ -437,8 +437,6 @@ TEST(NativeLevelAuthoringReader, IntegerFieldsRequireExactInt32Values) {
                                                  "-2147483649",
                                                  "3/2",
                                                  "1.5",
-                                                 "0",
-                                                 "-1",
                                                  s7::literals::nan,
                                                  s7::literals::positive_infinity,
                                                  "\"123\""};
@@ -515,7 +513,7 @@ TEST(NativeLevelAuthoringReader, RejectsMalformedInputBeforeProcessingSymbolicRe
 
 TEST(NativeLevelAuthoringReader, FloatFieldsRejectNonfiniteAndUnrepresentableValues) {
     constexpr std::string_view sources[]{
-        "0.5", "-0.5", "1e100", s7::literals::positive_infinity, s7::literals::nan};
+        "0.5", "1e100", s7::literals::positive_infinity, s7::literals::nan};
     for (auto const value : sources) {
         SCOPED_TRACE(value);
         auto const result{DefinitionReader{}.read_level_source(std::format(R"(

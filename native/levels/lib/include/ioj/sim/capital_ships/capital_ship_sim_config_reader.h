@@ -22,7 +22,8 @@ struct TypeReader<sim::CapitalShipSimConfig> : RecordReader<sim::CapitalShipSimC
                     if constexpr (field == Field::spawn_delay) {
                         read(member, constraints::finite);
                     }
-                    if constexpr (field == Field::fighter_spawn_slots_relative_transforms) {
+                    if constexpr (field == Field::fighter_spawn_slots ||
+                                  field == Field::fighter_spawn_slots_relative_transforms) {
                         std::unreachable();
                     }
                     if constexpr (field == Field::max_health) {
@@ -35,7 +36,8 @@ struct TypeReader<sim::CapitalShipSimConfig> : RecordReader<sim::CapitalShipSimC
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 3> field_names{"spawn-delay", "", "max-health"};
+    static constexpr std::array<std::string_view, 4> field_names{
+        "spawn-delay", "", "", "max-health"};
 };
 
 } // namespace ioj::s7

@@ -84,6 +84,7 @@ void Declarations::clear() {
     records.clear();
     semantic_relations.clear();
     setting_categories.clear();
+    setting_controls.clear();
     settings.clear();
     settings_modules.clear();
     soa_mask_dimensions.clear();

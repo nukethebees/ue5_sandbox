@@ -2,7 +2,7 @@
 #include <ioj/testing/structural_diff.h>
 #include <ioj/vector_value_math.h>
 
-#include <mesh_gen/assembly_part.h>
+#include <mesh_gen/MeshGeneration.h>
 
 #include <gtest/gtest.h>
 
@@ -100,7 +100,6 @@ TEST_P(PrimitiveGenerators, ProducesExpectedGeometryDeterministically) {
     expect_valid_geometry(mesh);
 
     auto const request{make_default_request(test.shape)};
-    ASSERT_TRUE(validate_request(request).empty());
     EXPECT_PRED_FORMAT2(structurally_equal, generate_mesh(request), generate_mesh(request));
 }
 
@@ -108,13 +107,23 @@ PrimitiveCase const primitive_cases[]{
     {"Box", Shape::box, [] { return generate_box(); }, 24, 36},
     {"Cylinder",
      Shape::cylinder,
-     [] { return generate_cylinder(CylinderParameters{30.0f, 80.0f, 12}); },
+     [] {
+         return generate_cylinder(
+             {ioj::PositiveFinite<float>{30.0f}, ioj::PositiveFinite<float>{80.0f}, 12});
+     },
      52,
      144},
-    {"Cone", Shape::cone, [] { return generate_cone(ConeParameters{30.0f, 80.0f, 12}); }, 38, 72},
+    {"Cone",
+     Shape::cone,
+     [] {
+         return generate_cone(
+             {ioj::PositiveFinite<float>{30.0f}, ioj::PositiveFinite<float>{80.0f}, 12});
+     },
+     38,
+     72},
     {"Sphere",
      Shape::sphere,
-     [] { return generate_sphere(SphereParameters{30.0f, 12, 6}); },
+     [] { return generate_sphere({ioj::PositiveFinite<float>{30.0f}, 12, 6}); },
      91,
      360},
     {"HexTile", Shape::hex_tile, [] { return generate_hex_tile(); }, 108, 144},
@@ -122,13 +131,24 @@ PrimitiveCase const primitive_cases[]{
     {"HoneycombCell",
      Shape::honeycomb_panel,
      [] {
-         return generate_honeycomb_panel(HoneycombPanelParameters{1, 1, 40.0f, 6.0f, 10.0f, false});
+         return generate_honeycomb_panel({ioj::Positive<std::int32_t>{1},
+                                          ioj::Positive<std::int32_t>{1},
+                                          ioj::PositiveFinite<float>{40.0f},
+                                          ioj::PositiveFinite<float>{6.0f},
+                                          ioj::PositiveFinite<float>{10.0f},
+                                          false});
      },
      144,
      216},
     {"HoneycombPanel",
      Shape::honeycomb_panel,
-     [] { return generate_honeycomb_panel(HoneycombPanelParameters{2, 2, 40.0f, 6.0f, 10.0f}); },
+     [] {
+         return generate_honeycomb_panel({ioj::Positive<std::int32_t>{2},
+                                          ioj::Positive<std::int32_t>{2},
+                                          ioj::PositiveFinite<float>{40.0f},
+                                          ioj::PositiveFinite<float>{6.0f},
+                                          ioj::PositiveFinite<float>{10.0f}});
+     },
      19 * 24,
      19 * 36},
     {"BeveledBox", Shape::beveled_box, [] { return generate_beveled_box(); }, 120, 204},
@@ -141,27 +161,33 @@ INSTANTIATE_TEST_SUITE_P(Shapes,
                          [](auto const& info) { return info.param.name; });
 
 TEST(PrimitiveBounds, HonorRequestedBoundsAndOrientation) {
-    auto const box_bounds{bounds_of(generate_box(BoxParameters{{120.0f, 80.0f, 40.0f}}))};
+    auto const box_bounds{bounds_of(generate_box({{120.0f, 80.0f, 40.0f}}))};
     EXPECT_TRUE(nearly_equal(box_bounds.minimum, {-60.0f, -40.0f, -20.0f}));
     EXPECT_TRUE(nearly_equal(box_bounds.maximum, {60.0f, 40.0f, 20.0f}));
 
-    auto const cylinder_bounds{bounds_of(generate_cylinder(CylinderParameters{30.0f, 80.0f, 12}))};
+    auto const cylinder_bounds{bounds_of(generate_cylinder(
+        {ioj::PositiveFinite<float>{30.0f}, ioj::PositiveFinite<float>{80.0f}, 12}))};
     EXPECT_TRUE(nearly_equal(cylinder_bounds.minimum, {-30.0f, -30.0f, -40.0f}));
     EXPECT_TRUE(nearly_equal(cylinder_bounds.maximum, {30.0f, 30.0f, 40.0f}));
 
-    auto const sphere_bounds{bounds_of(generate_sphere(SphereParameters{30.0f, 12, 6}))};
+    auto const sphere_bounds{
+        bounds_of(generate_sphere({ioj::PositiveFinite<float>{30.0f}, 12, 6}))};
     EXPECT_TRUE(nearly_equal(sphere_bounds.minimum, {-30.0f, -30.0f, -30.0f}));
     EXPECT_TRUE(nearly_equal(sphere_bounds.maximum, {30.0f, 30.0f, 30.0f}));
 
-    auto const beveled_bounds{
-        bounds_of(generate_beveled_box(BeveledBoxParameters{{120.0f, 80.0f, 40.0f}, 5.0f}))};
+    auto const beveled_bounds{bounds_of(
+        generate_beveled_box({{120.0f, 80.0f, 40.0f}, ioj::PositiveFinite<float>{5.0f}}))};
     EXPECT_TRUE(nearly_equal(beveled_bounds.minimum, {-60.0f, -40.0f, -20.0f}));
     EXPECT_TRUE(nearly_equal(beveled_bounds.maximum, {60.0f, 40.0f, 20.0f}));
 
-    auto const flat_hex_bounds{
-        bounds_of(generate_hex_frame(HexFrameParameters{40.0f, 6.0f, 12.0f, false}))};
-    auto const pointy_hex_bounds{
-        bounds_of(generate_hex_frame(HexFrameParameters{40.0f, 6.0f, 12.0f, true}))};
+    auto const flat_hex_bounds{bounds_of(generate_hex_frame({ioj::PositiveFinite<float>{40.0f},
+                                                             ioj::PositiveFinite<float>{6.0f},
+                                                             ioj::PositiveFinite<float>{12.0f},
+                                                             false}))};
+    auto const pointy_hex_bounds{bounds_of(generate_hex_frame({ioj::PositiveFinite<float>{40.0f},
+                                                               ioj::PositiveFinite<float>{6.0f},
+                                                               ioj::PositiveFinite<float>{12.0f},
+                                                               true}))};
     EXPECT_TRUE(nearly_equal(flat_hex_bounds.maximum.x(), 40.0f));
     EXPECT_TRUE(nearly_equal(pointy_hex_bounds.maximum.y(), 40.0f));
     EXPECT_TRUE(nearly_equal(flat_hex_bounds.maximum.x(), pointy_hex_bounds.maximum.y()));
@@ -169,8 +195,12 @@ TEST(PrimitiveBounds, HonorRequestedBoundsAndOrientation) {
 }
 
 TEST(HoneycombGenerator, SharesInternalEdgesAndLeavesCentersOpen) {
-    auto const panel{
-        generate_honeycomb_panel(HoneycombPanelParameters{2, 2, 40.0f, 6.0f, 12.0f, false})};
+    auto const panel{generate_honeycomb_panel({ioj::Positive<std::int32_t>{2},
+                                               ioj::Positive<std::int32_t>{2},
+                                               ioj::PositiveFinite<float>{40.0f},
+                                               ioj::PositiveFinite<float>{6.0f},
+                                               ioj::PositiveFinite<float>{12.0f},
+                                               false})};
     EXPECT_EQ(panel.positions.size(), 19 * 24);
     EXPECT_EQ(panel.indices.size(), 19 * 36);
     auto const panel_bounds{bounds_of(panel)};
@@ -178,18 +208,22 @@ TEST(HoneycombGenerator, SharesInternalEdgesAndLeavesCentersOpen) {
     EXPECT_TRUE(nearly_equal(panel_bounds.maximum.z(), 6.0f));
 
     auto minimum_radius{std::numeric_limits<float>::max()};
-    for (auto const position :
-         generate_honeycomb_panel(HoneycombPanelParameters{1, 1, 40.0f, 6.0f, 12.0f}).positions) {
+    for (auto const position : generate_honeycomb_panel({ioj::Positive<std::int32_t>{1},
+                                                         ioj::Positive<std::int32_t>{1},
+                                                         ioj::PositiveFinite<float>{40.0f},
+                                                         ioj::PositiveFinite<float>{6.0f},
+                                                         ioj::PositiveFinite<float>{12.0f}})
+                                   .positions) {
         minimum_radius = std::min(
             minimum_radius, std::sqrt(position.x() * position.x() + position.y() * position.y()));
     }
     EXPECT_GT(minimum_radius, 0.0f);
 }
 
-TEST(GenerationRequests, DispatchDescribeAndAssignMaterialRoles) {
+TEST(GenerationRequests, ValidateDispatchDescribeAndAssignMaterialRoles) {
     auto request{make_default_request(Shape::hex_tile)};
     request.material_role = MaterialRole::armor;
-    ASSERT_TRUE(validate_request(request).empty());
+    EXPECT_TRUE(validate_request(request).empty());
     auto const mesh{generate_mesh(request)};
     ASSERT_FALSE(mesh.triangle_material_roles.empty());
     EXPECT_TRUE(std::ranges::all_of(mesh.triangle_material_roles, [](MaterialRole const role) {
@@ -198,27 +232,17 @@ TEST(GenerationRequests, DispatchDescribeAndAssignMaterialRoles) {
     EXPECT_EQ(describe_request(request),
               "version=1;shape=hex_tile;outer_radius=50;depth=20;bevel_width=5;pointy_"
               "top=false;material_role=Armor");
-}
 
-TEST(GenerationRequests, EnforceSegmentAndShapeRelationships) {
-    EXPECT_FALSE(validate_request({.asset_name = {}}).empty());
-    EXPECT_TRUE(validate_request({.cylinder = {.radial_segments = 2}}).empty());
-    EXPECT_FALSE(
-        validate_request({.shape = Shape::cylinder, .cylinder = {.radial_segments = 2}}).empty());
-    EXPECT_FALSE(
-        validate_request({.shape = Shape::sphere, .sphere = {.latitude_segments = 1}}).empty());
-    EXPECT_FALSE(
-        validate_request({.shape = Shape::beveled_box, .beveled_box = {{10.f, 10.f, 10.f}, 5.f}})
-            .empty());
-    EXPECT_FALSE(validate_request({.shape = Shape::wedge, .wedge = {.top_offset = 26.f}}).empty());
-    EXPECT_TRUE(validate_request({.shape = Shape::wedge, .wedge = {.top_offset = 25.f}}).empty());
+    request.hex_tile.bevel_width = request.hex_tile.outer_radius;
+    EXPECT_EQ(validate_request(request),
+              "Hex-tile bevel width must be less than its radius and half-depth.");
 }
 
 TEST(AssemblyGeneration, AppendsOffsetsAndTransformsBuffers) {
     auto const box{generate_box()};
     MeshData assembly;
     append_transformed_mesh(assembly, box, {});
-    append_transformed_mesh(assembly, box, Transform{{100.0f, 0.0f, 0.0f}});
+    append_transformed_mesh(assembly, box, {{100.0f, 0.0f, 0.0f}});
     ASSERT_EQ(assembly.positions.size(), 48);
     ASSERT_EQ(assembly.indices.size(), 72);
     EXPECT_EQ(assembly.indices[36], box.indices[0] + 24);
@@ -231,21 +255,19 @@ TEST(AssemblyGeneration, AppendsOffsetsAndTransformsBuffers) {
     source.indices.push_back(0);
     MeshData transformed;
     append_transformed_mesh(
-        transformed,
-        source,
-        Transform{{10.0f, 20.0f, 30.0f}, {0.0f, 90.0f, 0.0f}, {2.0f, 1.0f, 1.0f}});
+        transformed, source, {{10.0f, 20.0f, 30.0f}, {0.0f, 90.0f, 0.0f}, {2.0f, 1.0f, 1.0f}});
     EXPECT_TRUE(nearly_equal(transformed.positions[0], {10.0f, 22.0f, 30.0f}));
     EXPECT_TRUE(nearly_equal(transformed.normals[0], {-0.894427f, 0.447214f, 0.0f}));
     EXPECT_EQ(transformed.uvs[0], source.uvs[0]);
 }
 
-TEST(AssemblyGeneration, PreservesVisibilityAndDeterminism) {
+TEST(AssemblyGeneration, ValidatesVisibilityAndDeterminism) {
     std::vector<AssemblyPart> parts{
         {make_default_request(Shape::box), {}},
         {make_default_request(Shape::cylinder),
-         Transform{{75.0f, 0.0f, 0.0f}, {0.0f, 45.0f, 0.0f}, {0.5f, 0.5f, 0.5f}}},
+         {{75.0f, 0.0f, 0.0f}, {0.0f, 45.0f, 0.0f}, {0.5f, 0.5f, 0.5f}}},
     };
-    ASSERT_TRUE(validate_assembly(parts).empty());
+    EXPECT_TRUE(validate_assembly(parts).empty());
     auto const first{generate_assembly(parts)};
     auto const second{generate_assembly(parts)};
     EXPECT_PRED_FORMAT2(structurally_equal, first, second);
@@ -253,13 +275,8 @@ TEST(AssemblyGeneration, PreservesVisibilityAndDeterminism) {
 
     parts[1].visible = false;
     EXPECT_EQ(generate_assembly(parts).positions.size(), generate_box().positions.size());
-
-    parts[0].transform.translation.x() = std::numeric_limits<float>::infinity();
-    EXPECT_FALSE(validate_assembly(parts).empty());
-    parts[0].transform = {.rotation = {.yaw = std::numeric_limits<float>::quiet_NaN()}};
-    EXPECT_FALSE(validate_assembly(parts).empty());
-    parts[0].transform = {.scale = {1.f, 0.f, 1.f}};
-    EXPECT_FALSE(validate_assembly(parts).empty());
+    parts[0].transform.scale.x() = 0.0f;
+    EXPECT_EQ(validate_assembly(parts), "Part 1: all scale values must be greater than zero.");
 }
 
 }

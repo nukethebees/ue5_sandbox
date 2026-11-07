@@ -2,8 +2,6 @@
 
 #include <gtest/gtest.h>
 
-#include <limits>
-
 namespace ioj::input::tests {
 TEST(NativeInputResponse, RemapsScalarDeadZoneAndAppliesSelectedDeviceInversion) {
     GameSettingsState const settings{.mouse_turn_sensitivity = 0.5f,
@@ -39,19 +37,14 @@ TEST(NativeInputResponse, RadialDeadZonePreservesDirectionSaturatesAndInvertsOnl
 }
 
 TEST(NativeInputResponse, ClampsTuningWithoutRestrictingPointerMagnitude) {
+    EXPECT_FLOAT_EQ(clamp_sensitivity(-2.0f), 0.0f);
+    EXPECT_FLOAT_EQ(clamp_dead_zone(-1.0f), 0.0f);
+    EXPECT_FLOAT_EQ(clamp_dead_zone(1.0f), 0.95f);
     GameSettingsState const settings{.mouse_turn_sensitivity = 2.0f,
                                      .gamepad_turn_sensitivity = 1.0f,
-                                     .gamepad_turn_dead_zone = clamp_dead_zone(1.0f)};
+                                     .gamepad_turn_dead_zone = 1.0f};
     EXPECT_FLOAT_EQ(apply_response(800.0f, Response::TurnPointerDelta, Axis::None, settings), 4.0f);
     EXPECT_FLOAT_EQ(apply_response(1.0f, Response::GamepadTurn, Axis::None, settings), 1.0f);
     EXPECT_EQ(apply_response(Vector3d{}, Response::GamepadMove, Axis::None, settings), Vector3d{});
-    EXPECT_FLOAT_EQ(clamp_sensitivity(-2.f), 0.f);
-    EXPECT_FLOAT_EQ(clamp_dead_zone(-1.f), 0.f);
-    for (auto const invalid : {std::numeric_limits<float>::quiet_NaN(),
-                               std::numeric_limits<float>::infinity(),
-                               -std::numeric_limits<float>::infinity()}) {
-        EXPECT_FLOAT_EQ(clamp_sensitivity(invalid), 0.f);
-        EXPECT_FLOAT_EQ(clamp_dead_zone(invalid), 0.f);
-    }
 }
 }

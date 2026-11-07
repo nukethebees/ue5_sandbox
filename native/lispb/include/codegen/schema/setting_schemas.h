@@ -2,7 +2,6 @@
 
 #include <codegen/schema/indices.h>
 #include <codegen/schema/setting_apply_mode.h>
-#include <codegen/schema/setting_control.h>
 #include <codegen/schema/setting_device.h>
 #include <lispb/indexed_column.h>
 #include <lispb/indices.h>
@@ -16,7 +15,7 @@ struct SettingSchemas {
     template <typename T>
     using Column = IndexedColumn<T, Indexing>;
 
-    [[nodiscard]] auto append(SettingControl value) -> SettingId;
+    [[nodiscard]] auto append() -> SettingId;
     [[nodiscard]] auto clone(SettingId id) -> SettingId;
     [[nodiscard]] auto index(SettingId id) const -> std::uint32_t;
     void clear();
@@ -29,7 +28,7 @@ struct SettingSchemas {
     Column<StringId> backend;
     Column<SettingApplyMode> apply_mode;
     Column<SettingDevice> device;
-    Column<SettingControl> control;
+    Column<SettingControlId> control;
 };
 
 }

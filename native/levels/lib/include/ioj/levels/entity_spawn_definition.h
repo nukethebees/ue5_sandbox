@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ioj/constrained_numbers.h>
 #include <ioj/levels/entity_archetype.h>
 #include <ioj/levels/identifiers.h>
 #include <ioj/levels/team.h>
@@ -16,11 +15,11 @@ struct EntitySpawnOverrides {
         return !health && !laser_damage && !initial_spawn_delay && !spawn_cooldown;
     }
 
-    std::optional<Positive<std::int32_t>> health{};
+    std::optional<std::int32_t> health{};
     // Apply damage only to static turrets; the remaining fields require a capital ship.
-    std::optional<NonNegative<std::int32_t>> laser_damage{};
-    std::optional<NonNegativeFinite<float>> initial_spawn_delay{};
-    std::optional<NonNegativeFinite<float>> spawn_cooldown{};
+    std::optional<std::int32_t> laser_damage{};
+    std::optional<float> initial_spawn_delay{};
+    std::optional<float> spawn_cooldown{};
 };
 
 struct EntitySpawnDefinition {

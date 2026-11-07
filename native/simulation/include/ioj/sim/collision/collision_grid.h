@@ -17,32 +17,31 @@ inline constexpr float no_trace_hit{std::numeric_limits<float>::infinity()};
 // Grid geometry
 /* **************************************** */
 
+[[nodiscard]] auto is_configured(GridGeometry geometry) noexcept -> bool;
 [[nodiscard]] auto calculate_grid_dimensions(Vector3f grid_size, Vector3f cell_size) noexcept
     -> CellCoord;
-[[nodiscard]] auto to_index(GridGeometry const& geometry, CellCoord coordinate) noexcept
-    -> CellIndex;
+[[nodiscard]] auto grid_half_size(GridGeometry geometry) noexcept -> Vector3f;
+[[nodiscard]] auto num_cells(GridGeometry geometry) noexcept -> GridCellCount;
+[[nodiscard]] auto to_index(GridGeometry geometry, CellCoord coordinate) noexcept -> CellIndex;
 [[nodiscard]] auto to_cell_coord(float value, float cell_dimension, int grid_dimension) noexcept
     -> int;
-[[nodiscard]] auto to_cell_coord(GridGeometry const& geometry, Vector3f position) noexcept
+[[nodiscard]] auto to_cell_coord(GridGeometry geometry, Vector3f position) noexcept -> CellCoord;
+[[nodiscard]] auto to_max_cell_coord(GridGeometry geometry, Vector3f position) noexcept
     -> CellCoord;
-[[nodiscard]] auto to_max_cell_coord(GridGeometry const& geometry, Vector3f position) noexcept
-    -> CellCoord;
-[[nodiscard]] auto to_cell_coord_bounds(GridGeometry const& geometry,
+[[nodiscard]] auto to_cell_coord_bounds(GridGeometry geometry,
                                         Vector3f min_point,
                                         Vector3f max_point) noexcept -> CellCoordBounds;
 [[nodiscard]] auto to_cell_min(int coordinate, float cell_dimension, int grid_dimension) noexcept
     -> float;
-[[nodiscard]] auto to_cell_min(GridGeometry const& geometry, CellCoord coordinate) noexcept
-    -> Vector3f;
-[[nodiscard]] auto to_cell_centre(GridGeometry const& geometry, CellCoord coordinate) noexcept
-    -> Vector3f;
+[[nodiscard]] auto to_cell_min(GridGeometry geometry, CellCoord coordinate) noexcept -> Vector3f;
+[[nodiscard]] auto to_cell_centre(GridGeometry geometry, CellCoord coordinate) noexcept -> Vector3f;
 
 /* **************************************** */
 // Bounds queries
 /* **************************************** */
-[[nodiscard]] auto is_cell_coord_in_bounds(GridGeometry const& geometry,
-                                           CellCoord coordinate) noexcept -> bool;
-void are_spheres_in_bounds(GridGeometry const& geometry,
+[[nodiscard]] auto is_cell_coord_in_bounds(GridGeometry geometry, CellCoord coordinate) noexcept
+    -> bool;
+void are_spheres_in_bounds(GridGeometry geometry,
                            vectors3f::ResolvedConstView centres,
                            float radius,
                            std::span<SphereInBoundsResult> results) noexcept;

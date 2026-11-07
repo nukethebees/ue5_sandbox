@@ -14,9 +14,6 @@
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/sim/turrets/turret_sim_config.h>
 
-#include <expected>
-#include <optional>
-
 namespace ioj::sim {
 struct LevelSimInitData;
 namespace player {
@@ -35,17 +32,14 @@ struct SimulationSettings {
     HudSettings hud{};
 };
 
-[[nodiscard]] auto
-    resolve_simulation_settings(settings::Settings const& source,
-                                std::optional<settings::TickSettings> clock_override = std::nullopt)
-        -> std::expected<SimulationSettings, levels::Diagnostics>;
+[[nodiscard]] auto resolve_simulation_settings(settings::Settings const& source)
+    -> std::expected<SimulationSettings, levels::Diagnostics>;
 
-[[nodiscard]] auto
-    validate_settings(SimulationSettings const& settings,
-                      std::optional<settings::TickSettings> clock_override = std::nullopt)
-        -> std::expected<void, levels::Diagnostics>;
+// Validate the complete result after all default and level overrides have been applied.
+[[nodiscard]] auto validate_settings(SimulationSettings const& settings)
+    -> std::expected<void, levels::Diagnostics>;
 
-// Require validated settings; retain the destination's asset-derived geometry and spawn data.
+// Require validated settings. Retain the destination's asset-derived geometry and spawn data.
 void apply_settings(SimulationSettings const& settings, LevelSimInitData& target);
 void apply_settings(SimulationSettings const& settings, player::PlayerSpawnData& target);
 }

@@ -5,7 +5,6 @@
 #include <codegen/schema/declaration_kind.h>
 #include <codegen/schema/fixed_point_form.h>
 #include <codegen/schema/fixed_point_rounding.h>
-#include <codegen/schema/numeric_formats.h>
 #include <lispb/indexed_column.h>
 #include <lispb/indices.h>
 
@@ -19,18 +18,20 @@ struct FixedPointSchemas {
     template <typename T>
     using Column = IndexedColumn<T, Indexing>;
 
-    [[nodiscard]] auto append(StringId name,
-                              FixedPointFormat format,
-                              std::optional<CppProjection> projection,
-                              FixedPointRounding rounding) -> DeclarationHandle;
+    [[nodiscard]] auto append() -> DeclarationHandle;
     [[nodiscard]] auto clone(DeclarationHandle id) -> DeclarationHandle;
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
     Column<StringId> name;
     Column<std::optional<CppProjection>> cpp_projection;
-    Column<FixedPointFormat> format;
+    Column<FixedPointForm> form;
+    Column<std::uint8_t> signedness;
+    Column<std::uint32_t> total_bits;
+    Column<std::uint32_t> fractional_bits;
     Column<FixedPointRounding> rounding;
+    Column<std::optional<StringId>> minimum_value;
+    Column<std::optional<StringId>> maximum_value;
 };
 
 }

@@ -8,7 +8,6 @@
 #include <codegen/schema/enum_reflection.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/native_enum_helper.h>
-#include <codegen/schema/numeric_formats.h>
 #include <codegen/schema/schema_range.h>
 #include <lispb/indexed_column.h>
 #include <lispb/indices.h>
@@ -40,7 +39,7 @@ struct EnumSchemas {
     Column<SchemaRange<EnumConversion>> conversions;
     Column<StringId> export_specifier;
     Column<std::optional<EnumUnrealProjectionId>> unreal_projection;
-    Column<std::optional<EnumBitWidth>> bit_width;
+    Column<std::optional<std::uint8_t>> bit_width;
     Column<EnumReflection> reflection;
     Column<schema::EnumSignedness> signedness;
     Column<std::uint8_t> enum_array;

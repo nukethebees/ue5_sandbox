@@ -15,7 +15,6 @@ struct OptionalPresenceBitTypes {
     [[nodiscard]] auto index(TypeDefinitionId id) const -> std::uint32_t;
 
     IndexedColumn<ResolvedOccurrenceId, Index> source;
-    IndexedColumn<TypeDefinitionId, Index> source_domain;
     IndexedColumn<std::uint32_t, Index> payload_bits;
     IndexedColumn<std::uint32_t, Index> encoded_bits;
 };

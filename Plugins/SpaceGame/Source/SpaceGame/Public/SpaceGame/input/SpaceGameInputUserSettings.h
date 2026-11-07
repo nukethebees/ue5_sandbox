@@ -12,7 +12,6 @@ UCLASS()
 class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUserSettings {
     GENERATED_BODY()
   public:
-    void Serialize(FArchive& archive) override;
     void finalize_canonical_registration();
 
     [[nodiscard]] auto mouse_turn_sensitivity() const noexcept -> float {

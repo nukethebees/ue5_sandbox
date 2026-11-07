@@ -2,7 +2,6 @@
 
 #include <ioj/presentation/entity_overlay_health_maximums.h>
 #include <ioj/presentation/entity_overlay_team_colours.h>
-#include <ioj/presentation/soft_target.h>
 
 #include <algorithm>
 #include <cassert>
@@ -12,7 +11,6 @@ auto sanitize_entity_overlay_settings(settings::EntityOverlay settings) -> setti
     settings.minimum_bar_scale = std::max(settings.minimum_bar_scale, 0.01f);
     settings.maximum_bar_scale = std::max(settings.maximum_bar_scale, settings.minimum_bar_scale);
     settings.objective_bar_height_scale = std::clamp(settings.objective_bar_height_scale, 1.f, 2.f);
-    normalize_soft_target_settings(settings.soft_target);
     return settings;
 }
 

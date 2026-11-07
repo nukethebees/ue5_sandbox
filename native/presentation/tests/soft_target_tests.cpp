@@ -307,30 +307,6 @@ TEST(SoftTargetVisual, SizesBracketAndCombinesRangePulseAndFade) {
     EXPECT_FALSE(sample());
 }
 
-TEST(SoftTargetSettings, NormalizesSelectionAndIndicatorRangesBeforeUse) {
-    settings::SoftTarget values{
-        .acquisition_radius_pixels = 30.f,
-        .retention_radius_pixels = 10.f,
-        .centre_tie_radius_pixels = -1.f,
-        .switch_improvement_ratio = 2.f,
-        .range_transition_start_multiplier = 0.f,
-        .minimum_radius_pixels = 20.f,
-        .maximum_radius_pixels = 10.f,
-        .bounds_padding_pixels = -3.f,
-        .bracket_start_radius_multiplier = 0.f,
-    };
-    normalize_soft_target_settings(values);
-    EXPECT_EQ(values.acquisition_radius_pixels, 30.f);
-    EXPECT_EQ(values.retention_radius_pixels, 30.f);
-    EXPECT_EQ(values.minimum_radius_pixels, 20.f);
-    EXPECT_EQ(values.maximum_radius_pixels, 20.f);
-    EXPECT_EQ(values.centre_tie_radius_pixels, 0.f);
-    EXPECT_EQ(values.bounds_padding_pixels, 0.f);
-    EXPECT_EQ(values.switch_improvement_ratio, 1.f);
-    EXPECT_EQ(values.range_transition_start_multiplier, 1.f);
-    EXPECT_EQ(values.bracket_start_radius_multiplier, 1.f);
-}
-
 TEST_F(EntityOverlaySource, TiesUseEntityIdentityRegardlessOfBatchOrdering) {
     for (int index{}; index < 2; ++index) {
         add_entity({.position = {1000.f, 0.f, 0.f}});

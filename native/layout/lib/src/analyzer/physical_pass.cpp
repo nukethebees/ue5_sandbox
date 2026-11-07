@@ -31,8 +31,7 @@ namespace ioj::layout::analysis_detail {
 using lispb::codegen::classify_physical_type_use;
 using lispb::codegen::PhysicalTypeForm;
 
-auto retain_facts(AnalysisContext& context, TypeFacts const& checked) -> PhysicalFactId {
-    auto const& facts{checked.data()};
+auto retain_facts(AnalysisContext& context, TypeFacts const& facts) -> PhysicalFactId {
     using Signedness = lispb::schema::EnumSignedness;
     auto& rows{context.storage.physical_facts};
     auto const id{PhysicalFactId{rows.num()}};
@@ -49,11 +48,16 @@ auto retain_facts(AnalysisContext& context, TypeFacts const& checked) -> Physica
 
 auto lookup_physical(AnalysisContext& context, AbiProfile const& abi, std::string_view spelling)
     -> std::optional<PhysicalFactId> {
-    auto const facts{abi.find(lispb::codegen::native_spelling(std::string{spelling}))};
+    auto facts{abi.find(lispb::codegen::native_spelling(std::string{spelling}))};
     if (!facts) {
         context.report({DiagnosticSeverity::warning,
                         "Unknown physical facts for '" + std::string{spelling} + "' in profile '" +
                             abi.name() + "'."});
+    } else if (facts->size_bytes == 0 || facts->alignment_bytes == 0) {
+        context.report(
+            {DiagnosticSeverity::error,
+             "Physical size and alignment must be nonzero for '" + std::string{spelling} + "'."});
+        facts.reset();
     }
     return facts.transform([&](auto const& value) { return retain_facts(context, value); });
 }
@@ -273,13 +277,13 @@ void aggregate_layout(AnalysisContext& context,
     auto const spelling{types.strings().view(types.cpp_spelling(type))};
     auto const supplied{abi.find(std::string{spelling})};
     if (result.size_bytes && result.alignment_bytes && supplied &&
-        (supplied->data().size_bytes != *result.size_bytes ||
-         supplied->data().alignment_bytes != *result.alignment_bytes)) {
+        (supplied->size_bytes != *result.size_bytes ||
+         supplied->alignment_bytes != *result.alignment_bytes)) {
         context.report(
             {DiagnosticSeverity::error,
              std::string{spelling} +
                  ": supplied complete-object facts conflict with the derived LispB layout (" +
-                 supplied->data().provenance + ")."});
+                 supplied->provenance + ")."});
         result.size_bytes.reset();
         result.alignment_bytes.reset();
     }

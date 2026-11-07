@@ -95,23 +95,20 @@ auto compile_level(LevelDefinition const& level,
                 set_vector(capital_events.view_locations(), row, Vector3f{entity.position});
                 set_rotation(capital_events.view_rotations(), row, Rotator3f{entity.rotation});
                 capital_events.teams()[row] = entity.team;
-                capital_events.healths()[row] =
-                    sim::Health{entity.overrides.health ? entity.overrides.health->get()
-                                                        : capital_config.max_health.get().value()};
+                capital_events.healths()[row] = sim::Health{
+                    entity.overrides.health.value_or(capital_config.max_health.get().value())};
                 capital_events.initial_fighter_spawn_delays()[row] =
-                    entity.overrides.initial_spawn_delay.value_or(NonNegativeFinite<float>{0.0f});
+                    entity.overrides.initial_spawn_delay.value_or(0.0f);
                 capital_events.fighter_spawn_cooldowns()[row] =
-                    entity.overrides.spawn_cooldown ? entity.overrides.spawn_cooldown->get()
-                                                    : capital_config.spawn_delay;
+                    entity.overrides.spawn_cooldown.value_or(capital_config.spawn_delay);
             } else if (entity.archetype == EntityArchetype::StaticTurret) {
                 auto const row{turret_end++};
                 turret_events.entity_indices()[row] = entity_index_value;
                 set_vector(turret_events.view_locations(), row, Vector3f{entity.position});
                 set_rotation(turret_events.view_rotations(), row, Rotator3f{entity.rotation});
                 turret_events.teams()[row] = entity.team;
-                turret_events.healths()[row] =
-                    sim::Health{entity.overrides.health ? entity.overrides.health->get()
-                                                        : turret_config.max_health.get().value()};
+                turret_events.healths()[row] = sim::Health{
+                    entity.overrides.health.value_or(turret_config.max_health.get().value())};
                 turret_events.laser_damages()[row] =
                     entity.overrides.laser_damage.value_or(turret_config.laser.damage);
             }

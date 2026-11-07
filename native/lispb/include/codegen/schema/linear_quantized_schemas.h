@@ -4,7 +4,6 @@
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
 #include <codegen/schema/indices.h>
-#include <codegen/schema/numeric_formats.h>
 #include <codegen/schema/quantization_clipping.h>
 #include <lispb/indexed_column.h>
 #include <lispb/indices.h>
@@ -18,12 +17,7 @@ struct LinearQuantizedSchemas {
     template <typename T>
     using Column = IndexedColumn<T, Indexing>;
 
-    [[nodiscard]] auto append(StringId name,
-                              TypeRefId source,
-                              BitWidth bits,
-                              std::uint64_t reserved_codes,
-                              QuantizationClipping clipping,
-                              std::optional<CppProjection> projection) -> DeclarationHandle;
+    [[nodiscard]] auto append() -> DeclarationHandle;
     [[nodiscard]] auto clone(DeclarationHandle id) -> DeclarationHandle;
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
@@ -31,7 +25,7 @@ struct LinearQuantizedSchemas {
     Column<StringId> name;
     Column<std::optional<CppProjection>> cpp_projection;
     Column<TypeRefId> source;
-    Column<BitWidth> bit_width;
+    Column<std::uint32_t> bit_width;
     Column<std::uint64_t> reserved_codes;
     Column<QuantizationClipping> clipping;
 };

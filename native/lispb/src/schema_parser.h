@@ -25,7 +25,6 @@ struct DeclarationHandle;
 struct ModuleHandle;
 struct PackedIntegerValue;
 struct ExternalScalarId;
-struct SettingControl;
 enum class Access : std::uint8_t;
 enum class RecordKind : std::uint8_t;
 enum class SchemaProperty : std::uint8_t;
@@ -101,7 +100,7 @@ class SchemaParser {
     auto parse_facade_friend_kind(sexpr::Fields const& fields) -> RecordKind;
     auto parse_facade(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_setting_device(sexpr::FormId const form) -> SettingDevice;
-    auto parse_control(sexpr::FormId form) -> SettingControl;
+    auto parse_control(Declarations& declarations, sexpr::FormId const form) -> SettingControlId;
     auto parse_setting(Declarations& declarations, sexpr::FormId const form) -> SettingId;
     auto parse_record_member(Declarations& declarations, sexpr::FormId const form)
         -> ChildOccurrenceId;

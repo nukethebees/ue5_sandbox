@@ -35,13 +35,9 @@ auto generate_recipe(FString const& filename) -> bool {
 
     auto const parts{SandboxMesh::resolve_mesh_assembly_hierarchy(
         document.parts, document.groups, document.output_asset_name)};
-    if (!parts) {
-        UE_LOG(LogGenerateSandboxMeshAssemblies, Error, TEXT("%s"), *parts.error());
-        return false;
-    }
-    auto const mesh_data{SandboxMesh::generate_mesh_assembly(*parts)};
+    auto const mesh_data{SandboxMesh::generate_mesh_assembly(parts)};
     auto* const static_mesh{SandboxMesh::write_generated_static_mesh_asset(
-        mesh_data, document.output_asset_name, SandboxMesh::describe_mesh_assembly(*parts))};
+        mesh_data, document.output_asset_name, SandboxMesh::describe_mesh_assembly(parts))};
     if (static_mesh == nullptr) {
         return false;
     }

@@ -28,6 +28,7 @@ constexpr float miss_max_distance{500.f};
 
 void run_worldless_laser_lifecycle(LaserLifecycleScenario const scenario) {
     auto data{tests::make_simulation_data(tests::make_fixture())};
+    data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     tests::add_capital_spawn(
         data, Vector3f{{-4000.f, 0.f, 0.f}}, Team::Blue, 60.f, 60.f, normal_target_health);

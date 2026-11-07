@@ -85,6 +85,7 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
         auto* const stale{ioj::duplicate_level_config(*config, *world)};
         first->set_level_config_asset(stale);
         second->set_actor_config(nullptr);
+        config->capital_ships.simulation.fighter_spawn_slots = 2;
         config->capital_ships.fighter_spawn_slots_relative_transforms = {
             FTransform{FVector{10000., -3000., 0.}}, FTransform{FVector{10000., 3000., 0.}}};
         invoke(*first, TEXT("apply_asset_configuration_to_all_instances"));
@@ -108,10 +109,10 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
                              points[0]->GetComponentLocation().Equals(moved, 0.01));
         TestRunner->TestTrue(TEXT("Apply preserves authored component identity"),
                              arrows(*first, TEXT("fighter_spawn_slots"))[0] == points[0]);
-        TestRunner->TestEqual(TEXT("Save does not modify stale asset"),
-                              stale->capital_ships.fighter_spawn_slots_relative_transforms.Num(),
-                              ioj::load_default_level_config()
-                                  ->capital_ships.fighter_spawn_slots_relative_transforms.Num());
+        TestRunner->TestEqual(
+            TEXT("Save does not modify stale asset"),
+            stale->capital_ships.simulation.fighter_spawn_slots,
+            ioj::load_default_level_config()->capital_ships.simulation.fighter_spawn_slots);
     }
 
     TEST_METHOD(CapitalBlueprintApplySurvivesConstructionRerun)
@@ -125,10 +126,9 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
         invoke(*proxy, TEXT("apply_asset_configuration"));
         proxy->RerunConstructionScripts();
         auto const points{arrows(*proxy, TEXT("fighter_spawn_slots"))};
-        if (!TestRunner->TestEqual(
-                TEXT("Construction preserves slot count"),
-                points.Num(),
-                config->capital_ships.fighter_spawn_slots_relative_transforms.Num())) {
+        if (!TestRunner->TestEqual(TEXT("Construction preserves slot count"),
+                                   points.Num(),
+                                   config->capital_ships.simulation.fighter_spawn_slots)) {
             return;
         }
         check_arrow_layout(points,

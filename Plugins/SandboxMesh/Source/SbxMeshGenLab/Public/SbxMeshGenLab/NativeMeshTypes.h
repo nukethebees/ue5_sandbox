@@ -1,11 +1,8 @@
 #pragma once
 
-#include <mesh_gen/rotatorf.h>
-#include <mesh_gen/vector_types.h>
+#include <mesh_gen/MeshGeneration.h>
 
 #include "CoreMinimal.h"
-
-#include <string>
 
 namespace SandboxMesh {
 

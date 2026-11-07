@@ -5,7 +5,6 @@
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
-#include <ioj/sim/levels/simulation_settings.h>
 #include <ioj/sim/missions/mission.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
@@ -30,7 +29,6 @@
 #include <EngineUtils.h>
 #include <Kismet/GameplayStatics.h>
 
-#include <format>
 #include <vector>
 
 namespace ioj::level_simulation_builder {
@@ -191,31 +189,22 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
     }
 
-    sim::SimulationSettings const settings{
-        .clock = clock_settings,
-        .player = config.player_ship.simulation,
-        .lasers = config.laser_projectiles.simulation,
-        .capital_ships = config.capital_ships.simulation,
-        .fighters = config.fighters.simulation,
-        .turrets = config.turrets.simulation,
-        .spinners = config.tube_spinners.simulation,
-        .overlap_response = config.overlap_response,
-    };
-    if (auto valid{sim::validate_settings(settings)}; !valid) {
-        for (auto const& error : valid.error()) {
-            errors.add(to_fstring(std::format("{}: {}", error.node_path, error.message)));
-        }
-        return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
-    }
-
     FLevelSimBuildResult result{std::in_place};
     auto& data{result.value()};
-    sim::apply_settings(settings, data);
+    data.clock_settings = clock_settings;
+    data.collision.overlap_response = config.overlap_response;
+    data.lasers = config.laser_projectiles.simulation;
+    data.capital_ships = config.capital_ships.simulation;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     for (auto const& transform : config.capital_ships.fighter_spawn_slots_relative_transforms) {
         data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(to_native(transform));
     }
+    data.capital_ships.fighter_spawn_slots = static_cast<std::int32_t>(
+        data.capital_ships.fighter_spawn_slots_relative_transforms.size());
+    data.fighters = config.fighters.simulation;
+    data.turrets = config.turrets.simulation;
     data.turrets.fire_point_offset = Vector3f{config.turrets.fire_point_offset.GetLocation()};
+    data.spinners = config.tube_spinners.simulation;
     data.spinners.fire_point_offsets.clear();
     for (auto const& offset : config.tube_spinners.fire_point_offsets) {
         data.spinners.fire_point_offsets.push_back(
@@ -228,14 +217,8 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     data.fighters.fire_point_distance =
         IsValid(socket) ? static_cast<float>(socket->RelativeLocation.Size()) : 0.f;
     auto const dimensions{config.collision_grid.calculate_grid_dimensions()};
-    auto const geometry{sim::collision::GridGeometry::try_make(
-        {dimensions.X, dimensions.Y, dimensions.Z}, Vector3f{config.collision_grid.cell_size})};
-    if (!geometry) {
-        errors.add(TEXT("Collision grid requires positive dimensions, finite cell sizes and "
-                        "extents, and a representable cell count"));
-        return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
-    }
-    data.collision.grid_geometry = *geometry;
+    data.collision.grid_geometry = {{dimensions.X, dimensions.Y, dimensions.Z},
+                                    Vector3f{config.collision_grid.cell_size}};
 
     FLevelCollisionHost::EntityMeshes meshes{};
     meshes[sim::EntityType::PlayerShip] = player_collision_mesh;

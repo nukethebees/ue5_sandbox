@@ -25,8 +25,9 @@ auto make_long_running_battle() -> LevelSimInitData {
     data.collision.grid_geometry = {{96, 96, 32}, {{2000.f, 2000.f, 5000.f}}};
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(256);
     data.fighters.speed = 3000.f;
-    data.fighters.laser.damage = ioj::NonNegative<std::int32_t>{0};
-    for (std::int32_t slot{}; slot < 8; ++slot) {
+    data.fighters.laser.damage = 0;
+    data.capital_ships.fighter_spawn_slots = 8;
+    for (std::int32_t slot{}; slot < data.capital_ships.fighter_spawn_slots; ++slot) {
         auto const y{static_cast<float>(slot - 4) * 300.f};
         data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(
             {.location = {1000.0, y, 0.0}});

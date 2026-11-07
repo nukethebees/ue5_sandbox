@@ -1,8 +1,8 @@
 #pragma once
 
-#include <mesh_gen/rotatorf.h>
-#include <mesh_gen/vector_types.h>
+#include <mesh_gen/MeshGeneration.h>
 
+#include <algorithm>
 #include <cmath>
 
 namespace mesh_gen::math {
@@ -69,6 +69,10 @@ inline constexpr float small_number{1.0e-8f};
         return {};
     }
     return value * (1.0f / std::sqrt(square_length));
+}
+
+[[nodiscard]] inline auto minimum_component(Vec3f const value) -> float {
+    return std::min(value.x(), std::min(value.y(), value.z()));
 }
 
 [[nodiscard]] auto rotate(Vec3f value, Rotatorf rotation) -> Vec3f;

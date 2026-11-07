@@ -1,14 +1,6 @@
-#include "mesh_math.h"
+#include "MeshMath.h"
 
-#include <mesh_gen/beveled_box_parameters.h>
-#include <mesh_gen/box_parameters.h>
-#include <mesh_gen/cone_parameters.h>
-#include <mesh_gen/cylinder_parameters.h>
-#include <mesh_gen/hex_frame_parameters.h>
-#include <mesh_gen/hex_tile_parameters.h>
-#include <mesh_gen/honeycomb_panel_parameters.h>
-#include <mesh_gen/sphere_parameters.h>
-#include <mesh_gen/wedge_parameters.h>
+#include <mesh_gen/MeshGeneration.h>
 
 #include <algorithm>
 #include <array>
@@ -455,6 +447,9 @@ auto generate_box(BoxParameters const& parameters) -> MeshData {
 auto generate_beveled_box(BeveledBoxParameters const& parameters) -> MeshData {
     float const bevel_width{parameters.bevel_width};
 
+    assert(minimum_component(parameters.dimensions) > 0.0f);
+    assert(bevel_width < minimum_component(parameters.dimensions) * 0.5f);
+
     MeshData mesh_data;
     mesh_data.positions.reserve(120);
     mesh_data.normals.reserve(120);
@@ -529,6 +524,10 @@ auto generate_beveled_box(BeveledBoxParameters const& parameters) -> MeshData {
 auto generate_wedge(WedgeParameters const& parameters) -> MeshData {
     float const top_length{parameters.top_length};
 
+    assert(minimum_component(parameters.dimensions) > 0.0f);
+    assert(top_length <= parameters.dimensions.x());
+    assert(std::abs(parameters.top_offset) + top_length * 0.5f <= parameters.dimensions.x() * 0.5f);
+
     MeshData mesh_data;
     mesh_data.positions.reserve(24);
     mesh_data.normals.reserve(24);
@@ -580,6 +579,8 @@ auto generate_wedge(WedgeParameters const& parameters) -> MeshData {
 auto generate_cylinder(CylinderParameters const& parameters) -> MeshData {
     float const height{parameters.height};
 
+    assert(parameters.radial_segments >= 3);
+
     MeshData mesh_data;
     auto const vertex_count{parameters.radial_segments * 4 + 4};
     auto const index_count{parameters.radial_segments * 12};
@@ -595,6 +596,7 @@ auto generate_cylinder(CylinderParameters const& parameters) -> MeshData {
 }
 
 auto generate_cone(ConeParameters const& parameters) -> MeshData {
+    assert(parameters.radial_segments >= 3);
 
     MeshData mesh_data;
     auto const vertex_count{parameters.radial_segments * 3 + 2};
@@ -610,6 +612,9 @@ auto generate_cone(ConeParameters const& parameters) -> MeshData {
 
 auto generate_sphere(SphereParameters const& parameters) -> MeshData {
     float const radius{parameters.radius};
+
+    assert(parameters.longitude_segments >= 3);
+    assert(parameters.latitude_segments >= 2);
 
     MeshData mesh_data;
     auto const vertices_per_row{parameters.longitude_segments + 1};
@@ -671,6 +676,9 @@ auto generate_hex_tile(HexTileParameters const& parameters) -> MeshData {
     float const bevel_width{parameters.bevel_width};
     float const outer_radius{parameters.outer_radius};
     float const depth{parameters.depth};
+
+    assert(bevel_width < outer_radius);
+    assert(bevel_width < depth * 0.5f);
 
     constexpr std::int32_t face_triangle_count{hex_side_count * 2};
     constexpr std::int32_t surface_quad_count{hex_side_count * 3};
@@ -734,6 +742,8 @@ auto generate_hex_frame(HexFrameParameters const& parameters) -> MeshData {
     float const wall_thickness{parameters.wall_thickness};
     float const outer_radius{parameters.outer_radius};
     float const depth{parameters.depth};
+
+    assert(wall_thickness < outer_radius);
 
     MeshData mesh_data;
     constexpr std::int32_t surface_count{4};
@@ -835,6 +845,8 @@ auto generate_honeycomb_panel(HoneycombPanelParameters const& parameters) -> Mes
     std::int32_t const rows{parameters.rows};
     std::int32_t const columns{parameters.columns};
     float const depth{parameters.depth};
+
+    assert(wall_thickness < cell_radius);
 
     std::vector<Vec2f> centers;
     centers.reserve(static_cast<std::size_t>(rows * columns));

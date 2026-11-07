@@ -23,19 +23,17 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
                                                             defaults.fighters.speed))};
     ASSERT_TRUE(source);
     settings::Settings expected;
-    expected.fighters.laser.damage = ioj::NonNegative<std::int32_t>{31};
+    expected.fighters.laser.damage = 31;
     expected.fighters.laser.max_distance = ::ioj::PositiveFinite<float>::make(50000);
-    expected.turrets.laser.damage = ioj::NonNegative<std::int32_t>{23};
+    expected.turrets.laser.damage = 23;
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *source);
     auto const resolved{sim::resolve_simulation_settings(*source)};
     ASSERT_TRUE(resolved) << resolved.error().front().message;
     FighterSimConfig const expected_fighters{
-        .laser = {.damage = NonNegative<std::int32_t>{31},
-                  .max_distance = PositiveFinite<float>{50000.f}}};
+        .laser = {.damage = 31, .max_distance = PositiveFinite<float>{50000.f}}};
     EXPECT_PRED_FORMAT2(structurally_equal, expected_fighters, resolved->fighters);
-    EXPECT_PRED_FORMAT2(structurally_equal,
-                        TurretSimConfig{.laser = {.damage = NonNegative<std::int32_t>{23}}},
-                        resolved->turrets);
+    EXPECT_PRED_FORMAT2(
+        structurally_equal, TurretSimConfig{.laser = {.damage = 23}}, resolved->turrets);
     EXPECT_PRED_FORMAT2(structurally_equal, defaults.player, resolved->player);
 }
 
@@ -64,7 +62,7 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
     auto const resolved{sim::resolve_simulation_settings(level->settings())};
     ASSERT_TRUE(resolved);
     auto expected{*base_values};
-    expected.fighters.laser.damage = ioj::NonNegative<std::int32_t>{77};
+    expected.fighters.laser.damage = 77;
     EXPECT_PRED_FORMAT2(structurally_equal, expected, level->settings());
     EXPECT_PRED_FORMAT2(structurally_equal, expected.fighters, resolved->fighters);
     EXPECT_EQ(level->mission(), mission);
@@ -91,7 +89,7 @@ TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings
     settings::Settings base;
     base.fighters.speed = 7300.f;
     base.collision_grid.level_size = {80000.f, 60000.f, 40000.f};
-    base.collision_grid.damage_per_overlap_detection = Positive<std::int32_t>{75};
+    base.collision_grid.damage_per_overlap_detection = ioj::Positive<std::int32_t>{75};
     auto const original{base};
     auto const level{DefinitionReader{}.read_level_source(R"(
       (level :id 'grid :title "Grid" :player 'player
@@ -133,9 +131,6 @@ TEST(SimulationSettingsReader, RetainsUnknownFieldConversionAndFinalValidationEr
           Case{"(settings :fighters (fighters :speed 1e100))", InvalidNumber, "fighters.speed"},
           Case{"(settings :fighters (fighters :health 1.5))", InvalidNumber, "fighters.health"},
           Case{"(settings :fighters (fighters :health -1))", InvalidType, "fighters.health"},
-          Case{"(settings :fighters (fighters :laser (laser :damage -1)))",
-               InvalidNumber,
-               "fighters.laser.damage"},
           Case{"(settings :collision-grid (collision-grid :damage-per-overlap-detection 0))",
                InvalidNumber,
                "collision-grid.damage-per-overlap-detection"},

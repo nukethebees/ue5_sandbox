@@ -8,16 +8,25 @@ namespace ioj::input {
 namespace {
 auto inverted(Response const response, Axis const axis, GameSettingsState const& settings) noexcept
     -> bool {
-    auto const pointer{response == Response::TurnPointerDelta};
+    if (response == Response::TurnPointerDelta) {
+        switch (axis) {
+            case Axis::Pitch:
+                return settings.invert_mouse_pitch;
+            case Axis::Yaw:
+                return settings.invert_mouse_yaw;
+            default:
+                return false;
+        }
+    }
     switch (axis) {
         case Axis::Pitch:
-            return pointer ? settings.invert_mouse_pitch : settings.invert_gamepad_pitch;
+            return settings.invert_gamepad_pitch;
         case Axis::Yaw:
-            return pointer ? settings.invert_mouse_yaw : settings.invert_gamepad_yaw;
+            return settings.invert_gamepad_yaw;
         case Axis::Roll:
-            return !pointer && settings.invert_gamepad_roll;
+            return settings.invert_gamepad_roll;
         case Axis::VerticalTranslation:
-            return !pointer && settings.invert_gamepad_vertical_translation;
+            return settings.invert_gamepad_vertical_translation;
         case Axis::None:
             return false;
     }
@@ -27,9 +36,9 @@ auto inverted(Response const response, Axis const axis, GameSettingsState const&
 auto scale(Response const response, GameSettingsState const& settings) noexcept -> double {
     switch (response) {
         case Response::TurnPointerDelta:
-            return settings.mouse_turn_sensitivity / 400.0;
+            return clamp_sensitivity(settings.mouse_turn_sensitivity) / 400.0;
         case Response::GamepadTurn:
-            return settings.gamepad_turn_sensitivity;
+            return clamp_sensitivity(settings.gamepad_turn_sensitivity);
         case Response::GamepadMove:
             return 1.0;
     }
@@ -37,8 +46,8 @@ auto scale(Response const response, GameSettingsState const& settings) noexcept 
 }
 
 auto dead_zone(Response const response, GameSettingsState const& settings) noexcept -> double {
-    return response == Response::GamepadTurn ? settings.gamepad_turn_dead_zone
-                                             : settings.gamepad_move_dead_zone;
+    return clamp_dead_zone(response == Response::GamepadTurn ? settings.gamepad_turn_dead_zone
+                                                             : settings.gamepad_move_dead_zone);
 }
 
 template <std::size_t N>
@@ -64,10 +73,10 @@ auto apply_vector_response(Vector<double, N> value,
 }
 
 auto clamp_sensitivity(float const value) noexcept -> float {
-    return std::isfinite(value) ? std::max(0.0f, value) : 0.f;
+    return std::max(0.0f, value);
 }
 auto clamp_dead_zone(float const value) noexcept -> float {
-    return std::isfinite(value) ? std::clamp(value, 0.0f, 0.95f) : 0.f;
+    return std::clamp(value, 0.0f, 0.95f);
 }
 
 auto apply_response(float value,

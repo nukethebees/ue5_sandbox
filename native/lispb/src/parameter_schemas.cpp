@@ -11,19 +11,16 @@ auto ParameterSchemas::index(ParameterId id) const -> std::uint32_t {
     assert(row < type.size());
     return row;
 }
-auto ParameterSchemas::append(TypeRefId const type_value,
-                              StringId const name_value,
-                              std::optional<StringId> const default_expression,
-                              bool const pack) -> ParameterId {
+auto ParameterSchemas::append() -> ParameterId {
     auto const index{static_cast<std::uint32_t>(type.size())};
-    type.push_back(type_value);
-    name.push_back(name_value);
-    default_value.push_back(default_expression);
-    is_pack.push_back(pack);
+    type.push_back({});
+    name.push_back({});
+    default_value.push_back({});
+    is_pack.push_back(false);
     return ParameterId{index + 1};
 }
 auto ParameterSchemas::clone(ParameterId id) -> ParameterId {
-    return append(type[id], name[id], default_value[id], is_pack[id]);
+    return detail::clone_schema_row(*this, id, type, name, default_value, is_pack);
 }
 void ParameterSchemas::clear() {
     detail::clear_schema_columns(type, name, default_value, is_pack);

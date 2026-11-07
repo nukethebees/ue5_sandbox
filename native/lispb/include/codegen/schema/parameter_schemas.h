@@ -13,10 +13,7 @@ struct ParameterSchemas {
     template <typename T>
     using Column = IndexedColumn<T, Indexing>;
 
-    [[nodiscard]] auto append(TypeRefId type_value,
-                              StringId name_value,
-                              std::optional<StringId> default_expression,
-                              bool pack) -> ParameterId;
+    [[nodiscard]] auto append() -> ParameterId;
     [[nodiscard]] auto clone(ParameterId id) -> ParameterId;
     [[nodiscard]] auto index(ParameterId id) const -> std::uint32_t;
     void clear();

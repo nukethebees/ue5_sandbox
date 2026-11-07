@@ -9,6 +9,7 @@
 
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/packed_named_code_schemas.h>
+#include <lispb/schema/integer_domain.h>
 #include <lispb/schema/type_graph.h>
 
 #include <algorithm>
@@ -104,9 +105,12 @@ auto analyze_distribution(AnalysisContext& context,
     if (kind == lispb::schema::TypeDefinitionKind::integer_varint) {
         auto const& varints{types.definitions().integer_varints};
         auto const varint{varints.index(definition)};
-        auto const source{varints.source_domain[varint]};
+        auto const source_type{
+            types.occurrences().type[types.occurrences().index(varints.source[varint])]};
+        auto const source{lispb::schema::integer_domain(types, source_type)};
+        assert(source.has_value());
         auto const& scalars{types.definitions().integer_scalars};
-        auto const scalar{scalars.index(source)};
+        auto const scalar{scalars.index(*source)};
         auto const& named_codes{types.declarations().packed_named_codes};
         for (auto const& entry : request.varint_distribution) {
             auto const in_range{lispb::codegen::packed_integer_less_equal(

@@ -65,6 +65,7 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     ::ioj::sim::LevelSimInitData data;
     data.collision.grid_geometry = {{16, 16, 4}, {1000.f, 1000.f, 1000.f}};
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
+    data.capital_ships.fighter_spawn_slots = 0;
     auto& spawn_storage{data.level_events.schedule.capital_spawns};
     data.level_events.schedule.add_initial_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, 2);
     auto const add_capital{
@@ -514,8 +515,8 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     data.player = actor->make_spawn_data();
     auto& active_profile{::ioj::sim::player::flight_model_profile(
         data.player->flight_models, data.player->flight_models.initial_slot)};
-    active_profile.config.boost.energy_drain_per_second = ioj::NonNegativeFinite<float>{20.f};
-    active_profile.config.energy_recharge_per_second = ioj::NonNegativeFinite<float>{0.f};
+    active_profile.config.boost.energy_drain_per_second = 20.f;
+    active_profile.config.energy_recharge_per_second = 0.f;
     ::ioj::sim::LevelSim simulation{MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();

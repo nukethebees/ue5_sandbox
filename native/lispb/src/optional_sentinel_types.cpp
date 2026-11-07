@@ -7,7 +7,6 @@ namespace lispb::schema {
 auto OptionalSentinelTypes::append() -> TypeDefinitionId {
     auto const row{static_cast<std::uint32_t>(source.size())};
     source.push_back({});
-    source_domain.push_back({});
     sentinel_name.push_back({});
     sentinel_value.push_back({});
     bit_width.push_back({});

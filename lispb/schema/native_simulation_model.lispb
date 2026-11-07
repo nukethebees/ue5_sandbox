@@ -158,6 +158,15 @@
     (member max @native_cell_coord)
     (projections (cpp))))
 
+(module native_collision_grid_geometry_grid_geometry
+  :header "native/simulation/include/ioj/sim/collision/grid_geometry.h"
+  :header-include "ioj/sim/collision/grid_geometry.h"
+  :namespace ioj::sim::collision
+  (record GridGeometry
+    (member dimensions @native_cell_coord)
+    (member cell_dimensions @native_vector_3f)
+    (projections (cpp))))
+
 (module native_collision_world_aabb
   :header "native/simulation/include/ioj/sim/collision/world_aabb.h"
   :header-include "ioj/sim/collision/world_aabb.h"
@@ -188,7 +197,7 @@
   (record LaserWeaponSimConfig :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "laser"
-    (member damage @settings_nonnegative_int :initializer "5")
+    (member damage std::int32_t :initializer "5")
     (member projectile_speed @settings_positive_float :initializer "10000.f")
     (member max_distance @settings_positive_float :initializer "10000.f")
     (member fire_cooldown @settings_nonnegative_float :initializer "0.33f")

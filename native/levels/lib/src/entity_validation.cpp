@@ -12,10 +12,18 @@ auto owner(EntitySpawnDefinition const& entity, std::size_t const index) -> std:
 }
 }
 
-auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics& result) -> IdSet {
-    IdSet ids;
-    ids.reserve(definition.entities.size());
-    bool player_found{};
+auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics& result)
+    -> EntityValidationState {
+    EntityValidationState state;
+    state.by_id.reserve(definition.entities.size());
+    auto const require_number =
+        [&](bool const valid, std::string_view const property, std::string_view const message) {
+            if (!valid) {
+                result.emplace_back(DiagnosticCode::InvalidNumber,
+                                    std::format("level.entities.{}", property),
+                                    std::string{message});
+            }
+        };
 
     auto const entity_count{definition.entities.size()};
     for (std::size_t index{}; index < entity_count; ++index) {
@@ -26,7 +34,8 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
                              entity.id == definition.player_entity_id};
 
         if (!entity.id.empty()) {
-            if (!ids.insert(entity.id).second) {
+            if (!state.by_id.emplace(entity.id, EntityFacts{entity.team, entity.spawn_time_seconds})
+                     .second) {
                 result.emplace_back(DiagnosticCode::DuplicateEntityId,
                                     "level.entities.id",
                                     entity_owner + " duplicates authored entity id '" +
@@ -34,7 +43,7 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
             }
         }
 
-        player_found = player_found || is_player;
+        state.player_found = state.player_found || is_player;
         if (!std::ranges::contains(EnumTraits<Team>::values, entity.team)) {
             result.emplace_back(DiagnosticCode::UnsupportedTeam,
                                 "level.entities.team",
@@ -72,11 +81,26 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
         }
 
         auto const& overrides{entity.overrides};
+        require_number(!overrides.health || *overrides.health > 0,
+                       "health",
+                       "Initial health must be positive");
+        require_number(!overrides.laser_damage || *overrides.laser_damage >= 0,
+                       "laser-damage",
+                       "Laser damage must be nonnegative");
         if (overrides.laser_damage && entity.archetype != EntityArchetype::StaticTurret) {
             result.emplace_back(DiagnosticCode::UnknownProperty,
                                 "level.entities.laser-damage",
                                 "Laser damage overrides require a static turret");
         }
+        require_number(!overrides.initial_spawn_delay ||
+                           (std::isfinite(*overrides.initial_spawn_delay) &&
+                            *overrides.initial_spawn_delay >= 0.0f),
+                       "initial-spawn-delay",
+                       "Initial spawn delay must be finite and nonnegative");
+        require_number(!overrides.spawn_cooldown || (std::isfinite(*overrides.spawn_cooldown) &&
+                                                     *overrides.spawn_cooldown >= 0.0f),
+                       "spawn-cooldown",
+                       "Spawn cooldown must be finite and nonnegative");
         if (entity.archetype != EntityArchetype::CapitalShip &&
             (overrides.initial_spawn_delay || overrides.spawn_cooldown)) {
             result.emplace_back(DiagnosticCode::UnknownProperty,
@@ -91,12 +115,12 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
         }
     }
 
-    if (!definition.player_entity_id.empty() && !player_found) {
+    if (!definition.player_entity_id.empty() && !state.player_found) {
         result.emplace_back(DiagnosticCode::PlayerEntityNotFound,
                             "level.player",
                             "Player entity '" + definition.player_entity_id.value +
                                 "' is not declared");
     }
-    return ids;
+    return state;
 }
 }

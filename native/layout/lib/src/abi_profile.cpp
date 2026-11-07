@@ -22,18 +22,27 @@ namespace {
 inline constexpr char compiler_fact_provenance[]{"Compiler-derived sizeof/alignof for this build"};
 
 template <typename T>
-auto compiler_facts() -> TypeFacts {
-    TypeFacts::Definition facts{.size_bytes = sizeof(T),
-                                .alignment_bytes = alignof(T),
-                                .provenance = compiler_fact_provenance,
-                                .origin = FactOrigin::compiler_probe};
-    if constexpr (std::is_integral_v<T>) {
-        facts.integer_signed = std::is_signed_v<T>;
-    }
+auto integer_facts() -> TypeFacts {
+    TypeFacts facts{.size_bytes = sizeof(T),
+                    .alignment_bytes = alignof(T),
+                    .integer_signed = std::is_signed_v<T>,
+                    .unsigned_value_bits = std::nullopt,
+                    .provenance = compiler_fact_provenance,
+                    .origin = FactOrigin::compiler_probe};
     if constexpr (std::is_unsigned_v<T>) {
         facts.unsigned_value_bits = std::numeric_limits<T>::digits;
     }
-    return TypeFacts::make(std::move(facts));
+    return facts;
+}
+
+template <typename T>
+auto value_facts() -> TypeFacts {
+    return {.size_bytes = sizeof(T),
+            .alignment_bytes = alignof(T),
+            .integer_signed = std::nullopt,
+            .unsigned_value_bits = std::nullopt,
+            .provenance = compiler_fact_provenance,
+            .origin = FactOrigin::compiler_probe};
 }
 
 auto parse_error(std::size_t const line, std::string message)
@@ -65,6 +74,10 @@ auto parse_unsigned(std::string_view const token) -> std::optional<std::uint64_t
 auto has_trailing_input(std::istringstream& input) -> bool {
     input >> std::ws;
     return !input.eof();
+}
+
+auto is_power_of_two(std::uint64_t const value) -> bool {
+    return value != 0 && (value & (value - 1)) == 0;
 }
 
 auto profile_has_representation_cycle(
@@ -142,36 +155,45 @@ auto AbiProfile::host_common() -> AbiProfile {
                              .l3_cache_bytes = std::nullopt,
                              .provenance = "Unspecified host architecture"});
 #endif
-    result.set("std::uint8_t", compiler_facts<std::uint8_t>());
-    result.set("std::uint16_t", compiler_facts<std::uint16_t>());
-    result.set("std::uint32_t", compiler_facts<std::uint32_t>());
-    result.set("std::uint64_t", compiler_facts<std::uint64_t>());
-    result.set("std::int8_t", compiler_facts<std::int8_t>());
-    result.set("std::int16_t", compiler_facts<std::int16_t>());
-    result.set("std::int32_t", compiler_facts<std::int32_t>());
-    result.set("std::int64_t", compiler_facts<std::int64_t>());
-    result.set("int", compiler_facts<int>());
-    result.set("float", compiler_facts<float>());
-    result.set("double", compiler_facts<double>());
-    result.set("void*", compiler_facts<void*>());
+    result.set("std::uint8_t", integer_facts<std::uint8_t>());
+    result.set("std::uint16_t", integer_facts<std::uint16_t>());
+    result.set("std::uint32_t", integer_facts<std::uint32_t>());
+    result.set("std::uint64_t", integer_facts<std::uint64_t>());
+    result.set("std::int8_t", integer_facts<std::int8_t>());
+    result.set("std::int16_t", integer_facts<std::int16_t>());
+    result.set("std::int32_t", integer_facts<std::int32_t>());
+    result.set("std::int64_t", integer_facts<std::int64_t>());
+    result.set("int", integer_facts<int>());
+    result.set("float", value_facts<float>());
+    result.set("double", value_facts<double>());
+    result.set("void*", value_facts<void*>());
 #if defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__) || defined(__i386__)
     result.set_object_pointer_representation("void*");
 #endif
-    result.set("bool", compiler_facts<bool>());
+    result.set("bool",
+               TypeFacts{.size_bytes = sizeof(bool),
+                         .alignment_bytes = alignof(bool),
+                         .integer_signed = false,
+                         .unsigned_value_bits = 1,
+                         .provenance = compiler_fact_provenance,
+                         .origin = FactOrigin::compiler_probe});
     return result;
 }
 
-void AbiProfile::set(std::string spelling, TypeFacts facts) {
+void AbiProfile::set(std::string spelling, TypeFacts const& facts) {
     if (spelling.empty()) {
         throw std::invalid_argument{"Physical type spelling must be nonempty."};
     }
+    if (auto const valid{validate_type_facts(facts)}; !valid) {
+        throw std::invalid_argument{"Type '" + spelling + "': " + valid.error()};
+    }
     representations_.erase(spelling);
-    types_.insert_or_assign(std::move(spelling), std::move(facts));
+    types_.insert_or_assign(std::move(spelling), facts);
 }
 
 void AbiProfile::set_object_pointer_representation(std::string spelling) {
     auto const facts{find(spelling)};
-    if (!facts.has_value() || facts->data().integer_signed.has_value()) {
+    if (!facts.has_value() || facts->integer_signed.has_value()) {
         throw std::invalid_argument{
             "Object-pointer representation requires known non-integer complete-object facts."};
     }
@@ -329,7 +351,8 @@ auto parse_abi_profile(std::string_view const source)
             }
             auto const size{parse_unsigned(size_token)};
             auto const alignment{parse_unsigned(alignment_token)};
-            if (spelling.empty() || !size.has_value() || !alignment.has_value()) {
+            if (spelling.empty() || !size.has_value() || *size == 0 || !alignment.has_value() ||
+                !is_power_of_two(*alignment)) {
                 return parse_error(line_number,
                                    "Type spelling must be nonempty, size nonzero, and alignment a "
                                    "nonzero power of two.");
@@ -339,11 +362,11 @@ auto parse_abi_profile(std::string_view const source)
                                    "Duplicate type or representation '" + spelling + "'.");
             }
 
-            TypeFacts::Definition facts{.size_bytes = *size,
-                                        .alignment_bytes = *alignment,
-                                        .integer_signed = std::nullopt,
-                                        .unsigned_value_bits = std::nullopt,
-                                        .provenance = std::move(provenance)};
+            TypeFacts facts{.size_bytes = *size,
+                            .alignment_bytes = *alignment,
+                            .integer_signed = std::nullopt,
+                            .unsigned_value_bits = std::nullopt,
+                            .provenance = std::move(provenance)};
             if (kind == "signed") {
                 facts.integer_signed = true;
                 if (bits_token != "unknown") {
@@ -354,8 +377,9 @@ auto parse_abi_profile(std::string_view const source)
             } else if (kind == "unsigned") {
                 facts.integer_signed = false;
                 auto const bits{parse_unsigned(bits_token)};
-                if (bits_token != "unknown" &&
-                    (!bits.has_value() || *bits > std::numeric_limits<std::uint32_t>::max())) {
+                if (bits_token != "unknown" && (!bits.has_value() || *bits == 0 ||
+                                                *bits > std::numeric_limits<std::uint32_t>::max() ||
+                                                *size < (*bits + 7) / 8)) {
                     return parse_error(
                         line_number, "Unsigned value bits must be within the physical type width.");
                 }
@@ -385,11 +409,10 @@ auto parse_abi_profile(std::string_view const source)
             if (!recognized_origin) {
                 return parse_error(line_number, "Unknown fact origin '" + origin + "'.");
             }
-            auto checked{TypeFacts::try_make(std::move(facts))};
-            if (!checked) {
-                return parse_error(line_number, "Type '" + spelling + "': " + checked.error());
+            if (auto const valid{validate_type_facts(facts)}; !valid) {
+                return parse_error(line_number, "Type '" + spelling + "': " + valid.error());
             }
-            types.emplace(std::move(spelling), std::move(*checked));
+            types.emplace(std::move(spelling), std::move(facts));
             continue;
         }
 
@@ -482,8 +505,8 @@ auto parse_abi_profile(std::string_view const source)
     }
 
     AbiProfile result{std::move(profile_name), std::move(identity)};
-    for (auto& [spelling, facts] : types) {
-        result.set(spelling, std::move(facts));
+    for (auto const& [spelling, facts] : types) {
+        result.set(spelling, facts);
     }
     for (auto const& [spelling, represented_by] : representations) {
         result.set_representation(spelling, represented_by);
@@ -491,7 +514,7 @@ auto parse_abi_profile(std::string_view const source)
     result.set_memory_facts(std::move(memory));
     if (object_pointer_representation.has_value()) {
         auto const facts{result.find(*object_pointer_representation)};
-        if (!facts.has_value() || facts->data().integer_signed.has_value()) {
+        if (!facts.has_value() || facts->integer_signed.has_value()) {
             return parse_error(
                 0, "Object-pointer policy requires known non-integer complete-object facts.");
         }
@@ -525,8 +548,7 @@ auto serialize_abi_profile(AbiProfile const& profile) -> std::string {
     write_identity(output, "abi", identity.abi);
     write_identity(output, "compiler", identity.compiler);
     write_identity(output, "build-configuration", identity.build_configuration);
-    for (auto const& [spelling, checked] : profile.types()) {
-        auto const& facts{checked.data()};
+    for (auto const& [spelling, facts] : profile.types()) {
         auto const kind{!facts.integer_signed.has_value()
                             ? "non-integer"
                             : (*facts.integer_signed ? "signed" : "unsigned")};

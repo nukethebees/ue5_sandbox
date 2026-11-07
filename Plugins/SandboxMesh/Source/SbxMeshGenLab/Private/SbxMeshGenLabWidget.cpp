@@ -134,7 +134,8 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
 
     parts_.Reset();
     selected_part_ = MakeShared<FSbxMeshAssemblyPart>();
-    *selected_part_ = settings_->to_part().value();
+    selected_part_->mesh = settings_->to_request().value();
+    selected_part_->transform = settings_->to_transform();
     parts_.Add(selected_part_);
 
     FDetailsViewArgs details_arguments{};
@@ -446,14 +447,14 @@ auto USbxMeshGenLabWidget::sync_selected_part_from_settings() -> bool {
         return false;
     }
 
-    auto part{settings_->to_part()};
-    if (!part) {
-        status_text_->SetText(FText::FromString(part.error()));
+    auto request{settings_->to_request()};
+    if (!request) {
+        status_text_->SetText(FText::FromString(request.error()));
         return false;
     }
 
-    selected_part_->mesh = std::move(part->mesh);
-    selected_part_->transform = part->transform;
+    selected_part_->mesh = std::move(*request);
+    selected_part_->transform = settings_->to_transform();
     return true;
 }
 

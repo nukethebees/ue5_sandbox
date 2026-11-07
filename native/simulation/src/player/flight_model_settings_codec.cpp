@@ -103,12 +103,7 @@ void transfer_enum(Archive& archive, Enum& value) {
     std::uint8_t raw{static_cast<std::uint8_t>(value)};
     archive << raw;
     if (archive.loading()) {
-        if (raw < static_cast<std::uint8_t>(enum_min<Enum>) ||
-            raw > static_cast<std::uint8_t>(enum_max<Enum>)) {
-            archive.invalidate();
-        } else {
-            value = static_cast<Enum>(raw);
-        }
+        value = static_cast<Enum>(raw);
     }
 }
 
@@ -224,7 +219,8 @@ auto decode(std::string_view const data, sim::player::FlightModelProfile& profil
     detail::Archive archive{data};
     auto candidate{profile};
     detail::transfer(archive, candidate);
-    if (!archive.complete() || !sim::player::validate_flight_model_config(candidate.config)) {
+    if (!archive.complete() || candidate.base_preset > sim::player::FlightModelPreset::Gunship ||
+        !sim::player::validate_flight_model_config(candidate.config)) {
         return false;
     }
     profile = candidate;

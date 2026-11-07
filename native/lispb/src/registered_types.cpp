@@ -33,7 +33,7 @@ void RegisteredTypes::clear() {
 auto RegisteredTypes::add_integer(bool const signedness,
                                   PackedIntegerValue const minimum,
                                   PackedIntegerValue const maximum,
-                                  EnumBitWidth const width,
+                                  std::uint8_t const width,
                                   SchemaRange<PackedNamedCodeId> const codes) -> ExternalScalarId {
     auto const count{integer_signedness.size()};
     for (std::size_t index{}; index < count; ++index) {

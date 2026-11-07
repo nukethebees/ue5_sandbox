@@ -76,11 +76,11 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                 auto const dimensions{expected.calculate_grid_dimensions()};
                 auto const actual{
                     orchestrator->get_level_simulation()->spatial_query_manager().grid_geometry()};
-                checks.is_true(actual.dimensions() == ioj::sim::collision::CellCoord{dimensions.X,
-                                                                                     dimensions.Y,
-                                                                                     dimensions.Z},
+                checks.is_true(actual.dimensions == ioj::sim::collision::CellCoord{dimensions.X,
+                                                                                   dimensions.Y,
+                                                                                   dimensions.Z},
                                TEXT("LevelSim grid bounds come from base plus current override"));
-                checks.is_true(actual.cell_dimensions() == ioj::Vector3f{expected.cell_size},
+                checks.is_true(actual.cell_dimensions == ioj::Vector3f{expected.cell_size},
                                TEXT("LevelSim cell size comes from base plus current override"));
                 checks.is_true(orchestrator->get_level_config() != base,
                                TEXT("Orchestrator owns the resolved settings"));

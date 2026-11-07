@@ -7,8 +7,7 @@
 #include <utility>
 
 namespace ioj::sim {
-auto resolve_simulation_settings(settings::Settings const& source,
-                                 std::optional<settings::TickSettings> const clock_override)
+auto resolve_simulation_settings(settings::Settings const& source)
     -> std::expected<SimulationSettings, levels::Diagnostics> {
     SimulationSettings result{
         .clock = source.tick,
@@ -21,15 +20,13 @@ auto resolve_simulation_settings(settings::Settings const& source,
         .overlap_response = source.collision_grid,
         .hud = source.hud,
     };
-    if (auto valid{validate_settings(result, clock_override)}; !valid) {
+    if (auto valid{validate_settings(result)}; !valid) {
         return std::unexpected{std::move(valid.error())};
     }
-    result.clock = clock_override.value_or(result.clock);
     return result;
 }
 
-auto validate_settings(SimulationSettings const& settings,
-                       std::optional<settings::TickSettings> const clock_override)
+auto validate_settings(SimulationSettings const& settings)
     -> std::expected<void, levels::Diagnostics> {
     levels::Diagnostics errors;
     auto check =
@@ -39,57 +36,50 @@ auto validate_settings(SimulationSettings const& settings,
                     levels::DiagnosticCode::InvalidNumber, std::string{path}, std::string{message});
             }
         };
-    auto tick_period =
-        [&](double const ticks, std::string_view const path, double const minimum = 0) {
-            auto const period{std::ceil(ticks)};
-            check(std::isfinite(period) && period >= minimum &&
-                      period <= std::numeric_limits<std::int16_t>::max(),
-                  path,
-                  "Tick period is outside the countdown range");
-        };
-    auto validate_countdowns = [&](double const tick_rate) {
-        auto frequency = [&](PositiveFinite<float> const value, std::string_view const path) {
-            tick_period(tick_rate / value, path, 1);
-        };
-        auto cooldown = [&](NonNegativeFinite<float> const value, std::string_view const path) {
-            tick_period(value * tick_rate, path);
-        };
-
-        auto const& fighters{settings.fighters};
-        frequency(settings.turrets.target_refresh_frequency, "turrets.target-refresh-frequency");
-        frequency(fighters.avoidance_clear_update_frequency,
-                  "fighters.avoidance-clear-update-frequency");
-        frequency(fighters.avoidance_update_frequency, "fighters.avoidance-update-frequency");
-        frequency(fighters.avoidance_active_update_frequency,
-                  "fighters.avoidance-active-update-frequency");
-        frequency(fighters.avoidance_immediate_update_frequency,
-                  "fighters.avoidance-immediate-update-frequency");
-        cooldown(fighters.attack_retry_cooldown, "fighters.attack-retry-cooldown");
-        cooldown(fighters.laser.fire_cooldown, "fighters.laser.fire-cooldown");
-        cooldown(settings.turrets.laser.fire_cooldown, "turrets.laser.fire-cooldown");
-        cooldown(settings.spinners.laser.fire_cooldown, "tube-spinners.laser.fire-cooldown");
+    auto tick_period = [&](double const ticks,
+                           double const maximum,
+                           std::string_view const path,
+                           double const minimum = 0) {
+        auto const period{std::ceil(ticks)};
+        check(std::isfinite(period) && period >= minimum && period <= maximum,
+              path,
+              "Tick period is outside the countdown range");
     };
-    validate_countdowns(settings.clock.tick_rate.hz());
+    auto frequency = [&](PositiveFinite<float> const value,
+                         std::string_view const path,
+                         double const maximum = std::numeric_limits<std::int16_t>::max()) {
+        tick_period(settings.clock.tick_rate.hz() / value, maximum, path, 1);
+    };
+    auto cooldown = [&](NonNegativeFinite<float> const value, std::string_view const path) {
+        tick_period(
+            value * settings.clock.tick_rate.hz(), std::numeric_limits<std::int16_t>::max(), path);
+    };
 
     auto const& fighters{settings.fighters};
+    frequency(settings.turrets.target_refresh_frequency, "turrets.target-refresh-frequency");
+    frequency(fighters.avoidance_clear_update_frequency,
+              "fighters.avoidance-clear-update-frequency");
+    frequency(fighters.avoidance_update_frequency, "fighters.avoidance-update-frequency");
+    frequency(fighters.avoidance_active_update_frequency,
+              "fighters.avoidance-active-update-frequency");
+    frequency(fighters.avoidance_immediate_update_frequency,
+              "fighters.avoidance-immediate-update-frequency");
     check(fighters.avoidance_clear_update_frequency <= fighters.avoidance_update_frequency &&
               fighters.avoidance_update_frequency <= fighters.avoidance_active_update_frequency &&
               fighters.avoidance_active_update_frequency <=
                   fighters.avoidance_immediate_update_frequency,
           "fighters.avoidance-update-frequency",
           "Avoidance frequencies must increase with risk");
+    cooldown(fighters.attack_retry_cooldown, "fighters.attack-retry-cooldown");
+    cooldown(fighters.laser.fire_cooldown, "fighters.laser.fire-cooldown");
+    cooldown(settings.turrets.laser.fire_cooldown, "turrets.laser.fire-cooldown");
+    cooldown(settings.spinners.laser.fire_cooldown, "tube-spinners.laser.fire-cooldown");
 
     auto const dimensions{collision::calculate_grid_dimensions(
         settings.overlap_response.level_size, settings.overlap_response.cell_size)};
-    auto const geometry{
-        collision::GridGeometry::try_make(dimensions, settings.overlap_response.cell_size)};
-    check(geometry.has_value(),
+    check(collision::is_configured({dimensions, settings.overlap_response.cell_size}),
           "collision-grid",
-          "Expected positive grid dimensions with a representable cell count and finite extents");
-
-    if (errors.empty() && clock_override && clock_override->tick_rate != settings.clock.tick_rate) {
-        validate_countdowns(clock_override->tick_rate.hz());
-    }
+          "Expected positive grid dimensions with a representable cell count");
 
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
@@ -107,7 +97,9 @@ void apply_settings(SimulationSettings const& settings, LevelSimInitData& target
     target.fighters.fire_point_distance = fighter_fire_point;
 
     auto spawn_transforms{std::move(target.capital_ships.fighter_spawn_slots_relative_transforms)};
+    auto const spawn_slots{target.capital_ships.fighter_spawn_slots};
     target.capital_ships = settings.capital_ships;
+    target.capital_ships.fighter_spawn_slots = spawn_slots;
     target.capital_ships.fighter_spawn_slots_relative_transforms = std::move(spawn_transforms);
 
     auto const turret_fire_point{target.turrets.fire_point_offset};

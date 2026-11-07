@@ -6,7 +6,6 @@
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
 #include <codegen/sexpr/token_kind.h>
-#include <lispb/cpp_identifier.h>
 #include <lispb/diagnostics.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
@@ -45,12 +44,30 @@ using lispb::codegen::sexpr::SourceSpan;
 using lispb::codegen::sexpr::Syntax;
 using lispb::codegen::sexpr::TokenKind;
 
-auto is_identifier(std::string_view const value) -> bool {
-    return lispb::is_cpp_identifier(value, lispb::IdentifierPolicy::Lexical);
+auto is_identifier(std::string_view const text) -> bool {
+    if (text.empty() ||
+        (std::isalpha(static_cast<unsigned char>(text.front())) == 0 && text.front() != '_')) {
+        return false;
+    }
+    for (auto const character : text.substr(1)) {
+        if (std::isalnum(static_cast<unsigned char>(character)) == 0 && character != '_') {
+            return false;
+        }
+    }
+    return true;
 }
 
-auto is_qualified_identifier(std::string_view const value) -> bool {
-    return lispb::is_qualified_cpp_identifier(value, lispb::IdentifierPolicy::Lexical);
+auto is_qualified_identifier(std::string_view text) -> bool {
+    while (true) {
+        auto const separator{text.find("::")};
+        if (!is_identifier(text.substr(0, separator))) {
+            return false;
+        }
+        if (separator == std::string_view::npos) {
+            return true;
+        }
+        text.remove_prefix(separator + 2);
+    }
 }
 
 auto is_number(std::string_view const text) -> bool {

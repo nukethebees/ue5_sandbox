@@ -13,6 +13,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 
@@ -26,7 +27,7 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Construction and lifecycle
     /* **************************************** */
-    CollisionUniformGrid();
+    CollisionUniformGrid() = default;
     CollisionUniformGrid(CollisionUniformGrid const&) = delete;
     CollisionUniformGrid(CollisionUniformGrid&&) = delete;
     auto operator=(CollisionUniformGrid const&) -> CollisionUniformGrid& = delete;
@@ -36,7 +37,7 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Grid geometry
     /* **************************************** */
-    auto geometry() const noexcept -> GridGeometry { return geometry_; }
+    auto is_configured() const noexcept -> bool;
     // Rebuild entity and static grids after changing geometry, before querying them.
     void set_geometry(GridGeometry geometry) noexcept;
     auto grid_dims() const noexcept -> CellCoord;
@@ -68,7 +69,7 @@ struct CollisionUniformGrid {
         return entity_storage_.entity_row_to_aabb_row[type];
     }
     auto cell_entities(CellCoord const cell_coord) const -> std::span<EntityId const> {
-        auto const dimensions{geometry().dimensions()};
+        auto const dimensions{geometry_.dimensions};
         assert(cell_coord.x() >= 0 && cell_coord.x() < dimensions.x() && cell_coord.y() >= 0 &&
                cell_coord.y() < dimensions.y() && cell_coord.z() >= 0 &&
                cell_coord.z() < dimensions.z());
@@ -161,7 +162,7 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // State
     /* **************************************** */
-    GridGeometry geometry_;
+    GridGeometry geometry_{};
     CollisionGridEntityStorage entity_storage_;
     CollisionGridStaticStorage static_storage_;
 };

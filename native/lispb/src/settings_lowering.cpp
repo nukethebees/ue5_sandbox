@@ -25,8 +25,8 @@
 #include <codegen/schema/module_settings_store.h>
 #include <codegen/schema/setting_apply_mode.h>
 #include <codegen/schema/setting_category_schemas.h>
-#include <codegen/schema/setting_control.h>
 #include <codegen/schema/setting_control_kind.h>
+#include <codegen/schema/setting_control_schemas.h>
 #include <codegen/schema/setting_device.h>
 #include <codegen/schema/setting_schemas.h>
 #include <codegen/schema/settings_module_schemas.h>
@@ -366,6 +366,7 @@ class SettingsLowering : public CppIRBuilder {
         -> std::vector<ModuleId> {
         auto const& modules{ctx.declarations.settings_modules};
         auto const& setting_schemas{ctx.declarations.settings};
+        auto const& controls{ctx.declarations.setting_controls};
         auto const& decls{ctx.declarations};
         auto const module_row{modules.index(module)};
         auto const settings{modules.settings[module_row]};
@@ -383,7 +384,7 @@ class SettingsLowering : public CppIRBuilder {
         for (std::size_t index{}; index < setting_count; ++index) {
             auto const setting{setting_list[index]};
             auto const row{setting_schemas.index(setting)};
-            auto const& control{setting_schemas.control[row]};
+            auto const control_row{controls.index(setting_schemas.control[row])};
             auto const type{setting_types[index]};
             if (unique_types.insert(type_spelling_id(type)).second) {
                 value_types.push_back(type);
@@ -394,10 +395,10 @@ class SettingsLowering : public CppIRBuilder {
             }
             setting_names.push_back(title_case(ctx.text(setting_schemas.name[row])));
             backends.insert(ctx.text(setting_schemas.backend[row]));
-            if (auto const provider{control.options_provider}) {
+            if (auto const provider{controls.options_provider[control_row]}) {
                 option_providers.insert(ctx.text(*provider));
             }
-            if (auto const provider{control.availability_provider}) {
+            if (auto const provider{controls.availability_provider[control_row]}) {
                 availability_providers.insert(ctx.text(*provider));
             }
         }
@@ -551,6 +552,7 @@ class SettingsLowering : public CppIRBuilder {
                       std::span<FunctionId const> const functions) -> Nodes {
         auto const& modules{ctx.declarations.settings_modules};
         auto const& setting_schemas{ctx.declarations.settings};
+        auto const& controls{ctx.declarations.setting_controls};
         auto const& category_schemas{ctx.declarations.setting_categories};
         auto const& decls{ctx.declarations};
         auto const module_row{modules.index(module)};
@@ -570,9 +572,9 @@ class SettingsLowering : public CppIRBuilder {
         std::vector<Syntax> descriptors;
         for (auto const setting : decls.items(modules.settings_list[module_row])) {
             auto const row{setting_schemas.index(setting)};
-            auto const& control{setting_schemas.control[row]};
-            auto const options{control.options_provider};
-            auto const availability{control.availability_provider};
+            auto const control_row{controls.index(setting_schemas.control[row])};
+            auto const options{controls.options_provider[control_row]};
+            auto const availability{controls.availability_provider[control_row]};
             descriptors.push_back(init_list({
                 enum_value("GameSetting", title_case(ctx.text(setting_schemas.name[row]))),
                 enum_value("GameSettingCategory",
@@ -582,7 +584,7 @@ class SettingsLowering : public CppIRBuilder {
                            title_case(ctx.text(setting_schemas.backend[row]))),
                 enum_value("SettingApplyMode", enum_name(setting_schemas.apply_mode[row])),
                 enum_value("GameSettingDevice", enum_name(setting_schemas.device[row])),
-                enum_value("SettingControlKind", enum_name(control.kind)),
+                enum_value("SettingControlKind", enum_name(controls.kind[control_row])),
                 enum_value("GameSettingOptionProvider",
                            options ? title_case(ctx.text(*options)) : "None"),
                 enum_value("GameSettingAvailabilityProvider",
@@ -590,10 +592,10 @@ class SettingsLowering : public CppIRBuilder {
                 text_literal(ctx.text(setting_schemas.name[row])),
                 text_value(ctx.text(setting_schemas.label[row])),
                 text_value(ctx.optional_text(setting_schemas.tooltip[row]).value_or("")),
-                literal(control.minimum.value_or(0.0)),
-                literal(control.maximum.value_or(0.0)),
-                literal(control.step.value_or(0.0)),
-                text_literal(ctx.optional_text(control.custom_row).value_or("")),
+                literal(controls.minimum[control_row].value_or(0.0)),
+                literal(controls.maximum[control_row].value_or(0.0)),
+                literal(controls.step[control_row].value_or(0.0)),
+                text_literal(ctx.optional_text(controls.custom_row[control_row]).value_or("")),
             }));
         }
 

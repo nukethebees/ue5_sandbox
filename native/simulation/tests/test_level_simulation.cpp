@@ -50,6 +50,7 @@ auto make_battle() -> LevelSimInitData {
     LevelSimInitData data;
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
+    data.capital_ships.fighter_spawn_slots = 0;
     data.level_events.initialisation.entity_count = 2;
     std::array<InitialCapital, 2> capitals{{{.entity = 0,
                                              .location = {{-1000.f, 0.f, 0.f}},
@@ -96,7 +97,7 @@ auto make_scheduled_battle() -> LevelSimInitData {
 
 auto make_overlap_response_battle() -> LevelSimInitData {
     auto data{make_battle()};
-    data.collision.overlap_response.damage_per_overlap_detection = Positive<std::int32_t>{50};
+    data.collision.overlap_response.damage_per_overlap_detection = ioj::Positive<std::int32_t>{50};
     std::ranges::fill(data.level_events.schedule.capital_spawns.view().healths(), Health{5000});
     add_player_spawn(data, {});
     data.player->transform.location = {-1000.0, 0.0, 0.0};
@@ -148,7 +149,7 @@ TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGe
                        .archetype = levels::EntityArchetype::PlayerFighter,
                        .team = Team::Blue,
                        .position = {1200.0, 200.0, 0.0},
-                       .overrides = {.health = Positive<std::int32_t>{275}}}},
+                       .overrides = {.health = 275}}},
          .settings = {.tick = {.tick_rate = Frequency::make(30.0)},
                       .fighters = {.speed = 1234.f}}})};
     ASSERT_TRUE(definition);
@@ -688,6 +689,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     add_turret_spawn(data, {{0.f, 3000.f, 0.f}}, {}, Team::White, 100, 0);
     add_turret_spawn(data, {{0.f, 4000.f, 0.f}}, {}, Team::Green, 100, 0);
 
+    data.capital_ships.fighter_spawn_slots = 2;
     data.capital_ships.fighter_spawn_slots_relative_transforms.resize(2);
     data.capital_ships.fighter_spawn_slots_relative_transforms[0].location.y() = -100.0;
     data.capital_ships.fighter_spawn_slots_relative_transforms[1].location.y() = 100.0;

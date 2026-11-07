@@ -186,6 +186,53 @@ TEST(GameSettings, DisplayRevertKeepsAppliedControlsAndFlightModel) {
     EXPECT_EQ(session.settings_state().resolution, (ScreenResolution{1280, 720}));
 }
 
+TEST(GameSettings, FlightModelCodecPreservesBaselineFormatAndInactiveResponses) {
+    using namespace sim::player;
+    // Default profile encoded with the scalar layout at 99ec9537cd.
+    std::string_view const baseline{
+        "flight-model:2:"
+        "000000000000000000000000000000000000000040400000003f00000000000000000000000000000"
+        "000000040400000003f0000000000000000ffff7f7fffff7f7f00000000000000000000000000000000ffff7f7"
+        "fffff7"
+        "f7f00000000000000000000000000000000000000000000000000000000000000000000000040400000003f000"
+        "000000"
+        "00000000000000000000000000040400000003f0000000000000000ffff7f7fffff7f7f0000000000000000000"
+        "000000"
+        "0000000ffff7f7fffff7f7f0000000000000000000000000000000000000000000000000000000000000000000"
+        "000004"
+        "0400000003f00000000000000000000000000000000000040400000003f0000000000000000ffff7f7fffff7f7"
+        "f00000"
+        "000000000000000000000000000ffff7f7fffff7f7f00000000000000000000000000000000000000000000000"
+        "000000"
+        "0000000000000000000000040400000003f000000000000000000000000000000000000000040400000003f000"
+        "000000"
+        "000000000000000000000000000000040400000003f00000000000000000000000000000000000000004040000"
+        "0003f0"
+        "00000000000000000000000000000000000000040400000003f000000000000000000000000000000000000000"
+        "040400"
+        "000003f0000000000000000000000000000000040400000003f000000000000000000000000000000000040400"
+        "000003"
+        "f00000000000000000000000000000000000000000000000040400000003f00000000000000000000000000000"
+        "000000"
+        "000000000000040400000003f00000000ffff7f7fffff7f7f"};
+    FlightModelProfile const defaults;
+    EXPECT_EQ(flight_model_settings_codec::encode(defaults), baseline);
+    auto decoded{make_flight_model_profile(FlightModelPreset::Gunship)};
+    ASSERT_TRUE(flight_model_settings_codec::decode(baseline, decoded));
+    EXPECT_EQ(decoded, defaults);
+
+    for (auto profile : make_default_flight_model_loadout().profiles) {
+        auto& response{profile.config.translation.up.automatic.response};
+        response.mode = ResponseMode::Direct;
+        response.rate_limited = {NonNegativeFinite<float>{7.f}, NonNegativeFinite<float>{11.f}};
+        response.second_order = {PositiveFinite<float>{2.f}, OpenInterval<float, 0, 1>{0.75f}};
+        profile.config.rotation.roll.stabilization.target_angle = Finite<float>{-45.f};
+        auto const encoded{flight_model_settings_codec::encode(profile)};
+        ASSERT_TRUE(flight_model_settings_codec::decode(encoded, decoded));
+        EXPECT_EQ(decoded, profile);
+    }
+}
+
 TEST(GameSettings, FlightModelCodecRejectsCorruptionWithoutChangingOutput) {
     auto original{sim::player::make_flight_model_profile(sim::player::FlightModelPreset::Gunship)};
     original.config.translation.up.passive_drag = NonNegativeFinite<float>{123.f};
@@ -210,11 +257,17 @@ TEST(GameSettings, FlightModelCodecRejectsCorruptionWithoutChangingOutput) {
              Corruption{2, "ff"},
              Corruption{9, "ff"},
              Corruption{5, "00000040"},
+             Corruption{5, "000000c0"},
              Corruption{10, "000080bf"},
              Corruption{10, "0000807f"},
              Corruption{10, "0000c07f"},
              Corruption{18, "00000000"},
+             Corruption{18, "0000807f"},
+             Corruption{22, "00000000"},
              Corruption{22, "0000803f"},
+             Corruption{22, "0000c07f"},
+             Corruption{347, "0000807f"},
+             Corruption{347, "0000c07f"},
          }) {
         auto invalid{encoded};
         invalid.replace(std::string_view{"flight-model:2:"}.size() + corruption.byte_offset * 2,

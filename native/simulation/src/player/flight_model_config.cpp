@@ -4,28 +4,93 @@
 #include <cassert>
 
 namespace ioj::sim::player::flight_model_config_detail {
-template <HasEnumRange Enum>
-[[nodiscard]] auto valid_enum(Enum const value) noexcept -> bool {
-    return value >= enum_min<Enum> && value <= enum_max<Enum>;
+[[nodiscard]] auto valid_enum(TranslationSemantic const value) noexcept -> bool {
+    switch (value) {
+        case TranslationSemantic::Disabled:
+        case TranslationSemantic::TargetSpeed:
+        case TranslationSemantic::TargetVelocity:
+        case TranslationSemantic::Acceleration:
+            return true;
+    }
+    return false;
+}
+
+[[nodiscard]] auto valid_enum(RotationSemantic const value) noexcept -> bool {
+    switch (value) {
+        case RotationSemantic::Disabled:
+        case RotationSemantic::TargetAngularVelocity:
+        case RotationSemantic::AngularAcceleration:
+            return true;
+    }
+    return false;
+}
+
+[[nodiscard]] auto valid_enum(ReferenceFrame const value) noexcept -> bool {
+    switch (value) {
+        case ReferenceFrame::Ship:
+        case ReferenceFrame::World:
+            return true;
+    }
+    return false;
+}
+
+[[nodiscard]] auto valid_enum(TranslationInputSource const value) noexcept -> bool {
+    switch (value) {
+        case TranslationInputSource::Axis:
+        case TranslationInputSource::Accelerator:
+            return true;
+    }
+    return false;
+}
+
+[[nodiscard]] auto valid_enum(ResponseMode const value) noexcept -> bool {
+    switch (value) {
+        case ResponseMode::Direct:
+        case ResponseMode::RateLimited:
+        case ResponseMode::SecondOrder:
+            return true;
+    }
+    return false;
+}
+
+[[nodiscard]] auto valid_enum(FacingVelocityCoupling const value) noexcept -> bool {
+    switch (value) {
+        case FacingVelocityCoupling::Independent:
+        case FacingVelocityCoupling::AlignToFacing:
+        case FacingVelocityCoupling::LockedToFacing:
+            return true;
+    }
+    return false;
+}
+
+[[nodiscard]] auto validate_response(ResponseConfig const& config) noexcept
+    -> std::expected<void, FlightModelConfigError> {
+    if (!valid_enum(config.mode)) {
+        return std::unexpected{FlightModelConfigError::InvalidEnumValue};
+    }
+
+    return {};
 }
 
 [[nodiscard]] auto validate_channel(TranslationChannelConfig const& config,
                                     bool const automatic) noexcept
     -> std::expected<void, FlightModelConfigError> {
     if (!valid_enum(config.semantic) || !valid_enum(config.reference_frame) ||
-        !valid_enum(config.input_source) || !valid_enum(config.response.mode)) {
+        !valid_enum(config.input_source)) {
         return std::unexpected{FlightModelConfigError::InvalidEnumValue};
     }
     if (automatic) {
         if (config.input_source != TranslationInputSource::Axis) {
             return std::unexpected{FlightModelConfigError::InvalidAutomaticChannel};
         }
-    } else if (config.automatic_value != 0.f ||
-               (config.semantic == TranslationSemantic::TargetSpeed &&
-                config.input_source != TranslationInputSource::Axis)) {
-        return std::unexpected{FlightModelConfigError::InvalidManualChannel};
+    } else {
+        if (config.automatic_value != 0.f ||
+            (config.semantic == TranslationSemantic::TargetSpeed &&
+             config.input_source != TranslationInputSource::Axis)) {
+            return std::unexpected{FlightModelConfigError::InvalidManualChannel};
+        }
     }
-    return {};
+    return validate_response(config.response);
 }
 
 [[nodiscard]] auto validate_axis(TranslationAxisConfig const& config) noexcept
@@ -45,6 +110,23 @@ template <HasEnumRange Enum>
         return std::unexpected{FlightModelConfigError::InvalidEnumValue};
     }
     return {};
+}
+
+[[nodiscard]] auto validate_axis(RotationAxisConfig const& config) noexcept
+    -> std::expected<void, FlightModelConfigError> {
+    if (!valid_enum(config.manual_semantic)) {
+        return std::unexpected{FlightModelConfigError::InvalidEnumValue};
+    }
+    if (auto const result{validate_response(config.response)}; !result) {
+        return result;
+    }
+    return validate_response(config.stabilization.response);
+}
+
+[[nodiscard]] auto make_second_order_response() -> ResponseConfig {
+    ResponseConfig result;
+    result.mode = ResponseMode::SecondOrder;
+    return result;
 }
 
 [[nodiscard]] auto make_rate_limited_response(float const increasing_rate,
@@ -83,7 +165,7 @@ void configure_common_actions(FlightModelConfig& config) {
     auto& forward{result.translation.forward};
     forward.automatic.semantic = TranslationSemantic::TargetVelocity;
     forward.automatic.automatic_value = Bounded<float, -1, 1>{1.f};
-    forward.automatic.response = {.mode = ResponseMode::SecondOrder};
+    forward.automatic.response = make_second_order_response();
     forward.normal.positive_target_speed = NonNegativeFinite<float>{12000.f};
     forward.normal.positive_speed_limit = NonNegativeFinite<float>{12000.f};
     forward.normal.negative_speed_limit = NonNegativeFinite<float>{0.f};
@@ -93,12 +175,12 @@ void configure_common_actions(FlightModelConfig& config) {
 
     result.facing_velocity.mode = FacingVelocityCoupling::LockedToFacing;
     result.boost.accelerator_activates_boost = true;
-    result.boost.response = {.mode = ResponseMode::SecondOrder};
+    result.boost.response = make_second_order_response();
     result.brake.target_speed = NonNegativeFinite<float>{1000.f};
     result.brake.deceleration = NonNegativeFinite<float>{14000.f};
-    result.brake.response = {.mode = ResponseMode::SecondOrder};
+    result.brake.response = make_second_order_response();
     result.emergency_brake.target_speed = NonNegativeFinite<float>{1000.f};
-    result.emergency_brake.response = {.mode = ResponseMode::SecondOrder};
+    result.emergency_brake.response = make_second_order_response();
     result.maximum_resultant_speed = NonNegativeFinite<float>{12000.f};
     result.boosted_maximum_resultant_speed = NonNegativeFinite<float>{30000.f};
     configure_common_actions(result);
@@ -179,6 +261,10 @@ auto validate_flight_model_config(FlightModelConfig const& config) noexcept
     -> std::expected<void, FlightModelConfigError> {
     using namespace flight_model_config_detail;
 
+    if (!valid_enum(config.facing_velocity.mode)) {
+        return std::unexpected{FlightModelConfigError::InvalidEnumValue};
+    }
+
     for (auto const* const axis : std::array{
              &config.translation.forward, &config.translation.right, &config.translation.up}) {
         if (auto const result{validate_axis(*axis)}; !result) {
@@ -187,16 +273,20 @@ auto validate_flight_model_config(FlightModelConfig const& config) noexcept
     }
     for (auto const* const axis :
          std::array{&config.rotation.pitch, &config.rotation.yaw, &config.rotation.roll}) {
-        if (!valid_enum(axis->manual_semantic) || !valid_enum(axis->response.mode) ||
-            !valid_enum(axis->stabilization.response.mode)) {
-            return std::unexpected{FlightModelConfigError::InvalidEnumValue};
+        if (auto const result{validate_axis(*axis)}; !result) {
+            return result;
         }
     }
-    if (!valid_enum(config.facing_velocity.mode) ||
-        !valid_enum(config.facing_velocity.response.mode) ||
-        !valid_enum(config.boost.response.mode) || !valid_enum(config.brake.response.mode) ||
-        !valid_enum(config.emergency_brake.response.mode)) {
-        return std::unexpected{FlightModelConfigError::InvalidEnumValue};
+    if (auto const result{validate_response(config.facing_velocity.response)}; !result) {
+        return result;
+    }
+    if (auto const result{validate_response(config.boost.response)}; !result) {
+        return result;
+    }
+    for (auto const* const brake : std::array{&config.brake, &config.emergency_brake}) {
+        if (auto const result{validate_response(brake->response)}; !result) {
+            return result;
+        }
     }
     return {};
 }

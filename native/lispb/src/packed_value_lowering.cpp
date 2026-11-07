@@ -206,8 +206,7 @@ class PackedEmitter : public CppIRBuilder {
             return std_types().integer(bits, definitions.integer_scalars.signedness[row] != 0);
         }
         if (kind == schema::TypeDefinitionKind::fixed_point) {
-            return std_types().integer(
-                bits, definitions.fixed_points.format[definition].ref().signedness);
+            return std_types().integer(bits, definitions.fixed_points.signedness[definition] != 0);
         }
         if (packed_signed_width(ctx.text(graph.cpp_spelling(type)))) {
             return std_types().integer(bits, true);
@@ -1214,8 +1213,7 @@ class PackedEmitter : public CppIRBuilder {
         auto const definition{graph_.definition(placement.type)};
         auto const& fixed{graph_.definitions().fixed_points};
         auto const row{fixed.index(definition)};
-        auto const& format{fixed.format[row].ref()};
-        auto const signedness{format.signedness};
+        auto const signedness{fixed.signedness[row] != 0};
         auto const& path{placement.path};
         auto const raw_name{field_name(placement)};
         auto const layout_name{raw_name + "_layout"};
@@ -1238,9 +1236,9 @@ class PackedEmitter : public CppIRBuilder {
         Expr maximum;
         Expr decode;
         Expr scale;
-        auto const range_form{format.form == FixedPointForm::range};
+        auto const range_form{fixed.form[row] == FixedPointForm::range};
         if (range_form) {
-            auto const range{ioj::MinMax<double>{format.values.min, format.values.max}};
+            auto const range{fixed.value_range[row]};
             auto const span{range.max - range.min};
             auto const intervals{static_cast<double>(mask(placement.bits))};
             auto const step{std::isfinite(span) ? span / intervals
@@ -1267,7 +1265,7 @@ class PackedEmitter : public CppIRBuilder {
                        binary(BinaryOperator::subtract, adjusted(maximum), adjusted(minimum))),
                 codes);
         } else {
-            auto const fractional_bits{format.fractional_bits};
+            auto const fractional_bits{fixed.fractional_bits[row]};
             auto const fractional{constant(
                 metadata, path + "_fractional_bits", std_types().int_, literal(fractional_bits))};
             auto const negative_fractional{unary(UnaryOperator::negate, fractional)};

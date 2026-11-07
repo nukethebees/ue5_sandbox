@@ -1,6 +1,7 @@
 #include "ioj/sim/collision/spatial_query_manager.h"
 
 #include <ioj/column_math.h>
+#include <ioj/diagnostics.h>
 #include <ioj/enum_array.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/capital_ships/sim.h>
@@ -19,6 +20,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <format>
 #include <utility>
 
 namespace {
@@ -129,6 +131,19 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
     }
 }
 
+void validate_grid_for_range_query(ioj::sim::collision::CollisionUniformGrid const& grid,
+                                   ioj::Vector3f const& origin,
+                                   float const radius) {
+    if (!grid.is_configured()) {
+        ioj::fatal_error(std::format(
+            "Cannot query unconfigured grid: origin=({}, {}, {}), radius={}, dimensions={}",
+            origin.x(),
+            origin.y(),
+            origin.z(),
+            radius,
+            ioj::sim::collision::CollisionUniformGrid::to_string(grid.grid_dims())));
+    }
+}
 }
 
 namespace ioj::sim {
@@ -353,6 +368,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
     }
 
     auto const& grid{collision_system_.uniform_grid_};
+    validate_grid_for_range_query(grid, origin, radius);
     {
         SANDBOX_PROFILE_SCOPE(
             "Sandbox::SpatialQueryManager::collect_non_team_entities_in_range::loop");
@@ -382,6 +398,7 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     }
 
     auto const& grid{collision_system_.uniform_grid_};
+    validate_grid_for_range_query(grid, origin, radius);
     return collect_entities_in_range(grid,
                                      entity_tables_,
                                      locations_,

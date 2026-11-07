@@ -17,12 +17,12 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
                               "native-soa-fixture")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto profile{AbiProfile::host_common()};
-    TypeFacts::Definition aligned{};
+    TypeFacts aligned{};
     aligned.size_bytes = sizeof(Aligned32);
     aligned.alignment_bytes = alignof(Aligned32);
     aligned.origin = FactOrigin::compiler_probe;
     aligned.provenance = "compiled differential fixture";
-    profile.set("Aligned32", TypeFacts::make(aligned));
+    profile.set("Aligned32", aligned);
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     for (auto const& [name, size, alignment] :
@@ -76,11 +76,11 @@ TEST(PhysicalFacts, SoaOwnersHavePhysicalFactsAndLayoutsHaveNoPhysicalObject) {
                               "native-soa-fixture")};
     ASSERT_TRUE(document.valid());
     auto profile{AbiProfile::host_common()};
-    TypeFacts::Definition owner{};
+    TypeFacts owner{};
     owner.size_bytes = sizeof(ApiOwner);
     owner.alignment_bytes = alignof(ApiOwner);
     owner.origin = FactOrigin::compiler_probe;
-    profile.set("ioj::native_soa_fixture::ApiOwner", TypeFacts::make(owner));
+    profile.set("ioj::native_soa_fixture::ApiOwner", owner);
     std::array<AnalysisRequest, 2> requests{
         {{.type = *document.find_type("native_soa_fixture", "ApiOwner"), .abi = &profile},
          {.type = *document.find_type("native_soa_fixture", "ApiCoordinates"), .abi = &profile}}};
@@ -144,12 +144,12 @@ TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
     (projections (cpp)))))")};
     ASSERT_TRUE(document.valid());
     AbiProfile profile{"assumed target"};
-    TypeFacts::Definition pointer{};
+    TypeFacts pointer{};
     pointer.size_bytes = 8;
     pointer.alignment_bytes = 8;
     pointer.origin = FactOrigin::manual_assumption;
     pointer.provenance = "Unverified SDK assumption";
-    profile.set("void*", TypeFacts::make(pointer));
+    profile.set("void*", pointer);
     profile.set_object_pointer_representation("void*");
     std::array<AnalysisRequest, 1> requests{
         {{.type = *document.find_type("test", "Value"), .abi = &profile}}};
@@ -172,10 +172,10 @@ TEST(PhysicalFacts, SuppliedFactsCannotSilentlyReplaceGeneratedLayout) {
     (projections (cpp)))))")};
     ASSERT_TRUE(document.valid());
     auto profile{AbiProfile::host_common()};
-    TypeFacts::Definition incorrect{};
+    TypeFacts incorrect{};
     incorrect.size_bytes = 64;
     incorrect.alignment_bytes = 8;
-    profile.set("Value", TypeFacts::make(incorrect));
+    profile.set("Value", incorrect);
     std::array<AnalysisRequest, 1> requests{
         {{.type = *document.find_type("test", "Value"), .abi = &profile}}};
     AnalysisStorage storage;

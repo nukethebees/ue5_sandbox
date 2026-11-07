@@ -1,9 +1,7 @@
-#include "mesh_math.h"
-#include <ioj/constrained_numbers.h>
-#include <ioj/constrained_vectors.h>
-#include <ioj/format_writer.h>
+#include <mesh_gen/MeshGeneration.h>
 
-#include <mesh_gen/assembly_part.h>
+#include "MeshMath.h"
+#include <ioj/format_writer.h>
 
 #include <cassert>
 #include <cmath>
@@ -130,135 +128,78 @@ auto make_default_request(Shape const shape) -> GenerationRequest {
     return request;
 }
 
-auto validate_request(GenerationRequest const& request) -> std::string_view {
+auto validate_request(GenerationRequest const& request) -> std::string {
     if (request.asset_name.empty()) {
         return "Asset name must not be empty.";
     }
+
     switch (request.shape) {
-        case Shape::box: {
-            auto const& parameters{request.box};
-            return ioj::PositiveFiniteVector<float, 3>::valid(parameters.dimensions)
-                     ? ""
-                     : "All box dimensions must be finite and greater than zero.";
-        }
-        case Shape::beveled_box: {
-            auto const& parameters{request.beveled_box};
-            if (!ioj::PositiveFiniteVector<float, 3>::valid(parameters.dimensions) ||
-                !ioj::PositiveFinite<float>::valid(parameters.bevel_width)) {
-                return "Beveled-box dimensions and bevel width must be finite and positive.";
+        case Shape::box:
+            if (minimum_component(request.box.dimensions) <= 0.0f) {
+                return "All box dimensions must be greater than zero.";
             }
-            for (auto const dimension : parameters.dimensions.elements) {
-                if (parameters.bevel_width >= dimension * 0.5f) {
-                    return "Beveled-box bevel width must be less than half its smallest dimension.";
-                }
+            break;
+        case Shape::cylinder:
+            if (request.cylinder.radial_segments < 3) {
+                return "Cylinder radius and height must be positive, with at least 3 segments.";
             }
-            return {};
-        }
-        case Shape::wedge: {
-            auto const& parameters{request.wedge};
-            if (!ioj::PositiveFiniteVector<float, 3>::valid(parameters.dimensions) ||
-                !ioj::PositiveFinite<float>::valid(parameters.top_length)) {
-                return "Wedge dimensions and top length must be finite and positive.";
-            }
-            if (!ioj::Finite<float>::valid(parameters.top_offset)) {
-                return "Wedge top offset must be finite.";
-            }
-            auto const offset{parameters.top_offset < 0.f ? -parameters.top_offset
-                                                          : parameters.top_offset};
-            if (parameters.top_length > parameters.dimensions.x() ||
-                offset + parameters.top_length * 0.5f > parameters.dimensions.x() * 0.5f) {
-                return "Wedge top length and offset must keep the top within its base.";
-            }
-            return {};
-        }
-        case Shape::cylinder: {
-            auto const& parameters{request.cylinder};
-            if (!ioj::PositiveFinite<float>::valid(parameters.radius) ||
-                !ioj::PositiveFinite<float>::valid(parameters.height)) {
-                return "Cylinder radius and height must be finite and positive.";
-            }
-            return parameters.radial_segments >= 3
-                     ? ""
-                     : "Cylinder radius and height must be positive, with at least 3 segments.";
-        }
-        case Shape::cone: {
-            auto const& parameters{request.cone};
-            if (!ioj::PositiveFinite<float>::valid(parameters.radius) ||
-                !ioj::PositiveFinite<float>::valid(parameters.height)) {
-                return "Cone radius and height must be finite and positive.";
-            }
-            return parameters.radial_segments >= 3
-                     ? ""
-                     : "Cone radius and height must be positive, with at least 3 segments.";
-        }
-        case Shape::sphere: {
-            auto const& parameters{request.sphere};
-            if (!ioj::PositiveFinite<float>::valid(parameters.radius)) {
-                return "Sphere radius must be finite and positive.";
-            }
-            return parameters.longitude_segments >= 3 && parameters.latitude_segments >= 2
-                     ? ""
-                     : "Sphere radius must be positive, with at least 3 longitude and 2 latitude "
+            break;
+        case Shape::sphere:
+            if (request.sphere.longitude_segments < 3 || request.sphere.latitude_segments < 2) {
+                return "Sphere radius must be positive, with at least 3 longitude and 2 latitude "
                        "segments.";
-        }
-        case Shape::hex_tile: {
-            auto const& parameters{request.hex_tile};
-            if (!ioj::PositiveFinite<float>::valid(parameters.outer_radius) ||
-                !ioj::PositiveFinite<float>::valid(parameters.depth) ||
-                !ioj::PositiveFinite<float>::valid(parameters.bevel_width)) {
-                return "Hex-tile radius, depth, and bevel width must be finite and positive.";
             }
-            return parameters.bevel_width < parameters.outer_radius &&
-                           parameters.bevel_width < parameters.depth * 0.5f
-                     ? ""
-                     : "Hex-tile bevel width must be less than its radius and half-depth.";
-        }
-        case Shape::hex_frame: {
-            auto const& parameters{request.hex_frame};
-            if (!ioj::PositiveFinite<float>::valid(parameters.outer_radius) ||
-                !ioj::PositiveFinite<float>::valid(parameters.wall_thickness) ||
-                !ioj::PositiveFinite<float>::valid(parameters.depth)) {
-                return "Hex-frame radius, wall thickness, and depth must be finite and positive.";
+            break;
+        case Shape::cone:
+            if (request.cone.radial_segments < 3) {
+                return "Cone radius and height must be positive, with at least 3 segments.";
             }
-            if (parameters.wall_thickness >= parameters.outer_radius) {
+            break;
+        case Shape::hex_tile:
+            if (request.hex_tile.bevel_width >= request.hex_tile.outer_radius ||
+                request.hex_tile.bevel_width >= request.hex_tile.depth * 0.5f) {
+                return "Hex-tile bevel width must be less than its radius and half-depth.";
+            }
+            break;
+        case Shape::hex_frame:
+            if (request.hex_frame.wall_thickness >= request.hex_frame.outer_radius) {
                 return "Hex-frame wall thickness must be less than its outer radius.";
             }
-            return parameters.uv_mode == HexFrameUvMode::per_face ||
-                           parameters.uv_mode == HexFrameUvMode::perimeter
-                     ? ""
-                     : "Hex-frame UV mode is invalid.";
-        }
-        case Shape::honeycomb_panel: {
-            auto const& parameters{request.honeycomb_panel};
-            if (parameters.rows <= 0 || parameters.columns <= 0 ||
-                !ioj::PositiveFinite<float>::valid(parameters.cell_radius) ||
-                !ioj::PositiveFinite<float>::valid(parameters.wall_thickness) ||
-                !ioj::PositiveFinite<float>::valid(parameters.depth)) {
-                return "Honeycomb rows and columns must be positive; radius, wall thickness, and "
-                       "depth "
-                       "must be finite and positive.";
+            if (request.hex_frame.uv_mode < HexFrameUvMode::per_face ||
+                request.hex_frame.uv_mode > HexFrameUvMode::perimeter) {
+                return "Hex-frame UV mode is invalid.";
             }
-            return parameters.wall_thickness < parameters.cell_radius
-                     ? ""
-                     : "Honeycomb wall thickness must be less than its cell radius.";
-        }
+            break;
+        case Shape::honeycomb_panel:
+            if (request.honeycomb_panel.wall_thickness >= request.honeycomb_panel.cell_radius) {
+                return "Honeycomb wall thickness must be less than its cell radius.";
+            }
+            break;
+        case Shape::beveled_box:
+            if (minimum_component(request.beveled_box.dimensions) <= 0.0f) {
+                return "Beveled-box dimensions and bevel width must be positive.";
+            }
+            if (request.beveled_box.bevel_width >=
+                minimum_component(request.beveled_box.dimensions) * 0.5f) {
+                return "Beveled-box bevel width must be less than half its smallest dimension.";
+            }
+            break;
+        case Shape::wedge:
+            if (minimum_component(request.wedge.dimensions) <= 0.0f) {
+                return "Wedge dimensions and top length must be positive.";
+            }
+            if (request.wedge.top_length > request.wedge.dimensions.x() ||
+                std::abs(request.wedge.top_offset) + request.wedge.top_length * 0.5f >
+                    request.wedge.dimensions.x() * 0.5f) {
+                return "Wedge top length and offset must keep the top within its base.";
+            }
+            break;
     }
-    return "Mesh shape is invalid.";
-}
-
-auto validate_transform(Transform const& transform) -> std::string_view {
-    if (!ioj::FiniteVector<float, 3>::valid(transform.translation) ||
-        !ioj::Finite<float>::valid(transform.rotation.pitch) ||
-        !ioj::Finite<float>::valid(transform.rotation.yaw) ||
-        !ioj::Finite<float>::valid(transform.rotation.roll)) {
-        return "Transform translation and rotation must be finite.";
-    }
-    return ioj::PositiveFiniteVector<float, 3>::valid(transform.scale)
-             ? ""
-             : "Transform scale values must be finite and greater than zero.";
+    return {};
 }
 
 auto generate_mesh(GenerationRequest const& request) -> MeshData {
+    assert(validate_request(request).empty());
     MeshData mesh_data;
     switch (request.shape) {
         case Shape::box:
@@ -300,76 +241,61 @@ auto describe_request(GenerationRequest const& request) -> std::string {
         case Shape::box:
             write("box;dimensions={}", format_vec(request.box.dimensions));
             break;
-        case Shape::cylinder: {
-            auto const& parameters{request.cylinder};
+        case Shape::cylinder:
             write("cylinder;radius={};height={};segments={}",
-                  format_number(parameters.radius),
-                  format_number(parameters.height),
-                  parameters.radial_segments);
+                  format_number(request.cylinder.radius),
+                  format_number(request.cylinder.height),
+                  request.cylinder.radial_segments);
             break;
-        }
-        case Shape::sphere: {
-            auto const& parameters{request.sphere};
+        case Shape::sphere:
             write("sphere;radius={};longitude_segments={};latitude_segments={}",
-                  format_number(parameters.radius),
-                  parameters.longitude_segments,
-                  parameters.latitude_segments);
+                  format_number(request.sphere.radius),
+                  request.sphere.longitude_segments,
+                  request.sphere.latitude_segments);
             break;
-        }
-        case Shape::cone: {
-            auto const& parameters{request.cone};
+        case Shape::cone:
             write("cone;radius={};height={};segments={}",
-                  format_number(parameters.radius),
-                  format_number(parameters.height),
-                  parameters.radial_segments);
+                  format_number(request.cone.radius),
+                  format_number(request.cone.height),
+                  request.cone.radial_segments);
             break;
-        }
-        case Shape::hex_tile: {
-            auto const& parameters{request.hex_tile};
+        case Shape::hex_tile:
             write("hex_tile;outer_radius={};depth={};bevel_width={};pointy_top={}",
-                  format_number(parameters.outer_radius),
-                  format_number(parameters.depth),
-                  format_number(parameters.bevel_width),
-                  parameters.pointy_top);
+                  format_number(request.hex_tile.outer_radius),
+                  format_number(request.hex_tile.depth),
+                  format_number(request.hex_tile.bevel_width),
+                  request.hex_tile.pointy_top);
             break;
-        }
-        case Shape::hex_frame: {
-            auto const& parameters{request.hex_frame};
+        case Shape::hex_frame:
             write("hex_frame;outer_radius={};wall_thickness={};depth={};pointy_top={};uv_mode={}",
-                  format_number(parameters.outer_radius),
-                  format_number(parameters.wall_thickness),
-                  format_number(parameters.depth),
-                  parameters.pointy_top,
-                  parameters.uv_mode == HexFrameUvMode::perimeter ? "perimeter" : "per_face");
+                  format_number(request.hex_frame.outer_radius),
+                  format_number(request.hex_frame.wall_thickness),
+                  format_number(request.hex_frame.depth),
+                  request.hex_frame.pointy_top,
+                  request.hex_frame.uv_mode == HexFrameUvMode::perimeter ? "perimeter"
+                                                                         : "per_face");
             break;
-        }
-        case Shape::honeycomb_panel: {
-            auto const& parameters{request.honeycomb_panel};
+        case Shape::honeycomb_panel:
             write("honeycomb_panel;rows={};columns={};cell_radius={};wall_thickness={};"
                   "depth={};pointy_top={}",
-                  parameters.rows,
-                  parameters.columns,
-                  format_number(parameters.cell_radius),
-                  format_number(parameters.wall_thickness),
-                  format_number(parameters.depth),
-                  parameters.pointy_top);
+                  request.honeycomb_panel.rows,
+                  request.honeycomb_panel.columns,
+                  format_number(request.honeycomb_panel.cell_radius),
+                  format_number(request.honeycomb_panel.wall_thickness),
+                  format_number(request.honeycomb_panel.depth),
+                  request.honeycomb_panel.pointy_top);
             break;
-        }
-        case Shape::beveled_box: {
-            auto const& parameters{request.beveled_box};
+        case Shape::beveled_box:
             write("beveled_box;dimensions={};bevel_width={}",
-                  format_vec(parameters.dimensions),
-                  format_number(parameters.bevel_width));
+                  format_vec(request.beveled_box.dimensions),
+                  format_number(request.beveled_box.bevel_width));
             break;
-        }
-        case Shape::wedge: {
-            auto const& parameters{request.wedge};
+        case Shape::wedge:
             write("wedge;dimensions={};top_length={};top_offset={}",
-                  format_vec(parameters.dimensions),
-                  format_number(parameters.top_length),
-                  format_number(parameters.top_offset));
+                  format_vec(request.wedge.dimensions),
+                  format_number(request.wedge.top_length),
+                  format_number(request.wedge.top_offset));
             break;
-        }
     }
     write(";material_role={}", role_name(request.material_role));
     return description;
@@ -435,21 +361,22 @@ auto validate_assembly(std::span<AssemblyPart const> const parts) -> std::string
     if (parts.empty()) {
         return "Add at least one part to the assembly.";
     }
-    auto const count{parts.size()};
-    for (std::size_t index{}; index < count; ++index) {
-        auto const& part{parts[index]};
-        auto error{validate_request(part.mesh)};
-        if (error.empty()) {
-            error = validate_transform(part.transform);
+    for (std::size_t part_index{}; part_index < parts.size(); ++part_index) {
+        auto const& part{parts[part_index]};
+        auto const mesh_error{validate_request(part.mesh)};
+        if (!mesh_error.empty()) {
+            return "Part " + std::to_string(part_index + 1) + ": " + mesh_error;
         }
-        if (!error.empty()) {
-            return "Part " + std::to_string(index + 1) + ": " + std::string{error};
+        if (minimum_component(part.transform.scale) <= 0.0f) {
+            return "Part " + std::to_string(part_index + 1) +
+                   ": all scale values must be greater than zero.";
         }
     }
     return {};
 }
 
 auto generate_assembly(std::span<AssemblyPart const> const parts) -> MeshData {
+    assert(validate_assembly(parts).empty());
     MeshData assembly;
     for (auto const& part : parts) {
         if (part.visible) {
@@ -464,13 +391,12 @@ auto describe_assembly(std::span<AssemblyPart const> const parts) -> std::string
     auto write{ioj::FormatWriter{std::back_inserter(description)}};
     for (std::size_t part_index{}; part_index < parts.size(); ++part_index) {
         auto const& part{parts[part_index]};
-        auto const& transform{part.transform};
         write(";part{}={{{};translation={};rotation={};scale={};visible={}}}",
               part_index,
               describe_request(part.mesh),
-              format_vec(transform.translation),
-              format_rotator(transform.rotation),
-              format_vec(transform.scale),
+              format_vec(part.transform.translation),
+              format_rotator(part.transform.rotation),
+              format_vec(part.transform.scale),
               part.visible);
     }
     return description;

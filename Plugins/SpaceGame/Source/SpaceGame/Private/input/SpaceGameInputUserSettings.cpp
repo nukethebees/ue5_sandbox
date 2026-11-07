@@ -7,19 +7,8 @@
 #include "EnhancedActionKeyMapping.h"
 #include "InputMappingContext.h"
 #include "PlayerMappableKeySettings.h"
-#include <Serialization/Archive.h>
 
 namespace ioj {
-
-void USpaceGameInputUserSettings::Serialize(FArchive& archive) {
-    Super::Serialize(archive);
-    if (archive.IsLoading()) {
-        set_mouse_turn_sensitivity(mouse_turn_sensitivity_);
-        set_gamepad_turn_sensitivity(gamepad_turn_sensitivity_);
-        set_gamepad_turn_dead_zone(gamepad_turn_dead_zone_);
-        set_gamepad_move_dead_zone(gamepad_move_dead_zone_);
-    }
-}
 
 void USpaceGameInputUserSettings::finalize_canonical_registration() {
     auto* const profile{GetDefaultKeyProfile()};

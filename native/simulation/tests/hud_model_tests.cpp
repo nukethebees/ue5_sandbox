@@ -6,6 +6,7 @@ namespace ioj::sim::tests {
 namespace hud_test {
 auto data() -> LevelSimInitData {
     auto result{make_simulation_data(make_fixture())};
+    result.capital_ships.fighter_spawn_slots = 0;
     result.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     return result;
 }

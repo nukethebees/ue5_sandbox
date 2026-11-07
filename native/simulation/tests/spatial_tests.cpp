@@ -1,5 +1,4 @@
 #include "ioj/sim/collision/collision_grid.h"
-#include "ioj/sim/collision/collision_uniform_grid.h"
 #include "ioj/sim/collision/spatial.h"
 #include "ioj/sim/collision/trace_hits.h"
 
@@ -38,42 +37,20 @@ TEST(Spatial, AppliesCentreAndDirection) {
     EXPECT_EQ(point, (Point3d{1.0, 5.0, 7.0}));
 }
 
-TEST(CollisionGrid, RejectsInvalidGeometryAtConstruction) {
-    EXPECT_TRUE(
-        collision::GridGeometry::try_make({2, 3, 4}, Vector3f{{5000.0f, 5000.0f, 20000.0f}}));
-    EXPECT_FALSE(
-        collision::GridGeometry::try_make({0, 3, 4}, Vector3f{{5000.0f, 5000.0f, 20000.0f}}));
-    EXPECT_FALSE(
-        collision::GridGeometry::try_make({-1, 3, 4}, Vector3f{{5000.0f, 5000.0f, 20000.0f}}));
-    EXPECT_FALSE(collision::GridGeometry::try_make({2, 3, 4}, Vector3f{{5000.0f, 0.0f, 20000.0f}}));
-    EXPECT_FALSE(
-        collision::GridGeometry::try_make({2, 3, 4}, Vector3f{{5000.0f, -1.0f, 20000.0f}}));
-    EXPECT_FALSE(collision::GridGeometry::try_make(
-        {2, 3, 4}, Vector3f{{std::numeric_limits<float>::quiet_NaN(), 1.0f, 1.0f}}));
-    EXPECT_FALSE(collision::GridGeometry::try_make(
-        {2, 3, 4}, Vector3f{{std::numeric_limits<float>::infinity(), 1.0f, 1.0f}}));
-    EXPECT_FALSE(collision::GridGeometry::try_make(
-        {2, 3, 4}, Vector3f{{-std::numeric_limits<float>::infinity(), 1.0f, 1.0f}}));
-    EXPECT_FALSE(collision::GridGeometry::try_make({std::numeric_limits<int>::max(), 2, 1},
-                                                   Vector3f{{1.0f, 1.0f, 1.0f}}));
-    EXPECT_FALSE(collision::GridGeometry::try_make(
-        {4, 1, 1}, Vector3f{{std::numeric_limits<float>::max(), 1.f, 1.f}}));
-}
-
-TEST(CollisionGrid, DefaultAndResetGridRemainQueryable) {
-    collision::CollisionUniformGrid grid;
-    collision::WorldAABB const bounds{{-0.25f, -0.25f, -0.25f}, {0.25f, 0.25f, 0.25f}};
-    EXPECT_TRUE(grid.cell_entities({}).empty());
-    EXPECT_EQ(grid.count_overlaps(bounds, {}).static_geometry, 0u);
-    grid.add_static_aabb(bounds.min, bounds.max);
-    EXPECT_EQ(grid.count_overlaps(bounds, {}).static_geometry, 1u);
-
-    grid.reset();
-    EXPECT_EQ(grid.num_cells().value(), 1u);
-    EXPECT_TRUE(grid.cell_entities({}).empty());
-    EXPECT_EQ(grid.count_overlaps(bounds, {}).static_geometry, 0u);
-    grid.set_geometry({{1, 2, 3}, Vector3f{2.f, 4.f, 6.f}});
-    EXPECT_EQ(grid.num_cells().value(), 6u);
+TEST(CollisionGrid, ValidatesDimensionsCellSizeAndCellCount) {
+    EXPECT_TRUE(collision::is_configured({{2, 3, 4}, Vector3f{{5000.0f, 5000.0f, 20000.0f}}}));
+    EXPECT_FALSE(collision::is_configured({{0, 3, 4}, Vector3f{{5000.0f, 5000.0f, 20000.0f}}}));
+    EXPECT_FALSE(collision::is_configured({{-1, 3, 4}, Vector3f{{5000.0f, 5000.0f, 20000.0f}}}));
+    EXPECT_FALSE(collision::is_configured({{2, 3, 4}, Vector3f{{5000.0f, 0.0f, 20000.0f}}}));
+    EXPECT_FALSE(collision::is_configured({{2, 3, 4}, Vector3f{{5000.0f, -1.0f, 20000.0f}}}));
+    EXPECT_FALSE(collision::is_configured(
+        {{2, 3, 4}, Vector3f{{std::numeric_limits<float>::quiet_NaN(), 1.0f, 1.0f}}}));
+    EXPECT_FALSE(collision::is_configured(
+        {{2, 3, 4}, Vector3f{{std::numeric_limits<float>::infinity(), 1.0f, 1.0f}}}));
+    EXPECT_FALSE(collision::is_configured(
+        {{2, 3, 4}, Vector3f{{-std::numeric_limits<float>::infinity(), 1.0f, 1.0f}}}));
+    EXPECT_FALSE(collision::is_configured(
+        {{std::numeric_limits<int>::max(), 2, 1}, Vector3f{{1.0f, 1.0f, 1.0f}}}));
 }
 
 TEST(NativeSoa, SwapRemovalKeepsTraceHitColumnsAligned) {

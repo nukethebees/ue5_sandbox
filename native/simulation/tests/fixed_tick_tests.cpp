@@ -151,19 +151,4 @@ TEST(SimulationSettings, ChecksCountdownDurationBoundsBeforeNarrowing) {
     });
 }
 
-TEST(SimulationSettings, ValidatesAuthoredClockAndOverride) {
-    settings::Settings source;
-    source.tick.tick_rate = Frequency{1.e9};
-    EXPECT_FALSE(resolve_simulation_settings(source));
-    EXPECT_FALSE(resolve_simulation_settings(source, settings::TickSettings{}));
-
-    source.tick = {};
-    EXPECT_FALSE(
-        resolve_simulation_settings(source, settings::TickSettings{.tick_rate = Frequency{1.e9}}));
-    auto const resolved{
-        resolve_simulation_settings(source, settings::TickSettings{.tick_rate = Frequency{30.0}})};
-    ASSERT_TRUE(resolved);
-    EXPECT_EQ(resolved->clock.tick_rate, Frequency{30.0});
-}
-
 } // namespace tests

@@ -10,8 +10,6 @@
 #include <optional>
 
 namespace ioj::presentation {
-void normalize_soft_target_settings(settings::SoftTarget& settings);
-
 struct OverlayView {
     auto is_valid() const noexcept -> bool { return size.x() > 0 && size.y() > 0; }
 

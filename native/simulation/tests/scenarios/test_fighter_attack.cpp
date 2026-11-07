@@ -55,6 +55,7 @@ TEST(WorldlessSpaceGameSimulation, FightersObstacleAvoidance) {
     data.fighters.avoidance_update_frequency = PositiveFinite<float>::make(5.f);
     data.fighters.avoidance_lookahead_time = NonNegativeFinite<float>::make(1.f);
     data.fighters.avoidance_clearance_buffer = NonNegativeFinite<float>::make(100.f);
+    data.capital_ships.fighter_spawn_slots = 1;
     data.capital_ships.fighter_spawn_slots_relative_transforms = {
         {.location = {3000.0, 7000.0, 0.0}}};
     data.collision.static_bounds.add_defaulted(1);
@@ -114,6 +115,7 @@ auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
     data.fighters.laser.max_distance = PositiveFinite<float>::make(2000.f);
     data.fighters.separation_radius = PositiveFinite<float>::make(1500.f);
     data.fighters.separation_strength = NonNegativeFinite<float>::make(1.5f);
+    data.capital_ships.fighter_spawn_slots = static_cast<std::int32_t>(spawn_slots.size());
     data.capital_ships.fighter_spawn_slots_relative_transforms = spawn_slots;
     tests::add_capital_spawn(data, source_location, Team::Green, 0.f, 60.f, 100000);
     tests::add_capital_spawn(data, target_location, Team::Red, 60.f, 60.f, 100000);
@@ -131,6 +133,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationCapitalObstruction) {
     data.fighters.speed = 4000.f;
     data.fighters.avoidance_lookahead_time = NonNegativeFinite<float>::make(1.f);
     data.fighters.laser.max_distance = PositiveFinite<float>::make(2000.f);
+    data.capital_ships.fighter_spawn_slots = 1;
     data.capital_ships.fighter_spawn_slots_relative_transforms = {
         {.location = {3000.0, 7000.0, 0.0}}};
     tests::add_capital_spawn(data, source, Team::Green, 0.f, 60.f, 100000);

@@ -20,9 +20,14 @@ auto validate_mesh_assembly_recipe_json(FSbxMeshAssemblyRecipeJsonDocument const
         return TEXT("JSON output asset name must not be empty.");
     }
 
+    auto const hierarchy_error{validate_mesh_assembly_hierarchy(document.parts, document.groups)};
+    if (!hierarchy_error.IsEmpty()) {
+        return hierarchy_error;
+    }
+
     auto const parts{resolve_mesh_assembly_hierarchy(
         document.parts, document.groups, document.output_asset_name)};
-    return parts ? validate_mesh_assembly(*parts) : parts.error();
+    return validate_mesh_assembly(parts);
 }
 
 auto serialize_mesh_assembly_recipe_json(FSbxMeshAssemblyRecipeJsonDocument const& document,
