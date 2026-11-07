@@ -60,14 +60,13 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     initialise_subsystems(data);
 
     auto const& events{event_manager_.data()};
-    auto const& schedule{events.schedule};
     spawn_manager_.initialise(events.initialisation.entity_count);
     if (events.initialisation.player_entity_index != invalid_level_entity_index) {
         spawn_manager_.set_entity_id(events.initialisation.player_entity_index,
                                      player_ship_simulation_->unique_entity_id);
     }
     spawn_manager_.spawn(
-        schedule.initial_spawn_groups.const_view(), schedule, {entity_ledger_, clock_});
+        events.initial_spawn_groups.const_view(), events, {entity_ledger_, clock_});
 }
 void LevelSim::finish_initialisation() {
     assert(state_ == LevelState::Uninitialised);
@@ -120,7 +119,7 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
         data.capital_ships.max_health);
     auto const player_team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
                                                    : std::nullopt};
-    participating_teams_ = event_manager_.data().schedule.collect_participating_teams(player_team);
+    participating_teams_ = event_manager_.data().collect_participating_teams(player_team);
     assert(std::in_range<std::int32_t>(participating_teams_.num()));
     auto const participant_count{static_cast<std::int32_t>(participating_teams_.num())};
     fighter_per_team_limit_ =
@@ -203,11 +202,11 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
 }
 
 void LevelSim::dispatch_tick_end_events() {
-    auto const& schedule{event_manager_.data().schedule};
+    auto const& definitions{event_manager_.data()};
     while (auto const event = event_manager_.consume_tick_end_event()) {
         switch (event->kind()) {
             case EventKind::StartTimer: {
-                auto const& start{schedule.start_timer_events[event->index()]};
+                auto const& start{definitions.start_timer_events[event->index()]};
                 timers_.start(start.timer, start.duration);
                 break;
             }
@@ -215,7 +214,7 @@ void LevelSim::dispatch_tick_end_events() {
                 stop_run(telemetry::RunEndReason::MissionCompleted);
                 return;
             case EventKind::StopRun:
-                stop_run(schedule.stop_events[event->index()]);
+                stop_run(definitions.stop_events[event->index()]);
                 return;
             case EventKind::Pause:
                 state_ = LevelState::Paused;
@@ -226,12 +225,12 @@ void LevelSim::dispatch_tick_end_events() {
     }
 }
 void LevelSim::dispatch_preparation_events() {
-    auto const& schedule{event_manager_.data().schedule};
+    auto const& definitions{event_manager_.data()};
     while (auto const event = event_manager_.consume_preparation_event()) {
         switch (event->kind()) {
             case EventKind::Spawn: {
                 std::array const events{*event};
-                spawn_manager_.process_events(events, schedule, {entity_ledger_, clock_});
+                spawn_manager_.process_events(events, definitions, {entity_ledger_, clock_});
                 break;
             }
             default:

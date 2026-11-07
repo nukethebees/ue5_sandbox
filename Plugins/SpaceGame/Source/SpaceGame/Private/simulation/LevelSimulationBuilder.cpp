@@ -29,6 +29,7 @@
 #include <EngineUtils.h>
 #include <Kismet/GameplayStatics.h>
 
+#include <array>
 #include <vector>
 
 namespace ioj::level_simulation_builder {
@@ -69,7 +70,7 @@ auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
                            sim::SimClock const& clock,
                            sim::ExprManager& expressions,
                            sim::Timers& timers,
-                           sim::LevelEventSchedule& events)
+                           sim::CompiledLevelEvents& events)
     -> std::expected<sim::Mission, FLevelStartErrors> {
     std::vector<levels::EntityId> ids(static_cast<std::size_t>(entities.Num()));
     for (auto const& entity : entities) {
@@ -86,7 +87,7 @@ auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
         ids[*index] = levels::EntityId{TCHAR_TO_UTF8(*binding.Key.ToString().ToLower())};
     }
     auto compiled{
-        sim::Mission::compile(definition.objectives, ids, clock, expressions, timers, events)};
+        levels::compile_mission(definition.objectives, ids, clock, expressions, timers, events)};
     if (!compiled) {
         for (auto const& message : compiled.error()) {
             errors.add(to_fstring(message));
@@ -364,7 +365,7 @@ static auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& c
                                        clock,
                                        build.data.expressions,
                                        build.data.timers,
-                                       build.data.level_events.schedule)};
+                                       build.data.level_events)};
     if (!mission) {
         return FLevelSimulationBuildResult{std::unexpect, MoveTemp(mission.error())};
     }
@@ -452,12 +453,19 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request)
         metadata.requested_duration_seconds = duration;
         sim::SimClock clock;
         clock.initialise(result->data.clock_settings);
-        auto limit{result->data.level_events.schedule.add_level_duration_limit(
-            result->data.expressions, result->data.timers, clock, duration)};
-        if (!limit) {
-            level_simulation_builder::append_native_errors(limit.error(), errors);
+        auto const ticks{levels::compile_timer_duration(duration, clock)};
+        if (!ticks) {
+            level_simulation_builder::append_native_errors(ticks.error(), errors);
             return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
         }
+        auto& data{result->data};
+        auto& events{data.level_events};
+        auto const timer{data.timers.add()};
+        auto const elapsed{data.expressions.add_timer_elapsed(timer)};
+        events.initial_events.push_back(events.add_start_timer_event({timer, *ticks}));
+        std::array const effects{
+            events.add_stop_event(sim::telemetry::RunEndReason::DurationReached)};
+        events.add_trigger(elapsed, effects);
     }
     return result;
 }

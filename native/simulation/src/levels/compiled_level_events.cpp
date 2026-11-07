@@ -1,11 +1,9 @@
-#include <ioj/sim/levels/level_event_schedule.h>
+#include <ioj/sim/levels/compiled_level_events.h>
 
 #include <ioj/diagnostics.h>
-#include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/team_array.h>
 
 #include <algorithm>
-#include <array>
 #include <cassert>
 #include <cstdint>
 #include <format>
@@ -18,7 +16,7 @@ namespace ioj::sim {
 /* **************************************** */
 // Participating teams
 /* **************************************** */
-auto LevelEventSchedule::collect_participating_teams(std::optional<Team> const player_team) const
+auto CompiledLevelEvents::collect_participating_teams(std::optional<Team> const player_team) const
     -> TeamList {
     TeamArray<std::uint8_t> included{};
     auto const included_count{included.size()};
@@ -73,62 +71,38 @@ void append(LevelSpawnGroups& storage,
 }
 }
 
-void LevelEventSchedule::add_initial_spawn_group(EntityType const type,
-                                                 std::int32_t const offset,
-                                                 std::int32_t const count) {
+void CompiledLevelEvents::add_initial_spawn_group(EntityType const type,
+                                                  std::int32_t const offset,
+                                                  std::int32_t const count) {
     level_spawn_groups_detail::append(initial_spawn_groups, type, offset, count);
 }
-void LevelEventSchedule::add_spawn_group(EntityType const type,
-                                         std::int32_t const offset,
-                                         std::int32_t const count) {
+void CompiledLevelEvents::add_spawn_group(EntityType const type,
+                                          std::int32_t const offset,
+                                          std::int32_t const count) {
     level_spawn_groups_detail::append(spawn_groups, type, offset, count);
 }
 
-auto LevelEventSchedule::add_spawn_event(IndexSpan const groups) -> EventHandle {
+auto CompiledLevelEvents::add_spawn_event(IndexSpan const groups) -> EventHandle {
     auto const index{static_cast<std::uint32_t>(spawn_events.size())};
     spawn_events.push_back(groups);
     return EventHandle{index, EventKind::Spawn};
 }
-auto LevelEventSchedule::add_stop_event(telemetry::RunEndReason const reason) -> EventHandle {
+auto CompiledLevelEvents::add_stop_event(telemetry::RunEndReason const reason) -> EventHandle {
     auto const index{static_cast<std::uint32_t>(stop_events.size())};
     stop_events.push_back(reason);
     return EventHandle{index, EventKind::StopRun};
 }
-auto LevelEventSchedule::add_start_timer_event(StartTimerEvent const event) -> EventHandle {
+auto CompiledLevelEvents::add_start_timer_event(StartTimerEvent const event) -> EventHandle {
     auto const index{static_cast<std::uint32_t>(start_timer_events.size())};
     start_timer_events.push_back(event);
     return EventHandle{index, EventKind::StartTimer};
 }
 
-void LevelEventSchedule::add_trigger(ExprHandle const condition,
-                                     std::span<EventHandle const> const events) {
+void CompiledLevelEvents::add_trigger(ExprHandle const condition,
+                                      std::span<EventHandle const> const events) {
     IndexSpan const range{static_cast<std::uint32_t>(trigger_events.size()),
                           static_cast<std::uint32_t>(events.size())};
     trigger_events.insert(trigger_events.end(), events.begin(), events.end());
     pending_triggers.push_back({condition, range});
-}
-auto LevelEventSchedule::add_timed_trigger(ExprManager& expressions,
-                                           Timers& timers,
-                                           SimClock const& clock,
-                                           Duration const duration,
-                                           std::span<EventHandle const> const events)
-    -> std::expected<void, std::vector<std::string>> {
-    std::array<levels::MissionExpr, 1> const condition{levels::MissionExpr{
-        levels::TimeElapsedExpr{NonNegativeFinite<double>::make(duration.seconds())}}};
-    auto expression{expressions.append(condition, {{}, {}, clock, timers, *this})};
-    if (!expression) {
-        return std::unexpected{std::move(expression.error())};
-    }
-    add_trigger(expression->handles[0], events);
-    initial_events.append_range(expression->start_events);
-    return {};
-}
-auto LevelEventSchedule::add_level_duration_limit(ExprManager& expressions,
-                                                  Timers& timers,
-                                                  SimClock const& clock,
-                                                  Duration const duration)
-    -> std::expected<void, std::vector<std::string>> {
-    std::array const events{add_stop_event(telemetry::RunEndReason::DurationReached)};
-    return add_timed_trigger(expressions, timers, clock, duration, events);
 }
 }

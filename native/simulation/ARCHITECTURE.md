@@ -65,7 +65,11 @@ Resolution decrements active countdowns before evaluating expressions. Expiry ma
 finished and swap-removes the countdown, repairing the moved owner's index. Finished handles
 remain readable. Timers have no reset operation; a fresh level owns fresh timer state.
 
-Compilation gives `TimeElapsed` leaves timer handles and creates their start events.
+Level compilation allocates timer IDs, creates start events and connects timer observations
+to triggers. Expression compilation only receives existing timer handles; it neither allocates
+timers nor creates effects. Mission compilation also belongs to the level compiler, keeping
+runtime `Mission` independent of timer and event storage. `CompiledLevelEvents` holds the
+resulting trigger and effect definitions directly; there is no separate schedule object.
 Initial events are queued during event-manager construction. Initialisation dispatches queued
 Preparation events before publishing entity lookups, then drains tick-end events immediately
 before returning. Timer starts therefore occur at tick zero without evaluating logic or advancing

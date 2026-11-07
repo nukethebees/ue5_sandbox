@@ -66,8 +66,8 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     data.collision.grid_geometry = {{16, 16, 4}, {1000.f, 1000.f, 1000.f}};
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.capital_ships.fighter_spawn_slots = 0;
-    auto& spawn_storage{data.level_events.schedule.capital_spawns};
-    data.level_events.schedule.add_initial_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, 2);
+    auto& spawn_storage{data.level_events.capital_spawns};
+    data.level_events.add_initial_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, 2);
     auto const add_capital{
         [&](ioj::sim::LevelEntityIndex const entity, ioj::Team const team, float const x) {
             spawn_storage.add(entity, {x, 0.f, 0.f}, {}, team, ioj::sim::Health{100}, 60.f, 60.f);
@@ -127,8 +127,8 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
     std::array const ids{ioj::levels::EntityId{"hero"}, ioj::levels::EntityId{"enemy"}};
     ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{ioj::sim::Mission::compile(
-        definition, ids, clock, data.expressions, data.timers, data.level_events.schedule)};
+    auto compiled{ioj::levels::compile_mission(
+        definition, ids, clock, data.expressions, data.timers, data.level_events)};
     check(compiled);
     data.mission = std::move(*compiled);
 }
@@ -253,10 +253,10 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     std::array<ioj::Vector3f, 2> const locations{{{10.f, 20.f, 30.f}, {-40.f, 50.f, 60.f}}};
     std::array<ioj::Rotator3f, 2> const rotations{{{15.f, 45.f, 75.f}, {-25.f, 35.f, 5.f}}};
     auto const count{static_cast<int32>(locations.size())};
-    auto& schedule{data.level_events.schedule};
-    schedule.add_initial_spawn_group(ioj::sim::EntityType::Turret, 0, count);
-    schedule.turret_spawns.add_uninitialised(count);
-    auto const turrets{schedule.turret_spawns.view()};
+    auto& definitions{data.level_events};
+    definitions.add_initial_spawn_group(ioj::sim::EntityType::Turret, 0, count);
+    definitions.turret_spawns.add_uninitialised(count);
+    auto const turrets{definitions.turret_spawns.view()};
     TArray<FTransform> expected;
     for (int32 index{}; index < count; ++index) {
         turrets.entity_indices()[index] = data.level_events.initialisation.entity_count++;
@@ -346,11 +346,10 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     auto resources{make_presentation_resources(*owner, config->get_visual_config())};
 
     auto scheduled_battle{make_scheduled_battle()};
-    auto const scheduled_spawns{scheduled_battle.level_events.schedule.capital_spawns.view(1, 1)};
+    auto const scheduled_spawns{scheduled_battle.level_events.capital_spawns.view(1, 1)};
     scheduled_spawns.view_locations().xs()[0] = -1000.f;
     scheduled_spawns.healths()[0] = ::ioj::sim::Health{100};
-    scheduled_battle.level_events.schedule.capital_spawns.view().healths()[0] =
-        ::ioj::sim::Health{10000};
+    scheduled_battle.level_events.capital_spawns.view().healths()[0] = ::ioj::sim::Health{10000};
     scheduled_battle.collision.overlap_response.damage_per_overlap_detection =
         ioj::Positive<std::int32_t>{100};
     ::ioj::sim::LevelSim simulation{MoveTemp(scheduled_battle)};

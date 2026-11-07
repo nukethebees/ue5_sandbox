@@ -1,5 +1,6 @@
 #include "support/simulation_test_support.h"
 #include <ioj/presentation/hud_model.h>
+#include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/missions/mission.h>
 
 namespace ioj::sim::tests {
@@ -23,12 +24,12 @@ auto defence_mission(LevelSimInitData& data) -> Mission {
     SimClock clock;
     clock.initialise(data.clock_settings);
     auto compiled{
-        Mission::compile(definition,
-                         std::array{levels::EntityId{"defended"}, levels::EntityId{"enemy"}},
-                         clock,
-                         data.expressions,
-                         data.timers,
-                         data.level_events.schedule)};
+        levels::compile_mission(definition,
+                                std::array{levels::EntityId{"defended"}, levels::EntityId{"enemy"}},
+                                clock,
+                                data.expressions,
+                                data.timers,
+                                data.level_events)};
     assert(compiled);
     return std::move(*compiled);
 }

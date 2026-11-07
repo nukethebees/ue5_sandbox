@@ -2,82 +2,17 @@
 
 #include <ioj/frame_array.h>
 #include <ioj/frame_memory_resource.h>
-#include <ioj/levels/mission_validation.h>
 #include <ioj/sim/expressions/expr_manager.h>
-#include <ioj/sim/sim_clock.h>
 
 #include <algorithm>
-#include <unordered_map>
 #include <utility>
 
 namespace ioj::sim {
 /* **************************************** */
 // Lifecycle
 /* **************************************** */
-auto Mission::compile(levels::MissionDefinition const& definition,
-                      std::span<levels::EntityId const> const entities,
-                      SimClock const& clock,
-                      ExprManager& expressions,
-                      Timers& timers,
-                      LevelEventSchedule& events)
-    -> std::expected<Mission, std::vector<std::string>> {
-    auto errors{levels::validate_mission(definition, entities)};
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
-    auto const count{static_cast<std::uint16_t>(definition.objectives.size())};
-    Mission result;
-    result.objectives_ = Objectives{count};
-
-    std::unordered_map<levels::ObjectiveName, ObjectiveId> objectives;
-    std::unordered_map<levels::EntityId, LevelEntityIndex> entity_indices;
-
-    auto const entity_count{entities.size()};
-    for (LevelEntityIndex index{}; index < entity_count; ++index) {
-        entity_indices.emplace(entities[index], index);
-    }
-
-    for (std::uint16_t index{}; index < count; ++index) {
-        objectives.emplace(definition.objectives[index].id, ObjectiveId{index});
-    }
-
-    auto const columns{result.objectives_.compilation_view()};
-    std::vector<ObjectivePrerequisite> prerequisites;
-
-    for (std::uint16_t row{}; row < count; ++row) {
-        ObjectiveId const owner{row};
-        auto const& source{definition.objectives[row]};
-
-        columns.identifiers[row] = source.id;
-        columns.display_names[row] = source.title.empty() ? source.id.value : source.title;
-        columns.assigned_teams[row] = source.team;
-        columns.wins_level[row] = source.wins_level;
-
-        prerequisites.clear();
-        for (auto const& dependency : source.dependencies) {
-            prerequisites.emplace_back(objectives.at(dependency.objective), dependency.outcome);
-        }
-        result.objectives_.add_prerequisites(owner, prerequisites);
-
-        auto compiled{expressions.append(source.expressions,
-                                         {entity_indices, objectives, clock, timers, events})};
-        if (!compiled) {
-            return std::unexpected{std::move(compiled.error())};
-        }
-        columns.leaf_ranges[row] = compiled->leaves;
-        columns.composite_ranges[row] = compiled->composites;
-        result.objectives_.add_activation_events(owner, compiled->start_events);
-
-        for (auto const root : EnumTraits<ObjectiveOutcome>::values) {
-            if (source.roots[root] != levels::absent_expression) {
-                columns.roots[row][root] = compiled->handles[source.roots[root]];
-            }
-        }
-    }
-
-    return result;
-}
+Mission::Mission(Objectives objectives)
+    : objectives_{std::move(objectives)} {}
 void Mission::reset_progress() {
     objectives_.reset_progress();
 

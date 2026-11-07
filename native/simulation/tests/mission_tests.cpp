@@ -3,7 +3,8 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/timers.h>
-#include <ioj/sim/levels/level_event_schedule.h>
+#include <ioj/sim/levels/compiled_level_events.h>
+#include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -22,7 +23,7 @@ struct MissionTest : ::testing::Test {
     Mission mission;
     ExprManager expressions;
     Timers timers;
-    LevelEventSchedule events;
+    CompiledLevelEvents events;
     std::array<Team, 2> teams{Team::Blue, Team::Red};
     FrameMemoryResource scratch{4096};
     SimTick::value_type previous_tick{};
@@ -31,9 +32,9 @@ struct MissionTest : ::testing::Test {
     void start(MissionDefinition const& definition) {
         expressions = ExprManager{};
         timers = Timers{};
-        events = LevelEventSchedule{};
+        events = CompiledLevelEvents{};
         previous_tick = 0;
-        auto compiled{Mission::compile(definition, {}, clock, expressions, timers, events)};
+        auto compiled{levels::compile_mission(definition, {}, clock, expressions, timers, events)};
         ASSERT_TRUE(compiled.has_value()) << (compiled ? "" : compiled.error().front());
         mission = std::move(*compiled);
         mission.reset_progress();
@@ -199,7 +200,8 @@ TEST(MissionValidation, DistinguishesObservationFromActivationCyclesAndRejectsIn
     SimClock clock;
     ExprManager expressions;
     Timers timers;
-    LevelEventSchedule events;
-    EXPECT_FALSE(Mission::compile({.objectives = {a}}, names, clock, expressions, timers, events));
+    CompiledLevelEvents events;
+    EXPECT_FALSE(
+        levels::compile_mission({.objectives = {a}}, names, clock, expressions, timers, events));
 }
 }

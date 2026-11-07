@@ -99,7 +99,7 @@ auto make_scheduled_battle() -> LevelSimInitData {
 auto make_overlap_response_battle() -> LevelSimInitData {
     auto data{make_battle()};
     data.collision.overlap_response.damage_per_overlap_detection = ioj::Positive<std::int32_t>{50};
-    std::ranges::fill(data.level_events.schedule.capital_spawns.view().healths(), Health{5000});
+    std::ranges::fill(data.level_events.capital_spawns.view().healths(), Health{5000});
     add_player_spawn(data, {});
     data.player->transform.location = {-1000.0, 0.0, 0.0};
     data.player->health = {Health{150}, Health{150}};
@@ -226,8 +226,8 @@ TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     data.turrets.target_refresh_frequency = ::ioj::PositiveFinite<float>::make(10.f);
     // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
     data.turrets.fire_point_offset = Vector3f{20.f, 0.f, 0.f};
-    auto& initial_storage{data.level_events.schedule.turret_spawns};
-    data.level_events.schedule.add_initial_spawn_group(EntityType::Turret, 0, 1);
+    auto& initial_storage{data.level_events.turret_spawns};
+    data.level_events.add_initial_spawn_group(EntityType::Turret, 0, 1);
     initial_storage.add_uninitialised(1);
     auto const initial{initial_storage.view()};
     initial.entity_indices()[0] = data.level_events.initialisation.entity_count++;
@@ -390,8 +390,8 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     definition.objectives[1].wins_level = ObjectiveWinsLevel::Yes;
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{Mission::compile(
-        definition, {}, clock, data.expressions, data.timers, data.level_events.schedule)};
+    auto compiled{levels::compile_mission(
+        definition, {}, clock, data.expressions, data.timers, data.level_events)};
     ASSERT_TRUE(compiled);
     data.mission = std::move(*compiled);
     LevelSim simulation{std::move(data)};
@@ -420,17 +420,14 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
 
 TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumedEvents) {
     auto data{make_battle()};
-    SimClock clock;
-    clock.initialise(data.clock_settings);
-    auto& schedule{data.level_events.schedule};
-    schedule.initial_spawn_groups = {};
-    schedule.add_spawn_group(EntityType::CapitalShip, 0, 1);
-    schedule.add_spawn_group(EntityType::CapitalShip, 1, 1);
-    auto const first{schedule.add_spawn_event({0, 1})};
-    auto const second{schedule.add_spawn_event({1, 1})};
+    auto& definitions{data.level_events};
+    definitions.initial_spawn_groups = {};
+    definitions.add_spawn_group(EntityType::CapitalShip, 0, 1);
+    definitions.add_spawn_group(EntityType::CapitalShip, 1, 1);
+    auto const first{definitions.add_spawn_event({0, 1})};
+    auto const second{definitions.add_spawn_event({1, 1})};
     std::array const events{second, first};
-    ASSERT_TRUE(schedule.add_timed_trigger(
-        data.expressions, data.timers, clock, Duration::make(0), events));
+    add_timed_events(data, Duration::make(0), events);
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
@@ -451,16 +448,13 @@ TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumed
 
 TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendingEvents) {
     auto data{make_scheduled_battle()};
-    SimClock clock;
-    clock.initialise(data.clock_settings);
-    auto& schedule{data.level_events.schedule};
-    auto const second{schedule.add_stop_event(telemetry::RunEndReason::WorldEnd)};
-    auto const first{schedule.add_stop_event(telemetry::RunEndReason::DurationReached)};
+    auto& definitions{data.level_events};
+    auto const second{definitions.add_stop_event(telemetry::RunEndReason::WorldEnd)};
+    auto const first{definitions.add_stop_event(telemetry::RunEndReason::DurationReached)};
     EventHandle const pause{0, EventKind::Pause};
     std::array const events{pause, first, second, pause};
-    ASSERT_TRUE(data.level_events.schedule.add_timed_trigger(
-        data.expressions, data.timers, clock, Duration::make(0.21), events));
-    auto expected_history{schedule.initial_events};
+    add_timed_events(data, Duration::make(0.21), events);
+    auto expected_history{definitions.initial_events};
     expected_history.append_range(events);
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
@@ -507,19 +501,13 @@ TEST(NativeSimulation, PlayerlessMissionCompletionStopsDispatchAndRetainsLaterEv
     objective.roots[ObjectiveOutcome::Passed] = 0;
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto mission{Mission::compile({.objectives = {objective}},
-                                  {},
-                                  clock,
-                                  data.expressions,
-                                  data.timers,
-                                  data.level_events.schedule)};
+    auto mission{levels::compile_mission(
+        {.objectives = {objective}}, {}, clock, data.expressions, data.timers, data.level_events)};
     ASSERT_TRUE(mission);
     data.mission = std::move(*mission);
-    ASSERT_TRUE(data.level_events.schedule.add_level_duration_limit(
-        data.expressions, data.timers, clock, Duration::make(0.21)));
+    add_duration_limit(data, Duration::make(0.21));
     std::array const pause{EventHandle{0, EventKind::Pause}};
-    ASSERT_TRUE(data.level_events.schedule.add_timed_trigger(
-        data.expressions, data.timers, clock, Duration::make(0.21), pause));
+    add_timed_events(data, Duration::make(0.21), pause);
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
@@ -548,10 +536,7 @@ TEST(NativeSimulation, PlayerlessMissionCompletionStopsDispatchAndRetainsLaterEv
 TEST(NativeSimulation, DurationEventsDoNotRequireTelemetryRecording) {
     auto data{make_battle()};
     data.telemetry_recording.enabled = false;
-    SimClock clock;
-    clock.initialise(data.clock_settings);
-    ASSERT_TRUE(data.level_events.schedule.add_level_duration_limit(
-        data.expressions, data.timers, clock, Duration::make(0)));
+    add_duration_limit(data, Duration::make(0));
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
@@ -563,21 +548,17 @@ TEST(NativeSimulation, DurationEventsDoNotRequireTelemetryRecording) {
 TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancingLogicDuringSetup) {
     auto data{make_battle()};
     data.clock_settings.tick_rate = Frequency::make(10);
-    SimClock clock;
-    clock.initialise(data.clock_settings);
-    auto& schedule{data.level_events.schedule};
-    std::array const nodes{
-        levels::MissionExpr{levels::TimeElapsedExpr{NonNegativeFinite<double>::make(0.2)}},
-        levels::MissionExpr{levels::TimeElapsedExpr{NonNegativeFinite<double>::make(0.3)}},
-    };
-    auto const compiled{data.expressions.append(nodes, {{}, {}, clock, data.timers, schedule})};
-    ASSERT_TRUE(compiled);
-    auto const initial_start{compiled->start_events[0]};
-    auto const later_start{compiled->start_events[1]};
-    schedule.initial_events.push_back(initial_start);
-    schedule.add_trigger(compiled->handles[0], std::array{later_start});
-    auto const stop{schedule.add_stop_event(telemetry::RunEndReason::DurationReached)};
-    schedule.add_trigger(compiled->handles[1], std::array{stop});
+    auto& definitions{data.level_events};
+    auto const first_timer{data.timers.add()};
+    auto const second_timer{data.timers.add()};
+    auto const first_elapsed{data.expressions.add_timer_elapsed(first_timer)};
+    auto const second_elapsed{data.expressions.add_timer_elapsed(second_timer)};
+    auto const initial_start{definitions.add_start_timer_event({first_timer, SimTick{2}})};
+    auto const later_start{definitions.add_start_timer_event({second_timer, SimTick{3}})};
+    definitions.initial_events.push_back(initial_start);
+    definitions.add_trigger(first_elapsed, std::array{later_start});
+    auto const stop{definitions.add_stop_event(telemetry::RunEndReason::DurationReached)};
+    definitions.add_trigger(second_elapsed, std::array{stop});
 
     LevelSim simulation{std::move(data)};
     EXPECT_TRUE(std::ranges::equal(simulation.events().pending_tick_end_events(),
@@ -585,7 +566,7 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
     simulation.finish_initialisation();
     EXPECT_EQ(simulation.state(), LevelState::Paused);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
-    EXPECT_EQ(simulation.expressions().result(compiled->handles[0]), ExprResult::Pending);
+    EXPECT_EQ(simulation.expressions().result(first_elapsed), ExprResult::Pending);
     EXPECT_TRUE(simulation.events().pending_tick_end_events().empty());
     simulation.advance(10.0);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
@@ -597,7 +578,7 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
     simulation.advance(0.1);
     EXPECT_TRUE(std::ranges::equal(simulation.events().tick_end_events(),
                                    std::array{initial_start, later_start}));
-    EXPECT_EQ(simulation.expressions().result(compiled->handles[1]), ExprResult::Pending);
+    EXPECT_EQ(simulation.expressions().result(second_elapsed), ExprResult::Pending);
     simulation.advance(0.2);
     EXPECT_EQ(simulation.state(), LevelState::Running);
     simulation.advance(0.1);
@@ -609,16 +590,16 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
 
 TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTerminalDispatch) {
     auto data{make_battle()};
-    auto& schedule{data.level_events.schedule};
-    schedule.initial_spawn_groups = {};
-    schedule.add_spawn_group(EntityType::CapitalShip, 0, 1);
-    schedule.add_spawn_group(EntityType::CapitalShip, 1, 1);
-    auto const first_spawn{schedule.add_spawn_event({0, 1})};
-    auto const second_spawn{schedule.add_spawn_event({1, 1})};
-    auto const start{schedule.add_start_timer_event({data.timers.add(), SimTick{1}})};
-    auto const stop{schedule.add_stop_event(telemetry::RunEndReason::WorldEnd)};
-    auto const stranded{schedule.add_start_timer_event({data.timers.add(), SimTick{1}})};
-    schedule.initial_events = {second_spawn, first_spawn, start, stop, stranded};
+    auto& definitions{data.level_events};
+    definitions.initial_spawn_groups = {};
+    definitions.add_spawn_group(EntityType::CapitalShip, 0, 1);
+    definitions.add_spawn_group(EntityType::CapitalShip, 1, 1);
+    auto const first_spawn{definitions.add_spawn_event({0, 1})};
+    auto const second_spawn{definitions.add_spawn_event({1, 1})};
+    auto const start{definitions.add_start_timer_event({data.timers.add(), SimTick{1}})};
+    auto const stop{definitions.add_stop_event(telemetry::RunEndReason::WorldEnd)};
+    auto const stranded{definitions.add_start_timer_event({data.timers.add(), SimTick{1}})};
+    definitions.initial_events = {second_spawn, first_spawn, start, stop, stranded};
 
     LevelSim simulation{std::move(data)};
     EXPECT_EQ(simulation.capital_ships().num_instances(), 0);
@@ -660,11 +641,8 @@ TEST(NativeSimulation, RunsWithoutACompletionOrDurationEvent) {
 TEST(NativeSimulation, QueuedPausePreservesPendingSpawnsAndTelemetryUntilResume) {
     auto data{make_scheduled_battle()};
     data.telemetry_recording.interval_ticks = 1;
-    SimClock clock;
-    clock.initialise(data.clock_settings);
     std::array const pause{EventHandle{0, EventKind::Pause}};
-    ASSERT_TRUE(data.level_events.schedule.add_timed_trigger(
-        data.expressions, data.timers, clock, Duration::make(0.21), pause));
+    add_timed_events(data, Duration::make(0.21), pause);
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
@@ -683,7 +661,7 @@ TEST(NativeSimulation, QueuedPausePreservesPendingSpawnsAndTelemetryUntilResume)
     simulation.advance(1.0);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{3});
     simulation.start();
-    simulation.advance(clock.tick_period());
+    simulation.advance(simulation.clock().tick_period());
     EXPECT_EQ(simulation.state(), LevelState::Running);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{5});
     EXPECT_EQ(simulation.capital_ships().num_instances(), 2);
@@ -836,13 +814,13 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     data.capital_ships.fighter_spawn_slots_relative_transforms[1].location.y() = 100.0;
     data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.fighters.speed = 0.f;
-    auto const capital_events{data.level_events.schedule.capital_spawns.view()};
+    auto const capital_events{data.level_events.capital_spawns.view()};
     std::ranges::fill(capital_events.initial_fighter_spawn_delays(), 0.f);
 
-    auto& schedule{data.level_events.schedule};
-    auto const payload_offset{schedule.turret_spawns.num()};
-    schedule.turret_spawns.add_defaulted(1);
-    auto const scheduled_turret{schedule.turret_spawns.view(payload_offset, 1)};
+    auto& definitions{data.level_events};
+    auto const payload_offset{definitions.turret_spawns.num()};
+    definitions.turret_spawns.add_defaulted(1);
+    auto const scheduled_turret{definitions.turret_spawns.view(payload_offset, 1)};
     scheduled_turret.entity_indices()[0] = data.level_events.initialisation.entity_count++;
     set_vector(scheduled_turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
     scheduled_turret.teams()[0] = Team::White;

@@ -8,7 +8,6 @@ target_sources(native-simulation
     ../../include/ioj/sim/levels/fighter_spawn_slot_validation.h
     ../../include/ioj/sim/levels/level_compilation.h
     ../../include/ioj/sim/levels/level_event_manager.h
-    ../../include/ioj/sim/levels/level_event_schedule.h
     ../../include/ioj/sim/levels/level_initialisation_data.h
     ../../include/ioj/sim/levels/level_spawn_groups.h
     ../../include/ioj/sim/levels/level_capital_spawn_events.h
@@ -19,7 +18,7 @@ target_sources(native-simulation
     initial_spawns.cpp
     fighter_spawn_slot_validation.cpp
     level_event_manager.cpp
-    level_event_schedule.cpp
+    compiled_level_events.cpp
     level_spawn_manager.cpp
     simulation_settings.cpp
     level_simulation_builder.cpp

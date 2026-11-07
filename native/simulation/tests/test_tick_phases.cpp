@@ -41,10 +41,10 @@ void add_moving_player(LevelSimInitData& data, Vector3d const location = {}) {
 void schedule_turret(LevelSimInitData& data,
                      Vector3f const location,
                      SimTick const tick = SimTick{1}) {
-    auto& schedule{data.level_events.schedule};
-    auto const payload_offset{schedule.turret_spawns.num()};
-    schedule.turret_spawns.add_defaulted(1);
-    auto const turret_spawns{schedule.turret_spawns.view(payload_offset, 1)};
+    auto& definitions{data.level_events};
+    auto const payload_offset{definitions.turret_spawns.num()};
+    definitions.turret_spawns.add_defaulted(1);
+    auto const turret_spawns{definitions.turret_spawns.view(payload_offset, 1)};
     turret_spawns.entity_indices()[0] = data.level_events.initialisation.entity_count++;
     set_vector(turret_spawns.view_locations(), 0, location);
     set_rotation(turret_spawns.view_rotations(), 0, {});
@@ -276,8 +276,7 @@ TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
     data.collision.overlap_response.damage_per_overlap_detection = ioj::Positive<std::int32_t>{100};
     auto const capital_index{add_capital_spawn(data, {}, Team::White, 60.f, 60.f, 1000)};
     schedule_turret(data, {});
-    auto const turret_index{
-        data.level_events.schedule.turret_spawns.const_view().entity_indices()[0]};
+    auto const turret_index{data.level_events.turret_spawns.const_view().entity_indices()[0]};
     levels::ObjectiveDefinition objective{.team = Team::White};
     objective.expressions = {
         {ioj::levels::TimeElapsedExpr{.seconds = ioj::NonNegativeFinite<double>::make(10)}},

@@ -118,21 +118,21 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
                     Vector3f{data.player->transform.location},
                     Quaternion4f{data.player->transform.rotation});
     }
-    auto const capitals{data.level_events.schedule.capital_spawns.const_view()};
+    auto const capitals{data.level_events.capital_spawns.const_view()};
     auto const capital_count{capitals.num()};
     for (std::uint32_t row{}; row < capital_count; ++row) {
         check_spawn(EntityType::CapitalShip,
                     vector_at(capitals.view_locations(), row),
                     to_quaternion(rotation_at(capitals.view_rotations(), row)));
     }
-    auto const turrets{data.level_events.schedule.turret_spawns.const_view()};
+    auto const turrets{data.level_events.turret_spawns.const_view()};
     auto const turret_count{turrets.num()};
     for (std::uint32_t row{}; row < turret_count; ++row) {
         check_spawn(EntityType::Turret,
                     vector_at(turrets.view_locations(), row),
                     to_quaternion(rotation_at(turrets.view_rotations(), row)));
     }
-    auto const spinners{data.level_events.schedule.spinner_spawns.const_view()};
+    auto const spinners{data.level_events.spinner_spawns.const_view()};
     auto const spinner_count{spinners.num()};
     auto const spinner_yaws{spinners.yaws()};
     for (std::uint32_t row{}; row < spinner_count; ++row) {

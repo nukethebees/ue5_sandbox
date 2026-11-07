@@ -1,6 +1,7 @@
 #pragma once
 
 #include "simulation_test_support.h"
+#include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/missions/mission.h>
 
 namespace ioj::sim::tests {
@@ -28,8 +29,8 @@ inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition 
     }
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{Mission::compile(
-        definition, names, clock, data.expressions, data.timers, data.level_events.schedule)};
+    auto compiled{levels::compile_mission(
+        definition, names, clock, data.expressions, data.timers, data.level_events)};
     ASSERT_TRUE(compiled.has_value());
     data.mission = std::move(*compiled);
 }

@@ -5,8 +5,8 @@
 #include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/spawn_interface.h>
 #include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/levels/compiled_level_events.h>
 #include <ioj/sim/levels/level_entity_index.h>
-#include <ioj/sim/levels/level_event_schedule.h>
 #include <ioj/sim/levels/spawn_context.h>
 #include <ioj/sim/spinners/spawn_interface.h>
 #include <ioj/sim/turrets/spawn_interface.h>
@@ -43,7 +43,7 @@ void LevelSpawnManager::set_entity_id(LevelEntityIndex const entity_index, Entit
 }
 
 void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups,
-                              LevelEventSchedule const& schedule,
+                              CompiledLevelEvents const& definitions,
                               SpawnContext const context) {
     auto const group_count{groups.num()};
     auto const types{groups.types()};
@@ -56,17 +56,17 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups,
             case EntityType::CapitalShip: {
                 // Spawn groups select distinct payload ranges.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-                spawn_capitals(schedule.capital_spawns.const_view(offset, count), context);
+                spawn_capitals(definitions.capital_spawns.const_view(offset, count), context);
                 break;
             }
             case EntityType::Turret: {
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
-                spawn_turrets(schedule.turret_spawns.const_view(offset, count), context);
+                spawn_turrets(definitions.turret_spawns.const_view(offset, count), context);
                 break;
             }
             case EntityType::TubeSpinner: {
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
-                spawn_spinners(schedule.spinner_spawns.const_view(offset, count), context);
+                spawn_spinners(definitions.spinner_spawns.const_view(offset, count), context);
                 break;
             }
             default: {
@@ -78,11 +78,11 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups,
 }
 
 void LevelSpawnManager::process_events(std::span<EventHandle const> const events,
-                                       LevelEventSchedule const& schedule,
+                                       CompiledLevelEvents const& definitions,
                                        SpawnContext const context) {
     for (auto const event : events) {
-        auto const range{schedule.spawn_events[event.index()]};
-        spawn(schedule.spawn_groups.const_view(range.offset, range.count), schedule, context);
+        auto const range{definitions.spawn_events[event.index()]};
+        spawn(definitions.spawn_groups.const_view(range.offset, range.count), definitions, context);
     }
 }
 

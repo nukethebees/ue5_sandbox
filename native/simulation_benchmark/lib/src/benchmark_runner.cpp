@@ -223,7 +223,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     data.level_metadata = std::move(compiled->level_metadata);
 
     if (options.fighter_stress_cap.has_value()) {
-        auto const team_count{data.level_events.schedule
+        auto const team_count{data.level_events
                                   .collect_participating_teams(
                                       data.player ? std::optional{data.player->team} : std::nullopt)
                                   .num()};

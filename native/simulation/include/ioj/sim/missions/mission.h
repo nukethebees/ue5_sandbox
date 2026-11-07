@@ -1,20 +1,15 @@
 #pragma once
 
-#include <ioj/levels/mission_definition.h>
 #include <ioj/sim/missions/mission_changes.h>
 #include <ioj/sim/missions/mission_evaluation_context.h>
 #include <ioj/sim/missions/objectives.h>
 #include <ioj/sim/missions/team_mission_completion.h>
 
-#include <expected>
 #include <optional>
 #include <span>
 
 namespace ioj::sim {
 class ExprManager;
-struct SimClock;
-class Timers;
-struct LevelEventSchedule;
 
 class Mission {
   public:
@@ -22,14 +17,7 @@ class Mission {
     // Lifecycle
     /* **************************************** */
     Mission() = default;
-
-    static auto compile(levels::MissionDefinition const& definition,
-                        std::span<levels::EntityId const> entities,
-                        SimClock const& clock,
-                        ExprManager& expressions,
-                        Timers& timers,
-                        LevelEventSchedule& events)
-        -> std::expected<Mission, std::vector<std::string>>;
+    explicit Mission(Objectives objectives);
 
     void reset_progress();
     auto evaluate(MissionEvaluationContext const& inputs, ExprManager const& expressions)

@@ -1,14 +1,17 @@
 #include <ioj/sim/levels/level_compilation.h>
 
 #include <ioj/column_math.h>
+#include <ioj/levels/mission_validation.h>
 #include <ioj/rotator_math.h>
-#include <ioj/sim/levels/level_event_schedule.h>
+#include <ioj/sim/levels/compiled_level_events.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/transform3d.h>
 
 #include <algorithm>
 #include <array>
+#include <limits>
+#include <unordered_map>
 #include <utility>
 
 namespace ioj::levels {
@@ -25,6 +28,89 @@ auto entity_index(LevelDefinition const& definition, EntityId const& id) -> sim:
 
 } // namespace
 
+auto compile_timer_duration(Duration const duration, sim::SimClock const& clock)
+    -> std::expected<sim::SimTick, LevelCompilationErrors> {
+    auto const ticks{duration.seconds() * clock.tick_rate().hz()};
+    if (ticks >= static_cast<double>(std::numeric_limits<sim::SimTick::value_type>::max())) {
+        return std::unexpected{LevelCompilationErrors{"Timer duration exceeds tick range"}};
+    }
+    return sim::SimTick{clock.duration_to_tick_period(duration).get()};
+}
+
+auto compile_mission(MissionDefinition const& definition,
+                     std::span<EntityId const> const entities,
+                     sim::SimClock const& clock,
+                     sim::ExprManager& expressions,
+                     sim::Timers& timers,
+                     sim::CompiledLevelEvents& events)
+    -> std::expected<sim::Mission, LevelCompilationErrors> {
+    auto errors{validate_mission(definition, entities)};
+    if (!errors.empty()) {
+        return std::unexpected{std::move(errors)};
+    }
+
+    auto const count{static_cast<std::uint16_t>(definition.objectives.size())};
+    sim::Objectives objectives{count};
+    std::unordered_map<ObjectiveName, sim::ObjectiveId> objective_ids;
+    std::unordered_map<EntityId, sim::LevelEntityIndex> entity_indices;
+    auto const entity_count{entities.size()};
+    for (sim::LevelEntityIndex index{}; index < entity_count; ++index) {
+        entity_indices.emplace(entities[index], index);
+    }
+    for (std::uint16_t index{}; index < count; ++index) {
+        objective_ids.emplace(definition.objectives[index].id, sim::ObjectiveId{index});
+    }
+
+    auto const columns{objectives.compilation_view()};
+    std::vector<sim::ObjectivePrerequisite> prerequisites;
+    std::vector<sim::TimerHandle> timer_handles;
+    std::vector<sim::EventHandle> activation_events;
+    for (std::uint16_t row{}; row < count; ++row) {
+        sim::ObjectiveId const owner{row};
+        auto const& source{definition.objectives[row]};
+        columns.identifiers[row] = source.id;
+        columns.display_names[row] = source.title.empty() ? source.id.value : source.title;
+        columns.assigned_teams[row] = source.team;
+        columns.wins_level[row] = source.wins_level;
+
+        prerequisites.clear();
+        for (auto const& dependency : source.dependencies) {
+            prerequisites.emplace_back(objective_ids.at(dependency.objective), dependency.outcome);
+        }
+        objectives.add_prerequisites(owner, prerequisites);
+
+        timer_handles.assign(source.expressions.size(), sim::TimerHandle{});
+        activation_events.clear();
+        auto const expression_count{source.expressions.size()};
+        for (std::size_t index{}; index < expression_count; ++index) {
+            auto const* timer{std::get_if<TimeElapsedExpr>(&source.expressions[index].payload)};
+            if (!timer) {
+                continue;
+            }
+            auto const duration{
+                compile_timer_duration(Duration::make(timer->seconds.get()), clock)};
+            if (!duration) {
+                return std::unexpected{duration.error()};
+            }
+            auto const handle{timers.add()};
+            timer_handles[index] = handle;
+            activation_events.push_back(events.add_start_timer_event({handle, *duration}));
+        }
+
+        auto const compiled{
+            expressions.append(source.expressions, {entity_indices, objective_ids, timer_handles})};
+        columns.leaf_ranges[row] = compiled.leaves;
+        columns.composite_ranges[row] = compiled.composites;
+        objectives.add_activation_events(owner, activation_events);
+        for (auto const root : EnumTraits<ObjectiveOutcome>::values) {
+            if (source.roots[root] != absent_expression) {
+                columns.roots[row][root] = compiled.handles[source.roots[root]];
+            }
+        }
+    }
+    return sim::Mission{std::move(objectives)};
+}
+
 auto compile_level(LevelDefinition const& level,
                    sim::SimClock const& clock,
                    sim::CapitalShipSimConfig const& capital_config,
@@ -33,7 +119,7 @@ auto compile_level(LevelDefinition const& level,
 
     sim::CompiledLevel compiled;
     auto& initialisation{compiled.events.initialisation};
-    auto& schedule{compiled.events.schedule};
+    auto& definitions{compiled.events};
     compiled.level_metadata = definition.metadata();
     initialisation.entity_count = static_cast<std::uint32_t>(definition.entities().size());
     if (!definition.player_entity_id().empty()) {
@@ -46,12 +132,12 @@ auto compile_level(LevelDefinition const& level,
         for (auto const& entity : definition.entities()) {
             entities.push_back(entity.id);
         }
-        auto mission{sim::Mission::compile(*definition.mission(),
-                                           entities,
-                                           clock,
-                                           compiled.expressions,
-                                           compiled.timers,
-                                           schedule)};
+        auto mission{compile_mission(*definition.mission(),
+                                     entities,
+                                     clock,
+                                     compiled.expressions,
+                                     compiled.timers,
+                                     definitions)};
         if (!mission) {
             return std::unexpected{std::move(mission.error())};
         }
@@ -64,11 +150,12 @@ auto compile_level(LevelDefinition const& level,
     for (std::uint32_t index{}; index < entity_count; ++index) {
         auto const& entity{definition.entities()[static_cast<std::size_t>(index)]};
         if (entity.archetype != EntityArchetype::PlayerFighter) {
-            sources.push_back(
-                {sim::SimTick{
-                     clock.duration_to_tick_period(Duration::make(entity.spawn_time_seconds))
-                         .get()},
-                 index});
+            auto const tick{
+                compile_timer_duration(Duration::make(entity.spawn_time_seconds), clock)};
+            if (!tick) {
+                return std::unexpected{tick.error()};
+            }
+            sources.push_back({*tick, index});
         }
     }
     std::ranges::sort(sources, [](EventSource const& left, EventSource const& right) {
@@ -83,10 +170,10 @@ auto compile_level(LevelDefinition const& level,
         capital_count += entity.archetype == EntityArchetype::CapitalShip ? 1 : 0;
         turret_count += entity.archetype == EntityArchetype::StaticTurret ? 1 : 0;
     }
-    schedule.capital_spawns.add_uninitialised(capital_count);
-    schedule.turret_spawns.add_uninitialised(turret_count);
-    auto const capital_events{schedule.capital_spawns.view()};
-    auto const turret_events{schedule.turret_spawns.view()};
+    definitions.capital_spawns.add_uninitialised(capital_count);
+    definitions.turret_spawns.add_uninitialised(turret_count);
+    auto const capital_events{definitions.capital_spawns.view()};
+    auto const turret_events{definitions.turret_spawns.view()};
     std::int32_t capital_end{};
     std::int32_t turret_end{};
 
@@ -131,25 +218,22 @@ auto compile_level(LevelDefinition const& level,
         }
 
         if (tick == sim::SimTick{}) {
-            schedule.add_initial_spawn_group(
+            definitions.add_initial_spawn_group(
                 sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
-            schedule.add_initial_spawn_group(
+            definitions.add_initial_spawn_group(
                 sim::EntityType::Turret, turret_offset, turret_end - turret_offset);
         } else {
-            auto const seconds{
-                definition.entities()[sources[first].source_index].spawn_time_seconds};
-            auto const group_offset{schedule.spawn_groups.num()};
-            schedule.add_spawn_group(
+            auto const group_offset{definitions.spawn_groups.num()};
+            definitions.add_spawn_group(
                 sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
-            schedule.add_spawn_group(
+            definitions.add_spawn_group(
                 sim::EntityType::Turret, turret_offset, turret_end - turret_offset);
-            std::array const events{schedule.add_spawn_event(
-                {group_offset, schedule.spawn_groups.num() - group_offset})};
-            auto trigger{schedule.add_timed_trigger(
-                compiled.expressions, compiled.timers, clock, Duration::make(seconds), events)};
-            if (!trigger) {
-                return std::unexpected{std::move(trigger.error())};
-            }
+            std::array const events{definitions.add_spawn_event(
+                {group_offset, definitions.spawn_groups.num() - group_offset})};
+            auto const timer{compiled.timers.add()};
+            auto const elapsed{compiled.expressions.add_timer_elapsed(timer)};
+            definitions.initial_events.push_back(definitions.add_start_timer_event({timer, tick}));
+            definitions.add_trigger(elapsed, events);
         }
         first = end;
     }

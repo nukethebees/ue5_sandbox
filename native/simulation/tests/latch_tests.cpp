@@ -2,9 +2,7 @@
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
-#include <ioj/sim/levels/level_event_schedule.h>
 #include <ioj/sim/missions/mission.h>
-#include <ioj/sim/sim_clock.h>
 
 #include <gtest/gtest.h>
 
@@ -26,13 +24,11 @@ auto sample(std::initializer_list<bool> const values) -> ExpressionSamples {
         nodes.emplace_back(levels::AllExpr{.children = {value ? 0u : 1u}});
     }
 
-    SimClock clock;
     Timers timers;
-    LevelEventSchedule events;
     EntityLedger ledger;
     Mission mission;
     ExpressionSamples result;
-    auto const compiled{result.expressions.append(nodes, {{}, {}, clock, timers, events}).value()};
+    auto const compiled{result.expressions.append(nodes, {{}, {}, {}})};
     result.handles.assign(compiled.handles.begin() + 2, compiled.handles.end());
     result.expressions.activate(compiled.leaves, compiled.composites);
     result.expressions.evaluate({ledger, timers, {}}, mission);

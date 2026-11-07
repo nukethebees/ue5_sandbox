@@ -33,7 +33,7 @@ class FrameMemoryResource;
 }
 
 namespace ioj::sim {
-struct LevelEventSchedule;
+struct CompiledLevelEvents;
 struct SpawnContext;
 
 class LevelSpawnManager {
@@ -57,10 +57,10 @@ class LevelSpawnManager {
     void initialise(std::uint32_t entity_count);
     void set_entity_id(LevelEntityIndex entity_index, EntityId id);
     void spawn(LevelSpawnGroups::ConstView groups,
-               LevelEventSchedule const& schedule,
+               CompiledLevelEvents const& definitions,
                SpawnContext context);
     void process_events(std::span<EventHandle const> events,
-                        LevelEventSchedule const& schedule,
+                        CompiledLevelEvents const& definitions,
                         SpawnContext context);
     void queue_fighter_spawns(float dt,
                               FrameMemoryResource& scratch_resource,

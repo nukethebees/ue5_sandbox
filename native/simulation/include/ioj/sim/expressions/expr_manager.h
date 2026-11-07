@@ -5,12 +5,9 @@
 #include <ioj/sim/expressions/expr_evaluation_context.h>
 #include <ioj/sim/expressions/expr_leaves.h>
 #include <ioj/sim/expressions/expr_operators.h>
-#include <ioj/sim/levels/event_handle.h>
 
 #include <cassert>
-#include <expected>
 #include <span>
-#include <string>
 #include <vector>
 
 namespace ioj::sim {
@@ -20,13 +17,13 @@ class ExprManager {
   public:
     struct Compilation {
         std::vector<ExprHandle> handles;
-        std::vector<EventHandle> start_events;
         IndexSpan leaves;
         IndexSpan composites;
     };
 
     auto append(std::span<levels::MissionExpr const> expressions, ExprCompilationContext const& ctx)
-        -> std::expected<Compilation, std::vector<std::string>>;
+        -> Compilation;
+    auto add_timer_elapsed(TimerHandle timer) -> ExprHandle;
 
     void reset_progress();
     void activate(ExprHandle root);

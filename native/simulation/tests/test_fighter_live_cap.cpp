@@ -114,10 +114,10 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     EXPECT_EQ(count_team(initial_simulation, Team::White), 7);
 
     auto with_reinforcements{make_cap_battle(capitals, 7, 8)};
-    auto& schedule{with_reinforcements.level_events.schedule};
-    auto const payload_offset{schedule.turret_spawns.num()};
-    schedule.turret_spawns.add_defaulted(1);
-    auto const turret{schedule.turret_spawns.view(payload_offset, 1)};
+    auto& definitions{with_reinforcements.level_events};
+    auto const payload_offset{definitions.turret_spawns.num()};
+    definitions.turret_spawns.add_defaulted(1);
+    auto const turret{definitions.turret_spawns.view(payload_offset, 1)};
     turret.entity_indices()[0] = with_reinforcements.level_events.initialisation.entity_count++;
     turret.teams()[0] = Team::Red;
     turret.healths()[0] = Health{100};

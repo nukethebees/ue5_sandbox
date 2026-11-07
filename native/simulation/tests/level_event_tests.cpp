@@ -3,7 +3,6 @@
 #include <ioj/sim/expressions/timers.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/missions/mission.h>
-#include <ioj/sim/sim_clock.h>
 
 #include <gtest/gtest.h>
 
@@ -15,9 +14,9 @@ namespace ioj::sim::tests {
 TEST(LevelEvents, ConsumptionPreservesFifoHistoryAndIndependentStreams) {
     static_assert(sizeof(EventHandle) == sizeof(std::uint32_t));
     CompiledLevelEvents data;
-    auto const spawn_first{data.schedule.add_spawn_event({0, 1})};
-    auto const spawn_second{data.schedule.add_spawn_event({1, 1})};
-    auto const stop{data.schedule.add_stop_event(telemetry::RunEndReason::DurationReached)};
+    auto const spawn_first{data.add_spawn_event({0, 1})};
+    auto const spawn_second{data.add_spawn_event({1, 1})};
+    auto const stop{data.add_stop_event(telemetry::RunEndReason::DurationReached)};
     EventHandle const pause{0, EventKind::Pause};
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
     EXPECT_FALSE(manager.consume_tick_end_event());
@@ -44,27 +43,27 @@ TEST(LevelEvents, ConsumptionPreservesFifoHistoryAndIndependentStreams) {
 }
 
 TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
-    SimClock clock;
-    clock.initialise({.tick_rate = Frequency::make(10.0)});
     ExprManager expressions;
     Timers timers;
     Mission mission;
     EntityLedger ledger;
     CompiledLevelEvents data;
-    auto const spawn{data.schedule.add_spawn_event({7, 2})};
+    auto const spawn{data.add_spawn_event({7, 2})};
     EventHandle const pause{0, EventKind::Pause};
     std::array const early{spawn, pause};
-    std::array const late{data.schedule.add_stop_event(telemetry::RunEndReason::DurationReached)};
-    ASSERT_TRUE(
-        data.schedule.add_timed_trigger(expressions, timers, clock, Duration::make(0.2), early));
-    ASSERT_TRUE(
-        data.schedule.add_timed_trigger(expressions, timers, clock, Duration::make(0.3), late));
+    std::array const late{data.add_stop_event(telemetry::RunEndReason::DurationReached)};
+    auto const early_timer{timers.add()};
+    auto const late_timer{timers.add()};
+    data.initial_events = {data.add_start_timer_event({early_timer, SimTick{2}}),
+                           data.add_start_timer_event({late_timer, SimTick{3}})};
+    data.add_trigger(expressions.add_timer_elapsed(early_timer), early);
+    data.add_trigger(expressions.add_timer_elapsed(late_timer), late);
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
     manager.activate_trigger_expressions(expressions);
-    auto const& initial_events{manager.data().schedule.initial_events};
+    auto const& initial_events{manager.data().initial_events};
     for (auto const handle : initial_events) {
         ASSERT_EQ(manager.consume_tick_end_event(), handle);
-        auto const& event{manager.data().schedule.start_timer_events[handle.index()]};
+        auto const& event{manager.data().start_timer_events[handle.index()]};
         timers.start(event.timer, event.duration);
     }
 

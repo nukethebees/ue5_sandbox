@@ -6,14 +6,11 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/expressions/timers.h>
-#include <ioj/sim/levels/level_event_schedule.h>
 #include <ioj/sim/missions/mission.h>
-#include <ioj/sim/sim_clock.h>
 #include <ioj/vector_value_math.h>
 #include <ioj/vectors3f.h>
 
 #include <algorithm>
-#include <limits>
 #include <utility>
 
 namespace ioj::sim {
@@ -79,8 +76,7 @@ auto destroyed(EntityId const id,
 // Compilation
 /* **************************************** */
 auto ExprManager::append(std::span<levels::MissionExpr const> const expressions,
-                         ExprCompilationContext const& ctx)
-    -> std::expected<Compilation, std::vector<std::string>> {
+                         ExprCompilationContext const& ctx) -> Compilation {
     auto& leaves{leaves_};
     auto& composites{composites_};
     auto size = [](auto const& values) { return static_cast<std::uint32_t>(values.size()); };
@@ -139,23 +135,12 @@ auto ExprManager::append(std::span<levels::MissionExpr const> const expressions,
             }
 
             case levels::ExprType::TimeElapsed: {
-                auto const& condition{std::get<levels::TimeElapsedExpr>(expression.payload)};
                 kind = LeafKind::TimeElapsed;
                 data_index = static_cast<LeafDataIndex>(leaves.timers.size());
-
-                auto const ticks{condition.seconds.get() * ctx.clock.tick_rate().hz()};
-                if (ticks >= static_cast<double>(std::numeric_limits<SimTick::value_type>::max())) {
-                    return std::unexpected{
-                        std::vector<std::string>{"Expression timer exceeds tick range"}};
-                }
-
-                SimTick const duration{
-                    ctx.clock.duration_to_tick_period(Duration::make(condition.seconds.get()))
-                        .get()};
-                auto const timer{ctx.timers.add()};
+                assert(index < ctx.timers.size());
+                auto const timer{ctx.timers[index]};
+                assert(timer.is_valid());
                 leaves.timers.push_back(timer);
-                compiled.start_events.push_back(
-                    ctx.events.add_start_timer_event({timer, duration}));
                 break;
             }
 
@@ -197,6 +182,15 @@ auto ExprManager::append(std::span<levels::MissionExpr const> const expressions,
     compiled.leaves.count = static_cast<LeafIndex>(leaves.num_leaves()) - compiled.leaves.offset;
     compiled.composites.count = size(composites.results) - compiled.composites.offset;
     return compiled;
+}
+auto ExprManager::add_timer_elapsed(TimerHandle const timer) -> ExprHandle {
+    assert(timer.is_valid());
+    auto const leaf{static_cast<LeafIndex>(leaves_.num_leaves())};
+    auto const data{static_cast<LeafDataIndex>(leaves_.timers.size())};
+    leaves_.timers.push_back(timer);
+    leaves_.results.push_back(ExprResult::Pending);
+    leaves_.data_handles.emplace_back(data, LeafKind::TimeElapsed);
+    return ExprHandle::make_data_leaf(LeafHandle{leaf, LeafKind::TimeElapsed});
 }
 
 /* **************************************** */

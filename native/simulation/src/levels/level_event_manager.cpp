@@ -11,33 +11,32 @@ LevelEventManager::LevelEventManager(CompiledLevelEvents data, std::pmr::memory_
     : data_{std::move(data)}
     , tick_end_events_{&memory}
     , preparation_events_{&memory} {
-    auto const tick_end_count{static_cast<std::size_t>(
-        std::ranges::count_if(data_.schedule.trigger_events,
-                              [](EventHandle const event) { return is_tick_end(event.kind()); }))};
-    tick_end_events_.reserve(tick_end_count + data_.schedule.initial_events.size() + 2);
-    preparation_events_.reserve(data_.schedule.trigger_events.size() - tick_end_count);
-    for (auto const event : data_.schedule.initial_events) {
+    auto const tick_end_count{static_cast<std::size_t>(std::ranges::count_if(
+        data_.trigger_events, [](EventHandle const event) { return is_tick_end(event.kind()); }))};
+    tick_end_events_.reserve(tick_end_count + data_.initial_events.size() + 2);
+    preparation_events_.reserve(data_.trigger_events.size() - tick_end_count);
+    for (auto const event : data_.initial_events) {
         enqueue(event);
     }
 }
 
 void LevelEventManager::activate_trigger_expressions(ExprManager& expressions) {
-    for (auto const& trigger : data_.schedule.pending_triggers) {
+    for (auto const& trigger : data_.pending_triggers) {
         expressions.activate(trigger.condition);
     }
 }
 
 void LevelEventManager::collect_ready(ExprManager& expressions) {
-    auto& schedule{data_.schedule};
-    std::erase_if(schedule.pending_triggers, [&](EventTrigger const& trigger) {
+    auto& definitions{data_};
+    std::erase_if(definitions.pending_triggers, [&](EventTrigger const& trigger) {
         auto const result{expressions.result(trigger.condition)};
         if (result == ExprResult::Pending) {
             return false;
         }
 
         if (result == ExprResult::True) {
-            auto const events{std::span{schedule.trigger_events}.subspan(trigger.events.offset,
-                                                                         trigger.events.count)};
+            auto const events{std::span{definitions.trigger_events}.subspan(trigger.events.offset,
+                                                                            trigger.events.count)};
             for (auto const event : events) {
                 enqueue(event);
             }

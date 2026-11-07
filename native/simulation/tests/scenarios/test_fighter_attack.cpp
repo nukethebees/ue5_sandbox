@@ -140,8 +140,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationCapitalObstruction) {
     tests::add_capital_spawn(data, obstacle, Team::Green, 60.f, 60.f, 100000);
     tests::add_capital_spawn(data, target, Team::Red, 60.f, 60.f, 100000);
     Rotator3f const obstacle_rotation{0.f, 35.f, 0.f};
-    set_rotation(
-        data.level_events.schedule.capital_spawns.view().view_rotations(), 1, obstacle_rotation);
+    set_rotation(data.level_events.capital_spawns.view().view_rotations(), 1, obstacle_rotation);
 
     auto const obstacle_bounds{
         collision::make_entity_world_bounds(data.collision.entity_bounds,
@@ -333,8 +332,7 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     spawn_slots.assign(fighter_count, Transform3d{.location = Vector3d{3000.f, 7000.f, 0.f}});
     auto data{make_fighter_navigation_test_data(
         config, spawn_slots, Vector3f{{-20000.f, -7000.f, 0.f}}, Vector3f{{20000.f, 0.f, 0.f}})};
-    std::ranges::fill(data.level_events.schedule.capital_spawns.view().fighter_spawn_cooldowns(),
-                      3600.f);
+    std::ranges::fill(data.level_events.capital_spawns.view().fighter_spawn_cooldowns(), 3600.f);
     DenseNavigationResult result;
     result.collision_distance =
         collision::get_entity_radius(data.collision.entity_bounds, EntityType::Fighter) * 2.f;
@@ -384,7 +382,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationDenseDeterminism) {
     EXPECT_TRUE(first_result.saw_immediate_risk && second_result.saw_immediate_risk)
         << "Coincident groups enter the immediate-risk tier";
     EXPECT_EQ(first_result.query_count, second_result.query_count)
-        << "Identical fixtures schedule the same number of queries";
+        << "Identical fixtures definitions the same number of queries";
 }
 
 TEST(WorldlessSpaceGameSimulation, FightersNavigationLargeCluster) {

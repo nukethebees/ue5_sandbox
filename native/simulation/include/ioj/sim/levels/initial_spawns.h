@@ -38,7 +38,7 @@ struct InitialSpinner {
     std::int32_t initial_fire_point;
 };
 
-// Populate an empty schedule, preserving input order within each entity type.
+// Preserve input order within each entity type.
 // Entity indices are assigned by the host and must belong to data.level_events.initialisation.
 void initialise_spawns(LevelSimInitData& data,
                        std::span<InitialCapital const> capitals,

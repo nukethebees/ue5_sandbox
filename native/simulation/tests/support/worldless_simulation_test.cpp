@@ -95,9 +95,9 @@ auto add_capital_spawn(LevelSimInitData& data,
                        float initial_spawn_delay,
                        float spawn_cooldown,
                        std::int32_t health) -> std::uint32_t {
-    auto& storage{data.level_events.schedule.capital_spawns};
+    auto& storage{data.level_events.capital_spawns};
     auto const row{storage.num()};
-    data.level_events.schedule.add_initial_spawn_group(EntityType::CapitalShip, row, 1);
+    data.level_events.add_initial_spawn_group(EntityType::CapitalShip, row, 1);
     auto const entity_index{data.level_events.initialisation.entity_count++};
     storage.add_defaulted(1);
     auto const events{storage.view()};
@@ -115,9 +115,9 @@ auto add_turret_spawn(LevelSimInitData& data,
                       Team team,
                       std::int32_t health,
                       std::int32_t laser_damage) -> std::uint32_t {
-    auto& storage{data.level_events.schedule.turret_spawns};
+    auto& storage{data.level_events.turret_spawns};
     auto const row{storage.num()};
-    data.level_events.schedule.add_initial_spawn_group(EntityType::Turret, row, 1);
+    data.level_events.add_initial_spawn_group(EntityType::Turret, row, 1);
     auto const entity_index{data.level_events.initialisation.entity_count++};
     storage.add_defaulted(1);
     auto const events{storage.view()};
@@ -133,9 +133,9 @@ auto add_spinner_spawn(LevelSimInitData& data,
                        Vector3f location,
                        float const yaw,
                        std::int32_t const initial_fire_point_index) -> std::uint32_t {
-    auto& storage{data.level_events.schedule.spinner_spawns};
+    auto& storage{data.level_events.spinner_spawns};
     auto const row{storage.num()};
-    data.level_events.schedule.add_initial_spawn_group(EntityType::TubeSpinner, row, 1);
+    data.level_events.add_initial_spawn_group(EntityType::TubeSpinner, row, 1);
     auto const entity_index{data.level_events.initialisation.entity_count++};
     storage.add_defaulted(1);
     auto const events{storage.view()};
