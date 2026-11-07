@@ -17,6 +17,7 @@ struct OptionalSentinelTypes {
     [[nodiscard]] auto index(TypeDefinitionId id) const -> std::uint32_t;
 
     IndexedColumn<ResolvedOccurrenceId, Index> source;
+    IndexedColumn<TypeDefinitionId, Index> source_domain;
     IndexedColumn<StringId, Index> sentinel_name;
     IndexedColumn<codegen::PackedIntegerValue, Index> sentinel_value;
     IndexedColumn<std::uint32_t, Index> bit_width;

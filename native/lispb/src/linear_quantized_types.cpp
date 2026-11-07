@@ -7,6 +7,7 @@ namespace lispb::schema {
 auto LinearQuantizedTypes::append() -> TypeDefinitionId {
     auto const row{static_cast<std::uint32_t>(source.size())};
     source.push_back({});
+    source_domain.push_back({});
     bit_width.push_back({});
     reserved_codes.push_back({});
     clipping.push_back(codegen::QuantizationClipping::reject);

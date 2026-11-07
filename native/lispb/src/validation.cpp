@@ -19,7 +19,6 @@
 #include <codegen/schema/facade_method_schemas.h>
 #include <codegen/schema/facade_schemas.h>
 #include <codegen/schema/fixed_point_schemas.h>
-#include <codegen/schema/fixed_point_value.h>
 #include <codegen/schema/function_schemas.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/integer_scalar_schemas.h>
@@ -46,8 +45,8 @@
 #include <codegen/schema/semantic_relation_kind.h>
 #include <codegen/schema/semantic_relation_schemas.h>
 #include <codegen/schema/setting_category_schemas.h>
+#include <codegen/schema/setting_control.h>
 #include <codegen/schema/setting_control_kind.h>
-#include <codegen/schema/setting_control_schemas.h>
 #include <codegen/schema/setting_schemas.h>
 #include <codegen/schema/settings_module_schemas.h>
 #include <codegen/schema/soa_mask_dimension_schemas.h>
@@ -62,6 +61,7 @@
 #include <codegen/schema/type_registry.h>
 #include <codegen/schema/umbrella_module_schemas.h>
 #include <codegen/schema/union_schemas.h>
+#include <lispb/cpp_identifier.h>
 #include <lispb/indices.h>
 #include <lispb/schema/enum_code.h>
 #include <lispb/schema/enum_domain_issue_severity.h>
@@ -73,7 +73,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -149,119 +148,6 @@ class Validator {
         }
     }
 
-    auto is_identifier_start(unsigned char const character) -> bool {
-        return std::isalpha(character) != 0 || character == '_';
-    }
-
-    static auto is_identifier_character(unsigned char const character) -> bool {
-        return std::isalnum(character) != 0 || character == '_';
-    }
-
-    auto is_cpp_keyword(std::string_view const value) -> bool {
-        static std::set<std::string_view> const keywords{
-            "alignas",
-            "alignof",
-            "and",
-            "and_eq",
-            "asm",
-            "auto",
-            "bitand",
-            "bitor",
-            "bool",
-            "break",
-            "case",
-            "catch",
-            "char",
-            "char8_t",
-            "char16_t",
-            "char32_t",
-            "class",
-            "compl",
-            "concept",
-            "const",
-            "consteval",
-            "constexpr",
-            "constinit",
-            "const_cast",
-            "continue",
-            "co_await",
-            "co_return",
-            "co_yield",
-            "decltype",
-            "default",
-            "delete",
-            "do",
-            "double",
-            "dynamic_cast",
-            "else",
-            "enum",
-            "explicit",
-            "export",
-            "extern",
-            "false",
-            "float",
-            "for",
-            "friend",
-            "goto",
-            "if",
-            "import",
-            "inline",
-            "int",
-            "long",
-            "module",
-            "mutable",
-            "namespace",
-            "new",
-            "noexcept",
-            "not",
-            "not_eq",
-            "nullptr",
-            "operator",
-            "or",
-            "or_eq",
-            "private",
-            "protected",
-            "public",
-            "register",
-            "reinterpret_cast",
-            "requires",
-            "return",
-            "short",
-            "signed",
-            "sizeof",
-            "static",
-            "static_assert",
-            "static_cast",
-            "struct",
-            "switch",
-            "template",
-            "this",
-            "thread_local",
-            "throw",
-            "true",
-            "try",
-            "typedef",
-            "typeid",
-            "typename",
-            "union",
-            "unsigned",
-            "using",
-            "virtual",
-            "void",
-            "volatile",
-            "wchar_t",
-            "while",
-            "xor",
-            "xor_eq",
-        };
-        return keywords.contains(value);
-    }
-
-    auto is_reserved_identifier(std::string_view const value) -> bool {
-        return value.starts_with("__") || (value.size() > 1 && value.front() == '_' &&
-                                           std::isupper(static_cast<unsigned char>(value[1])) != 0);
-    }
-
     auto is_generated_storage_member_name(std::string_view const value) -> bool {
         static std::set<std::string_view> const names{
             "apply_permutation",
@@ -317,16 +203,8 @@ class Validator {
     }
 
     void require_identifier(std::string_view value, std::string const& ctx) {
-        require_value(value, ctx);
-        if (!is_identifier_start(static_cast<unsigned char>(value.front())) ||
-            !std::ranges::all_of(value.substr(1), [](char const character) {
-                return is_identifier_character(static_cast<unsigned char>(character));
-            })) {
-            throw std::invalid_argument{ctx + " must be a C++ identifier: " + std::string{value}};
-        }
-        if (is_cpp_keyword(value) || is_reserved_identifier(value)) {
-            throw std::invalid_argument{
-                ctx + " must not be a reserved C++ identifier: " + std::string{value}};
+        if (auto const error{identifier_error(value, IdentifierPolicy::Declaration)}) {
+            throw std::invalid_argument{identifier_error_message(*error, value, ctx)};
         }
     }
 
@@ -408,13 +286,14 @@ class Validator {
                               TypeRegistry const& types,
                               std::string const& ctx) -> std::vector<std::string> {
         auto const& parameter_schemas{declarations_.parameters};
-        std::vector<std::string> names;
+        std::set<StringId> names;
         std::vector<std::string> type_names;
         bool has_default{};
         for (auto const parameter : declarations_.items(parameters)) {
             auto const name{text(parameter_schemas.name[parameter])};
-            names.push_back(name);
-            require_identifier(name, ctx + " parameter name");
+            if (!names.insert(parameter_schemas.name[parameter]).second) {
+                throw std::invalid_argument{ctx + " parameters contains duplicate name: " + name};
+            }
             validate_type(parameter_schemas.type[parameter], ctx + " parameter '" + name + "'");
             type_names.push_back(std::string{
                 types.cpp_types.spelling(resolved_type(parameter_schemas.type[parameter]))});
@@ -427,7 +306,6 @@ class Validator {
                                             " has a non-defaulted parameter after a defaulted one"};
             }
         }
-        require_unique_names(names, ctx + " parameters");
         return type_names;
     }
 
@@ -638,10 +516,6 @@ class Validator {
             }
         }
         if (enums.bit_width[schema].has_value()) {
-            if (*enums.bit_width[schema] == 0 || *enums.bit_width[schema] > 64) {
-                throw std::invalid_argument{enum_context +
-                                            " bit width must be between 1 and 64 bits"};
-            }
             if (domains.minimum_required_bits[domain_row].has_value() &&
                 *domains.minimum_required_bits[domain_row] > *enums.bit_width[schema]) {
                 throw std::invalid_argument{
@@ -1091,9 +965,6 @@ class Validator {
         if (!minimum_bits.has_value()) {
             throw std::invalid_argument{ctx + " domain does not fit the supported 1-64-bit range"};
         }
-        if (bit_width.has_value() && (*bit_width == 0 || *bit_width > 64)) {
-            throw std::invalid_argument{ctx + " bit width must be in the range 1..64"};
-        }
         if (bit_width.has_value() && *bit_width < *minimum_bits) {
             throw std::invalid_argument{
                 std::format("{} {}-bit width is smaller than the required {} bits",
@@ -1131,174 +1002,6 @@ class Validator {
                                             " C++ storage must be an unsigned fixed-width integer"};
             }
         }
-    }
-
-    auto require_integer_domain(TypeRefId reference, std::string const& ctx)
-        -> schema::TypeDefinitionId {
-        validate_type(reference, ctx + " source");
-        auto const source{find_integer_domain(reference, graph_, module_)};
-        if (!source.has_value()) {
-            throw std::invalid_argument{ctx + " source must have a declared integer domain"};
-        }
-        return *source;
-    }
-
-    void validate_linear_quantized(lispb::codegen::DeclarationHandle const& representation) {
-        auto const& representations{declarations_.linear_quantizeds};
-        auto const& integer_scalars{graph_.definitions().integer_scalars};
-        auto const ctx{"Linear quantization '" + text(representations.name[representation]) + "'"};
-        require_identifier(text(representations.name[representation]), "Linear quantization name");
-
-        auto const source{require_integer_domain(representations.source[representation], ctx)};
-        auto const bit_width{representations.bit_width[representation]};
-        auto const reserved_codes{representations.reserved_codes[representation]};
-
-        if (!packed_integer_less(integer_scalars.minimum_value[integer_scalars.index(source)],
-                                 integer_scalars.maximum_value[integer_scalars.index(source)])) {
-            throw std::invalid_argument{ctx +
-                                        " source range must contain at least two distinct values"};
-        }
-        if (bit_width == 0 || bit_width > 64) {
-            throw std::invalid_argument{ctx + " bit width must be in the range 1..64"};
-        }
-        auto const maximum_reserved{bit_width == 64
-                                        ? (std::numeric_limits<std::uint64_t>::max)() - 1
-                                        : (std::uint64_t{1} << bit_width) - 2};
-        if (reserved_codes > maximum_reserved) {
-            throw std::invalid_argument{
-                std::format("{} reserves {} codes but at least two usable codes are required",
-                            ctx,
-                            reserved_codes)};
-        }
-    }
-
-    void validate_integer_varint(lispb::codegen::DeclarationHandle const& representation) {
-        auto const& representations{declarations_.integer_varints};
-        auto const& integer_scalars{graph_.definitions().integer_scalars};
-        auto const ctx{"Integer varint '" + text(representations.name[representation]) + "'"};
-        require_identifier(text(representations.name[representation]), "Integer varint name");
-
-        auto const source{require_integer_domain(representations.source[representation], ctx)};
-        if (representations.encoding[representation] == IntegerVarintEncoding::unsigned_varint &&
-            integer_scalars.signedness[integer_scalars.index(source)]) {
-            throw std::invalid_argument{ctx + " unsigned encoding requires an unsigned source"};
-        }
-        if (representations.encoding[representation] != IntegerVarintEncoding::unsigned_varint &&
-            !integer_scalars.signedness[integer_scalars.index(source)]) {
-            throw std::invalid_argument{ctx +
-                                        " signed and zigzag encodings require a signed source"};
-        }
-    }
-
-    void validate_fixed_point(lispb::codegen::DeclarationHandle const& representation) {
-        auto const& representations{declarations_.fixed_points};
-        auto const ctx{"Fixed-point representation '" + text(representations.name[representation]) +
-                       "'"};
-        require_identifier(text(representations.name[representation]),
-                           "Fixed-point representation name");
-
-        auto const total_bits{representations.total_bits[representation]};
-        auto const fractional_bits{representations.fractional_bits[representation]};
-        auto const signedness{representations.signedness[representation]};
-
-        if (total_bits == 0 || total_bits > 64) {
-            throw std::invalid_argument{ctx + " total width must be in the range 1..64"};
-        }
-        if (representations.form[representation] == FixedPointForm::binary_point) {
-            auto const maximum_fractional_bits{signedness ? total_bits - 1 : total_bits};
-            if (fractional_bits > maximum_fractional_bits) {
-                throw std::invalid_argument{
-                    std::format("{} fractional width must be at most {}{}",
-                                ctx,
-                                maximum_fractional_bits,
-                                signedness ? " so one sign bit remains" : "")};
-            }
-            return;
-        }
-
-        auto const parse_bound = [&](std::optional<StringId> value, std::string_view name) {
-            if (!value) {
-                throw std::invalid_argument{ctx + " range requires " + std::string{name}};
-            }
-            auto parsed{parse_fixed_point_endpoint(view(*value))};
-            if (!parsed) {
-                throw std::invalid_argument{ctx + " " + std::string{name} + ": " + parsed.error()};
-            }
-            return *parsed;
-        };
-        auto const minimum{parse_bound(representations.minimum_value[representation], "minimum")};
-        auto const maximum{parse_bound(representations.maximum_value[representation], "maximum")};
-        if (maximum <= minimum) {
-            throw std::invalid_argument{ctx + " maximum must be greater than minimum"};
-        }
-    }
-
-    void validate_mini_float(lispb::codegen::DeclarationHandle const& representation) {
-        auto const& representations{declarations_.mini_floats};
-        auto const ctx{"Mini-float representation '" + text(representations.name[representation]) +
-                       "'"};
-        require_identifier(text(representations.name[representation]),
-                           "Mini-float representation name");
-
-        auto const sign_bits{representations.sign_bits[representation]};
-        auto const exponent_bits{representations.exponent_bits[representation]};
-        auto const significand_bits{representations.significand_bits[representation]};
-        auto const exponent_bias{representations.exponent_bias[representation]};
-
-        if (sign_bits > 1) {
-            throw std::invalid_argument{ctx + " sign width must be zero or one"};
-        }
-        if (exponent_bits < 2 || exponent_bits > 15) {
-            throw std::invalid_argument{ctx + " exponent width must be in the range 2..15"};
-        }
-        if (significand_bits > 62) {
-            throw std::invalid_argument{ctx + " significand width must be in the range 0..62"};
-        }
-        auto const total_bits{sign_bits + exponent_bits + significand_bits};
-        if (total_bits > 64) {
-            throw std::invalid_argument{ctx + " total width must not exceed 64 bits"};
-        }
-        if (exponent_bias < -32'768 || exponent_bias > 32'767) {
-            throw std::invalid_argument{ctx + " exponent bias must be in the range -32768..32767"};
-        }
-    }
-
-    void validate_optional_sentinel(lispb::codegen::DeclarationHandle const& representation) {
-        auto const& representations{declarations_.optional_sentinels};
-        auto const& integer_scalars{graph_.definitions().integer_scalars};
-        auto const ctx{"Optional sentinel representation '" +
-                       text(representations.name[representation]) + "'"};
-        require_identifier(text(representations.name[representation]),
-                           "Optional sentinel representation name");
-
-        auto const source{require_integer_domain(representations.source[representation], ctx)};
-        auto const sentinel{representations.sentinel[representation]};
-        auto const named_codes{
-            declarations_.items(integer_scalars.named_codes[integer_scalars.index(source)])};
-        auto const& codes{declarations_.packed_named_codes};
-        require_identifier(text(sentinel), ctx + " sentinel code");
-        auto const code{
-            std::ranges::find(named_codes, sentinel, [&](auto id) { return codes.name[id]; })};
-        if (code == named_codes.end()) {
-            auto const has_sentinel{
-                std::ranges::any_of(named_codes, [&](auto id) { return codes.sentinel[id]; })};
-            throw std::invalid_argument{has_sentinel ? ctx + " names unknown source code '" +
-                                                           text(sentinel) + "'"
-                                                     : ctx + " source has no named sentinel codes"};
-        }
-        if (!codes.sentinel[*code]) {
-            throw std::invalid_argument{ctx + " code '" + text(sentinel) + "' is not a sentinel"};
-        }
-    }
-
-    void validate_optional_presence_bit(lispb::codegen::DeclarationHandle const& representation) {
-        auto const& representations{declarations_.optional_presence_bits};
-        auto const ctx{"Optional presence-bit representation '" +
-                       text(representations.name[representation]) + "'"};
-        require_identifier(text(representations.name[representation]),
-                           "Optional presence-bit representation name");
-
-        require_integer_domain(representations.source[representation], ctx);
     }
 
     void validate_soa(lispb::codegen::ModuleHandle const& module,
@@ -1694,7 +1397,6 @@ class Validator {
                                   TypeRegistry const& types) {
         auto const& modules{declarations_.settings_modules};
         auto const& settings{declarations_.settings};
-        auto const& controls{declarations_.setting_controls};
         auto const& categories{declarations_.setting_categories};
 
         auto const ctx{"Settings module '" +
@@ -1725,7 +1427,7 @@ class Validator {
 
         std::set<std::string> setting_names;
         for (auto const setting : declarations_.items(modules.settings_list[module])) {
-            auto const control{settings.control[setting]};
+            auto const& control{settings.control[setting]};
             auto const setting_context{ctx + " setting '" + text(settings.name[setting]) + "'"};
             require_identifier(text(settings.name[setting]), setting_context + " name");
             if (!setting_names.insert(text(settings.name[setting])).second) {
@@ -1742,57 +1444,26 @@ class Validator {
             }
             validate_type(settings.value_type[setting], setting_context + " value");
             require_identifier(text(settings.backend[setting]), setting_context + " backend");
-            if (controls.options_provider[control].has_value()) {
-                require_identifier(*controls.options_provider[control],
-                                   setting_context + " options provider");
+            if (auto const provider{control.options_provider()}) {
+                require_identifier(*provider, setting_context + " options provider");
             }
-            if (controls.availability_provider[control].has_value()) {
-                require_identifier(*controls.availability_provider[control],
-                                   setting_context + " availability provider");
+            if (auto const provider{control.availability_provider()}) {
+                require_identifier(*provider, setting_context + " availability provider");
             }
 
-            auto const has_range{controls.minimum[control].has_value() ||
-                                 controls.maximum[control].has_value() ||
-                                 controls.step[control].has_value()};
-            if (is_range(controls.kind[control])) {
-                if (!controls.minimum[control].has_value() ||
-                    !controls.maximum[control].has_value() || !controls.step[control].has_value()) {
-                    throw std::invalid_argument{setting_context +
-                                                " range requires min, max, and step"};
-                }
-                if (*controls.minimum[control] >= *controls.maximum[control] ||
-                    *controls.step[control] <= 0.0) {
-                    throw std::invalid_argument{setting_context + " has an invalid range"};
-                }
-            } else if (has_range) {
-                throw std::invalid_argument{setting_context +
-                                            " non-range control has range values"};
-            }
-            if (controls.kind[control] == SettingControlKind::choice &&
-                !controls.options_provider[control].has_value()) {
-                throw std::invalid_argument{setting_context +
-                                            " choice requires an options provider"};
-            }
-            if (controls.kind[control] == SettingControlKind::custom) {
-                if (!controls.custom_row[control].has_value()) {
-                    throw std::invalid_argument{setting_context +
-                                                " custom control requires custom_row"};
-                }
-                require_identifier(*controls.custom_row[control], setting_context + " custom row");
-            } else if (controls.custom_row[control].has_value()) {
-                throw std::invalid_argument{setting_context + " non-custom control has custom_row"};
+            if (auto const custom_row{control.custom_row()}) {
+                require_identifier(*custom_row, setting_context + " custom row");
             }
             auto const type{
                 std::string{types.cpp_types.spelling(resolved_type(settings.value_type[setting]))}};
-            if (controls.kind[control] == SettingControlKind::toggle && type != "bool") {
+            if (control.kind() == SettingControlKind::toggle && type != "bool") {
                 throw std::invalid_argument{setting_context + " toggle value type must be bool"};
             }
-            if (controls.kind[control] == SettingControlKind::float_range && type != "float") {
+            if (control.kind() == SettingControlKind::float_range && type != "float") {
                 throw std::invalid_argument{setting_context +
                                             " float range value type must be float"};
             }
-            if (controls.kind[control] == SettingControlKind::integer_range &&
-                type != "std::int32_t") {
+            if (control.kind() == SettingControlKind::integer_range && type != "std::int32_t") {
                 throw std::invalid_argument{setting_context +
                                             " integer range value type must be std::int32_t"};
             }
@@ -1879,32 +1550,56 @@ class Validator {
                     }
                     case lispb::codegen::DeclarationKind::linear_quantized: {
 
-                        validate_linear_quantized(value);
+                        require_identifier(text(declarations_.linear_quantizeds.name[value]),
+                                           "Linear quantization name");
+                        validate_type(declarations_.linear_quantizeds.source[value],
+                                      "Linear quantization '" +
+                                          text(declarations_.linear_quantizeds.name[value]) +
+                                          "' source");
                         break;
                     }
                     case lispb::codegen::DeclarationKind::integer_varint: {
 
-                        validate_integer_varint(value);
+                        require_identifier(text(declarations_.integer_varints.name[value]),
+                                           "Integer varint name");
+                        validate_type(declarations_.integer_varints.source[value],
+                                      "Integer varint '" +
+                                          text(declarations_.integer_varints.name[value]) +
+                                          "' source");
                         break;
                     }
                     case lispb::codegen::DeclarationKind::fixed_point: {
-
-                        validate_fixed_point(value);
+                        require_identifier(text(declarations_.fixed_points.name[value]),
+                                           "Fixed-point representation name");
                         break;
                     }
                     case lispb::codegen::DeclarationKind::mini_float: {
-
-                        validate_mini_float(value);
+                        require_identifier(text(declarations_.mini_floats.name[value]),
+                                           "Mini-float representation name");
                         break;
                     }
                     case lispb::codegen::DeclarationKind::optional_sentinel: {
 
-                        validate_optional_sentinel(value);
+                        require_identifier(text(declarations_.optional_sentinels.name[value]),
+                                           "Optional sentinel representation name");
+                        validate_type(declarations_.optional_sentinels.source[value],
+                                      "Optional sentinel representation '" +
+                                          text(declarations_.optional_sentinels.name[value]) +
+                                          "' source");
+                        require_identifier(text(declarations_.optional_sentinels.sentinel[value]),
+                                           "Optional sentinel representation '" +
+                                               text(declarations_.optional_sentinels.name[value]) +
+                                               "' sentinel code");
                         break;
                     }
                     case lispb::codegen::DeclarationKind::optional_presence_bit: {
 
-                        validate_optional_presence_bit(value);
+                        require_identifier(text(declarations_.optional_presence_bits.name[value]),
+                                           "Optional presence-bit representation name");
+                        validate_type(declarations_.optional_presence_bits.source[value],
+                                      "Optional presence-bit representation '" +
+                                          text(declarations_.optional_presence_bits.name[value]) +
+                                          "' source");
                         break;
                     }
                     case lispb::codegen::DeclarationKind::static_table: {

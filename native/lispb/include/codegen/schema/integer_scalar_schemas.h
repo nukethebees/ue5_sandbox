@@ -4,6 +4,7 @@
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
 #include <codegen/schema/indices.h>
+#include <codegen/schema/numeric_formats.h>
 #include <codegen/schema/packed_integer_value.h>
 #include <codegen/schema/schema_range.h>
 #include <lispb/indexed_column.h>
@@ -29,7 +30,7 @@ struct IntegerScalarSchemas {
     Column<std::uint8_t> signedness;
     Column<PackedIntegerValue> minimum_value;
     Column<PackedIntegerValue> maximum_value;
-    Column<std::optional<std::uint32_t>> bit_width;
+    Column<std::optional<BitWidth>> bit_width;
     Column<SchemaRange<PackedNamedCodeId>> named_codes;
     Column<std::optional<SemanticRelationId>> relationship;
 };

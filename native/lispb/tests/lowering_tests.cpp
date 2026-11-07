@@ -27,8 +27,8 @@
 #include <codegen/schema/schema_version.h>
 #include <codegen/schema/setting_apply_mode.h>
 #include <codegen/schema/setting_category_schemas.h>
+#include <codegen/schema/setting_control.h>
 #include <codegen/schema/setting_control_kind.h>
-#include <codegen/schema/setting_control_schemas.h>
 #include <codegen/schema/setting_device.h>
 #include <codegen/schema/setting_schemas.h>
 #include <codegen/schema/settings_module_schemas.h>
@@ -315,7 +315,7 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
                                  enumerators.name[new_enumerators] = strings.intern("Above");
                                  enumerators.initializer[new_enumerators] = strings.intern("1");
                              })});
-                        enums.bit_width[new_enums] = 12;
+                        enums.bit_width[new_enums] = EnumBitWidth{12};
                         enums.signedness[new_enums] = lispb::schema::EnumSignedness::signed_;
                         enums.native_api[new_enums] = true;
                     })});
@@ -367,7 +367,7 @@ TEST(Lowering, DerivesFixedWidthEnumBackingWithoutNativeHelpers) {
                              enumerators.name[new_enumerators] = strings.intern("Maximum");
                              enumerators.initializer[new_enumerators] = strings.intern("4095");
                          })});
-                    enums.bit_width[new_enums] = 12;
+                    enums.bit_width[new_enums] = EnumBitWidth{12};
                     enums.signedness[new_enums] = lispb::schema::EnumSignedness::unsigned_;
                 })});
         }))};
@@ -901,10 +901,8 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
     auto& strings{ctx.storage.strings};
     auto& module_settings_store{store.module_settings_store};
     auto& setting_categories{store.setting_categories};
-    auto& setting_controls{store.setting_controls};
     auto& settings{store.settings};
     auto& settings_modules{store.settings_modules};
-    auto& type_refs{store.type_refs};
     auto const module{append_test_row(settings_modules, [&](auto const new_settings_modules) {
         settings_modules.settings[new_settings_modules] =
             append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
@@ -923,42 +921,28 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
                 setting_categories.name[new_setting_categories] = strings.intern("video");
                 setting_categories.label[new_setting_categories] = strings.intern("Video");
             })});
-        settings_modules.settings_list[new_settings_modules] = store.range<SettingId>(
-            {append_test_row(settings,
-                             [&](auto const new_settings) {
-                                 settings.name[new_settings] = strings.intern("vsync");
-                                 settings.label[new_settings] = strings.intern("VSync");
-                                 settings.category[new_settings] = strings.intern("video");
-                                 settings.value_type[new_settings] =
-                                     append_test_row(type_refs, [&](auto const new_type_refs) {
-                                         type_refs.name[new_type_refs] = strings.intern("bool");
-                                     });
-                                 settings.backend[new_settings] = strings.intern("engine");
-                                 settings.apply_mode[new_settings] = SettingApplyMode::deferred;
-                                 settings.control[new_settings] = append_test_row(
-                                     setting_controls, [&](auto const new_setting_controls) {
-                                         setting_controls.kind[new_setting_controls] =
-                                             SettingControlKind::toggle;
-                                     });
-                             }),
-             append_test_row(settings, [&](auto const new_settings) {
-                 settings.name[new_settings] = strings.intern("frame_limit");
-                 settings.label[new_settings] = strings.intern("Frame Limit");
-                 settings.category[new_settings] = strings.intern("video");
-                 settings.value_type[new_settings] =
-                     append_test_row(type_refs, [&](auto const new_type_refs) {
-                         type_refs.name[new_type_refs] = strings.intern("float");
-                     });
-                 settings.backend[new_settings] = strings.intern("engine");
-                 settings.apply_mode[new_settings] = SettingApplyMode::immediate;
-                 settings.device[new_settings] = SettingDevice::controller;
-                 settings.control[new_settings] =
-                     append_test_row(setting_controls, [&](auto const new_setting_controls) {
-                         setting_controls.kind[new_setting_controls] = SettingControlKind::choice;
-                         setting_controls.options_provider[new_setting_controls] =
-                             strings.intern("frame_limits");
-                     });
-             })});
+        auto const vsync{
+            settings.append(*SettingControl::try_make({.kind = SettingControlKind::toggle}))};
+        settings.name[vsync] = strings.intern("vsync");
+        settings.label[vsync] = strings.intern("VSync");
+        settings.category[vsync] = strings.intern("video");
+        settings.value_type[vsync] = make_test_type_ref(ctx, "bool");
+        settings.backend[vsync] = strings.intern("engine");
+        settings.apply_mode[vsync] = SettingApplyMode::deferred;
+
+        auto const frame_limit{settings.append(*SettingControl::try_make({
+            .kind = SettingControlKind::choice,
+            .options_provider = strings.intern("frame_limits"),
+        }))};
+        settings.name[frame_limit] = strings.intern("frame_limit");
+        settings.label[frame_limit] = strings.intern("Frame Limit");
+        settings.category[frame_limit] = strings.intern("video");
+        settings.value_type[frame_limit] = make_test_type_ref(ctx, "float");
+        settings.backend[frame_limit] = strings.intern("engine");
+        settings.apply_mode[frame_limit] = SettingApplyMode::immediate;
+        settings.device[frame_limit] = SettingDevice::controller;
+        settings_modules.settings_list[new_settings_modules] =
+            store.range<SettingId>({vsync, frame_limit});
     })};
     auto const files{render_test_manifest(
         ctx, Manifest{manifest_schema_version, make_test_registry(ctx), store, {module}})};

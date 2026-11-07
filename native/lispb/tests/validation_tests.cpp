@@ -38,12 +38,6 @@
 #include <codegen/schema/semantic_relation_kind.h>
 #include <codegen/schema/semantic_relation_schemas.h>
 #include <codegen/schema/semantic_relation_unit.h>
-#include <codegen/schema/setting_apply_mode.h>
-#include <codegen/schema/setting_category_schemas.h>
-#include <codegen/schema/setting_control_kind.h>
-#include <codegen/schema/setting_control_schemas.h>
-#include <codegen/schema/setting_schemas.h>
-#include <codegen/schema/settings_module_schemas.h>
 #include <codegen/schema/soa_mask_dimension_schemas.h>
 #include <codegen/schema/soa_member_kind.h>
 #include <codegen/schema/soa_member_schemas.h>
@@ -377,7 +371,8 @@ auto valid_fixed_point_manifest(CompilerTestContext& ctx, bool const signedness 
     auto& declarations{ctx.storage.declarations};
     auto const value{first_item(
         declarations, declarations.normal_modules.declarations[manifest.modules.front()])};
-    declarations.fixed_points.signedness[value] = signedness;
+    declarations.fixed_points.format[value] =
+        *BinaryPointFormat::try_make({BitWidth{16}, signedness, 4});
     return manifest;
 }
 
@@ -544,7 +539,8 @@ TEST_P(EnumDomainValidation, AppliesWidthAndSignednessToKnownValues) {
 
         enums.reflection[enumeration] = EnumReflection::none;
         enums.conversions[enumeration] = {};
-        enums.bit_width[enumeration] = test_case.bit_width;
+        enums.bit_width[enumeration] = test_case.bit_width.transform(
+            [](auto const value) { return *EnumBitWidth::try_make(value); });
         enums.signedness[enumeration] = test_case.signedness;
         if (!test_case.values.empty()) {
             std::vector<EnumeratorId> values;
@@ -565,38 +561,36 @@ TEST_P(EnumDomainValidation, AppliesWidthAndSignednessToKnownValues) {
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    Validation,
-    EnumDomainValidation,
-    testing::Values(EnumDomainCase{"ZeroWidth", 0, schema::EnumSignedness::unspecified, {}, false},
-                    EnumDomainCase{
-                        "WidthAbove64", 65, schema::EnumSignedness::unspecified, {}, false},
-                    EnumDomainCase{"InsufficientUnsignedWidth",
-                                   2,
-                                   schema::EnumSignedness::unspecified,
-                                   {{"Zero", "0"}, {"Seven", "7"}},
-                                   false},
-                    EnumDomainCase{"SufficientUnsignedWidth",
-                                   3,
-                                   schema::EnumSignedness::unspecified,
-                                   {{"Zero", "0"}, {"Seven", "7"}},
-                                   true},
-                    EnumDomainCase{"NegativeUnsignedValue",
-                                   std::nullopt,
-                                   schema::EnumSignedness::unsigned_,
-                                   {{"Negative", "-1"}, {"Positive", "1"}},
-                                   false},
-                    EnumDomainCase{"InsufficientSignedWidth",
-                                   3,
-                                   schema::EnumSignedness::signed_,
-                                   {{"Zero", "0"}, {"Seven", "7"}},
-                                   false},
-                    EnumDomainCase{"SufficientSignedWidth",
-                                   4,
-                                   schema::EnumSignedness::signed_,
-                                   {{"Zero", "0"}, {"Seven", "7"}},
-                                   true}),
-    [](testing::TestParamInfo<EnumDomainCase> const& info) { return info.param.name; });
+INSTANTIATE_TEST_SUITE_P(Validation,
+                         EnumDomainValidation,
+                         testing::Values(EnumDomainCase{"InsufficientUnsignedWidth",
+                                                        2,
+                                                        schema::EnumSignedness::unspecified,
+                                                        {{"Zero", "0"}, {"Seven", "7"}},
+                                                        false},
+                                         EnumDomainCase{"SufficientUnsignedWidth",
+                                                        3,
+                                                        schema::EnumSignedness::unspecified,
+                                                        {{"Zero", "0"}, {"Seven", "7"}},
+                                                        true},
+                                         EnumDomainCase{"NegativeUnsignedValue",
+                                                        std::nullopt,
+                                                        schema::EnumSignedness::unsigned_,
+                                                        {{"Negative", "-1"}, {"Positive", "1"}},
+                                                        false},
+                                         EnumDomainCase{"InsufficientSignedWidth",
+                                                        3,
+                                                        schema::EnumSignedness::signed_,
+                                                        {{"Zero", "0"}, {"Seven", "7"}},
+                                                        false},
+                                         EnumDomainCase{"SufficientSignedWidth",
+                                                        4,
+                                                        schema::EnumSignedness::signed_,
+                                                        {{"Zero", "0"}, {"Seven", "7"}},
+                                                        true}),
+                         [](testing::TestParamInfo<EnumDomainCase> const& info) {
+                             return info.param.name;
+                         });
 
 TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
     CompilerTestContext ctx;
@@ -606,7 +600,8 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
     auto& packed_named_codes{declarations.packed_named_codes};
     auto& strings{ctx.storage.strings};
     auto module{valid_integer_scalar_module(ctx)};
-    integer_scalars.bit_width[first_item(declarations, normal_modules.declarations[module])] = 3;
+    integer_scalars.bit_width[first_item(declarations, normal_modules.declarations[module])] =
+        BitWidth{3};
 
     expect_invalid_module(ctx, module);
 
@@ -821,13 +816,15 @@ TEST(Validation, ValidatesLogicalLinearQuantizedRepresentationsWithoutCppOutput)
 
     manifest = valid_linear_quantized_manifest(ctx);
     linear_quantizeds
-        .bit_width[first_item(declarations, normal_modules.declarations[manifest.modules[1]])] = 1;
+        .bit_width[first_item(declarations, normal_modules.declarations[manifest.modules[1]])] =
+        BitWidth{1};
 
     EXPECT_THROW(lower_test_manifest(ctx, manifest), std::invalid_argument);
 
     manifest = valid_linear_quantized_manifest(ctx);
     linear_quantizeds
-        .bit_width[first_item(declarations, normal_modules.declarations[manifest.modules[1]])] = 2;
+        .bit_width[first_item(declarations, normal_modules.declarations[manifest.modules[1]])] =
+        BitWidth{2};
 
     linear_quantizeds.reserved_codes[first_item(
         declarations, normal_modules.declarations[manifest.modules[1]])] = 3;
@@ -894,16 +891,12 @@ TEST(Validation, ValidatesIntegerVarintSourceAndSignedness) {
         auto const original_items{
             declarations.items(normal_modules.declarations[manifest.modules[1]])};
         auto rows{std::vector(original_items.begin(), original_items.end())};
-        rows.push_back(append_test_row(linear_quantizeds, [&](auto const new_linear_quantizeds) {
-            linear_quantizeds.name[new_linear_quantizeds] =
-                integer_varints.name
-                    [declarations.items(normal_modules.declarations[manifest.modules[1]]).front()];
-            linear_quantizeds.source[new_linear_quantizeds] =
-                make_test_type_ref(ctx, "@scalars/DamageReason");
-            linear_quantizeds.bit_width[new_linear_quantizeds] = 4;
-            linear_quantizeds.reserved_codes[new_linear_quantizeds] = 0;
-            linear_quantizeds.clipping[new_linear_quantizeds] = QuantizationClipping::reject;
-        }));
+        rows.push_back(linear_quantizeds.append(integer_varints.name[original_items.front()],
+                                                make_test_type_ref(ctx, "@scalars/DamageReason"),
+                                                BitWidth{4},
+                                                0,
+                                                QuantizationClipping::reject,
+                                                std::nullopt));
         return declarations.range(rows);
     }();
 
@@ -914,25 +907,21 @@ TEST(Validation, ValidatesLogicalFixedPointWidthsWithoutCppOutput) {
     CompilerTestContext ctx;
     auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
-    auto& fixed_points{declarations.fixed_points};
     auto manifest{valid_fixed_point_manifest(ctx)};
     auto lowered{lower_test_manifest(ctx, manifest)};
     EXPECT_TRUE(lowered.empty());
 
-    manifest = valid_fixed_point_manifest(ctx, false);
-    fixed_points.total_bits[first_item(declarations,
-                                       normal_modules.declarations[manifest.modules.front()])] = 8;
-
-    fixed_points.fractional_bits[first_item(
-        declarations, normal_modules.declarations[manifest.modules.front()])] = 8;
-
-    EXPECT_NO_THROW(lower_test_manifest(ctx, manifest));
-
-    manifest = valid_fixed_point_manifest(ctx);
-    fixed_points.fractional_bits[first_item(
-        declarations, normal_modules.declarations[manifest.modules.front()])] = 16;
-
-    EXPECT_THROW(lower_test_manifest(ctx, manifest), std::invalid_argument);
+    EXPECT_NO_THROW(lower_test_manifest(ctx, parse_test_manifest(ctx, R"(
+      (module values :header "Values.h" (fixed-point Value :total-bits 8
+        :form (binary-point :signed false :fractional-bits 8))))")));
+    auto const diagnostic{capture_exception_message<sexpr::SourceError>([&] {
+        return parse_test_manifest(ctx, R"(
+          (module values :header "Values.h" (fixed-point Value :total-bits 16
+            :form (binary-point :signed true :fractional-bits 16))))");
+    })};
+    ASSERT_TRUE(diagnostic.has_value());
+    EXPECT_NE(diagnostic->find("fractional width must be at most 15 so one sign bit remains"),
+              std::string::npos);
 
     for (auto const form : {"(range :minimum 0.0625 :maximum 16)",
                             "(range :minimum -1 :maximum 1)",
@@ -955,14 +944,13 @@ TEST(Validation, ValidatesLogicalFixedPointWidthsWithoutCppOutput) {
                                     std::format("(module values :header \"Values.h\" (fixed-point "
                                                 "Value :total-bits 8 :form {}))",
                                                 form))),
-            std::invalid_argument);
+            sexpr::SourceError);
     }
 
-    manifest = valid_fixed_point_manifest(ctx);
-    fixed_points.total_bits[first_item(declarations,
-                                       normal_modules.declarations[manifest.modules.front()])] = 0;
-
-    EXPECT_THROW(lower_test_manifest(ctx, manifest), std::invalid_argument);
+    EXPECT_THROW(parse_test_manifest(ctx, R"(
+      (module values :header "Values.h" (fixed-point Value :total-bits 0
+        :form (binary-point :signed false :fractional-bits 0))))"),
+                 sexpr::SourceError);
 
     manifest = valid_fixed_point_manifest(ctx);
     normal_modules.declarations[manifest.modules.front()] = [&] {
@@ -987,46 +975,30 @@ TEST(Validation, ValidatesMiniFloatEncodingAndEmitsNoPhysicalType) {
     auto lowered{lower_test_manifest(ctx, manifest)};
     EXPECT_TRUE(lowered.empty());
 
-    auto invalidate = [&](auto edit) {
-        auto invalid{valid_mini_float_manifest(ctx)};
-        auto const module{modules.clone(invalid.modules.front())};
-        auto const original{declarations.items(modules.declarations[module])};
-        auto rows{std::vector(original.begin(), original.end())};
-        auto value{floats.clone(rows.front())};
-        edit(value);
-        rows.front() = value;
-        modules.declarations[module] = declarations.range(rows);
-        invalid.modules.front() = module;
-        EXPECT_THROW(lower_test_manifest(ctx, invalid), std::invalid_argument);
-    };
-    invalidate([&](lispb::codegen::DeclarationHandle& value) { floats.sign_bits[value] = 2; });
-    invalidate([&](lispb::codegen::DeclarationHandle& value) { floats.exponent_bits[value] = 1; });
-    invalidate([&](lispb::codegen::DeclarationHandle& value) { floats.exponent_bits[value] = 16; });
-    invalidate(
-        [&](lispb::codegen::DeclarationHandle& value) { floats.significand_bits[value] = 63; });
-    invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        floats.exponent_bits[value] = 15;
-        floats.significand_bits[value] = 49;
-    });
-    invalidate(
-        [&](lispb::codegen::DeclarationHandle& value) { floats.exponent_bias[value] = -32'769; });
-    invalidate(
-        [&](lispb::codegen::DeclarationHandle& value) { floats.exponent_bias[value] = 32'768; });
+    for (auto const fields : {":sign-bits 2 :exponent-bits 5 :significand-bits 10 :bias 15",
+                              ":sign-bits 1 :exponent-bits 1 :significand-bits 10 :bias 15",
+                              ":sign-bits 1 :exponent-bits 16 :significand-bits 10 :bias 15",
+                              ":sign-bits 1 :exponent-bits 5 :significand-bits 63 :bias 15",
+                              ":sign-bits 1 :exponent-bits 15 :significand-bits 49 :bias 15",
+                              ":sign-bits 1 :exponent-bits 5 :significand-bits 10 :bias -32769",
+                              ":sign-bits 1 :exponent-bits 5 :significand-bits 10 :bias 32768"}) {
+        EXPECT_THROW(
+            parse_test_manifest(
+                ctx,
+                std::format("(module values :header \"Values.h\" (mini-float Value {}))", fields)),
+            sexpr::SourceError);
+    }
 
     manifest = valid_mini_float_manifest(ctx);
     modules.declarations[manifest.modules.front()] = [&] {
         auto const original_items{
             declarations.items(modules.declarations[manifest.modules.front()])};
         auto rows{std::vector(original_items.begin(), original_items.end())};
-        rows.push_back(append_test_row(points, [&](auto const new_fixed_points) {
-            points.name[new_fixed_points] =
-                floats.name[declarations.items(modules.declarations[manifest.modules.front()])
-                                .front()];
-            points.signedness[new_fixed_points] = true;
-            points.total_bits[new_fixed_points] = 16;
-            points.fractional_bits[new_fixed_points] = 4;
-            points.rounding[new_fixed_points] = FixedPointRounding::nearest_even;
-        }));
+        rows.push_back(points.append(
+            floats.name[declarations.items(modules.declarations[manifest.modules.front()]).front()],
+            BinaryPointFormat{{BitWidth{16}, true, 4}},
+            std::nullopt,
+            FixedPointRounding::nearest_even));
         return declarations.range(rows);
     }();
 
@@ -1074,15 +1046,12 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
         auto const original_items{
             declarations.items(normal_modules.declarations[manifest.modules[1]])};
         auto rows{std::vector(original_items.begin(), original_items.end())};
-        rows.push_back(append_test_row(fixed_points, [&](auto const new_fixed_points) {
-            fixed_points.name[new_fixed_points] =
-                optional_sentinels.name
-                    [declarations.items(normal_modules.declarations[manifest.modules[1]]).front()];
-            fixed_points.signedness[new_fixed_points] = false;
-            fixed_points.total_bits[new_fixed_points] = 8;
-            fixed_points.fractional_bits[new_fixed_points] = 0;
-            fixed_points.rounding[new_fixed_points] = FixedPointRounding::nearest_even;
-        }));
+        rows.push_back(fixed_points.append(
+            optional_sentinels
+                .name[declarations.items(normal_modules.declarations[manifest.modules[1]]).front()],
+            BinaryPointFormat{{BitWidth{8}, false, 0}},
+            std::nullopt,
+            FixedPointRounding::nearest_even));
         return declarations.range(rows);
     }();
 
@@ -1542,7 +1511,8 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
     }
     enums.underlying_type[first_item(declarations, normal_modules.declarations[module])].reset();
 
-    enums.bit_width[first_item(declarations, normal_modules.declarations[module])] = 12;
+    enums.bit_width[first_item(declarations, normal_modules.declarations[module])] =
+        EnumBitWidth{12};
 
     enums.signedness[first_item(declarations, normal_modules.declarations[module])] =
         schema::EnumSignedness::unsigned_;
@@ -2241,18 +2211,16 @@ TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
                 functions_schemas.return_type[new_functions] = make_test_type_ref(ctx, "void");
                 functions_schemas.parameters[new_functions] =
                     declarations.range<lispb::codegen::ParameterId>(
-                        {append_test_row(parameters_schemas,
-                                         [&](auto const new_parameters) {
-                                             parameters_schemas.type[new_parameters] =
-                                                 make_test_type_ref(ctx, "int32");
-                                             parameters_schemas.name[new_parameters] =
-                                                 strings.intern("value");
-                                         }),
-                         append_test_row(parameters_schemas, [&](auto const new_parameters) {
-                             parameters_schemas.type[new_parameters] =
-                                 make_test_type_ref(ctx, "float");
-                             parameters_schemas.name[new_parameters] = strings.intern("value");
-                         })});
+                        {parameters_schemas.append(
+                             make_test_type_ref(ctx, "int32"),
+                             *lispb::CppIdentifier<>::try_make(strings, strings.intern("value")),
+                             std::nullopt,
+                             false),
+                         parameters_schemas.append(
+                             make_test_type_ref(ctx, "float"),
+                             *lispb::CppIdentifier<>::try_make(strings, strings.intern("value")),
+                             std::nullopt,
+                             false)});
             })});
 
     expect_invalid_module(ctx, module);
@@ -2275,20 +2243,16 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
                 functions_schemas.return_type[new_functions] = make_test_type_ref(ctx, "void");
                 functions_schemas.parameters[new_functions] =
                     declarations.range<lispb::codegen::ParameterId>(
-                        {append_test_row(parameters_schemas,
-                                         [&](auto const new_parameters) {
-                                             parameters_schemas.type[new_parameters] =
-                                                 make_test_type_ref(ctx, "int32");
-                                             parameters_schemas.name[new_parameters] =
-                                                 strings.intern("first");
-                                             parameters_schemas.default_value[new_parameters] =
-                                                 strings.intern("0");
-                                         }),
-                         append_test_row(parameters_schemas, [&](auto const new_parameters) {
-                             parameters_schemas.type[new_parameters] =
-                                 make_test_type_ref(ctx, "int32");
-                             parameters_schemas.name[new_parameters] = strings.intern("second");
-                         })});
+                        {parameters_schemas.append(
+                             make_test_type_ref(ctx, "int32"),
+                             *lispb::CppIdentifier<>::try_make(strings, strings.intern("first")),
+                             strings.intern("0"),
+                             false),
+                         parameters_schemas.append(
+                             make_test_type_ref(ctx, "int32"),
+                             *lispb::CppIdentifier<>::try_make(strings, strings.intern("second")),
+                             std::nullopt,
+                             false)});
             })});
 
     expect_invalid_module(ctx, module);
@@ -2300,14 +2264,11 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
                 functions_schemas.name[new_functions] = strings.intern("set");
                 functions_schemas.return_type[new_functions] = make_test_type_ref(ctx, "void");
                 functions_schemas.parameters[new_functions] =
-                    declarations.range<lispb::codegen::ParameterId>(
-                        {append_test_row(parameters_schemas, [&](auto const new_parameters) {
-                            parameters_schemas.type[new_parameters] =
-                                make_test_type_ref(ctx, "int32");
-                            parameters_schemas.name[new_parameters] = strings.intern("value");
-                            parameters_schemas.default_value[new_parameters] =
-                                strings.intern(" \t");
-                        })});
+                    declarations.range<lispb::codegen::ParameterId>({parameters_schemas.append(
+                        make_test_type_ref(ctx, "int32"),
+                        *lispb::CppIdentifier<>::try_make(strings, strings.intern("value")),
+                        strings.intern(" \t"),
+                        false)});
             })});
 
     expect_invalid_module(ctx, module);
@@ -2544,16 +2505,16 @@ TEST(Validation, RejectsDuplicateFacadeMethodParameters) {
         declarations,
         facades.methods[first_item(declarations, normal_modules.declarations[module])])] =
         declarations.range<lispb::codegen::ParameterId>(
-            {append_test_row(parameters_schemas,
-                             [&](auto const new_parameters) {
-                                 parameters_schemas.type[new_parameters] =
-                                     make_test_type_ref(ctx, "int32");
-                                 parameters_schemas.name[new_parameters] = strings.intern("value");
-                             }),
-             append_test_row(parameters_schemas, [&](auto const new_parameters) {
-                 parameters_schemas.type[new_parameters] = make_test_type_ref(ctx, "float");
-                 parameters_schemas.name[new_parameters] = strings.intern("value");
-             })});
+            {parameters_schemas.append(
+                 make_test_type_ref(ctx, "int32"),
+                 *lispb::CppIdentifier<>::try_make(strings, strings.intern("value")),
+                 std::nullopt,
+                 false),
+             parameters_schemas.append(
+                 make_test_type_ref(ctx, "float"),
+                 *lispb::CppIdentifier<>::try_make(strings, strings.intern("value")),
+                 std::nullopt,
+                 false)});
 
     expect_invalid_module(ctx, module);
 }
@@ -2627,12 +2588,11 @@ TEST(Validation, RejectsFacadeMethodsCollidingWithBind) {
                 facade_methods.name[new_facade_methods] = strings.intern("bind");
                 facade_methods.return_type[new_facade_methods] = make_test_type_ref(ctx, "void");
                 facade_methods.parameters[new_facade_methods] =
-                    declarations.range<lispb::codegen::ParameterId>(
-                        {append_test_row(parameters_schemas, [&](auto const new_parameters) {
-                            parameters_schemas.type[new_parameters] =
-                                make_test_type_ref(ctx, "FTarget&");
-                            parameters_schemas.name[new_parameters] = strings.intern("target");
-                        })});
+                    declarations.range<lispb::codegen::ParameterId>({parameters_schemas.append(
+                        make_test_type_ref(ctx, "FTarget&"),
+                        *lispb::CppIdentifier<>::try_make(strings, strings.intern("target")),
+                        std::nullopt,
+                        false)});
             })});
 
     expect_invalid_module(ctx, module);
@@ -2651,18 +2611,16 @@ TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
         declarations,
         facades.methods[first_item(declarations, normal_modules.declarations[module])])] =
         declarations.range<lispb::codegen::ParameterId>(
-            {append_test_row(parameters_schemas,
-                             [&](auto const new_parameters) {
-                                 parameters_schemas.type[new_parameters] =
-                                     make_test_type_ref(ctx, "int32");
-                                 parameters_schemas.name[new_parameters] = strings.intern("first");
-                                 parameters_schemas.default_value[new_parameters] =
-                                     strings.intern("0");
-                             }),
-             append_test_row(parameters_schemas, [&](auto const new_parameters) {
-                 parameters_schemas.type[new_parameters] = make_test_type_ref(ctx, "int32");
-                 parameters_schemas.name[new_parameters] = strings.intern("second");
-             })});
+            {parameters_schemas.append(
+                 make_test_type_ref(ctx, "int32"),
+                 *lispb::CppIdentifier<>::try_make(strings, strings.intern("first")),
+                 strings.intern("0"),
+                 false),
+             parameters_schemas.append(
+                 make_test_type_ref(ctx, "int32"),
+                 *lispb::CppIdentifier<>::try_make(strings, strings.intern("second")),
+                 std::nullopt,
+                 false)});
 
     expect_invalid_module(ctx, module);
 }
@@ -2778,64 +2736,16 @@ TEST(Validation, RejectsUnsupportedUmbrellaSourceAndNamespaceSettings) {
     expect_invalid_module(ctx, module);
 }
 
-TEST(Validation, RejectsInvalidSettingsDefinitions) {
+TEST(Validation, RejectsUnknownSettingsCategory) {
     CompilerTestContext ctx;
-    auto& declarations{ctx.storage.declarations};
-    auto& settings_modules{declarations.settings_modules};
-    auto& module_settings_store{declarations.module_settings_store};
-    auto& setting_categories{declarations.setting_categories};
-    auto& settings_schemas{declarations.settings};
-    auto& setting_controls{declarations.setting_controls};
-    auto& strings{ctx.storage.strings};
-    auto module = append_test_row(settings_modules, [&](auto const new_settings_modules) {
-        settings_modules.settings[new_settings_modules] =
-            append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
-                module_settings_store.name[new_module_settings_store] = strings.intern("settings");
-                module_settings_store.header[new_module_settings_store] =
-                    strings.intern("Settings.h");
-                module_settings_store.source[new_module_settings_store] =
-                    strings.intern("Settings.cpp");
-            });
-        settings_modules.api_name[new_settings_modules] = strings.intern("TSettingsAccess");
-        settings_modules.state_name[new_settings_modules] = strings.intern("FSettingsState");
-        settings_modules.categories[new_settings_modules] =
-            declarations.range<lispb::codegen::SettingCategoryId>(
-                {append_test_row(setting_categories, [&](auto const new_setting_categories) {
-                    setting_categories.name[new_setting_categories] = strings.intern("video");
-                    setting_categories.label[new_setting_categories] = strings.intern("Video");
-                })});
-        settings_modules.settings_list[new_settings_modules] =
-            declarations.range<lispb::codegen::SettingId>(
-                {append_test_row(settings_schemas, [&](auto const new_settings) {
-                    settings_schemas.name[new_settings] = strings.intern("vsync");
-                    settings_schemas.label[new_settings] = strings.intern("VSync");
-                    settings_schemas.category[new_settings] = strings.intern("missing");
-                    settings_schemas.value_type[new_settings] = make_test_type_ref(ctx, "bool");
-                    settings_schemas.backend[new_settings] = strings.intern("engine");
-                    settings_schemas.apply_mode[new_settings] = SettingApplyMode::deferred;
-                    settings_schemas.control[new_settings] =
-                        append_test_row(setting_controls, [&](auto const new_setting_controls) {
-                            setting_controls.kind[new_setting_controls] =
-                                SettingControlKind::toggle;
-                        });
-                })});
-    });
-    expect_invalid_module(ctx, module);
-    settings_schemas.category[settings_schemas.index(first_item(
-        declarations, settings_modules.settings_list[module]))] = strings.intern("video");
-
-    {
-        setting_controls.kind[settings_schemas.control[first_item(
-            declarations, settings_modules.settings_list[module])]] = SettingControlKind::choice;
-    }
-
-    expect_invalid_module(ctx, module);
-    {
-        setting_controls.kind[settings_schemas.control[first_item(
-            declarations, settings_modules.settings_list[module])]] = SettingControlKind::custom;
-    }
-
-    expect_invalid_module(ctx, module);
+    auto const manifest{parse_test_manifest(ctx, R"(
+      (settings-module settings :header "Settings.h" :source "Settings.cpp"
+        :api-name TSettingsAccess :state-name FSettingsState
+        (category video "Video")
+        (setting vsync "VSync" :category missing :value-type bool :backend engine
+          :apply deferred (control toggle)))
+    )")};
+    expect_invalid_module(ctx, manifest.modules.front(), "unknown category");
 }
 
 TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {

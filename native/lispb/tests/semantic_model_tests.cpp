@@ -159,7 +159,7 @@ TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
                                      strings.intern("7");
                                  enumerators_schemas.sentinel[new_enumerators] = true;
                              })});
-                        enums_schemas.bit_width[new_enums] = 3;
+                        enums_schemas.bit_width[new_enums] = lispb::codegen::EnumBitWidth{3};
                         enums_schemas.signedness[new_enums] =
                             lispb::schema::EnumSignedness::unsigned_;
                     })});
@@ -260,7 +260,7 @@ TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
                                      enumerators.name[new_enumerators] = strings.intern("Active");
                                      enumerators.initializer[new_enumerators] = strings.intern("7");
                                  })});
-                        enums_schemas.bit_width[new_enums] = 3;
+                        enums_schemas.bit_width[new_enums] = lispb::codegen::EnumBitWidth{3};
                         enums_schemas.signedness[new_enums] =
                             lispb::schema::EnumSignedness::unsigned_;
                     })});
@@ -353,7 +353,7 @@ TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
                          integer_scalars.maximum_value[new_integer_scalars] = 1'023;
                          ctx.storage.declarations.integer_scalars
                              .bit_width[ctx.storage.declarations.integer_scalars.index(
-                                 new_integer_scalars)] = 10;
+                                 new_integer_scalars)] = lispb::codegen::BitWidth{10};
                          ctx.storage.declarations.integer_scalars
                              .named_codes[ctx.storage.declarations.integer_scalars.index(
                                  new_integer_scalars)] = {};
@@ -432,7 +432,8 @@ TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
                         integer_scalars.signedness[new_integer_scalars] = false;
                         integer_scalars.minimum_value[new_integer_scalars] = 0;
                         integer_scalars.maximum_value[new_integer_scalars] = 1'023;
-                        integer_scalars.bit_width[new_integer_scalars] = 10;
+                        integer_scalars.bit_width[new_integer_scalars] =
+                            lispb::codegen::BitWidth{10};
                         integer_scalars.named_codes[new_integer_scalars] = {};
                         integer_scalars.relationship[new_integer_scalars] = append_test_row(
                             semantic_relations, [&](auto const new_semantic_relations) {
@@ -450,131 +451,19 @@ TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
 
 TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
     lispb::codegen::CompilerTestContext ctx;
-    auto& declarations{ctx.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& module_settings_store{declarations.module_settings_store};
-    auto& integer_scalars{declarations.integer_scalars};
-    auto& packed_named_codes{declarations.packed_named_codes};
-    auto& linear_quantizeds{declarations.linear_quantizeds};
-
-    auto& integer_varints_schemas{declarations.integer_varints};
-    auto& fixed_points_schemas{declarations.fixed_points};
-    auto& optional_sentinels_schemas{declarations.optional_sentinels};
-    auto& optional_presence_bits_schemas{declarations.optional_presence_bits};
-    auto& mini_floats_schemas{declarations.mini_floats};
-    auto& strings{ctx.storage.strings};
-    [[maybe_unused]] auto& storage{ctx.storage};
-    lispb::codegen::Manifest manifest{
-        lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(ctx),
-        declarations,
-        {append_test_row(
-             normal_modules,
-             [&](auto const new_normal_modules) {
-                 normal_modules.settings[new_normal_modules] = append_test_row(
-                     module_settings_store, [&](auto const new_module_settings_store) {
-                         module_settings_store.name[new_module_settings_store] =
-                             strings.intern("semantic_values");
-                         module_settings_store.header[new_module_settings_store] =
-                             strings.intern("SemanticValues.h");
-                         module_settings_store.namespace_name[new_module_settings_store] =
-                             strings.intern("project");
-                     });
-                 normal_modules.declarations[new_normal_modules] =
-                     declarations.range<lispb::codegen::DeclarationHandle>(
-                         {append_test_row(integer_scalars, [&](auto const new_integer_scalars) {
-                             integer_scalars.name[new_integer_scalars] = strings.intern("Health");
-                             integer_scalars.signedness[new_integer_scalars] = false;
-                             integer_scalars.minimum_value[new_integer_scalars] = 0;
-                             integer_scalars.maximum_value[new_integer_scalars] = 1000;
-                             integer_scalars.bit_width[new_integer_scalars] = std::nullopt;
-                             integer_scalars.named_codes[new_integer_scalars] =
-                                 declarations.range<lispb::codegen::PackedNamedCodeId>(
-                                     {append_test_row(
-                                         packed_named_codes,
-                                         [&](auto const new_packed_named_codes) {
-                                             packed_named_codes.name[new_packed_named_codes] =
-                                                 strings.intern("Invalid");
-                                             packed_named_codes.value[new_packed_named_codes] =
-                                                 1023;
-                                             packed_named_codes.sentinel[packed_named_codes.index(
-                                                 new_packed_named_codes)] = true;
-                                         })});
-                         })});
-             }),
-         append_test_row(normal_modules, [&](auto const new_normal_modules) {
-             normal_modules.settings[new_normal_modules] =
-                 append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
-                     module_settings_store.name[new_module_settings_store] =
-                         strings.intern("representations");
-                     module_settings_store.header[new_module_settings_store] =
-                         strings.intern("Representations.h");
-                     module_settings_store.namespace_name[new_module_settings_store] =
-                         strings.intern("project");
-                 });
-             normal_modules.declarations[new_normal_modules] =
-                 declarations.range<lispb::codegen::DeclarationHandle>(
-                     {append_test_row(linear_quantizeds,
-                                      [&](auto const new_linear_quantizeds) {
-                                          linear_quantizeds.name[new_linear_quantizeds] =
-                                              strings.intern("HealthQ8");
-                                          linear_quantizeds.source[new_linear_quantizeds] =
-                                              lispb::codegen::make_test_type_ref(ctx,
-                                                                                 "project::Health");
-                                          linear_quantizeds.bit_width[new_linear_quantizeds] = 8;
-                                          linear_quantizeds.reserved_codes[new_linear_quantizeds] =
-                                              1;
-                                          linear_quantizeds.clipping[new_linear_quantizeds] =
-                                              lispb::codegen::QuantizationClipping::clamp;
-                                      }),
-                      append_test_row(
-                          integer_varints_schemas,
-                          [&](auto const new_integer_varints) {
-                              integer_varints_schemas.name[new_integer_varints] =
-                                  strings.intern("HealthVarint");
-                              integer_varints_schemas.source[new_integer_varints] =
-                                  lispb::codegen::make_test_type_ref(ctx, "project::Health");
-                              integer_varints_schemas.encoding[new_integer_varints] =
-                                  lispb::codegen::IntegerVarintEncoding::unsigned_varint;
-                          }),
-                      append_test_row(fixed_points_schemas,
-                                      [&](auto const new_fixed_points) {
-                                          fixed_points_schemas.name[new_fixed_points] =
-                                              strings.intern("VelocityQ12_4");
-                                          fixed_points_schemas.signedness[new_fixed_points] = true;
-                                          fixed_points_schemas.total_bits[new_fixed_points] = 16;
-                                          fixed_points_schemas.fractional_bits[new_fixed_points] =
-                                              4;
-                                          fixed_points_schemas.rounding[new_fixed_points] =
-                                              lispb::codegen::FixedPointRounding::toward_zero;
-                                      }),
-                      append_test_row(
-                          optional_sentinels_schemas,
-                          [&](auto const new_optional_sentinels) {
-                              optional_sentinels_schemas.name[new_optional_sentinels] =
-                                  strings.intern("OptionalHealth");
-                              optional_sentinels_schemas.source[new_optional_sentinels] =
-                                  lispb::codegen::make_test_type_ref(ctx, "project::Health");
-                              optional_sentinels_schemas.sentinel[new_optional_sentinels] =
-                                  strings.intern("Invalid");
-                          }),
-                      append_test_row(
-                          optional_presence_bits_schemas,
-                          [&](auto const new_optional_presence_bits) {
-                              optional_presence_bits_schemas.name[new_optional_presence_bits] =
-                                  strings.intern("PresentHealth");
-                              optional_presence_bits_schemas.source[new_optional_presence_bits] =
-                                  lispb::codegen::make_test_type_ref(ctx, "project::Health");
-                          }),
-                      append_test_row(mini_floats_schemas, [&](auto const new_mini_floats) {
-                          mini_floats_schemas.name[new_mini_floats] =
-                              strings.intern("CompactFloat");
-                          mini_floats_schemas.sign_bits[new_mini_floats] = 1;
-                          mini_floats_schemas.exponent_bits[new_mini_floats] = 5;
-                          mini_floats_schemas.significand_bits[new_mini_floats] = 10;
-                          mini_floats_schemas.exponent_bias[new_mini_floats] = 15;
-                      })});
-         })}};
+    auto& storage{ctx.storage};
+    auto const manifest{lispb::codegen::parse_test_manifest(ctx, R"(
+      (module semantic_values :header "SemanticValues.h" :namespace project
+        (integer-scalar Health :minimum 0 :maximum 1000
+          (code Invalid :value 1023 :sentinel true)))
+      (module representations :header "Representations.h" :namespace project
+        (linear-quantized HealthQ8 :source @semantic_values/Health :bits 8 :reserved-codes 1 :clipping clamp)
+        (integer-varint HealthVarint :source @semantic_values/Health :encoding unsigned)
+        (fixed-point VelocityQ12_4 :total-bits 16
+          :form (binary-point :signed true :fractional-bits 4) :rounding toward-zero)
+        (optional-sentinel OptionalHealth :source @semantic_values/Health :sentinel Invalid)
+        (optional-presence-bit PresentHealth :source @semantic_values/Health)
+        (mini-float CompactFloat :sign-bits 1 :exponent-bits 5 :significand-bits 10 :bias 15)))")};
 
     auto const graph{resolve_type_graph(manifest)};
     auto const& linear_quantized{graph.definitions().linear_quantized};
@@ -620,9 +509,9 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
     codegen::expect_dependency_edge(graph, *varint, *source);
 
     auto const& fixed_point_type{graph.definition(*fixed_point)};
-    EXPECT_TRUE(fixed_points.signedness[fixed_points.index(fixed_point_type)]);
-    EXPECT_EQ(fixed_points.total_bits[fixed_points.index(fixed_point_type)], 16U);
-    EXPECT_EQ(fixed_points.fractional_bits[fixed_points.index(fixed_point_type)], 4U);
+    EXPECT_TRUE(fixed_points.format[fixed_point_type].signedness());
+    EXPECT_EQ(fixed_points.format[fixed_point_type].total_bits().get(), 16U);
+    EXPECT_EQ(fixed_points.format[fixed_point_type].binary().fractional_bits, 4U);
     EXPECT_EQ(fixed_points.rounding[fixed_points.index(fixed_point_type)],
               lispb::codegen::FixedPointRounding::toward_zero);
     EXPECT_TRUE(graph.dependencies_of(*fixed_point).empty());
@@ -650,10 +539,10 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
     codegen::expect_dependency_edge(graph, *presence, *source);
 
     auto const& mini_float_type{graph.definition(*mini_float)};
-    EXPECT_EQ(mini_floats.sign_bits[mini_floats.index(mini_float_type)], 1U);
-    EXPECT_EQ(mini_floats.exponent_bits[mini_floats.index(mini_float_type)], 5U);
-    EXPECT_EQ(mini_floats.significand_bits[mini_floats.index(mini_float_type)], 10U);
-    EXPECT_EQ(mini_floats.exponent_bias[mini_floats.index(mini_float_type)], 15);
+    EXPECT_EQ(mini_floats.format[mini_float_type].ref().sign_bits.get(), 1U);
+    EXPECT_EQ(mini_floats.format[mini_float_type].ref().exponent_bits.get(), 5U);
+    EXPECT_EQ(mini_floats.format[mini_float_type].ref().significand_bits.get(), 10U);
+    EXPECT_EQ(mini_floats.format[mini_float_type].ref().exponent_bias.get(), 15);
     EXPECT_TRUE(graph.dependencies_of(*mini_float).empty());
 }
 

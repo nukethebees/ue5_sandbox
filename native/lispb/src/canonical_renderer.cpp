@@ -142,7 +142,8 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
     auto result{enums.underlying_type[schema].has_value()
                     ? ir_.form("enum", {name, build_type_ref(*enums.underlying_type[schema])})
                     : ir_.form("enum", {name})};
-    result.optional_field("bit-width", enums.bit_width[schema]);
+    result.optional_field(
+        "bit-width", enums.bit_width[schema], [this](auto width) { return ir_.atom(width.get()); });
     if (enums.signedness[schema] != EnumSignedness::unspecified) {
         result.field("signed",
                      enums.signedness[schema] == EnumSignedness::signed_ ? ir_.atoms.true_value
@@ -304,7 +305,7 @@ auto CanonicalRenderer::build_integer_scalar(codegen::DeclarationHandle const sc
         .field("minimum", ir_.atom(format_packed_integer(scalars.minimum_value[schema])))
         .field("maximum", ir_.atom(format_packed_integer(scalars.maximum_value[schema])))
         .field("bit-width",
-               scalars.bit_width[schema].has_value() ? ir_.atom(*scalars.bit_width[schema])
+               scalars.bit_width[schema].has_value() ? ir_.atom(scalars.bit_width[schema]->get())
                                                      : ir_.atoms.automatic);
     for (auto const code : items(scalars.named_codes[schema])) {
         result.add(build_named_code(code));
@@ -319,7 +320,7 @@ auto CanonicalRenderer::build_linear_quantized(codegen::DeclarationHandle const 
     auto const& values{store_.linear_quantizeds};
     auto result{ir_.form("linear-quantized", {ir_.atom(values.name[schema])})};
     result.field("source", build_type_ref(values.source[schema]))
-        .field("bits", values.bit_width[schema])
+        .field("bits", values.bit_width[schema].get())
         .field("reserved-codes", values.reserved_codes[schema])
         .field("clipping", ir_.atom(to_serialized_string(values.clipping[schema])));
     add_projections(result, values.cpp_projection[schema]);
@@ -335,17 +336,19 @@ auto CanonicalRenderer::build_integer_varint(codegen::DeclarationHandle const sc
 }
 auto CanonicalRenderer::build_fixed_point(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.fixed_points};
+    auto const& format{values.format[schema]};
     auto result{ir_.form("fixed-point", {ir_.atom(values.name[schema])})};
-    auto form{ir_.form(to_serialized_string(values.form[schema]), {})};
-    if (values.form[schema] == codegen::FixedPointForm::binary_point) {
-        form.field("signed",
-                   values.signedness[schema] ? ir_.atoms.true_value : ir_.atoms.false_value)
-            .field("fractional-bits", values.fractional_bits[schema]);
+    auto form{ir_.form(to_serialized_string(format.form()), {})};
+    if (format.form() == codegen::FixedPointForm::binary_point) {
+        auto const& binary{format.binary()};
+        form.field("signed", binary.signedness ? ir_.atoms.true_value : ir_.atoms.false_value)
+            .field("fractional-bits", binary.fractional_bits);
     } else {
-        form.field("minimum", ir_.atom(*values.minimum_value[schema]))
-            .field("maximum", ir_.atom(*values.maximum_value[schema]));
+        auto const& range{format.range()};
+        form.field("minimum", ir_.atom(range.minimum_spelling))
+            .field("maximum", ir_.atom(range.maximum_spelling));
     }
-    result.field("total-bits", values.total_bits[schema])
+    result.field("total-bits", format.total_bits().get())
         .field("form", form.build())
         .field("rounding", ir_.atom(to_serialized_string(values.rounding[schema])));
     add_projections(result, values.cpp_projection[schema]);
@@ -353,11 +356,12 @@ auto CanonicalRenderer::build_fixed_point(codegen::DeclarationHandle const schem
 }
 auto CanonicalRenderer::build_mini_float(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.mini_floats};
+    auto const& format{values.format[schema].ref()};
     auto result{ir_.form("mini-float", {ir_.atom(values.name[schema])})};
-    result.field("sign-bits", values.sign_bits[schema])
-        .field("exponent-bits", values.exponent_bits[schema])
-        .field("significand-bits", values.significand_bits[schema])
-        .field("bias", values.exponent_bias[schema]);
+    result.field("sign-bits", format.sign_bits.get())
+        .field("exponent-bits", format.exponent_bits.get())
+        .field("significand-bits", format.significand_bits.get())
+        .field("bias", format.exponent_bias.get());
     add_projections(result, values.cpp_projection[schema]);
     return result.build();
 }
@@ -648,7 +652,6 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
     auto const string{[this](auto value) { return ir_.string(value); }};
     auto const number{[this](double value) { return ir_.atom(std::format("{:.17g}", value)); }};
     auto const& settings{store_.settings};
-    auto const& controls{store_.setting_controls};
     auto const& categories{store_.setting_categories};
     auto const& modules{store_.settings_modules};
     auto const index{modules.index(module)};
@@ -680,9 +683,9 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
             .field("device", ir_.atom(device));
         child.optional_field("tooltip", settings.tooltip[row], string);
 
-        auto const control{controls.index(settings.control[row])};
+        auto const& control{settings.control[row]};
         std::string_view kind;
-        switch (controls.kind[control]) {
+        switch (control.kind()) {
             case codegen::SettingControlKind::toggle:
                 kind = "toggle";
                 break;
@@ -700,13 +703,15 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
                 break;
         }
         auto control_form{ir_.form("control", {ir_.atom(kind)})};
-        control_form.optional_field("options-provider", controls.options_provider[control], string);
+        control_form.optional_field("options-provider", control.options_provider(), string);
         control_form.optional_field(
-            "availability-provider", controls.availability_provider[control], string);
-        control_form.optional_field("min", controls.minimum[control], number);
-        control_form.optional_field("max", controls.maximum[control], number);
-        control_form.optional_field("step", controls.step[control], number);
-        control_form.optional_field("custom-row", controls.custom_row[control], string);
+            "availability-provider", control.availability_provider(), string);
+        if (auto const* const range{control.range()}) {
+            control_form.field("min", number(range->minimum));
+            control_form.field("max", number(range->maximum));
+            control_form.field("step", number(range->step));
+        }
+        control_form.optional_field("custom-row", control.custom_row(), string);
         child.add(control_form.build());
         result.add(child.build());
     }

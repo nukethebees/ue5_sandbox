@@ -292,16 +292,15 @@ class BitLayoutResolver {
                     break;
                 }
                 case TypeDefinitionKind::fixed_point:
-                    result = defs_.fixed_points.total_bits[definition];
+                    result = defs_.fixed_points.format[definition].total_bits();
                     break;
                 case TypeDefinitionKind::linear_quantized:
                     result = defs_.linear_quantized.bit_width[definition];
                     break;
                 case TypeDefinitionKind::mini_float: {
                     auto const row{defs_.mini_floats.index(definition)};
-                    result = defs_.mini_floats.sign_bits[row] +
-                             defs_.mini_floats.exponent_bits[row] +
-                             defs_.mini_floats.significand_bits[row];
+                    auto const& format{defs_.mini_floats.format[row].ref()};
+                    result = format.sign_bits + format.exponent_bits + format.significand_bits;
                     break;
                 }
                 case TypeDefinitionKind::optional_sentinel:
@@ -517,7 +516,7 @@ class BitLayoutResolver {
             switch (root_kind) {
                 case TypeDefinitionKind::fixed_point:
                     names.insert({"decoded_value", "set_decoded_value", "try_encode_value"});
-                    if (defs_.fixed_points.form[root_definition] ==
+                    if (defs_.fixed_points.format[root_definition].form() ==
                         codegen::FixedPointForm::range) {
                         names.insert({"value_minimum", "value_maximum"});
                     } else {
@@ -530,11 +529,10 @@ class BitLayoutResolver {
                     if (root_kind == TypeDefinitionKind::optional_sentinel) {
                         names.insert("sentinel");
                     }
-                    auto const source{root_kind == TypeDefinitionKind::optional_sentinel
-                                          ? defs_.optional_sentinels.source[root_definition]
-                                          : defs_.optional_presence_bits.source[root_definition]};
-                    auto const source_type{graph_.occurrences().type[source]};
-                    auto const domain{*integer_domain(graph_, source_type)};
+                    auto const domain{
+                        root_kind == TypeDefinitionKind::optional_sentinel
+                            ? defs_.optional_sentinels.source_domain[root_definition]
+                            : defs_.optional_presence_bits.source_domain[root_definition]};
                     auto const& scalars{defs_.integer_scalars};
                     auto const row{scalars.index(domain)};
                     for (auto const code : decls.items(scalars.named_codes[row])) {
@@ -601,7 +599,7 @@ class BitLayoutResolver {
                                          "try_encode_" + value.path + "_value"}) {
                     add_name(name);
                 }
-                if (defs_.fixed_points.form[graph_.definition(value.type)] ==
+                if (defs_.fixed_points.format[graph_.definition(value.type)].form() ==
                     codegen::FixedPointForm::range) {
                     add_name(value.path + "_minimum");
                     add_name(value.path + "_maximum");
@@ -616,17 +614,13 @@ class BitLayoutResolver {
                 }
                 add_name(accessor + "_payload_layout");
                 auto const definition{graph_.definition(value.type)};
-                auto const source{kind == TypeDefinitionKind::optional_sentinel
-                                      ? defs_.optional_sentinels.source[definition]
-                                      : defs_.optional_presence_bits.source[definition]};
-                auto const source_type{graph_.occurrences().type[source]};
-                if (auto const domain{integer_domain(graph_, source_type)}) {
-                    for (auto const code :
-                         decls.items(defs_.integer_scalars.named_codes[*domain])) {
-                        add_name(accessor + "_payload_" +
-                                 std::string{
-                                     graph_.strings().view(decls.packed_named_codes.name[code])});
-                    }
+                auto const domain{kind == TypeDefinitionKind::optional_sentinel
+                                      ? defs_.optional_sentinels.source_domain[definition]
+                                      : defs_.optional_presence_bits.source_domain[definition]};
+                for (auto const code : decls.items(defs_.integer_scalars.named_codes[domain])) {
+                    add_name(
+                        accessor + "_payload_" +
+                        std::string{graph_.strings().view(decls.packed_named_codes.name[code])});
                 }
             }
             if (auto const domain{integer_domain(graph_, value.type)}) {
@@ -761,7 +755,7 @@ class BitLayoutResolver {
         auto const kind{definition.kind()};
         auto const signed_encoding{
             kind == TypeDefinitionKind::fixed_point
-                ? defs_.fixed_points.signedness[definition] != 0
+                ? defs_.fixed_points.format[definition].signedness() != 0
                 : kind == TypeDefinitionKind::external &&
                       codegen::detail::packed_signed_width(
                           graph_.strings().view(graph_.cpp_spelling(placement.type)))
@@ -828,7 +822,8 @@ class BitLayoutResolver {
             if (!sentinel && (value.magnitude & (std::uint64_t{1} << payload_bits)) == 0) {
                 return;
             }
-            auto const scalar{*integer_domain(graph_, payload.type)};
+            auto const scalar{sentinel ? defs_.optional_sentinels.source_domain[definition]
+                                       : defs_.optional_presence_bits.source_domain[definition]};
             auto const negative{defs_.integer_scalars.signedness[scalar] != 0 &&
                                 (raw & (std::uint64_t{1} << (payload_bits - 1))) != 0};
             auto const decoded{codegen::PackedIntegerValue::from_parts(

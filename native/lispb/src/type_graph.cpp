@@ -20,7 +20,6 @@
 #include <codegen/schema/facade_method_schemas.h>
 #include <codegen/schema/facade_schemas.h>
 #include <codegen/schema/fixed_point_schemas.h>
-#include <codegen/schema/fixed_point_value.h>
 #include <codegen/schema/function_schemas.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/integer_scalar_schemas.h>
@@ -92,7 +91,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <optional>
 #include <ranges>
@@ -173,6 +174,11 @@ auto uses_cross_module_signature_forward_declaration(ResolvedOccurrenceId const 
 }
 
 class TypeGraphBuilder {
+    struct IntegerDomainReference {
+        ResolvedOccurrenceId occurrence;
+        TypeDefinitionId domain;
+    };
+
   public:
     explicit TypeGraphBuilder(codegen::Manifest const& manifest)
         : manifest_{manifest}
@@ -552,6 +558,18 @@ class TypeGraphBuilder {
         -> ResolvedOccurrenceId {
         return graph_.resolved(module, reference);
     }
+    auto resolve_integer_domain(codegen::TypeRefId const reference,
+                                codegen::ModuleHandle const module,
+                                std::string const& ctx) const -> IntegerDomainReference {
+        auto const occurrence{resolve_ref(reference, module)};
+        auto const& references{store_.type_refs};
+        auto const& occurrences{graph_.occurrences()};
+        auto const domain{integer_domain(graph_, occurrences.type[occurrence])};
+        if (!str(references.suffix[reference]).empty() || references.nested[reference] || !domain) {
+            throw std::invalid_argument{ctx + " source must have a declared integer domain"};
+        }
+        return {occurrence, *domain};
+    }
     auto local_declaration(codegen::ModuleHandle const module, StringId const name) const
         -> std::optional<TypeId> {
         return graph_.find_declared(module, name);
@@ -855,8 +873,9 @@ class TypeGraphBuilder {
                 scalars.minimum_value[scalar_index] = schemas.minimum_value[source];
                 scalars.maximum_value[scalar_index] = schemas.maximum_value[source];
                 scalars.bit_width[scalar_index] =
-                    schemas.bit_width[source].value_or(*codegen::minimum_packed_integer_bits(
-                        minimum, maximum, schemas.signedness[source]));
+                    schemas.bit_width[source] ? schemas.bit_width[source]->get()
+                                              : *codegen::minimum_packed_integer_bits(
+                                                    minimum, maximum, schemas.signedness[source]);
                 scalars.bit_width_auto[scalar_index] = !schemas.bit_width[source];
                 scalars.named_codes[scalar_index] = schemas.named_codes[source];
                 scalars.relationship[scalar_index] =
@@ -870,16 +889,27 @@ class TypeGraphBuilder {
             case lispb::codegen::DeclarationKind::linear_quantized: {
                 auto& types{definitions.linear_quantized};
                 auto const& schemas{store_.linear_quantizeds};
-
-                auto const scalar{resolve_ref(schemas.source[source], module_id)};
-                if (!integer_domain(graph_, occurrences.type[occurrences.index(scalar)])) {
-                    throw std::invalid_argument{"Linear quantization '" +
-                                                str(schemas.name[source]) +
-                                                "' source must have a declared integer domain"};
+                auto const ctx{"Linear quantization '" + str(schemas.name[source]) + "'"};
+                auto const scalar{resolve_integer_domain(schemas.source[source], module_id, ctx)};
+                if (!codegen::packed_integer_less(integer_scalars.minimum_value[scalar.domain],
+                                                  integer_scalars.maximum_value[scalar.domain])) {
+                    throw std::invalid_argument{
+                        ctx + " source range must contain at least two distinct values"};
+                }
+                auto const bits{schemas.bit_width[source].get()};
+                auto const maximum_reserved{bits == 64
+                                                ? (std::numeric_limits<std::uint64_t>::max)() - 1
+                                                : (std::uint64_t{1} << bits) - 2};
+                if (schemas.reserved_codes[source] > maximum_reserved) {
+                    throw std::invalid_argument{std::format(
+                        "{} reserves {} codes but at least two usable codes are required",
+                        ctx,
+                        schemas.reserved_codes[source])};
                 }
                 auto const result{types.append()};
                 auto const row{types.index(result)};
-                types.source[row] = scalar;
+                types.source[row] = scalar.occurrence;
+                types.source_domain[row] = scalar.domain;
                 types.bit_width[row] = schemas.bit_width[source];
                 types.reserved_codes[row] = schemas.reserved_codes[source];
                 types.clipping[row] = schemas.clipping[source];
@@ -888,96 +918,75 @@ class TypeGraphBuilder {
             case lispb::codegen::DeclarationKind::integer_varint: {
                 auto& types{definitions.integer_varints};
                 auto const& schemas{store_.integer_varints};
-
-                auto const scalar{resolve_ref(schemas.source[source], module_id)};
-                if (!integer_domain(graph_, occurrences.type[occurrences.index(scalar)])) {
-                    throw std::invalid_argument{"Integer varint '" + str(schemas.name[source]) +
-                                                "' source must have a declared integer domain"};
+                auto const ctx{"Integer varint '" + str(schemas.name[source]) + "'"};
+                auto const scalar{resolve_integer_domain(schemas.source[source], module_id, ctx)};
+                auto const unsigned_encoding{schemas.encoding[source] ==
+                                             codegen::IntegerVarintEncoding::unsigned_varint};
+                if (unsigned_encoding && integer_scalars.signedness[scalar.domain]) {
+                    throw std::invalid_argument{ctx +
+                                                " unsigned encoding requires an unsigned source"};
+                }
+                if (!unsigned_encoding && !integer_scalars.signedness[scalar.domain]) {
+                    throw std::invalid_argument{
+                        ctx + " signed and zigzag encodings require a signed source"};
                 }
                 auto const result{types.append()};
                 auto const row{types.index(result)};
-                types.source[row] = scalar;
+                types.source[row] = scalar.occurrence;
+                types.source_domain[row] = scalar.domain;
                 types.encoding[row] = schemas.encoding[source];
                 return result;
             }
             case lispb::codegen::DeclarationKind::fixed_point: {
-                auto& points{definitions.fixed_points};
                 auto const& schemas{store_.fixed_points};
-
-                auto const result{points.append()};
-                auto const row{points.index(result)};
-                points.form[row] = schemas.form[source];
-                points.signedness[row] = schemas.signedness[source];
-                points.total_bits[row] = schemas.total_bits[source];
-                points.fractional_bits[row] = schemas.fractional_bits[source];
-                points.rounding[row] = schemas.rounding[source];
-                if (schemas.form[source] == codegen::FixedPointForm::range) {
-                    points.value_range[row] = {
-                        *codegen::parse_fixed_point_endpoint(
-                            store_.strings().view(*schemas.minimum_value[source])),
-                        *codegen::parse_fixed_point_endpoint(
-                            store_.strings().view(*schemas.maximum_value[source]))};
-                }
-                return result;
+                return definitions.fixed_points.append(schemas.format[source],
+                                                       schemas.rounding[source]);
             }
             case lispb::codegen::DeclarationKind::mini_float: {
-                auto& floats{definitions.mini_floats};
-                auto const& schemas{store_.mini_floats};
-
-                auto const result{floats.append()};
-                auto const row{floats.index(result)};
-                floats.sign_bits[row] = schemas.sign_bits[source];
-                floats.exponent_bits[row] = schemas.exponent_bits[source];
-                floats.significand_bits[row] = schemas.significand_bits[source];
-                floats.exponent_bias[row] = schemas.exponent_bias[source];
-                return result;
+                return definitions.mini_floats.append(store_.mini_floats.format[source]);
             }
             case lispb::codegen::DeclarationKind::optional_sentinel: {
                 auto& types{definitions.optional_sentinels};
                 auto const& schemas{store_.optional_sentinels};
-
-                auto const resolved{resolve_ref(schemas.source[source], module_id)};
-                auto const scalar{
-                    integer_domain(graph_, occurrences.type[occurrences.index(resolved)])};
-                if (!scalar) {
-                    throw std::invalid_argument{"Optional sentinel representation '" +
-                                                str(schemas.name[source]) +
-                                                "' source must have a declared integer domain"};
-                }
-                auto const codes{
-                    store_.items(integer_scalars.named_codes[integer_scalars.index(*scalar)])};
+                auto const ctx{"Optional sentinel representation '" + str(schemas.name[source]) +
+                               "'"};
+                auto const scalar{resolve_integer_domain(schemas.source[source], module_id, ctx)};
+                auto const codes{store_.items(integer_scalars.named_codes[scalar.domain])};
                 auto const sentinel{std::ranges::find_if(codes, [&](auto id) {
                     return store_.packed_named_codes.name[id] == schemas.sentinel[source];
                 })};
-                if (sentinel == codes.end() || !store_.packed_named_codes.sentinel[*sentinel]) {
-                    throw std::invalid_argument{"Optional sentinel representation '" +
-                                                str(schemas.name[source]) +
-                                                "' must name a source sentinel code"};
+                if (sentinel == codes.end()) {
+                    auto const has_sentinel{std::ranges::any_of(
+                        codes, [&](auto id) { return store_.packed_named_codes.sentinel[id]; })};
+                    throw std::invalid_argument{has_sentinel
+                                                    ? ctx + " names unknown source code '" +
+                                                          str(schemas.sentinel[source]) + "'"
+                                                    : ctx + " source has no named sentinel codes"};
+                }
+                if (!store_.packed_named_codes.sentinel[*sentinel]) {
+                    throw std::invalid_argument{ctx + " code '" + str(schemas.sentinel[source]) +
+                                                "' is not a sentinel"};
                 }
                 auto const result{types.append()};
                 auto const row{types.index(result)};
-                types.source[row] = resolved;
+                types.source[row] = scalar.occurrence;
+                types.source_domain[row] = scalar.domain;
                 types.sentinel_name[row] = schemas.sentinel[source];
                 types.sentinel_value[row] = store_.packed_named_codes.value[*sentinel];
-                types.bit_width[row] = integer_scalars.bit_width[integer_scalars.index(*scalar)];
+                types.bit_width[row] = integer_scalars.bit_width[scalar.domain];
                 return result;
             }
             case lispb::codegen::DeclarationKind::optional_presence_bit: {
                 auto& types{definitions.optional_presence_bits};
                 auto const& schemas{store_.optional_presence_bits};
-
-                auto const resolved{resolve_ref(schemas.source[source], module_id)};
-                auto const scalar{
-                    integer_domain(graph_, occurrences.type[occurrences.index(resolved)])};
-                if (!scalar) {
-                    throw std::invalid_argument{"Optional presence-bit representation '" +
-                                                str(schemas.name[source]) +
-                                                "' source must have a declared integer domain"};
-                }
+                auto const ctx{"Optional presence-bit representation '" +
+                               str(schemas.name[source]) + "'"};
+                auto const scalar{resolve_integer_domain(schemas.source[source], module_id, ctx)};
                 auto const result{types.append()};
                 auto const row{types.index(result)};
-                types.source[row] = resolved;
-                auto const payload_bits{integer_scalars.bit_width[integer_scalars.index(*scalar)]};
+                types.source[row] = scalar.occurrence;
+                types.source_domain[row] = scalar.domain;
+                auto const payload_bits{integer_scalars.bit_width[scalar.domain]};
                 types.payload_bits[row] = payload_bits;
                 types.encoded_bits[row] = payload_bits + 1;
                 return result;

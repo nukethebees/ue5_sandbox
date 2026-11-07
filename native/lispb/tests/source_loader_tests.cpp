@@ -43,8 +43,8 @@
 #include <codegen/schema/semantic_relation_schemas.h>
 #include <codegen/schema/semantic_relation_unit.h>
 #include <codegen/schema/setting_apply_mode.h>
+#include <codegen/schema/setting_control.h>
 #include <codegen/schema/setting_control_kind.h>
-#include <codegen/schema/setting_control_schemas.h>
 #include <codegen/schema/setting_device.h>
 #include <codegen/schema/setting_schemas.h>
 #include <codegen/schema/settings_module_schemas.h>
@@ -76,6 +76,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <limits>
 #include <optional>
@@ -1611,20 +1612,19 @@ TEST_F(SourceLoaderTest, ReadsPhysicalRepresentations) {
     auto const& fixed_point{schema_at(manifest, 1, 2)};
     auto const fixed_point_row{fixed_points.index(fixed_point)};
     EXPECT_EQ(files.text(fixed_points.name[fixed_point_row]), "VelocityQ12_4");
-    EXPECT_EQ(fixed_points.form[fixed_point_row], FixedPointForm::range);
-    EXPECT_FALSE(fixed_points.signedness[fixed_point_row]);
-    EXPECT_EQ(fixed_points.total_bits[fixed_point_row], 16U);
-    EXPECT_EQ(fixed_points.fractional_bits[fixed_point_row], 0U);
+    EXPECT_EQ(fixed_points.format[fixed_point_row].form(), FixedPointForm::range);
+    EXPECT_FALSE(fixed_points.format[fixed_point_row].signedness());
+    EXPECT_EQ(fixed_points.format[fixed_point_row].total_bits().get(), 16U);
     EXPECT_EQ(fixed_points.rounding[fixed_point_row], FixedPointRounding::toward_zero);
-    EXPECT_EQ(files.text(fixed_points.minimum_value[fixed_point_row]), "-2.5");
-    EXPECT_EQ(files.text(fixed_points.maximum_value[fixed_point_row]), "3.75");
+    EXPECT_EQ(files.text(fixed_points.format[fixed_point_row].range().minimum_spelling), "-2.5");
+    EXPECT_EQ(files.text(fixed_points.format[fixed_point_row].range().maximum_spelling), "3.75");
     auto const& mini_float{schema_at(manifest, 1, 3)};
     auto const mini_float_row{mini_floats.index(mini_float)};
     EXPECT_EQ(files.text(mini_floats.name[mini_float_row]), "CompactFloat");
-    EXPECT_EQ(mini_floats.sign_bits[mini_float_row], 1U);
-    EXPECT_EQ(mini_floats.exponent_bits[mini_float_row], 5U);
-    EXPECT_EQ(mini_floats.significand_bits[mini_float_row], 10U);
-    EXPECT_EQ(mini_floats.exponent_bias[mini_float_row], 15);
+    EXPECT_EQ(mini_floats.format[mini_float_row].ref().sign_bits.get(), 1U);
+    EXPECT_EQ(mini_floats.format[mini_float_row].ref().exponent_bits.get(), 5U);
+    EXPECT_EQ(mini_floats.format[mini_float_row].ref().significand_bits.get(), 10U);
+    EXPECT_EQ(mini_floats.format[mini_float_row].ref().exponent_bias.get(), 15);
     auto const& optional{schema_at(manifest, 1, 4)};
     auto const optional_row{optional_sentinels.index(optional)};
     EXPECT_EQ(files.text(optional_sentinels.name[optional_row]), "OptionalHealth");
@@ -1752,6 +1752,7 @@ INSTANTIATE_TEST_SUITE_P(
     EnumOptions,
     SourceLoaderInvalidDeclaration,
     testing::Values(
+        InvalidSourceCase{"ZeroBitWidth", "(enum State std::uint8_t :bit-width 0 (value Idle))"},
         InvalidSourceCase{"BitWidthOutsideNativeRange",
                           "(enum State std::uint8_t :bit-width 65 (value Idle))"},
         InvalidSourceCase{
@@ -2122,7 +2123,6 @@ TEST_F(SourceLoaderTest, RejectsRawLiteralForOrdinaryTextField) {
 
 TEST_F(SourceLoaderTest, LoadsSettingsControls) {
     auto& store{files.store()};
-    auto& setting_controls{store.setting_controls};
     auto& settings{store.settings};
     auto& settings_modules{store.settings_modules};
     files.write_root(R"(
@@ -2148,14 +2148,39 @@ TEST_F(SourceLoaderTest, LoadsSettingsControls) {
               SettingApplyMode::deferred);
     EXPECT_EQ(settings.device[store.items(settings_modules.settings_list[module_row])[0]],
               SettingDevice::keyboard_mouse);
-    EXPECT_EQ(
-        setting_controls
-            .kind[settings.control[store.items(settings_modules.settings_list[module_row])[0]]],
-        SettingControlKind::float_range);
-    EXPECT_EQ(
-        setting_controls
-            .step[settings.control[store.items(settings_modules.settings_list[module_row])[0]]],
-        0.5);
+    auto const& control{
+        settings.control[store.items(settings_modules.settings_list[module_row])[0]]};
+    EXPECT_EQ(control.kind(), SettingControlKind::float_range);
+    ASSERT_NE(control.range(), nullptr);
+    EXPECT_EQ(control.range()->step, 0.5);
+}
+
+TEST_F(SourceLoaderTest, RejectsIncompleteOrMismatchedSettingControlPayloads) {
+    struct Case {
+        std::string_view control;
+        std::string_view message;
+    };
+    for (auto const& test : {
+             Case{"(control choice)", "choice requires an options provider"},
+             Case{"(control custom)", "custom control requires custom_row"},
+             Case{"(control toggle :custom-row Details)", "non-custom control has custom_row"},
+             Case{"(control toggle :min 0)", "non-range control has range values"},
+             Case{"(control float-range :min 0 :max 1)", "range requires min, max, and step"},
+             Case{"(control integer-range :min 1 :max 1 :step 1)", "has an invalid range"},
+             Case{"(control float-range :min 0 :max 1 :step 0)", "has an invalid range"},
+         }) {
+        SCOPED_TRACE(test.control);
+        files.write_root(std::format(R"(
+            (settings-module settings :header "Settings.h" :api-name Access :state-name State
+              (category display "Display")
+              (setting scale "Scale" :category display :value-type float :backend engine
+                :apply immediate {})))",
+                                     test.control));
+        auto const message{
+            capture_exception_message<sexpr::SourceError>([&] { return files.load(); })};
+        ASSERT_TRUE(message);
+        EXPECT_NE(message->find(test.message), std::string::npos);
+    }
 }
 
 TEST_F(SourceLoaderTest, SettingsDeviceDefaultsToShared) {

@@ -21,8 +21,6 @@ namespace lispb::codegen::detail {
 
 auto packed_unsigned_width(std::string_view spelling) -> std::optional<int>;
 auto packed_signed_width(std::string_view spelling) -> std::optional<int>;
-auto find_integer_domain(TypeRefId reference, schema::TypeGraph const& graph, ModuleHandle module)
-    -> std::optional<schema::TypeDefinitionId>;
 auto find_packed_enum(TypeRefId reference, schema::TypeGraph const& graph, ModuleHandle module)
     -> std::optional<lispb::codegen::DeclarationHandle>;
 auto find_linear_quantized(TypeRefId reference, schema::TypeGraph const& graph, ModuleHandle module)

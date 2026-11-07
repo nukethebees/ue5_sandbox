@@ -7,6 +7,7 @@ namespace lispb::schema {
 auto OptionalPresenceBitTypes::append() -> TypeDefinitionId {
     auto const row{static_cast<std::uint32_t>(source.size())};
     source.push_back({});
+    source_domain.push_back({});
     payload_bits.push_back({});
     encoded_bits.push_back({});
     return TypeDefinitionId{

@@ -11,7 +11,7 @@ auto SettingSchemas::index(SettingId id) const -> std::uint32_t {
     assert(row < name.size());
     return row;
 }
-auto SettingSchemas::append() -> SettingId {
+auto SettingSchemas::append(SettingControl value) -> SettingId {
     auto const index{static_cast<std::uint32_t>(name.size())};
     name.push_back({});
     label.push_back({});
@@ -21,21 +21,20 @@ auto SettingSchemas::append() -> SettingId {
     backend.push_back({});
     apply_mode.push_back({});
     device.push_back(SettingDevice::shared);
-    control.push_back({});
+    control.push_back(value);
     return SettingId{index + 1};
 }
 auto SettingSchemas::clone(SettingId id) -> SettingId {
-    return detail::clone_schema_row(*this,
-                                    id,
-                                    name,
-                                    label,
-                                    tooltip,
-                                    category,
-                                    value_type,
-                                    backend,
-                                    apply_mode,
-                                    device,
-                                    control);
+    auto const result{append(control[id])};
+    name[result] = name[id];
+    label[result] = label[id];
+    tooltip[result] = tooltip[id];
+    category[result] = category[id];
+    value_type[result] = value_type[id];
+    backend[result] = backend[id];
+    apply_mode[result] = apply_mode[id];
+    device[result] = device[id];
+    return result;
 }
 void SettingSchemas::clear() {
     detail::clear_schema_columns(

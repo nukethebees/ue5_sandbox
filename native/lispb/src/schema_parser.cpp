@@ -17,6 +17,7 @@
 #include <codegen/schema/external_scalar_id.h>
 #include <codegen/schema/external_scalar_kind.h>
 #include <codegen/schema/fixed_point_rounding.h>
+#include <codegen/schema/fixed_point_value.h>
 #include <codegen/schema/floating_point_format.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/integer_varint_encoding.h>
@@ -65,6 +66,19 @@ using sexpr::FormId;
 using P = SchemaProperty;
 
 namespace {
+template <auto Minimum, auto Maximum, typename T = std::uint32_t>
+auto bounded_value(sexpr::Parser const& parser, FormId const form, std::string_view const purpose)
+    -> ioj::Bounded<T, Minimum, Maximum> {
+    auto const value{parser.integer(form, purpose)};
+    if (std::in_range<T>(value)) {
+        if (auto const checked{
+                ioj::Bounded<T, Minimum, Maximum>::try_make(static_cast<T>(value))}) {
+            return *checked;
+        }
+    }
+    parser.fail(form, std::format("{} must be in the range {}..{}", purpose, Minimum, Maximum));
+}
+
 template <typename Enum>
 auto parse_keyword(sexpr::Parser const& parser,
                    FormId const form,
@@ -283,14 +297,18 @@ auto SchemaParser::parse_parameter(Declarations& declarations, sexpr::FormId con
     -> ParameterId {
     Fields const fields{parser_, form, "parameter", 2};
     fields.validate({P::default_, P::pack});
-    auto& records{declarations.parameters};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.type[record_index] = parse_type_ref(declarations, fields.positional(1));
-    records.name[record_index] = parser_.identifier(fields.positional(0), "parameter name");
-    records.default_value[record_index] = optional_text_id(fields, P::default_);
-    records.is_pack[record_index] = boolean_or(fields, P::pack);
-    return record_id;
+    auto const name_form{fields.positional(0)};
+    auto const name_id{parser_.identifier(name_form, "parameter name")};
+    auto const name{CppIdentifier<>::try_make(syntax_.strings(), name_id)};
+    if (!name) {
+        parser_.fail(name_form,
+                     identifier_error_message(
+                         name.error(), syntax_.strings().view(name_id), "parameter name"));
+    }
+    return declarations.parameters.append(parse_type_ref(declarations, fields.positional(1)),
+                                          *name,
+                                          optional_text_id(fields, P::default_),
+                                          boolean_or(fields, P::pack));
 }
 
 auto SchemaParser::parse_function(Declarations& declarations,
@@ -706,13 +724,16 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
         reflection = parse_keyword(
             parser_, *value, "enum reflection mode", try_parse_serialized_enum_reflection);
     }
-    std::optional<std::uint8_t> bit_width;
+    std::optional<EnumBitWidth> bit_width;
     if (auto const value{fields.optional(P::bit_width)}) {
         auto const parsed{unsigned_integer(*value, "enum bit width")};
-        if (parsed == 0 || parsed > 64) {
+        auto const width{std::in_range<std::uint8_t>(parsed)
+                             ? EnumBitWidth::try_make(static_cast<std::uint8_t>(parsed))
+                             : std::nullopt};
+        if (!width) {
             parser_.fail(*value, "enum bit width must be between 1 and 64 bits");
         }
-        bit_width = static_cast<std::uint8_t>(parsed);
+        bit_width = *width;
     }
     auto& records{declarations.enums};
     auto const record_id{records.append()};
@@ -943,8 +964,7 @@ auto SchemaParser::parse_setting_device(sexpr::FormId const form) -> SettingDevi
     parser_.fail(form, std::format("unknown setting device '{}'", value));
 }
 
-auto SchemaParser::parse_control(Declarations& declarations, sexpr::FormId const form)
-    -> SettingControlId {
+auto SchemaParser::parse_control(sexpr::FormId const form) -> SettingControl {
     Fields const fields{parser_, form, "control", 1};
     fields.validate(
         {P::options_provider, P::availability_provider, P::min, P::max, P::step, P::custom_row});
@@ -958,18 +978,19 @@ auto SchemaParser::parse_control(Declarations& declarations, sexpr::FormId const
         return !value.has_value() ? std::nullopt
                                   : std::optional<double>{parser_.number(*value, name)};
     };
-    auto& records{declarations.setting_controls};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.kind[record_index] = kind;
-    records.options_provider[record_index] = optional_text_id(fields, P::options_provider);
-    records.availability_provider[record_index] =
-        optional_text_id(fields, P::availability_provider);
-    records.minimum[record_index] = optional_number(P::min);
-    records.maximum[record_index] = optional_number(P::max);
-    records.step[record_index] = optional_number(P::step);
-    records.custom_row[record_index] = optional_text_id(fields, P::custom_row);
-    return record_id;
+    auto const control{SettingControl::try_make({
+        .kind = kind,
+        .options_provider = optional_text_id(fields, P::options_provider),
+        .availability_provider = optional_text_id(fields, P::availability_provider),
+        .minimum = optional_number(P::min),
+        .maximum = optional_number(P::max),
+        .step = optional_number(P::step),
+        .custom_row = optional_text_id(fields, P::custom_row),
+    })};
+    if (!control) {
+        parser_.fail(form, std::format("Setting control {}", control.error()));
+    }
+    return *control;
 }
 
 auto SchemaParser::parse_setting(Declarations& declarations, sexpr::FormId const form)
@@ -981,7 +1002,7 @@ auto SchemaParser::parse_setting(Declarations& declarations, sexpr::FormId const
         parser_.fail(form, "setting requires exactly one control declaration");
     }
     auto& records{declarations.settings};
-    auto const record_id{records.append()};
+    auto const record_id{records.append(parse_control(fields.declarations().front()))};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "setting name");
     records.label[record_index] = parser_.text_id(fields.positional(1), "setting label");
@@ -998,7 +1019,6 @@ auto SchemaParser::parse_setting(Declarations& declarations, sexpr::FormId const
     records.device[record_index] = fields.optional(P::device).has_value()
                                      ? parse_setting_device(*fields.optional(P::device))
                                      : SettingDevice::shared;
-    records.control[record_index] = parse_control(declarations, fields.declarations().front());
     return record_id;
 }
 
@@ -1239,12 +1259,11 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
     fields.validate({P::signed_, P::minimum, P::maximum, P::bit_width},
                     {"code", "relation", "projections"});
 
-    std::optional<std::uint32_t> bit_width;
+    std::optional<BitWidth> bit_width;
     if (auto const width{fields.optional(P::bit_width)}) {
         auto const width_text{std::string{parser_.text(*width, "integer scalar bit width")}};
         if (width_text != "auto") {
-            auto const parsed{bounded_integer(parser_, *width, "integer scalar bit width", 1, 64)};
-            bit_width = static_cast<std::uint32_t>(parsed);
+            bit_width = bounded_value<1, 64>(parser_, *width, "integer scalar bit width");
         }
     }
 
@@ -1288,7 +1307,7 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
     if (!bit_width && (!minimum_form || !maximum_form)) {
         parser_.fail(form, "integer scalar requires :bit-width or both :minimum and :maximum");
     }
-    auto const width{bit_width.value_or(64)};
+    auto const width{bit_width.value_or(BitWidth{64}).get()};
     auto const magnitude_bits{width - (signedness ? 1U : 0U)};
     auto const maximum{magnitude_bits == 64 ? std::numeric_limits<std::uint64_t>::max()
                                             : (std::uint64_t{1} << magnitude_bits) - 1};
@@ -1322,22 +1341,15 @@ auto SchemaParser::parse_linear_quantized(Declarations& declarations, sexpr::For
     }
 
     auto const bits{
-        bounded_integer(parser_, fields.required(P::bits), "linear quantization bit width", 1, 64)};
+        bounded_value<1, 64>(parser_, fields.required(P::bits), "linear quantization bit width")};
     auto const reserved{fields.optional(P::reserved_codes)};
-    auto& records{declarations.linear_quantizeds};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.name[record_index] =
-        parser_.identifier(fields.positional(0), "linear quantization name");
-    records.source[record_index] = parse_type_ref(declarations, fields.required(P::source));
-    records.bit_width[record_index] = static_cast<std::uint32_t>(bits);
-    records.reserved_codes[record_index] =
-        reserved.has_value()
-            ? unsigned_integer(*reserved, "linear quantization reserved code count")
-            : 0;
-    records.clipping[record_index] = clipping;
-    records.cpp_projection[record_index] = parse_projections(declarations, fields);
-    return record_id;
+    return declarations.linear_quantizeds.append(
+        parser_.identifier(fields.positional(0), "linear quantization name"),
+        parse_type_ref(declarations, fields.required(P::source)),
+        bits,
+        reserved ? unsigned_integer(*reserved, "linear quantization reserved code count") : 0,
+        clipping,
+        parse_projections(declarations, fields));
 }
 
 auto SchemaParser::parse_integer_varint(Declarations& declarations, sexpr::FormId const form)
@@ -1364,15 +1376,17 @@ auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId c
     -> DeclarationHandle {
     Fields const fields{parser_, form, "fixed-point", 1};
     fields.validate({P::total_bits, P::form, P::rounding}, {"projections"});
-
     auto const total_bits{
-        bounded_integer(parser_, fields.required(P::total_bits), "fixed-point total width", 1, 64)};
+        bounded_value<1, 64>(parser_, fields.required(P::total_bits), "fixed-point total width")};
     auto const representation{fields.required(P::form)};
     auto const kind{try_parse_serialized_fixed_point_form(syntax_.head(representation))};
     if (!kind) {
         parser_.fail(representation, "fixed-point form must be binary-point or range");
     }
     Fields const form_fields{parser_, representation, to_serialized_string(*kind), 0};
+    auto const name{parser_.identifier(fields.positional(0), "fixed-point name")};
+    auto const ctx{
+        std::format("Fixed-point representation '{}'", declarations.strings().view(name))};
 
     auto rounding{FixedPointRounding::nearest_even};
     if (auto const value{fields.optional(P::rounding)}) {
@@ -1384,32 +1398,51 @@ auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId c
         rounding = *parsed;
     }
 
-    auto& records{declarations.fixed_points};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.name[record_index] = parser_.identifier(fields.positional(0), "fixed-point name");
-    records.form[record_index] = *kind;
-    records.total_bits[record_index] = static_cast<std::uint32_t>(total_bits);
-    records.rounding[record_index] = rounding;
-    if (*kind == FixedPointForm::binary_point) {
-        form_fields.validate({P::signed_, P::fractional_bits}, {});
-        records.signedness[record_index] =
-            parser_.boolean(form_fields.required(P::signed_), "fixed-point signedness");
-        records.fractional_bits[record_index] =
-            static_cast<std::uint32_t>(bounded_integer(parser_,
+    auto const format{[&]() -> FixedPointFormat {
+        if (*kind == FixedPointForm::binary_point) {
+            form_fields.validate({P::signed_, P::fractional_bits}, {});
+            auto const signedness{
+                parser_.boolean(form_fields.required(P::signed_), "fixed-point signedness")};
+            auto const fractional_bits{bounded_integer(parser_,
                                                        form_fields.required(P::fractional_bits),
                                                        "fixed-point fractional width",
                                                        0,
-                                                       64));
-    } else {
+                                                       64)};
+            auto const checked{BinaryPointFormat::try_make(
+                {total_bits, signedness, static_cast<std::uint32_t>(fractional_bits)})};
+            if (!checked) {
+                parser_.fail(representation,
+                             std::format("{} fractional width must be at most {}{}",
+                                         ctx,
+                                         total_bits - (signedness ? 1U : 0U),
+                                         signedness ? " so one sign bit remains" : ""));
+            }
+            return *checked;
+        }
         form_fields.validate({P::minimum, P::maximum}, {});
-        records.minimum_value[record_index] =
-            parser_.text_id(form_fields.required(P::minimum), "fixed-point minimum");
-        records.maximum_value[record_index] =
-            parser_.text_id(form_fields.required(P::maximum), "fixed-point maximum");
-    }
-    records.cpp_projection[record_index] = parse_projections(declarations, fields);
-    return record_id;
+        auto const minimum{
+            parser_.text_id(form_fields.required(P::minimum), "fixed-point minimum")};
+        auto const maximum{
+            parser_.text_id(form_fields.required(P::maximum), "fixed-point maximum")};
+        auto const parse_bound = [&](StringId const text, std::string_view const label) {
+            auto const value{parse_fixed_point_endpoint(declarations.strings().view(text))};
+            if (!value) {
+                parser_.fail(representation, std::format("{} {}: {}", ctx, label, value.error()));
+            }
+            return *value;
+        };
+        auto const checked{RangePointFormat::try_make(
+            {total_bits,
+             {parse_bound(minimum, "minimum"), parse_bound(maximum, "maximum")},
+             minimum,
+             maximum})};
+        if (!checked) {
+            parser_.fail(representation, ctx + " maximum must be greater than minimum");
+        }
+        return *checked;
+    }()};
+    return declarations.fixed_points.append(
+        name, format, parse_projections(declarations, fields), rounding);
 }
 
 auto SchemaParser::parse_mini_float(Declarations& declarations, sexpr::FormId const form)
@@ -1417,29 +1450,23 @@ auto SchemaParser::parse_mini_float(Declarations& declarations, sexpr::FormId co
     Fields const fields{parser_, form, "mini-float", 1};
     fields.validate({P::sign_bits, P::exponent_bits, P::significand_bits, P::bias},
                     {"projections"});
-
     auto const sign_bits{
-        bounded_integer(parser_, fields.required(P::sign_bits), "mini-float sign width", 0, 1)};
-    auto const exponent_bits{bounded_integer(
-        parser_, fields.required(P::exponent_bits), "mini-float exponent width", 2, 15)};
-    auto const significand_bits{bounded_integer(
-        parser_, fields.required(P::significand_bits), "mini-float significand width", 0, 62)};
-    if (sign_bits + exponent_bits + significand_bits > 64) {
+        bounded_value<0, 1>(parser_, fields.required(P::sign_bits), "mini-float sign width")};
+    auto const exponent_bits{bounded_value<2, 15>(
+        parser_, fields.required(P::exponent_bits), "mini-float exponent width")};
+    auto const significand_bits{bounded_value<0, 62>(
+        parser_, fields.required(P::significand_bits), "mini-float significand width")};
+    auto const exponent_bias{bounded_value<-32768, 32767, std::int32_t>(
+        parser_, fields.required(P::bias), "mini-float exponent bias")};
+    auto const checked{
+        MiniFloatFormat::try_make({sign_bits, exponent_bits, significand_bits, exponent_bias})};
+    if (!checked) {
         parser_.fail(form, "mini-float total width must not exceed 64 bits");
     }
-    auto const exponent_bias{bounded_integer(
-        parser_, fields.required(P::bias), "mini-float exponent bias", -32'768, 32'767)};
-
-    auto& records{declarations.mini_floats};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.name[record_index] = parser_.identifier(fields.positional(0), "mini-float name");
-    records.sign_bits[record_index] = static_cast<std::uint32_t>(sign_bits);
-    records.exponent_bits[record_index] = static_cast<std::uint32_t>(exponent_bits);
-    records.significand_bits[record_index] = static_cast<std::uint32_t>(significand_bits);
-    records.exponent_bias[record_index] = exponent_bias;
-    records.cpp_projection[record_index] = parse_projections(declarations, fields);
-    return record_id;
+    return declarations.mini_floats.append(
+        parser_.identifier(fields.positional(0), "mini-float name"),
+        *checked,
+        parse_projections(declarations, fields));
 }
 
 auto SchemaParser::parse_optional_sentinel(Declarations& declarations, sexpr::FormId const form)
@@ -1647,10 +1674,8 @@ auto SchemaParser::parse_external_integer(RegisteredTypes& registered, sexpr::Fo
     auto& decls{registered.declarations};
     Fields const fields{parser_, form, "integer", 0};
     fields.validate({P::signed_, P::bit_width, P::minimum, P::maximum}, {"code"});
-    auto const width{parser_.integer(fields.required(P::bit_width), "external integer bit width")};
-    if (width < 1 || width > 64) {
-        parser_.fail(form, "external integer bit width must be in the range 1..64");
-    }
+    auto const width{bounded_value<1, 64, std::uint8_t>(
+        parser_, fields.required(P::bit_width), "external integer bit width")};
     auto const signedness{
         parser_.boolean(fields.required(P::signed_), "external integer signedness")};
     auto const magnitude{std::uint64_t{1} << (width - 1)};
@@ -1680,11 +1705,8 @@ auto SchemaParser::parse_external_integer(RegisteredTypes& registered, sexpr::Fo
             named_codes.push_back(record_id);
         }
     }
-    return registered.add_integer(signedness,
-                                  minimum_value,
-                                  maximum_value,
-                                  static_cast<std::uint8_t>(width),
-                                  decls.range(named_codes));
+    return registered.add_integer(
+        signedness, minimum_value, maximum_value, width, decls.range(named_codes));
 }
 
 auto SchemaParser::parse_type_definition(sexpr::FormId const form, TypeRegistry& registry)

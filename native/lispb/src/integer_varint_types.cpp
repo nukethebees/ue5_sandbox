@@ -7,6 +7,7 @@ namespace lispb::schema {
 auto IntegerVarintTypes::append() -> TypeDefinitionId {
     auto const row{static_cast<std::uint32_t>(source.size())};
     source.push_back({});
+    source_domain.push_back({});
     encoding.push_back(codegen::IntegerVarintEncoding::unsigned_varint);
     return TypeDefinitionId{(static_cast<std::uint32_t>(TypeDefinitionKind::integer_varint) << 24) |
                             row};

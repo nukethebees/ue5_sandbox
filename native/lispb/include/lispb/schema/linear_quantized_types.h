@@ -16,6 +16,7 @@ struct LinearQuantizedTypes {
     [[nodiscard]] auto index(TypeDefinitionId id) const -> std::uint32_t;
 
     IndexedColumn<ResolvedOccurrenceId, Index> source;
+    IndexedColumn<TypeDefinitionId, Index> source_domain;
     IndexedColumn<std::uint32_t, Index> bit_width;
     IndexedColumn<std::uint64_t, Index> reserved_codes;
     IndexedColumn<codegen::QuantizationClipping, Index> clipping;

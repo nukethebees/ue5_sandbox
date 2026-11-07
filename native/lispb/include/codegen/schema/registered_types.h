@@ -4,6 +4,7 @@
 #include <codegen/schema/external_scalar_id.h>
 #include <codegen/schema/floating_point_format.h>
 #include <codegen/schema/indices.h>
+#include <codegen/schema/numeric_formats.h>
 #include <codegen/schema/packed_integer_value.h>
 #include <codegen/schema/schema_range.h>
 
@@ -26,7 +27,7 @@ class RegisteredTypes {
     auto add_integer(bool signedness,
                      PackedIntegerValue minimum,
                      PackedIntegerValue maximum,
-                     std::uint8_t width,
+                     EnumBitWidth width,
                      SchemaRange<PackedNamedCodeId> codes) -> ExternalScalarId;
     static auto add_floating(FloatingPointFormat format) -> ExternalScalarId;
     // Require integer scalar metadata.
@@ -41,7 +42,7 @@ class RegisteredTypes {
     std::vector<std::uint8_t> integer_signedness;
     std::vector<PackedIntegerValue> integer_minimums;
     std::vector<PackedIntegerValue> integer_maximums;
-    std::vector<std::uint8_t> integer_widths;
+    std::vector<EnumBitWidth> integer_widths;
     std::vector<SchemaRange<PackedNamedCodeId>> integer_codes;
 };
 

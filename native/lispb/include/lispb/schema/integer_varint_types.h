@@ -16,6 +16,7 @@ struct IntegerVarintTypes {
     [[nodiscard]] auto index(TypeDefinitionId id) const -> std::uint32_t;
 
     IndexedColumn<ResolvedOccurrenceId, Index> source;
+    IndexedColumn<TypeDefinitionId, Index> source_domain;
     IndexedColumn<codegen::IntegerVarintEncoding, Index> encoding;
 };
 

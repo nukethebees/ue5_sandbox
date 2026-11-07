@@ -91,7 +91,7 @@ target_sources(lispb-schema PRIVATE
   src/record_schemas.cpp
   src/semantic_relation_schemas.cpp
   src/setting_category_schemas.cpp
-  src/setting_control_schemas.cpp
+  src/setting_control.cpp
   src/setting_schemas.cpp
   src/settings_module_schemas.cpp
   src/soa_mask_dimension_schemas.cpp
