@@ -1,6 +1,5 @@
 #pragma once
 
-#include "SpaceGame/entities/TestEntity.h"
 #include "SpaceGamePresentation/entities/TestTeam.h"
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
@@ -16,31 +15,17 @@ class USceneComponent;
 class UArrowComponent;
 
 UCLASS()
-class ATestStaticTurretsProxy
-    : public AActor
-    , public ITestEntity {
+class ATestStaticTurretsProxy : public AActor {
   public:
     GENERATED_BODY()
 
     ATestStaticTurretsProxy();
 
     auto get_team() const { return team; }
-    auto get_health() const noexcept { return health; }
-    auto get_laser_damage() const noexcept { return laser_damage; }
-    void set_actor_config(FTurretConfig const* const new_config) noexcept {
-        actor_config = new_config;
+    void set_level_config_asset(USpaceGameLevelConfig* const config) noexcept {
+        level_config_asset = config;
     }
     void set_team(ETestTeam const new_team) noexcept { team = new_team; }
-    void set_health(TOptional<int32> const new_health) noexcept { health = new_health; }
-    void set_laser_damage(TOptional<int32> const new_damage) noexcept { laser_damage = new_damage; }
-
-    // ITestEntity
-    auto get_unique_id() const noexcept -> ::ioj::sim::EntityId override { return unique_id; }
-    void set_unique_id(::ioj::sim::EntityId const id) noexcept { unique_id = id; }
-#if WITH_EDITOR
-    void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
-    auto get_test_name() const noexcept -> FName override { return test_name; }
-#endif
   protected:
     void OnConstruction(FTransform const& transform) override;
     void configure_component(UPrimitiveComponent& component);
@@ -53,7 +38,8 @@ class ATestStaticTurretsProxy
     void apply_asset_configuration_to_all_instances();
 #endif
 
-    FTurretConfig const* actor_config{nullptr};
+    UPROPERTY(VisibleInstanceOnly, Category = "Proxy")
+    TObjectPtr<USpaceGameLevelConfig> level_config_asset{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};
@@ -69,15 +55,4 @@ class ATestStaticTurretsProxy
 
     UPROPERTY(Transient)
     ETestTeam team{ETestTeam::White};
-
-    TOptional<int32> health{NullOpt};
-
-    TOptional<int32> laser_damage{NullOpt};
-
-#if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "Test")
-    FName test_name{NAME_None};
-#endif
-
-    ::ioj::sim::EntityId unique_id;
 };

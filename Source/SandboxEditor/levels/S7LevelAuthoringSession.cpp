@@ -33,12 +33,18 @@ auto id(FString const& name) -> levels::EntityId {
     return levels::EntityId{to_string(name)};
 }
 template <typename T>
-auto optional(TOptional<T> const& value) -> std::optional<T> {
-    return value.IsSet() ? std::optional<T>{*value} : std::nullopt;
+auto authored_value(T const& value) {
+    auto const underlying{value.get()};
+    if constexpr (requires { underlying.value(); }) {
+        return underlying.value();
+    } else {
+        return underlying;
+    }
 }
 template <typename T>
-auto optional(std::optional<T> const& value) -> TOptional<T> {
-    return value ? TOptional<T>{*value} : NullOpt;
+auto optional(std::optional<T> const& value) {
+    using Value = decltype(authored_value(std::declval<T>()));
+    return value ? TOptional<Value>{authored_value(*value)} : TOptional<Value>{};
 }
 auto save_generated(FString const& path, FString const& source) -> std::expected<void, FString> {
     FString existing;
@@ -118,8 +124,12 @@ auto adopt_unbound_level_entities(ULevel& level, AS7LevelAuthoringDocument& docu
             to_string(actor->GetActorLabel()), to_serialized_string(resolved->archetype), ids)};
         actor->Modify();
         actor->bIsEditorOnlyActor = true;
-        document.entities.Add({.id = to_fstring(entity_id.value), .actor = actor});
+        document.entities.Add(
+            {.id = to_fstring(entity_id.value), .actor = actor, .team = to_unreal(resolved->team)});
         ++count;
+    }
+    if (count > 0) {
+        document.refresh_entity_previews();
     }
     return count;
 }
@@ -153,25 +163,45 @@ auto collect_s7_editor_input(ULevel const& level, AS7LevelAuthoringDocument cons
             return std::unexpected{TEXT("Unsupported actor in an exported entity binding.")};
         }
         auto const rotation{actor->GetActorRotation()};
+        auto const spawn_at{NonNegativeFinite<double>::try_make(binding.spawn_time_seconds)};
+        if (!spawn_at) {
+            return std::unexpected{FString::Printf(
+                TEXT("Entity '%s' requires a finite nonnegative spawn time."), *binding.id)};
+        }
         levels::authoring::EntityInput entity{
             .id = entity_id,
             .archetype = resolved->archetype,
-            .team = resolved->team,
+            .team = to_native(binding.team),
             .position = Vector3d{actor->GetActorLocation()},
             .rotation = {rotation.Pitch, rotation.Yaw, rotation.Roll},
-            .spawn_at = binding.spawn_time_seconds};
+            .spawn_at = *spawn_at};
+        TCHAR const* invalid_field{};
+        auto const convert{[&]<typename T, typename U>(std::optional<T>& output,
+                                                       TOptional<U> const& value,
+                                                       TCHAR const* name) {
+            if (!value.IsSet()) {
+                return true;
+            }
+            output = T::try_make(typename T::value_type{*value});
+            if (!output) {
+                invalid_field = name;
+            }
+            return output.has_value();
+        }};
+        if (!convert(entity.health, binding.health, TEXT("health")) ||
+            !convert(entity.laser_damage, binding.laser_damage, TEXT("laser damage")) ||
+            !convert(entity.initial_spawn_delay,
+                     binding.initial_spawn_delay,
+                     TEXT("initial spawn delay")) ||
+            !convert(entity.spawn_cooldown, binding.spawn_cooldown, TEXT("spawn cooldown")) ||
+            !convert(entity.initial_fire_point,
+                     binding.initial_fire_point,
+                     TEXT("initial fire point"))) {
+            return std::unexpected{FString::Printf(
+                TEXT("Entity '%s' has an invalid %s override."), *binding.id, invalid_field)};
+        }
         if (Cast<ATestSpaceShip>(actor)) {
             input.player = entity_id;
-            entity.health = optional(binding.player_health);
-        } else if (auto const* capital{Cast<ATestCapitalShipProxy>(actor)}) {
-            entity.health = optional(capital->get_health());
-            entity.initial_spawn_delay = optional(capital->get_initial_spawn_delay());
-            entity.spawn_cooldown = optional(capital->get_spawn_cooldown());
-        } else if (auto const* turret{Cast<ATestStaticTurretsProxy>(actor)}) {
-            entity.health = optional(turret->get_health());
-            entity.laser_damage = optional(turret->get_laser_damage());
-        } else if (auto const* spinner{Cast<ATestTubeSpinnerProxy>(actor)}) {
-            entity.initial_fire_point = spinner->get_initial_active_fire_point();
         }
         input.entities.push_back(std::move(entity));
     }
@@ -248,7 +278,7 @@ auto create_level_authoring_document(ULevel& level, FString source_path)
         .id = levels::LevelId{to_string(
             canonical_s7_level_entity_id(map_name, TEXTVIEW("level")).ToString())},
         .title = to_string(map_name),
-        .settings = std::move(settings->settings)};
+        .settings = std::move(*settings)};
     std::expected<void, FString> saved;
     if (!IFileManager::Get().FileExists(*s7_editor_config_path(*document))) {
         saved = s7_level_authoring_session_detail::save_generated(
@@ -299,12 +329,11 @@ auto import_s7_level(ULevel& level,
     for (auto const& binding : document.entities) {
         existing.Add(binding.id, binding);
     }
-    auto composed{levels::authoring::make_level_input(definition)};
     auto entities{baseline->entities};
-    for (auto const& entity : composed.entities) {
+    for (auto const& entity : definition.entities()) {
         if (std::ranges::find(baseline->entities, entity.id, &levels::authoring::EntityInput::id) ==
             baseline->entities.end()) {
-            entities.push_back(entity);
+            entities.push_back(levels::authoring::make_entity_input(entity));
         }
     }
     FScopedTransaction transaction{NSLOCTEXT("S7LevelAuthoring", "Import", "Import S7 Level")};
@@ -318,9 +347,10 @@ auto import_s7_level(ULevel& level,
                                      ? previous->export_to_script
                                      : generated != baseline->entities.end()};
         auto const authored{std::ranges::find(
-            composed.entities, candidate.id, &levels::authoring::EntityInput::id)};
-        auto const& entity{!export_entity && authored != composed.entities.end() ? *authored
-                                                                                 : candidate};
+            definition.entities(), candidate.id, &levels::EntitySpawnDefinition::id)};
+        auto const entity{!export_entity && authored != definition.entities().end()
+                              ? levels::authoring::make_entity_input(*authored)
+                              : candidate};
         auto* actor{previous ? previous->actor.Get() : nullptr};
         auto* type{s7_level_actor_class(entity.archetype, *document.level_config)};
         if (!IsValid(type)) {
@@ -347,27 +377,16 @@ auto import_s7_level(ULevel& level,
                                  *document.level_config,
                                  transform,
                                  FName{name});
-        if (auto* player{Cast<ATestSpaceShip>(actor)}) {
-            if (entity.health) {
-                player->set_initial_health(*entity.health);
-            }
-        } else if (auto* capital{Cast<ATestCapitalShipProxy>(actor)}) {
-            capital->set_health(optional(entity.health));
-            capital->set_initial_spawn_delay(optional(entity.initial_spawn_delay));
-            capital->set_spawn_cooldown(optional(entity.spawn_cooldown));
-        } else if (auto* turret{Cast<ATestStaticTurretsProxy>(actor)}) {
-            turret->set_health(optional(entity.health));
-            turret->set_laser_damage(optional(entity.laser_damage));
-        } else if (auto* spinner{Cast<ATestTubeSpinnerProxy>(actor)}) {
-            spinner->set_initial_active_fire_point(entity.initial_fire_point.value_or(0));
-        }
         bindings.Add({.id = name,
                       .actor = actor,
-                      .spawn_time_seconds = entity.spawn_at,
+                      .team = to_unreal(entity.team),
+                      .spawn_time_seconds = entity.spawn_at.get(),
                       .export_to_script = export_entity,
-                      .player_health = entity.archetype == levels::EntityArchetype::PlayerFighter
-                                         ? optional(entity.health)
-                                         : NullOpt});
+                      .health = optional(entity.health),
+                      .laser_damage = optional(entity.laser_damage),
+                      .initial_spawn_delay = optional(entity.initial_spawn_delay),
+                      .spawn_cooldown = optional(entity.spawn_cooldown),
+                      .initial_fire_point = optional(entity.initial_fire_point)});
         existing.Remove(name);
     }
     for (auto const& entry : existing) {

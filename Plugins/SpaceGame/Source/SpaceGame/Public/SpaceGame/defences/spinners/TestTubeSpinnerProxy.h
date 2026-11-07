@@ -1,7 +1,5 @@
 #pragma once
 
-#include "SpaceGame/entities/TestEntity.h"
-#include "SpaceGamePresentation/entities/TestTeam.h"
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include "CoreMinimal.h"
@@ -16,28 +14,19 @@ class USceneComponent;
 class UArrowComponent;
 
 UCLASS()
-class ATestTubeSpinnerProxy
-    : public AActor
-    , public ITestEntity {
+class ATestTubeSpinnerProxy : public AActor {
   public:
     GENERATED_BODY()
 
     ATestTubeSpinnerProxy();
 
-    auto get_initial_active_fire_point() const { return initial_active_fire_point; }
-    void set_initial_active_fire_point(int32 const value) { initial_active_fire_point = value; }
-    void set_actor_config(FTubeSpinnerConfig const* const new_config) noexcept {
-        actor_config = new_config;
+    void set_level_config_asset(USpaceGameLevelConfig* const config) noexcept {
+        level_config_asset = config;
     }
 
-    // ITestEntity
-    auto get_unique_id() const noexcept -> ::ioj::sim::EntityId override { return unique_id; }
-    void set_unique_id(::ioj::sim::EntityId const id) noexcept { unique_id = id; }
-#if WITH_EDITOR
-    void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
-    auto get_test_name() const noexcept -> FName override { return test_name; }
-#endif
   private:
+    void OnConstruction(FTransform const& transform) override;
+
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Proxy|Add Points")
     void add_fire_point();
@@ -53,30 +42,17 @@ class ATestTubeSpinnerProxy
 
     UFUNCTION(CallInEditor, Category = "Proxy|Position Points")
     void position_fire_points();
-    UFUNCTION(CallInEditor, Category = "Proxy|Position Points")
-    void set_random_active_fire_point();
-    UFUNCTION(CallInEditor, Category = "Proxy|Position Points")
-    void set_random_active_fire_point_to_all_instances();
 #endif
     void add_fire_points(int32 const n);
     void remove_fire_points(int32 const n);
     void face_fire_points_away_from_mesh();
 
-    FTubeSpinnerConfig const* actor_config{nullptr};
+    UPROPERTY(VisibleInstanceOnly, Category = "Proxy")
+    TObjectPtr<USpaceGameLevelConfig> level_config_asset{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TArray<TObjectPtr<UArrowComponent>> fire_points{};
-
-    UPROPERTY(EditAnywhere, Category = "Proxy")
-    int32 initial_active_fire_point{0};
-
-#if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "Test")
-    FName test_name{NAME_None};
-#endif
-
-    ::ioj::sim::EntityId unique_id;
 };

@@ -1,4 +1,5 @@
 #include <ioj/levels/authoring/level_definition_writer.h>
+#include <ioj/levels/authoring/level_inputs_writer.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
 #include <SandboxEditor/levels/S7LevelAuthoringSession.h>
@@ -21,6 +22,9 @@
 #include <Misc/Guid.h>
 #include <Misc/Paths.h>
 #include <Modules/ModuleManager.h>
+#include <Serialization/MemoryReader.h>
+#include <Serialization/MemoryWriter.h>
+#include <Serialization/ObjectAndNameAsStringProxyArchive.h>
 #include <Tests/AutomationEditorCommon.h>
 
 #include <algorithm>
@@ -70,6 +74,98 @@ auto entity(ioj::levels::LevelDefinition const& definition, std::string_view con
 
 TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 {
+    TEST_METHOD(EntityBindingsPersistAuthoredTeamsAndOverrides)
+    {
+        using namespace s7_level_authoring_tests;
+        FTemporarySourceDirectory directory;
+        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
+        auto created{ioj::editor::create_level_authoring_document(*world->GetCurrentLevel(),
+                                                                  directory.root())};
+        if (!assert_success(*TestRunner, TEXT("Create authoring document"), created)) {
+            return;
+        }
+        auto* const document{*created};
+        auto* const capital_actor{world->SpawnActor<ATestCapitalShipProxy>()};
+        auto* const turret_actor{world->SpawnActor<ATestStaticTurretsProxy>()};
+        auto* const spinner_actor{world->SpawnActor<ATestTubeSpinnerProxy>()};
+        document->entities = {
+            {.id = TEXT("capital"),
+             .actor = capital_actor,
+             .team = ETestTeam::Red,
+             .spawn_time_seconds = 7.5,
+             .health = 456,
+             .initial_spawn_delay = 2.25f,
+             .spawn_cooldown = 3.5f},
+            {.id = TEXT("turret"),
+             .actor = turret_actor,
+             .team = ETestTeam::Blue,
+             .export_to_script = false,
+             .health = 789,
+             .laser_damage = 321},
+            {.id = TEXT("spinner"), .actor = spinner_actor, .initial_fire_point = 1},
+        };
+        TArray<uint8> data;
+        {
+            FMemoryWriter memory{data, true};
+            FObjectAndNameAsStringProxyArchive archive{memory, false};
+            document->Serialize(archive);
+        }
+        document->entities.Reset();
+        {
+            FMemoryReader memory{data, true};
+            FObjectAndNameAsStringProxyArchive archive{memory, false};
+            document->Serialize(archive);
+        }
+        if (!TestRunner->TestEqual(
+                TEXT("Persistent bindings restored"), document->entities.Num(), 3)) {
+            return;
+        }
+        auto const& capital{document->entities[0]};
+        auto const& turret{document->entities[1]};
+        auto const& spinner{document->entities[2]};
+        TestRunner->TestTrue(TEXT("Capital authoring data persists"),
+                             capital.id == TEXT("capital") && capital.team == ETestTeam::Red &&
+                                 capital.spawn_time_seconds == 7.5 && capital.health == 456 &&
+                                 capital.initial_spawn_delay == 2.25f &&
+                                 capital.spawn_cooldown == 3.5f);
+        TestRunner->TestTrue(TEXT("Turret authoring and ownership persist"),
+                             turret.id == TEXT("turret") && turret.team == ETestTeam::Blue &&
+                                 !turret.export_to_script && turret.health == 789 &&
+                                 turret.laser_damage == 321);
+        TestRunner->TestTrue(TEXT("Spinner authoring data persists"),
+                             spinner.id == TEXT("spinner") && spinner.initial_fire_point == 1);
+        document->refresh_entity_previews();
+        TestRunner->TestTrue(TEXT("Reloaded binding restores preview team"),
+                             capital_actor->get_team() == ETestTeam::Red &&
+                                 turret_actor->get_team() == ETestTeam::Blue);
+        if (!assert_success(
+                *TestRunner,
+                TEXT("Export after persistent reload"),
+                ioj::editor::export_s7_editor_config(*world->GetCurrentLevel(), *document))) {
+            return;
+        }
+        auto exported{ioj::editor::read_s7_editor_input(*document)};
+        if (!assert_success(*TestRunner, TEXT("Read reloaded export"), exported) ||
+            !TestRunner->TestEqual(
+                TEXT("Reload preserves output ownership"), exported->entities.size(), size_t{2})) {
+            return;
+        }
+        auto const& exported_capital{exported->entities[0]};
+        auto const& exported_spinner{exported->entities[1]};
+        TestRunner->TestTrue(
+            TEXT("Capital export uses persistent authoring values"),
+            exported_capital.id == ioj::levels::EntityId{"capital"} &&
+                exported_capital.team == ioj::Team::Red && exported_capital.spawn_at.get() == 7.5 &&
+                exported_capital.health && exported_capital.health->get().value() == 456 &&
+                exported_capital.initial_spawn_delay &&
+                exported_capital.initial_spawn_delay->get() == 2.25f &&
+                exported_capital.spawn_cooldown && exported_capital.spawn_cooldown->get() == 3.5f);
+        TestRunner->TestTrue(TEXT("Spinner export uses persistent authoring value"),
+                             exported_spinner.id == ioj::levels::EntityId{"spinner"} &&
+                                 exported_spinner.initial_fire_point &&
+                                 exported_spinner.initial_fire_point->get() == 1);
+    }
+
     TEST_METHOD(ExportComposesWithHumanSourceAndPreservesOwnership)
     {
         using namespace s7_level_authoring_tests;
@@ -165,17 +261,17 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                       1)) {
             return;
         }
-        player_binding->player_health = 123;
+        player_binding->health = 123;
         capital_binding->spawn_time_seconds = 0.1;
         capital->SetActorLocation(FVector{100000.123456789, 42.125, 100.5});
         capital->SetActorRotation(FRotator{10., 20., 30.});
-        capital->set_health(456);
-        capital->set_initial_spawn_delay(7.25f);
-        capital->set_spawn_cooldown(9.5f);
-        turret->set_health(789);
-        turret->set_laser_damage(321);
+        capital_binding->health = 456;
+        capital_binding->initial_spawn_delay = 7.25f;
+        capital_binding->spawn_cooldown = 9.5f;
+        turret_binding->health = 789;
+        turret_binding->laser_damage = 321;
         spinner->SetActorRotation(FRotator{0., 45., 0.});
-        spinner->set_initial_active_fire_point(1);
+        spinner_binding->initial_fire_point = 1;
         human_binding->actor->SetActorLocation(FVector{700000., 0., 0.});
 
         if (!assert_success(*TestRunner,
@@ -217,19 +313,26 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                  FMath::IsNearlyEqual(saved_capital->rotation.yaw, 20.) &&
                                  FMath::IsNearlyEqual(saved_capital->rotation.roll, 30.));
         TestRunner->TestTrue(TEXT("Capital overrides and spawn time survive"),
-                             saved_capital->spawn_time_seconds == 0.1 &&
-                                 saved_capital->overrides.health == 456 &&
-                                 saved_capital->overrides.initial_spawn_delay == 7.25f &&
-                                 saved_capital->overrides.spawn_cooldown == 9.5f);
+                             saved_capital->spawn_time_seconds.get() == 0.1 &&
+                                 saved_capital->overrides.health &&
+                                 saved_capital->overrides.health->get().value() == 456 &&
+                                 saved_capital->overrides.initial_spawn_delay &&
+                                 saved_capital->overrides.initial_spawn_delay->get() == 7.25f &&
+                                 saved_capital->overrides.spawn_cooldown &&
+                                 saved_capital->overrides.spawn_cooldown->get() == 9.5f);
         TestRunner->TestTrue(TEXT("Turret overrides survive"),
-                             saved_turret->overrides.health == 789 &&
-                                 saved_turret->overrides.laser_damage == 321);
+                             saved_turret->overrides.health &&
+                                 saved_turret->overrides.health->get().value() == 789 &&
+                                 saved_turret->overrides.laser_damage &&
+                                 saved_turret->overrides.laser_damage->get() == 321);
         TestRunner->TestTrue(TEXT("Spinner overrides survive"),
-                             saved_spinner->overrides.initial_fire_point == 1);
+                             saved_spinner->overrides.initial_fire_point &&
+                                 saved_spinner->overrides.initial_fire_point->get() == 1);
         TestRunner->TestTrue(TEXT("Spinner rotation survives"),
                              FMath::IsNearlyEqual(saved_spinner->rotation.yaw, 45.));
         TestRunner->TestTrue(TEXT("Player override survives"),
-                             saved_player->overrides.health == 123);
+                             saved_player->overrides.health &&
+                                 saved_player->overrides.health->get().value() == 123);
         TestRunner->TestTrue(TEXT("Human source controls its entity"),
                              saved_human->position.x() == 600000.);
 
@@ -363,7 +466,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 return;
             }
             TestRunner->TestTrue(TEXT("Composed values are never copied into the baseline"),
-                                 *saved == *baseline);
+                                 ioj::s7::equivalent(*saved, *baseline));
         }
     }
 

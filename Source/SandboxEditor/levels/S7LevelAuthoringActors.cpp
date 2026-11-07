@@ -72,10 +72,10 @@ void configure_s7_level_actor(AActor& actor,
         capital.set_team(team);
     } else if (archetype == levels::EntityArchetype::StaticTurret) {
         auto& turret{*CastChecked<ATestStaticTurretsProxy>(&actor)};
-        turret.set_actor_config(&config.turrets);
+        turret.set_level_config_asset(&config);
         turret.set_team(team);
     } else {
-        CastChecked<ATestTubeSpinnerProxy>(&actor)->set_actor_config(&config.tube_spinners);
+        CastChecked<ATestTubeSpinnerProxy>(&actor)->set_level_config_asset(&config);
     }
     actor.RerunConstructionScripts();
     actor.PostEditMove(true);

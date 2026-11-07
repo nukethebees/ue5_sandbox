@@ -51,9 +51,10 @@ void ATestStaticTurretsProxy::configure_component(UPrimitiveComponent& component
 }
 
 void ATestStaticTurretsProxy::apply_actor_configuration() {
-    if (!actor_config) {
+    if (!IsValid(level_config_asset)) {
         return;
     }
+    auto const* actor_config{&level_config_asset->turrets};
 
     mesh->SetStaticMesh(actor_config->mesh);
     detection->SetSphereRadius(actor_config->simulation.detection_radius);
@@ -70,18 +71,16 @@ void ATestStaticTurretsProxy::apply_actor_configuration() {
 
 #if WITH_EDITOR
 void ATestStaticTurretsProxy::apply_asset_configuration() {
-    auto const* const config{ioj::resolve_proxy_level_config(*this)};
+    auto const* const config{level_config_asset.Get()};
     if (!IsValid(config)) {
         UE_LOG(LogSandboxLearning,
                Warning,
-               TEXT("Cannot apply turret configuration: requires exactly one orchestrator with a "
-                    "level config."));
+               TEXT("Cannot apply turret configuration: no authoring resource asset is assigned."));
         return;
     }
     FScopedTransaction const transaction{
         NSLOCTEXT("TurretProxy", "Apply", "Apply turret configuration")};
     Modify();
-    actor_config = &config->turrets;
     mesh->Modify();
     detection->Modify();
     fire_point->Modify();
@@ -89,9 +88,14 @@ void ATestStaticTurretsProxy::apply_asset_configuration() {
     MarkPackageDirty();
 }
 void ATestStaticTurretsProxy::apply_asset_configuration_to_all_instances() {
+    auto* const config{level_config_asset.Get()};
     FScopedTransaction const transaction{
         NSLOCTEXT("TurretProxy", "ApplyAll", "Apply configuration to all turrets")};
-    ioj::for_each_instance(*this, [](ThisClass& x) { x.apply_asset_configuration(); });
+    ioj::for_each_instance(*this, [config](ThisClass& proxy) {
+        proxy.Modify();
+        proxy.set_level_config_asset(config);
+        proxy.apply_asset_configuration();
+    });
 }
 
 #endif

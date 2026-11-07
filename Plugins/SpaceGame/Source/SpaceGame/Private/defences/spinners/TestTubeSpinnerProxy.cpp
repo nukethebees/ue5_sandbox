@@ -23,6 +23,13 @@ ATestTubeSpinnerProxy::ATestTubeSpinnerProxy()
     mesh->SetupAttachment(RootComponent);
 }
 
+void ATestTubeSpinnerProxy::OnConstruction(FTransform const& transform) {
+    Super::OnConstruction(transform);
+    if (IsValid(level_config_asset)) {
+        mesh->SetStaticMesh(level_config_asset->tube_spinners.mesh);
+    }
+}
+
 #if WITH_EDITOR
 void ATestTubeSpinnerProxy::add_fire_points(int32 const n) {
     for (int32 i{0}; i < n; i++) {
@@ -68,35 +75,19 @@ void ATestTubeSpinnerProxy::face_fire_points_away_from_mesh() {
         fire_point->SetWorldRotation({0.f, away_from_mesh.Rotation().Yaw, 0.f});
     }
 }
-void ATestTubeSpinnerProxy::set_random_active_fire_point() {
-    if (!actor_config) {
-        return;
-    }
-
-    auto const n_fire_points{actor_config->fire_point_offsets.Num()};
-    if (n_fire_points < 1) {
-        return;
-    }
-
-    initial_active_fire_point = FMath::RandRange(0, n_fire_points);
-}
-void ATestTubeSpinnerProxy::set_random_active_fire_point_to_all_instances() {
-    ioj::for_each_instance(*this, [](ThisClass& x) { x.set_random_active_fire_point(); });
-}
-
 void ATestTubeSpinnerProxy::apply_asset_configuration() {
-    auto const* const config{ioj::resolve_proxy_level_config(*this)};
+    auto const* const config{level_config_asset.Get()};
     if (!IsValid(config)) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("Cannot apply spinner configuration: requires exactly one orchestrator with a "
-                    "level config."));
+        UE_LOG(
+            LogSandboxLearning,
+            Warning,
+            TEXT("Cannot apply spinner configuration: no authoring resource asset is assigned."));
         return;
     }
     FScopedTransaction const transaction{
         NSLOCTEXT("SpinnerProxy", "Apply", "Apply spinner configuration")};
     Modify();
-    actor_config = &config->tube_spinners;
+    auto const* actor_config{&config->tube_spinners};
     mesh->Modify();
 
     mesh->SetStaticMesh(actor_config->mesh);
@@ -129,9 +120,14 @@ void ATestTubeSpinnerProxy::apply_asset_configuration() {
     MarkPackageDirty();
 }
 void ATestTubeSpinnerProxy::apply_asset_configuration_to_all_instances() {
+    auto* const config{level_config_asset.Get()};
     FScopedTransaction const transaction{
         NSLOCTEXT("SpinnerProxy", "ApplyAll", "Apply configuration to all spinners")};
-    ioj::for_each_instance(*this, [](ThisClass& x) { x.apply_asset_configuration(); });
+    ioj::for_each_instance(*this, [config](ThisClass& proxy) {
+        proxy.Modify();
+        proxy.set_level_config_asset(config);
+        proxy.apply_asset_configuration();
+    });
 }
 
 #endif

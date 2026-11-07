@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/levels/level_definition.h>
+#include <SpaceGamePresentation/entities/TestTeam.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Info.h>
@@ -19,6 +20,9 @@ struct FS7LevelEntityBinding {
     UPROPERTY(VisibleAnywhere, Category = "Level Authoring")
     TObjectPtr<AActor> actor{nullptr};
 
+    UPROPERTY(EditAnywhere, Category = "Level Authoring")
+    ETestTeam team{ETestTeam::White};
+
     UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.0", Units = "s"))
     double spawn_time_seconds{};
 
@@ -28,7 +32,19 @@ struct FS7LevelEntityBinding {
     bool export_to_script{true};
 
     UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "1"))
-    TOptional<int32> player_health;
+    TOptional<int32> health;
+
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0"))
+    TOptional<int32> laser_damage;
+
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.0"))
+    TOptional<float> initial_spawn_delay;
+
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.0"))
+    TOptional<float> spawn_cooldown;
+
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0"))
+    TOptional<int32> initial_fire_point;
 };
 
 USTRUCT()
@@ -64,6 +80,10 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     AS7LevelAuthoringDocument();
 
     bool IsEditorOnly() const override { return true; }
+    void PostRegisterAllComponents() override;
+    void PostEditChangeProperty(FPropertyChangedEvent& event) override;
+
+    void refresh_entity_previews();
 
     UPROPERTY(VisibleAnywhere, Category = "Document")
     FString source_path{};

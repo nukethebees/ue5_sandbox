@@ -7,7 +7,6 @@
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/player/space_ship_common.h>
-#include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/ships/player/TestShipFireRateConversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGamePresentation/entities/ShipHealth.h>
@@ -32,9 +31,7 @@ class UStaticMeshComponent;
 DECLARE_DELEGATE(FOnPlayerShipDied);
 
 UCLASS()
-class SPACEGAME_API ATestSpaceShip
-    : public APawn
-    , public ITestEntity {
+class SPACEGAME_API ATestSpaceShip : public APawn {
     GENERATED_BODY()
     friend class ATestBatchOrchestrator;
   public:
@@ -57,8 +54,7 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     // Entity identity and configuration
     /* **************************************** */
-    auto get_unique_id() const noexcept -> ::ioj::sim::EntityId override;
-    auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
+    auto get_unique_id() const noexcept -> ::ioj::sim::EntityId;
     auto get_team() const noexcept -> ETestTeam;
     void set_team(ETestTeam new_team) noexcept;
     void set_initial_health(int32 value) noexcept {

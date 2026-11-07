@@ -1,13 +1,10 @@
 #pragma once
 
-#include "SpaceGame/entities/TestEntity.h"
 #include "SpaceGamePresentation/entities/TestTeam.h"
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
-#include <Misc/Optional.h>
-#include <UObject/ScriptInterface.h>
 
 #include "TestCapitalShipProxy.generated.h"
 
@@ -15,36 +12,16 @@ class UStaticMeshComponent;
 class UArrowComponent;
 
 UCLASS()
-class ATestCapitalShipProxy
-    : public AActor
-    , public ITestEntity {
+class ATestCapitalShipProxy : public AActor {
     GENERATED_BODY()
   public:
     ATestCapitalShipProxy();
 
-    void set_actor_config(FCapitalShipConfig const* const new_config) noexcept {
-        actor_config = new_config;
-        level_config_asset = nullptr;
-    }
     SPACEGAME_API void set_level_config_asset(USpaceGameLevelConfig* new_config) noexcept;
 
     auto get_team() const noexcept { return team; }
-    auto get_health() const noexcept { return health; }
-    auto get_initial_spawn_delay() const noexcept { return initial_spawn_delay; }
-    auto get_spawn_cooldown() const noexcept { return spawn_cooldown; }
 
     void set_team(ETestTeam const new_team) noexcept { team = new_team; }
-    void set_health(TOptional<int32> const new_health) noexcept { health = new_health; }
-    void set_initial_spawn_delay(TOptional<float> const new_delay) noexcept {
-        initial_spawn_delay = new_delay;
-    }
-    void set_spawn_cooldown(TOptional<float> const new_cooldown) noexcept {
-        spawn_cooldown = new_cooldown;
-    }
-
-    // ITestEntity
-    auto get_unique_id() const noexcept -> ::ioj::sim::EntityId override { return unique_id; }
-    void set_unique_id(::ioj::sim::EntityId const id) noexcept { unique_id = id; }
 
 #if WITH_EDITOR
     void Tick(float delta_seconds) override;
@@ -60,13 +37,9 @@ class ATestCapitalShipProxy
     UFUNCTION(CallInEditor, Category = "Ship")
     void diagnose_fighter_spawn_points();
 
-    void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
-    auto get_test_name() const noexcept -> FName override { return test_name; }
 #endif
   protected:
     void OnConstruction(FTransform const& transform) override;
-
-    FCapitalShipConfig const* actor_config{nullptr};
 
     UPROPERTY(VisibleInstanceOnly, Category = "Ship|Configuration")
     TObjectPtr<USpaceGameLevelConfig> level_config_asset{nullptr};
@@ -80,12 +53,6 @@ class ATestCapitalShipProxy
     UPROPERTY(Transient)
     ETestTeam team{ETestTeam::White};
 
-    TOptional<int32> health{NullOpt};
-
-    TOptional<float> initial_spawn_delay{NullOpt};
-
-    TOptional<float> spawn_cooldown{NullOpt};
-
 #if WITH_EDITORONLY_DATA
     UPROPERTY(VisibleInstanceOnly, Transient, Category = "Ship|Configuration")
     FString spawn_configuration_status;
@@ -93,17 +60,12 @@ class ATestCapitalShipProxy
     UPROPERTY(EditAnywhere, Category = "Ship|Spawn Preview")
     bool show_fighter_spawn_preview{true};
 
-    UPROPERTY(EditAnywhere, Category = "Test")
-    FName test_name{NAME_None};
 #endif
 
 #if WITH_EDITOR
-    auto resolve_editor_configuration() const -> USpaceGameLevelConfig*;
     void apply_spawn_configuration(USpaceGameLevelConfig& config);
     void update_spawn_configuration_status();
     void draw_fighter_spawn_preview();
     FString spawn_preview_error;
 #endif
-
-    ::ioj::sim::EntityId unique_id;
 };

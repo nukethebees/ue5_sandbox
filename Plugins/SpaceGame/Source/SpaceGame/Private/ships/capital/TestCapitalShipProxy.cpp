@@ -1,7 +1,6 @@
 #include "SpaceGame/ships/capital/TestCapitalShipProxy.h"
 
 #include "SpaceGame/entities/TestProxyActorFunctions.h"
-#include "SpaceGame/simulation/TestBatchOrchestrator.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
@@ -42,19 +41,16 @@ ATestCapitalShipProxy::ATestCapitalShipProxy()
 void ATestCapitalShipProxy::set_level_config_asset(
     USpaceGameLevelConfig* const new_config) noexcept {
     level_config_asset = new_config;
-    actor_config = IsValid(new_config) ? &new_config->capital_ships : nullptr;
 }
 
 void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
     ioj::set_proxy_actor_name(*this, TEXT("CapitalShip"), team);
 
-    if (IsValid(level_config_asset)) {
-        actor_config = &level_config_asset->capital_ships;
-    }
-    if (!actor_config) {
+    if (!IsValid(level_config_asset)) {
         return;
     }
+    auto const* actor_config{&level_config_asset->capital_ships};
 
     if (auto const msg{ioj::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(mesh),
@@ -109,15 +105,10 @@ void ATestCapitalShipProxy::Tick(float const delta_seconds) {
     }
 }
 
-auto ATestCapitalShipProxy::resolve_editor_configuration() const -> USpaceGameLevelConfig* {
-    return ioj::resolve_proxy_level_config(*this);
-}
-
 void ATestCapitalShipProxy::update_spawn_configuration_status() {
-    auto* const config{resolve_editor_configuration()};
-    set_level_config_asset(config);
+    auto* const config{level_config_asset.Get()};
     if (!IsValid(config)) {
-        spawn_configuration_status = TEXT("Requires exactly one orchestrator with a level config.");
+        spawn_configuration_status = TEXT("No authoring resource asset is assigned.");
         return;
     }
     auto const& slots{config->capital_ships.fighter_spawn_slots_relative_transforms};
@@ -137,7 +128,7 @@ void ATestCapitalShipProxy::update_spawn_configuration_status() {
 
 void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
     auto* const world{GetWorld()};
-    auto const* const config{resolve_editor_configuration()};
+    auto const* const config{level_config_asset.Get()};
     auto const report_error{[this](FString const& message) {
         if (spawn_preview_error != message) {
             UE_LOG(LogSandbox,
@@ -230,11 +221,11 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
 
 void ATestCapitalShipProxy::diagnose_fighter_spawn_points() {
     auto* const world{GetWorld()};
-    auto const* const runtime_config{resolve_editor_configuration()};
+    auto const* const runtime_config{level_config_asset.Get()};
     if (!IsValid(runtime_config)) {
         UE_LOG(LogSandbox,
                Warning,
-               TEXT("[FighterSpawn] No orchestrator level config for %s"),
+               TEXT("[FighterSpawn] No authoring resource asset for %s"),
                *GetPathName());
         return;
     }
@@ -282,9 +273,7 @@ void ATestCapitalShipProxy::diagnose_fighter_spawn_points() {
 }
 
 void ATestCapitalShipProxy::save_configuration_to_asset() {
-    auto* const config{resolve_editor_configuration()};
-    set_level_config_asset(config);
-    if (!IsValid(level_config_asset) || actor_config != &level_config_asset->capital_ships) {
+    if (!IsValid(level_config_asset)) {
         UE_LOG(LogSandboxLearning,
                Warning,
                TEXT("ATestCapitalShipProxy::save_configuration_to_asset: no writable level "
@@ -293,6 +282,7 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
     }
 
     auto const slot_count{fighter_spawn_slots.Num()};
+    auto const* actor_config{&level_config_asset->capital_ships};
     if (slot_count != actor_config->fighter_spawn_slots_relative_transforms.Num()) {
         UE_LOG(LogSandboxLearning,
                Warning,
@@ -330,12 +320,12 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
 }
 
 void ATestCapitalShipProxy::apply_asset_configuration() {
-    auto* const config{resolve_editor_configuration()};
+    auto* const config{level_config_asset.Get()};
     if (!IsValid(config)) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("Cannot apply capital configuration: requires exactly one orchestrator with a "
-                    "level config."));
+        UE_LOG(
+            LogSandboxLearning,
+            Warning,
+            TEXT("Cannot apply capital configuration: no authoring resource asset is assigned."));
         return;
     }
     FScopedTransaction const transaction{
@@ -375,7 +365,7 @@ void ATestCapitalShipProxy::apply_spawn_configuration(USpaceGameLevelConfig& con
         spawn_point->SetFlags(RF_Transactional);
         spawn_point->Modify();
 
-        spawn_point->SetWorldTransform(actor_config->fighter_spawn_slots_relative_transforms[i] *
+        spawn_point->SetWorldTransform(capital_config.fighter_spawn_slots_relative_transforms[i] *
                                        spawn_frame);
         spawn_point->SetArrowSize(config.presentation.capital_ships.proxy_arrow_size);
     }
@@ -383,12 +373,12 @@ void ATestCapitalShipProxy::apply_spawn_configuration(USpaceGameLevelConfig& con
     update_spawn_configuration_status();
 }
 void ATestCapitalShipProxy::apply_asset_configuration_to_all_instances() {
-    auto* const config{resolve_editor_configuration()};
+    auto* const config{level_config_asset.Get()};
     if (!IsValid(config)) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("Cannot apply capital configuration: requires exactly one orchestrator with a "
-                    "level config."));
+        UE_LOG(
+            LogSandboxLearning,
+            Warning,
+            TEXT("Cannot apply capital configuration: no authoring resource asset is assigned."));
         return;
     }
     FScopedTransaction const transaction{
