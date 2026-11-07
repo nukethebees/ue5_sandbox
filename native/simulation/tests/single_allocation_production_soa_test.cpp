@@ -116,32 +116,25 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
     CompiledLevelEvents events;
     constexpr std::int32_t row_count{65};
     // Deliberately grow by one row to exercise allocation-boundary preservation.
-    // NOLINTBEGIN(ioj-loop-view-accessor-call)
     for (std::int32_t index{}; index < row_count; ++index) {
-        events.capital_spawns.add_defaulted(1);
-        auto const capitals{events.capital_spawns.view()};
-        capitals.entity_indices()[index] =
-            ioj::sim::LevelEntityRef{static_cast<std::uint32_t>(index)};
-        set_vector(capitals.view_locations(), index, Vector3f{static_cast<float>(index), 1.f, 2.f});
-        capitals.teams()[index] = Team::Green;
-        capitals.healths()[index] = Health{static_cast<Health::value_type>(1000 + index)};
-
-        events.turret_spawns.add_defaulted(1);
-        auto const turrets{events.turret_spawns.view()};
-        turrets.entity_indices()[index] =
-            ioj::sim::LevelEntityRef{static_cast<std::uint32_t>(index + 100)};
-        set_vector(turrets.view_locations(), index, Vector3f{static_cast<float>(index), 3.f, 4.f});
-        turrets.laser_damages()[index] = index * 2;
-
-        events.spinner_spawns.add_defaulted(1);
-        auto const spinners{events.spinner_spawns.view()};
-        spinners.entity_indices()[index] =
-            ioj::sim::LevelEntityRef{static_cast<std::uint32_t>(index + 200)};
-        set_vector(spinners.view_locations(), index, Vector3f{static_cast<float>(index), 5.f, 6.f});
-        spinners.yaws()[index] = static_cast<float>(index * 3);
-        spinners.initial_fire_point_indices()[index] = index;
+        events.capital_spawns.add(LevelEntityRef{static_cast<std::uint32_t>(index)},
+                                  {static_cast<float>(index), 1.f, 2.f},
+                                  {},
+                                  Team::Green,
+                                  Health{1000 + index},
+                                  {},
+                                  {});
+        events.turret_spawns.add(LevelEntityRef{static_cast<std::uint32_t>(index + 100)},
+                                 {static_cast<float>(index), 3.f, 4.f},
+                                 {},
+                                 Team::Green,
+                                 Health{1000},
+                                 NonNegative<std::int32_t>::make(index * 2));
+        events.spinner_spawns.add(LevelEntityRef{static_cast<std::uint32_t>(index + 200)},
+                                  {static_cast<float>(index), 5.f, 6.f},
+                                  static_cast<float>(index * 3),
+                                  NonNegative<std::int32_t>::make(index));
     }
-    // NOLINTEND(ioj-loop-view-accessor-call)
     events.add_spawn_group(EntityType::CapitalShip, 0, row_count);
     events.add_spawn_group(EntityType::TubeSpinner, 0, row_count);
     events.add_spawn_group(EntityType::Turret, 0, row_count);

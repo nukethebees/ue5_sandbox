@@ -5,33 +5,23 @@
 
 namespace ioj::sim::tests {
 namespace hud_test {
-auto data() -> LevelSimInitData {
-    auto result{make_simulation_data(make_fixture())};
-    result.capital_ships.fighter_spawn_slots = 0;
-    result.capital_ships.fighter_spawn_slots_relative_transforms.clear();
+auto data() -> SimulationScenario {
+    SimulationScenario result{make_simulation_data(make_fixture())};
+    result.runtime.capital_ships.fighter_spawn_slots = 0;
+    result.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     return result;
 }
-auto defence_mission(LevelSimInitData& data) -> Mission {
+auto defence_mission() -> levels::MissionDefinition {
     levels::MissionDefinition definition{
         .objectives = {
             {.id = levels::ObjectiveName{"defence"},
              .title = "Hold position",
              .team = Team::Blue,
              .expressions = {{levels::TimeElapsedExpr{NonNegativeFinite<double>{0.2}}},
-                             {levels::EntityDestroyedExpr{levels::EntityId{"defended"}}}},
+                             {levels::EntityDestroyedExpr{levels::EntityId{"entity-0"}}}},
              .roots = levels::ObjectiveRoots{
                  std::array<levels::ExprIndex, 3>{0, 1, levels::absent_expression}}}}};
-    SimClock clock;
-    clock.initialise(data.clock_settings);
-    auto compiled{
-        levels::compile_mission(definition,
-                                std::array{levels::EntityId{"defended"}, levels::EntityId{"enemy"}},
-                                clock,
-                                data.expressions,
-                                data.timers,
-                                data.level_events)};
-    assert(compiled);
-    return std::move(*compiled);
+    return definition;
 }
 }
 
@@ -39,7 +29,7 @@ TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
     auto data{hud_test::data()};
     add_capital_spawn(data, {0.f, 0.f, 0.f}, Team::Blue, 60.f);
     add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
-    WorldlessSimulationTest harness{std::move(data)};
+    WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto const& simulation{harness.simulation()};
     presentation::HudModel hud;
@@ -68,7 +58,7 @@ TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
 TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
     auto data{hud_test::data()};
     add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
-    WorldlessSimulationTest harness{std::move(data)};
+    WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto& simulation{harness.simulation()};
     presentation::HudModel hud;
@@ -90,8 +80,8 @@ TEST(HudModel, CachesDefenceFailureAndObjectiveMembership) {
     auto data{hud_test::data()};
     add_capital_spawn(data, {}, Team::Blue, 60.f);
     add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
-    data.mission = hud_test::defence_mission(data);
-    WorldlessSimulationTest harness{std::move(data)};
+    data.mission = hud_test::defence_mission();
+    WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto& simulation{harness.simulation()};
     presentation::HudModel hud;
@@ -127,7 +117,7 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
         add_capital_spawn(
             data, {20000.f + 10000.f * static_cast<float>(index), 0.f, 0.f}, Team::Red, 60.f);
     }
-    WorldlessSimulationTest harness{std::move(data)};
+    WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto& simulation{harness.simulation()};
     auto const player_id{simulation.player_ship_simulation()->unique_entity_id};
@@ -203,12 +193,12 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
 
 TEST(HudModel, MissionDisplayTimeUsesSimulationClock) {
     auto data{hud_test::data()};
-    data.clock_settings.tick_rate = Frequency{10.0};
-    data.clock_settings.time_scale = PositiveFinite<double>{2.0};
+    data.runtime.clock_settings.tick_rate = Frequency{10.0};
+    data.runtime.clock_settings.time_scale = PositiveFinite<double>{2.0};
     add_capital_spawn(data, {}, Team::Blue, 60.f);
     add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
-    data.mission = hud_test::defence_mission(data);
-    WorldlessSimulationTest harness{std::move(data)};
+    data.mission = hud_test::defence_mission();
+    WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto& simulation{harness.simulation()};
     presentation::HudModel hud;

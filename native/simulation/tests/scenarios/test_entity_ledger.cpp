@@ -12,9 +12,9 @@ constexpr telemetry::TeamCounts expected_team_counts{std::array{0, 1, 2, 3, 4, 5
 
 void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config,
                                           EntityLedgerScenario const scenario) {
-    auto data{tests::make_simulation_data(config)};
-    data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
+    data.runtime.capital_ships.fighter_spawn_slots = 0;
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     if (scenario != EntityLedgerScenario::TeamCounts) {
         tests::add_player_spawn(data, tests::make_player_spawn(config));
     }
@@ -33,7 +33,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         }
     }
 
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     if (scenario == EntityLedgerScenario::TeamCounts) {
         telemetry::TeamCounts counts{};

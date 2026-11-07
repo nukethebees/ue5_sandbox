@@ -19,17 +19,17 @@ struct FighterTransformSnapshot {
     }
 };
 
-auto make_long_running_battle() -> LevelSimInitData {
-    LevelSimInitData data;
-    data.clock_settings.tick_rate = ioj::Frequency::make(60.0);
-    data.collision.grid_geometry = {{96, 96, 32}, {{2000.f, 2000.f, 5000.f}}};
-    data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(256);
-    data.fighters.speed = 3000.f;
-    data.fighters.laser.damage = 0;
-    data.capital_ships.fighter_spawn_slots = 8;
-    for (std::int32_t slot{}; slot < data.capital_ships.fighter_spawn_slots; ++slot) {
+auto make_long_running_battle() -> SimulationScenario {
+    SimulationScenario data;
+    data.runtime.clock_settings.tick_rate = ioj::Frequency::make(60.0);
+    data.runtime.collision.grid_geometry = {{96, 96, 32}, {{2000.f, 2000.f, 5000.f}}};
+    data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(256);
+    data.runtime.fighters.speed = 3000.f;
+    data.runtime.fighters.laser.damage = 0;
+    data.runtime.capital_ships.fighter_spawn_slots = 8;
+    for (std::int32_t slot{}; slot < data.runtime.capital_ships.fighter_spawn_slots; ++slot) {
         auto const y{static_cast<float>(slot - 4) * 300.f};
-        data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(
+        data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.push_back(
             {.location = {1000.0, y, 0.0}});
     }
 
@@ -38,16 +38,18 @@ auto make_long_running_battle() -> LevelSimInitData {
                       Team::Green,
                       0.f,
                       10000.f,
-                      std::numeric_limits<std::int32_t>::max());
+                      ioj::settings::PositiveHealth::make(
+                          ioj::sim::Health{std::numeric_limits<std::int32_t>::max()}));
     add_capital_spawn(data,
                       {{10000.f, 0.f, 0.f}},
                       Team::White,
                       0.f,
                       10000.f,
-                      std::numeric_limits<std::int32_t>::max());
+                      ioj::settings::PositiveHealth::make(
+                          ioj::sim::Health{std::numeric_limits<std::int32_t>::max()}));
 
     for (auto const type : EnumTraits<EntityType>::values) {
-        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        data.runtime.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
 }
@@ -55,7 +57,7 @@ auto make_long_running_battle() -> LevelSimInitData {
 
 TEST(MovedEntitiesBattle, HeadlessBattleTracksFighterTransformsAcrossLongBattle) {
 
-    WorldlessSimulationTest harness{make_long_running_battle()};
+    WorldlessSimulationTest harness{make_long_running_battle().compile()};
     harness.finish_initialisation();
     auto& simulation{harness.simulation()};
 

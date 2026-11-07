@@ -11,7 +11,7 @@ inline auto mission_entity(std::uint32_t const index) -> levels::EntityId {
 inline auto destroyed(std::uint32_t const index) -> levels::MissionExpr {
     return {ioj::levels::EntityDestroyedExpr{.entity = mission_entity(index)}};
 }
-inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition objective) {
+inline void install_mission(SimulationScenario& data, levels::ObjectiveDefinition objective) {
     objective.id = ioj::levels::ObjectiveName{"primary"};
     objective.wins_level = ObjectiveWinsLevel::Yes;
     levels::ObjectiveDefinition opposition{.id = levels::ObjectiveName{"opposition"},
@@ -22,16 +22,6 @@ inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition 
     opposition.roots[ObjectiveOutcome::Passed] = 0;
     levels::MissionDefinition definition{
         .objectives = {std::move(objective), std::move(opposition)}};
-    std::vector<levels::EntityId> names;
-    auto const count{data.entity_count};
-    for (std::uint32_t index{}; index < count; ++index) {
-        names.push_back(mission_entity(index));
-    }
-    SimClock clock;
-    clock.initialise(data.clock_settings);
-    auto compiled{levels::compile_mission(
-        definition, names, clock, data.expressions, data.timers, data.level_events)};
-    ASSERT_TRUE(compiled.has_value());
-    data.mission = std::move(*compiled);
+    data.mission = std::move(definition);
 }
 }

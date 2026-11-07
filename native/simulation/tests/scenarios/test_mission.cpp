@@ -2,9 +2,9 @@
 
 namespace ioj::sim::tests {
 TEST(WorldlessSpaceGameSimulation, KillThresholdWaitsForFinalCreditedDeath) {
-    LevelSimInitData data;
-    data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
-    data.capital_ships.fighter_spawn_slots = 0;
+    SimulationScenario data;
+    data.runtime.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
+    data.runtime.capital_ships.fighter_spawn_slots = 0;
     auto const hero{add_capital_spawn(data, {{-2000.f, 0, 0}}, Team::Green, 60.f, 60.f)};
     add_capital_spawn(data, {{2000.f, 0, 0}}, Team::Red, 60.f, 60.f);
     add_capital_spawn(data, {{4000.f, 0, 0}}, Team::Red, 60.f, 60.f);
@@ -14,7 +14,7 @@ TEST(WorldlessSpaceGameSimulation, KillThresholdWaitsForFinalCreditedDeath) {
     objective.roots[ObjectiveOutcome::Passed] = 0;
     install_mission(data, std::move(objective));
 
-    WorldlessSimulationTest harness{std::move(data)};
+    WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto& simulation{harness.simulation()};
     auto const ids{simulation.capital_ships().get_entities().entity_ids()};

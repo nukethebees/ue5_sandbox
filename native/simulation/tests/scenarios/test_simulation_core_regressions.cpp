@@ -22,14 +22,20 @@ inline constexpr double duration{0.1};
 
 void run_worldless_simulation_core_regression(tests::SimulationFixture const& config,
                                               SimulationCoreRegressionScenario const scenario) {
-    auto data{tests::make_simulation_data(config)};
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
     if (scenario == SimulationCoreRegressionScenario::DamageLifecycle) {
-        data.capital_ships.fighter_spawn_slots = 0;
-        data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-        tests::add_capital_spawn(data, {}, Team::White, 60.f, 60.f, initial_health);
+        data.runtime.capital_ships.fighter_spawn_slots = 0;
+        data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
+        tests::add_capital_spawn(
+            data,
+            {},
+            Team::White,
+            60.f,
+            60.f,
+            ioj::settings::PositiveHealth::make(ioj::sim::Health{initial_health}));
     }
 
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto& simulation{harness.simulation()};
     auto const& clk{simulation.clock()};
@@ -115,19 +121,25 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
         bool player_alive{};
     };
 
-    auto data{tests::make_simulation_data(config)};
-    data.collision.overlap_response.damage_per_overlap_detection =
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
+    data.runtime.collision.overlap_response.damage_per_overlap_detection =
         Positive<std::int32_t>{collision_damage_test::overlap_damage};
-    data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
+    data.runtime.capital_ships.fighter_spawn_slots = 0;
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     tests::add_player_spawn(data, tests::make_player_spawn(config));
-    data.player->health = {Health{collision_damage_test::player_health},
-                           Health{collision_damage_test::player_health}};
-    data.collision.entity_bounds.set_half_extents(EntityType::PlayerShip, {{1.f, 1.f, 1.f}});
-    tests::add_capital_spawn(
-        data, Vector3f{}, Team::White, 60.f, 60.f, collision_damage_test::capital_health);
+    data.runtime.player->health = {Health{collision_damage_test::player_health},
+                                   Health{collision_damage_test::player_health}};
+    data.runtime.collision.entity_bounds.set_half_extents(EntityType::PlayerShip,
+                                                          {{1.f, 1.f, 1.f}});
+    tests::add_capital_spawn(data,
+                             Vector3f{},
+                             Team::White,
+                             60.f,
+                             60.f,
+                             ioj::settings::PositiveHealth::make(
+                                 ioj::sim::Health{collision_damage_test::capital_health}));
 
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto& simulation{harness.simulation()};
     auto* const player{simulation.player_ship_simulation()};

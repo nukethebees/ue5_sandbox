@@ -43,7 +43,7 @@ auto make_worldless_player_spawn(USpaceGameLevelConfig const& config, FTransform
 
 auto add_worldless_player_spawn(sim::LevelSimInitData& data, sim::player::PlayerSpawnData spawn)
     -> uint32 {
-    auto const entity_index{data.entity_count++};
+    auto const entity_index{data.level_events.spawn_count()};
     data.player_entity_ref = ioj::sim::LevelEntityRef{entity_index};
     data.player.emplace(MoveTemp(spawn));
     return entity_index;

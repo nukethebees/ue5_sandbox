@@ -10,20 +10,20 @@ inline constexpr std::int32_t collision_resilient_health{1'000'000};
 
 TEST(WorldlessSpaceGameSimulation, PlayerShipVersusCapital) {
     auto const config{tests::make_fixture()};
-    auto data{tests::make_simulation_data(config)};
-    data.fighters.health = ::ioj::settings::PositiveHealth::make(
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
+    data.runtime.fighters.health = ::ioj::settings::PositiveHealth::make(
         Health{player_vs_capital_test::collision_resilient_health});
-    data.fighters.laser.projectile_speed = ::ioj::PositiveFinite<float>::make(20000.f);
-    data.fighters.laser.max_distance = ::ioj::PositiveFinite<float>::make(1.f);
+    data.runtime.fighters.laser.projectile_speed = ::ioj::PositiveFinite<float>::make(20000.f);
+    data.runtime.fighters.laser.max_distance = ::ioj::PositiveFinite<float>::make(1.f);
     tests::add_player_spawn(
         data,
         tests::make_player_spawn(config,
                                  Transform3d{.rotation = to_quaternion(Rotator3d{0.f, -90.f, 0.f}),
                                              .location = Vector3d{19850.f, 1300.f, 980.f}}));
-    data.player->health.health = Health{player_vs_capital_test::collision_resilient_health};
+    data.runtime.player->health.health = Health{player_vs_capital_test::collision_resilient_health};
     tests::add_capital_spawn(data, Vector3f{{-22020.f, 2170.f, 4360.f}}, Team::Green, 0.f, 120.f);
 
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto* const player{harness.simulation().player_ship_simulation()};
     auto const& fighters{harness.simulation().fighters()};

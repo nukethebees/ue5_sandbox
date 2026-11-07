@@ -301,18 +301,21 @@ auto count_memberships(collision::CollisionUniformGrid const& grid,
 
 TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
     auto const config{tests::make_fixture()};
-    auto data{tests::make_simulation_data(config)};
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
     tests::add_player_spawn(
         data,
         tests::make_player_spawn(
             config,
             Transform3d{.rotation = Quaternion4d{}, .location = Vector3d{-1500.f, -1500.f, 0.f}}));
-    tests::add_capital_spawn(
-        data, Vector3f{{-500.f, -500.f, 0.f}}, Team::Blue, 0.f, data.capital_ships.spawn_delay);
+    tests::add_capital_spawn(data,
+                             Vector3f{{-500.f, -500.f, 0.f}},
+                             Team::Blue,
+                             0.f,
+                             data.runtime.capital_ships.spawn_delay);
     tests::add_turret_spawn(data, Vector3f{500.f, 500.f, 0.f}, {}, Team::Blue);
     tests::add_spinner_spawn(data, Vector3f{1500.f, 1500.f, 0.f}, 0.f, 0);
 
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     harness.timeline.finish_at(0.1);
     ASSERT_TRUE(harness.run_until_timeline_finished(1.0)) << "Collision-grid timeline completes";

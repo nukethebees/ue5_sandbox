@@ -29,16 +29,16 @@ auto slot_for(player::FlightModelPreset const preset) -> player::FlightModelSlot
     return player::FlightModelSlot::First;
 }
 
-auto make_data(player::FlightModelPreset const preset) -> LevelSimInitData {
-    LevelSimInitData data;
-    data.collision.grid_geometry = {{16, 16, 4}, {{100000.f, 100000.f, 100000.f}}};
-    data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
-    data.tick_memory_capacity_bytes = 1024 * 1024;
-    data.phase_memory_capacity_bytes = 1024 * 1024;
-    data.capital_ships.fighter_spawn_slots = 0;
-    data.clock_settings.tick_rate = ioj::Frequency::make(60.0);
+auto make_data(player::FlightModelPreset const preset) -> SimulationScenario {
+    SimulationScenario data;
+    data.runtime.collision.grid_geometry = {{16, 16, 4}, {{100000.f, 100000.f, 100000.f}}};
+    data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
+    data.runtime.tick_memory_capacity_bytes = 1024 * 1024;
+    data.runtime.phase_memory_capacity_bytes = 1024 * 1024;
+    data.runtime.capital_ships.fighter_spawn_slots = 0;
+    data.runtime.clock_settings.tick_rate = ioj::Frequency::make(60.0);
     for (auto const type : EnumTraits<EntityType>::values) {
-        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        data.runtime.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
 
     player::PlayerSpawnData spawn{};
@@ -66,7 +66,7 @@ class SkaterFlightModelTest : public ::testing::Test {
         ASSERT_NE(simulation.player_ship_simulation(), nullptr);
     }
 
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater).compile()};
     player::Sim& sim_player{LevelSimTestAccess::player_simulation(simulation)};
     player::FlightModelControllerState const& controller{sim_player.controller_state()};
     std::optional<player::CommandInterface> commands{simulation.player_ship_commands()};
@@ -118,7 +118,7 @@ using ioj::testing::expect_approximately_equal;
 using ioj::testing::structurally_equal;
 
 TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Starfox)};
+    LevelSim simulation{make_data(player::FlightModelPreset::Starfox).compile()};
     start(simulation);
     auto const& controller{player_sim(simulation).controller_state()};
     simulation.player_ship_commands()->set_right_input(1.f);
@@ -147,8 +147,8 @@ TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBr
 }
 
 TEST(NativeSimulationFlightModels, StarfoxEmergencyBrakeIsStrongerThanNormalBrake) {
-    LevelSim normal{make_data(player::FlightModelPreset::Starfox)};
-    LevelSim emergency{make_data(player::FlightModelPreset::Starfox)};
+    LevelSim normal{make_data(player::FlightModelPreset::Starfox).compile()};
+    LevelSim emergency{make_data(player::FlightModelPreset::Starfox).compile()};
     start(normal);
     start(emergency);
     advance_ticks(normal, 600);
@@ -163,7 +163,7 @@ TEST(NativeSimulationFlightModels, StarfoxEmergencyBrakeIsStrongerThanNormalBrak
 }
 
 TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Fighter)};
+    LevelSim simulation{make_data(player::FlightModelPreset::Fighter).compile()};
     start(simulation);
     advance_ticks(simulation, 60);
     EXPECT_NEAR(size(velocity(simulation)), 0.0, 1.e-6);
@@ -179,8 +179,8 @@ TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) 
 }
 
 TEST(NativeSimulationFlightModels, FighterBoostAndBrakeRemainOrthogonal) {
-    LevelSim normal{make_data(player::FlightModelPreset::Fighter)};
-    LevelSim boosted{make_data(player::FlightModelPreset::Fighter)};
+    LevelSim normal{make_data(player::FlightModelPreset::Fighter).compile()};
+    LevelSim boosted{make_data(player::FlightModelPreset::Fighter).compile()};
     start(normal);
     start(boosted);
     normal.player_ship_commands()->set_accelerator(1.f);
@@ -257,8 +257,8 @@ TEST_F(SkaterFlightModelTest, SkaterCanFaceBackwardWhilePreservingForwardTravel)
 }
 
 TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReversing) {
-    LevelSim brake{make_data(player::FlightModelPreset::Skater)};
-    LevelSim emergency{make_data(player::FlightModelPreset::Skater)};
+    LevelSim brake{make_data(player::FlightModelPreset::Skater).compile()};
+    LevelSim emergency{make_data(player::FlightModelPreset::Skater).compile()};
     start(brake);
     start(emergency);
     for (auto* simulation : {&brake, &emergency}) {
@@ -279,7 +279,7 @@ TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReve
 }
 
 TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralInput) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Gunship)};
+    LevelSim simulation{make_data(player::FlightModelPreset::Gunship).compile()};
     start(simulation);
     auto commands{simulation.player_ship_commands()};
     commands->set_forward_input(1.f);
@@ -299,7 +299,7 @@ TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralI
 }
 
 TEST(NativeSimulationFlightModels, GunshipRotationRemainsIndependentOfTranslationControl) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Gunship)};
+    LevelSim simulation{make_data(player::FlightModelPreset::Gunship).compile()};
     start(simulation);
     auto commands{simulation.player_ship_commands()};
     commands->set_right_input(1.f);
@@ -413,8 +413,8 @@ TEST_F(SkaterFlightModelTest, ResponseSeedingUsesTheNewChannelsReferenceFrame) {
 }
 
 TEST(NativeSimulationFlightModels, PassiveDragAndNeutralStabilizationRemainDistinct) {
-    LevelSim passive{make_data(player::FlightModelPreset::Skater)};
-    LevelSim stabilized{make_data(player::FlightModelPreset::Skater)};
+    LevelSim passive{make_data(player::FlightModelPreset::Skater).compile()};
+    LevelSim stabilized{make_data(player::FlightModelPreset::Skater).compile()};
     start(passive);
     start(stabilized);
 

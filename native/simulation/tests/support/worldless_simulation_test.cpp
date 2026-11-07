@@ -1,6 +1,8 @@
 #include "worldless_simulation_test.h"
 
 #include <ioj/column_math.h>
+#include <ioj/rotator_math.h>
+#include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 
@@ -82,75 +84,100 @@ auto make_player_spawn(SimulationFixture const& fixture, Transform3d transform)
     player.transform = transform;
     return player;
 }
-auto add_player_spawn(LevelSimInitData& data, player::PlayerSpawnData spawn) -> std::uint32_t {
-    auto const entity_index{data.entity_count++};
-    data.player_entity_ref = ioj::sim::LevelEntityRef{entity_index};
-    data.player.emplace(spawn);
-    return entity_index;
+auto SimulationScenario::compile() && -> LevelSimInitData {
+    if (entities.empty()) {
+        assert(!mission);
+        return std::move(runtime);
+    }
+
+    levels::LevelDefinitionComponents authored{
+        .metadata = {.id = levels::LevelId{"test-scenario"}, .title = "Test scenario"},
+        .mission = std::move(mission),
+        .entities = std::move(entities),
+    };
+    auto const player{std::ranges::find(authored.entities,
+                                        levels::EntityArchetype::PlayerFighter,
+                                        &levels::EntitySpawnDefinition::archetype)};
+    if (player != authored.entities.end()) {
+        authored.player_entity_id = player->id;
+    } else {
+        authored.camera = levels::LevelCameraDefinition{
+            .target_entity_ids = {authored.entities.front().id},
+            .offset_direction = {-1., 0., 0.},
+            .distance = 1000.,
+        };
+    }
+    auto definition{levels::LevelDefinition::make(std::move(authored))};
+    assert(definition);
+    auto compiled{levels::compile_level(*definition, runtime)};
+    assert(compiled);
+    return std::move(runtime);
 }
-auto add_capital_spawn(LevelSimInitData& data,
+
+auto add_player_spawn(SimulationScenario& data, player::PlayerSpawnData spawn) -> std::uint32_t {
+    auto const index{static_cast<std::uint32_t>(data.entities.size())};
+    data.entities.push_back({
+        .id = levels::EntityId{"entity-" + std::to_string(index)},
+        .archetype = levels::EntityArchetype::PlayerFighter,
+        .team = spawn.team,
+        .position = spawn.transform.location,
+        .rotation = spawn.transform.rotator(),
+    });
+    data.runtime.player.emplace(std::move(spawn));
+    return index;
+}
+auto add_capital_spawn(SimulationScenario& data,
                        Vector3f location,
                        Team team,
                        float initial_spawn_delay,
                        float spawn_cooldown,
-                       std::int32_t health) -> std::uint32_t {
-    auto& storage{data.level_events.capital_spawns};
-    auto const row{storage.num()};
-    auto& definitions{data.level_events};
-    auto const group{definitions.spawn_groups.num()};
-    definitions.add_spawn_group(EntityType::CapitalShip, row, 1);
-    definitions.initial_events.push_back(definitions.add_spawn_event({group, 1}));
-    auto const entity_index{data.entity_count++};
-    storage.add_defaulted(1);
-    auto const events{storage.view()};
-    events.entity_indices()[row] = ioj::sim::LevelEntityRef{entity_index};
-    set_vector(events.view_locations(), row, location);
-    events.teams()[row] = team;
-    events.healths()[row] = health == -1 ? data.capital_ships.max_health : Health{health};
-    events.initial_fighter_spawn_delays()[row] = initial_spawn_delay;
-    events.fighter_spawn_cooldowns()[row] = spawn_cooldown;
-    return entity_index;
+                       std::optional<settings::PositiveHealth> health) -> std::uint32_t {
+    auto const index{static_cast<std::uint32_t>(data.entities.size())};
+    data.entities.push_back({
+        .id = levels::EntityId{"entity-" + std::to_string(index)},
+        .archetype = levels::EntityArchetype::CapitalShip,
+        .team = team,
+        .position = Vector3d{location},
+        .overrides =
+            {
+                .health = health,
+                .initial_spawn_delay = NonNegativeFinite<float>::make(initial_spawn_delay),
+                .spawn_cooldown = NonNegativeFinite<float>::make(spawn_cooldown),
+            },
+    });
+    return index;
 }
-auto add_turret_spawn(LevelSimInitData& data,
+auto add_turret_spawn(SimulationScenario& data,
                       Vector3f location,
                       Rotator3f rotation,
                       Team team,
-                      std::int32_t health,
-                      std::int32_t laser_damage) -> std::uint32_t {
-    auto& storage{data.level_events.turret_spawns};
-    auto const row{storage.num()};
-    auto& definitions{data.level_events};
-    auto const group{definitions.spawn_groups.num()};
-    definitions.add_spawn_group(EntityType::Turret, row, 1);
-    definitions.initial_events.push_back(definitions.add_spawn_event({group, 1}));
-    auto const entity_index{data.entity_count++};
-    storage.add_defaulted(1);
-    auto const events{storage.view()};
-    events.entity_indices()[row] = ioj::sim::LevelEntityRef{entity_index};
-    set_vector(events.view_locations(), row, location);
-    set_rotation(events.view_rotations(), row, rotation);
-    events.teams()[row] = team;
-    events.healths()[row] = health == -1 ? data.turrets.max_health : Health{health};
-    events.laser_damages()[row] = laser_damage == -1 ? data.turrets.laser.damage : laser_damage;
-    return entity_index;
+                      std::optional<settings::PositiveHealth> health,
+                      std::optional<NonNegative<std::int32_t>> laser_damage) -> std::uint32_t {
+    auto const index{static_cast<std::uint32_t>(data.entities.size())};
+    data.entities.push_back({
+        .id = levels::EntityId{"entity-" + std::to_string(index)},
+        .archetype = levels::EntityArchetype::StaticTurret,
+        .team = team,
+        .position = Vector3d{location},
+        .rotation = {rotation.pitch, rotation.yaw, rotation.roll},
+        .overrides = {.health = health, .laser_damage = laser_damage},
+    });
+    return index;
 }
-auto add_spinner_spawn(LevelSimInitData& data,
+auto add_spinner_spawn(SimulationScenario& data,
                        Vector3f location,
                        float const yaw,
                        std::int32_t const initial_fire_point_index) -> std::uint32_t {
-    auto& storage{data.level_events.spinner_spawns};
-    auto const row{storage.num()};
-    auto& definitions{data.level_events};
-    auto const group{definitions.spawn_groups.num()};
-    definitions.add_spawn_group(EntityType::TubeSpinner, row, 1);
-    definitions.initial_events.push_back(definitions.add_spawn_event({group, 1}));
-    auto const entity_index{data.entity_count++};
-    storage.add_defaulted(1);
-    auto const events{storage.view()};
-    events.entity_indices()[row] = ioj::sim::LevelEntityRef{entity_index};
-    set_vector(events.view_locations(), row, location);
-    events.yaws()[row] = yaw;
-    events.initial_fire_point_indices()[row] = initial_fire_point_index;
-    return entity_index;
+    auto const index{static_cast<std::uint32_t>(data.entities.size())};
+    data.entities.push_back({
+        .id = levels::EntityId{"entity-" + std::to_string(index)},
+        .archetype = levels::EntityArchetype::TubeSpinner,
+        .team = Team::White,
+        .position = Vector3d{location},
+        .rotation = {0., yaw, 0.},
+        .overrides = {.initial_fire_point =
+                          NonNegative<std::int32_t>::make(initial_fire_point_index)},
+    });
+    return index;
 }
 }

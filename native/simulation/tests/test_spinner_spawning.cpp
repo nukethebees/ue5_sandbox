@@ -15,7 +15,7 @@ struct SpinnerSpawnTestAccess {
     static void spawn(Sim& simulation,
                       vectors3f::ResolvedConstView locations,
                       std::span<float const> yaws,
-                      std::span<std::int32_t const> fire_points,
+                      std::span<NonNegative<std::int32_t> const> fire_points,
                       SpawnContext context) {
         simulation.spawn_instances(locations, yaws, fire_points, context);
     }
@@ -55,7 +55,8 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     locations.set(1, Vector3f{{4.f, 5.f, 6.f}});
     locations.set(2, Vector3f{{7.f, 8.f, 9.f}});
     std::vector<float> const yaws{10.f, 20.f, 30.f};
-    std::vector<std::int32_t> const fire_points{2, 0, 1};
+    std::vector<NonNegative<std::int32_t>> const fire_points{
+        NonNegative<std::int32_t>{2}, NonNegative<std::int32_t>{0}, NonNegative<std::int32_t>{1}};
     Access::spawn(simulation,
                   locations.left(1).const_view().resolve(),
                   std::span{yaws}.first(1),

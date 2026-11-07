@@ -27,25 +27,32 @@ constexpr float miss_max_distance{500.f};
 }
 
 void run_worldless_laser_lifecycle(LaserLifecycleScenario const scenario) {
-    auto data{tests::make_simulation_data(tests::make_fixture())};
-    data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
+    tests::SimulationScenario data{tests::make_simulation_data(tests::make_fixture())};
+    data.runtime.capital_ships.fighter_spawn_slots = 0;
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     tests::add_capital_spawn(
-        data, Vector3f{{-4000.f, 0.f, 0.f}}, Team::Blue, 60.f, 60.f, normal_target_health);
-    tests::add_capital_spawn(data,
-                             Vector3f{{4000.f, 0.f, 0.f}},
-                             Team::Red,
-                             60.f,
-                             60.f,
-                             scenario == LaserLifecycleScenario::SimultaneousLethalHits
-                                 ? low_target_health
-                                 : normal_target_health);
+        data,
+        Vector3f{{-4000.f, 0.f, 0.f}},
+        Team::Blue,
+        60.f,
+        60.f,
+        ioj::settings::PositiveHealth::make(ioj::sim::Health{normal_target_health}));
+    tests::add_capital_spawn(
+        data,
+        Vector3f{{4000.f, 0.f, 0.f}},
+        Team::Red,
+        60.f,
+        60.f,
+        ioj::settings::PositiveHealth::make(ioj::sim::Health{
+            scenario == LaserLifecycleScenario::SimultaneousLethalHits ? low_target_health
+                                                                       : normal_target_health}));
     if (scenario == LaserLifecycleScenario::WorldBlocker) {
-        data.collision.static_bounds.add_defaulted(1);
-        data.collision.static_bounds.set(0, {{-1100.f, -100.f, -100.f}}, {{-900.f, 100.f, 100.f}});
+        data.runtime.collision.static_bounds.add_defaulted(1);
+        data.runtime.collision.static_bounds.set(
+            0, {{-1100.f, -100.f, -100.f}}, {{-900.f, 100.f, 100.f}});
     }
 
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto const& lasers{harness.simulation().lasers()};
     auto const& capitals{harness.simulation().capital_ships()};

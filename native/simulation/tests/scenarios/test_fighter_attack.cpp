@@ -48,25 +48,34 @@ TEST(WorldlessSpaceGameSimulation, FightersObstacleAvoidance) {
     Vector3f const obstacle_min{{-1000.f, -1500.f, -1500.f}};
     Vector3f const obstacle_max{{1000.f, 1500.f, 1500.f}};
 
-    auto data{tests::make_simulation_data(config)};
-    data.fighters.health =
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
+    data.runtime.fighters.health =
         settings::PositiveHealth::make(Health{fighter_navigation_test::collision_resilient_health});
-    data.fighters.speed = 4000.f;
-    data.fighters.avoidance_update_frequency = PositiveFinite<float>::make(5.f);
-    data.fighters.avoidance_lookahead_time = NonNegativeFinite<float>::make(1.f);
-    data.fighters.avoidance_clearance_buffer = NonNegativeFinite<float>::make(100.f);
-    data.capital_ships.fighter_spawn_slots = 1;
-    data.capital_ships.fighter_spawn_slots_relative_transforms = {
+    data.runtime.fighters.speed = 4000.f;
+    data.runtime.fighters.avoidance_update_frequency = PositiveFinite<float>::make(5.f);
+    data.runtime.fighters.avoidance_lookahead_time = NonNegativeFinite<float>::make(1.f);
+    data.runtime.fighters.avoidance_clearance_buffer = NonNegativeFinite<float>::make(100.f);
+    data.runtime.capital_ships.fighter_spawn_slots = 1;
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms = {
         {.location = {3000.0, 7000.0, 0.0}}};
-    data.collision.static_bounds.add_defaulted(1);
-    data.collision.static_bounds.set(0, obstacle_min, obstacle_max);
-    tests::add_capital_spawn(
-        data, Vector3f{{source_x, -7000.f, 0.f}}, Team::Green, 0.f, 60.f, 100000);
-    tests::add_capital_spawn(data, Vector3f{{target_x, 0.f, 0.f}}, Team::Red, 60.f, 60.f, 100000);
+    data.runtime.collision.static_bounds.add_defaulted(1);
+    data.runtime.collision.static_bounds.set(0, obstacle_min, obstacle_max);
+    tests::add_capital_spawn(data,
+                             Vector3f{{source_x, -7000.f, 0.f}},
+                             Team::Green,
+                             0.f,
+                             60.f,
+                             ioj::settings::PositiveHealth::make(ioj::sim::Health{100000}));
+    tests::add_capital_spawn(data,
+                             Vector3f{{target_x, 0.f, 0.f}},
+                             Team::Red,
+                             60.f,
+                             60.f,
+                             ioj::settings::PositiveHealth::make(ioj::sim::Health{100000}));
     auto const fighter_radius{
-        collision::get_entity_radius(data.collision.entity_bounds, EntityType::Fighter)};
+        collision::get_entity_radius(data.runtime.collision.entity_bounds, EntityType::Fighter)};
 
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto const& fighters{harness.simulation().fighters()};
     auto const clearance{fighter_radius + 100.f};
@@ -106,19 +115,30 @@ TEST(WorldlessSpaceGameSimulation, FightersObstacleAvoidance) {
 auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
                                        std::vector<Transform3d> const& spawn_slots,
                                        Vector3f const source_location,
-                                       Vector3f const target_location) -> LevelSimInitData {
-    auto data{tests::make_simulation_data(config)};
-    data.fighters.health =
+                                       Vector3f const target_location)
+    -> tests::SimulationScenario {
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
+    data.runtime.fighters.health =
         settings::PositiveHealth::make(Health{fighter_navigation_test::collision_resilient_health});
-    data.fighters.speed = 4000.f;
-    data.fighters.avoidance_lookahead_time = NonNegativeFinite<float>::make(1.f);
-    data.fighters.laser.max_distance = PositiveFinite<float>::make(2000.f);
-    data.fighters.separation_radius = PositiveFinite<float>::make(1500.f);
-    data.fighters.separation_strength = NonNegativeFinite<float>::make(1.5f);
-    data.capital_ships.fighter_spawn_slots = static_cast<std::int32_t>(spawn_slots.size());
-    data.capital_ships.fighter_spawn_slots_relative_transforms = spawn_slots;
-    tests::add_capital_spawn(data, source_location, Team::Green, 0.f, 60.f, 100000);
-    tests::add_capital_spawn(data, target_location, Team::Red, 60.f, 60.f, 100000);
+    data.runtime.fighters.speed = 4000.f;
+    data.runtime.fighters.avoidance_lookahead_time = NonNegativeFinite<float>::make(1.f);
+    data.runtime.fighters.laser.max_distance = PositiveFinite<float>::make(2000.f);
+    data.runtime.fighters.separation_radius = PositiveFinite<float>::make(1500.f);
+    data.runtime.fighters.separation_strength = NonNegativeFinite<float>::make(1.5f);
+    data.runtime.capital_ships.fighter_spawn_slots = static_cast<std::int32_t>(spawn_slots.size());
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms = spawn_slots;
+    tests::add_capital_spawn(data,
+                             source_location,
+                             Team::Green,
+                             0.f,
+                             60.f,
+                             ioj::settings::PositiveHealth::make(ioj::sim::Health{100000}));
+    tests::add_capital_spawn(data,
+                             target_location,
+                             Team::Red,
+                             60.f,
+                             60.f,
+                             ioj::settings::PositiveHealth::make(ioj::sim::Health{100000}));
     return data;
 }
 
@@ -127,32 +147,48 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationCapitalObstruction) {
     Vector3f const source{{-18000.f, -7000.f, 0.f}};
     Vector3f const obstacle{{0.f, 0.f, 0.f}};
     Vector3f const target{{18000.f, 0.f, 0.f}};
-    auto data{tests::make_simulation_data(config)};
-    data.fighters.health =
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
+    data.runtime.fighters.health =
         settings::PositiveHealth::make(Health{fighter_navigation_test::collision_resilient_health});
-    data.fighters.speed = 4000.f;
-    data.fighters.avoidance_lookahead_time = NonNegativeFinite<float>::make(1.f);
-    data.fighters.laser.max_distance = PositiveFinite<float>::make(2000.f);
-    data.capital_ships.fighter_spawn_slots = 1;
-    data.capital_ships.fighter_spawn_slots_relative_transforms = {
+    data.runtime.fighters.speed = 4000.f;
+    data.runtime.fighters.avoidance_lookahead_time = NonNegativeFinite<float>::make(1.f);
+    data.runtime.fighters.laser.max_distance = PositiveFinite<float>::make(2000.f);
+    data.runtime.capital_ships.fighter_spawn_slots = 1;
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms = {
         {.location = {3000.0, 7000.0, 0.0}}};
-    tests::add_capital_spawn(data, source, Team::Green, 0.f, 60.f, 100000);
-    tests::add_capital_spawn(data, obstacle, Team::Green, 60.f, 60.f, 100000);
-    tests::add_capital_spawn(data, target, Team::Red, 60.f, 60.f, 100000);
+    tests::add_capital_spawn(data,
+                             source,
+                             Team::Green,
+                             0.f,
+                             60.f,
+                             ioj::settings::PositiveHealth::make(ioj::sim::Health{100000}));
+    tests::add_capital_spawn(data,
+                             obstacle,
+                             Team::Green,
+                             60.f,
+                             60.f,
+                             ioj::settings::PositiveHealth::make(ioj::sim::Health{100000}));
+    tests::add_capital_spawn(data,
+                             target,
+                             Team::Red,
+                             60.f,
+                             60.f,
+                             ioj::settings::PositiveHealth::make(ioj::sim::Health{100000}));
     Rotator3f const obstacle_rotation{0.f, 35.f, 0.f};
-    set_rotation(data.level_events.capital_spawns.view().view_rotations(), 1, obstacle_rotation);
+    data.entities[1].rotation = {
+        obstacle_rotation.pitch, obstacle_rotation.yaw, obstacle_rotation.roll};
 
     auto const obstacle_bounds{
-        collision::make_entity_world_bounds(data.collision.entity_bounds,
+        collision::make_entity_world_bounds(data.runtime.collision.entity_bounds,
                                             EntityType::CapitalShip,
                                             obstacle,
                                             to_quaternion(obstacle_rotation))};
     auto const capital_half_extent{((obstacle_bounds.max - obstacle_bounds.min) * 0.5f)};
     auto const fighter_radius{
-        collision::get_entity_radius(data.collision.entity_bounds, EntityType::Fighter)};
-    auto const clearance{fighter_radius + data.fighters.avoidance_clearance_buffer};
+        collision::get_entity_radius(data.runtime.collision.entity_bounds, EntityType::Fighter)};
+    auto const clearance{fighter_radius + data.runtime.fighters.avoidance_clearance_buffer};
     Vector3f const clearance_extent{{clearance, clearance, clearance}};
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto const& fighters{harness.simulation().fighters()};
     auto const expanded_min{obstacle_bounds.min - clearance_extent};
@@ -191,7 +227,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationClearPath) {
                                           {Transform3d{.location = Vector3d{3000.f, 7000.f, 0.f}}},
                                           Vector3f{{-20000.f, -7000.f, 0.f}},
                                           Vector3f{{20000.f, 0.f, 0.f}})};
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto const& fighters{harness.simulation().fighters()};
     Vector3f first_location{};
@@ -237,7 +273,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationSeparation) {
                                            Transform3d{.location = Vector3d{3000.f, 7050.f, 0.f}}},
                                           Vector3f{{-20000.f, -7000.f, 0.f}},
                                           Vector3f{{20000.f, 0.f, 0.f}})};
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto const& fighters{harness.simulation().fighters()};
     float initial_distance{};
@@ -332,11 +368,14 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     spawn_slots.assign(fighter_count, Transform3d{.location = Vector3d{3000.f, 7000.f, 0.f}});
     auto data{make_fighter_navigation_test_data(
         config, spawn_slots, Vector3f{{-20000.f, -7000.f, 0.f}}, Vector3f{{20000.f, 0.f, 0.f}})};
-    std::ranges::fill(data.level_events.capital_spawns.view().fighter_spawn_cooldowns(), 3600.f);
+    for (auto& entity : data.entities) {
+        entity.overrides.spawn_cooldown = NonNegativeFinite<float>{3600.f};
+    }
     DenseNavigationResult result;
     result.collision_distance =
-        collision::get_entity_radius(data.collision.entity_bounds, EntityType::Fighter) * 2.f;
-    tests::WorldlessSimulationTest harness{std::move(data)};
+        collision::get_entity_radius(data.runtime.collision.entity_bounds, EntityType::Fighter) *
+        2.f;
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto const& fighters{harness.simulation().fighters()};
     harness.on_end_tick = [&](LevelSim&) {
@@ -416,17 +455,17 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationHardAvoidanceAuthority) {
                                            Transform3d{.location = Vector3d{3000.f, 31600.f, 0.f}}},
                                           Vector3f{{-15000.f, -30000.f, 0.f}},
                                           Vector3f{{15000.f, 0.f, 0.f}})};
-    data.fighters.separation_strength = NonNegativeFinite<float>::make(3.f);
-    data.collision.static_bounds.add_defaulted(1);
-    data.collision.static_bounds.set(0, obstacle_min, obstacle_max);
+    data.runtime.fighters.separation_strength = NonNegativeFinite<float>::make(3.f);
+    data.runtime.collision.static_bounds.add_defaulted(1);
+    data.runtime.collision.static_bounds.set(0, obstacle_min, obstacle_max);
     auto const fighter_radius{
-        collision::get_entity_radius(data.collision.entity_bounds, EntityType::Fighter)};
-    auto const clearance{fighter_radius + data.fighters.avoidance_clearance_buffer};
+        collision::get_entity_radius(data.runtime.collision.entity_bounds, EntityType::Fighter)};
+    auto const clearance{fighter_radius + data.runtime.fighters.avoidance_clearance_buffer};
     Vector3f const clearance_extent{{clearance, clearance, clearance}};
     auto const expanded_min{obstacle_min - clearance_extent};
     auto const expanded_max{obstacle_max + clearance_extent};
 
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto const& fighters{harness.simulation().fighters()};
     bool entered_obstacle{};
@@ -469,7 +508,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationFrequency) {
                                           {Transform3d{.location = Vector3d{3000.f, 7000.f, 0.f}}},
                                           Vector3f{{-20000.f, -7000.f, 0.f}},
                                           Vector3f{{20000.f, 0.f, 0.f}})};
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     std::int32_t clear_queries{};
     bool saw_clear{};
@@ -490,13 +529,13 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationFrequency) {
 
 TEST(WorldlessSpaceGameSimulation, FightersAttackCapital) {
     auto const config{tests::make_fixture()};
-    auto data{tests::make_simulation_data(config)};
-    data.fighters.laser.projectile_speed = PositiveFinite<float>::make(20000.f);
-    data.fighters.laser.max_distance = PositiveFinite<float>::make(25000.f);
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
+    data.runtime.fighters.laser.projectile_speed = PositiveFinite<float>::make(20000.f);
+    data.runtime.fighters.laser.max_distance = PositiveFinite<float>::make(25000.f);
     tests::add_capital_spawn(data, Vector3f{{-22020.f, 2170.f, 4360.f}}, Team::Green, 0.f, 60.f);
     tests::add_capital_spawn(data, Vector3f{{17030.f, 2170.f, 4360.f}}, Team::Red, 60.f, 60.f);
 
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto const& capitals{harness.simulation().capital_ships()};
     auto const& fighters{harness.simulation().fighters()};

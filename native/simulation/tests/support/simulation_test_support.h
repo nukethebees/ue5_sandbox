@@ -35,19 +35,4 @@ inline void add_duration_limit(LevelSimInitData& data, Duration const duration) 
         data.level_events.add_stop_event(telemetry::RunEndReason::DurationReached)};
     add_timed_events(data, duration, effects);
 }
-inline void add_timed_spawn(LevelSimInitData& data,
-                            EntityType const type,
-                            std::int32_t const offset,
-                            std::int32_t const count,
-                            SimTick const trigger_tick) {
-    auto& definitions{data.level_events};
-    auto const first{definitions.spawn_groups.num()};
-    definitions.add_spawn_group(type, offset, count);
-    std::array const events{
-        definitions.add_spawn_event({first, definitions.spawn_groups.num() - first})};
-    auto const timer{data.timers.add()};
-    auto const elapsed{data.expressions.add_timer_elapsed(timer)};
-    definitions.initial_events.push_back(definitions.add_start_timer_event({timer, trigger_tick}));
-    definitions.add_trigger(elapsed, events);
-}
 }

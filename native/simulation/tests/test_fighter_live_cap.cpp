@@ -15,16 +15,18 @@ namespace {
 auto make_cap_battle(std::span<Team const> const capital_teams,
                      std::int32_t const max_live_fighters,
                      std::int32_t const spawn_slots,
-                     float const spawn_cooldown = 60.f) -> LevelSimInitData {
-    LevelSimInitData data;
-    data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
-    data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(32);
-    data.collision.overlap_response.damage_per_overlap_detection = ioj::Positive<std::int32_t>{1};
-    data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{1000});
-    data.fighters.max_live_fighters = ::ioj::NonNegative<std::int32_t>::make(max_live_fighters);
-    data.capital_ships.fighter_spawn_slots = spawn_slots;
+                     float const spawn_cooldown = 60.f) -> SimulationScenario {
+    SimulationScenario data;
+    data.runtime.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
+    data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(32);
+    data.runtime.collision.overlap_response.damage_per_overlap_detection =
+        ioj::Positive<std::int32_t>{1};
+    data.runtime.fighters.health = ::ioj::settings::PositiveHealth::make(Health{1000});
+    data.runtime.fighters.max_live_fighters =
+        ::ioj::NonNegative<std::int32_t>::make(max_live_fighters);
+    data.runtime.capital_ships.fighter_spawn_slots = spawn_slots;
     for (std::int32_t slot_index{}; slot_index < spawn_slots; ++slot_index) {
-        data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(
+        data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.push_back(
             {.location = {100.0 + slot_index * 10.0, 0.0, 0.0}});
     }
 
@@ -35,11 +37,11 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
                           capital_teams[capital_index],
                           0.f,
                           spawn_cooldown,
-                          100);
+                          ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
     }
 
     for (auto const type : EnumTraits<EntityType>::values) {
-        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        data.runtime.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
 }
@@ -73,7 +75,7 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
         auto const participants{team_view.first(team_count)};
         auto const remainder{team_count > 1 ? team_count - 1 : 0};
         auto data{make_cap_battle(participants, team_count * 3 + remainder, 4)};
-        LevelSim simulation{std::move(data)};
+        LevelSim simulation{std::move(data).compile()};
         start_and_tick(simulation);
         EXPECT_EQ(simulation.fighters().num_instances(), team_count * 3)
             << "Floor partition leaves the global remainder unused";
@@ -85,19 +87,19 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
 
     std::vector<Team> const one_capital{Team::White};
     auto data{make_cap_battle(one_capital, 7, 8)};
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     start_and_tick(simulation);
     EXPECT_EQ(simulation.fighters().num_instances(), 7)
         << "An absent team does not reserve fighter capacity";
 
     std::vector<Team> const repeated_capital_teams{Team::White, Team::White, Team::Red};
     auto inferred_data{make_cap_battle(repeated_capital_teams, 14, 8)};
-    LevelSim inferred_simulation{std::move(inferred_data)};
+    LevelSim inferred_simulation{std::move(inferred_data).compile()};
     start_and_tick(inferred_simulation);
     EXPECT_EQ(inferred_simulation.fighters().num_instances(), 14)
         << "Compiled team inference deduplicates team sources";
 
-    LevelSim empty_simulation{make_cap_battle(std::span<Team const>{}, 10, 0)};
+    LevelSim empty_simulation{make_cap_battle(std::span<Team const>{}, 10, 0).compile()};
     empty_simulation.finish_initialisation();
     auto const empty_clk_period{empty_simulation.clock().tick_period()};
     empty_simulation.start();
@@ -109,22 +111,21 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
 TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     std::vector<Team> const capitals{Team::White};
     auto initial_only{make_cap_battle(capitals, 7, 8)};
-    LevelSim initial_simulation{std::move(initial_only)};
+    LevelSim initial_simulation{std::move(initial_only).compile()};
     start_and_tick(initial_simulation);
     EXPECT_EQ(count_team(initial_simulation, Team::White), 7);
 
     auto with_reinforcements{make_cap_battle(capitals, 7, 8)};
-    auto& definitions{with_reinforcements.level_events};
-    auto const payload_offset{definitions.turret_spawns.num()};
-    definitions.turret_spawns.add_defaulted(1);
-    auto const turret{definitions.turret_spawns.view(payload_offset, 1)};
-    turret.entity_indices()[0] = ioj::sim::LevelEntityRef{with_reinforcements.entity_count++};
-    turret.teams()[0] = Team::Red;
-    turret.healths()[0] = Health{100};
-    set_vector(turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
-    add_timed_spawn(with_reinforcements, EntityType::Turret, payload_offset, 1, SimTick{100});
+    auto const turret{add_turret_spawn(with_reinforcements,
+                                       {0.f, 6000.f, 0.f},
+                                       {},
+                                       Team::Red,
+                                       settings::PositiveHealth{Health{100}},
+                                       NonNegative<std::int32_t>{0})};
+    with_reinforcements.entities[turret].spawn_time_seconds = NonNegativeFinite<double>::make(
+        100.0 / with_reinforcements.runtime.clock_settings.tick_rate.hz());
 
-    LevelSim scheduled_simulation{std::move(with_reinforcements)};
+    LevelSim scheduled_simulation{std::move(with_reinforcements).compile()};
     start_and_tick(scheduled_simulation);
     EXPECT_EQ(count_team(scheduled_simulation, Team::White), 3)
         << "Reserve the future team's share before its first entity spawns";
@@ -135,7 +136,7 @@ TEST(FighterLiveCap, UnknownTeamRejected) {
 
     std::vector<Team> const capitals{Team::Green};
     auto data{make_cap_battle(capitals, 10, 0)};
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     start_and_tick(simulation);
     auto const clk_period{simulation.clock().tick_period()};
 

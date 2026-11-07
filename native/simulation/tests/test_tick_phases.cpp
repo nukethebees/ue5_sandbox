@@ -8,22 +8,23 @@
 #include <array>
 
 namespace ioj::sim::tests::tick_phases {
-auto make_world() -> LevelSimInitData {
-    LevelSimInitData data{};
-    data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
-    data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
-    data.capital_ships.fighter_spawn_slots = 0;
-    data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(8);
-    data.collision.overlap_response.damage_per_overlap_detection = ioj::Positive<std::int32_t>{25};
+auto make_world() -> SimulationScenario {
+    SimulationScenario data{};
+    data.runtime.clock_settings.tick_rate = ioj::Frequency::make(10.0);
+    data.runtime.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
+    data.runtime.capital_ships.fighter_spawn_slots = 0;
+    data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(8);
+    data.runtime.collision.overlap_response.damage_per_overlap_detection =
+        ioj::Positive<std::int32_t>{25};
 
     for (auto const type : EnumTraits<EntityType>::values) {
-        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        data.runtime.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
 
     return data;
 }
 
-void add_moving_player(LevelSimInitData& data, Vector3d const location = {}) {
+void add_moving_player(SimulationScenario& data, Vector3d const location = {}) {
     player::PlayerSpawnData spawn{};
     spawn.transform.location = location;
     spawn.flight_models.initial_slot = player::FlightModelSlot::Fourth;
@@ -38,21 +39,18 @@ void add_moving_player(LevelSimInitData& data, Vector3d const location = {}) {
     add_player_spawn(data, spawn);
 }
 
-void schedule_turret(LevelSimInitData& data,
+auto schedule_turret(SimulationScenario& data,
                      Vector3f const location,
-                     SimTick const tick = SimTick{1}) {
-    auto& definitions{data.level_events};
-    auto const payload_offset{definitions.turret_spawns.num()};
-    definitions.turret_spawns.add_defaulted(1);
-    auto const turret_spawns{definitions.turret_spawns.view(payload_offset, 1)};
-    turret_spawns.entity_indices()[0] = ioj::sim::LevelEntityRef{data.entity_count++};
-    set_vector(turret_spawns.view_locations(), 0, location);
-    set_rotation(turret_spawns.view_rotations(), 0, {});
-    turret_spawns.teams()[0] = Team::Green;
-    turret_spawns.healths()[0] = Health{100};
-    turret_spawns.laser_damages()[0] = 0;
-
-    add_timed_spawn(data, EntityType::Turret, payload_offset, 1, tick);
+                     SimTick const tick = SimTick{1}) -> std::uint32_t {
+    auto const index{add_turret_spawn(data,
+                                      location,
+                                      {},
+                                      Team::Green,
+                                      settings::PositiveHealth{Health{100}},
+                                      NonNegative<std::int32_t>{0})};
+    data.entities[index].spawn_time_seconds = NonNegativeFinite<double>::make(
+        static_cast<double>(tick.value()) / data.runtime.clock_settings.tick_rate.hz());
+    return index;
 }
 
 void queue_capital_laser(LevelSim& simulation) {
@@ -73,10 +71,11 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
     for (auto const rate : {ShipFireRate::Single, ShipFireRate::Burst3}) {
         auto data{make_world()};
         add_moving_player(data);
-        data.player->laser_fire_rate = rate;
-        data.player->config.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(0.05f);
+        data.runtime.player->laser_fire_rate = rate;
+        data.runtime.player->config.laser.fire_cooldown =
+            ::ioj::NonNegativeFinite<float>::make(0.05f);
 
-        LevelSim simulation{std::move(data)};
+        LevelSim simulation{std::move(data).compile()};
         simulation.finish_initialisation();
         simulation.start();
         auto commands{simulation.player_ship_commands()};
@@ -98,10 +97,10 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
 TEST(TickPhases, AutomaticFireContinuesUntilReleased) {
     auto data{make_world()};
     add_moving_player(data);
-    data.player->laser_fire_rate = ShipFireRate::FullAuto;
-    data.player->config.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(0.05f);
+    data.runtime.player->laser_fire_rate = ShipFireRate::FullAuto;
+    data.runtime.player->config.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(0.05f);
 
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     simulation.start();
     auto commands{simulation.player_ship_commands()};
@@ -119,10 +118,15 @@ TEST(TickPhases, AutomaticFireContinuesUntilReleased) {
 
 TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     auto data{make_world()};
-    add_capital_spawn(data, {}, Team::White, 60.f, 60.f, 100);
+    add_capital_spawn(data,
+                      {},
+                      Team::White,
+                      60.f,
+                      60.f,
+                      ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
     schedule_turret(data, {});
 
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     auto const clk_period{simulation.clock().tick_period()};
 
@@ -163,14 +167,24 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
 TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     auto data{make_world()};
 
-    add_capital_spawn(data, {}, Team::Green, 0.f, 60.f, 100);
-    add_capital_spawn(data, {{2000.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
-    data.capital_ships.fighter_spawn_slots = 1;
-    data.capital_ships.fighter_spawn_slots_relative_transforms = {{}};
-    data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
-    data.fighters.speed = 0.f;
+    add_capital_spawn(data,
+                      {},
+                      Team::Green,
+                      0.f,
+                      60.f,
+                      ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
+    add_capital_spawn(data,
+                      {{2000.f, 0.f, 0.f}},
+                      Team::White,
+                      60.f,
+                      60.f,
+                      ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
+    data.runtime.capital_ships.fighter_spawn_slots = 1;
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms = {{}};
+    data.runtime.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
+    data.runtime.fighters.speed = 0.f;
 
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     auto const clk_period{simulation.clock().tick_period()};
 
@@ -199,7 +213,7 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
     auto data{make_world()};
     add_moving_player(data);
 
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     auto const clk_period{simulation.clock().tick_period()};
 
@@ -229,9 +243,14 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
 TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
     auto data{make_world()};
     add_moving_player(data);
-    add_capital_spawn(data, {{0.f, 100.f, 0.f}}, Team::White, 0.f, 60.f, 100);
+    add_capital_spawn(data,
+                      {{0.f, 100.f, 0.f}},
+                      Team::White,
+                      0.f,
+                      60.f,
+                      ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
 
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     auto const clk_period{simulation.clock().tick_period()};
     simulation.player_ship_commands()->set_right_input(1.f);
@@ -248,10 +267,15 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
 
 TEST(TickPhases, AuthoredSpawnCanBeHitOnItsDispatchTick) {
     auto data{make_world()};
-    add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
+    add_capital_spawn(data,
+                      {{-2000.f, 0.f, 0.f}},
+                      Team::White,
+                      60.f,
+                      60.f,
+                      ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
     schedule_turret(data, {{500.f, 100.f, 0.f}}, SimTick{1});
 
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
 
     queue_capital_laser(simulation);
@@ -273,21 +297,27 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsDispatchTick) {
 
 TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
     auto data{make_world()};
-    data.collision.overlap_response.damage_per_overlap_detection = ioj::Positive<std::int32_t>{100};
-    auto const capital_index{add_capital_spawn(data, {}, Team::White, 60.f, 60.f, 1000)};
-    schedule_turret(data, {});
-    auto const turret_index{data.level_events.turret_spawns.const_view().entity_indices()[0]};
+    data.runtime.collision.overlap_response.damage_per_overlap_detection =
+        ioj::Positive<std::int32_t>{100};
+    auto const capital_index{
+        add_capital_spawn(data,
+                          {},
+                          Team::White,
+                          60.f,
+                          60.f,
+                          ioj::settings::PositiveHealth::make(ioj::sim::Health{1000}))};
+    auto const turret_index{schedule_turret(data, {})};
     levels::ObjectiveDefinition objective{.team = Team::White};
     objective.expressions = {
         {ioj::levels::TimeElapsedExpr{.seconds = ioj::NonNegativeFinite<double>::make(10)}},
         destroyed(capital_index),
-        destroyed(turret_index.index()),
+        destroyed(turret_index),
         {ioj::levels::AnyExpr{.children = {1, 2}}}};
     objective.roots[ioj::ObjectiveOutcome::Passed] = 0;
     objective.roots[ioj::ObjectiveOutcome::Failed] = 3;
     install_mission(data, std::move(objective));
 
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     auto const clk_period{simulation.clock().tick_period()};
 
@@ -327,9 +357,14 @@ TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
 TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterward) {
     auto data{make_world()};
     add_moving_player(data, {500.0, 0.0, 0.0});
-    add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
+    add_capital_spawn(data,
+                      {{-2000.f, 0.f, 0.f}},
+                      Team::White,
+                      60.f,
+                      60.f,
+                      ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
 
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
 
     auto const& laser_sim{simulation.lasers()};
@@ -366,7 +401,7 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterwa
 TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
     auto data{make_world()};
     add_moving_player(data);
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     auto const clk_period{simulation.clock().tick_period()};
     auto const* player{simulation.player_ship_simulation()};
@@ -391,8 +426,13 @@ TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
 
 TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     auto data{make_world()};
-    add_capital_spawn(data, {{40.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
-    LevelSim simulation{std::move(data)};
+    add_capital_spawn(data,
+                      {{40.f, 0.f, 0.f}},
+                      Team::White,
+                      60.f,
+                      60.f,
+                      ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     auto const clk_period{simulation.clock().tick_period()};
     lasers::LaserSpawnRequests shot;
@@ -420,11 +460,21 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
         auto data{make_world()};
 
         auto const first{
-            add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::Green, 0.f, 60.f, 100)};
+            add_capital_spawn(data,
+                              {{-2000.f, 0.f, 0.f}},
+                              Team::Green,
+                              0.f,
+                              60.f,
+                              ioj::settings::PositiveHealth::make(ioj::sim::Health{100}))};
         auto const second{
-            add_capital_spawn(data, {{2000.f, 0.f, 0.f}}, Team::White, 0.f, 60.f, 100)};
-        data.capital_ships.fighter_spawn_slots = 1;
-        data.capital_ships.fighter_spawn_slots_relative_transforms = {
+            add_capital_spawn(data,
+                              {{2000.f, 0.f, 0.f}},
+                              Team::White,
+                              0.f,
+                              60.f,
+                              ioj::settings::PositiveHealth::make(ioj::sim::Health{100}))};
+        data.runtime.capital_ships.fighter_spawn_slots = 1;
+        data.runtime.capital_ships.fighter_spawn_slots_relative_transforms = {
             {.location = {0.0, 500.0, 0.0}}};
 
         levels::ObjectiveDefinition objective{.team = Team::White};
@@ -435,7 +485,7 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
         objective.roots[ioj::ObjectiveOutcome::Passed] = 2;
         install_mission(data, std::move(objective));
 
-        LevelSim simulation{std::move(data)};
+        LevelSim simulation{std::move(data).compile()};
         simulation.finish_initialisation();
 
         auto const& ledger{simulation.entity_ledger()};
@@ -488,9 +538,14 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
     // NOLINTEND(ioj-loop-view-accessor-call)
     auto data{make_world()};
     for (auto const x : {-2000.f, 0.f, 2000.f}) {
-        add_capital_spawn(data, {{x, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
+        add_capital_spawn(data,
+                          {{x, 0.f, 0.f}},
+                          Team::White,
+                          60.f,
+                          60.f,
+                          ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
     }
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     auto const initial{simulation.read_access().capitals().get_entities()};
     std::vector<EntityId> visual_ids{initial.entity_ids().begin(), initial.entity_ids().end()};

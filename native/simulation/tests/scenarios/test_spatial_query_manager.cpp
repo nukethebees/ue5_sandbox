@@ -19,13 +19,13 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
                                           {{0.f, -distance, 0.f}},
                                           {{distance, 0.f, 0.f}},
                                           {{-distance, 0.f, 0.f}}};
-    auto data{tests::make_simulation_data(config)};
-    data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
+    data.runtime.capital_ships.fighter_spawn_slots = 0;
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     for (auto const location : locations) {
         tests::add_capital_spawn(data, location, Team::White, 999.f, 999.f);
     }
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     auto const& capitals{harness.simulation().capital_ships()};
     auto const capital_ids{capitals.get_entities().entity_ids()};

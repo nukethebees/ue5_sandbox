@@ -81,12 +81,17 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
         data.level_events.add_spawn_event({group, data.level_events.spawn_groups.num() - group}));
     auto const add_capital{
         [&](ioj::sim::LevelEntityRef const entity, ioj::Team const team, float const x) {
-            spawn_storage.add(entity, {x, 0.f, 0.f}, {}, team, ioj::sim::Health{100}, 60.f, 60.f);
+            spawn_storage.add(entity,
+                              {x, 0.f, 0.f},
+                              {},
+                              team,
+                              ioj::sim::Health{100},
+                              ioj::NonNegativeFinite<float>{60.f},
+                              ioj::NonNegativeFinite<float>{60.f});
         }};
     add_capital(ioj::sim::LevelEntityRef{0}, ioj::Team::Green, -1000.f);
     add_capital(ioj::sim::LevelEntityRef{1}, ioj::Team::White, 1000.f);
 
-    data.entity_count = 2;
     return data;
 }
 
@@ -110,12 +115,12 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
                        .archetype = ioj::levels::EntityArchetype::CapitalShip,
                        .team = ioj::Team::Red,
                        .position = {1000.0, 0.0, 0.0},
-                       .spawn_time_seconds = 0.21},
+                       .spawn_time_seconds = ioj::NonNegativeFinite<double>{0.21}},
                       {.id = ioj::levels::EntityId{"spinner"},
                        .archetype = ioj::levels::EntityArchetype::TubeSpinner,
                        .team = ioj::Team::White,
                        .position = {5000.0, 0.0, 0.0},
-                       .spawn_time_seconds = 0.21}}})};
+                       .spawn_time_seconds = ioj::NonNegativeFinite<double>{0.21}}}})};
     check(definition);
     auto compiled{ioj::levels::compile_level(*definition, data)};
     check(compiled);
@@ -265,16 +270,18 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     definitions.add_spawn_group(ioj::sim::EntityType::Turret, 0, count);
     definitions.initial_events.push_back(
         definitions.add_spawn_event({group, definitions.spawn_groups.num() - group}));
+    auto const first_entity{definitions.spawn_count()};
     definitions.turret_spawns.add_uninitialised(count);
     auto const turrets{definitions.turret_spawns.view()};
     TArray<FTransform> expected;
     for (int32 index{}; index < count; ++index) {
-        turrets.entity_indices()[index] = ioj::sim::LevelEntityRef{data.entity_count++};
+        turrets.entity_indices()[index] =
+            ioj::sim::LevelEntityRef{first_entity + static_cast<uint32>(index)};
         ioj::set_vector(turrets.view_locations(), index, locations[index]);
         ioj::set_rotation(turrets.view_rotations(), index, rotations[index]);
         turrets.teams()[index] = ioj::Team::Green;
         turrets.healths()[index] = ioj::sim::Health{100};
-        turrets.laser_damages()[index] = 0;
+        turrets.laser_damages()[index] = ioj::NonNegative<std::int32_t>{0};
         expected.Emplace(FRotator{ioj::to_unreal(rotations[index])},
                          FVector{ioj::to_unreal(locations[index])});
     }
@@ -356,8 +363,8 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     auto scheduled_battle{make_scheduled_battle()};
     auto const scheduled_spawns{scheduled_battle.level_events.capital_spawns.view(1, 1)};
     scheduled_spawns.view_locations().xs()[0] = -1000.f;
-    scheduled_spawns.healths()[0] = ::ioj::sim::Health{100};
-    scheduled_battle.level_events.capital_spawns.view().healths()[0] = ::ioj::sim::Health{10000};
+    scheduled_spawns.healths()[0] = ioj::sim::Health{100};
+    scheduled_battle.level_events.capital_spawns.view().healths()[0] = ioj::sim::Health{10000};
     scheduled_battle.collision.overlap_response.damage_per_overlap_detection =
         ioj::Positive<std::int32_t>{100};
     ::ioj::sim::LevelSim simulation{MoveTemp(scheduled_battle)};
@@ -526,7 +533,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     auto data{make_battle()};
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
     data.spinners.fire_point_offsets.push_back({{100.f, 0.f, 0.f}, {}});
-    data.player_entity_ref = ioj::sim::LevelEntityRef{data.entity_count++};
+    data.player_entity_ref = ioj::sim::LevelEntityRef{data.level_events.spawn_count()};
     data.player = actor->make_spawn_data();
     auto& active_profile{::ioj::sim::player::flight_model_profile(
         data.player->flight_models, data.player->flight_models.initial_slot)};

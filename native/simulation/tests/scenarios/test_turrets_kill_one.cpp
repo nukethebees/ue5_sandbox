@@ -11,7 +11,7 @@ namespace ioj::sim {
 enum class TurretCombatScenario : std::uint8_t { KillEnemy, ZeroDamage };
 
 namespace {
-void add_worldless_turrets(LevelSimInitData& data,
+void add_worldless_turrets(tests::SimulationScenario& data,
                            std::span<Vector3f const> const locations,
                            std::span<Team const> const teams,
                            std::int32_t const laser_damage,
@@ -21,8 +21,13 @@ void add_worldless_turrets(LevelSimInitData& data,
     for (std::int32_t i{}; i < count; ++i) {
         auto const health{blue_health != -1 && teams[i] == Team::Blue
                               ? blue_health
-                              : data.turrets.max_health.get().value()};
-        tests::add_turret_spawn(data, locations[i], {}, teams[i], health, laser_damage);
+                              : data.runtime.turrets.max_health.get().value()};
+        tests::add_turret_spawn(data,
+                                locations[i],
+                                {},
+                                teams[i],
+                                ioj::settings::PositiveHealth::make(ioj::sim::Health{health}),
+                                ioj::NonNegative<std::int32_t>::make(laser_damage));
     }
 }
 }
@@ -38,14 +43,15 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
                                                  {{190.f, 2280.f, 40.f}}};
     static std::vector<Team> const teams{
         Team::Blue, Team::Blue, Team::Blue, Team::Blue, Team::Blue, Team::Blue, Team::Red};
-    auto data{tests::make_simulation_data(config)};
-    data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-    auto const damage{scenario == TurretCombatScenario::ZeroDamage ? 0 : data.turrets.laser.damage};
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
+    data.runtime.capital_ships.fighter_spawn_slots = 0;
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
+    auto const damage{
+        scenario == TurretCombatScenario::ZeroDamage ? 0 : data.runtime.turrets.laser.damage};
     add_worldless_turrets(
         data, locations, teams, damage, scenario == TurretCombatScenario::KillEnemy ? 100000 : -1);
 
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     std::vector<Health> initial_healths{};
     auto const& initial_view{harness.simulation().turrets()};
@@ -81,13 +87,13 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
 
 TEST(WorldlessSpaceGameSimulation, TurretsLineOfSightBlocking) {
     auto const config{tests::make_fixture()};
-    auto data{tests::make_simulation_data(config)};
-    data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
+    data.runtime.capital_ships.fighter_spawn_slots = 0;
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     std::vector<Vector3f> const locations{{{-5000.f, 0.f, 0.f}}, {{5000.f, 0.f, 0.f}}};
     std::vector<Team> const teams{Team::Blue, Team::Red};
     add_worldless_turrets(data, locations, teams, 0);
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     std::uint32_t spawn_count_before_blocker{std::numeric_limits<std::uint32_t>::max()};
     harness.timeline
@@ -108,15 +114,15 @@ TEST(WorldlessSpaceGameSimulation, TurretsLineOfSightBlocking) {
 
 TEST(WorldlessSpaceGameSimulation, TurretsSearchRequiresLineOfSight) {
     auto const config{tests::make_fixture()};
-    auto data{tests::make_simulation_data(config)};
-    data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
+    data.runtime.capital_ships.fighter_spawn_slots = 0;
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     std::vector<Vector3f> const locations{
         {{-1000.f, 0.f, 0.f}}, {{1000.f, 0.f, 0.f}}, {{1000.f, 1000.f, 0.f}}};
     std::vector<Team> const teams{Team::Blue, Team::Red, Team::Red};
     add_worldless_turrets(data, locations, teams, 0);
-    data.collision.static_bounds.add({{-100.f, -300.f, -3000.f}}, {{100.f, 300.f, 3000.f}});
-    tests::WorldlessSimulationTest harness{std::move(data)};
+    data.runtime.collision.static_bounds.add({{-100.f, -300.f, -3000.f}}, {{100.f, 300.f, 3000.f}});
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
     harness.finish_initialisation();
     harness.timeline.finish_at(1.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(1.5)) << "Turret search timeline completes";

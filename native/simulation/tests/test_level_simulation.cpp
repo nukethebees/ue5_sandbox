@@ -45,28 +45,38 @@ static_assert(
         decltype(std::declval<lasers::Sim const&>().get_entities().lifetimes_remaining()[0])>>);
 
 namespace {
-auto make_battle_config() -> LevelSimInitData {
-    LevelSimInitData data;
-    data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
-    data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
-    data.capital_ships.fighter_spawn_slots = 0;
+auto make_battle_config() -> SimulationScenario {
+    SimulationScenario data;
+    data.runtime.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
+    data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
+    data.runtime.capital_ships.fighter_spawn_slots = 0;
     for (auto const type : EnumTraits<EntityType>::values) {
-        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        data.runtime.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
 }
 
-auto make_battle() -> LevelSimInitData {
+auto make_battle() -> SimulationScenario {
     auto data{make_battle_config()};
-    add_capital_spawn(data, {{-1000.f, 0.f, 0.f}}, Team::Green, 60.f, 60.f, 100);
-    add_capital_spawn(data, {{1000.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
+    add_capital_spawn(data,
+                      {{-1000.f, 0.f, 0.f}},
+                      Team::Green,
+                      60.f,
+                      60.f,
+                      ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
+    add_capital_spawn(data,
+                      {{1000.f, 0.f, 0.f}},
+                      Team::White,
+                      60.f,
+                      60.f,
+                      ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
     return data;
 }
 
-auto make_scheduled_battle() -> LevelSimInitData {
+auto make_scheduled_battle() -> SimulationScenario {
     auto data{make_battle_config()};
-    data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{100});
-    data.clock_settings.tick_rate = Frequency::make(10.0);
+    data.runtime.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{100});
+    data.runtime.clock_settings.tick_rate = Frequency::make(10.0);
     auto definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
         (level :id 'scheduled-battle :title "Scheduled Battle"
           :camera (camera :look-at '(hero) :offset-direction '(-1 0 0) :distance 1000)
@@ -75,19 +85,22 @@ auto make_scheduled_battle() -> LevelSimInitData {
             (entity :id 'enemy :archetype 'capital-ship :team 'red :position '(1000 0 0)
               :spawn-at 0.21))))")};
     assert(definition);
-    auto compiled{levels::compile_level(*definition, data)};
-    assert(compiled);
+    data.entities.assign(definition->entities().begin(), definition->entities().end());
     return data;
 }
 
-auto make_overlap_response_battle() -> LevelSimInitData {
+auto make_overlap_response_battle() -> SimulationScenario {
     auto data{make_battle()};
-    data.collision.overlap_response.damage_per_overlap_detection = ioj::Positive<std::int32_t>{50};
-    std::ranges::fill(data.level_events.capital_spawns.view().healths(), Health{5000});
+    data.runtime.collision.overlap_response.damage_per_overlap_detection =
+        ioj::Positive<std::int32_t>{50};
+    for (auto& entity : data.entities) {
+        entity.overrides.health = settings::PositiveHealth{Health{5000}};
+    }
     add_player_spawn(data, {});
-    data.player->transform.location = {-1000.0, 0.0, 0.0};
-    data.player->health = {Health{150}, Health{150}};
-    data.collision.entity_bounds.set_half_extents(EntityType::CapitalShip, {{100.f, 100.f, 100.f}});
+    data.runtime.player->transform.location = {-1000.0, 0.0, 0.0};
+    data.runtime.player->health = {Health{150}, Health{150}};
+    data.runtime.collision.entity_bounds.set_half_extents(EntityType::CapitalShip,
+                                                          {{100.f, 100.f, 100.f}});
     return data;
 }
 
@@ -134,12 +147,12 @@ TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGe
                        .archetype = levels::EntityArchetype::PlayerFighter,
                        .team = Team::Blue,
                        .position = {1200.0, 200.0, 0.0},
-                       .overrides = {.health = 275}}},
+                       .overrides = {.health = settings::PositiveHealth{Health{275}}}}},
          .settings = {.tick = {.tick_rate = Frequency::make(30.0)},
                       .fighters = {.speed = 1234.f}}})};
     ASSERT_TRUE(definition);
     auto const fixture{make_fixture()};
-    auto geometry{make_simulation_data(fixture)};
+    LevelSimInitData geometry{make_simulation_data(fixture)};
     geometry.player = fixture.player;
     auto built{sim::make_level_simulation_init_data(*definition, std::move(geometry))};
     ASSERT_TRUE(built) << built.error().front();
@@ -169,7 +182,7 @@ TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGe
 }
 
 TEST(NativeSimulation, NativeStartupRejectsInvalidSpawnGeometryBeforeConstructingWorld) {
-    auto data{make_simulation_data(make_fixture())};
+    LevelSimInitData data{make_simulation_data(make_fixture())};
     data.capital_ships.fighter_spawn_slots_relative_transforms[0].location =
         Vector3d{data.collision.entity_bounds.centre(EntityType::CapitalShip)};
     auto invalid{validate_level_simulation_init_data(data)};
@@ -195,7 +208,7 @@ TEST(NativeSimulation, NativeStartupRejectsFutureSpawnsOutsideGrid) {
         :entities (list (entity :id 'capital :archetype 'capital-ship :team 'blue
                                :position '(2000000 0 0) :spawn-at 5))))")};
     ASSERT_TRUE(definition);
-    auto input{make_simulation_data(make_fixture())};
+    LevelSimInitData input{make_simulation_data(make_fixture())};
     auto built{sim::make_level_simulation_init_data(*definition, std::move(input))};
     ASSERT_FALSE(built);
     EXPECT_TRUE(std::ranges::any_of(built.error(), [](auto const& error) {
@@ -205,25 +218,18 @@ TEST(NativeSimulation, NativeStartupRejectsFutureSpawnsOutsideGrid) {
 
 TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     auto data{make_scheduled_battle()};
-    data.tick_memory_capacity_bytes = 16 * 1024 * 1024;
-    data.phase_memory_capacity_bytes = 16 * 1024 * 1024;
-    data.turrets.target_refresh_frequency = ::ioj::PositiveFinite<float>::make(10.f);
+    data.runtime.tick_memory_capacity_bytes = 16 * 1024 * 1024;
+    data.runtime.phase_memory_capacity_bytes = 16 * 1024 * 1024;
+    data.runtime.turrets.target_refresh_frequency = ::ioj::PositiveFinite<float>::make(10.f);
     // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
-    data.turrets.fire_point_offset = Vector3f{20.f, 0.f, 0.f};
-    auto& initial_storage{data.level_events.turret_spawns};
-    auto const group{data.level_events.spawn_groups.num()};
-    data.level_events.add_spawn_group(EntityType::Turret, 0, 1);
-    data.level_events.initial_events.push_back(
-        data.level_events.add_spawn_event({group, data.level_events.spawn_groups.num() - group}));
-    initial_storage.add_uninitialised(1);
-    auto const initial{initial_storage.view()};
-    initial.entity_indices()[0] = ioj::sim::LevelEntityRef{data.entity_count++};
-    set_vector(initial.view_locations(), 0, Vector3f{-1000.f, 1000.f, 0.f});
-    set_rotation(initial.view_rotations(), 0, {});
-    initial.teams()[0] = Team::Blue;
-    initial.healths()[0] = Health{100};
-    initial.laser_damages()[0] = 0;
-    LevelSim simulation{std::move(data)};
+    data.runtime.turrets.fire_point_offset = Vector3f{20.f, 0.f, 0.f};
+    add_turret_spawn(data,
+                     {-1000.f, 1000.f, 0.f},
+                     {},
+                     Team::Blue,
+                     settings::PositiveHealth{Health{100}},
+                     NonNegative<std::int32_t>{0});
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
@@ -256,11 +262,11 @@ TEST(NativeSimulation, LevelSimReturnsAllocationsToItsUpstream) {
     constexpr std::size_t frame_capacity{1024 * 1024};
     GameMemory upstream{*std::pmr::new_delete_resource()};
     auto data{make_battle()};
-    data.tick_memory_capacity_bytes = frame_capacity;
-    data.phase_memory_capacity_bytes = frame_capacity;
+    data.runtime.tick_memory_capacity_bytes = frame_capacity;
+    data.runtime.phase_memory_capacity_bytes = frame_capacity;
 
     {
-        LevelSim simulation{std::move(data), upstream};
+        LevelSim simulation{std::move(data).compile(), upstream};
         auto const stats{simulation.memory_stats()};
         EXPECT_GE(stats.live_allocation_count, 2u);
         EXPECT_GE(stats.live_bytes, 2 * frame_capacity);
@@ -291,7 +297,7 @@ TEST(NativeSimulation, PositionConditionsUseLiveSpatialDataAndRemainTerminal) {
     objective.roots = ioj::levels::ObjectiveRoots{
         std::array<ioj::levels::ExprIndex, 3>{3, 1, levels::absent_expression}};
     install_mission(data, std::move(objective));
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
     simulation.start();
@@ -320,7 +326,7 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
             :depends-on (list (objective-resolved 'destroy 'passed))
             :pass (all-of (entity-destroyed 'enemy) (objective-resolved 'destroy 'passed)))))))")};
     ASSERT_TRUE(authored);
-    auto data{make_battle_config()};
+    auto data{make_battle_config().compile()};
     data.clock_settings.tick_rate = Frequency::make(10.0);
     data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{100});
     auto compiled{levels::compile_level(*authored, data)};
@@ -359,22 +365,17 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     }};
 
     auto data{make_battle()};
-    data.clock_settings.tick_rate = Frequency::make(10.0);
+    data.runtime.clock_settings.tick_rate = Frequency::make(10.0);
     add_player_spawn(data, {});
-    data.player->team = Team::Green;
-    data.player->transform.location = {0.0, 2000.0, 0.0};
+    data.runtime.player->team = Team::Green;
+    data.runtime.player->transform.location = {0.0, 2000.0, 0.0};
     MissionDefinition definition{.objectives = {timed_objective("enemy", Team::White, 0.2),
                                                 timed_objective("player", Team::Green, 0.3),
                                                 timed_objective("optional", Team::Green, 10.0)}};
     definition.objectives[0].wins_level = ObjectiveWinsLevel::Yes;
     definition.objectives[1].wins_level = ObjectiveWinsLevel::Yes;
-    SimClock clock;
-    clock.initialise(data.clock_settings);
-    auto compiled{levels::compile_mission(
-        definition, {}, clock, data.expressions, data.timers, data.level_events)};
-    ASSERT_TRUE(compiled);
-    data.mission = std::move(*compiled);
-    LevelSim simulation{std::move(data)};
+    data.mission = std::move(definition);
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     EXPECT_FALSE(simulation.player_team_completion());
     simulation.start();
@@ -399,7 +400,7 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
 }
 
 TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumedEvents) {
-    auto data{make_battle()};
+    auto data{make_battle().compile()};
     auto& definitions{data.level_events};
     definitions.initial_events.clear();
     definitions.spawn_groups = {};
@@ -428,7 +429,7 @@ TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumed
 }
 
 TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendingEvents) {
-    auto data{make_scheduled_battle()};
+    auto data{make_scheduled_battle().compile()};
     auto& definitions{data.level_events};
     auto const second{definitions.add_stop_event(telemetry::RunEndReason::WorldEnd)};
     auto const first{definitions.add_stop_event(telemetry::RunEndReason::DurationReached)};
@@ -482,16 +483,12 @@ TEST(NativeSimulation, PlayerlessMissionCompletionStopsDispatchAndRetainsLaterEv
                                           .wins_level = ObjectiveWinsLevel::Yes};
     objective.expressions = {{levels::TimeElapsedExpr{NonNegativeFinite<double>::make(0.2)}}};
     objective.roots[ObjectiveOutcome::Passed] = 0;
-    SimClock clock;
-    clock.initialise(data.clock_settings);
-    auto mission{levels::compile_mission(
-        {.objectives = {objective}}, {}, clock, data.expressions, data.timers, data.level_events)};
-    ASSERT_TRUE(mission);
-    data.mission = std::move(*mission);
-    add_duration_limit(data, Duration::make(0.21));
+    data.mission = levels::MissionDefinition{.objectives = {std::move(objective)}};
+    auto compiled{std::move(data).compile()};
+    add_duration_limit(compiled, Duration::make(0.21));
     std::array const pause{EventHandle{0, EventKind::Pause}};
-    add_timed_events(data, Duration::make(0.21), pause);
-    LevelSim simulation{std::move(data)};
+    add_timed_events(compiled, Duration::make(0.21), pause);
+    LevelSim simulation{std::move(compiled)};
     simulation.finish_initialisation();
     simulation.start();
     simulation.advance(1.0);
@@ -517,7 +514,7 @@ TEST(NativeSimulation, PlayerlessMissionCompletionStopsDispatchAndRetainsLaterEv
 }
 
 TEST(NativeSimulation, DurationEventsDoNotRequireTelemetryRecording) {
-    auto data{make_battle()};
+    auto data{make_battle().compile()};
     data.telemetry_recording.enabled = false;
     add_duration_limit(data, Duration::make(0));
     LevelSim simulation{std::move(data)};
@@ -530,12 +527,12 @@ TEST(NativeSimulation, DurationEventsDoNotRequireTelemetryRecording) {
 
 TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancingLogicDuringSetup) {
     auto data{make_battle()};
-    data.clock_settings.tick_rate = Frequency::make(10);
-    auto& definitions{data.level_events};
-    auto const first_timer{data.timers.add()};
-    auto const second_timer{data.timers.add()};
-    auto const first_elapsed{data.expressions.add_timer_elapsed(first_timer)};
-    auto const second_elapsed{data.expressions.add_timer_elapsed(second_timer)};
+    data.runtime.clock_settings.tick_rate = Frequency::make(10);
+    auto& definitions{data.runtime.level_events};
+    auto const first_timer{data.runtime.timers.add()};
+    auto const second_timer{data.runtime.timers.add()};
+    auto const first_elapsed{data.runtime.expressions.add_timer_elapsed(first_timer)};
+    auto const second_elapsed{data.runtime.expressions.add_timer_elapsed(second_timer)};
     auto const initial_start{definitions.add_start_timer_event({first_timer, SimTick{2}})};
     auto const later_start{definitions.add_start_timer_event({second_timer, SimTick{3}})};
     definitions.initial_events.push_back(initial_start);
@@ -543,7 +540,7 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
     auto const stop{definitions.add_stop_event(telemetry::RunEndReason::DurationReached)};
     definitions.add_trigger(second_elapsed, std::array{stop});
 
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     EXPECT_TRUE(std::ranges::equal(simulation.events().pending_tick_end_events(),
                                    std::array{initial_start}));
     simulation.finish_initialisation();
@@ -572,7 +569,7 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
 }
 
 TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTerminalDispatch) {
-    auto data{make_battle()};
+    auto data{make_battle().compile()};
     auto& definitions{data.level_events};
     definitions.initial_events.clear();
     definitions.spawn_groups = {};
@@ -613,8 +610,8 @@ TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTer
 
 TEST(NativeSimulation, RunsWithoutACompletionOrDurationEvent) {
     auto data{make_battle()};
-    data.clock_settings.tick_rate = Frequency::make(10);
-    LevelSim simulation{std::move(data)};
+    data.runtime.clock_settings.tick_rate = Frequency::make(10);
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     simulation.start();
     simulation.advance(1.0);
@@ -623,7 +620,7 @@ TEST(NativeSimulation, RunsWithoutACompletionOrDurationEvent) {
 }
 
 TEST(NativeSimulation, QueuedPausePreservesPendingSpawnsAndTelemetryUntilResume) {
-    auto data{make_scheduled_battle()};
+    auto data{make_scheduled_battle().compile()};
     data.telemetry_recording.interval_ticks = 1;
     std::array const pause{EventHandle{0, EventKind::Pause}};
     add_timed_events(data, Duration::make(0.21), pause);
@@ -673,8 +670,8 @@ TEST(NativeSimulation, QueuedPausePreservesPendingSpawnsAndTelemetryUntilResume)
 
 TEST(NativeSimulation, LaserFrameOutputsTest) {
     auto data{make_battle()};
-    data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
-    LevelSim simulation{std::move(data)};
+    data.runtime.clock_settings.tick_rate = ioj::Frequency::make(10.0);
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     auto queue_shot = [](LevelSim& level, float const location) {
         lasers::LaserSpawnRequests requests;
@@ -716,7 +713,7 @@ TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
     auto data{make_battle()};
     std::array<collision::WorldAABB, 1> static_bounds{
         collision::WorldAABB{{{-10.f, 490.f, -10.f}}, {{10.f, 510.f, 10.f}}}};
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.set_static_collision(static_bounds);
     simulation.finish_initialisation();
     auto const clk_period{simulation.clock().tick_period()};
@@ -740,10 +737,21 @@ TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
 TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     auto data{make_battle()};
     add_player_spawn(data, {});
-    add_turret_spawn(data, {{0.f, -1000.f, 0.f}}, {0.f, 90.f, 0.f}, Team::Green, 20, 5);
-    add_turret_spawn(data, {{0.f, 1000.f, 0.f}}, {}, Team::White, 30, 7);
-    auto const initial_events{data.level_events.initial_events};
-    LevelSim simulation{std::move(data)};
+    add_turret_spawn(data,
+                     {{0.f, -1000.f, 0.f}},
+                     {0.f, 90.f, 0.f},
+                     Team::Green,
+                     ioj::settings::PositiveHealth::make(ioj::sim::Health{20}),
+                     ioj::NonNegative<std::int32_t>::make(5));
+    add_turret_spawn(data,
+                     {{0.f, 1000.f, 0.f}},
+                     {},
+                     Team::White,
+                     ioj::settings::PositiveHealth::make(ioj::sim::Health{30}),
+                     ioj::NonNegative<std::int32_t>::make(7));
+    auto compiled{std::move(data).compile()};
+    auto const initial_events{compiled.level_events.initial_events};
+    LevelSim simulation{std::move(compiled)};
     EXPECT_EQ(simulation.entity_ledger().count_alive(), 1)
         << "Only the player is constructed directly";
     EXPECT_TRUE(
@@ -779,9 +787,9 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
 TEST(NativeSimulation, PlayerPreservesPartialSpawnHealth) {
     auto data{make_battle()};
     add_player_spawn(data, {});
-    data.player->health = {Health{50}, Health{100}};
+    data.runtime.player->health = {Health{50}, Health{100}};
 
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
 
     auto const* const player{simulation.player_ship_simulation()};
@@ -796,30 +804,46 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     player_spawn.health = {Health{100}, Health{100}};
     player_spawn.transform.location = {0.0, 5000.0, 0.0};
     add_player_spawn(data, player_spawn);
-    add_turret_spawn(data, {{0.f, 2000.f, 0.f}}, {}, Team::Green, 100, 0);
-    add_turret_spawn(data, {{0.f, 3000.f, 0.f}}, {}, Team::White, 100, 0);
-    add_turret_spawn(data, {{0.f, 4000.f, 0.f}}, {}, Team::Green, 100, 0);
+    add_turret_spawn(data,
+                     {{0.f, 2000.f, 0.f}},
+                     {},
+                     Team::Green,
+                     ioj::settings::PositiveHealth::make(ioj::sim::Health{100}),
+                     ioj::NonNegative<std::int32_t>::make(0));
+    add_turret_spawn(data,
+                     {{0.f, 3000.f, 0.f}},
+                     {},
+                     Team::White,
+                     ioj::settings::PositiveHealth::make(ioj::sim::Health{100}),
+                     ioj::NonNegative<std::int32_t>::make(0));
+    add_turret_spawn(data,
+                     {{0.f, 4000.f, 0.f}},
+                     {},
+                     Team::Green,
+                     ioj::settings::PositiveHealth::make(ioj::sim::Health{100}),
+                     ioj::NonNegative<std::int32_t>::make(0));
 
-    data.capital_ships.fighter_spawn_slots = 2;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.resize(2);
-    data.capital_ships.fighter_spawn_slots_relative_transforms[0].location.y() = -100.0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms[1].location.y() = 100.0;
-    data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
-    data.fighters.speed = 0.f;
-    auto const capital_events{data.level_events.capital_spawns.view()};
-    std::ranges::fill(capital_events.initial_fighter_spawn_delays(), 0.f);
+    data.runtime.capital_ships.fighter_spawn_slots = 2;
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.resize(2);
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms[0].location.y() = -100.0;
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms[1].location.y() = 100.0;
+    data.runtime.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
+    data.runtime.fighters.speed = 0.f;
+    for (auto& entity : data.entities) {
+        if (entity.archetype == levels::EntityArchetype::CapitalShip) {
+            entity.overrides.initial_spawn_delay = NonNegativeFinite<float>{0.f};
+        }
+    }
+    auto const scheduled{add_turret_spawn(data,
+                                          {0.f, 6000.f, 0.f},
+                                          {},
+                                          Team::White,
+                                          settings::PositiveHealth{Health{75}},
+                                          NonNegative<std::int32_t>{0})};
+    data.entities[scheduled].spawn_time_seconds =
+        NonNegativeFinite<double>::make(4.0 / data.runtime.clock_settings.tick_rate.hz());
 
-    auto& definitions{data.level_events};
-    auto const payload_offset{definitions.turret_spawns.num()};
-    definitions.turret_spawns.add_defaulted(1);
-    auto const scheduled_turret{definitions.turret_spawns.view(payload_offset, 1)};
-    scheduled_turret.entity_indices()[0] = ioj::sim::LevelEntityRef{data.entity_count++};
-    set_vector(scheduled_turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
-    scheduled_turret.teams()[0] = Team::White;
-    scheduled_turret.healths()[0] = Health{75};
-    add_timed_spawn(data, EntityType::Turret, payload_offset, 1, SimTick{4});
-
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     simulation.start();
     auto const tick_period{simulation.clock().tick_period()};
@@ -871,13 +895,13 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
 TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
     auto data{make_battle()};
     add_player_spawn(data, {});
-    data.player->flight_models.initial_slot = player::FlightModelSlot::Fourth;
-    auto& gunship{
-        player::flight_model_profile(data.player->flight_models, player::FlightModelSlot::Fourth)};
+    data.runtime.player->flight_models.initial_slot = player::FlightModelSlot::Fourth;
+    auto& gunship{player::flight_model_profile(data.runtime.player->flight_models,
+                                               player::FlightModelSlot::Fourth)};
     gunship.config.translation.right.manual.response.mode = player::ResponseMode::Direct;
     gunship.config.translation.up.manual.response.mode = player::ResponseMode::Direct;
 
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
     simulation.start();
 
@@ -919,7 +943,7 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
 }
 
 TEST(NativeSimulation, LevelSimOverlapResponseTest) {
-    LevelSim simulation{make_overlap_response_battle()};
+    LevelSim simulation{make_overlap_response_battle().compile()};
     simulation.finish_initialisation();
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
@@ -961,8 +985,8 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
 }
 
 TEST(NativeSimulation, SimulationsKeepClocksAndEntitiesIndependent) {
-    LevelSim first{make_battle()};
-    LevelSim second{make_battle()};
+    LevelSim first{make_battle().compile()};
+    LevelSim second{make_battle().compile()};
     first.finish_initialisation();
     second.finish_initialisation();
     first.start();
@@ -981,7 +1005,7 @@ TEST(NativeSimulation, SimulationsKeepClocksAndEntitiesIndependent) {
 TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
 
     auto data{make_battle()};
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data).compile()};
     simulation.set_telemetry_metadata(telemetry::RunMetadata{
         .run_id = "12345678-1234-1234-1234-123456789abc",
         .map_name = "TelemetryTest",
