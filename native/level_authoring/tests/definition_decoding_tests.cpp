@@ -77,15 +77,36 @@ TEST(S7LevelDefinition, DecodesPlayerlessCameraDefinition) {
     EXPECT_PRED_FORMAT2(ioj::testing::structurally_equal, settings::Settings{}, result->settings());
 }
 
-TEST(S7LevelDefinition, DecodesTimedMissionValues) {
-    std::string source{scheduled_level};
-    auto const expression{std::string_view{"(entity-destroyed 'enemy)"}};
-    source.replace(source.find(expression), expression.size(), "(time-elapsed 45.5)");
-    auto const result{DefinitionReader{}.read_level_source(source)};
+TEST(S7LevelDefinition, DecodesReciprocalTimedObjectives) {
+    auto const result{DefinitionReader{IOJ_LEVEL_SCRIPTS}.read_level_source(R"(
+      (load-script "Libraries/objectives.scm")
+      (level :id 'reciprocal :title "Reciprocal" :player 'player
+        :entities (list
+          (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
+        :mission (mission :objectives
+          (reciprocal-objectives 'attack 'defend 'blue 'red
+            (time-elapsed 45.5) (time-elapsed 60)))))")};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
-    EXPECT_EQ(std::get<TimeElapsedExpr>(result->mission()->objectives[0].expressions[0].payload)
+    auto const& objectives{result->mission()->objectives};
+    ASSERT_EQ(objectives.size(), 2);
+    auto const& attack{objectives[0]};
+    auto const& defend{objectives[1]};
+    EXPECT_EQ(attack.team, Team::Blue);
+    EXPECT_EQ(attack.wins_level, ObjectiveWinsLevel::Yes);
+    EXPECT_EQ(defend.wins_level, ObjectiveWinsLevel::Yes);
+    EXPECT_EQ(std::get<TimeElapsedExpr>(
+                  attack.expressions[attack.roots[ObjectiveOutcome::Passed]].payload)
                   .seconds.get(),
               45.5);
+    EXPECT_EQ(defend.team, Team::Red);
+    EXPECT_EQ(std::get<ObjectiveResolvedExpr>(
+                  defend.expressions[defend.roots[ObjectiveOutcome::Passed]].payload)
+                  .objective,
+              (ObjectiveDependency{ObjectiveName{"attack"}, ObjectiveOutcome::Failed}));
+    EXPECT_EQ(std::get<ObjectiveResolvedExpr>(
+                  defend.expressions[defend.roots[ObjectiveOutcome::Failed]].payload)
+                  .objective,
+              (ObjectiveDependency{ObjectiveName{"attack"}, ObjectiveOutcome::Passed}));
 }
 
 TEST(S7LevelDefinition, DecodesDeclarativeUnlockCriteria) {

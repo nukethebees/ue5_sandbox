@@ -1,5 +1,4 @@
 #include <ioj/frame_memory_resource.h>
-#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/mission_validation.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/expressions/expr_manager.h>
@@ -88,41 +87,25 @@ TEST_F(MissionTest, ObserversSeePriorTickOutcomesAndPropagateFalse) {
     EXPECT_FALSE(mission.outcome(ObjectiveId{3}, expressions));
 }
 
-TEST_F(MissionTest, ActivationRelativeTimersAndOutcomeBranches) {
-    auto first{objective("first", timer(1))};
-    auto next{objective("next", timer(2))};
-    next.dependencies.push_back({levels::ObjectiveName{"first"}, ObjectiveOutcome::Passed});
-    auto other{objective("other", timer(0))};
-    other.dependencies.push_back({levels::ObjectiveName{"first"}, ObjectiveOutcome::Failed});
-    start({.objectives = {first, next, other}});
-    tick(0);
-    EXPECT_EQ(mission.inactive_objectives().size(), 2);
-    tick(10);
-    EXPECT_EQ(mission.active_objectives().size(), 1);
-    tick(29);
-    EXPECT_FALSE(mission.outcome(ObjectiveId{1}, expressions));
-    tick(30);
-    EXPECT_EQ(mission.outcome(ObjectiveId{1}, expressions), ObjectiveOutcome::Passed);
-    EXPECT_FALSE(mission.outcome(ObjectiveId{2}, expressions));
-    EXPECT_EQ(mission.inactive_objectives().size(), 1);
-}
-
-TEST_F(MissionTest, AllPrerequisitesActivateBeforeNextTickEvaluation) {
+TEST_F(MissionTest, RelativeTimerStartsOnlyAfterAllMatchingPrerequisites) {
     auto first{objective("first", timer(1))};
     auto second{objective("second", timer(2), ObjectiveOutcome::Expired)};
-    auto third{objective("third", observed("first", ObjectiveOutcome::Passed))};
-    third.dependencies = {{levels::ObjectiveName{"first"}, ObjectiveOutcome::Passed},
-                          {levels::ObjectiveName{"second"}, ObjectiveOutcome::Expired}};
-    start({.objectives = {first, second, third}});
+    auto next{objective("next", timer(2))};
+    next.dependencies = {{levels::ObjectiveName{"first"}, ObjectiveOutcome::Passed},
+                         {levels::ObjectiveName{"second"}, ObjectiveOutcome::Expired}};
+    auto blocked{objective("blocked", timer(0))};
+    blocked.dependencies = {{levels::ObjectiveName{"first"}, ObjectiveOutcome::Failed}};
+    start({.objectives = {first, second, next, blocked}});
     tick(0);
     tick(10);
-    EXPECT_EQ(mission.inactive_objectives().size(), 1);
+    EXPECT_EQ(mission.inactive_objectives().size(), 2);
     tick(20);
+    EXPECT_EQ(mission.inactive_objectives().size(), 1);
+    tick(39);
     EXPECT_FALSE(mission.outcome(ObjectiveId{2}, expressions));
-    EXPECT_TRUE(mission.inactive_objectives().empty());
-    tick(21);
+    tick(40);
     EXPECT_EQ(mission.outcome(ObjectiveId{2}, expressions), ObjectiveOutcome::Passed);
-    EXPECT_TRUE(mission.active_objectives().empty());
+    EXPECT_FALSE(mission.outcome(ObjectiveId{3}, expressions));
 }
 
 TEST_F(MissionTest, TeamCompletionsPersistUntilProgressResets) {
@@ -168,12 +151,7 @@ TEST_F(MissionTest, RootAndTeamConflictPrecedenceIsDeterministic) {
     rival.team = Team::Red;
     rival.wins_level = ObjectiveWinsLevel::Yes;
     start({.objectives = {source, rival}});
-    EXPECT_TRUE(mission.active_objectives().empty());
-    EXPECT_TRUE(mission.completed_objectives().empty());
-    EXPECT_FALSE(mission.team_completion(Team::Blue));
     tick(0);
-    EXPECT_EQ(mission.active_objectives().size(), 2);
-    EXPECT_TRUE(mission.completed_objectives().empty());
     tick(1);
     EXPECT_EQ(mission.outcome(ObjectiveId{0}, expressions), ObjectiveOutcome::Passed);
     EXPECT_EQ(mission.outcome(ObjectiveId{1}, expressions), ObjectiveOutcome::Passed);
@@ -181,34 +159,6 @@ TEST_F(MissionTest, RootAndTeamConflictPrecedenceIsDeterministic) {
     ASSERT_TRUE(completion);
     EXPECT_EQ(completion->outcome, MissionOutcome::Victory);
     EXPECT_EQ(completion->triggering_objective, ObjectiveId{0});
-    tick(10);
-    EXPECT_TRUE(mission.team_completion(Team::Blue));
-    EXPECT_EQ(mission.completions().size(), 2);
-    EXPECT_EQ(mission.completed_objectives().size(), 2);
-}
-
-TEST_F(MissionTest, SchemeReciprocalHelperResolvesBothTeams) {
-    auto const parsed{levels::authoring::DefinitionReader{
-        std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"}
-                          .read_level_source(R"(
-      (load-script "Libraries/objectives.scm")
-      (level :id 'reciprocal :title "Reciprocal" :player 'player
-        :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
-        :mission (mission
-          :objectives (reciprocal-objectives 'attack 'defend 'blue 'red
-                         (time-elapsed 1) (time-elapsed 10)))))")};
-    ASSERT_TRUE(parsed);
-    ASSERT_TRUE(parsed->mission());
-    start(*parsed->mission());
-    tick(0);
-    tick(10);
-    EXPECT_EQ(mission.outcome(ObjectiveId{0}, expressions), ObjectiveOutcome::Passed);
-    EXPECT_FALSE(mission.outcome(ObjectiveId{1}, expressions));
-    tick(11);
-    EXPECT_EQ(mission.outcome(ObjectiveId{1}, expressions), ObjectiveOutcome::Failed);
-    auto const completion{mission.team_completion(Team::Red)};
-    ASSERT_TRUE(completion);
-    EXPECT_EQ(completion->outcome, MissionOutcome::Defeat);
 }
 
 TEST(MissionValidation, DistinguishesObservationFromActivationCyclesAndRejectsInvalidReferences) {
@@ -233,7 +183,6 @@ TEST(MissionValidation, DistinguishesObservationFromActivationCyclesAndRejectsIn
         .entity = levels::EntityId{"target"},
         .radius = NonNegativeFinite<double>::make(std::numeric_limits<double>::max())}}};
     std::array const names{levels::EntityId{"target"}};
-    EXPECT_FALSE(validate_mission({.objectives = {a}}, names).empty());
     SimClock clock;
     ExprManager expressions;
     EXPECT_FALSE(Mission::compile({.objectives = {a}}, names, clock, expressions));

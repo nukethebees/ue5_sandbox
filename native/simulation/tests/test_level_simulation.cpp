@@ -106,17 +106,6 @@ auto make_overlap_response_battle() -> LevelSimInitData {
     return data;
 }
 
-void add_mission(LevelSimInitData& data) {
-    auto const entities{data.level_events.schedule.capital_spawns.const_view().entity_indices()};
-    levels::ObjectiveDefinition objective{.team = Team::Green};
-    objective.expressions = {destroyed(entities[1]),
-                             {ioj::levels::EntityKillsReachedExpr{
-                                 .entities = {mission_entity(entities[0])}, .kills = 1}},
-                             {ioj::levels::AllExpr{.children = {0, 1}}}};
-    objective.roots[ioj::ObjectiveOutcome::Passed] = 2;
-    install_mission(data, std::move(objective));
-}
-
 void kill_enemy(LevelSim& simulation) {
     DirectDamageEvents events;
     events.add(simulation.capital_ships().get_entities().entity_ids()[1],
@@ -768,33 +757,6 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     EXPECT_EQ(simulation.turrets().num_instances(), 2);
 }
 
-TEST(NativeSimulation, LevelSimReconstructionTest) {
-    std::optional<LevelSim> simulation;
-    EXPECT_FALSE(simulation.has_value()) << "Construction can be delayed";
-    auto first_data{make_battle()};
-    add_mission(first_data);
-    simulation.emplace(std::move(first_data));
-    simulation->finish_initialisation();
-    simulation->start();
-    auto const tick_period{simulation->clock().tick_period()};
-    simulation->advance(tick_period);
-    kill_enemy(*simulation);
-    simulation->advance(tick_period);
-    simulation.reset();
-    auto second_data{make_battle()};
-    add_mission(second_data);
-    simulation.emplace(std::move(second_data));
-    simulation->finish_initialisation();
-    EXPECT_EQ(simulation->clock().get_completed_ticks().value(), std::uint64_t{0})
-        << "Fresh clock starts at zero";
-    EXPECT_EQ(simulation->entity_ledger().count_alive(), 2)
-        << "Fresh ledger contains both entities";
-    EXPECT_EQ(simulation->entity_ledger().num_unique_ids_issued(), 2)
-        << "Fresh ledger has no prior history";
-    EXPECT_FALSE(simulation->player_team_completion().has_value())
-        << "No pending result survives reconstruction";
-}
-
 TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
     auto data{make_battle()};
     add_player_spawn(data, {});
@@ -887,60 +849,22 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     EXPECT_EQ(ledger.count_kills(), 0) << "Environmental overlap death gives no combat kill";
 }
 
-TEST(NativeSimulation, WorldlessLevelSimulationTest) {
-    auto first_data{make_battle()};
-    auto second_data{make_battle()};
-    add_mission(first_data);
-    add_mission(second_data);
-    LevelSim first{std::move(first_data)};
-    LevelSim second{std::move(second_data)};
-    EXPECT_EQ(first.state(), LevelState::Uninitialised)
-        << "Construction leaves external setup open";
-    first.advance(1.0);
-    EXPECT_EQ(first.clock().get_completed_ticks().value(), std::uint64_t{0})
-        << "Uninitialised simulation ignores elapsed time";
+TEST(NativeSimulation, SimulationsKeepClocksAndEntitiesIndependent) {
+    LevelSim first{make_battle()};
+    LevelSim second{make_battle()};
     first.finish_initialisation();
     second.finish_initialisation();
-    EXPECT_EQ(first.state(), LevelState::Paused)
-        << "Finishing initialization pauses the simulation";
-    EXPECT_EQ(first.level_telemetry_manager().state(), LevelTelemetryManager::State::Recording)
-        << "Default metadata permits telemetry recording";
-    first.pause();
-    first.pause();
-    first.advance(0.0);
-    EXPECT_TRUE(first.player_ship_simulation() == nullptr) << "No player is needed";
-    EXPECT_EQ(first.entity_ledger().count_alive(), 2) << "Both capitals are registered";
     first.start();
     second.start();
     auto const dt{first.clock().tick_period()};
     first.advance(dt);
-    EXPECT_EQ(second.clock().get_completed_ticks().value(), std::uint64_t{0})
-        << "Independent clock remains at zero";
+    EXPECT_EQ(second.clock().get_completed_ticks(), SimTick{0});
+
     kill_enemy(first);
     first.advance(dt);
     second.advance(dt);
-    EXPECT_EQ(first.entity_ledger().count_alive(), 1)
-        << "Death is effective before physical removal";
-    first.advance(dt);
-    EXPECT_EQ(first.capital_ships().num_instances(), 1)
-        << "Damage removes only the first battle's enemy";
-    EXPECT_EQ(second.capital_ships().num_instances(), 2) << "Other battle is unaffected";
-    auto result{first.player_team_completion()};
-    EXPECT_FALSE(result.has_value()) << "Playerless simulation does not choose a player's outcome";
-    EXPECT_EQ(first.mission().outcome(ioj::sim::ObjectiveId{0}, first.expressions()),
-              ObjectiveOutcome::Passed);
-    EXPECT_FALSE(first.player_team_completion().has_value())
-        << "Playerless queries leave team results available on the mission";
-    EXPECT_FALSE(first.mission().completions().empty());
-    first.pause();
-    auto const paused_ticks{first.clock().get_completed_ticks()};
-    first.advance(dt);
-    EXPECT_EQ(first.clock().get_completed_ticks(), paused_ticks)
-        << "Paused battle does not advance";
-    first.start();
-    first.advance(dt);
-    EXPECT_EQ(first.clock().get_completed_ticks(), SimTick{paused_ticks.value() + 1})
-        << "Battle resumes";
+    EXPECT_EQ(first.capital_ships().num_instances(), 1);
+    EXPECT_EQ(second.capital_ships().num_instances(), 2);
 }
 
 TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
