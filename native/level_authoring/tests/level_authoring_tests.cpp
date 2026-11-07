@@ -533,6 +533,30 @@ TEST(NativeLevelAuthoringReader, FloatFieldsRejectNonfiniteAndUnrepresentableVal
     }
 }
 
+TEST(NativeLevelAuthoringReader, RejectsInvalidMissionNumbersAndNamedReferences) {
+    for (auto const expression : {"(time-elapsed 1)",
+                                  "(time-elapsed -1)",
+                                  "(entity-reached-position 'player '(0 +inf.0 0) 1)",
+                                  "(entity-reached-position 'player '(0 0 0) -1)",
+                                  "(expr-ref 'missing)",
+                                  "(expr-ref 'node)"}) {
+        SCOPED_TRACE(expression);
+        auto const result{DefinitionReader{}.read_level_source(std::format(R"(
+          (level :id 'mission :title "Mission" :player 'player
+            :entities (list
+              (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
+            :mission (mission :objectives (list
+              (objective :id 'a :team 'blue :nodes (list (expr 'node {}))
+                :pass (expr-ref 'node))))))",
+                                                                           expression))};
+        EXPECT_EQ(result.has_value(), std::string_view{expression} == "(time-elapsed 1)");
+        if (std::string_view{expression} == "(expr-ref 'node)") {
+            ASSERT_FALSE(result);
+            EXPECT_TRUE(has_code(result.error(), DiagnosticCode::InvalidMissionStructure));
+        }
+    }
+}
+
 TEST(NativeSourceSession, PreservesTextAndSeparatesSavedFromAppliedState) {
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "source.scm"};
@@ -1097,14 +1121,6 @@ TEST(NativeLevelAuthoringCollisionGrid, RejectsMalformedAndInvalidExplicitDimens
         EXPECT_FALSE(DefinitionReader{}.read_level_source(source)) << grid;
     }
 }
-TEST(NativeLevelAuthoringWriter, RejectsObjectiveEditingWithoutDiscardingMission) {
-    auto definition{make_level("mission")};
-    definition.mission = timer_mission();
-    auto const source{emit_source(definition)};
-    ASSERT_FALSE(source);
-    EXPECT_EQ(source.error()[0].code, DiagnosticCode::UnsupportedEditorFeature);
-    EXPECT_EQ(definition.mission->objectives[0].id, ObjectiveName{"primary"});
-}
 TEST(NativeLevelAuthoringWriter, ReportsUnsupportedEditorFeatures) {
     auto definition{make_level("unsupported")};
     definition.metadata.par_time_seconds = 10;
@@ -1115,6 +1131,7 @@ TEST(NativeLevelAuthoringWriter, ReportsUnsupportedEditorFeatures) {
     EXPECT_EQ(std::ranges::count(
                   result.error(), DiagnosticCode::UnsupportedEditorFeature, &Diagnostic::code),
               3);
+    EXPECT_TRUE(std::ranges::contains(result.error(), "level.mission", &Diagnostic::node_path));
 }
 TEST(NativeLevelAuthoringCatalog, RejectsDuplicatesCyclesAndUnavailableDependencies) {
     std::vector<LevelCatalogEntry> duplicates{{7, "a.scm", checked_level("same")},

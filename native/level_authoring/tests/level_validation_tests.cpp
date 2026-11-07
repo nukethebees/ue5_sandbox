@@ -89,15 +89,6 @@ TEST(LevelDefinition, RejectsMissingIdentityInvalidArchetypesAndNonfinitePlaceme
     expect_error(definition, DiagnosticCode::InvalidPlacement);
 }
 
-TEST(LevelDefinition, ObjectiveCyclesAreValidated) {
-    auto definition{camera_level()};
-    ObjectiveDefinition objective{.id = ObjectiveName{"primary"}, .team = Team::Blue};
-    objective.expressions = {{AllExpr{.children = {0}}}};
-    objective.roots[ObjectiveOutcome::Passed] = 0;
-    definition.mission = MissionDefinition{.objectives = {objective}};
-    expect_error(definition, DiagnosticCode::InvalidMissionStructure);
-}
-
 TEST(LevelDefinition, MissionEntityReferencesAreValidated) {
     auto definition{camera_level()};
     ObjectiveDefinition objective{.id = ObjectiveName{"primary"}, .team = Team::Blue};

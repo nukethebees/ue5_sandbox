@@ -80,8 +80,6 @@ auto make_scheduled_battle() -> LevelSimInitData {
     auto definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
         (level :id 'scheduled-battle :title "Scheduled Battle"
           :camera (camera :look-at '(hero) :offset-direction '(-1 0 0) :distance 1000)
-          :mission (mission :objectives (list
-            (objective :id 'primary :team 'blue :pass (entity-destroyed 'enemy))))
           :entities (list
             (entity :id 'hero :archetype 'capital-ship :team 'blue :position '(-1000 0 0))
             (entity :id 'enemy :archetype 'capital-ship :team 'red :position '(1000 0 0)
@@ -92,7 +90,6 @@ auto make_scheduled_battle() -> LevelSimInitData {
     auto compiled{levels::compile_level(*definition, clock, data.capital_ships, data.turrets)};
     assert(compiled);
     data.level_events = std::move(compiled->events);
-    data.mission = std::move(compiled->mission);
     data.expressions = std::move(compiled->expressions);
     data.level_metadata = std::move(compiled->level_metadata);
     return data;
@@ -149,40 +146,6 @@ void expect_health_mappings(LevelSim const& simulation) {
         EXPECT_EQ(table.health(player->unique_entity_id), player->health().health);
     }
 }
-}
-
-TEST(NativeSimulation, ScheduledSpawnsAndObjectivesUseSimulationTicks) {
-    LevelSim simulation{make_scheduled_battle()};
-    EXPECT_EQ(simulation.capital_ships().num_instances(), 1)
-        << "Tick-zero entities are available before finishing initialization";
-    simulation.finish_initialisation();
-    EXPECT_EQ(simulation.capital_ships().num_instances(), 1)
-        << "Only tick-zero entities exist initially";
-    EXPECT_TRUE(
-        !simulation.mission().outcome(sim::ObjectiveId{0}, simulation.expressions()).has_value())
-        << "Future objectives prevent early completion";
-
-    simulation.start();
-    auto const dt{simulation.clock().tick_period()};
-    simulation.advance(dt);
-    simulation.advance(dt);
-    EXPECT_EQ(simulation.capital_ships().num_instances(), 1)
-        << "A fractional authoring time rounds up to the next tick";
-
-    simulation.advance(dt);
-    EXPECT_EQ(simulation.capital_ships().num_instances(), 1)
-        << "The timer resolves before the spawn is dispatched";
-    simulation.advance(dt);
-    EXPECT_EQ(simulation.capital_ships().num_instances(), 2)
-        << "The delayed entity spawns in the next Preparation";
-    EXPECT_FALSE(
-        simulation.mission().outcome(sim::ObjectiveId{0}, simulation.expressions()).has_value())
-        << "Spawn alone does not complete the objective";
-    kill_enemy(simulation);
-    simulation.advance(dt);
-    EXPECT_TRUE(simulation.mission().outcome(sim::ObjectiveId{0}, simulation.expressions()) ==
-                ObjectiveOutcome::Passed)
-        << "Destruction completes the objective";
 }
 
 /* **************************************** */

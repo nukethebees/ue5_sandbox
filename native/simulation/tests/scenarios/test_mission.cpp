@@ -1,170 +1,39 @@
 #include "../support/mission_test_support.h"
-#include "../support/simulation_test_support.h"
-#include <ioj/sim/testing/entity_observations.h>
 
-namespace ioj::sim {
-enum class MissionScenario : std::uint8_t {
-    SurviveTime,
-    KillEnemies,
-    KillEnemiesWithinTime,
-    DefenceObjective,
-    RequiredKillsObjective,
-    RequiredKillsTimeElapsed,
-    AuthoredKillTarget,
-    SuccessIsTerminal,
-    OutcomeCompletionIsLatched,
-};
-
-struct MissionScenarioCase {
-    char const* name;
-    MissionScenario scenario;
-};
-using WorldlessMission = ::testing::TestWithParam<MissionScenarioCase>;
-
-TEST_P(WorldlessMission, ResolvesObjectiveLifecycle) {
-    using Scenario = MissionScenario;
-    auto const scenario{GetParam().scenario};
-    auto data{tests::make_simulation_data(tests::make_fixture())};
+namespace ioj::sim::tests {
+TEST(WorldlessSpaceGameSimulation, KillThresholdWaitsForFinalCreditedDeath) {
+    LevelSimInitData data;
+    data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-    auto const spawn{[&](float x, Team team) {
-        return tests::add_capital_spawn(data, {{x, 0, 0}}, team, 60.f, 60.f);
-    }};
-    auto const hero{spawn(-2000.f, Team::Green)};
-    std::optional<std::uint32_t> ordinary;
-    std::optional<std::uint32_t> required;
-    std::optional<std::uint32_t> second;
-    auto const needs_kills{
-        scenario == Scenario::KillEnemies || scenario == Scenario::KillEnemiesWithinTime ||
-        scenario == Scenario::RequiredKillsObjective || scenario == Scenario::AuthoredKillTarget};
-    if (needs_kills) {
-        ordinary = spawn(2000.f, Team::Red);
-    }
-    if (scenario == Scenario::RequiredKillsObjective ||
-        scenario == Scenario::RequiredKillsTimeElapsed) {
-        required = spawn(4000.f, Team::Red);
-    }
-    if (scenario == Scenario::AuthoredKillTarget) {
-        second = spawn(4000.f, Team::Red);
-    }
-
+    auto const hero{add_capital_spawn(data, {{-2000.f, 0, 0}}, Team::Green, 60.f, 60.f)};
+    add_capital_spawn(data, {{2000.f, 0, 0}}, Team::Red, 60.f, 60.f);
+    add_capital_spawn(data, {{4000.f, 0, 0}}, Team::Red, 60.f, 60.f);
     levels::ObjectiveDefinition objective{.team = Team::Green};
-    auto add = [&](levels::MissionExpr expression) {
-        auto const index{static_cast<std::uint32_t>(objective.expressions.size())};
-        objective.expressions.push_back(std::move(expression));
-        return index;
-    };
-    std::vector<std::uint32_t> pass;
-    std::vector<std::uint32_t> fail;
-    if (needs_kills) {
-        pass.push_back(add({ioj::levels::EntityKillsReachedExpr{
-            .entities = {tests::mission_entity(hero)},
-            .kills = scenario == Scenario::AuthoredKillTarget ? 2u : 1u}}));
-    } else {
-        auto const seconds{scenario == Scenario::DefenceObjective             ? 10.0
-                           : scenario == Scenario::OutcomeCompletionIsLatched ? 0.01
-                                                                              : 0.1};
-        pass.push_back(add({ioj::levels::TimeElapsedExpr{
-            .seconds = ioj::NonNegativeFinite<double>::make(seconds)}}));
-    }
-    if (required) {
-        pass.push_back(add(tests::destroyed(*required)));
-    }
-    fail.push_back(add(tests::destroyed(hero)));
-    if (scenario == Scenario::KillEnemiesWithinTime ||
-        scenario == Scenario::RequiredKillsTimeElapsed) {
-        fail.push_back(add(
-            {ioj::levels::TimeElapsedExpr{.seconds = ioj::NonNegativeFinite<double>::make(0.1)}}));
-    }
-    objective.roots[ioj::ObjectiveOutcome::Passed] =
-        add({ioj::levels::AllExpr{.children = std::move(pass)}});
-    objective.roots[ioj::ObjectiveOutcome::Failed] =
-        add({ioj::levels::AnyExpr{.children = std::move(fail)}});
-    tests::install_mission(data, std::move(objective));
+    objective.expressions = {
+        {levels::EntityKillsReachedExpr{.entities = {mission_entity(hero)}, .kills = 2}}};
+    objective.roots[ObjectiveOutcome::Passed] = 0;
+    install_mission(data, std::move(objective));
 
-    tests::WorldlessSimulationTest harness{std::move(data)};
-    auto& simulation{harness.simulation()};
-    auto const& capitals{simulation.capital_ships()};
-    auto const hero_id{capitals.get_entities().entity_ids()[0]};
-    auto const ordinary_id{ordinary ? capitals.get_entities().entity_ids()[1] : EntityId{}};
-    auto const required_id{required ? capitals.get_entities().entity_ids()[ordinary ? 2 : 1]
-                                    : EntityId{}};
-    auto const second_id{second ? capitals.get_entities().entity_ids()[2] : EntityId{}};
+    WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& clk{simulation.clock()};
-
-    if (scenario == Scenario::KillEnemies) {
-        harness.timeline.then_after(0.01,
-                                    [&] { harness.queue_kills(std::array{ordinary_id}, hero_id); });
-    } else if (scenario == Scenario::DefenceObjective) {
-        harness.timeline.then_after(0.01, [&] { harness.queue_kills(std::array{hero_id}); });
-    } else if (scenario == Scenario::RequiredKillsObjective) {
-        harness.timeline
-            .then_after(0.01, [&] { harness.queue_kills(std::array{ordinary_id}, hero_id); })
-            .then_after(0.19, [&] { harness.queue_kills(std::array{required_id}); });
-    } else if (scenario == Scenario::AuthoredKillTarget) {
-        harness.timeline
-            .then_after(0.01, [&] { harness.queue_kills(std::array{ordinary_id}, hero_id); })
-            .then_after(0.19, [&] { harness.queue_kills(std::array{second_id}, hero_id); });
-    } else if (scenario == Scenario::SuccessIsTerminal ||
-               scenario == Scenario::OutcomeCompletionIsLatched) {
-        harness.timeline.at(0.15, [&] { harness.queue_kills(std::array{hero_id}); });
-    }
-    auto gated{false};
-    harness.on_end_tick = [&](LevelSim&) {
-        if (clk.simulation_time() >= 0.1 &&
-            !simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions())) {
-            gated = true;
-        }
-    };
-    harness.timeline.finish_at(0.3);
-    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
+    auto& simulation{harness.simulation()};
+    auto const ids{simulation.capital_ships().get_entities().entity_ids()};
+    auto const killer{ids[0]};
+    auto const first{ids[1]};
+    auto const last{ids[2]};
+    auto const period{simulation.clock().tick_period()};
     simulation.start();
-    auto const maximum_ticks{clk.duration_to_tick_period(Duration::make(1.0)).get()};
-    for (SimTick::value_type tick{}; tick < maximum_ticks; ++tick) {
-        harness.advance(clk.tick_period());
-        if (simulation.state() == LevelState::Paused) {
-            break;
-        }
-    }
-    ASSERT_EQ(simulation.state(), LevelState::Paused);
-    auto const completed_tick{clk.get_completed_ticks()};
-    harness.advance(1.0);
-    EXPECT_EQ(clk.get_completed_ticks(), completed_tick);
-    if (scenario == Scenario::SuccessIsTerminal ||
-        scenario == Scenario::OutcomeCompletionIsLatched) {
-        EXPECT_TRUE(observe_entity(simulation, hero_id));
-    }
-    auto const failed{scenario == Scenario::DefenceObjective ||
-                      scenario == Scenario::KillEnemiesWithinTime ||
-                      scenario == Scenario::RequiredKillsTimeElapsed};
-    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()),
-              failed ? ObjectiveOutcome::Failed : ObjectiveOutcome::Passed);
-    if (failed) {
-        EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{1}, simulation.expressions()),
-                  ObjectiveOutcome::Passed);
-    }
-    EXPECT_EQ(simulation.mission().completed_objectives().size(), failed ? 2 : 1);
-    if (scenario == Scenario::RequiredKillsObjective || scenario == Scenario::AuthoredKillTarget) {
-        EXPECT_TRUE(gated);
-        EXPECT_EQ(simulation.entity_ledger().kills(hero_id),
-                  scenario == Scenario::AuthoredKillTarget ? 2u : 1u);
-    }
-}
-constexpr MissionScenarioCase mission_scenarios[]{
-    {"SurviveTime", MissionScenario::SurviveTime},
-    {"KillEnemies", MissionScenario::KillEnemies},
-    {"KillEnemiesWithinTime", MissionScenario::KillEnemiesWithinTime},
-    {"DefenceObjective", MissionScenario::DefenceObjective},
-    {"RequiredKillsObjective", MissionScenario::RequiredKillsObjective},
-    {"RequiredKillsTimeElapsed", MissionScenario::RequiredKillsTimeElapsed},
-    {"AutomaticKillTargetIncludesLastEnemy", MissionScenario::AuthoredKillTarget},
-    {"SuccessIsTerminal", MissionScenario::SuccessIsTerminal},
-    {"ExplicitCompletionIsLatched", MissionScenario::OutcomeCompletionIsLatched},
-};
-INSTANTIATE_TEST_SUITE_P(WorldlessSpaceGameSimulation,
-                         WorldlessMission,
-                         ::testing::ValuesIn(mission_scenarios),
-                         [](auto const& info) { return info.param.name; });
+    harness.advance(period);
+    harness.queue_kills(std::array{first}, killer);
+    harness.advance(period);
+    EXPECT_EQ(simulation.state(), LevelState::Running);
+    EXPECT_FALSE(simulation.mission().mission_completed());
 
+    harness.queue_kills(std::array{last}, killer);
+    harness.advance(period);
+    EXPECT_EQ(simulation.entity_ledger().kills(killer), 2);
+    EXPECT_EQ(simulation.mission().outcome(ObjectiveId{0}, simulation.expressions()),
+              ObjectiveOutcome::Passed);
+    EXPECT_EQ(simulation.state(), LevelState::Paused);
+}
 }

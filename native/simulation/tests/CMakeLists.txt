@@ -8,6 +8,7 @@ target_link_libraries(native-simulation-tests
 target_sources(native-simulation-tests PRIVATE
   entity_lookup_tables_tests.cpp
   entity_ledger_tests.cpp
+  expr_manager_tests.cpp
   mission_tests.cpp
   level_event_tests.cpp
   entity_id_tests.cpp
