@@ -67,7 +67,10 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.capital_ships.fighter_spawn_slots = 0;
     auto& spawn_storage{data.level_events.capital_spawns};
-    data.level_events.add_initial_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, 2);
+    auto const group{data.level_events.spawn_groups.num()};
+    data.level_events.add_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, 2);
+    data.level_events.initial_events.push_back(
+        data.level_events.add_spawn_event({group, data.level_events.spawn_groups.num() - group}));
     auto const add_capital{
         [&](ioj::sim::LevelEntityIndex const entity, ioj::Team const team, float const x) {
             spawn_storage.add(entity, {x, 0.f, 0.f}, {}, team, ioj::sim::Health{100}, 60.f, 60.f);
@@ -75,7 +78,7 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     add_capital(0, ioj::Team::Green, -1000.f);
     add_capital(1, ioj::Team::White, 1000.f);
 
-    data.level_events.initialisation.entity_count = 2;
+    data.entity_count = 2;
     for (auto const type : ioj::EnumTraits<::ioj::sim::EntityType>::values) {
         data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
@@ -108,6 +111,8 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     clock.initialise(data.clock_settings);
     auto compiled{ioj::levels::compile_level(*definition, clock, data.capital_ships, data.turrets)};
     check(compiled);
+    data.entity_count = compiled->entity_count;
+    data.player_entity_index = compiled->player_entity_index;
     data.level_events = std::move(compiled->events);
     data.expressions = std::move(compiled->expressions);
     data.timers = std::move(compiled->timers);
@@ -254,12 +259,15 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     std::array<ioj::Rotator3f, 2> const rotations{{{15.f, 45.f, 75.f}, {-25.f, 35.f, 5.f}}};
     auto const count{static_cast<int32>(locations.size())};
     auto& definitions{data.level_events};
-    definitions.add_initial_spawn_group(ioj::sim::EntityType::Turret, 0, count);
+    auto const group{definitions.spawn_groups.num()};
+    definitions.add_spawn_group(ioj::sim::EntityType::Turret, 0, count);
+    definitions.initial_events.push_back(
+        definitions.add_spawn_event({group, definitions.spawn_groups.num() - group}));
     definitions.turret_spawns.add_uninitialised(count);
     auto const turrets{definitions.turret_spawns.view()};
     TArray<FTransform> expected;
     for (int32 index{}; index < count; ++index) {
-        turrets.entity_indices()[index] = data.level_events.initialisation.entity_count++;
+        turrets.entity_indices()[index] = data.entity_count++;
         ioj::set_vector(turrets.view_locations(), index, locations[index]);
         ioj::set_rotation(turrets.view_rotations(), index, rotations[index]);
         turrets.teams()[index] = ioj::Team::Green;
@@ -511,8 +519,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     };
     auto data{make_battle()};
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
-    data.level_events.initialisation.player_entity_index =
-        data.level_events.initialisation.entity_count++;
+    data.player_entity_index = data.entity_count++;
     data.player = actor->make_spawn_data();
     auto& active_profile{::ioj::sim::player::flight_model_profile(
         data.player->flight_models, data.player->flight_models.initial_slot)};

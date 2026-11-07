@@ -11,7 +11,6 @@
 #include <ioj/sim/spinners/phase_interface.h>
 #include <ioj/sim/turrets/phase_interface.h>
 
-#include <array>
 #include <cassert>
 #include <optional>
 #include <span>
@@ -59,14 +58,11 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
 
     initialise_subsystems(data);
 
-    auto const& events{event_manager_.data()};
-    spawn_manager_.initialise(events.initialisation.entity_count);
-    if (events.initialisation.player_entity_index != invalid_level_entity_index) {
-        spawn_manager_.set_entity_id(events.initialisation.player_entity_index,
+    spawn_manager_.initialise(data.entity_count);
+    if (data.player_entity_index != invalid_level_entity_index) {
+        spawn_manager_.set_entity_id(data.player_entity_index,
                                      player_ship_simulation_->unique_entity_id);
     }
-    spawn_manager_.spawn(
-        events.initial_spawn_groups.const_view(), events, {entity_ledger_, clock_});
 }
 void LevelSim::finish_initialisation() {
     assert(state_ == LevelState::Uninitialised);
@@ -229,8 +225,33 @@ void LevelSim::dispatch_preparation_events() {
     while (auto const event = event_manager_.consume_preparation_event()) {
         switch (event->kind()) {
             case EventKind::Spawn: {
-                std::array const events{*event};
-                spawn_manager_.process_events(events, definitions, {entity_ledger_, clock_});
+                auto const range{definitions.spawn_events[event->index()]};
+                auto const groups{definitions.spawn_groups.const_view(range.offset, range.count)};
+                auto const types{groups.types()};
+                auto const offsets{groups.offsets()};
+                auto const counts{groups.counts()};
+                auto const group_count{groups.num()};
+                SpawnContext const context{entity_ledger_, clock_};
+                for (std::uint32_t index{}; index < group_count; ++index) {
+                    auto const offset{offsets[index]};
+                    auto const count{counts[index].value()};
+                    switch (types[index]) {
+                        case EntityType::CapitalShip:
+                            spawn_manager_.spawn_capitals(
+                                definitions.capital_spawns.const_view(offset, count), context);
+                            break;
+                        case EntityType::Turret:
+                            spawn_manager_.spawn_turrets(
+                                definitions.turret_spawns.const_view(offset, count), context);
+                            break;
+                        case EntityType::TubeSpinner:
+                            spawn_manager_.spawn_spinners(
+                                definitions.spinner_spawns.const_view(offset, count), context);
+                            break;
+                        default:
+                            fatal_error("Unsupported level spawn entity type");
+                    }
+                }
                 break;
             }
             default:

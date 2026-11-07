@@ -3,7 +3,6 @@
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/levels/initial_spawns.h>
 #include <ioj/sim/levels/level_compilation.h>
-#include <ioj/sim/levels/level_initialisation_data.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/sim/missions/mission.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
@@ -288,7 +287,7 @@ static auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& c
     build.turret_proxies = collect_proxy_actors<ATestStaticTurretsProxy>(world);
     build.spinner_proxies = collect_proxy_actors<ATestTubeSpinnerProxy>(world);
 
-    auto& initialisation{build.data.level_events.initialisation};
+    auto& initialisation{build.data};
     FProxyEntityIndexMap entity_indices;
     auto allocate_entity_index{[&](AActor const& actor) {
         auto const index{initialisation.entity_count++};

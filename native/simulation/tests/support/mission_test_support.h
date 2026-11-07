@@ -23,7 +23,7 @@ inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition 
     levels::MissionDefinition definition{
         .objectives = {std::move(objective), std::move(opposition)}};
     std::vector<levels::EntityId> names;
-    auto const count{data.level_events.initialisation.entity_count};
+    auto const count{data.entity_count};
     for (std::uint32_t index{}; index < count; ++index) {
         names.push_back(mission_entity(index));
     }

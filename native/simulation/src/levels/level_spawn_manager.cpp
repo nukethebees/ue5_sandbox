@@ -1,11 +1,9 @@
 #include "ioj/sim/levels/level_spawn_manager.h"
 
 #include <ioj/column_math.h>
-#include <ioj/diagnostics.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/spawn_interface.h>
 #include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/levels/compiled_level_events.h>
 #include <ioj/sim/levels/level_entity_index.h>
 #include <ioj/sim/levels/spawn_context.h>
 #include <ioj/sim/spinners/spawn_interface.h>
@@ -14,7 +12,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
-#include <format>
 #include <optional>
 #include <span>
 #include <vector>
@@ -40,50 +37,6 @@ void LevelSpawnManager::set_entity_id(LevelEntityIndex const entity_index, Entit
     assert(static_cast<std::size_t>(entity_index) < entity_ids_.size());
     assert(id.is_valid());
     entity_ids_[entity_index] = id;
-}
-
-void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups,
-                              CompiledLevelEvents const& definitions,
-                              SpawnContext const context) {
-    auto const group_count{groups.num()};
-    auto const types{groups.types()};
-    auto const offsets{groups.offsets()};
-    auto const counts{groups.counts()};
-    for (std::uint32_t index{}; index < group_count; ++index) {
-        auto const offset{offsets[index]};
-        auto const count{counts[index].value()};
-        switch (types[index]) {
-            case EntityType::CapitalShip: {
-                // Spawn groups select distinct payload ranges.
-                // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-                spawn_capitals(definitions.capital_spawns.const_view(offset, count), context);
-                break;
-            }
-            case EntityType::Turret: {
-                // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
-                spawn_turrets(definitions.turret_spawns.const_view(offset, count), context);
-                break;
-            }
-            case EntityType::TubeSpinner: {
-                // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
-                spawn_spinners(definitions.spinner_spawns.const_view(offset, count), context);
-                break;
-            }
-            default: {
-                fatal_error(std::format("Unsupported level spawn entity type: {}",
-                                        std::to_underlying(types[index])));
-            }
-        }
-    }
-}
-
-void LevelSpawnManager::process_events(std::span<EventHandle const> const events,
-                                       CompiledLevelEvents const& definitions,
-                                       SpawnContext const context) {
-    for (auto const event : events) {
-        auto const range{definitions.spawn_events[event.index()]};
-        spawn(definitions.spawn_groups.const_view(range.offset, range.count), definitions, context);
-    }
 }
 
 void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEvents::ConstView const events,

@@ -24,8 +24,9 @@ preparation can reorder storage. Movement adds player and fighter candidates; th
 deduplicates them and refreshes the spatial index before overlap detection. Queries and temporary
 overlap results remain subject to the phase and scratch-lifetime contracts.
 
-Construction spawns initial entities but leaves the level in `LevelState::Uninitialised`. The
-host may install static geometry before calling `finish_initialisation()`, which publishes entity lookups
+Construction creates the optional player and queues initial events, leaving the level in
+`LevelState::Uninitialised`. The host may install static geometry before calling
+`finish_initialisation()`, which dispatches initial spawn events and publishes entity lookups
 and the spatial index, begins telemetry and resets mission progress in `LevelState::StableSetup`, then enters
 `LevelState::Paused`. Setup uses Preparation for population and Thinking for stable queries, then
 resets the independent clock to tick zero and `BetweenTicks` before returning. Its phase enum
@@ -50,7 +51,11 @@ leaves telemetry recording. Preparation after
 resume routes the retained spawn span to `LevelSpawnManager`. `pause()` only queues a request;
 `advance()` consumes tick-end events before accumulating elapsed time and after each completed
 tick. Paused calls process queued events without accumulating time; `start()` resumes directly.
-Initial spawns and recurring carrier production remain separate from these one-shot events.
+Initial and delayed level spawns use the same event payloads and dispatch path. The event manager
+owns those payloads; `LevelSim` resolves spawn groups and passes typed views to `LevelSpawnManager`.
+Recurring carrier production remains separate from these one-shot events. Unreal proxy binding
+occurs after initial event dispatch, before the proxies are destroyed; static collision extraction
+excludes those retained source actors.
 
 Unreal lifecycle and presentation ownership are described in the
 [SpaceGame architecture](../../Plugins/SpaceGame/ARCHITECTURE.md).

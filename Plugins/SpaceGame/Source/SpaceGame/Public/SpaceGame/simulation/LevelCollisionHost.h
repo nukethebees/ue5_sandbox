@@ -5,12 +5,15 @@
 #include <ioj/sim/entities/entity_type.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
 
+#include <Containers/ArrayView.h>
+
 #include <cstddef>
 #include <expected>
 #include <vector>
 
 class UStaticMesh;
 class UWorld;
+class AActor;
 struct FCollisionGridConfig;
 
 namespace ioj {
@@ -21,7 +24,8 @@ struct SPACEGAME_API FLevelCollisionHost {
     static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityBoundsExtractionResult;
     static auto extract_static_geometry(UWorld& world,
                                         FCollisionGridConfig const& config,
-                                        sim::collision::GridGeometry grid_geometry)
+                                        sim::collision::GridGeometry grid_geometry,
+                                        TConstArrayView<AActor const*> excluded_actors = {})
         -> std::vector<sim::collision::WorldAABB>;
 };
 }

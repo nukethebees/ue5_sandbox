@@ -58,9 +58,9 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
                            data.add_start_timer_event({late_timer, SimTick{3}})};
     data.add_trigger(expressions.add_timer_elapsed(early_timer), early);
     data.add_trigger(expressions.add_timer_elapsed(late_timer), late);
+    auto const initial_events{data.initial_events};
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
     manager.activate_trigger_expressions(expressions);
-    auto const& initial_events{manager.data().initial_events};
     for (auto const handle : initial_events) {
         ASSERT_EQ(manager.consume_tick_end_event(), handle);
         auto const& event{manager.data().start_timer_events[handle.index()]};

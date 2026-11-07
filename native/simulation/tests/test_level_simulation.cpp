@@ -51,7 +51,7 @@ auto make_battle() -> LevelSimInitData {
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.capital_ships.fighter_spawn_slots = 0;
-    data.level_events.initialisation.entity_count = 2;
+    data.entity_count = 2;
     std::array<InitialCapital, 2> capitals{{{.entity = 0,
                                              .location = {{-1000.f, 0.f, 0.f}},
                                              .rotation = {},
@@ -89,6 +89,8 @@ auto make_scheduled_battle() -> LevelSimInitData {
     clock.initialise(data.clock_settings);
     auto compiled{levels::compile_level(*definition, clock, data.capital_ships, data.turrets)};
     assert(compiled);
+    data.entity_count = compiled->entity_count;
+    data.player_entity_index = compiled->player_entity_index;
     data.level_events = std::move(compiled->events);
     data.expressions = std::move(compiled->expressions);
     data.timers = std::move(compiled->timers);
@@ -227,10 +229,13 @@ TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
     data.turrets.fire_point_offset = Vector3f{20.f, 0.f, 0.f};
     auto& initial_storage{data.level_events.turret_spawns};
-    data.level_events.add_initial_spawn_group(EntityType::Turret, 0, 1);
+    auto const group{data.level_events.spawn_groups.num()};
+    data.level_events.add_spawn_group(EntityType::Turret, 0, 1);
+    data.level_events.initial_events.push_back(
+        data.level_events.add_spawn_event({group, data.level_events.spawn_groups.num() - group}));
     initial_storage.add_uninitialised(1);
     auto const initial{initial_storage.view()};
-    initial.entity_indices()[0] = data.level_events.initialisation.entity_count++;
+    initial.entity_indices()[0] = data.entity_count++;
     set_vector(initial.view_locations(), 0, Vector3f{-1000.f, 1000.f, 0.f});
     set_rotation(initial.view_rotations(), 0, {});
     initial.teams()[0] = Team::Blue;
@@ -340,6 +345,8 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     clock.initialise(data.clock_settings);
     auto compiled{levels::compile_level(*authored, clock, data.capital_ships, data.turrets)};
     ASSERT_TRUE(compiled);
+    data.entity_count = compiled->entity_count;
+    data.player_entity_index = compiled->player_entity_index;
     data.level_events = std::move(compiled->events);
     data.mission = std::move(compiled->mission);
     data.expressions = std::move(compiled->expressions);
@@ -421,7 +428,8 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
 TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumedEvents) {
     auto data{make_battle()};
     auto& definitions{data.level_events};
-    definitions.initial_spawn_groups = {};
+    definitions.initial_events.clear();
+    definitions.spawn_groups = {};
     definitions.add_spawn_group(EntityType::CapitalShip, 0, 1);
     definitions.add_spawn_group(EntityType::CapitalShip, 1, 1);
     auto const first{definitions.add_spawn_event({0, 1})};
@@ -455,6 +463,8 @@ TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendin
     std::array const events{pause, first, second, pause};
     add_timed_events(data, Duration::make(0.21), events);
     auto expected_history{definitions.initial_events};
+    std::erase_if(expected_history,
+                  [](EventHandle const event) { return !is_tick_end(event.kind()); });
     expected_history.append_range(events);
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
@@ -478,7 +488,7 @@ TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendin
     EXPECT_TRUE(std::ranges::equal(simulation.events().pending_tick_end_events(),
                                    std::array{second, pause}));
     ASSERT_EQ(simulation.events().pending_preparation_events().size(), 1);
-    EXPECT_EQ(simulation.events().preparation_events().size(), 1);
+    EXPECT_EQ(simulation.events().preparation_events().size(), 2);
 
     simulation.advance(1.0);
     simulation.advance(0.0);
@@ -591,7 +601,8 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
 TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTerminalDispatch) {
     auto data{make_battle()};
     auto& definitions{data.level_events};
-    definitions.initial_spawn_groups = {};
+    definitions.initial_events.clear();
+    definitions.spawn_groups = {};
     definitions.add_spawn_group(EntityType::CapitalShip, 0, 1);
     definitions.add_spawn_group(EntityType::CapitalShip, 1, 1);
     auto const first_spawn{definitions.add_spawn_event({0, 1})};
@@ -665,7 +676,7 @@ TEST(NativeSimulation, QueuedPausePreservesPendingSpawnsAndTelemetryUntilResume)
     EXPECT_EQ(simulation.state(), LevelState::Running);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{5});
     EXPECT_EQ(simulation.capital_ships().num_instances(), 2);
-    EXPECT_EQ(simulation.events().preparation_events().size(), 1);
+    EXPECT_EQ(simulation.events().preparation_events().size(), 2);
     EXPECT_TRUE(simulation.events().pending_preparation_events().empty());
     EXPECT_NEAR(simulation.read_access().interpolation_alpha(), 0.25, 1.e-9);
     EXPECT_EQ(simulation.level_telemetry_manager().state(),
@@ -758,8 +769,16 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     add_player_spawn(data, {});
     add_turret_spawn(data, {{0.f, -1000.f, 0.f}}, {0.f, 90.f, 0.f}, Team::Green, 20, 5);
     add_turret_spawn(data, {{0.f, 1000.f, 0.f}}, {}, Team::White, 30, 7);
+    auto const initial_events{data.level_events.initial_events};
     LevelSim simulation{std::move(data)};
+    EXPECT_EQ(simulation.entity_ledger().count_alive(), 1)
+        << "Only the player is constructed directly";
+    EXPECT_TRUE(
+        std::ranges::equal(simulation.events().pending_preparation_events(), initial_events));
     simulation.finish_initialisation();
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
+    EXPECT_TRUE(simulation.events().pending_preparation_events().empty());
+    EXPECT_TRUE(std::ranges::equal(simulation.events().preparation_events(), initial_events));
     auto const* player{simulation.player_ship_simulation()};
     EXPECT_EQ(simulation.entity_ledger().count_alive(), 5)
         << "Every compiled initial entity is registered";
@@ -821,7 +840,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     auto const payload_offset{definitions.turret_spawns.num()};
     definitions.turret_spawns.add_defaulted(1);
     auto const scheduled_turret{definitions.turret_spawns.view(payload_offset, 1)};
-    scheduled_turret.entity_indices()[0] = data.level_events.initialisation.entity_count++;
+    scheduled_turret.entity_indices()[0] = data.entity_count++;
     set_vector(scheduled_turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
     scheduled_turret.teams()[0] = Team::White;
     scheduled_turret.healths()[0] = Health{75};

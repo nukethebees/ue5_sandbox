@@ -15,7 +15,8 @@ LevelEventManager::LevelEventManager(CompiledLevelEvents data, std::pmr::memory_
         data_.trigger_events, [](EventHandle const event) { return is_tick_end(event.kind()); }))};
     tick_end_events_.reserve(tick_end_count + data_.initial_events.size() + 2);
     preparation_events_.reserve(data_.trigger_events.size() - tick_end_count);
-    for (auto const event : data_.initial_events) {
+    auto const initial_events{std::exchange(data_.initial_events, {})};
+    for (auto const event : initial_events) {
         enqueue(event);
     }
 }

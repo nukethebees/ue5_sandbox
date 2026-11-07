@@ -1,9 +1,7 @@
 #pragma once
 #include <ioj/sim/entities/entity_id.h>
-#include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 #include <ioj/sim/levels/level_entity_index.h>
-#include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
 #include <ioj/transform3d.h>
@@ -33,7 +31,6 @@ class FrameMemoryResource;
 }
 
 namespace ioj::sim {
-struct CompiledLevelEvents;
 struct SpawnContext;
 
 class LevelSpawnManager {
@@ -56,21 +53,15 @@ class LevelSpawnManager {
 
     void initialise(std::uint32_t entity_count);
     void set_entity_id(LevelEntityIndex entity_index, EntityId id);
-    void spawn(LevelSpawnGroups::ConstView groups,
-               CompiledLevelEvents const& definitions,
-               SpawnContext context);
-    void process_events(std::span<EventHandle const> events,
-                        CompiledLevelEvents const& definitions,
-                        SpawnContext context);
     void queue_fighter_spawns(float dt,
                               FrameMemoryResource& scratch_resource,
                               std::span<Team const> participating_teams);
     auto entity_ids() const noexcept -> std::span<EntityId const> { return entity_ids_; }
-  private:
     void spawn_capitals(LevelCapitalSpawnEvents::ConstView events, SpawnContext context);
     void spawn_turrets(LevelTurretSpawnEvents::ConstView events, SpawnContext context);
     void spawn_spinners(LevelSpinnerSpawnEvents::ConstView events, SpawnContext context);
 
+  private:
     capital_ships::Sim& capital_ships_;
     fighters::Sim& fighters_;
     turrets::Sim& turrets_;

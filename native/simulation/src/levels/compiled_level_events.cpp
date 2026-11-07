@@ -49,37 +49,23 @@ auto CompiledLevelEvents::collect_participating_teams(std::optional<Team> const 
     return result;
 }
 
-namespace level_spawn_groups_detail {
-void append(LevelSpawnGroups& storage,
-            EntityType const type,
-            std::int32_t offset,
-            std::int32_t count) {
+void CompiledLevelEvents::add_spawn_group(EntityType const type,
+                                          std::int32_t offset,
+                                          std::int32_t count) {
     assert(offset >= 0 && count >= 0);
 
     constexpr auto max_count{std::numeric_limits<LevelEventCount::value_type>::max()};
     while (count > 0) {
         auto const added{std::min(count, static_cast<std::int32_t>(max_count))};
-        auto const index{storage.num()};
-        storage.add_uninitialised(1);
-        auto const groups{storage.view()};
+        auto const index{spawn_groups.num()};
+        spawn_groups.add_uninitialised(1);
+        auto const groups{spawn_groups.view()};
         groups.types()[index] = type;
         groups.offsets()[index] = offset;
         groups.counts()[index] = LevelEventCount{static_cast<LevelEventCount::value_type>(added)};
         offset += added;
         count -= added;
     }
-}
-}
-
-void CompiledLevelEvents::add_initial_spawn_group(EntityType const type,
-                                                  std::int32_t const offset,
-                                                  std::int32_t const count) {
-    level_spawn_groups_detail::append(initial_spawn_groups, type, offset, count);
-}
-void CompiledLevelEvents::add_spawn_group(EntityType const type,
-                                          std::int32_t const offset,
-                                          std::int32_t const count) {
-    level_spawn_groups_detail::append(spawn_groups, type, offset, count);
 }
 
 auto CompiledLevelEvents::add_spawn_event(IndexSpan const groups) -> EventHandle {

@@ -13,8 +13,7 @@ void initialise_spawns(LevelSimInitData& data,
                        std::span<InitialSpinner const> spinners) {
     auto& definitions{data.level_events};
     assert(definitions.capital_spawns.is_empty() && definitions.turret_spawns.is_empty() &&
-           definitions.spinner_spawns.is_empty() && definitions.initial_spawn_groups.is_empty() &&
-           definitions.spawn_groups.is_empty());
+           definitions.spinner_spawns.is_empty() && definitions.spawn_groups.is_empty());
     auto const count = [](std::size_t size) {
         assert(size <= static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()));
         return static_cast<std::int32_t>(size);
@@ -22,9 +21,13 @@ void initialise_spawns(LevelSimInitData& data,
     auto const capital_count{count(capitals.size())};
     auto const turret_count{count(turrets.size())};
     auto const spinner_count{count(spinners.size())};
-    definitions.add_initial_spawn_group(EntityType::CapitalShip, 0, capital_count);
-    definitions.add_initial_spawn_group(EntityType::Turret, 0, turret_count);
-    definitions.add_initial_spawn_group(EntityType::TubeSpinner, 0, spinner_count);
+    definitions.add_spawn_group(EntityType::CapitalShip, 0, capital_count);
+    definitions.add_spawn_group(EntityType::Turret, 0, turret_count);
+    definitions.add_spawn_group(EntityType::TubeSpinner, 0, spinner_count);
+    if (!definitions.spawn_groups.is_empty()) {
+        definitions.initial_events.push_back(
+            definitions.add_spawn_event({0, definitions.spawn_groups.num()}));
+    }
     definitions.capital_spawns.add_uninitialised(capital_count);
     definitions.turret_spawns.add_uninitialised(turret_count);
     definitions.spinner_spawns.add_uninitialised(spinner_count);
@@ -39,7 +42,7 @@ void initialise_spawns(LevelSimInitData& data,
     auto const capital_fighter_spawn_cooldowns{capital_events.fighter_spawn_cooldowns()};
     for (std::int32_t i{}; i < capital_count; ++i) {
         auto const& spawn{capitals[i]};
-        assert(spawn.entity < data.level_events.initialisation.entity_count);
+        assert(spawn.entity < data.entity_count);
         capital_entity_indices[i] = spawn.entity;
         set_vector(capital_view_locations, i, spawn.location);
         set_rotation(capital_view_rotations, i, spawn.rotation);
@@ -60,7 +63,7 @@ void initialise_spawns(LevelSimInitData& data,
     auto const turret_laser_damages{turret_events.laser_damages()};
     for (std::int32_t i{}; i < turret_count; ++i) {
         auto const& spawn{turrets[i]};
-        assert(spawn.entity < data.level_events.initialisation.entity_count);
+        assert(spawn.entity < data.entity_count);
         turret_entity_indices[i] = spawn.entity;
         set_vector(turret_view_locations, i, spawn.location);
         set_rotation(turret_view_rotations, i, spawn.rotation);
@@ -76,7 +79,7 @@ void initialise_spawns(LevelSimInitData& data,
     auto const spinner_initial_fire_point_indices{spinner_events.initial_fire_point_indices()};
     for (std::int32_t i{}; i < spinner_count; ++i) {
         auto const& spawn{spinners[i]};
-        assert(spawn.entity < data.level_events.initialisation.entity_count);
+        assert(spawn.entity < data.entity_count);
         spinner_entity_indices[i] = spawn.entity;
         set_vector(spinner_view_locations, i, spawn.location);
         spinner_yaws[i] = spawn.yaw;

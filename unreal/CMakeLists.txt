@@ -121,6 +121,13 @@ add_unreal_automation_test(
   LABELS s7-authoring
 )
 add_unreal_automation_test(
+  Sandbox.LevelInitialisationTests
+  FILTERS
+    Sandbox.UnitTests.CollisionUniformGrid
+    Sandbox.LevelTests.SharedSimulation
+  LABELS level-initialisation
+)
+add_unreal_automation_test(
   SandboxISMC.ModuleLoadSmoke
   FILTERS SandboxISMC.ModuleLoadSmoke
   LABELS ismc-module-smoke

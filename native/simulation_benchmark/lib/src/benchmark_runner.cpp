@@ -217,6 +217,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         return std::unexpected{std::move(output)};
     }
     data.level_events = std::move(compiled->events);
+    data.entity_count = compiled->entity_count;
+    data.player_entity_index = compiled->player_entity_index;
     data.mission = std::move(compiled->mission);
     data.expressions = std::move(compiled->expressions);
     data.timers = std::move(compiled->timers);

@@ -83,9 +83,8 @@ auto make_player_spawn(SimulationFixture const& fixture, Transform3d transform)
     return player;
 }
 auto add_player_spawn(LevelSimInitData& data, player::PlayerSpawnData spawn) -> std::uint32_t {
-    auto& initialisation{data.level_events.initialisation};
-    auto const entity_index{initialisation.entity_count++};
-    initialisation.player_entity_index = entity_index;
+    auto const entity_index{data.entity_count++};
+    data.player_entity_index = entity_index;
     data.player.emplace(spawn);
     return entity_index;
 }
@@ -97,8 +96,11 @@ auto add_capital_spawn(LevelSimInitData& data,
                        std::int32_t health) -> std::uint32_t {
     auto& storage{data.level_events.capital_spawns};
     auto const row{storage.num()};
-    data.level_events.add_initial_spawn_group(EntityType::CapitalShip, row, 1);
-    auto const entity_index{data.level_events.initialisation.entity_count++};
+    auto& definitions{data.level_events};
+    auto const group{definitions.spawn_groups.num()};
+    definitions.add_spawn_group(EntityType::CapitalShip, row, 1);
+    definitions.initial_events.push_back(definitions.add_spawn_event({group, 1}));
+    auto const entity_index{data.entity_count++};
     storage.add_defaulted(1);
     auto const events{storage.view()};
     events.entity_indices()[row] = entity_index;
@@ -117,8 +119,11 @@ auto add_turret_spawn(LevelSimInitData& data,
                       std::int32_t laser_damage) -> std::uint32_t {
     auto& storage{data.level_events.turret_spawns};
     auto const row{storage.num()};
-    data.level_events.add_initial_spawn_group(EntityType::Turret, row, 1);
-    auto const entity_index{data.level_events.initialisation.entity_count++};
+    auto& definitions{data.level_events};
+    auto const group{definitions.spawn_groups.num()};
+    definitions.add_spawn_group(EntityType::Turret, row, 1);
+    definitions.initial_events.push_back(definitions.add_spawn_event({group, 1}));
+    auto const entity_index{data.entity_count++};
     storage.add_defaulted(1);
     auto const events{storage.view()};
     events.entity_indices()[row] = entity_index;
@@ -135,8 +140,11 @@ auto add_spinner_spawn(LevelSimInitData& data,
                        std::int32_t const initial_fire_point_index) -> std::uint32_t {
     auto& storage{data.level_events.spinner_spawns};
     auto const row{storage.num()};
-    data.level_events.add_initial_spawn_group(EntityType::TubeSpinner, row, 1);
-    auto const entity_index{data.level_events.initialisation.entity_count++};
+    auto& definitions{data.level_events};
+    auto const group{definitions.spawn_groups.num()};
+    definitions.add_spawn_group(EntityType::TubeSpinner, row, 1);
+    definitions.initial_events.push_back(definitions.add_spawn_event({group, 1}));
+    auto const entity_index{data.entity_count++};
     storage.add_defaulted(1);
     auto const events{storage.view()};
     events.entity_indices()[row] = entity_index;

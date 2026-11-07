@@ -118,7 +118,7 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     auto const payload_offset{definitions.turret_spawns.num()};
     definitions.turret_spawns.add_defaulted(1);
     auto const turret{definitions.turret_spawns.view(payload_offset, 1)};
-    turret.entity_indices()[0] = with_reinforcements.level_events.initialisation.entity_count++;
+    turret.entity_indices()[0] = with_reinforcements.entity_count++;
     turret.teams()[0] = Team::Red;
     turret.healths()[0] = Health{100};
     set_vector(turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});

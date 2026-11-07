@@ -45,7 +45,7 @@ void schedule_turret(LevelSimInitData& data,
     auto const payload_offset{definitions.turret_spawns.num()};
     definitions.turret_spawns.add_defaulted(1);
     auto const turret_spawns{definitions.turret_spawns.view(payload_offset, 1)};
-    turret_spawns.entity_indices()[0] = data.level_events.initialisation.entity_count++;
+    turret_spawns.entity_indices()[0] = data.entity_count++;
     set_vector(turret_spawns.view_locations(), 0, location);
     set_rotation(turret_spawns.view_rotations(), 0, {});
     turret_spawns.teams()[0] = Team::Green;

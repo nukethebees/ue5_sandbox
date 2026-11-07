@@ -39,7 +39,7 @@ struct InitialSpinner {
 };
 
 // Preserve input order within each entity type.
-// Entity indices are assigned by the host and must belong to data.level_events.initialisation.
+// Entity indices are assigned by the host and must be below data.entity_count.
 void initialise_spawns(LevelSimInitData& data,
                        std::span<InitialCapital const> capitals,
                        std::span<InitialTurret const> turrets,

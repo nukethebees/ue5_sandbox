@@ -78,5 +78,14 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         checks.is_true(harvested_actor->get_collision_component()->GetCollisionEnabled() ==
                            ECollisionEnabled::QueryOnly,
                        TEXT("Repeated extraction leaves component settings unchanged"));
+
+        TArray<AActor const*> const excluded{harvested_actor};
+        auto const excluded_bounds{ioj::FLevelCollisionHost::extract_static_geometry(
+            *world, config, grid_geometry, excluded)};
+        checks.are_equal(std::size_t{0},
+                         excluded_bounds.size(),
+                         TEXT("Explicitly excluded actors contribute no static collision"));
+        checks.is_true(IsValid(harvested_actor),
+                       TEXT("Excluded actor remains available for binding"));
     }
 };

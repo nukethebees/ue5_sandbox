@@ -118,13 +118,11 @@ auto compile_level(LevelDefinition const& level,
     auto const& definition{level};
 
     sim::CompiledLevel compiled;
-    auto& initialisation{compiled.events.initialisation};
     auto& definitions{compiled.events};
     compiled.level_metadata = definition.metadata();
-    initialisation.entity_count = static_cast<std::uint32_t>(definition.entities().size());
+    compiled.entity_count = static_cast<std::uint32_t>(definition.entities().size());
     if (!definition.player_entity_id().empty()) {
-        initialisation.player_entity_index =
-            entity_index(definition, definition.player_entity_id());
+        compiled.player_entity_index = entity_index(definition, definition.player_entity_id());
     }
 
     if (definition.mission()) {
@@ -217,23 +215,20 @@ auto compile_level(LevelDefinition const& level,
             ++end;
         }
 
+        auto const group_offset{definitions.spawn_groups.num()};
+        definitions.add_spawn_group(
+            sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
+        definitions.add_spawn_group(
+            sim::EntityType::Turret, turret_offset, turret_end - turret_offset);
+        auto const spawn{definitions.add_spawn_event(
+            {group_offset, definitions.spawn_groups.num() - group_offset})};
         if (tick == sim::SimTick{}) {
-            definitions.add_initial_spawn_group(
-                sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
-            definitions.add_initial_spawn_group(
-                sim::EntityType::Turret, turret_offset, turret_end - turret_offset);
+            definitions.initial_events.push_back(spawn);
         } else {
-            auto const group_offset{definitions.spawn_groups.num()};
-            definitions.add_spawn_group(
-                sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
-            definitions.add_spawn_group(
-                sim::EntityType::Turret, turret_offset, turret_end - turret_offset);
-            std::array const events{definitions.add_spawn_event(
-                {group_offset, definitions.spawn_groups.num() - group_offset})};
             auto const timer{compiled.timers.add()};
             auto const elapsed{compiled.expressions.add_timer_elapsed(timer)};
             definitions.initial_events.push_back(definitions.add_start_timer_event({timer, tick}));
-            definitions.add_trigger(elapsed, events);
+            definitions.add_trigger(elapsed, std::array{spawn});
         }
         first = end;
     }

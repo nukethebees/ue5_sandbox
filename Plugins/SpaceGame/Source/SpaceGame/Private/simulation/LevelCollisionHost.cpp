@@ -213,9 +213,11 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
     }
     return result;
 }
-auto FLevelCollisionHost::extract_static_geometry(UWorld& world,
-                                                  FCollisionGridConfig const& config,
-                                                  sim::collision::GridGeometry const grid_geometry)
+auto FLevelCollisionHost::extract_static_geometry(
+    UWorld& world,
+    FCollisionGridConfig const& config,
+    sim::collision::GridGeometry const grid_geometry,
+    TConstArrayView<AActor const*> const excluded_actors)
     -> std::vector<sim::collision::WorldAABB> {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ioj::sim::FLevelCollisionHost::extract_static_geometry);
     checkf(config.is_valid(), TEXT("Cannot harvest static collision with an invalid grid config"));
@@ -226,7 +228,7 @@ auto FLevelCollisionHost::extract_static_geometry(UWorld& world,
 
     for (TActorIterator<AActor> actor_it{&world}; actor_it; ++actor_it) {
         auto* const actor{*actor_it};
-        if (!IsValid(actor)) {
+        if (!IsValid(actor) || excluded_actors.Contains(actor)) {
             continue;
         }
 

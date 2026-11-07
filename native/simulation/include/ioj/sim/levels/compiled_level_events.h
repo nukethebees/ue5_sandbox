@@ -5,7 +5,6 @@
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/event_trigger.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
-#include <ioj/sim/levels/level_initialisation_data.h>
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
@@ -18,7 +17,6 @@
 
 namespace ioj::sim {
 struct CompiledLevelEvents {
-    void add_initial_spawn_group(EntityType type, std::int32_t offset, std::int32_t count);
     void add_spawn_group(EntityType type, std::int32_t offset, std::int32_t count);
     auto add_spawn_event(IndexSpan groups) -> EventHandle;
     auto add_stop_event(telemetry::RunEndReason reason) -> EventHandle;
@@ -26,8 +24,6 @@ struct CompiledLevelEvents {
     void add_trigger(ExprHandle condition, std::span<EventHandle const> events);
     auto collect_participating_teams(std::optional<Team> player_team = {}) const -> TeamList;
 
-    LevelInitialisationData initialisation{};
-    LevelSpawnGroups initial_spawn_groups{};
     LevelSpawnGroups spawn_groups{};
     LevelCapitalSpawnEvents capital_spawns{};
     LevelTurretSpawnEvents turret_spawns{};

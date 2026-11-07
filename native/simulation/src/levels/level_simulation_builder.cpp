@@ -193,6 +193,8 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
         return std::unexpected{std::move(compiled.error())};
     }
     inputs.level_events = std::move(compiled->events);
+    inputs.entity_count = compiled->entity_count;
+    inputs.player_entity_index = compiled->player_entity_index;
     inputs.mission = std::move(compiled->mission);
     inputs.expressions = std::move(compiled->expressions);
     inputs.timers = std::move(compiled->timers);

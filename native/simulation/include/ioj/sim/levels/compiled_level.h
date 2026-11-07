@@ -8,6 +8,9 @@
 
 namespace ioj::sim {
 struct CompiledLevel {
+    std::uint32_t entity_count{};
+    LevelEntityIndex player_entity_index{invalid_level_entity_index};
+
     CompiledLevelEvents events;
     Mission mission;
     ExprManager expressions;

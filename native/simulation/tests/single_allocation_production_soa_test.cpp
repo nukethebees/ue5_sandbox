@@ -139,13 +139,12 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
         spinners.initial_fire_point_indices()[index] = index;
     }
     // NOLINTEND(ioj-loop-view-accessor-call)
-    events.add_initial_spawn_group(EntityType::CapitalShip, 0, row_count);
-    events.add_initial_spawn_group(EntityType::TubeSpinner, 0, row_count);
+    events.add_spawn_group(EntityType::CapitalShip, 0, row_count);
+    events.add_spawn_group(EntityType::TubeSpinner, 0, row_count);
     events.add_spawn_group(EntityType::Turret, 0, row_count);
 
     CompiledLevelEvents moved{std::move(events)};
-    EXPECT_EQ(moved.initial_spawn_groups.num(), 2u);
-    EXPECT_EQ(moved.spawn_groups.num(), 1u);
+    EXPECT_EQ(moved.spawn_groups.num(), 3u);
     auto const capitals{moved.capital_spawns.const_view()};
     auto const turrets{moved.turret_spawns.const_view()};
     auto const spinners{moved.spinner_spawns.const_view()};

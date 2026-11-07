@@ -2,7 +2,10 @@
 
 #include <ioj/levels/launch_options.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
+#include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/settings/LevelSettingsFile.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -350,15 +353,26 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
                                      *player_simulation);
     }
 
+    TArray<AActor const*> proxy_actors;
+    for (auto const actor : build->capital_proxies) {
+        proxy_actors.Add(actor);
+    }
+    for (auto const actor : build->turret_proxies) {
+        proxy_actors.Add(actor);
+    }
+    for (auto const actor : build->spinner_proxies) {
+        proxy_actors.Add(actor);
+    }
+    auto const static_bounds{ioj::FLevelCollisionHost::extract_static_geometry(
+        *world, level_config->collision_grid, grid_geometry, proxy_actors)};
+    level_simulation_->set_static_collision(static_bounds);
+    level_simulation_->finish_initialisation();
+
     if (!authored) {
         auto const proxy_entities{build->bind_proxy_entities(*level_simulation_)};
         on_proxy_entities_bound.Broadcast(proxy_entities);
         build->destroy_proxy_actors();
     }
-    auto const static_bounds{ioj::FLevelCollisionHost::extract_static_geometry(
-        *world, level_config->collision_grid, grid_geometry)};
-    level_simulation_->set_static_collision(static_bounds);
-    level_simulation_->finish_initialisation();
 
     if (presentation_enabled) {
         presentation_host_.initialise(resources.config,
