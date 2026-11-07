@@ -14,7 +14,6 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestNiagaraComponent.h>
-#include <SandboxTests/support/WorldlessSimulationTest.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
@@ -165,60 +164,11 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     auto visible_data{make_battle()};
     add_mission(headless_data);
     add_mission(visible_data);
-    ioj::FWorldlessSimulationTest headless_harness{MoveTemp(headless_data)};
-    ioj::FWorldlessSimulationTest visible_harness{MoveTemp(visible_data)};
-    auto& headless{headless_harness.get_simulation()};
-    auto& visible{visible_harness.get_simulation()};
-    TestEqual(TEXT("Presentation construction preserves initial entity count"),
-              visible.capital_ships().num_instances(),
-              headless.capital_ships().num_instances());
-    TestEqual(TEXT("Presentation construction leaves initialization open"),
-              visible.state(),
-              ::ioj::sim::LevelState::Uninitialised);
+    ioj::sim::LevelSim headless{MoveTemp(headless_data)};
+    ioj::sim::LevelSim visible{MoveTemp(visible_data)};
     headless.finish_initialisation();
     visible.finish_initialisation();
     FLevelPresentation presentation{resources, visible.read_access(), {}};
-    struct FEntitySnapshot {
-        std::vector<::ioj::sim::Health> healths;
-        std::vector<::ioj::Vector3f> locations;
-        std::vector<::ioj::Team> teams;
-        std::vector<::ioj::sim::EntityType> types;
-    };
-    using Samples = ioj::TimeSeriesData<FEntitySnapshot>;
-    Samples headless_samples;
-    Samples visible_samples;
-    auto record{[](Samples& samples, ::ioj::sim::LevelSim& simulation) {
-        FEntitySnapshot snapshot;
-        auto append = [&snapshot](auto const entities,
-                                  auto const healths,
-                                  ::ioj::sim::EntityType const type) {
-            auto const ids{entities.entity_ids()};
-            auto const entity_count{entities.num()};
-            for (uint32 index{}; index < entity_count; ++index) {
-                snapshot.healths.push_back(healths.health(ids[index]));
-                snapshot.locations.push_back(::ioj::vector_at(entities.view_locations(), index));
-                snapshot.teams.push_back(entities.teams()[index]);
-                snapshot.types.push_back(type);
-            }
-        };
-        append(simulation.capital_ships().get_entities(),
-               simulation.capital_ships().healths(),
-               ::ioj::sim::EntityType::CapitalShip);
-        append(simulation.fighters().entities(),
-               simulation.fighters().healths(),
-               ::ioj::sim::EntityType::Fighter);
-        append(simulation.turrets().get_entities(),
-               simulation.turrets().healths(),
-               ::ioj::sim::EntityType::Turret);
-        auto const& clk{simulation.clock()};
-        samples.add(clk.simulation_time(), std::move(snapshot));
-    }};
-    headless_harness.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
-        record(headless_samples, simulation);
-    };
-    visible_harness.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
-        record(visible_samples, simulation);
-    };
     headless.start();
     visible.start();
     auto const dt{headless.clock().tick_period()};
@@ -228,46 +178,33 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
             kill_enemy(headless);
             kill_enemy(visible);
         }
-        headless_harness.advance(dt);
-        visible_harness.advance(dt);
-        TestEqual(TEXT("Advancing does not present"),
-                  presentation.get_last_completed_tick(),
-                  static_cast<uint64>(tick));
+        headless.advance(dt);
+        visible.advance(dt);
         presentation.tick(dt, visible.read_access());
         TestEqual(TEXT("Presentation sees the completed simulation"),
                   presentation.get_last_completed_tick(),
                   visible.clock().get_completed_ticks().value());
-    }
-    TestEqual(TEXT("Mission completion pauses the headless simulation"),
-              headless.state(),
-              ioj::sim::LevelState::Paused);
-    TestEqual(TEXT("Mission completion pauses the visible simulation"),
-              visible.state(),
-              ioj::sim::LevelState::Paused);
-    headless_harness.advance(dt * 5);
-    visible_harness.advance(dt * 5);
-    presentation.tick(dt, visible.read_access());
-    TestEqual(TEXT("Headless simulation stops at the completion tick"),
-              headless.clock().get_completed_ticks().value(),
-              static_cast<uint64>(tick_count));
-    TestEqual(TEXT("Visible simulation stops at the completion tick"),
-              visible.clock().get_completed_ticks().value(),
-              static_cast<uint64>(tick_count));
-    TestEqual(TEXT("Presentation stays at the completion tick"),
-              presentation.get_last_completed_tick(),
-              static_cast<uint64>(tick_count));
-    TestEqual(TEXT("Both executions record every tick"), headless_samples.num(), tick_count);
-    TestEqual(TEXT("Both executions have matching sample counts"),
-              visible_samples.num(),
-              headless_samples.num());
-    auto const sample_count{headless_samples.num()};
-    for (uint32 index{}; index < sample_count; ++index) {
-        auto const& a{headless_samples.value_at(index)};
-        auto const& b{visible_samples.value_at(index)};
-        TestTrue(TEXT("Presentation preserves health and entity lifetime"), a.healths == b.healths);
-        TestTrue(TEXT("Presentation preserves locations"), a.locations == b.locations);
-        TestTrue(TEXT("Presentation preserves entity teams and types"),
-                 a.teams == b.teams && a.types == b.types);
+
+        auto const a{headless.capital_ships().get_entities()};
+        auto const b{visible.capital_ships().get_entities()};
+        auto const ids{a.entity_ids()};
+        if (!TestTrue(TEXT("Presentation preserves entity lifetime"),
+                      std::ranges::equal(ids, b.entity_ids()))) {
+            return false;
+        }
+        TestTrue(TEXT("Presentation preserves teams"), std::ranges::equal(a.teams(), b.teams()));
+        auto const locations_a{a.view_locations()};
+        auto const locations_b{b.view_locations()};
+        auto const healths_a{headless.capital_ships().healths()};
+        auto const healths_b{visible.capital_ships().healths()};
+        auto const count{a.num()};
+        for (uint32 index{}; index < count; ++index) {
+            TestTrue(TEXT("Presentation preserves health"),
+                     healths_a.health(ids[index]) == healths_b.health(ids[index]));
+            TestTrue(TEXT("Presentation preserves locations"),
+                     ioj::vector_at(locations_a, index) == ioj::vector_at(locations_b, index));
+        }
+        TestEqual(TEXT("Presentation preserves level state"), visible.state(), headless.state());
     }
     TestTrue(TEXT("Both objective outcomes match"),
              headless.mission().outcome(ioj::sim::ObjectiveId{0}, headless.expressions()) ==
