@@ -56,7 +56,7 @@ Share subexpressions within one objective using names:
 
 ```scheme
 (objective :id 'shared :team 'blue
-  :nodes (list (expr 'deadline (time-elapsed 60)))
+  :nodes (list (named-expr 'deadline (time-elapsed 60)))
   :pass (all-of (entity-destroyed 'enemy) (expr-ref 'deadline))
   :expire (all-of (objective-resolved 'bypass 'passed) (expr-ref 'deadline)))
 ```

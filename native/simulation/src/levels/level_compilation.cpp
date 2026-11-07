@@ -21,9 +21,9 @@ struct EventSource {
     std::uint32_t source_index{};
 };
 
-auto entity_index(LevelDefinition const& definition, EntityId const& id) -> sim::LevelEntityIndex {
+auto entity_index(LevelDefinition const& definition, EntityId const& id) -> sim::LevelEntityRef {
     auto const& entity{definition.entity(id)};
-    return static_cast<sim::LevelEntityIndex>(&entity - definition.entities().data());
+    return sim::LevelEntityRef{static_cast<std::uint32_t>(&entity - definition.entities().data())};
 }
 
 } // namespace
@@ -52,10 +52,10 @@ auto compile_mission(MissionDefinition const& definition,
     auto const count{static_cast<std::uint16_t>(definition.objectives.size())};
     sim::Objectives objectives{count};
     std::unordered_map<ObjectiveName, sim::ObjectiveId> objective_ids;
-    std::unordered_map<EntityId, sim::LevelEntityIndex> entity_indices;
+    std::unordered_map<EntityId, sim::LevelEntityRef> entity_indices;
     auto const entity_count{entities.size()};
-    for (sim::LevelEntityIndex index{}; index < entity_count; ++index) {
-        entity_indices.emplace(entities[index], index);
+    for (std::uint32_t index{}; index < entity_count; ++index) {
+        entity_indices.emplace(entities[index], sim::LevelEntityRef{index});
     }
     for (std::uint16_t index{}; index < count; ++index) {
         objective_ids.emplace(definition.objectives[index].id, sim::ObjectiveId{index});
@@ -123,7 +123,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     output.level_metadata = definition.metadata();
     output.entity_count = static_cast<std::uint32_t>(definition.entities().size());
     if (!definition.player_entity_id().empty()) {
-        output.player_entity_index = entity_index(definition, definition.player_entity_id());
+        output.player_entity_ref = entity_index(definition, definition.player_entity_id());
     }
 
     if (definition.mission()) {
@@ -165,20 +165,25 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
 
     std::int32_t capital_count{};
     std::int32_t turret_count{};
+    std::int32_t spinner_count{};
     for (auto const& entity : definition.entities()) {
         capital_count += entity.archetype == EntityArchetype::CapitalShip ? 1 : 0;
         turret_count += entity.archetype == EntityArchetype::StaticTurret ? 1 : 0;
+        spinner_count += entity.archetype == EntityArchetype::TubeSpinner ? 1 : 0;
     }
     definitions.capital_spawns.add_uninitialised(capital_count);
     definitions.turret_spawns.add_uninitialised(turret_count);
+    definitions.spinner_spawns.add_uninitialised(spinner_count);
     auto const capital_events{definitions.capital_spawns.view()};
     auto const turret_events{definitions.turret_spawns.view()};
+    auto const spinner_events{definitions.spinner_spawns.view()};
     std::int32_t capital_end{};
     std::int32_t turret_end{};
+    std::int32_t spinner_end{};
 
     auto const append_entity =
-        [&, capital_events, turret_events](sim::LevelEntityIndex const entity_index_value) {
-            auto const& entity{definition.entities()[static_cast<std::size_t>(entity_index_value)]};
+        [&, capital_events, turret_events](sim::LevelEntityRef const entity_index_value) {
+            auto const& entity{definition.entities()[entity_index_value.index()]};
             if (entity.archetype == EntityArchetype::CapitalShip) {
                 auto const row{capital_end++};
                 capital_events.entity_indices()[row] = entity_index_value;
@@ -201,6 +206,13 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
                     entity.overrides.health.value_or(turret_config.max_health.get().value())};
                 turret_events.laser_damages()[row] =
                     entity.overrides.laser_damage.value_or(turret_config.laser.damage);
+            } else if (entity.archetype == EntityArchetype::TubeSpinner) {
+                auto const row{spinner_end++};
+                spinner_events.entity_indices()[row] = entity_index_value;
+                set_vector(spinner_events.view_locations(), row, Vector3f{entity.position});
+                spinner_events.yaws()[row] = static_cast<float>(entity.rotation.yaw);
+                spinner_events.initial_fire_point_indices()[row] =
+                    entity.overrides.initial_fire_point.value_or(0);
             }
         };
 
@@ -210,9 +222,10 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         auto const tick{sources[first].execution_tick};
         auto const capital_offset{capital_end};
         auto const turret_offset{turret_end};
+        auto const spinner_offset{spinner_end};
         auto end{first};
         while (end < source_count && sources[end].execution_tick == tick) {
-            append_entity(sources[end].source_index);
+            append_entity(sim::LevelEntityRef{sources[end].source_index});
             ++end;
         }
 
@@ -221,6 +234,8 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
             sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
         definitions.add_spawn_group(
             sim::EntityType::Turret, turret_offset, turret_end - turret_offset);
+        definitions.add_spawn_group(
+            sim::EntityType::TubeSpinner, spinner_offset, spinner_end - spinner_offset);
         auto const spawn{definitions.add_spawn_event(
             {group_offset, definitions.spawn_groups.num() - group_offset})};
         if (tick == sim::SimTick{}) {

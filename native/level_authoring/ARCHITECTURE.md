@@ -72,13 +72,17 @@ and switches without runtime lookup tables. See
 [DSL syntax](../../LevelScripts/README.md). The writer uses a small S-expression emitter
 because it emits evaluable constructors, while the AST represents their evaluated data.
 Literal vectors and ID lists are quoted; collections containing constructors use `list`.
-The writer preserves deterministic ordering and three-decimal rounding. Editor serialization
-rejects par-time, unlock criteria, objective missions, and settings layers. Objective graphs
-remain authored in S7; the scene editor cannot infer or rewrite them from entity roles.
+LispB generates writers from the same record metadata as readers. Full and baseline-difference
+serialization preserve floating-point precision and use the existing S-expression IR/renderer.
+The handwritten level writer only converts domain definitions back to authored inputs and
+handles expression variants. Serialized values round-trip semantically; human source is never
+reconstructed from those values. The existing symbol reader normalizes authored identifiers
+to lower case; round-tripping assumes those canonical decoded identifiers.
 
 The `s7_constructors` module derives ordinary Scheme constructors from record tags, including
-positional forms. Shared tags produce one definition. Catalog imports and mission expression
-operators keep their special DSL implementations and opt out of constructor generation.
+positional forms, plus `foo?`, `foo-ref`, and `foo-with`. Common Scheme helpers provide tag
+checks, property access and shallow functional updates. Tags and generated function names
+must be unique. Catalog and mission expression operators retain their specialized bindings.
 
 Settings constructors return records; `settings-layers` groups records in application order.
 `parse_settings` decodes them into a copy of a supplied `SettingsValues` configuration.
@@ -90,11 +94,11 @@ during decoding. Simulation copies the effective groups to its handwritten root,
 then validates the effective configuration's domain constraints.
 
 Runtime loading accepts `LevelSource`: either source text to decode against the resolved base,
-or an already-validated definition from a native caller/editor scene. The latter's settings,
+or an already-validated definition from a native caller/editor preparation. The latter's settings,
 when present, are complete values rather than a sparse patch. Menu inspection remains separate:
 the runtime map's settings file and resource defaults are not available during catalog browsing.
 A launch passes only the source, evaluates it once after base configuration is available, and
-uses that same resolved definition for both Unreal actors and native simulation. Failed settings
+uses that same resolved definition for native simulation and presentation. Failed settings
 resolution leaves the supplied definition and live configuration untouched.
 
 Shared static configuration records live under `native/levels`; runtime state remains under
@@ -107,7 +111,7 @@ the relevant native values alongside Unreal asset references. Debug/resource edi
 remain Unreal-owned.
 
 AST readers, Scheme file readers and serializers live under `s7/src/`. General authoring code
-such as scene reconciliation and source sessions remains under `lib/src/`. The AST-only and
+such as source sessions remains under `lib/src/`. The AST-only and
 interpreter-backed libraries retain their dependency boundaries.
 
 Ordinary records with matching script/domain layouts (camera, grid, campaign, team result)

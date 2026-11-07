@@ -19,6 +19,8 @@
 
 namespace ioj::levels {
 struct LevelCameraDefinition {
+    bool operator==(LevelCameraDefinition const&) const = default;
+
     enum class Field : std::uint8_t {
         target_entity_ids,
         offset_direction,

@@ -1,3 +1,10 @@
+(module level_entity_ref
+  :header "native/simulation/include/ioj/sim/levels/level_entity_ref.h"
+  :namespace ioj::sim
+  (record LevelEntityRef :layout packed :bits 32 :invalid-value 0xffffffff
+    (member index std::uint32_t :bits 32)
+    (projections (cpp :storage std::uint32_t))))
+
 (module level_events_level_event_count
   :header "native/simulation/include/ioj/sim/levels/level_event_count.h"
   :namespace ioj::sim

@@ -2,7 +2,7 @@
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
-#include <ioj/sim/levels/level_entity_index.h>
+#include <ioj/sim/levels/level_entity_ref.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
 #include <ioj/transform3d.h>
@@ -54,7 +54,7 @@ class LevelSpawnManager {
     auto operator=(LevelSpawnManager&&) -> LevelSpawnManager& = delete;
 
     void initialise(std::uint32_t entity_count);
-    void set_entity_id(LevelEntityIndex entity_index, EntityId id);
+    void set_entity_id(LevelEntityRef entity_index, EntityId id);
     void process_event(EventHandle event, LevelEventManager const& events, SpawnContext context);
     void queue_fighter_spawns(float dt,
                               FrameMemoryResource& scratch_resource,

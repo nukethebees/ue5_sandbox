@@ -84,7 +84,7 @@ auto make_player_spawn(SimulationFixture const& fixture, Transform3d transform)
 }
 auto add_player_spawn(LevelSimInitData& data, player::PlayerSpawnData spawn) -> std::uint32_t {
     auto const entity_index{data.entity_count++};
-    data.player_entity_index = entity_index;
+    data.player_entity_ref = ioj::sim::LevelEntityRef{entity_index};
     data.player.emplace(spawn);
     return entity_index;
 }
@@ -103,7 +103,7 @@ auto add_capital_spawn(LevelSimInitData& data,
     auto const entity_index{data.entity_count++};
     storage.add_defaulted(1);
     auto const events{storage.view()};
-    events.entity_indices()[row] = entity_index;
+    events.entity_indices()[row] = ioj::sim::LevelEntityRef{entity_index};
     set_vector(events.view_locations(), row, location);
     events.teams()[row] = team;
     events.healths()[row] = health == -1 ? data.capital_ships.max_health : Health{health};
@@ -126,7 +126,7 @@ auto add_turret_spawn(LevelSimInitData& data,
     auto const entity_index{data.entity_count++};
     storage.add_defaulted(1);
     auto const events{storage.view()};
-    events.entity_indices()[row] = entity_index;
+    events.entity_indices()[row] = ioj::sim::LevelEntityRef{entity_index};
     set_vector(events.view_locations(), row, location);
     set_rotation(events.view_rotations(), row, rotation);
     events.teams()[row] = team;
@@ -147,7 +147,7 @@ auto add_spinner_spawn(LevelSimInitData& data,
     auto const entity_index{data.entity_count++};
     storage.add_defaulted(1);
     auto const events{storage.view()};
-    events.entity_indices()[row] = entity_index;
+    events.entity_indices()[row] = ioj::sim::LevelEntityRef{entity_index};
     set_vector(events.view_locations(), row, location);
     events.yaws()[row] = yaw;
     events.initial_fire_point_indices()[row] = initial_fire_point_index;

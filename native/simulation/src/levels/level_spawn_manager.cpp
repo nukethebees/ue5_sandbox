@@ -5,7 +5,7 @@
 #include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/spawn_interface.h>
 #include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/levels/level_entity_index.h>
+#include <ioj/sim/levels/level_entity_ref.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/spawn_context.h>
 #include <ioj/sim/spinners/spawn_interface.h>
@@ -35,10 +35,10 @@ void LevelSpawnManager::initialise(std::uint32_t const entity_count) {
     entity_ids_.resize(static_cast<std::size_t>(entity_count));
 }
 
-void LevelSpawnManager::set_entity_id(LevelEntityIndex const entity_index, EntityId const id) {
-    assert(static_cast<std::size_t>(entity_index) < entity_ids_.size());
+void LevelSpawnManager::set_entity_id(LevelEntityRef const entity_index, EntityId const id) {
+    assert(entity_index.index() < entity_ids_.size());
     assert(id.is_valid());
-    entity_ids_[entity_index] = id;
+    entity_ids_[entity_index.index()] = id;
 }
 
 void LevelSpawnManager::process_event(EventHandle const event,

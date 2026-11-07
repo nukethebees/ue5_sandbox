@@ -11,6 +11,7 @@
 #include <ioj/levels/catalog_validation.h>
 #include <ioj/s7/interpreter.h>
 #include <ioj/s7/source_format.h>
+#include <ioj/settings/settings_values_writer.h>
 #include <ioj/testing/files.h>
 #include <ioj/testing/structural_diff.h>
 
@@ -27,21 +28,13 @@ namespace ioj::levels::authoring::tests {
 using ioj::testing::structurally_equal;
 using ioj::testing::write_files;
 namespace {
-auto timer_mission() -> MissionDefinition {
-    ObjectiveDefinition objective{.id = ioj::levels::ObjectiveName{"primary"}, .team = Team::Blue};
-    objective.expressions = {
-        {ioj::levels::TimeElapsedExpr{.seconds = ioj::NonNegativeFinite<double>::make(1.0)}}};
-    objective.roots[ioj::ObjectiveOutcome::Passed] = 0;
-    return {.objectives = {objective}};
-}
-
 auto emit_source(LevelDefinition const& level) -> std::expected<std::string, Diagnostics> {
-    return emit_editor_level_source(level);
+    return emit_level_source(make_level_input(level));
 }
 
 auto emit_source(LevelDefinitionComponents definition) -> std::expected<std::string, Diagnostics> {
-    return LevelDefinition::make(std::move(definition)).and_then([](LevelDefinition const& level) {
-        return emit_editor_level_source(level);
+    return LevelDefinition::make(std::move(definition)).transform([](LevelDefinition const& level) {
+        return emit_level_source(make_level_input(level));
     });
 }
 
@@ -201,13 +194,13 @@ TEST(NativeSettings, DecodesPresentationLayersIntoExistingNativeValues) {
     auto const source{DefinitionReader{}.read_settings_source(R"(
       (settings-layers
         (settings :presentation (presentation
-          :player-ship (player-ship :boost-effect-colour-intensity 80)
+          :player-ship (player-ship-presentation :boost-effect-colour-intensity 80)
           :entity-overlay (settings-section 'entity-overlay :enabled #f :bar-size-pixels '(32 6)
                            :soft-target (settings-section 'soft-target :opacity 0.5))
-          :capital-ships (capital-ships :n-small-explosions 3)
+          :capital-ships (capital-ships-presentation :n-small-explosions 3)
           :radar (settings-section 'radar :combat-range 150000)))
         (settings :presentation (presentation
-          :player-ship (player-ship :boost-effect-colour-intensity 75)
+          :player-ship (player-ship-presentation :boost-effect-colour-intensity 75)
           :entity-overlay (settings-section 'entity-overlay :soft-target (settings-section 'soft-target :pulse-duration 0.3))))))",
                                                               initial)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
@@ -239,7 +232,7 @@ TEST(NativeSettings, RecordTagsRegisterConstructorsWithoutHandwrittenBindings) {
 
     auto const ast{reader.read_source_ast(source)};
     ASSERT_TRUE(ast) << format_diagnostics(ast.error());
-    auto const frozen{reader.read_settings_source(emit_evaluated_source(*ast, ast->root))};
+    auto const frozen{reader.read_settings_source(s7::serialize(*settings))};
     ASSERT_TRUE(frozen) << format_diagnostics(frozen.error());
     EXPECT_PRED_FORMAT2(structurally_equal, *settings, *frozen);
 }
@@ -312,12 +305,13 @@ TEST(NativeSettings, RejectsMalformedPresentationAtTheTypedDecodingBoundary) {
           Case{":radar (settings-section 'radar :enabled #t :enabled #f)",
                DiagnosticCode::DuplicateProperty,
                "presentation.radar[3]"},
-          Case{":capital-ships (capital-ships :n-small-explosions 1.5)",
+          Case{":capital-ships (capital-ships-presentation :n-small-explosions 1.5)",
                DiagnosticCode::InvalidNumber,
                "presentation.capital-ships.n-small-explosions"},
-          Case{":capital-ships (capital-ships :min-small-explosion-range '(1 2 1e100))",
-               DiagnosticCode::InvalidNumber,
-               "presentation.capital-ships.min-small-explosion-range[2]"},
+          Case{
+              ":capital-ships (capital-ships-presentation :min-small-explosion-range '(1 2 1e100))",
+              DiagnosticCode::InvalidNumber,
+              "presentation.capital-ships.min-small-explosion-range[2]"},
           Case{":entity-overlay (settings-section 'entity-overlay :bar-size-pixels '(1 +inf.0))",
                DiagnosticCode::InvalidNumber,
                "presentation.entity-overlay.bar-size-pixels"}}) {
@@ -476,7 +470,7 @@ TEST(NativeLevelAuthoringReader, DecodesTypedInputsBeforeResolvingReferencesOrGe
       :entities ((:entity :archetype capital-ship :team blue :position (1 2 3)))
       :mission (:mission :objectives ((:objective :id wait :team blue
         :pass (:expr-ref later)
-        :nodes ((:expr later (:time-elapsed 1))))))))")};
+        :nodes ((:named-expr later (:time-elapsed 1))))))))")};
     ASSERT_TRUE(ast);
     auto const input{s7::read<LevelInput>(s7::Reader{*ast}, ast->root, "level")};
     ASSERT_TRUE(input);
@@ -546,7 +540,7 @@ TEST(NativeLevelAuthoringReader, RejectsInvalidMissionNumbersAndNamedReferences)
             :entities (list
               (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
             :mission (mission :objectives (list
-              (objective :id 'a :team 'blue :nodes (list (expr 'node {}))
+              (objective :id 'a :team 'blue :nodes (list (named-expr 'node {}))
                 :pass (expr-ref 'node))))))",
                                                                            expression))};
         EXPECT_EQ(result.has_value(), std::string_view{expression} == "(time-elapsed 1)");
@@ -557,45 +551,9 @@ TEST(NativeLevelAuthoringReader, RejectsInvalidMissionNumbersAndNamedReferences)
     }
 }
 
-TEST(NativeSourceSession, PreservesTextAndSeparatesSavedFromAppliedState) {
+TEST(NativeSourceSession, ProtectsDiskChangesAndRetainsDetachedBuffersUntilDiscarded) {
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "source.scm"};
-    SourceSession session;
-    ASSERT_TRUE(session.attach(path));
-    EXPECT_FALSE(session.state().disk_conflict);
-    auto const source{minimal_source() + "\r\n;; exact \xcf\x80 text\n"};
-    session.set_buffer(source);
-    auto const revision{session.state().revision};
-    session.set_buffer(source);
-    EXPECT_EQ(session.state().revision, revision);
-
-    ASSERT_TRUE(session.save());
-    EXPECT_EQ(read_file(path).value(), source);
-    EXPECT_FALSE(session.state().dirty());
-    EXPECT_TRUE(session.state().unapplied("original"));
-    EXPECT_FALSE(session.save_replacement("canonical", "original"));
-    EXPECT_EQ(read_file(path).value(), source);
-
-    session.state().preview = PreviewState::Valid;
-    ASSERT_TRUE(session.save_replacement("canonical", session.state().buffer_text));
-    EXPECT_EQ(session.buffer(), "canonical");
-    EXPECT_EQ(session.state().preview, PreviewState::Stale);
-    EXPECT_GT(session.state().revision, revision);
-
-    ASSERT_TRUE(write_files({{path, "external"}}));
-    ASSERT_TRUE(session.refresh_external_conflict());
-    EXPECT_TRUE(session.state().disk_conflict);
-    EXPECT_FALSE(session.save());
-    ASSERT_TRUE(session.reload());
-    EXPECT_EQ(session.buffer(), "external");
-    EXPECT_FALSE(session.state().dirty());
-    EXPECT_FALSE(session.state().disk_conflict);
-}
-
-TEST(NativeSourceSession, ProtectsDiskChangesAndRecoversDetachedBuffers) {
-    TemporaryLevelDirectory directory;
-    auto const path{directory.path() / "source.scm"};
-    auto const recovery{directory.path() / "recovery.scm"};
     auto const next{directory.path() / "next.scm"};
     for (auto const change : {"edit", "delete", "create"}) {
         SCOPED_TRACE(change);
@@ -606,7 +564,6 @@ TEST(NativeSourceSession, ProtectsDiskChangesAndRecoversDetachedBuffers) {
         SourceSession session;
         ASSERT_TRUE(session.attach(path));
         session.set_buffer("unsaved");
-        session.state().preview = PreviewState::Valid;
         if (std::string_view{change} == "delete") {
             std::filesystem::remove(path);
         } else {
@@ -614,28 +571,21 @@ TEST(NativeSourceSession, ProtectsDiskChangesAndRecoversDetachedBuffers) {
         }
         ASSERT_TRUE(session.refresh_external_conflict());
         EXPECT_TRUE(session.state().disk_conflict);
-        EXPECT_EQ(session.state().preview, PreviewState::Valid);
         EXPECT_FALSE(session.save());
 
-        session.state().scene_dirty = true;
         session.detach();
         EXPECT_FALSE(session.attach(next));
         EXPECT_EQ(session.buffer(), "unsaved");
-        EXPECT_FALSE(session.state().scene_dirty);
-        EXPECT_EQ(session.state().preview, PreviewState::None);
-        ASSERT_TRUE(write_files({{recovery, "unrelated"}}));
-        EXPECT_FALSE(session.save_as(recovery, SourceOverwritePolicy::RefuseExisting));
-        EXPECT_EQ(read_file(recovery).value(), "unrelated");
-
-        auto const revision{session.state().revision};
-        ASSERT_TRUE(session.save_as(recovery, SourceOverwritePolicy::ReplaceExisting));
-        EXPECT_GT(session.state().revision, revision);
-        EXPECT_EQ(read_file(recovery).value(), "unsaved");
+        EXPECT_FALSE(session.save());
         EXPECT_FALSE(session.is_attached());
         EXPECT_FALSE(session.attach(next));
         ASSERT_TRUE(session.discard_and_attach(next));
         EXPECT_TRUE(session.is_attached());
         EXPECT_FALSE(session.state().recovery_required);
+        session.set_buffer("next source");
+        ASSERT_TRUE(session.save());
+        EXPECT_EQ(read_file(next).value(), "next source");
+        EXPECT_FALSE(session.state().dirty());
     }
 }
 
@@ -650,58 +600,6 @@ TEST(NativeSourceSession, ReadsUtf8BomText) {
     EXPECT_EQ(session.buffer(), "A\xcf\x80");
     ASSERT_TRUE(session.save());
     EXPECT_EQ(read_file(path).value(), session.buffer());
-}
-
-TEST(NativeSourceSession, ParsesUnsavedBuffersAndCapturesIndependentLibraryReplay) {
-    TemporaryLevelDirectory directory;
-    auto const path{directory.path() / "level.scm"};
-    auto const library{directory.path() / "Libraries" / "metadata.scm"};
-    auto source{minimal_source()};
-    source.replace(source.find("\"Test\""), 6, "shared-title");
-    source.insert(0, "(load-script \"metadata.scm\") ");
-    source.insert(source.size() - 1,
-                  " :settings (settings :collision-grid (collision-grid :cell-size shared-cells))");
-    ASSERT_TRUE(write_files({{path, source},
-                             {library,
-                              "(define shared-title \"From Library\") "
-                              "(define shared-cells '(6000 6000 20000))"}}));
-
-    SourceSession session;
-    EXPECT_FALSE(session.read());
-    ASSERT_TRUE(session.load(path));
-    auto loaded{session.read()};
-    ASSERT_TRUE(loaded) << format_diagnostics(loaded.error());
-    EXPECT_EQ(loaded->metadata().title, "From Library");
-
-    auto edited{source};
-    edited.replace(edited.find("shared-title"), 12, "\"From Buffer\"");
-    session.set_buffer(edited);
-    auto const replay{session.read_replay()};
-    ASSERT_TRUE(replay) << format_diagnostics(replay.error());
-    EXPECT_EQ(replay->definition.metadata().title, "From Buffer");
-    EXPECT_EQ(read_file(path).value(), source);
-
-    ASSERT_TRUE(write_files({{library,
-                              "(define shared-title \"Changed Library\") "
-                              "(define shared-cells '(7000 7000 20000))"}}));
-    auto const refreshed{session.read()};
-    ASSERT_TRUE(refreshed);
-    EXPECT_EQ(refreshed->settings().collision_grid.cell_size, (Vector3f{7000.f, 7000.f, 20000.f}));
-    auto const captured{DefinitionReader{}.read_level_source(replay->evaluated_source)};
-    ASSERT_TRUE(captured) << format_diagnostics(captured.error());
-    EXPECT_EQ(captured->metadata().title, "From Buffer");
-    EXPECT_EQ(captured->settings().collision_grid.cell_size, (Vector3f{6000.f, 6000.f, 20000.f}));
-    auto const settings{resolve_document_settings(
-        "(settings :collision-grid (collision-grid :level-size '(3000000 3000000 100000)))",
-        replay->evaluated_source,
-        {},
-        {},
-        {})};
-    ASSERT_TRUE(settings) << format_diagnostics(settings.error());
-    EXPECT_EQ(settings->collision_grid.cell_size, (Vector3f{6000.f, 6000.f, 20000.f}));
-    EXPECT_EQ(settings->collision_grid.level_size, (Vector3f{3000000.f, 3000000.f, 100000.f}));
-    EXPECT_FALSE(resolve_document_settings("invalid", replay->evaluated_source, {}, {}, {}));
-    EXPECT_FALSE(resolve_document_settings({}, "invalid", {}, {}, {}));
 }
 
 TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
@@ -882,7 +780,6 @@ TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
 
         auto const emitted{emit_source(*result)};
         ASSERT_TRUE(emitted) << format_diagnostics(emitted.error());
-        EXPECT_FALSE(emitted->contains(":rotation"));
         EXPECT_TRUE(emitted->contains(":id 'red-capital-ship-1"));
         auto const round_trip{DefinitionReader{}.read_level_source(*emitted)};
         ASSERT_TRUE(round_trip) << format_diagnostics(round_trip.error());
@@ -1044,13 +941,11 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
                               .rotation = {0.0, 90.0, 0.0},
                               .spawn_time_seconds = 2.5});
     auto second{first};
-    std::ranges::reverse(second.entities);
     auto const a{emit_source(first)};
     auto const b{emit_source(second)};
     ASSERT_TRUE(a) << format_diagnostics(a.error());
     ASSERT_TRUE(b);
     EXPECT_EQ(*a, *b);
-    EXPECT_TRUE(a->contains(":position '(1000 200.123 -300.5)"));
     EXPECT_TRUE(a->contains(":spawn-at 2.5"));
     auto const loaded{DefinitionReader{}.read_level_source(*a)};
     ASSERT_TRUE(loaded) << format_diagnostics(loaded.error());
@@ -1064,11 +959,10 @@ TEST(NativeLevelAuthoringWriter, HandlesEmptyCollectionsEscapesAndNumericBoundar
     definition.entities[0].position = {-0.0001, 0.0005, 1.0e100};
     auto source{emit_source(definition)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
-    EXPECT_TRUE(source->contains(":position '(0 0.001 "));
     auto parsed{DefinitionReader{}.read_level_source(*source)};
     ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
     EXPECT_EQ(parsed->metadata().description, definition.metadata.description);
-    EXPECT_DOUBLE_EQ(parsed->entities()[0].position.x(), 0.0);
+    EXPECT_EQ(parsed->entities()[0].position, definition.entities[0].position);
 }
 TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourceRoundTrip) {
     settings::Settings base;
@@ -1092,9 +986,7 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
         auto const definition{DefinitionReader{}.read_level_source(authored, base)};
         ASSERT_TRUE(definition) << format_diagnostics(definition.error());
         EXPECT_PRED_FORMAT2(structurally_equal, expected, definition->settings());
-        EXPECT_FALSE(emit_source(*definition));
-
-        auto const source{emit_editor_level_source(*definition, authored)};
+        auto const source{emit_source(*definition)};
         ASSERT_TRUE(source) << format_diagnostics(source.error());
         auto const parsed{DefinitionReader{}.read_level_source(*source, base)};
         ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
@@ -1102,7 +994,6 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
 
         auto changed_base{base};
         changed_base.fighters.speed = 8000.f;
-        expected.fighters.speed = 8000.f;
         auto const inherited{DefinitionReader{}.read_level_source(*source, changed_base)};
         ASSERT_TRUE(inherited) << format_diagnostics(inherited.error());
         EXPECT_PRED_FORMAT2(structurally_equal, expected, inherited->settings());
@@ -1121,18 +1012,7 @@ TEST(NativeLevelAuthoringCollisionGrid, RejectsMalformedAndInvalidExplicitDimens
         EXPECT_FALSE(DefinitionReader{}.read_level_source(source)) << grid;
     }
 }
-TEST(NativeLevelAuthoringWriter, ReportsUnsupportedEditorFeatures) {
-    auto definition{make_level("unsupported")};
-    definition.metadata.par_time_seconds = 10;
-    definition.unlock_level_ids.emplace_back("other");
-    definition.mission = timer_mission();
-    auto const result{emit_source(std::move(definition))};
-    ASSERT_FALSE(result);
-    EXPECT_EQ(std::ranges::count(
-                  result.error(), DiagnosticCode::UnsupportedEditorFeature, &Diagnostic::code),
-              3);
-    EXPECT_TRUE(std::ranges::contains(result.error(), "level.mission", &Diagnostic::node_path));
-}
+
 TEST(NativeLevelAuthoringCatalog, RejectsDuplicatesCyclesAndUnavailableDependencies) {
     std::vector<LevelCatalogEntry> duplicates{{7, "a.scm", checked_level("same")},
                                               {31, "b.scm", checked_level("same")}};

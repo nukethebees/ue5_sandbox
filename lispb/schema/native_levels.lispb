@@ -3,8 +3,9 @@
   :header-include "ioj/levels/level_camera_definition.h"
   :namespace ioj::levels
   :prelude ("#include <vector>")
-  (record LevelCameraDefinition :generate-visitor true :generate-s7-reader true :s7-tag "camera"
+  (record LevelCameraDefinition :comparison equality :generate-visitor true :generate-s7-reader true :generate-s7-writer true :s7-tag "camera"
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
+    :s7-writer-includes ("ioj/levels/authoring/identifier_writer.h")
     (member target_entity_ids @native_entity_ids :initializer "" :required true :s7-name "look-at")
     (member offset_direction @native_vector3d :initializer "" :required true)
     (member distance double :initializer "" :required true)
@@ -15,8 +16,9 @@
   :header-include "ioj/levels/campaign_definition.h"
   :namespace ioj::levels
   :prelude ("#include <vector>")
-  (record CampaignDefinition :generate-visitor true :generate-s7-reader true :s7-tag "campaign"
+  (record CampaignDefinition :comparison equality :generate-visitor true :generate-s7-reader true :generate-s7-writer true :s7-tag "campaign"
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
+    :s7-writer-includes ("ioj/levels/authoring/identifier_writer.h")
     (member id @native_campaign_id :initializer "" :required true)
     (member title @native_string :initializer "" :required true)
     (member level_ids @native_level_ids :initializer "" :required true :s7-name "levels")
@@ -51,8 +53,9 @@
   :header-include "ioj/levels/objective_dependency.h"
   :namespace ioj::levels
   (record ObjectiveDependency :comparison equality
-    :generate-s7-reader true :s7-tag "objective-resolved" :s7-positional true :s7-constructor false
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "objective-resolved" :s7-positional true :s7-constructor false
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
+    :s7-writer-includes ("ioj/levels/authoring/identifier_writer.h")
     (member objective @input_objective_name :initializer "")
     (member outcome ioj::ObjectiveOutcome :initializer "ObjectiveOutcome::Passed")
     (projections (cpp))))
@@ -68,6 +71,7 @@
     (value PlayerFighter :serialized-name "player-fighter")
     (value CapitalShip :serialized-name "capital-ship")
     (value StaticTurret :serialized-name "static-turret")
+    (value TubeSpinner :serialized-name "tube-spinner")
     (projections (cpp))))
 
 (module native_levels_diagnostic_code

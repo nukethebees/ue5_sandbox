@@ -3,7 +3,7 @@
   :header-include "ioj/settings/tick_settings.h"
   :namespace ioj::settings
   (record TickSettings :comparison equality :generate-visitor true
-    :generate-s7-reader true :s7-tag "tick"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "tick"
     :s7-reader-includes ("ioj/s7/frequency_reader.h")
     (member tick_rate @settings_frequency :initializer 60.0)
     (member time_scale @settings_positive_double :initializer 1.0)
@@ -14,7 +14,7 @@
   :header-include "ioj/sim/player/player_sim_config.h"
   :namespace ioj::sim
   (record PlayerSimConfig :comparison equality :generate-visitor true
-    :generate-s7-reader true :s7-tag "player-ship"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "player-ship"
     (member thrust_energy_max @settings_positive_float :initializer 1.f)
     (member pitch_angle_max float :initializer 30.f :finite true)
     (member pitch_speed float :initializer 3.f :finite true)
@@ -34,7 +34,7 @@
   :header-include "ioj/sim/capital_ships/capital_ship_sim_config.h"
   :namespace ioj::sim
   (record CapitalShipSimConfig :comparison equality :generate-visitor true
-    :generate-s7-reader true :s7-tag "capital-ships"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "capital-ships"
     (member spawn_delay float :initializer 5.f :finite true)
     (member fighter_spawn_slots std::int32_t :initializer "" :s7-exclude true)
     (member fighter_spawn_slots_relative_transforms @settings_spawn_transforms :initializer "" :s7-exclude true)
@@ -46,7 +46,7 @@
   :header-include "ioj/sim/turrets/turret_sim_config.h"
   :namespace ioj::sim
   (record TurretSimConfig :comparison equality :generate-visitor true
-    :generate-s7-reader true :s7-tag "turrets"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "turrets"
     (member detection_radius float :initializer 3000.f :finite true)
     (member target_refresh_frequency @settings_positive_float :initializer 5.f)
     (member fire_point_offset @native_vector_3f :initializer "" :s7-exclude true)
@@ -60,7 +60,7 @@
   :header-include "ioj/sim/spinners/spinner_sim_config.h"
   :namespace ioj::sim
   (record SpinnerSimConfig :comparison equality :generate-visitor true
-    :generate-s7-reader true :s7-tag "tube-spinners"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "tube-spinners"
     (member fire_point_offsets @settings_fire_points :initializer "" :s7-exclude true)
     (member yaw_rotation_speed_degrees float :initializer 66.f :finite true)
     (member laser ioj::sim::LaserWeaponSimConfig :initializer "")
@@ -71,7 +71,7 @@
   :header-include "ioj/sim/levels/hud_settings.h"
   :namespace ioj::sim
   (record HudSettings :comparison equality :generate-visitor true
-    :generate-s7-reader true :s7-tag "hud"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "hud"
     (member player_status_update_period @settings_nonnegative_float :initializer 0.25f)
     (member entity_count_update_period @settings_nonnegative_float :initializer 0.25f)
     (member mission_status_update_period @settings_nonnegative_float :initializer 0.25f)
@@ -82,7 +82,7 @@
   :header-include "ioj/settings/settings_values.h"
   :namespace ioj::settings
   (record SettingsValues :comparison equality :generate-visitor true
-    :generate-s7-reader true :s7-tag "settings"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "settings"
     (member tick ioj::settings::TickSettings :initializer "")
     (member player_ship ioj::sim::PlayerSimConfig :initializer "")
     (member laser_projectiles ioj::sim::LaserSimConfig :initializer "")

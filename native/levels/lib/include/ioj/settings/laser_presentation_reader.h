@@ -15,12 +15,15 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<settings::LaserPresentation> : RecordReader<settings::LaserPresentation> {
     static void decode(DecodeContext ctx, value_type& result) {
-        decode_record<Field>(
-            ctx, "laser-projectiles", field_names, [&result](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
-                    read(member, constraints::finite);
-                });
-            });
+        decode_record<Field>(ctx,
+                             "laser-projectiles-presentation",
+                             field_names,
+                             [&result](Field selected, auto const& read) {
+                                 value_type::visit_field(
+                                     result, selected, [&read]<Field field>(auto& member) {
+                                         read(member, constraints::finite);
+                                     });
+                             });
     }
 
   private:

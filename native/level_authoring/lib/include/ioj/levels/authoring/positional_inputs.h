@@ -9,15 +9,21 @@
 
 namespace ioj::levels::authoring {
 struct NamedExprInput {
+    bool operator==(NamedExprInput const&) const = default;
+
     ObjectiveName name{};
     ExprInput value{};
 };
 
 struct UnlockInput {
+    bool operator==(UnlockInput const&) const = default;
+
     LevelId level{};
 };
 
 struct ExprReferenceInput {
+    bool operator==(ExprReferenceInput const&) const = default;
+
     ObjectiveName name{};
 };
 } // namespace ioj::levels::authoring

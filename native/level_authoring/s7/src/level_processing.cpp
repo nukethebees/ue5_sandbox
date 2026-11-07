@@ -78,7 +78,8 @@ auto detail::process_level(LevelInput input) -> LevelDefinitionReadResult {
             .overrides = {entity.health,
                           entity.laser_damage,
                           entity.initial_spawn_delay,
-                          entity.spawn_cooldown},
+                          entity.spawn_cooldown,
+                          entity.initial_fire_point},
         });
     }
     if (!errors.empty()) {

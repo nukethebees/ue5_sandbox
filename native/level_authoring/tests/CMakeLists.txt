@@ -4,6 +4,7 @@ target_sources(native-level-authoring-tests
   PRIVATE
     level_authoring_tests.cpp
     definition_decoding_tests.cpp
+    record_serialization_tests.cpp
 )
 target_compile_definitions(native-level-authoring-tests
   PRIVATE

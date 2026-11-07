@@ -11,7 +11,7 @@
   :header "native/simulation/include/ioj/sim/levels/level_capital_spawn_events.h"
   :namespace ioj::sim
   (struct LevelCapitalSpawnEvents
-    (member entity_indices array @native_level_entity_index)
+    (member entity_indices array ioj::sim::LevelEntityRef)
     (member locations nested @native_vectors_3f)
     (member rotations nested @native_rotators_3f)
     (member teams array @native_team)
@@ -24,7 +24,7 @@
   :header "native/simulation/include/ioj/sim/levels/level_turret_spawn_events.h"
   :namespace ioj::sim
   (struct LevelTurretSpawnEvents
-    (member entity_indices array @native_level_entity_index)
+    (member entity_indices array ioj::sim::LevelEntityRef)
     (member locations nested @native_vectors_3f)
     (member rotations nested @native_rotators_3f)
     (member teams array @native_team)
@@ -36,7 +36,7 @@
   :header "native/simulation/include/ioj/sim/levels/level_spinner_spawn_events.h"
   :namespace ioj::sim
   (struct LevelSpinnerSpawnEvents
-    (member entity_indices array @native_level_entity_index)
+    (member entity_indices array ioj::sim::LevelEntityRef)
     (member locations nested @native_vectors_3f)
     (member yaws array float)
     (member initial_fire_point_indices array int32)

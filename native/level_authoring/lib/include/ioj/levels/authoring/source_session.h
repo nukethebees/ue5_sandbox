@@ -1,8 +1,7 @@
 #pragma once
 
-#include <ioj/levels/authoring/source_overwrite_policy.h>
-#include <ioj/levels/authoring/source_replay.h>
 #include <ioj/levels/authoring/source_session_state.h>
+#include <ioj/levels/level_definition.h>
 
 #include <cstdint>
 #include <expected>
@@ -25,25 +24,11 @@ class SourceSession {
     void set_buffer(std::string source);
 
     [[nodiscard]] auto save() -> std::expected<void, std::string>;
-    [[nodiscard]] auto save_as(std::filesystem::path const& path, SourceOverwritePolicy overwrite)
-        -> std::expected<void, std::string>;
-    [[nodiscard]] auto save_replacement(std::string const& source,
-                                        std::string_view synchronized_source)
-        -> std::expected<void, std::string>;
-    [[nodiscard]] auto save_replacement_as(std::string const& source,
-                                           std::filesystem::path const& path,
-                                           std::string_view synchronized_source,
-                                           SourceOverwritePolicy overwrite)
-        -> std::expected<void, std::string>;
     [[nodiscard]] auto refresh_external_conflict() -> std::expected<void, std::string>;
 
     [[nodiscard]] auto read(settings::Settings base = {},
                             std::filesystem::path const& library_root = {}) const
         -> std::expected<LevelDefinition, Diagnostics>;
-    [[nodiscard]] auto read_replay(settings::Settings base = {},
-                                   std::filesystem::path const& library_root = {}) const
-        -> std::expected<SourceReplay, Diagnostics>;
-
     [[nodiscard]] auto path() const -> std::filesystem::path const& { return path_; }
     [[nodiscard]] auto buffer() const -> std::string const& { return state_.buffer_text; }
     [[nodiscard]] auto is_attached() const -> bool { return attached_; }
@@ -52,10 +37,6 @@ class SourceSession {
   private:
     [[nodiscard]] auto load_attached(std::filesystem::path const& path)
         -> std::expected<void, std::string>;
-    [[nodiscard]] auto write(std::string const& source,
-                             std::filesystem::path const& path,
-                             SourceOverwritePolicy overwrite,
-                             bool replace_buffer) -> std::expected<void, std::string>;
 
     std::filesystem::path path_{};
     SourceSessionState state_{};

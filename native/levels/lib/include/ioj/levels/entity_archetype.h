@@ -23,6 +23,7 @@ enum class EntityArchetype : EntityArchetypeUnderlying {
     PlayerFighter,
     CapitalShip,
     StaticTurret,
+    TubeSpinner,
 };
 
 using ioj::to_serialized_string;
@@ -30,8 +31,8 @@ using ioj::to_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_entity_archetype(std::string_view const value) noexcept
     -> std::optional<EntityArchetype> {
-    std::array<std::string_view, 3> constexpr names{
-        "player-fighter", "capital-ship", "static-turret"};
+    std::array<std::string_view, 4> constexpr names{
+        "player-fighter", "capital-ship", "static-turret", "tube-spinner"};
     return try_parse_enum<EntityArchetype>(value, names);
 }
 
@@ -40,27 +41,30 @@ using ioj::to_string;
 namespace ioj {
 template <>
 inline constexpr MinMax<levels::EntityArchetype> enum_range<levels::EntityArchetype>{
-    levels::EntityArchetype::PlayerFighter, levels::EntityArchetype::StaticTurret};
+    levels::EntityArchetype::PlayerFighter, levels::EntityArchetype::TubeSpinner};
 
 template <>
 struct EnumTraits<levels::EntityArchetype> {
     static constexpr std::array values{levels::EntityArchetype::PlayerFighter,
                                        levels::EntityArchetype::CapitalShip,
-                                       levels::EntityArchetype::StaticTurret};
+                                       levels::EntityArchetype::StaticTurret,
+                                       levels::EntityArchetype::TubeSpinner};
 };
 
 template <>
 [[nodiscard]] constexpr auto enum_count<levels::EntityArchetype>() noexcept -> std::size_t {
-    return 3ULL;
+    return 4ULL;
 }
 
 template <>
-inline constexpr auto enum_strings<levels::EntityArchetype, Name>{PackedStrings{
-    "PlayerFighter\000CapitalShip\000StaticTurret", std::array<std::uint8_t, 4>{0, 14, 26, 39}}};
+inline constexpr auto enum_strings<levels::EntityArchetype, Name>{
+    PackedStrings{"PlayerFighter\000CapitalShip\000StaticTurret\000TubeSpinner",
+                  std::array<std::uint8_t, 5>{0, 14, 26, 39, 51}}};
 
 template <>
-inline constexpr auto enum_strings<levels::EntityArchetype, Serialized>{PackedStrings{
-    "player-fighter\000capital-ship\000static-turret", std::array<std::uint8_t, 4>{0, 15, 28, 42}}};
+inline constexpr auto enum_strings<levels::EntityArchetype, Serialized>{
+    PackedStrings{"player-fighter\000capital-ship\000static-turret\000tube-spinner",
+                  std::array<std::uint8_t, 5>{0, 15, 28, 42, 55}}};
 } // namespace ioj
 namespace std {
 template <>

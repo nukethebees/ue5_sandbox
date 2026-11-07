@@ -74,19 +74,19 @@
     :mission-status-update-period 0.25)
 
   :presentation (presentation
-    :player-ship (settings-section 'player-ship
+    :player-ship (player-ship-presentation
       :boost-effect-colour-intensity 75)
-    :laser-projectiles (settings-section 'laser-projectiles
+    :laser-projectiles (laser-projectiles-presentation
       :min-cull-distance 0
       :max-cull-distance 50000)
-    :capital-ships (settings-section 'capital-ships
+    :capital-ships (capital-ships-presentation
       :n-small-explosions 6
       :time-between-explosions 0.1
       :min-small-explosion-range '(0 0 0)
       :max-small-explosion-range '(1 1 1)
       :large-explosion-delay 0
       :proxy-arrow-size 5)
-    :turrets (settings-section 'turrets
+    :turrets (turrets-presentation
       :death-effect-scale 1)
     :entity-overlay (settings-section 'entity-overlay
       :enabled #t

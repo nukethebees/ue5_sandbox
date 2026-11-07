@@ -32,6 +32,8 @@
 
 namespace ioj::levels::authoring {
 struct EntityInput {
+    bool operator==(EntityInput const&) const = default;
+
     enum class Field : std::uint8_t {
         id,
         archetype,
@@ -43,6 +45,7 @@ struct EntityInput {
         laser_damage,
         initial_spawn_delay,
         spawn_cooldown,
+        initial_fire_point,
     };
 
     template <Field Selected, typename Self>
@@ -80,6 +83,9 @@ struct EntityInput {
         if constexpr (Selected == Field::spawn_cooldown) {
             return (self.spawn_cooldown);
         }
+        if constexpr (Selected == Field::initial_fire_point) {
+            return (self.initial_fire_point);
+        }
     }
 
     template <Field Selected, typename Self, typename Visitor>
@@ -113,6 +119,9 @@ struct EntityInput {
                                                                 std::forward<Visitor>(visitor));
             case Field::spawn_cooldown:
                 return invoke_field<Field::spawn_cooldown>(self, std::forward<Visitor>(visitor));
+            case Field::initial_fire_point:
+                return invoke_field<Field::initial_fire_point>(self,
+                                                               std::forward<Visitor>(visitor));
         }
         assert((false && "Invalid record field"));
         std::unreachable();
@@ -128,9 +137,12 @@ struct EntityInput {
     std::optional<std::int32_t> laser_damage{};
     std::optional<float> initial_spawn_delay{};
     std::optional<float> spawn_cooldown{};
+    std::optional<std::int32_t> initial_fire_point{};
 };
 
 struct ObjectiveInput {
+    bool operator==(ObjectiveInput const&) const = default;
+
     ObjectiveName id{};
     std::string title{};
     Team team{};
@@ -143,10 +155,14 @@ struct ObjectiveInput {
 };
 
 struct MissionInput {
+    bool operator==(MissionInput const&) const = default;
+
     std::vector<ioj::levels::authoring::ObjectiveInput> objectives{};
 };
 
 struct LevelInput {
+    bool operator==(LevelInput const&) const = default;
+
     LevelId id{};
     std::string title{};
     std::string description{};
@@ -180,12 +196,12 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<levels::authoring::EntityInput::Field>() noexcept
     -> std::size_t {
-    return 10ULL;
+    return 11ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<levels::authoring::EntityInput::Field, Name>{
     PackedStrings{"id\000archetype\000team\000position\000rotation\000spawn_at\000health\000laser_"
-                  "damage\000initial_spawn_delay\000spawn_cooldown",
-                  std::array<std::uint8_t, 11>{0, 3, 13, 18, 27, 36, 45, 52, 65, 85, 100}}};
+                  "damage\000initial_spawn_delay\000spawn_cooldown\000initial_fire_point",
+                  std::array<std::uint8_t, 12>{0, 3, 13, 18, 27, 36, 45, 52, 65, 85, 100, 119}}};
 } // namespace ioj

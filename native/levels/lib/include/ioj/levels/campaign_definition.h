@@ -19,6 +19,8 @@
 
 namespace ioj::levels {
 struct CampaignDefinition {
+    bool operator==(CampaignDefinition const&) const = default;
+
     enum class Field : std::uint8_t {
         id,
         title,

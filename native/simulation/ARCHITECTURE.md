@@ -54,9 +54,9 @@ tick. Paused calls process queued events without accumulating time; `start()` re
 Initial and delayed level spawns use the same event payloads and dispatch path. The event manager
 owns those payloads; `LevelSim` routes each spawn event to `LevelSpawnManager`, which resolves
 spawn groups and dispatches typed payload views privately.
-Recurring carrier production remains separate from these one-shot events. Unreal proxy binding
-occurs after initial event dispatch, before the proxies are destroyed; static collision extraction
-excludes those retained source actors.
+Recurring carrier production remains separate from these one-shot events. Unreal editor proxies
+export authored records and are removed before PIE startup. Runtime initialization consumes the
+composed Scheme definition and extracts only Unreal resource and static-collision data.
 
 Unreal lifecycle and presentation ownership are described in the
 [SpaceGame architecture](../../Plugins/SpaceGame/ARCHITECTURE.md).
@@ -102,6 +102,11 @@ The integration order is commit previous captures, evaluate expressions, evaluat
 then collect triggers. Captures become observable in the following logic cycle.
 
 ## Entity lookup
+
+`LevelEntityRef` is a generated 32-bit declaration index, with `0xffffffff` reserved for an
+invalid reference. Compilation resolves authored symbolic IDs to these references. The spawn
+manager owns a contiguous declaration-to-`EntityId` array; delayed entities retain invalid runtime
+IDs until their spawn event executes. Death preserves that slot for historical expressions.
 
 `EntityId` is the persistent external identity: entity type and type-local lifetime offset.
 Death does not erase its history or make the identity available for reuse. Each entity type owns

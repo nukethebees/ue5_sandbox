@@ -4,7 +4,7 @@
   :namespace ioj::settings
   (record PlayerPresentation :comparison equality
     :generate-visitor true
-    :generate-s7-reader true :s7-tag "player-ship"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "player-ship-presentation"
     (member boost_effect_colour_intensity float :initializer 75.f :finite true)
     (projections (cpp))))
 
@@ -14,7 +14,7 @@
   :namespace ioj::settings
   (record LaserPresentation :comparison equality
     :generate-visitor true
-    :generate-s7-reader true :s7-tag "laser-projectiles"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "laser-projectiles-presentation"
     (member min_cull_distance float :initializer 0.f :finite true)
     (member max_cull_distance float :initializer 50000.f :finite true)
     (projections (cpp))))
@@ -25,7 +25,7 @@
   :namespace ioj::settings
   (record CapitalPresentation :comparison equality
     :generate-visitor true
-    :generate-s7-reader true :s7-tag "capital-ships"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "capital-ships-presentation"
     (member n_small_explosions std::int32_t :initializer 6)
     (member time_between_explosions float :initializer 0.1f :finite true)
     (member min_small_explosion_range @native_vector_3f :initializer "" :finite true)
@@ -40,7 +40,7 @@
   :namespace ioj::settings
   (record TurretPresentation :comparison equality
     :generate-visitor true
-    :generate-s7-reader true :s7-tag "turrets"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "turrets-presentation"
     (member death_effect_scale float :initializer 1.f :finite true)
     (projections (cpp))))
 
@@ -50,7 +50,7 @@
   :namespace ioj::settings
   (record SoftTarget :comparison equality
     :generate-visitor true
-    :generate-s7-reader true :s7-tag "soft-target"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "soft-target"
     (member acquisition_radius_pixels float :initializer 72.f :finite true)
     (member retention_radius_pixels float :initializer 96.f :finite true)
     (member centre_tie_radius_pixels float :initializer 4.f :finite true)
@@ -72,7 +72,7 @@
   :namespace ioj::settings
   (record EntityOverlay :comparison equality
     :generate-visitor true
-    :generate-s7-reader true :s7-tag "entity-overlay"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "entity-overlay"
     (member enabled bool :initializer true)
     (member maximum_range float :initializer 1000000.f :finite true)
     (member bar_size_pixels @settings_vector2d :initializer "64.0, 8.0" :finite true)
@@ -93,7 +93,7 @@
   :namespace ioj::settings
   (record Radar :comparison equality
     :generate-visitor true
-    :generate-s7-reader true :s7-tag "radar"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "radar"
     (member enabled bool :initializer true)
     (member combat_range float :initializer 100000.f :finite true)
     (member tactical_range float :initializer 400000.f :finite true)
@@ -116,7 +116,7 @@
   :namespace ioj::settings
   (record Presentation :comparison equality
     :generate-visitor true
-    :generate-s7-reader true :s7-tag "presentation"
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "presentation"
     (member player_ship ioj::settings::PlayerPresentation :initializer "")
     (member laser_projectiles ioj::settings::LaserPresentation :initializer "")
     (member capital_ships ioj::settings::CapitalPresentation :initializer "")

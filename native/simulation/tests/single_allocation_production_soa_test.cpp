@@ -120,20 +120,23 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
     for (std::int32_t index{}; index < row_count; ++index) {
         events.capital_spawns.add_defaulted(1);
         auto const capitals{events.capital_spawns.view()};
-        capitals.entity_indices()[index] = index;
+        capitals.entity_indices()[index] =
+            ioj::sim::LevelEntityRef{static_cast<std::uint32_t>(index)};
         set_vector(capitals.view_locations(), index, Vector3f{static_cast<float>(index), 1.f, 2.f});
         capitals.teams()[index] = Team::Green;
         capitals.healths()[index] = Health{static_cast<Health::value_type>(1000 + index)};
 
         events.turret_spawns.add_defaulted(1);
         auto const turrets{events.turret_spawns.view()};
-        turrets.entity_indices()[index] = index + 100;
+        turrets.entity_indices()[index] =
+            ioj::sim::LevelEntityRef{static_cast<std::uint32_t>(index + 100)};
         set_vector(turrets.view_locations(), index, Vector3f{static_cast<float>(index), 3.f, 4.f});
         turrets.laser_damages()[index] = index * 2;
 
         events.spinner_spawns.add_defaulted(1);
         auto const spinners{events.spinner_spawns.view()};
-        spinners.entity_indices()[index] = index + 200;
+        spinners.entity_indices()[index] =
+            ioj::sim::LevelEntityRef{static_cast<std::uint32_t>(index + 200)};
         set_vector(spinners.view_locations(), index, Vector3f{static_cast<float>(index), 5.f, 6.f});
         spinners.yaws()[index] = static_cast<float>(index * 3);
         spinners.initial_fire_point_indices()[index] = index;
@@ -148,11 +151,11 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
     auto const capitals{moved.capital_spawns.const_view()};
     auto const turrets{moved.turret_spawns.const_view()};
     auto const spinners{moved.spinner_spawns.const_view()};
-    EXPECT_EQ(capitals.entity_indices()[64], 64) << "Capital event order survives growth";
+    EXPECT_EQ(capitals.entity_indices()[64].index(), 64) << "Capital event order survives growth";
     EXPECT_EQ(capitals.view_locations().xs()[64], 64.f) << "Capital nested values survive moves";
-    EXPECT_EQ(turrets.entity_indices()[64], 164) << "Scheduled turret order is unchanged";
+    EXPECT_EQ(turrets.entity_indices()[64].index(), 164) << "Scheduled turret order is unchanged";
     EXPECT_EQ(turrets.laser_damages()[64], 128) << "Scheduled turret payloads survive moves";
-    EXPECT_EQ(spinners.entity_indices()[64], 264) << "Spinner event order survives growth";
+    EXPECT_EQ(spinners.entity_indices()[64].index(), 264) << "Spinner event order survives growth";
     EXPECT_EQ(spinners.yaws()[64], 192.f) << "Spinner payloads survive moves";
 }
 } // namespace ioj::sim::tests

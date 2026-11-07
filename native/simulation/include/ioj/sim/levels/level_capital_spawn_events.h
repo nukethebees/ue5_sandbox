@@ -9,10 +9,10 @@
 #include "ioj/rotator_types.h"
 #include "ioj/rotators3f.h"
 #include "ioj/sim/entities/health.h"
-#include "ioj/sim/levels/level_entity_index.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f.h"
+#include "level_entity_ref.h"
 
 #include <cassert>
 #include <cstddef>
@@ -31,7 +31,7 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<LevelEntityIndex,
+    : single_allocation_layout::ColumnLayouts<LevelEntityRef,
                                               float,
                                               float,
                                               float,
@@ -62,7 +62,7 @@ template <typename Byte>
 struct DataPointers {
     template <typename T>
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<LevelEntityIndex>* entity_indices{};
+    Element<LevelEntityRef>* entity_indices{};
     Element<float>* locations_xs{};
     Element<float>* locations_ys{};
     Element<float>* locations_zs{};
@@ -162,7 +162,7 @@ struct ResolvedView
     using Base::Base;
     using Base::set;
     void set(size_type index,
-             ioj::sim::LevelEntityIndex const new_entity_indices,
+             ioj::sim::LevelEntityRef const new_entity_indices,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams,
@@ -197,7 +197,7 @@ struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
         requires Enabled
         : Base{other} {}
     auto entity_indices() const {
-        return this->template column<LevelEntityIndex>(Layout::entity_indices_column);
+        return this->template column<LevelEntityRef>(Layout::entity_indices_column);
     }
     auto view_locations() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
@@ -241,7 +241,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
     using Base::Base;
     using Base::set;
     void set(size_type index,
-             ioj::sim::LevelEntityIndex const new_entity_indices,
+             ioj::sim::LevelEntityRef const new_entity_indices,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams,
@@ -266,7 +266,7 @@ static_assert(soa_storage_detail::validate_compact_view<View>());
 // Owner
 /* **************************************** */
 // Columns:
-// entity_indices: ioj::sim::LevelEntityIndex
+// entity_indices: ioj::sim::LevelEntityRef
 // locations_xs: float
 // locations_ys: float
 // locations_zs: float
@@ -335,7 +335,7 @@ struct LevelCapitalSpawnEvents
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
-             LevelEntityIndex const new_entity_indices,
+             LevelEntityRef const new_entity_indices,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams,
@@ -351,7 +351,7 @@ struct LevelCapitalSpawnEvents
         view().initial_fighter_spawn_delays()[index] = new_initial_fighter_spawn_delays;
         view().fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
     }
-    size_type add(LevelEntityIndex const new_entity_indices,
+    size_type add(LevelEntityRef const new_entity_indices,
                   Vector3f const new_locations,
                   Rotator3f const new_rotations,
                   ::ioj::Team const new_teams,

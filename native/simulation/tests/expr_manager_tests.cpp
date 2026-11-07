@@ -60,8 +60,8 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
                            timer(),
                            MissionExpr{AllExpr{.children = {0, 1, 2}}}};
     std::array const timer_handles{first, TimerHandle{}, second, TimerHandle{}};
-    auto const compiled{
-        expressions.append(nodes, {{{levels::EntityId{"future"}, 0}}, {}, timer_handles})};
+    auto const compiled{expressions.append(
+        nodes, {{{levels::EntityId{"future"}, LevelEntityRef{0}}}, {}, timer_handles})};
     auto const& handles{compiled.handles};
     expressions.activate(handles[3]);
     timers.start(first, SimTick{10});

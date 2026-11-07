@@ -136,6 +136,11 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
     auto const spinner_count{spinners.num()};
     auto const spinner_yaws{spinners.yaws()};
     for (std::uint32_t row{}; row < spinner_count; ++row) {
+        auto const fire_point{spinners.initial_fire_point_indices()[row]};
+        if (fire_point < 0 ||
+            static_cast<std::size_t>(fire_point) >= data.spinners.fire_point_offsets.size()) {
+            errors.emplace_back("Spinner initial fire point is outside its configured fire points");
+        }
         check_spawn(EntityType::TubeSpinner,
                     vector_at(spinners.view_locations(), row),
                     to_quaternion(Rotator3f{0.f, spinner_yaws[row], 0.f}));

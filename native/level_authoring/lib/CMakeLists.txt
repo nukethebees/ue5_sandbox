@@ -8,9 +8,7 @@ target_sources(native-level-authoring
     ../s7/src/mission_processing.cpp
     ../s7/src/campaign_parser.cpp
     ../s7/src/catalog_parser.cpp
-    src/editor_support.cpp
     src/identifiers.cpp
-    src/scene.cpp
     src/source_session.cpp
     src/definition_catalog.cpp
 )

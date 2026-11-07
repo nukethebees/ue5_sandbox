@@ -34,9 +34,12 @@ dimensions. For a separate settings file, compose overrides in order:
 
 Imports are relative to `LevelScripts/`. Shared formation helpers live in
 `Libraries/`. Assets, colours and scene bindings stay in Unreal properties.
-Edit scripts directly for missions, settings and entity overrides. Canonical scene
-saving preserves authored settings as explicit values; it rejects missions and
-entity overrides. Save Buffer preserves the original source exactly.
+Editor exports write only `LevelName/editor-config.scm`; the human-owned `LevelName.scm`
+loads and extends that baseline. The generated baseline need not be playable on its own.
+Use record accessors and functional updates to compose levels, for example
+`(level-with base :entities (append (level-ref base :entities) extras))`.
+`foo-with` replaces whole fields without mutating the original record; missing `foo-ref`
+properties are errors. Only proxies marked **Export** are serialized by the editor.
 See [objective authoring](docs/objectives.md).
 
 Run a scenario with `coj benchmark native-simulation --level LevelScripts/your-level.scm --seconds 10`.

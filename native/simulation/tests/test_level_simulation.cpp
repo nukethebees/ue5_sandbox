@@ -3,7 +3,6 @@
 #include <ioj/column_math.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/sim/collision/world_aabbs.h>
-#include <ioj/sim/levels/initial_spawns.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/sim/missions/mission.h>
@@ -59,22 +58,8 @@ auto make_battle_config() -> LevelSimInitData {
 
 auto make_battle() -> LevelSimInitData {
     auto data{make_battle_config()};
-    data.entity_count = 2;
-    std::array<InitialCapital, 2> capitals{{{.entity = 0,
-                                             .location = {{-1000.f, 0.f, 0.f}},
-                                             .rotation = {},
-                                             .team = Team::Green,
-                                             .health = 100,
-                                             .initial_spawn_delay = 60.f,
-                                             .spawn_cooldown = 60.f},
-                                            {.entity = 1,
-                                             .location = {{1000.f, 0.f, 0.f}},
-                                             .rotation = {},
-                                             .team = Team::White,
-                                             .health = 100,
-                                             .initial_spawn_delay = 60.f,
-                                             .spawn_cooldown = 60.f}}};
-    initialise_spawns(data, capitals, {}, {});
+    add_capital_spawn(data, {{-1000.f, 0.f, 0.f}}, Team::Green, 60.f, 60.f, 100);
+    add_capital_spawn(data, {{1000.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
     return data;
 }
 
@@ -232,7 +217,7 @@ TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
         data.level_events.add_spawn_event({group, data.level_events.spawn_groups.num() - group}));
     initial_storage.add_uninitialised(1);
     auto const initial{initial_storage.view()};
-    initial.entity_indices()[0] = data.entity_count++;
+    initial.entity_indices()[0] = ioj::sim::LevelEntityRef{data.entity_count++};
     set_vector(initial.view_locations(), 0, Vector3f{-1000.f, 1000.f, 0.f});
     set_rotation(initial.view_rotations(), 0, {});
     initial.teams()[0] = Team::Blue;
@@ -828,7 +813,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     auto const payload_offset{definitions.turret_spawns.num()};
     definitions.turret_spawns.add_defaulted(1);
     auto const scheduled_turret{definitions.turret_spawns.view(payload_offset, 1)};
-    scheduled_turret.entity_indices()[0] = data.entity_count++;
+    scheduled_turret.entity_indices()[0] = ioj::sim::LevelEntityRef{data.entity_count++};
     set_vector(scheduled_turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
     scheduled_turret.teams()[0] = Team::White;
     scheduled_turret.healths()[0] = Health{75};

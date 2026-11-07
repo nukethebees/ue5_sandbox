@@ -81,6 +81,31 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
         }
 
         auto const& overrides{entity.overrides};
+        if (overrides.initial_fire_point && entity.archetype != EntityArchetype::TubeSpinner) {
+            result.emplace_back(DiagnosticCode::UnknownProperty,
+                                "level.entities.initial-fire-point",
+                                "Initial fire point requires a tube spinner");
+        }
+        require_number(!overrides.initial_fire_point || *overrides.initial_fire_point >= 0,
+                       "initial-fire-point",
+                       "Initial fire point must be nonnegative");
+        if (entity.archetype == EntityArchetype::TubeSpinner) {
+            if (entity.team != Team::White) {
+                result.emplace_back(DiagnosticCode::UnsupportedTeam,
+                                    "level.entities.team",
+                                    "Tube spinners use the white team");
+            }
+            if (entity.rotation.pitch != 0.0 || entity.rotation.roll != 0.0) {
+                result.emplace_back(DiagnosticCode::InvalidPlacement,
+                                    "level.entities.rotation",
+                                    "Tube spinners support yaw rotation only");
+            }
+            if (overrides.health) {
+                result.emplace_back(DiagnosticCode::UnknownProperty,
+                                    "level.entities.health",
+                                    "Tube spinners do not support health overrides");
+            }
+        }
         require_number(!overrides.health || *overrides.health > 0,
                        "health",
                        "Initial health must be positive");

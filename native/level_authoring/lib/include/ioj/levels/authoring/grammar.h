@@ -300,7 +300,8 @@ enum class RecordKind : RecordKindUnderlying {
     Level,
     Campaign,
     Catalog,
-    IncludedDefinition,
+    IncludedLevel,
+    IncludedCampaign,
     Entity,
     Mission,
     Camera,
@@ -384,7 +385,7 @@ inline constexpr auto enum_strings<levels::authoring::ExpressionSyntax, Serializ
 
 template <>
 inline constexpr auto enum_strings<levels::authoring::RecordKind, Serialized>{PackedStrings{
-    "level\000campaign\000catalog\000included-"
-    "definition\000entity\000mission\000camera\000collision-grid\000objective\000level-completed",
-    std::array<std::uint8_t, 11>{0, 6, 15, 23, 43, 50, 58, 65, 80, 90, 106}}};
+    "level\000campaign\000catalog\000included-level\000included-"
+    "campaign\000entity\000mission\000camera\000collision-grid\000objective\000level-completed",
+    std::array<std::uint8_t, 12>{0, 6, 15, 23, 38, 56, 63, 71, 78, 93, 103, 119}}};
 } // namespace ioj

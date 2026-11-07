@@ -58,9 +58,9 @@ auto expression_order(std::span<levels::MissionExpr const> const expressions)
 }
 
 namespace expr_evaluation_detail {
-auto entity(ExprEvaluationContext const& inputs, LevelEntityIndex const slot) -> EntityId {
-    assert(slot < inputs.entities.size());
-    return inputs.entities[slot];
+auto entity(ExprEvaluationContext const& inputs, LevelEntityRef const slot) -> EntityId {
+    assert(slot.index() < inputs.entities.size());
+    return inputs.entities[slot.index()];
 }
 auto destroyed(EntityId const id,
                EntityLedger const& ledger,

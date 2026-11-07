@@ -87,8 +87,7 @@ auto SourceSession::discard_and_attach(std::filesystem::path const& path)
 }
 
 void SourceSession::detach() {
-    if (attached_ || state_.scene_dirty || state_.preview != PreviewState::None ||
-        (state_.dirty() && !state_.recovery_required)) {
+    if (attached_ || (state_.dirty() && !state_.recovery_required)) {
         state_.document_changed();
     }
     attached_ = false;
@@ -134,92 +133,41 @@ auto SourceSession::refresh_external_conflict() -> std::expected<void, std::stri
 
 auto SourceSession::save() -> std::expected<void, std::string> {
     if (!attached_) {
-        return std::unexpected{"Use Save Buffer As to recover the detached source buffer."};
+        return std::unexpected{
+            "The source buffer is detached. Copy any edits before discarding it."};
     }
-    return write(state_.buffer_text, path_, SourceOverwritePolicy::ReplaceExisting, false);
-}
-auto SourceSession::save_as(std::filesystem::path const& path,
-                            SourceOverwritePolicy const overwrite)
-    -> std::expected<void, std::string> {
-    return write(state_.buffer_text, path, overwrite, false);
-}
-auto SourceSession::save_replacement(std::string const& source,
-                                     std::string_view const synchronized_source)
-    -> std::expected<void, std::string> {
-    return save_replacement_as(
-        source, path_, synchronized_source, SourceOverwritePolicy::ReplaceExisting);
-}
-auto SourceSession::save_replacement_as(std::string const& source,
-                                        std::filesystem::path const& path,
-                                        std::string_view const synchronized_source,
-                                        SourceOverwritePolicy const overwrite)
-    -> std::expected<void, std::string> {
-    if (state_.unapplied(synchronized_source)) {
-        return std::unexpected{"The source buffer has unapplied edits; apply or discard them "
-                               "before saving canonical scene state."};
-    }
-    return write(source, path, overwrite, true);
-}
-
-auto SourceSession::write(std::string const& source,
-                          std::filesystem::path const& path,
-                          SourceOverwritePolicy const overwrite,
-                          bool const replace_buffer) -> std::expected<void, std::string> {
+    auto const& source{state_.buffer_text};
     if (blank(source)) {
-        return std::unexpected{"The S7 source buffer is empty. Use Save Canonical from Scene to "
-                               "create a script from the current level."};
+        return std::unexpected{"The S7 source buffer is empty."};
     }
-    auto normalized{source_session_detail::normalize(path)};
-    if (normalized.empty()) {
+    if (path_.empty()) {
         return std::unexpected{"The source path is empty."};
     }
-    if (normalized == path_) {
-        // Detached recovery still protects the original file's baseline.
-        auto const disk{source_session_detail::observe(path_)};
-        if (!disk) {
-            state_.disk_conflict = true;
-            return std::unexpected{disk.error()};
-        }
-        state_.observe(*disk);
-        if (state_.disk_conflict) {
-            return std::unexpected{
-                "The source file changed externally; reload it or choose another path."};
-        }
-    } else {
-        std::error_code error;
-        if (std::filesystem::exists(normalized, error) &&
-            overwrite == SourceOverwritePolicy::RefuseExisting) {
-            return std::unexpected{
-                std::format("Source file '{}' already exists; confirm replacement before saving.",
-                            path_to_utf8(normalized))};
-        }
-        if (error) {
-            return std::unexpected{error.message()};
-        }
+
+    auto const observed{refresh_external_conflict()};
+    if (!observed) {
+        return observed;
     }
-    std::ofstream file{normalized, std::ios::binary | std::ios::trunc};
+    if (state_.disk_conflict) {
+        return std::unexpected{
+            "The source file changed externally; copy any edits before reloading it."};
+    }
+
+    std::ofstream file{path_, std::ios::binary | std::ios::trunc};
     file.write(source.data(), static_cast<std::streamsize>(source.size()));
     file.close();
     if (!file) {
         return std::unexpected{
-            std::format("Could not write source file '{}'.", path_to_utf8(normalized))};
+            std::format("Could not write source file '{}'.", path_to_utf8(path_))};
     }
-    auto const changed{path_ != normalized || (replace_buffer && state_.buffer_text != source)};
-    path_ = std::move(normalized);
-    if (replace_buffer) {
-        set_buffer(source);
-    }
-    state_.saved(changed);
+
+    state_.saved();
     return {};
 }
-auto SourceSessionState::unapplied(std::string_view const synchronized_source) const -> bool {
-    return dirty() || (!buffer_text.empty() && buffer_text != synchronized_source);
-}
+
 void SourceSessionState::document_changed() {
     recovery_required = recovery_required || dirty();
     ++revision;
-    scene_dirty = false;
-    preview = PreviewState::None;
 }
 void SourceSessionState::loaded(SourceDiskState disk,
                                 std::string source,
@@ -231,7 +179,6 @@ void SourceSessionState::loaded(SourceDiskState disk,
     recovery_required = false;
     if (source_changed) {
         ++revision;
-        invalidate_preview();
     }
 }
 void SourceSessionState::edited(std::string source) {
@@ -240,23 +187,14 @@ void SourceSessionState::edited(std::string source) {
     }
     buffer_text = std::move(source);
     ++revision;
-    invalidate_preview();
 }
-void SourceSessionState::saved(bool const source_changed) {
+void SourceSessionState::saved() {
     disk_baseline = {.exists = true, .source = buffer_text};
     saved_buffer_text = buffer_text;
     disk_conflict = false;
-    if (source_changed) {
-        ++revision;
-        invalidate_preview();
-    }
 }
 void SourceSessionState::observe(SourceDiskState const& disk) {
     disk_conflict = disk != disk_baseline;
 }
-void SourceSessionState::invalidate_preview() {
-    if (preview == PreviewState::Valid) {
-        preview = PreviewState::Stale;
-    }
-}
+
 }

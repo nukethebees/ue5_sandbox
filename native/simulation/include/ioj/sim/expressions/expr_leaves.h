@@ -7,7 +7,7 @@
 #include <ioj/sim/expressions/leaf_handle.h>
 #include <ioj/sim/expressions/timer_handle.h>
 #include <ioj/sim/index_span.h>
-#include <ioj/sim/levels/level_entity_index.h>
+#include <ioj/sim/levels/level_entity_ref.h>
 #include <ioj/sim/missions/objective_id.h>
 #include <ioj/vector.h>
 
@@ -30,10 +30,10 @@ struct ExprLeaves {
     std::vector<LeafHandle> active;
 
     // EntityDestroyed
-    std::vector<LevelEntityIndex> destroyed_entities;
+    std::vector<LevelEntityRef> destroyed_entities;
 
     // EntityReachedPosition
-    std::vector<LevelEntityIndex> reached_entities;
+    std::vector<LevelEntityRef> reached_entities;
     std::vector<Vector3d> positions;
     std::vector<double> radius_squared;
 
@@ -47,6 +47,6 @@ struct ExprLeaves {
     // EntityKillsReached
     std::vector<IndexSpan> kill_sources;
     std::vector<KillCount> kill_targets;
-    std::vector<LevelEntityIndex> kill_entities;
+    std::vector<LevelEntityRef> kill_entities;
 };
 }

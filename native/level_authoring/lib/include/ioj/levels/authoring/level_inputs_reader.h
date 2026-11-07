@@ -29,7 +29,8 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
                     if constexpr (field == Field::id || field == Field::archetype ||
                                   field == Field::team || field == Field::position ||
                                   field == Field::rotation || field == Field::spawn_at ||
-                                  field == Field::health || field == Field::laser_damage) {
+                                  field == Field::health || field == Field::laser_damage ||
+                                  field == Field::initial_fire_point) {
                         read(member);
                     }
                     if constexpr (field == Field::initial_spawn_delay ||
@@ -44,7 +45,7 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 10> field_names{"id",
+    static constexpr std::array<std::string_view, 11> field_names{"id",
                                                                   "archetype",
                                                                   "team",
                                                                   "position",
@@ -53,7 +54,8 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
                                                                   "health",
                                                                   "laser-damage",
                                                                   "initial-spawn-delay",
-                                                                  "spawn-cooldown"};
+                                                                  "spawn-cooldown",
+                                                                  "initial-fire-point"};
     static constexpr auto required{required_fields<Field, field_names.size()>(
         {Field::archetype, Field::team, Field::position})};
 };
@@ -223,7 +225,7 @@ struct TypeReader<levels::authoring::IncludedLevelInput>
     static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
             ctx,
-            "included-definition",
+            "included-level",
             field_names,
             [&result](Field const field, auto const& read) {
                 switch (field) {
@@ -258,7 +260,7 @@ struct TypeReader<levels::authoring::IncludedCampaignInput>
     static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
             ctx,
-            "included-definition",
+            "included-campaign",
             field_names,
             [&result](Field const field, auto const& read) {
                 switch (field) {

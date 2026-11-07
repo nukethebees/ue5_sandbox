@@ -16,7 +16,8 @@ template <>
 struct TypeReader<levels::authoring::NamedExprInput>
     : RecordReader<levels::authoring::NamedExprInput> {
     static void decode(DecodeContext ctx, value_type& result) {
-        auto const arguments{positional_arguments(ctx.reader, ctx.node, "expr", ctx.path, 2ULL)};
+        auto const arguments{
+            positional_arguments(ctx.reader, ctx.node, "named-expr", ctx.path, 2ULL)};
 
         if (!arguments) {
             append_errors(ctx.errors, arguments.error());

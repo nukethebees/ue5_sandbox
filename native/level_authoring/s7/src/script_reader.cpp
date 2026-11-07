@@ -39,18 +39,21 @@ auto dsl_source() -> std::string {
     source.append(R"(
       (define catalog
         (let ((include-load load-script) (include-format format))
-          (define (include path)
+          (define (include tag path)
             (catch #t
-              (lambda () (list :included-definition :path path :value (include-load path)))
+              (lambda () (list tag :path path :value (include-load path)))
               (lambda (type info)
-                (list :included-definition :path path :error (apply include-format #f info)))))
+                (list tag :path path :error (apply include-format #f info)))))
           (define (load-properties properties)
             (if (or (null? properties) (null? (cdr properties)))
                 properties
                 (let ((name (car properties)) (value (cadr properties)))
                   (cons name
                     (cons (if (and (memq name '(:levels :campaigns)) (list? value))
-                              (map include value)
+                              (map (lambda (path)
+                                     (include (if (eq? name :levels)
+                                                  :included-level :included-campaign) path))
+                                   value)
                               value)
                           (load-properties (cddr properties)))))))
           (lambda properties (cons :catalog (load-properties properties)))))
