@@ -23,6 +23,8 @@ struct DeclarationEmission {
     Nodes source_tail;
     Nodes reader_declarations;
     std::vector<StringId> reader_includes;
+    Nodes writer_declarations;
+    std::vector<StringId> writer_includes;
     std::vector<ModuleId> additional_modules;
     std::optional<std::string> tail_namespace;
     bool format_generated{};

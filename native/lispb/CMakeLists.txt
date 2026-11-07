@@ -198,6 +198,7 @@ target_sources(codegen-lib PRIVATE
   src/packed_value_lowering.cpp
   src/record_lowering.cpp
   src/record_reader_lowering.cpp
+  src/record_writer_lowering.cpp
   src/union_lowering.cpp
   src/static_table_lowering.cpp
 )

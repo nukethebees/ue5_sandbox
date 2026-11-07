@@ -1,4 +1,4 @@
-# S7 record readers
+# S7 records and serialization
 
 Opt ordinary records into AST decoding without changing their C++ layout or adding an
 interpreter dependency to their normal header:
@@ -13,11 +13,17 @@ interpreter dependency to their normal header:
 ```
 
 A module with `:s7-constructors true` emits `s7_record_constructors()`, containing Scheme
-constructors for all tagged records in the project. Evaluate this source before authored
-scripts. Constructors preserve argument lists; typed readers enforce fields and positional
-arity. Shared tags emit one constructor. Use `:s7-constructor false` on records whose tags
-belong to special DSL forms, such as catalog imports. Conflicting constructor policies for
-the same tag and unsafe Scheme names are generation errors.
+constructors, predicates, accessors and functional updates for tagged records. Evaluate this
+source before authored scripts. For an `example` tag these are `example`, `example?`,
+`example-ref` and `example-with`. Tags and emitted function names must be unique.
+Use `:s7-constructor false` for special DSL forms such as `catalog`.
+
+Constructors preserve argument lists; typed readers enforce field values and positional
+arity. Shared Scheme helpers validate record structure and field names for access and updates.
+`example-ref` errors on an omitted field, even when `#f` is a legitimate field value.
+`example-with` returns a new shallow record, replacing supplied fields and preserving all
+others. Unknown or repeated override keys are errors. Nested values are shared, not mutated
+or recursively merged. Positional records use the same keyword field names for access/update.
 
 This emits `Example.h` and `Example_reader.h`. Include the latter and call
 `ioj::s7::read<project::Example>(reader, node, "example")`. The input is an existing
@@ -131,4 +137,26 @@ associated with that file without discarding successful siblings. Simulation, pr
 and starfield settings decode layers directly into shared configuration records.
 Unreal retains resource references and colour controls. The former `settings-schema`
 mapping and flattened assignment representation have been removed.
-No writers are generated.
+
+Add `:generate-s7-writer true` alongside reader generation to emit `Example_writer.h` with a
+typed `TypeWriter<project::Example>` specialization. Use equality-comparable authored records
+(`:comparison equality`) and `ioj::s7::serialize(value)` for complete evaluable Scheme source.
+The writer shares the existing S-expression IR and renderer. It preserves floating-point
+precision, emits escaped strings and quoted enum symbols, and uses `list` for collections
+containing record constructors. Field ordering follows the schema; collection ordering is
+preserved. `:s7-exclude` also excludes a field from serialization.
+
+`serialize(value, base)` emits differing fields. Ordinary nested records emit sparse overrides;
+collections replace whole fields. Optionals use `:none` for clearing and constrain their nested
+override to an existing baseline only when both values are present. Constrained records are
+serialized as complete values to preserve atomic replacement semantics. Identical records
+produce an empty tagged constructor. Positional records are written in full.
+
+Specialize `TypeWriter<T>::write(SExprIR&, T const&, T const*)` for narrow domain adapters.
+Use `:s7-writer-includes` for adapters and dependencies hidden by external type aliases.
+Direct schema-record dependencies include their writer headers automatically.
+
+Serialization preserves authored data, not source comments, formatting, functions or macros.
+Differences from resolved C++ values cannot distinguish an explicitly pinned value equal to
+the baseline from an inherited value. Applying the emitted override to that baseline
+reconstructs the value; it does not preserve authoring provenance.

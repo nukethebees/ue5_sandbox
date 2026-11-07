@@ -220,6 +220,8 @@
     (value friend_kind :serialized-name "friend-kind")
     (value friends :serialized-name "friends")
     (value generate_s7_reader :serialized-name "generate-s7-reader")
+    (value generate_s7_writer :serialized-name "generate-s7-writer")
+    (value s7_writer_includes :serialized-name "s7-writer-includes")
     (value generate_visitor :serialized-name "generate-visitor")
     (value header :serialized-name "header")
     (value header_include :serialized-name "header-include")

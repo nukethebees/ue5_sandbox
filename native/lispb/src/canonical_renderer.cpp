@@ -404,6 +404,10 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
                           [this](auto value) { return ir_.atom(value); });
     result.flag("generate-visitor", records.generate_visitor[schema]);
     result.flag("generate-s7-reader", records.s7_tag[schema].has_value());
+    result.flag("generate-s7-writer", records.generate_s7_writer[schema]);
+    result.list_field("s7-writer-includes",
+                      items(records.s7_writer_includes[schema]),
+                      [this](auto value) { return ir_.string(value); });
     result.flag("s7-positional", records.s7_positional[schema]);
     if (!records.s7_constructor[schema]) {
         result.field("s7-constructor", ir_.atom("false"));

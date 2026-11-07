@@ -13,6 +13,8 @@ target_include_directories(native-s7-data
 target_link_libraries(native-s7-data
   PUBLIC
     native-core-headers
+    lispb-sexpr-output
+    lispb-strings
     sandbox::native_defaults
 )
 ioj_enable_warnings(native-s7-data)

@@ -64,6 +64,8 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     friend_kind,
     friends,
     generate_s7_reader,
+    generate_s7_writer,
+    s7_writer_includes,
     generate_visitor,
     header,
     header_include,
@@ -161,11 +163,12 @@ inline constexpr auto enum_strings<lispb::codegen::SchemaProperty, Serialized>{P
     "array\000equivalent-accessor\000equivalent-constructor\000equivalent-member\000equivalent-"
     "type\000exponent-bits\000export-specifier\000field-enum-name\000field-mask-"
     "name\000finite\000fixed-schema\000form\000format\000fractional-bits\000friend-"
-    "kind\000friends\000generate-s7-reader\000generate-visitor\000header\000header-"
-    "include\000headers\000helper-namespace\000helpers\000hidden\000include-"
-    "order\000initializer\000inline\000invalid-value\000kind\000layout\000layout-only\000mask-"
-    "dimensions\000mask-field\000max\000maximum\000method-"
-    "access\000min\000minimum\000namespace\000native-api\000native-header-"
+    "kind\000friends\000generate-s7-reader\000generate-s7-writer\000s7-writer-includes\000generate-"
+    "visitor\000header\000header-include\000headers\000helper-"
+    "namespace\000helpers\000hidden\000include-order\000initializer\000inline\000invalid-"
+    "value\000kind\000layout\000layout-only\000mask-dimensions\000mask-"
+    "field\000max\000maximum\000method-access\000min\000minimum\000namespace\000native-"
+    "api\000native-header-"
     "include\000nested\000nodiscard\000noexcept\000nonempty\000nonnegative\000nonzero\000options-"
     "provider\000pass-by\000positive\000prelude\000reflection\000required\000requires\000reserved-"
     "codes\000rounding\000s7-constructor\000s7-constructors\000s7-exclude\000s7-name\000s7-"
@@ -175,14 +178,14 @@ inline constexpr auto enum_strings<lispb::codegen::SchemaProperty, Serialized>{P
     "access\000template-parameters\000tooltip\000total-bits\000trailing-return-"
     "type\000unit\000using-declarations\000validation\000validation-dependencies\000value\000value-"
     "type\000pack\000groups\000ordering",
-    std::array<std::uint16_t, 125>{
-        0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,
-        132,  141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  261,  269,  290,
-        312,  325,  332,  345,  354,  365,  385,  408,  426,  442,  456,  473,  489,  505,
-        512,  525,  530,  537,  553,  565,  573,  592,  609,  616,  631,  639,  656,  664,
-        671,  685,  697,  704,  718,  723,  730,  742,  758,  769,  773,  781,  795,  799,
-        807,  817,  828,  850,  857,  867,  876,  885,  897,  905,  922,  930,  939,  947,
-        958,  967,  976,  991,  1000, 1015, 1031, 1042, 1050, 1064, 1083, 1090, 1099, 1115,
-        1125, 1132, 1149, 1156, 1165, 1176, 1183, 1188, 1196, 1203, 1207, 1219, 1234, 1248,
-        1268, 1276, 1287, 1308, 1313, 1332, 1343, 1367, 1373, 1384, 1389, 1396, 1405}}};
+    std::array<std::uint16_t, 127>{
+        0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,  132,
+        141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  261,  269,  290,  312,  325,
+        332,  345,  354,  365,  385,  408,  426,  442,  456,  473,  489,  505,  512,  525,  530,
+        537,  553,  565,  573,  592,  611,  630,  647,  654,  669,  677,  694,  702,  709,  723,
+        735,  742,  756,  761,  768,  780,  796,  807,  811,  819,  833,  837,  845,  855,  866,
+        888,  895,  905,  914,  923,  935,  943,  960,  968,  977,  985,  996,  1005, 1014, 1029,
+        1038, 1053, 1069, 1080, 1088, 1102, 1121, 1128, 1137, 1153, 1163, 1170, 1187, 1194, 1203,
+        1214, 1221, 1226, 1234, 1241, 1245, 1257, 1272, 1286, 1306, 1314, 1325, 1346, 1351, 1370,
+        1381, 1405, 1411, 1422, 1427, 1434, 1443}}};
 } // namespace ioj

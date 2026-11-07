@@ -8,7 +8,7 @@
 namespace ioj::s7 {
 namespace constraints {
 template <typename T, typename Predicate>
-auto check(T const& value, Predicate predicate) -> bool {
+auto satisfies(T const& value, Predicate predicate) -> bool {
     if constexpr (requires {
                       T::is_valid_value(value.value());
                       value.raw_value();
@@ -19,12 +19,12 @@ auto check(T const& value, Predicate predicate) -> bool {
     }
 }
 template <typename T, ConstrainedValuePolicy Policy, typename Predicate>
-auto check(ConstrainedValue<T, Policy> const& value, Predicate predicate) -> bool {
+auto satisfies(ConstrainedValue<T, Policy> const& value, Predicate predicate) -> bool {
     return predicate(value.ref());
 }
 template <typename T, typename Predicate>
-auto check(std::optional<T> const& value, Predicate predicate) -> bool {
-    return !value || check(*value, predicate);
+auto satisfies(std::optional<T> const& value, Predicate predicate) -> bool {
+    return !value || satisfies(*value, predicate);
 }
 }
 
@@ -32,7 +32,7 @@ template <typename Predicate>
 struct FieldConstraint {
     template <typename T>
     auto operator()(T const& value) const -> bool {
-        return constraints::check(value, predicate);
+        return constraints::satisfies(value, predicate);
     }
 
     template <typename T>

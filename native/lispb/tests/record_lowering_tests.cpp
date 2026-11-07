@@ -34,7 +34,7 @@ TEST(RecordLowering, GeneratesUniqueConstructorsAndPreservesSpecialForms) {
       (module constructors :header "Constructors.h" :s7-constructors true
         (record First :generate-s7-reader true :s7-tag "shared"
     (projections (cpp)))
-        (record Second :generate-s7-reader true :s7-tag "shared"
+        (record Second :generate-s7-reader true :s7-tag "second"
     (projections (cpp)))
         (record Special :generate-s7-reader true :s7-tag "special" :s7-constructor false
     (projections (cpp)))))")};
@@ -44,6 +44,9 @@ TEST(RecordLowering, GeneratesUniqueConstructorsAndPreservesSpecialForms) {
     ASSERT_NE(constructor, std::string::npos);
     EXPECT_EQ(output.find("(define (shared . arguments)", constructor + 1), std::string::npos);
     EXPECT_FALSE(output.contains("(define (special"));
+    EXPECT_TRUE(output.contains("(define shared-ref"));
+    EXPECT_TRUE(output.contains("(define shared-with"));
+    EXPECT_TRUE(output.contains("(define (shared?"));
 }
 
 class InvalidConstructorTags : public testing::TestWithParam<char const*> {};
@@ -64,6 +67,10 @@ INSTANTIATE_TEST_SUITE_P(RecordLowering,
                                          R"((record First :generate-s7-reader true :s7-tag "shared"
     (projections (cpp)))
            (record Second :generate-s7-reader true :s7-tag "shared" :s7-constructor false
+    (projections (cpp))))",
+                                         R"((record First :generate-s7-reader true :s7-tag "expr"
+    (projections (cpp)))
+           (record Second :generate-s7-reader true :s7-tag "expr-ref"
     (projections (cpp))))"));
 
 TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {

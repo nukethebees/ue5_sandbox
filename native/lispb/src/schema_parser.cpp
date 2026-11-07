@@ -1109,6 +1109,8 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
                      P::comparison_noexcept,
                      P::generate_visitor,
                      P::generate_s7_reader,
+                     P::generate_s7_writer,
+                     P::s7_writer_includes,
                      P::s7_tag,
                      P::s7_positional,
                      P::s7_constructor,
@@ -1162,6 +1164,9 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     records.comparison_noexcept[record_index] = boolean_or(fields, P::comparison_noexcept);
     records.constraint_policy[record_index] = optional_identifier(fields, P::constraint_policy);
     records.generate_visitor[record_index] = boolean_or(fields, P::generate_visitor);
+    records.generate_s7_writer[record_index] = boolean_or(fields, P::generate_s7_writer);
+    records.s7_writer_includes[record_index] =
+        declarations.range(text_id_list_or(fields, P::s7_writer_includes));
     if (boolean_or(fields, P::generate_s7_reader)) {
         records.s7_tag[record_index] = parser_.text_id(fields.required(P::s7_tag), "S7 record tag");
         records.s7_positional[record_index] = boolean_or(fields, P::s7_positional);
@@ -1169,7 +1174,8 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
         records.s7_reader_includes[record_index] =
             declarations.range(text_id_list_or(fields, P::s7_reader_includes));
     } else if (fields.optional(P::s7_tag) || fields.optional(P::s7_reader_includes) ||
-               fields.optional(P::s7_positional) || fields.optional(P::s7_constructor)) {
+               fields.optional(P::s7_positional) || fields.optional(P::s7_constructor) ||
+               records.generate_s7_writer[record_index] || fields.optional(P::s7_writer_includes)) {
         parser_.fail(form, "S7 reader options require generate-s7-reader true");
     }
     records.functions[record_index] = declarations.range(functions);

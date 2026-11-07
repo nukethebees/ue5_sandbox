@@ -3,6 +3,7 @@
 #include "lowering_context.h"
 #include "lowering_utils.h"
 #include "record_reader_lowering.h"
+#include "record_writer_lowering.h"
 
 #include <codegen/ast/cpp_ir_builder.h>
 #include <codegen/ast/cpp_types.h>
@@ -66,6 +67,9 @@ class RecordLowering : public CppIRBuilder {
         }
         if (records.s7_tag[schema]) {
             lower_record_reader(ctx, schema, result);
+        }
+        if (records.generate_s7_writer[schema]) {
+            lower_record_writer(ctx, schema, result);
         }
         return result;
     }

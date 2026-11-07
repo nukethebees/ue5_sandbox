@@ -23,6 +23,8 @@ auto RecordSchemas::append() -> DeclarationHandle {
     name.push_back({});
     constraint_policy.push_back({});
     generate_visitor.push_back(false);
+    generate_s7_writer.push_back(false);
+    s7_writer_includes.push_back({});
     s7_tag.push_back({});
     s7_positional.push_back(false);
     s7_constructor.push_back(true);
@@ -47,6 +49,8 @@ auto RecordSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
                                     name,
                                     constraint_policy,
                                     generate_visitor,
+                                    generate_s7_writer,
+                                    s7_writer_includes,
                                     s7_tag,
                                     s7_positional,
                                     s7_constructor,
@@ -67,6 +71,8 @@ void RecordSchemas::clear() {
                                  name,
                                  constraint_policy,
                                  generate_visitor,
+                                 generate_s7_writer,
+                                 s7_writer_includes,
                                  s7_tag,
                                  s7_positional,
                                  s7_constructor,

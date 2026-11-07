@@ -29,6 +29,8 @@ struct RecordSchemas {
 
     Column<std::optional<StringId>> constraint_policy;
     Column<std::uint8_t> generate_visitor;
+    Column<std::uint8_t> generate_s7_writer;
+    Column<SchemaRange<StringId>> s7_writer_includes;
     Column<std::optional<StringId>> s7_tag;
     Column<std::uint8_t> s7_positional;
     Column<std::uint8_t> s7_constructor;

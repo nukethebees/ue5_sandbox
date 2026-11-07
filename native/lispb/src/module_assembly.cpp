@@ -3,6 +3,7 @@
 #include "lowering_context.h"
 #include "lowering_utils.h"
 #include "record_reader_lowering.h"
+#include "record_writer_lowering.h"
 
 #include <codegen/ast/cpp_files.h>
 #include <codegen/ast/cpp_ir_builder.h>
@@ -42,7 +43,8 @@ class ModuleAssembler : public CppIRBuilder {
                        !emission.header_after.empty() || !emission.header_global.empty() ||
                        !emission.header_tail.empty() || !emission.source.empty() ||
                        !emission.source_global.empty() || !emission.source_tail.empty() ||
-                       !emission.reader_declarations.empty();
+                       !emission.reader_declarations.empty() ||
+                       !emission.writer_declarations.empty();
             })};
         if (!has_output) {
             std::vector<ModuleId> additional;
@@ -79,6 +81,8 @@ class ModuleAssembler : public CppIRBuilder {
         auto source_tail{node_list()};
         auto reader_declarations{node_list()};
         std::vector<StringId> reader_includes;
+        auto writer_declarations{node_list()};
+        std::vector<StringId> writer_includes;
         bool has_header{};
         auto flush_header_declarations = [&] {
             if (!has_header) {
@@ -100,6 +104,15 @@ class ModuleAssembler : public CppIRBuilder {
         bool has_source_tail{};
         std::optional<std::string> tail_namespace;
         for (auto& emission : emissions) {
+            if (!emission.writer_declarations.empty()) {
+                writer_declarations.append(std::move(emission.writer_declarations)).new_lines(2);
+                for (auto const include_value : emission.writer_includes) {
+                    if (std::ranges::find(writer_includes, include_value) ==
+                        writer_includes.end()) {
+                        writer_includes.push_back(include_value);
+                    }
+                }
+            }
             if (!emission.reader_declarations.empty()) {
                 reader_declarations.append(std::move(emission.reader_declarations)).new_lines(2);
                 for (auto const include_value : emission.reader_includes) {
@@ -239,6 +252,25 @@ class ModuleAssembler : public CppIRBuilder {
                                       .flags = {.format_generated = true}})};
             additional.push_back(append_module(
                 store_text(ctx.text(settings_store.name[settings]) + "Reader"), file, {}));
+        }
+
+        auto writer_nodes{writer_declarations.build()};
+        if (!writer_nodes.empty()) {
+            auto writer{node_list()};
+            writer.add(include(store_text(source_include(ctx, settings)), IncludeStyle::quoted));
+            writer.add(include(store_text("ioj/s7/writer.h"), IncludeStyle::system));
+            writer.add(include_dependencies());
+            for (auto const include_value : writer_includes) {
+                writer.add(include(include_value, IncludeStyle::quoted));
+            }
+            writer.new_lines(2);
+            writer.add(namespace_node(store_text("ioj::s7"), writer_nodes));
+            auto const path{writer_header_path(ctx.text(settings_store.header[settings]))};
+            auto const file{add_file({.path = store_text(path),
+                                      .nodes = writer.build(),
+                                      .flags = {.format_generated = true}})};
+            additional.push_back(append_module(
+                store_text(ctx.text(settings_store.name[settings]) + "Writer"), file, {}));
         }
 
         std::vector<ModuleId> modules;

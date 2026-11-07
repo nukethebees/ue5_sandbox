@@ -189,7 +189,8 @@ class ModuleLowering : public CppIRBuilder {
     }
     auto lower_s7_constructors(detail::LoweringContext& ctx) -> detail::DeclarationEmission {
         auto const& records{ctx.declarations.records};
-        std::map<std::string, bool> tags;
+        std::map<std::string, std::size_t> tags;
+        std::set<std::string> functions;
         auto const count{records.s7_tag.size()};
         for (std::size_t row{}; row < count; ++row) {
             if (!records.s7_tag[row]) {
@@ -203,18 +204,105 @@ class ModuleLowering : public CppIRBuilder {
                 (tag.front() >= '0' && tag.front() <= '9')) {
                 throw std::invalid_argument{std::format("Invalid S7 constructor tag '{}'", tag)};
             }
-            auto const enabled{records.s7_constructor[row] != 0};
-            auto const [entry, inserted]{tags.emplace(tag, enabled)};
-            if (!inserted && entry->second != enabled) {
-                throw std::invalid_argument{
-                    std::format("Conflicting S7 constructor policies for '{}'", tag)};
+            if (!tags.emplace(tag, row).second) {
+                throw std::invalid_argument{std::format("Duplicate S7 record tag '{}'", tag)};
+            }
+            if (records.s7_constructor[row]) {
+                for (auto const suffix : {"", "?", "-ref", "-with"}) {
+                    auto const function{tag + suffix};
+                    if (!functions.insert(function).second) {
+                        throw std::invalid_argument{
+                            std::format("Duplicate S7 record function '{}'", function)};
+                    }
+                }
             }
         }
-        std::string source;
-        for (auto const& [tag, enabled] : tags) {
-            if (enabled) {
-                source += std::format("(define ({} . arguments) (cons :{} arguments))\n", tag, tag);
+        std::string source{R"(
+(define (lispb-record? tag value)
+  (and (pair? value) (eq? (car value) tag)))
+(define (lispb-property properties key)
+  (cond ((null? properties) #f)
+        ((eq? (car properties) key) properties)
+        (else (lispb-property (cddr properties) key))))
+(define (lispb-check-properties tag fields properties)
+  (if (not (list? properties))
+      (error 'record-error "~S: expected a property list" tag))
+  (let loop ((remaining properties) (seen '()))
+    (if (pair? remaining)
+        (let ((key (car remaining)))
+          (if (null? (cdr remaining))
+              (error 'record-error "~S: missing value for ~S" tag key))
+          (if (not (memq key fields))
+              (error 'record-error "~S: unknown property ~S" tag key))
+          (if (memq key seen)
+              (error 'record-error "~S: duplicate property ~S" tag key))
+          (loop (cddr remaining) (cons key seen))))))
+(define (lispb-check-record tag fields positional value)
+  (if (or (not (list? value)) (not (lispb-record? tag value)))
+      (error 'record-error "Expected a ~S record, received ~S" tag value))
+  (if positional
+      (if (not (= (length (cdr value)) (length fields)))
+          (error 'record-error "~S: wrong number of positional fields" tag))
+      (lispb-check-properties tag fields (cdr value))))
+(define (lispb-record-ref tag fields positional value key)
+  (lispb-check-record tag fields positional value)
+  (if (not (memq key fields))
+      (error 'record-error "~S: unknown property ~S" tag key))
+  (if positional
+      (let loop ((keys fields) (values (cdr value)))
+        (if (eq? (car keys) key)
+            (car values)
+            (loop (cdr keys) (cdr values))))
+      (let ((property (lispb-property (cdr value) key)))
+        (if property (cadr property)
+            (error 'record-error "~S: missing property ~S" tag key)))))
+(define (lispb-record-with tag fields positional value overrides)
+  (lispb-check-record tag fields positional value)
+  (lispb-check-properties tag fields overrides)
+  (cons tag
+    (if positional
+        (map (lambda (key old)
+               (let ((property (lispb-property overrides key)))
+                 (if property (cadr property) old)))
+             fields (cdr value))
+        (let loop ((keys fields))
+          (if (null? keys) '()
+              (let* ((key (car keys))
+                     (property (or (lispb-property overrides key)
+                                   (lispb-property (cdr value) key))))
+                (if property
+                    (cons key (cons (cadr property) (loop (cdr keys))))
+                    (loop (cdr keys)))))))))
+)"};
+        auto const& members{ctx.declarations.child_occurrences};
+        for (auto const& [tag, row] : tags) {
+            if (!records.s7_constructor[row]) {
+                continue;
             }
+            std::string fields;
+            for (auto const field : ctx.declarations.items(records.members[row])) {
+                auto const& options{members.s7[field]};
+                if (options.exclude) {
+                    continue;
+                }
+                auto key{ctx.text(options.name.value_or(members.name[field]))};
+                if (!options.name) {
+                    std::ranges::replace(key, '_', '-');
+                }
+                fields += ":" + key + " ";
+            }
+            auto const positional{records.s7_positional[row] ? "#t" : "#f"};
+            source += std::format(
+                "(define ({0} . arguments) (cons :{0} arguments))\n"
+                "(define ({0}? value) (lispb-record? :{0} value))\n"
+                "(define {0}-ref (let ((fields '({1})))\n"
+                "  (lambda (value key) (lispb-record-ref :{0} fields {2} value key))))\n"
+                "(define {0}-with (let ((fields '({1})))\n"
+                "  (lambda (value . overrides)"
+                " (lispb-record-with :{0} fields {2} value overrides))))\n",
+                tag,
+                fields,
+                positional);
         }
         auto body{node_list()};
         body.add(return_stmt(string_literal(store_text(source))));

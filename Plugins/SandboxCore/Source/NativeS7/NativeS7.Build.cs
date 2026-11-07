@@ -29,6 +29,8 @@ public class NativeS7 : ModuleRules
         string includeDirectory = Path.Combine(repositoryRoot, "native", "s7", "runtime", "lib", "include");
         PublicSystemIncludePaths.Add(includeDirectory);
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "s7", "data", "lib", "include"));
+        PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "lispb", "sexpr", "include"));
+        PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "lispb", "include"));
         if (!Target.bGenerateProjectFiles)
         {
             string libraryPath = Path.Combine(
