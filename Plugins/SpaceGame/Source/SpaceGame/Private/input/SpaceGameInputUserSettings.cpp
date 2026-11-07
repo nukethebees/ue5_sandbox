@@ -7,8 +7,39 @@
 #include "EnhancedActionKeyMapping.h"
 #include "InputMappingContext.h"
 #include "PlayerMappableKeySettings.h"
+#include <Serialization/Archive.h>
 
 namespace ioj {
+
+USpaceGameInputUserSettings::USpaceGameInputUserSettings() {
+    refresh_response_settings();
+}
+
+void USpaceGameInputUserSettings::Serialize(FArchive& archive) {
+    Super::Serialize(archive);
+    if (archive.IsLoading()) {
+        refresh_response_settings();
+    }
+}
+
+void USpaceGameInputUserSettings::refresh_response_settings() noexcept {
+    response_settings_ = input::ResponseSettings{{
+        .mouse_turn_sensitivity = mouse_turn_sensitivity_,
+        .gamepad_turn_sensitivity = gamepad_turn_sensitivity_,
+        .gamepad_turn_dead_zone = gamepad_turn_dead_zone_,
+        .gamepad_move_dead_zone = gamepad_move_dead_zone_,
+        .invert_mouse_pitch = invert_mouse_pitch_,
+        .invert_mouse_yaw = invert_mouse_yaw_,
+        .invert_gamepad_pitch = invert_gamepad_pitch_,
+        .invert_gamepad_yaw = invert_gamepad_yaw_,
+        .invert_gamepad_roll = invert_gamepad_roll_,
+        .invert_gamepad_vertical_translation = invert_gamepad_vertical_translation_,
+    }};
+    mouse_turn_sensitivity_ = response_settings_.sensitivity(input::Response::TurnPointerDelta);
+    gamepad_turn_sensitivity_ = response_settings_.sensitivity(input::Response::GamepadTurn);
+    gamepad_turn_dead_zone_ = response_settings_.dead_zone(input::Response::GamepadTurn);
+    gamepad_move_dead_zone_ = response_settings_.dead_zone(input::Response::GamepadMove);
+}
 
 void USpaceGameInputUserSettings::finalize_canonical_registration() {
     auto* const profile{GetDefaultKeyProfile()};
@@ -31,40 +62,50 @@ void USpaceGameInputUserSettings::finalize_canonical_registration() {
 }
 
 void USpaceGameInputUserSettings::set_mouse_turn_sensitivity(float const value) noexcept {
-    mouse_turn_sensitivity_ = input::clamp_sensitivity(value);
+    mouse_turn_sensitivity_ = value;
+    refresh_response_settings();
 }
 
 void USpaceGameInputUserSettings::set_gamepad_turn_sensitivity(float const value) noexcept {
-    gamepad_turn_sensitivity_ = input::clamp_sensitivity(value);
+    gamepad_turn_sensitivity_ = value;
+    refresh_response_settings();
 }
 
 void USpaceGameInputUserSettings::set_gamepad_turn_dead_zone(float const value) noexcept {
-    gamepad_turn_dead_zone_ = input::clamp_dead_zone(value);
+    gamepad_turn_dead_zone_ = value;
+    refresh_response_settings();
 }
 
 void USpaceGameInputUserSettings::set_gamepad_move_dead_zone(float const value) noexcept {
-    gamepad_move_dead_zone_ = input::clamp_dead_zone(value);
+    gamepad_move_dead_zone_ = value;
+    refresh_response_settings();
 }
 
 void USpaceGameInputUserSettings::set_invert_mouse_pitch(bool const value) noexcept {
     invert_mouse_pitch_ = value;
+    refresh_response_settings();
 }
 void USpaceGameInputUserSettings::set_invert_mouse_yaw(bool const value) noexcept {
     invert_mouse_yaw_ = value;
+    refresh_response_settings();
 }
 
 void USpaceGameInputUserSettings::set_invert_gamepad_pitch(bool const value) noexcept {
     invert_gamepad_pitch_ = value;
+    refresh_response_settings();
 }
 void USpaceGameInputUserSettings::set_invert_gamepad_yaw(bool const value) noexcept {
     invert_gamepad_yaw_ = value;
+    refresh_response_settings();
 }
 void USpaceGameInputUserSettings::set_invert_gamepad_roll(bool const value) noexcept {
     invert_gamepad_roll_ = value;
+    refresh_response_settings();
 }
 void USpaceGameInputUserSettings::set_invert_gamepad_vertical_translation(
     bool const value) noexcept {
     invert_gamepad_vertical_translation_ = value;
+    refresh_response_settings();
 }
 
 auto USpaceGameInputUserSettings::chord_mapping_for_mapping(FString const& profile_id,

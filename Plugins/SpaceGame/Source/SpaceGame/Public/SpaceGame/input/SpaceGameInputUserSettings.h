@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/input/response.h>
+
 #include "UserSettings/EnhancedInputUserSettings.h"
 
 #include "SpaceGameInputUserSettings.generated.h"
@@ -12,7 +14,13 @@ UCLASS()
 class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUserSettings {
     GENERATED_BODY()
   public:
+    USpaceGameInputUserSettings();
+    void Serialize(FArchive& archive) override;
     void finalize_canonical_registration();
+
+    [[nodiscard]] auto response_settings() const noexcept -> input::ResponseSettings const& {
+        return response_settings_;
+    }
 
     [[nodiscard]] auto mouse_turn_sensitivity() const noexcept -> float {
         return mouse_turn_sensitivity_;
@@ -63,6 +71,8 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
                                                  UInputMappingContext const* mapping_context) const
         -> FHardwareDeviceIdentifier override;
   private:
+    void refresh_response_settings() noexcept;
+
     UPROPERTY(SaveGame)
     float mouse_turn_sensitivity_{0.25f};
 
@@ -88,6 +98,8 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
     bool invert_gamepad_roll_{};
     UPROPERTY(SaveGame)
     bool invert_gamepad_vertical_translation_{};
+
+    input::ResponseSettings response_settings_;
 };
 
 } // namespace ioj
