@@ -1,6 +1,6 @@
 (load-script "Libraries/formations.scm")
 
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'spark-renderer-showcase
   :title "Spark Renderer Showcase"
   :description "An autonomous close-range crossfire staged to showcase analytic laser-impact sparks."

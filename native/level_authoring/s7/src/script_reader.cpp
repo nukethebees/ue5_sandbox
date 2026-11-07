@@ -128,16 +128,7 @@ auto read_source(std::filesystem::path const& path) -> std::expected<std::string
 DefinitionReader::DefinitionReader(std::filesystem::path script_library_root)
     : script_library_root_{std::move(script_library_root)} {}
 
-auto DefinitionReader::resolve_level(LevelSource const& source, settings::Settings base) const
-    -> LevelDefinitionReadResult {
-    if (auto const* definition{std::get_if<LevelDefinition>(&source)}) {
-        return *definition;
-    }
-    return read_level_source(std::get<std::string>(source), std::move(base));
-}
-
-auto DefinitionReader::read_root_file(std::filesystem::path const& path,
-                                      settings::Settings const& base) const
+auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
     -> std::expected<DefinitionCatalog, Diagnostics> {
     auto const full_path{std::filesystem::absolute(path)};
     lispb::Strings strings;
@@ -154,7 +145,7 @@ auto DefinitionReader::read_root_file(std::filesystem::path const& path,
             full_path);
     }
 
-    auto catalog{parse_catalog(*ast, full_path.parent_path(), base)};
+    auto catalog{parse_catalog(*ast, full_path.parent_path())};
     if (catalog) {
         for (auto& entry : catalog->levels) {
             auto source{read_source(entry.source_path)};
@@ -183,11 +174,10 @@ auto DefinitionReader::read_source_ast(std::string_view const source) const
     return evaluate(source, script_library_root_);
 }
 
-auto DefinitionReader::read_level_source(std::string_view const source,
-                                         settings::Settings base) const
+auto DefinitionReader::read_level_source(std::string_view const source) const
     -> LevelDefinitionReadResult {
     return evaluate(source, script_library_root_).and_then([&](s7::Ast const& ast) {
-        return parse_level(ast, ast.root, std::move(base));
+        return parse_level(ast, ast.root);
     });
 }
 
@@ -221,22 +211,14 @@ auto DefinitionReader::read_script_file(std::filesystem::path const& path) const
                                                  : script_library_root_};
     return with_source_path(evaluate(*source, root), path);
 }
-auto DefinitionReader::read_level_file(std::filesystem::path const& path,
-                                       settings::Settings base) const -> LevelDefinitionReadResult {
-    return with_source_path(read_script_file(path).and_then([&](s7::Ast const& ast) {
-        return parse_level(ast, ast.root, std::move(base));
-    }),
+auto DefinitionReader::read_level_file(std::filesystem::path const& path) const
+    -> LevelDefinitionReadResult {
+    return with_source_path(read_script_file(path).and_then(
+                                [&](s7::Ast const& ast) { return parse_level(ast, ast.root); }),
                             path);
 }
 auto DefinitionReader::read_campaign_file(std::filesystem::path const& path) const
     -> CampaignDefinitionReadResult {
-    auto source{read_source(path)};
-    if (!source) {
-        return std::unexpected{std::move(source.error())};
-    }
-    auto const root{script_library_root_.empty()
-                        ? std::filesystem::absolute(path).parent_path().parent_path()
-                        : script_library_root_};
-    return with_source_path(evaluate(*source, root).and_then(decode_campaign), path);
+    return with_source_path(read_script_file(path).and_then(decode_campaign), path);
 }
 }

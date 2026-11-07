@@ -5,12 +5,6 @@
 #include <SpaceGame/telemetry/LevelTelemetryIntegration.h>
 
 struct FTestBatchOrchestratorTestAccess {
-    static void use_settings_file(ATestBatchOrchestrator& orchestrator, FString path) {
-        check(!orchestrator.level_simulation_.IsSet());
-        orchestrator.settings_file.FilePath = MoveTemp(path);
-        orchestrator.prepared_level_.Reset();
-    }
-
     static void queue_direct_damage_events(ATestBatchOrchestrator& orchestrator,
                                            ::ioj::sim::DirectDamageEvents::ConstView events) {
         check(orchestrator.level_simulation_.IsSet());

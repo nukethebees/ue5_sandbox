@@ -35,7 +35,7 @@
 
 (define* (benchmark-fleet-level id title description capital-count-per-team formation-columns
                                (front-separation 240000))
-  (level :id id :title title :description description
+  (level :settings (load-script "Settings/base.scm") :id id :title title :description description
     :camera (camera
       :look-at '(blue-capital-0 red-capital-0)
       :distance 520000

@@ -1,5 +1,5 @@
 (load-script "Libraries/objectives.scm")
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'defence-screen-duty
   :title "Defence 01: Screen Duty"
   :description "Keep the assigned capital ship operational until the enemy attack window closes."

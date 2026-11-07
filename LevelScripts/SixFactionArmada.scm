@@ -48,7 +48,7 @@
       (make-faction 'orange '(-680000 500000 -15000) 20)
       (make-faction 'yellow '(-800000 -300000 18000) -34)))
 
-  (level
+  (level :settings (load-script "Settings/base.scm")
     :id 'six-faction-armada
     :title "Six-Faction Armada"
     :description "A massive free-play battle with six widely separated fleets scattered across three dimensions."

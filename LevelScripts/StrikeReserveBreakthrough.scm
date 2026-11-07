@@ -3,7 +3,7 @@
 
 (let ((reserve-id 'red-capital-2)
       (reserve-time 60))
-  (level
+  (level :settings (load-script "Settings/base.scm")
     :id 'strike-reserve-breakthrough
     :title "Strike 04: Reserve Breakthrough"
     :description "Destroy two enemy capital ships, then neutralise the reserve carrier entering the battlespace."

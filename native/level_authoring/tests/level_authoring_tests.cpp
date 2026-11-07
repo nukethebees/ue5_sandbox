@@ -258,31 +258,6 @@ TEST(NativeSettings, AccumulatesStructuralAndNestedErrorsWithoutChangingTheBase)
         errors, [](auto const& error) { return error.node_path == "presentation.radar.enabled"; }));
 }
 
-TEST(NativeLevelAuthoringReader, ResolvesSourceAgainstBaseAndAcceptsPreparedDefinitions) {
-    settings::Settings base;
-    base.fighters.speed = 7000.f;
-    base.fighters.health = settings::PositiveHealth{sim::Health{17}};
-    auto const original{base};
-    DefinitionReader reader;
-    LevelSource source{std::string{R"((level :id 'resolved :title "Resolved"
-      :player 'player
-      :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
-      :settings (settings-layers
-        (settings :fighters (fighters :speed 9000))
-        (settings :fighters (fighters :speed 2000)))))"}};
-    auto const resolved{reader.resolve_level(source, base)};
-    ASSERT_TRUE(resolved) << format_diagnostics(resolved.error());
-    auto expected{base};
-    expected.fighters.speed = 2000.f;
-    EXPECT_PRED_FORMAT2(structurally_equal, expected, resolved->settings());
-    EXPECT_PRED_FORMAT2(structurally_equal, original, base);
-
-    auto const prepared{reader.resolve_level(LevelSource{*resolved}, {})};
-    ASSERT_TRUE(prepared);
-    EXPECT_PRED_FORMAT2(structurally_equal, resolved->settings(), prepared->settings());
-    EXPECT_EQ(prepared->metadata().id, resolved->metadata().id);
-}
-
 TEST(NativeSettings, RejectsMalformedPresentationAtTheTypedDecodingBoundary) {
     for (auto const value : {"3", "#f", "'(1 2)", "'( :radar )"}) {
         EXPECT_FALSE(DefinitionReader{}.read_settings_source(
@@ -424,7 +399,8 @@ TEST(NativeLevelAuthoringReader, IntegerFieldsRequireExactInt32Values) {
         SCOPED_TRACE(value);
         auto const result{read(value)};
         ASSERT_TRUE(result);
-        EXPECT_EQ(result->entities()[0].overrides.health, std::numeric_limits<std::int32_t>::max());
+        EXPECT_EQ(result->entities()[0].overrides.health->get().value(),
+                  std::numeric_limits<std::int32_t>::max());
     }
     constexpr std::string_view invalid_sources[]{"2147483648",
                                                  "2147483648.0",
@@ -631,8 +607,8 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     auto source{minimal_source()};
     source.replace(source.find("\"Test\""), 6, "shared-title");
     source.insert(source.size() - 1, R"(
-      :settings (settings :collision-grid
-        (collision-grid :level-size '(2000000000 2000000000 2000000000))))");
+      :settings (settings :fighters (fighters :speed 7300) :collision-grid
+        (collision-grid :cell-size '(100000000 100000000 100000000) :level-size '(2000000000 2000000000 2000000000))))");
     ASSERT_TRUE(write_files({
         {root / "first.scm", "(define shared-title \"Shared\")\n" + source},
         {root / "second.scm", source},
@@ -646,7 +622,7 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
                         "second.scm")
           :campaigns (list "campaign.scm")))"},
     }));
-    auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm", base)};
+    auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
     ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
     auto const& levels{catalog->levels};
     ASSERT_EQ(levels.size(), 3u);
@@ -860,7 +836,7 @@ TEST(NativeLevelAuthoringReader, DerivesDistinctTeamsIncludingScheduledSpawns) {
         EntitySpawnDefinition{.id = EntityId{"reinforcement"},
                               .archetype = EntityArchetype::CapitalShip,
                               .team = Team::Red,
-                              .spawn_time_seconds = 10.0});
+                              .spawn_time_seconds = NonNegativeFinite<double>{10.0}});
     definition.entities.emplace_back(EntitySpawnDefinition{
         .id = EntityId{"ally"}, .archetype = EntityArchetype::CapitalShip, .team = Team::Blue});
     EXPECT_TRUE(LevelDefinition::make(definition));
@@ -939,7 +915,7 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
                               .team = Team::Red,
                               .position = {1000.0, 200.12349, -300.5},
                               .rotation = {0.0, 90.0, 0.0},
-                              .spawn_time_seconds = 2.5});
+                              .spawn_time_seconds = NonNegativeFinite<double>{2.5}});
     auto second{first};
     auto const a{emit_source(first)};
     auto const b{emit_source(second)};
@@ -980,23 +956,20 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
             expected.collision_grid.cell_size = sim::OverlapResponseConfig{}.cell_size;
         }
         auto authored{minimal_source()};
-        authored.insert(
-            authored.size() - 1,
-            std::format(" :settings (settings :collision-grid (collision-grid{}))", fields));
-        auto const definition{DefinitionReader{}.read_level_source(authored, base)};
+        authored.insert(authored.size() - 1,
+                        std::format(R"( :settings (settings-layers
+                (settings :fighters (fighters :speed 7000)
+                  :collision-grid (collision-grid :cell-size '(2500 2500 10000)))
+                (settings :collision-grid (collision-grid{}))))",
+                                    fields));
+        auto const definition{DefinitionReader{}.read_level_source(authored)};
         ASSERT_TRUE(definition) << format_diagnostics(definition.error());
         EXPECT_PRED_FORMAT2(structurally_equal, expected, definition->settings());
         auto const source{emit_source(*definition)};
         ASSERT_TRUE(source) << format_diagnostics(source.error());
-        auto const parsed{DefinitionReader{}.read_level_source(*source, base)};
+        auto const parsed{DefinitionReader{}.read_level_source(*source)};
         ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
         EXPECT_PRED_FORMAT2(structurally_equal, expected, parsed->settings());
-
-        auto changed_base{base};
-        changed_base.fighters.speed = 8000.f;
-        auto const inherited{DefinitionReader{}.read_level_source(*source, changed_base)};
-        ASSERT_TRUE(inherited) << format_diagnostics(inherited.error());
-        EXPECT_PRED_FORMAT2(structurally_equal, expected, inherited->settings());
     }
 }
 TEST(NativeLevelAuthoringCollisionGrid, RejectsMalformedAndInvalidExplicitDimensions) {
@@ -1100,12 +1073,8 @@ TEST(NativeLevelAuthoringFixtures, ReadsEveryCheckedInLevelAndCampaign) {
         ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
         campaigns.emplace_back(campaigns.size(), entry.source_path, std::move(*entry.definition));
     }
-    for (auto const& entry : std::filesystem::directory_iterator(root / "Benchmarks")) {
-        if (entry.path().extension() == ".scm") {
-            auto const definition{DefinitionReader{root}.read_level_file(entry.path())};
-            ASSERT_TRUE(definition) << format_diagnostics(definition.error());
-        }
-    }
+    auto const benchmark{DefinitionReader{}.read_level_file(root / "Batch_benchmark.scm")};
+    ASSERT_TRUE(benchmark) << format_diagnostics(benchmark.error());
     EXPECT_GT(levels.size(), 30u);
     EXPECT_GT(campaigns.size(), 5u);
     EXPECT_TRUE(validate_level_catalog(levels).empty());

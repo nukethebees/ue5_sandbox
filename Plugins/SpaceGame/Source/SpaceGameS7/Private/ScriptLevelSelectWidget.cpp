@@ -14,7 +14,6 @@
 
 #include <Engine/GameInstance.h>
 #include <Kismet/GameplayStatics.h>
-#include <Misc/FileHelper.h>
 
 namespace ioj::s7 {
 using ioj::levels::authoring::catalog_category;
@@ -536,22 +535,13 @@ void UScriptLevelSelectWidget::launch_selected_level(::ioj::levels::LaunchOption
     }
 
     auto& entry{entries_[selected_entry_index_]};
-    FString level_source;
-    if (!FFileHelper::LoadFileToString(level_source, *entry.path)) {
-        UE_LOG(LogSandbox, Error, TEXT("Cannot read level source '%s'"), *entry.path);
-        view_state_.status =
-            NSLOCTEXT("LevelSelect", "SourceReadFailed", "COULD NOT READ LEVEL SOURCE");
-        publish_view();
-        return;
-    }
-
-    entry.definition.Reset();
     options.control_context = active_category_ == LevelCatalogCategory::Mission
                                 ? ::ioj::levels::ControlContext::Player
                             : active_category_ == LevelCatalogCategory::Benchmark
                                 ? ::ioj::levels::ControlContext::Benchmark
                                 : ::ioj::levels::ControlContext::Observer;
-    game_->set_pending_level(ioj::to_string(level_source), entry.path, options);
+    game_->set_pending_level(MoveTemp(entry.definition.GetValue()), entry.path, options);
+    entry.definition.Reset();
     view_state_.can_launch = false;
     if (options.launch_mode == ::ioj::levels::LaunchMode::Paused) {
         view_state_.status =

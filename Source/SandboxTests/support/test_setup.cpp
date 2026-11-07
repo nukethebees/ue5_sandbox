@@ -2,6 +2,7 @@
 
 #include "SimulationTestAssets.h"
 #include "TestBatchOrchestratorTestAccess.h"
+#include <ioj/levels/authoring/definition_reader.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -57,11 +58,15 @@ auto spawn_visibility_blocker(UWorld& world, FTransform const& transform, FName 
 
 auto load_player_test_level(ATestBatchOrchestrator& orchestrator, FSoftTestAssertions& checks)
     -> bool {
-    auto const loaded{orchestrator.load_level(std::string{R"(
+    auto const definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
         (level :id 'player-test :title "Player test"
           :player 'player
           :entities (list (entity :id 'player :archetype 'player-fighter
-                                  :team 'blue :position '(0 0 0)))))"})};
+                                  :team 'blue :position '(0 0 0)))))")};
+    if (!checks.is_true(definition.has_value(), TEXT("Player test definition is valid"))) {
+        return false;
+    }
+    auto const loaded{orchestrator.load_level(*definition)};
     return checks.is_true(static_cast<bool>(loaded),
                           loaded ? TEXT("Authored player level loads")
                                  : loaded.error().format(TEXT("player-test")));
@@ -117,8 +122,6 @@ void FTestBatchOrchestratorLevelSetup::end_test() {
 void FTestBatchOrchestratorLevelSetup::reset_test_configuration() {
     check(orchestrator.IsValid());
     orchestrator->set_level_config(*config);
-    FTestBatchOrchestratorTestAccess::use_settings_file(*orchestrator,
-                                                        TEXT("LevelScripts/Settings/base.scm"));
 }
 
 void FTestBatchOrchestratorLevelSetup::teardown() {

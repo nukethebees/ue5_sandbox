@@ -9,7 +9,7 @@
 namespace ioj::session {
 class LaunchState {
   public:
-    void set_pending_level(levels::LevelSource source,
+    void set_pending_level(levels::LevelDefinition definition,
                            std::string source_path,
                            levels::LaunchOptions options = {});
     [[nodiscard]] auto take_pending_level() -> std::optional<PendingLevel>;

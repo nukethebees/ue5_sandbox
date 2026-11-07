@@ -45,9 +45,7 @@ auto process_entry(s7::ReadResult<Input> input,
 }
 }
 
-auto parse_catalog(s7::Ast const& ast,
-                   std::filesystem::path const& source_root,
-                   settings::Settings const& base)
+auto parse_catalog(s7::Ast const& ast, std::filesystem::path const& source_root)
     -> std::expected<DefinitionCatalog, Diagnostics> {
     auto input{s7::read<CatalogInput>(s7::Reader{ast}, ast.root, "catalog")};
     if (!input) {
@@ -59,7 +57,7 @@ auto parse_catalog(s7::Ast const& ast,
         auto const path{std::format("catalog.levels[{}]", i)};
         result.levels.push_back(process_entry<LevelDefinition>(
             std::move(input->levels[i]), path, source_root, [&](s7::RawNode value) {
-                return parse_level(ast, value.index, base, path + ".value");
+                return parse_level(ast, value.index, path + ".value");
             }));
     }
     auto const campaigns_count{input->campaigns.size()};

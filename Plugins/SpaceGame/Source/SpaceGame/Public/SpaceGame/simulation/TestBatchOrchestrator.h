@@ -59,7 +59,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_level_config() const noexcept -> USpaceGameLevelConfig const* {
         return level_config.Get();
     }
-    auto get_settings_file() const -> FString const& { return settings_file.FilePath; }
     void set_start_mode(EOrchestratorStartMode mode);
     void set_level_script(FString path);
     auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
@@ -68,8 +67,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         initialisation_data_.emplace(std::move(data));
     }
     auto get_level_definition() const -> ioj::levels::LevelDefinition const& {
-        check(prepared_level_.IsSet() && prepared_level_->level.has_value());
-        return *prepared_level_->level;
+        check(prepared_level_.IsSet());
+        return *prepared_level_;
     }
     auto is_presentation_enabled() const noexcept -> bool { return presentation_enabled; }
 
@@ -110,7 +109,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Testing and level preparation
     /* **************************************** */
 
-    auto load_level(ioj::levels::LevelSource const& source,
+    auto load_level(ioj::levels::LevelDefinition definition,
                     ::ioj::levels::ControlContext playerless_control_context =
                         ::ioj::levels::ControlContext::Observer)
         -> std::expected<void, ioj::FLevelLoadErrors>;
@@ -136,16 +135,12 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UFUNCTION(CallInEditor, Category = "Sandbox|Assets")
     void apply_level_config();
 
-    UFUNCTION(CallInEditor,
-              Category = "Sandbox|Settings",
-              meta = (DisplayName = "Create level settings..."))
-    void create_level_settings();
 #endif
   private:
     /* **************************************** */
     // Level initialization
     /* **************************************** */
-    auto prepare_level(ioj::levels::LevelSource const& source) -> bool;
+    auto prepare_level(ioj::levels::LevelDefinition definition) -> bool;
     auto begin_play() -> bool;
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
@@ -190,10 +185,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
   private:
     ioj::settings::TickSettings simulation_tick_settings{};
     UPROPERTY(EditAnywhere,
-              Category = "Sandbox|Settings",
-              meta = (FilePathFilter = "scm", RelativeToGameDir))
-    FFilePath settings_file{TEXT("LevelScripts/Settings/base.scm")};
-    UPROPERTY(EditAnywhere,
               Category = "Sandbox",
               meta = (FilePathFilter = "scm", RelativeToGameDir))
     FFilePath level_script;
@@ -207,7 +198,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     FLevelPresentationHost presentation_host_;
     TOptional<ioj::sim::LevelSim> level_simulation_;
-    TOptional<FLoadedGameSettings> prepared_level_;
+    TOptional<ioj::levels::LevelDefinition> prepared_level_;
     std::optional<ioj::sim::LevelSimInitData> initialisation_data_;
     ioj::levels::LaunchOptions launch_options_{};
 

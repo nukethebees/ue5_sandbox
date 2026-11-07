@@ -1,9 +1,11 @@
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameS7/level_script_catalog.h>
 
 #include <CQTest.h>
 
@@ -56,14 +58,22 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                     expected.grid_size = size_override;
                     expected.cell_size = cell_override;
                 }
-                ioj::levels::LevelSource const source{std::format(
-                    R"((level :id 'grid-runtime :title "Grid runtime" :player 'player
+                auto const definition{
+                    ioj::levels::authoring::DefinitionReader{
+                        std::filesystem::path{
+                            *ioj::levels::authoring::default_level_script_directory()}}
+                        .read_level_source(std::format(
+                            R"((level :id 'grid-runtime :title "Grid runtime" :player 'player
                         :entities (list (entity :id 'player :archetype 'player-fighter
                                                 :team 'blue :position '(0 0 0)))
-                        :settings (settings :collision-grid (collision-grid {}))))",
-                    grid)};
+                        :settings (settings-layers (load-script "Settings/base.scm")
+                          (settings :collision-grid (collision-grid {})))))",
+                            grid))};
+                if (!checks.is_true(definition.has_value(), TEXT("Grid definition decodes"))) {
+                    return;
+                }
 
-                if (!checks.is_true(static_cast<bool>(orchestrator->load_level(source)),
+                if (!checks.is_true(static_cast<bool>(orchestrator->load_level(*definition)),
                                     TEXT("Current level grid loads"))) {
                     return;
                 }

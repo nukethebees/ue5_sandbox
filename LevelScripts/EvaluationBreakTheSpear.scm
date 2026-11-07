@@ -1,7 +1,7 @@
 (load-script "Libraries/objectives.scm")
 (load-script "Libraries/formations.scm")
 
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'evaluation-break-the-spear
   :title "Evaluation 01: Break the Spear"
   :description "Destroy the enemy flagship while keeping the task group alive for 150 seconds."

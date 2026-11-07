@@ -73,8 +73,6 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
     TestCommandBuilder.Do([this] {
         auto& driver{initialise_test_driver()};
         auto& orchestrator{driver.orchestrator};
-        FTestBatchOrchestratorTestAccess::use_settings_file(orchestrator,
-                                                            TEXT("LevelScripts/Settings/base.scm"));
         orchestrator.set_presentation_enabled(true);
         if (!load_player_test_level(orchestrator, checks)) {
             return;

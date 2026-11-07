@@ -86,20 +86,18 @@ must be unique. Catalog and mission expression operators retain their specialize
 
 Settings constructors return records; `settings-layers` groups records in application order.
 `parse_settings` decodes them into a copy of a supplied `SettingsValues` configuration.
-Load base settings first, then seed level decoding with the result. Omitted fields preserve
-the seed and explicit values replace it, including values equal to C++ defaults.
+Level roots explicitly compose shared settings with `load-script` and `settings-layers`.
+Level decoding always starts from C++ defaults; launchers cannot inject different baselines.
 Simulation, presentation and starfield use the same typed readers.
 Unknown fields, duplicate properties, incompatible values and field constraints are checked
 during decoding. Simulation copies the effective groups to its handwritten root,
 then validates the effective configuration's domain constraints.
 
-Runtime loading accepts `LevelSource`: either source text to decode against the resolved base,
-or an already-validated definition from a native caller/editor preparation. The latter's settings,
-when present, are complete values rather than a sparse patch. Menu inspection remains separate:
-the runtime map's settings file and resource defaults are not available during catalog browsing.
-A launch passes only the source, evaluates it once after base configuration is available, and
-uses that same resolved definition for native simulation and presentation. Failed settings
-resolution leaves the supplied definition and live configuration untouched.
+Runtime launch state carries a validated `LevelDefinition`. Catalog selection, editor
+preparation and direct file loading all evaluate the same authored root and hand the
+definition to the simulation compiler. Unreal resource preparation applies those resolved
+settings to asset-backed configuration without decoding another source or inheriting a
+runtime-map settings file. Telemetry stores the resolved authored record used for the run.
 
 Shared static configuration records live under `native/levels`; runtime state remains under
 simulation. Unreal retains asset references and colour controls. Asset-derived members are

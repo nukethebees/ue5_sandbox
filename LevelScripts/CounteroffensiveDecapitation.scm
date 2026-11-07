@@ -1,7 +1,7 @@
 (load-script "Libraries/objectives.scm")
 (load-script "Libraries/formations.scm")
 
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'counteroffensive-decapitation
   :title "Counteroffensive 01: Decapitation"
   :description "Destroy an outnumbering enemy capital formation before its operating window closes."

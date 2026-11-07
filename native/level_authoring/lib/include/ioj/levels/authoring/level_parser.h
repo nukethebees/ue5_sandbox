@@ -11,6 +11,5 @@ using LevelDefinitionReadResult = std::expected<LevelDefinition, Diagnostics>;
 // The root must be a valid node index in ast.
 [[nodiscard]] auto parse_level(s7::Ast const& ast,
                                s7::NodeIndex root,
-                               settings::Settings base = {},
                                std::string_view path = "level") -> LevelDefinitionReadResult;
 }

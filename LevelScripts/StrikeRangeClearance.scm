@@ -1,7 +1,7 @@
 (load-script "Libraries/objectives.scm")
 (load-script "Libraries/formations.scm")
 
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'strike-range-clearance
   :title "Strike 01: Range Clearance"
   :description "Eliminate an isolated three-turret battery and return to operational control."

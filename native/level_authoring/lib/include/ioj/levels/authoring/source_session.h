@@ -26,8 +26,7 @@ class SourceSession {
     [[nodiscard]] auto save() -> std::expected<void, std::string>;
     [[nodiscard]] auto refresh_external_conflict() -> std::expected<void, std::string>;
 
-    [[nodiscard]] auto read(settings::Settings base = {},
-                            std::filesystem::path const& library_root = {}) const
+    [[nodiscard]] auto read(std::filesystem::path const& library_root = {}) const
         -> std::expected<LevelDefinition, Diagnostics>;
     [[nodiscard]] auto path() const -> std::filesystem::path const& { return path_; }
     [[nodiscard]] auto buffer() const -> std::string const& { return state_.buffer_text; }

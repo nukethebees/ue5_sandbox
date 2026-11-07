@@ -1,7 +1,7 @@
 (load-script "Libraries/objectives.scm")
 (load-script "Libraries/formations.scm")
 
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'strike-carrier-intercept
   :title "Strike 03: Carrier Intercept"
   :description "Support a fleet carrier and destroy an enemy capital ship protected by a forward battery."

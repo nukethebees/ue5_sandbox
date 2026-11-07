@@ -3,7 +3,6 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/launch_options.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
-#include <SpaceGame/settings/LevelSettingsFile.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -155,9 +154,7 @@ auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> 
     level_config = &config;
     prepared_level_.Reset();
     refresh_collision_grid_visualization();
-    if (auto* const world{GetWorld()}; IsValid(world)) {
-        ioj::apply_level_actor_configuration(*world, config, player_ship.Get());
-    } else if (IsValid(player_ship)) {
+    if (IsValid(player_ship)) {
         ioj::configure_player_actor(*player_ship, config);
     }
     return true;
@@ -199,32 +196,32 @@ void ATestBatchOrchestrator::clear_player_ship() {
 /* **************************************** */
 // Level preparation and startup
 /* **************************************** */
-auto ATestBatchOrchestrator::prepare_level(ioj::levels::LevelSource const& source) -> bool {
+auto ATestBatchOrchestrator::prepare_level(ioj::levels::LevelDefinition definition) -> bool {
     check(get_state() == ioj::sim::LevelState::Uninitialised);
     auto* const world{GetWorld()};
     ioj::fatal_if_uobject_ptrs_invalid(
         {SANDBOX_NAMED_UOBJECT_PTR(world), SANDBOX_NAMED_UOBJECT_PTR(level_config)});
-    auto loaded{read_game_settings(settings_file.FilePath, &source, *level_config, this)};
+    auto loaded{prepare_level_resources(definition.settings(), *level_config, this)};
     if (!loaded) {
         handle_level_start_failure(loaded.error());
         return false;
     }
-    if (!set_level_config(*loaded->config)) {
+    if (!set_level_config(**loaded)) {
         return false;
     }
 
-    simulation_tick_settings = loaded->simulation.clock;
+    simulation_tick_settings = definition.settings().tick;
     if (start_mode == EOrchestratorStartMode::AuthoredLevel) {
         simulation_tick_settings.time_scale =
             ioj::PositiveFinite<time_type>::make(launch_options_.requested_time_scale);
     }
-    presentation_host_.get_hud_manager().configure(loaded->simulation.hud);
-    prepared_level_.Emplace(MoveTemp(*loaded));
+    presentation_host_.get_hud_manager().configure(definition.settings().hud);
+    prepared_level_.Emplace(std::move(definition));
 
     return true;
 }
 auto ATestBatchOrchestrator::load_level(
-    ioj::levels::LevelSource const& source,
+    ioj::levels::LevelDefinition definition,
     ::ioj::levels::ControlContext const playerless_control_context)
     -> std::expected<void, ioj::FLevelLoadErrors> {
     auto const fail{[](ioj::ELevelLoadErrorCode const code,
@@ -241,7 +238,7 @@ auto ATestBatchOrchestrator::load_level(
     if (!IsValid(world)) {
         return fail(ioj::ELevelLoadErrorCode::InvalidWorld, TEXT("Orchestrator world is invalid"));
     }
-    if (!prepare_level(source)) {
+    if (!prepare_level(std::move(definition))) {
         return fail(ioj::ELevelLoadErrorCode::InvalidLevelConfig,
                     TEXT("Failed to resolve game settings"));
     }
@@ -297,7 +294,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
                          .config = *level_config,
                          .clock_settings = simulation_tick_settings,
                          .launch_options = options,
-                         .definition = *prepared_level_->level,
+                         .definition = *prepared_level_,
                          .player = player_ship.Get(),
                      })};
     if (!build) {
@@ -306,12 +303,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         return false;
     }
 
-    auto configured{ioj::configure_level_run(*build,
-                                             *world,
-                                             get_level_definition().metadata(),
-                                             options,
-                                             prepared_level_->level_source,
-                                             prepared_level_->source)};
+    auto configured{ioj::configure_level_run(*build, *world, get_level_definition(), options)};
     if (!configured) {
         handle_level_start_failure(configured.error().format());
         return false;
@@ -401,7 +393,7 @@ void ATestBatchOrchestrator::load_authored_level() {
     presentation_enabled =
         launch_options_.presentation_mode == ioj::levels::PresentationMode::Visual;
 
-    auto const loaded{load_level(pending->source, launch_options_.control_context)};
+    auto const loaded{load_level(std::move(pending->definition), launch_options_.control_context)};
     if (!loaded) {
         handle_level_start_failure(loaded.error().format(ioj::to_fstring(pending->source_path)));
         return;
@@ -513,17 +505,5 @@ void ATestBatchOrchestrator::apply_level_config() {
         return;
     }
     set_level_config(*level_config);
-}
-void ATestBatchOrchestrator::create_level_settings() {
-    auto const path{ioj::create_level_settings_file(GetWorld())};
-    if (!path.IsSet()) {
-        return;
-    }
-
-    Modify();
-    settings_file.FilePath = path.GetValue();
-    prepared_level_.Reset();
-    MarkPackageDirty();
-    UE_LOG(LogSandbox, Display, TEXT("Assigned level settings '%s'."), *path.GetValue());
 }
 #endif

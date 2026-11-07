@@ -1,5 +1,5 @@
 (load-script "Libraries/objectives.scm")
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'evaluation-distributed-defence
   :title "Evaluation 02: Distributed Defence"
   :description "Hold three separated defence installations against a converging capital-ship attack."

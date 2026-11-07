@@ -1,7 +1,7 @@
 #pragma once
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include <ioj/levels/level_source.h>
+#include <ioj/levels/level_definition.h>
 #include <ioj/profiles/save_browser.h>
 #include <ioj/session/launch_state.h>
 
@@ -107,7 +107,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     // Level launch and navigation
     /* **************************************** */
-    void set_pending_level(levels::LevelSource source,
+    void set_pending_level(levels::LevelDefinition definition,
                            FString source_path,
                            levels::LaunchOptions options = {});
     auto take_pending_level() -> std::optional<session::PendingLevel>;

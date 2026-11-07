@@ -8,7 +8,8 @@
 
   (apply level
     (append
-      (list :id (trial-id number)
+      (list :settings (load-script "Settings/base.scm")
+            :id (trial-id number)
             :title (format #f "Turret Trial ~A" number)
             :description description
             :player 'player

@@ -1,5 +1,5 @@
 (load-script "Libraries/objectives.scm")
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'evaluation-lone-screen
   :title "Evaluation 03: Lone Screen"
   :description "Survive alone through repeated enemy fighter launches for two minutes."

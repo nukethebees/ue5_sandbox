@@ -1,5 +1,5 @@
 (load-script "Libraries/objectives.scm")
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'space-dust-flight-lab
   :title "Space Dust Flight Lab"
   :description "A quiet player-flight lab for tuning velocity-driven space dust. A friendly capital ship provides an optional depth-occlusion reference."

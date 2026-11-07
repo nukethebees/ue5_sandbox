@@ -3,7 +3,7 @@
 
 (let ((reserve-id 'red-capital-3)
       (reserve-time 60))
-  (level
+  (level :settings (load-script "Settings/base.scm")
     :id 'counteroffensive-second-echelon
     :title "Counteroffensive 02: Second Echelon"
     :description "Eliminate the forward carrier group and the reserve ship entering behind it."

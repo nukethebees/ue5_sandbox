@@ -70,24 +70,21 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
 
-        ioj::levels::LevelSource const source{*definition};
-        auto const loaded{read_game_settings(TEXT("LevelScripts/Settings/missing-unused-base.scm"),
-                                             &source,
-                                             *resources,
-                                             GetTransientPackage())};
-        if (!TestRunner->TestTrue(loaded ? TEXT("Prebuilt level loads") : *loaded.error(),
+        auto const loaded{
+            prepare_level_resources(definition->settings(), *resources, GetTransientPackage())};
+        if (!TestRunner->TestTrue(loaded ? TEXT("Level resources prepare") : *loaded.error(),
                                   loaded.has_value())) {
             return;
         }
-        TestRunner->TestTrue(TEXT("System settings do not overwrite resolved level settings"),
-                             loaded->level->settings() == input.settings);
-        TestRunner->TestTrue(TEXT("Prebuilt settings do not claim unrelated source text"),
-                             loaded->source.IsEmpty());
         TestRunner->TestEqual(TEXT("Runtime uses resolved fighter speed"),
-                              loaded->simulation.fighters.speed,
+                              (*loaded)->fighters.simulation.speed,
                               input.settings.fighters.speed);
         TestRunner->TestTrue(TEXT("Runtime uses resolved collision dimensions"),
-                             loaded->simulation.overlap_response == input.settings.collision_grid);
+                             (*loaded)->collision_grid.grid_size ==
+                                 ioj::to_unreal(input.settings.collision_grid.level_size));
+        TestRunner->TestTrue(TEXT("Runtime uses resolved collision cells"),
+                             (*loaded)->collision_grid.cell_size ==
+                                 ioj::to_unreal(input.settings.collision_grid.cell_size));
     }
 
     TEST_METHOD(DuplicatePreservesNestedValuesAndAssetReferences)

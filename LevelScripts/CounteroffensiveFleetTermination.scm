@@ -5,7 +5,7 @@
       (first-reserve-time 75)
       (second-reserve-id 'red-capital-5)
       (second-reserve-time 150))
-  (level
+  (level :settings (load-script "Settings/base.scm")
     :id 'counteroffensive-fleet-termination
     :title "Counteroffensive 04: Fleet Termination"
     :description "Destroy the enemy fleet and both reserve carriers before the operation expires."

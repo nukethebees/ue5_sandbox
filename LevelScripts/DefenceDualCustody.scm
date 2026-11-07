@@ -1,7 +1,7 @@
 (load-script "Libraries/objectives.scm")
 (load-script "Libraries/formations.scm")
 
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'defence-dual-custody
   :title "Defence 03: Dual Custody"
   :description "Maintain two capital ships through the initial assault and a reserve carrier arrival."

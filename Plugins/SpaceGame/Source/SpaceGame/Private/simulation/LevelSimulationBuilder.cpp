@@ -1,20 +1,16 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
 
+#include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/sim/missions/mission.h>
-#include <SandboxGameShared/utilities/actor_utils.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/telemetry/LevelTelemetryMetadata.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
-#include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/RotatorConversion.h>
 #include <SandboxCoreEngine/strings.h>
 #include <SandboxCoreEngine/TransformConversion.h>
@@ -23,11 +19,8 @@
 #include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshSocket.h>
 #include <Engine/World.h>
-#include <EngineUtils.h>
-#include <Kismet/GameplayStatics.h>
 
 #include <array>
-#include <vector>
 
 namespace ioj::level_simulation_builder {
 
@@ -40,14 +33,6 @@ void modify_editor_actor(AActor& actor) {
 #else
     static_cast<void>(actor);
 #endif
-}
-
-template <typename TActor, typename TConfig>
-void configure_proxy_actors(UWorld& world, TConfig const& config) {
-    for (TActorIterator<TActor> it{&world}; it; ++it) {
-        modify_editor_actor(**it);
-        it->set_actor_config(&config);
-    }
 }
 
 void append_native_errors(sim::LevelSimulationBuildErrors const& messages,
@@ -63,26 +48,6 @@ namespace ioj {
 void configure_player_actor(ATestSpaceShip& player, USpaceGameLevelConfig const& config) {
     level_simulation_builder::modify_editor_actor(player);
     player.set_actor_config(&config.player_ship);
-}
-
-void apply_level_actor_configuration(UWorld& world,
-                                     USpaceGameLevelConfig& config,
-                                     ATestSpaceShip* const player) {
-    if (IsValid(player)) {
-        configure_player_actor(*player, config);
-    }
-#if WITH_EDITOR
-    if (!world.IsGameWorld()) {
-        for (TActorIterator<ATestCapitalShipProxy> it{&world}; it; ++it) {
-            level_simulation_builder::modify_editor_actor(**it);
-            it->set_level_config_asset(&config);
-        }
-        level_simulation_builder::configure_proxy_actors<ATestStaticTurretsProxy>(world,
-                                                                                  config.turrets);
-        level_simulation_builder::configure_proxy_actors<ATestTubeSpinnerProxy>(
-            world, config.tube_spinners);
-    }
-#endif
 }
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
@@ -220,15 +185,14 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request) -> FLevelS
 
 auto configure_level_run(sim::LevelSimInitData& data,
                          UWorld const& world,
-                         levels::LevelMetadata const& definition,
-                         levels::LaunchOptions const& options,
-                         FString const& level_source,
-                         FString const& settings_source) -> std::expected<void, FLevelStartErrors> {
+                         levels::LevelDefinition const& definition,
+                         levels::LaunchOptions const& options)
+    -> std::expected<void, FLevelStartErrors> {
     FLevelStartErrors errors;
     auto& metadata{data.telemetry_metadata};
-    metadata = make_level_telemetry_run_metadata(world, definition);
-    metadata.level_source = to_string(level_source);
-    metadata.settings_source = to_string(settings_source);
+    metadata = make_level_telemetry_run_metadata(world, definition.metadata());
+    metadata.level_source =
+        levels::authoring::emit_level_source(levels::authoring::make_level_input(definition));
     if (options.simulated_duration_seconds.has_value()) {
         auto const duration{Duration::make(*options.simulated_duration_seconds)};
         metadata.requested_duration_seconds = duration;

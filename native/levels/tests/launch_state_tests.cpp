@@ -29,7 +29,7 @@ TEST(LaunchState, TransfersNativeDefinitionExactlyOnceAndClearsPreviousError) {
     auto pending{state.take_pending_level()};
     ASSERT_TRUE(pending);
     EXPECT_EQ(pending->source_path, "LevelScripts/Example.scm");
-    EXPECT_EQ(std::get<LevelDefinition>(pending->source).metadata().title, "Native Example");
+    EXPECT_EQ(pending->definition.metadata().title, "Native Example");
     EXPECT_EQ(pending->options.launch_mode, LaunchMode::Paused);
     EXPECT_EQ(pending->options.requested_time_scale.get(), 4.0);
     EXPECT_EQ(pending->options.control_context, ControlContext::Benchmark);
@@ -37,8 +37,16 @@ TEST(LaunchState, TransfersNativeDefinitionExactlyOnceAndClearsPreviousError) {
 }
 
 TEST(LaunchState, NavigationAndLaunchFailureInvalidatePendingWork) {
+    LevelDefinitionComponents components;
+    components.metadata.id = LevelId{"navigation"};
+    components.metadata.title = "Navigation";
+    components.player_entity_id = EntityId{"player"};
+    components.entities.push_back(
+        {.id = EntityId{"player"}, .archetype = EntityArchetype::PlayerFighter});
+    auto definition{LevelDefinition::make(std::move(components))};
+    ASSERT_TRUE(definition);
     LaunchState state;
-    state.set_pending_level(std::string{"authored source"}, "level.scm");
+    state.set_pending_level(*definition, "level.scm");
     ASSERT_TRUE(state.request_menu(TelemetryRequest{std::unexpected{"write failed"}}));
     EXPECT_FALSE(state.take_pending_level());
     EXPECT_FALSE(state.request_menu({}));
@@ -58,7 +66,7 @@ TEST(LaunchState, NavigationAndLaunchFailureInvalidatePendingWork) {
     EXPECT_TRUE(telemetry->run->empty());
     EXPECT_TRUE(state.request_menu(LevelSelectRequest{.preferred_level_id = LevelId{"retry"}}));
 
-    state.set_pending_level(std::string{"source"}, "level.scm");
+    state.set_pending_level(*definition, "level.scm");
     state.set_launch_error("invalid configuration");
     EXPECT_FALSE(state.take_pending_level());
     EXPECT_EQ(state.take_launch_error(), "invalid configuration");

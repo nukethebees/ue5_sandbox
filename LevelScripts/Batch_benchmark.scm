@@ -5,8 +5,10 @@
   :title "Batch Benchmark"
 
   ;; Include the elevated capital ships and their fighter spawn slots.
-  :settings (settings
-    :collision-grid (collision-grid :level-size '(2000000 2000000 500000)))
+  :settings (settings-layers
+    (load-script "Settings/base.scm")
+    (settings
+      :collision-grid (collision-grid :level-size '(2000000 2000000 500000))))
 
   ;; Boilerplate observer camera for this playerless seed.
   :camera (camera

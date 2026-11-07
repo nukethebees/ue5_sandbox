@@ -3,7 +3,6 @@
 #include <ioj/levels/authoring/definition_catalog.h>
 #include <ioj/levels/authoring/level_parser.h>
 #include <ioj/levels/authoring/settings_parser.h>
-#include <ioj/levels/level_source.h>
 #include <ioj/s7/ast_result.h>
 
 #include <filesystem>
@@ -15,14 +14,10 @@ class DefinitionReader {
   public:
     DefinitionReader() = default;
     explicit DefinitionReader(std::filesystem::path script_library_root);
-    [[nodiscard]] auto resolve_level(LevelSource const& source, settings::Settings base) const
-        -> LevelDefinitionReadResult;
     // Resolve all imports relative to the root file's directory. Each call starts fresh.
-    [[nodiscard]] auto read_root_file(std::filesystem::path const& path,
-                                      settings::Settings const& base = {}) const
+    [[nodiscard]] auto read_root_file(std::filesystem::path const& path) const
         -> std::expected<DefinitionCatalog, Diagnostics>;
-    [[nodiscard]] auto read_level_source(std::string_view source,
-                                         settings::Settings base = {}) const
+    [[nodiscard]] auto read_level_source(std::string_view source) const
         -> LevelDefinitionReadResult;
     [[nodiscard]] auto read_campaign_source(std::string_view source) const
         -> CampaignDefinitionReadResult;
@@ -35,9 +30,8 @@ class DefinitionReader {
         -> std::expected<s7::Ast, Diagnostics>;
     [[nodiscard]] auto read_source_ast(std::string_view source) const
         -> std::expected<s7::Ast, Diagnostics>;
-    // Standalone reads use this reader's import root, or the conventional level/campaign directory.
-    [[nodiscard]] auto read_level_file(std::filesystem::path const& path,
-                                       settings::Settings base = {}) const
+    // Standalone reads use this reader's import root, or the file's directory.
+    [[nodiscard]] auto read_level_file(std::filesystem::path const& path) const
         -> LevelDefinitionReadResult;
     [[nodiscard]] auto read_campaign_file(std::filesystem::path const& path) const
         -> CampaignDefinitionReadResult;

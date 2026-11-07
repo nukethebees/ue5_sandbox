@@ -96,13 +96,7 @@ auto calculate_tick_count(double const seconds, Frequency const tick_rate_hz)
 
 auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const profiler_ready)
     -> std::expected<BenchmarkResult, std::string> {
-    auto const script_root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
-    levels::authoring::DefinitionReader reader{script_root};
-    auto base{reader.read_settings_file(script_root / "Settings" / "base.scm")};
-    if (!base) {
-        return std::unexpected{levels::format_diagnostics(base.error())};
-    }
-    auto level_result{reader.read_level_file(options.level_path, std::move(*base))};
+    auto level_result{levels::authoring::DefinitionReader{}.read_level_file(options.level_path)};
     if (!level_result) {
         return std::unexpected{read_error(level_result)};
     }

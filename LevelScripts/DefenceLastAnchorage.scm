@@ -1,7 +1,7 @@
 (load-script "Libraries/objectives.scm")
 (load-script "Libraries/formations.scm")
 
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'defence-last-anchorage
   :title "Defence 04: Last Anchorage"
   :description "Hold the fleet anchorage against three carriers and a delayed reserve formation."

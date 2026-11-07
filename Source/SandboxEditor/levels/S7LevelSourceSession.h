@@ -22,8 +22,7 @@ class SANDBOXEDITOR_API FS7LevelSourceSession final {
 
     void set_buffer(FString buffer);
     [[nodiscard]] auto save() -> std::expected<void, FString>;
-    [[nodiscard]] auto read(settings::Settings base = {}) const
-        -> std::expected<levels::LevelDefinition, levels::Diagnostics>;
+    [[nodiscard]] auto read() const -> std::expected<levels::LevelDefinition, levels::Diagnostics>;
     [[nodiscard]] auto refresh_external_conflict() -> std::expected<void, FString>;
 
     [[nodiscard]] auto document() const -> AS7LevelAuthoringDocument*;

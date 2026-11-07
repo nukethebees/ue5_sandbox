@@ -48,9 +48,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
             return;
         }
 
-        FTestBatchOrchestratorTestAccess::use_settings_file(
-            *orchestrator, TEXT("Source/SandboxTests/fixtures/settings.scm"));
-
         context = MakeUnique<ioj::FSimulationTestContext>(ioj::FSimulationTestContext{
             .orchestrator = *orchestrator,
             .automation_test = *TestRunner,

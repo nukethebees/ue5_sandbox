@@ -77,8 +77,8 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
              .archetype = EntityArchetype::CapitalShip,
              .team = ioj::Team::Red,
              .position = {30000., 0., 0.},
-             .spawn_at = 5.,
-             .initial_spawn_delay = 60.f},
+             .spawn_at = ioj::NonNegativeFinite<double>{5.},
+             .initial_spawn_delay = ioj::NonNegativeFinite<float>{60.f}},
         };
         if (observer) {
             baseline->entities.push_back({
@@ -86,7 +86,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                 .archetype = EntityArchetype::CapitalShip,
                 .team = ioj::Team::Blue,
                 .position = {-30000., 0., 0.},
-                .initial_spawn_delay = 60.f,
+                .initial_spawn_delay = ioj::NonNegativeFinite<float>{60.f},
             });
             baseline->camera = LevelCameraDefinition{{EntityId{"ally"}}, {-1., 0., 0.}, 1000.};
         } else {

@@ -101,9 +101,9 @@ auto FS7LevelSourceSession::has_external_conflict() const -> bool {
     return session_.state().disk_conflict;
 }
 
-auto FS7LevelSourceSession::read(settings::Settings base) const
+auto FS7LevelSourceSession::read() const
     -> std::expected<levels::LevelDefinition, levels::Diagnostics> {
-    return session_.read(std::move(base));
+    return session_.read();
 }
 
 }

@@ -2,8 +2,6 @@
 
 #include <ioj/files.h>
 #include <ioj/levels/authoring/definition_reader.h>
-#include <SpaceGame/s7/GameSettingsReader.h>
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -37,19 +35,7 @@ auto load_level_script_catalog(FStringView const root_path) -> FLevelScriptCatal
     FLevelScriptCatalogResult result;
     auto const full_path{FPaths::ConvertRelativePathToFull(FString{root_path})};
     result.directory = FPaths::GetPath(full_path);
-    auto const* const resources{s7_level_config::load_canonical()};
-    if (!IsValid(resources)) {
-        result.error = TEXT("Cannot load canonical level resources for the script catalog.");
-        return result;
-    }
-    auto settings{read_game_settings_source(TEXT("LevelScripts/Settings/base.scm"), *resources)};
-    if (!settings) {
-        result.error = std::move(settings.error());
-        return result;
-    }
-
-    auto catalog{DefinitionReader{}.read_root_file(std::filesystem::path{*full_path},
-                                                   std::move(settings->settings))};
+    auto catalog{DefinitionReader{}.read_root_file(std::filesystem::path{*full_path})};
     if (!catalog) {
         result.error = to_fstring(format_diagnostics(catalog.error()));
         return result;

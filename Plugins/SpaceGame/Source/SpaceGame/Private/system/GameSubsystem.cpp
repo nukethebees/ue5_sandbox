@@ -213,10 +213,10 @@ auto UGameSubsystem::set_ui_theme(USpaceGameUiTheme* const theme) -> bool {
 /* **************************************** */
 // Level launch and navigation
 /* **************************************** */
-void UGameSubsystem::set_pending_level(levels::LevelSource source,
+void UGameSubsystem::set_pending_level(levels::LevelDefinition definition,
                                        FString source_path,
                                        ::ioj::levels::LaunchOptions options) {
-    launch_state_.set_pending_level(std::move(source), to_string(source_path), options);
+    launch_state_.set_pending_level(std::move(definition), to_string(source_path), options);
 }
 
 auto UGameSubsystem::take_pending_level() -> std::optional<session::PendingLevel> {

@@ -49,14 +49,14 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
     ASSERT_TRUE(base_values);
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization) -- Independent mutation snapshot.
     auto const original{*base_values};
-    auto const level{DefinitionReader{}.read_level_source(R"(
+    auto const level{DefinitionReader{root}.read_level_source(R"(
       (level :id 'settings-mission :title "Settings and mission" :player 'player
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                :position '(0 0 0)))
-        :settings (settings :fighters (fighters :laser (laser :damage 77)))
+        :settings (settings-layers (load-script "Settings/base.scm")
+                    (settings :fighters (fighters :laser (laser :damage 77))))
         :mission (mission :objectives (list
-          (objective :id 'survive :team 'blue :pass (time-elapsed 5))))))",
-                                                          *base_values)};
+          (objective :id 'survive :team 'blue :pass (time-elapsed 5))))))")};
     ASSERT_TRUE(level) << level.error().front().message;
     auto const mission{level->mission()};
     auto const resolved{sim::resolve_simulation_settings(level->settings())};
@@ -73,13 +73,11 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
           (level :id 'inherited :title "Inherited" :player 'player {}
             :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                    :position '(0 0 0)))))",
-                                                                              field),
-                                                                  *base_values)};
+                                                                              field))};
         ASSERT_TRUE(inherited) << levels::format_diagnostics(inherited.error());
-        EXPECT_PRED_FORMAT2(structurally_equal, original, inherited->settings());
+        EXPECT_PRED_FORMAT2(structurally_equal, settings::Settings{}, inherited->settings());
     }
-    EXPECT_FALSE(
-        DefinitionReader{}.read_level_source("(level :title \"Missing id\")", *base_values));
+    EXPECT_FALSE(DefinitionReader{}.read_level_source("(level :title \"Missing id\")"));
     EXPECT_FALSE(DefinitionReader{}.read_settings_source(
         "(settings :fighters (fighters :speed 1 :laser (laser :damage 'invalid)))", *base_values));
     EXPECT_PRED_FORMAT2(structurally_equal, original, *base_values);
@@ -96,9 +94,11 @@ TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                :position '(0 0 0)))
         :settings (settings-layers
+          (settings :fighters (fighters :speed 7300)
+            :collision-grid (collision-grid :level-size '(80000 60000 40000)
+                                           :damage-per-overlap-detection 75))
           (settings :collision-grid (collision-grid :cell-size '(1000 1000 1000)))
-          (settings :collision-grid (collision-grid :cell-size '(5000 5000 20000))))))",
-                                                          base)};
+          (settings :collision-grid (collision-grid :cell-size '(5000 5000 20000))))))")};
     ASSERT_TRUE(level) << levels::format_diagnostics(level.error());
     EXPECT_PRED_FORMAT2(structurally_equal, original, level->settings());
     EXPECT_PRED_FORMAT2(structurally_equal, original, base);
@@ -110,8 +110,7 @@ TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings
       (level :id 'grid :title "Grid" :player 'player
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                :position '(0 0 0)))
-        :collision-grid (collision-grid :cell-size '(5000 5000 20000))))",
-                                                           base)};
+        :collision-grid (collision-grid :cell-size '(5000 5000 20000))))")};
     ASSERT_FALSE(legacy);
     EXPECT_EQ(legacy.error().front().code, levels::DiagnosticCode::UnknownProperty);
 }

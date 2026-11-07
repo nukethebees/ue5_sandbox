@@ -3,14 +3,13 @@
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include <ioj/levels/launch_options.h>
-#include <ioj/s7/simulation_settings_reader.h>
 #include <Sandbox/environment/effects/ShipPostProcessing.h>
+#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/system/GameSubsystem.h>
 
-#include <SandboxCoreEngine/strings.h>
 #include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 
 #include <Editor.h>
@@ -79,17 +78,11 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
 auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
                                     USpaceGameLevelConfig const& resources)
     -> std::expected<sim::LevelSimInitData, FString> {
-    TStrongObjectPtr<USpaceGameLevelConfig> effective_config{
-        DuplicateObject<USpaceGameLevelConfig>(&resources, GetTransientPackage())};
-    if (!effective_config.IsValid()) {
-        return std::unexpected{TEXT("Could not prepare the authored settings.")};
+    auto prepared{prepare_level_resources(definition.settings(), resources, GetTransientPackage())};
+    if (!prepared) {
+        return std::unexpected{std::move(prepared.error())};
     }
-    auto const simulation{ioj::sim::resolve_simulation_settings(definition.settings())};
-    if (!simulation) {
-        return std::unexpected{to_fstring(levels::format_diagnostics(simulation.error()))};
-    }
-    effective_config->apply_settings(*simulation);
-    effective_config->presentation = definition.settings().presentation;
+    TStrongObjectPtr<USpaceGameLevelConfig> effective_config{*prepared};
     levels::LaunchOptions const options;
     auto build{prepare_level_simulation({.config = *effective_config,
                                          .clock_settings = definition.settings().tick,

@@ -22,9 +22,8 @@ Copy an existing `.scm` scenario, give it a unique `:id`, and add its path to
       :position '(0 10000 0))))
 ```
 
-Settings resolve from C++ defaults, then `Settings/base.scm`, then the level's
-`:settings`. A level overrides only the fields it supplies, including collision-grid
-dimensions. For a separate settings file, compose overrides in order:
+Settings start from C++ defaults. Each level explicitly includes any shared settings
+in its `:settings` field; launchers do not inject a baseline. Compose overrides in order:
 
 ```scheme
 (settings-layers

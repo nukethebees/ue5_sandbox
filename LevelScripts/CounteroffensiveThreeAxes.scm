@@ -3,7 +3,7 @@
 
 (let ((reserve-id 'red-capital-4)
       (reserve-time 75))
-  (level
+  (level :settings (load-script "Settings/base.scm")
     :id 'counteroffensive-three-axes
     :title "Counteroffensive 03: Three Axes"
     :description "Destroy a dispersed capital force approaching across three axes and its delayed reserve."

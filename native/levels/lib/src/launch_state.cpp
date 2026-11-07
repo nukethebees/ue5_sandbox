@@ -3,10 +3,10 @@
 #include <utility>
 
 namespace ioj::session {
-void LaunchState::set_pending_level(levels::LevelSource source,
+void LaunchState::set_pending_level(levels::LevelDefinition definition,
                                     std::string source_path,
                                     levels::LaunchOptions options) {
-    pending_level_.emplace(PendingLevel{std::move(source), std::move(source_path), options});
+    pending_level_.emplace(PendingLevel{std::move(definition), std::move(source_path), options});
     launch_error_.clear();
 }
 auto LaunchState::take_pending_level() -> std::optional<PendingLevel> {

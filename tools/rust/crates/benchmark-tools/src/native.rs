@@ -240,7 +240,7 @@ pub fn run_frame_memory_benchmark(root: &Path, parsed: &FrameMemoryOptions) -> R
 
 pub fn frame_memory_options(root: &Path, seconds: f64) -> SimulationOptions {
     SimulationOptions {
-        level: root.join("LevelScripts/Benchmarks/Batch_benchmark.scm"),
+        level: root.join("LevelScripts/Batch_benchmark.scm"),
         seconds,
         game_speed: 100,
         build_preset: "frame-memory-level-benchmark".into(),

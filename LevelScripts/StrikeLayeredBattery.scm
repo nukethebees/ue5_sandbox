@@ -1,7 +1,7 @@
 (load-script "Libraries/objectives.scm")
 (load-script "Libraries/formations.scm")
 
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'strike-layered-battery
   :title "Strike 02: Layered Battery"
   :description "Clear two mutually supporting turret clusters distributed across multiple elevations."

@@ -29,17 +29,12 @@ SPACEGAME_API auto prepare_level_simulation(FLevelSimulationRequest const& reque
 
 SPACEGAME_API auto configure_level_run(sim::LevelSimInitData& data,
                                        UWorld const& world,
-                                       levels::LevelMetadata const& definition,
-                                       levels::LaunchOptions const& options,
-                                       FString const& level_source,
-                                       FString const& settings_source)
+                                       levels::LevelDefinition const& definition,
+                                       levels::LaunchOptions const& options)
     -> std::expected<void, FLevelStartErrors>;
 
 SPACEGAME_API void configure_player_actor(ATestSpaceShip& player,
                                           USpaceGameLevelConfig const& config);
-SPACEGAME_API void apply_level_actor_configuration(UWorld& world,
-                                                   USpaceGameLevelConfig& config,
-                                                   ATestSpaceShip* player);
 
 SPACEGAME_API auto
     make_level_simulation_init_data(USpaceGameLevelConfig const& config,

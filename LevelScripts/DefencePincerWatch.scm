@@ -1,7 +1,7 @@
 (load-script "Libraries/objectives.scm")
 (load-script "Libraries/formations.scm")
 
-(level
+(level :settings (load-script "Settings/base.scm")
   :id 'defence-pincer-watch
   :title "Defence 02: Pincer Watch"
   :description "Protect a capital ship and its forward pickets from a two-axis carrier attack."
