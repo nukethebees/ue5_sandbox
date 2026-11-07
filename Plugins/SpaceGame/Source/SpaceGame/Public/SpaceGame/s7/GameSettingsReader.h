@@ -18,7 +18,7 @@ struct FLoadedSettingsSource {
 
 struct FLoadedGameSettings {
     USpaceGameLevelConfig* config{};
-    ioj::sim::SimulationSettings simulation;
+    ioj::sim::PreparedSimulationSettings simulation;
     FString source;
     FString level_source;
     std::optional<ioj::levels::LevelDefinition> level;

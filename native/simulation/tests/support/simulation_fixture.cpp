@@ -22,8 +22,7 @@ auto make_fixture() -> SimulationFixture {
     apply_settings(settings, fixture.data);
     apply_settings(settings, fixture.player);
     fixture.data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(256);
-    fixture.data.collision.grid_geometry.dimensions = {64, 64, 5};
-    fixture.data.collision.grid_geometry.cell_dimensions = {31250.f, 31250.f, 20000.f};
+    fixture.data.collision.grid_geometry = {{64, 64, 5}, {31250.f, 31250.f, 20000.f}};
     fixture.data.tick_memory_capacity_bytes = 4 * 1024 * 1024;
     fixture.data.phase_memory_capacity_bytes = 4 * 1024 * 1024;
     return fixture;

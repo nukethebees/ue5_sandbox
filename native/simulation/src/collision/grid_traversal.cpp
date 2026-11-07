@@ -53,15 +53,11 @@ auto clip_segment(Vector3f const start,
 /* **************************************** */
 // Grid traversal
 /* **************************************** */
-auto GridTraversal::create(GridGeometry const geometry,
+auto GridTraversal::create(GridGeometry const& geometry,
                            Vector3f const start,
                            Vector3f const end,
                            GridTraversal& result) noexcept -> bool {
-    if (!is_configured(geometry)) {
-        return false;
-    }
-
-    auto const half_size{-to_cell_min(geometry, {})};
+    auto const half_size{geometry.half_size()};
     auto const bounds_min{Vector3f{-half_size.x(), -half_size.y(), -half_size.z()}};
     Vector3f bounds_max_inside{half_size};
     for (std::size_t axis{}; axis < 3; ++axis) {
@@ -75,7 +71,7 @@ auto GridTraversal::create(GridGeometry const geometry,
     }
 
     auto clamp_cell = [geometry](Vector3f const point) {
-        return clamped(to_cell_coord(geometry, point), CellCoord{}, geometry.dimensions - 1);
+        return clamped(to_cell_coord(geometry, point), CellCoord{}, geometry.dimensions() - 1);
     };
 
     result.current_cell_ = clamp_cell(clipped_start);
@@ -93,10 +89,10 @@ auto GridTraversal::create(GridGeometry const geometry,
         }
 
         result.steps_[axis] = delta[axis] > 0.0f ? 1 : -1;
-        auto const next_boundary{cell_min[axis] +
-                                 (result.steps_[axis] > 0 ? geometry.cell_dimensions[axis] : 0.0f)};
+        auto const next_boundary{
+            cell_min[axis] + (result.steps_[axis] > 0 ? geometry.cell_dimensions()[axis] : 0.0f)};
         result.next_t_[axis] = (next_boundary - clipped_start[axis]) / delta[axis];
-        result.t_deltas_[axis] = geometry.cell_dimensions[axis] / std::abs(delta[axis]);
+        result.t_deltas_[axis] = geometry.cell_dimensions()[axis] / std::abs(delta[axis]);
     }
     return true;
 }

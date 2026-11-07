@@ -29,15 +29,13 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     -> std::expected<void, StaticGridBuildError> {
     SANDBOX_PROFILE_SCOPE("CollisionGridStaticStorage::rebuild");
 
-    assert(is_configured(geometry));
-
     range_offsets_.clear();
     range_counts_.clear();
     aabb_indices_.clear();
 
-    auto const cell_count{num_cells(geometry).value()};
-    auto const row_stride{geometry.dimensions.x()};
-    auto const plane_stride{row_stride * geometry.dimensions.y()};
+    auto const cell_count{geometry.cell_count().value()};
+    auto const row_stride{geometry.dimensions().x()};
+    auto const plane_stride{row_stride * geometry.dimensions().y()};
     cell_range_indices_.assign(static_cast<std::size_t>(cell_count), invalid_cell_range_index);
     std::vector<CellMembershipCount> cell_counts(static_cast<std::size_t>(cell_count));
 

@@ -7,10 +7,11 @@
 #include <utility>
 
 namespace ioj::sim {
-auto resolve_simulation_settings(settings::Settings const& source)
-    -> std::expected<SimulationSettings, levels::Diagnostics> {
-    SimulationSettings result{
-        .clock = source.tick,
+auto resolve_simulation_settings(settings::Settings const& source,
+                                 std::optional<settings::TickSettings> const clock_override)
+    -> std::expected<PreparedSimulationSettings, levels::Diagnostics> {
+    return PreparedSimulationSettings::prepare({
+        .clock = clock_override.value_or(source.tick),
         .player = source.player_ship,
         .lasers = source.laser_projectiles,
         .capital_ships = source.capital_ships,
@@ -19,15 +20,11 @@ auto resolve_simulation_settings(settings::Settings const& source)
         .spinners = source.tube_spinners,
         .overlap_response = source.collision_grid,
         .hud = source.hud,
-    };
-    if (auto valid{validate_settings(result)}; !valid) {
-        return std::unexpected{std::move(valid.error())};
-    }
-    return result;
+    });
 }
 
-auto validate_settings(SimulationSettings const& settings)
-    -> std::expected<void, levels::Diagnostics> {
+auto PreparedSimulationSettings::prepare(SimulationSettings settings)
+    -> std::expected<PreparedSimulationSettings, levels::Diagnostics> {
     levels::Diagnostics errors;
     auto check =
         [&](bool const valid, std::string_view const path, std::string_view const message) {
@@ -77,17 +74,20 @@ auto validate_settings(SimulationSettings const& settings)
 
     auto const dimensions{collision::calculate_grid_dimensions(
         settings.overlap_response.level_size, settings.overlap_response.cell_size)};
-    check(collision::is_configured({dimensions, settings.overlap_response.cell_size}),
+    auto const geometry{
+        collision::GridGeometry::try_make(dimensions, settings.overlap_response.cell_size)};
+    check(geometry.has_value(),
           "collision-grid",
-          "Expected positive grid dimensions with a representable cell count");
+          "Expected positive grid dimensions with a representable cell count and finite extents");
 
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
-    return {};
+    return PreparedSimulationSettings{std::move(settings), *geometry};
 }
 
-void apply_settings(SimulationSettings const& settings, LevelSimInitData& target) {
+void apply_settings(PreparedSimulationSettings const& prepared, LevelSimInitData& target) {
+    auto const& settings{prepared.values()};
     target.clock_settings = settings.clock;
     target.lasers = settings.lasers;
     target.collision.overlap_response = settings.overlap_response;
@@ -97,9 +97,7 @@ void apply_settings(SimulationSettings const& settings, LevelSimInitData& target
     target.fighters.fire_point_distance = fighter_fire_point;
 
     auto spawn_transforms{std::move(target.capital_ships.fighter_spawn_slots_relative_transforms)};
-    auto const spawn_slots{target.capital_ships.fighter_spawn_slots};
     target.capital_ships = settings.capital_ships;
-    target.capital_ships.fighter_spawn_slots = spawn_slots;
     target.capital_ships.fighter_spawn_slots_relative_transforms = std::move(spawn_transforms);
 
     auto const turret_fire_point{target.turrets.fire_point_offset};
@@ -110,16 +108,14 @@ void apply_settings(SimulationSettings const& settings, LevelSimInitData& target
     target.spinners = settings.spinners;
     target.spinners.fire_point_offsets = std::move(spinner_fire_points);
 
-    target.collision.grid_geometry = {
-        collision::calculate_grid_dimensions(settings.overlap_response.level_size,
-                                             settings.overlap_response.cell_size),
-        settings.overlap_response.cell_size};
+    target.collision.grid_geometry = prepared.grid_geometry();
     if (target.player) {
-        apply_settings(settings, *target.player);
+        apply_settings(prepared, *target.player);
     }
 }
 
-void apply_settings(SimulationSettings const& settings, player::PlayerSpawnData& target) {
+void apply_settings(PreparedSimulationSettings const& prepared, player::PlayerSpawnData& target) {
+    auto const& settings{prepared.values()};
     target.config = settings.player;
     target.health = ShipHealth{settings.player.health};
     target.laser_mode = settings.player.laser_mode;

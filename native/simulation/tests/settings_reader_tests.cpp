@@ -23,27 +23,29 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
                                                             defaults.fighters.speed))};
     ASSERT_TRUE(source);
     settings::Settings expected;
-    expected.fighters.laser.damage = 31;
+    expected.fighters.laser.damage = ioj::NonNegative<std::int32_t>{31};
     expected.fighters.laser.max_distance = ::ioj::PositiveFinite<float>::make(50000);
-    expected.turrets.laser.damage = 23;
+    expected.turrets.laser.damage = ioj::NonNegative<std::int32_t>{23};
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *source);
     auto const resolved{sim::resolve_simulation_settings(*source)};
     ASSERT_TRUE(resolved) << resolved.error().front().message;
     FighterSimConfig const expected_fighters{
-        .laser = {.damage = 31, .max_distance = PositiveFinite<float>{50000.f}}};
-    EXPECT_PRED_FORMAT2(structurally_equal, expected_fighters, resolved->fighters);
-    EXPECT_PRED_FORMAT2(
-        structurally_equal, TurretSimConfig{.laser = {.damage = 23}}, resolved->turrets);
-    EXPECT_PRED_FORMAT2(structurally_equal, defaults.player, resolved->player);
+        .laser = {.damage = NonNegative<std::int32_t>{31},
+                  .max_distance = PositiveFinite<float>{50000.f}}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected_fighters, resolved->values().fighters);
+    EXPECT_PRED_FORMAT2(structurally_equal,
+                        TurretSimConfig{.laser = {.damage = NonNegative<std::int32_t>{23}}},
+                        resolved->values().turrets);
+    EXPECT_PRED_FORMAT2(structurally_equal, defaults.player, resolved->values().player);
 }
 
 TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
     auto const root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
     auto const base{s7::read_simulation_settings(root / "Settings/base.scm", root)};
     ASSERT_TRUE(base);
-    EXPECT_EQ(base->fighters.speed, 4500);
-    EXPECT_EQ(base->fighters.laser.damage, 10);
-    EXPECT_EQ(base->spinners.laser.damage, 2);
+    EXPECT_EQ(base->values().fighters.speed, 4500);
+    EXPECT_EQ(base->values().fighters.laser.damage, 10);
+    EXPECT_EQ(base->values().spinners.laser.damage, 2);
 
     auto const base_values{DefinitionReader{root}.read_settings_file(root / "Settings/base.scm")};
     ASSERT_TRUE(base_values);
@@ -62,9 +64,9 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
     auto const resolved{sim::resolve_simulation_settings(level->settings())};
     ASSERT_TRUE(resolved);
     auto expected{*base_values};
-    expected.fighters.laser.damage = 77;
+    expected.fighters.laser.damage = ioj::NonNegative<std::int32_t>{77};
     EXPECT_PRED_FORMAT2(structurally_equal, expected, level->settings());
-    EXPECT_PRED_FORMAT2(structurally_equal, expected.fighters, resolved->fighters);
+    EXPECT_PRED_FORMAT2(structurally_equal, expected.fighters, resolved->values().fighters);
     EXPECT_EQ(level->mission(), mission);
 
     for (auto const field : {"", ":settings (settings)", ":settings (settings-layers)"}) {
@@ -104,7 +106,8 @@ TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings
     EXPECT_PRED_FORMAT2(structurally_equal, original, base);
     auto const resolved{sim::resolve_simulation_settings(level->settings())};
     ASSERT_TRUE(resolved) << levels::format_diagnostics(resolved.error());
-    EXPECT_PRED_FORMAT2(structurally_equal, original.collision_grid, resolved->overlap_response);
+    EXPECT_PRED_FORMAT2(
+        structurally_equal, original.collision_grid, resolved->values().overlap_response);
 
     auto const legacy{DefinitionReader{}.read_level_source(R"(
       (level :id 'grid :title "Grid" :player 'player
@@ -131,6 +134,9 @@ TEST(SimulationSettingsReader, RetainsUnknownFieldConversionAndFinalValidationEr
           Case{"(settings :fighters (fighters :speed 1e100))", InvalidNumber, "fighters.speed"},
           Case{"(settings :fighters (fighters :health 1.5))", InvalidNumber, "fighters.health"},
           Case{"(settings :fighters (fighters :health -1))", InvalidType, "fighters.health"},
+          Case{"(settings :fighters (fighters :laser (laser :damage -1)))",
+               InvalidNumber,
+               "fighters.laser.damage"},
           Case{"(settings :collision-grid (collision-grid :damage-per-overlap-detection 0))",
                InvalidNumber,
                "collision-grid.damage-per-overlap-detection"},

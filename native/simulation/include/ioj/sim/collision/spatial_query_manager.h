@@ -47,7 +47,7 @@ struct SpatialQueryManager {
                     collision::EntityAABBs const& entity_bounds);
     auto grid_geometry() const noexcept -> collision::GridGeometry {
         auto const& grid{collision_system_.uniform_grid_};
-        return {grid.grid_dims(), grid.cell_dims()};
+        return grid.geometry();
     }
 
     /* **************************************** */

@@ -6,7 +6,8 @@
 #include <filesystem>
 
 namespace ioj::s7 {
-using SimulationSettingsReadResult = std::expected<sim::SimulationSettings, levels::Diagnostics>;
+using SimulationSettingsReadResult =
+    std::expected<sim::PreparedSimulationSettings, levels::Diagnostics>;
 
 [[nodiscard]] auto read_simulation_settings(std::filesystem::path const& path,
                                             std::filesystem::path const& library_root = {})

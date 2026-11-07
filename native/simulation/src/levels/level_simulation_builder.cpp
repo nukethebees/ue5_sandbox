@@ -2,7 +2,6 @@
 
 #include <ioj/column_math.h>
 #include <ioj/rotator_math.h>
-#include <ioj/sim/collision/collision_grid.h>
 #include <ioj/sim/collision/entity_world_bounds.h>
 #include <ioj/sim/levels/fighter_spawn_slot_validation.h>
 #include <ioj/sim/levels/level_compilation.h>
@@ -25,31 +24,11 @@ auto finite(Transform3d const& transform) -> bool {
            std::isfinite(rotation.z()) && std::isfinite(rotation.w());
 }
 
-auto settings_from_data(LevelSimInitData const& data) -> SimulationSettings {
-    return {.clock = data.clock_settings,
-            .player = data.player ? data.player->config : PlayerSimConfig{},
-            .lasers = data.lasers,
-            .capital_ships = data.capital_ships,
-            .fighters = data.fighters,
-            .turrets = data.turrets,
-            .spinners = data.spinners,
-            .overlap_response = data.collision.overlap_response};
-}
 }
 
 auto validate_level_simulation_init_data(LevelSimInitData const& data)
     -> std::expected<void, LevelSimulationBuildErrors> {
     LevelSimulationBuildErrors errors;
-    if (auto valid{validate_settings(settings_from_data(data))}; !valid) {
-        for (auto const& error : valid.error()) {
-            errors.push_back(std::format("{}: {}", error.node_path, error.message));
-        }
-    }
-    if (!collision::is_configured(data.collision.grid_geometry)) {
-        errors.emplace_back("Collision grid requires positive dimensions and finite cell sizes");
-    } else if (!finite(collision::grid_half_size(data.collision.grid_geometry))) {
-        errors.emplace_back("Collision grid extents must be finite");
-    }
     for (auto const type : EnumTraits<EntityType>::values) {
         auto const centre{data.collision.entity_bounds.centre(type)};
         auto const extent{data.collision.entity_bounds.half_extents(type)};
@@ -59,10 +38,6 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
         }
     }
     auto const& capital{data.capital_ships};
-    if (capital.fighter_spawn_slots !=
-        static_cast<std::int32_t>(capital.fighter_spawn_slots_relative_transforms.size())) {
-        errors.emplace_back("Fighter spawn slot count does not match the supplied transforms");
-    }
     for (auto const& slot : capital.fighter_spawn_slots_relative_transforms) {
         if (!finite(slot)) {
             errors.emplace_back("Fighter spawn transforms must be finite");
@@ -104,7 +79,7 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
                 errors.emplace_back("Entity collision bounds must be finite");
                 return;
             }
-            auto const half_size{collision::grid_half_size(data.collision.grid_geometry)};
+            auto const half_size{data.collision.grid_geometry.half_size()};
             for (std::size_t axis{}; axis < 3; ++axis) {
                 if (bounds.min[axis] < -half_size[axis] || bounds.min[axis] >= half_size[axis] ||
                     bounds.max[axis] > half_size[axis]) {
@@ -150,23 +125,13 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
                                      LevelSimInitData inputs,
                                      std::optional<settings::TickSettings> const clock_override)
     -> LevelSimulationBuildResult {
-    auto resolved{resolve_simulation_settings(definition.settings())};
+    auto resolved{resolve_simulation_settings(definition.settings(), clock_override)};
     if (!resolved) {
         LevelSimulationBuildErrors errors;
         for (auto const& error : resolved.error()) {
             errors.push_back(std::format("{}: {}", error.node_path, error.message));
         }
         return std::unexpected{std::move(errors)};
-    }
-    if (clock_override) {
-        resolved->clock = *clock_override;
-        if (auto valid{validate_settings(*resolved)}; !valid) {
-            LevelSimulationBuildErrors errors;
-            for (auto const& error : valid.error()) {
-                errors.push_back(std::format("{}: {}", error.node_path, error.message));
-            }
-            return std::unexpected{std::move(errors)};
-        }
     }
     if (!definition.player_entity_id().empty()) {
         auto& player{inputs.player ? *inputs.player : inputs.player.emplace()};

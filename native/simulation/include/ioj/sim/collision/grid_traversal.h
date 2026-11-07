@@ -11,9 +11,10 @@ namespace ioj::sim::collision {
 class GridTraversal {
   public:
     GridTraversal() noexcept = default;
-    [[nodiscard]] static auto
-        create(GridGeometry geometry, Vector3f start, Vector3f end, GridTraversal& result) noexcept
-        -> bool;
+    [[nodiscard]] static auto create(GridGeometry const& geometry,
+                                     Vector3f start,
+                                     Vector3f end,
+                                     GridTraversal& result) noexcept -> bool;
     [[nodiscard]] auto current_cell() const noexcept -> CellCoord;
     [[nodiscard]] auto advance() noexcept -> bool;
   private:

@@ -45,8 +45,9 @@ auto collision_class_lists_are_valid(FCollisionGridConfig const& config) -> bool
 
 auto collision_grid_dimensions_are_valid(FCollisionGridConfig const& config) -> bool {
     auto const dimensions{config.calculate_grid_dimensions()};
-    return ::ioj::sim::collision::is_configured(
-        {{dimensions.X, dimensions.Y, dimensions.Z}, ioj::Vector3f{config.cell_size}});
+    return ::ioj::sim::collision::GridGeometry::try_make({dimensions.X, dimensions.Y, dimensions.Z},
+                                                         ioj::Vector3f{config.cell_size})
+        .has_value();
 }
 }
 
@@ -72,8 +73,6 @@ void USpaceGameLevelConfig::apply_settings(ioj::sim::SimulationSettings const& s
     player_ship.simulation = settings.player;
     laser_projectiles.simulation = settings.lasers;
     capital_ships.simulation = settings.capital_ships;
-    capital_ships.simulation.fighter_spawn_slots =
-        capital_ships.fighter_spawn_slots_relative_transforms.Num();
     fighters.simulation = settings.fighters;
     turrets.simulation = settings.turrets;
     tube_spinners.simulation = settings.spinners;

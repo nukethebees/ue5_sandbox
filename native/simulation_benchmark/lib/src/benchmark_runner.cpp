@@ -113,7 +113,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     if (!loaded_settings) {
         return std::unexpected{levels::format_diagnostics(loaded_settings.error())};
     }
-    auto const& settings{*loaded_settings};
+    auto const& settings{loaded_settings->values()};
     auto const tick_rate_hz{settings.clock.tick_rate};
     auto const requested_ticks{calculate_tick_count(options.simulated_seconds, tick_rate_hz)};
     if (!requested_ticks) {
@@ -173,13 +173,13 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 
     auto reference{sim::make_reference_level_simulation_data()};
     auto& data{reference.data};
-    sim::apply_settings(settings, data);
+    sim::apply_settings(*loaded_settings, data);
     reference.player.config = settings.player;
     data.clock_settings.time_scale = PositiveFinite<double>::make(1.0);
     if (options.fighter_stress_cap.has_value()) {
         data.fighters.max_live_fighters =
             NonNegative<std::int32_t>::make(*options.fighter_stress_cap);
-        data.fighters.laser.damage = 0;
+        data.fighters.laser.damage = ioj::NonNegative<std::int32_t>{0};
         auto const health{settings::PositiveHealth{
             sim::Health{std::numeric_limits<sim::Health::value_type>::max() / 2}}};
         data.fighters.health = health;
@@ -193,7 +193,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
                                                        level_components.player_entity_id(),
                                                        &levels::EntitySpawnDefinition::id)};
         auto player{reference.player};
-        sim::apply_settings(settings, player);
+        sim::apply_settings(*loaded_settings, player);
         player.team = player_definition->team;
         if (player_definition->overrides.health) {
             auto const health{*player_definition->overrides.health};

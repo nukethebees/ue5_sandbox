@@ -36,8 +36,7 @@ TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal
     ASSERT_TRUE(definition);
     auto geometry{sim::make_reference_level_simulation_data()};
     geometry.data.player = geometry.player;
-    geometry.data.collision.grid_geometry.dimensions = {16, 16, 4};
-    geometry.data.collision.grid_geometry.cell_dimensions = {10000.f, 10000.f, 10000.f};
+    geometry.data.collision.grid_geometry = {{16, 16, 4}, {10000.f, 10000.f, 10000.f}};
     geometry.data.tick_memory_capacity_bytes = 4 * 1024 * 1024;
     geometry.data.phase_memory_capacity_bytes = 4 * 1024 * 1024;
     geometry.data.clock_settings.tick_rate = Frequency::make(10.);
