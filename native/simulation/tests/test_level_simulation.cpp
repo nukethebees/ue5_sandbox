@@ -1,11 +1,10 @@
-#include "support/mission_test_support.h"
 #include "support/simulation_checks.h"
+#include "support/simulation_test_support.h"
 #include <ioj/column_math.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
-#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
@@ -24,7 +23,6 @@ static_assert(requires(LevelSim& simulation) {
     { simulation.turrets() } -> std::same_as<turrets::Sim const&>;
     { simulation.spinners() } -> std::same_as<spinners::Sim const&>;
     { simulation.entity_ledger() } -> std::same_as<EntityLedger const&>;
-    { simulation.mission() } -> std::same_as<Mission const&>;
     { simulation.spatial_query_manager() } -> std::same_as<SpatialQueryManager const&>;
     { simulation.level_telemetry_manager() } -> std::same_as<LevelTelemetryManager const&>;
     { simulation.player_ship_simulation() } -> std::same_as<player::Sim const*>;
@@ -279,124 +277,83 @@ TEST(NativeSimulation, LevelSimReturnsAllocationsToItsUpstream) {
     EXPECT_EQ(upstream.stats().live_bytes, 0u);
 }
 
-TEST(NativeSimulation, PositionConditionsUseLiveSpatialDataAndRemainTerminal) {
+TEST(NativeSimulation, PositionSamplesCanBecomeFalseWhileLatchRemembersArrival) {
     auto data{make_battle()};
-    levels::ObjectiveDefinition objective{.team = Team::Green};
-    auto const target{FiniteVector<double, 3>::make(Vector3d{-1000.0, 0.0, 0.0})};
-    objective.expressions = {
-        {ioj::levels::EntityReachedPositionExpr{.entity = mission_entity(0),
-                                                .position = target,
-                                                .radius =
-                                                    ioj::NonNegativeFinite<double>::make(1.0)}},
-        {ioj::levels::EntityReachedPositionExpr{.entity = mission_entity(1),
-                                                .position = target,
-                                                .radius =
-                                                    ioj::NonNegativeFinite<double>::make(1.0)}},
-        {ioj::levels::TimeElapsedExpr{.seconds = ioj::NonNegativeFinite<double>::make(0.1)}},
-        {ioj::levels::AllExpr{.children = {0, 2}}}};
-    objective.roots = ioj::levels::ObjectiveRoots{
-        std::array<ioj::levels::ExprIndex, 3>{3, 1, levels::absent_expression}};
-    install_mission(data, std::move(objective));
+    data.logic.expressions = {
+        {levels::EntityReachedPositionExpr{data.entities[0].id,
+                                           FiniteVector<double, 3>{Vector3d{-1000., 0., 0.}},
+                                           NonNegativeFinite<double>{1.}}},
+        {levels::LatchedTrueExpr{0}},
+        {levels::NotExpr{{0}}}};
+    data.logic.latches = {{0, 0}};
+    data.logic.rules = {{1, {levels::PublishEffect{"arrived"}}},
+                        {2, {levels::PublishEffect{"gone"}}}};
     LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
-    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
     simulation.start();
-    simulation.advance(2 * simulation.clock().tick_period());
-
+    auto const dt{simulation.clock().tick_period()};
+    simulation.advance(dt);
+    EXPECT_TRUE(simulation.events().pending_tick_end_events().empty());
     DirectDamageEvents damage;
     damage.add(simulation.capital_ships().get_entities().entity_ids()[0], 100, {});
-    damage.add(simulation.capital_ships().get_entities().entity_ids()[1], 100, {});
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
-    simulation.advance(0.2);
-    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()),
-              ObjectiveOutcome::Passed);
-    EXPECT_EQ(simulation.mission().completed_objectives().size(), 1);
+    simulation.advance(dt);
+    EXPECT_EQ(simulation.events().tick_end_events().size(), 2);
+    EXPECT_EQ(simulation.events().signals()[0], 1);
+    EXPECT_EQ(simulation.events().signals()[1], 1);
 }
 
-TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimulation) {
-    auto const authored{levels::authoring::DefinitionReader{}.read_level_source(R"(
-      (level :id 'future-objective :title "Future objective"
+TEST(NativeSimulation, SchemeDelayedEntityAndDispatchedSignalAdvanceOnSeparateSamples) {
+    auto definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
+      (level :id 'future-signal :title "Future signal"
         :camera (camera :look-at '(hero) :offset-direction '(-1 0 0) :distance 1000)
         :entities (list
           (entity :id 'hero :archetype 'capital-ship :team 'green :position '(-1000 0 0))
-          (entity :id 'enemy :archetype 'capital-ship :team 'white :position '(1000 0 0) :spawn-at 0.2))
-        :mission (mission :objectives (list
-          (objective :id 'destroy :team 'green :pass (entity-destroyed 'enemy))
-          (objective :id 'observe :team 'green :wins-level 'yes
-            :depends-on (list (objective-resolved 'destroy 'passed))
-            :pass (all-of (entity-destroyed 'enemy) (objective-resolved 'destroy 'passed)))))))")};
-    ASSERT_TRUE(authored);
-    auto data{make_battle_config().compile()};
-    data.clock_settings.tick_rate = Frequency::make(10.0);
-    data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{100});
-    auto compiled{levels::compile_level(*authored, data)};
+          (entity :id 'enemy :archetype 'capital-ship :team 'white :position '(1000 0 0) :spawn-at 0.1 :health 100))
+        :logic (logic
+          (define destroyed (entity-destroyed 'enemy))
+          (on :when destroyed :do (publish 'destroyed))
+          (on :when (all-of destroyed (event-fired 'destroyed)) :do (win 'green)))))")};
+    ASSERT_TRUE(definition) << levels::format_diagnostics(definition.error());
+    auto config{make_battle_config()};
+    auto compiled{levels::compile_level(*definition, config.runtime)};
     ASSERT_TRUE(compiled);
-    LevelSim simulation{std::move(data)};
-    auto const& metadata{simulation.level_metadata()};
-    EXPECT_EQ(metadata.id.value, "future-objective");
-    EXPECT_EQ(metadata.title, "Future objective");
+    LevelSim simulation{std::move(config.runtime)};
     simulation.finish_initialisation();
     simulation.start();
-    simulation.advance(0.1);
-    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
-    simulation.advance(0.1);
-    EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
-    simulation.advance(0.1);
+    simulation.advance(0.2);
     ASSERT_EQ(simulation.capital_ships().num_instances(), 2);
+    EXPECT_FALSE(simulation.result());
     kill_enemy(simulation);
-    simulation.advance(0.1);
-    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()),
-              ObjectiveOutcome::Passed);
-    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{1}, simulation.expressions()));
-    simulation.advance(0.1);
-    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{1}, simulation.expressions()),
-              ObjectiveOutcome::Passed);
-    EXPECT_FALSE(simulation.player_team_completion());
+    simulation.advance(simulation.clock().tick_period());
+    EXPECT_FALSE(simulation.result());
+    simulation.advance(simulation.clock().tick_period());
+    ASSERT_TRUE(simulation.result());
+    EXPECT_EQ(simulation.result()->winner, Team::Green);
 }
 
-TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObjectives) {
-    using namespace levels;
-    auto const timed_objective{[](std::string name, Team const team, double const seconds) {
-        ObjectiveDefinition objective{.id = ObjectiveName{std::move(name)}, .team = team};
-        objective.expressions = {
-            {TimeElapsedExpr{.seconds = NonNegativeFinite<double>::make(seconds)}}};
-        objective.roots[ObjectiveOutcome::Passed] = 0;
-        return objective;
-    }};
-
+TEST(NativeSimulation, FirstDispatchedWinDeterminesResultAndStrandsOtherEffects) {
     auto data{make_battle()};
-    data.runtime.clock_settings.tick_rate = Frequency::make(10.0);
-    add_player_spawn(data, {});
-    data.runtime.player->team = Team::Green;
-    data.runtime.player->transform.location = {0.0, 2000.0, 0.0};
-    MissionDefinition definition{.objectives = {timed_objective("enemy", Team::White, 0.2),
-                                                timed_objective("player", Team::Green, 0.3),
-                                                timed_objective("optional", Team::Green, 10.0)}};
-    definition.objectives[0].wins_level = ObjectiveWinsLevel::Yes;
-    definition.objectives[1].wins_level = ObjectiveWinsLevel::Yes;
-    data.mission = std::move(definition);
+    data.logic.expressions = {{levels::AllExpr{}}};
+    data.logic.rules = {{0,
+                         {levels::WinEffect{Team::White},
+                          levels::WinEffect{Team::Green},
+                          levels::PublishEffect{"after"}}}};
     LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
-    EXPECT_FALSE(simulation.player_team_completion());
     simulation.start();
-    simulation.advance(0.4);
-    auto const result{simulation.player_team_completion()};
+    simulation.advance(1.0);
+    auto const result{simulation.result()};
     ASSERT_TRUE(result);
-    EXPECT_EQ(result->team, Team::Green);
-    EXPECT_EQ(result->outcome, MissionOutcome::Defeat);
-    EXPECT_EQ(result->triggering_objective_outcome, ObjectiveOutcome::Passed);
-    EXPECT_EQ(simulation.mission().objectives().name(result->triggering_objective).value, "enemy");
-    EXPECT_EQ(result->tick.value(), 3);
-    EXPECT_EQ(simulation.mission().active_objectives().size(), 2);
-    EXPECT_TRUE(simulation.player_team_completion());
-    EXPECT_EQ(simulation.state(), LevelState::Stopped);
-    EXPECT_EQ(simulation.clock().get_completed_ticks(), result->tick);
-    auto const record{simulation.take_finalized_telemetry_run()};
-    ASSERT_TRUE(record);
-    EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::MissionCompleted);
-    EXPECT_EQ(record->completion.completed_ticks, result->tick);
-    ASSERT_TRUE(simulation.player_team_completion());
-    EXPECT_EQ(simulation.player_team_completion()->outcome, MissionOutcome::Defeat);
+    EXPECT_EQ(result->winner, Team::White);
+    EXPECT_EQ(result->terminal.tick, SimTick{1});
+    EXPECT_EQ(result->terminal.event.kind(), EventKind::Win);
+    EXPECT_EQ(simulation.events().tick_end_events().size(), 3);
+    EXPECT_EQ(simulation.events().pending_tick_end_events().size(), 2);
+    EXPECT_EQ(simulation.events().signals()[0], 0);
+    simulation.advance(1.0);
+    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{1});
+    EXPECT_EQ(simulation.events().tick_end_events().size(), 3);
 }
 
 TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumedEvents) {
@@ -451,7 +408,8 @@ TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendin
     EXPECT_EQ(simulation.state(), LevelState::Stopped);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{3});
     EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
-    EXPECT_TRUE(simulation.mission().completions().empty());
+    ASSERT_TRUE(simulation.result());
+    EXPECT_FALSE(simulation.result()->winner);
     auto const record{simulation.take_finalized_telemetry_run()};
     ASSERT_TRUE(record);
     EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::DurationReached);
@@ -476,41 +434,26 @@ TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendin
     EXPECT_FALSE(simulation.take_finalized_telemetry_run());
 }
 
-TEST(NativeSimulation, PlayerlessMissionCompletionStopsDispatchAndRetainsLaterEvents) {
+TEST(NativeSimulation, PlayerlessVictoryStopsAtTheTimerDeadline) {
     auto data{make_scheduled_battle()};
-    levels::ObjectiveDefinition objective{.id = levels::ObjectiveName{"win"},
-                                          .team = Team::Blue,
-                                          .wins_level = ObjectiveWinsLevel::Yes};
-    objective.expressions = {{levels::TimeElapsedExpr{NonNegativeFinite<double>::make(0.2)}}};
-    objective.roots[ObjectiveOutcome::Passed] = 0;
-    data.mission = levels::MissionDefinition{.objectives = {std::move(objective)}};
+    data.logic = {.expressions = {{levels::TimerElapsedExpr{0}}},
+                  .timer_count = 1,
+                  .initial_effects = {levels::StartTimerEffect{0, NonNegativeFinite<double>{0.2}}},
+                  .rules = {{0, {levels::WinEffect{Team::Blue}}}}};
     auto compiled{std::move(data).compile()};
-    add_duration_limit(compiled, Duration::make(0.21));
-    std::array const pause{EventHandle{0, EventKind::Pause}};
-    add_timed_events(compiled, Duration::make(0.21), pause);
+    add_duration_limit(compiled, Duration::make(1.0));
     LevelSim simulation{std::move(compiled)};
     simulation.finish_initialisation();
     simulation.start();
     simulation.advance(1.0);
-
-    EXPECT_EQ(simulation.state(), LevelState::Stopped);
-    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{3});
+    ASSERT_TRUE(simulation.result());
+    EXPECT_EQ(simulation.result()->winner, Team::Blue);
+    EXPECT_EQ(simulation.result()->terminal.tick, SimTick{2});
     EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
-    EXPECT_FALSE(simulation.player_team_completion());
-    auto const completion{simulation.mission().team_completion(Team::Blue)};
-    ASSERT_TRUE(completion);
-    EXPECT_EQ(completion->outcome, MissionOutcome::Victory);
-    EXPECT_EQ(completion->tick, SimTick{3});
     auto const record{simulation.take_finalized_telemetry_run()};
     ASSERT_TRUE(record);
-    EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::MissionCompleted);
-    EXPECT_EQ(record->completion.completed_ticks, completion->tick);
-    EXPECT_EQ(simulation.events().tick_end_events().size(), 7);
-    EXPECT_EQ(simulation.events().pending_tick_end_events().size(), 2);
-    EXPECT_EQ(simulation.events().pending_preparation_events().size(), 1);
-    simulation.advance(1.0);
-    EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{3});
-    EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
+    EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::LevelCompleted);
+    EXPECT_EQ(record->completion.completed_ticks, SimTick{2});
 }
 
 TEST(NativeSimulation, DurationEventsDoNotRequireTelemetryRecording) {
@@ -546,7 +489,7 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
     simulation.finish_initialisation();
     EXPECT_EQ(simulation.state(), LevelState::Paused);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
-    EXPECT_EQ(simulation.expressions().result(first_elapsed), ExprResult::Pending);
+    EXPECT_EQ(simulation.expressions().result(first_elapsed), false);
     EXPECT_TRUE(simulation.events().pending_tick_end_events().empty());
     simulation.advance(10.0);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
@@ -558,7 +501,7 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
     simulation.advance(0.1);
     EXPECT_TRUE(std::ranges::equal(simulation.events().tick_end_events(),
                                    std::array{initial_start, later_start}));
-    EXPECT_EQ(simulation.expressions().result(second_elapsed), ExprResult::Pending);
+    EXPECT_EQ(simulation.expressions().result(second_elapsed), false);
     simulation.advance(0.2);
     EXPECT_EQ(simulation.state(), LevelState::Running);
     simulation.advance(0.1);

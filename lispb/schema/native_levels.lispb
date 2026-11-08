@@ -48,17 +48,7 @@
         :native-header-include "ioj/levels/team.h"
         :reflection uenum))))
 
-(module native_objective_dependency
-  :header "native/levels/lib/include/ioj/levels/objective_dependency.h"
-  :header-include "ioj/levels/objective_dependency.h"
-  :namespace ioj::levels
-  (record ObjectiveDependency :comparison equality
-    :generate-s7-reader true :generate-s7-writer true :s7-tag "objective-resolved" :s7-positional true :s7-constructor false
-    :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
-    :s7-writer-includes ("ioj/levels/authoring/identifier_writer.h")
-    (member objective @input_objective_name :initializer "")
-    (member outcome ioj::ObjectiveOutcome :initializer "ObjectiveOutcome::Passed")
-    (projections (cpp))))
+
 
 (module native_levels_entity_archetype
   :header "native/levels/lib/include/ioj/levels/entity_archetype.h"
@@ -102,7 +92,7 @@
     (value InvalidLevelSize)
     (value InvalidGridCellSize)
     (value InvalidGridDimensions)
-    (value InvalidMissionStructure)
+    (value InvalidLogicStructure)
     (value MissingUnlockLevelId)
     (value DuplicateUnlockCriterion)
     (value SelfUnlockDependency)

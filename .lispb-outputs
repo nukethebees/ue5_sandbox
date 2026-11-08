@@ -1,8 +1,6 @@
 lispb-outputs-v1
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/MissionOutcome.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/MissionOutcomeConversion.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcome.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcomeConversion.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/levels/LevelOutcome.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/levels/LevelOutcomeConversion.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRateConversion.h
 Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp
@@ -29,17 +27,11 @@ native/levels/lib/include/ioj/levels/campaign_definition_reader.h
 native/levels/lib/include/ioj/levels/campaign_definition_writer.h
 native/levels/lib/include/ioj/levels/diagnostic_code.h
 native/levels/lib/include/ioj/levels/entity_archetype.h
-native/levels/lib/include/ioj/levels/expr_result.h
 native/levels/lib/include/ioj/levels/expr_type.h
 native/levels/lib/include/ioj/levels/level_camera_definition.h
 native/levels/lib/include/ioj/levels/level_camera_definition_reader.h
 native/levels/lib/include/ioj/levels/level_camera_definition_writer.h
-native/levels/lib/include/ioj/levels/mission_outcome.h
-native/levels/lib/include/ioj/levels/objective_dependency.h
-native/levels/lib/include/ioj/levels/objective_dependency_reader.h
-native/levels/lib/include/ioj/levels/objective_dependency_writer.h
-native/levels/lib/include/ioj/levels/objective_outcome.h
-native/levels/lib/include/ioj/levels/objective_wins_level.h
+native/levels/lib/include/ioj/levels/level_outcome.h
 native/levels/lib/include/ioj/levels/team.h
 native/levels/lib/include/ioj/settings/attack_distance_band.h
 native/levels/lib/include/ioj/settings/attack_distance_band_reader.h
@@ -155,6 +147,7 @@ native/simulation/include/ioj/sim/expressions/latch_state.h
 native/simulation/include/ioj/sim/expressions/leaf_data_handle.h
 native/simulation/include/ioj/sim/expressions/leaf_handle.h
 native/simulation/include/ioj/sim/expressions/leaf_kind.h
+native/simulation/include/ioj/sim/expressions/signal_handle.h
 native/simulation/include/ioj/sim/expressions/timer_handle.h
 native/simulation/include/ioj/sim/fighters/fighter_entity_data.h
 native/simulation/include/ioj/sim/fighters/fighter_navigation_types.h
@@ -178,8 +171,6 @@ native/simulation/include/ioj/sim/levels/level_spinner_spawn_events.h
 native/simulation/include/ioj/sim/levels/level_state.h
 native/simulation/include/ioj/sim/levels/level_turret_spawn_events.h
 native/simulation/include/ioj/sim/levels/tick_player_ship_state.h
-native/simulation/include/ioj/sim/missions/objective_id.h
-native/simulation/include/ioj/sim/missions/objective_prerequisite.h
 native/simulation/include/ioj/sim/player/command_interface.h
 native/simulation/include/ioj/sim/player/flight_model_controller_state.h
 native/simulation/include/ioj/sim/player/flight_model_data.h

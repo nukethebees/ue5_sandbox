@@ -86,13 +86,13 @@ auto make_player_spawn(SimulationFixture const& fixture, Transform3d transform)
 }
 auto SimulationScenario::compile() && -> LevelSimInitData {
     if (entities.empty()) {
-        assert(!mission);
+        assert(logic == levels::LogicDefinition{});
         return std::move(runtime);
     }
 
     levels::LevelDefinitionComponents authored{
         .metadata = {.id = levels::LevelId{"test-scenario"}, .title = "Test scenario"},
-        .mission = std::move(mission),
+        .logic = std::move(logic),
         .entities = std::move(entities),
     };
     auto const player{std::ranges::find(authored.entities,

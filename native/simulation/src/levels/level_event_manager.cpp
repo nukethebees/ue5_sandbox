@@ -4,11 +4,13 @@
 #include <ioj/sim/expressions/expr_manager.h>
 
 #include <algorithm>
+#include <cassert>
 #include <utility>
 
 namespace ioj::sim {
 LevelEventManager::LevelEventManager(CompiledLevelEvents data, std::pmr::memory_resource& memory)
     : data_{std::move(data)}
+    , signals_(data_.signal_count)
     , tick_end_events_{&memory}
     , preparation_events_{&memory} {
     auto const tick_end_count{static_cast<std::size_t>(std::ranges::count_if(
@@ -21,33 +23,22 @@ LevelEventManager::LevelEventManager(CompiledLevelEvents data, std::pmr::memory_
     }
 }
 
-void LevelEventManager::activate_trigger_expressions(ExprManager& expressions) {
-    for (auto const& trigger : data_.pending_triggers) {
-        expressions.activate(trigger.condition);
-    }
-}
-
-void LevelEventManager::collect_ready(ExprManager& expressions) {
-    auto& definitions{data_};
-    std::erase_if(definitions.pending_triggers, [&](EventTrigger const& trigger) {
-        auto const result{expressions.result(trigger.condition)};
-        if (result == ExprResult::Pending) {
+void LevelEventManager::collect_ready(ExprManager const& expressions) {
+    std::erase_if(data_.pending_triggers, [&](EventTrigger const& trigger) {
+        if (!expressions.result(trigger.condition)) {
             return false;
         }
-
-        if (result == ExprResult::True) {
-            auto const events{std::span{definitions.trigger_events}.subspan(trigger.events.offset,
-                                                                            trigger.events.count)};
-            for (auto const event : events) {
-                enqueue(event);
-            }
+        auto const effects{
+            std::span{data_.trigger_events}.subspan(trigger.events.offset, trigger.events.count)};
+        for (auto const event : effects) {
+            enqueue(event);
         }
-        expressions.deactivate(trigger.condition);
         return true;
     });
 }
 
 void LevelEventManager::enqueue(EventHandle const event) {
+    assert(!stopped_);
     if (is_tick_end(event.kind())) {
         tick_end_events_.push_back(event);
     } else {
@@ -55,6 +46,11 @@ void LevelEventManager::enqueue(EventHandle const event) {
         preparation_events_.push_back(event);
     }
 }
+void LevelEventManager::enqueue_stop(telemetry::RunEndReason const reason) {
+    assert(!stopped_);
+    enqueue(data_.add_stop_event(reason));
+}
+
 auto LevelEventManager::consume_tick_end_event() -> std::optional<EventHandle> {
     if (tick_end_cursor_ == tick_end_events_.size()) {
         return std::nullopt;

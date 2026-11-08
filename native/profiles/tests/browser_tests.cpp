@@ -153,9 +153,8 @@ TEST(ProfileAdapter, AdaptsTypedMissionResultsIntoReportOutcomes) {
 
     std::vector<ScoreRecord> const records{{.date = test_date(2026, 4, 3, 12, 30),
                                             .level_name = "test_level_42",
-                                            .outcome = MissionOutcome::Defeat,
-                                            .objective_id = "deadline",
-                                            .objective_outcome = ObjectiveOutcome::Expired,
+                                            .outcome = LevelOutcome::Defeat,
+                                            .end_reason = "deadline",
                                             .kills = 8,
                                             .time_seconds = 91.f}};
 
@@ -167,8 +166,8 @@ TEST(ProfileAdapter, AdaptsTypedMissionResultsIntoReportOutcomes) {
         << "Level name is formatted for display";
     EXPECT_EQ(outcome.kills, 8) << "Kills remain typed";
     EXPECT_EQ(outcome.result, std::string{"defeat"}) << "End state is displayed";
-    EXPECT_EQ(outcome.statistics.size(), 2) << "Mission details become display statistics";
-    EXPECT_EQ(outcome.statistics.back().value, std::string{"expired"})
+    EXPECT_EQ(outcome.statistics.size(), 1) << "Terminal reason becomes a display statistic";
+    EXPECT_EQ(outcome.statistics.back().value, std::string{"deadline"})
         << "Failure reason is included";
 }
 

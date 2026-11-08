@@ -8,11 +8,11 @@
 #include <ioj/sim/collision/collision_init_data.h>
 #include <ioj/sim/entities/team_list.h>
 #include <ioj/sim/expressions/expr_manager.h>
+#include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
 #include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/levels/compiled_level_events.h>
-#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/sim/telemetry/recording_config.h>
@@ -35,7 +35,7 @@ struct LevelSimInitData {
     std::optional<player::PlayerSpawnData> player;
     LevelEntityRef player_entity_ref{};
     CompiledLevelEvents level_events;
-    Mission mission;
+    Latches latches;
     ExprManager expressions;
     Timers timers;
     levels::LevelMetadata level_metadata;

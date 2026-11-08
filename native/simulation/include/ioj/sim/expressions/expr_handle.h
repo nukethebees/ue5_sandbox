@@ -40,16 +40,16 @@ struct ExprHandle : detail::ExprHandleBase {
     static constexpr PackedField<storage_type, storage_type, 1, 31> data_layout{};
 
     // data_composite
-    static constexpr PackedField<storage_type, storage_type, 1, 29> data_composite_layout{};
+    static constexpr PackedField<storage_type, storage_type, 1, 30> data_composite_layout{};
 
     // data_leaf
     static constexpr PackedField<storage_type, storage_type, 1, 31> data_leaf_layout{};
 
     // data_composite_kind
-    static constexpr PackedField<storage_type, CompositeKind, 1, 1> data_composite_kind_layout{};
+    static constexpr PackedField<storage_type, CompositeKind, 1, 2> data_composite_kind_layout{};
 
     // data_composite_index
-    static constexpr PackedField<storage_type, ExprCompositeIndex, 2, 28>
+    static constexpr PackedField<storage_type, ExprCompositeIndex, 3, 28>
         data_composite_index_layout{};
 
     // data_leaf_index

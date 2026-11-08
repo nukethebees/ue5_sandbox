@@ -27,9 +27,8 @@ void Latches::evaluate(ExprManager const& expressions) {
         auto const index{handle.index()};
         auto& state{states_[index]};
         auto const input{inputs_[index]};
-        if (state.pending() == LatchState::Unset &&
-            expressions.result(input.when) == ExprResult::True) {
-            auto const value{expressions.result(input.value) == ExprResult::True};
+        if (state.pending() == LatchState::Unset && expressions.result(input.when)) {
+            auto const value{expressions.result(input.value)};
             state.set_pending(value ? LatchState::True : LatchState::False);
         }
     }

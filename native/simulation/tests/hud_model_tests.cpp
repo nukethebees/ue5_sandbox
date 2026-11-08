@@ -1,7 +1,6 @@
 #include "support/simulation_test_support.h"
 #include <ioj/presentation/hud_model.h>
 #include <ioj/sim/levels/level_compilation.h>
-#include <ioj/sim/missions/mission.h>
 
 namespace ioj::sim::tests {
 namespace hud_test {
@@ -10,18 +9,6 @@ auto data() -> SimulationScenario {
     result.runtime.capital_ships.fighter_spawn_slots = 0;
     result.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     return result;
-}
-auto defence_mission() -> levels::MissionDefinition {
-    levels::MissionDefinition definition{
-        .objectives = {
-            {.id = levels::ObjectiveName{"defence"},
-             .title = "Hold position",
-             .team = Team::Blue,
-             .expressions = {{levels::TimeElapsedExpr{NonNegativeFinite<double>{0.2}}},
-                             {levels::EntityDestroyedExpr{levels::EntityId{"entity-0"}}}},
-             .roots = levels::ObjectiveRoots{
-                 std::array<levels::ExprIndex, 3>{0, 1, levels::absent_expression}}}}};
-    return definition;
 }
 }
 
@@ -33,10 +20,9 @@ TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
     harness.finish_initialisation();
     auto const& simulation{harness.simulation()};
     presentation::HudModel hud;
-    hud.initialise(simulation.mission(), simulation.read_access());
+    hud.initialise(simulation.read_access());
 
     EXPECT_TRUE(hud.active());
-    EXPECT_FALSE(hud.has_mission_data());
     EXPECT_FALSE(hud.player_status_data());
     EXPECT_FALSE(hud.player_flight_data());
     EXPECT_FALSE(hud.sampled_speed_view());
@@ -44,7 +30,6 @@ TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
     EXPECT_EQ((counts[Team::Blue, EntityType::CapitalShip]), 1);
     EXPECT_EQ((counts[Team::Red, EntityType::CapitalShip]), 1);
     auto const changes{hud.force_sample()};
-    EXPECT_FALSE(changes.mission);
     EXPECT_FALSE(changes.entity_counts);
     EXPECT_FALSE(changes.player_status);
     EXPECT_FALSE(changes.player_flight);
@@ -62,7 +47,7 @@ TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
     harness.finish_initialisation();
     auto& simulation{harness.simulation()};
     presentation::HudModel hud;
-    hud.initialise(simulation.mission(), simulation.read_access());
+    hud.initialise(simulation.read_access());
     auto const victim{simulation.capital_ships().get_entities().entity_ids()[0]};
     harness.queue_kills(std::array{victim});
     simulation.start();
@@ -74,36 +59,6 @@ TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
     EXPECT_EQ((hud.entity_count_data().alive_per_team_and_type[team, type]), 1);
     EXPECT_TRUE(hud.tick(1).entity_counts);
     EXPECT_EQ((hud.entity_count_data().alive_per_team_and_type[team, type]), 0);
-}
-
-TEST(HudModel, CachesDefenceFailureAndObjectiveMembership) {
-    auto data{hud_test::data()};
-    add_capital_spawn(data, {}, Team::Blue, 60.f);
-    add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
-    data.mission = hud_test::defence_mission();
-    WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
-    auto& simulation{harness.simulation()};
-    presentation::HudModel hud;
-    hud.initialise(simulation.mission(), simulation.read_access());
-    EXPECT_TRUE(hud.has_mission_data());
-    EXPECT_EQ(hud.mission_data().active, 0);
-    EXPECT_TRUE(hud.mission_data().active_titles.empty());
-
-    simulation.start();
-    harness.advance(simulation.clock().tick_period());
-    EXPECT_TRUE(hud.force_sample().mission);
-    EXPECT_EQ(hud.mission_data().active, 1);
-    EXPECT_EQ(hud.mission_data().active_titles, "Blue: Hold position");
-
-    harness.queue_kills(std::array{simulation.capital_ships().get_entities().entity_ids()[0]});
-    harness.advance(0.05);
-    EXPECT_TRUE(hud.force_sample().mission);
-    EXPECT_EQ(hud.mission_data().completed, 1);
-    EXPECT_EQ(hud.mission_data().active, 0);
-    EXPECT_TRUE(hud.mission_data().active_titles.empty());
-    EXPECT_EQ(simulation.mission().outcome(ObjectiveId{0}, simulation.expressions()),
-              ObjectiveOutcome::Failed);
 }
 
 TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
@@ -124,7 +79,7 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
     auto const& capitals{simulation.capital_ships()};
     auto const rival{capitals.get_entities().entity_ids()[2]};
     presentation::HudModel hud;
-    hud.initialise(simulation.mission(), simulation.read_access());
+    hud.initialise(simulation.read_access());
     ASSERT_TRUE(hud.player_status_data());
     EXPECT_EQ(hud.player_status_data()->health.health.value(), 37);
     EXPECT_EQ(hud.player_status_data()->health.max_health.value(), 100);
@@ -191,36 +146,4 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
     EXPECT_FALSE(hud.sampled_speed_view());
 }
 
-TEST(HudModel, MissionDisplayTimeUsesSimulationClock) {
-    auto data{hud_test::data()};
-    data.runtime.clock_settings.tick_rate = Frequency{10.0};
-    data.runtime.clock_settings.time_scale = PositiveFinite<double>{2.0};
-    add_capital_spawn(data, {}, Team::Blue, 60.f);
-    add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
-    data.mission = hud_test::defence_mission();
-    WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
-    auto& simulation{harness.simulation()};
-    presentation::HudModel hud;
-    hud.initialise(simulation.mission(), simulation.read_access());
-    hud.advance(1.0);
-    EXPECT_EQ(hud.mission_data().completed, 0);
-    EXPECT_DOUBLE_EQ(hud.mission_data().elapsed_seconds, 0.0);
-
-    simulation.start();
-    harness.advance(0.05);
-    hud.force_sample();
-    EXPECT_DOUBLE_EQ(hud.mission_data().elapsed_seconds, 0.1);
-    EXPECT_EQ(hud.mission_data().completed, 0);
-    harness.advance(0.05);
-    hud.force_sample();
-    EXPECT_DOUBLE_EQ(hud.mission_data().elapsed_seconds, 0.2);
-    EXPECT_EQ(hud.mission_data().completed, 0);
-    harness.advance(0.05);
-    hud.force_sample();
-    EXPECT_DOUBLE_EQ(hud.mission_data().elapsed_seconds, 0.3);
-    EXPECT_EQ(hud.mission_data().completed, 1);
-    EXPECT_EQ(simulation.mission().outcome(ObjectiveId{0}, simulation.expressions()),
-              ObjectiveOutcome::Passed);
-}
 }

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "ioj/levels/authoring/identifier_reader.h"
-#include "ioj/levels/authoring/input_readers.h"
 #include "ioj/levels/authoring/positional_inputs.h"
 #include "ioj/s7/record_reader.h"
 #include <ioj/s7/field_reader.h>
@@ -12,30 +11,6 @@
 #include <string>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<levels::authoring::NamedExprInput>
-    : RecordReader<levels::authoring::NamedExprInput> {
-    static void decode(DecodeContext ctx, value_type& result) {
-        auto const arguments{
-            positional_arguments(ctx.reader, ctx.node, "named-expr", ctx.path, 2ULL)};
-
-        if (!arguments) {
-            append_errors(ctx.errors, arguments.error());
-            return;
-        }
-        FieldReader{{ctx.reader,
-                     (*arguments)[0ULL],
-                     std::string{ctx.path} + ".name",
-                     ctx.mode,
-                     ctx.errors}}(result.name);
-        FieldReader{{ctx.reader,
-                     (*arguments)[1ULL],
-                     std::string{ctx.path} + ".value",
-                     ctx.mode,
-                     ctx.errors}}(result.value);
-    }
-};
-
 template <>
 struct TypeReader<levels::authoring::UnlockInput> : RecordReader<levels::authoring::UnlockInput> {
     static void decode(DecodeContext ctx, value_type& result) {
@@ -51,25 +26,6 @@ struct TypeReader<levels::authoring::UnlockInput> : RecordReader<levels::authori
                      std::string{ctx.path} + ".level-id",
                      ctx.mode,
                      ctx.errors}}(result.level);
-    }
-};
-
-template <>
-struct TypeReader<levels::authoring::ExprReferenceInput>
-    : RecordReader<levels::authoring::ExprReferenceInput> {
-    static void decode(DecodeContext ctx, value_type& result) {
-        auto const arguments{
-            positional_arguments(ctx.reader, ctx.node, "expr-ref", ctx.path, 1ULL)};
-
-        if (!arguments) {
-            append_errors(ctx.errors, arguments.error());
-            return;
-        }
-        FieldReader{{ctx.reader,
-                     (*arguments)[0ULL],
-                     std::string{ctx.path} + ".name",
-                     ctx.mode,
-                     ctx.errors}}(result.name);
     }
 };
 

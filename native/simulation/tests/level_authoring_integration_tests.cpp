@@ -4,7 +4,64 @@
 #include <ioj/sim/testing/level_sim_test_access.h>
 
 namespace ioj::sim::tests {
-TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedObjectiveReferences) {
+TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReferences) {
+    auto const definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
+      (level :id 'reserves :title "Reserves"
+        :camera (camera :look-at '(hero) :offset-direction '(-1 0 0) :distance 1000)
+        :entities (list
+          (entity :id 'hero :archetype 'capital-ship :team 'blue :position '(-20000 0 0) :initial-spawn-delay 60)
+          (entity :id 'reserve :archetype 'capital-ship :team 'red :position '(20000 0 0) :initial-spawn-delay 60)
+          (entity :id 'turret :archetype 'static-turret :team 'red :position '(0 20000 0)))
+        :logic (logic
+          (define group (spawn-group 'reserve '(reserve turret)))
+          (define ready (timer))
+          (define dead (all-of (entity-destroyed 'reserve) (entity-destroyed 'turret)))
+          (initially (start-timer ready 0))
+          (on :when (timer-elapsed ready) :do (list (spawn group) (spawn group)))
+          (on :when dead :do (list (spawn group) (publish 'repeat)))
+          (on :when (all-of dead (event-fired 'repeat)) :do (win 'blue)))))")};
+    ASSERT_TRUE(definition) << levels::format_diagnostics(definition.error());
+    auto build{[&] {
+        return make_level_simulation_init_data(*definition, make_simulation_data(make_fixture()));
+    }};
+    auto built{build()};
+    ASSERT_TRUE(built);
+    LevelSim simulation{std::move(*built)};
+    simulation.finish_initialisation();
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
+    EXPECT_EQ(simulation.turrets().num_instances(), 0);
+    simulation.start();
+    auto const dt{simulation.clock().tick_period()};
+    simulation.advance(dt);
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
+    simulation.advance(dt);
+    ASSERT_EQ(simulation.capital_ships().num_instances(), 2);
+    ASSERT_EQ(simulation.turrets().num_instances(), 1);
+    DirectDamageEvents damage;
+    damage.add(simulation.capital_ships().get_entities().entity_ids()[1], 100000, {});
+    damage.add(simulation.turrets().get_entities().entity_ids()[0], 100000, {});
+    LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
+    simulation.advance(dt);
+    EXPECT_FALSE(simulation.result());
+    simulation.advance(dt);
+    ASSERT_TRUE(simulation.result());
+    EXPECT_EQ(simulation.result()->winner, Team::Blue);
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
+    EXPECT_EQ(simulation.turrets().num_instances(), 0);
+    EXPECT_EQ(simulation.entity_ledger().num_unique_ids_issued(), 3);
+
+    auto fresh{build()};
+    ASSERT_TRUE(fresh);
+    LevelSim second{std::move(*fresh)};
+    second.finish_initialisation();
+    EXPECT_FALSE(second.result());
+    second.start();
+    second.advance(2 * dt);
+    EXPECT_EQ(second.capital_ships().num_instances(), 2);
+    EXPECT_EQ(second.turrets().num_instances(), 1);
+}
+
+TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedEntityReferences) {
     auto definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
       (level :id 'authored-spawns :title "Authored spawns"
         :camera (camera :look-at '(capital) :offset-direction '(-1 0 0) :distance 1000)
@@ -15,9 +72,8 @@ TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedObj
             :position '(0 30000 0) :rotation '(0 45 0) :initial-fire-point 1)
           (entity :id 'target :archetype 'static-turret :team 'red
             :position '(20000 0 0) :spawn-at 0.1 :health 234 :laser-damage 17))
-        :mission (mission :objectives (list
-          (objective :id 'destroy-target :team 'blue :wins-level 'yes
-            :pass (entity-destroyed 'target))))))")};
+        :logic (logic
+          (on :when (entity-destroyed 'target) :do (win 'blue)))))")};
     ASSERT_TRUE(definition) << levels::format_diagnostics(definition.error());
 
     auto built{make_level_simulation_init_data(*definition, make_simulation_data(make_fixture()))};
@@ -50,10 +106,10 @@ TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedObj
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
     simulation.advance(dt);
-    EXPECT_FALSE(simulation.mission().mission_completed());
+    EXPECT_FALSE(simulation.result().has_value());
     simulation.advance(0.15);
     ASSERT_EQ(simulation.turrets().num_instances(), 1);
-    EXPECT_FALSE(simulation.mission().mission_completed());
+    EXPECT_FALSE(simulation.result().has_value());
 
     auto const victim{simulation.turrets().get_entities().entity_ids()[0]};
     auto const instigator{simulation.capital_ships().get_entities().entity_ids()[0]};
@@ -62,7 +118,7 @@ TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedObj
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
     simulation.advance(dt);
     EXPECT_EQ(simulation.turrets().num_instances(), 0);
-    EXPECT_TRUE(simulation.mission().mission_completed());
+    EXPECT_TRUE(simulation.result().has_value());
     EXPECT_TRUE(simulation.entity_ledger().is_valid_unique_id(victim));
 }
 }

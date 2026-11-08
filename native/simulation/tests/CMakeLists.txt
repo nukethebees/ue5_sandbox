@@ -11,7 +11,6 @@ target_sources(native-simulation-tests PRIVATE
   expr_manager_tests.cpp
   latch_tests.cpp
   timer_tests.cpp
-  mission_tests.cpp
   level_event_tests.cpp
   level_authoring_integration_tests.cpp
   entity_id_tests.cpp
@@ -41,7 +40,6 @@ target_sources(native-simulation-tests PRIVATE
   scenarios/test_entity_ledger.cpp
   scenarios/test_fighter_attack.cpp
   scenarios/test_laser_lifecycle.cpp
-  scenarios/test_mission.cpp
   scenarios/test_player_ship_vs_capital.cpp
   scenarios/test_simulation_core_regressions.cpp
   scenarios/test_spatial_query_empty.cpp

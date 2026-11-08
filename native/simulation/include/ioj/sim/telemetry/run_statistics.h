@@ -11,7 +11,7 @@ struct RunStatistics {
     std::int32_t destroyed_entities{};
     std::int32_t kills{};
     std::int32_t lasers_fired{};
-    bool mission_complete{};
+    bool level_complete{};
     std::uint64_t shots{};
     std::uint64_t hits{};
     double damage_dealt{};

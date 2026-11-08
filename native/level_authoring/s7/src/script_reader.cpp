@@ -1,3 +1,4 @@
+#include "logic_dsl.h"
 #include "reader_diagnostics.h"
 #include <ioj/files.h>
 #include <ioj/levels/authoring/catalog_parser.h>
@@ -24,15 +25,7 @@ using detail::diagnostic_code;
 auto dsl_source() -> std::string {
     std::string source{"(begin\n"};
     source.append(s7_record_constructors());
-    auto const define_expression = [&](std::string_view const name) {
-        std::format_to(std::back_inserter(source),
-                       "(define ({} . arguments) (cons :{} arguments))\n",
-                       name,
-                       name);
-    };
-    for (auto const type : EnumTraits<ExprType>::values) {
-        define_expression(to_serialized_string(type));
-    }
+    source.append(logic_dsl_source);
     source.append("(define (settings-layers . layers) (cons :settings-layers layers))\n");
     source.append(
         "(define (settings-section name . properties) (cons (symbol->keyword name) properties))\n");

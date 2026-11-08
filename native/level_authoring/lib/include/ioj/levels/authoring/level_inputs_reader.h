@@ -50,93 +50,6 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
 };
 
 template <>
-struct TypeReader<levels::authoring::ObjectiveInput>
-    : RecordReader<levels::authoring::ObjectiveInput> {
-    static void decode(DecodeContext ctx, value_type& result) {
-        decode_record<Field>(
-            ctx,
-            "objective",
-            field_names,
-            [&result](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::id:
-                        read(result.id);
-                        break;
-                    case Field::title:
-                        read(result.title);
-                        break;
-                    case Field::team:
-                        read(result.team);
-                        break;
-                    case Field::wins_level:
-                        read(result.wins_level);
-                        break;
-                    case Field::nodes:
-                        read(result.nodes);
-                        break;
-                    case Field::pass:
-                        read(result.pass);
-                        break;
-                    case Field::fail:
-                        read(result.fail);
-                        break;
-                    case Field::expire:
-                        read(result.expire);
-                        break;
-                    case Field::depends_on:
-                        read(result.depends_on);
-                        break;
-                }
-            },
-            required);
-    }
-
-  private:
-    enum class Field : std::uint8_t {
-        id,
-        title,
-        team,
-        wins_level,
-        nodes,
-        pass,
-        fail,
-        expire,
-        depends_on,
-    };
-
-    static constexpr std::array<std::string_view, 9> field_names{
-        "id", "title", "team", "wins-level", "nodes", "pass", "fail", "expire", "depends-on"};
-    static constexpr auto required{
-        required_fields<Field, field_names.size()>({Field::id, Field::team})};
-};
-
-template <>
-struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::authoring::MissionInput> {
-    static void decode(DecodeContext ctx, value_type& result) {
-        decode_record<Field>(
-            ctx,
-            "mission",
-            field_names,
-            [&result](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::objectives:
-                        read(result.objectives);
-                        break;
-                }
-            },
-            required);
-    }
-
-  private:
-    enum class Field : std::uint8_t {
-        objectives,
-    };
-
-    static constexpr std::array<std::string_view, 1> field_names{"objectives"};
-    static constexpr auto required{required_fields<Field, field_names.size()>({Field::objectives})};
-};
-
-template <>
 struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authoring::LevelInput> {
     static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
@@ -169,8 +82,8 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
                     case Field::settings:
                         read(result.settings);
                         break;
-                    case Field::mission:
-                        read(result.mission);
+                    case Field::logic:
+                        read(result.logic);
                         break;
                     case Field::entities:
                         read(result.entities);
@@ -190,7 +103,7 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
         player,
         camera,
         settings,
-        mission,
+        logic,
         entities,
     };
 
@@ -202,7 +115,7 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
                                                                   "player",
                                                                   "camera",
                                                                   "settings",
-                                                                  "mission",
+                                                                  "logic",
                                                                   "entities"};
     static constexpr auto required{
         required_fields<Field, field_names.size()>({Field::id, Field::title})};

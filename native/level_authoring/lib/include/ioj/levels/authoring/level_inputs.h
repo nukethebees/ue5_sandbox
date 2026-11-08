@@ -6,15 +6,12 @@
 #include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
-#include "ioj/levels/authoring/expr_input.h"
 #include "ioj/levels/authoring/positional_inputs.h"
 #include "ioj/levels/campaign_definition.h"
 #include "ioj/levels/entity_archetype.h"
 #include "ioj/levels/identifiers.h"
 #include "ioj/levels/level_camera_definition.h"
-#include "ioj/levels/objective_dependency.h"
-#include "ioj/levels/objective_name.h"
-#include "ioj/levels/objective_wins_level.h"
+#include "ioj/levels/logic_definition.h"
 #include "ioj/levels/team.h"
 #include "ioj/s7/raw_node.h"
 #include "ioj/settings/settings.h"
@@ -140,22 +137,6 @@ struct EntityInput {
     std::optional<ioj::NonNegative<std::int32_t>> initial_fire_point{};
 };
 
-struct ObjectiveInput {
-    ObjectiveName id{};
-    std::string title{};
-    Team team{};
-    ObjectiveWinsLevel wins_level{ObjectiveWinsLevel::No};
-    std::vector<ioj::levels::authoring::NamedExprInput> nodes{};
-    std::optional<ioj::levels::authoring::ExprInput> pass{};
-    std::optional<ioj::levels::authoring::ExprInput> fail{};
-    std::optional<ioj::levels::authoring::ExprInput> expire{};
-    std::vector<ioj::levels::ObjectiveDependency> depends_on{};
-};
-
-struct MissionInput {
-    std::vector<ioj::levels::authoring::ObjectiveInput> objectives{};
-};
-
 struct LevelInput {
     LevelId id{};
     std::string title{};
@@ -165,7 +146,7 @@ struct LevelInput {
     EntityId player{};
     std::optional<ioj::levels::LevelCameraDefinition> camera{};
     ioj::settings::Settings settings{};
-    std::optional<ioj::levels::authoring::MissionInput> mission{};
+    LogicDefinition logic{};
     std::vector<ioj::levels::authoring::EntityInput> entities{};
 };
 

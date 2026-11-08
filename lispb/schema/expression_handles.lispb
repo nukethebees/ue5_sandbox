@@ -1,0 +1,62 @@
+(module expression_leaf_kind
+  :header "native/simulation/include/ioj/sim/expressions/leaf_kind.h"
+  :namespace ioj::sim
+  (enum LeafKind std::uint8_t
+    :bit-width 3
+    :native-api true :enum-array true :helpers (traits)
+    (value EntityDestroyed)
+    (value EntityReachedPosition)
+    (value TimerElapsed)
+    (value LatchedTrue)
+    (value LatchedFalse)
+    (value EventFired)
+    (value EntityKillsReached)
+    (projections (cpp))))
+
+(module expression_expr_kind
+  :header "native/simulation/include/ioj/sim/expressions/expr_kind.h"
+  :namespace ioj::sim
+  (enum ExprKind std::uint8_t
+    :bit-width 1
+    :native-api true :helpers ()
+    (value Composite) (value Leaf)
+    (projections (cpp))))
+
+(module expression_composite_kind
+  :header "native/simulation/include/ioj/sim/expressions/composite_kind.h"
+  :namespace ioj::sim
+  (enum CompositeKind std::uint8_t
+    :bit-width 2
+    :native-api true :helpers ()
+    (value Any) (value All) (value Not) (value Xor)
+    (projections (cpp))))
+
+(module expression_leaf_handle
+  :header "native/simulation/include/ioj/sim/expressions/leaf_handle.h"
+  :namespace ioj::sim
+  (record LeafHandle :layout packed :bits 31
+    (member index @expression_leaf_index :bits 28)
+    (member kind @expression_leaf_kind)
+    (projections (cpp :storage std::uint32_t))))
+
+(module expression_expr_handle
+  :header "native/simulation/include/ioj/sim/expressions/expr_handle.h"
+  :namespace ioj::sim
+  (record Composite
+    (member kind @expression_composite_kind)
+    (member index @expression_composite_index :bits 28))
+  (union ExprData
+    (case Composite @Composite)
+    (case Leaf @expression_leaf_handle))
+  (record ExprHandle :layout packed :bits 32 :invalid-value 0xffffffff
+    (member kind @expression_expr_kind)
+    (member data @ExprData :bits 31 :tag kind)
+    (projections (cpp :storage std::uint32_t))))
+
+(module expression_leaf_data_handle
+  :header "native/simulation/include/ioj/sim/expressions/leaf_data_handle.h"
+  :namespace ioj::sim
+  (record LeafDataHandle :layout packed :bits 32
+    (member index @expression_leaf_data_index :bits 24)
+    (member kind @expression_leaf_kind :bits 8)
+    (projections (cpp :storage std::uint32_t))))

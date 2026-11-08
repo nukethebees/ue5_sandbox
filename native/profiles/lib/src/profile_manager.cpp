@@ -217,7 +217,7 @@ auto ProfileManager::append_score_record(ScoreRecord const& record) -> RecordSav
                 return false;
             }
 
-            if (record.outcome == MissionOutcome::Victory) {
+            if (record.outcome == LevelOutcome::Victory) {
                 auto const progress{summarize_level_progress(levels::LevelId{record.level_name},
                                                              active_results_->score_records)};
                 new_best_time = progress.best_completion_time_seconds < 0.f ||

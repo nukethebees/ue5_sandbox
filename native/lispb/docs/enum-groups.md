@@ -15,16 +15,16 @@ the projected enum name, including its `E` prefix.
 (enum LeafKind std::uint8_t
   :enum-array true
   :ordering (actionable)
-  (value TimeElapsed)
+  (value TimerElapsed)
   (value EntityDestroyed :groups (actionable))
-  (value ObjectiveResolved)
+  (value EventFired)
   (value EntityReachedPosition :groups (actionable))
   (value EntityKillsReached :groups (actionable))
   (projections (cpp)))
 ```
 
 This assigns `EntityDestroyed`, `EntityReachedPosition`, and `EntityKillsReached` codes 0–2,
-followed by `TimeElapsed` and `ObjectiveResolved`. The predicate is
+followed by `TimerElapsed` and `EventFired`. The predicate is
 `return value <= LeafKind::EntityKillsReached;`.
 
 | Ordering | Behaviour |

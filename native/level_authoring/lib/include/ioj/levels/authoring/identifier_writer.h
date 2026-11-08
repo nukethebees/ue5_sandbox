@@ -2,12 +2,11 @@
 
 #include <ioj/ascii.h>
 #include <ioj/levels/identifiers.h>
-#include <ioj/levels/objective_name.h>
 #include <ioj/s7/writer.h>
 
 namespace ioj::s7 {
 template <typename Id>
-    requires (levels::Identifier<Id> || std::same_as<Id, levels::ObjectiveName>)
+    requires (levels::Identifier<Id>)
 struct TypeWriter<Id> {
     static auto write(SExprIR& ir, Id const& value, Id const*) -> Expr {
         auto const& symbol{value.value};

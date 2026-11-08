@@ -1,6 +1,5 @@
 #include "level_processing.h"
 
-#include "mission_processing.h"
 #include <ioj/enum_array.h>
 #include <ioj/team_array.h>
 
@@ -56,16 +55,7 @@ auto detail::process_level(LevelInput input) -> LevelDefinitionReadResult {
             result.unlock_level_ids.push_back(std::move(criterion.level));
         }
     }
-    if (input.mission) {
-        auto mission{process_mission(std::move(*input.mission), "level.mission")};
-        if (mission) {
-            result.mission = std::move(*mission);
-        } else {
-            errors.insert(errors.end(),
-                          std::make_move_iterator(mission.error().begin()),
-                          std::make_move_iterator(mission.error().end()));
-        }
-    }
+    result.logic = std::move(input.logic);
     result.entities.reserve(input.entities.size());
     for (auto& entity : input.entities) {
         result.entities.push_back({

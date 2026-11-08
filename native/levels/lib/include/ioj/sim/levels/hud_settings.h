@@ -22,7 +22,6 @@ struct HudSettings {
     enum class Field : std::uint8_t {
         player_status_update_period,
         entity_count_update_period,
-        mission_status_update_period,
     };
 
     template <Field Selected, typename Self>
@@ -35,9 +34,6 @@ struct HudSettings {
         }
         if constexpr (Selected == Field::entity_count_update_period) {
             return (self.entity_count_update_period);
-        }
-        if constexpr (Selected == Field::mission_status_update_period) {
-            return (self.mission_status_update_period);
         }
     }
 
@@ -57,9 +53,6 @@ struct HudSettings {
             case Field::entity_count_update_period:
                 return invoke_field<Field::entity_count_update_period>(
                     self, std::forward<Visitor>(visitor));
-            case Field::mission_status_update_period:
-                return invoke_field<Field::mission_status_update_period>(
-                    self, std::forward<Visitor>(visitor));
         }
         assert((false && "Invalid record field"));
         std::unreachable();
@@ -67,17 +60,16 @@ struct HudSettings {
 
     ioj::NonNegativeFinite<float> player_status_update_period{0.25f};
     ioj::NonNegativeFinite<float> entity_count_update_period{0.25f};
-    ioj::NonNegativeFinite<float> mission_status_update_period{0.25f};
 };
 } // namespace ioj::sim
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::HudSettings::Field>() noexcept -> std::size_t {
-    return 3ULL;
+    return 2ULL;
 }
 
 template <>
-inline constexpr auto enum_strings<sim::HudSettings::Field, Name>{PackedStrings{
-    "player_status_update_period\000entity_count_update_period\000mission_status_update_period",
-    std::array<std::uint8_t, 4>{0, 28, 55, 84}}};
+inline constexpr auto enum_strings<sim::HudSettings::Field, Name>{
+    PackedStrings{"player_status_update_period\000entity_count_update_period",
+                  std::array<std::uint8_t, 3>{0, 28, 55}}};
 } // namespace ioj

@@ -9,7 +9,7 @@ contract.
 ## Level ownership and phases
 
 `LevelSim` owns the clock, entity ledger and tables, concrete entity simulations, collision,
-mission, authored events and telemetry. It remains nonmovable because those owners retain
+expressions, latches, timers, authored events and telemetry. It remains nonmovable because those owners retain
 references to one another. Declaration order keeps the clock, tables and frame-memory backing
 alive until their consumers have been destroyed.
 
@@ -27,22 +27,22 @@ overlap results remain subject to the phase and scratch-lifetime contracts.
 Construction creates the optional player and queues initial events, leaving the level in
 `LevelState::Uninitialised`. The host may install static geometry before calling
 `finish_initialisation()`, which dispatches initial spawn events and publishes entity lookups
-and the spatial index, begins telemetry and resets mission progress in `LevelState::StableSetup`, then enters
+and the spatial index, begins telemetry in `LevelState::StableSetup`, then enters
 `LevelState::Paused`. Setup uses Preparation for population and Thinking for stable queries, then
 resets the independent clock to tick zero and `BetweenTicks` before returning. Its phase enum
-contains only the repeating tick cycle. Mission evaluation during a tick
+contains only the repeating tick cycle. Logic evaluation during a tick
 follows published deaths and precedes `ResolutionCommit`, while entity row mappings are still valid.
 
-Mission completions remain available until `reset_progress()`; queries do not consume results.
-After advancing the simulation, the orchestrator publishes a completion only when the winning
-record's tick is newer than the previous completed tick. `LevelSim` stops on mission completion
-and finalizes telemetry with a neutral completion reason; Mission retains victory and defeat.
+The first dispatched terminal event and its execution tick remain available through `result()`.
+Winner and stop reason are derived from that event's payload. Result publication, telemetry and
+persistence use this terminal decision; there are no per-team mission completion records.
+Initial terminal effects also publish a result, without starting the stopped simulation.
 Duration limits compile to timer-triggered stop events. Living-team counts do not end a run.
 Battle launches without an explicit duration have no time limit. Benchmarks and simulation-only
 runs expose an End button independently of camera setup; visual gameplay retains its pause-menu exit.
 
-`LevelEventManager` maps expression roots to ranges of packed event handles. Resolved triggers
-retire after Resolution, queueing their events once when true. Generated kind groups route events
+`LevelEventManager` maps expression roots to ranges of packed event handles. Triggers
+retire only after a true sample, queueing their events once. False leaves them eligible. Generated kind groups route events
 to tick-end or Preparation streams. Each stream retains its append-only event storage and advances
 an independent read cursor in FIFO order. The first dispatched terminal event enters
 `LevelState::Stopped` and stops catch-up and dispatch; later events remain stored and unconsumed.
@@ -73,8 +73,7 @@ remain readable. Timers have no reset operation; a fresh level owns fresh timer 
 
 Level compilation allocates timer IDs, creates start events and connects timer observations
 to triggers. Expression compilation only receives existing timer handles; it neither allocates
-timers nor creates effects. Mission compilation also belongs to the level compiler, keeping
-runtime `Mission` independent of timer and event storage. `CompiledLevelEvents` holds the
+timers nor creates effects. Logic compilation belongs to the level compiler. `CompiledLevelEvents` holds the
 resulting trigger and effect definitions directly; there is no separate schedule object.
 The compiler fills gameplay fields directly in the builder's fresh `LevelSimInitData`, using
 the configuration already supplied there. Failed compilation discards that construction input.
@@ -82,24 +81,28 @@ Initial events are queued during event-manager construction. Initialisation disp
 Preparation events before publishing entity lookups, then drains tick-end events immediately
 before returning. Timer starts therefore occur at tick zero without evaluating logic or advancing
 countdowns. Terminal events retain their stopping behaviour during initialisation.
-Objective activation queues timer-start events for tick-end dispatch. Expression activation
-only schedules evaluation and does not start or restart timers. Expressions retain the current
-`Pending`/`True` semantics until the
-Boolean conversion; starting a timer becomes visible on the next expression evaluation.
+Starting a timer becomes visible on the next expression evaluation.
 
-## Latch state
+## Boolean samples and latches
 
-`Latches` stores stable expression-input pairs and one byte of state per latch. Its low two bits
-hold a pending capture and the next two hold the cached observation: unset, false or true.
-Bulk evaluation reads each active latch's sampled inputs directly from `ExprManager` and writes
-only the pending field, once. While expressions still use `ExprResult`, only `True` is satisfied.
-Commit publishes captures and swap-removes their handles from the active list without moving latch
-definitions or state. Both fields then agree. Observations always read the cached field.
+`ExprManager` evaluates every leaf each Resolution, grouped by predicate kind, followed by a
+single dependency-ordered composite pass. Boolean results are sampled storage: no activation,
+retirement, reference counting or same-tick propagation. Proximity is a current-state predicate;
+destruction and lifetime kills query the ledger. Signals become true only on publication dispatch.
 
-This is the runtime state foundation. Expression observations and `LevelSim` integration follow
-with the Boolean evaluator conversion; the existing retiring expression evaluator is unchanged.
-The integration order is commit previous captures, evaluate expressions, evaluate active latches,
-then collect triggers. Captures become observable in the following logic cycle.
+`Latches` stores stable expression-input pairs and one byte per latch. Two bits hold a pending
+capture and two hold the cached observation: unset, false or true. Bulk evaluation reads sampled
+inputs and writes only pending captures. Commit copies pending to cached and swap-removes captured
+handles from the active list without moving definitions or state. Both fields then agree.
+
+The Resolution order is commit previous captures, tick timers, evaluate expressions, evaluate
+active latches, collect triggers. Captures become observable in the next logic cycle, consistently
+for direct observations and composites. Chained latches advance one capture per cycle. Runtime
+state is owned independently by each `LevelSim` and reset through fresh construction.
+
+Scheme authoring uses a scoped `logic` macro and handle constructors. Compilation validates the
+graph and resolves symbolic entity/signal references before runtime. See
+[logic authoring](../../LevelScripts/docs/logic.md).
 
 ## Entity lookup
 

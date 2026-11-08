@@ -3,21 +3,10 @@
 
 #pragma once
 
-#include "ioj/levels/authoring/expr_input.h"
 #include "ioj/levels/identifiers.h"
-#include "ioj/levels/objective_name.h"
 
 namespace ioj::levels::authoring {
-struct NamedExprInput {
-    ObjectiveName name{};
-    ExprInput value{};
-};
-
 struct UnlockInput {
     LevelId level{};
-};
-
-struct ExprReferenceInput {
-    ObjectiveName name{};
 };
 } // namespace ioj::levels::authoring

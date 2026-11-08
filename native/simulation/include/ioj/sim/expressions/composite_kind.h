@@ -11,10 +11,12 @@
 namespace ioj::sim {
 using CompositeKindUnderlying = std::uint8_t;
 
-// Logical bit width: 1.
+// Logical bit width: 2.
 enum class CompositeKind : CompositeKindUnderlying {
     Any,
     All,
+    Not,
+    Xor,
 };
 
 } // namespace ioj::sim
@@ -22,5 +24,5 @@ enum class CompositeKind : CompositeKindUnderlying {
 namespace ioj {
 template <>
 inline constexpr MinMax<sim::CompositeKind> enum_range<sim::CompositeKind>{sim::CompositeKind::Any,
-                                                                           sim::CompositeKind::All};
+                                                                           sim::CompositeKind::Xor};
 } // namespace ioj

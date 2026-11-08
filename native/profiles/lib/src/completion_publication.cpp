@@ -6,28 +6,31 @@
 namespace ioj::profiles {
 auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profiles, Timestamp date)
     -> std::optional<CompletionPublication> {
-    auto const completion{simulation.player_team_completion()};
-    if (!completion) {
+    auto const result{simulation.result()};
+    auto const* player{simulation.player_ship_simulation()};
+    if (!result || !player) {
         return std::nullopt;
     }
+    auto const team{player->team};
+    auto const outcome{
+        !result->winner ? LevelOutcome::Stopped
+                        : (*result->winner == team ? LevelOutcome::Victory : LevelOutcome::Defeat)};
 
     auto const& metadata{simulation.level_metadata()};
-    auto const& objectives{simulation.mission().objectives()};
     std::int32_t kills{};
     auto const& team_kills{simulation.entity_ledger().combat_telemetry().kills};
     for (auto const type : EnumTraits<sim::EntityType>::values) {
-        kills += static_cast<std::int32_t>(team_kills[completion->team, type]);
+        kills += static_cast<std::int32_t>(team_kills[team, type]);
     }
     CompletionPublication publication{
         .record = {.date = date,
                    .level_name = metadata.id.value,
-                   .team = completion->team,
-                   .outcome = completion->outcome,
-                   .objective_id = objectives.name(completion->triggering_objective).value,
-                   .objective_outcome = completion->triggering_objective_outcome,
+                   .team = team,
+                   .outcome = outcome,
+                   .end_reason = std::string{to_serialized_string(result->reason)},
                    .kills = kills,
-                   .time_seconds = static_cast<float>(
-                       sim::simulation_time(completion->tick, simulation.clock().tick_period()))},
+                   .time_seconds = static_cast<float>(sim::simulation_time(
+                       result->terminal.tick, simulation.clock().tick_period()))},
         .level_title = metadata.title,
         .par_time_seconds = metadata.par_time_seconds};
     if (profiles) {

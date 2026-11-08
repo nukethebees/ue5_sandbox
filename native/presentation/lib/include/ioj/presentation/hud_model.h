@@ -5,7 +5,6 @@
 #include <ioj/presentation/entity_count_hud_data.h>
 #include <ioj/presentation/hud_changes.h>
 #include <ioj/presentation/kill_hud_data.h>
-#include <ioj/presentation/mission_hud_data.h>
 #include <ioj/presentation/player_flight_hud_data.h>
 #include <ioj/presentation/player_status_hud_data.h>
 #include <ioj/presentation/sampled_speed_hud_view.h>
@@ -19,17 +18,12 @@
 #include <string>
 #include <vector>
 
-namespace ioj::sim {
-class Mission;
-}
-
 namespace ioj::presentation {
 class HudModel {
   public:
     void configure(sim::HudSettings settings) { settings_ = settings; }
     auto settings() const -> sim::HudSettings const& { return settings_; }
-    // The mission and simulation must outlive this model and remain stable while sampling.
-    void initialise(sim::Mission const& mission, sim::LevelReadAccess view);
+    void initialise(sim::LevelReadAccess view);
     void deactivate();
     auto advance(double delta_seconds) -> HudChanges;
     auto tick(PeriodicTickCountdown8::counter_type num_ticks) -> HudChanges;
@@ -37,8 +31,6 @@ class HudModel {
     void set_selected_mapping_context(std::string context);
 
     auto active() const -> bool { return simulation_.has_value(); }
-    auto has_mission_data() const -> bool;
-    auto mission_data() const -> MissionHudData const& { return mission_data_; }
     auto entity_count_data() const -> EntityCountHudData const& { return entity_count_data_; }
     auto kill_data() const -> KillHudData const& { return kill_data_; }
     auto player_status_data() const -> std::optional<PlayerStatusHudData> const& {
@@ -53,7 +45,6 @@ class HudModel {
     auto player_for_collection() const -> sim::player::Sim const*;
     auto display_batches() const -> std::array<AgentDisplayBatch, 4>;
   private:
-    auto collect_mission_data() -> bool;
     auto collect_entity_count_data() -> bool;
     void collect_kill_data();
     auto collect_player_status_data() -> bool;
@@ -61,10 +52,8 @@ class HudModel {
 
     sim::HudSettings settings_;
     std::optional<sim::LevelReadAccess> simulation_;
-    sim::Mission const* mission_{};
     sim::FixedTickLoop tick_loop_;
     PeriodicTickCountdown8 update_timers_;
-    MissionHudData mission_data_;
     EntityCountHudData entity_count_data_;
     KillHudData kill_data_;
     std::optional<PlayerStatusHudData> player_status_data_;

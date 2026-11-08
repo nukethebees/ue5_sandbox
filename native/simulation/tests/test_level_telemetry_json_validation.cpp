@@ -40,7 +40,7 @@ TEST(LevelTelemetryJsonValidation, RejectsInvalidRecordInvariants) {
     EXPECT_FALSE(validate_level_telemetry_json_record(record).has_value());
 }
 
-TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
+TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndLevelCompletion) {
     auto report{make_run_report({},
                                 {.launch_mode = levels::LaunchMode::Paused,
                                  .results_navigation = levels::ResultsNavigation::Telemetry},
@@ -48,7 +48,7 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     report.run.metadata.run_id = "run-1";
     report.run.metadata.level_display_name = "Convoy \"alpha\"\n\xc3\xa9";
     report.run.tick_rate_hz = Frequency::make(120.0);
-    report.run.completion.reason = telemetry::RunEndReason::MissionCompleted;
+    report.run.completion.reason = telemetry::RunEndReason::LevelCompleted;
     report.run.completion.completed_ticks = SimTick{240};
     telemetry::BattleSample sample;
     sample.completed_tick = SimTick{240};
@@ -75,12 +75,12 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     EXPECT_TRUE(parsed->started_paused);
     EXPECT_TRUE(parsed->opens_telemetry);
     EXPECT_EQ(parsed->run.tick_rate_hz.hz(), 120.0);
-    EXPECT_EQ(parsed->run.completion.reason, telemetry::RunEndReason::MissionCompleted);
+    EXPECT_EQ(parsed->run.completion.reason, telemetry::RunEndReason::LevelCompleted);
     EXPECT_EQ(parsed->run.completion.completed_ticks.value(), 240);
     EXPECT_EQ(serialized->find("environment"), std::string::npos);
     EXPECT_EQ(serialized->find("presentation_mode"), std::string::npos);
     EXPECT_EQ(serialized->find("winning_team"), std::string::npos);
-    EXPECT_EQ(serialized->find("objective_id"), std::string::npos);
+    EXPECT_EQ(serialized->find("end_reason"), std::string::npos);
     EXPECT_EQ(parsed->run.final_state.alive, sample.alive);
     EXPECT_EQ(serialized->find("tick_series"), std::string::npos);
     ASSERT_EQ(parsed->run.battle_samples.size(), 1);
@@ -89,7 +89,7 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     auto const summary{summarize_run(*parsed)};
     EXPECT_EQ(summary.simulated_seconds, 2.0);
     EXPECT_EQ(summary.active_entities, 7);
-    EXPECT_TRUE(summary.mission_complete);
+    EXPECT_TRUE(summary.level_complete);
     EXPECT_EQ(summary.shots, 3);
     EXPECT_EQ(summary.damage_dealt, 12.5);
 

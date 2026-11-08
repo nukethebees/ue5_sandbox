@@ -1,17 +1,18 @@
 #include <ioj/sim/levels/level_compilation.h>
 
 #include <ioj/column_math.h>
-#include <ioj/levels/mission_validation.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/levels/compiled_level_events.h>
-#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/transform3d.h>
 
 #include <algorithm>
 #include <array>
+#include <concepts>
 #include <limits>
+#include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace ioj::levels {
@@ -37,80 +38,6 @@ auto compile_timer_duration(Duration const duration, sim::SimClock const& clock)
     return sim::SimTick{clock.duration_to_tick_period(duration).get()};
 }
 
-auto compile_mission(MissionDefinition const& definition,
-                     std::span<EntityId const> const entities,
-                     sim::SimClock const& clock,
-                     sim::ExprManager& expressions,
-                     sim::Timers& timers,
-                     sim::CompiledLevelEvents& events)
-    -> std::expected<sim::Mission, LevelCompilationErrors> {
-    auto errors{validate_mission(definition, entities)};
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
-    auto const count{static_cast<std::uint16_t>(definition.objectives.size())};
-    sim::Objectives objectives{count};
-    std::unordered_map<ObjectiveName, sim::ObjectiveId> objective_ids;
-    std::unordered_map<EntityId, sim::LevelEntityRef> entity_indices;
-    auto const entity_count{entities.size()};
-    for (std::uint32_t index{}; index < entity_count; ++index) {
-        entity_indices.emplace(entities[index], sim::LevelEntityRef{index});
-    }
-    for (std::uint16_t index{}; index < count; ++index) {
-        objective_ids.emplace(definition.objectives[index].id, sim::ObjectiveId{index});
-    }
-
-    auto const columns{objectives.compilation_view()};
-    std::vector<sim::ObjectivePrerequisite> prerequisites;
-    std::vector<sim::TimerHandle> timer_handles;
-    std::vector<sim::EventHandle> activation_events;
-    for (std::uint16_t row{}; row < count; ++row) {
-        sim::ObjectiveId const owner{row};
-        auto const& source{definition.objectives[row]};
-        columns.identifiers[row] = source.id;
-        columns.display_names[row] = source.title.empty() ? source.id.value : source.title;
-        columns.assigned_teams[row] = source.team;
-        columns.wins_level[row] = source.wins_level;
-
-        prerequisites.clear();
-        for (auto const& dependency : source.dependencies) {
-            prerequisites.emplace_back(objective_ids.at(dependency.objective), dependency.outcome);
-        }
-        objectives.add_prerequisites(owner, prerequisites);
-
-        timer_handles.assign(source.expressions.size(), sim::TimerHandle{});
-        activation_events.clear();
-        auto const expression_count{source.expressions.size()};
-        for (std::size_t index{}; index < expression_count; ++index) {
-            auto const* timer{std::get_if<TimeElapsedExpr>(&source.expressions[index].payload)};
-            if (!timer) {
-                continue;
-            }
-            auto const duration{
-                compile_timer_duration(Duration::make(timer->seconds.get()), clock)};
-            if (!duration) {
-                return std::unexpected{duration.error()};
-            }
-            auto const handle{timers.add()};
-            timer_handles[index] = handle;
-            activation_events.push_back(events.add_start_timer_event({handle, *duration}));
-        }
-
-        auto const compiled{
-            expressions.append(source.expressions, {entity_indices, objective_ids, timer_handles})};
-        columns.leaf_ranges[row] = compiled.leaves;
-        columns.composite_ranges[row] = compiled.composites;
-        objectives.add_activation_events(owner, activation_events);
-        for (auto const root : EnumTraits<ObjectiveOutcome>::values) {
-            if (source.roots[root] != absent_expression) {
-                columns.roots[row][root] = compiled.handles[source.roots[root]];
-            }
-        }
-    }
-    return sim::Mission{std::move(objectives)};
-}
-
 auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     -> std::expected<void, LevelCompilationErrors> {
     auto const& definition{level};
@@ -125,21 +52,10 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         output.player_entity_ref = entity_index(definition, definition.player_entity_id());
     }
 
-    if (definition.mission()) {
-        std::vector<EntityId> entities;
-        for (auto const& entity : definition.entities()) {
-            entities.push_back(entity.id);
-        }
-        auto mission{compile_mission(*definition.mission(),
-                                     entities,
-                                     clock,
-                                     output.expressions,
-                                     output.timers,
-                                     definitions)};
-        if (!mission) {
-            return std::unexpected{std::move(mission.error())};
-        }
-        output.mission = std::move(*mission);
+    auto const& logic{definition.logic()};
+    std::unordered_set<EntityId> grouped;
+    for (auto const& group : logic.spawn_groups) {
+        grouped.insert(group.entities.begin(), group.entities.end());
     }
 
     std::vector<EventSource> sources;
@@ -147,7 +63,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     sources.reserve(static_cast<std::size_t>(entity_count));
     for (std::uint32_t index{}; index < entity_count; ++index) {
         auto const& entity{definition.entities()[static_cast<std::size_t>(index)]};
-        if (entity.archetype != EntityArchetype::PlayerFighter) {
+        if (entity.archetype != EntityArchetype::PlayerFighter && !grouped.contains(entity.id)) {
             auto const tick{
                 compile_timer_duration(Duration::make(entity.spawn_time_seconds), clock)};
             if (!tick) {
@@ -247,6 +163,98 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
             definitions.add_trigger(elapsed, std::array{spawn});
         }
         first = end;
+    }
+    std::vector<sim::EventHandle> spawn_effects;
+    for (auto const& group : logic.spawn_groups) {
+        auto const capital_offset{capital_end};
+        auto const turret_offset{turret_end};
+        auto const spinner_offset{spinner_end};
+        for (auto const& id : group.entities) {
+            append_entity(entity_index(definition, id));
+        }
+        auto const first_group{definitions.spawn_groups.num()};
+        definitions.add_spawn_group(
+            sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
+        definitions.add_spawn_group(
+            sim::EntityType::Turret, turret_offset, turret_end - turret_offset);
+        definitions.add_spawn_group(
+            sim::EntityType::TubeSpinner, spinner_offset, spinner_end - spinner_offset);
+        spawn_effects.push_back(definitions.add_spawn_event(
+            {first_group, definitions.spawn_groups.num() - first_group}));
+    }
+    std::vector<sim::TimerHandle> timers;
+    for (std::uint32_t i{}; i < logic.timer_count; ++i) {
+        timers.push_back(output.timers.add());
+    }
+    std::unordered_map<EntityId, sim::LevelEntityRef> entities;
+    for (std::uint32_t i{}; i < entity_count; ++i) {
+        entities.emplace(definition.entities()[i].id, sim::LevelEntityRef{i});
+    }
+    std::unordered_map<std::string, sim::SignalHandle> signals;
+    auto register_signals{[&](std::span<Effect const> effects) {
+        for (auto const& effect : effects) {
+            if (auto const* publish{std::get_if<PublishEffect>(&effect)}) {
+                signals.try_emplace(publish->signal,
+                                    sim::SignalHandle{static_cast<std::uint32_t>(signals.size())});
+            }
+        }
+    }};
+    register_signals(logic.initial_effects);
+    for (auto const& rule : logic.rules) {
+        register_signals(rule.effects);
+    }
+    definitions.signal_count = static_cast<std::uint32_t>(signals.size());
+    auto const expressions{
+        output.expressions.append(logic.expressions, {entities, timers, signals})};
+    for (auto const& latch : logic.latches) {
+        output.latches.add({expressions[latch.when], expressions[latch.value]});
+    }
+    auto compile_effects{[&](std::span<Effect const> effects)
+                             -> std::expected<std::vector<sim::EventHandle>,
+                                              LevelCompilationErrors> {
+        std::vector<sim::EventHandle> result;
+        for (auto const& value : effects) {
+            auto compiled{std::visit(
+                [&](auto const& effect) -> std::expected<sim::EventHandle, LevelCompilationErrors> {
+                    using T = std::decay_t<decltype(effect)>;
+                    if constexpr (std::same_as<T, WinEffect>) {
+                        return definitions.add_win_event(effect.team);
+                    } else if constexpr (std::same_as<T, StopEffect>) {
+                        return definitions.add_stop_event(
+                            sim::telemetry::RunEndReason::LevelCompleted);
+                    } else if constexpr (std::same_as<T, PublishEffect>) {
+                        return definitions.add_publish_event(signals.at(effect.signal));
+                    } else if constexpr (std::same_as<T, SpawnEffect>) {
+                        return spawn_effects[effect.group];
+                    } else {
+                        auto duration{
+                            compile_timer_duration(Duration::make(effect.seconds.get()), clock)};
+                        if (!duration) {
+                            return std::unexpected{duration.error()};
+                        }
+                        return definitions.add_start_timer_event({timers[effect.timer], *duration});
+                    }
+                },
+                value)};
+            if (!compiled) {
+                return std::unexpected{compiled.error()};
+            }
+            result.push_back(*compiled);
+        }
+        return result;
+    }};
+    auto initial{compile_effects(logic.initial_effects)};
+    if (!initial) {
+        return std::unexpected{initial.error()};
+    }
+    definitions.initial_events.insert(
+        definitions.initial_events.end(), initial->begin(), initial->end());
+    for (auto const& rule : logic.rules) {
+        auto effects{compile_effects(rule.effects)};
+        if (!effects) {
+            return std::unexpected{effects.error()};
+        }
+        definitions.add_trigger(expressions[rule.when], *effects);
     }
     return {};
 }

@@ -37,7 +37,7 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
     EXPECT_PRED_FORMAT2(structurally_equal, defaults.player, resolved->player);
 }
 
-TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
+TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelLogic) {
     auto const root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
     auto const base{s7::read_simulation_settings(root / "Settings/base.scm", root)};
     ASSERT_TRUE(base);
@@ -50,22 +50,24 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization) -- Independent mutation snapshot.
     auto const original{*base_values};
     auto const level{DefinitionReader{root}.read_level_source(R"(
-      (level :id 'settings-mission :title "Settings and mission" :player 'player
+      (level :id 'settings-logic :title "Settings and logic" :player 'player
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                :position '(0 0 0)))
         :settings (settings-layers (load-script "Settings/base.scm")
                     (settings :fighters (fighters :laser (laser :damage 77))))
-        :mission (mission :objectives (list
-          (objective :id 'survive :team 'blue :pass (time-elapsed 5))))))")};
+        :logic (logic
+          (define delay (timer))
+          (initially (start-timer delay 5))
+          (on :when (timer-elapsed delay) :do (win 'blue)))))")};
     ASSERT_TRUE(level) << level.error().front().message;
-    auto const mission{level->mission()};
+    auto const logic{level->logic()};
     auto const resolved{sim::resolve_simulation_settings(level->settings())};
     ASSERT_TRUE(resolved);
     auto expected{*base_values};
     expected.fighters.laser.damage = 77;
     EXPECT_PRED_FORMAT2(structurally_equal, expected, level->settings());
     EXPECT_PRED_FORMAT2(structurally_equal, expected.fighters, resolved->fighters);
-    EXPECT_EQ(level->mission(), mission);
+    EXPECT_EQ(level->logic(), logic);
 
     for (auto const field : {"", ":settings (settings)", ":settings (settings-layers)"}) {
         SCOPED_TRACE(field);

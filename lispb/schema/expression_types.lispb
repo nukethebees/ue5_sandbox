@@ -1,0 +1,37 @@
+(module level_outcome
+  :header "native/levels/lib/include/ioj/levels/level_outcome.h"
+  :header-include "ioj/levels/level_outcome.h"
+  :namespace ioj
+  (enum LevelOutcome std::uint8_t
+    :native-api true
+    :helpers (traits to-serialized-string try-parse-serialized)
+    (value Victory :serialized-name "victory")
+    (value Defeat :serialized-name "defeat")
+    (value Stopped :serialized-name "stopped")
+    (projections
+      (cpp)
+      (unreal-projection ELevelOutcome
+        :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/levels/LevelOutcome.h"
+        :header-include "SpaceGame/levels/LevelOutcome.h"
+        :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/levels/LevelOutcomeConversion.h"
+        :native-header-include "ioj/levels/level_outcome.h"
+        :reflection uenum))))
+
+(module expr_type
+  :header "native/levels/lib/include/ioj/levels/expr_type.h"
+  :header-include "ioj/levels/expr_type.h"
+  :namespace ioj::levels
+  (enum ExprType std::uint8_t
+    :native-api true :helpers (traits to-serialized-string try-parse-serialized)
+    (value All :serialized-name "all-of" :groups (composite))
+    (value Any :serialized-name "any-of" :groups (composite))
+    (value Not :serialized-name "not-of" :groups (composite))
+    (value Xor :serialized-name "xor-of" :groups (composite))
+    (value EntityDestroyed :serialized-name "entity-destroyed")
+    (value EntityReachedPosition :serialized-name "entity-reached-position")
+    (value TimerElapsed :serialized-name "timer-elapsed")
+    (value LatchedTrue :serialized-name "latched-true")
+    (value LatchedFalse :serialized-name "latched-false")
+    (value EventFired :serialized-name "event-fired")
+    (value EntityKillsReached :serialized-name "entity-kills-reached")
+    (projections (cpp))))

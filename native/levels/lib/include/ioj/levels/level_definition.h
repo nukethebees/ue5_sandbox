@@ -15,7 +15,7 @@ class LevelDefinition {
         , unlock_level_ids_{std::move(components.unlock_level_ids)}
         , player_entity_id_{std::move(components.player_entity_id)}
         , camera_{std::move(components.camera)}
-        , mission_{std::move(components.mission)}
+        , logic_{std::move(components.logic)}
         , entities_{std::move(components.entities)}
         , settings_{std::move(components.settings)} {}
   public:
@@ -30,9 +30,7 @@ class LevelDefinition {
     [[nodiscard]] auto camera() const -> std::optional<LevelCameraDefinition> const& {
         return camera_;
     }
-    [[nodiscard]] auto mission() const -> std::optional<MissionDefinition> const& {
-        return mission_;
-    }
+    [[nodiscard]] auto logic() const -> LogicDefinition const& { return logic_; }
     [[nodiscard]] auto entities() const -> std::vector<EntitySpawnDefinition> const& {
         return entities_;
     }
@@ -44,7 +42,7 @@ class LevelDefinition {
     std::vector<LevelId> unlock_level_ids_;
     EntityId player_entity_id_;
     std::optional<LevelCameraDefinition> camera_;
-    std::optional<MissionDefinition> mission_;
+    LogicDefinition logic_;
     std::vector<EntitySpawnDefinition> entities_;
     settings::Settings settings_;
 };

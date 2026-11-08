@@ -1,5 +1,4 @@
-#include <ioj/levels/mission_outcome.h>
-#include <ioj/levels/objective_outcome.h>
+#include <ioj/levels/level_outcome.h>
 #include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/player/fire_rate.h>
@@ -46,23 +45,19 @@ TEST(NativeEnums, TeamSerializedNamesRoundTrip) {
     EXPECT_FALSE(try_parse_serialized_team("count").has_value());
 }
 
-TEST(NativeEnums, MissionAndTelemetrySerializedNamesRoundTrip) {
-    for (auto const value :
-         {ObjectiveOutcome::Passed, ObjectiveOutcome::Failed, ObjectiveOutcome::Expired}) {
-        EXPECT_EQ(try_parse_serialized_objective_outcome(to_serialized_string(value)), value);
-    }
-    for (auto const value : {MissionOutcome::Victory, MissionOutcome::Defeat}) {
-        EXPECT_EQ(try_parse_serialized_mission_outcome(to_serialized_string(value)), value);
+TEST(NativeEnums, LevelAndTelemetrySerializedNamesRoundTrip) {
+    for (auto const value : {LevelOutcome::Victory, LevelOutcome::Defeat, LevelOutcome::Stopped}) {
+        EXPECT_EQ(try_parse_serialized_level_outcome(to_serialized_string(value)), value);
     }
     using enum telemetry::RunEndReason;
     std::array const reasons{
-        MissionCompleted, BattleResolved, DurationReached, OrchestratorReset, WorldEnd};
+        LevelCompleted, BattleResolved, DurationReached, OrchestratorReset, WorldEnd};
     for (auto const value : reasons) {
         EXPECT_EQ(telemetry::try_parse_serialized_run_end_reason(to_serialized_string(value)),
                   value);
     }
     expect_enum_contracts(reasons,
-                          std::array{"mission_completed",
+                          std::array{"level_completed",
                                      "battle_resolved",
                                      "duration_reached",
                                      "orchestrator_reset",

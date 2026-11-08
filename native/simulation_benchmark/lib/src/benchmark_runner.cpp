@@ -381,9 +381,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .active_lasers = simulation.lasers().num_instances(),
         .lasers_spawned = simulation.lasers().get_number_spawned(),
         .peak_fighters = frame_summary.peak_fighters,
-        .active_objectives = simulation.mission().active_objectives().size(),
-        .inactive_objectives = simulation.mission().inactive_objectives().size(),
-        .completed_objectives = simulation.mission().completed_objectives().size(),
         .frame_memory_capacity_bytes = tick_memory.capacity_bytes + phase_memory.capacity_bytes,
         .frame_memory_peak_claimed_bytes = frame_summary.peak_claimed_bytes,
         .frame_memory_peak_payload_bytes = frame_summary.peak_payload_bytes,
@@ -458,23 +455,19 @@ auto to_json(BenchmarkResult const& result) -> std::string {
           result.maximum_measured_fighters,
           result.fighter_spawns_during_measurement,
           result.lasers_spawned_during_measurement);
-    write(
-        R"(,"final_state":{{"active_objectives":{},"inactive_objectives":{},"completed_objectives":{},"initial_capital_ships":{},"initial_turrets":{},)"
-        R"("alive_entities":{},"capital_ships":{},"fighters":{},"turrets":{},"spinners":{},)"
-        R"("active_lasers":{},"lasers_spawned":{},"peak_fighters":{}}})",
-        result.active_objectives,
-        result.inactive_objectives,
-        result.completed_objectives,
-        result.initial_capital_ships,
-        result.initial_turrets,
-        result.alive_entities,
-        result.capital_ships,
-        result.fighters,
-        result.turrets,
-        result.spinners,
-        result.active_lasers,
-        result.lasers_spawned,
-        result.peak_fighters);
+    write(R"(,"final_state":{{"initial_capital_ships":{},"initial_turrets":{},)"
+          R"("alive_entities":{},"capital_ships":{},"fighters":{},"turrets":{},"spinners":{},)"
+          R"("active_lasers":{},"lasers_spawned":{},"peak_fighters":{}}})",
+          result.initial_capital_ships,
+          result.initial_turrets,
+          result.alive_entities,
+          result.capital_ships,
+          result.fighters,
+          result.turrets,
+          result.spinners,
+          result.active_lasers,
+          result.lasers_spawned,
+          result.peak_fighters);
     write(R"(,"memory":{{"frame_capacity_bytes":{},"frame_peak_claimed_bytes":{},)"
           R"("frame_peak_payload_bytes":{},"frame_total_padding_bytes":{},)"
           R"("frame_total_root_claims":{},"frame_overflow_count":{}}})",

@@ -61,8 +61,7 @@ auto encode(ScoreRecord const& value) -> Json {
             {"level", value.level_name},
             {"team", to_serialized_string(value.team)},
             {"outcome", to_serialized_string(value.outcome)},
-            {"objective", value.objective_id},
-            {"objective_outcome", to_serialized_string(value.objective_outcome)},
+            {"end_reason", value.end_reason},
             {"kills", value.kills},
             {"seconds", value.time_seconds}};
 }
@@ -100,21 +99,18 @@ auto decode(Json const& json, ProfileResultsData& value) -> bool {
     for (auto const& row : rows) {
         auto const team{try_parse_serialized_team(row.at("team").get<std::string>())};
         auto const outcome{
-            try_parse_serialized_mission_outcome(row.at("outcome").get<std::string>())};
-        auto const objective{
-            try_parse_serialized_objective_outcome(row.at("objective_outcome").get<std::string>())};
+            try_parse_serialized_level_outcome(row.at("outcome").get<std::string>())};
         ScoreRecord record{.date = row.at("date").get<Timestamp>(),
                            .level_name = row.at("level").get<std::string>(),
-                           .objective_id = row.at("objective").get<std::string>(),
+                           .end_reason = row.at("end_reason").get<std::string>(),
                            .kills = row.at("kills").get<std::int32_t>(),
                            .time_seconds = row.at("seconds").get<float>()};
-        if (!team || !outcome || !objective || record.level_name.empty() || record.kills < 0 ||
+        if (!team || !outcome || record.level_name.empty() || record.kills < 0 ||
             !std::isfinite(record.time_seconds) || record.time_seconds < 0.f) {
             return false;
         }
         record.team = *team;
         record.outcome = *outcome;
-        record.objective_outcome = *objective;
         result.score_records.push_back(std::move(record));
     }
     value = std::move(result);

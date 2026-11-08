@@ -1,17 +1,19 @@
 #pragma once
 
-#include <ioj/levels/authoring/expr_input.h>
 #include <ioj/levels/authoring/identifier_writer.h>
-#include <ioj/levels/objective_dependency_writer.h>
+#include <ioj/levels/logic_definition.h>
 #include <ioj/settings/settings_values_writer.h>
 
 namespace ioj::s7 {
 template <>
-struct TypeWriter<levels::authoring::ExprInput> {
+struct TypeWriter<levels::LogicDefinition> {
     static auto write(SExprIR& ir,
-                      levels::authoring::ExprInput const& value,
-                      levels::authoring::ExprInput const*) -> Expr;
-    static auto equivalent(levels::authoring::ExprInput const& value,
-                           levels::authoring::ExprInput const& base) -> bool;
+                      levels::LogicDefinition const& value,
+                      levels::LogicDefinition const*) -> Expr;
+    static auto omitted(levels::LogicDefinition const& value) -> bool {
+        return value == levels::LogicDefinition{};
+    }
+    static auto equivalent(levels::LogicDefinition const& value,
+                           levels::LogicDefinition const& base) -> bool;
 };
 }

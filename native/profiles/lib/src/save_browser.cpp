@@ -77,9 +77,7 @@ auto make_report(std::string profile_id, std::span<ScoreRecord const> records) -
             .simulation_duration_seconds = record.time_seconds,
             .kills = record.kills,
             .result = std::string{to_serialized_string(record.outcome)},
-            .statistics = {{"Decisive objective", record.objective_id},
-                           {"Objective outcome",
-                            std::string{to_serialized_string(record.objective_outcome)}}},
+            .statistics = {{"End reason", record.end_reason}},
         });
     }
     return report;

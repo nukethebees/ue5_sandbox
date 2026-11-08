@@ -94,15 +94,6 @@ set(expressions_headers
 
 list(TRANSFORM expressions_headers PREPEND "../include/ioj/sim/expressions/")
 
-set(missions_headers
-  mission.h
-  mission_changes.h
-  mission_evaluation_context.h
-  objectives.h
-)
-
-list(TRANSFORM missions_headers PREPEND "../include/ioj/sim/missions/")
-
 set(fighters_headers
   fighter_entity_data.h
   fighter_navigation.h
@@ -157,7 +148,6 @@ set(tasks_headers
   task_entity_count.h
   task_id.h
   task_manager.h
-  task_planning_context.h
 )
 
 list(TRANSFORM tasks_headers PREPEND "../include/ioj/sim/tasks/")
@@ -207,8 +197,6 @@ target_sources(native-simulation
     expressions/expr_manager.cpp
     expressions/latches.cpp
     expressions/timers.cpp
-    missions/mission.cpp
-    missions/objectives.cpp
     overlap_handler.cpp
     levels/reference_level_simulation_data.cpp
     player/ship_flight_model.cpp
@@ -225,7 +213,6 @@ target_sources(native-simulation
     ${collision_headers}
     ${entities_headers}
     ${expressions_headers}
-    ${missions_headers}
     ${fighters_headers}
     ${lasers_headers}
     ${levels_headers}

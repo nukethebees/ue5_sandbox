@@ -12,20 +12,6 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeWriter<levels::authoring::NamedExprInput>
-    : RecordWriter<levels::authoring::NamedExprInput, true> {
-    static constexpr std::string_view tag() { return "named-expr"; }
-
-    template <typename Visitor>
-    static void properties(Visitor& visit) {
-        using T = ioj::levels::authoring::NamedExprInput;
-
-        visit("name", &T::name);
-        visit("value", &T::value);
-    }
-};
-
-template <>
 struct TypeWriter<levels::authoring::UnlockInput>
     : RecordWriter<levels::authoring::UnlockInput, true> {
     static constexpr std::string_view tag() { return "level-completed"; }
@@ -35,19 +21,6 @@ struct TypeWriter<levels::authoring::UnlockInput>
         using T = ioj::levels::authoring::UnlockInput;
 
         visit("level-id", &T::level);
-    }
-};
-
-template <>
-struct TypeWriter<levels::authoring::ExprReferenceInput>
-    : RecordWriter<levels::authoring::ExprReferenceInput, true> {
-    static constexpr std::string_view tag() { return "expr-ref"; }
-
-    template <typename Visitor>
-    static void properties(Visitor& visit) {
-        using T = ioj::levels::authoring::ExprReferenceInput;
-
-        visit("name", &T::name);
     }
 };
 

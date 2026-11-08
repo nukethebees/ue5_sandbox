@@ -34,7 +34,7 @@ auto summarize_run(Report const& report) -> RunStatistics {
         .destroyed_entities = static_cast<std::int32_t>(total_count(combat.destroyed)),
         .kills = static_cast<std::int32_t>(total_count(combat.kills)),
         .lasers_fired = sample.lasers_fired,
-        .mission_complete = run.completion.reason == RunEndReason::MissionCompleted,
+        .level_complete = run.completion.reason == RunEndReason::LevelCompleted,
         .shots = total_count(combat.shots),
         .hits = total_count(combat.hits),
         .damage_dealt = total_count(combat.damage_dealt),

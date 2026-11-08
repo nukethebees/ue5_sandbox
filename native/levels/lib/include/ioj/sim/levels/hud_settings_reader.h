@@ -23,9 +23,8 @@ struct TypeReader<sim::HudSettings> : RecordReader<sim::HudSettings> {
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 3> field_names{"player-status-update-period",
-                                                                 "entity-count-update-period",
-                                                                 "mission-status-update-period"};
+    static constexpr std::array<std::string_view, 2> field_names{"player-status-update-period",
+                                                                 "entity-count-update-period"};
 };
 
 } // namespace ioj::s7

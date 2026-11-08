@@ -35,39 +35,6 @@ struct TypeWriter<levels::authoring::EntityInput> : RecordWriter<levels::authori
 };
 
 template <>
-struct TypeWriter<levels::authoring::ObjectiveInput>
-    : RecordWriter<levels::authoring::ObjectiveInput> {
-    static constexpr std::string_view tag() { return "objective"; }
-
-    template <typename Visitor>
-    static void properties(Visitor& visit) {
-        using T = ioj::levels::authoring::ObjectiveInput;
-
-        visit("id", &T::id);
-        visit("title", &T::title);
-        visit("team", &T::team);
-        visit("wins-level", &T::wins_level);
-        visit("nodes", &T::nodes);
-        visit("pass", &T::pass);
-        visit("fail", &T::fail);
-        visit("expire", &T::expire);
-        visit("depends-on", &T::depends_on);
-    }
-};
-
-template <>
-struct TypeWriter<levels::authoring::MissionInput> : RecordWriter<levels::authoring::MissionInput> {
-    static constexpr std::string_view tag() { return "mission"; }
-
-    template <typename Visitor>
-    static void properties(Visitor& visit) {
-        using T = ioj::levels::authoring::MissionInput;
-
-        visit("objectives", &T::objectives);
-    }
-};
-
-template <>
 struct TypeWriter<levels::authoring::LevelInput> : RecordWriter<levels::authoring::LevelInput> {
     static constexpr std::string_view tag() { return "level"; }
 
@@ -83,7 +50,7 @@ struct TypeWriter<levels::authoring::LevelInput> : RecordWriter<levels::authorin
         visit("player", &T::player);
         visit("camera", &T::camera);
         visit("settings", &T::settings);
-        visit("mission", &T::mission);
+        visit("logic", &T::logic);
         visit("entities", &T::entities);
     }
 };

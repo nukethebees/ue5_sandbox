@@ -19,7 +19,6 @@ struct TypeWriter<sim::HudSettings> : RecordWriter<sim::HudSettings> {
 
         visit("player-status-update-period", &T::player_status_update_period);
         visit("entity-count-update-period", &T::entity_count_update_period);
-        visit("mission-status-update-period", &T::mission_status_update_period);
     }
 };
 

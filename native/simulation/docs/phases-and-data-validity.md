@@ -12,8 +12,8 @@ Each catch-up tick samples player simulation presence and health, then dispatche
 or `PresentDead`. A death during Resolution affects the next tick's dispatch.
 
 Initialisation spawns and configures entities. Each type publishes its initial lookup state before
-entering `LevelState::StableSetup`. Mission initialisation and setup queries run there, without
-structural mutation, before entering `LevelState::Paused`. Setup uses Preparation for population
+entering `LevelState::StableSetup`. Setup queries run there, without structural mutation,
+before entering `LevelState::Paused` and dispatching initial tick-end events. Setup uses Preparation for population
 and Thinking for initial queries, then resets the clock to `BetweenTicks`, tick zero, and an empty
 time accumulator. Configured tick rate and time scale are preserved.
 
@@ -79,11 +79,11 @@ for Thinking. During Resolution, use authoritative health to distinguish a retai
 
 1. Resolve all damage and secondary death effects.
 2. Publish deaths to the persistent ledger.
-3. Gather authoritative objective health and evaluate the mission.
+3. Commit previous latch captures, tick timers, sample Boolean expressions, capture latches and collect triggers.
 4. Enter ResolutionCommit and compact storage.
 5. Finalise frame outputs, telemetry, and tick accounting; enter BetweenTicks.
 
-Mission evaluation sees same-tick deaths before compaction. It does not depend on the packed health
+Expression evaluation sees same-tick deaths before compaction. It does not depend on the packed health
 snapshot. Refresh surviving lookup rows in the next Preparation; do not rebuild the lookup tables
 for presentation after compaction.
 

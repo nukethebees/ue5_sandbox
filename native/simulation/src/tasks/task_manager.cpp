@@ -2,8 +2,6 @@
 
 #include <ioj/enum_array.h>
 #include <ioj/require.h>
-#include <ioj/sim/expressions/expr_manager.h>
-#include <ioj/sim/missions/mission.h>
 
 #include <array>
 #include <cassert>
@@ -38,9 +36,6 @@ TaskManager::TaskManager(std::pmr::memory_resource& resource)
     : instructions_{&resource}
     , instruction_data_{resource}
     , task_entries_{&resource}
-    , task_actionable_pass_leaves_{&resource}
-    , task_leaf_teams_{&resource}
-    , leaf_tasks_{&resource}
     , active_tasks_{task_manager_detail::make_array<Team>(
           [&resource] { return std::pmr::vector<TaskId>{&resource}; })}
     , task_entity_allocations_{task_manager_detail::make_array<Team, EntityType>(
@@ -51,9 +46,6 @@ void TaskManager::reset() {
     instructions_.clear();
     instruction_data_.locations.clear();
     task_entries_.clear();
-    task_actionable_pass_leaves_.clear();
-    task_leaf_teams_.clear();
-    leaf_tasks_.clear();
     for (auto& tasks : active_tasks_) {
         tasks.clear();
     }
@@ -63,30 +55,6 @@ void TaskManager::reset() {
 
     static_cast<void>(add_task({Instruction::make_data_idle(), jump_to_idle}));
 }
-void TaskManager::initialise(Mission const& mission, ExprManager const& expressions) {
-    reset();
-
-    auto const leaf_count{expressions.leaves().num_leaves()};
-    leaf_tasks_.assign(leaf_count, TaskId{});
-    task_actionable_pass_leaves_.assign(leaf_count, std::uint8_t{0});
-    task_leaf_teams_.assign(leaf_count, Team{});
-
-    auto const& objectives{mission.objectives()};
-    auto const objective_count{objectives.size()};
-    for (std::size_t index{}; index < objective_count; ++index) {
-        auto const objective{ObjectiveId{static_cast<ObjectiveId::storage_type>(index)}};
-        auto const root{objectives.roots(objective)[ObjectiveOutcome::Passed]};
-        auto const team{objectives.team(objective)};
-        expressions.visit_expression_tree(root, [this, team](ExprHandle const expression) {
-            if (expression.kind() == ExprKind::Leaf && is_task(expression.data_leaf_kind())) {
-                auto const leaf_index{expression.data_leaf_index()};
-                task_actionable_pass_leaves_[leaf_index] = 1;
-                task_leaf_teams_[leaf_index] = team;
-            }
-        });
-    }
-}
-
 /* **************************************** */
 // Task registration
 /* **************************************** */
@@ -118,48 +86,5 @@ auto TaskManager::add_task(std::initializer_list<Instruction> const instructions
 /* **************************************** */
 // Planning and allocation
 /* **************************************** */
-void TaskManager::plan_tasks(TaskPlanningContext const ctx) {
-    auto const& leaves{ctx.expressions.leaves()};
-    assert(leaf_tasks_.size() == leaves.num_leaves());
-
-    for (auto const leaf : leaves.active) {
-        auto const index{leaf.index()};
-        if (!task_actionable_pass_leaves_[index]) {
-            continue;
-        }
-
-        auto& task{leaf_tasks_[index]};
-        if (!task.is_valid()) {
-            task = create_task(leaf, leaves, ctx.entities);
-        }
-    }
-}
 void TaskManager::allocate(TaskAllocationContext) {}
-auto TaskManager::create_task(LeafHandle const leaf,
-                              ExprLeaves const& leaves,
-                              std::span<EntityId const> const entities) -> TaskId {
-    auto const i{leaf.index()};
-
-    switch (leaf.kind()) {
-        case LeafKind::EntityDestroyed: {
-            auto const data{leaves.data_handles[i].index()};
-            auto const entity_index{leaves.destroyed_entities[data]};
-            auto const entity_id{entities[entity_index.index()]};
-            if (!entity_id.is_valid()) {
-                // Leave the task invalid so planning retries after the target spawns.
-                return {};
-            }
-
-            return add_task({Instruction::make_data_kill(entity_id), jump_to_idle});
-        }
-        case LeafKind::EntityReachedPosition:
-        case LeafKind::EntityKillsReached: {
-            return {};
-        }
-        default: {
-            assert(false && "Leaf kind does not support tasks");
-            return {};
-        }
-    }
-}
 }

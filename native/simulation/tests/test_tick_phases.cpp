@@ -1,5 +1,5 @@
-#include "support/mission_test_support.h"
 #include "support/simulation_checks.h"
+#include "support/simulation_test_support.h"
 #include <ioj/column_math.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
@@ -295,7 +295,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsDispatchTick) {
     EXPECT_EQ(observe_entity(simulation, turret)->health.value(), 75);
 }
 
-TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
+TEST(TickPhases, DelayedEntityDeathTriggersAfterResolutionWithoutDuplicateOverlaps) {
     auto data{make_world()};
     data.runtime.collision.overlap_response.damage_per_overlap_detection =
         ioj::Positive<std::int32_t>{100};
@@ -307,15 +307,10 @@ TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
                           60.f,
                           ioj::settings::PositiveHealth::make(ioj::sim::Health{1000}))};
     auto const turret_index{schedule_turret(data, {})};
-    levels::ObjectiveDefinition objective{.team = Team::White};
-    objective.expressions = {
-        {ioj::levels::TimeElapsedExpr{.seconds = ioj::NonNegativeFinite<double>::make(10)}},
-        destroyed(capital_index),
-        destroyed(turret_index),
-        {ioj::levels::AnyExpr{.children = {1, 2}}}};
-    objective.roots[ioj::ObjectiveOutcome::Passed] = 0;
-    objective.roots[ioj::ObjectiveOutcome::Failed] = 3;
-    install_mission(data, std::move(objective));
+    data.logic.expressions = {{levels::EntityDestroyedExpr{data.entities[capital_index].id}},
+                              {levels::EntityDestroyedExpr{data.entities[turret_index].id}},
+                              {levels::AnyExpr{{0, 1}}}};
+    data.logic.rules = {{2, {levels::WinEffect{Team::Green}}}};
 
     LevelSim simulation{std::move(data).compile()};
     simulation.finish_initialisation();
@@ -341,8 +336,8 @@ TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
     expect_entity_unregistered(simulation, dead_id);
     EXPECT_EQ(ledger.count_alive(), 1);
     EXPECT_EQ(capitals.healths().health(capitals.get_entities().entity_ids()[0]).value(), 900);
-    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()),
-              ObjectiveOutcome::Failed);
+    ASSERT_TRUE(simulation.result());
+    EXPECT_EQ(simulation.result()->winner, Team::Green);
 
     auto const& queries{simulation.spatial_query_manager()};
     EXPECT_EQ(queries.aabb_overlap_events().entity_entity_overlaps.num(), 1);
@@ -350,8 +345,8 @@ TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
     simulation.advance(clk_period);
     EXPECT_EQ(simulation.turrets().num_instances(), 0);
     expect_entity_unregistered(simulation, dead_id);
-    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()),
-              ObjectiveOutcome::Failed);
+    ASSERT_TRUE(simulation.result());
+    EXPECT_EQ(simulation.result()->winner, Team::Green);
 }
 
 TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterward) {
@@ -453,7 +448,7 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     EXPECT_EQ(simulation.read_access().lasers().get_entities().num(), 0);
 }
 
-TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
+TEST(TickPhases, CapitalDeathIsPublishedBeforeLogicEvaluation) {
     // Independent scenario worlds mutate storage and publish new views during each run.
     // NOLINTBEGIN(ioj-loop-view-accessor-call)
     for (auto const kill_tick : {1, 2}) {
@@ -477,13 +472,10 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
         data.runtime.capital_ships.fighter_spawn_slots_relative_transforms = {
             {.location = {0.0, 500.0, 0.0}}};
 
-        levels::ObjectiveDefinition objective{.team = Team::White};
-        objective.expressions = {
-            destroyed(first),
-            {ioj::levels::EntityKillsReachedExpr{.entities = {mission_entity(second)}, .kills = 1}},
-            {ioj::levels::AllExpr{.children = {0, 1}}}};
-        objective.roots[ioj::ObjectiveOutcome::Passed] = 2;
-        install_mission(data, std::move(objective));
+        data.logic.expressions = {{levels::EntityDestroyedExpr{data.entities[first].id}},
+                                  {levels::EntityKillsReachedExpr{{data.entities[second].id}, 1}},
+                                  {levels::AllExpr{{0, 1}}}};
+        data.logic.rules = {{2, {levels::WinEffect{Team::White}}}};
 
         LevelSim simulation{std::move(data).compile()};
         simulation.finish_initialisation();
@@ -526,13 +518,8 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
         EXPECT_EQ(observe_entity_row(simulation, victim), EntityInstanceHandle::invalid_value);
         EXPECT_EQ(observe_entity_row(simulation, killer), 0);
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
-        if (kill_tick == 1) {
-            EXPECT_FALSE(
-                simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()));
-            simulation.advance(period);
-        }
-        EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}, simulation.expressions()),
-                  ObjectiveOutcome::Passed);
+        ASSERT_TRUE(simulation.result());
+        EXPECT_EQ(simulation.result()->winner, Team::White);
     }
 
     // NOLINTEND(ioj-loop-view-accessor-call)

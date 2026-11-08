@@ -10,18 +10,15 @@
 
 namespace ioj::profiles {
 TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal) {
-    levels::ObjectiveDefinition objective{.id = levels::ObjectiveName{"primary"},
-                                          .team = Team::Blue,
-                                          .wins_level = ObjectiveWinsLevel::Yes};
-    objective.expressions = {
-        {levels::TimeElapsedExpr{.seconds = NonNegativeFinite<double>::make(0.2)}}};
-    objective.roots[ObjectiveOutcome::Passed] = 0;
     auto const definition{levels::LevelDefinition::make(
         {.metadata = {.id = levels::LevelId{"publication"},
                       .title = "Publication",
                       .par_time_seconds = 1.f},
          .player_entity_id = levels::EntityId{"player"},
-         .mission = levels::MissionDefinition{.objectives = {std::move(objective)}},
+         .logic = {.expressions = {{levels::TimerElapsedExpr{0}}},
+                   .timer_count = 1,
+                   .initial_effects = {levels::StartTimerEffect{0, NonNegativeFinite<double>{0.2}}},
+                   .rules = {{0, {levels::WinEffect{Team::Blue}}}}},
          .entities = {{.id = levels::EntityId{"player"},
                        .archetype = levels::EntityArchetype::PlayerFighter,
                        .team = Team::Blue,
@@ -66,19 +63,16 @@ TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal
     ScoreRecord const expected{.date = 17,
                                .level_name = "publication",
                                .team = Team::Blue,
-                               .outcome = MissionOutcome::Victory,
-                               .objective_id = "primary",
-                               .objective_outcome = ObjectiveOutcome::Passed,
+                               .outcome = LevelOutcome::Victory,
+                               .end_reason = "level_completed",
                                .kills = 2,
-                               .time_seconds =
-                                   static_cast<float>(0.2 + simulation.clock().tick_period())};
+                               .time_seconds = 0.2f};
     EXPECT_EQ(publication->record, expected);
     EXPECT_TRUE(publication->save_result.persisted);
     EXPECT_TRUE(publication->save_result.new_best_time);
     ASSERT_EQ(profiles.active_records().size(), 1u);
     EXPECT_EQ(profiles.active_records()[0], expected);
-    EXPECT_TRUE(simulation.player_team_completion());
-    EXPECT_FALSE(simulation.mission().completions().empty());
+    EXPECT_TRUE(simulation.result());
     EXPECT_EQ(profiles.active_records().size(), 1u);
     std::filesystem::remove_all(root);
     auto lock_path{root};

@@ -1,8 +1,8 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/expressions/expr_manager.h>
+#include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
 #include <ioj/sim/levels/level_event_manager.h>
-#include <ioj/sim/missions/mission.h>
 
 #include <gtest/gtest.h>
 
@@ -45,7 +45,7 @@ TEST(LevelEvents, ConsumptionPreservesFifoHistoryAndIndependentStreams) {
 TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     ExprManager expressions;
     Timers timers;
-    Mission mission;
+    Latches latches;
     EntityLedger ledger;
     CompiledLevelEvents data;
     auto const spawn{data.add_spawn_event({7, 2})};
@@ -60,7 +60,6 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     data.add_trigger(expressions.add_timer_elapsed(late_timer), late);
     auto const initial_events{data.initial_events};
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
-    manager.activate_trigger_expressions(expressions);
     for (auto const handle : initial_events) {
         ASSERT_EQ(manager.consume_tick_end_event(), handle);
         auto const& event{manager.data().start_timer_events[handle.index()]};
@@ -68,14 +67,14 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     }
 
     timers.tick(SimTick{1});
-    expressions.evaluate({ledger, timers, {}}, mission);
+    expressions.evaluate({ledger, timers, {}, latches, {}});
     manager.collect_ready(expressions);
     EXPECT_TRUE(manager.preparation_events().empty());
     EXPECT_TRUE(std::ranges::equal(manager.tick_end_events(), initial_events));
     EXPECT_TRUE(manager.pending_tick_end_events().empty());
 
     timers.tick(SimTick{1});
-    expressions.evaluate({ledger, timers, {}}, mission);
+    expressions.evaluate({ledger, timers, {}, latches, {}});
     manager.collect_ready(expressions);
     manager.collect_ready(expressions);
     EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
@@ -84,14 +83,14 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     EXPECT_FALSE(manager.consume_tick_end_event());
 
     timers.tick(SimTick{1});
-    expressions.evaluate({ledger, timers, {}}, mission);
+    expressions.evaluate({ledger, timers, {}, latches, {}});
     manager.collect_ready(expressions);
     EXPECT_TRUE(std::ranges::equal(manager.pending_tick_end_events(), late));
     EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
     EXPECT_EQ(manager.consume_tick_end_event(), late.front());
     EXPECT_EQ(manager.consume_preparation_event(), spawn);
     timers.tick(SimTick{1});
-    expressions.evaluate({ledger, timers, {}}, mission);
+    expressions.evaluate({ledger, timers, {}, latches, {}});
     manager.collect_ready(expressions);
     EXPECT_TRUE(manager.pending_preparation_events().empty());
     EXPECT_TRUE(manager.pending_tick_end_events().empty());

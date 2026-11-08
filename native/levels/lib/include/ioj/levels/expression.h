@@ -6,12 +6,12 @@
 #include <utility>
 
 namespace ioj::levels {
-struct MissionExpr {
-    MissionExpr() = default;
-    MissionExpr(ExprPayload value)
+struct Expression {
+    Expression() = default;
+    Expression(ExprPayload value)
         : payload{std::move(value)} {}
 
-    auto operator==(MissionExpr const&) const -> bool = default;
+    auto operator==(Expression const&) const -> bool = default;
 
     auto type() const -> ExprType;
     auto children() const -> std::span<ExprIndex const>;

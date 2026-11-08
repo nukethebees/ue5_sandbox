@@ -26,12 +26,11 @@ void expect_error(LevelDefinitionComponents definition, DiagnosticCode const cod
 }
 }
 
-TEST(LevelDefinition, ParTimeRequiresAPositivePlayerMissionTarget) {
+TEST(LevelDefinition, ParTimeRequiresAPositivePlayerLevelTarget) {
     auto definition{camera_level()};
     definition.camera.reset();
     definition.entities[0].archetype = EntityArchetype::PlayerFighter;
     definition.player_entity_id = EntityId{"blue"};
-    definition.mission = MissionDefinition{};
     definition.metadata.par_time_seconds = 45.f;
     ASSERT_TRUE(LevelDefinition::make(definition));
     for (float const seconds : {0.f, -1.f, std::numeric_limits<float>::infinity()}) {
@@ -89,13 +88,10 @@ TEST(LevelDefinition, RejectsMissingIdentityInvalidArchetypesAndNonfinitePlaceme
     expect_error(definition, DiagnosticCode::InvalidPlacement);
 }
 
-TEST(LevelDefinition, MissionEntityReferencesAreValidated) {
+TEST(LevelDefinition, LogicEntityReferencesAreValidated) {
     auto definition{camera_level()};
-    ObjectiveDefinition objective{.id = ObjectiveName{"primary"}, .team = Team::Blue};
-    objective.expressions = {{EntityDestroyedExpr{EntityId{"missing"}}}};
-    objective.roots[ObjectiveOutcome::Passed] = 0;
-    definition.mission = MissionDefinition{.objectives = {objective}};
-    expect_error(definition, DiagnosticCode::InvalidMissionStructure);
+    definition.logic.expressions = {{EntityDestroyedExpr{EntityId{"missing"}}}};
+    expect_error(definition, DiagnosticCode::InvalidLogicStructure);
 }
 
 TEST(LevelDefinition, CameraAndPlayerAreMutuallyExclusive) {

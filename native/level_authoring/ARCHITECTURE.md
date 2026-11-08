@@ -52,16 +52,18 @@ The runtime privately roots s7's internal hooks after revoking their public bind
 global redefinition and error handling safe across garbage collections.
 
 `native-levels` owns LevelId, CampaignId, EntityId, Team, declarative definitions,
-and validation, split into metadata, entity, camera, grid, and mission definitions. It reuses
+and validation, split into metadata, entity, camera, grid, and logic definitions. It reuses
 the existing core vector type and shared rotation type through `native-core-headers`,
 with file/ASCII utilities supplied by core. Grid dimension rules live with the level definitions.
 Simulation depends on it and retains all runtime compilation/state.
 Teams and entity archetypes are enums parsed from LispB-defined spellings at input
 boundaries. Participating teams are derived from initial and scheduled entities. The shared `ioj::Team`
 enum is used throughout authoring and simulation; only Unreal properties use its reflected projection. Semantic validation
-checks references, expression and activation cycles, and numeric rules independently of AST parsing.
-Mission expressions use objective-local indices; only published outcomes can cross objective
-boundaries. Runtime compilation flattens parents, rules and reverse dependency references.
+checks references, expression cycles, and numeric rules independently of AST parsing.
+The `(logic ...)` authoring scope allocates stable expression, latch and timer handles.
+Lexical references share nodes. The scope emits a flat graph before AST materialization;
+runtime compilation resolves declaration references and orders combinational dependencies.
+Authored latch feedback cycles are currently rejected.
 Generated entity-ID counters use fixed team/archetype slots.
 Catalog validators receive only successfully decoded definitions, retaining original
 discovery indices and filesystem paths. Diagnostics distinguish `node_path` from
@@ -82,7 +84,7 @@ to lower case; round-tripping assumes those canonical decoded identifiers.
 The `s7_constructors` module derives ordinary Scheme constructors from record tags, including
 positional forms, plus `foo?`, `foo-ref`, and `foo-with`. Common Scheme helpers provide tag
 checks, property access and shallow functional updates. Tags and generated function names
-must be unique. Catalog and mission expression operators retain their specialized bindings.
+must be unique. Catalog and logic operators retain their specialized bindings.
 
 Settings constructors return records; `settings-layers` groups records in application order.
 `parse_settings` decodes them into a copy of a supplied `SettingsValues` configuration.
@@ -112,13 +114,13 @@ AST readers, Scheme file readers and serializers live under `s7/src/`. General a
 such as source sessions remains under `lib/src/`. The AST-only and
 interpreter-backed libraries retain their dependency boundaries.
 
-Ordinary records with matching script/domain layouts (camera, grid, campaign, team result)
-decode directly through generated companion readers. Level/entity/objective inputs remain
+Ordinary records with matching script/domain layouts (camera, grid and campaign)
+decode directly through generated companion readers. Level/entity inputs remain
 separate where decoding must precede ID assignment, layout conversion or graph construction.
 Generated readers mutate a local default-constructed value when available and stage members
 only when construction is necessary. Presence masks distinguish omissions independently of
-member values. Fixed positional readers handle named expressions, references, dependencies
-and unlock criteria. Expression recursion, leaf selection and reference resolution remain explicit.
+member values. Fixed positional readers handle unlock criteria. Logic graph decoding,
+leaf selection and reference resolution remain explicit.
 Record traversal and nested decoding append to the same diagnostic accumulator. Per-record
 presence masks detect duplicates within a layer; the combined mask checks required fields.
 

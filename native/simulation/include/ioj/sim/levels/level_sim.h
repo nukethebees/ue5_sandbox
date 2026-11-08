@@ -13,11 +13,11 @@
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_memory_manager.h>
 #include <ioj/sim/levels/level_read_access.h>
+#include <ioj/sim/levels/level_result.h>
 #include <ioj/sim/levels/level_sim_init_data.h>
 #include <ioj/sim/levels/level_spawn_manager.h>
 #include <ioj/sim/levels/level_state.h>
 #include <ioj/sim/levels/tick_player_ship_state.h>
-#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spinners/sim.h>
@@ -78,11 +78,11 @@ struct LevelSim {
     }
 
     /* **************************************** */
-    // Telemetry and mission results
+    // Telemetry and level results
     /* **************************************** */
     void finalize_telemetry_run(telemetry::RunEndReason reason);
     void stop_run(telemetry::RunEndReason reason);
-    auto player_team_completion() const -> std::optional<TeamMissionCompletion>;
+    auto result() const -> std::optional<LevelResult>;
     auto take_finalized_telemetry_run() -> std::optional<telemetry::RunRecord>;
 
     /* **************************************** */
@@ -100,7 +100,6 @@ struct LevelSim {
     auto spinners() const -> spinners::Sim const& { return spinners_simulation_; }
     auto entity_ledger() const -> EntityLedger const& { return entity_ledger_; }
     auto entity_tables() const -> EntityTables const& { return entity_tables_; }
-    auto mission() const -> Mission const& { return mission_; }
     auto expressions() const -> ExprManager const& { return expressions_; }
     auto events() const -> LevelEventManager const& { return event_manager_; }
     auto task_manager() const -> tasks::TaskManager const& { return task_manager_; }
@@ -171,7 +170,8 @@ struct LevelSim {
     spinners::Sim spinners_simulation_;
 
     tasks::TaskManager task_manager_;
-    Mission mission_;
+    Latches latches_;
+    std::optional<TerminalEvent> terminal_;
     ExprManager expressions_;
     Timers timers_;
     levels::LevelMetadata level_metadata_;

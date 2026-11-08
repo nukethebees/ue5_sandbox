@@ -7,7 +7,6 @@
 #include <ioj/sim/tasks/task_allocation_context.h>
 #include <ioj/sim/tasks/task_entity_count.h>
 #include <ioj/sim/tasks/task_id.h>
-#include <ioj/sim/tasks/task_planning_context.h>
 #include <ioj/team_array.h>
 
 #include <cassert>
@@ -17,13 +16,6 @@
 #include <memory_resource>
 #include <span>
 #include <vector>
-
-namespace ioj::sim {
-class Mission;
-class ExprManager;
-struct ExprLeaves;
-struct LeafHandle;
-}
 
 namespace ioj::sim::tasks {
 class TaskManager {
@@ -42,7 +34,6 @@ class TaskManager {
 
     // Invalidates custom task and instruction handles while retaining allocated storage.
     void reset();
-    void initialise(Mission const& mission, ExprManager const& expressions);
 
     /* **************************************** */
     // Task registration
@@ -70,24 +61,16 @@ class TaskManager {
     /* **************************************** */
     // Planning and allocation
     /* **************************************** */
-    void plan_tasks(TaskPlanningContext ctx);
     void allocate(TaskAllocationContext ctx);
 
   private:
-    [[nodiscard]] auto create_task(LeafHandle leaf,
-                                   ExprLeaves const& leaves,
-                                   std::span<EntityId const> entities) -> TaskId;
-
     // Immutable
     std::pmr::vector<Instruction> instructions_;
     InstructionData instruction_data_;
 
     std::pmr::vector<InstructionHandle> task_entries_;
-    std::pmr::vector<std::uint8_t> task_actionable_pass_leaves_;
-    std::pmr::vector<Team> task_leaf_teams_;
 
     // Mutable
-    std::pmr::vector<TaskId> leaf_tasks_;
     TeamArray<std::pmr::vector<TaskId>> active_tasks_;
     TeamEntityArray<Counts> task_entity_allocations_;
 };

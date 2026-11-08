@@ -2,19 +2,19 @@
 
 ; Index into shared leaf arrays across all leaf kinds within one ExprManager.
 ; Different expression managers may reuse the same index.
-(type mission_leaf_index
+(type expression_leaf_index
   :spelling "ioj::sim::LeafIndex"
   :header "ioj/sim/expressions/leaf_index.h"
   :pass-by value
   (integer :signed false :bit-width 28))
 
-(type mission_leaf_data_index
+(type expression_leaf_data_index
   :spelling "ioj::sim::LeafDataIndex"
   :header "ioj/sim/expressions/leaf_data_index.h"
   :pass-by value
   (integer :signed false :bit-width 24))
 
-(type mission_composite_index
+(type expression_composite_index
   :spelling "ioj::sim::ExprCompositeIndex"
   :header "ioj/sim/expressions/expr_composite_index.h"
   :pass-by value
@@ -346,27 +346,21 @@
 (type player_resolution_inputs
   :spelling "ResolutionInputs"
   :header "ioj/sim/player/phase_inputs.h")
-(type mission_objective_id
-  :spelling "ioj::sim::ObjectiveId"
-  :header "ioj/sim/missions/objective_id.h"
-  :pass-by value)
-(type objective_outcome
-  :spelling "ioj::ObjectiveOutcome"
-  :header "ioj/levels/objective_outcome.h"
-  :pass-by value)
-(type mission_leaf_kind
+
+
+(type expression_leaf_kind
   :spelling "ioj::sim::LeafKind"
   :header "ioj/sim/expressions/leaf_kind.h"
   :pass-by value)
-(type mission_leaf_handle
+(type expression_leaf_handle
   :spelling "ioj::sim::LeafHandle"
   :header "ioj/sim/expressions/leaf_handle.h"
   :pass-by value)
-(type mission_expr_kind
+(type expression_expr_kind
   :spelling "ioj::sim::ExprKind"
   :header "ioj/sim/expressions/expr_kind.h"
   :pass-by value)
-(type mission_composite_kind
+(type expression_composite_kind
   :spelling "ioj::sim::CompositeKind"
   :header "ioj/sim/expressions/composite_kind.h"
   :pass-by value)
@@ -384,21 +378,21 @@
 
 (type input_entity_id :spelling "ioj::levels::EntityId" :header "ioj/levels/identifiers.h")
 (type input_level_id :spelling "ioj::levels::LevelId" :header "ioj/levels/identifiers.h")
-(type input_objective_name :spelling "ioj::levels::ObjectiveName" :header "ioj/levels/objective_name.h")
+
 (type input_optional_health :spelling "std::optional<ioj::settings::PositiveHealth>" :header "ioj/settings/simulation_constraints.h")
 (type input_optional_nonnegative_int :spelling "std::optional<ioj::NonNegative<std::int32_t>>" :header "ioj/constrained_numbers.h")
 (type input_optional_delay :spelling "std::optional<ioj::NonNegativeFinite<float>>" :header "ioj/constrained_numbers.h")
 (type input_spawn_time :spelling "ioj::NonNegativeFinite<double>" :header "ioj/constrained_numbers.h")
 (type input_optional_float :spelling "std::optional<float>" :header "optional")
 (type input_optional_string :spelling "std::optional<std::string>" :header "optional")
-(type input_optional_expr :spelling "std::optional<ioj::levels::authoring::ExprInput>" :header "ioj/levels/authoring/expr_input.h")
-(type input_expr :spelling "ioj::levels::authoring::ExprInput" :header "ioj/levels/authoring/expr_input.h")
-(type input_named_exprs :spelling "std::vector<ioj::levels::authoring::NamedExprInput>" :header "ioj/levels/authoring/positional_inputs.h")
-(type input_dependencies :spelling "std::vector<ioj::levels::ObjectiveDependency>" :header "ioj/levels/objective_dependency.h")
-(type input_dependency :spelling "ioj::levels::ObjectiveDependency" :header "ioj/levels/objective_dependency.h")
-(type input_objectives :spelling "std::vector<ioj::levels::authoring::ObjectiveInput>" :header "vector")
+
+
+
+
+
+
 (type input_entities :spelling "std::vector<ioj::levels::authoring::EntityInput>" :header "vector")
-(type input_mission :spelling "std::optional<ioj::levels::authoring::MissionInput>" :header "optional")
+
 (type input_camera :spelling "std::optional<ioj::levels::LevelCameraDefinition>" :header "ioj/levels/level_camera_definition.h")
 (type input_unlocks :spelling "std::optional<std::vector<ioj::levels::authoring::UnlockInput>>" :header "ioj/levels/authoring/positional_inputs.h")
 (type input_settings :spelling "ioj::settings::Settings" :header "ioj/settings/settings.h")
@@ -486,3 +480,5 @@
   :pass-by value)
 
 (type nonnegative_int32_const_span :spelling "std::span<ioj::NonNegative<std::int32_t> const>" :header "ioj/constrained_numbers.h")
+
+(type input_logic :spelling "ioj::levels::LogicDefinition" :header "ioj/levels/logic_definition.h")

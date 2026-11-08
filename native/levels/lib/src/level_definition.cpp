@@ -1,6 +1,6 @@
 #include "validation.h"
 #include <ioj/ascii.h>
-#include <ioj/levels/mission_validation.h>
+#include <ioj/levels/logic_validation.h>
 
 #include <algorithm>
 #include <cassert>
@@ -43,10 +43,10 @@ auto LevelDefinition::make(LevelDefinitionComponents definition)
                                 "level.par-time",
                                 "Level par time must be finite and greater than zero");
         }
-        if (definition.player_entity_id.empty() || !definition.mission) {
+        if (definition.player_entity_id.empty()) {
             result.emplace_back(DiagnosticCode::UnexpectedParTime,
                                 "level.par-time",
-                                "Level par time requires a player-controlled mission");
+                                "Level par time requires a player-controlled level");
         }
     }
     detail::validate_collision_grid(definition.settings.collision_grid, result);
@@ -87,16 +87,10 @@ auto LevelDefinition::make(LevelDefinitionComponents definition)
     if (definition.camera) {
         detail::validate_camera(*definition.camera, entities, result);
     }
-    if (definition.mission) {
-        std::vector<EntityId> ids;
-        for (auto const& entity : definition.entities) {
-            ids.push_back(entity.id);
-        }
-        for (auto& message : validate_mission(*definition.mission, ids)) {
-            result.emplace_back(
-                DiagnosticCode::InvalidMissionStructure, "level.mission", std::move(message));
-        }
-    }
+    auto logic_errors{validate_logic(definition.logic, definition.entities)};
+    result.insert(result.end(),
+                  std::make_move_iterator(logic_errors.begin()),
+                  std::make_move_iterator(logic_errors.end()));
     if (!result.empty()) {
         return std::unexpected{std::move(result)};
     }

@@ -2,7 +2,6 @@
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
-#include <ioj/sim/missions/mission.h>
 
 #include <gtest/gtest.h>
 
@@ -19,19 +18,18 @@ struct ExpressionSamples {
 };
 
 auto sample(std::initializer_list<bool> const values) -> ExpressionSamples {
-    std::vector<levels::MissionExpr> nodes{{levels::AllExpr{}}, {levels::AnyExpr{}}};
+    std::vector<levels::Expression> nodes{{levels::AllExpr{}}, {levels::AnyExpr{}}};
     for (bool const value : values) {
         nodes.emplace_back(levels::AllExpr{.children = {value ? 0u : 1u}});
     }
 
     Timers timers;
     EntityLedger ledger;
-    Mission mission;
+    Latches latches;
     ExpressionSamples result;
     auto const compiled{result.expressions.append(nodes, {{}, {}, {}})};
-    result.handles.assign(compiled.handles.begin() + 2, compiled.handles.end());
-    result.expressions.activate(compiled.leaves, compiled.composites);
-    result.expressions.evaluate({ledger, timers, {}}, mission);
+    result.handles.assign(compiled.begin() + 2, compiled.end());
+    result.expressions.evaluate({ledger, timers, {}, latches, {}});
     return result;
 }
 

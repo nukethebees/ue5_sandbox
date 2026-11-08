@@ -34,7 +34,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     , capital_ships_simulation_{entity_tables_}
     , turrets_simulation_{entity_tables_}
     , spinners_simulation_{entity_tables_}
-    , mission_{std::move(data.mission)}
+    , latches_{std::move(data.latches)}
     , expressions_{std::move(data.expressions)}
     , timers_{std::move(data.timers)}
     , level_metadata_{std::move(data.level_metadata)}
@@ -83,10 +83,6 @@ void LevelSim::finish_initialisation() {
     clock_.advance_to(SimulationPhase::Thinking);
 
     level_telemetry_manager_.initialise();
-    mission_.reset_progress();
-    expressions_.reset_progress();
-    event_manager_.activate_trigger_expressions(expressions_);
-    task_manager_.initialise(mission_, expressions_);
 
     clock_.reset();
     state_ = LevelState::Paused;
@@ -139,19 +135,30 @@ void LevelSim::set_static_collision(std::span<collision::WorldAABB const> bounds
 }
 
 /* **************************************** */
-// Telemetry and mission results
+// Telemetry and level results
 /* **************************************** */
 void LevelSim::finalize_telemetry_run(telemetry::RunEndReason const reason) {
     level_telemetry_manager_.finalize(reason);
 }
 void LevelSim::stop_run(telemetry::RunEndReason const reason) {
-    level_telemetry_manager_.finalize(reason);
-    state_ = LevelState::Stopped;
+    if (state_ == LevelState::Stopped) {
+        return;
+    }
+    event_manager_.enqueue_stop(reason);
+    dispatch_tick_end_events();
 }
-auto LevelSim::player_team_completion() const -> std::optional<TeamMissionCompletion> {
-    auto const team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
-                                            : std::nullopt};
-    return mission_.team_completion(team);
+auto LevelSim::result() const -> std::optional<LevelResult> {
+    if (!terminal_) {
+        return std::nullopt;
+    }
+    auto const& definitions{event_manager_.data()};
+    auto const event{terminal_->event};
+    if (event.kind() == EventKind::Win) {
+        return LevelResult{*terminal_,
+                           definitions.win_events[event.index()],
+                           telemetry::RunEndReason::LevelCompleted};
+    }
+    return LevelResult{*terminal_, std::nullopt, definitions.stop_events[event.index()]};
 }
 
 auto LevelSim::take_finalized_telemetry_run() -> std::optional<telemetry::RunRecord> {
@@ -200,6 +207,9 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
 
 void LevelSim::dispatch_tick_end_events() {
     auto const& definitions{event_manager_.data()};
+    if (state_ == LevelState::Stopped) {
+        return;
+    }
     while (auto const event = event_manager_.consume_tick_end_event()) {
         switch (event->kind()) {
             case EventKind::StartTimer: {
@@ -207,11 +217,15 @@ void LevelSim::dispatch_tick_end_events() {
                 timers_.start(start.timer, start.duration);
                 break;
             }
-            case EventKind::MissionCompleted:
-                stop_run(telemetry::RunEndReason::MissionCompleted);
-                return;
+            case EventKind::PublishSignal:
+                event_manager_.publish(definitions.publish_events[event->index()]);
+                break;
+            case EventKind::Win:
             case EventKind::StopRun:
-                stop_run(definitions.stop_events[event->index()]);
+                terminal_ = TerminalEvent{*event, clock_.get_completed_ticks()};
+                level_telemetry_manager_.finalize(result()->reason);
+                state_ = LevelState::Stopped;
+                event_manager_.stop();
                 return;
             case EventKind::Pause:
                 state_ = LevelState::Paused;
@@ -311,9 +325,6 @@ void LevelSim::think_tick(float const tick_period,
 
     SANDBOX_PROFILE_SCOPE("Thinking");
     clock_.transition_to(SimulationPhase::Thinking);
-
-    task_manager_.plan_tasks(
-        {.expressions = expressions_, .entities = spawn_manager_.entity_ids()});
 
     spawn_manager_.queue_fighter_spawns(tick_period, phase_memory, participating_teams_);
 
@@ -462,34 +473,16 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
         }
 
         // Evaluate final health and deaths before invalidating row mappings.
-        SimTick const tick{clock_.completed_ticks.value() + 1};
+        latches_.commit();
         timers_.tick(SimTick{1});
-        expressions_.evaluate(
-            {
-                entity_ledger_,
-                timers_,
-                spawn_manager_.entity_ids(),
-                &collision_pipeline_.queries(),
-                &phase_memory,
-            },
-            mission_);
-        auto const was_completed{mission_.mission_completed()};
-        auto const changes{
-            mission_.evaluate({tick, &phase_memory, participating_teams_}, expressions_)};
-        if (!was_completed && mission_.mission_completed()) {
-            event_manager_.enqueue(EventHandle{0, EventKind::MissionCompleted});
-        }
-        auto const& objectives{mission_.objectives()};
-        for (auto const id : changes.completed) {
-            expressions_.deactivate(objectives.leaves(id), objectives.composites(id));
-        }
-        for (auto const id : changes.activated) {
-            expressions_.activate(objectives.leaves(id), objectives.composites(id));
-            // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- range depends on id.
-            for (auto const event : objectives.activation_events(id)) {
-                event_manager_.enqueue(event);
-            }
-        }
+        expressions_.evaluate({entity_ledger_,
+                               timers_,
+                               spawn_manager_.entity_ids(),
+                               latches_,
+                               event_manager_.signals(),
+                               &collision_pipeline_.queries(),
+                               &phase_memory});
+        latches_.evaluate(expressions_);
         event_manager_.collect_ready(expressions_);
     }
 

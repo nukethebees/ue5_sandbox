@@ -3,7 +3,6 @@
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spinners/sim.h>
@@ -26,12 +25,11 @@ auto replace(T& current, T next) -> bool {
 }
 }
 
-void HudModel::initialise(sim::Mission const& mission, sim::LevelReadAccess const view) {
+void HudModel::initialise(sim::LevelReadAccess const view) {
     deactivate();
     tick_loop_.initialise();
     std::array const periods{settings_.player_status_update_period,
-                             settings_.entity_count_update_period,
-                             settings_.mission_status_update_period};
+                             settings_.entity_count_update_period};
     for (auto const period : periods) {
         auto const ticks{std::ceil(period.get() * tick_loop_.tick_rate.hz())};
         if (ticks < 1 || ticks > std::numeric_limits<PeriodicTickCountdown8::counter_type>::max()) {
@@ -41,15 +39,12 @@ void HudModel::initialise(sim::Mission const& mission, sim::LevelReadAccess cons
             static_cast<PeriodicTickCountdown8::counter_type>(ticks)));
     }
     simulation_.emplace(view);
-    mission_ = &mission;
     top_killer_ids_.reserve(view.entity_ledger().num_unique_ids_issued());
     force_sample();
 }
 void HudModel::deactivate() {
     simulation_.reset();
-    mission_ = nullptr;
     update_timers_.reset();
-    mission_data_ = {};
     entity_count_data_ = {};
     kill_data_ = {};
     player_status_data_ = {};
@@ -65,7 +60,6 @@ auto HudModel::advance(double const delta_seconds) -> HudChanges {
     tick_loop_.add_time(delta_seconds);
     while (tick_loop_.try_tick()) {
         auto const next{tick(1)};
-        changes.mission |= next.mission;
         changes.entity_counts |= next.entity_counts;
         changes.player_status |= next.player_status;
         changes.player_flight |= next.player_flight;
@@ -89,20 +83,15 @@ auto HudModel::tick(PeriodicTickCountdown8::counter_type const num_ticks) -> Hud
         changes.entity_counts = collect_entity_count_data();
         collect_kill_data();
     }
-    if (update_timers_.try_consume(2)) {
-        changes.mission = collect_mission_data();
-    }
     return changes;
 }
 auto HudModel::force_sample() -> HudChanges {
     if (!active()) {
         return {};
     }
-    auto const mission{collect_mission_data()};
     auto const entity_counts{collect_entity_count_data()};
     collect_kill_data();
-    return {.mission = mission,
-            .entity_counts = entity_counts,
+    return {.entity_counts = entity_counts,
             .player_status = collect_player_status_data(),
             .player_flight = collect_player_flight_data(),
             .sampled_speed = player_for_collection() != nullptr};
@@ -114,9 +103,6 @@ auto HudModel::seconds_per_tick() const -> float {
     return static_cast<float>(tick_loop_.get_tick_period());
 }
 
-auto HudModel::has_mission_data() const -> bool {
-    return mission_ && mission_->objectives().size() != 0;
-}
 auto HudModel::display_batches() const -> std::array<AgentDisplayBatch, 4> {
     assert(simulation_);
     auto const& view{*simulation_};
@@ -149,24 +135,7 @@ auto HudModel::display_batches() const -> std::array<AgentDisplayBatch, 4> {
           turrets.teams()},
          {EntityType::TubeSpinner, spinners.entity_ids(), spinners.view_locations(), {}, {}, {}}}};
 }
-auto HudModel::collect_mission_data() -> bool {
-    assert(mission_);
-    MissionHudData next;
-    next.active = static_cast<std::int32_t>(mission_->active_objectives().size());
-    next.completed = static_cast<std::int32_t>(mission_->completed_objectives().size());
-    next.inactive = static_cast<std::int32_t>(mission_->inactive_objectives().size());
-    next.elapsed_seconds = simulation_->clock().simulation_time();
-    auto const& objectives{mission_->objectives()};
-    for (auto const id : mission_->active_objectives()) {
-        if (!next.active_titles.empty()) {
-            next.active_titles += " / ";
-        }
-        next.active_titles += to_string(objectives.team(id));
-        next.active_titles += ": ";
-        next.active_titles += objectives.title(id);
-    }
-    return hud_detail::replace(mission_data_, std::move(next));
-}
+
 auto HudModel::collect_entity_count_data() -> bool {
     return hud_detail::replace(
         entity_count_data_,

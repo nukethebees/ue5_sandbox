@@ -77,9 +77,8 @@ TEST(SchemeSerialization, CompleteLevelInputsPreserveAllAuthoredFields) {
             :health 789 :laser-damage 321 :spawn-at 30)
           (entity :id 'spinner :archetype 'tube-spinner :team 'white :position '(5000 0 0)
             :rotation '(0 45 0) :initial-fire-point 2))
-        :mission (mission :objectives (list
-          (objective :id 'destroy :team 'blue :wins-level 'yes
-            :pass (entity-destroyed 'turret))))))")};
+        :logic (logic
+          (on :when (entity-destroyed 'turret) :do (win 'blue)))))")};
     auto const encoded{emit_level_source(original)};
     EXPECT_EQ(encoded, emit_level_source(original));
     EXPECT_TRUE(s7::equivalent(decode_record<LevelInput>(encoded), original));

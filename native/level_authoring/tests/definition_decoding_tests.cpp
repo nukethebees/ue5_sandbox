@@ -26,8 +26,7 @@ constexpr char scheduled_level[]{R"(
   :id 'scheduled-example
   :title "Scheduled Example"
   :camera (camera :look-at '(hero) :distance 1000 :offset-direction '(-1 0 0))
-  :mission (mission :objectives (list
-    (objective :id 'primary :team 'blue :pass (entity-destroyed 'enemy))))
+  :logic (logic (on :when (entity-destroyed 'enemy) :do (win 'blue)))
   :entities (list
     (entity :id 'hero :archetype 'capital-ship :team 'blue
       :position '(0 0 0) :rotation '(0 0 0))
@@ -36,20 +35,18 @@ constexpr char scheduled_level[]{R"(
 )"};
 }
 
-TEST(S7LevelDefinition, DecodesScheduledSpawnsAndMissionObjectives) {
+TEST(S7LevelDefinition, DecodesScheduledSpawnsAndRules) {
     auto const result{DefinitionReader{}.read_level_source(scheduled_level)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(result->entities()[1].spawn_time_seconds, 1.25);
-    EXPECT_EQ(std::get<EntityDestroyedExpr>(result->mission()->objectives[0].expressions[0].payload)
-                  .entity,
+    EXPECT_EQ(std::get<EntityDestroyedExpr>(result->logic().expressions[0].payload).entity,
               EntityId{"enemy"});
 }
 
 TEST(S7LevelDefinition, DecodesPlayerMissionMetadataAndPlacement) {
     auto const result{DefinitionReader{}.read_level_source(R"(
       (level :id 'player-mission :title "Player Mission" :par-time 75.5 :player 'player
-        :mission (mission :objectives (list
-          (objective :id 'primary :team 'blue :pass (entity-destroyed 'enemy))))
+        :logic (logic (on :when (entity-destroyed 'enemy) :do (win 'blue)))
         :entities (list
           (entity :id 'player :archetype 'player-fighter :team 'blue
             :position '(100 200 300) :rotation '(0 45 0))
@@ -63,7 +60,7 @@ TEST(S7LevelDefinition, DecodesPlayerMissionMetadataAndPlacement) {
     EXPECT_EQ(result->player_entity_id(), EntityId{"player"});
     EXPECT_EQ(result->entity(EntityId{"player"}).position, (Vector3d{100., 200., 300.}));
     EXPECT_EQ(result->entity(EntityId{"player"}).rotation, (Rotator3d{0., 45., 0.}));
-    EXPECT_EQ(result->mission()->objectives[0].team, Team::Blue);
+    EXPECT_EQ(std::get<WinEffect>(result->logic().rules[0].effects[0]).team, Team::Blue);
 }
 
 TEST(S7LevelDefinition, DecodesPlayerlessCameraDefinition) {
@@ -77,36 +74,30 @@ TEST(S7LevelDefinition, DecodesPlayerlessCameraDefinition) {
     EXPECT_PRED_FORMAT2(ioj::testing::structurally_equal, settings::Settings{}, result->settings());
 }
 
-TEST(S7LevelDefinition, DecodesReciprocalTimedObjectives) {
-    auto const result{DefinitionReader{IOJ_LEVEL_SCRIPTS}.read_level_source(R"(
-      (load-script "Libraries/objectives.scm")
-      (level :id 'reciprocal :title "Reciprocal" :player 'player
-        :entities (list
-          (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
-        :mission (mission :objectives
-          (reciprocal-objectives 'attack 'defend 'blue 'red
-            (time-elapsed 45.5) (time-elapsed 60)))))")};
+TEST(S7LevelDefinition, LexicalHandlesPreserveSharingAndLatchedRace) {
+    auto const result{DefinitionReader{}.read_level_source(R"(
+      (level :id 'race :title "Race" :player 'player
+        :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
+        :logic (logic
+          (let* ((deadline (timer))
+                 (expired (timer-elapsed deadline))
+                 (alive (not-of (entity-destroyed 'player)))
+                 (race (latch :when expired :value alive)))
+            (initially (start-timer deadline 30))
+            (on :when (all-of expired (latched-true race)) :do (win 'blue))
+            (on :when (latched-false race) :do (win 'red))))))")};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
-    auto const& objectives{result->mission()->objectives};
-    ASSERT_EQ(objectives.size(), 2);
-    auto const& attack{objectives[0]};
-    auto const& defend{objectives[1]};
-    EXPECT_EQ(attack.team, Team::Blue);
-    EXPECT_EQ(attack.wins_level, ObjectiveWinsLevel::Yes);
-    EXPECT_EQ(defend.wins_level, ObjectiveWinsLevel::Yes);
-    EXPECT_EQ(std::get<TimeElapsedExpr>(
-                  attack.expressions[attack.roots[ObjectiveOutcome::Passed]].payload)
-                  .seconds.get(),
-              45.5);
-    EXPECT_EQ(defend.team, Team::Red);
-    EXPECT_EQ(std::get<ObjectiveResolvedExpr>(
-                  defend.expressions[defend.roots[ObjectiveOutcome::Passed]].payload)
-                  .objective,
-              (ObjectiveDependency{ObjectiveName{"attack"}, ObjectiveOutcome::Failed}));
-    EXPECT_EQ(std::get<ObjectiveResolvedExpr>(
-                  defend.expressions[defend.roots[ObjectiveOutcome::Failed]].payload)
-                  .objective,
-              (ObjectiveDependency{ObjectiveName{"attack"}, ObjectiveOutcome::Passed}));
+    auto const& logic{result->logic()};
+    EXPECT_EQ(logic.timer_count, 1);
+    ASSERT_EQ(logic.expressions.size(), 6);
+    ASSERT_EQ(logic.latches.size(), 1);
+    EXPECT_EQ(logic.latches[0].when, 0);
+    EXPECT_EQ(logic.latches[0].value, 2);
+    EXPECT_EQ(std::get<AllExpr>(logic.expressions[4].payload).children,
+              (std::vector<ExprIndex>{0, 3}));
+    ASSERT_EQ(logic.rules.size(), 2);
+    EXPECT_EQ(std::get<WinEffect>(logic.rules[0].effects[0]).team, Team::Blue);
+    EXPECT_EQ(std::get<WinEffect>(logic.rules[1].effects[0]).team, Team::Red);
 }
 
 TEST(S7LevelDefinition, DecodesDeclarativeUnlockCriteria) {

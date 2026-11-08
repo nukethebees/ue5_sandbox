@@ -15,14 +15,18 @@
 namespace ioj::levels {
 using ExprTypeUnderlying = std::uint8_t;
 
-// Logical bit width: 3.
+// Logical bit width: 4.
 enum class ExprType : ExprTypeUnderlying {
     All,
     Any,
+    Not,
+    Xor,
     EntityDestroyed,
     EntityReachedPosition,
-    TimeElapsed,
-    ObjectiveResolved,
+    TimerElapsed,
+    LatchedTrue,
+    LatchedFalse,
+    EventFired,
     EntityKillsReached,
 };
 
@@ -37,23 +41,38 @@ using ioj::to_serialized_string;
             if (value == "any-of") {
                 return ExprType::Any;
             }
+            if (value == "not-of") {
+                return ExprType::Not;
+            }
+            if (value == "xor-of") {
+                return ExprType::Xor;
+            }
+            return std::nullopt;
+        }
+        case 11ULL: {
+            if (value == "event-fired") {
+                return ExprType::EventFired;
+            }
             return std::nullopt;
         }
         case 12ULL: {
-            if (value == "time-elapsed") {
-                return ExprType::TimeElapsed;
+            if (value == "latched-true") {
+                return ExprType::LatchedTrue;
+            }
+            return std::nullopt;
+        }
+        case 13ULL: {
+            if (value == "timer-elapsed") {
+                return ExprType::TimerElapsed;
+            }
+            if (value == "latched-false") {
+                return ExprType::LatchedFalse;
             }
             return std::nullopt;
         }
         case 16ULL: {
             if (value == "entity-destroyed") {
                 return ExprType::EntityDestroyed;
-            }
-            return std::nullopt;
-        }
-        case 18ULL: {
-            if (value == "objective-resolved") {
-                return ExprType::ObjectiveResolved;
             }
             return std::nullopt;
         }
@@ -75,11 +94,11 @@ using ioj::to_serialized_string;
     }
 }
 
-inline constexpr std::array<ExprType, 2ULL> expr_type_composite_values{ExprType::All,
-                                                                       ExprType::Any};
+inline constexpr std::array<ExprType, 4ULL> expr_type_composite_values{
+    ExprType::All, ExprType::Any, ExprType::Not, ExprType::Xor};
 
 [[nodiscard]] constexpr auto is_composite(ExprType const value) noexcept -> bool {
-    return value <= ExprType::Any;
+    return value <= ExprType::Xor;
 }
 
 } // namespace ioj::levels
@@ -93,16 +112,20 @@ template <>
 struct EnumTraits<levels::ExprType> {
     static constexpr std::array values{levels::ExprType::All,
                                        levels::ExprType::Any,
+                                       levels::ExprType::Not,
+                                       levels::ExprType::Xor,
                                        levels::ExprType::EntityDestroyed,
                                        levels::ExprType::EntityReachedPosition,
-                                       levels::ExprType::TimeElapsed,
-                                       levels::ExprType::ObjectiveResolved,
+                                       levels::ExprType::TimerElapsed,
+                                       levels::ExprType::LatchedTrue,
+                                       levels::ExprType::LatchedFalse,
+                                       levels::ExprType::EventFired,
                                        levels::ExprType::EntityKillsReached};
 };
 
 template <>
-inline constexpr auto enum_strings<levels::ExprType, Serialized>{
-    PackedStrings{"all-of\000any-of\000entity-destroyed\000entity-reached-position\000time-"
-                  "elapsed\000objective-resolved\000entity-kills-reached",
-                  std::array<std::uint8_t, 8>{0, 7, 14, 31, 55, 68, 87, 108}}};
+inline constexpr auto enum_strings<levels::ExprType, Serialized>{PackedStrings{
+    "all-of\000any-of\000not-of\000xor-of\000entity-destroyed\000entity-reached-position\000timer-"
+    "elapsed\000latched-true\000latched-false\000event-fired\000entity-kills-reached",
+    std::array<std::uint8_t, 12>{0, 7, 14, 21, 28, 45, 69, 83, 96, 110, 122, 143}}};
 } // namespace ioj

@@ -5,8 +5,8 @@
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
-#include <ioj/sim/missions/mission.h>
 #include <ioj/vector_value_math.h>
 #include <ioj/vectors3f.h>
 
@@ -20,7 +20,7 @@ struct ExpressionVisit {
     std::size_t next_child{};
 };
 
-auto expression_order(std::span<levels::MissionExpr const> const expressions)
+auto expression_order(std::span<levels::Expression const> const expressions)
     -> std::vector<levels::ExprIndex> {
     auto const count{expressions.size()};
     std::vector<levels::ExprIndex> order;
@@ -75,26 +75,37 @@ auto destroyed(EntityId const id,
 /* **************************************** */
 // Compilation
 /* **************************************** */
-auto ExprManager::append(std::span<levels::MissionExpr const> const expressions,
-                         ExprCompilationContext const& ctx) -> Compilation {
+auto ExprManager::append(std::span<levels::Expression const> const expressions,
+                         ExprCompilationContext const& ctx) -> std::vector<ExprHandle> {
     auto& leaves{leaves_};
     auto& composites{composites_};
     auto size = [](auto const& values) { return static_cast<std::uint32_t>(values.size()); };
-    Compilation compiled;
-    compiled.leaves.offset = static_cast<LeafIndex>(leaves.num_leaves());
-    compiled.composites.offset = size(composites.results);
-    compiled.handles.resize(expressions.size());
-    auto& references{compiled.handles};
+    std::vector<ExprHandle> references(expressions.size());
     auto const order{expr_compilation_detail::expression_order(expressions)};
     for (auto const index : order) {
         auto const& expression{expressions[index]};
         if (is_composite(expression.type())) {
             ExprCompositeIndex const composite{size(composites.results)};
-            auto const kind{expression.type() == levels::ExprType::All ? CompositeKind::All
-                                                                       : CompositeKind::Any};
+            CompositeKind kind{};
+            switch (expression.type()) {
+                case levels::ExprType::All:
+                    kind = CompositeKind::All;
+                    break;
+                case levels::ExprType::Any:
+                    kind = CompositeKind::Any;
+                    break;
+                case levels::ExprType::Not:
+                    kind = CompositeKind::Not;
+                    break;
+                case levels::ExprType::Xor:
+                    kind = CompositeKind::Xor;
+                    break;
+                default:
+                    std::unreachable();
+            }
 
             references[index] = ExprHandle::make_data_composite(kind, composite);
-            composites.results.push_back(ExprResult::Pending);
+            composites.results.push_back(false);
             composites.kinds.push_back(kind);
 
             // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- select this expression's children.
@@ -108,7 +119,7 @@ auto ExprManager::append(std::span<levels::MissionExpr const> const expressions,
         }
 
         auto const leaf{static_cast<LeafIndex>(leaves.num_leaves())};
-        leaves.results.push_back(ExprResult::Pending);
+        leaves.results.push_back(false);
 
         LeafKind kind{};
         LeafDataIndex data_index{};
@@ -134,26 +145,35 @@ auto ExprManager::append(std::span<levels::MissionExpr const> const expressions,
                 break;
             }
 
-            case levels::ExprType::TimeElapsed: {
-                kind = LeafKind::TimeElapsed;
+            case levels::ExprType::TimerElapsed: {
+                kind = LeafKind::TimerElapsed;
                 data_index = static_cast<LeafDataIndex>(leaves.timers.size());
-                assert(index < ctx.timers.size());
-                auto const timer{ctx.timers[index]};
+                auto const timer_index{
+                    std::get<levels::TimerElapsedExpr>(expression.payload).timer};
+                auto const timer{ctx.timers[timer_index]};
                 assert(timer.is_valid());
                 leaves.timers.push_back(timer);
                 break;
             }
 
-            case levels::ExprType::ObjectiveResolved: {
-                auto const& condition{std::get<levels::ObjectiveResolvedExpr>(expression.payload)};
-                kind = LeafKind::ObjectiveResolved;
-                data_index = static_cast<LeafDataIndex>(leaves.observed_objectives.size());
-                auto const observed{ctx.objectives.at(condition.objective.objective)};
-
-                leaves.observed_objectives.push_back(observed);
-                leaves.observed_outcomes.push_back(condition.objective.outcome);
+            case levels::ExprType::LatchedTrue:
+                kind = LeafKind::LatchedTrue;
+                data_index = size(leaves.true_latches);
+                leaves.true_latches.emplace_back(
+                    std::get<levels::LatchedTrueExpr>(expression.payload).latch);
                 break;
-            }
+            case levels::ExprType::LatchedFalse:
+                kind = LeafKind::LatchedFalse;
+                data_index = size(leaves.false_latches);
+                leaves.false_latches.emplace_back(
+                    std::get<levels::LatchedFalseExpr>(expression.payload).latch);
+                break;
+            case levels::ExprType::EventFired:
+                kind = LeafKind::EventFired;
+                data_index = size(leaves.signals);
+                leaves.signals.push_back(
+                    ctx.signals.at(std::get<levels::EventFiredExpr>(expression.payload).signal));
+                break;
 
             case levels::ExprType::EntityKillsReached: {
                 auto const& condition{std::get<levels::EntityKillsReachedExpr>(expression.payload)};
@@ -177,88 +197,36 @@ auto ExprManager::append(std::span<levels::MissionExpr const> const expressions,
 
         references[index] = ExprHandle::make_data_leaf(LeafHandle{leaf, kind});
         leaves.data_handles.emplace_back(data_index, kind);
+        leaves.runs[kind].emplace_back(leaf, kind);
     }
 
-    compiled.leaves.count = static_cast<LeafIndex>(leaves.num_leaves()) - compiled.leaves.offset;
-    compiled.composites.count = size(composites.results) - compiled.composites.offset;
-    return compiled;
+    return references;
 }
 auto ExprManager::add_timer_elapsed(TimerHandle const timer) -> ExprHandle {
     assert(timer.is_valid());
     auto const leaf{static_cast<LeafIndex>(leaves_.num_leaves())};
     auto const data{static_cast<LeafDataIndex>(leaves_.timers.size())};
     leaves_.timers.push_back(timer);
-    leaves_.results.push_back(ExprResult::Pending);
-    leaves_.data_handles.emplace_back(data, LeafKind::TimeElapsed);
-    return ExprHandle::make_data_leaf(LeafHandle{leaf, LeafKind::TimeElapsed});
+    leaves_.results.push_back(false);
+    leaves_.data_handles.emplace_back(data, LeafKind::TimerElapsed);
+    leaves_.runs[LeafKind::TimerElapsed].emplace_back(leaf, LeafKind::TimerElapsed);
+    return ExprHandle::make_data_leaf(LeafHandle{leaf, LeafKind::TimerElapsed});
 }
 
 /* **************************************** */
 // Lifecycle
 /* **************************************** */
-void ExprManager::reset_progress() {
-    leaves_.reset_progress();
-    composites_.reset_progress();
-}
-void ExprManager::activate(ExprHandle const root) {
-    visit_expression_tree(root, [&](ExprHandle const node) {
-        if (node.kind() == ExprKind::Leaf) {
-            activate({node.data_leaf().index(), 1}, {});
-        } else {
-            activate({}, {node.data_composite_index(), 1});
-        }
-    });
-
-    std::ranges::sort(leaves_.active);
-    leaves_.active.erase(std::unique(leaves_.active.begin(), leaves_.active.end()),
-                         leaves_.active.end());
-    std::ranges::sort(composites_.active);
-    composites_.active.erase(std::unique(composites_.active.begin(), composites_.active.end()),
-                             composites_.active.end());
-}
-void ExprManager::deactivate(ExprHandle const root) {
-    visit_expression_tree(root, [&](ExprHandle const node) {
-        if (node.kind() == ExprKind::Leaf) {
-            deactivate({node.data_leaf().index(), 1}, {});
-        } else {
-            deactivate({}, {node.data_composite_index(), 1});
-        }
-    });
-}
-void ExprManager::activate(IndexSpan const leaves, IndexSpan const composites) {
-    auto const leaves_end{leaves.end()};
-    for (LeafIndex leaf{leaves.start()}; leaf < leaves_end; ++leaf) {
-        auto const data_handle{leaves_.data_handles[leaf]};
-        leaves_.active.emplace_back(leaf, data_handle.kind());
-    }
-
-    auto const composites_end{composites.end()};
-    for (ExprCompositeIndex index{composites.start()}; index < composites_end; ++index) {
-        composites_.active.push_back(index);
-    }
-}
-void ExprManager::deactivate(IndexSpan const leaves, IndexSpan const composites) {
-    remove_at_swap_if(leaves_.active, [&](LeafHandle const handle) {
-        auto const index{handle.index()};
-        return index >= leaves.start() && index < leaves.end();
-    });
-    std::erase_if(composites_.active, [&](ExprCompositeIndex const index) {
-        return index >= composites.start() && index < composites.end();
-    });
-}
-void ExprManager::evaluate(ExprEvaluationContext const& inputs, Mission const& mission) {
-    std::ranges::sort(leaves_.active);
-    evaluate_leaves(inputs, mission);
+void ExprManager::evaluate(ExprEvaluationContext const& inputs) {
+    std::ranges::fill(leaves_.results, std::uint8_t{});
+    evaluate_leaves(inputs);
     evaluate_composites();
 }
 
 /* **************************************** */
 // Inspection
 /* **************************************** */
-auto ExprManager::result(ExprHandle const expression) const -> ExprResult {
-    if (!expression.is_valid()) {
-        return ExprResult::False;
-    }
+auto ExprManager::result(ExprHandle const expression) const -> bool {
+    assert(expression.is_valid());
 
     auto const leaf{expression.kind() == ExprKind::Leaf};
     auto const& results{leaf ? leaves_.results : composites_.results};
@@ -271,81 +239,59 @@ auto ExprManager::result(ExprHandle const expression) const -> ExprResult {
 // Composite evaluation
 /* **************************************** */
 void ExprManager::evaluate_composites() {
-    for (auto const index : composites_.active) {
-        auto const all{composites_.kinds[index] == CompositeKind::All};
-        auto const decisive{all ? ExprResult::False : ExprResult::True};
-        auto value{all ? ExprResult::True : ExprResult::False};
-
-        auto const children{composites_.child_ranges[index]};
-        auto const children_end{children.end()};
-
-        for (auto child{children.start()}; child < children_end; ++child) {
-            auto const child_result{result(composites_.children[child])};
-            if (child_result == decisive) {
-                value = decisive;
-                break;
-            }
-
-            if (child_result == ExprResult::Pending) {
-                value = ExprResult::Pending;
+    auto const count{composites_.results.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const kind{composites_.kinds[index]};
+        auto const range{composites_.child_ranges[index]};
+        auto const children{std::span{composites_.children}.subspan(range.offset, range.count)};
+        bool value{kind == CompositeKind::All};
+        if (kind == CompositeKind::Not) {
+            value = !result(children.front());
+        } else {
+            for (auto const child : children) {
+                auto const operand{result(child)};
+                switch (kind) {
+                    case CompositeKind::All:
+                        value &= operand;
+                        break;
+                    case CompositeKind::Any:
+                        value |= operand;
+                        break;
+                    case CompositeKind::Xor:
+                        value ^= operand;
+                        break;
+                    default:
+                        std::unreachable();
+                }
             }
         }
-
         composites_.results[index] = value;
     }
-
-    std::erase_if(composites_.active, [&](ExprCompositeIndex const index) {
-        return composites_.results[index] != ExprResult::Pending;
-    });
 }
 
-/* **************************************** */
-// Leaf evaluation
-/* **************************************** */
-void ExprManager::resolve_leaf(LeafIndex const index, ExprResult const value) {
-    assert(value != ExprResult::Pending);
-    leaves_.results[index] = value;
-}
-void ExprManager::evaluate_leaves(ExprEvaluationContext const& inputs, Mission const& mission) {
-    auto const scheduled{std::span<LeafHandle const>{leaves_.active}};
-    assert(std::ranges::is_sorted(scheduled));
-
-    auto const count{scheduled.size()};
-    std::size_t first{};
-
-    while (first < count) {
-        auto const kind{scheduled[first].kind()};
-        auto end{first + 1};
-        while (end < count && scheduled[end].kind() == kind) {
-            ++end;
-        }
-
-        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- select the current leaf kind's range.
-        auto const run{scheduled.subspan(first, end - first)};
-        switch (kind) {
-            case LeafKind::EntityDestroyed:
-                evaluate_destroyed(run, inputs);
-                break;
-            case LeafKind::TimeElapsed:
-                evaluate_elapsed(run, inputs);
-                break;
-            case LeafKind::ObjectiveResolved:
-                evaluate_resolved(run, mission);
-                break;
-            case LeafKind::EntityKillsReached:
-                evaluate_kills(run, inputs);
-                break;
-            case LeafKind::EntityReachedPosition:
-                evaluate_reached_position(run, inputs);
-                break;
-        }
-        first = end;
+void ExprManager::evaluate_leaves(ExprEvaluationContext const& inputs) {
+    evaluate_destroyed(leaves_.runs[LeafKind::EntityDestroyed], inputs);
+    evaluate_elapsed(leaves_.runs[LeafKind::TimerElapsed], inputs);
+    evaluate_kills(leaves_.runs[LeafKind::EntityKillsReached], inputs);
+    auto const& positions{leaves_.runs[LeafKind::EntityReachedPosition]};
+    if (!positions.empty()) {
+        evaluate_reached_position(positions, inputs);
     }
-
-    // Stop evaluating resolved leaves on later ticks; retain their results.
-    remove_at_swap_if(leaves_.active, [&](LeafHandle const handle) {
-        return leaves_.results[handle.index()] != ExprResult::Pending;
-    });
+    for (auto const handle : leaves_.runs[LeafKind::LatchedTrue]) {
+        auto const index{handle.index()};
+        leaves_.results[index] =
+            inputs.latches.latched_true(leaves_.true_latches[leaves_.data_handles[index].index()]);
+    }
+    for (auto const handle : leaves_.runs[LeafKind::LatchedFalse]) {
+        auto const index{handle.index()};
+        leaves_.results[index] = inputs.latches.latched_false(
+            leaves_.false_latches[leaves_.data_handles[index].index()]);
+    }
+    for (auto const handle : leaves_.runs[LeafKind::EventFired]) {
+        auto const index{handle.index()};
+        leaves_.results[index] =
+            inputs.signals[leaves_.signals[leaves_.data_handles[index].index()].index()];
+    }
 }
 void ExprManager::evaluate_destroyed(std::span<LeafHandle const> const run,
                                      ExprEvaluationContext const& inputs) {
@@ -358,7 +304,7 @@ void ExprManager::evaluate_destroyed(std::span<LeafHandle const> const run,
         auto const id{expr_evaluation_detail::entity(inputs, leaves.destroyed_entities[data])};
 
         if (id.is_valid() && expr_evaluation_detail::destroyed(id, inputs.ledger, life_states)) {
-            resolve_leaf(leaf, ExprResult::True);
+            leaves_.results[leaf] = true;
         }
     }
 }
@@ -370,21 +316,7 @@ void ExprManager::evaluate_elapsed(std::span<LeafHandle const> const run,
         auto const leaf{handle.index()};
         auto const data{leaves.data_handles[leaf].index()};
         if (inputs.timers.elapsed(leaves.timers[data])) {
-            resolve_leaf(leaf, ExprResult::True);
-        }
-    }
-}
-void ExprManager::evaluate_resolved(std::span<LeafHandle const> const run, Mission const& mission) {
-    auto const& leaves{leaves_};
-
-    for (auto const handle : run) {
-        auto const leaf{handle.index()};
-        auto const data{leaves.data_handles[leaf].index()};
-        auto const observed_outcome{mission.outcome(leaves.observed_objectives[data], *this)};
-        if (observed_outcome) {
-            resolve_leaf(leaf,
-                         *observed_outcome == leaves.observed_outcomes[data] ? ExprResult::True
-                                                                             : ExprResult::False);
+            leaves_.results[leaf] = true;
         }
     }
 }
@@ -406,7 +338,7 @@ void ExprManager::evaluate_kills(std::span<LeafHandle const> const run,
         }
 
         if (kills >= leaves.kill_targets[data]) {
-            resolve_leaf(leaf, ExprResult::True);
+            leaves_.results[leaf] = true;
         }
     }
 }
@@ -433,7 +365,7 @@ void ExprManager::evaluate_reached_position(std::span<LeafHandle const> const ru
         }
 
         if (expr_evaluation_detail::destroyed(id, inputs.ledger, life_states)) {
-            resolve_leaf(leaf, ExprResult::False);
+            leaves_.results[leaf] = false;
         } else {
             ids[live_count] = id;
             live_leaves[live_count++] = leaf;
@@ -455,7 +387,7 @@ void ExprManager::evaluate_reached_position(std::span<LeafHandle const> const ru
         Vector3d const position_double{position.x(), position.y(), position.z()};
 
         if (size_squared(position_double - target) <= leaves.radius_squared[data]) {
-            resolve_leaf(leaf, ExprResult::True);
+            leaves_.results[leaf] = true;
         }
     }
 }

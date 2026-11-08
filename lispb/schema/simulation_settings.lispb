@@ -74,7 +74,6 @@
     :generate-s7-reader true :generate-s7-writer true :s7-tag "hud"
     (member player_status_update_period @settings_nonnegative_float :initializer 0.25f)
     (member entity_count_update_period @settings_nonnegative_float :initializer 0.25f)
-    (member mission_status_update_period @settings_nonnegative_float :initializer 0.25f)
     (projections (cpp))))
 
 (module settings_values

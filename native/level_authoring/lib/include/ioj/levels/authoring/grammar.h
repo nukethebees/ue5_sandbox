@@ -6,7 +6,6 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
-#include "ioj/parse_enum.h"
 
 #include <array>
 #include <cstdint>
@@ -16,7 +15,7 @@
 namespace ioj::levels::authoring {
 using PropertyUnderlying = std::uint8_t;
 
-// Logical bit width: 6.
+// Logical bit width: 5.
 enum class Property : PropertyUnderlying {
     Id,
     Title,
@@ -26,14 +25,7 @@ enum class Property : PropertyUnderlying {
     Unlock,
     Player,
     Camera,
-    Mission,
-    Objectives,
-    Nodes,
-    Pass,
-    Fail,
-    Expire,
-    DependsOn,
-    WinsLevel,
+    Logic,
     Entities,
     Settings,
     Levels,
@@ -68,12 +60,6 @@ using ioj::to_serialized_string;
             return std::nullopt;
         }
         case 4ULL: {
-            if (value == "pass") {
-                return Property::Pass;
-            }
-            if (value == "fail") {
-                return Property::Fail;
-            }
             if (value == "path") {
                 return Property::Path;
             }
@@ -86,8 +72,8 @@ using ioj::to_serialized_string;
             if (value == "title") {
                 return Property::Title;
             }
-            if (value == "nodes") {
-                return Property::Nodes;
+            if (value == "logic") {
+                return Property::Logic;
             }
             if (value == "value") {
                 return Property::Value;
@@ -102,12 +88,6 @@ using ioj::to_serialized_string;
                 case 'c': {
                     if (value == "camera") {
                         return Property::Camera;
-                    }
-                    return std::nullopt;
-                }
-                case 'e': {
-                    if (value == "expire") {
-                        return Property::Expire;
                     }
                     return std::nullopt;
                 }
@@ -141,9 +121,6 @@ using ioj::to_serialized_string;
             }
         }
         case 7ULL: {
-            if (value == "mission") {
-                return Property::Mission;
-            }
             if (value == "look-at") {
                 return Property::LookAt;
             }
@@ -205,15 +182,6 @@ using ioj::to_serialized_string;
             return std::nullopt;
         }
         case 10ULL: {
-            if (value == "objectives") {
-                return Property::Objectives;
-            }
-            if (value == "depends-on") {
-                return Property::DependsOn;
-            }
-            if (value == "wins-level") {
-                return Property::WinsLevel;
-            }
             if (value == "level-size") {
                 return Property::LevelSize;
             }
@@ -267,32 +235,6 @@ inline constexpr MinMax<levels::authoring::Property> enum_range<levels::authorin
 } // namespace ioj
 
 namespace ioj::levels::authoring {
-using ExpressionSyntaxUnderlying = std::uint8_t;
-
-// Logical bit width: 1.
-enum class ExpressionSyntax : ExpressionSyntaxUnderlying {
-    Definition,
-    Reference,
-};
-
-using ioj::to_serialized_string;
-[[nodiscard]] constexpr auto
-    try_parse_serialized_expression_syntax(std::string_view const value) noexcept
-    -> std::optional<ExpressionSyntax> {
-    std::array<std::string_view, 2> constexpr names{"expr", "expr-ref"};
-    return try_parse_enum<ExpressionSyntax>(value, names);
-}
-
-} // namespace ioj::levels::authoring
-
-namespace ioj {
-template <>
-inline constexpr MinMax<levels::authoring::ExpressionSyntax>
-    enum_range<levels::authoring::ExpressionSyntax>{levels::authoring::ExpressionSyntax::Definition,
-                                                    levels::authoring::ExpressionSyntax::Reference};
-} // namespace ioj
-
-namespace ioj::levels::authoring {
 using RecordKindUnderlying = std::uint8_t;
 
 // Logical bit width: 4.
@@ -303,10 +245,9 @@ enum class RecordKind : RecordKindUnderlying {
     IncludedLevel,
     IncludedCampaign,
     Entity,
-    Mission,
+    Logic,
     Camera,
     CollisionGrid,
-    Objective,
     LevelCompleted,
 };
 
@@ -318,6 +259,68 @@ namespace ioj {
 template <>
 inline constexpr MinMax<levels::authoring::RecordKind> enum_range<levels::authoring::RecordKind>{
     levels::authoring::RecordKind::Level, levels::authoring::RecordKind::LevelCompleted};
+} // namespace ioj
+
+namespace ioj::levels::authoring {
+using EffectSyntaxUnderlying = std::uint8_t;
+
+// Logical bit width: 3.
+enum class EffectSyntax : EffectSyntaxUnderlying {
+    Win,
+    Stop,
+    Publish,
+    Spawn,
+    StartTimer,
+};
+
+using ioj::to_serialized_string;
+[[nodiscard]] constexpr auto
+    try_parse_serialized_effect_syntax(std::string_view const value) noexcept
+    -> std::optional<EffectSyntax> {
+    switch (value.size()) {
+        case 3ULL: {
+            if (value == "win") {
+                return EffectSyntax::Win;
+            }
+            return std::nullopt;
+        }
+        case 4ULL: {
+            if (value == "stop") {
+                return EffectSyntax::Stop;
+            }
+            return std::nullopt;
+        }
+        case 5ULL: {
+            if (value == "spawn") {
+                return EffectSyntax::Spawn;
+            }
+            return std::nullopt;
+        }
+        case 7ULL: {
+            if (value == "publish") {
+                return EffectSyntax::Publish;
+            }
+            return std::nullopt;
+        }
+        case 11ULL: {
+            if (value == "start-timer") {
+                return EffectSyntax::StartTimer;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
+        }
+    }
+}
+
+} // namespace ioj::levels::authoring
+
+namespace ioj {
+template <>
+inline constexpr MinMax<levels::authoring::EffectSyntax>
+    enum_range<levels::authoring::EffectSyntax>{levels::authoring::EffectSyntax::Win,
+                                                levels::authoring::EffectSyntax::StartTimer};
 
 template <>
 struct EnumTraits<levels::authoring::Property> {
@@ -329,14 +332,7 @@ struct EnumTraits<levels::authoring::Property> {
                                        levels::authoring::Property::Unlock,
                                        levels::authoring::Property::Player,
                                        levels::authoring::Property::Camera,
-                                       levels::authoring::Property::Mission,
-                                       levels::authoring::Property::Objectives,
-                                       levels::authoring::Property::Nodes,
-                                       levels::authoring::Property::Pass,
-                                       levels::authoring::Property::Fail,
-                                       levels::authoring::Property::Expire,
-                                       levels::authoring::Property::DependsOn,
-                                       levels::authoring::Property::WinsLevel,
+                                       levels::authoring::Property::Logic,
                                        levels::authoring::Property::Entities,
                                        levels::authoring::Property::Settings,
                                        levels::authoring::Property::Levels,
@@ -363,29 +359,31 @@ struct EnumTraits<levels::authoring::Property> {
 template <>
 inline constexpr auto enum_strings<levels::authoring::Property, Serialized>{PackedStrings{
     "id\000title\000description\000par-time\000collision-"
-    "grid\000unlock\000player\000camera\000mission\000objectives\000nodes\000pass\000fail\000expire"
-    "\000depends-on\000wins-"
-    "level\000entities\000settings\000levels\000campaigns\000path\000value\000error\000level-"
-    "size\000cell-size\000look-at\000distance\000offset-"
+    "grid\000unlock\000player\000camera\000logic\000entities\000settings\000levels\000campaigns\000"
+    "path\000value\000error\000level-size\000cell-size\000look-at\000distance\000offset-"
     "direction\000archetype\000team\000position\000rotation\000spawn-at\000health\000laser-"
     "damage\000initial-spawn-delay\000spawn-cooldown",
-    std::array<std::uint16_t, 38>{0,   3,   9,   21,  30,  45,  52,  59,  66,  74,  85,  91,  96,
-                                  101, 108, 119, 130, 139, 148, 155, 165, 170, 176, 182, 193, 203,
-                                  211, 220, 237, 247, 252, 261, 270, 279, 286, 299, 319, 334}}};
+    std::array<std::uint16_t, 31>{0,   3,   9,   21,  30,  45,  52,  59,  66,  72,  81,
+                                  90,  97,  107, 112, 118, 124, 135, 145, 153, 162, 179,
+                                  189, 194, 203, 212, 221, 228, 241, 261, 276}}};
 
 template <>
-struct EnumTraits<levels::authoring::ExpressionSyntax> {
-    static constexpr std::array values{levels::authoring::ExpressionSyntax::Definition,
-                                       levels::authoring::ExpressionSyntax::Reference};
+inline constexpr auto enum_strings<levels::authoring::RecordKind, Serialized>{
+    PackedStrings{"level\000campaign\000catalog\000included-level\000included-"
+                  "campaign\000entity\000logic\000camera\000collision-grid\000level-completed",
+                  std::array<std::uint8_t, 11>{0, 6, 15, 23, 38, 56, 63, 69, 76, 91, 107}}};
+
+template <>
+struct EnumTraits<levels::authoring::EffectSyntax> {
+    static constexpr std::array values{levels::authoring::EffectSyntax::Win,
+                                       levels::authoring::EffectSyntax::Stop,
+                                       levels::authoring::EffectSyntax::Publish,
+                                       levels::authoring::EffectSyntax::Spawn,
+                                       levels::authoring::EffectSyntax::StartTimer};
 };
 
 template <>
-inline constexpr auto enum_strings<levels::authoring::ExpressionSyntax, Serialized>{
-    PackedStrings{"expr\000expr-ref", std::array<std::uint8_t, 3>{0, 5, 14}}};
-
-template <>
-inline constexpr auto enum_strings<levels::authoring::RecordKind, Serialized>{PackedStrings{
-    "level\000campaign\000catalog\000included-level\000included-"
-    "campaign\000entity\000mission\000camera\000collision-grid\000objective\000level-completed",
-    std::array<std::uint8_t, 12>{0, 6, 15, 23, 38, 56, 63, 71, 78, 93, 103, 119}}};
+inline constexpr auto enum_strings<levels::authoring::EffectSyntax, Serialized>{
+    PackedStrings{"win\000stop\000publish\000spawn\000start-timer",
+                  std::array<std::uint8_t, 6>{0, 4, 9, 17, 23, 35}}};
 } // namespace ioj

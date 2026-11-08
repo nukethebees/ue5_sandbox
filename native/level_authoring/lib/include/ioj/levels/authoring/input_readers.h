@@ -1,8 +1,7 @@
 #pragma once
 
-#include <ioj/levels/authoring/expr_input.h>
 #include <ioj/levels/authoring/identifier_reader.h>
-#include <ioj/levels/objective_dependency_reader.h>
+#include <ioj/levels/logic_definition.h>
 #include <ioj/s7/raw_node.h>
 #include <ioj/settings/settings.h>
 #include <ioj/settings/settings_values_reader.h>
@@ -25,9 +24,9 @@ struct TypeReader<ReadResult<T>> {
 };
 
 template <>
-struct TypeReader<levels::authoring::ExprInput> {
+struct TypeReader<levels::LogicDefinition> {
     static auto read(Reader const& reader, NodeIndex node, std::string_view path)
-        -> ReadResult<levels::authoring::ExprInput>;
+        -> ReadResult<levels::LogicDefinition>;
 };
 
 }

@@ -56,7 +56,7 @@
   (enum RunEndReason @native_uint8
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
-    (value MissionCompleted :value "0" :serialized-name "mission_completed")
+    (value LevelCompleted :value "0" :serialized-name "level_completed")
     (value BattleResolved :value "1" :serialized-name "battle_resolved")
     (value DurationReached :value "2" :serialized-name "duration_reached")
     (value OrchestratorReset :value "3" :serialized-name "orchestrator_reset")

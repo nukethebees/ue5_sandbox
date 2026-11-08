@@ -12,7 +12,7 @@ struct SimulationScenario {
 
     LevelSimInitData runtime;
     std::vector<levels::EntitySpawnDefinition> entities;
-    std::optional<levels::MissionDefinition> mission;
+    levels::LogicDefinition logic;
 };
 auto make_fixture() -> SimulationFixture;
 auto make_simulation_data(SimulationFixture const& fixture) -> LevelSimInitData;

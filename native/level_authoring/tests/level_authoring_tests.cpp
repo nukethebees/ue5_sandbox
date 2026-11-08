@@ -418,7 +418,7 @@ TEST(NativeLevelAuthoringReader, IntegerFieldsRequireExactInt32Values) {
     }
 }
 
-TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithMissionsAndSparseSettings) {
+TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithLogicAndSparseSettings) {
     auto const level{DefinitionReader{}.read_level_source(R"(
       (let ((distance (* 2 500)))
         (level :id 'generated-records :title "Generated records"
@@ -428,57 +428,43 @@ TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithMissionsAndSparseSet
             (settings :fighters (fighters :speed 9000)
                       :collision-grid (collision-grid :cell-size '(5000 5000 5000)))
             (settings :fighters (fighters :speed 2000)))
-          :mission (mission :objectives (list
-            (objective :id 'wait :team 'blue :pass (time-elapsed 1)))))))")};
+          :logic (logic
+            (define delay (timer))
+            (initially (start-timer delay 1))
+            (on :when (timer-elapsed delay) :do (win 'blue))))))")};
     ASSERT_TRUE(level) << format_diagnostics(level.error());
     std::optional<LevelCameraDefinition> const camera{{{EntityId{"capital"}}, {-1, 0, 1}, 1000}};
     settings::Settings const expected{.collision_grid = {.cell_size = {5000, 5000, 5000}}};
     EXPECT_PRED_FORMAT2(structurally_equal, camera, level->camera());
     EXPECT_PRED_FORMAT2(structurally_equal, expected, level->settings());
-    ASSERT_TRUE(level->mission());
-    ASSERT_EQ(level->mission()->objectives.size(), 1u);
-    EXPECT_EQ(level->mission()->objectives.front().id, ObjectiveName{"wait"});
+    ASSERT_EQ(level->logic().rules.size(), 1u);
+    EXPECT_EQ(std::get<WinEffect>(level->logic().rules[0].effects[0]).team, Team::Blue);
 }
 
-TEST(NativeLevelAuthoringReader, DecodesTypedInputsBeforeResolvingReferencesOrGeneratingIds) {
+TEST(NativeLevelAuthoringReader, DecodesGraphInputsBeforeResolvingReferences) {
     s7::Interpreter interpreter;
     auto ast{interpreter.evaluate_ast(R"('(:level :id typed :title "Typed"
       :entities ((:entity :archetype capital-ship :team blue :position (1 2 3)))
-      :mission (:mission :objectives ((:objective :id wait :team blue
-        :pass (:expr-ref later)
-        :nodes ((:named-expr later (:time-elapsed 1))))))))")};
+      :logic (:logic ((:entity-destroyed missing)) () 0 () () ((0 ((:win blue)))))))")};
     ASSERT_TRUE(ast);
     auto const input{s7::read<LevelInput>(s7::Reader{*ast}, ast->root, "level")};
     ASSERT_TRUE(input);
-    std::vector<EntityInput> const expected{
-        {.archetype = EntityArchetype::CapitalShip, .team = Team::Blue, .position = {1, 2, 3}}};
-    EXPECT_PRED_FORMAT2(structurally_equal, expected, input->entities);
-    auto const& objective{input->mission->objectives[0]};
-    EXPECT_EQ(objective.pass->reference, ObjectiveName{"later"});
-    ASSERT_EQ(objective.nodes.size(), 1u);
-    EXPECT_EQ(std::get<TimeElapsedExpr>(objective.nodes[0].value.expression.payload).seconds.get(),
-              1);
-
-    // Decoding does not require a viewpoint or resolve even an unknown expression name.
-    auto unresolved{interpreter.evaluate_ast(R"('(:level :id unknown :title "Unknown"
-      :mission (:mission :objectives ((:objective :id wait :team blue
-        :pass (:expr-ref missing))))))")};
-    ASSERT_TRUE(unresolved);
-    EXPECT_TRUE(s7::read<LevelInput>(s7::Reader{*unresolved}, unresolved->root, "level"));
-    auto const processed{parse_level(*unresolved, unresolved->root)};
-    ASSERT_FALSE(processed);
-    EXPECT_TRUE(has_code(processed.error(), DiagnosticCode::UnknownSymbol));
+    EXPECT_EQ(std::get<EntityDestroyedExpr>(input->logic.expressions[0].payload).entity,
+              EntityId{"missing"});
+    auto const processed{parse_level(*ast, ast->root)};
+    EXPECT_FALSE(processed);
 }
 
-TEST(NativeLevelAuthoringReader, RejectsMalformedInputBeforeProcessingSymbolicReferences) {
-    auto const result{DefinitionReader{}.read_level_source(R"(
-      (level :id 'invalid :title "Invalid"
-        :mission (mission :objectives (list
-          (objective :id 'wait :team 'unknown :pass (expr-ref 'missing))))))")};
-    ASSERT_FALSE(result);
-    ASSERT_EQ(result.error().size(), 1u);
-    EXPECT_EQ(result.error()[0].code, DiagnosticCode::UnsupportedTeam);
-    EXPECT_EQ(result.error()[0].node_path, "level.mission.objectives[0].team");
+TEST(NativeLevelAuthoringReader, RejectsForeignHandlesAndRestoresLogicScope) {
+    DefinitionReader reader;
+    for (auto const body :
+         {"(define saved #f) (logic (set! saved (all-of))) (logic (on :when saved :do (stop)))",
+          "(logic (on :when 0 :do (stop)))",
+          "(logic (on :when (timer) :do (stop)))",
+          "(entity-destroyed 'player)"}) {
+        EXPECT_FALSE(reader.read_level_source(body));
+    }
+    EXPECT_TRUE(reader.read_level_source(minimal_source()));
 }
 
 TEST(NativeLevelAuthoringReader, FloatFieldsRejectNonfiniteAndUnrepresentableValues) {
@@ -503,27 +489,27 @@ TEST(NativeLevelAuthoringReader, FloatFieldsRejectNonfiniteAndUnrepresentableVal
     }
 }
 
-TEST(NativeLevelAuthoringReader, RejectsInvalidMissionNumbersAndNamedReferences) {
-    for (auto const expression : {"(time-elapsed 1)",
-                                  "(time-elapsed -1)",
-                                  "(entity-reached-position 'player '(0 +inf.0 0) 1)",
-                                  "(entity-reached-position 'player '(0 0 0) -1)",
-                                  "(expr-ref 'missing)",
-                                  "(expr-ref 'node)"}) {
-        SCOPED_TRACE(expression);
-        auto const result{DefinitionReader{}.read_level_source(std::format(R"(
-          (level :id 'mission :title "Mission" :player 'player
-            :entities (list
-              (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
-            :mission (mission :objectives (list
-              (objective :id 'a :team 'blue :nodes (list (named-expr 'node {}))
-                :pass (expr-ref 'node))))))",
-                                                                           expression))};
-        EXPECT_EQ(result.has_value(), std::string_view{expression} == "(time-elapsed 1)");
-        if (std::string_view{expression} == "(expr-ref 'node)") {
-            ASSERT_FALSE(result);
-            EXPECT_TRUE(has_code(result.error(), DiagnosticCode::InvalidMissionStructure));
-        }
+TEST(NativeLevelAuthoringReader, RejectsInvalidLogicNumbersAndReferences) {
+    for (auto const body : {"(define delay (timer)) (initially (start-timer delay -1))",
+                            "(entity-reached-position 'player '(0 +inf.0 0) 1)",
+                            "(entity-reached-position 'player '(0 0 0) -1)",
+                            "(entity-destroyed 'missing)",
+                            "(event-fired 'never-published)"}) {
+        auto source{minimal_source()};
+        source.insert(source.size() - 1, std::format(" :logic (logic {})", body));
+        EXPECT_FALSE(DefinitionReader{}.read_level_source(source)) << body;
+    }
+}
+
+TEST(NativeLevelAuthoringReader, RejectsCombinationalCyclesAndAuthoredLatchFeedback) {
+    for (auto const graph : {"(:logic ((:all-of 1) (:not-of 0)) () 0 () () ())",
+                             "(:logic ((:latched-true 0)) ((0 0)) 0 () () ())",
+                             "(:logic ((:not-of)) () 0 () () ())"}) {
+        auto source{minimal_source()};
+        source.insert(source.size() - 1, std::format(" :logic '{}", graph));
+        auto const result{DefinitionReader{}.read_level_source(source)};
+        ASSERT_FALSE(result);
+        EXPECT_TRUE(has_code(result.error(), DiagnosticCode::InvalidLogicStructure));
     }
 }
 
