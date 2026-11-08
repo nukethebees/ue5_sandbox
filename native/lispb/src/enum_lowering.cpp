@@ -891,6 +891,10 @@ class EnumLowering : public CppIRBuilder {
                                   EnumUnrealProjectionId const projection) -> Nodes {
         auto const& projections{ctx.declarations.enum_unreal_projections};
         auto const name{ctx.text(projections.name[projection])};
+        auto const namespace_name{projections.namespace_name[projection]};
+        auto const qualified_name{namespace_name ? ctx.text(*namespace_name) + "::" + name
+                                                 : "::" + name};
+        auto const enum_type{named_type(qualified_name, NameOrigin::global)};
         auto const underlying{
             intern_type(unreal_underlying_type(type_spelling(enum_underlying_type(ctx, schema))))};
         auto const& enums{ctx.declarations.enums};
@@ -902,43 +906,44 @@ class EnumLowering : public CppIRBuilder {
             enumeration(projections.name[projection], underlying, enum_values(ctx, schema, true)),
             2);
         decls.add(using_declaration(store_text(name + "Underlying"), underlying), 2);
-        decls.append(group_declarations(ctx,
-                                        schema,
-                                        named_type("::" + name, NameOrigin::global),
-                                        projections.name[projection]));
-        decls.append(enum_range_declaration(ctx, schema, named_type("::" + name)));
-        decls.new_lines(2);
-        if (projections.enum_array[projection]) {
-            decls.add(namespace_node(
-                store_text("ioj"),
-                {enum_count_specialization(named_type("::" + name), enums.values[schema].size())}));
+        decls.append(group_declarations(ctx, schema, enum_type, projections.name[projection]));
+        auto result{node_list()};
+        if (namespace_name) {
+            result.add(namespace_node(*namespace_name, decls.build()), 2);
+        } else {
+            result.append(decls.build());
         }
-        return decls.build();
+        result.append(enum_range_declaration(ctx, schema, enum_type));
+        result.new_lines(2);
+        if (projections.enum_array[projection]) {
+            result.add(namespace_node(
+                store_text("ioj"),
+                {enum_count_specialization(enum_type, enums.values[schema].size())}));
+        }
+        return result.build();
     }
     auto native_conversion_function(LoweringContext& ctx,
                                     std::string_view const function_name,
-                                    std::string const& source,
-                                    std::string const& target,
+                                    CppTypeId const source,
+                                    CppTypeId const target,
                                     std::span<EnumeratorId const> const values) -> NodeId {
         auto const& enumerators{ctx.declarations.enumerators};
         std::vector<SwitchCaseId> cases;
         cases.reserve(values.size());
         for (auto const value : values) {
             auto const name{ctx.text(enumerators.name[value])};
-            cases.push_back(
-                switch_case(scope_member(named_type(source), name),
-                            block({return_stmt(scope_member(named_type(target), name))})));
+            cases.push_back(switch_case(scope_member(source, name),
+                                        block({return_stmt(scope_member(target, name))})));
         }
 
-        auto const target_type{named_type(target)};
         auto body{node_list()};
         body.add(switch_stmt(named("value"), cases), 2);
-        body.add(return_stmt(static_cast_expr(target_type, named("value"))));
+        body.add(return_stmt(static_cast_expr(target, named("value"))));
         FunctionDefinition const function{
             .name = this->name(function_name),
-            .return_type = target_type,
+            .return_type = target,
             .return_syntax = ReturnSyntax::trailing,
-            .parameters = {parameter(decorate_type(named_type(source), "", " const"), "value")},
+            .parameters = {parameter(decorate_type(source, "", " const"), "value")},
             .implementation = {.kind = FunctionImplementationKind::body, .body = body.build()},
             .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
             .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true}};
@@ -950,24 +955,27 @@ class EnumLowering : public CppIRBuilder {
                                   EnumUnrealProjectionId const projection) -> NodeId {
         auto const native_name{native_enum_name(ctx, settings, schema)};
         auto const& projections{ctx.declarations.enum_unreal_projections};
-        auto const projection_name{ctx.text(projections.name[projection])};
+        auto const namespace_name{projections.namespace_name[projection]};
+        auto const projection_name{namespace_name ? ctx.text(*namespace_name) + "::" +
+                                                        ctx.text(projections.name[projection])
+                                                  : "::" + ctx.text(projections.name[projection])};
+        auto const native_type{named_type(native_name, NameOrigin::global)};
+        auto const projection_type{named_type(projection_name, NameOrigin::global)};
         auto const& enums{ctx.declarations.enums};
         auto const values{ctx.declarations.items(enums.values[schema])};
 
         auto decls{node_list()};
         decls.add(
-            native_conversion_function(ctx, "to_native", projection_name, native_name, values), 2);
+            native_conversion_function(ctx, "to_native", projection_type, native_type, values), 2);
         decls.add(
-            native_conversion_function(ctx, "to_unreal", native_name, projection_name, values), 2);
+            native_conversion_function(ctx, "to_unreal", native_type, projection_type, values), 2);
         auto const& enumerators{ctx.declarations.enumerators};
         for (auto const value : values) {
             auto const name{ctx.text(enumerators.name[value])};
-            decls.add(static_assertion(
-                          binary(BinaryOperator::equal,
-                                 static_cast_expr(std_types().int_,
-                                                  scope_member(named_type(projection_name), name)),
-                                 static_cast_expr(std_types().int_,
-                                                  scope_member(named_type(native_name), name)))),
+            decls.add(static_assertion(binary(
+                          BinaryOperator::equal,
+                          static_cast_expr(std_types().int_, scope_member(projection_type, name)),
+                          static_cast_expr(std_types().int_, scope_member(native_type, name)))),
                       1);
         }
         return namespace_node(store_text("ioj"), decls.build());

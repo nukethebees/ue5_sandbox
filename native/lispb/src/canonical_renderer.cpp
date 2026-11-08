@@ -125,6 +125,9 @@ auto CanonicalRenderer::build_enum_unreal_projection(
     codegen::EnumUnrealProjectionId const projection) -> Expr {
     auto const& projections{store_.enum_unreal_projections};
     auto result{ir_.form("unreal-projection", {ir_.atom(projections.name[projection])})};
+    result.optional_field("namespace", projections.namespace_name[projection], [this](auto value) {
+        return ir_.atom(value);
+    });
     result.field("header", ir_.string(projections.header[projection]))
         .field("header-include", ir_.string(projections.header_include[projection]))
         .field("conversion-header", ir_.string(projections.conversion_header[projection]))

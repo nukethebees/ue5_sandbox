@@ -1125,7 +1125,7 @@ TEST(Validation, ValidatesOptionalPresenceBitSourceAndSharedNames) {
     EXPECT_THROW(lower_test_manifest(ctx, manifest), std::invalid_argument);
 }
 
-TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
+TEST(Validation, ValidatesEnumModuleConfiguration) {
     CompilerTestContext ctx;
     auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
@@ -1135,6 +1135,8 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
     auto module{valid_enum_module(ctx)};
     auto settings_row{module_settings_store.index(normal_modules.settings[module])};
     module_settings_store.namespace_name[settings_row] = strings.intern("project");
+    EXPECT_NO_THROW(lower_test_manifest(ctx, manifest_with(ctx, module)));
+    module_settings_store.namespace_name[settings_row] = strings.intern("project::");
     expect_invalid_module(ctx, module);
 
     module = valid_enum_module(ctx);

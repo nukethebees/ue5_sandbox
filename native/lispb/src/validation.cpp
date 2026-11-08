@@ -661,6 +661,10 @@ class Validator {
             auto const projection{*enums.unreal_projection[schema]};
             require_identifier(text(projections.name[projection]),
                                enum_context + " Unreal projection name");
+            if (auto const namespace_name{projections.namespace_name[projection]}) {
+                require_qualified_identifier(*namespace_name,
+                                             enum_context + " Unreal projection namespace");
+            }
             require_value(text(projections.header[projection]),
                           enum_context + " Unreal projection header");
             require_value(text(projections.header_include[projection]),
@@ -700,13 +704,6 @@ class Validator {
             (!enums.conversions[schema].empty() || (enums.export_specifier[schema].value != 0))) {
             throw std::invalid_argument{"Native enum '" + name +
                                         "' cannot use Unreal enum generation options"};
-        }
-        if (enums.reflection[schema] != EnumReflection::none &&
-            declarations_.module_settings_store
-                .namespace_name[declarations_.normal_modules.settings[module]]
-                .has_value()) {
-            throw std::invalid_argument{"Reflected enum '" + name +
-                                        "' must be declared at global scope"};
         }
         if (enums.values[schema].empty()) {
             throw std::invalid_argument{enum_context + " must have values"};

@@ -12,6 +12,7 @@ auto EnumUnrealProjections::index(EnumUnrealProjectionId id) const -> std::uint3
 auto EnumUnrealProjections::append() -> EnumUnrealProjectionId {
     auto const index{static_cast<std::uint32_t>(name.size())};
     name.push_back({});
+    namespace_name.push_back({});
     header.push_back({});
     header_include.push_back({});
     conversion_header.push_back({});
@@ -25,6 +26,7 @@ auto EnumUnrealProjections::clone(EnumUnrealProjectionId id) -> EnumUnrealProjec
     auto const result{append()};
     auto const destination{index(result)};
     name[destination] = name[source_index];
+    namespace_name[destination] = namespace_name[source_index];
     header[destination] = header[source_index];
     header_include[destination] = header_include[source_index];
     conversion_header[destination] = conversion_header[source_index];
@@ -35,6 +37,7 @@ auto EnumUnrealProjections::clone(EnumUnrealProjectionId id) -> EnumUnrealProjec
 }
 void EnumUnrealProjections::clear() {
     name.clear();
+    namespace_name.clear();
     header.clear();
     header_include.clear();
     conversion_header.clear();

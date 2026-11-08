@@ -142,6 +142,8 @@ order from zero through count minus one; gaps, aliases, negative codes, hidden v
 sentinels are rejected. Explicit numeric initializers are allowed. Other enums can remain sparse
 and do not expose the array count API. Unreal projections select their count helper separately
 with `:enum-array true` inside `unreal-projection`; it is not inherited from the native enum.
+Set `:namespace` on `unreal-projection` to place the reflected enum in a C++ namespace;
+the generated conversions and enum helpers use that namespace too.
 
 See [Semantic type graph](SEMANTIC_TYPE_GRAPH.md) for the shared resolved model consumed by code
 generation and layout tooling. See [ARCHITECTURE.md](ARCHITECTURE.md) for the shared generation

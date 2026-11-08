@@ -6,6 +6,7 @@
 #include <lispb/indices.h>
 
 #include <cstdint>
+#include <optional>
 
 namespace lispb::codegen {
 
@@ -20,6 +21,7 @@ struct EnumUnrealProjections {
     void clear();
 
     Column<StringId> name;
+    Column<std::optional<StringId>> namespace_name;
     Column<StringId> header;
     Column<StringId> header_include;
     Column<StringId> conversion_header;

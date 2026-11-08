@@ -499,7 +499,8 @@ auto SchemaParser::parse_enum_unreal_projection(Declarations& declarations,
                                                 sexpr::FormId const form)
     -> EnumUnrealProjectionId {
     Fields const fields{parser_, form, "unreal-projection", 1};
-    fields.validate({P::header,
+    fields.validate({P::namespace_,
+                     P::header,
                      P::header_include,
                      P::conversion_header,
                      P::native_header_include,
@@ -516,6 +517,7 @@ auto SchemaParser::parse_enum_unreal_projection(Declarations& declarations,
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "Unreal projection name");
+    records.namespace_name[record_index] = optional_identifier(fields, P::namespace_);
     records.header[record_index] =
         parser_.text_id(fields.required(P::header), "Unreal projection header");
     records.header_include[record_index] =

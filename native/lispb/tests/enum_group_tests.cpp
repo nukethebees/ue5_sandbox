@@ -141,22 +141,43 @@ INSTANTIATE_TEST_SUITE_P(
                     ":enum-array true :ordering manual (value One :value 2 :groups (A))"));
 
 TEST(EnumGroups, UnrealProjectionAndConversionsShareOrderedValues) {
-    CompilerTestContext ctx;
-    auto const files{render_test_manifest(ctx, parse_test_manifest(ctx, R"(
+    for (auto const projection_namespace : {"", ":namespace ioj::game"}) {
+        CompilerTestContext ctx;
+        auto const manifest{parse_test_manifest(ctx,
+                                                std::format(R"(
       (module test :header "Test.h" :namespace test
         (enum Example std::uint8_t :native-api true :helpers () :ordering (selected)
           (value Other) (value First :groups (selected)) (value Last :groups (selected))
-          (projections (cpp) (unreal-projection EExample :header "UE.h"
+          (projections (cpp) (unreal-projection EExample {} :header "UE.h"
             :header-include "UE.h" :conversion-header "Conversions.h"
-            :native-header-include "Test.h" :enum-array true)))))"))};
-    ASSERT_EQ(files.size(), 3U);
-    for (auto const& file : files) {
-        if (file.path.filename() == "Test.h" || file.path.filename() == "UE.h") {
-            EXPECT_LT(file.content.find("First,"), file.content.find("Other"));
-            EXPECT_NE(file.content.find("is_selected"), std::string::npos);
-            auto const array_name{file.path.filename() == "Test.h" ? "example_selected_values"
-                                                                   : "e_example_selected_values"};
-            EXPECT_NE(file.content.find(array_name), std::string::npos);
+            :native-header-include "Test.h" :enum-array true)))))",
+                                                            projection_namespace))};
+        auto const files{render_test_manifest(ctx, manifest)};
+        ASSERT_EQ(files.size(), 3U);
+        for (auto const& file : files) {
+            if (file.path.filename() == "Test.h" || file.path.filename() == "UE.h") {
+                EXPECT_LT(file.content.find("First,"), file.content.find("Other"));
+                EXPECT_NE(file.content.find("is_selected"), std::string::npos);
+                auto const array_name{file.path.filename() == "Test.h"
+                                          ? "example_selected_values"
+                                          : "e_example_selected_values"};
+                EXPECT_NE(file.content.find(array_name), std::string::npos);
+            }
+            if (*projection_namespace != '\0' && file.path.filename() == "UE.h") {
+                EXPECT_NE(file.content.find("namespace ioj::game"), std::string::npos);
+            }
+            if (*projection_namespace != '\0' && file.path.filename() == "Conversions.h") {
+                EXPECT_NE(file.content.find("game::EExample"), std::string::npos);
+            }
+        }
+        auto const canonical{
+            schema::render_module_source(ctx.storage.declarations, manifest.modules.front())};
+        CompilerTestContext roundtrip;
+        auto const regenerated{
+            render_test_manifest(roundtrip, parse_test_manifest(roundtrip, canonical))};
+        ASSERT_EQ(regenerated.size(), files.size());
+        for (std::size_t i{}; i < files.size(); ++i) {
+            EXPECT_EQ(regenerated[i].content, files[i].content);
         }
     }
 }

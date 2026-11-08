@@ -493,7 +493,7 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
     expect_contains_all(conversion_header,
                         {"#include \"fixture/NativeEnum.h\"\n"
                          "#include \"Project/NativeState.h\"",
-                         "static_assert(static_cast<int>(ENativeState::Active) == "
+                         "static_assert(static_cast<int>(::ENativeState::Active) == "
                          "static_cast<int>(::fixture::NativeState::Active));"});
 }
 
