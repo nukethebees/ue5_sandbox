@@ -1,7 +1,6 @@
 #include <SpaceGame/ships/player/PlayerModalUi.h>
 
-#include <ioj/sim/missions/mission.h>
-#include <SpaceGame/missions/MissionCompletion.h>
+#include <SpaceGame/levels/LevelCompletion.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/system/GameSubsystem.h>
@@ -130,7 +129,7 @@ auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner,
     return true;
 }
 auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
-                                     FMissionCompletion const& completion,
+                                     FLevelCompletion const& completion,
                                      ioj::sim::telemetry::Snapshot snapshot) -> bool {
     if (!has_root()) {
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));
@@ -138,7 +137,7 @@ auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
     }
     completion_menu_ = root_->show_level_completion(completion.level_display_name,
                                                     completion.state,
-                                                    completion.objective_id,
+                                                    completion.end_reason,
                                                     MoveTemp(snapshot),
                                                     completion.par_time_seconds,
                                                     completion.new_best_time);

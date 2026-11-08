@@ -4,7 +4,6 @@
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
-#include <ioj/sim/missions/mission.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>

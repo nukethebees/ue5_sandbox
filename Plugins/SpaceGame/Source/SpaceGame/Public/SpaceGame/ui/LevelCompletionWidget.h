@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ioj/sim/telemetry/snapshot.h"
-#include "SpaceGame/missions/MissionOutcome.h"
+#include "SpaceGame/levels/LevelOutcome.h"
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
@@ -22,8 +22,8 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     ULevelCompletionWidget();
 
     void prepare_for_open(FString level_display_name,
-                          EMissionOutcome state,
-                          FString const& objective_id,
+                          ELevelOutcome state,
+                          FString const& end_reason,
                           sim::telemetry::Snapshot snapshot,
                           TOptional<float> par_time_seconds = NullOpt,
                           bool new_best_time = false);
@@ -56,8 +56,8 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     void publish_report();
 
     FString level_display_name_{};
-    EMissionOutcome mission_state_{EMissionOutcome::Victory};
-    FString objective_id_{};
+    ELevelOutcome mission_state_{ELevelOutcome::Victory};
+    FString end_reason_{};
     sim::telemetry::Snapshot stats_snapshot_{};
     TOptional<float> par_time_seconds_{};
     TSharedPtr<SLevelCompletionView> view_{};

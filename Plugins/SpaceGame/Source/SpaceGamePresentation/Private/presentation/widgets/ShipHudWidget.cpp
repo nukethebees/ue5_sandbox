@@ -5,7 +5,6 @@
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SpaceGamePresentation/presentation/widgets/DebugGraphWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ForceStatusWidget.h"
-#include "SpaceGamePresentation/presentation/widgets/MissionStatusWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHealthWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipPointsWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipSpeedWidget.h"
@@ -173,8 +172,7 @@ void UShipHudWidget::set_common_widget_properties() {
                              ship_velocity_widget,
                              target_velocity_widget,
                              control_mode_widget,
-                             flight_mode_widget,
-                             mission_status_panel);
+                             flight_mode_widget);
 }
 
 void UShipHudWidget::apply_ui_style(ioj::FGameUiStyle const& style) {

@@ -1,7 +1,6 @@
 #include <SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h>
 
 #include <SpaceGamePresentation/presentation/widgets/ForceStatusWidget.h>
-#include <SpaceGamePresentation/presentation/widgets/MissionStatusWidget.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
 
 #include <SandboxUI/EntityOverlay/SEntityOverlayWidget.h>
@@ -96,9 +95,6 @@ void USimulationHudWidget::apply_ui_style(ioj::FGameUiStyle const& style) {
     if (force_status_widget) {
         force_status_widget->apply_hud_style(hud_style);
     }
-    if (mission_status_panel) {
-        mission_status_panel->apply_hud_style(hud_style);
-    }
     apply_entity_overlay_colours();
 }
 
@@ -111,12 +107,6 @@ void USimulationHudWidget::set_entity_counts(ioj::sim::telemetry::EntityCounts c
 void USimulationHudWidget::set_entity_colours(UTestTeamVisualData::FColourArray const& colours) {
     if (force_status_widget) {
         force_status_widget->set_team_colours(colours);
-    }
-}
-
-void USimulationHudWidget::set_mission_data(ioj::presentation::MissionHudData const& data) {
-    if (mission_status_panel) {
-        mission_status_panel->set_mission_data(data);
     }
 }
 

@@ -146,7 +146,7 @@ auto collect_s7_editor_input(ULevel const& level, AS7LevelAuthoringDocument cons
     }
     auto& input{*baseline};
     input.entities.clear();
-    input.mission.reset();
+    input.logic = {};
     input.player = {};
     input.camera.reset();
     TMap<AActor const*, levels::EntityId> ids;

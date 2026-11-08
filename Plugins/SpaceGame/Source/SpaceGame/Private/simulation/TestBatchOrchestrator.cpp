@@ -340,7 +340,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         presentation_host_.initialise(resources.config,
                                       resources.player,
                                       level_simulation_->read_access(),
-                                      level_simulation_->mission(),
                                       level_simulation_->spatial_query_manager());
         if (IsValid(player_ship)) {
             if (auto* const controller{
@@ -354,7 +353,13 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         start_mode == EOrchestratorStartMode::Automatic ||
         start_mode == EOrchestratorStartMode::AuthoredLevel ||
         (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting)};
-    if (automatic && launch_options_.launch_mode == ioj::levels::LaunchMode::Running) {
+    if (level_simulation_->result()) {
+        ioj::publish_level_completion(*level_simulation_, GetGameInstance(), on_level_completed);
+        ioj::persist_finalized_level_telemetry_run(
+            *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
+    }
+    if (automatic && launch_options_.launch_mode == ioj::levels::LaunchMode::Running &&
+        level_simulation_->state() == ioj::sim::LevelState::Paused) {
         level_simulation_->start();
     }
     SetActorTickEnabled(true);
@@ -476,16 +481,10 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             }
         }
 
-        if (clk.get_completed_ticks() != previous_tick) {
-            auto const& mission{level_simulation_->mission()};
-            for (auto const& completion : mission.completions()) {
-                if (completion.outcome == ioj::MissionOutcome::Victory &&
-                    completion.tick > previous_tick) {
-                    ioj::publish_mission_completion(
-                        *level_simulation_, GetGameInstance(), on_mission_completed);
-                    break;
-                }
-            }
+        if (auto const result{level_simulation_->result()};
+            result && result->terminal.tick > previous_tick) {
+            ioj::publish_level_completion(
+                *level_simulation_, GetGameInstance(), on_level_completed);
         }
         ioj::persist_finalized_level_telemetry_run(
             *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());

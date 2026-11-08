@@ -244,9 +244,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                          "    :entities (append (level-ref base :entities)\n"
                          "      (list (entity :id 'human :archetype 'capital-ship :team 'red\n"
                          "        :position '(600000 0 0) :initial-spawn-delay 60)))\n"
-                         "    :mission (mission :objectives (list\n"
-                         "      (objective :id 'destroy-capital :team 'blue\n"
-                         "        :pass (entity-destroyed 'capital))))))\n")}};
+                         "    :logic (logic\n"
+                         "      (on :when (entity-destroyed 'capital)\n"
+                         "          :do (win 'blue)))))\n")}};
         if (!TestRunner->TestTrue(
                 TEXT("Write initial generated records"),
                 write_source(generated_path,
@@ -378,7 +378,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         auto compiled{
             ioj::editor::compile_playable_s7_definition(*definition, *document.level_config)};
         if (!assert_success(
-                *TestRunner, TEXT("Compile composed level and objective references"), compiled)) {
+                *TestRunner, TEXT("Compile composed level and expression references"), compiled)) {
             return;
         }
         ioj::sim::LevelSim simulation{std::move(*compiled)};

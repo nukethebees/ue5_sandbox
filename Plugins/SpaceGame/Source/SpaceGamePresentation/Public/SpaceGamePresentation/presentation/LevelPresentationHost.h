@@ -32,7 +32,6 @@ class SPACEGAMEPRESENTATION_API FLevelPresentationHost {
     void initialise(FLevelVisualConfig const& config,
                     TOptional<FPlayerPresentationResources> player,
                     ioj::sim::LevelReadAccess const& view,
-                    ioj::sim::Mission const& mission,
                     ioj::sim::SpatialQueryManager const& spatial_queries);
     void reset();
     void tick(double dt,

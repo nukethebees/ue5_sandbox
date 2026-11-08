@@ -18,7 +18,6 @@
 #include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ForceStatusWidget.h>
-#include <SpaceGamePresentation/presentation/widgets/MissionStatusWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/TeamEntityTableWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/TopKillersWidget.h>
 #include <SpaceGamePresentation/ui/common/MenuButtonWidget.h>
@@ -646,9 +645,8 @@ auto generate_battle_viewer_widget() -> UClass* {
     if (!IsValid(ui_data)) {
         return nullptr;
     }
-    auto const mission_status_class{ui_data->get_widget_class<UMissionStatusWidget>()};
     auto const value_class{ui_data->get_widget_class<UValueWidget>()};
-    if (!IsValid(mission_status_class) || !IsValid(value_class)) {
+    if (!IsValid(value_class)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load Battle Viewer child widget classes"));
         return nullptr;
     }
@@ -669,13 +667,6 @@ auto generate_battle_viewer_widget() -> UClass* {
     force_slot->SetHorizontalAlignment(HAlign_Left);
     force_slot->SetVerticalAlignment(VAlign_Top);
     force_slot->SetPadding(FMargin{24.0f});
-
-    auto* const mission_status{make_widget<UMissionStatusWidget>(
-        tree, *mission_status_class.Get(), TEXT("mission_status_panel"))};
-    auto* const mission_slot{root->AddChildToOverlay(mission_status)};
-    mission_slot->SetHorizontalAlignment(HAlign_Right);
-    mission_slot->SetVerticalAlignment(VAlign_Top);
-    mission_slot->SetPadding(FMargin{24.0f});
 
     auto* const controls{make_widget<UVerticalBox>(tree, TEXT("observer_controls"))};
     auto* const controls_slot{root->AddChildToOverlay(controls)};

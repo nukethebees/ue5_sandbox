@@ -14,7 +14,7 @@ class ATestBatchOrchestrator;
 class ATestSpaceShip;
 class ACameraActor;
 class UEnhancedInputUserSettings;
-struct FMissionCompletion;
+struct FLevelCompletion;
 struct FInputKeyEventArgs;
 class UTestBatchGameUiData;
 
@@ -107,7 +107,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void on_pause_menu_deactivated();
     void on_completion_menu_deactivated();
     void on_simulation_paused();
-    void on_mission_completed(FMissionCompletion const& completion);
+    void on_level_completed(FLevelCompletion const& completion);
     void return_to_level_select();
     void quit_game();
 

@@ -15,10 +15,9 @@
 
 namespace ioj {
 namespace level_completion_detail {
-auto objective_text(FString const& objective_id) -> FText {
-    return FText::Format(
-        NSLOCTEXT("LevelCompletion", "DecisiveObjective", "DECISIVE OBJECTIVE // {0}"),
-        FText::FromString(objective_id));
+auto reason_text(FString const& end_reason) -> FText {
+    return FText::Format(NSLOCTEXT("LevelCompletion", "EndReason", "END REASON // {0}"),
+                         FText::FromString(end_reason));
 }
 } // namespace level_completion_detail
 
@@ -50,30 +49,30 @@ void SLevelCompletionView::Construct(FArguments const& args) {
 }
 
 void SLevelCompletionView::update_report(FString const& level_display_name,
-                                         EMissionOutcome const state,
-                                         FString const& objective_id,
+                                         ELevelOutcome const state,
+                                         FString const& end_reason,
                                          sim::telemetry::Snapshot const& snapshot,
                                          TOptional<float> const par_time_seconds,
                                          bool const new_best_time) {
-    check(state == EMissionOutcome::Victory || state == EMissionOutcome::Defeat);
-    auto const succeeded{state == EMissionOutcome::Victory};
+    auto const succeeded{state == ELevelOutcome::Victory};
     mission_name_->SetText(level_display_name.IsEmpty()
                                ? NSLOCTEXT("LevelCompletion", "UnknownMission", "UNNAMED OPERATION")
                                : FText::FromString(level_display_name.ToUpper()));
     mission_result_->SetText(
-        succeeded ? NSLOCTEXT("LevelCompletion", "MissionComplete", "MISSION COMPLETE")
-                  : NSLOCTEXT("LevelCompletion", "MissionFailed", "MISSION FAILED"));
+        state == ELevelOutcome::Stopped ? NSLOCTEXT("LevelCompletion", "Stopped", "LEVEL ENDED")
+        : succeeded ? NSLOCTEXT("LevelCompletion", "MissionComplete", "MISSION COMPLETE")
+                    : NSLOCTEXT("LevelCompletion", "MissionFailed", "MISSION FAILED"));
     mission_result_->SetColorAndOpacity(succeeded ? style_->palette().success
                                                   : style_->palette().danger);
-    failure_reason_->SetText(level_completion_detail::objective_text(objective_id));
+    failure_reason_->SetText(level_completion_detail::reason_text(end_reason));
     failure_reason_->SetColorAndOpacity(style_->palette().danger);
     failure_reason_->SetVisibility(succeeded ? EVisibility::Collapsed
                                              : EVisibility::HitTestInvisible);
-    objective_status_->SetText(
-        succeeded
-            ? NSLOCTEXT("LevelCompletion", "ObjectiveSatisfied", "OBJECTIVE STATUS // SATISFIED")
-            : NSLOCTEXT(
-                  "LevelCompletion", "ObjectiveUnsatisfied", "OBJECTIVE STATUS // UNSATISFIED"));
+    objective_status_->SetText(state == ELevelOutcome::Stopped
+                                   ? NSLOCTEXT("LevelCompletion", "NoWinner", "NO WINNER")
+                                   : (succeeded
+                                          ? NSLOCTEXT("LevelCompletion", "Victory", "VICTORY")
+                                          : NSLOCTEXT("LevelCompletion", "Defeat", "DEFEAT")));
     auto const elapsed_time{
         level_telemetry_presentation::format_elapsed_time(snapshot.elapsed_seconds)};
     elapsed_time_->SetText(

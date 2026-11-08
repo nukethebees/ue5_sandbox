@@ -1,6 +1,5 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 
-#include <ioj/sim/missions/mission.h>
 #include <SandboxGameShared/utilities/macros/null_checks.hpp>
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
@@ -368,14 +367,14 @@ void ASpaceGamePlayerController::bind_orchestrator_events() {
     orchestrator_ = orchestrator;
     orchestrator->on_reset.RemoveAll(this);
     orchestrator->on_reset.AddUObject(this, &ThisClass::on_orchestrator_reset);
-    orchestrator->on_mission_completed.RemoveAll(this);
-    orchestrator->on_mission_completed.AddUObject(this, &ThisClass::on_mission_completed);
+    orchestrator->on_level_completed.RemoveAll(this);
+    orchestrator->on_level_completed.AddUObject(this, &ThisClass::on_level_completed);
     orchestrator->on_simulation_paused.AddUObject(this, &ThisClass::on_simulation_paused);
 }
 void ASpaceGamePlayerController::unbind_orchestrator_events() {
     if (auto* const orchestrator{orchestrator_.Get()}; IsValid(orchestrator)) {
         orchestrator->on_reset.RemoveAll(this);
-        orchestrator->on_mission_completed.RemoveAll(this);
+        orchestrator->on_level_completed.RemoveAll(this);
         orchestrator->on_simulation_paused.RemoveAll(this);
     }
     orchestrator_.Reset();
@@ -787,7 +786,7 @@ void ASpaceGamePlayerController::on_simulation_paused() {
         resume_game();
     }
 }
-void ASpaceGamePlayerController::on_mission_completed(FMissionCompletion const& completion) {
+void ASpaceGamePlayerController::on_level_completed(FLevelCompletion const& completion) {
     if (!is_gameplay_mode()) {
         return;
     }
@@ -802,7 +801,7 @@ void ASpaceGamePlayerController::on_mission_completed(FMissionCompletion const& 
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ASpaceGamePlayerController::on_mission_completed: Orchestrator is invalid."));
+               TEXT("ASpaceGamePlayerController::on_level_completed: Orchestrator is invalid."));
         resume_game();
         return;
     }

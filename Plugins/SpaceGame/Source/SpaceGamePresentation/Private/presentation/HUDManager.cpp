@@ -35,13 +35,12 @@ TRACE_DECLARE_INT_COUNTER(SandboxRadarVisibleCount, TEXT("Sandbox/Radar/VisibleC
 TRACE_DECLARE_INT_COUNTER(SandboxRadarUploadBytes, TEXT("Sandbox/Radar/UploadBytes"));
 
 namespace ioj {
-void FHUDManager::initialise(sim::Mission const& new_mission,
-                             sim::LevelReadAccess const view,
+void FHUDManager::initialise(sim::LevelReadAccess const view,
                              sim::SpatialQueryManager const& new_spatial_query_manager,
                              FLevelVisualConfig const& level_config,
                              UInstancedStaticMeshComponent* const soft_target_instances) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::initialise);
-    model_.initialise(new_mission, view);
+    model_.initialise(view);
     spatial_query_manager = &new_spatial_query_manager;
     auto const& entity_overlay_settings{level_config.entity_overlay};
     entity_overlay_resources_ = entity_overlay_settings;
@@ -552,9 +551,6 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
 }
 template <typename Hud>
 void FHUDManager::update_hud(Hud& hud, presentation::HudChanges const& changes) {
-    if (changes.mission && model_.has_mission_data()) {
-        update_mission_hud(hud);
-    }
     if (changes.entity_counts) {
         update_entity_count_hud(hud);
     }
@@ -588,9 +584,6 @@ void FHUDManager::synchronise_hud(USimulationHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::synchronise_hud);
     check(IsValid(&hud));
 
-    if (model_.has_mission_data()) {
-        update_mission_hud(hud);
-    }
     update_entity_count_hud(hud);
     auto* const ship_hud{Cast<UShipHudWidget>(&hud)};
     if (!IsValid(ship_hud)) {
@@ -603,15 +596,6 @@ void FHUDManager::synchronise_hud(USimulationHudWidget& hud) const {
 #endif
 }
 
-void FHUDManager::update_mission_hud(USimulationHudWidget& hud) const {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_mission_hud);
-    check(model_.has_mission_data());
-    auto const& data{model_.mission_data()};
-    hud.set_mission_data(data);
-    if (auto* const ship_hud{Cast<UShipHudWidget>(&hud)}; IsValid(ship_hud)) {
-        ship_hud->set_stopwatch_widget_visibility(ESlateVisibility::Collapsed);
-    }
-}
 void FHUDManager::update_entity_count_hud(USimulationHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_entity_count_hud);
     hud.set_entity_counts(model_.entity_count_data().alive_per_team_and_type);

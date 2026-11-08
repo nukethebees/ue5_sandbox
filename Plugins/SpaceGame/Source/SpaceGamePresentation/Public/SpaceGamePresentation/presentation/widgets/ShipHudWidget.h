@@ -31,12 +31,9 @@ class UValueWidget;
 class UVector2DWidget;
 class UDebugGraphWidget;
 class UForceStatusWidget;
-class UMissionStatusWidget;
 class SEntityOverlayWidget;
 class SRadarWidget;
-namespace ioj::presentation {
-struct MissionHudData;
-}
+namespace ioj::presentation {}
 namespace ioj::presentation {
 struct FlightVectorDebugData;
 }
@@ -65,7 +62,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void set_stopwatch_time(float const time_s);
     void set_stopwatch_widget_visibility(ESlateVisibility const new_visibility);
 
-    void set_fire_rate(FStringView const mission_status);
+    void set_fire_rate(FStringView const fire_rate);
     void set_fire_rate_visibility(ESlateVisibility const new_visibility);
 
     void set_crosshair_positions(FVector2d near, FVector2d far);

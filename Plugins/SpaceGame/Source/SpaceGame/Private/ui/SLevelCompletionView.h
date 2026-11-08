@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ioj/sim/telemetry/snapshot.h"
-#include "SpaceGame/missions/MissionOutcome.h"
+#include "SpaceGame/levels/LevelOutcome.h"
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
@@ -31,8 +31,8 @@ class SLevelCompletionView final : public SCompoundWidget {
 
     void Construct(FArguments const& args);
     void update_report(FString const& level_display_name,
-                       EMissionOutcome state,
-                       FString const& objective_id,
+                       ELevelOutcome state,
+                       FString const& end_reason,
                        sim::telemetry::Snapshot const& snapshot,
                        TOptional<float> par_time_seconds,
                        bool new_best_time);

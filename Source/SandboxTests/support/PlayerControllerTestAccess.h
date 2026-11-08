@@ -52,8 +52,8 @@ struct FPlayerControllerTestAccess {
         return controller.modal_ui_.has_modal();
     }
     static void complete(ASpaceGamePlayerController& controller,
-                         FMissionCompletion const& completion) {
-        controller.on_mission_completed(completion);
+                         FLevelCompletion const& completion) {
+        controller.on_level_completed(completion);
     }
     static void close_completion(ASpaceGamePlayerController& controller) {
         if (auto* const menu{controller.modal_ui_.completion_menu_.Get()}; IsValid(menu)) {

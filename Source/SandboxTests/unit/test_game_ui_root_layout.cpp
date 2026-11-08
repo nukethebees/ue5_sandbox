@@ -118,7 +118,7 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
         ioj::sim::telemetry::Snapshot completion_snapshot;
         completion_snapshot.kills = 6;
         auto* const completion{root->show_level_completion(TEXT("Border Skirmish"),
-                                                           EMissionOutcome::Victory,
+                                                           ELevelOutcome::Victory,
                                                            FString{TEXT("primary")},
                                                            completion_snapshot)};
         if (!TestRunner->TestTrue(TEXT("Completion is pushed"), IsValid(completion))) {
@@ -128,7 +128,7 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
                              completion->GetDesiredFocusTarget() == completion);
         TestRunner->TestTrue(TEXT("Repeated completion returns the active instance"),
                              root->show_level_completion(TEXT("Ignored"),
-                                                         EMissionOutcome::Victory,
+                                                         ELevelOutcome::Victory,
                                                          FString{TEXT("primary")},
                                                          {}) == completion);
         TestRunner->TestEqual(

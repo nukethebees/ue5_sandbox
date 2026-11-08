@@ -1,8 +1,8 @@
 #pragma once
 #include <ioj/levels/launch_options.h>
 #include <ioj/sim/levels/level_sim.h>
+#include <SpaceGame/levels/LevelCompletion.h>
 #include <SpaceGame/levels/LevelLoader.h>
-#include <SpaceGame/missions/MissionCompletion.h>
 #include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/system/GameSubsystem.h>
@@ -181,7 +181,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
   public:
     FOnOrchestratorReset on_reset;
     FSimpleMulticastDelegate on_simulation_paused;
-    FOnMissionCompleted on_mission_completed;
+    FOnLevelCompleted on_level_completed;
   private:
     ioj::settings::TickSettings simulation_tick_settings{};
     UPROPERTY(EditAnywhere,

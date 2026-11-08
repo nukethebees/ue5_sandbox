@@ -9,8 +9,6 @@
 #include "SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/DebugGraphWidget.h"
-#include "SpaceGamePresentation/presentation/widgets/MissionEntityHealthRowWidget.h"
-#include "SpaceGamePresentation/presentation/widgets/MissionStatusWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHealthWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipSpeedWidget.h"
@@ -44,8 +42,6 @@ auto ioj::test_batch_game_ui_data::get_data_asset() -> UTestBatchGameUiData* {
 auto UTestBatchGameUiData::get_native_widget_classes() -> TConstArrayView<UClass*> {
     static UClass* const classes[]{
         UTeamEntityTableWidget::StaticClass(),
-        UMissionEntityHealthRowWidget::StaticClass(),
-        UMissionStatusWidget::StaticClass(),
         UShipHealthWidget::StaticClass(),
         UShipHudWidget::StaticClass(),
         UShipSpeedWidget::StaticClass(),

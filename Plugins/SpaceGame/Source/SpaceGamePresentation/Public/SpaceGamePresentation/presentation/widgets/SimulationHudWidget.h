@@ -12,12 +12,9 @@
 #include "SimulationHudWidget.generated.h"
 
 class UForceStatusWidget;
-class UMissionStatusWidget;
 class SEntityOverlayWidget;
 
-namespace ioj::presentation {
-struct MissionHudData;
-}
+namespace ioj::presentation {}
 namespace ioj {
 class FGameUiStyle;
 }
@@ -29,7 +26,6 @@ class SPACEGAMEPRESENTATION_API USimulationHudWidget : public UUserWidget {
     virtual void apply_ui_style(ioj::FGameUiStyle const& style);
     void set_entity_counts(ioj::sim::telemetry::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
-    void set_mission_data(ioj::presentation::MissionHudData const& data);
 
     void set_entity_overlay_frame_store(FEntityOverlayFrameStoreConstPtr frame_store);
     void set_entity_overlay_style(FEntityOverlayStyle const& style);
@@ -47,9 +43,6 @@ class SPACEGAMEPRESENTATION_API USimulationHudWidget : public UUserWidget {
 
     UPROPERTY(meta = (BindWidget))
     UForceStatusWidget* force_status_widget{nullptr};
-
-    UPROPERTY(meta = (BindWidget))
-    UMissionStatusWidget* mission_status_panel{nullptr};
 
     [[nodiscard]] auto has_ui_style() const -> bool { return has_ui_style_; }
     [[nodiscard]] auto entity_overlay_defend_colour() const -> FLinearColor {

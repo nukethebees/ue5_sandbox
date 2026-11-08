@@ -193,7 +193,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
         statistics.destroyed_entities,
         statistics.kills,
         statistics.lasers_fired)};
-    if (!statistics.mission_complete) {
+    if (!statistics.level_complete) {
         summary += TEXT("\nMISSION  //  INCOMPLETE");
     }
     summary += FString::Printf(TEXT("\nBATTLE SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "

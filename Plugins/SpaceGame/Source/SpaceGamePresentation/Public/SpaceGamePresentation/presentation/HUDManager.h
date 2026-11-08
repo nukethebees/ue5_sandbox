@@ -27,7 +27,6 @@ class UShipHudWidget;
 class UInstancedStaticMeshComponent;
 
 namespace ioj::sim {
-class Mission;
 struct SpatialQueryManager;
 }
 
@@ -55,8 +54,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     void configure(sim::HudSettings settings) { model_.configure(settings); }
     auto settings() const -> sim::HudSettings const& { return model_.settings(); }
 
-    void initialise(sim::Mission const& new_mission,
-                    sim::LevelReadAccess view,
+    void initialise(sim::LevelReadAccess view,
                     sim::SpatialQueryManager const& new_spatial_query_manager,
                     FLevelVisualConfig const& level_config,
                     UInstancedStaticMeshComponent* soft_target_instances = nullptr);
@@ -111,7 +109,6 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     void update_hud(Hud& hud, presentation::HudChanges const& changes);
     void update_huds(presentation::HudChanges const& changes);
     void synchronise_hud(USimulationHudWidget& hud) const;
-    void update_mission_hud(USimulationHudWidget& hud) const;
     void update_entity_count_hud(USimulationHudWidget& hud) const;
     void update_player_status_hud(UShipHudWidget& hud) const;
     void update_player_flight_hud(UShipHudWidget& hud) const;

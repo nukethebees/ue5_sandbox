@@ -39,10 +39,8 @@ void FTestHUDManagerScenario::registration_process_samples() {
     check(level);
     FHUDManager hud_manager;
     hud_manager.configure(orchestrator->get_hud_manager().settings());
-    hud_manager.initialise(level->mission(),
-                           level->read_access(),
-                           level->spatial_query_manager(),
-                           context_.config.get_visual_config());
+    hud_manager.initialise(
+        level->read_access(), level->spatial_query_manager(), context_.config.get_visual_config());
     checks.are_equal(level->entity_ledger().count_alive(),
                      count_cached_hud_entities(hud_manager),
                      TEXT("Cache exists before HUD registration"));

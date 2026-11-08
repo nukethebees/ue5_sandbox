@@ -32,7 +32,6 @@ void FLevelPresentationHost::configure_collision_grid(
 void FLevelPresentationHost::initialise(FLevelVisualConfig const& config,
                                         TOptional<FPlayerPresentationResources> player,
                                         ioj::sim::LevelReadAccess const& view,
-                                        ioj::sim::Mission const& mission,
                                         ioj::sim::SpatialQueryManager const& spatial_queries) {
     check(!presentation_.IsSet());
     check(components_.is_valid());
@@ -40,7 +39,7 @@ void FLevelPresentationHost::initialise(FLevelVisualConfig const& config,
     auto const resources{make_resources(config, MoveTemp(player))};
     presentation_.Emplace(resources, view);
     update_collision_bounds(spatial_queries);
-    hud_manager_.initialise(mission, view, spatial_queries, config, components_.soft_targets);
+    hud_manager_.initialise(view, spatial_queries, config, components_.soft_targets);
 }
 
 void FLevelPresentationHost::reset() {

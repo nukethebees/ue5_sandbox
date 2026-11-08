@@ -22,12 +22,7 @@ using ioj::levels::authoring::LevelCatalogCategory;
 using ioj::levels::authoring::load_level_script_catalog;
 
 namespace {
-auto progress_label(levels::LevelDefinition const& definition,
-                    profiles::LevelProgressSummary const& progress) -> FString {
-    if (!definition.mission().has_value()) {
-        return TEXT("No objective");
-    }
-
+auto progress_label(profiles::LevelProgressSummary const& progress) -> FString {
     switch (progress.state()) {
         case profiles::LevelProgressState::Completed:
             return TEXT("Completed");
@@ -52,11 +47,7 @@ auto level_details(FLevelScriptEntry const& entry, profiles::LevelProgressSummar
                         static_cast<int32>(teams.size()),
                         static_cast<int32>(definition.entities().size()),
                         !definition.player_entity_id().empty() ? TEXT("ASSIGNED") : TEXT("NONE"),
-                        *progress_label(definition, progress).ToUpper())};
-    if (!definition.mission().has_value()) {
-        return details;
-    }
-
+                        *progress_label(progress).ToUpper())};
     auto const par_time{definition.metadata().par_time_seconds};
     if (par_time.has_value()) {
         auto const par_achieved{profiles::level_completion_indicator_state(progress, par_time) ==
@@ -443,9 +434,8 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
                 view_state_.launch_mode_status =
                     NSLOCTEXT("LevelSelect", "DebugStartPaused", "DEBUG // START PAUSED");
             }
-            view_state_.status =
-                FText::FromString(progress_label(entry.definition.GetValue(), progress).ToUpper() +
-                                  TEXT("  //  CLEARED FOR DEPLOYMENT"));
+            view_state_.status = FText::FromString(progress_label(progress).ToUpper() +
+                                                   TEXT("  //  CLEARED FOR DEPLOYMENT"));
         } else {
             view_state_.status = NSLOCTEXT(
                 "LevelSelect", "Locked", "LOCKED  //  DEPLOYMENT REQUIREMENTS INCOMPLETE");

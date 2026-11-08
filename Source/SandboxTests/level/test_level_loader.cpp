@@ -228,9 +228,9 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
                            !FPlayerControllerTestAccess::has_modal(*controller) &&
                            controller->is_observer_movement_enabled();
 
-    FMissionCompletion completion;
+    FLevelCompletion completion;
     completion.persisted = true;
-    completion.state = EMissionOutcome::Victory;
+    completion.state = ELevelOutcome::Victory;
     completion.level_display_name = TEXT("Controller modal test");
     orchestrator.pause_simulation();
     orchestrator.tick(0.0);
@@ -397,10 +397,10 @@ void FLevelLoaderCameraScenario::check_terminal_completion() {
 
     auto& orchestrator{context_.orchestrator};
     FTestBatchOrchestratorTestAccess::stop_run(orchestrator,
-                                               sim::telemetry::RunEndReason::MissionCompleted);
-    FMissionCompletion completion;
+                                               sim::telemetry::RunEndReason::LevelCompleted);
+    FLevelCompletion completion;
     completion.persisted = true;
-    completion.state = EMissionOutcome::Victory;
+    completion.state = ELevelOutcome::Victory;
     completion.level_display_name = TEXT("Terminal completion test");
     FPlayerControllerTestAccess::complete(*controller, completion);
     checks.is_true(FPlayerControllerTestAccess::has_modal(*controller),

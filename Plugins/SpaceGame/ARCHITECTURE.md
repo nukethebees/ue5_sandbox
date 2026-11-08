@@ -34,16 +34,16 @@ and harvest static geometry after the editor proxies have been removed from the 
 
 Install the harvested bounds before `LevelSim::finish_initialisation()`. That boundary dispatches
 initial events, publishes entity lookup rows and the spatial index, initializes telemetry and the
-mission, then resets its clock to tick zero and `BetweenTicks` and enters `LevelState::Paused`.
+logic setup, then resets its clock to tick zero and `BetweenTicks` and enters `LevelState::Paused`.
 Initialize presentation and HUD afterward, then activate controls and apply the requested start
 mode. Presentation derives initial entity transforms from the initialized native state.
 
-Use `get_level_simulation()` for native timing, entity simulations, queries, mission and telemetry.
+Use `get_level_simulation()` for native timing, entity simulations, queries, logic results and telemetry.
 It returns null before construction and after release. Actor accessors cover configuration,
 presentation, player actors and launch behavior; `get_state()` also covers the absence of a level.
 
 A running Unreal frame advances the native fixed ticks before presenting the completed frame.
-Presentation observes the final tick of a catch-up frame. Player death and mission-completion
+Presentation observes the final tick of a catch-up frame. Player death and level-completion
 notifications follow presentation; telemetry persistence follows native finalization.
 
 The actor keeps ticking while the level is paused. Every ready-level frame calls `advance()` to

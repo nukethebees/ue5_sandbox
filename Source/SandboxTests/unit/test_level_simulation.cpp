@@ -6,7 +6,6 @@
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_sim.h>
-#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
@@ -136,14 +135,9 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     };
     auto const resources{make_presentation_resources(*owner, config->get_visual_config())};
     auto battle{make_battle()};
-    battle.mission = ioj::levels::MissionDefinition{
-        .objectives = {{.id = ioj::levels::ObjectiveName{"primary"},
-                        .team = ioj::Team::Green,
-                        .wins_level = ioj::ObjectiveWinsLevel::Yes,
-                        .expressions = {{ioj::levels::EntityDestroyedExpr{
-                            .entity = ioj::levels::EntityId{"enemy"}}}},
-                        .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
-                            0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}}};
+    battle.logic = {
+        .expressions = {{ioj::levels::EntityDestroyedExpr{ioj::levels::EntityId{"enemy"}}}},
+        .rules = {{0, {ioj::levels::WinEffect{ioj::Team::Green}}}}};
     ioj::sim::LevelSim headless{compile_battle(battle)};
     ioj::sim::LevelSim visible{compile_battle(std::move(battle))};
     headless.finish_initialisation();
@@ -186,12 +180,13 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         }
         TestEqual(TEXT("Presentation preserves level state"), visible.state(), headless.state());
     }
-    TestTrue(TEXT("Both objective outcomes match"),
-             headless.mission().outcome(ioj::sim::ObjectiveId{0}, headless.expressions()) ==
-                 visible.mission().outcome(ioj::sim::ObjectiveId{0}, visible.expressions()));
-    TestTrue(TEXT("Objective passes"),
-             headless.mission().outcome(ioj::sim::ObjectiveId{0}, headless.expressions()) ==
-                 ioj::ObjectiveOutcome::Passed);
+    if (!TestTrue(TEXT("Both simulations completed"),
+                  headless.result().has_value() && visible.result().has_value())) {
+        return false;
+    }
+    TestTrue(TEXT("Both winning teams match"),
+             headless.result()->winner == visible.result()->winner);
+    TestTrue(TEXT("Expected team wins"), headless.result()->winner == ioj::Team::Green);
     return true;
 }
 
@@ -252,11 +247,8 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     FLevelPresentationHost host;
     host.bind_components(components);
     auto const initialise{[&]() {
-        host.initialise(resources.config,
-                        {},
-                        simulation.read_access(),
-                        simulation.mission(),
-                        simulation.spatial_query_manager());
+        host.initialise(
+            resources.config, {}, simulation.read_access(), simulation.spatial_query_manager());
     }};
     auto const check_transforms{[&] {
         TestEqual(TEXT("Initial native turret count is presented"),
