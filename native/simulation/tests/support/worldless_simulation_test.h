@@ -11,7 +11,6 @@ class WorldlessSimulationTest {
     auto simulation() const -> LevelSim const& { return simulation_; }
     auto ledger() const -> EntityLedger const& { return simulation_.entity_ledger(); }
     auto time() const -> time_type { return simulation_.clock().simulation_time(); }
-    void finish_initialisation() { simulation_.finish_initialisation(); }
     void queue_damage(std::span<EntityId const> targets,
                       std::int32_t damage,
                       EntityId instigator = {});

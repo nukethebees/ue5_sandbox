@@ -72,7 +72,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         check(prepared_level_.IsSet());
         return *prepared_level_;
     }
-    auto is_presentation_enabled() const noexcept -> bool { return presentation_enabled; }
+    auto is_presentation_enabled() const noexcept -> bool {
+        return launch_options_.presentation_mode == levels::PresentationMode::Visual;
+    }
 
     /* **************************************** */
     // Simulation state and timing
@@ -189,8 +191,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FFilePath level_script;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Presentation")
-    bool presentation_enabled{true};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
@@ -203,11 +203,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
-
-#if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    bool log_ticks{false};
-#endif
 };
 
 } // namespace ioj

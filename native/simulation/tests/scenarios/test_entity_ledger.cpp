@@ -34,7 +34,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     }
 
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     if (scenario == EntityLedgerScenario::TeamCounts) {
         telemetry::TeamCounts counts{};
         telemetry::EntityCounts type_counts{};

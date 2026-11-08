@@ -47,7 +47,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
 }
 
 void start_and_tick(LevelSim& simulation) {
-    simulation.finish_initialisation();
+
     auto const clk_period{simulation.clock().tick_period()};
     simulation.start();
     simulation.advance(clk_period);
@@ -100,7 +100,7 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
         << "Compiled team inference deduplicates team sources";
 
     LevelSim empty_simulation{make_cap_battle(std::span<Team const>{}, 10, 0).compile()};
-    empty_simulation.finish_initialisation();
+
     auto const empty_clk_period{empty_simulation.clock().tick_period()};
     empty_simulation.start();
     empty_simulation.advance(empty_clk_period);

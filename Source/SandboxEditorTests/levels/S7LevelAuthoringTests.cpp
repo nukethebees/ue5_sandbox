@@ -382,7 +382,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         ioj::sim::LevelSim simulation{std::move(*compiled)};
-        simulation.finish_initialisation();
+
         TestRunner->TestEqual(TEXT("Only human capital spawns at time zero"),
                               simulation.capital_ships().num_instances(),
                               uint32{1});

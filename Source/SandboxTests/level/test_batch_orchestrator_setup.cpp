@@ -84,8 +84,6 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             return;
         }
-        FTestBatchOrchestratorTestAccess::set_telemetry_metadata(
-            orchestrator, sim::telemetry::RunMetadata{.run_id = "frame-ordering"});
         struct FFrameObservation {
             uint64 completed_ticks{};
             uint64 presented_tick{};

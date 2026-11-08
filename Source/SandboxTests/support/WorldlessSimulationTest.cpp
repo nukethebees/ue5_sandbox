@@ -52,10 +52,6 @@ auto add_worldless_player_spawn(sim::LevelSimInitData& data, sim::player::Player
 FWorldlessSimulationTest::FWorldlessSimulationTest(sim::LevelSimInitData data)
     : simulation_{MoveTemp(data)} {}
 
-void FWorldlessSimulationTest::finish_initialisation() {
-    simulation_.finish_initialisation();
-}
-
 void FWorldlessSimulationTest::advance(time_type const dt) {
     auto const previous_tick{simulation_.clock().get_completed_ticks().value()};
     simulation_.advance(dt);

@@ -20,15 +20,6 @@ CollisionPipeline::CollisionPipeline(EntityTables const& entities,
     queries_.set_static_collision(std::move(data.static_bounds));
 }
 
-void CollisionPipeline::set_static_collision(std::span<WorldAABB const> const bounds) {
-    WorldAABBs storage;
-    storage.reserve(static_cast<std::uint32_t>(bounds.size()));
-    for (auto const& bound : bounds) {
-        storage.add(bound.min, bound.max);
-    }
-    queries_.set_static_collision(std::move(storage));
-}
-
 void CollisionPipeline::reset_frame_output() {
     queries_.reset_frame_collision_events();
 }

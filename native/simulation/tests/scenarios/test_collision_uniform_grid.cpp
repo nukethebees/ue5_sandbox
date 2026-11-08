@@ -316,7 +316,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
     tests::add_spinner_spawn(data, Vector3f{1500.f, 1500.f, 0.f}, 0.f, 0);
 
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     harness.timeline.finish_at(0.1);
     ASSERT_TRUE(harness.run_until_timeline_finished(1.0)) << "Collision-grid timeline completes";
 

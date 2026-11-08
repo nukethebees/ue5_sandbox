@@ -36,7 +36,6 @@ struct NavigationCounters;
 struct PreparationInputs {
     EntityLedger& ledger;
     std::span<Team const> participating_teams;
-    std::int32_t per_team_limit;
 };
 
 struct ThinkingInputs {

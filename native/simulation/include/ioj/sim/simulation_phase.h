@@ -6,7 +6,9 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <cassert>
 #include <cstdint>
+
 namespace ioj::sim {
 using SimulationPhaseUnderlying = std::uint8_t;
 
@@ -19,6 +21,33 @@ enum class SimulationPhase : SimulationPhaseUnderlying {
     ResolutionCommit,
     BetweenTicks,
 };
+
+[[nodiscard]] constexpr auto cycle_next(SimulationPhase const value) noexcept -> SimulationPhase {
+    switch (value) {
+        case SimulationPhase::Preparation: {
+            return SimulationPhase::Thinking;
+        }
+        case SimulationPhase::Thinking: {
+            return SimulationPhase::Action;
+        }
+        case SimulationPhase::Action: {
+            return SimulationPhase::Resolution;
+        }
+        case SimulationPhase::Resolution: {
+            return SimulationPhase::ResolutionCommit;
+        }
+        case SimulationPhase::ResolutionCommit: {
+            return SimulationPhase::BetweenTicks;
+        }
+        case SimulationPhase::BetweenTicks: {
+            return SimulationPhase::Preparation;
+        }
+        default: {
+            assert((false));
+            return value;
+        }
+    }
+}
 
 } // namespace ioj::sim
 

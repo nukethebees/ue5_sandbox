@@ -26,7 +26,6 @@ class CollisionPipeline {
     auto operator=(CollisionPipeline const&) -> CollisionPipeline& = delete;
     auto operator=(CollisionPipeline&&) -> CollisionPipeline& = delete;
 
-    void set_static_collision(std::span<WorldAABB const> bounds);
     void reset_frame_output();
     void refresh_spatial_index(LevelReadAccess const& level);
 

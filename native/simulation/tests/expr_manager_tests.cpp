@@ -90,16 +90,16 @@ TEST(Expressions, SharedDagEvaluatesChildrenFirstWithoutRetiringSharedLeaves) {
     std::array const timer_handles{first, second};
     auto const compiled{expressions.append(nodes, {{}, timer_handles, {}})};
     auto const& handles{compiled};
-    timers.start(first, SimTick{10});
-    timers.start(second, SimTick{20});
+    timers.start(first, 10);
+    timers.start(second, 20);
 
-    timers.tick(SimTick{10});
+    timers.tick(10);
     expressions.evaluate({ledger, timers, {}, latches, {}});
     EXPECT_EQ(expressions.result(handles[2]), true);
     EXPECT_EQ(expressions.result(handles[4]), false);
     EXPECT_EQ(expressions.result(handles[0]), false);
 
-    timers.tick(SimTick{10});
+    timers.tick(10);
     expressions.evaluate({ledger, timers, {}, latches, {}});
     EXPECT_EQ(expressions.result(handles[0]), true);
 }
@@ -121,19 +121,19 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
     entity_refs.emplace(levels::EntityId{"future"}, LevelEntityRef{0});
     auto const compiled{expressions.append(nodes, {entity_refs, timer_handles, {}})};
     auto const& handles{compiled};
-    timers.start(first, SimTick{10});
-    timers.start(second, SimTick{20});
-    timers.tick(SimTick{10});
+    timers.start(first, 10);
+    timers.start(second, 20);
+    timers.tick(10);
     expressions.evaluate({ledger, timers, entities, latches, {}});
     EXPECT_EQ(expressions.result(handles[0]), true);
     EXPECT_EQ(expressions.result(handles[2]), false);
-    timers.tick(SimTick{10});
+    timers.tick(10);
     expressions.evaluate({ledger, timers, entities, latches, {}});
     EXPECT_EQ(expressions.result(handles[2]), true);
     EXPECT_EQ(expressions.result(handles[3]), false);
 
     ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, entities);
-    timers.tick(SimTick{1});
+    timers.tick(1);
     expressions.evaluate({ledger, timers, entities, latches, {}});
     EXPECT_EQ(expressions.result(handles[1]), false);
     EntityDeathInfo deaths;
@@ -141,7 +141,7 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
     deaths.view().victims()[0] = entities[0];
     deaths.view().reasons()[0] = DeathReason::Combat;
     ledger.record_deaths(deaths.const_view(), SimTick{22});
-    timers.tick(SimTick{1});
+    timers.tick(1);
     expressions.evaluate({ledger, timers, entities, latches, {}});
     EXPECT_EQ(expressions.result(handles[3]), true);
 }
@@ -155,23 +155,23 @@ TEST(Expressions, StoppedTimersAndStartAreVisibleOnNextEvaluation) {
     auto const second{timers.add()};
     auto const zero{expressions.add_timer_elapsed(first)};
     auto const delayed{expressions.add_timer_elapsed(second)};
-    timers.tick(SimTick{100});
+    timers.tick(100);
     expressions.evaluate({ledger, timers, {}, latches, {}});
     EXPECT_EQ(expressions.result(zero), false);
     EXPECT_EQ(expressions.result(delayed), false);
 
-    timers.start(first, SimTick{});
-    timers.start(second, SimTick{3});
+    timers.start(first, 0);
+    timers.start(second, 3);
     EXPECT_EQ(expressions.result(zero), false);
-    timers.tick(SimTick{1});
+    timers.tick(1);
     EXPECT_EQ(expressions.result(zero), false);
     expressions.evaluate({ledger, timers, {}, latches, {}});
     EXPECT_EQ(expressions.result(zero), true);
     EXPECT_EQ(expressions.result(delayed), false);
-    timers.tick(SimTick{1});
+    timers.tick(1);
     expressions.evaluate({ledger, timers, {}, latches, {}});
     EXPECT_EQ(expressions.result(delayed), false);
-    timers.tick(SimTick{1});
+    timers.tick(1);
     expressions.evaluate({ledger, timers, {}, latches, {}});
     EXPECT_EQ(expressions.result(delayed), true);
 }

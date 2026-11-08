@@ -55,7 +55,7 @@ void advance_ticks(LevelSim& simulation, std::int32_t const count) {
 }
 
 void start(LevelSim& simulation) {
-    simulation.finish_initialisation();
+
     simulation.start();
 }
 

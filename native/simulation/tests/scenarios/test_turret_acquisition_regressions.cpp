@@ -32,7 +32,7 @@ void run_worldless_turret_acquisition_regression(
                                 ioj::NonNegative<std::int32_t>::make(0));
     }
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     harness.timeline.finish_at(0.5);
     EXPECT_TRUE(harness.run_until_timeline_finished(1.0))
         << "Turret acquisition timeline completes";

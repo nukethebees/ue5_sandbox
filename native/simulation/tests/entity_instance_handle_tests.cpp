@@ -51,12 +51,15 @@ TEST(SimulationPhases, AllowsStableSetupAndSuccessiveTicks) {
     EXPECT_TRUE(is_lookup_allowed(clock.phase(), level_state));
     clock.advance_to(SimulationPhase::Thinking);
     EXPECT_TRUE(is_lookup_allowed(clock));
-    clock.tick_loop.accumulator = 1.0;
-    clock.completed_ticks = SimTick{17};
+    clock.add_time(1.0);
+    for (int tick{}; tick < 17; ++tick) {
+        clock.advance_to(SimulationPhase::ResolutionCommit);
+        clock.complete_tick();
+    }
     clock.reset();
     EXPECT_EQ(clock.phase(), SimulationPhase::BetweenTicks);
     EXPECT_EQ(clock.get_completed_ticks(), SimTick{});
-    EXPECT_EQ(clock.tick_loop.accumulator, 0.0);
+    EXPECT_EQ(clock.interpolation_alpha(), 0.0);
     level_state = LevelState::Paused;
     EXPECT_FALSE(is_lookup_allowed(clock.phase(), level_state));
     EXPECT_FALSE(is_structural_mutation_allowed(clock));

@@ -1,6 +1,5 @@
 #include <ioj/sim/expressions/timers.h>
 
-#include <algorithm>
 #include <cassert>
 #include <cstdint>
 
@@ -11,8 +10,20 @@ auto Timers::add() -> TimerHandle {
     entries_.emplace_back();
     return handle;
 }
-void Timers::start(TimerHandle const handle, SimTick const duration) {
+auto Timers::add(std::uint32_t const count) -> std::vector<TimerHandle> {
+    auto const first{entries_.size()};
+    assert(count <= TimerHandle::invalid_value - first);
+    entries_.resize(first + count);
+    std::vector<TimerHandle> handles;
+    handles.reserve(count);
+    for (std::uint32_t index{}; index < count; ++index) {
+        handles.emplace_back(static_cast<std::uint32_t>(first) + index);
+    }
+    return handles;
+}
+void Timers::start(TimerHandle const handle, TimerTicks const duration) {
     assert(is_valid(handle));
+    assert(duration >= 0);
     auto& entry{entries_[handle.index()]};
     if (entry.state() != detail::TimerState::NotStarted) {
         return;
@@ -21,14 +32,15 @@ void Timers::start(TimerHandle const handle, SimTick const duration) {
     assert(owners_.size() <= detail::TimerEntry::index_layout.range.max);
     entry =
         detail::TimerEntry{detail::TimerState::Started, static_cast<std::uint32_t>(owners_.size())};
-    remaining_ticks_.push_back(duration.value());
+    remaining_ticks_.push_back(duration);
     owners_.push_back(handle);
 }
-void Timers::tick(SimTick const ticks) {
+void Timers::tick(TimerTicks const ticks) {
+    assert(ticks >= 0);
     for (auto index{owners_.size()}; index-- > 0;) {
         auto& remaining{remaining_ticks_[index]};
-        remaining -= std::min(remaining, ticks.value());
-        if (remaining != 0) {
+        remaining -= ticks;
+        if (remaining > 0) {
             continue;
         }
 

@@ -76,7 +76,7 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
             ::ioj::NonNegativeFinite<float>::make(0.05f);
 
         LevelSim simulation{std::move(data).compile()};
-        simulation.finish_initialisation();
+
         simulation.start();
         auto commands{simulation.player_ship_commands()};
         commands->start_fire_laser();
@@ -101,7 +101,7 @@ TEST(TickPhases, AutomaticFireContinuesUntilReleased) {
     data.runtime.player->config.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(0.05f);
 
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     simulation.start();
     auto commands{simulation.player_ship_commands()};
     commands->start_fire_laser();
@@ -127,7 +127,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     schedule_turret(data, {});
 
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     auto const clk_period{simulation.clock().tick_period()};
 
     auto const& ledger{simulation.entity_ledger()};
@@ -185,7 +185,7 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     data.runtime.fighters.speed = 0.f;
 
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     auto const clk_period{simulation.clock().tick_period()};
 
     simulation.start();
@@ -214,7 +214,7 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
     add_moving_player(data);
 
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     auto const clk_period{simulation.clock().tick_period()};
 
     auto commands{simulation.player_ship_commands()};
@@ -251,7 +251,7 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
                       ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
 
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     auto const clk_period{simulation.clock().tick_period()};
     simulation.player_ship_commands()->set_right_input(1.f);
 
@@ -276,7 +276,6 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsDispatchTick) {
     schedule_turret(data, {{500.f, 100.f, 0.f}}, SimTick{1});
 
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
 
     queue_capital_laser(simulation);
 
@@ -313,7 +312,7 @@ TEST(TickPhases, DelayedEntityDeathTriggersAfterResolutionWithoutDuplicateOverla
     data.logic.rules = {{2, {levels::WinEffect{Team::Green}}}};
 
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     auto const clk_period{simulation.clock().tick_period()};
 
     auto const& ledger{simulation.entity_ledger()};
@@ -360,7 +359,6 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterwa
                       ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
 
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
 
     auto const& laser_sim{simulation.lasers()};
     simulation.player_ship_commands()->set_right_input(1.f);
@@ -397,7 +395,7 @@ TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
     auto data{make_world()};
     add_moving_player(data);
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     auto const clk_period{simulation.clock().tick_period()};
     auto const* player{simulation.player_ship_simulation()};
     simulation.player_ship_commands()->start_fire_laser();
@@ -428,7 +426,7 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
                       60.f,
                       ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     auto const clk_period{simulation.clock().tick_period()};
     lasers::LaserSpawnRequests shot;
     tests::add_laser_spawn(
@@ -478,7 +476,6 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeLogicEvaluation) {
         data.logic.rules = {{2, {levels::WinEffect{Team::White}}}};
 
         LevelSim simulation{std::move(data).compile()};
-        simulation.finish_initialisation();
 
         auto const& ledger{simulation.entity_ledger()};
         auto const& capitals{simulation.capital_ships()};
@@ -533,7 +530,7 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeLogicEvaluation) {
                           ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
     }
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     auto const initial{simulation.read_access().capitals().get_entities()};
     std::vector<EntityId> visual_ids{initial.entity_ids().begin(), initial.entity_ids().end()};
     auto const clk_period{simulation.clock().tick_period()};

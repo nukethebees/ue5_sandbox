@@ -195,7 +195,9 @@ TEST(SimulationBenchmarkJson, EmitsStableSchemaAndEscapesStrings) {
     EXPECT_NE(json.find("\"frame_total_root_claims\":456"), std::string::npos);
     EXPECT_NE(json.find("\"median_tick_microseconds\":25"), std::string::npos);
     EXPECT_NE(json.find("\"configured_cap\":2000"), std::string::npos);
-    EXPECT_NE(json.find("\"attack\":2000"), std::string::npos);
+    EXPECT_NE(json.find("\"steady_state_fighters\":2000"), std::string::npos);
+    EXPECT_NE(json.find("\"minimum_measured_fighters\":2000"), std::string::npos);
+    EXPECT_NE(json.find("\"maximum_measured_fighters\":2000"), std::string::npos);
 }
 
 TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {

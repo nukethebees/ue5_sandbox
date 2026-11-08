@@ -78,7 +78,7 @@ void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason)
 void ATestBatchOrchestrator::release_level(sim::telemetry::RunEndReason const reason) {
     SetActorTickEnabled(false);
     if (level_simulation_.IsSet()) {
-        level_simulation_->finalize_telemetry_run(reason);
+        level_simulation_->stop_run(reason);
     }
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
@@ -86,7 +86,7 @@ void ATestBatchOrchestrator::release_level(sim::telemetry::RunEndReason const re
     presentation_host_.reset();
     if (level_simulation_.IsSet()) {
         persist_finalized_level_telemetry_run(
-            *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
+            *level_simulation_, launch_options_, is_presentation_enabled(), GetGameInstance());
         level_simulation_.Reset();
         auto* const game_subsystem{UGameSubsystem::get(GetGameInstance())};
         check(game_subsystem);
@@ -125,7 +125,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     }
 
     release_level(sim::telemetry::RunEndReason::OrchestratorReset);
-    launch_options_ = {};
+    launch_options_ = {.presentation_mode = launch_options_.presentation_mode};
     clear_player_ship();
     reset_level_world(*world, *this);
 
@@ -142,7 +142,8 @@ auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> 
                TEXT("Reset the level simulation before replacing its configuration"));
         return false;
     }
-    if (!ensureAlwaysMsgf(config.is_valid(presentation_enabled), TEXT("Level config is invalid"))) {
+    if (!ensureAlwaysMsgf(config.is_valid(is_presentation_enabled()),
+                          TEXT("Level config is invalid"))) {
         return false;
     }
 
@@ -177,7 +178,8 @@ void ATestBatchOrchestrator::set_presentation_enabled(bool const enabled) {
             LogSandbox, Error, TEXT("Cannot change presentation after simulation initialisation"));
         return;
     }
-    presentation_enabled = enabled;
+    launch_options_.presentation_mode =
+        enabled ? levels::PresentationMode::Visual : levels::PresentationMode::SimulationOnly;
     refresh_collision_grid_visualization();
 }
 
@@ -244,7 +246,7 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition definition,
     }
 
     std::optional<FLevelVisualLoad> visual;
-    if (presentation_enabled) {
+    if (is_presentation_enabled()) {
         auto* const controller{
             Cast<ASpaceGamePlayerController>(UGameplayStatics::GetPlayerController(world, 0))};
         if (!IsValid(controller)) {
@@ -284,9 +286,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         return false;
     }
 
-    auto options{launch_options_};
-    options.presentation_mode = presentation_enabled ? levels::PresentationMode::Visual
-                                                     : levels::PresentationMode::SimulationOnly;
+    auto const& options{launch_options_};
     auto build{initialisation_data_
                    ? FLevelSimBuildResult{std::in_place, std::move(*initialisation_data_)}
                    : prepare_level_simulation({
@@ -310,7 +310,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     build->clock_settings = simulation_tick_settings;
 
     auto const resources{get_presentation_resources()};
-    if (presentation_enabled && !resources.is_valid()) {
+    if (is_presentation_enabled() && !resources.is_valid()) {
         handle_level_start_failure(
             TEXT("Cannot start level: Level presentation resources are incomplete"));
         return false;
@@ -321,7 +321,12 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         return false;
     }
 
-    auto const grid_geometry{(*build).collision.grid_geometry};
+    auto const static_bounds{FLevelCollisionHost::extract_static_geometry(
+        *world, level_config->collision_grid, build->collision.grid_geometry)};
+    build->collision.static_bounds.reset();
+    for (auto const& bounds : static_bounds) {
+        build->collision.static_bounds.add(bounds.min, bounds.max);
+    }
     level_simulation_.Emplace(MoveTemp((*build)), game_subsystem->get_memory_resource());
     auto const* const player_simulation{level_simulation_->player_ship_simulation()};
     if (IsValid(player_ship) && player_simulation) {
@@ -330,12 +335,8 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
 
     initialisation_data_.reset();
-    auto const static_bounds{FLevelCollisionHost::extract_static_geometry(
-        *world, level_config->collision_grid, grid_geometry)};
-    level_simulation_->set_static_collision(static_bounds);
-    level_simulation_->finish_initialisation();
 
-    if (presentation_enabled) {
+    if (is_presentation_enabled()) {
         presentation_host_.initialise(resources.config,
                                       resources.player,
                                       level_simulation_->read_access(),
@@ -355,7 +356,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     if (level_simulation_->result()) {
         publish_level_completion(*level_simulation_, GetGameInstance(), on_level_completed);
         persist_finalized_level_telemetry_run(
-            *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
+            *level_simulation_, launch_options_, is_presentation_enabled(), GetGameInstance());
     }
     if (automatic && launch_options_.launch_mode == levels::LaunchMode::Running &&
         level_simulation_->state() == sim::LevelState::Paused) {
@@ -392,14 +393,13 @@ void ATestBatchOrchestrator::load_authored_level() {
         return;
     }
     launch_options_ = pending->options;
-    presentation_enabled = launch_options_.presentation_mode == levels::PresentationMode::Visual;
 
     auto const loaded{load_level(std::move(pending->definition), launch_options_.control_context)};
     if (!loaded) {
         handle_level_start_failure(loaded.error().format(to_fstring(pending->source_path)));
         return;
     }
-    if (!presentation_enabled) {
+    if (!is_presentation_enabled()) {
         auto* const controller{
             Cast<ASpaceGamePlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0))};
         if (!IsValid(controller) || !controller->activate_run_controls()) {
@@ -429,7 +429,7 @@ void ATestBatchOrchestrator::bind_presentation_components() {
 }
 void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
     TOptional<FCollisionGridVisualizationSettings> settings;
-    if (presentation_enabled && IsValid(level_config)) {
+    if (is_presentation_enabled() && IsValid(level_config)) {
         auto const& collision_grid{level_config->collision_grid};
         settings.Emplace(FCollisionGridVisualizationSettings{
             .dimensions = collision_grid.calculate_grid_dimensions(),
@@ -481,7 +481,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             publish_level_completion(*level_simulation_, GetGameInstance(), on_level_completed);
         }
         persist_finalized_level_telemetry_run(
-            *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
+            *level_simulation_, launch_options_, is_presentation_enabled(), GetGameInstance());
     }
 
     if (state == sim::LevelState::Running && get_state() == sim::LevelState::Paused) {

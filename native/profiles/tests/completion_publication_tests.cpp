@@ -41,7 +41,6 @@ TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal
     auto built{sim::make_level_simulation_init_data(*definition, std::move(geometry.data))};
     ASSERT_TRUE(built) << built.error().front();
     sim::LevelSim simulation{std::move(*built)};
-    simulation.finish_initialisation();
     EXPECT_FALSE(publish_player_completion(simulation, nullptr, 17));
 
     auto const player{simulation.player_ship_simulation()->unique_entity_id};

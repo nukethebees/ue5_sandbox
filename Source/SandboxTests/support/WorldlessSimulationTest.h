@@ -39,7 +39,6 @@ class FWorldlessSimulationTest {
     }
     auto get_time() const -> time_type { return simulation_.clock().simulation_time(); }
 
-    void finish_initialisation();
     void queue_damage(std::span<sim::EntityId const> targets,
                       int32 damage,
                       sim::EntityId instigator = {});

@@ -90,6 +90,7 @@ set(expressions_headers
   latches.h
   timer_handle.h
   timers.h
+  timer_ticks.h
 )
 
 list(TRANSFORM expressions_headers PREPEND "../include/ioj/sim/expressions/")

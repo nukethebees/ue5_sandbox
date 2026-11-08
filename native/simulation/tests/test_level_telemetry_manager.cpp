@@ -13,13 +13,15 @@ struct TelemetryFixture {
     explicit TelemetryFixture(telemetry::RecordingConfig config = {}, double rate = 60.0)
         : memory{config.enabled ? std::size_t{1024 * 1024} : 0}
         , manager{clock, ledger, lasers, memory, config} {
-        clock.initialise({});
+        clock.initialise({.tick_rate = Frequency::make(rate)});
         clock.reset();
-        clock.tick_loop.tick_rate = Frequency::make(rate);
         manager.initialise();
     }
     void tick(std::uint64_t value) {
-        clock.completed_ticks = SimTick{value};
+        while (clock.get_completed_ticks().value() < value) {
+            clock.advance_to(SimulationPhase::ResolutionCommit);
+            clock.complete_tick();
+        }
         manager.tick();
     }
     void spawn() {

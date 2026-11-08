@@ -34,6 +34,7 @@
   :header-include "ioj/sim/simulation_phase.h"
   :namespace ioj::sim
   (enum SimulationPhase @native_uint8
+    :native-api true :helpers (cycle-next)
     (value Preparation)
     (value Thinking)
     (value Action)

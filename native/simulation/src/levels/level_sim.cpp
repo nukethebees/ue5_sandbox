@@ -22,7 +22,8 @@ namespace ioj::sim {
 // Construction and lifecycle
 /* **************************************** */
 LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
-    : memory_manager_{
+    : clock_{data.clock_settings}
+    , memory_manager_{
           memory,
           data.tick_memory_capacity_bytes,
           data.phase_memory_capacity_bytes,
@@ -53,8 +54,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
           memory_manager_.level_memory(),
           data.telemetry_recording,
       } {
-    clock_.initialise(data.clock_settings);
-    set_telemetry_metadata(std::move(data.telemetry_metadata));
+    level_telemetry_manager_.set_run_metadata(std::move(data.telemetry_metadata));
 
     initialise_subsystems(data);
 
@@ -64,9 +64,6 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
         spawn_manager_.set_entity_id(data.player_entity_ref,
                                      player_ship_simulation_->unique_entity_id);
     }
-}
-void LevelSim::finish_initialisation() {
-    assert(state_ == LevelState::Uninitialised);
 
     dispatch_preparation_events();
 
@@ -113,10 +110,6 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
     auto const player_team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
                                                    : std::nullopt};
     participating_teams_ = event_manager_.data().collect_participating_teams(player_team);
-    assert(std::in_range<std::int32_t>(participating_teams_.num()));
-    auto const participant_count{static_cast<std::int32_t>(participating_teams_.num())};
-    fighter_per_team_limit_ =
-        participant_count == 0 ? 0 : data.fighters.max_live_fighters.get() / participant_count;
     fighters::InitialisationInterface{fighters_simulation_}.initialise(data.fighters, clock_);
     turrets::InitialisationInterface{turrets_simulation_}.initialise(data.turrets, clock_);
     spinners::InitialisationInterface{spinners_simulation_}.initialise(data.spinners, clock_);
@@ -124,22 +117,8 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
 }
 
 /* **************************************** */
-// Configuration and commands
-/* **************************************** */
-void LevelSim::set_telemetry_metadata(telemetry::RunMetadata metadata) {
-    level_telemetry_manager_.set_run_metadata(std::move(metadata));
-}
-void LevelSim::set_static_collision(std::span<collision::WorldAABB const> bounds) {
-    assert(state_ == LevelState::Uninitialised);
-    collision_pipeline_.set_static_collision(bounds);
-}
-
-/* **************************************** */
 // Telemetry and level results
 /* **************************************** */
-void LevelSim::finalize_telemetry_run(telemetry::RunEndReason const reason) {
-    level_telemetry_manager_.finalize(reason);
-}
 void LevelSim::stop_run(telemetry::RunEndReason const reason) {
     if (state_ == LevelState::Stopped) {
         return;
@@ -184,10 +163,10 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
     turrets_simulation_.reset_frame_output();
     lasers_simulation_.reset_frame_output();
     collision_pipeline_.reset_frame_output();
-    clock_.tick_loop.add_time(dt);
+    clock_.add_time(dt);
 
-    while (clock_.tick_loop.try_tick()) {
-        auto const tick_period{static_cast<float>(clock_.tick_loop.get_tick_period())};
+    while (clock_.try_tick()) {
+        auto const tick_period{static_cast<float>(clock_.tick_period())};
         if (!player_ship_simulation_) {
             advance_tick<TickPlayerShipState::NotPresent>(tick_period, navigation_output);
         } else if (player_ship_simulation_->is_alive()) {
@@ -197,7 +176,6 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
         }
 
         profiling::mark_frame("Simulation");
-        clock_.transition_to(SimulationPhase::BetweenTicks);
         dispatch_tick_end_events();
         if (state_ != LevelState::Running) {
             break;
@@ -285,7 +263,6 @@ void LevelSim::prepare_tick(float const tick_period) {
     fighters::PreparationInputs const fighter_inputs{
         .ledger = entity_ledger_,
         .participating_teams = participating_teams_,
-        .per_team_limit = fighter_per_team_limit_,
     };
     fighters_phase.commit_spawns(fighter_inputs);
 
@@ -473,7 +450,7 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
 
         // Evaluate final health and deaths before invalidating row mappings.
         latches_.commit();
-        timers_.tick(SimTick{1});
+        timers_.tick(1);
         expressions_.evaluate({entity_ledger_,
                                timers_,
                                spawn_manager_.entity_ids(),
@@ -514,7 +491,7 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
     fighters_commit.finish_action();
     turrets_commit.finish_action();
     lasers_commit.finish_action();
-    clock_.completed_ticks.set_value(clock_.completed_ticks.value() + 1);
+    clock_.complete_tick();
     level_telemetry_manager_.tick();
     combat_events_.reset();
 }

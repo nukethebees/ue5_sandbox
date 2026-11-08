@@ -24,16 +24,17 @@ preparation can reorder storage. Movement adds player and fighter candidates; th
 deduplicates them and refreshes the spatial index before overlap detection. Queries and temporary
 overlap results remain subject to the phase and scratch-lifetime contracts.
 
-Construction creates the optional player and queues initial events, leaving the level in
-`LevelState::Uninitialised`. The host may install static geometry before calling
-`finish_initialisation()`, which dispatches initial spawn events and publishes entity lookups
+Construction consumes all initialization data, including static geometry and telemetry metadata.
+It creates the optional player, dispatches initial spawn events, publishes entity lookups
 and the spatial index, begins telemetry in `LevelState::StableSetup`, then enters
-`LevelState::Paused`. Setup uses Preparation for population and Thinking for stable queries, then
+`LevelState::Paused` and dispatches initial tick-end events, which may immediately stop the run.
+Setup uses Preparation for population and Thinking for stable queries, then
 resets the independent clock to tick zero and `BetweenTicks` before returning. Its phase enum
 contains only the repeating tick cycle. Logic evaluation during a tick
 follows published deaths and precedes `ResolutionCommit`, while entity row mappings are still valid.
 
 The first dispatched terminal event and its execution tick remain available through `result()`.
+Run completion owns telemetry finalization, including explicit stops for reset and world teardown.
 Winner and stop reason are derived from that event's payload. Result publication, telemetry and
 persistence use this terminal decision; there are no per-team mission completion records.
 Initial terminal effects also publish a result, without starting the stopped simulation.

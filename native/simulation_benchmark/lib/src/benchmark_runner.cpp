@@ -230,7 +230,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 
     sim::LevelSim simulation{std::move(data)};
 
-    simulation.finish_initialisation();
     auto const initial_capital_ships{simulation.capital_ships().num_instances()};
     auto const initial_turrets{simulation.turrets().num_instances()};
     simulation.start();

@@ -16,6 +16,10 @@ struct RuntimeConfig {
     RuntimeConfig() = default;
     RuntimeConfig(FighterSimConfig const& new_settings, SimClock const& clock);
 
+    auto per_team_limit(std::int32_t const team_count) const noexcept -> std::int32_t {
+        return team_count == 0 ? 0 : settings.max_live_fighters.get() / team_count;
+    }
+
     FighterSimConfig settings{};
     NonNegative<std::int16_t> attack_retry_cooldown_ticks{};
     NonNegative<std::int16_t> fire_cooldown_ticks{};

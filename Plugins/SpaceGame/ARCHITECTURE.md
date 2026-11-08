@@ -29,14 +29,14 @@ validates and compiles that composed definition before launch and hands its init
 to the orchestrator. Packaged and native launches use the same definition and native compiler.
 Editor proxies are authoring objects and never initialize simulation entities.
 
-Native construction creates the player but leaves initialization open. Bind the player's commands
-and harvest static geometry after the editor proxies have been removed from the PIE world.
-
-Install the harvested bounds before `LevelSim::finish_initialisation()`. That boundary dispatches
-initial events, publishes entity lookup rows and the spatial index, initializes telemetry and the
-logic setup, then resets its clock to tick zero and `BetweenTicks` and enters `LevelState::Paused`.
-Initialize presentation and HUD afterward, then activate controls and apply the requested start
+Harvest static geometry after the editor proxies have been removed from the PIE world, and put
+the bounds in `LevelSimInitData::collision.static_bounds` before construction. Native construction
+dispatches initial events, publishes entity lookup rows and the spatial index, initializes telemetry
+and resets its clock to tick zero and `BetweenTicks`. The simulation returns paused, or stopped if
+an initial terminal event ends the run. Bind player commands and initialize presentation and HUD
+afterward, then activate controls and apply the requested start
 mode. Presentation derives initial entity transforms from the initialized native state.
+`LaunchOptions::presentation_mode` controls presentation throughout the run.
 
 Use `get_level_simulation()` for native timing, entity simulations, queries, logic results and telemetry.
 It returns null before construction and after release. Actor accessors cover configuration,

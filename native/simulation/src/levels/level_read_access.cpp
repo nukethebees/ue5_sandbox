@@ -3,8 +3,6 @@
 #include <ioj/sim/levels/level_sim.h>
 #include <ioj/sim/sim_clock.h>
 
-#include <algorithm>
-
 namespace ioj::sim {
 auto LevelReadAccess::capitals() const -> capital_ships::Sim const& {
     return level_.capital_ships();
@@ -31,7 +29,6 @@ auto LevelReadAccess::entity_ledger() const -> EntityLedger const& {
     return level_.entity_ledger();
 }
 auto LevelReadAccess::interpolation_alpha() const -> double {
-    auto const& clock{this->clock()};
-    return std::clamp(clock.tick_loop.accumulator / clock.tick_period(), 0.0, 1.0);
+    return clock().interpolation_alpha();
 }
 } // namespace ioj::sim

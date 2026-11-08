@@ -65,23 +65,29 @@ TEST(SimulationClock, ConvertsDurationsAndFrequencies) {
 
 TEST(SimulationClock, InitialisesRuntimeStateFromStaticSettings) {
     SimClock clock;
-    clock.tick_loop.accumulator = 1.0;
-    clock.completed_ticks = SimTick{17};
+    clock.add_time(1.0);
+    for (int tick{}; tick < 17; ++tick) {
+        clock.advance_to(SimulationPhase::ResolutionCommit);
+        clock.complete_tick();
+    }
     clock.initialise(
         {.tick_rate = Frequency::make(10.0), .time_scale = PositiveFinite<double>::make(2.0)});
 
     EXPECT_DOUBLE_EQ(clock.tick_period(), 0.1);
     EXPECT_DOUBLE_EQ(clock.time_scale().get(), 2.0);
-    EXPECT_DOUBLE_EQ(clock.tick_loop.accumulator, 0.0);
+    EXPECT_DOUBLE_EQ(clock.interpolation_alpha(), 0.0);
     EXPECT_EQ(clock.get_completed_ticks().value(), 0);
 
-    clock.tick_loop.accumulator = 0.25;
-    clock.completed_ticks = SimTick{3};
+    clock.add_time(0.25);
+    for (int tick{}; tick < 3; ++tick) {
+        clock.advance_to(SimulationPhase::ResolutionCommit);
+        clock.complete_tick();
+    }
     clock.advance_to(SimulationPhase::Resolution);
     clock.reset();
     EXPECT_EQ(clock.phase(), SimulationPhase::BetweenTicks);
     EXPECT_EQ(clock.get_completed_ticks(), SimTick{});
-    EXPECT_DOUBLE_EQ(clock.tick_loop.accumulator, 0.0);
+    EXPECT_DOUBLE_EQ(clock.interpolation_alpha(), 0.0);
     EXPECT_DOUBLE_EQ(clock.tick_period(), 0.1);
     EXPECT_DOUBLE_EQ(clock.time_scale().get(), 2.0);
 }

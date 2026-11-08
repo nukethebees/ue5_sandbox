@@ -140,8 +140,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         .rules = {{0, {ioj::levels::WinEffect{ioj::Team::Green}}}}};
     ioj::sim::LevelSim headless{compile_battle(battle)};
     ioj::sim::LevelSim visible{compile_battle(std::move(battle))};
-    headless.finish_initialisation();
-    visible.finish_initialisation();
+
     ioj::FLevelPresentation presentation{resources, visible.read_access()};
     headless.start();
     visible.start();
@@ -242,7 +241,7 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     }
 
     ioj::sim::LevelSim simulation{compile_battle(std::move(data))};
-    simulation.finish_initialisation();
+
     auto const& clk{simulation.clock()};
     ioj::FLevelPresentationHost host;
     host.bind_components(components);
@@ -334,7 +333,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
         ioj::Positive<std::int32_t>{100};
     ::ioj::sim::LevelSim simulation{
         compile_battle(std::move(scheduled_battle), std::move(scheduled_config))};
-    simulation.finish_initialisation();
+
     ioj::FLevelPresentation presentation{resources, simulation.read_access()};
     TestEqual(TEXT("Delayed spinner has no initial visual instance"),
               resources.spinners->GetNumInstances(),
@@ -410,7 +409,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     auto death_data{make_battle_config()};
     death_data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
     ::ioj::sim::LevelSim deaths{compile_battle(make_battle(), std::move(death_data))};
-    deaths.finish_initialisation();
+
     resources.config.presentation.capital_ships.n_small_explosions = 3;
     auto* const explosion{LoadObject<UNiagaraSystem>(
         nullptr, TEXT("/SandboxNiagara/Templates/NS_SandboxNiagaraSeed.NS_SandboxNiagaraSeed"))};
@@ -514,7 +513,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     active_profile.config.boost.energy_drain_per_second = ioj::NonNegativeFinite<float>{20.f};
     active_profile.config.energy_recharge_per_second = ioj::NonNegativeFinite<float>{0.f};
     ::ioj::sim::LevelSim simulation{compile_battle(std::move(battle), std::move(data))};
-    simulation.finish_initialisation();
+
     simulation.start();
     auto* player{simulation.player_ship_simulation()};
     auto resources{actor->get_presentation_resources()};
@@ -575,7 +574,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     component->set_num_custom_data_floats(FLaserPresentation::n_custom_ismc_floats);
 
     ::ioj::sim::LevelSim simulation{compile_battle(make_battle())};
-    simulation.finish_initialisation();
+
     auto const& clk{simulation.clock()};
     auto const& lasers{simulation.lasers()};
     FLaserPresentation presentation{*component};
@@ -584,7 +583,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     auto const dt{clk.tick_period()};
     constexpr int32 simulated_seconds{3};
     constexpr int32 spawns_per_tick{6};
-    auto const tick_count{static_cast<int32>(clk.tick_loop.tick_rate.hz()) * simulated_seconds};
+    auto const tick_count{static_cast<int32>(clk.tick_rate().hz()) * simulated_seconds};
     TArray<FExpectedMaterialData> expected_material_data;
     expected_material_data.Reserve(tick_count * spawns_per_tick);
 
@@ -684,8 +683,8 @@ auto FLevelTelemetryFileAdapterTest::RunTest(FString const&) -> bool {
     auto data{compile_battle(make_battle())};
     data.telemetry_metadata.run_id = "12345678-1234-1234-1234-123456789abc";
     ::ioj::sim::LevelSim simulation{std::move(data)};
-    simulation.finish_initialisation();
-    simulation.finalize_telemetry_run(::ioj::sim::telemetry::RunEndReason::WorldEnd);
+
+    simulation.stop_run(::ioj::sim::telemetry::RunEndReason::WorldEnd);
     auto run{simulation.take_finalized_telemetry_run()};
     if (!TestTrue(TEXT("Native run is finalized"), run.has_value())) {
         return false;

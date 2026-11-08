@@ -16,7 +16,7 @@ namespace ioj::levels {
 using LevelCompilationErrors = std::vector<std::string>;
 
 auto compile_timer_duration(Duration duration, sim::SimClock const& clock)
-    -> std::expected<sim::SimTick, LevelCompilationErrors>;
+    -> std::expected<sim::TimerTicks, LevelCompilationErrors>;
 [[nodiscard]] auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     -> std::expected<void, LevelCompilationErrors>;
 } // namespace ioj::levels

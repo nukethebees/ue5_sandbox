@@ -27,7 +27,7 @@ TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReference
     auto built{build()};
     ASSERT_TRUE(built);
     LevelSim simulation{std::move(*built)};
-    simulation.finish_initialisation();
+
     EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
     EXPECT_EQ(simulation.turrets().num_instances(), 0);
     simulation.start();
@@ -53,7 +53,7 @@ TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReference
     auto fresh{build()};
     ASSERT_TRUE(fresh);
     LevelSim second{std::move(*fresh)};
-    second.finish_initialisation();
+
     EXPECT_FALSE(second.result());
     second.start();
     second.advance(2 * dt);
@@ -96,7 +96,7 @@ TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedEnt
     EXPECT_EQ(spinner.initial_fire_point_indices()[0], 1);
 
     LevelSim simulation{std::move(*built)};
-    simulation.finish_initialisation();
+
     EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
     ASSERT_EQ(simulation.spinners().num_instances(), 1);
     EXPECT_EQ(simulation.spinners().get_entities().yaws()[0], 45.f);

@@ -162,7 +162,8 @@ void Sim::prepare_tick(PreparationInputs const inputs) {
     tick_periodic_countdowns<std::int16_t>(data.navigation_update_countdowns_remaining_ticks());
     spawn_queue_.reset();
 
-    remaining_team_capacity_.fill(inputs.per_team_limit);
+    auto const team_count{static_cast<std::int32_t>(inputs.participating_teams.size())};
+    remaining_team_capacity_.fill(config_.per_team_limit(team_count));
     for (auto const team : data.teams()) {
         auto const team_index{static_cast<std::uint32_t>(team)};
         if (team_index < remaining_team_capacity_.size() &&

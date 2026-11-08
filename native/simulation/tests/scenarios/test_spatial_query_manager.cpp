@@ -26,7 +26,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
         tests::add_capital_spawn(data, location, Team::White, 999.f, 999.f);
     }
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     auto const& capitals{harness.simulation().capital_ships()};
     auto const capital_ids{capitals.get_entities().entity_ids()};
     std::vector<EntityId> expected{};

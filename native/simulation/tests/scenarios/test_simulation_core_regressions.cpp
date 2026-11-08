@@ -36,7 +36,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     }
 
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     auto& simulation{harness.simulation()};
     auto const& clk{simulation.clock()};
     if (scenario == SimulationCoreRegressionScenario::FixedTickLifecycle) {
@@ -140,7 +140,7 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
                                  ioj::sim::Health{collision_damage_test::capital_health}));
 
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     auto& simulation{harness.simulation()};
     auto* const player{simulation.player_ship_simulation()};
     ASSERT_NE(player, nullptr) << "Collision test player simulation is available";

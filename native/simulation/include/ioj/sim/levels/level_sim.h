@@ -53,7 +53,6 @@ struct LevelSim {
     auto operator=(LevelSim const&) -> LevelSim& = delete;
     auto operator=(LevelSim&&) -> LevelSim& = delete;
 
-    void finish_initialisation();
     void start();
     void pause();
 
@@ -67,8 +66,6 @@ struct LevelSim {
     /* **************************************** */
     // Configuration and commands
     /* **************************************** */
-    void set_telemetry_metadata(telemetry::RunMetadata metadata);
-    void set_static_collision(std::span<collision::WorldAABB const> bounds);
     auto player_ship_commands() noexcept -> std::optional<player::CommandInterface> {
         if (!player_ship_simulation_) {
             return std::nullopt;
@@ -80,7 +77,6 @@ struct LevelSim {
     /* **************************************** */
     // Telemetry and level results
     /* **************************************** */
-    void finalize_telemetry_run(telemetry::RunEndReason reason);
     void stop_run(telemetry::RunEndReason reason);
     auto result() const -> std::optional<LevelResult>;
     auto take_finalized_telemetry_run() -> std::optional<telemetry::RunRecord>;
@@ -154,7 +150,6 @@ struct LevelSim {
     LevelState state_{LevelState::Uninitialised};
     SimClock clock_;
     TeamList participating_teams_;
-    std::int32_t fighter_per_team_limit_{};
 
     LevelMemoryManager memory_manager_;
     EntityLedger entity_ledger_;

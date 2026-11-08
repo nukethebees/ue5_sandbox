@@ -53,7 +53,7 @@ void run_worldless_laser_lifecycle(LaserLifecycleScenario const scenario) {
     }
 
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     auto const& lasers{harness.simulation().lasers()};
     auto const& capitals{harness.simulation().capital_ships()};
     auto const shooter{capitals.get_entities().entity_ids()[0]};

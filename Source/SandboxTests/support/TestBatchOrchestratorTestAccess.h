@@ -11,11 +11,6 @@ struct FTestBatchOrchestratorTestAccess {
         ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(
             orchestrator.level_simulation_.GetValue(), events);
     }
-    static void set_telemetry_metadata(ioj::ATestBatchOrchestrator& orchestrator,
-                                       ::ioj::sim::telemetry::RunMetadata metadata) {
-        check(orchestrator.level_simulation_.IsSet());
-        orchestrator.level_simulation_->set_telemetry_metadata(std::move(metadata));
-    }
     static void stop_run(ioj::ATestBatchOrchestrator& orchestrator,
                          ::ioj::sim::telemetry::RunEndReason reason) {
         check(orchestrator.level_simulation_.IsSet());
@@ -27,6 +22,6 @@ struct FTestBatchOrchestratorTestAccess {
         return ::ioj::take_finalized_level_telemetry_report(
             orchestrator.level_simulation_.GetValue(),
             orchestrator.launch_options_,
-            orchestrator.presentation_enabled);
+            orchestrator.is_presentation_enabled());
     }
 };

@@ -166,7 +166,7 @@ TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGe
     EXPECT_EQ(built->level_metadata.id.value, "headless-player");
 
     LevelSim simulation{std::move(*built)};
-    simulation.finish_initialisation();
+
     auto const* player{simulation.player_ship_simulation()};
     ASSERT_NE(player, nullptr);
     auto commands{simulation.player_ship_commands()};
@@ -228,7 +228,7 @@ TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
                      settings::PositiveHealth{Health{100}},
                      NonNegative<std::int32_t>{0});
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
     simulation.advance(dt);
@@ -289,7 +289,7 @@ TEST(NativeSimulation, PositionSamplesCanBecomeFalseWhileLatchRemembersArrival) 
     data.logic.rules = {{1, {levels::PublishEffect{"arrived"}}},
                         {2, {levels::PublishEffect{"gone"}}}};
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
     simulation.advance(dt);
@@ -319,7 +319,7 @@ TEST(NativeSimulation, SchemeDelayedEntityAndDispatchedSignalAdvanceOnSeparateSa
     auto compiled{levels::compile_level(*definition, config.runtime)};
     ASSERT_TRUE(compiled);
     LevelSim simulation{std::move(config.runtime)};
-    simulation.finish_initialisation();
+
     simulation.start();
     simulation.advance(0.2);
     ASSERT_EQ(simulation.capital_ships().num_instances(), 2);
@@ -340,7 +340,7 @@ TEST(NativeSimulation, FirstDispatchedWinDeterminesResultAndStrandsOtherEffects)
                           levels::WinEffect{Team::Green},
                           levels::PublishEffect{"after"}}}};
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     simulation.start();
     simulation.advance(1.0);
     auto const result{simulation.result()};
@@ -368,7 +368,7 @@ TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumed
     std::array const events{second, first};
     add_timed_events(data, Duration::make(0), events);
     LevelSim simulation{std::move(data)};
-    simulation.finish_initialisation();
+
     simulation.start();
     auto const period{simulation.clock().tick_period()};
 
@@ -398,7 +398,7 @@ TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendin
                   [](EventHandle const event) { return !is_tick_end(event.kind()); });
     expected_history.append_range(events);
     LevelSim simulation{std::move(data)};
-    simulation.finish_initialisation();
+
     simulation.start();
     simulation.advance(0.2);
     EXPECT_EQ(simulation.state(), LevelState::Running);
@@ -443,7 +443,7 @@ TEST(NativeSimulation, PlayerlessVictoryStopsAtTheTimerDeadline) {
     auto compiled{std::move(data).compile()};
     add_duration_limit(compiled, Duration::make(1.0));
     LevelSim simulation{std::move(compiled)};
-    simulation.finish_initialisation();
+
     simulation.start();
     simulation.advance(1.0);
     ASSERT_TRUE(simulation.result());
@@ -461,7 +461,7 @@ TEST(NativeSimulation, DurationEventsDoNotRequireTelemetryRecording) {
     data.telemetry_recording.enabled = false;
     add_duration_limit(data, Duration::make(0));
     LevelSim simulation{std::move(data)};
-    simulation.finish_initialisation();
+
     simulation.start();
     simulation.advance(1.0);
     EXPECT_EQ(simulation.state(), LevelState::Stopped);
@@ -476,17 +476,15 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
     auto const second_timer{data.runtime.timers.add()};
     auto const first_elapsed{data.runtime.expressions.add_timer_elapsed(first_timer)};
     auto const second_elapsed{data.runtime.expressions.add_timer_elapsed(second_timer)};
-    auto const initial_start{definitions.add_start_timer_event({first_timer, SimTick{2}})};
-    auto const later_start{definitions.add_start_timer_event({second_timer, SimTick{3}})};
+    auto const initial_start{definitions.add_start_timer_event({first_timer, 2})};
+    auto const later_start{definitions.add_start_timer_event({second_timer, 3})};
     definitions.initial_events.push_back(initial_start);
     definitions.add_trigger(first_elapsed, std::array{later_start});
     auto const stop{definitions.add_stop_event(telemetry::RunEndReason::DurationReached)};
     definitions.add_trigger(second_elapsed, std::array{stop});
 
     LevelSim simulation{std::move(data).compile()};
-    EXPECT_TRUE(std::ranges::equal(simulation.events().pending_tick_end_events(),
-                                   std::array{initial_start}));
-    simulation.finish_initialisation();
+
     EXPECT_EQ(simulation.state(), LevelState::Paused);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
     EXPECT_EQ(simulation.expressions().result(first_elapsed), false);
@@ -520,14 +518,13 @@ TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTer
     definitions.add_spawn_group(EntityType::CapitalShip, 1, 1);
     auto const first_spawn{definitions.add_spawn_event({0, 1})};
     auto const second_spawn{definitions.add_spawn_event({1, 1})};
-    auto const start{definitions.add_start_timer_event({data.timers.add(), SimTick{1}})};
+    auto const start{definitions.add_start_timer_event({data.timers.add(), 1})};
     auto const stop{definitions.add_stop_event(telemetry::RunEndReason::WorldEnd)};
-    auto const stranded{definitions.add_start_timer_event({data.timers.add(), SimTick{1}})};
+    auto const stranded{definitions.add_start_timer_event({data.timers.add(), 1})};
     definitions.initial_events = {second_spawn, first_spawn, start, stop, stranded};
 
     LevelSim simulation{std::move(data)};
-    EXPECT_EQ(simulation.capital_ships().num_instances(), 0);
-    simulation.finish_initialisation();
+
     EXPECT_EQ(simulation.state(), LevelState::Stopped);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
     EXPECT_EQ(simulation.capital_ships().num_instances(), 2);
@@ -555,7 +552,7 @@ TEST(NativeSimulation, RunsWithoutACompletionOrDurationEvent) {
     auto data{make_battle()};
     data.runtime.clock_settings.tick_rate = Frequency::make(10);
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     simulation.start();
     simulation.advance(1.0);
     EXPECT_EQ(simulation.state(), LevelState::Running);
@@ -568,7 +565,7 @@ TEST(NativeSimulation, QueuedPausePreservesPendingSpawnsAndTelemetryUntilResume)
     std::array const pause{EventHandle{0, EventKind::Pause}};
     add_timed_events(data, Duration::make(0.21), pause);
     LevelSim simulation{std::move(data)};
-    simulation.finish_initialisation();
+
     simulation.start();
     simulation.advance(0.425);
 
@@ -602,7 +599,7 @@ TEST(NativeSimulation, QueuedPausePreservesPendingSpawnsAndTelemetryUntilResume)
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{5});
     EXPECT_FALSE(simulation.take_finalized_telemetry_run());
 
-    simulation.finalize_telemetry_run(telemetry::RunEndReason::WorldEnd);
+    simulation.stop_run(telemetry::RunEndReason::WorldEnd);
     auto const record{simulation.take_finalized_telemetry_run()};
     ASSERT_TRUE(record);
     EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::WorldEnd);
@@ -615,7 +612,7 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     auto data{make_battle()};
     data.runtime.clock_settings.tick_rate = ioj::Frequency::make(10.0);
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     auto queue_shot = [](LevelSim& level, float const location) {
         lasers::LaserSpawnRequests requests;
         tests::add_laser_spawn(requests,
@@ -656,9 +653,11 @@ TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
     auto data{make_battle()};
     std::array<collision::WorldAABB, 1> static_bounds{
         collision::WorldAABB{{{-10.f, 490.f, -10.f}}, {{10.f, 510.f, 10.f}}}};
+    for (auto const& bounds : static_bounds) {
+        data.runtime.collision.static_bounds.add(bounds.min, bounds.max);
+    }
     LevelSim simulation{std::move(data).compile()};
-    simulation.set_static_collision(static_bounds);
-    simulation.finish_initialisation();
+
     auto const clk_period{simulation.clock().tick_period()};
 
     auto const& queries{simulation.spatial_query_manager()};
@@ -695,11 +694,7 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     auto compiled{std::move(data).compile()};
     auto const initial_events{compiled.level_events.initial_events};
     LevelSim simulation{std::move(compiled)};
-    EXPECT_EQ(simulation.entity_ledger().count_alive(), 1)
-        << "Only the player is constructed directly";
-    EXPECT_TRUE(
-        std::ranges::equal(simulation.events().pending_preparation_events(), initial_events));
-    simulation.finish_initialisation();
+
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
     EXPECT_TRUE(simulation.events().pending_preparation_events().empty());
     EXPECT_TRUE(std::ranges::equal(simulation.events().preparation_events(), initial_events));
@@ -733,7 +728,6 @@ TEST(NativeSimulation, PlayerPreservesPartialSpawnHealth) {
     data.runtime.player->health = {Health{50}, Health{100}};
 
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
 
     auto const* const player{simulation.player_ship_simulation()};
     ASSERT_NE(player, nullptr);
@@ -787,7 +781,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
         NonNegativeFinite<double>::make(4.0 / data.runtime.clock_settings.tick_rate.hz());
 
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     simulation.start();
     auto const tick_period{simulation.clock().tick_period()};
     simulation.advance(tick_period);
@@ -845,7 +839,7 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
     gunship.config.translation.up.manual.response.mode = player::ResponseMode::Direct;
 
     LevelSim simulation{std::move(data).compile()};
-    simulation.finish_initialisation();
+
     simulation.start();
 
     auto* const player{simulation.player_ship_simulation()};
@@ -887,7 +881,7 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
 
 TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     LevelSim simulation{make_overlap_response_battle().compile()};
-    simulation.finish_initialisation();
+
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
     auto* player{simulation.player_ship_simulation()};
@@ -930,8 +924,7 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
 TEST(NativeSimulation, SimulationsKeepClocksAndEntitiesIndependent) {
     LevelSim first{make_battle().compile()};
     LevelSim second{make_battle().compile()};
-    first.finish_initialisation();
-    second.finish_initialisation();
+
     first.start();
     second.start();
     auto const dt{first.clock().tick_period()};
@@ -948,21 +941,19 @@ TEST(NativeSimulation, SimulationsKeepClocksAndEntitiesIndependent) {
 TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
 
     auto data{make_battle()};
-    LevelSim simulation{std::move(data).compile()};
-    simulation.set_telemetry_metadata(telemetry::RunMetadata{
+    data.runtime.telemetry_metadata = telemetry::RunMetadata{
         .run_id = "12345678-1234-1234-1234-123456789abc",
         .map_name = "TelemetryTest",
         .level_id = "telemetry-test",
         .level_display_name = "Telemetry Test",
         .launched_utc = "2026-09-06T12:00:00Z",
-    });
-    EXPECT_EQ(simulation.level_telemetry_manager().state(),
-              LevelTelemetryManager::State::Uninitialised)
-        << "Metadata configuration waits for initialisation";
-    simulation.finish_initialisation();
+    };
+    LevelSim simulation{std::move(data).compile()};
+
     EXPECT_EQ(simulation.level_telemetry_manager().state(), LevelTelemetryManager::State::Recording)
-        << "Finishing starts telemetry";
-    EXPECT_EQ(simulation.state(), LevelState::Paused) << "Finishing leaves the simulation paused";
+        << "Construction starts telemetry";
+    EXPECT_EQ(simulation.state(), LevelState::Paused)
+        << "Construction leaves the simulation paused";
     simulation.start();
 
     auto const& telemetry{simulation.level_telemetry_manager()};
@@ -972,9 +963,9 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
     simulation.advance(1.0);
     auto const& clock{simulation.clock()};
     simulation.advance(4.0 * clock.tick_period());
-    simulation.finalize_telemetry_run(telemetry::RunEndReason::WorldEnd);
-    EXPECT_EQ(simulation.state(), LevelState::Running)
-        << "Interrupted telemetry finalization does not pause simulation";
+    simulation.stop_run(telemetry::RunEndReason::WorldEnd);
+    EXPECT_EQ(simulation.state(), LevelState::Stopped)
+        << "Ending the run also finalizes its telemetry";
 
     auto record{simulation.take_finalized_telemetry_run()};
     ASSERT_TRUE(record.has_value()) << "Finalized manager yields one run record";

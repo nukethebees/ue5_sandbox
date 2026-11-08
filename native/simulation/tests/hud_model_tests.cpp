@@ -17,7 +17,7 @@ TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
     add_capital_spawn(data, {0.f, 0.f, 0.f}, Team::Blue, 60.f);
     add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
     WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     auto const& simulation{harness.simulation()};
     presentation::HudModel hud;
     hud.initialise(simulation.read_access());
@@ -44,7 +44,7 @@ TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
     auto data{hud_test::data()};
     add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
     WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     auto& simulation{harness.simulation()};
     presentation::HudModel hud;
     hud.initialise(simulation.read_access());
@@ -73,7 +73,7 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
             data, {20000.f + 10000.f * static_cast<float>(index), 0.f, 0.f}, Team::Red, 60.f);
     }
     WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     auto& simulation{harness.simulation()};
     auto const player_id{simulation.player_ship_simulation()->unique_entity_id};
     auto const& capitals{simulation.capital_ships()};

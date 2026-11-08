@@ -18,7 +18,7 @@
 namespace ioj::levels {
 namespace {
 struct EventSource {
-    sim::SimTick execution_tick{};
+    sim::TimerTicks execution_tick{};
     std::uint32_t source_index{};
 };
 
@@ -30,12 +30,12 @@ auto entity_index(LevelDefinition const& definition, EntityId const& id) -> sim:
 } // namespace
 
 auto compile_timer_duration(Duration const duration, sim::SimClock const& clock)
-    -> std::expected<sim::SimTick, LevelCompilationErrors> {
+    -> std::expected<sim::TimerTicks, LevelCompilationErrors> {
     auto const ticks{duration.seconds() * clock.tick_rate().hz()};
-    if (ticks >= static_cast<double>(std::numeric_limits<sim::SimTick::value_type>::max())) {
+    if (ticks > static_cast<double>(std::numeric_limits<sim::TimerTicks>::max())) {
         return std::unexpected{LevelCompilationErrors{"Timer duration exceeds tick range"}};
     }
-    return sim::SimTick{clock.duration_to_tick_period(duration).get()};
+    return clock.duration_to_tick_period<sim::TimerTicks>(duration).get();
 }
 
 auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
@@ -154,7 +154,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
             sim::EntityType::TubeSpinner, spinner_offset, spinner_end - spinner_offset);
         auto const spawn{definitions.add_spawn_event(
             {group_offset, definitions.spawn_groups.num() - group_offset})};
-        if (tick == sim::SimTick{}) {
+        if (tick == 0) {
             definitions.initial_events.push_back(spawn);
         } else {
             auto const timer{output.timers.add()};
@@ -182,10 +182,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         spawn_effects.push_back(definitions.add_spawn_event(
             {first_group, definitions.spawn_groups.num() - first_group}));
     }
-    std::vector<sim::TimerHandle> timers;
-    for (std::uint32_t i{}; i < logic.timer_count; ++i) {
-        timers.push_back(output.timers.add());
-    }
+    auto const timers{output.timers.add(logic.timer_count)};
     std::unordered_map<EntityId, sim::LevelEntityRef> entities;
     for (std::uint32_t i{}; i < entity_count; ++i) {
         entities.emplace(definition.entities()[i].id, sim::LevelEntityRef{i});

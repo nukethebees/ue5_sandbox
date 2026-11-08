@@ -52,7 +52,7 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
         data, locations, teams, damage, scenario == TurretCombatScenario::KillEnemy ? 100000 : -1);
 
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     std::vector<Health> initial_healths{};
     auto const& initial_view{harness.simulation().turrets()};
     auto const initial_entities{initial_view.get_entities()};
@@ -94,7 +94,7 @@ TEST(WorldlessSpaceGameSimulation, TurretsLineOfSightBlocking) {
     std::vector<Team> const teams{Team::Blue, Team::Red};
     add_worldless_turrets(data, locations, teams, 0);
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     std::uint32_t spawn_count_before_blocker{std::numeric_limits<std::uint32_t>::max()};
     harness.timeline
         .at(2.0,
@@ -123,7 +123,7 @@ TEST(WorldlessSpaceGameSimulation, TurretsSearchRequiresLineOfSight) {
     add_worldless_turrets(data, locations, teams, 0);
     data.runtime.collision.static_bounds.add({{-100.f, -300.f, -3000.f}}, {{100.f, 300.f, 3000.f}});
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
-    harness.finish_initialisation();
+
     harness.timeline.finish_at(1.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(1.5)) << "Turret search timeline completes";
     auto const targets{harness.simulation().turrets().get_entities().target_ids()};
