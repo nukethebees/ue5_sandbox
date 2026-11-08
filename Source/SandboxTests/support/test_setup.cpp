@@ -112,8 +112,6 @@ void FTestBatchOrchestratorLevelSetup::end_test() {
         return;
     }
 
-    orchestrator->pause_simulation();
-
     orchestrator->reset_for_new_level();
 
     reset_test_configuration();
