@@ -41,7 +41,6 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
     void fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) const;
     void update_ismc();
     void queue_hit_sparks();
-    void validate_array_sizes() const;
 
     ioj::FLaserProjectileConfig const* actor_config{nullptr};
 

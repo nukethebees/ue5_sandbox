@@ -518,7 +518,6 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
         return;
     }
 
-    check(registration.radar_frame_store.IsValid());
     auto& frame{registration.radar_frame_store->next()};
     auto const* player_ship{model_.player_for_collection()};
     if (!player_ship || !player_ship->is_alive()) {

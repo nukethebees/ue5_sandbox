@@ -55,7 +55,6 @@ EmptyLineBeforeAccessModifier: Leave
 
 FixNamespaceComments: false
 
-IfMacros: [IF_EXPR_ELSE_WARN]
 IncludeBlocks: Regroup
 MainIncludeChar: Any
 # Reverse dependency order: matching header (category 0), project, internal

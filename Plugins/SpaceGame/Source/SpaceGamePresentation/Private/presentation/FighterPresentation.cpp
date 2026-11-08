@@ -5,7 +5,6 @@
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
-#include <SandboxCore/array_checks.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 #include <SandboxCoreEngine/VectorConversion.h>
 
@@ -57,15 +56,9 @@ void FFighterPresentation::commit_visual_data() {
     }
 }
 
-void FFighterPresentation::end_tick_presentation() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::end_tick_presentation);
-    validate_array_sizes();
-}
-
 void FFighterPresentation::configure_ismc() {
     instances->SetMobility(EComponentMobility::Movable);
     instances->set_static_mesh(*actor_config->mesh);
-    check(instances->get_static_mesh() == actor_config->mesh);
 
     instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     instances->SetGenerateOverlapEvents(false);
@@ -146,12 +139,4 @@ void FFighterPresentation::draw_debug_shapes() {
                                    FVector{ioj::to_unreal(::ioj::vector_at(target_locations, i))});
         }
     }
-}
-
-void FFighterPresentation::validate_array_sizes() const {
-    simulation().entities().validate();
-    ioj::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(visible_indices_.Num()),
-        SANDBOX_NAMED_NUM(instances->get_instance_count()),
-    });
 }

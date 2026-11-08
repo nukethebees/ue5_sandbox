@@ -1,7 +1,6 @@
 #include "SpaceGame/ui/common/SGameButton.h"
 
 #include "Framework/Application/SlateApplication.h"
-#include <Styling/CoreStyle.h>
 #include <Widgets/Images/SImage.h>
 #include <Widgets/Input/SButton.h>
 #include <Widgets/Layout/SBorder.h>
@@ -10,26 +9,9 @@
 #include <Widgets/Text/STextBlock.h>
 
 namespace ioj {
-namespace {
-auto fallback_button_style() -> FGameButtonPresentationStyle const& {
-    static FGameButtonPresentationStyle const style{[] {
-        FGameButtonPresentationStyle result;
-        result.normal = FCoreStyle::Get().GetWidgetStyle<FButtonStyle>("Button");
-        result.selected = result.normal;
-        result.normal_text = FCoreStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText");
-        result.normal_hovered_text = result.normal_text;
-        result.selected_text = result.normal_text;
-        result.selected_hovered_text = result.normal_text;
-        result.disabled_text = result.normal_text;
-        result.minimum_size = FVector2f{0.0f, 32.0f};
-        return result;
-    }()};
-    return style;
-}
-}
-
 void SGameButton::Construct(FArguments const& args) {
-    style_ = args._Style != nullptr ? args._Style : &fallback_button_style();
+    check(args._Style);
+    style_ = args._Style;
     selected_ = args._Selected;
     audio_ = args._Audio;
 

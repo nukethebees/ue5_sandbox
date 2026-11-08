@@ -27,12 +27,10 @@ struct SPACEGAMEPRESENTATION_API FFighterPresentation {
     void begin_play_presentation();
     void update_visual_data();
     void commit_visual_data();
-    void end_tick_presentation();
 
     void configure_ismc();
     void update_ismc();
     void draw_debug_shapes();
-    void validate_array_sizes() const;
 
     ioj::USandboxISMCComponent* instances{nullptr};
 

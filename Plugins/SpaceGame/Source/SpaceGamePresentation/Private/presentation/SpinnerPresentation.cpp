@@ -102,7 +102,6 @@ void FSpinnerPresentation::update_ismc() {
 }
 
 void FSpinnerPresentation::validate_array_sizes() const {
-    simulation().get_entities().validate();
     ioj::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(static_cast<int32>(simulation().num_instances())),
         SANDBOX_NAMED_NUM(ismc_transforms),

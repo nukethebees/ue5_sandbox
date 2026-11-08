@@ -84,7 +84,7 @@ void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) 
 
     last_completed_tick_ = completed_tick;
     auto const* player{view.player()};
-    if (player_.IsSet() && player != nullptr) {
+    if (player_.IsSet()) {
         player_->tick(*player);
     }
     capital_ships.update_visual_data(view.entity_ledger());
@@ -93,7 +93,6 @@ void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) 
     spinners.update_visual_data();
     lasers.update_visual_data();
     capital_ships.end_tick_presentation();
-    capital_ship_fighters.end_tick_presentation();
     turrets.end_tick_presentation();
     spinners.end_tick_presentation();
     lasers.end_tick_presentation();

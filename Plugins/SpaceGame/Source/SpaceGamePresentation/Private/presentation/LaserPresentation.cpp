@@ -8,7 +8,6 @@
 #include <SpaceGameRendering/SparkEffects.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
-#include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCoreEngine/VectorConversion.h>
 
@@ -56,7 +55,6 @@ void FLaserPresentation::begin_play_presentation() {
 #endif
 
     update_visual_data(false);
-    validate_array_sizes();
 }
 
 void FLaserPresentation::update_visual_data(bool const consume_hits) {
@@ -70,13 +68,11 @@ void FLaserPresentation::update_visual_data(bool const consume_hits) {
 void FLaserPresentation::end_tick_presentation() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::end_tick_presentation);
     TRACE_COUNTER_SET(SandboxTestLaserISMCCount, instances->get_instance_count());
-    validate_array_sizes();
 }
 
 void FLaserPresentation::configure_ismc() {
     instances->SetMobility(EComponentMobility::Movable);
     instances->set_static_mesh(*actor_config->mesh);
-    check(instances->get_static_mesh() == actor_config->mesh);
     instances->SetMaterial(0, actor_config->material);
 
     instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -158,8 +154,7 @@ void FLaserPresentation::fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) cons
 }
 
 void FLaserPresentation::queue_hit_sparks() {
-    if (spark_effects_ == nullptr || actor_config == nullptr ||
-        actor_config->impact_sparks.count <= 0) {
+    if (actor_config->impact_sparks.count <= 0) {
         return;
     }
 
@@ -187,12 +182,4 @@ void FLaserPresentation::queue_hit_sparks() {
             .style = style.to_native(),
         });
     }
-}
-
-void FLaserPresentation::validate_array_sizes() const {
-    simulation().get_entities().validate();
-    ioj::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(visible_indices_.Num()),
-        SANDBOX_NAMED_NUM(instances->get_instance_count()),
-    });
 }

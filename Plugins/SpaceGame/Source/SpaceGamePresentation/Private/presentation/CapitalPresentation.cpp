@@ -171,12 +171,6 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
         !has_main_death_explosion) {
         return;
     }
-    if (!niagara_spawner) {
-        UE_LOG(LogSandbox,
-               Warning,
-               TEXT("FCapitalPresentation::trigger_death_effects: niagara_spawner is nullptr"));
-        return;
-    }
 
     auto const n_small_explosions{settings_->n_small_explosions};
     auto const time_between_explosions{settings_->time_between_explosions};
@@ -230,7 +224,6 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
 }
 
 void FCapitalPresentation::validate_array_sizes() const {
-    simulation().get_entities().validate();
     ioj::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(static_cast<int32>(simulation().num_instances())),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),

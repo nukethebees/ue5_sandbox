@@ -1,6 +1,5 @@
 #include "SpaceGame/ships/player/TestSpaceShip.h"
 
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
