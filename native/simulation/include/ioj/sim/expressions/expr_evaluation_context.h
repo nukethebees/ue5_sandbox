@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <span>
 
 namespace ioj {
@@ -19,7 +18,6 @@ struct ExprEvaluationContext {
     Timers const& timers;
     std::span<EntityId const> entities;
     Latches const& latches;
-    std::span<std::uint8_t const> signals;
     SpatialQueryManager const* spatial{};
     FrameMemoryResource* scratch{};
 };

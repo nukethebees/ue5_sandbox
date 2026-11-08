@@ -14,30 +14,36 @@
 namespace ioj::sim::expression_tests {
 using namespace ioj::levels;
 
-TEST(Expressions, BooleanOperatorsResampleSharedSignalsInDependencyOrder) {
+TEST(Expressions, BooleanOperatorsEvaluateSharedLeavesInDependencyOrder) {
     EntityLedger ledger;
-    Timers timers;
     Latches latches;
-    ExprManager expressions;
     std::array const nodes{
         Expression{AllExpr{{1, 2}}},
         Expression{NotExpr{{3}}},
         Expression{XorExpr{{3, 4, 4}}},
-        Expression{EventFiredExpr{"a"}},
-        Expression{EventFiredExpr{"b"}},
+        Expression{TimerElapsedExpr{0}},
+        Expression{TimerElapsedExpr{1}},
         Expression{AnyExpr{{3, 4}}},
         Expression{AllExpr{}},
         Expression{AnyExpr{}},
         Expression{XorExpr{}},
     };
-    std::array<ExprHandle, nodes.size()> handles;
-    expressions.append(nodes, {{}, {}, {{"a", SignalHandle{0}}, {"b", SignalHandle{1}}}}, handles);
-
-    std::array<std::uint8_t, 2> signals{};
-    for (auto const a : {false, true, false}) {
+    for (auto const a : {false, true}) {
         for (auto const b : {false, true}) {
-            signals = {static_cast<std::uint8_t>(a), static_cast<std::uint8_t>(b)};
-            expressions.evaluate({ledger, timers, {}, latches, signals});
+            Timers timers;
+            std::array const timer_handles{timers.add(), timers.add()};
+            if (a) {
+                timers.start(timer_handles[0], 0);
+            }
+            if (b) {
+                timers.start(timer_handles[1], 0);
+            }
+            timers.tick(1);
+
+            ExprManager expressions;
+            std::array<ExprHandle, nodes.size()> handles;
+            expressions.append(nodes, {{}, timer_handles}, handles);
+            expressions.evaluate({ledger, timers, {}, latches});
             EXPECT_FALSE(expressions.result(handles[0]));
             EXPECT_EQ(expressions.result(handles[1]), !a);
             EXPECT_EQ(expressions.result(handles[2]), a);
@@ -62,13 +68,13 @@ TEST(Expressions, LatchObservationsAndCompositesUseTheSameCycleSample) {
         Expression{LatchedFalseExpr{0}},
     };
     std::array<ExprHandle, nodes.size()> handles;
-    expressions.append(nodes, {{}, {}, {}}, handles);
+    expressions.append(nodes, {{}, {}}, handles);
 
     latches.add({handles[0], handles[0]});
     latches.add({handles[2], handles[0]});
     for (int cycle{}; cycle < 3; ++cycle) {
         latches.commit();
-        expressions.evaluate({ledger, timers, {}, latches, {}});
+        expressions.evaluate({ledger, timers, {}, latches});
         latches.evaluate(expressions);
         EXPECT_EQ(expressions.result(handles[1]), cycle >= 1);
         EXPECT_EQ(expressions.result(handles[2]), cycle >= 1);
@@ -95,19 +101,19 @@ TEST(Expressions, SharedDagEvaluatesChildrenFirstWithoutRetiringSharedLeaves) {
                            timer(1)};
     std::array const timer_handles{first, second};
     std::array<ExprHandle, nodes.size()> handles;
-    expressions.append(nodes, {{}, timer_handles, {}}, handles);
+    expressions.append(nodes, {{}, timer_handles}, handles);
 
     timers.start(first, 10);
     timers.start(second, 20);
 
     timers.tick(10);
-    expressions.evaluate({ledger, timers, {}, latches, {}});
+    expressions.evaluate({ledger, timers, {}, latches});
     EXPECT_EQ(expressions.result(handles[2]), true);
     EXPECT_EQ(expressions.result(handles[4]), false);
     EXPECT_EQ(expressions.result(handles[0]), false);
 
     timers.tick(10);
-    expressions.evaluate({ledger, timers, {}, latches, {}});
+    expressions.evaluate({ledger, timers, {}, latches});
     EXPECT_EQ(expressions.result(handles[0]), true);
 }
 
@@ -127,22 +133,22 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
     std::unordered_map<levels::EntityId, LevelEntityRef> entity_refs;
     entity_refs.emplace(levels::EntityId{"future"}, LevelEntityRef{0});
     std::array<ExprHandle, nodes.size()> handles;
-    expressions.append(nodes, {entity_refs, timer_handles, {}}, handles);
+    expressions.append(nodes, {entity_refs, timer_handles}, handles);
 
     timers.start(first, 10);
     timers.start(second, 20);
     timers.tick(10);
-    expressions.evaluate({ledger, timers, entities, latches, {}});
+    expressions.evaluate({ledger, timers, entities, latches});
     EXPECT_EQ(expressions.result(handles[0]), true);
     EXPECT_EQ(expressions.result(handles[2]), false);
     timers.tick(10);
-    expressions.evaluate({ledger, timers, entities, latches, {}});
+    expressions.evaluate({ledger, timers, entities, latches});
     EXPECT_EQ(expressions.result(handles[2]), true);
     EXPECT_EQ(expressions.result(handles[3]), false);
 
     ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, entities);
     timers.tick(1);
-    expressions.evaluate({ledger, timers, entities, latches, {}});
+    expressions.evaluate({ledger, timers, entities, latches});
     EXPECT_EQ(expressions.result(handles[1]), false);
     EntityDeathInfo deaths;
     deaths.add_defaulted(1);
@@ -150,7 +156,7 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
     deaths.view().reasons()[0] = DeathReason::Combat;
     ledger.record_deaths(deaths.const_view(), SimTick{22});
     timers.tick(1);
-    expressions.evaluate({ledger, timers, entities, latches, {}});
+    expressions.evaluate({ledger, timers, entities, latches});
     EXPECT_EQ(expressions.result(handles[3]), true);
 }
 
@@ -164,7 +170,7 @@ TEST(Expressions, StoppedTimersAndStartAreVisibleOnNextEvaluation) {
     auto const zero{expressions.add_timer_elapsed(first)};
     auto const delayed{expressions.add_timer_elapsed(second)};
     timers.tick(100);
-    expressions.evaluate({ledger, timers, {}, latches, {}});
+    expressions.evaluate({ledger, timers, {}, latches});
     EXPECT_EQ(expressions.result(zero), false);
     EXPECT_EQ(expressions.result(delayed), false);
 
@@ -173,14 +179,14 @@ TEST(Expressions, StoppedTimersAndStartAreVisibleOnNextEvaluation) {
     EXPECT_EQ(expressions.result(zero), false);
     timers.tick(1);
     EXPECT_EQ(expressions.result(zero), false);
-    expressions.evaluate({ledger, timers, {}, latches, {}});
+    expressions.evaluate({ledger, timers, {}, latches});
     EXPECT_EQ(expressions.result(zero), true);
     EXPECT_EQ(expressions.result(delayed), false);
     timers.tick(1);
-    expressions.evaluate({ledger, timers, {}, latches, {}});
+    expressions.evaluate({ledger, timers, {}, latches});
     EXPECT_EQ(expressions.result(delayed), false);
     timers.tick(1);
-    expressions.evaluate({ledger, timers, {}, latches, {}});
+    expressions.evaluate({ledger, timers, {}, latches});
     EXPECT_EQ(expressions.result(delayed), true);
 }
 }

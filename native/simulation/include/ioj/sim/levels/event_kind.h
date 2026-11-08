@@ -15,18 +15,14 @@ using EventKindUnderlying = std::uint8_t;
 // Logical bit width: 3.
 enum class EventKind : EventKindUnderlying {
     Win,
-    PublishSignal,
     StopRun,
     Pause,
     StartTimer,
     Spawn,
 };
 
-inline constexpr std::array<EventKind, 5ULL> event_kind_tick_end_values{EventKind::Win,
-                                                                        EventKind::PublishSignal,
-                                                                        EventKind::StopRun,
-                                                                        EventKind::Pause,
-                                                                        EventKind::StartTimer};
+inline constexpr std::array<EventKind, 4ULL> event_kind_tick_end_values{
+    EventKind::Win, EventKind::StopRun, EventKind::Pause, EventKind::StartTimer};
 
 [[nodiscard]] constexpr auto is_tick_end(EventKind const value) noexcept -> bool {
     return value <= EventKind::StartTimer;
@@ -48,7 +44,6 @@ inline constexpr MinMax<sim::EventKind> enum_range<sim::EventKind>{sim::EventKin
 template <>
 struct EnumTraits<sim::EventKind> {
     static constexpr std::array values{sim::EventKind::Win,
-                                       sim::EventKind::PublishSignal,
                                        sim::EventKind::StopRun,
                                        sim::EventKind::Pause,
                                        sim::EventKind::StartTimer,

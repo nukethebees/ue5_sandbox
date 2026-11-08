@@ -9,15 +9,8 @@
 namespace ioj::sim {
 LevelEventManager::LevelEventManager(CompiledLevelEvents data, std::pmr::memory_resource& memory)
     : data_{std::move(data)}
-    , signals_{&memory}
     , preparation_events_{&memory}
     , tick_end_events_{&memory} {
-    std::uint32_t signal_count{};
-    for (auto const signal : data_.publish_events) {
-        signal_count = std::max(signal_count, signal.index() + 1);
-    }
-    signals_.resize(signal_count);
-
     auto const tick_end_count{static_cast<std::size_t>(std::ranges::count_if(
         data_.trigger_events, [](EventHandle const event) { return is_tick_end(event.kind()); }))};
     tick_end_events_.reserve(tick_end_count + data_.initial_events.size() + 2);

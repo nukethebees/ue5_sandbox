@@ -85,14 +85,6 @@ auto expression(Reader const& reader, NodeIndex node, std::string_view path)
         case ExprType::LatchedFalse:
             result = {LatchedFalseExpr{field.template operator()<std::uint32_t>(0, "latch")}};
             break;
-        case ExprType::EventFired: {
-            auto name{reader.symbol((*args)[0], field_path(path, "signal"))};
-            if (!name) {
-                return std::unexpected{name.error()};
-            }
-            result = {EventFiredExpr{std::move(*name)}};
-            break;
-        }
         default:
             std::unreachable();
     }
@@ -130,9 +122,6 @@ auto effect(Reader const& reader, NodeIndex node, std::string_view path) -> Read
         case EffectSyntax::Spawn:
             return s7::read<std::uint32_t>(reader, (*args)[0], field_path(path, "group"))
                 .transform([](auto v) -> Effect { return SpawnEffect{v}; });
-        case EffectSyntax::Publish:
-            return reader.symbol((*args)[0], field_path(path, "signal"))
-                .transform([](auto v) -> Effect { return PublishEffect{std::move(v)}; });
         case EffectSyntax::StartTimer: {
             auto timer{s7::read<std::uint32_t>(reader, (*args)[0], field_path(path, "timer"))};
             auto duration{s7::read<NonNegativeFinite<double>>(

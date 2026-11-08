@@ -5,7 +5,6 @@
 #include <ioj/levels/entity_destroyed_expr.h>
 #include <ioj/levels/entity_kills_reached_expr.h>
 #include <ioj/levels/entity_reached_position_expr.h>
-#include <ioj/levels/event_fired_expr.h>
 #include <ioj/levels/latched_false_expr.h>
 #include <ioj/levels/latched_true_expr.h>
 #include <ioj/levels/not_expr.h>
@@ -24,6 +23,5 @@ using ExprPayload = std::variant<AllExpr,
                                  XorExpr,
                                  LatchedTrueExpr,
                                  LatchedFalseExpr,
-                                 EventFiredExpr,
                                  EntityKillsReachedExpr>;
 }

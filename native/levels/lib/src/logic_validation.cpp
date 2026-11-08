@@ -27,7 +27,6 @@ auto validate_logic(LogicDefinition const& logic, std::span<EntitySpawnDefinitio
             error(path, std::format("Invalid expression reference: {}", index));
         }
     }};
-    std::unordered_set<std::string> published;
     auto effects{[&](std::span<Effect const> values, std::string_view parent) {
         auto const effect_count{values.size()};
         for (std::size_t i{}; i < effect_count; ++i) {
@@ -35,12 +34,7 @@ auto validate_logic(LogicDefinition const& logic, std::span<EntitySpawnDefinitio
             std::visit(
                 [&](auto const& effect) {
                     using T = std::decay_t<decltype(effect)>;
-                    if constexpr (std::same_as<T, PublishEffect>) {
-                        if (effect.signal.empty()) {
-                            error(path + ".signal", "Signal name must not be empty");
-                        }
-                        published.insert(effect.signal);
-                    } else if constexpr (std::same_as<T, SpawnEffect>) {
+                    if constexpr (std::same_as<T, SpawnEffect>) {
                         if (effect.group >= logic.spawn_groups.size()) {
                             error(path + ".group", "Invalid spawn group reference");
                         }
@@ -139,10 +133,6 @@ auto validate_logic(LogicDefinition const& logic, std::span<EntitySpawnDefinitio
                                      std::same_as<T, LatchedFalseExpr>) {
                     if (value.latch >= logic.latches.size()) {
                         error(path + ".latch", "Invalid latch observation");
-                    }
-                } else if constexpr (std::same_as<T, EventFiredExpr>) {
-                    if (!published.contains(value.signal)) {
-                        error(path + ".signal", "Signal is never published: " + value.signal);
                     }
                 }
             },

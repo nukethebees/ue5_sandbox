@@ -6,6 +6,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
+#include "ioj/parse_enum.h"
 
 #include <array>
 #include <cstdint>
@@ -264,11 +265,10 @@ inline constexpr MinMax<levels::authoring::RecordKind> enum_range<levels::author
 namespace ioj::levels::authoring {
 using EffectSyntaxUnderlying = std::uint8_t;
 
-// Logical bit width: 3.
+// Logical bit width: 2.
 enum class EffectSyntax : EffectSyntaxUnderlying {
     Win,
     Stop,
-    Publish,
     Spawn,
     StartTimer,
 };
@@ -277,41 +277,8 @@ using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_effect_syntax(std::string_view const value) noexcept
     -> std::optional<EffectSyntax> {
-    switch (value.size()) {
-        case 3ULL: {
-            if (value == "win") {
-                return EffectSyntax::Win;
-            }
-            return std::nullopt;
-        }
-        case 4ULL: {
-            if (value == "stop") {
-                return EffectSyntax::Stop;
-            }
-            return std::nullopt;
-        }
-        case 5ULL: {
-            if (value == "spawn") {
-                return EffectSyntax::Spawn;
-            }
-            return std::nullopt;
-        }
-        case 7ULL: {
-            if (value == "publish") {
-                return EffectSyntax::Publish;
-            }
-            return std::nullopt;
-        }
-        case 11ULL: {
-            if (value == "start-timer") {
-                return EffectSyntax::StartTimer;
-            }
-            return std::nullopt;
-        }
-        default: {
-            return std::nullopt;
-        }
-    }
+    std::array<std::string_view, 4> constexpr names{"win", "stop", "spawn", "start-timer"};
+    return try_parse_enum<EffectSyntax>(value, names);
 }
 
 } // namespace ioj::levels::authoring
@@ -377,13 +344,11 @@ template <>
 struct EnumTraits<levels::authoring::EffectSyntax> {
     static constexpr std::array values{levels::authoring::EffectSyntax::Win,
                                        levels::authoring::EffectSyntax::Stop,
-                                       levels::authoring::EffectSyntax::Publish,
                                        levels::authoring::EffectSyntax::Spawn,
                                        levels::authoring::EffectSyntax::StartTimer};
 };
 
 template <>
-inline constexpr auto enum_strings<levels::authoring::EffectSyntax, Serialized>{
-    PackedStrings{"win\000stop\000publish\000spawn\000start-timer",
-                  std::array<std::uint8_t, 6>{0, 4, 9, 17, 23, 35}}};
+inline constexpr auto enum_strings<levels::authoring::EffectSyntax, Serialized>{PackedStrings{
+    "win\000stop\000spawn\000start-timer", std::array<std::uint8_t, 5>{0, 4, 9, 15, 27}}};
 } // namespace ioj

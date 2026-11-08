@@ -30,13 +30,10 @@ class LevelEventManager {
         return tick_end_events().subspan(tick_end_read_cursor_);
     }
 
-    void publish(SignalHandle signal) { signals_[signal.index()] = true; }
-    auto signals() const -> std::span<std::uint8_t const> { return signals_; }
     auto data() const -> CompiledLevelEvents const& { return data_; }
 
   private:
     CompiledLevelEvents data_;
-    std::pmr::vector<std::uint8_t> signals_;
 
     std::pmr::vector<EventHandle> preparation_events_;
     std::size_t preparation_read_cursor_{};

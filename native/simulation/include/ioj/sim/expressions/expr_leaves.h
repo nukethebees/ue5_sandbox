@@ -6,7 +6,6 @@
 #include <ioj/sim/expressions/latch_handle.h>
 #include <ioj/sim/expressions/leaf_data_handle.h>
 #include <ioj/sim/expressions/leaf_handle.h>
-#include <ioj/sim/expressions/signal_handle.h>
 #include <ioj/sim/expressions/timer_handle.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/level_entity_ref.h>
@@ -38,7 +37,6 @@ struct ExprLeaves {
 
     std::vector<LatchHandle> true_latches;
     std::vector<LatchHandle> false_latches;
-    std::vector<SignalHandle> signals;
 
     // EntityKillsReached
     std::vector<IndexSpan> kill_sources;

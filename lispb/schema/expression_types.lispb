@@ -33,6 +33,5 @@
     (value TimerElapsed :serialized-name "timer-elapsed")
     (value LatchedTrue :serialized-name "latched-true")
     (value LatchedFalse :serialized-name "latched-false")
-    (value EventFired :serialized-name "event-fired")
     (value EntityKillsReached :serialized-name "entity-kills-reached")
     (projections (cpp))))

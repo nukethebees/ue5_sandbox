@@ -23,7 +23,6 @@
     :helpers (traits)
     :ordering (tick_end preparation)
     (value Win :groups (tick_end))
-    (value PublishSignal :groups (tick_end))
     (value StopRun :groups (tick_end))
     (value Pause :groups (tick_end))
     (value StartTimer :groups (tick_end))
@@ -37,11 +36,4 @@
   (record EventHandle :layout packed :bits 32
     (member index @EventIndex)
     (member kind @level_event_kind)
-    (projections (cpp :storage std::uint32_t))))
-
-(module signal_handle
-  :header "native/simulation/include/ioj/sim/expressions/signal_handle.h"
-  :namespace ioj::sim
-  (record SignalHandle :layout packed :bits 32 :invalid-value 0xffffffff
-    (member index std::uint32_t :bits 32)
     (projections (cpp :storage std::uint32_t))))

@@ -54,7 +54,6 @@
     :native-api true :helpers (traits to-serialized-string try-parse-serialized)
     (value Win :serialized-name "win")
     (value Stop :serialized-name "stop")
-    (value Publish :serialized-name "publish")
     (value Spawn :serialized-name "spawn")
     (value StartTimer :serialized-name "start-timer")
     (projections (cpp)))

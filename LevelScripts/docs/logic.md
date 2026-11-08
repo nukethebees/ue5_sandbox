@@ -34,8 +34,6 @@ Latches capture once and remain readable for the rest of the run.
   entities, including dead entities. Unspawned entities contribute zero. This is not a team query.
 - `(timer-elapsed timer-handle)` is false until a started timer reaches zero, then permanently true.
 - `(latched-true latch-handle)` and `(latched-false latch-handle)` observe committed captures.
-- `(event-fired 'signal)` is permanently true after `(publish 'signal)` has dispatched. Queueing
-  publication does not change the current expression sample.
 
 ## Effects and timing
 
@@ -53,20 +51,19 @@ Declare reinforcements among the level's entities, then explicitly group them:
 :logic (logic
   (define reserves (spawn-group 'reserves '(reserve-a reserve-b)))
   (on :when (entity-destroyed 'flagship)
-      :do (list (spawn reserves) (publish 'reserves-requested))))
+      :do (spawn reserves)))
 ```
 
 Grouped entities do not spawn automatically. An entity belongs to at most one group; grouped
 entities spawn once. Later requests do nothing, including after the original entities die. Grouped
 entities cannot be players or also have `:spawn-at`. Ungrouped entities retain automatic time-zero
 or delayed spawning. Spawn effects dispatch in Preparation; other effects dispatch at tick end.
-FIFO applies within each stream. A signal alongside a spawn indicates its own publication, not
-that the spawn has dispatched.
+FIFO applies within each stream.
 
 `(win 'team)` and `(stop)` end the level when dispatched. The first terminal event determines the
 result; later queued events remain stranded. A winner implies defeat for other participating teams.
 Stopping without a winner records the reason without inventing a winner. A fresh level construction
-resets timers, latches, signals, rules and history.
+resets timers, latches, rules and history.
 
 `Libraries/logic.scm` provides `destroy-all`, `destroy-any`, `level-delay` and `win-race` as ordinary
 Scheme helpers. The editor owns only its generated configuration; keep gameplay logic in the human

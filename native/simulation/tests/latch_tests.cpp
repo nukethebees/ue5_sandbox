@@ -31,9 +31,9 @@ auto sample(std::initializer_list<bool> const values) -> ExpressionSamples {
     Latches latches;
     ExpressionSamples result;
     std::vector<ExprHandle> compiled(nodes.size());
-    result.expressions.append(nodes, {{}, {}, {}}, compiled);
+    result.expressions.append(nodes, {{}, {}}, compiled);
     result.handles.assign(compiled.begin() + 2, compiled.end());
-    result.expressions.evaluate({ledger, timers, {}, latches, {}});
+    result.expressions.evaluate({ledger, timers, {}, latches});
     return result;
 }
 

@@ -175,12 +175,6 @@ void ExprManager::append(std::span<levels::Expression const> const expressions,
                 leaves.false_latches.emplace_back(
                     std::get<levels::LatchedFalseExpr>(expression.payload).latch);
                 break;
-            case levels::ExprType::EventFired:
-                kind = LeafKind::EventFired;
-                data_index = size(leaves.signals);
-                leaves.signals.push_back(
-                    ctx.signals.at(std::get<levels::EventFiredExpr>(expression.payload).signal));
-                break;
 
             case levels::ExprType::EntityKillsReached: {
                 auto const& condition{std::get<levels::EntityKillsReachedExpr>(expression.payload)};
@@ -294,12 +288,6 @@ void ExprManager::evaluate_leaves(ExprEvaluationContext const& inputs) {
         auto const index{handle.index()};
         leaves_.results[index] = inputs.latches.latched_false(
             leaves_.false_latches[leaves_.data_handles[index].index()]);
-    }
-
-    for (auto const handle : leaves_.leaves_by_kind[LeafKind::EventFired]) {
-        auto const index{handle.index()};
-        leaves_.results[index] =
-            inputs.signals[leaves_.signals[leaves_.data_handles[index].index()].index()];
     }
 }
 void ExprManager::evaluate_destroyed(std::span<LeafHandle const> const run,

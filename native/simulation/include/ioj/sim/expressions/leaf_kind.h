@@ -20,7 +20,6 @@ enum class LeafKind : LeafKindUnderlying {
     TimerElapsed,
     LatchedTrue,
     LatchedFalse,
-    EventFired,
     EntityKillsReached,
 };
 
@@ -38,12 +37,11 @@ struct EnumTraits<sim::LeafKind> {
                                        sim::LeafKind::TimerElapsed,
                                        sim::LeafKind::LatchedTrue,
                                        sim::LeafKind::LatchedFalse,
-                                       sim::LeafKind::EventFired,
                                        sim::LeafKind::EntityKillsReached};
 };
 
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::LeafKind>() noexcept -> std::size_t {
-    return 7ULL;
+    return 6ULL;
 }
 } // namespace ioj

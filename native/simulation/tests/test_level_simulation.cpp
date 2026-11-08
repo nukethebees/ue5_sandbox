@@ -286,9 +286,11 @@ TEST(NativeSimulation, PositionSamplesCanBecomeFalseWhileLatchRemembersArrival) 
         {levels::LatchedTrueExpr{0}},
         {levels::NotExpr{{0}}}};
     data.logic.latches = {{0, 0}};
-    data.logic.rules = {{1, {levels::PublishEffect{"arrived"}}},
-                        {2, {levels::PublishEffect{"gone"}}}};
-    LevelSim simulation{std::move(data).compile()};
+    data.logic.rules = {{1, {levels::WinEffect{Team::Blue}}}, {2, {levels::StopEffect{}}}};
+    auto compiled{std::move(data).compile()};
+    auto const arrived{compiled.level_events.pending_triggers[0].condition};
+    auto const gone{compiled.level_events.pending_triggers[1].condition};
+    LevelSim simulation{std::move(compiled)};
 
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
@@ -299,46 +301,16 @@ TEST(NativeSimulation, PositionSamplesCanBecomeFalseWhileLatchRemembersArrival) 
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
     simulation.advance(dt);
     EXPECT_EQ(simulation.events().tick_end_events().size(), 2);
-    EXPECT_EQ(simulation.events().signals()[0], 1);
-    EXPECT_EQ(simulation.events().signals()[1], 1);
-}
-
-TEST(NativeSimulation, SchemeDelayedEntityAndDispatchedSignalAdvanceOnSeparateSamples) {
-    auto definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
-      (level :id 'future-signal :title "Future signal"
-        :camera (camera :look-at '(hero) :offset-direction '(-1 0 0) :distance 1000)
-        :entities (list
-          (entity :id 'hero :archetype 'capital-ship :team 'green :position '(-1000 0 0))
-          (entity :id 'enemy :archetype 'capital-ship :team 'white :position '(1000 0 0) :spawn-at 0.1 :health 100))
-        :logic (logic
-          (define destroyed (entity-destroyed 'enemy))
-          (on :when destroyed :do (publish 'destroyed))
-          (on :when (all-of destroyed (event-fired 'destroyed)) :do (win 'green)))))")};
-    ASSERT_TRUE(definition) << levels::format_diagnostics(definition.error());
-    auto config{make_battle_config()};
-    auto compiled{levels::compile_level(*definition, config.runtime)};
-    ASSERT_TRUE(compiled);
-    LevelSim simulation{std::move(config.runtime)};
-
-    simulation.start();
-    simulation.advance(0.2);
-    ASSERT_EQ(simulation.capital_ships().num_instances(), 2);
-    EXPECT_FALSE(simulation.result());
-    kill_enemy(simulation);
-    simulation.advance(simulation.clock().tick_period());
-    EXPECT_FALSE(simulation.result());
-    simulation.advance(simulation.clock().tick_period());
-    ASSERT_TRUE(simulation.result());
-    EXPECT_EQ(simulation.result()->winner, Team::Green);
+    EXPECT_TRUE(simulation.expressions().result(arrived));
+    EXPECT_TRUE(simulation.expressions().result(gone));
 }
 
 TEST(NativeSimulation, FirstDispatchedWinDeterminesResultAndStrandsOtherEffects) {
     auto data{make_battle()};
     data.logic.expressions = {{levels::AllExpr{}}};
-    data.logic.rules = {{0,
-                         {levels::WinEffect{Team::White},
-                          levels::WinEffect{Team::Green},
-                          levels::PublishEffect{"after"}}}};
+    data.logic.rules = {
+        {0,
+         {levels::WinEffect{Team::White}, levels::WinEffect{Team::Green}, levels::StopEffect{}}}};
     LevelSim simulation{std::move(data).compile()};
 
     simulation.start();
@@ -350,7 +322,6 @@ TEST(NativeSimulation, FirstDispatchedWinDeterminesResultAndStrandsOtherEffects)
     EXPECT_EQ(result->terminal.event.kind(), EventKind::Win);
     EXPECT_EQ(simulation.events().tick_end_events().size(), 3);
     EXPECT_EQ(simulation.events().pending_tick_end_events().size(), 2);
-    EXPECT_EQ(simulation.events().signals()[0], 0);
     simulation.advance(1.0);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{1});
     EXPECT_EQ(simulation.events().tick_end_events().size(), 3);

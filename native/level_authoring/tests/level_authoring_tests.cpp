@@ -502,7 +502,6 @@ TEST(NativeLevelAuthoringReader, RejectsInvalidLogicNumbersAndReferences) {
         {"(logic (entity-reached-position 'player '(0 0 0) -1))",
          "level.logic.expressions[0].radius"},
         {"(logic (all-of) (entity-destroyed 'missing))", "level.logic.expressions[1].entity"},
-        {"(logic (event-fired 'never-published))", "level.logic.expressions[0].signal"},
         {"(logic (define t (timer)) (on :when (all-of) :do (stop)) "
          "(on :when (all-of) :do (list (win 'blue) (start-timer t -1))))",
          "level.logic.rules[1].effects[1].seconds"},

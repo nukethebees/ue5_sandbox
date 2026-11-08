@@ -18,15 +18,8 @@ TEST(LevelEvents, ConsumptionPreservesFifoHistoryAndIndependentStreams) {
     auto const spawn_first{data.add_spawn_event({0, 1})};
     auto const spawn_second{data.add_spawn_event({1, 1})};
     auto const stop{data.add_stop_event(telemetry::RunEndReason::DurationReached)};
-    data.add_publish_event(SignalHandle{0});
-    data.add_publish_event(SignalHandle{1});
-    data.add_publish_event(SignalHandle{0});
     EventHandle const pause{0, EventKind::Pause};
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
-    ASSERT_EQ(manager.signals().size(), 2);
-    EXPECT_EQ(manager.signals()[1], 0);
-    manager.publish(SignalHandle{1});
-    EXPECT_EQ(manager.signals()[1], 1);
     EXPECT_FALSE(manager.consume_tick_end_event());
     EXPECT_FALSE(manager.consume_preparation_event());
 
@@ -75,14 +68,14 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     }
 
     timers.tick(1);
-    expressions.evaluate({ledger, timers, {}, latches, {}});
+    expressions.evaluate({ledger, timers, {}, latches});
     manager.collect_ready(expressions);
     EXPECT_TRUE(manager.preparation_events().empty());
     EXPECT_TRUE(std::ranges::equal(manager.tick_end_events(), initial_events));
     EXPECT_TRUE(manager.pending_tick_end_events().empty());
 
     timers.tick(1);
-    expressions.evaluate({ledger, timers, {}, latches, {}});
+    expressions.evaluate({ledger, timers, {}, latches});
     manager.collect_ready(expressions);
     manager.collect_ready(expressions);
     EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
@@ -91,14 +84,14 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     EXPECT_FALSE(manager.consume_tick_end_event());
 
     timers.tick(1);
-    expressions.evaluate({ledger, timers, {}, latches, {}});
+    expressions.evaluate({ledger, timers, {}, latches});
     manager.collect_ready(expressions);
     EXPECT_TRUE(std::ranges::equal(manager.pending_tick_end_events(), late));
     EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
     EXPECT_EQ(manager.consume_tick_end_event(), late.front());
     EXPECT_EQ(manager.consume_preparation_event(), spawn);
     timers.tick(1);
-    expressions.evaluate({ledger, timers, {}, latches, {}});
+    expressions.evaluate({ledger, timers, {}, latches});
     manager.collect_ready(expressions);
     EXPECT_TRUE(manager.pending_preparation_events().empty());
     EXPECT_TRUE(manager.pending_tick_end_events().empty());

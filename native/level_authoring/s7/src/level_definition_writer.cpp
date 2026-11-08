@@ -75,8 +75,6 @@ auto expression(SExprIR& ir, Expression const& value) -> Expr {
                 form.add(s7::write(ir, v.kills));
             } else if constexpr (std::same_as<T, TimerElapsedExpr>) {
                 form.add(s7::write(ir, v.timer));
-            } else if constexpr (std::same_as<T, EventFiredExpr>) {
-                form.add(symbol(ir, v.signal));
             } else {
                 form.add(s7::write(ir, v.latch));
             }
@@ -92,8 +90,6 @@ auto effect(SExprIR& ir, Effect const& value) -> Expr {
                 return ir.form("list", {ir.atom(":win"), s7::write(ir, v.team)}).build();
             } else if constexpr (std::same_as<T, StopEffect>) {
                 return ir.form("list", {ir.atom(":stop")}).build();
-            } else if constexpr (std::same_as<T, PublishEffect>) {
-                return ir.form("list", {ir.atom(":publish"), symbol(ir, v.signal)}).build();
             } else if constexpr (std::same_as<T, SpawnEffect>) {
                 return ir.form("list", {ir.atom(":spawn"), s7::write(ir, v.group)}).build();
             } else {

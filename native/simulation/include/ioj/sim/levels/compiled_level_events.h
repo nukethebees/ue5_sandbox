@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ioj/sim/entities/team_list.h>
-#include <ioj/sim/expressions/signal_handle.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/event_trigger.h>
@@ -27,7 +26,6 @@ struct CompiledLevelEvents {
     auto add_stop_event(telemetry::RunEndReason reason) -> EventHandle;
     auto add_start_timer_event(StartTimerEvent event) -> EventHandle;
     auto add_win_event(Team team) -> EventHandle;
-    auto add_publish_event(SignalHandle signal) -> EventHandle;
     void add_trigger(ExprHandle condition, std::span<EventHandle const> events);
     auto collect_participating_teams(std::optional<Team> player_team = {}) const -> TeamList;
     auto spawn_count() const -> std::uint32_t {
@@ -45,7 +43,6 @@ struct CompiledLevelEvents {
     std::vector<StartTimerEvent> start_timer_events{};
     std::vector<EventHandle> initial_events{};
     std::vector<WinEvent> win_events;
-    std::vector<SignalHandle> publish_events;
 };
 
 }

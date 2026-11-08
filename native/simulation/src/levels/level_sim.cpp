@@ -206,9 +206,6 @@ void LevelSim::dispatch_tick_end_events() {
                 timers_.start(start.timer, start.duration);
                 break;
             }
-            case EventKind::PublishSignal:
-                event_manager_.publish(definitions.publish_events[event->index()]);
-                break;
             case EventKind::Win:
             case EventKind::StopRun:
                 terminal_ = TerminalEvent{*event,
@@ -469,7 +466,6 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
                                timers_,
                                spawn_manager_.entity_ids(),
                                latches_,
-                               event_manager_.signals(),
                                &collision_pipeline_.queries(),
                                &phase_memory});
         latches_.evaluate(expressions_);

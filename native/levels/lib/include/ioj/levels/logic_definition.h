@@ -25,10 +25,6 @@ struct WinEffect {
 struct StopEffect {
     auto operator==(StopEffect const&) const -> bool = default;
 };
-struct PublishEffect {
-    auto operator==(PublishEffect const&) const -> bool = default;
-    std::string signal;
-};
 struct SpawnEffect {
     auto operator==(SpawnEffect const&) const -> bool = default;
     std::uint32_t group{};
@@ -38,7 +34,7 @@ struct StartTimerEffect {
     std::uint32_t timer{};
     NonNegativeFinite<double> seconds{};
 };
-using Effect = std::variant<WinEffect, StopEffect, PublishEffect, SpawnEffect, StartTimerEffect>;
+using Effect = std::variant<WinEffect, StopEffect, SpawnEffect, StartTimerEffect>;
 struct EventRule {
     auto operator==(EventRule const&) const -> bool = default;
     ExprIndex when{};

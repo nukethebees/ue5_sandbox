@@ -16,10 +16,11 @@ TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReference
           (define group (spawn-group 'reserve '(reserve turret)))
           (define ready (timer))
           (define dead (all-of (entity-destroyed 'reserve) (entity-destroyed 'turret)))
+          (define remembered (latch :when dead :value dead))
           (initially (start-timer ready 0))
           (on :when (timer-elapsed ready) :do (list (spawn group) (spawn group)))
-          (on :when dead :do (list (spawn group) (publish 'repeat)))
-          (on :when (all-of dead (event-fired 'repeat)) :do (win 'blue)))))")};
+          (on :when dead :do (spawn group))
+          (on :when (latched-true remembered) :do (win 'blue)))))")};
     ASSERT_TRUE(definition) << levels::format_diagnostics(definition.error());
     auto build{[&] {
         return make_level_simulation_init_data(*definition, make_simulation_data(make_fixture()));

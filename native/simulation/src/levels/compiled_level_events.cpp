@@ -85,12 +85,6 @@ auto CompiledLevelEvents::add_win_event(Team const team) -> EventHandle {
     win_events.push_back({team});
     return EventHandle{index, EventKind::Win};
 }
-auto CompiledLevelEvents::add_publish_event(SignalHandle const signal) -> EventHandle {
-    auto const index{static_cast<std::uint32_t>(publish_events.size())};
-    publish_events.push_back(signal);
-    return EventHandle{index, EventKind::PublishSignal};
-}
-
 void CompiledLevelEvents::add_trigger(ExprHandle const condition,
                                       std::span<EventHandle const> const events) {
     IndexSpan const range{static_cast<std::uint32_t>(trigger_events.size()),

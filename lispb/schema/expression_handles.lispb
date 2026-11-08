@@ -9,7 +9,6 @@
     (value TimerElapsed)
     (value LatchedTrue)
     (value LatchedFalse)
-    (value EventFired)
     (value EntityKillsReached)
     (projections (cpp))))
 

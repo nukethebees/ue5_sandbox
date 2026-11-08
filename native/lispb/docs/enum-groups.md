@@ -17,14 +17,14 @@ the projected enum name, including its `E` prefix.
   :ordering (actionable)
   (value TimerElapsed)
   (value EntityDestroyed :groups (actionable))
-  (value EventFired)
+  (value LatchedTrue)
   (value EntityReachedPosition :groups (actionable))
   (value EntityKillsReached :groups (actionable))
   (projections (cpp)))
 ```
 
 This assigns `EntityDestroyed`, `EntityReachedPosition`, and `EntityKillsReached` codes 0–2,
-followed by `TimerElapsed` and `EventFired`. The predicate is
+followed by `TimerElapsed` and `LatchedTrue`. The predicate is
 `return value <= LeafKind::EntityKillsReached;`.
 
 | Ordering | Behaviour |

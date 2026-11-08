@@ -91,7 +91,7 @@ Starting a timer becomes visible on the next expression evaluation.
 `ExprManager` evaluates every leaf each Resolution, grouped by predicate kind, followed by a
 single dependency-ordered composite pass. Boolean results are sampled storage: no activation,
 retirement, reference counting or same-tick propagation. Proximity is a current-state predicate;
-destruction and lifetime kills query the ledger. Signals become true only on publication dispatch.
+destruction and lifetime kills query the ledger.
 
 `Latches` stores stable expression-input pairs and one byte per latch. Two bits hold a pending
 capture and two hold the cached observation: unset, false or true. Bulk evaluation reads sampled
@@ -104,7 +104,7 @@ for direct observations and composites. Chained latches advance one capture per 
 state is owned independently by each `LevelSim` and reset through fresh construction.
 
 Scheme authoring uses a scoped `logic` macro and handle constructors. Compilation validates the
-graph and resolves symbolic entity/signal references before runtime. See
+graph and resolves symbolic entity references before runtime. See
 [logic authoring](../../LevelScripts/docs/logic.md).
 
 ## Entity lookup

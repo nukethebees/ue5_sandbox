@@ -188,21 +188,8 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     for (std::uint32_t i{}; i < entity_count; ++i) {
         entities.emplace(definition.entities()[i].id, sim::LevelEntityRef{i});
     }
-    std::unordered_map<std::string, sim::SignalHandle> signals;
-    auto register_signals{[&](std::span<Effect const> effects) {
-        for (auto const& effect : effects) {
-            if (auto const* publish{std::get_if<PublishEffect>(&effect)}) {
-                signals.try_emplace(publish->signal,
-                                    sim::SignalHandle{static_cast<std::uint32_t>(signals.size())});
-            }
-        }
-    }};
-    register_signals(logic.initial_effects);
-    for (auto const& rule : logic.rules) {
-        register_signals(rule.effects);
-    }
     std::vector<sim::ExprHandle> expressions(logic.expressions.size());
-    output.expressions.append(logic.expressions, {entities, timers, signals}, expressions);
+    output.expressions.append(logic.expressions, {entities, timers}, expressions);
 
     for (auto const& latch : logic.latches) {
         output.latches.add({expressions[latch.when], expressions[latch.value]});
@@ -220,8 +207,6 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
                     } else if constexpr (std::same_as<T, StopEffect>) {
                         return definitions.add_stop_event(
                             sim::telemetry::RunEndReason::LevelCompleted);
-                    } else if constexpr (std::same_as<T, PublishEffect>) {
-                        return definitions.add_publish_event(signals.at(effect.signal));
                     } else if constexpr (std::same_as<T, SpawnEffect>) {
                         return spawn_effects[effect.group];
                     } else {

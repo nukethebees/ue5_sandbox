@@ -146,7 +146,6 @@ native/simulation/include/ioj/sim/expressions/latch_state.h
 native/simulation/include/ioj/sim/expressions/leaf_data_handle.h
 native/simulation/include/ioj/sim/expressions/leaf_handle.h
 native/simulation/include/ioj/sim/expressions/leaf_kind.h
-native/simulation/include/ioj/sim/expressions/signal_handle.h
 native/simulation/include/ioj/sim/expressions/timer_handle.h
 native/simulation/include/ioj/sim/fighters/fighter_entity_data.h
 native/simulation/include/ioj/sim/fighters/fighter_navigation_types.h

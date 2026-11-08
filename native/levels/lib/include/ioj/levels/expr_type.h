@@ -26,7 +26,6 @@ enum class ExprType : ExprTypeUnderlying {
     TimerElapsed,
     LatchedTrue,
     LatchedFalse,
-    EventFired,
     EntityKillsReached,
 };
 
@@ -46,12 +45,6 @@ using ioj::to_serialized_string;
             }
             if (value == "xor-of") {
                 return ExprType::Xor;
-            }
-            return std::nullopt;
-        }
-        case 11ULL: {
-            if (value == "event-fired") {
-                return ExprType::EventFired;
             }
             return std::nullopt;
         }
@@ -119,13 +112,12 @@ struct EnumTraits<levels::ExprType> {
                                        levels::ExprType::TimerElapsed,
                                        levels::ExprType::LatchedTrue,
                                        levels::ExprType::LatchedFalse,
-                                       levels::ExprType::EventFired,
                                        levels::ExprType::EntityKillsReached};
 };
 
 template <>
 inline constexpr auto enum_strings<levels::ExprType, Serialized>{PackedStrings{
     "all-of\000any-of\000not-of\000xor-of\000entity-destroyed\000entity-reached-position\000timer-"
-    "elapsed\000latched-true\000latched-false\000event-fired\000entity-kills-reached",
-    std::array<std::uint8_t, 12>{0, 7, 14, 21, 28, 45, 69, 83, 96, 110, 122, 143}}};
+    "elapsed\000latched-true\000latched-false\000entity-kills-reached",
+    std::array<std::uint8_t, 11>{0, 7, 14, 21, 28, 45, 69, 83, 96, 110, 131}}};
 } // namespace ioj
