@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/expressions/detail/timer_entry.h>
+#include <ioj/sim/expressions/detail/timer_state.h>
 #include <ioj/sim/expressions/timer_handle.h>
 #include <ioj/sim/expressions/timer_ticks.h>
 
@@ -18,7 +18,7 @@ class Timers {
   private:
     auto is_valid(TimerHandle handle) const -> bool;
 
-    std::vector<detail::TimerEntry> entries_;
+    std::vector<detail::TimerState> states_;
 
     std::vector<TimerTicks> remaining_ticks_;
     std::vector<TimerHandle> owners_;

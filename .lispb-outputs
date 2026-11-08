@@ -137,7 +137,6 @@ native/simulation/include/ioj/sim/entities/entity_instance_handle.h
 native/simulation/include/ioj/sim/entities/entity_life_state.h
 native/simulation/include/ioj/sim/entities/entity_type.h
 native/simulation/include/ioj/sim/expressions/composite_kind.h
-native/simulation/include/ioj/sim/expressions/detail/timer_entry.h
 native/simulation/include/ioj/sim/expressions/detail/timer_state.h
 native/simulation/include/ioj/sim/expressions/expr_handle.h
 native/simulation/include/ioj/sim/expressions/expr_kind.h

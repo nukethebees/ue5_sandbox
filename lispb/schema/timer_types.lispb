@@ -13,12 +13,3 @@
     :native-api true :helpers ()
     (value NotStarted) (value Started) (value Finished)
     (projections (cpp))))
-
-(module timer_entry
-  :header "native/simulation/include/ioj/sim/expressions/detail/timer_entry.h"
-  :namespace ioj::sim::detail
-  (integer-scalar CountdownIndex :bit-width 30)
-  (record TimerEntry :layout packed :bits 32
-    (member state @timer_state)
-    (member index @CountdownIndex)
-    (projections (cpp :storage std::uint32_t))))

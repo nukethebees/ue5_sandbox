@@ -370,11 +370,6 @@
   :header "ioj/sim/expressions/latch_state.h"
   :pass-by value)
 
-(type timer_state
-  :spelling "ioj::sim::detail::TimerState"
-  :header "ioj/sim/expressions/detail/timer_state.h"
-  :pass-by value)
-
 
 (type input_entity_id :spelling "ioj::levels::EntityId" :header "ioj/levels/identifiers.h")
 (type input_level_id :spelling "ioj::levels::LevelId" :header "ioj/levels/identifiers.h")

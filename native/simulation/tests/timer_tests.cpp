@@ -3,12 +3,10 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
-#include <limits>
 
 namespace ioj::sim::timer_tests {
 TEST(Timers, RemainsStoppedUntilExplicitStartAndExpiresAtDuration) {
     static_assert(sizeof(TimerHandle) == sizeof(std::uint32_t));
-    static_assert(sizeof(detail::TimerEntry) == sizeof(std::uint32_t));
     Timers timers;
     auto const handles{timers.add(2)};
     auto const zero{handles[0]};
