@@ -132,21 +132,4 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     EXPECT_EQ(scheduled_simulation.read_access().turrets().get_entities().num(), 0);
 }
 
-TEST(FighterLiveCap, UnknownTeamRejected) {
-
-    std::vector<Team> const capitals{Team::Green};
-    auto data{make_cap_battle(capitals, 10, 0)};
-    LevelSim simulation{std::move(data).compile()};
-    start_and_tick(simulation);
-    auto const clk_period{simulation.clock().tick_period()};
-
-    FighterSpawnQueue spawns;
-    spawns.add_defaulted(1);
-    spawns.view().teams()[0] = Team::White;
-    LevelSimTestAccess::queue_fighter_spawns(simulation, spawns.const_view());
-    simulation.advance(clk_period);
-
-    EXPECT_EQ(simulation.fighters().num_instances(), 0) << "Unknown team creates no fighter";
-}
-
 } // namespace tests

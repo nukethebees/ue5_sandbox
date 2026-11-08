@@ -111,18 +111,6 @@ auto CombatStatistics::count_alive_per_team_and_type() const noexcept
     return alive_counts_;
 }
 
-auto CombatStatistics::count_alive_not_on_team(Team const team) const noexcept -> std::int32_t {
-    if (!is_valid(team)) {
-        return alive_count();
-    }
-
-    std::int32_t team_count{};
-    for (auto const type : EnumTraits<EntityType>::values) {
-        team_count += alive_counts_[team, type];
-    }
-    return alive_count() - team_count;
-}
-
 auto CombatStatistics::combat_telemetry() const noexcept
     -> telemetry::CombatTelemetryCounters const& {
     return combat_telemetry_;

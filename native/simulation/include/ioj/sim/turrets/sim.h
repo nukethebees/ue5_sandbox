@@ -67,7 +67,6 @@ struct Sim {
     void generate_fire_commands(ThinkingInputs const inputs);
     void resolve_damage_events(ResolutionInputs const inputs);
     void publish_deaths(ResolutionInputs const inputs);
-    void remove_components(ResolutionCommitInputs const inputs);
     void remove_entities(ResolutionCommitInputs const inputs);
     void finish_action();
 

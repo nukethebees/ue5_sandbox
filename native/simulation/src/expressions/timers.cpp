@@ -10,11 +10,12 @@ auto Timers::add() -> TimerHandle {
     states_.push_back(detail::TimerState::NotStarted);
     return handle;
 }
-auto Timers::add(std::uint32_t const count) -> std::vector<TimerHandle> {
+auto Timers::add(std::uint32_t const count, std::pmr::memory_resource& memory)
+    -> std::pmr::vector<TimerHandle> {
     auto const first{states_.size()};
     assert(count <= TimerHandle::invalid_value - first);
     states_.resize(first + count, detail::TimerState::NotStarted);
-    std::vector<TimerHandle> handles;
+    std::pmr::vector<TimerHandle> handles{&memory};
     handles.reserve(count);
     for (std::uint32_t index{}; index < count; ++index) {
         handles.emplace_back(static_cast<std::uint32_t>(first) + index);

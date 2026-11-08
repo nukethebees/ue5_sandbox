@@ -82,7 +82,7 @@ auto CompiledLevelEvents::add_start_timer_event(StartTimerEvent const event) -> 
 
 auto CompiledLevelEvents::add_win_event(Team const team) -> EventHandle {
     auto const index{static_cast<std::uint32_t>(win_events.size())};
-    win_events.push_back(team);
+    win_events.push_back({team});
     return EventHandle{index, EventKind::Win};
 }
 auto CompiledLevelEvents::add_publish_event(SignalHandle const signal) -> EventHandle {

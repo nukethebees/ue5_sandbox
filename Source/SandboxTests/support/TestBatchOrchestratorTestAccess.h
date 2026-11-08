@@ -16,12 +16,11 @@ struct FTestBatchOrchestratorTestAccess {
         check(orchestrator.level_simulation_.IsSet());
         orchestrator.level_simulation_->stop_run(reason);
     }
-    static auto take_finalized_telemetry_report(ioj::ATestBatchOrchestrator& orchestrator)
+    static auto telemetry_report(ioj::ATestBatchOrchestrator& orchestrator)
         -> TOptional<::ioj::sim::telemetry::Report> {
         check(orchestrator.level_simulation_.IsSet());
-        return ::ioj::take_finalized_level_telemetry_report(
-            orchestrator.level_simulation_.GetValue(),
-            orchestrator.launch_options_,
-            orchestrator.is_presentation_enabled());
+        return ::ioj::make_level_telemetry_report(orchestrator.level_simulation_.GetValue(),
+                                                  orchestrator.launch_options_,
+                                                  orchestrator.is_presentation_enabled());
     }
 };

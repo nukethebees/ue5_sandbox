@@ -85,8 +85,10 @@ void ATestBatchOrchestrator::release_level(sim::telemetry::RunEndReason const re
     }
     presentation_host_.reset();
     if (level_simulation_.IsSet()) {
-        persist_finalized_level_telemetry_run(
-            *level_simulation_, launch_options_, is_presentation_enabled(), GetGameInstance());
+        if (!GIsAutomationTesting) {
+            static_cast<void>(persist_level_telemetry_run(
+                *level_simulation_, launch_options_, is_presentation_enabled()));
+        }
         level_simulation_.Reset();
         auto* const game_subsystem{UGameSubsystem::get(GetGameInstance())};
         check(game_subsystem);
@@ -94,7 +96,6 @@ void ATestBatchOrchestrator::release_level(sim::telemetry::RunEndReason const re
     }
 
     prepared_level_.Reset();
-    initialisation_data_.reset();
 }
 void ATestBatchOrchestrator::start_simulation() {
     if (!level_simulation_.IsSet() && !begin_play()) {
@@ -287,15 +288,13 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
 
     auto const& options{launch_options_};
-    auto build{initialisation_data_
-                   ? FLevelSimBuildResult{std::in_place, std::move(*initialisation_data_)}
-                   : prepare_level_simulation({
-                         .config = *level_config,
-                         .clock_settings = simulation_tick_settings,
-                         .launch_options = options,
-                         .definition = *prepared_level_,
-                         .player = player_ship.Get(),
-                     })};
+    auto build{prepare_level_simulation({
+        .config = *level_config,
+        .clock_settings = simulation_tick_settings,
+        .launch_options = options,
+        .definition = *prepared_level_,
+        .player = player_ship.Get(),
+    })};
     if (!build) {
         handle_level_start_failure(
             FString::Printf(TEXT("Cannot start level:\n%s"), *build.error().format()));
@@ -307,7 +306,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         handle_level_start_failure(configured.error().format());
         return false;
     }
-    build->clock_settings = simulation_tick_settings;
 
     auto const resources{get_presentation_resources()};
     if (is_presentation_enabled() && !resources.is_valid()) {
@@ -334,8 +332,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
                                      *player_simulation);
     }
 
-    initialisation_data_.reset();
-
     if (is_presentation_enabled()) {
         presentation_host_.initialise(resources.config,
                                       resources.player,
@@ -354,9 +350,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         start_mode == EOrchestratorStartMode::AuthoredLevel ||
         (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting)};
     if (level_simulation_->result()) {
-        publish_level_completion(*level_simulation_, GetGameInstance(), on_level_completed);
-        persist_finalized_level_telemetry_run(
-            *level_simulation_, launch_options_, is_presentation_enabled(), GetGameInstance());
+        report_run_completion();
     }
     if (automatic && launch_options_.launch_mode == levels::LaunchMode::Running &&
         level_simulation_->state() == sim::LevelState::Paused) {
@@ -475,17 +469,31 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
                 player_ship->handle_simulation_death();
             }
         }
-
-        if (auto const result{level_simulation_->result()};
-            result && result->terminal.tick > previous_tick) {
-            publish_level_completion(*level_simulation_, GetGameInstance(), on_level_completed);
-        }
-        persist_finalized_level_telemetry_run(
-            *level_simulation_, launch_options_, is_presentation_enabled(), GetGameInstance());
     }
 
-    if (state == sim::LevelState::Running && get_state() == sim::LevelState::Paused) {
+    if (get_state() == sim::LevelState::Stopped) {
+        report_run_completion();
+    } else if (state == sim::LevelState::Running && get_state() == sim::LevelState::Paused) {
         on_simulation_paused.Broadcast();
+    }
+}
+void ATestBatchOrchestrator::report_run_completion() {
+    publish_level_completion(*level_simulation_, GetGameInstance(), on_level_completed);
+    if (GIsAutomationTesting) {
+        return;
+    }
+    auto report{persist_level_telemetry_run(
+        *level_simulation_, launch_options_, is_presentation_enabled())};
+    if (launch_options_.results_navigation != levels::ResultsNavigation::Telemetry) {
+        return;
+    }
+    auto* const subsystem{UGameSubsystem::get(GetGameInstance())};
+    if (!IsValid(subsystem)) {
+        UE_LOG(LogSandbox, Error, TEXT("Cannot navigate to telemetry: subsystem is unavailable"));
+        return;
+    }
+    if (!subsystem->return_to_telemetry(std::move(report))) {
+        UE_LOG(LogSandbox, Error, TEXT("Cannot navigate to completed telemetry run"));
     }
 }
 /* **************************************** */

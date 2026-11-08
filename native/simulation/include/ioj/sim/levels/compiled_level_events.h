@@ -17,6 +17,10 @@
 #include <vector>
 
 namespace ioj::sim {
+struct WinEvent {
+    Team winner;
+};
+
 struct CompiledLevelEvents {
     void add_spawn_group(EntityType type, std::int32_t offset, std::int32_t count);
     auto add_spawn_event(IndexSpan groups) -> EventHandle;
@@ -40,7 +44,7 @@ struct CompiledLevelEvents {
     std::vector<telemetry::RunEndReason> stop_events{};
     std::vector<StartTimerEvent> start_timer_events{};
     std::vector<EventHandle> initial_events{};
-    std::vector<Team> win_events;
+    std::vector<WinEvent> win_events;
     std::vector<SignalHandle> publish_events;
 };
 

@@ -20,9 +20,7 @@ class LevelDefinition;
 }
 
 namespace ioj::editor {
-SANDBOXEDITOR_API auto launch_s7_level_for_pie(UWorld& world,
-                                               levels::LevelDefinition definition,
-                                               sim::LevelSimInitData data)
+SANDBOXEDITOR_API auto launch_s7_level_for_pie(UWorld& world, levels::LevelDefinition definition)
     -> std::expected<void, FString>;
 SANDBOXEDITOR_API auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
     -> std::expected<FString, FString>;

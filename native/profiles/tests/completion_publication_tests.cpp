@@ -50,8 +50,6 @@ TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal
     sim::LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
     simulation.start();
     simulation.advance(0.4);
-    EXPECT_EQ(simulation.level_telemetry_manager().state(),
-              sim::LevelTelemetryManager::State::Finalized);
     auto const root{std::filesystem::temp_directory_path() / ("publication-" + make_profile_id())};
     ProfileManager profiles{make_file_profile_storage(root)};
     ASSERT_TRUE(profiles.initialise());

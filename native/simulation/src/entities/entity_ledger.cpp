@@ -7,6 +7,15 @@
 #include <ranges>
 
 namespace ioj::sim {
+EntityLedger::EntityLedger(std::pmr::memory_resource& memory)
+    : history_{memory}
+    , ids_{memory}
+    , frame_deaths_{{std::pmr::vector<HistoryIndex>{&memory},
+                     std::pmr::vector<HistoryIndex>{&memory},
+                     std::pmr::vector<HistoryIndex>{&memory},
+                     std::pmr::vector<HistoryIndex>{&memory},
+                     std::pmr::vector<HistoryIndex>{&memory}}} {}
+
 void EntityLedger::reset() {
     history_.reset();
     ids_.reset();

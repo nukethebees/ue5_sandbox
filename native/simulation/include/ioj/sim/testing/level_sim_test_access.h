@@ -19,7 +19,7 @@ struct LevelSimTestAccess {
         return simulation.player_ship_simulation_.value();
     }
     static void queue_fighter_spawns(LevelSim& simulation, FighterSpawnQueue::ConstView spawns) {
-        simulation.fighters_simulation_.queue_spawns(spawns, simulation.participating_teams_);
+        simulation.fighters_simulation_.queue_spawns(spawns);
     }
     static void queue_direct_damage_events(LevelSim& simulation,
                                            DirectDamageEvents::ConstView events) {

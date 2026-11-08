@@ -79,7 +79,7 @@ struct LevelSim {
     /* **************************************** */
     void stop_run(telemetry::RunEndReason reason);
     auto result() const -> std::optional<LevelResult>;
-    auto take_finalized_telemetry_run() -> std::optional<telemetry::RunRecord>;
+    auto telemetry_run() const -> std::optional<telemetry::RunRecord>;
 
     /* **************************************** */
     // Accessors
@@ -152,9 +152,9 @@ struct LevelSim {
     TeamList participating_teams_;
 
     LevelMemoryManager memory_manager_;
-    EntityLedger entity_ledger_;
+    EntityLedger entity_ledger_{memory_manager_.game_memory()};
     CombatEvents combat_events_{entity_ledger_};
-    EntityTables entity_tables_{clock_};
+    EntityTables entity_tables_{clock_, memory_manager_.game_memory()};
     collision::CollisionPipeline collision_pipeline_;
 
     lasers::Sim lasers_simulation_;

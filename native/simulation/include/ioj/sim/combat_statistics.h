@@ -23,7 +23,6 @@ class CombatStatistics {
     [[nodiscard]] auto count_alive_per_team() const noexcept -> telemetry::TeamCounts;
     [[nodiscard]] auto count_alive_per_team_and_type() const noexcept
         -> telemetry::EntityCounts const&;
-    [[nodiscard]] auto count_alive_not_on_team(Team team) const noexcept -> std::int32_t;
     [[nodiscard]] auto combat_telemetry() const noexcept
         -> telemetry::CombatTelemetryCounters const&;
   private:

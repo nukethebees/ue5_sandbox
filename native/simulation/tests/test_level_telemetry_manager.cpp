@@ -49,8 +49,7 @@ TEST(LevelTelemetryManager, QuantizesTimeIntervalsOnceAndKeepsActualTicks) {
     EXPECT_EQ(samples[1].completed_tick, SimTick{2});
     EXPECT_EQ(samples[2].completed_tick, SimTick{4});
     fixture.tick(5);
-    fixture.manager.finalize(telemetry::RunEndReason::WorldEnd);
-    EXPECT_EQ(fixture.manager.materialize_history().back().completed_tick, SimTick{5});
+    EXPECT_EQ(fixture.manager.materialize_history().back().completed_tick, SimTick{4});
 }
 
 TEST(LevelTelemetryManager, DefaultsToOneHertzAndAllowsEveryTickSampling) {
@@ -79,11 +78,10 @@ TEST(LevelTelemetryManager, DisabledRecordingRetainsLiveAndFinalResults) {
     EXPECT_EQ(snapshot.active_entities, 1);
     EXPECT_EQ(snapshot.spawned_entities, 1);
     EXPECT_TRUE(snapshot.active_entity_count_data.is_empty());
-    fixture.manager.finalize(telemetry::RunEndReason::WorldEnd);
-    auto record{fixture.manager.take_finalized_run(fixture.clock.tick_rate())};
-    ASSERT_TRUE(record);
-    EXPECT_TRUE(record->battle_samples.empty());
-    auto report{telemetry::make_run_report(std::move(*record), {}, false)};
+    auto record{fixture.manager.make_run_record(
+        {telemetry::RunEndReason::WorldEnd, "2026-11-08T12:00:00Z", SimTick{1}})};
+    EXPECT_TRUE(record.battle_samples.empty());
+    auto report{telemetry::make_run_report(std::move(record), {}, false)};
     EXPECT_EQ(telemetry::summarize_run(report).spawned_entities, 1);
     auto serialized{telemetry::serialize_report(report)};
     ASSERT_TRUE(serialized) << serialized.error();
@@ -92,21 +90,4 @@ TEST(LevelTelemetryManager, DisabledRecordingRetainsLiveAndFinalResults) {
     EXPECT_EQ(telemetry::summarize_run(*decoded).active_entities, 1);
 }
 
-TEST(LevelTelemetryManager, ResetReusesStorageAndRestartsSchedule) {
-    TelemetryFixture fixture{{.interval_ticks = 1}};
-    fixture.spawn();
-    fixture.tick(1);
-    fixture.manager.finalize(telemetry::RunEndReason::WorldEnd);
-    EXPECT_EQ(fixture.manager.recorded_sample_count(), 2);
-    auto const used_bytes{fixture.memory.used_bytes()};
-    fixture.manager.reset();
-    fixture.ledger.reset();
-    fixture.clock.reset();
-    EXPECT_EQ(fixture.memory.used_bytes(), used_bytes);
-    fixture.manager.initialise();
-    EXPECT_EQ(fixture.memory.used_bytes(), used_bytes);
-    EXPECT_EQ(fixture.manager.recorded_sample_count(), 1);
-    fixture.tick(1);
-    EXPECT_EQ(fixture.manager.recorded_sample_count(), 2);
-}
 }

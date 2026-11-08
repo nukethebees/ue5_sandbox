@@ -233,10 +233,6 @@ auto HudModel::sampled_speed_view() const -> std::optional<SampledSpeedHudView> 
     return SampledSpeedHudView{player->speed_samples, player->speed_sample_index};
 }
 auto HudModel::player_for_collection() const -> sim::player::Sim const* {
-    auto const* player{simulation_->player()};
-    return player && player->unique_entity_id.is_valid() &&
-                   simulation_->entity_ledger().is_valid_unique_id(player->unique_entity_id)
-             ? player
-             : nullptr;
+    return simulation_->player();
 }
 }

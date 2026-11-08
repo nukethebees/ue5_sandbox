@@ -129,20 +129,16 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
         checks.are_equal(uint64{8},
                          presentation->get_last_completed_tick(),
                          TEXT("Terminal presentation observes the final completed tick"));
-        auto report{
-            FTestBatchOrchestratorTestAccess::take_finalized_telemetry_report(orchestrator)};
+        auto report{FTestBatchOrchestratorTestAccess::telemetry_report(orchestrator)};
         if (checks.is_true(report.IsSet(), TEXT("Terminal frame produces a telemetry report"))) {
             checks.are_equal(uint64{8},
                              report->run.completion.completed_ticks.value(),
                              TEXT("Telemetry retains the final resolved tick"));
-            checks.is_true(!report->run.battle_samples.empty() &&
-                               report->run.battle_samples.back().completed_tick.value() == 8,
-                           TEXT("Terminal battle sample observes the final resolved tick"));
+            checks.is_true(report->run.final_state.completed_tick.value() == 8,
+                           TEXT("Current telemetry state observes the final resolved tick"));
         }
-        checks.is_true(
-            !FTestBatchOrchestratorTestAccess::take_finalized_telemetry_report(orchestrator)
-                 .IsSet(),
-            TEXT("Finalized report is consumed only once"));
+        checks.is_true(FTestBatchOrchestratorTestAccess::telemetry_report(orchestrator).IsSet(),
+                       TEXT("Completed report can be queried repeatedly"));
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     });
 }

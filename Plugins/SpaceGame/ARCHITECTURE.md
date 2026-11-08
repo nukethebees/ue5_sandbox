@@ -11,7 +11,7 @@ and teardown. Simulation policy and presentation work belong to the owners below
 | `FLevelLoader` | Validate launch options and create authored player/camera actors using an optional visual context with a controller reference |
 | `ioj::sim::LevelSim` | Own the worldless simulation and execute its fixed-tick phases |
 | `FLevelPresentationHost` | Bind actor-owned components, maintain HUD and presentation, and display collision snapshots |
-| `LevelTelemetryIntegration` | Consume finalized native reports, persist them and navigate to results |
+| `LevelTelemetryIntegration` | Read repeatable native reports and persist them |
 | `reset_level_world` | Remove gameplay actors while retaining framework actors; the level loader constructs the next authored level |
 
 The presentation host belongs to `SpaceGamePresentation` and receives native read access and
@@ -25,8 +25,9 @@ validity flags. An absent visual context selects headless loading.
 
 Every playable level uses a Scheme entry point or a definition already decoded from that entry
 point. Editor export writes the generated configuration included by the human-owned root. PIE
-validates and compiles that composed definition before launch and hands its initialization data
-to the orchestrator. Packaged and native launches use the same definition and native compiler.
+validates and compiles that composed definition before launch, discarding the validation result.
+PIE and packaged launches pass the definition through the same runtime builder; native launches
+use the same definition and native compiler.
 Editor proxies are authoring objects and never initialize simulation entities.
 
 Harvest static geometry after the editor proxies have been removed from the PIE world, and put
@@ -44,7 +45,8 @@ presentation, player actors and launch behavior; `get_state()` also covers the a
 
 A running Unreal frame advances the native fixed ticks before presenting the completed frame.
 Presentation observes the final tick of a catch-up frame. Player death and level-completion
-notifications follow presentation; telemetry persistence follows native finalization.
+notifications follow presentation. The orchestrator persists telemetry and navigates to results
+when the level enters the stopped state.
 
 The actor keeps ticking while the level is paused. Every ready-level frame calls `advance()` to
 consume between-tick requests, while paused calls leave simulation time and presentation unchanged.
@@ -52,12 +54,12 @@ Pause requests take effect on the next advance; the orchestrator then notifies t
 open a pending pause menu and refresh run controls. Resume remains direct. Paused launches enter
 that state during initialization without queueing a pause request.
 
-During reset or world teardown, finalize the run and release HUD/player bindings before destroying
+During reset or world teardown, stop the run and release HUD/player bindings before destroying
 the native level. Reset the presentation host while its components and simulation are still
-alive. Persist the finalized report before clearing launch options. World reset removes gameplay
+alive. Persist the report before clearing launch options, without navigating during teardown. World reset removes gameplay
 actors and clears prepared data. The next explicit authored load constructs its player and camera
 through the usual loader. Reset subscribers observe the cleared world.
-Automation leaves finalized telemetry available for explicit test inspection.
+Automation skips persistence and navigation. Telemetry remains available for repeatable inspection.
 
 ## Collision and spawning
 

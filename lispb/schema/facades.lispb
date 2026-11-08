@@ -170,8 +170,6 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
-    (method remove_components void
-      (parameter inputs (type-ref @capital_ships_resolution_commit_inputs :suffix " const")))
     (method remove_entities void
       (parameter inputs (type-ref @capital_ships_resolution_commit_inputs :suffix " const")))
     (method finish_action void)))
@@ -252,8 +250,6 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
-    (method remove_components void
-      (parameter inputs (type-ref @fighters_resolution_commit_inputs :suffix " const")))
     (method remove_entities void
       (parameter inputs (type-ref @fighters_resolution_commit_inputs :suffix " const")))
     (method finish_action void)))
@@ -309,8 +305,6 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
-    (method remove_components void
-      (parameter inputs (type-ref @turrets_resolution_commit_inputs :suffix " const")))
     (method remove_entities void
       (parameter inputs (type-ref @turrets_resolution_commit_inputs :suffix " const")))
     (method finish_action void)))

@@ -5,8 +5,6 @@
 #include <ioj/sim/telemetry/run_record.h>
 #include <ioj/sim/telemetry/snapshot.h>
 
-#include <optional>
-
 namespace ioj::sim {
 class EntityLedger;
 struct SimClock;
@@ -16,31 +14,20 @@ struct Sim;
 
 class LevelTelemetryManager {
   public:
-    enum class State : std::uint8_t {
-        Uninitialised,
-        Recording,
-        Finalized,
-        RecordTaken,
-    };
-
     LevelTelemetryManager(SimClock const& clock,
                           EntityLedger const& entity_ledger,
                           lasers::Sim const& lasers,
                           std::pmr::memory_resource& memory,
-                          telemetry::RecordingConfig config = {}) noexcept;
+                          telemetry::RecordingConfig config = {},
+                          telemetry::RunMetadata metadata = {});
     LevelTelemetryManager(LevelTelemetryManager const&) = delete;
     LevelTelemetryManager(LevelTelemetryManager&&) = delete;
     auto operator=(LevelTelemetryManager const&) -> LevelTelemetryManager& = delete;
     auto operator=(LevelTelemetryManager&&) -> LevelTelemetryManager& = delete;
 
     void initialise();
-    void reset();
     void tick();
-    void set_run_metadata(telemetry::RunMetadata metadata);
-    void finalize(telemetry::RunEndReason reason);
-    auto take_finalized_run(Frequency tick_rate_hz) -> std::optional<telemetry::RunRecord>;
-
-    auto state() const noexcept -> State { return state_; }
+    auto make_run_record(telemetry::RunCompletion completion) const -> telemetry::RunRecord;
     // Read live totals at a completed-tick boundary; graphs end at the last recorded tick.
     auto make_snapshot() const -> telemetry::Snapshot;
     auto materialize_history() const -> std::vector<telemetry::BattleSample> {
@@ -59,9 +46,6 @@ class LevelTelemetryManager {
     telemetry::RecordingConfig config_;
     telemetry::BattleHistory history_;
     telemetry::RunMetadata metadata_{};
-    telemetry::RunCompletion completion_{};
-    telemetry::BattleSample final_state_{};
-    State state_{State::Uninitialised};
     std::uint64_t interval_ticks_{};
     std::uint64_t next_sample_tick_{};
 };

@@ -48,7 +48,7 @@ class CollisionPipeline {
   private:
     SpatialQueryManager queries_;
     OverlapHandler overlap_handler_;
-    std::vector<EntityId> overlap_candidates_;
+    std::pmr::vector<EntityId> overlap_candidates_;
 };
 
 } // namespace ioj::sim::collision

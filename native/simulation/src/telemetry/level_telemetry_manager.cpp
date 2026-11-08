@@ -32,14 +32,15 @@ LevelTelemetryManager::LevelTelemetryManager(SimClock const& clock,
                                              EntityLedger const& entity_ledger,
                                              lasers::Sim const& lasers,
                                              std::pmr::memory_resource& memory,
-                                             telemetry::RecordingConfig config) noexcept
+                                             telemetry::RecordingConfig config,
+                                             telemetry::RunMetadata metadata)
     : clock_{clock}
     , entity_ledger_{entity_ledger}
     , lasers_{lasers}
     , config_{config}
-    , history_{memory} {}
+    , history_{memory}
+    , metadata_{std::move(metadata)} {}
 void LevelTelemetryManager::initialise() {
-    assert(state_ == State::Uninitialised);
     if (metadata_.launched_utc.empty()) {
         metadata_.launched_utc = level_telemetry_detail::utc_now_iso8601();
     }
@@ -50,25 +51,14 @@ void LevelTelemetryManager::initialise() {
     auto const tick{clock_.get_completed_ticks().value()};
     assert(interval_ticks_ <= std::numeric_limits<std::uint64_t>::max() - tick);
     next_sample_tick_ = tick + interval_ticks_;
-    state_ = State::Recording;
     record_sample();
-}
-void LevelTelemetryManager::reset() {
-    history_.reset();
-    metadata_ = {};
-    completion_ = {};
-    final_state_ = {};
-    state_ = State::Uninitialised;
-    interval_ticks_ = 0;
-    next_sample_tick_ = 0;
 }
 
 /* **************************************** */
 // Recording
 /* **************************************** */
 void LevelTelemetryManager::tick() {
-    assert(state_ != State::Uninitialised);
-    if (state_ != State::Recording || !config_.enabled) {
+    if (!config_.enabled) {
         return;
     }
     auto const tick{clock_.get_completed_ticks().value()};
@@ -97,7 +87,6 @@ auto LevelTelemetryManager::sample_state() const -> telemetry::BattleSample {
 // Snapshots
 /* **************************************** */
 auto LevelTelemetryManager::make_snapshot() const -> telemetry::Snapshot {
-    assert(state_ != State::Uninitialised);
     assert(clock_.phase() == SimulationPhase::BetweenTicks);
     telemetry::Snapshot snapshot;
     snapshot.elapsed_seconds =
@@ -123,34 +112,13 @@ auto LevelTelemetryManager::make_snapshot() const -> telemetry::Snapshot {
 /* **************************************** */
 // Run capture
 /* **************************************** */
-void LevelTelemetryManager::set_run_metadata(telemetry::RunMetadata metadata) {
-    assert(state_ == State::Uninitialised || state_ == State::Recording);
-    if (metadata.launched_utc.empty()) {
-        metadata.launched_utc = std::move(metadata_.launched_utc);
-    }
-    metadata_ = std::move(metadata);
-}
-void LevelTelemetryManager::finalize(telemetry::RunEndReason const reason) {
-    if (state_ != State::Recording) {
-        return;
-    }
-    record_sample();
-    final_state_ = sample_state();
-    completion_.reason = reason;
-    completion_.completed_utc = level_telemetry_detail::utc_now_iso8601();
-    completion_.completed_ticks = clock_.get_completed_ticks();
-    state_ = State::Finalized;
-}
-auto LevelTelemetryManager::take_finalized_run(Frequency const tick_rate_hz)
-    -> std::optional<telemetry::RunRecord> {
-    if (state_ != State::Finalized) {
-        return std::nullopt;
-    }
-    state_ = State::RecordTaken;
-    return telemetry::RunRecord{.metadata = std::move(metadata_),
-                                .tick_rate_hz = tick_rate_hz,
-                                .completion = std::move(completion_),
-                                .final_state = final_state_,
+auto LevelTelemetryManager::make_run_record(telemetry::RunCompletion completion) const
+    -> telemetry::RunRecord {
+    assert(clock_.phase() == SimulationPhase::BetweenTicks);
+    return telemetry::RunRecord{.metadata = metadata_,
+                                .tick_rate_hz = clock_.tick_rate(),
+                                .completion = std::move(completion),
+                                .final_state = sample_state(),
                                 .battle_samples = history_.materialize()};
 }
 }

@@ -183,7 +183,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         spawn_effects.push_back(definitions.add_spawn_event(
             {first_group, definitions.spawn_groups.num() - first_group}));
     }
-    auto const timers{output.timers.add(logic.timer_count)};
+    auto const timers{output.timers.add(logic.timer_count, *std::pmr::get_default_resource())};
     std::unordered_map<EntityId, sim::LevelEntityRef> entities;
     for (std::uint32_t i{}; i < entity_count; ++i) {
         entities.emplace(definition.entities()[i].id, sim::LevelEntityRef{i});

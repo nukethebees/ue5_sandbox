@@ -52,10 +52,6 @@ class ResolutionCommitInterface {
     ResolutionCommitInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void remove_components(ResolutionCommitInputs const inputs) {
-        simulation.remove_components(inputs);
-    }
-
     void remove_entities(ResolutionCommitInputs const inputs) {
         simulation.remove_entities(inputs);
     }

@@ -36,9 +36,7 @@ void FSandboxEditorModule::StartupModule() {
                 return;
             }
             auto prepared{
-                ioj::editor::launch_s7_level_for_pie(*params.World,
-                                                     std::move(prepared_level_->definition),
-                                                     std::move(prepared_level_->simulation))};
+                ioj::editor::launch_s7_level_for_pie(*params.World, std::move(*prepared_level_))};
             prepared_level_.reset();
             if (!prepared) {
                 UE_LOG(LogTemp, Error, TEXT("S7 PIE preparation failed: %s"), *prepared.error());
@@ -130,7 +128,7 @@ auto FSandboxEditorModule::RequestPIEPermissionInternal(bool) const -> TValueOrE
     if (!compiled) {
         return MakeError(FText::FromString(compiled.error()));
     }
-    prepared_level_.emplace(std::move(*definition), std::move(*compiled));
+    prepared_level_.emplace(std::move(*definition));
     return MakeValue(true);
 }
 

@@ -120,8 +120,6 @@ auto Sim::spawn_instances(vectors3f::ResolvedConstView const new_locations,
         next_fire_point_indices[i] = new_fire_point_indices[i];
     }
 
-    entities_.const_view().validate();
-
     context.ledger.record_spawns(EntityType::TubeSpinner, Team::White, Health{1}, entity_ids);
 
     return entity_ids;

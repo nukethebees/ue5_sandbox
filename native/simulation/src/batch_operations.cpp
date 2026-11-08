@@ -13,11 +13,8 @@
 #include <functional>
 
 namespace ioj::sim {
-void
-    sort_and_deduplicate_removal_indices(std::pmr::vector<std::uint32_t>& local_indices_to_remove) {
+void sort_removal_indices(std::pmr::vector<std::uint32_t>& local_indices_to_remove) {
     std::ranges::sort(local_indices_to_remove, std::greater{});
-    auto const unique_end{std::ranges::unique(local_indices_to_remove).begin()};
-    local_indices_to_remove.erase(unique_end, local_indices_to_remove.end());
 }
 
 void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
@@ -34,7 +31,6 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
     auto const n_direct_events{damage_events.num()};
     FrameArray<Health> applied_damages{scratch_resource};
     applied_damages.set_num(n_direct_events);
-    std::ranges::fill(applied_damages, Health{});
     auto const removal_count{local_indices_to_remove.size()};
     auto const death_count{entity_death_info.num()};
     local_indices_to_remove.resize(removal_count + static_cast<std::size_t>(n_direct_events));
@@ -42,7 +38,6 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
 
     auto current_removal_count{static_cast<std::uint32_t>(removal_count)};
     auto current_death_count{death_count};
-    auto const removal_storage{std::span{local_indices_to_remove}};
     auto const handles{lookup.entries()};
     auto const damaged_entities{damage_events.damaged_entities()};
     auto const damage_amounts{damage_events.damage_amounts()};
@@ -71,10 +66,7 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
         health.set_value(health.value() - requested_damage);
         healths.set_health(id, health);
         applied_damages[event_index] = applied_damage;
-        // The populated prefix grows as this loop discovers deaths.
-        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-        auto const removals{removal_storage.first(static_cast<std::size_t>(current_removal_count))};
-        if (is_alive(health) || std::ranges::find(removals, local_index) != removals.end()) {
+        if (is_alive(health)) {
             continue;
         }
 

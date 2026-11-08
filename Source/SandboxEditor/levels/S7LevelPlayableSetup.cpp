@@ -28,9 +28,8 @@ inline constexpr TCHAR game_mode_class_path[]{
 
 }
 
-auto launch_s7_level_for_pie(UWorld& world,
-                             levels::LevelDefinition definition,
-                             sim::LevelSimInitData data) -> std::expected<void, FString> {
+auto launch_s7_level_for_pie(UWorld& world, levels::LevelDefinition definition)
+    -> std::expected<void, FString> {
     AS7LevelAuthoringDocument* document{};
     ATestBatchOrchestrator* orchestrator{};
     for (TActorIterator<AS7LevelAuthoringDocument> it{&world}; it; ++it) {
@@ -53,7 +52,6 @@ auto launch_s7_level_for_pie(UWorld& world,
             return std::unexpected{TEXT("Could not remove an authoring preview actor before PIE.")};
         }
     }
-    orchestrator->set_initialisation_data(std::move(data));
     game->set_pending_level(std::move(definition), document->source_path, options);
     return {};
 }

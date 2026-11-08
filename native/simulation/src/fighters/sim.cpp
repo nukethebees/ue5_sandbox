@@ -2,7 +2,6 @@
 
 #include <ioj/column_math.h>
 #include <ioj/countdown.h>
-#include <ioj/diagnostics.h>
 #include <ioj/frame_array.h>
 #include <ioj/generated/array_math_kernels.h>
 #include <ioj/periodic_tick_countdown.h>
@@ -31,7 +30,6 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
-#include <format>
 #include <limits>
 #include <span>
 
@@ -106,7 +104,6 @@ void Sim::commit_spawns(PreparationInputs const inputs) {
     auto const n_cur{num_instances()};
     auto const n_new{spawn_queue_.num()};
 
-    spawn_queue_.const_view().validate();
     if (n_new < 1) {
         return;
     }
@@ -165,14 +162,7 @@ void Sim::prepare_tick(PreparationInputs const inputs) {
     auto const team_count{static_cast<std::int32_t>(inputs.participating_teams.size())};
     remaining_team_capacity_.fill(config_.per_team_limit(team_count));
     for (auto const team : data.teams()) {
-        auto const team_index{static_cast<std::uint32_t>(team)};
-        if (team_index < remaining_team_capacity_.size() &&
-            std::ranges::contains(inputs.participating_teams, team)) {
-            remaining_team_capacity_[team] = std::max(0, remaining_team_capacity_[team] - 1);
-        } else {
-            log_error(
-                std::format("Live fighter has invalid or non-participating team {}", team_index));
-        }
+        remaining_team_capacity_[team] = std::max(0, remaining_team_capacity_[team] - 1);
     }
     tick_countdowns<std::int16_t>(data.attack_cooldowns(), attack_cleaner_, 16384);
     update_entity_lookup_table();
@@ -441,15 +431,10 @@ void Sim::publish_deaths(ResolutionInputs const inputs) {
 }
 
 // ResolutionCommit
-void Sim::remove_components(ResolutionCommitInputs const inputs) {
-    assert(is_removal_allowed(entity_tables_.lookups.clock()));
-    SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_components");
-
-    sort_and_deduplicate_removal_indices(inputs.local_indices_to_remove);
-}
 void Sim::remove_entities(ResolutionCommitInputs const inputs) {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_entities");
+    sort_removal_indices(inputs.local_indices_to_remove);
 
     remove_dead_entities(inputs.local_indices_to_remove);
 }
@@ -985,42 +970,20 @@ void Sim::refresh_target_data(ThinkingInputs const inputs) {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::accept_spawn_count(std::span<Team const> const teams,
-                             std::span<Team const> const participating_teams) -> std::uint32_t {
+auto Sim::queue_spawns(FighterSpawnQueue::ConstView const new_spawns) -> std::uint32_t {
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::queue_spawns");
+    auto const teams{new_spawns.teams()};
     if (teams.empty()) {
         return 0;
     }
     auto const team{teams.front()};
-    auto const team_index{static_cast<std::size_t>(team)};
-    if (team_index >= remaining_team_capacity_.size() ||
-        !std::ranges::contains(participating_teams, team)) {
-        log_error(
-            std::format("Rejected fighter spawn request for invalid or non-participating team {}",
-                        static_cast<std::uint32_t>(teams[0])));
-        return 0;
-    }
-
-    for (auto const queued_team : teams) {
-        if (queued_team != team) {
-            log_error("Rejected fighter spawn wave containing multiple teams");
-            return 0;
-        }
-    }
-
     auto& capacity{remaining_team_capacity_[team]};
     assert(capacity >= 0);
     auto const accepted_count{
         std::min(static_cast<std::uint32_t>(teams.size()), static_cast<std::uint32_t>(capacity))};
     capacity -= static_cast<std::int32_t>(accepted_count);
+    spawn_queue_.append_from(new_spawns, 0, accepted_count);
     return accepted_count;
-}
-auto Sim::queue_spawns(FighterSpawnQueue::ConstView const new_spawns,
-                       std::span<Team const> const participating_teams) -> std::uint32_t {
-    SANDBOX_PROFILE_SCOPE("fighters::Sim::queue_spawns");
-    new_spawns.validate();
-    auto const count{accept_spawn_count(new_spawns.teams(), participating_teams)};
-    spawn_queue_.append_from(new_spawns, 0, count);
-    return count;
 }
 
 /* **************************************** */

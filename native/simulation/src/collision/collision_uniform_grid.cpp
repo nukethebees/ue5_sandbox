@@ -85,16 +85,7 @@ void CollisionUniformGrid::are_spheres_in_bounds(
     vectors3f::ResolvedConstView const centres,
     float const radius,
     std::span<SphereInBoundsResult> const out_results) const {
-    [[maybe_unused]] auto const count{centres.num()};
-    assert(out_results.size() == static_cast<std::size_t>(count));
-    assert(std::isfinite(radius));
-    assert(radius >= 0.f);
-
-    collision::are_spheres_in_bounds(
-        geometry_,
-        centres,
-        radius,
-        {out_results.data(), static_cast<std::size_t>(out_results.size())});
+    collision::are_spheres_in_bounds(geometry_, centres, radius, out_results);
 }
 auto CollisionUniformGrid::to_string(collision::CellCoord const value) -> std::string {
     return std::format("({}, {}, {})", value.x(), value.y(), value.z());
@@ -251,7 +242,6 @@ void CollisionUniformGrid::begin_entity_grid() {
     auto const& geometry{geometry_};
     auto& storage{entity_storage_};
     auto const dimensions{geometry.dimensions};
-    assert(dimensions.x() > 0 && dimensions.y() > 0 && dimensions.z() > 0);
 
     {
         SANDBOX_PROFILE_SCOPE("prepare entity grid");

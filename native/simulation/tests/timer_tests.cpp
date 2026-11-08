@@ -8,7 +8,7 @@ namespace ioj::sim::timer_tests {
 TEST(Timers, RemainsStoppedUntilExplicitStartAndExpiresAtDuration) {
     static_assert(sizeof(TimerHandle) == sizeof(std::uint32_t));
     Timers timers;
-    auto const handles{timers.add(2)};
+    auto const handles{timers.add(2, *std::pmr::get_default_resource())};
     auto const zero{handles[0]};
     auto const delayed{handles[1]};
     timers.tick(100);

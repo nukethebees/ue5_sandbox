@@ -7,6 +7,7 @@
 
 #include <cassert>
 #include <cstddef>
+#include <memory_resource>
 #include <span>
 #include <utility>
 #include <vector>
@@ -95,8 +96,8 @@ class HealthTable : public EntityTableOperations {
     using view_type = HealthView;
     using const_view_type = HealthConstView;
 
-    HealthTable()
-        : values_(health_storage::layout.capacity) {}
+    explicit HealthTable(std::pmr::memory_resource& memory = *std::pmr::get_default_resource())
+        : values_(health_storage::layout.capacity, &memory) {}
 
     [[nodiscard]] auto health(EntityId const id) const -> Health {
         return values_[storage_index(id)];
@@ -135,6 +136,6 @@ class HealthTable : public EntityTableOperations {
         return health_storage::layout.offsets[id.entity_type()] + id.index();
     }
 
-    std::vector<Health> values_;
+    std::pmr::vector<Health> values_;
 };
 }

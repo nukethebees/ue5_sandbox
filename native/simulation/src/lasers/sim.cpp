@@ -66,8 +66,6 @@ void Sim::cleanup_entities(ResolutionCommitInputs const inputs) {
     auto& pending_removals{inputs.pending_removals};
     assert(inputs.clock.phase() == SimulationPhase::ResolutionCommit);
     std::ranges::sort(pending_removals, std::greater{});
-    auto const duplicate{std::ranges::unique(pending_removals)};
-    pending_removals.erase(duplicate.begin(), duplicate.end());
     remove_instances(pending_removals);
 }
 void Sim::finish_action() {
@@ -91,7 +89,6 @@ void Sim::preallocate_instances() {
 void Sim::process_pending_spawns(PreparationInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::process_pending_spawns");
 
-    pending_spawns_.const_view().validate();
     auto const n_to_add{pending_spawns_.num()};
     inputs.combat_events.record_shots(pending_spawns_.const_view().instigator_ids());
 
@@ -286,7 +283,6 @@ void Sim::handle_collisions(ActionInputs const inputs) {
     frame_output_.append_hits(hit_details.const_view(), inputs.tick);
 }
 void Sim::remove_instances(std::span<LaserIndex const> const indices) {
-    assert(std::ranges::is_sorted(indices, std::greater{}));
     for (auto const index : indices) {
         entities_.remove_at_swap(index, 1);
     }

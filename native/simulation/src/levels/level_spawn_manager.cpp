@@ -23,15 +23,19 @@ LevelSpawnManager::LevelSpawnManager(capital_ships::Sim& capital_ships,
                                      fighters::Sim& fighters,
                                      turrets::Sim& turrets,
                                      spinners::Sim& spinners,
-                                     std::span<Transform3d const> const fighter_spawn_transforms)
+                                     std::span<Transform3d const> const fighter_spawn_transforms,
+                                     std::pmr::memory_resource& memory)
     : capital_ships_{capital_ships}
     , fighters_{fighters}
     , turrets_{turrets}
     , spinners_{spinners}
-    , fighter_spawn_transforms_{fighter_spawn_transforms.begin(), fighter_spawn_transforms.end()} {}
+    , entity_ids_{&memory}
+    , fighter_spawn_transforms_{fighter_spawn_transforms.begin(),
+                                fighter_spawn_transforms.end(),
+                                &memory}
+    , fighter_spawn_sources_{&memory} {}
 
 void LevelSpawnManager::initialise(std::uint32_t const entity_count) {
-    entity_ids_.clear();
     entity_ids_.resize(static_cast<std::size_t>(entity_count));
 }
 
@@ -92,8 +96,7 @@ void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEvents::ConstView const 
 }
 
 void LevelSpawnManager::queue_fighter_spawns(float const dt,
-                                             FrameMemoryResource& scratch_resource,
-                                             std::span<Team const> const participating_teams) {
+                                             FrameMemoryResource& scratch_resource) {
     auto const capitals{capital_ships_.get_entities()};
     auto const ids{capitals.entity_ids()};
     std::erase_if(fighter_spawn_sources_, [ids](FighterSpawnSource const& source) {
@@ -113,7 +116,6 @@ void LevelSpawnManager::queue_fighter_spawns(float const dt,
         }
 
         auto const found{std::ranges::find(ids, source.capital_id)};
-        assert(found != ids.end());
         auto const index{static_cast<std::uint32_t>(found - ids.begin())};
         auto const location{vector_at(locations, index)};
         auto const rotation{rotation_at(rotations, index)};
@@ -135,7 +137,7 @@ void LevelSpawnManager::queue_fighter_spawns(float const dt,
                      spawn_rotation.roll,
                      teams[index]);
         }
-        fighters_.queue_spawns(wave.const_view(), participating_teams);
+        fighters_.queue_spawns(wave.const_view());
         source.remaining_delay = source.cooldown;
     }
 }

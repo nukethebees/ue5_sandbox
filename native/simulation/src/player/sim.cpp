@@ -158,7 +158,6 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     auto const damage_count{damage_events.num()};
     FrameArray<Health> applied_damages{scratch_resource};
     applied_damages.set_num(damage_count);
-    std::ranges::fill(applied_damages, Health{});
     [[maybe_unused]] auto const damaged_entities{damage_events.damaged_entities()};
     auto const damage_amounts{damage_events.damage_amounts()};
     auto const instigators{damage_events.instigators()};
@@ -174,11 +173,10 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
         if (requested_damage == 0) {
             continue;
         }
-        auto const was_alive{sim::is_alive(health)};
         auto const applied_damage{Health{std::min(health.value(), requested_damage)}};
         health.set_value(health.value() - requested_damage);
         applied_damages[event_index] = applied_damage;
-        if (was_alive && is_dead(health)) {
+        if (is_dead(health)) {
             killer = instigators[element];
         }
     }
@@ -572,11 +570,10 @@ void Sim::set_health(Health const new_health, EntityId const killer) {
         return;
     }
 
-    auto const was_alive{sim::is_alive(health)};
     health = std::min(new_health, max_health_);
     health_table_.set_health(unique_entity_id, health);
 
-    if (was_alive && !sim::is_alive(health)) {
+    if (!sim::is_alive(health)) {
         die(killer);
     }
 }

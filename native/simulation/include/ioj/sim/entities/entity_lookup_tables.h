@@ -7,13 +7,15 @@
 namespace ioj::sim {
 class EntityLookupTables {
   public:
-    explicit EntityLookupTables(SimClock const& clock)
+    explicit EntityLookupTables(
+        SimClock const& clock,
+        std::pmr::memory_resource& memory = *std::pmr::get_default_resource())
         : clock_{clock}
-        , tables_{{EntityLookupTable{EntityType::PlayerShip},
-                   EntityLookupTable{EntityType::Turret},
-                   EntityLookupTable{EntityType::CapitalShip},
-                   EntityLookupTable{EntityType::Fighter},
-                   EntityLookupTable{EntityType::TubeSpinner}}} {}
+        , tables_{{EntityLookupTable{EntityType::PlayerShip, &memory},
+                   EntityLookupTable{EntityType::Turret, &memory},
+                   EntityLookupTable{EntityType::CapitalShip, &memory},
+                   EntityLookupTable{EntityType::Fighter, &memory},
+                   EntityLookupTable{EntityType::TubeSpinner, &memory}}} {}
 
     [[nodiscard]] auto for_type(EntityType const type) -> EntityLookupTable& {
         assert(std::to_underlying(type) < enum_count<EntityType>());

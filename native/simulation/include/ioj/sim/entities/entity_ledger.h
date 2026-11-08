@@ -16,6 +16,8 @@ class EntityLedger {
   public:
     using HistoryIndex = std::uint32_t;
 
+    explicit EntityLedger(std::pmr::memory_resource& memory = *std::pmr::get_default_resource());
+
     void reset();
     void reset_frame_output();
     // Require equally sized columns and output IDs. Do not borrow inputs from this ledger.
@@ -67,9 +69,6 @@ class EntityLedger {
     auto count_alive_per_team_and_type() const noexcept -> telemetry::EntityCounts {
         return statistics_.count_alive_per_team_and_type();
     }
-    auto count_alive_not_on_team(Team team) const noexcept -> std::int32_t {
-        return statistics_.count_alive_not_on_team(team);
-    }
     auto combat_telemetry() const noexcept -> telemetry::CombatTelemetryCounters const& {
         return statistics_.combat_telemetry();
     }
@@ -83,6 +82,6 @@ class EntityLedger {
     EntityHistory history_;
     EntityIdAllocator ids_;
     CombatStatistics statistics_;
-    EnumArray<std::vector<HistoryIndex>, EntityType> frame_deaths_;
+    EnumArray<std::pmr::vector<HistoryIndex>, EntityType> frame_deaths_;
 };
 }

@@ -325,9 +325,7 @@ void ExprManager::evaluate_elapsed(std::span<LeafHandle const> const run,
         auto const leaf{handle.index()};
         auto const data{leaves.data_handles[leaf].index()};
 
-        if (inputs.timers.elapsed(leaves.timers[data])) {
-            leaves_.results[leaf] = true;
-        }
+        leaves_.results[leaf] = inputs.timers.elapsed(leaves.timers[data]);
     }
 }
 void ExprManager::evaluate_kills(std::span<LeafHandle const> const run,
@@ -337,7 +335,7 @@ void ExprManager::evaluate_kills(std::span<LeafHandle const> const run,
     for (auto const handle : run) {
         auto const leaf{handle.index()};
         auto const data{leaves.data_handles[leaf].index()};
-        std::uint64_t kills{};
+        KillCount kills{};
         auto const sources{leaves.kill_sources[data]};
         auto const sources_end{sources.end()};
         for (auto index{sources.start()}; index < sources_end; ++index) {
@@ -347,9 +345,7 @@ void ExprManager::evaluate_kills(std::span<LeafHandle const> const run,
             }
         }
 
-        if (kills >= leaves.kill_targets[data]) {
-            leaves_.results[leaf] = true;
-        }
+        leaves_.results[leaf] = kills >= leaves.kill_targets[data];
     }
 }
 void ExprManager::evaluate_reached_position(std::span<LeafHandle const> const run,

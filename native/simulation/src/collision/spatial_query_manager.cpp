@@ -56,14 +56,11 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
 
     if constexpr (Mode == QueryMode::HitEntity) {
         assert(static_cast<std::size_t>(count) == request.out_entity_ids.size());
-        std::ranges::fill(request.out_entity_ids, ioj::sim::EntityId{});
     } else if constexpr (Mode == QueryMode::ClearLine) {
         assert(static_cast<std::size_t>(count) == request.out_flags.size());
-        std::ranges::fill(request.out_flags, ioj::sim::LineQueryResult{});
     } else if constexpr (Mode == QueryMode::TargetLineOfSight) {
         assert(static_cast<std::size_t>(count) == request.targets.size());
         assert(static_cast<std::size_t>(count) == request.out_flags.size());
-        std::ranges::fill(request.out_flags, ioj::sim::LineQueryResult{});
     }
 
     ioj::sim::LineTraces traces{*scratch_resource};
@@ -91,16 +88,10 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
         }
     }()};
 
-    if constexpr (Mode == QueryMode::ClosestHit) {
-        uniform_grid.trace_aabbs(trace_view, hits, request.ignored_entities);
-    } else if constexpr (Mode == QueryMode::ClearLine) {
-        if (request.ignored_entities.empty()) {
-            uniform_grid.trace_aabbs(trace_view, hits);
-        } else {
-            uniform_grid.trace_aabbs(trace_view, hits, request.ignored_entities);
-        }
-    } else {
+    if (request.ignored_entities.empty()) {
         uniform_grid.trace_aabbs(trace_view, hits);
+    } else {
+        uniform_grid.trace_aabbs(trace_view, hits, request.ignored_entities);
     }
 
     if constexpr (Mode == QueryMode::ClosestHit) {

@@ -65,9 +65,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void set_level_script(FString path);
     auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
     void set_presentation_enabled(bool enabled);
-    void set_initialisation_data(sim::LevelSimInitData data) {
-        initialisation_data_.emplace(std::move(data));
-    }
     auto get_level_definition() const -> levels::LevelDefinition const& {
         check(prepared_level_.IsSet());
         return *prepared_level_;
@@ -147,6 +144,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto should_initialise_in_begin_play() const noexcept -> bool;
     void handle_level_start_failure(FString message);
     void release_level(sim::telemetry::RunEndReason reason);
+    void report_run_completion();
 
     /* **************************************** */
     // Presentation
@@ -198,7 +196,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FLevelPresentationHost presentation_host_;
     TOptional<sim::LevelSim> level_simulation_;
     TOptional<levels::LevelDefinition> prepared_level_;
-    std::optional<sim::LevelSimInitData> initialisation_data_;
     levels::LaunchOptions launch_options_{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox")

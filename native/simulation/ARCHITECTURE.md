@@ -34,7 +34,10 @@ contains only the repeating tick cycle. Logic evaluation during a tick
 follows published deaths and precedes `ResolutionCommit`, while entity row mappings are still valid.
 
 The first dispatched terminal event and its execution tick remain available through `result()`.
-Run completion owns telemetry finalization, including explicit stops for reset and world teardown.
+Run completion records its timestamp, including explicit stops for reset and world teardown.
+Telemetry can be queried repeatedly. History ends at the latest scheduled sample; querying a run
+reads current totals without adding a final sample or consuming metadata. Reporting and navigation
+belong to consumers, not the telemetry manager.
 Winner and stop reason are derived from that event's payload. Result publication, telemetry and
 persistence use this terminal decision; there are no per-team mission completion records.
 Initial terminal effects also publish a result, without starting the stopped simulation.
@@ -65,11 +68,10 @@ Unreal lifecycle and presentation ownership are described in the
 ## Timer state
 
 `LevelSim` owns `Timers` independently of expression storage. Stable timer handles identify
-internal 32-bit entries: two bits for not-started, started or finished state, and thirty bits
-for an active countdown index. `StartTimer` event payloads own durations; the timer collection
+not-started, started or finished state. `StartTimer` event payloads own durations; the timer collection
 stores no duration before dispatch. Starting creates a countdown once; repeated starts do nothing.
 Resolution decrements active countdowns before evaluating expressions. Expiry marks the entry
-finished and swap-removes the countdown, repairing the moved owner's index. Finished handles
+finished and swap-removes the countdown and its owner handle. Finished handles
 remain readable. Timers have no reset operation; a fresh level owns fresh timer state.
 
 Level compilation allocates timer IDs, creates start events and connects timer observations

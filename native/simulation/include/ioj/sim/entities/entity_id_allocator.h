@@ -5,12 +5,21 @@
 
 #include <format>
 #include <limits>
+#include <memory_resource>
 #include <vector>
 
 namespace ioj::sim {
 class EntityIdAllocator {
   public:
     static constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
+    explicit EntityIdAllocator(
+        std::pmr::memory_resource& memory = *std::pmr::get_default_resource())
+        : history_rows_{{std::pmr::vector<std::uint32_t>{&memory},
+                         std::pmr::vector<std::uint32_t>{&memory},
+                         std::pmr::vector<std::uint32_t>{&memory},
+                         std::pmr::vector<std::uint32_t>{&memory},
+                         std::pmr::vector<std::uint32_t>{&memory}}} {}
+
     [[nodiscard]] auto allocate(EntityType const type, std::uint32_t const history_row)
         -> EntityId {
         if (std::to_underlying(type) >= enum_count<EntityType>()) {
@@ -50,6 +59,6 @@ class EntityIdAllocator {
     }
   private:
     EntityTypeSizes issued_counts_{};
-    EnumArray<std::vector<std::uint32_t>, EntityType> history_rows_;
+    EnumArray<std::pmr::vector<std::uint32_t>, EntityType> history_rows_;
 };
 }

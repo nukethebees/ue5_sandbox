@@ -2,6 +2,7 @@
 
 #include <ioj/enum_array.h>
 #include <ioj/require.h>
+#include <ioj/sim/tasks/task_allocation_context.h>
 
 #include <array>
 #include <cassert>

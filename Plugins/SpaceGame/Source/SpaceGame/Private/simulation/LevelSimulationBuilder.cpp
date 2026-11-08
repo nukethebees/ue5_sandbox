@@ -173,13 +173,8 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request) -> FLevelS
         player.Emplace(player_source->make_spawn_data());
     }
     auto const* const player_mesh{player_source ? player_source->get_collision_mesh() : nullptr};
-    auto result{make_level_simulation_init_data(
-        config, request.clock_settings, request.definition, MoveTemp(player), {}, player_mesh)};
-    if (!result) {
-        return result;
-    }
-
-    return result;
+    return make_level_simulation_init_data(
+        config, request.clock_settings, request.definition, MoveTemp(player), {}, player_mesh);
 }
 
 auto configure_level_run(sim::LevelSimInitData& data,

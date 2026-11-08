@@ -15,7 +15,7 @@ struct EntityDeathInfo;
 class EntityLedger;
 }
 namespace ioj::sim {
-void sort_and_deduplicate_removal_indices(std::pmr::vector<std::uint32_t>& local_indices_to_remove);
+void sort_removal_indices(std::pmr::vector<std::uint32_t>& local_indices_to_remove);
 
 // Consume recipients validated by DamageQueue::prepare while the published rows remain stable.
 // Earlier events in this batch may already have killed a recipient.

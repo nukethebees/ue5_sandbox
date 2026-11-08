@@ -7,8 +7,11 @@
 
 namespace ioj::sim {
 struct EntityTables {
-    explicit EntityTables(SimClock const& clock)
-        : lookups{clock} {}
+    explicit EntityTables(SimClock const& clock,
+                          std::pmr::memory_resource& memory = *std::pmr::get_default_resource())
+        : lookups{clock, memory}
+        , health{memory}
+        , executors{memory} {}
 
     template <EntityType Type>
     void publish(std::span<EntityId const> const ids,

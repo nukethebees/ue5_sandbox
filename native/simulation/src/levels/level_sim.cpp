@@ -10,9 +10,12 @@
 #include <ioj/sim/player/phase_interface.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spinners/phase_interface.h>
+#include <ioj/sim/tasks/task_allocation_context.h>
 #include <ioj/sim/turrets/phase_interface.h>
 
 #include <cassert>
+#include <chrono>
+#include <format>
 #include <optional>
 #include <span>
 #include <utility>
@@ -36,6 +39,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     , capital_ships_simulation_{entity_tables_}
     , turrets_simulation_{entity_tables_}
     , spinners_simulation_{entity_tables_}
+    , task_manager_{memory_manager_.game_memory()}
     , latches_{std::move(data.latches)}
     , expressions_{std::move(data.expressions)}
     , timers_{std::move(data.timers)}
@@ -47,6 +51,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
           turrets_simulation_,
           spinners_simulation_,
           data.capital_ships.fighter_spawn_slots_relative_transforms,
+          memory_manager_.game_memory(),
       }
     , level_telemetry_manager_{
           clock_,
@@ -54,8 +59,8 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
           lasers_simulation_,
           memory_manager_.level_memory(),
           data.telemetry_recording,
+          std::move(data.telemetry_metadata),
       } {
-    level_telemetry_manager_.set_run_metadata(std::move(data.telemetry_metadata));
 
     initialise_subsystems(data);
 
@@ -135,14 +140,19 @@ auto LevelSim::result() const -> std::optional<LevelResult> {
     auto const event{terminal_->event};
     if (event.kind() == EventKind::Win) {
         return LevelResult{*terminal_,
-                           definitions.win_events[event.index()],
+                           definitions.win_events[event.index()].winner,
                            telemetry::RunEndReason::LevelCompleted};
     }
     return LevelResult{*terminal_, std::nullopt, definitions.stop_events[event.index()]};
 }
 
-auto LevelSim::take_finalized_telemetry_run() -> std::optional<telemetry::RunRecord> {
-    return level_telemetry_manager_.take_finalized_run(clock_.tick_rate());
+auto LevelSim::telemetry_run() const -> std::optional<telemetry::RunRecord> {
+    auto const outcome{result()};
+    if (!outcome) {
+        return std::nullopt;
+    }
+    return level_telemetry_manager_.make_run_record(
+        {outcome->reason, terminal_->completed_utc, terminal_->tick});
 }
 
 /* **************************************** */
@@ -201,8 +211,11 @@ void LevelSim::dispatch_tick_end_events() {
                 break;
             case EventKind::Win:
             case EventKind::StopRun:
-                terminal_ = TerminalEvent{*event, clock_.get_completed_ticks()};
-                level_telemetry_manager_.finalize(result()->reason);
+                terminal_ = TerminalEvent{*event,
+                                          clock_.get_completed_ticks(),
+                                          std::format("{:%FT%TZ}",
+                                                      std::chrono::floor<std::chrono::milliseconds>(
+                                                          std::chrono::system_clock::now()))};
                 state_ = LevelState::Stopped;
                 return;
             case EventKind::Pause:
@@ -303,7 +316,7 @@ void LevelSim::think_tick(float const tick_period,
     SANDBOX_PROFILE_SCOPE("Thinking");
     clock_.transition_to(SimulationPhase::Thinking);
 
-    spawn_manager_.queue_fighter_spawns(tick_period, phase_memory, participating_teams_);
+    spawn_manager_.queue_fighter_spawns(tick_period, phase_memory);
 
     turrets::ThinkingInputs const turret_inputs{
         collision_pipeline_.queries(), lasers_simulation_, phase_memory};
@@ -476,11 +489,6 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
         fighters::ResolutionCommitInputs const fighter_inputs{fighter_removal_indices};
         capital_ships::ResolutionCommitInputs const capital_inputs{capital_removal_indices};
         turrets::ResolutionCommitInputs const turret_inputs{turret_removal_indices};
-
-        // Sort removals before retiring and compacting entity rows.
-        capital_ships_commit.remove_components(capital_inputs);
-        fighters_commit.remove_components(fighter_inputs);
-        turrets_commit.remove_components(turret_inputs);
 
         capital_ships_commit.remove_entities(capital_inputs);
         fighters_commit.remove_entities(fighter_inputs);

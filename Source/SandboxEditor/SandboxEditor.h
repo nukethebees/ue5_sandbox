@@ -2,7 +2,6 @@
 
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include <ioj/levels/level_definition.h>
-#include <ioj/sim/levels/level_sim_init_data.h>
 
 #include "CoreMinimal.h"
 #include "Delegates/IDelegateInstance.h"
@@ -17,11 +16,6 @@ class SANDBOXEDITOR_API FSandboxEditorModule
     : public IModuleInterface
     , public IPIEAuthorizer
     , public ioj::LogMsgMixin<"FSandboxEditorModule"> {
-    struct PreparedLevel {
-        ioj::levels::LevelDefinition definition;
-        ioj::sim::LevelSimInitData simulation;
-    };
-
   public:
     static FName const s7_level_script_editor_tab_id;
 
@@ -37,5 +31,5 @@ class SANDBOXEDITOR_API FSandboxEditorModule
 
     FDelegateHandle s7_pie_handle_{};
     TWeakPtr<SS7LevelScriptEditor> s7_level_script_editor_{};
-    mutable std::optional<PreparedLevel> prepared_level_;
+    mutable std::optional<ioj::levels::LevelDefinition> prepared_level_;
 };

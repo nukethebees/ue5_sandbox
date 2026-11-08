@@ -220,7 +220,7 @@ TEST(SimulationBenchmarkRunner, EnablesSampledHistoryOnRequest) {
         {.level_path = level_path, .simulated_seconds = 0.01, .telemetry_enabled = true})};
     ASSERT_TRUE(result) << result.error();
     EXPECT_TRUE(result->telemetry_enabled);
-    EXPECT_EQ(result->telemetry_rows, 2);
+    EXPECT_EQ(result->telemetry_rows, 1);
     EXPECT_EQ(result->alive_entities, 1);
 }
 

@@ -619,7 +619,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             continue;
         }
         presentation.simulation_ = &lasers;
-        presentation.update_visual_data();
+        presentation.update_visual_data(false);
 
         auto const live_count{lasers.num_instances()};
         auto const active{lasers.get_entities().active()};
@@ -685,8 +685,8 @@ auto FLevelTelemetryFileAdapterTest::RunTest(FString const&) -> bool {
     ::ioj::sim::LevelSim simulation{std::move(data)};
 
     simulation.stop_run(::ioj::sim::telemetry::RunEndReason::WorldEnd);
-    auto run{simulation.take_finalized_telemetry_run()};
-    if (!TestTrue(TEXT("Native run is finalized"), run.has_value())) {
+    auto run{simulation.telemetry_run()};
+    if (!TestTrue(TEXT("Stopped native run is available"), run.has_value())) {
         return false;
     }
     ioj::sim::telemetry::Report report{std::move(*run)};

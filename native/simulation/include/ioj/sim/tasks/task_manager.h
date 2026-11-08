@@ -4,7 +4,6 @@
 #include <ioj/sim/tasks/instruction.h>
 #include <ioj/sim/tasks/instruction_data.h>
 #include <ioj/sim/tasks/instruction_handle.h>
-#include <ioj/sim/tasks/task_allocation_context.h>
 #include <ioj/sim/tasks/task_entity_count.h>
 #include <ioj/sim/tasks/task_id.h>
 #include <ioj/team_array.h>
@@ -18,6 +17,8 @@
 #include <vector>
 
 namespace ioj::sim::tasks {
+struct TaskAllocationContext;
+
 class TaskManager {
   public:
     using Counts = std::pmr::vector<TaskEntityCount>;

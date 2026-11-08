@@ -337,7 +337,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto const tick_memory{simulation.tick_memory_stats()};
     auto const phase_memory{simulation.phase_memory_stats()};
     auto const& telemetry{simulation.level_telemetry_manager()};
-    [[maybe_unused]] auto telemetry_run{simulation.take_finalized_telemetry_run()};
     auto const total_simulation_ticks{simulation.clock().get_completed_ticks()};
     auto const elapsed{std::chrono::duration<double>{finished_at - started_at}.count()};
     auto const total_elapsed{std::chrono::duration<double>{finished_at - total_started_at}.count()};

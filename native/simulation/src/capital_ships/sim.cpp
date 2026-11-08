@@ -64,15 +64,10 @@ void Sim::publish_deaths(ResolutionInputs const inputs) {
 }
 
 // ResolutionCommit
-void Sim::remove_components(ResolutionCommitInputs const inputs) {
-    assert(is_removal_allowed(entity_tables_.lookups.clock()));
-    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::remove_components");
-
-    sort_and_deduplicate_removal_indices(inputs.local_indices_to_remove);
-}
 void Sim::remove_entities(ResolutionCommitInputs const inputs) {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::remove_entities");
+    sort_removal_indices(inputs.local_indices_to_remove);
 
     handle_dead_entities(inputs);
 }

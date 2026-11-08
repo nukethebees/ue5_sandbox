@@ -49,8 +49,7 @@ struct Sim {
     // Spawning
     /* **************************************** */
     // Queue a single-team wave for the next Preparation, subject to the team's live cap.
-    auto queue_spawns(FighterSpawnQueue::ConstView new_spawns,
-                      std::span<Team const> participating_teams) -> std::uint32_t;
+    auto queue_spawns(FighterSpawnQueue::ConstView new_spawns) -> std::uint32_t;
 
   private:
     using NavigationScratch = fighters::NavigationScratch;
@@ -77,7 +76,6 @@ struct Sim {
     void generate_fire_commands(ThinkingInputs const inputs);
     void resolve_damage_events(ResolutionInputs const inputs);
     void publish_deaths(ResolutionInputs inputs);
-    void remove_components(ResolutionCommitInputs inputs);
     void remove_entities(ResolutionCommitInputs inputs);
     void finish_action();
 
@@ -113,8 +111,6 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto accept_spawn_count(std::span<Team const> teams, std::span<Team const> participating_teams)
-        -> std::uint32_t;
     void commit_spawns(PreparationInputs inputs);
 
     /* **************************************** */
