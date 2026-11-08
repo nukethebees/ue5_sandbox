@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/enum_array.h>
+#include <ioj/sim/expressions/expr_result.h>
 #include <ioj/sim/expressions/kill_count.h>
 #include <ioj/sim/expressions/latch_handle.h>
 #include <ioj/sim/expressions/leaf_data_handle.h>
@@ -11,7 +12,6 @@
 #include <ioj/sim/levels/level_entity_ref.h>
 #include <ioj/vector.h>
 
-#include <algorithm>
 #include <cstddef>
 #include <vector>
 
@@ -21,9 +21,9 @@ struct ExprLeaves {
     [[nodiscard]] auto num_leaves() const noexcept -> std::size_t { return results.size(); }
 
     // Shared
-    std::vector<std::uint8_t> results;
+    std::vector<ExprResult> results;
     std::vector<LeafDataHandle> data_handles;
-    EnumArray<std::vector<LeafHandle>, LeafKind> runs;
+    EnumArray<std::vector<LeafHandle>, LeafKind> leaves_by_kind;
 
     // EntityDestroyed
     std::vector<LevelEntityRef> destroyed_entities;
@@ -33,7 +33,7 @@ struct ExprLeaves {
     std::vector<Vector3d> positions;
     std::vector<double> radius_squared;
 
-    // TimeElapsed
+    // TimerElapsed
     std::vector<TimerHandle> timers;
 
     std::vector<LatchHandle> true_latches;

@@ -17,8 +17,15 @@ TEST(LevelEvents, ConsumptionPreservesFifoHistoryAndIndependentStreams) {
     auto const spawn_first{data.add_spawn_event({0, 1})};
     auto const spawn_second{data.add_spawn_event({1, 1})};
     auto const stop{data.add_stop_event(telemetry::RunEndReason::DurationReached)};
+    data.add_publish_event(SignalHandle{0});
+    data.add_publish_event(SignalHandle{1});
+    data.add_publish_event(SignalHandle{0});
     EventHandle const pause{0, EventKind::Pause};
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
+    ASSERT_EQ(manager.signals().size(), 2);
+    EXPECT_EQ(manager.signals()[1], 0);
+    manager.publish(SignalHandle{1});
+    EXPECT_EQ(manager.signals()[1], 1);
     EXPECT_FALSE(manager.consume_tick_end_event());
     EXPECT_FALSE(manager.consume_preparation_event());
 

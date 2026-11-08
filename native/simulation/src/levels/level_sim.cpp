@@ -225,7 +225,6 @@ void LevelSim::dispatch_tick_end_events() {
                 terminal_ = TerminalEvent{*event, clock_.get_completed_ticks()};
                 level_telemetry_manager_.finalize(result()->reason);
                 state_ = LevelState::Stopped;
-                event_manager_.stop();
                 return;
             case EventKind::Pause:
                 state_ = LevelState::Paused;

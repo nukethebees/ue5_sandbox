@@ -1,6 +1,5 @@
 #include <ioj/sim/expressions/expr_manager.h>
 
-#include <ioj/container_ops.h>
 #include <ioj/frame_array.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
@@ -197,7 +196,7 @@ auto ExprManager::append(std::span<levels::Expression const> const expressions,
 
         references[index] = ExprHandle::make_data_leaf(LeafHandle{leaf, kind});
         leaves.data_handles.emplace_back(data_index, kind);
-        leaves.runs[kind].emplace_back(leaf, kind);
+        leaves.leaves_by_kind[kind].emplace_back(leaf, kind);
     }
 
     return references;
@@ -209,7 +208,7 @@ auto ExprManager::add_timer_elapsed(TimerHandle const timer) -> ExprHandle {
     leaves_.timers.push_back(timer);
     leaves_.results.push_back(false);
     leaves_.data_handles.emplace_back(data, LeafKind::TimerElapsed);
-    leaves_.runs[LeafKind::TimerElapsed].emplace_back(leaf, LeafKind::TimerElapsed);
+    leaves_.leaves_by_kind[LeafKind::TimerElapsed].emplace_back(leaf, LeafKind::TimerElapsed);
     return ExprHandle::make_data_leaf(LeafHandle{leaf, LeafKind::TimerElapsed});
 }
 
@@ -217,7 +216,7 @@ auto ExprManager::add_timer_elapsed(TimerHandle const timer) -> ExprHandle {
 // Lifecycle
 /* **************************************** */
 void ExprManager::evaluate(ExprEvaluationContext const& inputs) {
-    std::ranges::fill(leaves_.results, std::uint8_t{});
+    std::ranges::fill(leaves_.results, ExprResult{});
     evaluate_leaves(inputs);
     evaluate_composites();
 }
@@ -270,24 +269,24 @@ void ExprManager::evaluate_composites() {
 }
 
 void ExprManager::evaluate_leaves(ExprEvaluationContext const& inputs) {
-    evaluate_destroyed(leaves_.runs[LeafKind::EntityDestroyed], inputs);
-    evaluate_elapsed(leaves_.runs[LeafKind::TimerElapsed], inputs);
-    evaluate_kills(leaves_.runs[LeafKind::EntityKillsReached], inputs);
-    auto const& positions{leaves_.runs[LeafKind::EntityReachedPosition]};
+    evaluate_destroyed(leaves_.leaves_by_kind[LeafKind::EntityDestroyed], inputs);
+    evaluate_elapsed(leaves_.leaves_by_kind[LeafKind::TimerElapsed], inputs);
+    evaluate_kills(leaves_.leaves_by_kind[LeafKind::EntityKillsReached], inputs);
+    auto const& positions{leaves_.leaves_by_kind[LeafKind::EntityReachedPosition]};
     if (!positions.empty()) {
         evaluate_reached_position(positions, inputs);
     }
-    for (auto const handle : leaves_.runs[LeafKind::LatchedTrue]) {
+    for (auto const handle : leaves_.leaves_by_kind[LeafKind::LatchedTrue]) {
         auto const index{handle.index()};
         leaves_.results[index] =
             inputs.latches.latched_true(leaves_.true_latches[leaves_.data_handles[index].index()]);
     }
-    for (auto const handle : leaves_.runs[LeafKind::LatchedFalse]) {
+    for (auto const handle : leaves_.leaves_by_kind[LeafKind::LatchedFalse]) {
         auto const index{handle.index()};
         leaves_.results[index] = inputs.latches.latched_false(
             leaves_.false_latches[leaves_.data_handles[index].index()]);
     }
-    for (auto const handle : leaves_.runs[LeafKind::EventFired]) {
+    for (auto const handle : leaves_.leaves_by_kind[LeafKind::EventFired]) {
         auto const index{handle.index()};
         leaves_.results[index] =
             inputs.signals[leaves_.signals[leaves_.data_handles[index].index()].index()];
@@ -364,9 +363,7 @@ void ExprManager::evaluate_reached_position(std::span<LeafHandle const> const ru
             continue;
         }
 
-        if (expr_evaluation_detail::destroyed(id, inputs.ledger, life_states)) {
-            leaves_.results[leaf] = false;
-        } else {
+        if (!expr_evaluation_detail::destroyed(id, inputs.ledger, life_states)) {
             ids[live_count] = id;
             live_leaves[live_count++] = leaf;
         }

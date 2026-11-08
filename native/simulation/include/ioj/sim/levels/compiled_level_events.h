@@ -42,7 +42,6 @@ struct CompiledLevelEvents {
     std::vector<EventHandle> initial_events{};
     std::vector<Team> win_events;
     std::vector<SignalHandle> publish_events;
-    std::uint32_t signal_count{};
 };
 
 }

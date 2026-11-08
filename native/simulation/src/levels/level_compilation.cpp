@@ -203,7 +203,6 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     for (auto const& rule : logic.rules) {
         register_signals(rule.effects);
     }
-    definitions.signal_count = static_cast<std::uint32_t>(signals.size());
     auto const expressions{
         output.expressions.append(logic.expressions, {entities, timers, signals})};
     for (auto const& latch : logic.latches) {
