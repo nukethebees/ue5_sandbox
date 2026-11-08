@@ -3,6 +3,7 @@
 #include <ioj/diagnostics.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/entities/entity_death_info.h>
+#include <ioj/sim/expressions/expr_evaluation_context.h>
 #include <ioj/sim/fighters/phase_interface.h>
 #include <ioj/sim/lasers/phase_interface.h>
 #include <ioj/sim/levels/spawn_context.h>

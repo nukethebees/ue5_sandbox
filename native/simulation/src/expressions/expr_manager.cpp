@@ -2,15 +2,20 @@
 
 #include <ioj/frame_array.h>
 #include <ioj/frame_memory_resource.h>
+#include <ioj/levels/expression.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/expressions/expr_compilation_context.h>
+#include <ioj/sim/expressions/expr_evaluation_context.h>
 #include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
 #include <ioj/vector_value_math.h>
 #include <ioj/vectors3f.h>
 
 #include <algorithm>
+#include <cassert>
 #include <utility>
+#include <vector>
 
 namespace ioj::sim {
 namespace expr_compilation_detail {
@@ -74,13 +79,16 @@ auto destroyed(EntityId const id,
 /* **************************************** */
 // Compilation
 /* **************************************** */
-auto ExprManager::append(std::span<levels::Expression const> const expressions,
-                         ExprCompilationContext const& ctx) -> std::vector<ExprHandle> {
+void ExprManager::append(std::span<levels::Expression const> const expressions,
+                         ExprCompilationContext const& ctx,
+                         std::span<ExprHandle> const references) {
+    assert(references.size() == expressions.size());
+
     auto& leaves{leaves_};
     auto& composites{composites_};
     auto size = [](auto const& values) { return static_cast<std::uint32_t>(values.size()); };
-    std::vector<ExprHandle> references(expressions.size());
     auto const order{expr_compilation_detail::expression_order(expressions)};
+
     for (auto const index : order) {
         auto const& expression{expressions[index]};
         if (is_composite(expression.type())) {
@@ -198,8 +206,6 @@ auto ExprManager::append(std::span<levels::Expression const> const expressions,
         leaves.data_handles.emplace_back(data_index, kind);
         leaves.leaves_by_kind[kind].emplace_back(leaf, kind);
     }
-
-    return references;
 }
 auto ExprManager::add_timer_elapsed(TimerHandle const timer) -> ExprHandle {
     assert(timer.is_valid());
@@ -264,28 +270,32 @@ void ExprManager::evaluate_composites() {
                 }
             }
         }
+
         composites_.results[index] = value;
     }
 }
-
 void ExprManager::evaluate_leaves(ExprEvaluationContext const& inputs) {
     evaluate_destroyed(leaves_.leaves_by_kind[LeafKind::EntityDestroyed], inputs);
     evaluate_elapsed(leaves_.leaves_by_kind[LeafKind::TimerElapsed], inputs);
     evaluate_kills(leaves_.leaves_by_kind[LeafKind::EntityKillsReached], inputs);
+
     auto const& positions{leaves_.leaves_by_kind[LeafKind::EntityReachedPosition]};
     if (!positions.empty()) {
         evaluate_reached_position(positions, inputs);
     }
+
     for (auto const handle : leaves_.leaves_by_kind[LeafKind::LatchedTrue]) {
         auto const index{handle.index()};
         leaves_.results[index] =
             inputs.latches.latched_true(leaves_.true_latches[leaves_.data_handles[index].index()]);
     }
+
     for (auto const handle : leaves_.leaves_by_kind[LeafKind::LatchedFalse]) {
         auto const index{handle.index()};
         leaves_.results[index] = inputs.latches.latched_false(
             leaves_.false_latches[leaves_.data_handles[index].index()]);
     }
+
     for (auto const handle : leaves_.leaves_by_kind[LeafKind::EventFired]) {
         auto const index{handle.index()};
         leaves_.results[index] =
@@ -314,6 +324,7 @@ void ExprManager::evaluate_elapsed(std::span<LeafHandle const> const run,
     for (auto const handle : run) {
         auto const leaf{handle.index()};
         auto const data{leaves.data_handles[leaf].index()};
+
         if (inputs.timers.elapsed(leaves.timers[data])) {
             leaves_.results[leaf] = true;
         }

@@ -2,6 +2,7 @@
 
 #include <ioj/column_math.h>
 #include <ioj/rotator_math.h>
+#include <ioj/sim/expressions/expr_compilation_context.h>
 #include <ioj/sim/levels/compiled_level_events.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/transform3d.h>
@@ -200,8 +201,9 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     for (auto const& rule : logic.rules) {
         register_signals(rule.effects);
     }
-    auto const expressions{
-        output.expressions.append(logic.expressions, {entities, timers, signals})};
+    std::vector<sim::ExprHandle> expressions(logic.expressions.size());
+    output.expressions.append(logic.expressions, {entities, timers, signals}, expressions);
+
     for (auto const& latch : logic.latches) {
         output.latches.add({expressions[latch.when], expressions[latch.value]});
     }

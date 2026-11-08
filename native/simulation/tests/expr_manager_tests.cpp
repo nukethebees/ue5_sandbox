@@ -1,4 +1,7 @@
+#include <ioj/levels/expression.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/expressions/expr_compilation_context.h>
+#include <ioj/sim/expressions/expr_evaluation_context.h>
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
@@ -27,8 +30,9 @@ TEST(Expressions, BooleanOperatorsResampleSharedSignalsInDependencyOrder) {
         Expression{AnyExpr{}},
         Expression{XorExpr{}},
     };
-    auto const handles{
-        expressions.append(nodes, {{}, {}, {{"a", SignalHandle{0}}, {"b", SignalHandle{1}}}})};
+    std::array<ExprHandle, nodes.size()> handles;
+    expressions.append(nodes, {{}, {}, {{"a", SignalHandle{0}}, {"b", SignalHandle{1}}}}, handles);
+
     std::array<std::uint8_t, 2> signals{};
     for (auto const a : {false, true, false}) {
         for (auto const b : {false, true}) {
@@ -57,7 +61,9 @@ TEST(Expressions, LatchObservationsAndCompositesUseTheSameCycleSample) {
         Expression{LatchedTrueExpr{1}},
         Expression{LatchedFalseExpr{0}},
     };
-    auto const handles{expressions.append(nodes, {{}, {}, {}})};
+    std::array<ExprHandle, nodes.size()> handles;
+    expressions.append(nodes, {{}, {}, {}}, handles);
+
     latches.add({handles[0], handles[0]});
     latches.add({handles[2], handles[0]});
     for (int cycle{}; cycle < 3; ++cycle) {
@@ -88,8 +94,9 @@ TEST(Expressions, SharedDagEvaluatesChildrenFirstWithoutRetiringSharedLeaves) {
                            timer(0),
                            timer(1)};
     std::array const timer_handles{first, second};
-    auto const compiled{expressions.append(nodes, {{}, timer_handles, {}})};
-    auto const& handles{compiled};
+    std::array<ExprHandle, nodes.size()> handles;
+    expressions.append(nodes, {{}, timer_handles, {}}, handles);
+
     timers.start(first, 10);
     timers.start(second, 20);
 
@@ -119,8 +126,9 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
     std::array const timer_handles{first, second};
     std::unordered_map<levels::EntityId, LevelEntityRef> entity_refs;
     entity_refs.emplace(levels::EntityId{"future"}, LevelEntityRef{0});
-    auto const compiled{expressions.append(nodes, {entity_refs, timer_handles, {}})};
-    auto const& handles{compiled};
+    std::array<ExprHandle, nodes.size()> handles;
+    expressions.append(nodes, {entity_refs, timer_handles, {}}, handles);
+
     timers.start(first, 10);
     timers.start(second, 20);
     timers.tick(10);

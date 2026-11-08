@@ -1,4 +1,7 @@
+#include <ioj/levels/expression.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/expressions/expr_compilation_context.h>
+#include <ioj/sim/expressions/expr_evaluation_context.h>
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
@@ -27,7 +30,8 @@ auto sample(std::initializer_list<bool> const values) -> ExpressionSamples {
     EntityLedger ledger;
     Latches latches;
     ExpressionSamples result;
-    auto const compiled{result.expressions.append(nodes, {{}, {}, {}})};
+    std::vector<ExprHandle> compiled(nodes.size());
+    result.expressions.append(nodes, {{}, {}, {}}, compiled);
     result.handles.assign(compiled.begin() + 2, compiled.end());
     result.expressions.evaluate({ledger, timers, {}, latches, {}});
     return result;

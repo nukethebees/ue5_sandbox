@@ -9,8 +9,9 @@
 namespace ioj::sim {
 LevelEventManager::LevelEventManager(CompiledLevelEvents data, std::pmr::memory_resource& memory)
     : data_{std::move(data)}
-    , tick_end_events_{&memory}
-    , preparation_events_{&memory} {
+    , signals_{&memory}
+    , preparation_events_{&memory}
+    , tick_end_events_{&memory} {
     std::uint32_t signal_count{};
     for (auto const signal : data_.publish_events) {
         signal_count = std::max(signal_count, signal.index() + 1);
@@ -53,18 +54,18 @@ void LevelEventManager::enqueue_stop(telemetry::RunEndReason const reason) {
     enqueue(data_.add_stop_event(reason));
 }
 
-auto LevelEventManager::consume_tick_end_event() -> std::optional<EventHandle> {
-    if (tick_end_cursor_ == tick_end_events_.size()) {
-        return std::nullopt;
-    }
-
-    return tick_end_events_[tick_end_cursor_++];
-}
 auto LevelEventManager::consume_preparation_event() -> std::optional<EventHandle> {
-    if (preparation_cursor_ == preparation_events_.size()) {
+    if (preparation_read_cursor_ == preparation_events_.size()) {
         return std::nullopt;
     }
 
-    return preparation_events_[preparation_cursor_++];
+    return preparation_events_[preparation_read_cursor_++];
+}
+auto LevelEventManager::consume_tick_end_event() -> std::optional<EventHandle> {
+    if (tick_end_read_cursor_ == tick_end_events_.size()) {
+        return std::nullopt;
+    }
+
+    return tick_end_events_[tick_end_read_cursor_++];
 }
 }

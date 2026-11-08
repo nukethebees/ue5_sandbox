@@ -1,4 +1,5 @@
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/expressions/expr_evaluation_context.h>
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
