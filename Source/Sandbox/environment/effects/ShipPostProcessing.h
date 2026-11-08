@@ -7,6 +7,7 @@
 
 class UPostProcessComponent;
 
+namespace ioj {
 UCLASS()
 class SANDBOX_API AShipPostProcessing : public AActor {
     GENERATED_BODY()
@@ -20,3 +21,5 @@ class SANDBOX_API AShipPostProcessing : public AActor {
     UPROPERTY(EditAnywhere, Category = "Post process")
     UPostProcessComponent* post_process_volume{nullptr};
 };
+
+} // namespace ioj

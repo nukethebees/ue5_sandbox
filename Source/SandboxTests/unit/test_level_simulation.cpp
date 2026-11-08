@@ -52,12 +52,12 @@ auto make_presentation_component(AActor& owner) -> Component* {
 
 auto make_presentation_resources(AActor& owner, FLevelVisualConfig const& config)
     -> ioj::FLevelPresentationResources {
-    return {.lasers = make_presentation_component<USandboxISMCComponent>(owner),
+    return {.lasers = make_presentation_component<ioj::USandboxISMCComponent>(owner),
             .capital_ships = make_presentation_component<UInstancedStaticMeshComponent>(owner),
-            .fighters = make_presentation_component<USandboxISMCComponent>(owner),
+            .fighters = make_presentation_component<ioj::USandboxISMCComponent>(owner),
             .turrets = make_presentation_component<UInstancedStaticMeshComponent>(owner),
             .spinners = make_presentation_component<UInstancedStaticMeshComponent>(owner),
-            .sparks = make_presentation_component<USparkRendererComponent>(owner),
+            .sparks = make_presentation_component<ioj::USparkRendererComponent>(owner),
             .config = config};
 }
 
@@ -220,7 +220,7 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
         .sparks = resources.sparks,
         .soft_targets = make_presentation_component<UInstancedStaticMeshComponent>(*owner),
         .collision_grid =
-            make_presentation_component<UCollisionGridVisualizationComponent>(*owner)};
+            make_presentation_component<ioj::UCollisionGridVisualizationComponent>(*owner)};
 
     auto data{make_battle()};
     std::array<ioj::Vector3f, 2> const locations{{{10.f, 20.f, 30.f}, {-40.f, 50.f, 60.f}}};
@@ -570,7 +570,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
         return false;
     }
 
-    auto* const component{NewObject<USandboxISMCComponent>()};
+    auto* const component{NewObject<ioj::USandboxISMCComponent>()};
     component->set_static_mesh(*mesh);
     component->set_num_custom_data_floats(FLaserPresentation::n_custom_ismc_floats);
 
@@ -607,7 +607,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             requests.view().max_distances()[spawn] =
                 requests.view().speeds()[spawn] * initial_lifetime;
             requests.view().instigator_ids()[spawn] = {};
-            requests.view().sources()[spawn] = {ioj::to_native(ETestTeam::White),
+            requests.view().sources()[spawn] = {ioj::to_native(ioj::ETestTeam::White),
                                                 ::ioj::sim::EntityType::TubeSpinner};
             expected_material_data.Add({.colour = colour,
                                         .initial_lifetime = initial_lifetime,

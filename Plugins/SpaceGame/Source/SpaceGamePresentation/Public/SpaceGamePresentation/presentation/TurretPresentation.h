@@ -11,7 +11,7 @@ class UInstancedStaticMeshComponent;
 
 namespace ioj {
 struct FLevelPresentation;
-}
+} // namespace ioj
 
 struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     friend struct ioj::FLevelPresentation;
@@ -20,7 +20,7 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     static constexpr int32 n_custom_ismc_floats{3};
 
     explicit FTurretPresentation(UInstancedStaticMeshComponent& component);
-    void set_actor_config(FTurretConfig const* new_config,
+    void set_actor_config(ioj::FTurretConfig const* new_config,
                           ioj::settings::TurretPresentation const& settings) noexcept;
   private:
     auto simulation() const -> ::ioj::sim::turrets::Sim const& { return *simulation_; }
@@ -38,14 +38,14 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     void draw_debugging_shapes() const;
     void validate_array_sizes() const;
 
-    FTurretConfig const* actor_config{nullptr};
+    ioj::FTurretConfig const* actor_config{nullptr};
     ioj::settings::TurretPresentation const* settings_{};
     ::ioj::sim::turrets::Sim const* simulation_{};
 
     UInstancedStaticMeshComponent* instances{nullptr};
     TArray<FTransform> ismc_transforms;
 
-    FDrawDebugConfig debug_drawer;
+    ioj::FDrawDebugConfig debug_drawer;
     bool draw_target_arrows_enabled{false};
     bool draw_debug_entity_info_enabled{false};
 };

@@ -38,7 +38,7 @@ struct FSpaceDustRenderParameters {
     float volume_edge_fade_fraction{};
 };
 
-auto make_render_parameters(FSpaceDustSettings const& settings,
+auto make_render_parameters(ioj::FSpaceDustSettings const& settings,
                             FVector3f const translation_phase,
                             FVector3f const world_velocity) -> FSpaceDustRenderParameters {
     return {
@@ -205,7 +205,7 @@ IMPLEMENT_VERTEX_FACTORY_TYPE(FSpaceDustVertexFactory,
 
 class FSpaceDustSceneProxy final : public FPrimitiveSceneProxy {
   public:
-    FSpaceDustSceneProxy(USpaceDustComponent const* const component,
+    FSpaceDustSceneProxy(ioj::USpaceDustComponent const* const component,
                          UMaterialInterface const* const material,
                          FSpaceDustRenderParameters const parameters,
                          int32 const particle_count)
@@ -300,7 +300,7 @@ class FSpaceDustSceneProxy final : public FPrimitiveSceneProxy {
     int32 particle_count_{};
 };
 
-auto to_native_settings(FSpaceDustSettings const& settings) -> ioj::space_dust::Tuning {
+auto to_native_settings(ioj::FSpaceDustSettings const& settings) -> ioj::space_dust::Tuning {
     return {
         .enabled = settings.enabled,
         .particle_count = settings.particle_count,
@@ -321,8 +321,8 @@ auto to_native_settings(FSpaceDustSettings const& settings) -> ioj::space_dust::
     };
 }
 
-auto apply_native_settings(FSpaceDustSettings settings, ioj::space_dust::Tuning const& native)
-    -> FSpaceDustSettings {
+auto apply_native_settings(ioj::FSpaceDustSettings settings, ioj::space_dust::Tuning const& native)
+    -> ioj::FSpaceDustSettings {
     settings.enabled = native.enabled;
     settings.particle_count = native.particle_count;
     settings.random_seed = static_cast<int32>(native.random_seed);
@@ -345,7 +345,7 @@ auto apply_native_settings(FSpaceDustSettings settings, ioj::space_dust::Tuning 
 }
 }
 
-auto normalise_space_dust_settings(FSpaceDustSettings settings) -> FSpaceDustSettings {
+auto normalise_space_dust_settings(ioj::FSpaceDustSettings settings) -> ioj::FSpaceDustSettings {
     return apply_native_settings(settings,
                                  ioj::space_dust::normalise_tuning(to_native_settings(settings)));
 }
@@ -360,6 +360,7 @@ auto make_space_dust_translation_phase(FVector const world_location,
     return FVector3f{phase.x(), phase.y(), phase.z()};
 }
 
+namespace ioj {
 USpaceDustComponent::USpaceDustComponent() {
     PrimaryComponentTick.bCanEverTick = false;
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -445,3 +446,5 @@ void USpaceDustComponent::update_translation_phase() {
     translation_phase_ =
         make_space_dust_translation_phase(GetComponentLocation(), settings_.volume_dimensions);
 }
+
+} // namespace ioj

@@ -16,6 +16,7 @@
 #include <ScopedTransaction.h>
 #endif
 
+namespace ioj {
 ATestStaticTurretsProxy::ATestStaticTurretsProxy()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))}
     , collision{CreateDefaultSubobject<UCapsuleComponent>(TEXT("collision"))}
@@ -38,7 +39,7 @@ ATestStaticTurretsProxy::ATestStaticTurretsProxy()
 
 void ATestStaticTurretsProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
-    ioj::set_proxy_actor_name(*this, TEXT("StaticTurret"), team);
+    set_proxy_actor_name(*this, TEXT("StaticTurret"), team);
     apply_actor_configuration();
 }
 
@@ -61,7 +62,7 @@ void ATestStaticTurretsProxy::apply_actor_configuration() {
     fire_point->SetRelativeTransform(actor_config->fire_point_offset);
     detection->SetVisibility(actor_config->show_collision);
 
-    if (IsValid(actor_config->team_visual_data) && ioj::is_valid(team)) {
+    if (IsValid(actor_config->team_visual_data) && is_valid(team)) {
         actor_config->team_visual_data->ensure_all_team_colours_exist();
         auto const colour_cache{
             UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
@@ -91,7 +92,7 @@ void ATestStaticTurretsProxy::apply_asset_configuration_to_all_instances() {
     auto* const config{level_config_asset.Get()};
     FScopedTransaction const transaction{
         NSLOCTEXT("TurretProxy", "ApplyAll", "Apply configuration to all turrets")};
-    ioj::for_each_instance(*this, [config](ThisClass& proxy) {
+    for_each_instance(*this, [config](ThisClass& proxy) {
         proxy.Modify();
         proxy.set_level_config_asset(config);
         proxy.apply_asset_configuration();
@@ -99,3 +100,5 @@ void ATestStaticTurretsProxy::apply_asset_configuration_to_all_instances() {
 }
 
 #endif
+
+} // namespace ioj

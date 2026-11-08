@@ -1,5 +1,6 @@
 #include "SandboxGameShared/utilities/ActorCorners.h"
 
+namespace ioj {
 auto FActorCorners::to_string() const -> FString {
     FString out{};
 
@@ -9,3 +10,5 @@ auto FActorCorners::to_string() const -> FString {
 
     return out;
 }
+
+} // namespace ioj

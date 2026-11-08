@@ -5,13 +5,14 @@
 #include "BattleViewerHudWidget.generated.h"
 
 class UTextBlock;
+namespace ioj {
 class UValueWidget;
 
 UCLASS()
 class SPACEGAMEPRESENTATION_API UBattleViewerHudWidget : public USimulationHudWidget {
     GENERATED_BODY()
   public:
-    void apply_ui_style(ioj::FGameUiStyle const& style) override;
+    void apply_ui_style(FGameUiStyle const& style) override;
     void set_movement_speed(float speed);
   protected:
     void NativeOnInitialized() override;
@@ -22,3 +23,5 @@ class SPACEGAMEPRESENTATION_API UBattleViewerHudWidget : public USimulationHudWi
     UPROPERTY(meta = (BindWidget))
     UValueWidget* camera_speed_widget{nullptr};
 };
+
+} // namespace ioj

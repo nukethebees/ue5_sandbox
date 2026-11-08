@@ -18,12 +18,12 @@
 #include "generated/SSettingsSlider.slate.generated.h"
 
 namespace {
-auto valid_style(FSettingsStyle const* const style) -> FSettingsStyle const& {
+auto valid_style(ioj::FSettingsStyle const* const style) -> ioj::FSettingsStyle const& {
     return style != nullptr ? *style : default_settings_style();
 }
 }
 
-FSettingsStyle::FSettingsStyle() {
+ioj::FSettingsStyle::FSettingsStyle() {
     auto const& core_style{FCoreStyle::Get()};
     section_text = core_style.GetWidgetStyle<FTextBlockStyle>("NormalText");
     label_text = section_text;
@@ -43,8 +43,8 @@ FSettingsStyle::FSettingsStyle() {
     value_background = section_background;
 }
 
-auto default_settings_style() -> FSettingsStyle const& {
-    static FSettingsStyle const style{};
+auto default_settings_style() -> ioj::FSettingsStyle const& {
+    static ioj::FSettingsStyle const style{};
     return style;
 }
 

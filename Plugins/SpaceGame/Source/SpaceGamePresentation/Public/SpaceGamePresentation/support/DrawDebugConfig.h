@@ -8,6 +8,7 @@
 
 class UWorld;
 
+namespace ioj {
 USTRUCT()
 struct SPACEGAMEPRESENTATION_API FDrawDebugConfig {
     GENERATED_BODY()
@@ -180,3 +181,5 @@ struct SPACEGAMEPRESENTATION_API FDrawDebugConfig {
     template <typename T>
     auto get_optional(TOptional<T> value, T const& default_value) const -> T;
 };
+
+} // namespace ioj

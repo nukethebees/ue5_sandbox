@@ -9,6 +9,7 @@
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 
+namespace ioj {
 void UVector2DWidget::NativePreConstruct() {
     Super::NativePreConstruct();
     rebuild_widget_tree();
@@ -20,7 +21,7 @@ void UVector2DWidget::update(FVector2D const value) {
     update_widgets();
 }
 
-void UVector2DWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
+void UVector2DWidget::apply_hud_style(FGameHudStyle const& style) {
     hud_style_ = style;
     update_widgets();
 }
@@ -130,10 +131,10 @@ void UVector2DWidget::update_widgets() {
         background_widget->SetBrush(style.control_background);
         cursor_widget->SetBrushColor(style.energy);
         if (name_text) {
-            ioj::apply_text_style(*name_text, style.caption_text);
+            apply_text_style(*name_text, style.caption_text);
         }
         if (value_text) {
-            ioj::apply_text_style(*value_text, style.secondary_text);
+            apply_text_style(*value_text, style.secondary_text);
         }
     }
     if (name_text) {
@@ -147,3 +148,5 @@ void UVector2DWidget::update_widgets() {
         value_text->SetFont(font);
     }
 }
+
+} // namespace ioj

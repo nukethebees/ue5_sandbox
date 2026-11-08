@@ -4,6 +4,7 @@
 
 #include "HudCrosshairDistances.generated.h"
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct FHudCrosshairDistances {
     GENERATED_BODY()
@@ -14,3 +15,5 @@ struct FHudCrosshairDistances {
     UPROPERTY(EditAnywhere, Category = "UI")
     float far{6000.f};
 };
+
+} // namespace ioj

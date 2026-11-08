@@ -28,7 +28,8 @@ auto force_categories() -> TConstArrayView<FForceCategory> {
 }
 }
 
-void UForceStatusWidget::set_entity_counts(ioj::sim::telemetry::EntityCounts const& counts) {
+namespace ioj {
+void UForceStatusWidget::set_entity_counts(sim::telemetry::EntityCounts const& counts) {
     entity_counts_ = counts;
     refresh_content();
 }
@@ -38,7 +39,7 @@ void UForceStatusWidget::set_team_colours(UTestTeamVisualData::FColourArray cons
     refresh_content();
 }
 
-void UForceStatusWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
+void UForceStatusWidget::apply_hud_style(FGameHudStyle const& style) {
     hud_style_ = style;
     refresh_content();
 }
@@ -69,15 +70,15 @@ auto UForceStatusWidget::build_content() const -> TSharedRef<SWidget> {
     for (int32 category_index{}; category_index < category_count; ++category_index) {
         auto const& category{categories[category_index]};
         int32 total{};
-        constexpr int32 team_count{ioj::enum_count<ETestTeam>()};
+        constexpr int32 team_count{enum_count<ETestTeam>()};
         for (int32 team_index{}; team_index < team_count; ++team_index) {
-            total += entity_counts_[static_cast<ioj::Team>(team_index), category.type];
+            total += entity_counts_[static_cast<Team>(team_index), category.type];
         }
 
         auto segments{SNew(SVerticalBox)};
         if (total > 0) {
             for (int32 team_index{}; team_index < team_count; ++team_index) {
-                auto const count{entity_counts_[static_cast<ioj::Team>(team_index), category.type]};
+                auto const count{entity_counts_[static_cast<Team>(team_index), category.type]};
                 if (count <= 0) {
                     continue;
                 }
@@ -110,7 +111,7 @@ auto UForceStatusWidget::build_content() const -> TSharedRef<SWidget> {
     }
 
     auto content{StaticCastSharedRef<SWidget>(bars)};
-    return hud_style_ ? ioj::make_hud_panel(hud_style_.GetValue(), MoveTemp(content)) : content;
+    return hud_style_ ? make_hud_panel(hud_style_.GetValue(), MoveTemp(content)) : content;
 }
 
 void UForceStatusWidget::refresh_content() {
@@ -118,3 +119,5 @@ void UForceStatusWidget::refresh_content() {
         root_box_->SetContent(build_content());
     }
 }
+
+} // namespace ioj

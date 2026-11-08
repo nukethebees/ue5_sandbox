@@ -13,6 +13,7 @@ struct FSparkStagingState;
 struct FSparkUploadBuffer;
 class FSparkParticleBuffer;
 
+namespace ioj {
 UCLASS(ClassGroup = (Rendering))
 class SPACEGAMERENDERING_API USparkRendererComponent final : public UPrimitiveComponent {
     GENERATED_BODY()
@@ -22,9 +23,9 @@ class SPACEGAMERENDERING_API USparkRendererComponent final : public UPrimitiveCo
 
     void initialise(FSparkRendererSettings const& settings);
     void clear_sparks();
-    auto submit_bursts(std::span<ioj::presentation::SparkBurst const> bursts, float effect_time)
-        -> ioj::presentation::SparkSubmissionResult;
-    auto submit_particles(std::span<ioj::presentation::SparkParticleRecord const> particles,
+    auto submit_bursts(std::span<presentation::SparkBurst const> bursts, float effect_time)
+        -> presentation::SparkSubmissionResult;
+    auto submit_particles(std::span<presentation::SparkParticleRecord const> particles,
                           float effect_time) -> int32;
 
     auto get_effect_time() const noexcept -> float { return effect_time_; }
@@ -42,13 +43,15 @@ class SPACEGAMERENDERING_API USparkRendererComponent final : public UPrimitiveCo
     UPROPERTY()
     TObjectPtr<UMaterialInterface> material_;
 
-    ioj::presentation::SparkRendererSettings settings_;
-    ioj::presentation::SparkStorage storage_;
+    presentation::SparkRendererSettings settings_;
+    presentation::SparkStorage storage_;
     TSharedPtr<FSparkStagingState, ESPMode::ThreadSafe> staging_state_;
     FSparkUploadBuffer* pending_upload_buffer_{nullptr};
-    ioj::presentation::SparkGpuBatch pending_gpu_batches_;
+    presentation::SparkGpuBatch pending_gpu_batches_;
     FSparkParticleBuffer* particle_buffer_{nullptr};
     int32 last_submission_upload_bytes_{0};
     float effect_time_{0.0f};
     bool clear_pending_{false};
 };
+
+} // namespace ioj

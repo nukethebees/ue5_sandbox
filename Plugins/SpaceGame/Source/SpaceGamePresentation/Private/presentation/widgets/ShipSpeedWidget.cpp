@@ -4,12 +4,13 @@
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
+namespace ioj {
 void UShipSpeedWidget::set_speed(float speed) {
     RETURN_IF_NULLPTR(widget);
     widget->update(speed);
 }
 
-void UShipSpeedWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
+void UShipSpeedWidget::apply_hud_style(FGameHudStyle const& style) {
     RETURN_IF_NULLPTR(widget);
     widget->set_format_spec(TEXT("SPEED // {0}"));
     set_text_style(style.primary_text);
@@ -28,3 +29,5 @@ void UShipSpeedWidget::set_text_style(FTextBlockStyle const& style) {
 auto UShipSpeedWidget::get_font_size() const noexcept -> int32 {
     return widget->get_font_size();
 }
+
+} // namespace ioj

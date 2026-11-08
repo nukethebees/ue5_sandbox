@@ -16,7 +16,7 @@ struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionContext {
     FVector3f aim_direction{1.0f, 0.0f, 0.0f};
     FVector3f camera_right{0.0f, 1.0f, 0.0f};
     FVector3f camera_up{0.0f, 0.0f, 1.0f};
-    ETestTeam player_team{ETestTeam::White};
+    ioj::ETestTeam player_team{ioj::ETestTeam::White};
     float effective_weapon_range{0.0f};
     float maximum_overlay_range{0.0f};
 };

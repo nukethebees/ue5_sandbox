@@ -14,6 +14,7 @@
     I need to find out why this happens.
 */
 
+namespace ioj {
 ABenchmarkOrchestratorActor::ABenchmarkOrchestratorActor() {
     PrimaryActorTick.bCanEverTick = false;
 }
@@ -143,3 +144,5 @@ auto ABenchmarkOrchestratorActor::log_time() -> void {
     log_display(
         TEXT("Benchmark time: %.2f / %.2f seconds."), time_elapsed, benchmark_duration_seconds);
 }
+
+} // namespace ioj

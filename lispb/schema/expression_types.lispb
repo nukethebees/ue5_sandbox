@@ -11,6 +11,7 @@
     (projections
       (cpp)
       (unreal-projection ELevelOutcome
+        :namespace ioj
         :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/levels/LevelOutcome.h"
         :header-include "SpaceGame/levels/LevelOutcome.h"
         :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/levels/LevelOutcomeConversion.h"

@@ -8,14 +8,13 @@
 
 #include <CoreMinimal.h>
 
+namespace ioj {
 class USandboxISMCComponent;
+struct FLevelPresentation;
+} // namespace ioj
 class FSandboxISMCInstanceChunkWriter;
 class FLaserPresentationIndexingTest;
 class FSparkEffects;
-
-namespace ioj {
-struct FLevelPresentation;
-}
 
 struct SPACEGAMEPRESENTATION_API FLaserPresentation {
     friend struct ioj::FLevelPresentation;
@@ -23,10 +22,10 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
   public:
     static constexpr int32 n_custom_ismc_floats{5};
 
-    explicit FLaserPresentation(USandboxISMCComponent& component);
+    explicit FLaserPresentation(ioj::USandboxISMCComponent& component);
 
-    auto get_config() const noexcept -> FLaserProjectileConfig const* { return actor_config; }
-    void set_actor_config(FLaserProjectileConfig const* new_config) noexcept {
+    auto get_config() const noexcept -> ioj::FLaserProjectileConfig const* { return actor_config; }
+    void set_actor_config(ioj::FLaserProjectileConfig const* new_config) noexcept {
         actor_config = new_config;
     }
     void set_spark_effects(FSparkEffects& effects) noexcept { spark_effects_ = &effects; }
@@ -44,15 +43,15 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
     void queue_hit_sparks();
     void validate_array_sizes() const;
 
-    FLaserProjectileConfig const* actor_config{nullptr};
+    ioj::FLaserProjectileConfig const* actor_config{nullptr};
 
-    USandboxISMCComponent* instances{nullptr};
+    ioj::USandboxISMCComponent* instances{nullptr};
     TArray<int32> visible_indices_;
 
     FSparkEffects* spark_effects_{nullptr};
 
 #if WITH_EDITORONLY_DATA
-    FDrawDebugConfig debug_drawer;
+    ioj::FDrawDebugConfig debug_drawer;
 
     bool debugging_shapes_enabled{false};
 #endif

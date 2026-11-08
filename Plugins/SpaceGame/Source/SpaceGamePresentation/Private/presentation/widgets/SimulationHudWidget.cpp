@@ -10,6 +10,7 @@
 #include <SceneView.h>
 #include <Widgets/SOverlay.h>
 
+namespace ioj {
 auto USimulationHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const hud_content{Super::RebuildWidget()};
     auto const overlay{SAssignNew(entity_overlay_widget_, SEntityOverlayWidget)};
@@ -81,7 +82,7 @@ void USimulationHudWidget::set_entity_overlay_style(FEntityOverlayStyle const& s
     }
 }
 
-void USimulationHudWidget::apply_ui_style(ioj::FGameUiStyle const& style) {
+void USimulationHudWidget::apply_ui_style(FGameUiStyle const& style) {
     auto const& hud_style{style.hud()};
     auto const& palette{style.palette()};
     has_ui_style_ = true;
@@ -98,7 +99,7 @@ void USimulationHudWidget::apply_ui_style(ioj::FGameUiStyle const& style) {
     apply_entity_overlay_colours();
 }
 
-void USimulationHudWidget::set_entity_counts(ioj::sim::telemetry::EntityCounts const& counts) {
+void USimulationHudWidget::set_entity_counts(sim::telemetry::EntityCounts const& counts) {
     if (force_status_widget) {
         force_status_widget->set_entity_counts(counts);
     }
@@ -123,3 +124,5 @@ void USimulationHudWidget::apply_entity_overlay_colours() {
         entity_overlay_widget_->set_style(entity_overlay_style_);
     }
 }
+
+} // namespace ioj

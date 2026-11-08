@@ -22,6 +22,7 @@
 class UMaterialInterface;
 class UNiagaraSystem;
 class UStaticMesh;
+namespace ioj {
 class UTestTeamVisualData;
 
 UENUM(BlueprintType)
@@ -34,7 +35,7 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
     GENERATED_BODY()
 
-    ioj::sim::PlayerSimConfig simulation;
+    sim::PlayerSimConfig simulation;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     FLinearColor engine_colour{FLinearColor::Blue};
@@ -50,7 +51,7 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FLaserProjectileConfig {
     GENERATED_BODY()
 
-    ioj::sim::LaserSimConfig simulation;
+    sim::LaserSimConfig simulation;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
@@ -66,7 +67,7 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FCapitalShipConfig {
     GENERATED_BODY()
 
-    ioj::sim::CapitalShipSimConfig simulation;
+    sim::CapitalShipSimConfig simulation;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
@@ -104,7 +105,7 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FFighterConfig {
     GENERATED_BODY()
 
-    ioj::sim::FighterSimConfig simulation;
+    sim::FighterSimConfig simulation;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
@@ -120,7 +121,7 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FTurretConfig {
     GENERATED_BODY()
 
-    ioj::sim::TurretSimConfig simulation;
+    sim::TurretSimConfig simulation;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
@@ -151,7 +152,7 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FTubeSpinnerConfig {
     GENERATED_BODY()
 
-    ioj::sim::SpinnerSimConfig simulation;
+    sim::SpinnerSimConfig simulation;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
@@ -163,20 +164,22 @@ struct SPACEGAMEPRESENTATION_API FTubeSpinnerConfig {
     FDrawDebugConfig debug_drawer;
 };
 
+} // namespace ioj
+
 struct SPACEGAMEPRESENTATION_API FLevelVisualConfig {
-    FPlayerShipConfig player_ship;
-    FLaserProjectileConfig laser_projectiles;
-    FCapitalShipConfig capital_ships;
-    FFighterConfig fighters;
-    FTurretConfig turrets;
-    FTubeSpinnerConfig tube_spinners;
-    FDrawDebugConfig laser_debug_drawer;
+    ioj::FPlayerShipConfig player_ship;
+    ioj::FLaserProjectileConfig laser_projectiles;
+    ioj::FCapitalShipConfig capital_ships;
+    ioj::FFighterConfig fighters;
+    ioj::FTurretConfig turrets;
+    ioj::FTubeSpinnerConfig tube_spinners;
+    ioj::FDrawDebugConfig laser_debug_drawer;
     bool laser_debug_shapes{};
     bool fighter_debug_targets{};
     bool fighter_debug_locations{};
     bool turret_debug_targets{};
     bool turret_debug_entities{};
-    FEntityOverlaySettings entity_overlay;
+    ioj::FEntityOverlaySettings entity_overlay;
     ioj::settings::Presentation presentation;
-    FSparkRendererSettings sparks;
+    ioj::FSparkRendererSettings sparks;
 };

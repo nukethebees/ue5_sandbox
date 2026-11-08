@@ -161,7 +161,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                                          : controller->GetPawn() == orchestrator.get_player_ship());
                 TestRunner->TestFalse(
                     TEXT("PIE proxies do not remain as a second entity source"),
-                    static_cast<bool>(TActorIterator<ATestCapitalShipProxy>{play_world}));
+                    static_cast<bool>(TActorIterator<ioj::ATestCapitalShipProxy>{play_world}));
 
                 auto const initial_capitals{observer ? uint32{1} : uint32{0}};
                 auto const* simulation{orchestrator.get_level_simulation()};

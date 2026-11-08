@@ -18,7 +18,7 @@
 TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
 {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    USandboxISMCComponent* component_{nullptr};
+    ioj::USandboxISMCComponent* component_{nullptr};
     USceneCaptureComponent2D* capture_{nullptr};
     UTextureRenderTarget2D* target_{nullptr};
     uint64 submitted_frame_{0};
@@ -50,7 +50,7 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
         }
 
         auto* const actor{world.SpawnActor<AActor>()};
-        component_ = NewObject<USandboxISMCComponent>(actor);
+        component_ = NewObject<ioj::USandboxISMCComponent>(actor);
         actor->SetRootComponent(component_);
         actor->AddInstanceComponent(component_);
         component_->set_static_mesh(*mesh);

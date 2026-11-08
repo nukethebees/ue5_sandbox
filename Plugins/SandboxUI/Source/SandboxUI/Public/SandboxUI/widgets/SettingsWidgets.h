@@ -15,6 +15,7 @@ struct SSettingsSectionBuilder;
 struct SSettingsSliderBuilder;
 }
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct SANDBOXUI_API FSettingsStyle {
     GENERATED_BODY()
@@ -118,7 +119,9 @@ struct SANDBOXUI_API FSettingsStyle {
     float value_text_spacing{12.0f};
 };
 
-SANDBOXUI_API auto default_settings_style() -> FSettingsStyle const&;
+} // namespace ioj
+
+SANDBOXUI_API auto default_settings_style() -> ioj::FSettingsStyle const&;
 
 class SANDBOXUI_API SSettingsRow : public SCompoundWidget {
     friend struct SlateGenerated::SSettingsRowBuilder;
@@ -128,7 +131,7 @@ class SANDBOXUI_API SSettingsRow : public SCompoundWidget {
         , _Label()
         , _ToolTipText()
         , _ControlEnabled(true) {}
-    SLATE_ARGUMENT(FSettingsStyle const*, Style)
+    SLATE_ARGUMENT(ioj::FSettingsStyle const*, Style)
     SLATE_ATTRIBUTE(FText, Label)
     SLATE_ATTRIBUTE(FText, ToolTipText)
     SLATE_ATTRIBUTE(bool, ControlEnabled)
@@ -144,7 +147,7 @@ class SANDBOXUI_API SSettingsSection : public SCompoundWidget {
     SLATE_BEGIN_ARGS(SSettingsSection)
         : _Style(&default_settings_style())
         , _Title() {}
-    SLATE_ARGUMENT(FSettingsStyle const*, Style)
+    SLATE_ARGUMENT(ioj::FSettingsStyle const*, Style)
     SLATE_ATTRIBUTE(FText, Title)
     SLATE_NAMED_SLOT(FArguments, Header)
     SLATE_DEFAULT_SLOT(FArguments, Content)
@@ -166,7 +169,7 @@ class SANDBOXUI_API SSettingsSlider : public SCompoundWidget {
         , _Maximum(1.0f)
         , _Step(0.01f)
         , _ControlEnabled(true) {}
-    SLATE_ARGUMENT(FSettingsStyle const*, Style)
+    SLATE_ARGUMENT(ioj::FSettingsStyle const*, Style)
     SLATE_ATTRIBUTE(FText, Label)
     SLATE_ATTRIBUTE(FText, ToolTipText)
     SLATE_ATTRIBUTE(float, Value)
@@ -202,7 +205,7 @@ class SANDBOXUI_API SSettingsChoice : public SCompoundWidget {
         , _ToolTipText()
         , _SelectedIndex(INDEX_NONE)
         , _ControlEnabled(true) {}
-    SLATE_ARGUMENT(FSettingsStyle const*, Style)
+    SLATE_ARGUMENT(ioj::FSettingsStyle const*, Style)
     SLATE_ATTRIBUTE(FText, Label)
     SLATE_ATTRIBUTE(FText, ToolTipText)
     SLATE_ARGUMENT(TArray<FText>, Options)
@@ -223,7 +226,7 @@ class SANDBOXUI_API SSettingsChoice : public SCompoundWidget {
     TAttribute<int32> selected_index_{};
     FOnSettingsChoiceChanged on_selection_changed_{};
     TSharedPtr<SComboBox<TSharedPtr<FText>>> combo_box_{};
-    FSettingsStyle const* style_{};
+    ioj::FSettingsStyle const* style_{};
     bool refreshing_{};
 };
 
@@ -235,7 +238,7 @@ class SANDBOXUI_API SSettingsToggle : public SCompoundWidget {
         , _ToolTipText()
         , _Checked(false)
         , _ControlEnabled(true) {}
-    SLATE_ARGUMENT(FSettingsStyle const*, Style)
+    SLATE_ARGUMENT(ioj::FSettingsStyle const*, Style)
     SLATE_ATTRIBUTE(FText, Label)
     SLATE_ATTRIBUTE(FText, ToolTipText)
     SLATE_ATTRIBUTE(bool, Checked)
@@ -256,7 +259,7 @@ class SANDBOXUI_API SSettingsReadOnlyRow : public SCompoundWidget {
         , _Label()
         , _Value()
         , _ToolTipText() {}
-    SLATE_ARGUMENT(FSettingsStyle const*, Style)
+    SLATE_ARGUMENT(ioj::FSettingsStyle const*, Style)
     SLATE_ATTRIBUTE(FText, Label)
     SLATE_ATTRIBUTE(FText, Value)
     SLATE_ATTRIBUTE(FText, ToolTipText)

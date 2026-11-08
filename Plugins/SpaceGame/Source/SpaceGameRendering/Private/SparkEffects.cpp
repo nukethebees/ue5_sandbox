@@ -25,7 +25,7 @@ TAutoConsoleVariable<int32> use_cpu_expansion{TEXT("sg.Sparks.CpuExpansion"),
                                               ECVF_Default};
 }
 
-FSparkEffects::FSparkEffects(USparkRendererComponent& renderer)
+FSparkEffects::FSparkEffects(ioj::USparkRendererComponent& renderer)
     : renderer_{&renderer}
     , queue_{renderer.get_capacity(), renderer.get_effect_time()} {}
 
@@ -88,7 +88,7 @@ void emit_debug_burst(TArray<FString> const& arguments, UWorld* const world) {
     if (!IsValid(world)) {
         return;
     }
-    for (TObjectIterator<USparkRendererComponent> iterator; iterator; ++iterator) {
+    for (TObjectIterator<ioj::USparkRendererComponent> iterator; iterator; ++iterator) {
         auto& renderer{**iterator};
         if (renderer.GetWorld() != world || !renderer.IsRegistered()) {
             continue;

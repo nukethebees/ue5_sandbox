@@ -41,6 +41,7 @@
     (projections
       (cpp)
       (unreal-projection ETestTeam
+        :namespace ioj
         :enum-array true
         :header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeam.h"
         :header-include "SpaceGamePresentation/entities/TestTeam.h"

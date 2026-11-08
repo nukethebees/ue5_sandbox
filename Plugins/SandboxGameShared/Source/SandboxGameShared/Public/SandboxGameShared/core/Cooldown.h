@@ -4,6 +4,7 @@
 
 #include "Cooldown.generated.h"
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct FCooldown {
     GENERATED_BODY()
@@ -35,3 +36,5 @@ struct FCooldown {
     UPROPERTY(VisibleAnywhere)
     float remaining{0.f};
 };
+
+} // namespace ioj

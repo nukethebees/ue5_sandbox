@@ -25,7 +25,7 @@ bool FPackedEnumStringsTest::RunTest(FString const&) {
     auto const count{names.size()};
     for (std::size_t index{}; index < count; ++index) {
         TestEqual(TEXT("Packed enum export preserves icon names"),
-                  FString{LexToString(static_cast<EGameUiIcon>(index))},
+                  FString{LexToString(static_cast<ioj::EGameUiIcon>(index))},
                   FString{names[index]});
     }
     return true;

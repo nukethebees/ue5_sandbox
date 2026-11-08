@@ -25,6 +25,7 @@
 #include <ScopedTransaction.h>
 #endif
 
+namespace ioj {
 ATestCapitalShipProxy::ATestCapitalShipProxy()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
@@ -39,20 +40,20 @@ ATestCapitalShipProxy::ATestCapitalShipProxy()
 }
 
 void ATestCapitalShipProxy::set_level_config_asset(
-    ioj::USpaceGameLevelConfig* const new_config) noexcept {
+    USpaceGameLevelConfig* const new_config) noexcept {
     level_config_asset = new_config;
 }
 
 void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
-    ioj::set_proxy_actor_name(*this, TEXT("CapitalShip"), team);
+    set_proxy_actor_name(*this, TEXT("CapitalShip"), team);
 
     if (!IsValid(level_config_asset)) {
         return;
     }
     auto const* actor_config{&level_config_asset->capital_ships};
 
-    if (auto const msg{ioj::report_invalid_uobject_ptrs({
+    if (auto const msg{report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(mesh),
         })}) {
         UE_LOG(LogSandbox,
@@ -62,7 +63,7 @@ void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
         return;
     }
 
-    if (auto const msg{ioj::report_invalid_uobject_ptrs({
+    if (auto const msg{report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
             SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data),
         })}) {
@@ -73,7 +74,7 @@ void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
         return;
     }
 
-    if (!ioj::is_valid(team)) {
+    if (!is_valid(team)) {
         UE_LOG(LogSandbox, Warning, TEXT("ATestCapitalShipProxy::OnConstruction Team is invalid"));
     }
 
@@ -145,10 +146,10 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
         return;
     }
 
-    ioj::FLevelCollisionHost::EntityMeshes meshes{};
-    meshes[ioj::sim::EntityType::CapitalShip] = config->capital_ships.mesh;
-    meshes[ioj::sim::EntityType::Fighter] = config->fighters.mesh;
-    auto const local_bounds{ioj::FLevelCollisionHost::extract_entity_bounds(meshes)};
+    FLevelCollisionHost::EntityMeshes meshes{};
+    meshes[sim::EntityType::CapitalShip] = config->capital_ships.mesh;
+    meshes[sim::EntityType::Fighter] = config->fighters.mesh;
+    auto const local_bounds{FLevelCollisionHost::extract_entity_bounds(meshes)};
     if (!local_bounds) {
         report_error(local_bounds.error().format());
         return;
@@ -162,18 +163,18 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
     }
     spawn_preview_error.Reset();
     // Runtime uses the actor pivot/rotation, not the preview mesh component's relative transform.
-    auto const make_world_bounds{[&local_bounds](ioj::sim::EntityType const type,
+    auto const make_world_bounds{[&local_bounds](sim::EntityType const type,
                                                  FVector3f const position,
                                                  FRotator3f const rotation) {
         auto const orientation{rotation.Quaternion()};
-        auto const native_bounds{ioj::sim::collision::make_entity_world_bounds(
+        auto const native_bounds{sim::collision::make_entity_world_bounds(
             *local_bounds,
             type,
-            ioj::Vector3f{position.X, position.Y, position.Z},
-            ioj::Quaternion4f{orientation.X, orientation.Y, orientation.Z, orientation.W})};
-        return FBox3f{ioj::to_unreal(native_bounds.min), ioj::to_unreal(native_bounds.max)};
+            Vector3f{position.X, position.Y, position.Z},
+            Quaternion4f{orientation.X, orientation.Y, orientation.Z, orientation.W})};
+        return FBox3f{to_unreal(native_bounds.min), to_unreal(native_bounds.max)};
     }};
-    auto const bounds{make_world_bounds(ioj::sim::EntityType::CapitalShip,
+    auto const bounds{make_world_bounds(sim::EntityType::CapitalShip,
                                         FVector3f{GetActorLocation()},
                                         FRotator3f{GetActorRotation()})};
     auto const clearance{config->fighters.simulation.avoidance_clearance_buffer};
@@ -181,7 +182,7 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
     fighter_bounds.SetNum(slot_count);
     for (int32 i{}; i < slot_count; ++i) {
         auto const* const arrow{fighter_spawn_slots[i].Get()};
-        fighter_bounds[i] = make_world_bounds(ioj::sim::EntityType::Fighter,
+        fighter_bounds[i] = make_world_bounds(sim::EntityType::Fighter,
                                               FVector3f{arrow->GetComponentLocation()},
                                               FRotator3f{arrow->GetComponentRotation()});
     }
@@ -333,7 +334,7 @@ void ATestCapitalShipProxy::apply_asset_configuration() {
     apply_spawn_configuration(*config);
 }
 
-void ATestCapitalShipProxy::apply_spawn_configuration(ioj::USpaceGameLevelConfig& config) {
+void ATestCapitalShipProxy::apply_spawn_configuration(USpaceGameLevelConfig& config) {
     auto const& capital_config{config.capital_ships};
     Modify();
     set_level_config_asset(&config);
@@ -383,7 +384,9 @@ void ATestCapitalShipProxy::apply_asset_configuration_to_all_instances() {
     }
     FScopedTransaction const transaction{
         NSLOCTEXT("CapitalShipProxy", "ApplyAllSpawnSlots", "Apply spawn layout to all capitals")};
-    ioj::for_each_instance(
-        *this, [config](ThisClass& proxy) { proxy.apply_spawn_configuration(*config); });
+    for_each_instance(*this,
+                      [config](ThisClass& proxy) { proxy.apply_spawn_configuration(*config); });
 }
 #endif
+
+} // namespace ioj

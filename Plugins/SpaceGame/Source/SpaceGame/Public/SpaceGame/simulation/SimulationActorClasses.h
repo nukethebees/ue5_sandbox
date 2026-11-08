@@ -7,13 +7,16 @@
 
 #include "SimulationActorClasses.generated.h"
 
+namespace ioj {
 USTRUCT()
 struct SPACEGAME_API FSimulationActorClasses {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, Category = "Simulation")
-    TSubclassOf<ioj::ATestSpaceShip> player_ship_class{nullptr};
+    TSubclassOf<ATestSpaceShip> player_ship_class{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Simulation")
     TSubclassOf<ATestCapitalShipProxy> capital_ship_proxy_class{nullptr};
 };
+
+} // namespace ioj

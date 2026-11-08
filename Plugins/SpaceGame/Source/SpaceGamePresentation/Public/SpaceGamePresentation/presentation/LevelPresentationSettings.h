@@ -5,6 +5,7 @@
 class UMaterialInterface;
 class UStaticMesh;
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct FSoftTargetSettings {
     GENERATED_BODY()
@@ -29,3 +30,5 @@ struct FEntityOverlaySettings {
     UPROPERTY(EditAnywhere, Category = "Entity Overlay")
     FLinearColor fill_color{0.10f, 0.85f, 0.20f, 1.0f};
 };
+
+} // namespace ioj

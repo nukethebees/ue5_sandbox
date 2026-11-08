@@ -6,9 +6,8 @@
 
 #include "DebugSettingsWidget.generated.h"
 
-class USpaceSaveSubsystem;
-
 namespace ioj {
+class USpaceSaveSubsystem;
 class SDebugSettingsView;
 class UGameSubsystem;
 
@@ -47,4 +46,5 @@ class SPACEGAME_API UDebugSettingsWidget : public UUserWidget {
     FGameUiStyle fallback_style_{};
     bool save_failed_{};
 };
+
 } // namespace ioj

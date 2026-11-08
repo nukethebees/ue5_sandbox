@@ -4,6 +4,7 @@ public class SandboxCelestials : ModuleRules
 {
     public SandboxCelestials(ReadOnlyTargetRules Target) : base(Target)
     {
+        bAllowUETypesInNamespaces = true;
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PrivatePCHHeaderFile = "Private/SandboxCelestialsPCH.h";
         CppStandard = CppStandardVersion.Latest;

@@ -4,6 +4,7 @@ public class SandboxCoreEngine : ModuleRules
 {
     public SandboxCoreEngine(ReadOnlyTargetRules Target) : base(Target)
     {
+        bAllowUETypesInNamespaces = true;
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PrivatePCHHeaderFile = "Private/SandboxCoreEnginePCH.h";
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;

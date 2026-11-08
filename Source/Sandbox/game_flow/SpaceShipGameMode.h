@@ -11,6 +11,7 @@
 
 class APawn;
 
+namespace ioj {
 UCLASS()
 class SANDBOX_API ASpaceShipGameMode : public ASandboxGameMode {
     GENERATED_BODY()
@@ -20,3 +21,5 @@ class SANDBOX_API ASpaceShipGameMode : public ASandboxGameMode {
     void InitGame(FString const& MapName, FString const& Options, FString& ErrorMessage) override;
     void BeginPlay() override;
 };
+
+} // namespace ioj

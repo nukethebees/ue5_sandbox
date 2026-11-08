@@ -7,6 +7,7 @@
 
 class UMaterialInterface;
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct SANDBOXSHADERS_API FSpaceDustSettings {
     GENERATED_BODY()
@@ -63,12 +64,15 @@ struct SANDBOXSHADERS_API FSpaceDustSettings {
     float volume_edge_fade_fraction{0.15f};
 };
 
-[[nodiscard]] SANDBOXSHADERS_API auto normalise_space_dust_settings(FSpaceDustSettings settings)
-    -> FSpaceDustSettings;
+} // namespace ioj
+
+[[nodiscard]] SANDBOXSHADERS_API auto
+    normalise_space_dust_settings(ioj::FSpaceDustSettings settings) -> ioj::FSpaceDustSettings;
 [[nodiscard]] SANDBOXSHADERS_API auto make_space_dust_translation_phase(FVector world_location,
                                                                         FVector volume_dimensions)
     -> FVector3f;
 
+namespace ioj {
 UCLASS(ClassGroup = (Rendering), meta = (BlueprintSpawnableComponent))
 class SANDBOXSHADERS_API USpaceDustComponent final : public UPrimitiveComponent {
     GENERATED_BODY()
@@ -94,3 +98,5 @@ class SANDBOXSHADERS_API USpaceDustComponent final : public UPrimitiveComponent 
     FVector3f world_velocity_{FVector3f::ZeroVector};
     FVector3f translation_phase_{FVector3f::ZeroVector};
 };
+
+} // namespace ioj

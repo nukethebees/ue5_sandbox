@@ -8,13 +8,12 @@
 
 #include "PlayerModalUi.generated.h"
 
-class UTestBatchGameUiData;
 class UInputAction;
 struct FLevelCompletion;
-
 struct FPlayerControllerTestAccess;
 
 namespace ioj {
+class UTestBatchGameUiData;
 class ASpaceGamePlayerController;
 class UGameUiRootLayout;
 class UPauseMenuWidget;

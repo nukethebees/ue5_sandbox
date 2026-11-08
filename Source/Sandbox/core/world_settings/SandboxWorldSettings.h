@@ -7,7 +7,10 @@
 
 #include "SandboxWorldSettings.generated.h"
 
+namespace ioj {
 UCLASS(Blueprintable)
 class SANDBOX_API ASandboxWorldSettings : public AWorldSettings {
     GENERATED_BODY()
 };
+
+} // namespace ioj

@@ -35,7 +35,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                                                            .view_projection = projection,
                                                            .view_rect = FIntRect{0, 0, 1000, 1000},
                                                            .output_size = {1000, 1000}},
-                                                  .player_team = ETestTeam::Green,
+                                                  .player_team = ioj::ETestTeam::Green,
                                                   .effective_weapon_range = 1000.f,
                                                   .maximum_overlay_range = 10000.f};
         auto const result{select_soft_target(batches, radii, roles, context, {}, {})};

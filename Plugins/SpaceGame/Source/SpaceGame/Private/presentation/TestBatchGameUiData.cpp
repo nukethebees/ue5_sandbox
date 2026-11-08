@@ -22,13 +22,13 @@
 #include <Misc/PackageName.h>
 #include <UObject/UObjectGlobals.h>
 
-auto ioj::test_batch_game_ui_data::get_data_asset() -> UTestBatchGameUiData* {
+auto ioj::test_batch_game_ui_data::get_data_asset() -> ioj::UTestBatchGameUiData* {
     auto const data_asset_path{get_data_asset_path()};
     auto const data_asset_package_path{data_asset_path.ToString()};
     auto const data_asset_name{FPackageName::GetShortName(data_asset_package_path)};
     auto const data_asset_object_path{
         FString::Printf(TEXT("%s.%s"), *data_asset_package_path, *data_asset_name)};
-    auto* const data_asset{LoadObject<UTestBatchGameUiData>(nullptr, *data_asset_object_path)};
+    auto* const data_asset{LoadObject<ioj::UTestBatchGameUiData>(nullptr, *data_asset_object_path)};
     if (!IsValid(data_asset)) {
         UE_LOG(LogSandboxUI,
                Error,
@@ -39,6 +39,7 @@ auto ioj::test_batch_game_ui_data::get_data_asset() -> UTestBatchGameUiData* {
     return data_asset;
 }
 
+namespace ioj {
 auto UTestBatchGameUiData::get_native_widget_classes() -> TConstArrayView<UClass*> {
     static UClass* const classes[]{
         UTeamEntityTableWidget::StaticClass(),
@@ -51,12 +52,12 @@ auto UTestBatchGameUiData::get_native_widget_classes() -> TConstArrayView<UClass
         UBenchmarkHudWidget::StaticClass(),
         UBattleViewerHudWidget::StaticClass(),
         UValueWidget::StaticClass(),
-        ioj::UGameUiRootLayout::StaticClass(),
-        ioj::UMenuButtonWidget::StaticClass(),
-        ioj::UMainMenuWidget::StaticClass(),
-        ioj::ULevelSelectWidget::StaticClass(),
-        ioj::UPauseMenuWidget::StaticClass(),
-        ioj::ULevelCompletionWidget::StaticClass(),
+        UGameUiRootLayout::StaticClass(),
+        UMenuButtonWidget::StaticClass(),
+        UMainMenuWidget::StaticClass(),
+        ULevelSelectWidget::StaticClass(),
+        UPauseMenuWidget::StaticClass(),
+        ULevelCompletionWidget::StaticClass(),
     };
     return classes;
 }
@@ -159,3 +160,5 @@ void UTestBatchGameUiData::validate_widget_classes() const {
     }
 }
 #endif
+
+} // namespace ioj

@@ -9,6 +9,7 @@
 
 class ACameraActor;
 
+namespace ioj {
 UENUM(BlueprintType)
 enum class EBenchmarkEndState : uint8 {
     Play UMETA(DisplayName = "Play"),
@@ -19,7 +20,7 @@ enum class EBenchmarkEndState : uint8 {
 UCLASS()
 class SANDBOX_API ABenchmarkOrchestratorActor
     : public AActor
-    , public ioj::LogMsgMixin<"ABenchmarkOrchestratorActor"> {
+    , public LogMsgMixin<"ABenchmarkOrchestratorActor"> {
     GENERATED_BODY()
   public:
     ABenchmarkOrchestratorActor();
@@ -78,3 +79,5 @@ class SANDBOX_API ABenchmarkOrchestratorActor
     float time_elapsed{0.0f};
     bool benchmark_running_{false};
 };
+
+} // namespace ioj

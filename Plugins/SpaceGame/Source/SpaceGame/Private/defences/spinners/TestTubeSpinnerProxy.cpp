@@ -16,6 +16,7 @@
 #include <ScopedTransaction.h>
 #endif
 
+namespace ioj {
 ATestTubeSpinnerProxy::ATestTubeSpinnerProxy()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
@@ -36,8 +37,7 @@ void ATestTubeSpinnerProxy::add_fire_points(int32 const n) {
         auto const name{
             MakeUniqueObjectName(this, UArrowComponent::StaticClass(), TEXT("FirePoint"))};
 
-        auto* fire_point{
-            ioj::create_attached_instance_component<UArrowComponent>(*this, name, *mesh)};
+        auto* fire_point{create_attached_instance_component<UArrowComponent>(*this, name, *mesh)};
         if (!fire_point) {
             UE_LOG(LogSandboxLearning,
                    Warning,
@@ -53,10 +53,10 @@ void ATestTubeSpinnerProxy::add_fire_point() {
 }
 
 void ATestTubeSpinnerProxy::remove_fire_points(int32 const n) {
-    ioj::destroy_components_at_array_end(fire_points, n);
+    destroy_components_at_array_end(fire_points, n);
 }
 void ATestTubeSpinnerProxy::remove_all_fire_points() {
-    ioj::destroy_components_array(fire_points);
+    destroy_components_array(fire_points);
 }
 void ATestTubeSpinnerProxy::remove_fire_point() {
     remove_fire_points(1);
@@ -123,7 +123,7 @@ void ATestTubeSpinnerProxy::apply_asset_configuration_to_all_instances() {
     auto* const config{level_config_asset.Get()};
     FScopedTransaction const transaction{
         NSLOCTEXT("SpinnerProxy", "ApplyAll", "Apply configuration to all spinners")};
-    ioj::for_each_instance(*this, [config](ThisClass& proxy) {
+    for_each_instance(*this, [config](ThisClass& proxy) {
         proxy.Modify();
         proxy.set_level_config_asset(config);
         proxy.apply_asset_configuration();
@@ -131,3 +131,5 @@ void ATestTubeSpinnerProxy::apply_asset_configuration_to_all_instances() {
 }
 
 #endif
+
+} // namespace ioj

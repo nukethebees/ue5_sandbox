@@ -16,7 +16,7 @@
 TEST_CLASS(SparkRendererPixels, "Sandbox.SparkRenderTests")
 {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    USparkRendererComponent* renderer_{nullptr};
+    ioj::USparkRendererComponent* renderer_{nullptr};
     USceneCaptureComponent2D* capture_{nullptr};
     UTextureRenderTarget2D* target_{nullptr};
     TUniquePtr<FSparkEffects> effects_;
@@ -40,10 +40,10 @@ TEST_CLASS(SparkRendererPixels, "Sandbox.SparkRenderTests")
     void setup() {
         auto& world{spawner->GetWorld()};
         auto* const actor{world.SpawnActor<AActor>()};
-        renderer_ = NewObject<USparkRendererComponent>(actor);
+        renderer_ = NewObject<ioj::USparkRendererComponent>(actor);
         actor->SetRootComponent(renderer_);
         actor->AddInstanceComponent(renderer_);
-        FSparkRendererSettings settings;
+        ioj::FSparkRendererSettings settings;
         settings.capacity = 1;
         settings.acceleration = FVector3f::ZeroVector;
         settings.minimum_thickness_pixels = 0.0f;

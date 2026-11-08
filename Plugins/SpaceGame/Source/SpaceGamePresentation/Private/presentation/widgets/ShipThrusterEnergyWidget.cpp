@@ -4,13 +4,16 @@
 
 #include "Components/ProgressBar.h"
 
+namespace ioj {
 void UShipThrusterEnergyWidget::set_energy(float energy) {
     RETURN_IF_NULLPTR(energy_bar);
     energy_bar->SetPercent(energy);
 }
 
-void UShipThrusterEnergyWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
+void UShipThrusterEnergyWidget::apply_hud_style(FGameHudStyle const& style) {
     RETURN_IF_NULLPTR(energy_bar);
     energy_bar->SetWidgetStyle(style.energy_bar);
     energy_bar->SetFillColorAndOpacity(style.energy);
 }
+
+} // namespace ioj

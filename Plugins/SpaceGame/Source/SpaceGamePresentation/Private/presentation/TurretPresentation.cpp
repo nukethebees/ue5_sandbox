@@ -23,7 +23,7 @@ FTurretPresentation::FTurretPresentation(UInstancedStaticMeshComponent& componen
     : instances{&component} {}
 
 void FTurretPresentation::set_actor_config(
-    FTurretConfig const* const new_config,
+    ioj::FTurretConfig const* const new_config,
     ioj::settings::TurretPresentation const& settings) noexcept {
     actor_config = new_config;
     settings_ = &settings;
@@ -77,7 +77,7 @@ void FTurretPresentation::begin_play_presentation() {
 
 void FTurretPresentation::update_visual_data() {
     auto const colours{
-        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+        ioj::UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     for (auto const& change : simulation().frame_changes()) {
         if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
             ismc_transforms.RemoveAtSwap(change.index, EAllowShrinking::No);
@@ -133,7 +133,7 @@ void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transfo
     }
 
     auto const colour_cache{
-        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+        ioj::UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     TArray<float> custom_data;
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
     auto const teams{entities.teams()};

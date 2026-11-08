@@ -22,8 +22,6 @@
 #include <UObject/WeakObjectPtrTemplates.h>
 
 struct FLevelVisualConfig;
-class USimulationHudWidget;
-class UShipHudWidget;
 class UInstancedStaticMeshComponent;
 
 namespace ioj::sim {
@@ -31,6 +29,9 @@ struct SpatialQueryManager;
 }
 
 namespace ioj {
+class USimulationHudWidget;
+class UShipHudWidget;
+
 enum class EHUDManagerState : uint8 {
     Disabled,
     Active,

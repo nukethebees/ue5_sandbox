@@ -10,6 +10,7 @@
 
 #include "ValueWidget.generated.h"
 
+namespace ioj {
 UCLASS()
 class SANDBOXGAMESHARED_API UValueWidget : public UUserWidget {
     GENERATED_BODY()
@@ -56,7 +57,7 @@ class SANDBOXGAMESHARED_API UValueWidget : public UUserWidget {
     template <typename T>
     static auto to_text(T const& value, FNumberFormattingOptions const* const options = nullptr)
         -> FText {
-        if constexpr (ioj::Numeric<T>) {
+        if constexpr (Numeric<T>) {
             return FText::AsNumber(value, options);
         } else if constexpr (requires { FText::FromStringView(value); }) {
             return FText::FromStringView(value);
@@ -71,3 +72,5 @@ class SANDBOXGAMESHARED_API UValueWidget : public UUserWidget {
     TOptional<FTextBlockStyle> text_style_{};
     bool has_value_{};
 };
+
+} // namespace ioj

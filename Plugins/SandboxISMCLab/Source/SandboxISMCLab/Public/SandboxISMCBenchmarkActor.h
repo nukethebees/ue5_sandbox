@@ -10,7 +10,9 @@
 class UCameraComponent;
 class UInstancedStaticMeshComponent;
 class UMaterialInterface;
+namespace ioj {
 class USandboxISMCComponent;
+} // namespace ioj
 class USceneComponent;
 class UStaticMesh;
 
@@ -102,7 +104,7 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     TObjectPtr<UCameraComponent> camera_;
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox ISMC Benchmark")
-    TObjectPtr<USandboxISMCComponent> custom_ismc_;
+    TObjectPtr<ioj::USandboxISMCComponent> custom_ismc_;
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox ISMC Benchmark")
     TObjectPtr<UInstancedStaticMeshComponent> engine_ismc_;

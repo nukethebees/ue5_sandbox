@@ -7,7 +7,9 @@
 #include "SandboxISMCLabActor.generated.h"
 
 class UStaticMesh;
+namespace ioj {
 class USandboxISMCComponent;
+} // namespace ioj
 
 UENUM()
 enum class ESandboxISMCLabDistribution : uint8 {
@@ -39,7 +41,7 @@ class SANDBOXISMCLAB_API ASandboxISMCLabActor final : public AActor {
     };
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox ISMC Lab")
-    TObjectPtr<USandboxISMCComponent> instances_;
+    TObjectPtr<ioj::USandboxISMCComponent> instances_;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Lab")
     TObjectPtr<UStaticMesh> static_mesh_;

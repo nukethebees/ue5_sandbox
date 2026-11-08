@@ -47,20 +47,20 @@ FLinearColor vector_parameter(FVector const& vector) {
                         0.0f};
 }
 
-float emission_pattern_parameter(ECelestialBackdropEmissionPattern const pattern) {
+float emission_pattern_parameter(ioj::ECelestialBackdropEmissionPattern const pattern) {
     switch (pattern) {
-        case ECelestialBackdropEmissionPattern::HiveCells:
+        case ioj::ECelestialBackdropEmissionPattern::HiveCells:
             return 1.0f;
-        case ECelestialBackdropEmissionPattern::MoltenCracks:
+        case ioj::ECelestialBackdropEmissionPattern::MoltenCracks:
             return 2.0f;
-        case ECelestialBackdropEmissionPattern::Noise:
+        case ioj::ECelestialBackdropEmissionPattern::Noise:
         default:
             return 0.0f;
     }
 }
 
 void apply_close_approach(UMaterialInstanceDynamic& instance,
-                          FCelestialBackdropSettings const& settings,
+                          ioj::FCelestialBackdropSettings const& settings,
                           float const outer_radius) {
     instance.SetScalarParameterValue(TEXT("CloseApproachEnabled"),
                                      settings.close_approach.enabled ? 1.0f : 0.0f);
@@ -70,19 +70,20 @@ void apply_close_approach(UMaterialInstanceDynamic& instance,
         FMath::Clamp(settings.close_approach.minimum_camera_distance_ratio, 1.05f, 4.0f));
 }
 
-FCelestialBackdropSurfaceSettings earth_surface() {
-    return FCelestialBackdropSurfaceSettings{};
+ioj::FCelestialBackdropSurfaceSettings earth_surface() {
+    return ioj::FCelestialBackdropSurfaceSettings{};
 }
 
-FCelestialBackdropCloudSettings earth_clouds() {
-    return FCelestialBackdropCloudSettings{};
+ioj::FCelestialBackdropCloudSettings earth_clouds() {
+    return ioj::FCelestialBackdropCloudSettings{};
 }
 
-FCelestialBackdropAtmosphereSettings earth_atmosphere() {
-    return FCelestialBackdropAtmosphereSettings{};
+ioj::FCelestialBackdropAtmosphereSettings earth_atmosphere() {
+    return ioj::FCelestialBackdropAtmosphereSettings{};
 }
 }
 
+namespace ioj {
 ACelestialBackdropActor::ACelestialBackdropActor() {
     PrimaryActorTick.bCanEverTick = false;
     SetActorEnableCollision(false);
@@ -785,3 +786,5 @@ void ACelestialBackdropActor::ensure_materials() {
                TEXT("Celestial backdrop materials are unavailable or failed to instantiate."));
     }
 }
+
+} // namespace ioj

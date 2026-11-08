@@ -1,10 +1,9 @@
 #pragma once
 
 class UObject;
+namespace ioj {
 struct FCapitalShipConfig;
 struct FFighterConfig;
-
-namespace ioj {
 class USpaceGameLevelConfig;
 struct FSoftTestAssertions;
 

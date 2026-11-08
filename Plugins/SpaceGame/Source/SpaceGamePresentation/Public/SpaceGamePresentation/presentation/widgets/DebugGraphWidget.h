@@ -13,16 +13,16 @@
 #include "DebugGraphWidget.generated.h"
 
 class SGraphPlot;
+
 namespace ioj {
 struct FGameHudStyle;
-}
 
 UCLASS()
 class SPACEGAMEPRESENTATION_API UDebugGraphWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_samples(std::span<ioj::Vector2d const> samples, std::uint32_t oldest_index);
-    void apply_hud_style(ioj::FGameHudStyle const& style);
+    void set_samples(std::span<Vector2d const> samples, std::uint32_t oldest_index);
+    void apply_hud_style(FGameHudStyle const& style);
   protected:
     TSharedRef<SWidget> RebuildWidget() override;
     void ReleaseSlateResources(bool release_children) override;
@@ -35,3 +35,5 @@ class SPACEGAMEPRESENTATION_API UDebugGraphWidget : public UUserWidget {
     TOptional<FGraphPlotStyle> graph_style_{};
     FLinearColor series_colour_{FLinearColor::Green};
 };
+
+} // namespace ioj

@@ -4,6 +4,7 @@ public class SandboxUI : ModuleRules
 {
     public SandboxUI(ReadOnlyTargetRules Target) : base(Target)
     {
+        bAllowUETypesInNamespaces = true;
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PrivatePCHHeaderFile = "Private/SandboxUIPCH.h";
         CppStandard = CppStandardVersion.Latest;

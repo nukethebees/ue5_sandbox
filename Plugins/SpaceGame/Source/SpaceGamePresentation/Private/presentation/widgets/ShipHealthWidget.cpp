@@ -6,6 +6,7 @@
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/ProgressBar.h"
 
+namespace ioj {
 void UShipHealthWidget::set_health(FShipHealth health) {
     check(health_bar);
     check(health_text);
@@ -26,7 +27,7 @@ void UShipHealthWidget::set_health(FShipHealth health) {
     health_text->update(health.health, health.max_health);
 }
 
-void UShipHealthWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
+void UShipHealthWidget::apply_hud_style(FGameHudStyle const& style) {
     hud_style_ = style;
     if (health_bar) {
         health_bar->SetWidgetStyle(style.health_bar);
@@ -57,3 +58,5 @@ void UShipHealthWidget::set_font_size(int32 const new_font_size) {
 auto UShipHealthWidget::get_font_size() const noexcept -> int32 {
     return health_text->get_font_size();
 }
+
+} // namespace ioj

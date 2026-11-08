@@ -4,6 +4,7 @@
 
 #include "SparkScalarRange.generated.h"
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct SPACEGAMERENDERING_API FSparkScalarRange {
     GENERATED_BODY()
@@ -14,3 +15,5 @@ struct SPACEGAMERENDERING_API FSparkScalarRange {
     UPROPERTY(EditAnywhere, Category = "Sparks")
     float max{0.0f};
 };
+
+} // namespace ioj

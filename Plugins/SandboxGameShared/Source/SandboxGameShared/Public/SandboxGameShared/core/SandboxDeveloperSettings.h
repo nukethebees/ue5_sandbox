@@ -5,6 +5,7 @@
 
 #include "SandboxDeveloperSettings.generated.h"
 
+namespace ioj {
 UCLASS(Config = Game, DefaultConfig)
 class SANDBOXGAMESHARED_API USandboxDeveloperSettings : public UDeveloperSettings {
     GENERATED_BODY()
@@ -29,3 +30,5 @@ class SANDBOXGAMESHARED_API USandboxDeveloperSettings : public UDeveloperSetting
     bool export_test_results{false};
 
 };
+
+} // namespace ioj

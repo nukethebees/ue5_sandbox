@@ -4,6 +4,7 @@
 
 #include "ScreenBounds.generated.h"
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct FScreenBounds {
     GENERATED_BODY()
@@ -25,3 +26,5 @@ struct FScreenBounds {
         return FString::Printf(TEXT("Origin: %s, Size: %s"), *origin.ToString(), *size.ToString());
     }
 };
+
+} // namespace ioj

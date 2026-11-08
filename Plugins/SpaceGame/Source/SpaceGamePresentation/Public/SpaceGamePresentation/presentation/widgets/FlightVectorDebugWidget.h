@@ -9,14 +9,15 @@
 #include "FlightVectorDebugWidget.generated.h"
 
 class UUniformGridPanel;
+namespace ioj {
 class UVector2DWidget;
 
 UCLASS()
 class SPACEGAMEPRESENTATION_API UFlightVectorDebugWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void update(ioj::presentation::FlightVectorDebugData const& data);
-    void apply_hud_style(ioj::FGameHudStyle const& style);
+    void update(presentation::FlightVectorDebugData const& data);
+    void apply_hud_style(FGameHudStyle const& style);
     void set_font_size(int32 new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:
@@ -43,6 +44,8 @@ class SPACEGAMEPRESENTATION_API UFlightVectorDebugWidget : public UUserWidget {
               meta = (AllowPrivateAccess = "true"))
     int32 font_size{24};
 
-    ioj::presentation::FlightVectorDebugData data_{};
-    TOptional<ioj::FGameHudStyle> hud_style_{};
+    presentation::FlightVectorDebugData data_{};
+    TOptional<FGameHudStyle> hud_style_{};
 };
+
+} // namespace ioj

@@ -8,6 +8,7 @@
 
 class UPrimitiveComponent;
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct FCollisionSettings {
     GENERATED_BODY()
@@ -31,7 +32,6 @@ struct FCollisionSettings {
     uint8 notify_rigid_body_collision{0u};
 };
 
-namespace ioj {
 auto SANDBOXCOREENGINE_API copy_collision_settings(UPrimitiveComponent const& component)
     -> FCollisionSettings;
 void SANDBOXCOREENGINE_API apply_collision_settings(UPrimitiveComponent& component,

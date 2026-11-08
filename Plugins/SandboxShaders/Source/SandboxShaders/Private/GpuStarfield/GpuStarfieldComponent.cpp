@@ -112,7 +112,8 @@ struct FGpuStarfieldRenderParameters {
 };
 
 auto make_render_parameters(ioj::starfield::Settings const& settings,
-                            FGpuStarfieldColours const& colours) -> FGpuStarfieldRenderParameters {
+                            ioj::FGpuStarfieldColours const& colours)
+    -> FGpuStarfieldRenderParameters {
     auto const& star{settings.star};
     auto const& bright_star{settings.bright_star};
     auto const& twinkle{settings.twinkle};
@@ -391,7 +392,7 @@ class FGpuStarfieldBuffer final : public FRenderResource {
 
 class FGpuStarfieldSceneProxy final : public FPrimitiveSceneProxy {
   public:
-    FGpuStarfieldSceneProxy(UGpuStarfieldComponent const* const component,
+    FGpuStarfieldSceneProxy(ioj::UGpuStarfieldComponent const* const component,
                             TConstArrayView<FGpuStarfieldGpuData> const star_data,
                             UMaterialInterface const* const material,
                             FGpuStarfieldRenderParameters const parameters)
@@ -506,6 +507,7 @@ class FGpuStarfieldSceneProxy final : public FPrimitiveSceneProxy {
 };
 }
 
+namespace ioj {
 UGpuStarfieldComponent::UGpuStarfieldComponent() {
     PrimaryComponentTick.bCanEverTick = false;
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -522,7 +524,7 @@ UGpuStarfieldComponent::UGpuStarfieldComponent() {
     }
 }
 
-void UGpuStarfieldComponent::apply_settings(ioj::starfield::Settings const& settings,
+void UGpuStarfieldComponent::apply_settings(starfield::Settings const& settings,
                                             FGpuStarfieldColours const& colours) {
     auto const& generation{settings.generation};
     auto const& star{settings.star};
@@ -691,3 +693,5 @@ void UGpuStarfieldComponent::generate_stars() {
 
     has_generated_stars_ = true;
 }
+
+} // namespace ioj

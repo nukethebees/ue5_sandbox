@@ -44,6 +44,7 @@
     (projections
       (cpp)
       (unreal-projection ETestShipFireRate
+        :namespace ioj
         :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h"
         :header-include "SpaceGame/ships/player/TestShipFireRate.h"
         :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRateConversion.h"

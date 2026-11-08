@@ -2,4 +2,7 @@
 
 #include "BenchmarkGameMode.h"
 
+namespace ioj {
 ABenchmarkGameMode::ABenchmarkGameMode() {}
+
+} // namespace ioj

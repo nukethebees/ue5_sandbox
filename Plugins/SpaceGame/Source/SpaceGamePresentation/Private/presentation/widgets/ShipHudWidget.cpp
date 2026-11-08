@@ -65,11 +65,12 @@ void configure_radar_canvas_slot(UWidget* const widget) {
 }
 } // namespace ioj::ship_hud
 
+namespace ioj {
 auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const hud_content{Super::RebuildWidget()};
     if (IsValid(radar_background)) {
         radar_background->SetBrushColor(FLinearColor::Transparent);
-        ioj::ship_hud::configure_radar_canvas_slot(radar_background);
+        ship_hud::configure_radar_canvas_slot(radar_background);
     } else {
         UE_LOG(LogSandboxUI, Error, TEXT("Ship HUD has no radar background."));
     }
@@ -79,7 +80,7 @@ auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
     radar_widget_->SetVisibility(radar_frame_store_.IsValid() ? EVisibility::HitTestInvisible
                                                               : EVisibility::Collapsed);
     if (IsValid(radar_host)) {
-        ioj::ship_hud::configure_radar_canvas_slot(radar_host);
+        ship_hud::configure_radar_canvas_slot(radar_host);
         radar_host->SetContent(radar);
     } else {
         UE_LOG(LogSandboxUI, Error, TEXT("Ship HUD has no radar NativeWidgetHost."));
@@ -175,7 +176,7 @@ void UShipHudWidget::set_common_widget_properties() {
                              flight_mode_widget);
 }
 
-void UShipHudWidget::apply_ui_style(ioj::FGameUiStyle const& style) {
+void UShipHudWidget::apply_ui_style(FGameUiStyle const& style) {
     Super::apply_ui_style(style);
     auto const& hud_style{style.hud()};
     reticle_normal_colour_ = hud_style.reticle_normal;
@@ -235,7 +236,7 @@ void UShipHudWidget::apply_ui_style(ioj::FGameUiStyle const& style) {
     if (WidgetTree) {
         WidgetTree->ForEachWidget([&hud_style](UWidget* const widget) {
             if (auto* const heading{Cast<UTextBlock>(widget)}) {
-                ioj::apply_text_style(*heading, hud_style.heading_text);
+                apply_text_style(*heading, hud_style.heading_text);
             }
         });
     }
@@ -318,17 +319,16 @@ void UShipHudWidget::set_selected_imc(FStringView value) {
     selected_imc_widget->update(value);
 }
 
-void
-    UShipHudWidget::set_flight_vector_debug(ioj::presentation::FlightVectorDebugData const& value) {
+void UShipHudWidget::set_flight_vector_debug(presentation::FlightVectorDebugData const& value) {
     check(IsValid(turn_input_widget));
     check(IsValid(move_input_widget));
     check(IsValid(target_velocity_vector_widget));
     check(IsValid(local_velocity_widget));
 
-    turn_input_widget->update(ioj::to_unreal(ioj::Vector2d{value.turn_input}));
-    move_input_widget->update(ioj::to_unreal(ioj::Vector2d{value.move_input}));
-    target_velocity_vector_widget->update(ioj::to_unreal(ioj::Vector2d{value.target_velocity}));
-    local_velocity_widget->update(ioj::to_unreal(ioj::Vector2d{value.local_velocity}));
+    turn_input_widget->update(to_unreal(Vector2d{value.turn_input}));
+    move_input_widget->update(to_unreal(Vector2d{value.move_input}));
+    target_velocity_vector_widget->update(to_unreal(Vector2d{value.target_velocity}));
+    local_velocity_widget->update(to_unreal(Vector2d{value.local_velocity}));
 }
 
 void UShipHudWidget::set_ship_velocity(FVector value) {
@@ -352,7 +352,7 @@ void UShipHudWidget::set_flight_action(float const throttle, FStringView const a
 }
 
 #if WITH_EDITOR
-void UShipHudWidget::update_sampled_speed(std::span<ioj::Vector2d const> const samples,
+void UShipHudWidget::update_sampled_speed(std::span<Vector2d const> const samples,
                                           std::uint32_t const oldest_index) {
     RETURN_IF_NULLPTR(speed_graph);
     speed_graph->set_samples(samples, oldest_index);
@@ -405,3 +405,5 @@ void UShipHudWidget::set_widget_visibility_checked(UWidget* const widget,
     check(IsValid(widget));
     widget->SetVisibility(new_visibility);
 }
+
+} // namespace ioj

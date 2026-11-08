@@ -6,6 +6,7 @@
 
 #include "SpeedResponse.generated.h"
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct FSpeedResponse {
     GENERATED_BODY()
@@ -40,7 +41,6 @@ struct FSpeedResponses {
     FSpeedResponse accelerating_to_cruise{};
 };
 
-namespace ioj {
 inline auto to_native(FSpeedResponse const value) noexcept -> SpeedResponse {
     return {.settling_time = value.settling_time, .damping_ratio = value.damping_ratio};
 }

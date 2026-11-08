@@ -8,6 +8,7 @@
 
 #include "TestBatchGameUiData.generated.h"
 
+namespace ioj {
 class UTestBatchGameUiData;
 class UTestTeamVisualData;
 
@@ -19,6 +20,8 @@ struct FBatchGameUiClasses {
     TMap<TSubclassOf<UUserWidget>, TSubclassOf<UUserWidget>> classes{};
 };
 
+} // namespace ioj
+
 namespace ioj::test_batch_game_ui_data {
 inline auto get_data_asset_path() -> FName {
     return FName{TEXT("/Game/UI/DA_ui_data")};
@@ -27,6 +30,7 @@ inline auto get_data_asset_path() -> FName {
 auto SPACEGAME_API get_data_asset() -> UTestBatchGameUiData*;
 }
 
+namespace ioj {
 UCLASS(BlueprintType)
 class SPACEGAME_API UTestBatchGameUiData : public UDataAsset {
     GENERATED_BODY()
@@ -63,3 +67,5 @@ class SPACEGAME_API UTestBatchGameUiData : public UDataAsset {
     void validate_widget_classes() const;
 #endif
 };
+
+} // namespace ioj

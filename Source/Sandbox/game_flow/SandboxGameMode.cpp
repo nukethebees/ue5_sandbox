@@ -12,6 +12,7 @@
 #include "UnrealEdGlobals.h"
 #endif
 
+namespace ioj {
 ASandboxGameMode::ASandboxGameMode() {
     PrimaryActorTick.bCanEverTick = false;
     PrimaryActorTick.bStartWithTickEnabled = false;
@@ -53,3 +54,5 @@ void ASandboxGameMode::BeginPlay() {
     }
 #endif
 }
+
+} // namespace ioj

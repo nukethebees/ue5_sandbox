@@ -10,23 +10,22 @@
 class UBorder;
 class UOverlay;
 class UTextBlock;
-class UValueWidget;
-
-namespace ioj {
-class FGameUiStyle;
-class UMenuButtonWidget;
-}
 
 struct FRunHudState {
     TOptional<uint64> ticks_remaining;
     ioj::sim::LevelState state{ioj::sim::LevelState::Uninitialised};
 };
 
+namespace ioj {
+class UValueWidget;
+class FGameUiStyle;
+class UMenuButtonWidget;
+
 UCLASS()
 class SPACEGAMEPRESENTATION_API UBenchmarkHudWidget : public UCommonActivatableWidget {
     GENERATED_BODY()
   public:
-    void apply_ui_style(ioj::FGameUiStyle const& style);
+    void apply_ui_style(FGameUiStyle const& style);
     void set_state_source(TFunction<FRunHudState()> source);
     void update_state();
 
@@ -51,10 +50,10 @@ class SPACEGAMEPRESENTATION_API UBenchmarkHudWidget : public UCommonActivatableW
     UValueWidget* ticks_remaining_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    ioj::UMenuButtonWidget* pause_resume_button{nullptr};
+    UMenuButtonWidget* pause_resume_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    ioj::UMenuButtonWidget* end_benchmark_button{nullptr};
+    UMenuButtonWidget* end_benchmark_button{nullptr};
   private:
     void handle_end_requested();
     void handle_pause_requested();
@@ -63,3 +62,5 @@ class SPACEGAMEPRESENTATION_API UBenchmarkHudWidget : public UCommonActivatableW
     TFunction<FRunHudState()> state_source_;
     FTimerHandle update_timer_{};
 };
+
+} // namespace ioj

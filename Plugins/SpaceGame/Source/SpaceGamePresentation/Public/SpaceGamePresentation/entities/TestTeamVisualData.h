@@ -11,6 +11,7 @@
 
 #include "TestTeamVisualData.generated.h"
 
+namespace ioj {
 UCLASS(BlueprintType)
 class SPACEGAMEPRESENTATION_API UTestTeamVisualData : public UDataAsset {
     GENERATED_BODY()
@@ -34,3 +35,5 @@ class SPACEGAMEPRESENTATION_API UTestTeamVisualData : public UDataAsset {
     UPROPERTY(EditDefaultsOnly)
     TMap<ETestTeam, FLinearColor> colours;
 };
+
+} // namespace ioj

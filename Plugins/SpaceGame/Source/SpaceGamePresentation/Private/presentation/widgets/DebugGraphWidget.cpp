@@ -8,7 +8,8 @@
 
 #include <utility>
 
-void UDebugGraphWidget::set_samples(std::span<ioj::Vector2d const> const samples,
+namespace ioj {
+void UDebugGraphWidget::set_samples(std::span<Vector2d const> const samples,
                                     std::uint32_t const oldest_index) {
     auto const sample_count{samples.size()};
     check(std::in_range<int32>(sample_count));
@@ -37,7 +38,7 @@ void UDebugGraphWidget::set_samples(std::span<ioj::Vector2d const> const samples
     }
 }
 
-void UDebugGraphWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
+void UDebugGraphWidget::apply_hud_style(FGameHudStyle const& style) {
     graph_style_ = style.graph;
     series_colour_ = style.graph_series;
     if (graph_widget_.IsValid()) {
@@ -76,3 +77,5 @@ void UDebugGraphWidget::update_slate_series() {
     series_snapshot.Add(MoveTemp(series));
     graph_widget_->set_series(MoveTemp(series_snapshot));
 }
+
+} // namespace ioj

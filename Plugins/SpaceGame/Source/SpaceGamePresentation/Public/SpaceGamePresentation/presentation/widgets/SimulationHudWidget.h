@@ -11,20 +11,18 @@
 
 #include "SimulationHudWidget.generated.h"
 
-class UForceStatusWidget;
 class SEntityOverlayWidget;
 
-namespace ioj::presentation {}
 namespace ioj {
+class UForceStatusWidget;
 class FGameUiStyle;
-}
 
 UCLASS(Abstract)
 class SPACEGAMEPRESENTATION_API USimulationHudWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    virtual void apply_ui_style(ioj::FGameUiStyle const& style);
-    void set_entity_counts(ioj::sim::telemetry::EntityCounts const& counts);
+    virtual void apply_ui_style(FGameUiStyle const& style);
+    void set_entity_counts(sim::telemetry::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
 
     void set_entity_overlay_frame_store(FEntityOverlayFrameStoreConstPtr frame_store);
@@ -62,3 +60,5 @@ class SPACEGAMEPRESENTATION_API USimulationHudWidget : public UUserWidget {
     FLinearColor entity_overlay_soft_target_in_range_colour_{};
     bool has_ui_style_{};
 };
+
+} // namespace ioj

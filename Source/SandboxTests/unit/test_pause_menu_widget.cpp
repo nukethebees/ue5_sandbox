@@ -104,10 +104,10 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         auto* const telemetry_graph_host{
             Cast<UNativeWidgetHost>(widget->GetWidgetFromName(TEXT("telemetry_graph_host")))};
         auto* const forces_table{
-            Cast<UTeamEntityTableWidget>(widget->GetWidgetFromName(TEXT("forces_table")))};
-        auto* const top_killers_table{
-            Cast<UTopKillersWidget>(widget->GetWidgetFromName(TEXT("combat_top_killers_table")))};
-        auto* const team_kills_table{Cast<UTeamEntityTableWidget>(
+            Cast<ioj::UTeamEntityTableWidget>(widget->GetWidgetFromName(TEXT("forces_table")))};
+        auto* const top_killers_table{Cast<ioj::UTopKillersWidget>(
+            widget->GetWidgetFromName(TEXT("combat_top_killers_table")))};
+        auto* const team_kills_table{Cast<ioj::UTeamEntityTableWidget>(
             widget->GetWidgetFromName(TEXT("combat_team_kills_table")))};
 
         auto const bindings_valid{

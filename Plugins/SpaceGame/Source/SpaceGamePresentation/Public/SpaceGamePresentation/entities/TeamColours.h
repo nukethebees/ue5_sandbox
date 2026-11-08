@@ -24,9 +24,11 @@ struct FTeamColours {
             colour = FLinearColor{1.f, 0.f, 1.f, 1.f};
         }
     }
-    auto operator[](ETestTeam team) const -> FLinearColor const& {
+    auto operator[](ioj::ETestTeam team) const -> FLinearColor const& {
         return colours[std::to_underlying(team)];
     }
-    auto operator[](ETestTeam team) -> FLinearColor& { return colours[std::to_underlying(team)]; }
+    auto operator[](ioj::ETestTeam team) -> FLinearColor& {
+        return colours[std::to_underlying(team)];
+    }
     ioj::TStaticTeamArray<FLinearColor> colours;
 };

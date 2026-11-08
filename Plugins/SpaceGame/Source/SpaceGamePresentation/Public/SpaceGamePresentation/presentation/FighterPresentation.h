@@ -7,20 +7,19 @@
 
 #include <CoreMinimal.h>
 
-class USandboxISMCComponent;
-
 namespace ioj {
+class USandboxISMCComponent;
 struct FLevelPresentation;
-}
+} // namespace ioj
 
 struct SPACEGAMEPRESENTATION_API FFighterPresentation {
     friend struct ioj::FLevelPresentation;
   public:
     static constexpr int32 n_custom_ismc_floats{3};
 
-    explicit FFighterPresentation(USandboxISMCComponent& component);
+    explicit FFighterPresentation(ioj::USandboxISMCComponent& component);
 
-    void set_actor_config(FFighterConfig const* new_config) noexcept;
+    void set_actor_config(ioj::FFighterConfig const* new_config) noexcept;
   private:
     auto simulation() const -> ::ioj::sim::fighters::Sim const& { return *simulation_; }
 
@@ -35,13 +34,13 @@ struct SPACEGAMEPRESENTATION_API FFighterPresentation {
     void draw_debug_shapes();
     void validate_array_sizes() const;
 
-    USandboxISMCComponent* instances{nullptr};
+    ioj::USandboxISMCComponent* instances{nullptr};
 
-    FFighterConfig const* actor_config{nullptr};
+    ioj::FFighterConfig const* actor_config{nullptr};
     FTeamColours team_colours_;
     TArray<int32> visible_indices_;
 
-    FDrawDebugConfig debug_drawer;
+    ioj::FDrawDebugConfig debug_drawer;
     bool enable_target_debug_drawing{false};
     bool enable_ship_location_debug_drawing{false};
 

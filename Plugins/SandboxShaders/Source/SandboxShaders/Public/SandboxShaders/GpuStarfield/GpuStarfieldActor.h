@@ -8,6 +8,7 @@
 
 #include "GpuStarfieldActor.generated.h"
 
+namespace ioj {
 UCLASS(Blueprintable)
 class SANDBOXSHADERS_API AGpuStarfieldActor : public AActor {
     GENERATED_BODY()
@@ -28,8 +29,10 @@ class SANDBOXSHADERS_API AGpuStarfieldActor : public AActor {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GPU Starfield")
     FGpuStarfieldColours colours;
   protected:
-    ioj::starfield::Settings settings_;
+    starfield::Settings settings_;
 
     UPROPERTY(VisibleAnywhere, Category = "GPU Starfield")
     TObjectPtr<UGpuStarfieldComponent> starfield_component_;
 };
+
+} // namespace ioj

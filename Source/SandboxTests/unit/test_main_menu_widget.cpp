@@ -105,7 +105,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
     {
         auto const* const theme{GetDefault<ioj::USpaceGameUiTheme>()};
         auto const ui_style{theme->compile()};
-        auto const& text_style{ui_style.text(EGameTextStyle::Body)};
+        auto const& text_style{ui_style.text(ioj::EGameTextStyle::Body)};
         TestRunner->TestTrue(TEXT("Common menu text style has a renderable font"),
                              text_style.Font.CompositeFont.IsValid() ||
                                  IsValid(text_style.Font.FontObject));
@@ -120,8 +120,8 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Primary text remains readable against the canvas"),
                              palette.text_primary.GetLuminance() - palette.canvas.GetLuminance() >
                                  0.65f);
-        for (std::size_t index{}; index < ioj::enum_count<EGameUiIcon>(); ++index) {
-            auto const icon_role{static_cast<EGameUiIcon>(index)};
+        for (std::size_t index{}; index < ioj::enum_count<ioj::EGameUiIcon>(); ++index) {
+            auto const icon_role{static_cast<ioj::EGameUiIcon>(index)};
             auto const& icon{ui_style.icon(icon_role)};
             TestRunner->TestTrue(
                 *FString::Printf(TEXT("%s icon is vector-backed"), LexToString(icon_role)),

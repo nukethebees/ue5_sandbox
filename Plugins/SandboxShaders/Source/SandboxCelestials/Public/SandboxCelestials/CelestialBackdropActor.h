@@ -9,6 +9,7 @@ class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class USceneComponent;
 class UStaticMeshComponent;
+namespace ioj {
 class UCelestialBackdropProfile;
 
 UENUM(BlueprintType)
@@ -515,3 +516,5 @@ class SANDBOXCELESTIALS_API ACelestialBackdropActor final : public AActor {
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInstanceDynamic> analytic_instance_;
 };
+
+} // namespace ioj

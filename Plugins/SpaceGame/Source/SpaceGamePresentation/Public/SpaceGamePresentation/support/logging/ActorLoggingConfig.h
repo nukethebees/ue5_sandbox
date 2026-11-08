@@ -6,6 +6,7 @@
 
 #include "ActorLoggingConfig.generated.h"
 
+namespace ioj {
 UENUM()
 enum class EActorLogVerbosity : uint8 {
     None,
@@ -34,3 +35,5 @@ struct SPACEGAMEPRESENTATION_API FActorLoggingConfig {
     UPROPERTY(EditAnywhere)
     FCooldown tick_cooldown{2.f};
 };
+
+} // namespace ioj

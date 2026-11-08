@@ -4,6 +4,7 @@
 
 #include "Misc/CoreDelegates.h"
 
+namespace ioj {
 void UFrameLogFooterSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
     Super::Initialize(Collection);
 
@@ -38,3 +39,5 @@ void UFrameLogFooterSubsystem::on_end_frame() {
         }
     }
 }
+
+} // namespace ioj

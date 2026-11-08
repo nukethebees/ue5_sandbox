@@ -5,6 +5,7 @@
 
 #include "SandboxGameMode.generated.h"
 
+namespace ioj {
 UCLASS()
 class SANDBOX_API ASandboxGameMode : public AGameModeBase {
     GENERATED_BODY()
@@ -15,3 +16,5 @@ class SANDBOX_API ASandboxGameMode : public AGameModeBase {
         InitGame(FString const& MapName, FString const& Options, FString& ErrorMessage) override;
     void BeginPlay() override;
 };
+
+} // namespace ioj

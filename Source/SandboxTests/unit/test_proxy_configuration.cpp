@@ -74,8 +74,8 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
 
     TEST_METHOD(CapitalApplyAllUsesCurrentAssetAndSaveRoundTripsRotatedArrows)
     {
-        auto* const first{world->SpawnActor<ATestCapitalShipProxy>()};
-        auto* const second{world->SpawnActor<ATestCapitalShipProxy>()};
+        auto* const first{world->SpawnActor<ioj::ATestCapitalShipProxy>()};
+        auto* const second{world->SpawnActor<ioj::ATestCapitalShipProxy>()};
         first->SetActorLocationAndRotation(FVector{1200., -500., 300.}, FRotator{15., 125., 5.});
         second->SetActorLocationAndRotation(FVector{-3400., 1500., 200.}, FRotator{0., -45., 0.});
         first->set_level_config_asset(config);
@@ -106,8 +106,8 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
 
     TEST_METHOD(CapitalBlueprintApplySurvivesConstructionRerun)
     {
-        auto* const proxy{
-            world->SpawnActor<ATestCapitalShipProxy>(config->classes.capital_ship_proxy_class)};
+        auto* const proxy{world->SpawnActor<ioj::ATestCapitalShipProxy>(
+            config->classes.capital_ship_proxy_class)};
         if (!TestRunner->TestNotNull(TEXT("Authored capital Blueprint spawns"), proxy)) {
             return;
         }
@@ -129,8 +129,8 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
 
     TEST_METHOD(CapitalApplyAllSupportsUndoRedo)
     {
-        auto* const first{world->SpawnActor<ATestCapitalShipProxy>()};
-        auto* const second{world->SpawnActor<ATestCapitalShipProxy>()};
+        auto* const first{world->SpawnActor<ioj::ATestCapitalShipProxy>()};
+        auto* const second{world->SpawnActor<ioj::ATestCapitalShipProxy>()};
         first->set_level_config_asset(config);
         invoke(*first, TEXT("apply_asset_configuration_to_all_instances"));
         auto const first_points{arrows(*first, TEXT("fighter_spawn_slots"))};
@@ -155,8 +155,8 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
 
     TEST_METHOD(TurretApplyAllUsesAssignedResources)
     {
-        auto* const first{world->SpawnActor<ATestStaticTurretsProxy>()};
-        auto* const second{world->SpawnActor<ATestStaticTurretsProxy>()};
+        auto* const first{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
+        auto* const second{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
         first->set_level_config_asset(config);
         config->turrets.simulation.detection_radius = 4321.f;
         config->turrets.fire_point_offset = FTransform{FVector{100., 200., 300.}};
@@ -175,8 +175,8 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
 
     TEST_METHOD(SpinnerApplyAllUsesAssignedResourcesWithoutDuplicatingComponents)
     {
-        auto* const first{world->SpawnActor<ATestTubeSpinnerProxy>()};
-        auto* const second{world->SpawnActor<ATestTubeSpinnerProxy>()};
+        auto* const first{world->SpawnActor<ioj::ATestTubeSpinnerProxy>()};
+        auto* const second{world->SpawnActor<ioj::ATestTubeSpinnerProxy>()};
         first->set_level_config_asset(config);
         config->tube_spinners.fire_point_offsets = {FTransform{FVector{200., 0., 0.}},
                                                     FTransform{FVector{-200., 0., 0.}}};

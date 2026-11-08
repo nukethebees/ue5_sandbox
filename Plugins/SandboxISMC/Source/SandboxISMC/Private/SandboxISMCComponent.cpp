@@ -78,7 +78,7 @@ struct FSandboxISMCMetricsState {
 };
 
 namespace {
-auto resolve_material(USandboxISMCComponent const& component, int32 material_index)
+auto resolve_material(ioj::USandboxISMCComponent const& component, int32 material_index)
     -> UMaterialInterface* {
     auto* material{component.GetMaterial(material_index)};
     if (material == nullptr || material->GetMaterial()->MaterialDomain != MD_Surface ||
@@ -490,7 +490,7 @@ IMPLEMENT_VERTEX_FACTORY_TYPE(FSandboxISMCVertexFactory,
 
 class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
   public:
-    FSandboxISMCSceneProxy(USandboxISMCComponent const* component,
+    FSandboxISMCSceneProxy(ioj::USandboxISMCComponent const* component,
                            FSandboxISMCStagingBuffer* initial_buffer,
                            TSharedPtr<FSandboxISMCStagingState, ESPMode::ThreadSafe> staging_state,
                            TSharedPtr<FSandboxISMCMetricsState, ESPMode::ThreadSafe> metrics)
@@ -652,6 +652,7 @@ class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
 };
 }
 
+namespace ioj {
 USandboxISMCComponent::USandboxISMCComponent()
     : staging_state_{MakeShared<FSandboxISMCStagingState, ESPMode::ThreadSafe>()}
     , metrics_{MakeShared<FSandboxISMCMetricsState, ESPMode::ThreadSafe>()} {
@@ -959,3 +960,5 @@ auto USandboxISMCComponent::SendRenderDynamicData_Concurrent() -> void {
 
     metrics_->submit_cycles = FPlatformTime::Cycles64() - start_cycles;
 }
+
+} // namespace ioj

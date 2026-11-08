@@ -3,6 +3,7 @@
 #include "Components/PostProcessComponent.h"
 #include "Components/SceneComponent.h"
 
+namespace ioj {
 AShipPostProcessing::AShipPostProcessing()
     : post_process_volume{CreateDefaultSubobject<UPostProcessComponent>(TEXT("pp"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
@@ -36,3 +37,5 @@ void AShipPostProcessing::set_up_post_processing(UPostProcessComponent& pp) {
     s.bOverride_BloomThreshold = true;
     s.BloomThreshold = 5.f;
 }
+
+} // namespace ioj

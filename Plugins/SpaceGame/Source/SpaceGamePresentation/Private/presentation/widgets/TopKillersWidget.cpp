@@ -15,6 +15,7 @@
 #include <Components/GridSlot.h>
 #include <Components/TextBlock.h>
 
+namespace ioj {
 void UTopKillersWidget::NativePreConstruct() {
     Super::NativePreConstruct();
 
@@ -27,17 +28,15 @@ void UTopKillersWidget::NativePreConstruct() {
         team_colours[ETestTeam::Yellow] = FLinearColor::Yellow;
 
         top_killers.clear();
-        top_killers.push_back({ioj::sim::EntityId(14, ioj::sim::EntityType::Fighter),
-                               ioj::sim::EntityType::Fighter,
-                               ioj::Team::Green,
+        top_killers.push_back({sim::EntityId(14, sim::EntityType::Fighter),
+                               sim::EntityType::Fighter,
+                               Team::Green,
                                18});
-        top_killers.push_back({ioj::sim::EntityId(7, ioj::sim::EntityType::Turret),
-                               ioj::sim::EntityType::Turret,
-                               ioj::Team::Red,
-                               13});
-        top_killers.push_back({ioj::sim::EntityId(2, ioj::sim::EntityType::CapitalShip),
-                               ioj::sim::EntityType::CapitalShip,
-                               ioj::Team::Blue,
+        top_killers.push_back(
+            {sim::EntityId(7, sim::EntityType::Turret), sim::EntityType::Turret, Team::Red, 13});
+        top_killers.push_back({sim::EntityId(2, sim::EntityType::CapitalShip),
+                               sim::EntityType::CapitalShip,
+                               Team::Blue,
                                9});
     }
 
@@ -46,11 +45,11 @@ void UTopKillersWidget::NativePreConstruct() {
 
 auto UTopKillersWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const content{Super::RebuildWidget()};
-    return hud_style_ ? ioj::make_hud_panel(hud_style_.GetValue(), content) : content;
+    return hud_style_ ? make_hud_panel(hud_style_.GetValue(), content) : content;
 }
 
 void UTopKillersWidget::set_top_killers(
-    std::span<ioj::presentation::TopKillerEntry const> const new_entries) {
+    std::span<presentation::TopKillerEntry const> const new_entries) {
     top_killers.assign(new_entries.begin(), new_entries.end());
 
     rebuild_table();
@@ -61,7 +60,7 @@ void UTopKillersWidget::set_team_colours(UTestTeamVisualData::FColourArray const
     rebuild_table();
 }
 
-void UTopKillersWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
+void UTopKillersWidget::apply_hud_style(FGameHudStyle const& style) {
     hud_style_ = style;
     rebuild_table();
 }
@@ -73,7 +72,7 @@ void UTopKillersWidget::set_font_size(int32 const new_font_size) {
 
 void UTopKillersWidget::set_text_style(UTextBlock& text, ETextJustify::Type const alignment) const {
     if (hud_style_) {
-        ioj::apply_text_style(text, hud_style_->secondary_text);
+        apply_text_style(text, hud_style_->secondary_text);
     } else {
         auto font{text.GetFont()};
         font.Size = font_size;
@@ -137,7 +136,7 @@ void UTopKillersWidget::rebuild_table() {
         auto* const heading{add_text(name, row_heading, column, 1, alignment)};
         heading->SetText(MoveTemp(text));
         if (hud_style_) {
-            ioj::apply_text_style(*heading, hud_style_->caption_text);
+            apply_text_style(*heading, hud_style_->caption_text);
         }
     }};
     add_heading(TEXT("rank_heading"), column_rank, data_alignment, INVTEXT("Rank"));
@@ -169,7 +168,7 @@ void UTopKillersWidget::rebuild_table() {
             auto* const value{add_text(name, row, column, 1, alignment)};
             value->SetText(MoveTemp(text));
             if (hud_style_) {
-                ioj::apply_text_style(*value, hud_style_->data_text);
+                apply_text_style(*value, hud_style_->data_text);
             }
             return value;
         }};
@@ -181,17 +180,16 @@ void UTopKillersWidget::rebuild_table() {
                   column_entity,
                   entity_alignment,
                   FText::Format(INVTEXT("{0} {1}"),
-                                FText::FromString(ioj::get_entity_class_name(entry.entity_type)),
+                                FText::FromString(get_entity_class_name(entry.entity_type)),
                                 entry.entity_id.index()));
         add_value(FString::Printf(TEXT("type_%d"), entry_index),
                   column_type,
                   entity_alignment,
-                  FText::FromString(ioj::get_entity_display_name(entry.entity_type)));
-        auto* const team_text{
-            add_value(FString::Printf(TEXT("team_%d"), entry_index),
-                      column_team,
-                      data_alignment,
-                      FText::FromString(ioj::to_fstring(ioj::to_string(entry.team))))};
+                  FText::FromString(get_entity_display_name(entry.entity_type)));
+        auto* const team_text{add_value(FString::Printf(TEXT("team_%d"), entry_index),
+                                        column_team,
+                                        data_alignment,
+                                        FText::FromString(to_fstring(to_string(entry.team))))};
         add_value(FString::Printf(TEXT("kills_%d"), entry_index),
                   column_kills,
                   data_alignment,
@@ -199,7 +197,7 @@ void UTopKillersWidget::rebuild_table() {
 
         auto* border{WidgetTree->ConstructWidget<UBorder>(
             UBorder::StaticClass(), *FString::Printf(TEXT("team_border_%d"), entry_index))};
-        auto const team_colour{team_colours[ioj::to_unreal(entry.team)]};
+        auto const team_colour{team_colours[to_unreal(entry.team)]};
         auto const wash_opacity{hud_style_ ? hud_style_->team_wash_opacity : 0.3f};
         border->SetBrushColor(team_colour.CopyWithNewOpacity(wash_opacity));
         auto* border_slot{top_killers_grid->AddChildToGrid(border, row, column_team)};
@@ -211,7 +209,9 @@ void UTopKillersWidget::rebuild_table() {
                 hud_style_->data_text.ColorAndOpacity.GetSpecifiedColor(),
                 team_colour,
                 hud_style_->team_text_blend));
-            ioj::apply_text_style(*team_text, team_text_style);
+            apply_text_style(*team_text, team_text_style);
         }
     }
 }
+
+} // namespace ioj

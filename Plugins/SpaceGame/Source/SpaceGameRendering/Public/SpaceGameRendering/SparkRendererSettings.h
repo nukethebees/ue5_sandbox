@@ -6,14 +6,15 @@
 
 #include "SparkRendererSettings.generated.h"
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct SPACEGAMERENDERING_API FSparkRendererSettings {
     GENERATED_BODY()
 
-    auto to_native() const -> ioj::presentation::SparkRendererSettings {
+    auto to_native() const -> presentation::SparkRendererSettings {
         return {capacity,
                 maximum_draw_distance,
-                ioj::Vector3f{acceleration},
+                Vector3f{acceleration},
                 minimum_thickness_pixels,
                 maximum_thickness_pixels,
                 maximum_length_pixels};
@@ -37,3 +38,5 @@ struct SPACEGAMERENDERING_API FSparkRendererSettings {
     UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ClampMin = "0.0"))
     float maximum_length_pixels{128.0f};
 };
+
+} // namespace ioj

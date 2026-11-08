@@ -15,6 +15,7 @@
 
 #include "GameUiStyleTypes.generated.h"
 
+namespace ioj {
 // Logical bit width: 4.
 UENUM()
 enum class EGameTextStyle : uint8 {
@@ -32,11 +33,9 @@ enum class EGameTextStyle : uint8 {
 
 using EGameTextStyleUnderlying = std::uint8_t;
 
-namespace ioj {
 template <>
-inline constexpr MinMax<::EGameTextStyle> enum_range<::EGameTextStyle>{::EGameTextStyle::Body,
-                                                                       ::EGameTextStyle::Disabled};
-} // namespace ioj
+inline constexpr MinMax<EGameTextStyle> enum_range<EGameTextStyle>{EGameTextStyle::Body,
+                                                                   EGameTextStyle::Disabled};
 
 // Logical bit width: 1.
 UENUM()
@@ -47,11 +46,9 @@ enum class EGameButtonStyle : uint8 {
 
 using EGameButtonStyleUnderlying = std::uint8_t;
 
-namespace ioj {
 template <>
-inline constexpr MinMax<::EGameButtonStyle> enum_range<::EGameButtonStyle>{
-    ::EGameButtonStyle::Primary, ::EGameButtonStyle::Secondary};
-} // namespace ioj
+inline constexpr MinMax<EGameButtonStyle> enum_range<EGameButtonStyle>{EGameButtonStyle::Primary,
+                                                                       EGameButtonStyle::Secondary};
 
 // Logical bit width: 4.
 UENUM()
@@ -69,23 +66,22 @@ enum class EGameUiIcon : uint8 {
 
 using EGameUiIconUnderlying = std::uint8_t;
 
-namespace ioj {
 template <>
-inline constexpr MinMax<::EGameUiIcon> enum_range<::EGameUiIcon>{::EGameUiIcon::Hive,
-                                                                 ::EGameUiIcon::LevelComplete};
+inline constexpr MinMax<EGameUiIcon> enum_range<EGameUiIcon>{EGameUiIcon::Hive,
+                                                             EGameUiIcon::LevelComplete};
 
 template <>
-[[nodiscard]] constexpr auto enum_count<::EGameTextStyle>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<EGameTextStyle>() noexcept -> std::size_t {
     return 10ULL;
 }
 
 template <>
-[[nodiscard]] constexpr auto enum_count<::EGameButtonStyle>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<EGameButtonStyle>() noexcept -> std::size_t {
     return 2ULL;
 }
 
 template <>
-[[nodiscard]] constexpr auto enum_count<::EGameUiIcon>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<EGameUiIcon>() noexcept -> std::size_t {
     return 9ULL;
 }
 
@@ -94,6 +90,7 @@ inline constexpr auto enum_strings<EGameUiIcon, Name>{
     PackedStrings{TEXT("Hive\000Video\000Gameplay\000Audio\000Controls\000Accessibility\000System"
                        "\000LevelIncomplete\000LevelComplete"),
                   std::array<std::uint8_t, 10>{0, 5, 11, 20, 26, 35, 49, 56, 72, 86}}};
-} // namespace ioj
 
 SPACEGAMEPRESENTATION_API auto LexToString(EGameUiIcon const value) -> TCHAR const*;
+
+} // namespace ioj

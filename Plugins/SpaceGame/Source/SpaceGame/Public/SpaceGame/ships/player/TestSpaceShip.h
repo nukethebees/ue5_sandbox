@@ -22,12 +22,12 @@
 #include "TestSpaceShip.generated.h"
 
 class UCameraComponent;
-class USpaceDustComponent;
 class UNiagaraComponent;
 class UStaticMesh;
 class UStaticMeshComponent;
 
 namespace ioj {
+class USpaceDustComponent;
 class ATestBatchOrchestrator;
 
 DECLARE_DELEGATE(FOnPlayerShipDied);

@@ -8,6 +8,7 @@
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 
+namespace ioj {
 class AShipPostProcessing;
 
 ASpaceShipGameMode::ASpaceShipGameMode() {
@@ -35,3 +36,5 @@ void ASpaceShipGameMode::BeginPlay() {
         UE_LOG(LogSandboxGameMode, Warning, TEXT("%d post processing volumes found."), pps);
     }
 }
+
+} // namespace ioj

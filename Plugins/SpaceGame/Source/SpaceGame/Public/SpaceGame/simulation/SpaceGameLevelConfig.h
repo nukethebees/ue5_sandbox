@@ -17,14 +17,13 @@
 #include "SpaceGameLevelConfig.generated.h"
 
 class AActor;
-class ATestCapitalShipProxy;
-class ATestStaticTurretsProxy;
 class UMaterialInterface;
 class UNiagaraSystem;
 class UStaticMesh;
-class UTestTeamVisualData;
-
 namespace ioj {
+class ATestCapitalShipProxy;
+class ATestStaticTurretsProxy;
+class UTestTeamVisualData;
 class ATestSpaceShip;
 class ASpaceGamePlayerController;
 class USpaceGameLevelConfig;

@@ -6,6 +6,7 @@ public class SandboxISMC : ModuleRules
 {
     public SandboxISMC(ReadOnlyTargetRules Target) : base(Target)
     {
+        bAllowUETypesInNamespaces = true;
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PrivatePCHHeaderFile = "Private/SandboxISMCPCH.h";
         CppStandard = CppStandardVersion.Latest;

@@ -81,7 +81,7 @@ void append_summary(FString& csv,
 TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
 {
     TUniquePtr<FMapTestSpawner> spawner_{nullptr};
-    USparkRendererComponent* renderer_{nullptr};
+    ioj::USparkRendererComponent* renderer_{nullptr};
     USceneCaptureComponent2D* capture_{nullptr};
     UTextureRenderTarget2D* target_{nullptr};
     TUniquePtr<FSparkEffects> effects_;
@@ -143,10 +143,10 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
         parse_command_line();
         auto& world{spawner_->GetWorld()};
         auto* const actor{world.SpawnActor<AActor>()};
-        renderer_ = NewObject<USparkRendererComponent>(actor);
+        renderer_ = NewObject<ioj::USparkRendererComponent>(actor);
         actor->SetRootComponent(renderer_);
         actor->AddInstanceComponent(renderer_);
-        FSparkRendererSettings settings;
+        ioj::FSparkRendererSettings settings;
         settings.capacity = capacity_;
         settings.maximum_draw_distance = 1000000.0f;
         settings.acceleration = FVector3f::ZeroVector;

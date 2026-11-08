@@ -4,6 +4,7 @@ public class SandboxGameShared : ModuleRules
 {
     public SandboxGameShared(ReadOnlyTargetRules Target) : base(Target)
     {
+        bAllowUETypesInNamespaces = true;
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PrivatePCHHeaderFile = "Private/SandboxGameSharedPCH.h";
         CppStandard = CppStandardVersion.Latest;

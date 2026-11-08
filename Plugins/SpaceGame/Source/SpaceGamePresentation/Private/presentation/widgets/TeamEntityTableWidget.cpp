@@ -13,15 +13,16 @@
 #include <Components/GridSlot.h>
 #include <Components/TextBlock.h>
 
+namespace ioj {
 void UTeamEntityTableWidget::NativePreConstruct() {
     Super::NativePreConstruct();
 
     if (IsDesignTime()) {
-        constexpr int32 n_teams{ioj::enum_count<ETestTeam>()};
-        constexpr int32 n_types{ioj::enum_count<ioj::sim::EntityType>()};
+        constexpr int32 n_teams{enum_count<ETestTeam>()};
+        constexpr int32 n_types{enum_count<sim::EntityType>()};
         for (int32 team{0}; team < n_teams; ++team) {
             for (int32 type{0}; type < n_types; ++type) {
-                values[static_cast<ioj::Team>(team), static_cast<ioj::sim::EntityType>(type)] =
+                values[static_cast<Team>(team), static_cast<sim::EntityType>(type)] =
                     10 + team + type;
             }
         }
@@ -39,11 +40,10 @@ void UTeamEntityTableWidget::NativePreConstruct() {
 
 auto UTeamEntityTableWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const content{Super::RebuildWidget()};
-    return hud_style_ ? ioj::make_hud_panel(hud_style_.GetValue(), content) : content;
+    return hud_style_ ? make_hud_panel(hud_style_.GetValue(), content) : content;
 }
 
-void
-    UTeamEntityTableWidget::set_entity_counts(ioj::sim::telemetry::EntityCounts const& new_counts) {
+void UTeamEntityTableWidget::set_entity_counts(sim::telemetry::EntityCounts const& new_counts) {
     values = new_counts;
     rebuild_table();
 }
@@ -54,7 +54,7 @@ void
     rebuild_table();
 }
 
-void UTeamEntityTableWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
+void UTeamEntityTableWidget::apply_hud_style(FGameHudStyle const& style) {
     hud_style_ = style;
     rebuild_table();
 }
@@ -72,7 +72,7 @@ void UTeamEntityTableWidget::set_show_team_totals(bool const show_totals) {
 void UTeamEntityTableWidget::set_text_style(UTextBlock& text,
                                             ETextJustify::Type const alignment) const {
     if (hud_style_) {
-        ioj::apply_text_style(text, hud_style_->secondary_text);
+        apply_text_style(text, hud_style_->secondary_text);
     } else {
         auto font{text.GetFont()};
         font.Size = font_size;
@@ -96,8 +96,8 @@ void UTeamEntityTableWidget::rebuild_table() {
 
     constexpr auto row_heading{0};
     constexpr auto first_team_column{1};
-    constexpr int32 n_teams{ioj::enum_count<ETestTeam>()};
-    constexpr int32 n_types{ioj::enum_count<ioj::sim::EntityType>()};
+    constexpr int32 n_teams{enum_count<ETestTeam>()};
+    constexpr int32 n_types{enum_count<sim::EntityType>()};
     auto const n_data_rows{n_types + (show_team_totals ? 1 : 0)};
 
     team_entity_grid->SetColumnFill(0, 1.f);
@@ -133,7 +133,7 @@ void UTeamEntityTableWidget::rebuild_table() {
         add_text(TEXT("entity_type_heading"), row_heading, 0, 1, entity_type_alignment)};
     entity_heading->SetText(INVTEXT("Entity"));
     if (hud_style_) {
-        ioj::apply_text_style(*entity_heading, hud_style_->caption_text);
+        apply_text_style(*entity_heading, hud_style_->caption_text);
     }
     for (int32 team{0}; team < n_teams; ++team) {
         auto const team_value{static_cast<ETestTeam>(team)};
@@ -142,15 +142,14 @@ void UTeamEntityTableWidget::rebuild_table() {
                                first_team_column + team,
                                1,
                                data_alignment)};
-        heading->SetText(
-            FText::FromString(ioj::to_fstring(ioj::to_string(ioj::to_native(team_value)))));
+        heading->SetText(FText::FromString(to_fstring(to_string(to_native(team_value)))));
         if (hud_style_) {
             auto heading_style{hud_style_->caption_text};
             auto const base_colour{heading_style.ColorAndOpacity.GetSpecifiedColor()};
             auto const colour{FLinearColor::LerpUsingHSV(
                 base_colour, team_colours[team_value], hud_style_->team_text_blend)};
             heading_style.SetColorAndOpacity(FSlateColor{colour});
-            ioj::apply_text_style(*heading, heading_style);
+            apply_text_style(*heading, heading_style);
         }
 
         auto* border{WidgetTree->ConstructWidget<UBorder>(
@@ -163,7 +162,7 @@ void UTeamEntityTableWidget::rebuild_table() {
     }
 
     for (int32 type{0}; type < n_types; ++type) {
-        auto const type_value{static_cast<ioj::sim::EntityType>(type)};
+        auto const type_value{static_cast<sim::EntityType>(type)};
         auto const row{type + 1};
         if (hud_style_) {
             auto* const row_background{WidgetTree->ConstructWidget<UBorder>(
@@ -176,12 +175,12 @@ void UTeamEntityTableWidget::rebuild_table() {
         }
         auto* const label{add_text(
             FString::Printf(TEXT("entity_type_%d"), type), row, 0, 1, entity_type_alignment)};
-        label->SetText(FText::FromString(ioj::get_entity_short_name(type_value)));
+        label->SetText(FText::FromString(get_entity_short_name(type_value)));
         if (hud_style_) {
-            ioj::apply_text_style(*label, hud_style_->caption_text);
+            apply_text_style(*label, hud_style_->caption_text);
         }
         for (int32 team{0}; team < n_teams; ++team) {
-            auto const value{values[static_cast<ioj::Team>(team), type_value]};
+            auto const value{values[static_cast<Team>(team), type_value]};
             auto* count{add_text(FString::Printf(TEXT("entity_value_%d_%d"), type, team),
                                  row,
                                  first_team_column + team,
@@ -189,8 +188,8 @@ void UTeamEntityTableWidget::rebuild_table() {
                                  data_alignment)};
             count->SetText(FText::AsNumber(value));
             if (hud_style_) {
-                ioj::apply_text_style(
-                    *count, value == 0 ? hud_style_->caption_text : hud_style_->data_text);
+                apply_text_style(*count,
+                                 value == 0 ? hud_style_->caption_text : hud_style_->data_text);
             }
         }
     }
@@ -212,12 +211,12 @@ void UTeamEntityTableWidget::rebuild_table() {
         add_text(TEXT("total_heading"), total_row, 0, 1, entity_type_alignment)};
     total_heading->SetText(INVTEXT("Total"));
     if (hud_style_) {
-        ioj::apply_text_style(*total_heading, hud_style_->data_accent_text);
+        apply_text_style(*total_heading, hud_style_->data_accent_text);
     }
     for (int32 team{0}; team < n_teams; ++team) {
         int32 total{0};
         for (int32 type{0}; type < n_types; ++type) {
-            total += values[static_cast<ioj::Team>(team), static_cast<ioj::sim::EntityType>(type)];
+            total += values[static_cast<Team>(team), static_cast<sim::EntityType>(type)];
         }
 
         auto* const total_text{add_text(FString::Printf(TEXT("team_total_%d"), team),
@@ -227,7 +226,9 @@ void UTeamEntityTableWidget::rebuild_table() {
                                         data_alignment)};
         total_text->SetText(FText::AsNumber(total));
         if (hud_style_) {
-            ioj::apply_text_style(*total_text, hud_style_->data_accent_text);
+            apply_text_style(*total_text, hud_style_->data_accent_text);
         }
     }
 }
+
+} // namespace ioj

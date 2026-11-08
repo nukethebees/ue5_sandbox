@@ -4,7 +4,8 @@
 #include "UObject/UObjectIterator.h"
 #endif
 
-void FCelestialBackdropAppearanceSettings::apply_to(FCelestialBackdropSettings& target) const {
+void ioj::FCelestialBackdropAppearanceSettings::apply_to(
+    ioj::FCelestialBackdropSettings& target) const {
     target.terminator_softness = terminator_softness;
     target.surface = surface;
     target.accents = accents;
@@ -13,9 +14,9 @@ void FCelestialBackdropAppearanceSettings::apply_to(FCelestialBackdropSettings& 
     target.rings = rings;
 }
 
-FCelestialBackdropAppearanceSettings
-    FCelestialBackdropAppearanceSettings::from_settings(FCelestialBackdropSettings const& source) {
-    auto result{FCelestialBackdropAppearanceSettings{}};
+ioj::FCelestialBackdropAppearanceSettings ioj::FCelestialBackdropAppearanceSettings::from_settings(
+    ioj::FCelestialBackdropSettings const& source) {
+    auto result{ioj::FCelestialBackdropAppearanceSettings{}};
     result.terminator_softness = source.terminator_softness;
     result.surface = source.surface;
     result.accents = source.accents;
@@ -25,6 +26,7 @@ FCelestialBackdropAppearanceSettings
     return result;
 }
 
+namespace ioj {
 void UCelestialBackdropProfile::apply_to(FCelestialBackdropSettings& target) const {
     appearance.apply_to(target);
 }
@@ -43,3 +45,5 @@ void UCelestialBackdropProfile::PostEditChangeProperty(
     }
 }
 #endif
+
+} // namespace ioj

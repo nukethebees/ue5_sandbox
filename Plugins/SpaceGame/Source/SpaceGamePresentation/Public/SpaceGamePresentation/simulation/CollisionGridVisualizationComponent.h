@@ -15,6 +15,7 @@ struct FCollisionGridVisualizationSettings {
     bool show_grid{false};
 };
 
+namespace ioj {
 UCLASS(ClassGroup = (Rendering))
 class SPACEGAMEPRESENTATION_API UCollisionGridVisualizationComponent final
     : public UPrimitiveComponent {
@@ -23,8 +24,8 @@ class SPACEGAMEPRESENTATION_API UCollisionGridVisualizationComponent final
     UCollisionGridVisualizationComponent();
 
     void configure(TOptional<FCollisionGridVisualizationSettings> settings);
-    void update_collision_bounds(::ioj::sim::collision::EntityCellData::ConstView entity_aabbs,
-                                 ::ioj::sim::collision::WorldAABBs::ConstView static_aabbs);
+    void update_collision_bounds(sim::collision::EntityCellData::ConstView entity_aabbs,
+                                 sim::collision::WorldAABBs::ConstView static_aabbs);
     void clear_collision_bounds();
     void clear();
 
@@ -51,3 +52,5 @@ class SPACEGAMEPRESENTATION_API UCollisionGridVisualizationComponent final
     bool show_grid_{false};
     bool collision_bounds_visible_{false};
 };
+
+} // namespace ioj

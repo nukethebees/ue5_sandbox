@@ -152,7 +152,7 @@ IMPLEMENT_VERTEX_FACTORY_TYPE(FSparkVertexFactory,
 
 class FSceneProxy final : public FPrimitiveSceneProxy {
   public:
-    FSceneProxy(USparkRendererComponent const* const component,
+    FSceneProxy(ioj::USparkRendererComponent const* const component,
                 FSparkParticleBuffer& particle_buffer,
                 int32 const particle_count,
                 UMaterialInterface const* const material,
@@ -262,7 +262,7 @@ class FSceneProxy final : public FPrimitiveSceneProxy {
     int32 particle_count_{0};
 };
 
-auto make_parameters(USparkRendererComponent const& component,
+auto make_parameters(ioj::USparkRendererComponent const& component,
                      ioj::presentation::SparkRendererSettings const& settings,
                      float const effect_time,
                      float const latest_expiry_time) -> FRenderParameters {
@@ -282,6 +282,7 @@ auto make_parameters(USparkRendererComponent const& component,
 
 } // namespace SpaceGame::Sparks::Private
 
+namespace ioj {
 USparkRendererComponent::USparkRendererComponent()
     : staging_state_{MakeShared<FSparkStagingState, ESPMode::ThreadSafe>()}
     , particle_buffer_{new FSparkParticleBuffer{}} {
@@ -308,7 +309,7 @@ USparkRendererComponent::~USparkRendererComponent() {
 }
 
 void USparkRendererComponent::initialise(FSparkRendererSettings const& settings) {
-    settings_ = ioj::presentation::normalize_spark_renderer_settings(settings.to_native());
+    settings_ = presentation::normalize_spark_renderer_settings(settings.to_native());
     storage_.reset(settings_.capacity);
     if (particle_buffer_->IsInitialized()) {
         FlushRenderingCommands();
@@ -340,9 +341,9 @@ void USparkRendererComponent::clear_sparks() {
     MarkRenderDynamicDataDirty();
 }
 
-auto USparkRendererComponent::submit_bursts(
-    std::span<ioj::presentation::SparkBurst const> const bursts, float const effect_time)
-    -> ioj::presentation::SparkSubmissionResult {
+auto USparkRendererComponent::submit_bursts(std::span<presentation::SparkBurst const> const bursts,
+                                            float const effect_time)
+    -> presentation::SparkSubmissionResult {
     check(IsInGameThread());
     effect_time_ = effect_time;
     auto const before{pending_gpu_batches_.upload_bytes()};
@@ -354,8 +355,8 @@ auto USparkRendererComponent::submit_bursts(
 }
 
 auto USparkRendererComponent::submit_particles(
-    std::span<ioj::presentation::SparkParticleRecord const> const particles,
-    float const effect_time) -> int32 {
+    std::span<presentation::SparkParticleRecord const> const particles, float const effect_time)
+    -> int32 {
     check(IsInGameThread());
     effect_time_ = effect_time;
     auto const submission{storage_.submit_particles(particles, effect_time)};
@@ -383,7 +384,7 @@ auto USparkRendererComponent::submit_particles(
         pending_upload_buffer_->counts.Add(range.count);
         pending_upload_buffer_->particles.Append(particles.data() + range.source, range.count);
         last_submission_upload_bytes_ +=
-            range.count * static_cast<int32>(sizeof(ioj::presentation::SparkParticleRecord));
+            range.count * static_cast<int32>(sizeof(presentation::SparkParticleRecord));
     }
     MarkRenderDynamicDataDirty();
     return submission.overwritten;
@@ -454,3 +455,5 @@ void USparkRendererComponent::GetUsedMaterials(TArray<UMaterialInterface*>& out_
         out_materials.AddUnique(material_);
     }
 }
+
+} // namespace ioj

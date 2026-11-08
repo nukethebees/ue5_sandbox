@@ -12,7 +12,7 @@ class UInstancedStaticMeshComponent;
 
 namespace ioj {
 struct FLevelPresentation;
-}
+} // namespace ioj
 
 struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
     friend struct ioj::FLevelPresentation;
@@ -22,7 +22,7 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
 
     explicit FCapitalPresentation(UInstancedStaticMeshComponent& component);
 
-    void set_actor_config(FCapitalShipConfig const* new_config,
+    void set_actor_config(ioj::FCapitalShipConfig const* new_config,
                           ioj::settings::CapitalPresentation const& settings) noexcept;
   private:
     auto simulation() const -> ::ioj::sim::capital_ships::Sim const& { return *simulation_; }
@@ -41,7 +41,7 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
     void trigger_death_effects(ioj::sim::EntityLedger const& ledger);
     void validate_array_sizes() const;
 
-    FCapitalShipConfig const* actor_config{nullptr};
+    ioj::FCapitalShipConfig const* actor_config{nullptr};
     ioj::settings::CapitalPresentation const* settings_{};
 
     UInstancedStaticMeshComponent* instances{nullptr};

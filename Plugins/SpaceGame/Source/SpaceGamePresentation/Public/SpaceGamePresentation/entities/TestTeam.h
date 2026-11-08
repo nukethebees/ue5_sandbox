@@ -8,6 +8,7 @@
 #include "CoreMinimal.h"
 
 #include "TestTeam.generated.h"
+namespace ioj {
 // Logical bit width: 3.
 UENUM()
 enum class ETestTeam : uint8 {
@@ -21,13 +22,11 @@ enum class ETestTeam : uint8 {
 
 using ETestTeamUnderlying = uint8;
 
-namespace ioj {
 template <>
-inline constexpr MinMax<::ETestTeam> enum_range<::ETestTeam>{::ETestTeam::White,
-                                                             ::ETestTeam::Yellow};
+inline constexpr MinMax<ETestTeam> enum_range<ETestTeam>{ETestTeam::White, ETestTeam::Yellow};
 
 template <>
-[[nodiscard]] constexpr auto enum_count<::ETestTeam>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<ETestTeam>() noexcept -> std::size_t {
     return 6ULL;
 }
 } // namespace ioj

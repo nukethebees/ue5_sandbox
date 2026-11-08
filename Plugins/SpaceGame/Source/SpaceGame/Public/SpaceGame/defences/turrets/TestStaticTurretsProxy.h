@@ -14,6 +14,7 @@ class USphereComponent;
 class USceneComponent;
 class UArrowComponent;
 
+namespace ioj {
 UCLASS()
 class ATestStaticTurretsProxy : public AActor {
   public:
@@ -22,7 +23,7 @@ class ATestStaticTurretsProxy : public AActor {
     ATestStaticTurretsProxy();
 
     auto get_team() const { return team; }
-    void set_level_config_asset(ioj::USpaceGameLevelConfig* const config) noexcept {
+    void set_level_config_asset(USpaceGameLevelConfig* const config) noexcept {
         level_config_asset = config;
     }
     void set_team(ETestTeam const new_team) noexcept { team = new_team; }
@@ -40,7 +41,7 @@ class ATestStaticTurretsProxy : public AActor {
 #endif
 
     UPROPERTY(VisibleInstanceOnly, Category = "Proxy")
-    TObjectPtr<ioj::USpaceGameLevelConfig> level_config_asset{nullptr};
+    TObjectPtr<USpaceGameLevelConfig> level_config_asset{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};
@@ -67,3 +68,5 @@ class ATestStaticTurretsProxy : public AActor {
     UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0"))
     TOptional<int32> laser_damage;
 };
+
+} // namespace ioj

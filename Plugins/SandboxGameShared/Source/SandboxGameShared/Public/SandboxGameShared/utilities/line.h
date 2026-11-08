@@ -4,6 +4,7 @@
 
 #include "line.generated.h"
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct FLine {
     GENERATED_BODY()
@@ -18,3 +19,5 @@ struct FLine {
     UPROPERTY(VisibleAnywhere)
     FVector end{FVector::ZeroVector};
 };
+
+} // namespace ioj

@@ -21,25 +21,22 @@ class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class UNativeWidgetHost;
 class UBorder;
+class SEntityOverlayWidget;
+class SRadarWidget;
+namespace ioj::presentation {
+struct FlightVectorDebugData;
+}
 
+namespace ioj {
 class UShipSpeedWidget;
 class UShipHealthWidget;
 class UShipThrusterEnergyWidget;
 class UShipPointsWidget;
-
 class UValueWidget;
 class UVector2DWidget;
 class UDebugGraphWidget;
 class UForceStatusWidget;
-class SEntityOverlayWidget;
-class SRadarWidget;
-namespace ioj::presentation {}
-namespace ioj::presentation {
-struct FlightVectorDebugData;
-}
-namespace ioj {
 class FGameUiStyle;
-}
 
 UCLASS()
 class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
@@ -47,7 +44,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     GENERATED_BODY()
 
     void set_speed(float value);
-    void apply_ui_style(ioj::FGameUiStyle const& style) override;
+    void apply_ui_style(FGameUiStyle const& style) override;
     void set_speed_widget_visibility(ESlateVisibility const new_visibility);
 
     void set_health(FShipHealth value);
@@ -78,7 +75,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
 
     void set_selected_imc(FStringView value);
 
-    void set_flight_vector_debug(ioj::presentation::FlightVectorDebugData const& value);
+    void set_flight_vector_debug(presentation::FlightVectorDebugData const& value);
     void set_ship_velocity(FVector value);
     void set_target_velocity(FVector value);
     void set_flight_model(FStringView value);
@@ -90,7 +87,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void set_radar_style(FRadarStyle const& style);
 
 #if WITH_EDITOR
-    void update_sampled_speed(std::span<ioj::Vector2d const> samples, std::uint32_t oldest_index);
+    void update_sampled_speed(std::span<Vector2d const> samples, std::uint32_t oldest_index);
 #endif
   protected:
     void NativePreConstruct() override;
@@ -172,3 +169,5 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     UDebugGraphWidget* speed_graph{nullptr};
 #endif
 };
+
+} // namespace ioj

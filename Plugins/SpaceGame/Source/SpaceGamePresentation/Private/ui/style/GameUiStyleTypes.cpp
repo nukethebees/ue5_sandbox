@@ -6,12 +6,15 @@
 #include "CoreMinimal.h"
 
 namespace {
-auto get_game_ui_icon_name(EGameUiIcon const value) -> TCHAR const* {
+auto get_game_ui_icon_name(ioj::EGameUiIcon const value) -> TCHAR const* {
     return ioj::enum_string<ioj::Name>(value).data();
 }
 
 } // namespace
 
+namespace ioj {
 auto LexToString(EGameUiIcon const value) -> TCHAR const* {
     return get_game_ui_icon_name(value);
 }
+
+} // namespace ioj

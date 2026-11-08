@@ -116,7 +116,7 @@ ASandboxISMCBenchmarkActor::ASandboxISMCBenchmarkActor() {
     camera_ = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     camera_->SetupAttachment(root_);
 
-    custom_ismc_ = CreateDefaultSubobject<USandboxISMCComponent>(TEXT("CustomISMC"));
+    custom_ismc_ = CreateDefaultSubobject<ioj::USandboxISMCComponent>(TEXT("CustomISMC"));
     custom_ismc_->SetupAttachment(root_);
 
     engine_ismc_ = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("EngineISMC"));

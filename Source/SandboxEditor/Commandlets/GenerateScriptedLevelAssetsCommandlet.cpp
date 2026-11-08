@@ -292,9 +292,9 @@ auto generate_root_layout_widget() -> UClass* {
 
 auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     auto* const team_table_class{
-        LoadClass<UTeamEntityTableWidget>(nullptr, team_entity_table_class_path)};
+        LoadClass<ioj::UTeamEntityTableWidget>(nullptr, team_entity_table_class_path)};
     auto* const top_killer_table_class{
-        LoadClass<UTopKillersWidget>(nullptr, top_killers_class_path)};
+        LoadClass<ioj::UTopKillersWidget>(nullptr, top_killers_class_path)};
     if (!IsValid(team_table_class) || !IsValid(top_killer_table_class)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load pause-menu battle table classes"));
         return nullptr;
@@ -403,7 +403,7 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     forces_contents->AddChildToVerticalBox(forces_heading)
         ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
     auto* const forces_table{
-        make_widget<UTeamEntityTableWidget>(tree, *team_table_class, TEXT("forces_table"))};
+        make_widget<ioj::UTeamEntityTableWidget>(tree, *team_table_class, TEXT("forces_table"))};
     forces_contents->AddChildToVerticalBox(forces_table)
         ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 20.0f});
 
@@ -413,7 +413,7 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     top_killers_heading->SetText(FText::FromString(TEXT("Top Killers")));
     combat_contents->AddChildToVerticalBox(top_killers_heading)
         ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
-    auto* const top_killers_table{make_widget<UTopKillersWidget>(
+    auto* const top_killers_table{make_widget<ioj::UTopKillersWidget>(
         tree, *top_killer_table_class, TEXT("combat_top_killers_table"))};
     combat_contents->AddChildToVerticalBox(top_killers_table)
         ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 20.0f});
@@ -422,7 +422,7 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     team_kills_heading->SetText(FText::FromString(TEXT("Team Kills by Victim Type")));
     combat_contents->AddChildToVerticalBox(team_kills_heading)
         ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
-    auto* const team_kills_table{make_widget<UTeamEntityTableWidget>(
+    auto* const team_kills_table{make_widget<ioj::UTeamEntityTableWidget>(
         tree, *team_table_class, TEXT("combat_team_kills_table"))};
     combat_contents->AddChildToVerticalBox(team_kills_table)
         ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 20.0f});
@@ -645,16 +645,17 @@ auto generate_battle_viewer_widget() -> UClass* {
     if (!IsValid(ui_data)) {
         return nullptr;
     }
-    auto const value_class{ui_data->get_widget_class<UValueWidget>()};
+    auto const value_class{ui_data->get_widget_class<ioj::UValueWidget>()};
     if (!IsValid(value_class)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load Battle Viewer child widget classes"));
         return nullptr;
     }
 
-    auto* const blueprint{load_or_create_widget_blueprint(battle_viewer_widget_object_path,
-                                                          battle_viewer_widget_package_name,
-                                                          TEXT("WBP_BattleViewerHud"),
-                                                          *UBattleViewerHudWidget::StaticClass())};
+    auto* const blueprint{
+        load_or_create_widget_blueprint(battle_viewer_widget_object_path,
+                                        battle_viewer_widget_package_name,
+                                        TEXT("WBP_BattleViewerHud"),
+                                        *ioj::UBattleViewerHudWidget::StaticClass())};
     if (!IsValid(blueprint)) {
         return nullptr;
     }
@@ -662,7 +663,8 @@ auto generate_battle_viewer_widget() -> UClass* {
     auto& tree{*blueprint->WidgetTree};
     auto* const root{make_widget<UOverlay>(tree, TEXT("battle_viewer_root"))};
 
-    auto* const force_status{make_widget<UForceStatusWidget>(tree, TEXT("force_status_widget"))};
+    auto* const force_status{
+        make_widget<ioj::UForceStatusWidget>(tree, TEXT("force_status_widget"))};
     auto* const force_slot{root->AddChildToOverlay(force_status)};
     force_slot->SetHorizontalAlignment(HAlign_Left);
     force_slot->SetVerticalAlignment(VAlign_Top);
@@ -675,7 +677,7 @@ auto generate_battle_viewer_widget() -> UClass* {
     controls_slot->SetPadding(FMargin{24.0f});
 
     auto* const camera_speed{
-        make_widget<UValueWidget>(tree, *value_class.Get(), TEXT("camera_speed_widget"))};
+        make_widget<ioj::UValueWidget>(tree, *value_class.Get(), TEXT("camera_speed_widget"))};
     controls->AddChildToVerticalBox(camera_speed);
     auto* const controls_label{make_widget<UTextBlock>(tree, TEXT("controls_label"))};
     controls_label->SetAutoWrapText(true);
@@ -690,16 +692,17 @@ auto generate_benchmark_widget(UClass& button_class) -> UClass* {
     if (!IsValid(ui_data)) {
         return nullptr;
     }
-    auto const value_class{ui_data->get_widget_class<UValueWidget>()};
+    auto const value_class{ui_data->get_widget_class<ioj::UValueWidget>()};
     if (!IsValid(value_class)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load Benchmark HUD value widget class"));
         return nullptr;
     }
 
-    auto* const blueprint{load_or_create_widget_blueprint(benchmark_widget_object_path,
-                                                          benchmark_widget_package_name,
-                                                          TEXT("WBP_BenchmarkHud"),
-                                                          *UBenchmarkHudWidget::StaticClass())};
+    auto* const blueprint{
+        load_or_create_widget_blueprint(benchmark_widget_object_path,
+                                        benchmark_widget_package_name,
+                                        TEXT("WBP_BenchmarkHud"),
+                                        *ioj::UBenchmarkHudWidget::StaticClass())};
     if (!IsValid(blueprint)) {
         return nullptr;
     }
@@ -718,7 +721,7 @@ auto generate_benchmark_widget(UClass& button_class) -> UClass* {
     auto* const title{make_widget<UTextBlock>(tree, TEXT("benchmark_title"))};
     content->AddChildToVerticalBox(title);
     auto* const ticks{
-        make_widget<UValueWidget>(tree, *value_class.Get(), TEXT("ticks_remaining_widget"))};
+        make_widget<ioj::UValueWidget>(tree, *value_class.Get(), TEXT("ticks_remaining_widget"))};
     content->AddChildToVerticalBox(ticks)->SetPadding(FMargin{0.0f, 8.0f, 0.0f, 12.0f});
     auto* const actions{make_widget<UHorizontalBox>(tree, TEXT("run_actions"))};
     content->AddChildToVerticalBox(actions);
@@ -1315,9 +1318,9 @@ auto configure_ui_data(UClass& root_class,
     ui_data->widget_classes.classes.Add(ioj::UPauseMenuWidget::StaticClass(), &pause_class);
     ui_data->widget_classes.classes.Add(ioj::ULevelCompletionWidget::StaticClass(),
                                         &completion_class);
-    ui_data->widget_classes.classes.Add(UBattleViewerHudWidget::StaticClass(),
+    ui_data->widget_classes.classes.Add(ioj::UBattleViewerHudWidget::StaticClass(),
                                         &battle_viewer_class);
-    ui_data->widget_classes.classes.Add(UBenchmarkHudWidget::StaticClass(), &benchmark_class);
+    ui_data->widget_classes.classes.Add(ioj::UBenchmarkHudWidget::StaticClass(), &benchmark_class);
     return save_asset(*ui_data);
 }
 
@@ -1619,7 +1622,7 @@ auto generate_runtime_map(ioj::FObserverControlInputs const& observer,
     orchestrator->set_level_config(*config);
     orchestrator->set_start_mode(ioj::EOrchestratorStartMode::AuthoredLevel);
 
-    auto* const starfield{world->SpawnActor<AGpuStarfieldActor>()};
+    auto* const starfield{world->SpawnActor<ioj::AGpuStarfieldActor>()};
     if (!IsValid(starfield)) {
         UE_LOG(LogTemp, Error, TEXT("Could not spawn runtime GPU starfield"));
         return false;

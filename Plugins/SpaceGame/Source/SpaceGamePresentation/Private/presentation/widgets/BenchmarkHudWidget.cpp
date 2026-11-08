@@ -10,6 +10,7 @@
 #include <Input/CommonUIInputTypes.h>
 #include <TimerManager.h>
 
+namespace ioj {
 TOptional<FUIInputConfig> UBenchmarkHudWidget::GetDesiredInputConfig() const {
     auto config{FUIInputConfig{
         ECommonInputMode::All, EMouseCaptureMode::NoCapture, EMouseLockMode::DoNotLock, false}};
@@ -48,13 +49,13 @@ void UBenchmarkHudWidget::NativeDestruct() {
     Super::NativeDestruct();
 }
 
-void UBenchmarkHudWidget::apply_ui_style(ioj::FGameUiStyle const& style) {
+void UBenchmarkHudWidget::apply_ui_style(FGameUiStyle const& style) {
     auto const& hud_style{style.hud()};
     if (IsValid(benchmark_panel)) {
         benchmark_panel->SetBrush(style.chrome().navigation_background);
     }
     if (IsValid(benchmark_title)) {
-        ioj::apply_text_style(*benchmark_title, hud_style.caption_text);
+        apply_text_style(*benchmark_title, hud_style.caption_text);
     }
     if (IsValid(ticks_remaining_widget)) {
         ticks_remaining_widget->set_text_style(hud_style.secondary_text);
@@ -78,8 +79,8 @@ void UBenchmarkHudWidget::update_state() {
         return;
     }
     auto const state{state_source_()};
-    auto const paused{state.state == ioj::sim::LevelState::Paused};
-    auto const running{state.state == ioj::sim::LevelState::Running};
+    auto const paused{state.state == sim::LevelState::Paused};
+    auto const running{state.state == sim::LevelState::Running};
     if (IsValid(benchmark_title)) {
         benchmark_title->SetText(paused    ? INVTEXT("PAUSED")
                                  : running ? INVTEXT("RUNNING")
@@ -115,3 +116,5 @@ void UBenchmarkHudWidget::clear_update_timer() {
         world->GetTimerManager().ClearTimer(update_timer_);
     }
 }
+
+} // namespace ioj

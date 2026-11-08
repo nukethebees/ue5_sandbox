@@ -7,6 +7,7 @@
 
 #include "ActorCorners.generated.h"
 
+namespace ioj {
 USTRUCT()
 struct SANDBOXGAMESHARED_API FActorCorners {
     GENERATED_BODY()
@@ -21,3 +22,5 @@ struct SANDBOXGAMESHARED_API FActorCorners {
 
     Corners data;
 };
+
+} // namespace ioj

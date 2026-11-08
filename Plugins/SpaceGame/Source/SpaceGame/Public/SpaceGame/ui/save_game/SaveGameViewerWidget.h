@@ -6,9 +6,8 @@
 
 #include "SaveGameViewerWidget.generated.h"
 
-class USpaceSaveSubsystem;
-
 namespace ioj {
+class USpaceSaveSubsystem;
 class SSaveGameViewerView;
 class UGameSubsystem;
 
@@ -150,4 +149,5 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     UGameSubsystem* game_{nullptr};
     bool create_profile_open_{};
 };
+
 } // namespace ioj

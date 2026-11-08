@@ -7,8 +7,8 @@ TEST_CLASS(SparkEffects, "Sandbox.UnitTests")
 {
     TEST_METHOD(QueuedBurstsCommitToRendererAndClearResetsPresentation)
     {
-        auto* const renderer{NewObject<USparkRendererComponent>()};
-        FSparkRendererSettings settings;
+        auto* const renderer{NewObject<ioj::USparkRendererComponent>()};
+        ioj::FSparkRendererSettings settings;
         settings.capacity = 2;
         renderer->initialise(settings);
         FSparkEffects effects{*renderer};

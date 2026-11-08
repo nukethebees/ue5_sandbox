@@ -68,7 +68,7 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             lod.Sections.Add(section);
 
             auto* actor{world.SpawnActor<AActor>()};
-            auto* component{NewObject<USandboxISMCComponent>(actor)};
+            auto* component{NewObject<ioj::USandboxISMCComponent>(actor)};
             actor->SetRootComponent(component);
             actor->AddInstanceComponent(component);
             component->set_static_mesh(*mesh);
@@ -200,7 +200,7 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
         TestCommandBuilder.Do([this] {
             auto& world{spawner->GetWorld()};
             auto* actor{world.SpawnActor<AActor>()};
-            auto* component{NewObject<USandboxISMCComponent>(actor)};
+            auto* component{NewObject<ioj::USandboxISMCComponent>(actor)};
             actor->SetRootComponent(component);
             actor->AddInstanceComponent(component);
             component->set_static_mesh(*NewObject<UStaticMesh>(component));

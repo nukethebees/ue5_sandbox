@@ -10,7 +10,7 @@
 namespace {
 template <typename Fill>
 void submit_test_snapshot(
-    USandboxISMCComponent& component,
+    ioj::USandboxISMCComponent& component,
     int32 const count,
     Fill&& fill,
     ESandboxISMCParallelism const parallelism = ESandboxISMCParallelism::Sequential) {
@@ -39,10 +39,10 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 {
     TEST_METHOD(RefreshesPropertyAssignedAndReplacementMeshBounds)
     {
-        auto* component{NewObject<USandboxISMCComponent>()};
+        auto* component{NewObject<ioj::USandboxISMCComponent>()};
         auto* cube{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
         auto* cone{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cone.Cone"))};
-        auto* property{FindFProperty<FObjectProperty>(USandboxISMCComponent::StaticClass(),
+        auto* property{FindFProperty<FObjectProperty>(ioj::USandboxISMCComponent::StaticClass(),
                                                       TEXT("static_mesh_"))};
         if (!TestRunner->TestNotNull(TEXT("Cube loads"), cube) ||
             !TestRunner->TestNotNull(TEXT("Cone loads"), cone) ||
@@ -71,7 +71,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
             TEXT("Replacement invalidates the old snapshot"), component->get_instance_count(), 0);
         verify_bounds(*cone);
 
-        auto* loaded_component{NewObject<USandboxISMCComponent>()};
+        auto* loaded_component{NewObject<ioj::USandboxISMCComponent>()};
         property->SetObjectPropertyValue_InContainer(loaded_component, cube);
         component = loaded_component;
         verify_bounds(*cube);
@@ -83,7 +83,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
     TEST_METHOD(ReservesWithoutSubmittingInstances)
     {
-        auto* component{NewObject<USandboxISMCComponent>()};
+        auto* component{NewObject<ioj::USandboxISMCComponent>()};
         auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
         if (!TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
             return;
@@ -126,7 +126,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
     TEST_METHOD(BuildsCompleteSnapshotsInFixedChunks)
     {
-        auto* component{NewObject<USandboxISMCComponent>()};
+        auto* component{NewObject<ioj::USandboxISMCComponent>()};
         auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
         TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh);
         if (mesh == nullptr) {
@@ -177,7 +177,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
     TEST_METHOD(BuildsCustomDataAlongsideTransforms)
     {
-        auto* component{NewObject<USandboxISMCComponent>()};
+        auto* component{NewObject<ioj::USandboxISMCComponent>()};
         auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
         if (!TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
             return;
@@ -212,7 +212,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
     TEST_METHOD(RetainsAllStagingBuffersThroughShrinkClearAndRegrow)
     {
-        auto* component{NewObject<USandboxISMCComponent>()};
+        auto* component{NewObject<ioj::USandboxISMCComponent>()};
         auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
         if (!TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
             return;
@@ -263,7 +263,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
     TEST_METHOD(BuildsParallelCustomDataAcrossChunkBoundaries)
     {
-        auto* component{NewObject<USandboxISMCComponent>()};
+        auto* component{NewObject<ioj::USandboxISMCComponent>()};
         auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
         if (!TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
             return;
@@ -305,7 +305,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
     TEST_METHOD(ReplacesSnapshotsAndClearsImmediately)
     {
-        auto* component{NewObject<USandboxISMCComponent>()};
+        auto* component{NewObject<ioj::USandboxISMCComponent>()};
         auto* cube{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
         auto* sphere{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"))};
         TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), cube);
@@ -356,8 +356,8 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
     TEST_METHOD(AcceptsGenericSourcesAndMatchesParallelBounds)
     {
-        auto* sequential{NewObject<USandboxISMCComponent>()};
-        auto* parallel{NewObject<USandboxISMCComponent>()};
+        auto* sequential{NewObject<ioj::USandboxISMCComponent>()};
+        auto* parallel{NewObject<ioj::USandboxISMCComponent>()};
         auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
         TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh);
         if (mesh == nullptr) {
@@ -376,25 +376,26 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
             rotations[index] = {0.0f, static_cast<float>(index % 360), 0.0f};
         }
 
-        auto const submit{[&](USandboxISMCComponent& target, ESandboxISMCParallelism parallelism) {
-            submit_test_snapshot(
-                target,
-                instance_count,
-                [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                    auto const [first_index, chunk_count]{chunk.range()};
-                    sandbox_ismc_tests::write_transforms(
-                        chunk,
-                        chunk_count,
-                        [&](int32 local_index,
-                            FVector3f& output_position,
-                            FQuat4f& output_rotation) {
-                            auto const source_index{first_index + local_index};
-                            output_position = positions[source_index];
-                            output_rotation = rotations[source_index].Quaternion();
-                        });
-                },
-                parallelism);
-        }};
+        auto const submit{
+            [&](ioj::USandboxISMCComponent& target, ESandboxISMCParallelism parallelism) {
+                submit_test_snapshot(
+                    target,
+                    instance_count,
+                    [&](FSandboxISMCInstanceChunkWriter& chunk) {
+                        auto const [first_index, chunk_count]{chunk.range()};
+                        sandbox_ismc_tests::write_transforms(
+                            chunk,
+                            chunk_count,
+                            [&](int32 local_index,
+                                FVector3f& output_position,
+                                FQuat4f& output_rotation) {
+                                auto const source_index{first_index + local_index};
+                                output_position = positions[source_index];
+                                output_rotation = rotations[source_index].Quaternion();
+                            });
+                    },
+                    parallelism);
+            }};
         submit(*sequential, ESandboxISMCParallelism::Sequential);
         submit(*parallel, ESandboxISMCParallelism::Parallel);
 
@@ -411,7 +412,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
     TEST_METHOD(UsesCallerSuppliedBounds)
     {
-        auto* component{NewObject<USandboxISMCComponent>()};
+        auto* component{NewObject<ioj::USandboxISMCComponent>()};
         auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
         if (!TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
             return;
@@ -459,7 +460,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
     TEST_METHOD(SuppliedSourceBoundsContainDecodedGeometryAtRoundingExtremes)
     {
-        auto* component{NewObject<USandboxISMCComponent>()};
+        auto* component{NewObject<ioj::USandboxISMCComponent>()};
         auto* cube{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
         if (!TestRunner->TestNotNull(TEXT("Cube loads"), cube)) {
             return;
@@ -510,7 +511,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
     TEST_METHOD(SupportsChunkAndParallelismBoundaries)
     {
-        auto* component{NewObject<USandboxISMCComponent>()};
+        auto* component{NewObject<ioj::USandboxISMCComponent>()};
         auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
         if (!TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
             return;

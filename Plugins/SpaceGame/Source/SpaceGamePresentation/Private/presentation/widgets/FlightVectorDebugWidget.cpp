@@ -9,15 +9,16 @@
 #include <Components/UniformGridPanel.h>
 #include <Components/UniformGridSlot.h>
 
+namespace ioj {
 void UFlightVectorDebugWidget::NativePreConstruct() {
     Super::NativePreConstruct();
 
     if (IsDesignTime()) {
         data_ = {
-            .turn_input = ioj::Vector2f{0.4f, -0.2f},
-            .move_input = ioj::Vector2f{-0.3f, 0.8f},
-            .target_velocity = ioj::Vector2f{0.2f, 0.9f},
-            .local_velocity = ioj::Vector2f{-0.6f, 0.7f},
+            .turn_input = Vector2f{0.4f, -0.2f},
+            .move_input = Vector2f{-0.3f, 0.8f},
+            .target_velocity = Vector2f{0.2f, 0.9f},
+            .local_velocity = Vector2f{-0.6f, 0.7f},
         };
     }
 
@@ -25,12 +26,12 @@ void UFlightVectorDebugWidget::NativePreConstruct() {
     update_widgets();
 }
 
-void UFlightVectorDebugWidget::update(ioj::presentation::FlightVectorDebugData const& data) {
+void UFlightVectorDebugWidget::update(presentation::FlightVectorDebugData const& data) {
     data_ = data;
     update_widgets();
 }
 
-void UFlightVectorDebugWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
+void UFlightVectorDebugWidget::apply_hud_style(FGameHudStyle const& style) {
     hud_style_ = style;
     update_widgets();
 }
@@ -75,16 +76,16 @@ void UFlightVectorDebugWidget::update_widgets() {
     }
 
     if (turn_input_widget_) {
-        turn_input_widget_->update(ioj::to_unreal(ioj::Vector2d{data_.turn_input}));
+        turn_input_widget_->update(to_unreal(Vector2d{data_.turn_input}));
     }
     if (move_input_widget_) {
-        move_input_widget_->update(ioj::to_unreal(ioj::Vector2d{data_.move_input}));
+        move_input_widget_->update(to_unreal(Vector2d{data_.move_input}));
     }
     if (target_velocity_widget_) {
-        target_velocity_widget_->update(ioj::to_unreal(ioj::Vector2d{data_.target_velocity}));
+        target_velocity_widget_->update(to_unreal(Vector2d{data_.target_velocity}));
     }
     if (local_velocity_widget_) {
-        local_velocity_widget_->update(ioj::to_unreal(ioj::Vector2d{data_.local_velocity}));
+        local_velocity_widget_->update(to_unreal(Vector2d{data_.local_velocity}));
     }
 }
 
@@ -118,3 +119,5 @@ void UFlightVectorDebugWidget::configure_vector_widget(UVector2DWidget*& widget,
         slot->SetColumn(1);
     }
 }
+
+} // namespace ioj

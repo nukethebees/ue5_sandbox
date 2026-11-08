@@ -17,7 +17,8 @@
 FSpinnerPresentation::FSpinnerPresentation(UInstancedStaticMeshComponent& component)
     : instances{&component} {}
 
-void FSpinnerPresentation::set_actor_config(FTubeSpinnerConfig const* const new_config) noexcept {
+void FSpinnerPresentation::set_actor_config(
+    ioj::FTubeSpinnerConfig const* const new_config) noexcept {
     actor_config = new_config;
 }
 

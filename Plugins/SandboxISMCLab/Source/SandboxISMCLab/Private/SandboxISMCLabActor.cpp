@@ -15,7 +15,7 @@ ASandboxISMCLabActor::ASandboxISMCLabActor() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
 
-    instances_ = CreateDefaultSubobject<USandboxISMCComponent>(TEXT("Instances"));
+    instances_ = CreateDefaultSubobject<ioj::USandboxISMCComponent>(TEXT("Instances"));
     SetRootComponent(instances_);
 }
 

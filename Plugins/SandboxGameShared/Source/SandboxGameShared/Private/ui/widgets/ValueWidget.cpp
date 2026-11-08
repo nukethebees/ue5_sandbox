@@ -1,5 +1,6 @@
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
 
+namespace ioj {
 bool UValueWidget::Initialize() {
     if (!Super::Initialize()) {
         return false;
@@ -56,3 +57,5 @@ void UValueWidget::set_text_style(FTextBlockStyle const& style) {
     text_style_ = style;
     update_format_spec_text();
 }
+
+} // namespace ioj

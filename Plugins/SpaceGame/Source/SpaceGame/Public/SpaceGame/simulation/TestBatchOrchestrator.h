@@ -13,16 +13,14 @@
 
 #include "TestBatchOrchestrator.generated.h"
 
-class UCollisionGridVisualizationComponent;
 class UInstancedStaticMeshComponent;
-class USandboxISMCComponent;
-class USparkRendererComponent;
-
 struct FTestBatchOrchestratorTestAccess;
 
 namespace ioj {
+class UCollisionGridVisualizationComponent;
+class USandboxISMCComponent;
+class USparkRendererComponent;
 class ATestSpaceShip;
-
 class ATestBatchOrchestrator;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnOrchestratorReset, ATestBatchOrchestrator&);

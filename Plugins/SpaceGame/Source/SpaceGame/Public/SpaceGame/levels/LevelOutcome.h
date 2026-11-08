@@ -8,6 +8,7 @@
 #include "CoreMinimal.h"
 
 #include "LevelOutcome.generated.h"
+namespace ioj {
 // Logical bit width: 2.
 UENUM()
 enum class ELevelOutcome : uint8 {
@@ -18,8 +19,7 @@ enum class ELevelOutcome : uint8 {
 
 using ELevelOutcomeUnderlying = uint8;
 
-namespace ioj {
 template <>
-inline constexpr MinMax<::ELevelOutcome> enum_range<::ELevelOutcome>{::ELevelOutcome::Victory,
-                                                                     ::ELevelOutcome::Stopped};
+inline constexpr MinMax<ELevelOutcome> enum_range<ELevelOutcome>{ELevelOutcome::Victory,
+                                                                 ELevelOutcome::Stopped};
 } // namespace ioj

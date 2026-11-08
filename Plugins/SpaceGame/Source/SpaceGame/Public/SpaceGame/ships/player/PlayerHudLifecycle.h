@@ -7,11 +7,10 @@
 
 #include "PlayerHudLifecycle.generated.h"
 
+namespace ioj {
 class USimulationHudWidget;
 class UBenchmarkHudWidget;
 class UTestBatchGameUiData;
-
-namespace ioj {
 class ASpaceGamePlayerController;
 class ATestBatchOrchestrator;
 

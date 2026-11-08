@@ -24,7 +24,7 @@ FCapitalPresentation::FCapitalPresentation(UInstancedStaticMeshComponent& compon
     : instances{&component} {}
 
 void FCapitalPresentation::set_actor_config(
-    FCapitalShipConfig const* const new_config,
+    ioj::FCapitalShipConfig const* const new_config,
     ioj::settings::CapitalPresentation const& settings) noexcept {
     actor_config = new_config;
     settings_ = &settings;
@@ -73,7 +73,7 @@ void FCapitalPresentation::begin_play_presentation() {
 
 void FCapitalPresentation::update_visual_data(ioj::sim::EntityLedger const& ledger) {
     auto const colours{
-        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+        ioj::UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     for (auto const& change : simulation().frame_changes()) {
         if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
             instances->RemoveInstance(change.index);
@@ -123,7 +123,7 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
     }
 
     auto const colour_cache{
-        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+        ioj::UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     TArray<float> custom_data;
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
     auto const teams{entities.teams()};
@@ -184,7 +184,7 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
     auto const max_range{settings_->max_small_explosion_range};
     auto main_explosion_delay{settings_->large_explosion_delay};
     if (actor_config->main_explosion_delay_mode ==
-            ECapitalShipMainExplosionDelayMode::AfterSmallExplosions &&
+            ioj::ECapitalShipMainExplosionDelayMode::AfterSmallExplosions &&
         has_small_death_explosion && n_small_explosions > 1) {
         main_explosion_delay += n_small_explosions * (n_small_explosions - 1);
     }

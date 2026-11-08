@@ -4,6 +4,7 @@
 
 #include "ShipHealth.generated.h"
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FShipHealth {
     GENERATED_BODY()
@@ -30,3 +31,5 @@ struct SPACEGAMEPRESENTATION_API FShipHealth {
     UPROPERTY(EditAnywhere, Category = "Health")
     int32 max_health{default_max_health};
 };
+
+} // namespace ioj

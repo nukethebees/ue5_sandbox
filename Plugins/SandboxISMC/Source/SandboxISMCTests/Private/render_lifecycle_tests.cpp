@@ -39,7 +39,8 @@ TEST_CLASS(SandboxISMCRenderLifecycle, "SandboxISMC.RenderTests")
             actor->AddInstanceComponent(root);
             root->RegisterComponent();
 
-            auto* const component{NewObject<USandboxISMCComponent>(actor, TEXT("SandboxISMC"))};
+            auto* const component{
+                NewObject<ioj::USandboxISMCComponent>(actor, TEXT("SandboxISMC"))};
             actor->AddInstanceComponent(component);
             component->SetupAttachment(root);
             component->set_static_mesh(*mesh);

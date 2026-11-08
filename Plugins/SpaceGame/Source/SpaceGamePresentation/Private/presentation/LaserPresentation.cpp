@@ -28,7 +28,7 @@ auto make_seed(::ioj::sim::SimTick const tick, FVector3f const location, int32 c
 }
 } // namespace SpaceGame::LaserPresentation::Private
 
-FLaserPresentation::FLaserPresentation(USandboxISMCComponent& component)
+FLaserPresentation::FLaserPresentation(ioj::USandboxISMCComponent& component)
     : instances{&component} {}
 
 void FLaserPresentation::clear_runtime_state_presentation() {

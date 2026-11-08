@@ -4,10 +4,11 @@
 
 #include <CoreMinimal.h>
 
-struct FPlayerShipConfig;
 class UWorld;
 
 namespace ioj {
+struct FPlayerShipConfig;
+
 auto spawn_player_ship(UWorld& world,
                        TSubclassOf<ATestSpaceShip> const player_class,
                        FPlayerShipConfig const* player_config,

@@ -9,9 +9,8 @@
 
 class UCommonActivatableWidgetStack;
 class UInputAction;
-class UTestBatchGameUiData;
-
 namespace ioj {
+class UTestBatchGameUiData;
 struct FPauseMenuData;
 class ULevelSelectWidget;
 class ULevelCompletionWidget;

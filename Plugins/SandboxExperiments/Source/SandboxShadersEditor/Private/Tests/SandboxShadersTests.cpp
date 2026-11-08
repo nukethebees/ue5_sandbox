@@ -188,7 +188,7 @@ TEST_CLASS(ShaderInfrastructure, "SandboxShaders.UnitTests")
 
     TEST_METHOD(UpdatesSpaceDustBoundsWhenVolumeChanges)
     {
-        auto* const component{NewObject<USpaceDustComponent>()};
+        auto* const component{NewObject<ioj::USpaceDustComponent>()};
         component->UpdateBounds();
 
         auto settings{component->get_settings()};
@@ -210,7 +210,7 @@ TEST_CLASS(ShaderInfrastructure, "SandboxShaders.UnitTests")
 
     TEST_METHOD(IgnoresSpaceDustColourAlpha)
     {
-        FSpaceDustSettings settings;
+        ioj::FSpaceDustSettings settings;
         settings.colour.A = 0.25f;
 
         auto const normalised{normalise_space_dust_settings(settings)};

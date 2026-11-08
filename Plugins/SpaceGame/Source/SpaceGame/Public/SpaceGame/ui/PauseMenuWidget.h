@@ -15,13 +15,13 @@ class UBorder;
 class UInputAction;
 class UNativeWidgetHost;
 class UOverlay;
-class UTeamEntityTableWidget;
 class UTextBlock;
-class UTopKillersWidget;
 class UWidgetSwitcher;
 class SGraphPlot;
 
 namespace ioj {
+class UTeamEntityTableWidget;
+class UTopKillersWidget;
 class UMenuButtonWidget;
 
 struct FPauseMenuData {

@@ -7,6 +7,7 @@
 
 #include "CelestialBackdropProfile.generated.h"
 
+namespace ioj {
 UCLASS(BlueprintType)
 class SANDBOXCELESTIALS_API UCelestialBackdropProfile final : public UDataAsset {
     GENERATED_BODY()
@@ -23,3 +24,5 @@ class SANDBOXCELESTIALS_API UCelestialBackdropProfile final : public UDataAsset 
     void PostEditChangeProperty(FPropertyChangedEvent& property_changed_event) override;
 #endif
 };
+
+} // namespace ioj

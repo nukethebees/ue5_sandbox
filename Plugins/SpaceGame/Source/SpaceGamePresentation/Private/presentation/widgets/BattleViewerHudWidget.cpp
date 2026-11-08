@@ -5,6 +5,7 @@
 
 #include <Components/TextBlock.h>
 
+namespace ioj {
 void UBattleViewerHudWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
     if (IsValid(controls_label)) {
@@ -16,11 +17,11 @@ void UBattleViewerHudWidget::NativeOnInitialized() {
     }
 }
 
-void UBattleViewerHudWidget::apply_ui_style(ioj::FGameUiStyle const& style) {
+void UBattleViewerHudWidget::apply_ui_style(FGameUiStyle const& style) {
     Super::apply_ui_style(style);
     auto const& hud_style{style.hud()};
     if (IsValid(controls_label)) {
-        ioj::apply_text_style(*controls_label, hud_style.caption_text);
+        apply_text_style(*controls_label, hud_style.caption_text);
     }
     if (IsValid(camera_speed_widget)) {
         camera_speed_widget->set_text_style(hud_style.secondary_text);
@@ -32,3 +33,5 @@ void UBattleViewerHudWidget::set_movement_speed(float const speed) {
         camera_speed_widget->update(FMath::RoundToInt(speed));
     }
 }
+
+} // namespace ioj

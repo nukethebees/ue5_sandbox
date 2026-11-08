@@ -4,6 +4,7 @@
 
 #include <DrawDebugHelpers.h>
 
+namespace ioj {
 template <typename T>
 auto FDrawDebugConfig::get_optional(TOptional<T> value, T const& default_value) const -> T {
     return value ? value.GetValue() : default_value;
@@ -232,3 +233,5 @@ auto FDrawDebugConfig::check_world_valid() const -> bool {
 
     return false;
 }
+
+} // namespace ioj

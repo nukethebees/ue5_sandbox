@@ -9,7 +9,7 @@
 class ACameraActor;
 
 UCLASS(Blueprintable)
-class SBXSHADERSEXPERIMENTS_API AGpuStarfieldBenchmarkActor final : public AGpuStarfieldActor {
+class SBXSHADERSEXPERIMENTS_API AGpuStarfieldBenchmarkActor final : public ioj::AGpuStarfieldActor {
     GENERATED_BODY()
   public:
     AGpuStarfieldBenchmarkActor();

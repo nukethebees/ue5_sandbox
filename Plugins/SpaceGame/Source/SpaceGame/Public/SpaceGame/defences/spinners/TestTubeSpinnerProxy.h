@@ -13,6 +13,7 @@ class USphereComponent;
 class USceneComponent;
 class UArrowComponent;
 
+namespace ioj {
 UCLASS()
 class ATestTubeSpinnerProxy : public AActor {
   public:
@@ -20,7 +21,7 @@ class ATestTubeSpinnerProxy : public AActor {
 
     ATestTubeSpinnerProxy();
 
-    void set_level_config_asset(ioj::USpaceGameLevelConfig* const config) noexcept {
+    void set_level_config_asset(USpaceGameLevelConfig* const config) noexcept {
         level_config_asset = config;
     }
 
@@ -48,7 +49,7 @@ class ATestTubeSpinnerProxy : public AActor {
     void face_fire_points_away_from_mesh();
 
     UPROPERTY(VisibleInstanceOnly, Category = "Proxy")
-    TObjectPtr<ioj::USpaceGameLevelConfig> level_config_asset{nullptr};
+    TObjectPtr<USpaceGameLevelConfig> level_config_asset{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};
@@ -63,3 +64,5 @@ class ATestTubeSpinnerProxy : public AActor {
     UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0"))
     TOptional<int32> initial_fire_point;
 };
+
+} // namespace ioj

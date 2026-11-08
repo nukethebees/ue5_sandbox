@@ -7,11 +7,12 @@
 
 #include "SparkBurstStyle.generated.h"
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct SPACEGAMERENDERING_API FSparkBurstStyle {
     GENERATED_BODY()
 
-    auto to_native() const -> ioj::presentation::SparkBurstStyle {
+    auto to_native() const -> presentation::SparkBurstStyle {
         return {count,
                 {speed.min, speed.max},
                 {lifetime.min, lifetime.max},
@@ -44,3 +45,5 @@ struct SPACEGAMERENDERING_API FSparkBurstStyle {
     UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ClampMin = "0.0", Units = "s"))
     float streak_time{0.025f};
 };
+
+} // namespace ioj

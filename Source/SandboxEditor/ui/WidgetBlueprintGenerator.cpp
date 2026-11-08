@@ -22,7 +22,7 @@ namespace {
 FName const widget_blueprint_generation_context{TEXT("SandboxWidgetBlueprintGenerator")};
 
 bool is_project_widget_class(UClass const& widget_class) {
-    auto const native_widget_classes{UTestBatchGameUiData::get_native_widget_classes()};
+    auto const native_widget_classes{ioj::UTestBatchGameUiData::get_native_widget_classes()};
     auto const n_native_widget_classes{native_widget_classes.Num()};
     for (int32 i{0}; i < n_native_widget_classes; ++i) {
         if (native_widget_classes[i] == &widget_class) {
@@ -139,7 +139,7 @@ bool validate_entry(FWidgetBlueprintGenerationEntry const& entry,
         generator_root_property = property;
     }
 
-    UTestBatchGameUiData* ui_data{nullptr};
+    ioj::UTestBatchGameUiData* ui_data{nullptr};
     for (TFieldIterator<FProperty> property_iterator(widget_class,
                                                      EFieldIteratorFlags::IncludeSuper);
          property_iterator;
@@ -192,7 +192,7 @@ enum class EBindWidgetConstructionResult {
 EBindWidgetConstructionResult construct_bind_widget(UWidgetTree& widget_tree,
                                                     FProperty& property,
                                                     int32 const entry_index,
-                                                    UTestBatchGameUiData*& ui_data,
+                                                    ioj::UTestBatchGameUiData*& ui_data,
                                                     UWidget*& generated_widget) {
     generated_widget = nullptr;
     auto const property_name{property.GetFName()};
@@ -265,7 +265,7 @@ bool add_bind_widgets(UWidgetBlueprint& widget_blueprint,
                       int32 const entry_index,
                       FProperty const* const generator_root_property) {
     auto const widget_tree{widget_blueprint.WidgetTree};
-    UTestBatchGameUiData* ui_data{nullptr};
+    ioj::UTestBatchGameUiData* ui_data{nullptr};
     for (TFieldIterator<FProperty> property_iterator(&widget_class,
                                                      EFieldIteratorFlags::IncludeSuper);
          property_iterator;
@@ -352,7 +352,7 @@ UWidgetBlueprint* create_widget_blueprint(FWidgetBlueprintGenerationEntry const&
 
     UPanelWidget* root_widget{nullptr};
     if (generator_root_property != nullptr) {
-        UTestBatchGameUiData* ui_data{nullptr};
+        ioj::UTestBatchGameUiData* ui_data{nullptr};
         UWidget* generated_root_widget{nullptr};
         auto const construction_result{construct_bind_widget(
             *widget_tree, *generator_root_property, entry_index, ui_data, generated_root_widget)};

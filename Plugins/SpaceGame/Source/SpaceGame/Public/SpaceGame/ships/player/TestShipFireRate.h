@@ -8,6 +8,7 @@
 #include "CoreMinimal.h"
 
 #include "TestShipFireRate.generated.h"
+namespace ioj {
 // Logical bit width: 2.
 UENUM()
 enum class ETestShipFireRate : uint8 {
@@ -18,8 +19,7 @@ enum class ETestShipFireRate : uint8 {
 
 using ETestShipFireRateUnderlying = uint8;
 
-namespace ioj {
 template <>
-inline constexpr MinMax<::ETestShipFireRate> enum_range<::ETestShipFireRate>{
-    ::ETestShipFireRate::Single, ::ETestShipFireRate::FullAuto};
+inline constexpr MinMax<ETestShipFireRate> enum_range<ETestShipFireRate>{
+    ETestShipFireRate::Single, ETestShipFireRate::FullAuto};
 } // namespace ioj

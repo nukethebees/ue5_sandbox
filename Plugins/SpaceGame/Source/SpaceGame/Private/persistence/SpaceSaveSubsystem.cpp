@@ -28,7 +28,7 @@ void reset_test_profile_command(TArray<FString> const&, UWorld* const world) {
     }
 
     auto* const game_instance{world->GetGameInstance()};
-    auto* const subsystem{USpaceSaveSubsystem::get(game_instance)};
+    auto* const subsystem{ioj::USpaceSaveSubsystem::get(game_instance)};
     if (!IsValid(subsystem)) {
         UE_LOG(LogSandboxSubsystem,
                Warning,
@@ -51,12 +51,13 @@ FAutoConsoleCommandWithWorldAndArgs reset_test_profile_console_command{
 #endif
 }
 
+namespace ioj {
 auto USpaceSaveSubsystem::get(UGameInstance const* game_instance) -> USpaceSaveSubsystem* {
     return IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr;
 }
 void USpaceSaveSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
-    profile_manager_ = ioj::profiles::ProfileManager{make_storage()};
+    profile_manager_ = profiles::ProfileManager{make_storage()};
     if (!profile_manager_.initialise()) {
         UE_LOG(LogSandboxSubsystem, Error, TEXT("Failed to initialize native save profiles."));
     }
@@ -69,14 +70,14 @@ void USpaceSaveSubsystem::Deinitialize() {
 auto USpaceSaveSubsystem::get_active_profile_id() const -> std::string const& {
     return profile_manager_.active_profile_id();
 }
-auto USpaceSaveSubsystem::get_level_progress(ioj::FLevelId level_id) const
-    -> ioj::profiles::LevelProgressSummary {
-    return ioj::profiles::summarize_level_progress(
-        ioj::levels::LevelId{TCHAR_TO_UTF8(*level_id.value.ToString())},
+auto USpaceSaveSubsystem::get_level_progress(FLevelId level_id) const
+    -> profiles::LevelProgressSummary {
+    return profiles::summarize_level_progress(
+        levels::LevelId{TCHAR_TO_UTF8(*level_id.value.ToString())},
         profile_manager_.active_records());
 }
-auto USpaceSaveSubsystem::is_level_completed(ioj::FLevelId level_id) const -> bool {
-    return get_level_progress(level_id).state() == ioj::profiles::LevelProgressState::Completed;
+auto USpaceSaveSubsystem::is_level_completed(FLevelId level_id) const -> bool {
+    return get_level_progress(level_id).state() == profiles::LevelProgressState::Completed;
 }
 auto USpaceSaveSubsystem::has_active_profile() const -> bool {
     return profile_manager_.has_active_profile();
@@ -87,8 +88,7 @@ auto USpaceSaveSubsystem::unlock_all_missions() const -> bool {
 auto USpaceSaveSubsystem::start_levels_paused() const -> bool {
     return profile_manager_.start_levels_paused();
 }
-auto USpaceSaveSubsystem::create_profile(FString const& name)
-    -> ioj::profiles::CreateProfileResponse {
+auto USpaceSaveSubsystem::create_profile(FString const& name) -> profiles::CreateProfileResponse {
     return profile_manager_.create_profile(TCHAR_TO_UTF8(*name));
 }
 bool USpaceSaveSubsystem::activate_profile(std::string const& id) {
@@ -98,7 +98,7 @@ bool USpaceSaveSubsystem::reset_test_profile() {
 #if UE_BUILD_SHIPPING
     return false;
 #else
-    return profile_manager_.reset_test_profile(ioj::profiles::sample_profile_records());
+    return profile_manager_.reset_test_profile(profiles::sample_profile_records());
 #endif
 }
 bool USpaceSaveSubsystem::set_unlock_all_missions(bool enabled) {
@@ -116,23 +116,23 @@ void USpaceSaveSubsystem::log_save_data() const {
     UE_LOG(LogSandboxSubsystem,
            Display,
            TEXT("Native save profile %s: %llu profiles, %llu outcomes"),
-           *ioj::to_fstring(profile_manager_.active_profile_id()),
+           *to_fstring(profile_manager_.active_profile_id()),
            static_cast<unsigned long long>(profile_manager_.profiles().size()),
            static_cast<unsigned long long>(profile_manager_.active_records().size()));
 }
-auto USpaceSaveSubsystem::make_storage() -> ioj::profiles::ProfileStorage {
+auto USpaceSaveSubsystem::make_storage() -> profiles::ProfileStorage {
     auto const local_root{FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"))};
     if (GIsAutomationTesting) {
         auto const root{FPaths::Combine(FPaths::ProjectSavedDir(),
                                         TEXT("Automation/SaveProfiles"),
                                         FGuid::NewGuid().ToString(EGuidFormats::Digits))};
-        return ioj::profiles::make_file_profile_storage(std::filesystem::path{*root});
+        return profiles::make_file_profile_storage(std::filesystem::path{*root});
     }
     auto const application_root{FPlatformProcess::GetApplicationSettingsDir(
         {FPlatformProcess::ApplicationSettingsContext::Context::LocalUser, false})};
     auto const development_root{
         FPaths::Combine(application_root, TEXT("IsleOfJebbers/DevelopmentSaves"))};
-    ioj::profiles::StorageOptions options{
+    profiles::StorageOptions options{
 #if WITH_EDITOR
         .editor = true,
 #endif
@@ -144,25 +144,27 @@ auto USpaceSaveSubsystem::make_storage() -> ioj::profiles::ProfileStorage {
     if (FParse::Value(FCommandLine::Get(), TEXT("SpaceSaveExperiment="), experiment, false)) {
         options.experiment = TCHAR_TO_UTF8(*experiment);
     }
-    auto const selection{ioj::profiles::resolve_profile_storage(
+    auto const selection{profiles::resolve_profile_storage(
         options, std::filesystem::path{*development_root}, std::filesystem::path{*local_root})};
     if (!selection) {
         UE_LOG(LogSandboxSubsystem,
                Error,
                TEXT("Invalid native save storage selection: %s"),
-               *ioj::to_fstring(selection.error()));
+               *to_fstring(selection.error()));
         return {};
     }
     if (selection->clone_shared) {
         std::string error;
-        if (!ioj::profiles::clone_profile_files(
+        if (!profiles::clone_profile_files(
                 std::filesystem::path{*development_root} / "Shared", selection->root, error)) {
             UE_LOG(LogSandboxSubsystem,
                    Error,
                    TEXT("Failed to clone native profiles: %s"),
-                   *ioj::to_fstring(error));
+                   *to_fstring(error));
             return {};
         }
     }
-    return ioj::profiles::make_file_profile_storage(selection->root);
+    return profiles::make_file_profile_storage(selection->root);
 }
+
+} // namespace ioj

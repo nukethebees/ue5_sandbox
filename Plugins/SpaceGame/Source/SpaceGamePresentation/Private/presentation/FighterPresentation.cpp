@@ -14,10 +14,10 @@
 #include <Engine/World.h>
 #include <SandboxISMCComponent.h>
 
-FFighterPresentation::FFighterPresentation(USandboxISMCComponent& component)
+FFighterPresentation::FFighterPresentation(ioj::USandboxISMCComponent& component)
     : instances{&component} {}
 
-void FFighterPresentation::set_actor_config(FFighterConfig const* const new_config) noexcept {
+void FFighterPresentation::set_actor_config(ioj::FFighterConfig const* const new_config) noexcept {
     actor_config = new_config;
 }
 

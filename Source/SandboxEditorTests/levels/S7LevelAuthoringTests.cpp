@@ -86,22 +86,22 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         auto* const document{*created};
-        auto* const capital_actor{world->SpawnActor<ATestCapitalShipProxy>()};
-        auto* const turret_actor{world->SpawnActor<ATestStaticTurretsProxy>()};
-        auto* const spinner_actor{world->SpawnActor<ATestTubeSpinnerProxy>()};
+        auto* const capital_actor{world->SpawnActor<ioj::ATestCapitalShipProxy>()};
+        auto* const turret_actor{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
+        auto* const spinner_actor{world->SpawnActor<ioj::ATestTubeSpinnerProxy>()};
         auto* const player_actor{world->SpawnActor<ioj::ATestSpaceShip>()};
-        capital_actor->set_team(ETestTeam::Red);
+        capital_actor->set_team(ioj::ETestTeam::Red);
         capital_actor->spawn_time_seconds = 7.5;
         capital_actor->health = 456;
         capital_actor->initial_spawn_delay = 2.25f;
         capital_actor->spawn_cooldown = 3.5f;
-        turret_actor->set_team(ETestTeam::Blue);
+        turret_actor->set_team(ioj::ETestTeam::Blue);
         turret_actor->spawn_time_seconds = 1.5;
         turret_actor->health = 789;
         turret_actor->laser_damage = 321;
         spinner_actor->spawn_time_seconds = 2.5;
         spinner_actor->initial_fire_point = 1;
-        player_actor->set_team(ETestTeam::Green);
+        player_actor->set_team(ioj::ETestTeam::Green);
         player_actor->health_override = 123;
         document->entities = {
             {.id = TEXT("capital"), .actor = capital_actor},
@@ -120,18 +120,18 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             }
         }
         document->entities.Reset();
-        capital_actor->set_team(ETestTeam::White);
+        capital_actor->set_team(ioj::ETestTeam::White);
         capital_actor->spawn_time_seconds = 0.;
         capital_actor->health.Reset();
         capital_actor->initial_spawn_delay.Reset();
         capital_actor->spawn_cooldown.Reset();
-        turret_actor->set_team(ETestTeam::White);
+        turret_actor->set_team(ioj::ETestTeam::White);
         turret_actor->spawn_time_seconds = 0.;
         turret_actor->health.Reset();
         turret_actor->laser_damage.Reset();
         spinner_actor->spawn_time_seconds = 0.;
         spinner_actor->initial_fire_point.Reset();
-        player_actor->set_team(ETestTeam::White);
+        player_actor->set_team(ioj::ETestTeam::White);
         player_actor->health_override.Reset();
         {
             FMemoryReader memory{data, true};
@@ -145,21 +145,21 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         TestRunner->TestTrue(TEXT("Capital authoring data persists"),
-                             capital_actor->get_team() == ETestTeam::Red &&
+                             capital_actor->get_team() == ioj::ETestTeam::Red &&
                                  capital_actor->spawn_time_seconds == 7.5 &&
                                  capital_actor->health == 456 &&
                                  capital_actor->initial_spawn_delay == 2.25f &&
                                  capital_actor->spawn_cooldown == 3.5f);
         TestRunner->TestTrue(TEXT("Turret authoring and ownership persist"),
                              !document->entities[1].export_to_script &&
-                                 turret_actor->get_team() == ETestTeam::Blue &&
+                                 turret_actor->get_team() == ioj::ETestTeam::Blue &&
                                  turret_actor->spawn_time_seconds == 1.5 &&
                                  turret_actor->health == 789 && turret_actor->laser_damage == 321);
         TestRunner->TestTrue(TEXT("Spinner authoring data persists"),
                              spinner_actor->spawn_time_seconds == 2.5 &&
                                  spinner_actor->initial_fire_point == 1);
         TestRunner->TestTrue(TEXT("Player authoring data persists"),
-                             player_actor->get_team() == ETestTeam::Green &&
+                             player_actor->get_team() == ioj::ETestTeam::Green &&
                                  player_actor->health_override == 123);
         if (!assert_success(
                 *TestRunner,
@@ -280,9 +280,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 turret_binding->export_to_script && spinner_binding->export_to_script);
         TestRunner->TestFalse(TEXT("Human entity is not exported"),
                               human_binding->export_to_script);
-        auto* const capital{Cast<ATestCapitalShipProxy>(capital_binding->actor)};
-        auto* const turret{Cast<ATestStaticTurretsProxy>(turret_binding->actor)};
-        auto* const spinner{Cast<ATestTubeSpinnerProxy>(spinner_binding->actor)};
+        auto* const capital{Cast<ioj::ATestCapitalShipProxy>(capital_binding->actor)};
+        auto* const turret{Cast<ioj::ATestStaticTurretsProxy>(turret_binding->actor)};
+        auto* const spinner{Cast<ioj::ATestTubeSpinnerProxy>(spinner_binding->actor)};
         if (!TestRunner->TestNotNull(TEXT("Capital proxy"), capital) ||
             !TestRunner->TestNotNull(TEXT("Turret proxy"), turret) ||
             !TestRunner->TestNotNull(TEXT("Spinner proxy"), spinner) ||
@@ -536,7 +536,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         player->SetActorLabel(TEXT("pilot"));
-        player->set_team(ETestTeam::Blue);
+        player->set_team(ioj::ETestTeam::Blue);
         if (!assert_success(*TestRunner,
                             TEXT("Export adopts newly created proxy"),
                             ioj::editor::export_s7_editor_config(level, document))) {

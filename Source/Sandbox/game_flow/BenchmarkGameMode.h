@@ -9,9 +9,12 @@
 
 #include "BenchmarkGameMode.generated.h"
 
+namespace ioj {
 UCLASS()
 class SANDBOX_API ABenchmarkGameMode : public ASandboxGameMode {
     GENERATED_BODY()
   public:
     ABenchmarkGameMode();
 };
+
+} // namespace ioj

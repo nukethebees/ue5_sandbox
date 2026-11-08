@@ -14,11 +14,10 @@ class ACameraActor;
 class UEnhancedInputUserSettings;
 struct FLevelCompletion;
 struct FInputKeyEventArgs;
-class UTestBatchGameUiData;
-
 struct FPlayerControllerTestAccess;
 
 namespace ioj {
+class UTestBatchGameUiData;
 class ATestBatchOrchestrator;
 class ATestSpaceShip;
 

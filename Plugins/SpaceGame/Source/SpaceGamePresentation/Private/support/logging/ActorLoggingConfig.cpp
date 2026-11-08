@@ -2,6 +2,7 @@
 
 #include <utility>
 
+namespace ioj {
 FActorLoggingConfig::FActorLoggingConfig(EActorLogVerbosity verbosity, float cooldown)
     : verbosity{verbosity}
     , tick_cooldown{cooldown} {}
@@ -25,3 +26,5 @@ bool FActorLoggingConfig::can_log(EActorLogVerbosity msg_verbosity) const {
 bool FActorLoggingConfig::can_tick_log(EActorLogVerbosity msg_verbosity) const {
     return can_log(msg_verbosity) && tick_cooldown.is_finished();
 }
+
+} // namespace ioj

@@ -9,6 +9,7 @@
 
 class UMaterialInterface;
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct SANDBOXSHADERS_API FGpuStarfieldColours {
     GENERATED_BODY()
@@ -23,6 +24,8 @@ struct SANDBOXSHADERS_API FGpuStarfieldColours {
     FLinearColor nebular_knot{0.42f, 0.16f, 0.55f, 1.0f};
 };
 
+} // namespace ioj
+
 struct FGpuStarfieldGpuData {
     FVector3f direction{FVector3f::ZeroVector};
     float size{1.0f};
@@ -34,6 +37,7 @@ struct FGpuStarfieldGpuData {
 
 static_assert(sizeof(FGpuStarfieldGpuData) == 32);
 
+namespace ioj {
 UCLASS(ClassGroup = (Rendering))
 class SANDBOXSHADERS_API UGpuStarfieldComponent final : public UPrimitiveComponent {
     GENERATED_BODY()
@@ -41,8 +45,7 @@ class SANDBOXSHADERS_API UGpuStarfieldComponent final : public UPrimitiveCompone
     UGpuStarfieldComponent();
 
     // Settings must come from the validated native starfield resolver.
-    void apply_settings(ioj::starfield::Settings const& settings,
-                        FGpuStarfieldColours const& colours);
+    void apply_settings(starfield::Settings const& settings, FGpuStarfieldColours const& colours);
 
     FPrimitiveSceneProxy* CreateSceneProxy() override;
     FBoxSphereBounds CalcBounds(FTransform const& local_to_world) const override;
@@ -55,8 +58,10 @@ class SANDBOXSHADERS_API UGpuStarfieldComponent final : public UPrimitiveCompone
     UPROPERTY()
     TObjectPtr<UMaterialInterface> material_;
 
-    ioj::starfield::Settings settings_;
+    starfield::Settings settings_;
     FGpuStarfieldColours colours_;
     TArray<FGpuStarfieldGpuData> star_data_;
     bool has_generated_stars_{false};
 };
+
+} // namespace ioj

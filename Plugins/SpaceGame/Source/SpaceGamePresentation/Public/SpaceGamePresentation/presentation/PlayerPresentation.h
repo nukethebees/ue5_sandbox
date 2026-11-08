@@ -5,10 +5,11 @@
 #include <UObject/WeakObjectPtrTemplates.h>
 
 class USceneComponent;
-class USpaceDustComponent;
 class UStaticMeshComponent;
 class UNiagaraComponent;
 namespace ioj {
+class USpaceDustComponent;
+
 struct FPlayerPresentationResources {
     TWeakObjectPtr<USceneComponent> root;
     TWeakObjectPtr<UStaticMeshComponent> mesh;
