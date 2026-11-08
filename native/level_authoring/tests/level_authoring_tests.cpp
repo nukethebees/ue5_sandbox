@@ -490,26 +490,64 @@ TEST(NativeLevelAuthoringReader, FloatFieldsRejectNonfiniteAndUnrepresentableVal
 }
 
 TEST(NativeLevelAuthoringReader, RejectsInvalidLogicNumbersAndReferences) {
-    for (auto const body : {"(define delay (timer)) (initially (start-timer delay -1))",
-                            "(entity-reached-position 'player '(0 +inf.0 0) 1)",
-                            "(entity-reached-position 'player '(0 0 0) -1)",
-                            "(entity-destroyed 'missing)",
-                            "(event-fired 'never-published)"}) {
+    struct Case {
+        std::string_view logic;
+        std::string_view path;
+    };
+    Case const cases[]{
+        {"(logic (define delay (timer)) (initially (start-timer delay -1)))",
+         "level.logic.initial-effects[0].seconds"},
+        {"(logic (entity-reached-position 'player '(0 +inf.0 0) 1))",
+         "level.logic.expressions[0].position"},
+        {"(logic (entity-reached-position 'player '(0 0 0) -1))",
+         "level.logic.expressions[0].radius"},
+        {"(logic (all-of) (entity-destroyed 'missing))", "level.logic.expressions[1].entity"},
+        {"(logic (event-fired 'never-published))", "level.logic.expressions[0].signal"},
+        {"(logic (define t (timer)) (on :when (all-of) :do (stop)) "
+         "(on :when (all-of) :do (list (win 'blue) (start-timer t -1))))",
+         "level.logic.rules[1].effects[1].seconds"},
+        {"(logic (spawn-group 'reserves '(player missing)))",
+         "level.logic.spawn-groups[0].entities[1]"},
+        {"'(:logic ((:all-of) (:any-of 0 bad)) () 0 () () ())",
+         "level.logic.expressions[1].children[1]"},
+        {"'(:logic ((:all-of) (:any-of 0 99)) () 0 () () ())",
+         "level.logic.expressions[1].children[1]"},
+        {"'(:logic ((:all-of)) ((0 bad)) 0 () () ())", "level.logic.latches[0].value"},
+        {"'(:logic ((:all-of)) ((0 99)) 0 () () ())", "level.logic.latches[0].value"},
+        {"'(:logic ((:all-of)) () 0 () () ((0 ()) (bad ())))", "level.logic.rules[1].when"},
+        {"'(:logic ((:all-of)) () 0 () () ((0 ()) (99 ())))", "level.logic.rules[1].when"},
+        {"'(:logic ((:all-of)) () 0 () () ((0 ((:stop) (:start-timer 99 1)))))",
+         "level.logic.rules[0].effects[1].timer"},
+    };
+    for (auto const& test : cases) {
+        SCOPED_TRACE(test.logic);
         auto source{minimal_source()};
-        source.insert(source.size() - 1, std::format(" :logic (logic {})", body));
-        EXPECT_FALSE(DefinitionReader{}.read_level_source(source)) << body;
+        source.insert(source.size() - 1, std::format(" :logic {}", test.logic));
+        auto const result{DefinitionReader{}.read_level_source(source)};
+        ASSERT_FALSE(result);
+        EXPECT_TRUE(std::ranges::any_of(result.error(), [&](auto const& error) {
+            return error.node_path.starts_with(test.path);
+        })) << format_diagnostics(result.error());
     }
 }
 
 TEST(NativeLevelAuthoringReader, RejectsCombinationalCyclesAndAuthoredLatchFeedback) {
-    for (auto const graph : {"(:logic ((:all-of 1) (:not-of 0)) () 0 () () ())",
-                             "(:logic ((:latched-true 0)) ((0 0)) 0 () () ())",
-                             "(:logic ((:not-of)) () 0 () () ())"}) {
+    struct Case {
+        std::string_view graph;
+        std::string_view path;
+    };
+    Case const cases[]{
+        {"(:logic ((:all-of 1) (:not-of 0)) () 0 () () ())", "level.logic.expressions[1]"},
+        {"(:logic ((:latched-true 0)) ((0 0)) 0 () () ())", "level.logic.expressions[0]"},
+        {"(:logic ((:not-of)) () 0 () () ())", "level.logic.expressions[0].children"},
+    };
+    for (auto const& test : cases) {
         auto source{minimal_source()};
-        source.insert(source.size() - 1, std::format(" :logic '{}", graph));
+        source.insert(source.size() - 1, std::format(" :logic '{}", test.graph));
         auto const result{DefinitionReader{}.read_level_source(source)};
         ASSERT_FALSE(result);
         EXPECT_TRUE(has_code(result.error(), DiagnosticCode::InvalidLogicStructure));
+        EXPECT_EQ(result.error().front().node_path, test.path);
     }
 }
 

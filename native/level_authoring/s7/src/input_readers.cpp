@@ -4,6 +4,7 @@
 
 #include <array>
 #include <concepts>
+#include <format>
 #include <type_traits>
 namespace ioj::s7 {
 namespace logic_reading {
@@ -25,7 +26,8 @@ auto expression(Reader const& reader, NodeIndex node, std::string_view path)
     if (is_composite(*type)) {
         std::vector<ExprIndex> children;
         for (auto child : values->subspan(1)) {
-            auto index{s7::read<ExprIndex>(reader, child, path)};
+            auto index{s7::read<ExprIndex>(
+                reader, child, std::format("{}.children[{}]", path, children.size()))};
             if (!index) {
                 return std::unexpected{index.error()};
             }
@@ -52,39 +54,39 @@ auto expression(Reader const& reader, NodeIndex node, std::string_view path)
         return std::unexpected{args.error()};
     }
     AstDiagnostics errors;
-    auto field{[&]<typename T>(std::size_t index) {
+    auto field{[&]<typename T>(std::size_t index, std::string_view name) {
         T value{};
-        decode_field(
-            {reader, (*args)[index], std::format("{}[{}]", path, index), ReadMode::Create, errors},
-            value);
+        decode_field({reader, (*args)[index], field_path(path, name), ReadMode::Create, errors},
+                     value);
         return value;
     }};
     Expression result;
     switch (*type) {
         case ExprType::EntityDestroyed:
-            result = {EntityDestroyedExpr{field.template operator()<EntityId>(0)}};
+            result = {EntityDestroyedExpr{field.template operator()<EntityId>(0, "entity")}};
             break;
         case ExprType::EntityReachedPosition:
-            result = {
-                EntityReachedPositionExpr{field.template operator()<EntityId>(0),
-                                          field.template operator()<FiniteVector<double, 3>>(1),
-                                          field.template operator()<NonNegativeFinite<double>>(2)}};
+            result = {EntityReachedPositionExpr{
+                field.template operator()<EntityId>(0, "entity"),
+                field.template operator()<FiniteVector<double, 3>>(1, "position"),
+                field.template operator()<NonNegativeFinite<double>>(2, "radius")}};
             break;
         case ExprType::EntityKillsReached:
-            result = {EntityKillsReachedExpr{field.template operator()<std::vector<EntityId>>(0),
-                                             field.template operator()<std::uint32_t>(1)}};
+            result = {EntityKillsReachedExpr{
+                field.template operator()<std::vector<EntityId>>(0, "entities"),
+                field.template operator()<std::uint32_t>(1, "kills")}};
             break;
         case ExprType::TimerElapsed:
-            result = {TimerElapsedExpr{field.template operator()<std::uint32_t>(0)}};
+            result = {TimerElapsedExpr{field.template operator()<std::uint32_t>(0, "timer")}};
             break;
         case ExprType::LatchedTrue:
-            result = {LatchedTrueExpr{field.template operator()<std::uint32_t>(0)}};
+            result = {LatchedTrueExpr{field.template operator()<std::uint32_t>(0, "latch")}};
             break;
         case ExprType::LatchedFalse:
-            result = {LatchedFalseExpr{field.template operator()<std::uint32_t>(0)}};
+            result = {LatchedFalseExpr{field.template operator()<std::uint32_t>(0, "latch")}};
             break;
         case ExprType::EventFired: {
-            auto name{reader.symbol((*args)[0], path)};
+            auto name{reader.symbol((*args)[0], field_path(path, "signal"))};
             if (!name) {
                 return std::unexpected{name.error()};
             }
@@ -123,19 +125,18 @@ auto effect(Reader const& reader, NodeIndex node, std::string_view path) -> Read
         case EffectSyntax::Stop:
             return StopEffect{};
         case EffectSyntax::Win:
-            return s7::read<Team>(reader, (*args)[0], path).transform([](auto v) -> Effect {
-                return WinEffect{v};
-            });
+            return s7::read<Team>(reader, (*args)[0], field_path(path, "team"))
+                .transform([](auto v) -> Effect { return WinEffect{v}; });
         case EffectSyntax::Spawn:
-            return s7::read<std::uint32_t>(reader, (*args)[0], path)
+            return s7::read<std::uint32_t>(reader, (*args)[0], field_path(path, "group"))
                 .transform([](auto v) -> Effect { return SpawnEffect{v}; });
         case EffectSyntax::Publish:
-            return reader.symbol((*args)[0], path).transform([](auto v) -> Effect {
-                return PublishEffect{std::move(v)};
-            });
+            return reader.symbol((*args)[0], field_path(path, "signal"))
+                .transform([](auto v) -> Effect { return PublishEffect{std::move(v)}; });
         case EffectSyntax::StartTimer: {
-            auto timer{s7::read<std::uint32_t>(reader, (*args)[0], path)};
-            auto duration{s7::read<NonNegativeFinite<double>>(reader, (*args)[1], path)};
+            auto timer{s7::read<std::uint32_t>(reader, (*args)[0], field_path(path, "timer"))};
+            auto duration{s7::read<NonNegativeFinite<double>>(
+                reader, (*args)[1], field_path(path, "seconds"))};
             if (!timer) {
                 return std::unexpected{timer.error()};
             }
@@ -156,7 +157,7 @@ auto sequence(Reader const& reader, NodeIndex node, std::string_view path, Read 
     }
     std::vector<T> result;
     for (auto item : *values) {
-        auto value{read(reader, item, path)};
+        auto value{read(reader, item, std::format("{}[{}]", path, result.size()))};
         if (!value) {
             return std::unexpected{value.error()};
         }
@@ -170,8 +171,9 @@ auto group(Reader const& reader, NodeIndex node, std::string_view path)
     if (!fields) {
         return std::unexpected{fields.error()};
     }
-    auto name{reader.symbol((*fields)[0].index, path)};
-    auto entities{s7::read<std::vector<EntityId>>(reader, (*fields)[1].index, path)};
+    auto name{reader.symbol((*fields)[0].index, field_path(path, "name"))};
+    auto entities{
+        s7::read<std::vector<EntityId>>(reader, (*fields)[1].index, field_path(path, "entities"))};
     if (!name) {
         return std::unexpected{name.error()};
     }
@@ -185,8 +187,8 @@ auto rule(Reader const& reader, NodeIndex node, std::string_view path) -> ReadRe
     if (!fields) {
         return std::unexpected{fields.error()};
     }
-    auto when{s7::read<ExprIndex>(reader, (*fields)[0].index, path)};
-    auto effects{sequence<Effect>(reader, (*fields)[1].index, path, effect)};
+    auto when{s7::read<ExprIndex>(reader, (*fields)[0].index, field_path(path, "when"))};
+    auto effects{sequence<Effect>(reader, (*fields)[1].index, field_path(path, "effects"), effect)};
     if (!when) {
         return std::unexpected{when.error()};
     }
@@ -194,6 +196,23 @@ auto rule(Reader const& reader, NodeIndex node, std::string_view path) -> ReadRe
         return std::unexpected{effects.error()};
     }
     return EventRule{*when, std::move(*effects)};
+}
+
+auto latch(Reader const& reader, NodeIndex node, std::string_view path)
+    -> ReadResult<LatchDefinition> {
+    auto fields{s7::read<std::array<RawNode, 2>>(reader, node, path)};
+    if (!fields) {
+        return std::unexpected{fields.error()};
+    }
+    auto when{s7::read<ExprIndex>(reader, (*fields)[0].index, field_path(path, "when"))};
+    auto value{s7::read<ExprIndex>(reader, (*fields)[1].index, field_path(path, "value"))};
+    if (!when) {
+        return std::unexpected{when.error()};
+    }
+    if (!value) {
+        return std::unexpected{value.error()};
+    }
+    return LatchDefinition{*when, *value};
 }
 }
 auto TypeReader<levels::LogicDefinition>::read(Reader const& reader,
@@ -205,14 +224,17 @@ auto TypeReader<levels::LogicDefinition>::read(Reader const& reader,
     if (!args) {
         return std::unexpected{args.error()};
     }
-    auto expressions{
-        logic_reading::sequence<Expression>(reader, (*args)[0], path, logic_reading::expression)};
-    auto latches{s7::read<std::vector<std::array<ExprIndex, 2>>>(reader, (*args)[1], path)};
-    auto timers{s7::read<std::uint32_t>(reader, (*args)[2], path)};
+    auto expressions{logic_reading::sequence<Expression>(
+        reader, (*args)[0], field_path(path, "expressions"), logic_reading::expression)};
+    auto latches{logic_reading::sequence<LatchDefinition>(
+        reader, (*args)[1], field_path(path, "latches"), logic_reading::latch)};
+    auto timers{s7::read<std::uint32_t>(reader, (*args)[2], field_path(path, "timer-count"))};
     auto groups{logic_reading::sequence<SpawnGroupDefinition>(
-        reader, (*args)[3], path, logic_reading::group)};
-    auto initial{logic_reading::sequence<Effect>(reader, (*args)[4], path, logic_reading::effect)};
-    auto rules{logic_reading::sequence<EventRule>(reader, (*args)[5], path, logic_reading::rule)};
+        reader, (*args)[3], field_path(path, "spawn-groups"), logic_reading::group)};
+    auto initial{logic_reading::sequence<Effect>(
+        reader, (*args)[4], field_path(path, "initial-effects"), logic_reading::effect)};
+    auto rules{logic_reading::sequence<EventRule>(
+        reader, (*args)[5], field_path(path, "rules"), logic_reading::rule)};
     if (!expressions) {
         return std::unexpected{expressions.error()};
     }
@@ -231,14 +253,11 @@ auto TypeReader<levels::LogicDefinition>::read(Reader const& reader,
     if (!rules) {
         return std::unexpected{rules.error()};
     }
-    LogicDefinition result{.expressions = std::move(*expressions),
+    return LogicDefinition{.expressions = std::move(*expressions),
+                           .latches = std::move(*latches),
                            .timer_count = *timers,
                            .spawn_groups = std::move(*groups),
                            .initial_effects = std::move(*initial),
                            .rules = std::move(*rules)};
-    for (auto const& latch : *latches) {
-        result.latches.push_back({latch[0], latch[1]});
-    }
-    return result;
 }
 }

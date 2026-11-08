@@ -90,8 +90,12 @@ TEST(LevelDefinition, RejectsMissingIdentityInvalidArchetypesAndNonfinitePlaceme
 
 TEST(LevelDefinition, LogicEntityReferencesAreValidated) {
     auto definition{camera_level()};
-    definition.logic.expressions = {{EntityDestroyedExpr{EntityId{"missing"}}}};
-    expect_error(definition, DiagnosticCode::InvalidLogicStructure);
+    definition.logic.expressions = {{AllExpr{}}, {EntityDestroyedExpr{EntityId{"missing"}}}};
+    auto const result{LevelDefinition::make(std::move(definition))};
+    ASSERT_FALSE(result);
+    ASSERT_EQ(result.error().size(), 1);
+    EXPECT_EQ(result.error().front().code, DiagnosticCode::InvalidLogicStructure);
+    EXPECT_EQ(result.error().front().node_path, "level.logic.expressions[1].entity");
 }
 
 TEST(LevelDefinition, CameraAndPlayerAreMutuallyExclusive) {
