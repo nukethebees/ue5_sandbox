@@ -22,7 +22,7 @@ struct FLevelCompletion {
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnLevelCompleted, FLevelCompletion const&);
 
 namespace ioj {
-SPACEGAME_API void publish_level_completion(sim::LevelSim& simulation,
-                                            UGameInstance* game_instance,
-                                            FOnLevelCompleted& completed);
+SPACEGAME_API auto record_level_completion(sim::LevelSim const& simulation,
+                                           UGameInstance* game_instance)
+    -> TOptional<FLevelCompletion>;
 }

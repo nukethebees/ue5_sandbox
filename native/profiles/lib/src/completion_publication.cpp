@@ -4,8 +4,9 @@
 #include <ioj/sim/levels/level_sim.h>
 
 namespace ioj::profiles {
-auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profiles, Timestamp date)
-    -> std::optional<CompletionPublication> {
+auto publish_player_completion(sim::LevelSim const& simulation,
+                               ProfileManager* profiles,
+                               Timestamp date) -> std::optional<CompletionPublication> {
     auto const result{simulation.result()};
     auto const* player{simulation.player_ship_simulation()};
     if (!result || !player) {

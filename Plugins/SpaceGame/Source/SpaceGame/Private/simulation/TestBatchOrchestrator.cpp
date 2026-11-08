@@ -78,21 +78,19 @@ void ATestBatchOrchestrator::release_level(sim::telemetry::RunEndReason const re
     SetActorTickEnabled(false);
     if (level_simulation_.IsSet()) {
         level_simulation_->stop_run(reason);
+        report_run_completion(false);
     }
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
     }
     presentation_host_.reset();
     if (level_simulation_.IsSet()) {
-        if (!GIsAutomationTesting) {
-            static_cast<void>(persist_level_telemetry_run(
-                *level_simulation_, launch_options_, is_presentation_enabled()));
-        }
         level_simulation_.Reset();
         auto* const game_subsystem{UGameSubsystem::get(GetGameInstance())};
         check(game_subsystem);
         game_subsystem->reset_level_memory();
     }
+    completion_reported_ = false;
 }
 void ATestBatchOrchestrator::start_simulation() {
     if (get_state() != sim::LevelState::Paused) {
@@ -305,9 +303,7 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
             }
         }
     }
-    if (level_simulation_->result()) {
-        report_run_completion();
-    }
+    report_run_completion();
     SetActorTickEnabled(true);
     return {};
 }
@@ -409,6 +405,10 @@ void ATestBatchOrchestrator::Tick(float dt) {
 }
 void ATestBatchOrchestrator::tick(time_type const dt) {
     auto const state{get_state()};
+    if (state == sim::LevelState::Stopped) {
+        report_run_completion();
+        return;
+    }
     if (state != sim::LevelState::Running && state != sim::LevelState::Paused) {
         return;
     }
@@ -428,20 +428,41 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         }
     }
 
-    if (get_state() == sim::LevelState::Stopped) {
-        report_run_completion();
-    } else if (state == sim::LevelState::Running && get_state() == sim::LevelState::Paused) {
+    report_run_completion();
+    if (state == sim::LevelState::Running && get_state() == sim::LevelState::Paused) {
         on_simulation_paused.Broadcast();
     }
 }
-void ATestBatchOrchestrator::report_run_completion() {
-    publish_level_completion(*level_simulation_, GetGameInstance(), on_level_completed);
-    if (GIsAutomationTesting) {
+void ATestBatchOrchestrator::report_run_completion(bool const show_results) {
+    if (completion_reported_) {
         return;
     }
-    auto report{persist_level_telemetry_run(
-        *level_simulation_, launch_options_, is_presentation_enabled())};
-    if (launch_options_.results_navigation != levels::ResultsNavigation::Telemetry) {
+    auto const result{level_simulation_->result()};
+    if (!result) {
+        return;
+    }
+    completion_reported_ = true;
+
+    TOptional<FLevelCompletion> completion;
+    if (show_results || (result->reason != sim::telemetry::RunEndReason::WorldEnd &&
+                         result->reason != sim::telemetry::RunEndReason::OrchestratorReset)) {
+        completion = record_level_completion(*level_simulation_, GetGameInstance());
+    }
+    std::expected<std::string, std::string> report;
+    if (!GIsAutomationTesting) {
+        report = persist_level_telemetry_run(
+            *level_simulation_, launch_options_, is_presentation_enabled());
+    }
+    if (!show_results) {
+        return;
+    }
+
+    auto const navigate{!GIsAutomationTesting &&
+                        launch_options_.results_navigation == levels::ResultsNavigation::Telemetry};
+    if (completion) {
+        on_level_completed.Broadcast(*completion);
+    }
+    if (!navigate) {
         return;
     }
     auto* const subsystem{UGameSubsystem::get(GetGameInstance())};

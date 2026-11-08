@@ -52,8 +52,10 @@ presentation, player actors and launch behavior; `get_state()` also covers the a
 
 A running Unreal frame advances the native fixed ticks before presenting the completed frame.
 Presentation observes the final tick of a catch-up frame. Player death and level-completion
-notifications follow presentation. The orchestrator persists telemetry and navigates to results
-when the level enters the stopped state.
+notifications follow presentation. After loading and on each ready-level frame, the orchestrator
+checks `LevelSim::result()`. One per-run flag prevents repeated profile writes, reports and UI
+notifications, including reentrant callbacks. Completion does not depend on advancing the clock.
+Telemetry itself remains repeatably queryable and knows nothing about these consumers.
 
 The actor keeps ticking while the level is paused. Every ready-level frame calls `advance()` to
 consume between-tick requests, while paused calls leave simulation time and presentation unchanged.
@@ -63,7 +65,9 @@ that state during initialization without queueing a pause request.
 
 During reset or world teardown, stop the run and release HUD/player bindings before destroying
 the native level. Reset the presentation host while its components and simulation are still
-alive. Persist the report before clearing launch options, without navigating during teardown. World reset removes gameplay
+alive. The same completion handler saves any pending terminal result and report before releasing
+the simulation, without callbacks or navigation during teardown. Stops created solely by world
+teardown or reset save telemetry but do not create profile scores. World reset removes gameplay
 actors. The next explicit authored load constructs its player, camera and simulation through the
 usual loader. Reset subscribers observe the cleared world.
 Automation skips persistence and navigation. Telemetry remains available for repeatable inspection.

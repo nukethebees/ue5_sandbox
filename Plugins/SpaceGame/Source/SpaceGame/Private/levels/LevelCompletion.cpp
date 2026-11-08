@@ -8,14 +8,13 @@
 #include <Engine/GameInstance.h>
 
 namespace ioj {
-void publish_level_completion(sim::LevelSim& simulation,
-                              UGameInstance* game_instance,
-                              FOnLevelCompleted& completed) {
+auto record_level_completion(sim::LevelSim const& simulation, UGameInstance* game_instance)
+    -> TOptional<FLevelCompletion> {
     auto* const saves{USpaceSaveSubsystem::get(game_instance)};
     auto const publication{profiles::publish_player_completion(
         simulation, IsValid(saves) ? &saves->profiles() : nullptr, profiles::current_timestamp())};
     if (!publication) {
-        return;
+        return {};
     }
     if (!publication->save_result.persisted) {
         UE_LOG(LogSandbox,
@@ -28,12 +27,12 @@ void publish_level_completion(sim::LevelSim& simulation,
         par_time_seconds = *publication->par_time_seconds;
     }
     auto const& record{publication->record};
-    completed.Broadcast(
-        {.level_display_name = UTF8_TO_TCHAR(publication->level_title.c_str()),
-         .state = to_unreal(record.outcome),
-         .end_reason = UTF8_TO_TCHAR(to_serialized_string(record.end_reason).data()),
-         .persisted = publication->save_result.persisted,
-         .par_time_seconds = par_time_seconds,
-         .new_best_time = publication->save_result.new_best_time});
+    return FLevelCompletion{.level_display_name = UTF8_TO_TCHAR(publication->level_title.c_str()),
+                            .state = to_unreal(record.outcome),
+                            .end_reason =
+                                UTF8_TO_TCHAR(to_serialized_string(record.end_reason).data()),
+                            .persisted = publication->save_result.persisted,
+                            .par_time_seconds = par_time_seconds,
+                            .new_best_time = publication->save_result.new_best_time};
 }
 }

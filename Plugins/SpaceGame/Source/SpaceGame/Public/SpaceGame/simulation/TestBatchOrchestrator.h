@@ -137,7 +137,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto should_initialise_in_begin_play() const noexcept -> bool;
     void handle_level_start_failure(FString message);
     void release_level(sim::telemetry::RunEndReason reason);
-    void report_run_completion();
+    void report_run_completion(bool show_results = true);
 
     /* **************************************** */
     // Presentation
@@ -187,6 +187,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     FLevelPresentationHost presentation_host_;
     TOptional<sim::LevelSim> level_simulation_;
+    bool completion_reported_{};
     levels::LaunchOptions launch_options_{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox")
