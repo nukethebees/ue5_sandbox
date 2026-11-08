@@ -272,9 +272,8 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
     auto const player_result{orchestrator.load_level(*player_level)};
     checks.is_true(static_cast<bool>(player_result), TEXT("Headless loading accepts a player"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-    orchestrator.start_simulation();
     checks.is_true(orchestrator.get_level_simulation()->player_ship_simulation() != nullptr,
-                   TEXT("Headless startup initializes the native player from class geometry"));
+                   TEXT("Headless loading initializes the native player from class geometry"));
     checks.are_equal(0,
                      count_actors<ATestSpaceShip>(context_.world),
                      TEXT("Native player does not require a pawn"));
@@ -295,14 +294,14 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
     checks.is_true(static_cast<bool>(result),
                    TEXT("Playerless level loads without presentation classes"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-    orchestrator.start_simulation();
     checks.is_true(orchestrator.get_level_simulation() && !orchestrator.is_presentation_enabled(),
-                   TEXT("Headless startup has no presentation state"));
+                   TEXT("Headless loading constructs the simulation without presentation"));
     checks.is_true(orchestrator.get_level_simulation()->player_ship_simulation() == nullptr,
                    TEXT("Playerless battle does not create a dummy player simulation"));
     checks.are_equal(0,
                      count_actors<ACameraActor>(context_.world),
                      TEXT("Headless observer does not require a camera"));
+    orchestrator.start_simulation();
     auto* const controller{
         Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
     if (checks.is_valid(controller, TEXT("Simulation-only UI has a player controller"))) {
@@ -459,10 +458,10 @@ void FLevelLoaderScenario::load_fixture() {
             checks.is_true(player_controller->GetPawn() == player,
                            TEXT("Player controller possesses the authored player ship"));
             checks.is_true(player_controller->get_active_control_context() ==
-                               ::ioj::levels::ControlContext::None,
-                           TEXT("Loader defers player input until simulation initialization"));
-            checks.is_true(player_controller->get_active_hud() == nullptr,
-                           TEXT("Loader defers the player HUD until simulation initialization"));
+                               ::ioj::levels::ControlContext::Player,
+                           TEXT("Loading initializes the simulation and activates player input"));
+            checks.is_true(Cast<UShipHudWidget>(player_controller->get_active_hud()) != nullptr,
+                           TEXT("Loading creates the player HUD"));
         }
         checks.are_equal(
             ETestTeam::Blue, player->get_team(), TEXT("Loader resolves the player team"));

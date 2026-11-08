@@ -3,7 +3,6 @@
 #include <ioj/sim/levels/level_sim.h>
 #include <SpaceGame/levels/LevelCompletion.h>
 #include <SpaceGame/levels/LevelLoader.h>
-#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationHost.h>
@@ -65,10 +64,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void set_level_script(FString path);
     auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
     void set_presentation_enabled(bool enabled);
-    auto get_level_definition() const -> levels::LevelDefinition const& {
-        check(prepared_level_.IsSet());
-        return *prepared_level_;
-    }
     auto is_presentation_enabled() const noexcept -> bool {
         return launch_options_.presentation_mode == levels::PresentationMode::Visual;
     }
@@ -107,10 +102,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void clear_player_ship();
 
     /* **************************************** */
-    // Testing and level preparation
+    // Level loading
     /* **************************************** */
 
-    auto load_level(levels::LevelDefinition definition,
+    auto load_level(levels::LevelDefinition const& definition,
                     levels::ControlContext playerless_control_context =
                         levels::ControlContext::Observer) -> std::expected<void, FLevelLoadErrors>;
 
@@ -138,8 +133,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Level initialization
     /* **************************************** */
-    auto prepare_level(levels::LevelDefinition definition) -> bool;
-    auto begin_play() -> bool;
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
     void handle_level_start_failure(FString message);
@@ -182,7 +175,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FSimpleMulticastDelegate on_simulation_paused;
     FOnLevelCompleted on_level_completed;
   private:
-    settings::TickSettings simulation_tick_settings{};
     UPROPERTY(EditAnywhere,
               Category = "Sandbox",
               meta = (FilePathFilter = "scm", RelativeToGameDir))
@@ -195,7 +187,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     FLevelPresentationHost presentation_host_;
     TOptional<sim::LevelSim> level_simulation_;
-    TOptional<levels::LevelDefinition> prepared_level_;
     levels::LaunchOptions launch_options_{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox")

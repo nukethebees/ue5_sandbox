@@ -30,6 +30,13 @@ PIE and packaged launches pass the definition through the same runtime builder; 
 use the same definition and native compiler.
 Editor proxies are authoring objects and never initialize simulation entities.
 
+`ATestBatchOrchestrator::load_level` resolves Unreal resources, creates player/camera actors,
+compiles the definition, constructs `LevelSim` and binds presentation in one call. The definition,
+tick settings and native initialization data are local to loading; the actor retains no prepared
+definition. Loading leaves the simulation paused unless an initial terminal event stops it.
+`start_simulation` only starts an already constructed level. Automatic launches call it after
+loading when the launch options request a running simulation.
+
 Harvest static geometry after the editor proxies have been removed from the PIE world, and put
 the bounds in `LevelSimInitData::collision.static_bounds` before construction. Native construction
 dispatches initial events, publishes entity lookup rows and the spatial index, initializes telemetry
@@ -57,8 +64,8 @@ that state during initialization without queueing a pause request.
 During reset or world teardown, stop the run and release HUD/player bindings before destroying
 the native level. Reset the presentation host while its components and simulation are still
 alive. Persist the report before clearing launch options, without navigating during teardown. World reset removes gameplay
-actors and clears prepared data. The next explicit authored load constructs its player and camera
-through the usual loader. Reset subscribers observe the cleared world.
+actors. The next explicit authored load constructs its player, camera and simulation through the
+usual loader. Reset subscribers observe the cleared world.
 Automation skips persistence and navigation. Telemetry remains available for repeatable inspection.
 
 ## Collision and spawning

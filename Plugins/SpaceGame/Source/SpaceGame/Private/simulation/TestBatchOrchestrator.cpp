@@ -3,6 +3,7 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/launch_options.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
+#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -12,9 +13,7 @@
 #include <SpaceGameRendering/SparkRendererComponent.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
-#include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/strings.h>
-#include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CoreGlobals.h>
@@ -94,13 +93,8 @@ void ATestBatchOrchestrator::release_level(sim::telemetry::RunEndReason const re
         check(game_subsystem);
         game_subsystem->reset_level_memory();
     }
-
-    prepared_level_.Reset();
 }
 void ATestBatchOrchestrator::start_simulation() {
-    if (!level_simulation_.IsSet() && !begin_play()) {
-        return;
-    }
     if (get_state() != sim::LevelState::Paused) {
         UE_LOG(LogSandbox, Error, TEXT("Cannot start a simulation that is not paused"));
         return;
@@ -121,10 +115,6 @@ void ATestBatchOrchestrator::reset_for_new_level() {
         UE_LOG(LogSandbox, Fatal, TEXT("Cannot reset level: world is invalid"));
         return;
     }
-    if (level_simulation_.IsSet()) {
-        simulation_tick_settings.time_scale = level_simulation_->clock().time_scale();
-    }
-
     release_level(sim::telemetry::RunEndReason::OrchestratorReset);
     launch_options_ = {.presentation_mode = launch_options_.presentation_mode};
     clear_player_ship();
@@ -155,7 +145,6 @@ auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> 
 #endif
 
     level_config = &config;
-    prepared_level_.Reset();
     refresh_collision_grid_visualization();
     if (IsValid(player_ship)) {
         configure_player_actor(*player_ship, config);
@@ -200,31 +189,7 @@ void ATestBatchOrchestrator::clear_player_ship() {
 /* **************************************** */
 // Level preparation and startup
 /* **************************************** */
-auto ATestBatchOrchestrator::prepare_level(levels::LevelDefinition definition) -> bool {
-    check(get_state() == sim::LevelState::Uninitialised);
-    auto* const world{GetWorld()};
-    fatal_if_uobject_ptrs_invalid(
-        {SANDBOX_NAMED_UOBJECT_PTR(world), SANDBOX_NAMED_UOBJECT_PTR(level_config)});
-    auto loaded{prepare_level_resources(definition.settings(), *level_config, this)};
-    if (!loaded) {
-        handle_level_start_failure(loaded.error());
-        return false;
-    }
-    if (!set_level_config(**loaded)) {
-        return false;
-    }
-
-    simulation_tick_settings = definition.settings().tick;
-    if (start_mode == EOrchestratorStartMode::AuthoredLevel) {
-        simulation_tick_settings.time_scale =
-            PositiveFinite<time_type>::make(launch_options_.requested_time_scale);
-    }
-    presentation_host_.get_hud_manager().configure(definition.settings().hud);
-    prepared_level_.Emplace(std::move(definition));
-
-    return true;
-}
-auto ATestBatchOrchestrator::load_level(levels::LevelDefinition definition,
+auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definition,
                                         levels::ControlContext const playerless_control_context)
     -> std::expected<void, FLevelLoadErrors> {
     auto const fail{[](ELevelLoadErrorCode const code,
@@ -241,10 +206,26 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition definition,
     if (!IsValid(world)) {
         return fail(ELevelLoadErrorCode::InvalidWorld, TEXT("Orchestrator world is invalid"));
     }
-    if (!prepare_level(std::move(definition))) {
+    if (!IsValid(level_config)) {
+        return fail(ELevelLoadErrorCode::InvalidLevelConfig,
+                    TEXT("Level configuration is invalid"));
+    }
+
+    auto resolved{prepare_level_resources(definition.settings(), *level_config, this)};
+    if (!resolved) {
+        return fail(ELevelLoadErrorCode::InvalidLevelConfig, std::move(resolved.error()));
+    }
+    if (!set_level_config(**resolved)) {
         return fail(ELevelLoadErrorCode::InvalidLevelConfig,
                     TEXT("Failed to resolve game settings"));
     }
+
+    auto clock_settings{definition.settings().tick};
+    if (start_mode == EOrchestratorStartMode::AuthoredLevel) {
+        clock_settings.time_scale =
+            PositiveFinite<time_type>::make(launch_options_.requested_time_scale);
+    }
+    presentation_host_.get_hud_manager().configure(definition.settings().hud);
 
     std::optional<FLevelVisualLoad> visual;
     if (is_presentation_enabled()) {
@@ -261,62 +242,41 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition definition,
         visual.emplace(*controller, playerless_control_context);
     }
 
-    return FLevelLoader::load({.world = *world,
-                               .config = *level_config,
-                               .definition = get_level_definition(),
-                               .player = player_ship,
-                               .visual = visual});
-}
-auto ATestBatchOrchestrator::begin_play() -> bool {
-    if (level_simulation_.IsSet()) {
-        handle_level_start_failure(TEXT("Level simulation is already initialized"));
-        return false;
-    }
-    auto* const world{GetWorld()};
-    if (!IsValid(world)) {
-        handle_level_start_failure(TEXT("Cannot start level: world is invalid"));
-        return false;
-    }
-    if (!IsValid(level_config)) {
-        handle_level_start_failure(TEXT("Cannot start level: level configuration is invalid"));
-        return false;
-    }
-    if (!prepared_level_.IsSet()) {
-        handle_level_start_failure(
-            TEXT("Load a Scheme level definition before starting the simulation."));
-        return false;
+    auto loaded{FLevelLoader::load({.world = *world,
+                                    .config = *level_config,
+                                    .definition = definition,
+                                    .player = player_ship,
+                                    .visual = visual})};
+    if (!loaded) {
+        return loaded;
     }
 
     auto const& options{launch_options_};
     auto build{prepare_level_simulation({
         .config = *level_config,
-        .clock_settings = simulation_tick_settings,
+        .clock_settings = clock_settings,
         .launch_options = options,
-        .definition = *prepared_level_,
+        .definition = definition,
         .player = player_ship.Get(),
     })};
     if (!build) {
-        handle_level_start_failure(
-            FString::Printf(TEXT("Cannot start level:\n%s"), *build.error().format()));
-        return false;
+        return fail(ELevelLoadErrorCode::InvalidDefinition, build.error().format());
     }
 
-    auto configured{configure_level_run(*build, *world, get_level_definition(), options)};
+    auto configured{configure_level_run(*build, *world, definition, options)};
     if (!configured) {
-        handle_level_start_failure(configured.error().format());
-        return false;
+        return fail(ELevelLoadErrorCode::InvalidDefinition, configured.error().format());
     }
 
     auto const resources{get_presentation_resources()};
     if (is_presentation_enabled() && !resources.is_valid()) {
-        handle_level_start_failure(
-            TEXT("Cannot start level: Level presentation resources are incomplete"));
-        return false;
+        return fail(ELevelLoadErrorCode::MissingInfrastructure,
+                    TEXT("Level presentation resources are incomplete"));
     }
     auto* const game_subsystem{UGameSubsystem::get(GetGameInstance())};
     if (!IsValid(game_subsystem)) {
-        handle_level_start_failure(TEXT("Cannot create level simulation without game memory"));
-        return false;
+        return fail(ELevelLoadErrorCode::MissingInfrastructure,
+                    TEXT("Cannot create level simulation without game memory"));
     }
 
     auto const static_bounds{FLevelCollisionHost::extract_static_geometry(
@@ -345,19 +305,11 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
             }
         }
     }
-    bool const automatic{
-        start_mode == EOrchestratorStartMode::Automatic ||
-        start_mode == EOrchestratorStartMode::AuthoredLevel ||
-        (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting)};
     if (level_simulation_->result()) {
         report_run_completion();
     }
-    if (automatic && launch_options_.launch_mode == levels::LaunchMode::Running &&
-        level_simulation_->state() == sim::LevelState::Paused) {
-        level_simulation_->start();
-    }
     SetActorTickEnabled(true);
-    return true;
+    return {};
 }
 void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
     SetActorTickEnabled(false);
@@ -388,9 +340,12 @@ void ATestBatchOrchestrator::load_authored_level() {
     }
     launch_options_ = pending->options;
 
-    auto const loaded{load_level(std::move(pending->definition), launch_options_.control_context)};
+    auto const loaded{load_level(pending->definition, launch_options_.control_context)};
     if (!loaded) {
         handle_level_start_failure(loaded.error().format(to_fstring(pending->source_path)));
+        return;
+    }
+    if (get_state() == sim::LevelState::Stopped) {
         return;
     }
     if (!is_presentation_enabled()) {
@@ -401,7 +356,9 @@ void ATestBatchOrchestrator::load_authored_level() {
             return;
         }
     }
-    begin_play();
+    if (launch_options_.launch_mode == levels::LaunchMode::Running) {
+        start_simulation();
+    }
 }
 auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {
     return start_mode == EOrchestratorStartMode::Automatic ||

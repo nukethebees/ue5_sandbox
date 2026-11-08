@@ -164,9 +164,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                           .archetype = ioj::levels::EntityArchetype::PlayerFighter,
                           .team = ioj::Team::Blue}},
         })};
-        if (!checks.is_true(
-                static_cast<bool>(orchestrator->load_level(std::move(definition).value())),
-                TEXT("Gameplay level loads directly"))) {
+        if (!checks.is_true(static_cast<bool>(orchestrator->load_level(definition.value())),
+                            TEXT("Gameplay level loads directly"))) {
             return false;
         }
         auto* const controller{Cast<ioj::ASpaceGamePlayerController>(

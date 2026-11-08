@@ -37,10 +37,10 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
             return;
         }
 
-        TestRunner->TestTrue(TEXT("Paused test start mode defers orchestrator initialisation"),
-                             orchestrator->get_state() == sim::LevelState::Uninitialised);
-        TestRunner->TestFalse(TEXT("Uninitialised orchestrator does not tick"),
-                              orchestrator->IsActorTickEnabled());
+        TestRunner->TestTrue(TEXT("Loading constructs a paused simulation"),
+                             orchestrator->get_state() == sim::LevelState::Paused);
+        TestRunner->TestTrue(TEXT("Loaded orchestrator ticks to process control requests"),
+                             orchestrator->IsActorTickEnabled());
 
         auto const resources{orchestrator->get_presentation_resources()};
         TestRunner->TestTrue(TEXT("Batch components are available"), resources.is_valid());
@@ -52,8 +52,17 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
             TestRunner->TestTrue(TEXT("Orchestrator owns each batch component"),
                                  component->GetOwner() == orchestrator);
         }
-        TestRunner->TestNull(TEXT("Simulation construction is deferred"),
-                             orchestrator->get_level_simulation());
+        if (!TestRunner->TestNotNull(TEXT("Loading constructs the simulation"),
+                                     orchestrator->get_level_simulation())) {
+            return;
+        }
+        TestRunner->TestNotNull(TEXT("Loading initializes presentation"),
+                                orchestrator->get_level_presentation());
+        orchestrator->tick(1.0);
+        TestRunner->TestEqual(
+            TEXT("Loaded simulation stays at tick zero until started"),
+            orchestrator->get_level_simulation()->clock().get_completed_ticks().value(),
+            uint64{0});
         initialise_test_driver();
 
         orchestrator->start_simulation();
