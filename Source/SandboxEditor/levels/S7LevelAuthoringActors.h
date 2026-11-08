@@ -6,7 +6,10 @@
 #include <CoreMinimal.h>
 
 class AActor;
+
+namespace ioj {
 class USpaceGameLevelConfig;
+}
 
 namespace ioj::editor {
 struct FS7LevelResolvedActor {

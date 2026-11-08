@@ -5,13 +5,15 @@
 
 #include <CoreMinimal.h>
 
-class ATestSpaceShip;
-class ASpaceGamePlayerController;
 class UEnhancedInputComponent;
 class UInputMappingContext;
 class IEnhancedInputSubsystemInterface;
 struct FInputActionValue;
 struct FShipControlContextTestAccess;
+
+namespace ioj {
+class ATestSpaceShip;
+class ASpaceGamePlayerController;
 
 struct SPACEGAME_API FShipControlContext {
     FShipControlContext() = default;
@@ -39,9 +41,9 @@ struct SPACEGAME_API FShipControlContext {
     void bind_actions();
     void remove_action_bindings();
     void neutralise_ship_input();
-    void select_flight_model_slot(::ioj::sim::player::FlightModelSlot slot);
+    void select_flight_model_slot(sim::player::FlightModelSlot slot);
     void verify_mode_invariant() const;
-    auto context_for_slot(::ioj::sim::player::FlightModelSlot slot) const -> UInputMappingContext*;
+    auto context_for_slot(sim::player::FlightModelSlot slot) const -> UInputMappingContext*;
     auto get_ship() const -> ATestSpaceShip*;
 
     void set_up_input(FInputActionValue const& value);
@@ -59,5 +61,7 @@ struct SPACEGAME_API FShipControlContext {
     bool initialised_{false};
     bool bound_{false};
 
-    friend struct FShipControlContextTestAccess;
+    friend struct ::FShipControlContextTestAccess;
 };
+
+} // namespace ioj

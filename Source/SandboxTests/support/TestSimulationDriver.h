@@ -9,10 +9,6 @@
 class UWorld;
 class AActor;
 
-class ATestBatchOrchestrator;
-
-class ATestSpaceShip;
-
 namespace ioj::sim {
 class EntityLedger;
 }
@@ -26,6 +22,9 @@ struct Sim;
 }
 
 namespace ioj {
+class ATestBatchOrchestrator;
+class ATestSpaceShip;
+
 struct TestSimulationDriver {
     using time_type = double;
 

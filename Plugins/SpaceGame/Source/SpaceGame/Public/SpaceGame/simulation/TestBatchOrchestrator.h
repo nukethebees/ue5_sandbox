@@ -13,11 +13,15 @@
 
 #include "TestBatchOrchestrator.generated.h"
 
-class ATestSpaceShip;
 class UCollisionGridVisualizationComponent;
 class UInstancedStaticMeshComponent;
 class USandboxISMCComponent;
 class USparkRendererComponent;
+
+struct FTestBatchOrchestratorTestAccess;
+
+namespace ioj {
+class ATestSpaceShip;
 
 class ATestBatchOrchestrator;
 
@@ -34,9 +38,9 @@ enum class EOrchestratorStartMode : uint8 {
 UCLASS()
 class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     GENERATED_BODY()
-    friend struct FTestBatchOrchestratorTestAccess;
+    friend struct ::FTestBatchOrchestratorTestAccess;
   public:
-    using tick_type = ioj::sim::SimTick::value_type;
+    using tick_type = sim::SimTick::value_type;
     using time_type = double;
 
     /* **************************************** */
@@ -63,10 +67,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void set_level_script(FString path);
     auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
     void set_presentation_enabled(bool enabled);
-    void set_initialisation_data(ioj::sim::LevelSimInitData data) {
+    void set_initialisation_data(sim::LevelSimInitData data) {
         initialisation_data_.emplace(std::move(data));
     }
-    auto get_level_definition() const -> ioj::levels::LevelDefinition const& {
+    auto get_level_definition() const -> levels::LevelDefinition const& {
         check(prepared_level_.IsSet());
         return *prepared_level_;
     }
@@ -75,15 +79,15 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Simulation state and timing
     /* **************************************** */
-    auto get_state() const noexcept -> ioj::sim::LevelState {
+    auto get_state() const noexcept -> sim::LevelState {
         return level_simulation_.IsSet() ? level_simulation_->state()
-                                         : ioj::sim::LevelState::Uninitialised;
+                                         : sim::LevelState::Uninitialised;
     }
-    auto get_level_simulation() const -> ioj::sim::LevelSim const* {
+    auto get_level_simulation() const -> sim::LevelSim const* {
         return level_simulation_.IsSet() ? &level_simulation_.GetValue() : nullptr;
     }
     auto was_launched_paused() const noexcept -> bool {
-        return launch_options_.launch_mode == ioj::levels::LaunchMode::Paused;
+        return launch_options_.launch_mode == levels::LaunchMode::Paused;
     }
     auto get_run_ticks_remaining() const noexcept -> TOptional<tick_type> {
         if (!launch_options_.simulated_duration_seconds.has_value() || !level_simulation_.IsSet()) {
@@ -93,7 +97,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         auto const& clk{level_simulation_->clock()};
         auto const end_tick{
             clk.duration_to_tick_period(
-                   ioj::Duration::make(launch_options_.simulated_duration_seconds.value()))
+                   Duration::make(launch_options_.simulated_duration_seconds.value()))
                 .get()};
         auto const completed_ticks{clk.get_completed_ticks().value()};
         return completed_ticks >= end_tick ? 0 : end_tick - completed_ticks;
@@ -109,17 +113,14 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Testing and level preparation
     /* **************************************** */
 
-    auto load_level(ioj::levels::LevelDefinition definition,
-                    ::ioj::levels::ControlContext playerless_control_context =
-                        ::ioj::levels::ControlContext::Observer)
-        -> std::expected<void, ioj::FLevelLoadErrors>;
+    auto load_level(levels::LevelDefinition definition,
+                    levels::ControlContext playerless_control_context =
+                        levels::ControlContext::Observer) -> std::expected<void, FLevelLoadErrors>;
 
     /* **************************************** */
     // Events, results, and presentation
     /* **************************************** */
-    auto get_hud_manager() noexcept -> ioj::FHUDManager& {
-        return presentation_host_.get_hud_manager();
-    }
+    auto get_hud_manager() noexcept -> FHUDManager& { return presentation_host_.get_hud_manager(); }
     auto get_level_presentation() const -> FLevelPresentation const* {
         return presentation_host_.get_presentation();
     }
@@ -140,12 +141,12 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Level initialization
     /* **************************************** */
-    auto prepare_level(ioj::levels::LevelDefinition definition) -> bool;
+    auto prepare_level(levels::LevelDefinition definition) -> bool;
     auto begin_play() -> bool;
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
     void handle_level_start_failure(FString message);
-    void release_level(ioj::sim::telemetry::RunEndReason reason);
+    void release_level(sim::telemetry::RunEndReason reason);
 
     /* **************************************** */
     // Presentation
@@ -183,7 +184,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FSimpleMulticastDelegate on_simulation_paused;
     FOnLevelCompleted on_level_completed;
   private:
-    ioj::settings::TickSettings simulation_tick_settings{};
+    settings::TickSettings simulation_tick_settings{};
     UPROPERTY(EditAnywhere,
               Category = "Sandbox",
               meta = (FilePathFilter = "scm", RelativeToGameDir))
@@ -197,10 +198,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 
     FLevelPresentationHost presentation_host_;
-    TOptional<ioj::sim::LevelSim> level_simulation_;
-    TOptional<ioj::levels::LevelDefinition> prepared_level_;
-    std::optional<ioj::sim::LevelSimInitData> initialisation_data_;
-    ioj::levels::LaunchOptions launch_options_{};
+    TOptional<sim::LevelSim> level_simulation_;
+    TOptional<levels::LevelDefinition> prepared_level_;
+    std::optional<sim::LevelSimInitData> initialisation_data_;
+    levels::LaunchOptions launch_options_{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
@@ -210,3 +211,5 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     bool log_ticks{false};
 #endif
 };
+
+} // namespace ioj

@@ -8,12 +8,13 @@
 #include <expected>
 #include <optional>
 
-class ASpaceGamePlayerController;
-class ATestSpaceShip;
-class USpaceGameLevelConfig;
 class UWorld;
 
 namespace ioj {
+class ASpaceGamePlayerController;
+class ATestSpaceShip;
+class USpaceGameLevelConfig;
+
 enum class ELevelLoadErrorCode : uint8 {
     InvalidDefinition,
     InvalidWorld,

@@ -122,8 +122,8 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         }
         auto* const editor_enemy{enemy_binding->actor.Get()};
         if (observer) {
-            for (TActorIterator<ATestBatchOrchestrator> it{world}; it; ++it) {
-                it->set_start_mode(EOrchestratorStartMode::Automatic);
+            for (TActorIterator<ioj::ATestBatchOrchestrator> it{world}; it; ++it) {
+                it->set_start_mode(ioj::EOrchestratorStartMode::Automatic);
             }
         }
 
@@ -135,7 +135,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                 if (!TestRunner->TestNotNull(TEXT("PIE world"), play_world)) {
                     return;
                 }
-                TActorIterator<ATestBatchOrchestrator> it{play_world};
+                TActorIterator<ioj::ATestBatchOrchestrator> it{play_world};
                 if (!TestRunner->TestTrue(TEXT("PIE orchestrator"), static_cast<bool>(it))) {
                     return;
                 }
@@ -146,7 +146,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                     return;
                 }
                 orchestrator.SetActorTickEnabled(false);
-                auto* const controller{Cast<ASpaceGamePlayerController>(
+                auto* const controller{Cast<ioj::ASpaceGamePlayerController>(
                     UGameplayStatics::GetPlayerController(play_world, 0))};
                 if (!TestRunner->TestNotNull(TEXT("Space-game controller"), controller)) {
                     return;

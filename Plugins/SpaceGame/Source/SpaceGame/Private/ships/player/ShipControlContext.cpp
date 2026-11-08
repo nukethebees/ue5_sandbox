@@ -19,6 +19,7 @@ auto is_enabled() -> bool {
 }
 }
 
+namespace ioj {
 auto FShipControlContext::initialise(ASpaceGamePlayerController& owner,
                                      UEnhancedInputComponent& component,
                                      IEnhancedInputSubsystemInterface& subsystem,
@@ -99,19 +100,19 @@ void FShipControlContext::set_ship(ATestSpaceShip* const ship) {
     }
     ship_ = ship;
 }
-auto FShipControlContext::context_for_slot(::ioj::sim::player::FlightModelSlot const slot) const
+auto FShipControlContext::context_for_slot(sim::player::FlightModelSlot const slot) const
     -> UInputMappingContext* {
     if (!input_) {
         return nullptr;
     }
     switch (slot) {
-        case ::ioj::sim::player::FlightModelSlot::First:
+        case sim::player::FlightModelSlot::First:
             return input_->starfox;
-        case ::ioj::sim::player::FlightModelSlot::Second:
+        case sim::player::FlightModelSlot::Second:
             return input_->fighter;
-        case ::ioj::sim::player::FlightModelSlot::Third:
+        case sim::player::FlightModelSlot::Third:
             return input_->skater;
-        case ::ioj::sim::player::FlightModelSlot::Fourth:
+        case sim::player::FlightModelSlot::Fourth:
             return input_->gunship;
     }
     return nullptr;
@@ -128,7 +129,7 @@ void FShipControlContext::verify_mode_invariant() const {
     checkf(count == 1 && input_subsystem_->HasMappingContext(active_mode_mapping_.Get()),
            TEXT("Ship input must have exactly one flight-mode IMC."));
 }
-void FShipControlContext::select_flight_model_slot(::ioj::sim::player::FlightModelSlot const slot) {
+void FShipControlContext::select_flight_model_slot(sim::player::FlightModelSlot const slot) {
     auto* const ship{get_ship()};
     auto* const next{context_for_slot(slot)};
     if (!bound_ || !IsValid(ship) || !IsValid(next) || !input_subsystem_object_.IsValid()) {
@@ -197,7 +198,7 @@ void FShipControlContext::bind_actions() {
         });
     };
     auto const select_slot = [this, &bind_event](UInputAction* const action,
-                                                 ioj::sim::player::FlightModelSlot const slot) {
+                                                 sim::player::FlightModelSlot const slot) {
         bind_event(action, Started, [this, slot] { select_flight_model_slot(slot); });
     };
 
@@ -229,7 +230,7 @@ void FShipControlContext::bind_actions() {
     bind_release(input_->emergency_brake, ship_event(&ATestSpaceShip::stop_emergency_brake));
     bind_event(input_->fire_primary, Started, [this] { start_fire_primary(); });
     bind_release(input_->fire_primary, ship_event(&ATestSpaceShip::stop_fire_laser));
-    using enum ioj::sim::player::FlightModelSlot;
+    using enum sim::player::FlightModelSlot;
     select_slot(input_->select_starfox, First);
     select_slot(input_->select_fighter, Second);
     select_slot(input_->select_skater, Third);
@@ -300,3 +301,5 @@ void FShipControlContext::start_fire_primary() {
         ship->start_fire_laser();
     }
 }
+
+} // namespace ioj

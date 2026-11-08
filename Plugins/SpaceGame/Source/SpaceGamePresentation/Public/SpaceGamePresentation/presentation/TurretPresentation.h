@@ -9,8 +9,12 @@
 
 class UInstancedStaticMeshComponent;
 
+namespace ioj {
+struct FLevelPresentation;
+}
+
 struct SPACEGAMEPRESENTATION_API FTurretPresentation {
-    friend struct FLevelPresentation;
+    friend struct ioj::FLevelPresentation;
   public:
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3};

@@ -42,7 +42,7 @@ TEST_CLASS(LevelWorldReset, "Sandbox.UnitTests")
     TEST_METHOD(RemovesPlayerForTheNextAuthoredLoad)
     {
         auto* const retained{world_->SpawnActor<AActor>()};
-        auto* const player{world_->SpawnActor<ATestSpaceShip>()};
+        auto* const player{world_->SpawnActor<ioj::ATestSpaceShip>()};
         if (!TestRunner->TestNotNull(TEXT("Retained actor exists"), retained) ||
             !TestRunner->TestNotNull(TEXT("Player exists"), player)) {
             return;
@@ -53,7 +53,7 @@ TEST_CLASS(LevelWorldReset, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Previous player is removed"),
                               ioj::is_actor_in_world(*world_, player));
         TestRunner->TestEqual(TEXT("Reset leaves player construction to the level loader"),
-                              ioj::count_actors<ATestSpaceShip>(*world_),
+                              ioj::count_actors<ioj::ATestSpaceShip>(*world_),
                               0);
     }
 

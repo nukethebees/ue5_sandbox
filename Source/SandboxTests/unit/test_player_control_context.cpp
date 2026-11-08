@@ -46,7 +46,8 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
             return;
         }
         TestRunner->TestTrue(TEXT("Direct C++ controller parent"),
-                             blueprint->ParentClass == ASpaceGamePlayerController::StaticClass());
+                             blueprint->ParentClass ==
+                                 ioj::ASpaceGamePlayerController::StaticClass());
         TArray<UEdGraph*> graphs;
         blueprint->GetAllGraphs(graphs);
         for (auto const* const graph : graphs) {
@@ -358,14 +359,14 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
 
     TEST_METHOD(ProductionControllerUsesCanonicalContexts)
     {
-        auto* const config{
-            LoadObject<USpaceGameLevelConfig>(nullptr,
-                                              TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig."
-                                                   "DA_GameRuntimeLevelConfig"))};
+        auto* const config{LoadObject<ioj::USpaceGameLevelConfig>(
+            nullptr,
+            TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig."
+                 "DA_GameRuntimeLevelConfig"))};
         if (!TestRunner->TestNotNull(TEXT("Runtime config"), config)) {
             return;
         }
-        auto const* const defaults{Cast<ASpaceGamePlayerController>(
+        auto const* const defaults{Cast<ioj::ASpaceGamePlayerController>(
             config->classes.player_controller_class.GetDefaultObject())};
         if (!TestRunner->TestNotNull(TEXT("Canonical player controller"), defaults)) {
             return;
@@ -375,7 +376,8 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
         if (!TestRunner->TestNotNull(TEXT("Ship input property"), property)) {
             return;
         }
-        auto const& input{*property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(defaults)};
+        auto const& input{
+            *property->ContainerPtrToValuePtr<ioj::FSpaceShipControllerInputs>(defaults)};
         TestRunner->TestTrue(TEXT("Starfox asset"),
                              input.starfox ==
                                  ioj::load_ship_control_context(ioj::EShipControlScope::Starfox));

@@ -8,16 +8,18 @@
 
 #include "PlayerModalUi.generated.h"
 
-class ASpaceGamePlayerController;
 class UTestBatchGameUiData;
 class UInputAction;
 struct FLevelCompletion;
+
+struct FPlayerControllerTestAccess;
+
 namespace ioj {
+class ASpaceGamePlayerController;
 class UGameUiRootLayout;
 class UPauseMenuWidget;
 class ULevelCompletionWidget;
 struct FPauseMenuData;
-}
 
 USTRUCT()
 struct SPACEGAME_API FPlayerModalUi {
@@ -36,12 +38,11 @@ struct SPACEGAME_API FPlayerModalUi {
     /* **************************************** */
     // Modal widgets and callbacks
     /* **************************************** */
-    auto show_pause(ASpaceGamePlayerController& owner,
-                    UInputAction& action,
-                    ioj::FPauseMenuData data) -> bool;
+    auto show_pause(ASpaceGamePlayerController& owner, UInputAction& action, FPauseMenuData data)
+        -> bool;
     auto show_completion(ASpaceGamePlayerController& owner,
                          FLevelCompletion const& completion,
-                         ioj::sim::telemetry::Snapshot snapshot) -> bool;
+                         sim::telemetry::Snapshot snapshot) -> bool;
     void detach_callbacks(ASpaceGamePlayerController& owner);
     void clear_modals(ASpaceGamePlayerController& owner);
     void clear_menus(ASpaceGamePlayerController& owner);
@@ -57,19 +58,20 @@ struct SPACEGAME_API FPlayerModalUi {
     /* **************************************** */
     // Gameplay restoration
     /* **************************************** */
-    void begin_suspend(::ioj::levels::ControlContext context);
+    void begin_suspend(levels::ControlContext context);
     void clear_resume();
     void on_ship_changed(bool has_ship);
-    auto resume_context(::ioj::levels::ControlContext fallback) const
-        -> ::ioj::levels::ControlContext;
+    auto resume_context(levels::ControlContext fallback) const -> levels::ControlContext;
     auto is_resume_pending() const -> bool { return resume_.pending(); }
   private:
-    friend struct FPlayerControllerTestAccess;
+    friend struct ::FPlayerControllerTestAccess;
     UPROPERTY(Transient)
-    TObjectPtr<ioj::UGameUiRootLayout> root_{nullptr};
+    TObjectPtr<UGameUiRootLayout> root_{nullptr};
     UPROPERTY(Transient)
-    TObjectPtr<ioj::UPauseMenuWidget> pause_menu_{nullptr};
+    TObjectPtr<UPauseMenuWidget> pause_menu_{nullptr};
     UPROPERTY(Transient)
-    TObjectPtr<ioj::ULevelCompletionWidget> completion_menu_{nullptr};
-    ioj::session::ModalResumeState resume_;
+    TObjectPtr<ULevelCompletionWidget> completion_menu_{nullptr};
+    session::ModalResumeState resume_;
 };
+
+} // namespace ioj

@@ -7,12 +7,12 @@
 
 #include <expected>
 
-class USpaceGameLevelConfig;
 class UStaticMesh;
 class UWorld;
-class ATestSpaceShip;
 
 namespace ioj {
+class USpaceGameLevelConfig;
+class ATestSpaceShip;
 
 using FLevelSimBuildResult = std::expected<sim::LevelSimInitData, FLevelStartErrors>;
 

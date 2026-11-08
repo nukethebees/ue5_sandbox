@@ -13,8 +13,12 @@ class FSandboxISMCInstanceChunkWriter;
 class FLaserPresentationIndexingTest;
 class FSparkEffects;
 
+namespace ioj {
+struct FLevelPresentation;
+}
+
 struct SPACEGAMEPRESENTATION_API FLaserPresentation {
-    friend struct FLevelPresentation;
+    friend struct ioj::FLevelPresentation;
     friend class FLaserPresentationIndexingTest;
   public:
     static constexpr int32 n_custom_ismc_floats{5};

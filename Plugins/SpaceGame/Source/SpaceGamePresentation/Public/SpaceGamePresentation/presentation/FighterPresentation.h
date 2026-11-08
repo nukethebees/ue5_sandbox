@@ -9,8 +9,12 @@
 
 class USandboxISMCComponent;
 
+namespace ioj {
+struct FLevelPresentation;
+}
+
 struct SPACEGAMEPRESENTATION_API FFighterPresentation {
-    friend struct FLevelPresentation;
+    friend struct ioj::FLevelPresentation;
   public:
     static constexpr int32 n_custom_ismc_floats{3};
 

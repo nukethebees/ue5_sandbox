@@ -5,23 +5,23 @@
 #include <SpaceGame/telemetry/LevelTelemetryIntegration.h>
 
 struct FTestBatchOrchestratorTestAccess {
-    static void queue_direct_damage_events(ATestBatchOrchestrator& orchestrator,
+    static void queue_direct_damage_events(ioj::ATestBatchOrchestrator& orchestrator,
                                            ::ioj::sim::DirectDamageEvents::ConstView events) {
         check(orchestrator.level_simulation_.IsSet());
         ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(
             orchestrator.level_simulation_.GetValue(), events);
     }
-    static void set_telemetry_metadata(ATestBatchOrchestrator& orchestrator,
+    static void set_telemetry_metadata(ioj::ATestBatchOrchestrator& orchestrator,
                                        ::ioj::sim::telemetry::RunMetadata metadata) {
         check(orchestrator.level_simulation_.IsSet());
         orchestrator.level_simulation_->set_telemetry_metadata(std::move(metadata));
     }
-    static void stop_run(ATestBatchOrchestrator& orchestrator,
+    static void stop_run(ioj::ATestBatchOrchestrator& orchestrator,
                          ::ioj::sim::telemetry::RunEndReason reason) {
         check(orchestrator.level_simulation_.IsSet());
         orchestrator.level_simulation_->stop_run(reason);
     }
-    static auto take_finalized_telemetry_report(ATestBatchOrchestrator& orchestrator)
+    static auto take_finalized_telemetry_report(ioj::ATestBatchOrchestrator& orchestrator)
         -> TOptional<::ioj::sim::telemetry::Report> {
         check(orchestrator.level_simulation_.IsSet());
         return ::ioj::take_finalized_level_telemetry_report(

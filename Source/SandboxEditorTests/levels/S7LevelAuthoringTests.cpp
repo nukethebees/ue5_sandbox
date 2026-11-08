@@ -89,7 +89,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         auto* const capital_actor{world->SpawnActor<ATestCapitalShipProxy>()};
         auto* const turret_actor{world->SpawnActor<ATestStaticTurretsProxy>()};
         auto* const spinner_actor{world->SpawnActor<ATestTubeSpinnerProxy>()};
-        auto* const player_actor{world->SpawnActor<ATestSpaceShip>()};
+        auto* const player_actor{world->SpawnActor<ioj::ATestSpaceShip>()};
         capital_actor->set_team(ETestTeam::Red);
         capital_actor->spawn_time_seconds = 7.5;
         capital_actor->health = 456;
@@ -291,7 +291,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                       1)) {
             return;
         }
-        CastChecked<ATestSpaceShip>(player_binding->actor)->health_override = 123;
+        CastChecked<ioj::ATestSpaceShip>(player_binding->actor)->health_override = 123;
         capital->spawn_time_seconds = 0.1;
         capital->SetActorLocation(FVector{100000.123456789, 42.125, 100.5});
         capital->SetActorRotation(FRotator{10., 20., 30.});
@@ -404,7 +404,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         turret->health.Reset();
         turret->laser_damage.Reset();
         spinner->initial_fire_point.Reset();
-        CastChecked<ATestSpaceShip>(player_binding->actor)->health_override.Reset();
+        CastChecked<ioj::ATestSpaceShip>(player_binding->actor)->health_override.Reset();
         if (!assert_success(*TestRunner,
                             TEXT("Refresh composed scene"),
                             ioj::editor::import_s7_level(level, document, *definition))) {
@@ -418,9 +418,10 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Import restores turret and spinner properties on the proxies"),
                              turret->health == 789 && turret->laser_damage == 321 &&
                                  spinner->initial_fire_point == 1);
-        TestRunner->TestTrue(TEXT("Import restores the player authoring override"),
-                             CastChecked<ATestSpaceShip>(binding(document, TEXT("player"))->actor)
-                                     ->health_override == 123);
+        TestRunner->TestTrue(
+            TEXT("Import restores the player authoring override"),
+            CastChecked<ioj::ATestSpaceShip>(binding(document, TEXT("player"))->actor)
+                    ->health_override == 123);
         TestRunner->TestTrue(TEXT("Explicit ownership choice persists by ID"),
                              refreshed_human && refreshed_human->export_to_script &&
                                  refreshed_human->actor == previous_human);
@@ -529,7 +530,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         auto& document{**created};
-        auto* const player{world->SpawnActor<ATestSpaceShip>(
+        auto* const player{world->SpawnActor<ioj::ATestSpaceShip>(
             document.level_config->classes.player_ship_class.Get(), FTransform::Identity)};
         if (!TestRunner->TestNotNull(TEXT("New player proxy"), player)) {
             return;
@@ -586,11 +587,11 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!assert_success(*TestRunner, TEXT("Create authoring document"), created)) {
             return;
         }
-        auto* const orchestrator{world->SpawnActor<ATestBatchOrchestrator>()};
+        auto* const orchestrator{world->SpawnActor<ioj::ATestBatchOrchestrator>()};
         if (!TestRunner->TestNotNull(TEXT("Playable orchestrator"), orchestrator)) {
             return;
         }
-        orchestrator->set_start_mode(EOrchestratorStartMode::AuthoredLevel);
+        orchestrator->set_start_mode(ioj::EOrchestratorStartMode::AuthoredLevel);
         auto& module{
             FModuleManager::LoadModuleChecked<FSandboxEditorModule>(TEXT("SandboxEditor"))};
         if (!TestRunner->TestTrue(TEXT("Remove entry point"),
@@ -605,7 +606,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         TestRunner->TestTrue(TEXT("Invalid root rejects PIE"),
                              module.RequestPIEPermissionInternal(false).HasError());
-        orchestrator->set_start_mode(EOrchestratorStartMode::PausedInTest);
+        orchestrator->set_start_mode(ioj::EOrchestratorStartMode::PausedInTest);
         auto const unrelated{module.RequestPIEPermissionInternal(false)};
         TestRunner->TestTrue(TEXT("Non-playable utility world is not subject to mandatory scripts"),
                              unrelated.HasValue() && unrelated.GetValue());

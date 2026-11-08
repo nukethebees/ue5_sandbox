@@ -163,10 +163,10 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
     TEST_METHOD(RuntimeConfigStartsTurretTrialZero)
     {
         auto const* const source{ioj::load_default_level_config()};
-        auto const* const runtime{
-            LoadObject<USpaceGameLevelConfig>(nullptr,
-                                              TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig."
-                                                   "DA_GameRuntimeLevelConfig"))};
+        auto const* const runtime{LoadObject<ioj::USpaceGameLevelConfig>(
+            nullptr,
+            TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig."
+                 "DA_GameRuntimeLevelConfig"))};
         if (!TestRunner->TestNotNull(TEXT("Source level config loads"), source) ||
             !TestRunner->TestNotNull(TEXT("Runtime level config loads"), runtime)) {
             return;

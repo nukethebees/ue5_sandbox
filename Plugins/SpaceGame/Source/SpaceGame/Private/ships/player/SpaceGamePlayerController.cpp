@@ -41,6 +41,7 @@ static TAutoConsoleVariable<int32> enabled{
          "mappings and ship handlers.")};
 }
 
+namespace ioj {
 ASpaceGamePlayerController::ASpaceGamePlayerController() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
@@ -148,7 +149,7 @@ void ASpaceGamePlayerController::BeginPlay() {
 
     initialise_input_user_settings();
     if (auto* const game_instance{GetGameInstance()}; IsValid(game_instance)) {
-        if (auto* const settings{game_instance->GetSubsystem<ioj::UGameSettingsSubsystem>()};
+        if (auto* const settings{game_instance->GetSubsystem<UGameSettingsSubsystem>()};
             IsValid(settings)) {
             settings->flight_model_config_changed.AddUObject(
                 this, &ThisClass::apply_player_ship_flight_model_config);
@@ -227,7 +228,7 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
     hud_.shutdown_benchmark(*this);
     modal_ui_.shutdown(*this);
     if (auto* const game_instance{GetGameInstance()}; IsValid(game_instance)) {
-        if (auto* const settings{game_instance->GetSubsystem<ioj::UGameSettingsSubsystem>()};
+        if (auto* const settings{game_instance->GetSubsystem<UGameSettingsSubsystem>()};
             IsValid(settings)) {
             settings->flight_model_config_changed.RemoveAll(this);
         }
@@ -259,7 +260,7 @@ void ASpaceGamePlayerController::attach_ship(Pawn& ship) {
     modal_ui_.on_ship_changed(true);
 
     auto* const game_instance{GetGameInstance()};
-    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<ioj::UGameSubsystem>()
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>()
                                             : nullptr};
     if (IsValid(game)) {
         game->start_player_ship_ambience();
@@ -278,18 +279,17 @@ void ASpaceGamePlayerController::apply_player_ship_flight_model_config() {
 
 void ASpaceGamePlayerController::apply_player_ship_flight_model_config(Pawn& ship) const {
     auto* const game_instance{GetGameInstance()};
-    auto* const settings{IsValid(game_instance)
-                             ? game_instance->GetSubsystem<ioj::UGameSettingsSubsystem>()
-                             : nullptr};
+    auto* const settings{
+        IsValid(game_instance) ? game_instance->GetSubsystem<UGameSettingsSubsystem>() : nullptr};
     if (!IsValid(settings)) {
         return;
     }
 
     auto const& loadout{settings->flight_model_loadout()};
-    using ioj::sim::player::FlightModelSlot;
-    for (auto const slot : ioj::EnumTraits<FlightModelSlot>::values) {
-        if (!ship.set_flight_model_slot_profile(
-                slot, ioj::sim::player::flight_model_profile(loadout, slot))) {
+    using sim::player::FlightModelSlot;
+    for (auto const slot : EnumTraits<FlightModelSlot>::values) {
+        if (!ship.set_flight_model_slot_profile(slot,
+                                                sim::player::flight_model_profile(loadout, slot))) {
             UE_LOG(LogSandboxController, Error, TEXT("Could not apply saved flight model slot"));
         }
     }
@@ -300,23 +300,23 @@ void ASpaceGamePlayerController::on_player_ship_flight_model_selected() {
         return;
     }
     if (auto* const orchestrator{orchestrator_.Get()}; IsValid(orchestrator)) {
-        auto const scope{ioj::flight_control_scope(ship->get_active_flight_model_slot())};
+        auto const scope{flight_control_scope(ship->get_active_flight_model_slot())};
         orchestrator->get_hud_manager().set_selected_mapping_context(
-            FString{ioj::canonical_ship_control_context(scope).asset_name});
+            FString{canonical_ship_control_context(scope).asset_name});
     }
 }
 void ASpaceGamePlayerController::activate_ship_control() {
     if (!begin_play_finished_ || !can_activate_gameplay_control() ||
-        !control_contexts_.can_bind_context(::ioj::levels::ControlContext::Player)) {
+        !control_contexts_.can_bind_context(levels::ControlContext::Player)) {
         return;
     }
     bind_orchestrator_events();
     modal_ui_.initialise_root(*this, ui_data);
-    control_contexts_.set_control_context(::ioj::levels::ControlContext::Player);
+    control_contexts_.set_control_context(levels::ControlContext::Player);
     hud_.initialise(*this,
                     orchestrator_.Get(),
                     ui_data,
-                    ::ioj::levels::ControlContext::Player,
+                    levels::ControlContext::Player,
                     control_contexts_.get_observer_speed());
 }
 void ASpaceGamePlayerController::OnUnPossess() {
@@ -327,7 +327,7 @@ void ASpaceGamePlayerController::OnUnPossess() {
 }
 void ASpaceGamePlayerController::detach_ship() {
     auto* const game_instance{GetGameInstance()};
-    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<ioj::UGameSubsystem>()
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>()
                                             : nullptr};
     if (IsValid(game)) {
         game->stop_player_ship_ambience();
@@ -351,7 +351,7 @@ void ASpaceGamePlayerController::bind_orchestrator_events() {
         return;
     }
 
-    auto* const orchestrator{ioj::get_first_actor<ATestBatchOrchestrator>(*world)};
+    auto* const orchestrator{get_first_actor<ATestBatchOrchestrator>(*world)};
     if (!IsValid(orchestrator)) {
         UE_LOG(
             LogSandboxController,
@@ -386,7 +386,7 @@ void ASpaceGamePlayerController::on_orchestrator_reset(ATestBatchOrchestrator& o
     modal_ui_.clear_modals(*this);
     hud_.restore_after_modal();
     return_to_level_select_pending_ = false;
-    control_contexts_.set_control_context(::ioj::levels::ControlContext::None);
+    control_contexts_.set_control_context(levels::ControlContext::None);
     hud_.shutdown();
     hud_.shutdown_benchmark(*this);
 
@@ -455,8 +455,8 @@ void ASpaceGamePlayerController::initialise_input_user_settings() {
     if (registered_input_settings_.Get() == settings) {
         return;
     }
-    for (auto const& definition : ioj::canonical_ship_control_contexts()) {
-        auto* const mapping{ioj::load_ship_control_context(definition.scope)};
+    for (auto const& definition : canonical_ship_control_contexts()) {
+        auto* const mapping{load_ship_control_context(definition.scope)};
         if (!IsValid(mapping)) {
             UE_LOG(LogSandboxController,
                    Error,
@@ -468,7 +468,7 @@ void ASpaceGamePlayerController::initialise_input_user_settings() {
             settings->RegisterInputMappingContext(mapping);
         }
     }
-    if (auto* const ship_settings{Cast<ioj::USpaceGameInputUserSettings>(settings)}) {
+    if (auto* const ship_settings{Cast<USpaceGameInputUserSettings>(settings)}) {
         ship_settings->finalize_canonical_registration();
     } else {
         UE_LOG(LogSandboxController,
@@ -488,13 +488,14 @@ void ASpaceGamePlayerController::on_input_user_settings_initialized(
     static_cast<void>(settings);
     initialise_input_user_settings();
 }
-auto ASpaceGamePlayerController::activate_playerless_camera(
-    ACameraActor& camera, ::ioj::levels::ControlContext const context) -> bool {
+auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera,
+                                                            levels::ControlContext const context)
+    -> bool {
     if (!can_activate_gameplay_control()) {
         return false;
     }
-    if (context != ::ioj::levels::ControlContext::Observer &&
-        context != ::ioj::levels::ControlContext::Benchmark) {
+    if (context != levels::ControlContext::Observer &&
+        context != levels::ControlContext::Benchmark) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::activate_playerless_camera: Context must be "
@@ -512,7 +513,7 @@ auto ASpaceGamePlayerController::activate_playerless_camera(
     bind_orchestrator_events();
     control_contexts_.set_camera(&camera);
     SetViewTarget(&camera);
-    if (context == ::ioj::levels::ControlContext::Benchmark) {
+    if (context == levels::ControlContext::Benchmark) {
         return activate_run_controls();
     }
     if (!control_contexts_.set_control_context(context)) {
@@ -524,9 +525,9 @@ auto ASpaceGamePlayerController::activate_playerless_camera(
         !hud_.initialise(*this,
                          orchestrator_.Get(),
                          ui_data,
-                         ::ioj::levels::ControlContext::Observer,
+                         levels::ControlContext::Observer,
                          control_contexts_.get_observer_speed())) {
-        control_contexts_.set_control_context(::ioj::levels::ControlContext::None);
+        control_contexts_.set_control_context(levels::ControlContext::None);
         return false;
     }
     FInputModeGameAndUI input_mode{};
@@ -543,14 +544,14 @@ auto ASpaceGamePlayerController::activate_run_controls() -> bool {
     }
 
     bind_orchestrator_events();
-    if (!control_contexts_.set_control_context(::ioj::levels::ControlContext::Benchmark)) {
+    if (!control_contexts_.set_control_context(levels::ControlContext::Benchmark)) {
         return false;
     }
 
     hud_.shutdown();
     modal_ui_.shutdown(*this);
     if (!hud_.initialise_benchmark(*this, orchestrator_.Get(), ui_data)) {
-        control_contexts_.set_control_context(::ioj::levels::ControlContext::None);
+        control_contexts_.set_control_context(levels::ControlContext::None);
         return false;
     }
     SetActorTickEnabled(true);
@@ -564,7 +565,7 @@ void ASpaceGamePlayerController::set_observer_look_active(bool const active) {
         return;
     }
 
-    if (get_active_control_context() == ::ioj::levels::ControlContext::Observer) {
+    if (get_active_control_context() == levels::ControlContext::Observer) {
         FInputModeGameAndUI input_mode{};
         input_mode.SetHideCursorDuringCapture(false);
         input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -592,9 +593,9 @@ void ASpaceGamePlayerController::toggle_pause_game() {
     }
 
     switch (orchestrator->get_state()) {
-        case ioj::sim::LevelState::StableSetup:
+        case sim::LevelState::StableSetup:
             break;
-        case ioj::sim::LevelState::Running: {
+        case sim::LevelState::Running: {
             if (return_to_level_select_pending_ || modal_ui_.is_completion_active() ||
                 modal_ui_.is_resume_pending()) {
                 return;
@@ -606,8 +607,8 @@ void ASpaceGamePlayerController::toggle_pause_game() {
             orchestrator->pause_simulation();
             break;
         }
-        case ioj::sim::LevelState::Uninitialised:
-        case ioj::sim::LevelState::Paused: {
+        case sim::LevelState::Uninitialised:
+        case sim::LevelState::Paused: {
             if (modal_ui_.is_pause_active()) {
                 modal_ui_.deactivate_pause();
             } else if (!modal_ui_.has_completion()) {
@@ -615,7 +616,7 @@ void ASpaceGamePlayerController::toggle_pause_game() {
             }
             break;
         }
-        case ioj::sim::LevelState::Stopped: {
+        case sim::LevelState::Stopped: {
             UE_LOG(LogSandboxController,
                    Error,
                    TEXT("ASpaceGamePlayerController::toggle_pause_game: Orchestrator is stopped."));
@@ -632,28 +633,27 @@ void ASpaceGamePlayerController::toggle_run_pause() {
         return;
     }
 
-    if (orchestrator->get_state() == ioj::sim::LevelState::Running) {
+    if (orchestrator->get_state() == sim::LevelState::Running) {
         orchestrator->pause_simulation();
-    } else if (orchestrator->get_state() == ioj::sim::LevelState::Paused) {
+    } else if (orchestrator->get_state() == sim::LevelState::Paused) {
         orchestrator->start_simulation();
     }
 }
 void ASpaceGamePlayerController::show_initial_pause_menu() {
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(orchestrator) || !orchestrator->was_launched_paused() ||
-        orchestrator->get_state() != ioj::sim::LevelState::Paused || !is_gameplay_mode() ||
-        get_active_control_context() == ::ioj::levels::ControlContext::Benchmark ||
+        orchestrator->get_state() != sim::LevelState::Paused || !is_gameplay_mode() ||
+        get_active_control_context() == levels::ControlContext::Benchmark ||
         return_to_level_select_pending_ || modal_ui_.has_modal()) {
         return;
     }
 
-    auto const restore_context{get_active_control_context() ==
-                                           ::ioj::levels::ControlContext::None &&
+    auto const restore_context{get_active_control_context() == levels::ControlContext::None &&
                                        IsValid(Cast<Pawn>(GetPawn()))
-                                   ? ::ioj::levels::ControlContext::Player
+                                   ? levels::ControlContext::Player
                                    : get_active_control_context()};
     modal_ui_.begin_suspend(restore_context);
-    if (!control_contexts_.set_control_context(::ioj::levels::ControlContext::None)) {
+    if (!control_contexts_.set_control_context(levels::ControlContext::None)) {
         modal_ui_.clear_resume();
         return;
     }
@@ -665,7 +665,7 @@ void ASpaceGamePlayerController::show_initial_pause_menu() {
 }
 auto ASpaceGamePlayerController::open_pause_menu() -> bool {
     auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator) || orchestrator->get_state() != ioj::sim::LevelState::Paused ||
+    if (!IsValid(orchestrator) || orchestrator->get_state() != sim::LevelState::Paused ||
         !modal_ui_.has_root() || !IsValid(global_input.toggle_menu) || !IsValid(ui_data) ||
         !IsValid(ui_data->team_visual_data)) {
         UE_LOG(LogSandboxController,
@@ -682,7 +682,7 @@ auto ASpaceGamePlayerController::open_pause_menu() -> bool {
     auto const* const level{orchestrator->get_level_simulation()};
     check(level);
 
-    ioj::FPauseMenuData pause_data;
+    FPauseMenuData pause_data;
     pause_data.telemetry = level->level_telemetry_manager().make_snapshot();
     pause_data.alive_per_team_and_type = entity_counts.alive_per_team_and_type;
     pause_data.top_killers = kill_data.top_killers;
@@ -692,9 +692,9 @@ auto ASpaceGamePlayerController::open_pause_menu() -> bool {
 }
 auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {
     auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator) || (orchestrator->get_state() != ioj::sim::LevelState::Running &&
-                                   orchestrator->get_state() != ioj::sim::LevelState::Paused &&
-                                   orchestrator->get_state() != ioj::sim::LevelState::Stopped)) {
+    if (!IsValid(orchestrator) || (orchestrator->get_state() != sim::LevelState::Running &&
+                                   orchestrator->get_state() != sim::LevelState::Paused &&
+                                   orchestrator->get_state() != sim::LevelState::Stopped)) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::suspend_gameplay_for_modal: Gameplay is not "
@@ -703,7 +703,7 @@ auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {
     }
 
     modal_ui_.begin_suspend(get_active_control_context());
-    if (!control_contexts_.set_control_context(::ioj::levels::ControlContext::None)) {
+    if (!control_contexts_.set_control_context(levels::ControlContext::None)) {
         modal_ui_.clear_resume();
         return false;
     }
@@ -721,7 +721,7 @@ void ASpaceGamePlayerController::resume_game() {
                TEXT("ASpaceGamePlayerController::resume_game: Orchestrator is invalid."));
         return;
     }
-    if (orchestrator->get_state() == ioj::sim::LevelState::Stopped) {
+    if (orchestrator->get_state() == sim::LevelState::Stopped) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::resume_game: Orchestrator is stopped."));
@@ -729,27 +729,27 @@ void ASpaceGamePlayerController::resume_game() {
     }
 
     auto const target_context{modal_ui_.resume_context(IsValid(Cast<Pawn>(GetPawn()))
-                                                           ? ::ioj::levels::ControlContext::Player
-                                                           : ::ioj::levels::ControlContext::None)};
+                                                           ? levels::ControlContext::Player
+                                                           : levels::ControlContext::None)};
     if (!control_contexts_.set_control_context(target_context)) {
         return;
     }
     hud_.restore_after_modal();
     modal_ui_.clear_resume();
-    if (target_context == ::ioj::levels::ControlContext::Player) {
+    if (target_context == levels::ControlContext::Player) {
         hud_.initialise(
             *this, orchestrator, ui_data, target_context, control_contexts_.get_observer_speed());
     }
 
     switch (orchestrator->get_state()) {
-        case ioj::sim::LevelState::Uninitialised:
-        case ioj::sim::LevelState::Paused: {
+        case sim::LevelState::Uninitialised:
+        case sim::LevelState::Paused: {
             orchestrator->start_simulation();
             break;
         }
-        case ioj::sim::LevelState::Running:
-        case ioj::sim::LevelState::StableSetup:
-        case ioj::sim::LevelState::Stopped: {
+        case sim::LevelState::Running:
+        case sim::LevelState::StableSetup:
+        case sim::LevelState::Stopped: {
             break;
         }
     }
@@ -763,7 +763,7 @@ void ASpaceGamePlayerController::on_pause_menu_deactivated() {
 void ASpaceGamePlayerController::on_completion_menu_deactivated() {
     modal_ui_.close_completion(*this);
     if (auto* const orchestrator{orchestrator_.Get()};
-        IsValid(orchestrator) && orchestrator->get_state() == ioj::sim::LevelState::Stopped) {
+        IsValid(orchestrator) && orchestrator->get_state() == sim::LevelState::Stopped) {
         modal_ui_.clear_resume();
         return;
     }
@@ -822,7 +822,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
     }
 
     auto* const game_instance{GetGameInstance()};
-    auto* const subsystem{ioj::UGameSubsystem::get(game_instance)};
+    auto* const subsystem{UGameSubsystem::get(game_instance)};
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(subsystem) || !IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,
@@ -844,7 +844,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
     modal_ui_.clear_menus(*this);
     hud_.cancel_restore();
     hud_.shutdown_benchmark(*this);
-    control_contexts_.set_control_context(::ioj::levels::ControlContext::None);
+    control_contexts_.set_control_context(levels::ControlContext::None);
 }
 void ASpaceGamePlayerController::quit_game() {
     if (!is_gameplay_mode()) {
@@ -880,3 +880,5 @@ void ASpaceGamePlayerController::screenshot_tick(float const dt) {
         }
     }
 }
+
+} // namespace ioj

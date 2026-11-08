@@ -6,12 +6,13 @@
 
 #include <SandboxISMCComponent.h>
 
+namespace ioj {
 auto FLevelPresentationResources::is_valid() const -> bool {
     return IsValid(lasers) && IsValid(capital_ships) && IsValid(fighters) && IsValid(turrets) &&
            IsValid(spinners) && IsValid(sparks);
 }
 FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resources,
-                                       ::ioj::sim::LevelReadAccess const& view)
+                                       sim::LevelReadAccess const& view)
     : config_{resources.config}
     , sparks{*resources.sparks}
     , lasers{*resources.lasers}
@@ -73,7 +74,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     lasers.begin_play_presentation();
 }
 
-void FLevelPresentation::tick(float const dt, ::ioj::sim::LevelReadAccess const& view) {
+void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) {
     auto const completed_tick{view.clock().get_completed_ticks()};
     if (last_completed_tick_ == completed_tick) {
         sparks.commit(dt);
@@ -103,3 +104,5 @@ void FLevelPresentation::tick(float const dt, ::ioj::sim::LevelReadAccess const&
     sparks.commit(dt);
     effects.update_spawns(dt, *lasers.instances->GetWorld());
 }
+
+} // namespace ioj

@@ -10,13 +10,17 @@
 
 #include "SpaceGamePlayerController.generated.h"
 
-class ATestBatchOrchestrator;
-class ATestSpaceShip;
 class ACameraActor;
 class UEnhancedInputUserSettings;
 struct FLevelCompletion;
 struct FInputKeyEventArgs;
 class UTestBatchGameUiData;
+
+struct FPlayerControllerTestAccess;
+
+namespace ioj {
+class ATestBatchOrchestrator;
+class ATestSpaceShip;
 
 UCLASS()
 class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
@@ -28,7 +32,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     friend struct FGlobalPlayerInput;
     friend struct FPlayerHudLifecycle;
     friend struct FPlayerModalUi;
-    friend struct FPlayerControllerTestAccess;
+    friend struct ::FPlayerControllerTestAccess;
     friend class ATestBatchOrchestrator;
   public:
     using Pawn = ATestSpaceShip;
@@ -37,11 +41,9 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void SetupInputComponent() override;
     void Tick(float dt) override;
     void show_main_menu();
-    auto activate_playerless_camera(ACameraActor& camera, ::ioj::levels::ControlContext context)
-        -> bool;
+    auto activate_playerless_camera(ACameraActor& camera, levels::ControlContext context) -> bool;
     auto activate_run_controls() -> bool;
-    [[nodiscard]] auto get_active_control_context() const noexcept
-        -> ::ioj::levels::ControlContext {
+    [[nodiscard]] auto get_active_control_context() const noexcept -> levels::ControlContext {
         return control_contexts_.get_active_context();
     }
     [[nodiscard]] auto get_active_hud() const -> USimulationHudWidget const* {
@@ -51,7 +53,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
         return hud_.get_benchmark_hud();
     }
     [[nodiscard]] auto is_observer_movement_enabled() const noexcept -> bool {
-        return get_active_control_context() == ::ioj::levels::ControlContext::Observer &&
+        return get_active_control_context() == levels::ControlContext::Observer &&
                control_contexts_.is_observer_bound();
     }
   protected:
@@ -149,3 +151,5 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     float screenshot_period{-1.f};
     float screenshot_accumulator{0.f};
 };
+
+} // namespace ioj

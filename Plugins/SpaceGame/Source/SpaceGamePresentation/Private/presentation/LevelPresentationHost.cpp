@@ -7,6 +7,7 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <SandboxISMCComponent.h>
 
+namespace ioj {
 auto FLevelPresentationComponents::is_valid() const -> bool {
     return IsValid(lasers) && IsValid(capital_ships) && IsValid(fighters) && IsValid(turrets) &&
            IsValid(spinners) && IsValid(sparks) && IsValid(soft_targets) && IsValid(collision_grid);
@@ -31,8 +32,8 @@ void FLevelPresentationHost::configure_collision_grid(
 
 void FLevelPresentationHost::initialise(FLevelVisualConfig const& config,
                                         TOptional<FPlayerPresentationResources> player,
-                                        ioj::sim::LevelReadAccess const& view,
-                                        ioj::sim::SpatialQueryManager const& spatial_queries) {
+                                        sim::LevelReadAccess const& view,
+                                        sim::SpatialQueryManager const& spatial_queries) {
     check(!presentation_.IsSet());
     check(components_.is_valid());
 
@@ -60,8 +61,8 @@ void FLevelPresentationHost::reset() {
 }
 
 void FLevelPresentationHost::tick(double const dt,
-                                  ioj::sim::LevelReadAccess const& view,
-                                  ioj::sim::SpatialQueryManager const& spatial_queries) {
+                                  sim::LevelReadAccess const& view,
+                                  sim::SpatialQueryManager const& spatial_queries) {
     if (!presentation_.IsSet()) {
         return;
     }
@@ -85,7 +86,9 @@ auto FLevelPresentationHost::make_resources(FLevelVisualConfig const& config,
 }
 
 void FLevelPresentationHost::update_collision_bounds(
-    ioj::sim::SpatialQueryManager const& spatial_queries) {
+    sim::SpatialQueryManager const& spatial_queries) {
     components_.collision_grid->update_collision_bounds(spatial_queries.entity_collision_bounds(),
                                                         spatial_queries.static_collision_bounds());
 }
+
+} // namespace ioj

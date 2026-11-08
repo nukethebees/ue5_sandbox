@@ -8,7 +8,7 @@
 
 #include <Misc/Paths.h>
 
-auto read_game_settings_source(FStringView const path, USpaceGameLevelConfig const& resources)
+auto read_game_settings_source(FStringView const path, ioj::USpaceGameLevelConfig const& resources)
     -> std::expected<ioj::settings::Settings, FString> {
     auto const absolute_path{
         FPaths::ConvertRelativePathToFull(FPaths::ProjectDir(), FString{path})};
@@ -28,16 +28,16 @@ auto read_game_settings_source(FStringView const path, USpaceGameLevelConfig con
 }
 
 auto prepare_level_resources(ioj::settings::Settings const& settings,
-                             USpaceGameLevelConfig const& resources,
+                             ioj::USpaceGameLevelConfig const& resources,
                              UObject* const outer)
-    -> std::expected<USpaceGameLevelConfig*, FString> {
+    -> std::expected<ioj::USpaceGameLevelConfig*, FString> {
     auto simulation{ioj::sim::resolve_simulation_settings(settings)};
     if (!simulation) {
         return std::unexpected{
             ioj::to_fstring(ioj::levels::format_diagnostics(simulation.error()))};
     }
 
-    auto* const config{DuplicateObject<USpaceGameLevelConfig>(&resources, outer)};
+    auto* const config{DuplicateObject<ioj::USpaceGameLevelConfig>(&resources, outer)};
     check(config);
     config->apply_settings(*simulation);
 

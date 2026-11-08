@@ -10,13 +10,14 @@
 #include <Misc/Optional.h>
 #include <Templates/UniquePtr.h>
 
-class ATestBatchOrchestrator;
 class FAutomationTestBase;
 class FTestCommandBuilder;
-class USpaceGameLevelConfig;
 class UWorld;
 
 namespace ioj {
+class ATestBatchOrchestrator;
+class USpaceGameLevelConfig;
+
 DECLARE_DELEGATE_OneParam(FSimulationSampleCallback, ATestBatchOrchestrator&);
 
 struct FSimulationTestContext {

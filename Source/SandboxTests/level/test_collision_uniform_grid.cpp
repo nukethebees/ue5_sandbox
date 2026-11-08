@@ -43,7 +43,7 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         harvested_actor->AddInstanceComponent(unsupported_component);
         unsupported_component->RegisterComponent();
 
-        FCollisionGridConfig config;
+        ioj::FCollisionGridConfig config;
         config.grid_size = FVector3f{4000.f, 4000.f, 4000.f};
         config.cell_size = FVector3f{100.f, 100.f, 100.f};
         config.harvested_collision_actor_classes.Add(ASandboxTestCollisionActor::StaticClass());

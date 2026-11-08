@@ -14,9 +14,10 @@
 class UStaticMesh;
 class UWorld;
 class AActor;
-struct FCollisionGridConfig;
 
 namespace ioj {
+struct FCollisionGridConfig;
+
 using FEntityBoundsExtractionResult = std::expected<sim::collision::EntityAABBs, FLevelStartErrors>;
 
 struct SPACEGAME_API FLevelCollisionHost {

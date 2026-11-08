@@ -455,7 +455,8 @@ auto US7LevelAuthoringMode::load_s7() -> bool {
     document_->Modify();
     document_->source_path = source_session_.path();
     for (auto const actor : document_->GetLevel()->Actors) {
-        if (auto* orchestrator{Cast<ATestBatchOrchestrator>(actor.Get())}; IsValid(orchestrator)) {
+        if (auto* orchestrator{Cast<ioj::ATestBatchOrchestrator>(actor.Get())};
+            IsValid(orchestrator)) {
             orchestrator->Modify();
             orchestrator->set_level_script(document_->source_path);
         }

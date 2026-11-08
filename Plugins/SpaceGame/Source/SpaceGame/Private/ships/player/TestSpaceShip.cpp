@@ -20,6 +20,7 @@
 
 #include <utility>
 
+namespace ioj {
 namespace {
 #if !UE_BUILD_SHIPPING
 void apply_space_dust_preset_command(TArray<FString> const& arguments, UWorld* const world) {
@@ -68,12 +69,12 @@ ATestSpaceShip::ATestSpaceShip()
     configure_ship_mesh();
 }
 
-auto ATestSpaceShip::make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnData {
-    ::ioj::sim::player::PlayerSpawnData result;
-    result.team = ioj::to_native(team);
-    result.transform = ioj::to_native(GetActorTransform());
+auto ATestSpaceShip::make_spawn_data() const -> sim::player::PlayerSpawnData {
+    sim::player::PlayerSpawnData result;
+    result.team = to_native(team);
+    result.transform = to_native(GetActorTransform());
     result.body_transform =
-        ioj::to_native(ship_mesh ? ship_mesh->GetRelativeTransform() : FTransform::Identity);
+        to_native(ship_mesh ? ship_mesh->GetRelativeTransform() : FTransform::Identity);
     result.laser_mode = initial_.laser_mode;
     result.laser_fire_rate = initial_.laser_fire_rate;
     result.health = {initial_.health, initial_.health};
@@ -83,18 +84,17 @@ auto ATestSpaceShip::make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnD
         result.config = actor_config->simulation;
     }
     if (ship_mesh) {
-        result.left_socket =
-            ioj::to_native(ship_mesh->GetSocketTransform(Sockets::left, RTS_Component));
+        result.left_socket = to_native(ship_mesh->GetSocketTransform(Sockets::left, RTS_Component));
         result.right_socket =
-            ioj::to_native(ship_mesh->GetSocketTransform(Sockets::right, RTS_Component));
+            to_native(ship_mesh->GetSocketTransform(Sockets::right, RTS_Component));
         result.middle_socket =
-            ioj::to_native(ship_mesh->GetSocketTransform(Sockets::middle, RTS_Component));
+            to_native(ship_mesh->GetSocketTransform(Sockets::middle, RTS_Component));
     }
     return result;
 }
 
-void ATestSpaceShip::bind_simulation(::ioj::sim::player::CommandInterface new_commands,
-                                     ::ioj::sim::player::Sim const& new_simulation) {
+void ATestSpaceShip::bind_simulation(sim::player::CommandInterface new_commands,
+                                     sim::player::Sim const& new_simulation) {
     bound_commands_.emplace(new_commands);
     bound_simulation = &new_simulation;
 #if WITH_EDITOR
@@ -107,12 +107,12 @@ void ATestSpaceShip::unbind_simulation() {
     bound_simulation = nullptr;
 }
 
-auto ATestSpaceShip::commands() -> ::ioj::sim::player::CommandInterface& {
+auto ATestSpaceShip::commands() -> sim::player::CommandInterface& {
     checkf(bound_commands_.has_value(), TEXT("Player input requires bound simulation commands"));
     return *bound_commands_;
 }
 
-auto ATestSpaceShip::simulation() const -> ::ioj::sim::player::Sim const& {
+auto ATestSpaceShip::simulation() const -> sim::player::Sim const& {
     checkf(bound_simulation, TEXT("Player status requires a bound level simulation"));
     return *bound_simulation;
 }
@@ -132,18 +132,18 @@ void ATestSpaceShip::configure_ship_mesh() {
 /* **************************************** */
 // Entity identity and configuration
 /* **************************************** */
-auto ATestSpaceShip::get_unique_id() const noexcept -> ::ioj::sim::EntityId {
-    return bound_simulation ? bound_simulation->unique_entity_id : ::ioj::sim::EntityId{};
+auto ATestSpaceShip::get_unique_id() const noexcept -> sim::EntityId {
+    return bound_simulation ? bound_simulation->unique_entity_id : sim::EntityId{};
 }
 
 auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
-    return bound_simulation ? ioj::to_unreal(bound_simulation->team) : team;
+    return bound_simulation ? to_unreal(bound_simulation->team) : team;
 }
 
 void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
     team = new_team;
     if (bound_simulation) {
-        commands().set_team(ioj::to_native(new_team));
+        commands().set_team(to_native(new_team));
     }
 }
 
@@ -186,32 +186,29 @@ void ATestSpaceShip::set_accelerator(float const input) {
     commands().set_accelerator(input);
 }
 
-void ATestSpaceShip::select_flight_model_slot(::ioj::sim::player::FlightModelSlot const slot) {
+void ATestSpaceShip::select_flight_model_slot(sim::player::FlightModelSlot const slot) {
     flight_models_.initial_slot = slot;
     if (bound_commands_) {
         commands().select_flight_model_slot(slot);
     }
 }
-auto ATestSpaceShip::get_active_flight_model_slot() const -> ::ioj::sim::player::FlightModelSlot {
+auto ATestSpaceShip::get_active_flight_model_slot() const -> sim::player::FlightModelSlot {
     return bound_simulation ? bound_simulation->active_flight_model_slot()
                             : flight_models_.initial_slot;
 }
 
-auto ATestSpaceShip::set_flight_model_slot_profile(::ioj::sim::player::FlightModelSlot const slot,
-                                                   ::ioj::sim::player::FlightModelProfile profile)
+auto ATestSpaceShip::set_flight_model_slot_profile(sim::player::FlightModelSlot const slot,
+                                                   sim::player::FlightModelProfile profile)
     -> bool {
     if (bound_commands_ && !commands().set_flight_model_slot_profile(slot, profile)) {
         return false;
     }
 
-    return ::ioj::sim::player::try_set_flight_model_profile(
-        flight_models_, slot, std::move(profile));
+    return sim::player::try_set_flight_model_profile(flight_models_, slot, std::move(profile));
 }
-auto ATestSpaceShip::get_active_flight_model_profile() const
-    -> ::ioj::sim::player::FlightModelProfile {
+auto ATestSpaceShip::get_active_flight_model_profile() const -> sim::player::FlightModelProfile {
     if (!bound_simulation) {
-        return ::ioj::sim::player::flight_model_profile(flight_models_,
-                                                        flight_models_.initial_slot);
+        return sim::player::flight_model_profile(flight_models_, flight_models_.initial_slot);
     }
     return bound_simulation->active_flight_model_profile();
 }
@@ -240,7 +237,7 @@ void ATestSpaceShip::stop_brake() {
 }
 
 auto ATestSpaceShip::get_velocity() const -> FVector {
-    return bound_simulation ? ioj::to_unreal(bound_simulation->physical_state().velocity)
+    return bound_simulation ? to_unreal(bound_simulation->physical_state().velocity)
                             : FVector::ZeroVector;
 }
 
@@ -257,7 +254,7 @@ auto ATestSpaceShip::get_persistent_forward_target_speed() const -> float {
 }
 
 auto ATestSpaceShip::get_sampled_target_speed_scale() const -> FVector2D {
-    return ioj::to_unreal(simulation().sampled_target_speed_scale());
+    return to_unreal(simulation().sampled_target_speed_scale());
 }
 
 /* **************************************** */
@@ -284,10 +281,10 @@ void ATestSpaceShip::upgrade_laser() {
 }
 
 auto ATestSpaceShip::get_laser_fire_rate() const noexcept -> ETestShipFireRate {
-    return ioj::to_unreal(simulation().laser_fire_rate);
+    return to_unreal(simulation().laser_fire_rate);
 }
 
-auto ATestSpaceShip::get_laser_firing_mode() const noexcept -> ::ioj::sim::LaserFiringState {
+auto ATestSpaceShip::get_laser_firing_mode() const noexcept -> sim::LaserFiringState {
     return simulation().laser_firing_mode;
 }
 
@@ -300,9 +297,9 @@ void ATestSpaceShip::select_previous_laser_fire_rate() noexcept {
 }
 
 void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept {
-    initial_.laser_fire_rate = ioj::to_native(value);
+    initial_.laser_fire_rate = to_native(value);
     if (bound_simulation) {
-        commands().set_laser_fire_rate(ioj::to_native(value));
+        commands().set_laser_fire_rate(to_native(value));
     }
 }
 
@@ -310,7 +307,7 @@ void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept
 // Health and collision
 /* **************************************** */
 void ATestSpaceShip::add_health(int32 const added_health) {
-    commands().add_health(ioj::sim::Health{added_health});
+    commands().add_health(sim::Health{added_health});
     if (commands().consume_death_notification()) {
         handle_simulation_death();
     }
@@ -333,14 +330,14 @@ auto ATestSpaceShip::get_collision_mesh() const -> UStaticMesh const* {
 }
 
 auto ATestSpaceShip::get_middle_socket() const -> FTransform {
-    return ioj::to_unreal(simulation().get_middle_socket());
+    return to_unreal(simulation().get_middle_socket());
 }
 
 #if WITH_EDITOR
 /* **************************************** */
 // Diagnostics
 /* **************************************** */
-auto ATestSpaceShip::get_speed_samples() const noexcept -> std::span<ioj::Vector2d const> {
+auto ATestSpaceShip::get_speed_samples() const noexcept -> std::span<Vector2d const> {
     return simulation().speed_samples;
 }
 
@@ -396,3 +393,5 @@ void ATestSpaceShip::apply_space_dust_debug_preset(FStringView const preset) {
     space_dust->apply_settings(settings);
 }
 #endif
+
+} // namespace ioj

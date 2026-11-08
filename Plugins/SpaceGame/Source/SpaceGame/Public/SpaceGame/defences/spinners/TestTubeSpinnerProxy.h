@@ -20,7 +20,7 @@ class ATestTubeSpinnerProxy : public AActor {
 
     ATestTubeSpinnerProxy();
 
-    void set_level_config_asset(USpaceGameLevelConfig* const config) noexcept {
+    void set_level_config_asset(ioj::USpaceGameLevelConfig* const config) noexcept {
         level_config_asset = config;
     }
 
@@ -48,7 +48,7 @@ class ATestTubeSpinnerProxy : public AActor {
     void face_fire_points_away_from_mesh();
 
     UPROPERTY(VisibleInstanceOnly, Category = "Proxy")
-    TObjectPtr<USpaceGameLevelConfig> level_config_asset{nullptr};
+    TObjectPtr<ioj::USpaceGameLevelConfig> level_config_asset{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};

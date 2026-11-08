@@ -5,12 +5,14 @@
 #include "ObserverControlContext.generated.h"
 
 class ACameraActor;
-class ASpaceGamePlayerController;
 class IEnhancedInputSubsystemInterface;
 class UEnhancedInputComponent;
 class UInputAction;
 class UInputMappingContext;
 struct FInputActionValue;
+
+namespace ioj {
+class ASpaceGamePlayerController;
 
 USTRUCT(BlueprintType)
 struct SPACEGAME_API FObserverControlInputs {
@@ -96,3 +98,5 @@ struct SPACEGAME_API FObserverControlContext {
     bool looking_{false};
     bool boosting_{false};
 };
+
+} // namespace ioj

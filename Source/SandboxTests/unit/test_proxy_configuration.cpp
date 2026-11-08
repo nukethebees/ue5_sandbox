@@ -13,7 +13,7 @@
 TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
 {
     UWorld* world{};
-    USpaceGameLevelConfig* config{};
+    ioj::USpaceGameLevelConfig* config{};
 
     BEFORE_EACH()
     {

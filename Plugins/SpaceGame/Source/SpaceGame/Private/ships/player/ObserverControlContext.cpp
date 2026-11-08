@@ -11,6 +11,7 @@
 #include <InputActionValue.h>
 #include <InputMappingContext.h>
 
+namespace ioj {
 auto FObserverControlContext::initialise(ASpaceGamePlayerController& owner,
                                          UEnhancedInputComponent& input_component,
                                          IEnhancedInputSubsystemInterface& input_subsystem,
@@ -235,3 +236,5 @@ auto FObserverControlContext::get_camera() const -> ACameraActor* {
     }
     return camera;
 }
+
+} // namespace ioj

@@ -39,7 +39,7 @@ ATestCapitalShipProxy::ATestCapitalShipProxy()
 }
 
 void ATestCapitalShipProxy::set_level_config_asset(
-    USpaceGameLevelConfig* const new_config) noexcept {
+    ioj::USpaceGameLevelConfig* const new_config) noexcept {
     level_config_asset = new_config;
 }
 
@@ -333,7 +333,7 @@ void ATestCapitalShipProxy::apply_asset_configuration() {
     apply_spawn_configuration(*config);
 }
 
-void ATestCapitalShipProxy::apply_spawn_configuration(USpaceGameLevelConfig& config) {
+void ATestCapitalShipProxy::apply_spawn_configuration(ioj::USpaceGameLevelConfig& config) {
     auto const& capital_config{config.capital_ships};
     Modify();
     set_level_config_asset(&config);

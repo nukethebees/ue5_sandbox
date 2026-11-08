@@ -94,7 +94,8 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                                TEXT("LevelSim cell size comes from base plus current override"));
                 checks.is_true(orchestrator->get_level_config() != base,
                                TEXT("Orchestrator owns the resolved settings"));
-                auto* const player{const_cast<ATestSpaceShip*>(orchestrator->get_player_ship())};
+                auto* const player{
+                    const_cast<ioj::ATestSpaceShip*>(orchestrator->get_player_ship())};
                 if (IsValid(player)) {
                     player->Destroy();
                 }

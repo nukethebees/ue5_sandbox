@@ -21,11 +21,11 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
             return;
         }
-        auto* const controller{world_result.value()->SpawnActor<ASpaceGamePlayerController>()};
+        auto* const controller{world_result.value()->SpawnActor<ioj::ASpaceGamePlayerController>()};
         auto* const component{NewObject<UEnhancedInputComponent>(controller)};
         auto* const subsystem{NewObject<USandboxTestEnhancedInputSubsystem>(controller)};
         subsystem->initialise();
-        FSpaceShipControllerInputs input;
+        ioj::FSpaceShipControllerInputs input;
         auto* const action{NewObject<UInputAction>(controller)};
         ioj::tests::configure_ship_inputs(input, *controller, *action);
         FPlayerControllerTestAccess::prepare_input(*controller, *component, *subsystem, input);
@@ -35,7 +35,7 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         auto const* const benchmark_property{
             FindFProperty<FStructProperty>(controller->GetClass(), TEXT("benchmark_input"))};
         auto const& benchmark{
-            *benchmark_property->ContainerPtrToValuePtr<FBenchmarkControlInputs>(controller)};
+            *benchmark_property->ContainerPtrToValuePtr<ioj::FBenchmarkControlInputs>(controller)};
         TestRunner->TestTrue(TEXT("Benchmark mapping is active before EndPlay"),
                              subsystem->HasMappingContext(benchmark.mapping_context));
         FPlayerControllerTestAccess::prepare_completion(*controller);
@@ -59,7 +59,7 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
             return;
         }
-        auto* const controller{world_result.value()->SpawnActor<ASpaceGamePlayerController>()};
+        auto* const controller{world_result.value()->SpawnActor<ioj::ASpaceGamePlayerController>()};
         auto* const camera{world_result.value()->SpawnActor<ACameraActor>()};
         controller->show_main_menu();
         controller->SetupInputComponent();
@@ -85,7 +85,7 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
             return;
         }
-        auto* const controller{world_result.value()->SpawnActor<ASpaceGamePlayerController>()};
+        auto* const controller{world_result.value()->SpawnActor<ioj::ASpaceGamePlayerController>()};
         auto const* const config{ioj::load_default_level_config()};
         if (!TestRunner->TestNotNull(TEXT("Level config loads"), config)) {
             controller->Destroy();
@@ -146,13 +146,13 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
             return;
         }
         auto& world{*world_result.value()};
-        auto* const controller{world.SpawnActor<ASpaceGamePlayerController>()};
+        auto* const controller{world.SpawnActor<ioj::ASpaceGamePlayerController>()};
         auto* const ship{
             ioj::spawn_player_ship(world, config->classes.player_ship_class, &config->player_ship)};
         auto* const component{NewObject<UEnhancedInputComponent>(controller)};
         auto* const subsystem{NewObject<USandboxTestEnhancedInputSubsystem>(controller)};
         subsystem->initialise();
-        FSpaceShipControllerInputs input;
+        ioj::FSpaceShipControllerInputs input;
         auto* const action{NewObject<UInputAction>(controller)};
         ioj::tests::configure_ship_inputs(input, *controller, *action);
         FPlayerControllerTestAccess::prepare_input(*controller, *component, *subsystem, input);

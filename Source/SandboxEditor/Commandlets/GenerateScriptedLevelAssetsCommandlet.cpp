@@ -564,8 +564,8 @@ void add_swizzle_modifier(FEnhancedActionKeyMapping& mapping, UInputMappingConte
     mapping.Modifiers.Add(NewObject<UInputModifierSwizzleAxis>(&outer));
 }
 
-auto generate_control_context_input_assets(FObserverControlInputs& observer,
-                                           FBenchmarkControlInputs& benchmark) -> bool {
+auto generate_control_context_input_assets(ioj::FObserverControlInputs& observer,
+                                           ioj::FBenchmarkControlInputs& benchmark) -> bool {
     observer.move = create_input_action(
         observer_input_package_path, TEXT("IA_ObserverMove"), EInputActionValueType::Axis2D);
     observer.vertical_move = create_input_action(observer_input_package_path,
@@ -736,7 +736,7 @@ auto generate_benchmark_widget(UClass& button_class) -> UClass* {
 }
 
 struct FGeneratedShipInputActions {
-    FSpaceShipControllerInputs ship{};
+    ioj::FSpaceShipControllerInputs ship{};
     UInputMappingContext* general{nullptr};
     UInputAction* pause{nullptr};
 
@@ -1350,10 +1350,10 @@ auto generate_save_game_viewer_widget() -> UClass* {
 }
 
 auto configure_control_context_inputs(UBlueprint& blueprint,
-                                      FObserverControlInputs const& observer,
-                                      FBenchmarkControlInputs const& benchmark) -> bool {
+                                      ioj::FObserverControlInputs const& observer,
+                                      ioj::FBenchmarkControlInputs const& benchmark) -> bool {
     auto* const controller{
-        Cast<ASpaceGamePlayerController>(blueprint.GeneratedClass->GetDefaultObject())};
+        Cast<ioj::ASpaceGamePlayerController>(blueprint.GeneratedClass->GetDefaultObject())};
     auto* const observer_property{
         FindFProperty<FStructProperty>(blueprint.GeneratedClass, TEXT("observer_input"))};
     auto* const benchmark_property{
@@ -1377,7 +1377,7 @@ auto configure_control_context_inputs(UBlueprint& blueprint,
 auto configure_gameplay_inputs(UBlueprint& blueprint, FGeneratedShipInputActions const& actions)
     -> bool {
     auto* const controller{
-        Cast<ASpaceGamePlayerController>(blueprint.GeneratedClass->GetDefaultObject())};
+        Cast<ioj::ASpaceGamePlayerController>(blueprint.GeneratedClass->GetDefaultObject())};
     auto* const input_property{
         FindFProperty<FStructProperty>(blueprint.GeneratedClass, TEXT("input"))};
     auto* const global_input_property{
@@ -1387,7 +1387,7 @@ auto configure_gameplay_inputs(UBlueprint& blueprint, FGeneratedShipInputActions
         return false;
     }
 
-    FGlobalControlInputs const global{
+    ioj::FGlobalControlInputs const global{
         .mapping_context = actions.general,
         .toggle_menu = actions.pause,
     };
@@ -1400,7 +1400,7 @@ auto configure_gameplay_inputs(UBlueprint& blueprint, FGeneratedShipInputActions
     return true;
 }
 auto controller_blueprint_is_input_free(UBlueprint& blueprint) -> bool {
-    if (blueprint.ParentClass != ASpaceGamePlayerController::StaticClass()) {
+    if (blueprint.ParentClass != ioj::ASpaceGamePlayerController::StaticClass()) {
         return false;
     }
     TArray<UEdGraph*> graphs;
@@ -1438,14 +1438,14 @@ auto controller_blueprint_is_input_free(UBlueprint& blueprint) -> bool {
     }
     return true;
 }
-auto load_or_create_player_controller(FObserverControlInputs const& observer,
-                                      FBenchmarkControlInputs const& benchmark,
+auto load_or_create_player_controller(ioj::FObserverControlInputs const& observer,
+                                      ioj::FBenchmarkControlInputs const& benchmark,
                                       FGeneratedShipInputActions const& actions) -> UBlueprint* {
     auto* blueprint{LoadObject<UBlueprint>(nullptr, player_controller_object_path)};
     if (!IsValid(blueprint)) {
         auto* const package{CreatePackage(player_controller_package_name)};
         blueprint =
-            FKismetEditorUtilities::CreateBlueprint(ASpaceGamePlayerController::StaticClass(),
+            FKismetEditorUtilities::CreateBlueprint(ioj::ASpaceGamePlayerController::StaticClass(),
                                                     package,
                                                     FName{player_controller_asset_name},
                                                     BPTYPE_Normal,
@@ -1458,9 +1458,9 @@ auto load_or_create_player_controller(FObserverControlInputs const& observer,
         FAssetRegistryModule::AssetCreated(blueprint);
     }
 
-    if (blueprint->ParentClass != ASpaceGamePlayerController::StaticClass()) {
+    if (blueprint->ParentClass != ioj::ASpaceGamePlayerController::StaticClass()) {
         UBlueprintEditorLibrary::ReparentBlueprint(blueprint,
-                                                   ASpaceGamePlayerController::StaticClass());
+                                                   ioj::ASpaceGamePlayerController::StaticClass());
     }
     TArray<UEdGraph*> graphs;
     blueprint->GetAllGraphs(graphs);
@@ -1507,19 +1507,19 @@ auto load_or_create_player_controller(FObserverControlInputs const& observer,
     CastChecked<UBlueprintGeneratedClass>(blueprint->GeneratedClass)
         ->UpdateCustomPropertyListForPostConstruction();
     auto* const compiled_controller{
-        Cast<ASpaceGamePlayerController>(blueprint->GeneratedClass->GetDefaultObject())};
+        Cast<ioj::ASpaceGamePlayerController>(blueprint->GeneratedClass->GetDefaultObject())};
     auto const* const compiled_observer_property{
         FindFProperty<FStructProperty>(blueprint->GeneratedClass, TEXT("observer_input"))};
     auto const* const compiled_benchmark_property{
         FindFProperty<FStructProperty>(blueprint->GeneratedClass, TEXT("benchmark_input"))};
     auto const* const compiled_observer{
         IsValid(compiled_controller) && compiled_observer_property
-            ? compiled_observer_property->ContainerPtrToValuePtr<FObserverControlInputs>(
+            ? compiled_observer_property->ContainerPtrToValuePtr<ioj::FObserverControlInputs>(
                   compiled_controller)
             : nullptr};
     auto const* const compiled_benchmark{
         IsValid(compiled_controller) && compiled_benchmark_property
-            ? compiled_benchmark_property->ContainerPtrToValuePtr<FBenchmarkControlInputs>(
+            ? compiled_benchmark_property->ContainerPtrToValuePtr<ioj::FBenchmarkControlInputs>(
                   compiled_controller)
             : nullptr};
     if (!compiled_observer || !compiled_observer->is_valid() || !compiled_benchmark ||
@@ -1548,20 +1548,20 @@ auto configure_runtime_game_mode(UClass& player_controller_class) -> bool {
     return save_asset(*blueprint);
 }
 
-auto load_or_create_runtime_config(UClass& player_controller_class) -> USpaceGameLevelConfig* {
+auto load_or_create_runtime_config(UClass& player_controller_class) -> ioj::USpaceGameLevelConfig* {
     auto const object_path{
         FString::Printf(TEXT("%s.%s"), runtime_config_package_name, runtime_config_asset_name)};
     auto* const source{
-        LoadObject<USpaceGameLevelConfig>(nullptr, scripted_level_source_config_object_path)};
+        LoadObject<ioj::USpaceGameLevelConfig>(nullptr, scripted_level_source_config_object_path)};
     if (!IsValid(source)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load source level config"));
         return nullptr;
     }
 
-    auto* config{LoadObject<USpaceGameLevelConfig>(nullptr, *object_path)};
+    auto* config{LoadObject<ioj::USpaceGameLevelConfig>(nullptr, *object_path)};
     if (!IsValid(config)) {
         auto* const package{CreatePackage(runtime_config_package_name)};
-        config = Cast<USpaceGameLevelConfig>(StaticDuplicateObject(
+        config = Cast<ioj::USpaceGameLevelConfig>(StaticDuplicateObject(
             source, package, runtime_config_asset_name, RF_Public | RF_Standalone));
         if (!IsValid(config)) {
             UE_LOG(LogTemp, Error, TEXT("Could not duplicate runtime level config"));
@@ -1571,7 +1571,7 @@ auto load_or_create_runtime_config(UClass& player_controller_class) -> USpaceGam
     }
 
     config->Modify();
-    for (TFieldIterator<FProperty> property{USpaceGameLevelConfig::StaticClass(),
+    for (TFieldIterator<FProperty> property{ioj::USpaceGameLevelConfig::StaticClass(),
                                             EFieldIteratorFlags::ExcludeSuper};
          property;
          ++property) {
@@ -1581,8 +1581,8 @@ auto load_or_create_runtime_config(UClass& player_controller_class) -> USpaceGam
     return save_asset(*config) ? config : nullptr;
 }
 
-auto generate_runtime_map(FObserverControlInputs const& observer,
-                          FBenchmarkControlInputs const& benchmark,
+auto generate_runtime_map(ioj::FObserverControlInputs const& observer,
+                          ioj::FBenchmarkControlInputs const& benchmark,
                           FGeneratedShipInputActions const& actions) -> bool {
     auto* const controller_blueprint{
         load_or_create_player_controller(observer, benchmark, actions)};
@@ -1611,13 +1611,13 @@ auto generate_runtime_map(FObserverControlInputs const& observer,
     }
     world_settings->DefaultGameMode = game_mode_class;
 
-    auto* const orchestrator{world->SpawnActor<ATestBatchOrchestrator>()};
+    auto* const orchestrator{world->SpawnActor<ioj::ATestBatchOrchestrator>()};
     if (!IsValid(orchestrator)) {
         UE_LOG(LogTemp, Error, TEXT("Could not spawn runtime orchestrator"));
         return false;
     }
     orchestrator->set_level_config(*config);
-    orchestrator->set_start_mode(EOrchestratorStartMode::AuthoredLevel);
+    orchestrator->set_start_mode(ioj::EOrchestratorStartMode::AuthoredLevel);
 
     auto* const starfield{world->SpawnActor<AGpuStarfieldActor>()};
     if (!IsValid(starfield)) {
@@ -1658,8 +1658,8 @@ UGenerateScriptedLevelAssetsCommandlet::UGenerateScriptedLevelAssetsCommandlet()
 }
 
 int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
-    FObserverControlInputs observer_input;
-    FBenchmarkControlInputs benchmark_input;
+    ioj::FObserverControlInputs observer_input;
+    ioj::FBenchmarkControlInputs benchmark_input;
     auto const context_input_generated{
         generate_menu_input_assets() &&
         generate_control_context_input_assets(observer_input, benchmark_input)};

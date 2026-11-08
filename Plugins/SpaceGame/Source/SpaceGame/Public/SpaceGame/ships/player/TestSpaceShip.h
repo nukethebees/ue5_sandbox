@@ -21,12 +21,14 @@
 
 #include "TestSpaceShip.generated.h"
 
-class ATestBatchOrchestrator;
 class UCameraComponent;
 class USpaceDustComponent;
 class UNiagaraComponent;
 class UStaticMesh;
 class UStaticMeshComponent;
+
+namespace ioj {
+class ATestBatchOrchestrator;
 
 DECLARE_DELEGATE(FOnPlayerShipDied);
 
@@ -45,20 +47,20 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     // Lifecycle and simulation binding
     /* **************************************** */
     ATestSpaceShip();
-    auto make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnData;
-    void bind_simulation(::ioj::sim::player::CommandInterface new_commands,
-                         ::ioj::sim::player::Sim const& new_simulation);
+    auto make_spawn_data() const -> sim::player::PlayerSpawnData;
+    void bind_simulation(sim::player::CommandInterface new_commands,
+                         sim::player::Sim const& new_simulation);
     void unbind_simulation();
     auto has_simulation() const noexcept -> bool { return bound_simulation != nullptr; }
 
     /* **************************************** */
     // Entity identity and configuration
     /* **************************************** */
-    auto get_unique_id() const noexcept -> ::ioj::sim::EntityId;
+    auto get_unique_id() const noexcept -> sim::EntityId;
     auto get_team() const noexcept -> ETestTeam;
     void set_team(ETestTeam new_team) noexcept;
     void set_initial_health(int32 value) noexcept {
-        initial_.health = ::ioj::settings::PositiveHealth::make(::ioj::sim::Health{value});
+        initial_.health = settings::PositiveHealth::make(sim::Health{value});
     }
 
     void set_actor_config(FPlayerShipConfig const* new_config) noexcept;
@@ -74,11 +76,11 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     void set_yaw_input(float input);
     void set_roll_input(float input);
     void set_accelerator(float input);
-    void select_flight_model_slot(::ioj::sim::player::FlightModelSlot slot);
-    auto get_active_flight_model_slot() const -> ::ioj::sim::player::FlightModelSlot;
-    auto set_flight_model_slot_profile(::ioj::sim::player::FlightModelSlot slot,
-                                       ::ioj::sim::player::FlightModelProfile profile) -> bool;
-    auto get_active_flight_model_profile() const -> ::ioj::sim::player::FlightModelProfile;
+    void select_flight_model_slot(sim::player::FlightModelSlot slot);
+    auto get_active_flight_model_slot() const -> sim::player::FlightModelSlot;
+    auto set_flight_model_slot_profile(sim::player::FlightModelSlot slot,
+                                       sim::player::FlightModelProfile profile) -> bool;
+    auto get_active_flight_model_profile() const -> sim::player::FlightModelProfile;
     void start_boost();
     void stop_boost();
     void start_brake();
@@ -100,7 +102,7 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     void stop_fire_laser();
     void upgrade_laser();
     auto get_laser_fire_rate() const noexcept -> ETestShipFireRate;
-    auto get_laser_firing_mode() const noexcept -> ::ioj::sim::LaserFiringState;
+    auto get_laser_firing_mode() const noexcept -> sim::LaserFiringState;
     void select_next_laser_fire_rate() noexcept;
     void select_previous_laser_fire_rate() noexcept;
     void set_laser_fire_rate(ETestShipFireRate value) noexcept;
@@ -121,7 +123,7 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     /* **************************************** */
     // Diagnostics
     /* **************************************** */
-    auto get_speed_samples() const noexcept -> std::span<ioj::Vector2d const>;
+    auto get_speed_samples() const noexcept -> std::span<Vector2d const>;
     auto get_speed_sample_index() const noexcept -> int32;
 #endif
 
@@ -140,8 +142,8 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     /* **************************************** */
     auto GetVelocity() const -> FVector override;
 
-    auto commands() -> ::ioj::sim::player::CommandInterface&;
-    auto simulation() const -> ::ioj::sim::player::Sim const&;
+    auto commands() -> sim::player::CommandInterface&;
+    auto simulation() const -> sim::player::Sim const&;
 
     void handle_simulation_death();
     void configure_ship_mesh();
@@ -165,13 +167,13 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara", meta = (AllowPrivateAccess))
     UNiagaraComponent* boost_engine_effect{nullptr};
 
-    ioj::sim::PlayerSimConfig initial_;
+    sim::PlayerSimConfig initial_;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Logging", meta = (AllowPrivateAccess))
     FActorLoggingConfig log_config{1.f};
 
-    ::ioj::sim::player::FlightModelLoadout flight_models_{
-        ::ioj::sim::player::make_default_flight_model_loadout()};
+    sim::player::FlightModelLoadout flight_models_{
+        sim::player::make_default_flight_model_loadout()};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Debug", meta = (AllowPrivateAccess))
@@ -180,10 +182,12 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     bool debug_forward_direction{false};
 #endif
 
-    std::optional<::ioj::sim::player::CommandInterface> bound_commands_;
-    ::ioj::sim::player::Sim const* bound_simulation{nullptr};
+    std::optional<sim::player::CommandInterface> bound_commands_;
+    sim::player::Sim const* bound_simulation{nullptr};
 
   public:
     UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "1"))
     TOptional<int32> health_override;
 };
+
+} // namespace ioj

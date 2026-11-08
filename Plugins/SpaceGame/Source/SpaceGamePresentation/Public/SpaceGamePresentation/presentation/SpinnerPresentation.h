@@ -8,8 +8,12 @@
 
 class UInstancedStaticMeshComponent;
 
+namespace ioj {
+struct FLevelPresentation;
+}
+
 struct SPACEGAMEPRESENTATION_API FSpinnerPresentation {
-    friend struct FLevelPresentation;
+    friend struct ioj::FLevelPresentation;
   public:
     static constexpr bool is_world_space{false};
 

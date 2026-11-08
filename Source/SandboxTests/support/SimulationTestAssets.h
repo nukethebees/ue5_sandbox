@@ -1,14 +1,13 @@
 #pragma once
 
 class UObject;
-class USpaceGameLevelConfig;
 struct FCapitalShipConfig;
 struct FFighterConfig;
-namespace ioj {
-struct FSoftTestAssertions;
-}
 
 namespace ioj {
+class USpaceGameLevelConfig;
+struct FSoftTestAssertions;
+
 auto load_default_level_config() -> USpaceGameLevelConfig*;
 auto get_default_level_config(FSoftTestAssertions& checks) -> USpaceGameLevelConfig const*;
 auto duplicate_level_config(USpaceGameLevelConfig const& config, UObject& outer)

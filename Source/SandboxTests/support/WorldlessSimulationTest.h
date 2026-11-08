@@ -8,13 +8,13 @@
 
 #include <span>
 
-class USpaceGameLevelConfig;
-
 namespace ioj::sim::player {
 struct PlayerSpawnData;
 }
 
 namespace ioj {
+class USpaceGameLevelConfig;
+
 auto make_worldless_simulation_test_data(USpaceGameLevelConfig const& config)
     -> ::ioj::sim::LevelSimInitData;
 auto make_worldless_player_spawn(USpaceGameLevelConfig const& config,

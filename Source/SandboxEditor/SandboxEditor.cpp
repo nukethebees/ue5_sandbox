@@ -93,11 +93,11 @@ auto FSandboxEditorModule::RequestPIEPermissionInternal(bool) const -> TValueOrE
     if (!IsValid(world)) {
         return MakeValue(true);
     }
-    ATestBatchOrchestrator* orchestrator{};
-    for (TActorIterator<ATestBatchOrchestrator> it{world}; it; ++it) {
+    ioj::ATestBatchOrchestrator* orchestrator{};
+    for (TActorIterator<ioj::ATestBatchOrchestrator> it{world}; it; ++it) {
         auto const mode{it->get_start_mode()};
-        if (mode != EOrchestratorStartMode::AuthoredLevel &&
-            mode != EOrchestratorStartMode::Automatic) {
+        if (mode != ioj::EOrchestratorStartMode::AuthoredLevel &&
+            mode != ioj::EOrchestratorStartMode::Automatic) {
             continue;
         }
         if (orchestrator) {

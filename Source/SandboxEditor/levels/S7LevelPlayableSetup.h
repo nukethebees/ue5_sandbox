@@ -9,8 +9,11 @@
 class AS7LevelAuthoringDocument;
 class ULevel;
 class UWorld;
+
+namespace ioj {
 class USpaceGameLevelConfig;
 class ATestSpaceShip;
+}
 
 namespace ioj::levels {
 class LevelDefinition;

@@ -4,6 +4,7 @@
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 #include <SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h>
 
+namespace ioj {
 struct SPACEGAMEPRESENTATION_API FLevelPresentationComponents {
     auto is_valid() const -> bool;
 
@@ -31,25 +32,27 @@ class SPACEGAMEPRESENTATION_API FLevelPresentationHost {
     void configure_collision_grid(TOptional<FCollisionGridVisualizationSettings> settings);
     void initialise(FLevelVisualConfig const& config,
                     TOptional<FPlayerPresentationResources> player,
-                    ioj::sim::LevelReadAccess const& view,
-                    ioj::sim::SpatialQueryManager const& spatial_queries);
+                    sim::LevelReadAccess const& view,
+                    sim::SpatialQueryManager const& spatial_queries);
     void reset();
     void tick(double dt,
-              ioj::sim::LevelReadAccess const& view,
-              ioj::sim::SpatialQueryManager const& spatial_queries);
+              sim::LevelReadAccess const& view,
+              sim::SpatialQueryManager const& spatial_queries);
 
     auto make_resources(FLevelVisualConfig const& config,
                         TOptional<FPlayerPresentationResources> player) const
         -> FLevelPresentationResources;
-    auto get_hud_manager() -> ioj::FHUDManager& { return hud_manager_; }
+    auto get_hud_manager() -> FHUDManager& { return hud_manager_; }
     auto get_presentation() const -> FLevelPresentation const* {
         return presentation_.IsSet() ? &presentation_.GetValue() : nullptr;
     }
 
   private:
-    void update_collision_bounds(ioj::sim::SpatialQueryManager const& spatial_queries);
+    void update_collision_bounds(sim::SpatialQueryManager const& spatial_queries);
 
     FLevelPresentationComponents components_;
-    ioj::FHUDManager hud_manager_;
+    FHUDManager hud_manager_;
     TOptional<FLevelPresentation> presentation_;
 };
+
+} // namespace ioj

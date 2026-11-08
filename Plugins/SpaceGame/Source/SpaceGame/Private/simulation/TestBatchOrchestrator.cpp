@@ -23,6 +23,7 @@
 #include <Misc/Paths.h>
 #include <SandboxISMCComponent.h>
 
+namespace ioj {
 /* **************************************** */
 // Lifecycle and simulation control
 /* **************************************** */
@@ -50,7 +51,7 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
         CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("SoftTargets"));
     soft_target_instances_->SetupAttachment(RootComponent);
 
-    ioj::set_actor_component_mobility(*this, EComponentMobility::Static);
+    set_actor_component_mobility(*this, EComponentMobility::Static);
     laser_instances_->SetMobility(EComponentMobility::Movable);
     fighter_instances_->SetMobility(EComponentMobility::Movable);
     soft_target_instances_->SetMobility(EComponentMobility::Movable);
@@ -71,10 +72,10 @@ void ATestBatchOrchestrator::BeginPlay() {
     }
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
-    release_level(ioj::sim::telemetry::RunEndReason::WorldEnd);
+    release_level(sim::telemetry::RunEndReason::WorldEnd);
     Super::EndPlay(end_play_reason);
 }
-void ATestBatchOrchestrator::release_level(ioj::sim::telemetry::RunEndReason const reason) {
+void ATestBatchOrchestrator::release_level(sim::telemetry::RunEndReason const reason) {
     SetActorTickEnabled(false);
     if (level_simulation_.IsSet()) {
         level_simulation_->finalize_telemetry_run(reason);
@@ -84,10 +85,10 @@ void ATestBatchOrchestrator::release_level(ioj::sim::telemetry::RunEndReason con
     }
     presentation_host_.reset();
     if (level_simulation_.IsSet()) {
-        ioj::persist_finalized_level_telemetry_run(
+        persist_finalized_level_telemetry_run(
             *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
         level_simulation_.Reset();
-        auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
+        auto* const game_subsystem{UGameSubsystem::get(GetGameInstance())};
         check(game_subsystem);
         game_subsystem->reset_level_memory();
     }
@@ -99,7 +100,7 @@ void ATestBatchOrchestrator::start_simulation() {
     if (!level_simulation_.IsSet() && !begin_play()) {
         return;
     }
-    if (get_state() != ioj::sim::LevelState::Paused) {
+    if (get_state() != sim::LevelState::Paused) {
         UE_LOG(LogSandbox, Error, TEXT("Cannot start a simulation that is not paused"));
         return;
     }
@@ -123,10 +124,10 @@ void ATestBatchOrchestrator::reset_for_new_level() {
         simulation_tick_settings.time_scale = level_simulation_->clock().time_scale();
     }
 
-    release_level(ioj::sim::telemetry::RunEndReason::OrchestratorReset);
+    release_level(sim::telemetry::RunEndReason::OrchestratorReset);
     launch_options_ = {};
     clear_player_ship();
-    ioj::reset_level_world(*world, *this);
+    reset_level_world(*world, *this);
 
     on_reset.Broadcast(*this);
 }
@@ -155,7 +156,7 @@ auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> 
     prepared_level_.Reset();
     refresh_collision_grid_visualization();
     if (IsValid(player_ship)) {
-        ioj::configure_player_actor(*player_ship, config);
+        configure_player_actor(*player_ship, config);
     }
     return true;
 }
@@ -164,14 +165,14 @@ void ATestBatchOrchestrator::set_level_script(FString path) {
     FPaths::MakePathRelativeTo(level_script.FilePath, *FPaths::ProjectDir());
 }
 void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
-    if (get_state() != ioj::sim::LevelState::Uninitialised) {
+    if (get_state() != sim::LevelState::Uninitialised) {
         UE_LOG(LogSandbox, Error, TEXT("Cannot change start mode after simulation initialisation"));
         return;
     }
     start_mode = mode;
 }
 void ATestBatchOrchestrator::set_presentation_enabled(bool const enabled) {
-    if (get_state() != ioj::sim::LevelState::Uninitialised) {
+    if (get_state() != sim::LevelState::Uninitialised) {
         UE_LOG(
             LogSandbox, Error, TEXT("Cannot change presentation after simulation initialisation"));
         return;
@@ -196,10 +197,10 @@ void ATestBatchOrchestrator::clear_player_ship() {
 /* **************************************** */
 // Level preparation and startup
 /* **************************************** */
-auto ATestBatchOrchestrator::prepare_level(ioj::levels::LevelDefinition definition) -> bool {
-    check(get_state() == ioj::sim::LevelState::Uninitialised);
+auto ATestBatchOrchestrator::prepare_level(levels::LevelDefinition definition) -> bool {
+    check(get_state() == sim::LevelState::Uninitialised);
     auto* const world{GetWorld()};
-    ioj::fatal_if_uobject_ptrs_invalid(
+    fatal_if_uobject_ptrs_invalid(
         {SANDBOX_NAMED_UOBJECT_PTR(world), SANDBOX_NAMED_UOBJECT_PTR(level_config)});
     auto loaded{prepare_level_resources(definition.settings(), *level_config, this)};
     if (!loaded) {
@@ -213,56 +214,55 @@ auto ATestBatchOrchestrator::prepare_level(ioj::levels::LevelDefinition definiti
     simulation_tick_settings = definition.settings().tick;
     if (start_mode == EOrchestratorStartMode::AuthoredLevel) {
         simulation_tick_settings.time_scale =
-            ioj::PositiveFinite<time_type>::make(launch_options_.requested_time_scale);
+            PositiveFinite<time_type>::make(launch_options_.requested_time_scale);
     }
     presentation_host_.get_hud_manager().configure(definition.settings().hud);
     prepared_level_.Emplace(std::move(definition));
 
     return true;
 }
-auto ATestBatchOrchestrator::load_level(
-    ioj::levels::LevelDefinition definition,
-    ::ioj::levels::ControlContext const playerless_control_context)
-    -> std::expected<void, ioj::FLevelLoadErrors> {
-    auto const fail{[](ioj::ELevelLoadErrorCode const code,
-                       FString message) -> std::expected<void, ioj::FLevelLoadErrors> {
-        ioj::FLevelLoadErrors errors;
+auto ATestBatchOrchestrator::load_level(levels::LevelDefinition definition,
+                                        levels::ControlContext const playerless_control_context)
+    -> std::expected<void, FLevelLoadErrors> {
+    auto const fail{[](ELevelLoadErrorCode const code,
+                       FString message) -> std::expected<void, FLevelLoadErrors> {
+        FLevelLoadErrors errors;
         errors.errors.Add({.code = code, .message = MoveTemp(message)});
         return std::unexpected{MoveTemp(errors)};
     }};
-    if (get_state() != ioj::sim::LevelState::Uninitialised) {
-        return fail(ioj::ELevelLoadErrorCode::InvalidLevelState,
+    if (get_state() != sim::LevelState::Uninitialised) {
+        return fail(ELevelLoadErrorCode::InvalidLevelState,
                     TEXT("Level loader requires an uninitialised orchestrator"));
     }
     auto* const world{GetWorld()};
     if (!IsValid(world)) {
-        return fail(ioj::ELevelLoadErrorCode::InvalidWorld, TEXT("Orchestrator world is invalid"));
+        return fail(ELevelLoadErrorCode::InvalidWorld, TEXT("Orchestrator world is invalid"));
     }
     if (!prepare_level(std::move(definition))) {
-        return fail(ioj::ELevelLoadErrorCode::InvalidLevelConfig,
+        return fail(ELevelLoadErrorCode::InvalidLevelConfig,
                     TEXT("Failed to resolve game settings"));
     }
 
-    std::optional<ioj::FLevelVisualLoad> visual;
+    std::optional<FLevelVisualLoad> visual;
     if (presentation_enabled) {
         auto* const controller{
             Cast<ASpaceGamePlayerController>(UGameplayStatics::GetPlayerController(world, 0))};
         if (!IsValid(controller)) {
-            return fail(ioj::ELevelLoadErrorCode::MissingInfrastructure,
+            return fail(ELevelLoadErrorCode::MissingInfrastructure,
                         TEXT("Authored level requires a space-game player controller"));
         }
         if (!get_presentation_resources().is_valid()) {
-            return fail(ioj::ELevelLoadErrorCode::MissingInfrastructure,
+            return fail(ELevelLoadErrorCode::MissingInfrastructure,
                         TEXT("Orchestrator simulation infrastructure is incomplete"));
         }
         visual.emplace(*controller, playerless_control_context);
     }
 
-    return ioj::FLevelLoader::load({.world = *world,
-                                    .config = *level_config,
-                                    .definition = get_level_definition(),
-                                    .player = player_ship,
-                                    .visual = visual});
+    return FLevelLoader::load({.world = *world,
+                               .config = *level_config,
+                               .definition = get_level_definition(),
+                               .player = player_ship,
+                               .visual = visual});
 }
 auto ATestBatchOrchestrator::begin_play() -> bool {
     if (level_simulation_.IsSet()) {
@@ -285,12 +285,11 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
 
     auto options{launch_options_};
-    options.presentation_mode = presentation_enabled
-                                  ? ioj::levels::PresentationMode::Visual
-                                  : ioj::levels::PresentationMode::SimulationOnly;
+    options.presentation_mode = presentation_enabled ? levels::PresentationMode::Visual
+                                                     : levels::PresentationMode::SimulationOnly;
     auto build{initialisation_data_
-                   ? ioj::FLevelSimBuildResult{std::in_place, std::move(*initialisation_data_)}
-                   : ioj::prepare_level_simulation({
+                   ? FLevelSimBuildResult{std::in_place, std::move(*initialisation_data_)}
+                   : prepare_level_simulation({
                          .config = *level_config,
                          .clock_settings = simulation_tick_settings,
                          .launch_options = options,
@@ -303,7 +302,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         return false;
     }
 
-    auto configured{ioj::configure_level_run(*build, *world, get_level_definition(), options)};
+    auto configured{configure_level_run(*build, *world, get_level_definition(), options)};
     if (!configured) {
         handle_level_start_failure(configured.error().format());
         return false;
@@ -316,7 +315,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
             TEXT("Cannot start level: Level presentation resources are incomplete"));
         return false;
     }
-    auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
+    auto* const game_subsystem{UGameSubsystem::get(GetGameInstance())};
     if (!IsValid(game_subsystem)) {
         handle_level_start_failure(TEXT("Cannot create level simulation without game memory"));
         return false;
@@ -331,7 +330,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
 
     initialisation_data_.reset();
-    auto const static_bounds{ioj::FLevelCollisionHost::extract_static_geometry(
+    auto const static_bounds{FLevelCollisionHost::extract_static_geometry(
         *world, level_config->collision_grid, grid_geometry)};
     level_simulation_->set_static_collision(static_bounds);
     level_simulation_->finish_initialisation();
@@ -354,12 +353,12 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         start_mode == EOrchestratorStartMode::AuthoredLevel ||
         (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting)};
     if (level_simulation_->result()) {
-        ioj::publish_level_completion(*level_simulation_, GetGameInstance(), on_level_completed);
-        ioj::persist_finalized_level_telemetry_run(
+        publish_level_completion(*level_simulation_, GetGameInstance(), on_level_completed);
+        persist_finalized_level_telemetry_run(
             *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
     }
-    if (automatic && launch_options_.launch_mode == ioj::levels::LaunchMode::Running &&
-        level_simulation_->state() == ioj::sim::LevelState::Paused) {
+    if (automatic && launch_options_.launch_mode == levels::LaunchMode::Running &&
+        level_simulation_->state() == sim::LevelState::Paused) {
         level_simulation_->start();
     }
     SetActorTickEnabled(true);
@@ -367,27 +366,25 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
 }
 void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
     SetActorTickEnabled(false);
-    ioj::FLevelLoader::report_failure(GetWorld(), MoveTemp(message));
+    FLevelLoader::report_failure(GetWorld(), MoveTemp(message));
 }
 void ATestBatchOrchestrator::load_authored_level() {
-    auto* const game{ioj::UGameSubsystem::get(GetGameInstance())};
+    auto* const game{UGameSubsystem::get(GetGameInstance())};
     check(game);
     auto pending{game->take_pending_level()};
     if (!pending && !level_script.FilePath.IsEmpty()) {
         auto const path{
             FPaths::ConvertRelativePathToFull(FPaths::ProjectDir(), level_script.FilePath)};
-        auto definition{ioj::levels::authoring::DefinitionReader{}.read_level_file(
-            std::filesystem::path{*path})};
+        auto definition{
+            levels::authoring::DefinitionReader{}.read_level_file(std::filesystem::path{*path})};
         if (!definition) {
-            handle_level_start_failure(
-                ioj::to_fstring(ioj::levels::format_diagnostics(definition.error())));
+            handle_level_start_failure(to_fstring(levels::format_diagnostics(definition.error())));
             return;
         }
-        ioj::levels::LaunchOptions options;
-        options.control_context = definition->camera() ? ioj::levels::ControlContext::Observer
-                                                       : ioj::levels::ControlContext::Player;
-        pending.emplace(
-            ioj::session::PendingLevel{std::move(*definition), ioj::to_string(path), options});
+        levels::LaunchOptions options;
+        options.control_context = definition->camera() ? levels::ControlContext::Observer
+                                                       : levels::ControlContext::Player;
+        pending.emplace(session::PendingLevel{std::move(*definition), to_string(path), options});
     }
     if (!pending) {
         handle_level_start_failure(
@@ -395,12 +392,11 @@ void ATestBatchOrchestrator::load_authored_level() {
         return;
     }
     launch_options_ = pending->options;
-    presentation_enabled =
-        launch_options_.presentation_mode == ioj::levels::PresentationMode::Visual;
+    presentation_enabled = launch_options_.presentation_mode == levels::PresentationMode::Visual;
 
     auto const loaded{load_level(std::move(pending->definition), launch_options_.control_context)};
     if (!loaded) {
-        handle_level_start_failure(loaded.error().format(ioj::to_fstring(pending->source_path)));
+        handle_level_start_failure(loaded.error().format(to_fstring(pending->source_path)));
         return;
     }
     if (!presentation_enabled) {
@@ -462,15 +458,14 @@ void ATestBatchOrchestrator::Tick(float dt) {
 }
 void ATestBatchOrchestrator::tick(time_type const dt) {
     auto const state{get_state()};
-    if (state != ioj::sim::LevelState::Running && state != ioj::sim::LevelState::Paused) {
+    if (state != sim::LevelState::Running && state != sim::LevelState::Paused) {
         return;
     }
 
     auto const& clk{level_simulation_->clock()};
     auto const previous_tick{clk.get_completed_ticks()};
     level_simulation_->advance(dt);
-    if (get_state() == ioj::sim::LevelState::Running ||
-        clk.get_completed_ticks() != previous_tick) {
+    if (get_state() == sim::LevelState::Running || clk.get_completed_ticks() != previous_tick) {
         presentation_host_.tick(
             dt, level_simulation_->read_access(), level_simulation_->spatial_query_manager());
 
@@ -483,14 +478,13 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 
         if (auto const result{level_simulation_->result()};
             result && result->terminal.tick > previous_tick) {
-            ioj::publish_level_completion(
-                *level_simulation_, GetGameInstance(), on_level_completed);
+            publish_level_completion(*level_simulation_, GetGameInstance(), on_level_completed);
         }
-        ioj::persist_finalized_level_telemetry_run(
+        persist_finalized_level_telemetry_run(
             *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
     }
 
-    if (state == ioj::sim::LevelState::Running && get_state() == ioj::sim::LevelState::Paused) {
+    if (state == sim::LevelState::Running && get_state() == sim::LevelState::Paused) {
         on_simulation_paused.Broadcast();
     }
 }
@@ -506,3 +500,5 @@ void ATestBatchOrchestrator::apply_level_config() {
     set_level_config(*level_config);
 }
 #endif
+
+} // namespace ioj

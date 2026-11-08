@@ -6,19 +6,19 @@
 #include <InputMappingContext.h>
 
 struct FPlayerControllerTestAccess {
-    static void prepare_completion(ASpaceGamePlayerController& controller) {
+    static void prepare_completion(ioj::ASpaceGamePlayerController& controller) {
         controller.modal_ui_.completion_menu_ = NewObject<ioj::ULevelCompletionWidget>(&controller);
         controller.modal_ui_.begin_suspend(::ioj::levels::ControlContext::Player);
     }
 
-    static auto restore_context(ASpaceGamePlayerController const& controller) {
+    static auto restore_context(ioj::ASpaceGamePlayerController const& controller) {
         return controller.modal_ui_.resume_context(::ioj::levels::ControlContext::None);
     }
 
-    static void prepare_input(ASpaceGamePlayerController& controller,
+    static void prepare_input(ioj::ASpaceGamePlayerController& controller,
                               UEnhancedInputComponent& component,
                               IEnhancedInputSubsystemInterface& subsystem,
-                              FSpaceShipControllerInputs const& input) {
+                              ioj::FSpaceShipControllerInputs const& input) {
         controller.input = input;
         controller.global_input.mapping_context = NewObject<UInputMappingContext>(&controller);
         controller.global_input.toggle_menu = input.select_starfox;
@@ -32,38 +32,38 @@ struct FPlayerControllerTestAccess {
         controller.begin_play_finished_ = true;
     }
 
-    static void shutdown_input(ASpaceGamePlayerController& controller) {
+    static void shutdown_input(ioj::ASpaceGamePlayerController& controller) {
         controller.control_contexts_.shutdown();
     }
 
-    static auto ship_input(ASpaceGamePlayerController const& controller)
-        -> FSpaceShipControllerInputs const& {
+    static auto ship_input(ioj::ASpaceGamePlayerController const& controller)
+        -> ioj::FSpaceShipControllerInputs const& {
         return controller.input;
     }
-    static auto global_input(ASpaceGamePlayerController const& controller)
-        -> FGlobalControlInputs const& {
+    static auto global_input(ioj::ASpaceGamePlayerController const& controller)
+        -> ioj::FGlobalControlInputs const& {
         return controller.global_input;
     }
 
-    static void toggle_pause(ASpaceGamePlayerController& controller) {
+    static void toggle_pause(ioj::ASpaceGamePlayerController& controller) {
         controller.toggle_pause_game();
     }
-    static auto has_modal(ASpaceGamePlayerController const& controller) -> bool {
+    static auto has_modal(ioj::ASpaceGamePlayerController const& controller) -> bool {
         return controller.modal_ui_.has_modal();
     }
-    static void complete(ASpaceGamePlayerController& controller,
+    static void complete(ioj::ASpaceGamePlayerController& controller,
                          FLevelCompletion const& completion) {
         controller.on_level_completed(completion);
     }
-    static void close_completion(ASpaceGamePlayerController& controller) {
+    static void close_completion(ioj::ASpaceGamePlayerController& controller) {
         if (auto* const menu{controller.modal_ui_.completion_menu_.Get()}; IsValid(menu)) {
             menu->DeactivateWidget();
         }
     }
-    static void end_play(ASpaceGamePlayerController& controller) {
+    static void end_play(ioj::ASpaceGamePlayerController& controller) {
         controller.EndPlay(EEndPlayReason::Destroyed);
     }
-    static auto select_context(ASpaceGamePlayerController& controller,
+    static auto select_context(ioj::ASpaceGamePlayerController& controller,
                                ::ioj::levels::ControlContext context) -> bool {
         return controller.control_contexts_.set_control_context(context);
     }

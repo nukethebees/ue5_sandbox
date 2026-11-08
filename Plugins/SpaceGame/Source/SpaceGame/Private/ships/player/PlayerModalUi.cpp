@@ -14,6 +14,7 @@
 #include <Engine/GameInstance.h>
 #include <InputAction.h>
 
+namespace ioj {
 /* **************************************** */
 // Root lifecycle
 /* **************************************** */
@@ -29,12 +30,11 @@ auto FPlayerModalUi::initialise_root(ASpaceGamePlayerController& owner,
         return false;
     }
 
-    auto const root_class{ui_data->get_widget_class<ioj::UGameUiRootLayout>()};
+    auto const root_class{ui_data->get_widget_class<UGameUiRootLayout>()};
     if (!root_class) {
         return false;
     }
-    auto* const root{
-        CreateWidget<ioj::UGameUiRootLayout>(&owner, root_class, TEXT("game_ui_root"))};
+    auto* const root{CreateWidget<UGameUiRootLayout>(&owner, root_class, TEXT("game_ui_root"))};
     if (!IsValid(root) || !root->initialise(*ui_data)) {
         UE_LOG(LogSandboxController,
                Error,
@@ -70,23 +70,21 @@ auto FPlayerModalUi::show_main_menu(ASpaceGamePlayerController& owner) -> bool {
         return false;
     }
     auto* const game_instance{owner.GetGameInstance()};
-    auto* const subsystem{ioj::UGameSubsystem::get(game_instance)};
+    auto* const subsystem{UGameSubsystem::get(game_instance)};
     auto request{IsValid(subsystem) ? subsystem->take_menu_request()
-                                    : std::optional<ioj::session::MenuRequest>{}};
+                                    : std::optional<session::MenuRequest>{}};
     if (!request && IsValid(subsystem) && subsystem->has_level_launch_error()) {
-        request.emplace(ioj::session::LevelSelectRequest{});
+        request.emplace(session::LevelSelectRequest{});
     }
-    auto const* level_select{request ? std::get_if<ioj::session::LevelSelectRequest>(&*request)
+    auto const* level_select{request ? std::get_if<session::LevelSelectRequest>(&*request)
                                      : nullptr};
-    auto const* telemetry{request ? std::get_if<ioj::session::TelemetryRequest>(&*request)
-                                  : nullptr};
+    auto const* telemetry{request ? std::get_if<session::TelemetryRequest>(&*request) : nullptr};
     if (!root_->show_main_menu(
             level_select != nullptr,
-            level_select ? FName{*ioj::to_fstring(level_select->preferred_level_id.value)}
-                         : NAME_None,
+            level_select ? FName{*to_fstring(level_select->preferred_level_id.value)} : NAME_None,
             telemetry != nullptr,
-            telemetry && telemetry->run ? ioj::to_fstring(*telemetry->run) : FString{},
-            telemetry && !telemetry->run ? ioj::to_fstring(telemetry->run.error()) : FString{})) {
+            telemetry && telemetry->run ? to_fstring(*telemetry->run) : FString{},
+            telemetry && !telemetry->run ? to_fstring(telemetry->run.error()) : FString{})) {
         return false;
     }
 
@@ -108,7 +106,7 @@ void FPlayerModalUi::apply_main_menu_input_mode(ASpaceGamePlayerController& owne
 /* **************************************** */
 auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner,
                                 UInputAction& action,
-                                ioj::FPauseMenuData data) -> bool {
+                                FPauseMenuData data) -> bool {
     if (!has_root()) {
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));
         return false;
@@ -130,7 +128,7 @@ auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner,
 }
 auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
                                      FLevelCompletion const& completion,
-                                     ioj::sim::telemetry::Snapshot snapshot) -> bool {
+                                     sim::telemetry::Snapshot snapshot) -> bool {
     if (!has_root()) {
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));
         return false;
@@ -217,7 +215,7 @@ auto FPlayerModalUi::is_completion_active() const -> bool {
 /* **************************************** */
 // Gameplay restoration
 /* **************************************** */
-void FPlayerModalUi::begin_suspend(ioj::levels::ControlContext const context) {
+void FPlayerModalUi::begin_suspend(levels::ControlContext const context) {
     resume_.suspend(context);
 }
 void FPlayerModalUi::clear_resume() {
@@ -226,7 +224,9 @@ void FPlayerModalUi::clear_resume() {
 void FPlayerModalUi::on_ship_changed(bool const has_ship) {
     resume_.on_player_changed(has_ship);
 }
-auto FPlayerModalUi::resume_context(ioj::levels::ControlContext const fallback) const
-    -> ioj::levels::ControlContext {
+auto FPlayerModalUi::resume_context(levels::ControlContext const fallback) const
+    -> levels::ControlContext {
     return resume_.context(fallback);
 }
+
+} // namespace ioj

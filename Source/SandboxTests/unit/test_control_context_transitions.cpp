@@ -19,13 +19,13 @@
 #include <UObject/UnrealType.h>
 
 struct FPlayerControlContextsTestAccess {
-    static auto ship_context(FPlayerControlContexts& contexts) -> FShipControlContext& {
+    static auto ship_context(ioj::FPlayerControlContexts& contexts) -> ioj::FShipControlContext& {
         return contexts.ship_;
     }
 };
 
 struct FShipControlContextTestAccess {
-    static void select(FShipControlContext& context,
+    static void select(ioj::FShipControlContext& context,
                        ::ioj::sim::player::FlightModelSlot const slot) {
         context.select_flight_model_slot(slot);
     }
@@ -33,16 +33,16 @@ struct FShipControlContextTestAccess {
 
 TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
 {
-    ASpaceGamePlayerController* controller_{};
-    ATestSpaceShip* ship_{};
+    ioj::ASpaceGamePlayerController* controller_{};
+    ioj::ATestSpaceShip* ship_{};
     ACameraActor* camera_{};
     UEnhancedInputComponent* component_{};
     USandboxTestEnhancedInputSubsystem* subsystem_{};
-    FSpaceShipControllerInputs ship_input_;
-    FObserverControlInputs observer_input_;
-    FBenchmarkControlInputs benchmark_input_;
-    FGlobalControlInputs global_input_;
-    FPlayerControlContexts contexts_;
+    ioj::FSpaceShipControllerInputs ship_input_;
+    ioj::FObserverControlInputs observer_input_;
+    ioj::FBenchmarkControlInputs benchmark_input_;
+    ioj::FGlobalControlInputs global_input_;
+    ioj::FPlayerControlContexts contexts_;
     ::ioj::sim::SimClock clock_;
     ::ioj::sim::EntityLedger ledger_;
     ::ioj::sim::EntityTables tables_{clock_};
@@ -58,7 +58,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
             return;
         }
         auto& world{*world_result.value()};
-        controller_ = world.SpawnActor<ASpaceGamePlayerController>();
+        controller_ = world.SpawnActor<ioj::ASpaceGamePlayerController>();
         ship_ =
             ioj::spawn_player_ship(world, config->classes.player_ship_class, &config->player_ship);
         if (IsValid(ship_)) {
@@ -71,7 +71,8 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         auto const* const defaults{config->classes.player_controller_class.GetDefaultObject()};
         auto const* const input_property{
             FindFProperty<FStructProperty>(defaults->GetClass(), TEXT("input"))};
-        ship_input_ = *input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(defaults);
+        ship_input_ =
+            *input_property->ContainerPtrToValuePtr<ioj::FSpaceShipControllerInputs>(defaults);
         auto* const action{NewObject<UInputAction>(controller_)};
         ioj::tests::configure_ship_inputs(ship_input_, *controller_, *action);
         global_input_.mapping_context = NewObject<UInputMappingContext>(controller_);

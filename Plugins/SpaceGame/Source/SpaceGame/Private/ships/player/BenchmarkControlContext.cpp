@@ -8,6 +8,7 @@
 #include <InputAction.h>
 #include <InputMappingContext.h>
 
+namespace ioj {
 auto FBenchmarkControlContext::initialise(ASpaceGamePlayerController& owner,
                                           UEnhancedInputComponent& component,
                                           IEnhancedInputSubsystemInterface& subsystem,
@@ -72,3 +73,5 @@ void FBenchmarkControlContext::shutdown() {
     subsystem_ = nullptr;
     input_ = nullptr;
 }
+
+} // namespace ioj

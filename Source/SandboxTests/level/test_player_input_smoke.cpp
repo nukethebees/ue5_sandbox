@@ -40,7 +40,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
     inline static FTimespan const timeout{FTimespan::FromSeconds(2)};
 
     ioj::FSoftTestAssertions checks{};
-    TWeakObjectPtr<ASpaceGamePlayerController> controller_{};
+    TWeakObjectPtr<ioj::ASpaceGamePlayerController> controller_{};
     TWeakObjectPtr<UEnhancedInputLocalPlayerSubsystem> subsystem_{};
     TWeakObjectPtr<UEnhancedInputUserSettings> settings_{};
     FString active_profile_id_{};
@@ -169,8 +169,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 TEXT("Gameplay level loads directly"))) {
             return false;
         }
-        auto* const controller{
-            Cast<ASpaceGamePlayerController>(level_setup.get_world().GetFirstPlayerController())};
+        auto* const controller{Cast<ioj::ASpaceGamePlayerController>(
+            level_setup.get_world().GetFirstPlayerController())};
         if (!checks.is_valid(controller, TEXT("Production player controller is active"))) {
             return false;
         }
@@ -204,8 +204,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
     auto ready() const -> bool {
         auto const* const controller{controller_.Get()};
         auto const* const subsystem{subsystem_.Get()};
-        auto const* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
-                                                   : nullptr};
+        auto const* const ship{
+            IsValid(controller) ? Cast<ioj::ATestSpaceShip>(controller->GetPawn()) : nullptr};
         return IsValid(subsystem) && IsValid(ship) && ship->has_simulation() &&
                controller->get_active_control_context() == ::ioj::levels::ControlContext::Player &&
                subsystem->HasMappingContext(
@@ -217,7 +217,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
     auto mode_active(ioj::sim::player::FlightModelSlot const slot) {
         return [this, slot] {
             auto const* const ship{IsValid(controller_.Get())
-                                       ? Cast<ATestSpaceShip>(controller_->GetPawn())
+                                       ? Cast<ioj::ATestSpaceShip>(controller_->GetPawn())
                                        : nullptr};
             return !checks.all_passed ||
                    (IsValid(ship) && ship->get_active_flight_model_slot() == slot);
@@ -451,8 +451,9 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 timeout)
             .Then([this] {
                 auto* const controller{controller_.Get()};
-                auto* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
-                                                     : nullptr};
+                auto* const ship{IsValid(controller)
+                                     ? Cast<ioj::ATestSpaceShip>(controller->GetPawn())
+                                     : nullptr};
                 auto* const subsystem{subsystem_.Get()};
                 checks.is_true(IsValid(ship) && ship->get_active_flight_model_slot() ==
                                                     ioj::sim::player::FlightModelSlot::Fourth,
@@ -536,7 +537,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
             TestCommandBuilder.Then([this, mapping] { send_slate_key(mapping.select, true); })
                 .Until(
                     [this, mapping] {
-                        auto const* const ship{Cast<ATestSpaceShip>(controller_->GetPawn())};
+                        auto const* const ship{Cast<ioj::ATestSpaceShip>(controller_->GetPawn())};
                         return !checks.all_passed || ship->get_active_flight_model_slot() ==
                                                          ioj::flight_model_slot(mapping.scope);
                     },
@@ -963,7 +964,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     return;
                 }
                 auto* const controller{controller_.Get()};
-                auto* const ship{Cast<ATestSpaceShip>(controller->GetPawn())};
+                auto* const ship{Cast<ioj::ATestSpaceShip>(controller->GetPawn())};
                 auto* const game_instance{controller->GetGameInstance()};
                 auto* const settings{
                     IsValid(game_instance)

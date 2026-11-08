@@ -7,6 +7,7 @@
 class UInputMappingContext;
 class UInputAction;
 
+namespace ioj {
 USTRUCT(BlueprintType)
 struct SPACEGAME_API FSpaceShipControllerInputs {
     GENERATED_BODY()
@@ -62,3 +63,5 @@ struct FGlobalControlInputs {
     UPROPERTY(EditDefaultsOnly, Category = "Input")
     UInputAction* toggle_menu{nullptr};
 };
+
+} // namespace ioj

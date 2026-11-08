@@ -3,10 +3,12 @@
 #include <CoreMinimal.h>
 #include <UObject/WeakObjectPtr.h>
 
-class ASpaceGamePlayerController;
 class UEnhancedInputComponent;
 class IEnhancedInputSubsystemInterface;
 class UInputMappingContext;
+
+namespace ioj {
+class ASpaceGamePlayerController;
 struct FGlobalControlInputs;
 
 struct SPACEGAME_API FGlobalPlayerInput {
@@ -31,3 +33,5 @@ struct SPACEGAME_API FGlobalPlayerInput {
     bool bound_{false};
     bool mapping_enabled_{false};
 };
+
+} // namespace ioj

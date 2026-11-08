@@ -5,11 +5,13 @@
 
 #include "BenchmarkControlContext.generated.h"
 
-class ASpaceGamePlayerController;
 class UEnhancedInputComponent;
 class IEnhancedInputSubsystemInterface;
 class UInputMappingContext;
 class UInputAction;
+
+namespace ioj {
+class ASpaceGamePlayerController;
 
 USTRUCT(BlueprintType)
 struct SPACEGAME_API FBenchmarkControlInputs {
@@ -50,3 +52,5 @@ struct SPACEGAME_API FBenchmarkControlContext {
     uint32 binding_handle_{0};
     bool bound_{false};
 };
+
+} // namespace ioj

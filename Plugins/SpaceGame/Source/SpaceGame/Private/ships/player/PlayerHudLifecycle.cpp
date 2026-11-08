@@ -12,15 +12,16 @@
 
 #include <Engine/GameInstance.h>
 
+namespace ioj {
 auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
                                      ATestBatchOrchestrator* orchestrator,
                                      UTestBatchGameUiData* ui_data,
-                                     ::ioj::levels::ControlContext const context,
+                                     levels::ControlContext const context,
                                      float const observer_speed) -> bool {
     if (IsValid(hud_widget_)) {
-        auto const correct_type{context == ::ioj::levels::ControlContext::Player
+        auto const correct_type{context == levels::ControlContext::Player
                                     ? hud_widget_->IsA<UShipHudWidget>()
-                                    : context == ::ioj::levels::ControlContext::Observer &&
+                                    : context == levels::ControlContext::Observer &&
                                           hud_widget_->IsA<UBattleViewerHudWidget>()};
         if (correct_type) {
             return true;
@@ -67,10 +68,10 @@ auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
 
     TSubclassOf<USimulationHudWidget> hud_widget_class;
     FName widget_name;
-    if (context == ::ioj::levels::ControlContext::Player) {
+    if (context == levels::ControlContext::Player) {
         hud_widget_class = ui_data->get_widget_class<UShipHudWidget>();
         widget_name = TEXT("ship_hud");
-    } else if (context == ::ioj::levels::ControlContext::Observer) {
+    } else if (context == levels::ControlContext::Observer) {
         hud_widget_class = ui_data->get_widget_class<UBattleViewerHudWidget>();
         widget_name = TEXT("battle_viewer_hud");
     } else {
@@ -90,7 +91,7 @@ auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
     }
 
     hud_widget_ = created_widget;
-    auto* const game_subsystem{ioj::UGameSubsystem::get(owner.GetGameInstance())};
+    auto* const game_subsystem{UGameSubsystem::get(owner.GetGameInstance())};
     if (IsValid(game_subsystem)) {
         created_widget->apply_ui_style(game_subsystem->get_ui_style());
     } else {
@@ -169,7 +170,7 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
     }
 
     benchmark_hud_widget_ = created_widget;
-    if (auto* const game_subsystem{ioj::UGameSubsystem::get(owner.GetGameInstance())};
+    if (auto* const game_subsystem{UGameSubsystem::get(owner.GetGameInstance())};
         IsValid(game_subsystem)) {
         created_widget->apply_ui_style(game_subsystem->get_ui_style());
     }
@@ -228,3 +229,5 @@ void FPlayerHudLifecycle::set_observer_speed(float const speed) {
 void FPlayerHudLifecycle::cancel_restore() {
     restore_pending_ = false;
 }
+
+} // namespace ioj

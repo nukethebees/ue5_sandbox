@@ -3,9 +3,10 @@
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/time_series_data.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
-class ATestSpaceShip;
 
 namespace ioj {
+class ATestSpaceShip;
+
 class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
     struct FSimulationSample {
         bool player_id_is_dead{false};

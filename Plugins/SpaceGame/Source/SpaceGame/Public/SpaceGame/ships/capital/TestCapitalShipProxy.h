@@ -17,7 +17,7 @@ class ATestCapitalShipProxy : public AActor {
   public:
     ATestCapitalShipProxy();
 
-    SPACEGAME_API void set_level_config_asset(USpaceGameLevelConfig* new_config) noexcept;
+    SPACEGAME_API void set_level_config_asset(ioj::USpaceGameLevelConfig* new_config) noexcept;
 
     auto get_team() const noexcept { return team; }
 
@@ -43,7 +43,7 @@ class ATestCapitalShipProxy : public AActor {
     void OnConstruction(FTransform const& transform) override;
 
     UPROPERTY(VisibleInstanceOnly, Category = "Ship|Configuration")
-    TObjectPtr<USpaceGameLevelConfig> level_config_asset{nullptr};
+    TObjectPtr<ioj::USpaceGameLevelConfig> level_config_asset{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};
@@ -64,7 +64,7 @@ class ATestCapitalShipProxy : public AActor {
 #endif
 
 #if WITH_EDITOR
-    void apply_spawn_configuration(USpaceGameLevelConfig& config);
+    void apply_spawn_configuration(ioj::USpaceGameLevelConfig& config);
     void update_spawn_configuration_status();
     void draw_fighter_spawn_preview();
     FString spawn_preview_error;

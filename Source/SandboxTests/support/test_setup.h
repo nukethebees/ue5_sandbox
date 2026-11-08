@@ -11,12 +11,13 @@
 
 class FAutomationTestBase;
 class FTestCommandBuilder;
-class USpaceGameLevelConfig;
 class UWorld;
 class AActor;
-class ATestBatchOrchestrator;
 
 namespace ioj {
+class USpaceGameLevelConfig;
+class ATestBatchOrchestrator;
+
 enum class ETestLevelState : uint8 { Unconstructed, Constructing, Constructed };
 
 class FTestBatchOrchestratorLevelSetup {

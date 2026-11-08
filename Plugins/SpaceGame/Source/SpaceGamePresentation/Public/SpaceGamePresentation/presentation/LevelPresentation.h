@@ -11,6 +11,7 @@
 #include <SpaceGamePresentation/presentation/TurretPresentation.h>
 #include <SpaceGameRendering/SparkEffects.h>
 
+namespace ioj {
 struct SPACEGAMEPRESENTATION_API FLevelPresentationResources {
     USandboxISMCComponent* lasers{nullptr};
     UInstancedStaticMeshComponent* capital_ships{nullptr};
@@ -25,14 +26,14 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentationResources {
 
 struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     FLevelPresentation(FLevelPresentationResources const& resources,
-                       ::ioj::sim::LevelReadAccess const& view);
+                       sim::LevelReadAccess const& view);
     FLevelPresentation(FLevelPresentation const&) = delete;
     FLevelPresentation(FLevelPresentation&&) = delete;
     auto operator=(FLevelPresentation const&) -> FLevelPresentation& = delete;
     auto operator=(FLevelPresentation&&) -> FLevelPresentation& = delete;
 
-    void tick(float dt, ::ioj::sim::LevelReadAccess const& view);
-    auto get_last_completed_tick() const -> ::ioj::sim::SimTick::value_type {
+    void tick(float dt, sim::LevelReadAccess const& view);
+    auto get_last_completed_tick() const -> sim::SimTick::value_type {
         return last_completed_tick_.value();
     }
   private:
@@ -47,5 +48,7 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     FDelayedNiagaraSpawns effects;
   private:
     TOptional<FPlayerPresentation> player_;
-    ::ioj::sim::SimTick last_completed_tick_{};
+    sim::SimTick last_completed_tick_{};
 };
+
+} // namespace ioj

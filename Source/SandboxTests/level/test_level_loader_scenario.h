@@ -6,9 +6,9 @@
 
 #include <optional>
 
+namespace ioj {
 class USpaceGameLevelConfig;
 
-namespace ioj {
 class FLevelLoaderCameraScenario final : public FSimulationTestScenario {
     struct FModalSample {
         bool pause_open{false};

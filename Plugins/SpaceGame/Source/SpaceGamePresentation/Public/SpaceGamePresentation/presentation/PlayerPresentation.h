@@ -8,6 +8,7 @@ class USceneComponent;
 class USpaceDustComponent;
 class UStaticMeshComponent;
 class UNiagaraComponent;
+namespace ioj {
 struct FPlayerPresentationResources {
     TWeakObjectPtr<USceneComponent> root;
     TWeakObjectPtr<UStaticMeshComponent> mesh;
@@ -20,12 +21,13 @@ struct FPlayerPresentationResources {
 struct SPACEGAMEPRESENTATION_API FPlayerPresentation {
     FPlayerPresentation(FPlayerPresentationResources resources,
                         FPlayerShipConfig const& config,
-                        ioj::settings::PlayerPresentation const& settings,
-                        ::ioj::sim::player::Sim const& initial_state);
-    void tick(::ioj::sim::player::Sim const& state);
+                        settings::PlayerPresentation const& settings,
+                        sim::player::Sim const& initial_state);
+    void tick(sim::player::Sim const& state);
   private:
     FPlayerPresentationResources resources_;
-    ::ioj::sim::player::BoostBrakeState boost_brake_state_{
-        ::ioj::sim::player::BoostBrakeState::None};
+    sim::player::BoostBrakeState boost_brake_state_{sim::player::BoostBrakeState::None};
     uint64 boost_start_sequence_{};
 };
+
+} // namespace ioj

@@ -51,7 +51,7 @@ auto make_presentation_component(AActor& owner) -> Component* {
 }
 
 auto make_presentation_resources(AActor& owner, FLevelVisualConfig const& config)
-    -> FLevelPresentationResources {
+    -> ioj::FLevelPresentationResources {
     return {.lasers = make_presentation_component<USandboxISMCComponent>(owner),
             .capital_ships = make_presentation_component<UInstancedStaticMeshComponent>(owner),
             .fighters = make_presentation_component<USandboxISMCComponent>(owner),
@@ -142,7 +142,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     ioj::sim::LevelSim visible{compile_battle(std::move(battle))};
     headless.finish_initialisation();
     visible.finish_initialisation();
-    FLevelPresentation presentation{resources, visible.read_access()};
+    ioj::FLevelPresentation presentation{resources, visible.read_access()};
     headless.start();
     visible.start();
     auto const dt{headless.clock().tick_period()};
@@ -211,7 +211,7 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     };
 
     auto const resources{make_presentation_resources(*owner, config->get_visual_config())};
-    FLevelPresentationComponents const components{
+    ioj::FLevelPresentationComponents const components{
         .lasers = resources.lasers,
         .capital_ships = resources.capital_ships,
         .fighters = resources.fighters,
@@ -244,7 +244,7 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     ioj::sim::LevelSim simulation{compile_battle(std::move(data))};
     simulation.finish_initialisation();
     auto const& clk{simulation.clock()};
-    FLevelPresentationHost host;
+    ioj::FLevelPresentationHost host;
     host.bind_components(components);
     auto const initialise{[&]() {
         host.initialise(
@@ -335,7 +335,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     ::ioj::sim::LevelSim simulation{
         compile_battle(std::move(scheduled_battle), std::move(scheduled_config))};
     simulation.finish_initialisation();
-    FLevelPresentation presentation{resources, simulation.read_access()};
+    ioj::FLevelPresentation presentation{resources, simulation.read_access()};
     TestEqual(TEXT("Delayed spinner has no initial visual instance"),
               resources.spinners->GetNumInstances(),
               0);
@@ -397,7 +397,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     TestEqual(
         TEXT("Zero-step frame preserves instances"), resources.capital_ships->GetNumInstances(), 1);
 
-    FLevelPresentation attached{resources, simulation.read_access()};
+    ioj::FLevelPresentation attached{resources, simulation.read_access()};
     TestEqual(TEXT("Late attachment starts from live state"),
               resources.capital_ships->GetNumInstances(),
               1);
@@ -421,7 +421,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     resources.config.capital_ships.main_death_explosion = explosion;
     resources.config.presentation.capital_ships.time_between_explosions = 10.f;
     resources.config.presentation.capital_ships.large_explosion_delay = 100.f;
-    FLevelPresentation death_effects{resources, deaths.read_access()};
+    ioj::FLevelPresentation death_effects{resources, deaths.read_access()};
     ::ioj::sim::DirectDamageEvents damage;
     damage.add(deaths.capital_ships().get_entities().entity_ids()[0],
                MAX_int32,
@@ -522,7 +522,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     auto* engine{NewObject<UTestNiagaraComponent>(actor)};
     resources.pulse = pulse;
     resources.engine = engine;
-    FPlayerPresentation presentation{
+    ioj::FPlayerPresentation presentation{
         resources, config->player_ship, config->presentation.player_ship, *player};
     simulation.player_ship_commands()->start_boost();
     simulation.advance(0.325);
@@ -540,7 +540,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     presentation.tick(frame);
     TestEqual(
         TEXT("Repeated observation does not replay the pulse"), pulse->activation_count, uint64{1});
-    FPlayerPresentation attached{
+    ioj::FPlayerPresentation attached{
         resources, config->player_ship, config->presentation.player_ship, frame};
     attached.tick(frame);
     TestEqual(TEXT("Late attachment does not replay historical boost starts"),

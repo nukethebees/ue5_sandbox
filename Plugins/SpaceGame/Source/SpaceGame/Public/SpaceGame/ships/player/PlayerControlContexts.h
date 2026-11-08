@@ -6,6 +6,9 @@
 #include <SpaceGame/ships/player/ObserverControlContext.h>
 #include <SpaceGame/ships/player/ShipControlContext.h>
 
+struct FPlayerControlContextsTestAccess;
+
+namespace ioj {
 struct SPACEGAME_API FPlayerControlContexts {
     auto initialise(ASpaceGamePlayerController& owner,
                     UEnhancedInputComponent& component,
@@ -15,26 +18,28 @@ struct SPACEGAME_API FPlayerControlContexts {
                     FBenchmarkControlInputs const& benchmark_input,
                     FGlobalControlInputs const& global_input) -> bool;
     void shutdown();
-    auto set_control_context(::ioj::levels::ControlContext context) -> bool;
-    auto can_bind_context(::ioj::levels::ControlContext context) const -> bool;
+    auto set_control_context(levels::ControlContext context) -> bool;
+    auto can_bind_context(levels::ControlContext context) const -> bool;
     void set_ship(ATestSpaceShip* ship);
     void set_camera(ACameraActor* camera);
-    auto get_active_context() const -> ::ioj::levels::ControlContext { return active_context_; }
+    auto get_active_context() const -> levels::ControlContext { return active_context_; }
     auto is_observer_bound() const -> bool { return observer_.is_bound(); }
     auto get_observer_speed() const -> float { return observer_.get_movement_speed(); }
   private:
-    friend struct FPlayerControlContextsTestAccess;
-    void bind_context(::ioj::levels::ControlContext context);
-    void unbind_context(::ioj::levels::ControlContext context);
+    friend struct ::FPlayerControlContextsTestAccess;
+    void bind_context(levels::ControlContext context);
+    void unbind_context(levels::ControlContext context);
 
     FShipControlContext ship_;
     FObserverControlContext observer_;
     FBenchmarkControlContext benchmark_;
     FGlobalPlayerInput global_;
-    ::ioj::levels::ControlContext active_context_{::ioj::levels::ControlContext::None};
+    levels::ControlContext active_context_{levels::ControlContext::None};
     TWeakObjectPtr<UEnhancedInputComponent> component_;
     TWeakObjectPtr<UObject> subsystem_object_;
     TWeakObjectPtr<ATestSpaceShip> player_ship_;
     TWeakObjectPtr<ACameraActor> camera_;
     bool initialised_{false};
 };
+
+} // namespace ioj

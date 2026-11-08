@@ -19,15 +19,17 @@
 class AActor;
 class ATestCapitalShipProxy;
 class ATestStaticTurretsProxy;
-class ATestSpaceShip;
-class ASpaceGamePlayerController;
 class UMaterialInterface;
 class UNiagaraSystem;
 class UStaticMesh;
 class UTestTeamVisualData;
+
+namespace ioj {
+class ATestSpaceShip;
+class ASpaceGamePlayerController;
 class USpaceGameLevelConfig;
 
-namespace ioj::s7_level_config {
+namespace s7_level_config {
 inline constexpr TCHAR canonical_package_name[]{
     TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig")};
 inline constexpr TCHAR canonical_asset_name[]{TEXT("DA_GameRuntimeLevelConfig")};
@@ -105,7 +107,7 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
                 presentation,
                 sparks};
     }
-    void apply_settings(ioj::sim::SimulationSettings const& settings);
+    void apply_settings(sim::SimulationSettings const& settings);
     [[nodiscard]] auto is_valid(bool require_presentation = true) const noexcept -> bool;
     void get_validation_errors(TArray<FString>& errors, bool require_presentation = true) const;
     void get_validation_warnings(TArray<FString>& warnings) const;
@@ -159,9 +161,11 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
     FEntityOverlaySettings entity_overlay;
 
-    ioj::settings::Presentation presentation;
-    ioj::sim::OverlapResponseConfig overlap_response;
+    settings::Presentation presentation;
+    sim::OverlapResponseConfig overlap_response;
 
     UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ShowOnlyInnerProperties))
     FSparkRendererSettings sparks;
 };
+
+} // namespace ioj

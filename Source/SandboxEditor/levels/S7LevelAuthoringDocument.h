@@ -5,7 +5,9 @@
 
 #include "S7LevelAuthoringDocument.generated.h"
 
+namespace ioj {
 class USpaceGameLevelConfig;
+}
 
 USTRUCT()
 struct FS7LevelEntityBinding {
@@ -63,7 +65,7 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     UPROPERTY(VisibleAnywhere,
               Category = "Level",
               meta = (ToolTip = "Shared canonical S7 runtime resources"))
-    TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
+    TObjectPtr<ioj::USpaceGameLevelConfig> level_config{nullptr};
 
     UPROPERTY(EditAnywhere, EditFixedSize, Category = "Entities", meta = (TitleProperty = "id"))
     TArray<FS7LevelEntityBinding> entities{};

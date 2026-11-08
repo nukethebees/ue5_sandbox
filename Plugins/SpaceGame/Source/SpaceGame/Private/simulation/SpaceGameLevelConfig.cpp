@@ -14,7 +14,8 @@
 #include <Misc/DataValidation.h>
 #endif
 
-auto ioj::s7_level_config::load_canonical() -> USpaceGameLevelConfig* {
+namespace ioj {
+auto s7_level_config::load_canonical() -> USpaceGameLevelConfig* {
     return LoadObject<USpaceGameLevelConfig>(nullptr, canonical_object_path);
 }
 
@@ -45,8 +46,8 @@ auto collision_class_lists_are_valid(FCollisionGridConfig const& config) -> bool
 
 auto collision_grid_dimensions_are_valid(FCollisionGridConfig const& config) -> bool {
     auto const dimensions{config.calculate_grid_dimensions()};
-    return ::ioj::sim::collision::is_configured(
-        {{dimensions.X, dimensions.Y, dimensions.Z}, ioj::Vector3f{config.cell_size}});
+    return sim::collision::is_configured(
+        {{dimensions.X, dimensions.Y, dimensions.Z}, Vector3f{config.cell_size}});
 }
 }
 
@@ -58,8 +59,8 @@ FCollisionGridConfig::FCollisionGridConfig()
     , omitted_collision_actor_classes{ATestSpaceShip::StaticClass()} {}
 
 auto FCollisionGridConfig::calculate_grid_dimensions() const noexcept -> FIntVector3 {
-    auto const dimensions{::ioj::sim::collision::calculate_grid_dimensions(
-        ioj::Vector3f{grid_size}, ioj::Vector3f{cell_size})};
+    auto const dimensions{
+        sim::collision::calculate_grid_dimensions(Vector3f{grid_size}, Vector3f{cell_size})};
     return {dimensions.x(), dimensions.y(), dimensions.z()};
 }
 
@@ -67,7 +68,7 @@ auto FCollisionGridConfig::is_valid() const noexcept -> bool {
     return collision_grid_dimensions_are_valid(*this) && collision_class_lists_are_valid(*this);
 }
 
-void USpaceGameLevelConfig::apply_settings(ioj::sim::SimulationSettings const& settings) {
+void USpaceGameLevelConfig::apply_settings(sim::SimulationSettings const& settings) {
     overlap_response = settings.overlap_response;
     player_ship.simulation = settings.player;
     laser_projectiles.simulation = settings.lasers;
@@ -77,8 +78,8 @@ void USpaceGameLevelConfig::apply_settings(ioj::sim::SimulationSettings const& s
     fighters.simulation = settings.fighters;
     turrets.simulation = settings.turrets;
     tube_spinners.simulation = settings.spinners;
-    collision_grid.grid_size = ioj::to_unreal(settings.overlap_response.level_size);
-    collision_grid.cell_size = ioj::to_unreal(settings.overlap_response.cell_size);
+    collision_grid.grid_size = to_unreal(settings.overlap_response.level_size);
+    collision_grid.cell_size = to_unreal(settings.overlap_response.cell_size);
 }
 
 auto USpaceGameLevelConfig::is_valid(bool const require_presentation) const noexcept -> bool {
@@ -163,3 +164,5 @@ EDataValidationResult USpaceGameLevelConfig::IsDataValid(FDataValidationContext&
     return result == EDataValidationResult::NotValidated ? EDataValidationResult::Valid : result;
 }
 #endif
+
+} // namespace ioj

@@ -7,11 +7,13 @@
 
 #include "PlayerHudLifecycle.generated.h"
 
-class ASpaceGamePlayerController;
-class ATestBatchOrchestrator;
 class USimulationHudWidget;
 class UBenchmarkHudWidget;
 class UTestBatchGameUiData;
+
+namespace ioj {
+class ASpaceGamePlayerController;
+class ATestBatchOrchestrator;
 
 USTRUCT()
 struct SPACEGAME_API FPlayerHudLifecycle {
@@ -20,7 +22,7 @@ struct SPACEGAME_API FPlayerHudLifecycle {
     auto initialise(ASpaceGamePlayerController& owner,
                     ATestBatchOrchestrator* orchestrator,
                     UTestBatchGameUiData* ui_data,
-                    ::ioj::levels::ControlContext context,
+                    levels::ControlContext context,
                     float observer_speed) -> bool;
     void shutdown();
     auto initialise_benchmark(ASpaceGamePlayerController& owner,
@@ -43,3 +45,5 @@ struct SPACEGAME_API FPlayerHudLifecycle {
     bool restore_pending_{false};
     ESlateVisibility visibility_before_modal_{ESlateVisibility::Visible};
 };
+
+} // namespace ioj

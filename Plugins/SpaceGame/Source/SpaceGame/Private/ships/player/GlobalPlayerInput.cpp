@@ -8,6 +8,7 @@
 #include <InputAction.h>
 #include <InputMappingContext.h>
 
+namespace ioj {
 auto FGlobalPlayerInput::initialise(ASpaceGamePlayerController& owner,
                                     UEnhancedInputComponent& component,
                                     IEnhancedInputSubsystemInterface& subsystem,
@@ -75,3 +76,5 @@ void FGlobalPlayerInput::shutdown() {
     subsystem_object_.Reset();
     subsystem_ = nullptr;
 }
+
+} // namespace ioj

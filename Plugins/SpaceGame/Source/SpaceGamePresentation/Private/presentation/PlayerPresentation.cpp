@@ -10,10 +10,11 @@
 #include <DrawDebugHelpers.h>
 #include <NiagaraComponent.h>
 
+namespace ioj {
 FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
                                          FPlayerShipConfig const& config,
-                                         ioj::settings::PlayerPresentation const& settings,
-                                         ::ioj::sim::player::Sim const& initial_state)
+                                         settings::PlayerPresentation const& settings,
+                                         sim::player::Sim const& initial_state)
     : resources_{MoveTemp(resources)}
     , boost_start_sequence_{initial_state.presentation_state().boost_start_sequence} {
     if (!resources_.pulse.IsValid() || !resources_.engine.IsValid() || !resources_.mesh.IsValid() ||
@@ -32,7 +33,7 @@ FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
     resources_.space_dust->apply_settings(config.space_dust);
     tick(initial_state);
 }
-void FPlayerPresentation::tick(::ioj::sim::player::Sim const& state) {
+void FPlayerPresentation::tick(sim::player::Sim const& state) {
     auto const& physical{state.physical_state()};
     auto const& presentation{state.presentation_state()};
     auto const action{state.controller_state().effective_action};
@@ -41,16 +42,16 @@ void FPlayerPresentation::tick(::ioj::sim::player::Sim const& state) {
         return;
     }
     resources_.root->SetWorldTransform(
-        ioj::to_unreal(physical.transform), false, nullptr, ETeleportType::TeleportPhysics);
-    resources_.mesh->SetRelativeTransform(ioj::to_unreal(presentation.body_transform));
-    resources_.engine->SetVectorParameter(TEXT("ship_velocity"), ioj::to_unreal(physical.velocity));
-    resources_.space_dust->update_motion(ioj::to_unreal(physical.velocity));
+        to_unreal(physical.transform), false, nullptr, ETeleportType::TeleportPhysics);
+    resources_.mesh->SetRelativeTransform(to_unreal(presentation.body_transform));
+    resources_.engine->SetVectorParameter(TEXT("ship_velocity"), to_unreal(physical.velocity));
+    resources_.space_dust->update_motion(to_unreal(physical.velocity));
     if (boost_start_sequence_ != presentation.boost_start_sequence) {
         resources_.pulse->Activate();
         boost_start_sequence_ = presentation.boost_start_sequence;
     }
     if (boost_brake_state_ != action) {
-        if (action == ::ioj::sim::player::BoostBrakeState::Boost) {
+        if (action == sim::player::BoostBrakeState::Boost) {
             resources_.engine->Activate();
         } else {
             resources_.engine->Deactivate();
@@ -66,10 +67,12 @@ void FPlayerPresentation::tick(::ioj::sim::player::Sim const& state) {
         return end;
     };
     if (resources_.debug_forward_socket_direction) {
-        draw_direction(ioj::to_unreal(state.get_middle_socket()), 5000.f);
+        draw_direction(to_unreal(state.get_middle_socket()), 5000.f);
     }
     if (resources_.debug_forward_direction) {
-        draw_direction(ioj::to_unreal(physical.transform), 5000.f);
+        draw_direction(to_unreal(physical.transform), 5000.f);
     }
 #endif
 }
+
+} // namespace ioj
