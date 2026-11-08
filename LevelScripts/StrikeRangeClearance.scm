@@ -1,4 +1,4 @@
-(load-script "Libraries/objectives.scm")
+(load-script "Libraries/logic.scm")
 (load-script "Libraries/formations.scm")
 
 (level :settings (load-script "Settings/base.scm")
@@ -8,9 +8,10 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue 'red
+  :logic (logic
+    (win-race 'blue 'red
     (entity-kills-reached '(player) 3)
-    (destroy-any '(player)))
+    (destroy-any '(player))))
 
   :entities (cons
     (entity :id 'player :archetype 'player-fighter :team 'blue

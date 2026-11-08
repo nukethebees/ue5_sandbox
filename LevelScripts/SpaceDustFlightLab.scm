@@ -1,4 +1,4 @@
-(load-script "Libraries/objectives.scm")
+(load-script "Libraries/logic.scm")
 (level :settings (load-script "Settings/base.scm")
   :id 'space-dust-flight-lab
   :title "Space Dust Flight Lab"
@@ -6,9 +6,10 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue 'red
-    (time-elapsed 3600)
-    (destroy-any '(player)))
+  :logic (logic
+    (win-race 'blue 'red
+    (level-delay 3600)
+    (destroy-any '(player))))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

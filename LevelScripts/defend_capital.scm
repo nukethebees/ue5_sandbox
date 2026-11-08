@@ -1,4 +1,4 @@
-(load-script "Libraries/objectives.scm")
+(load-script "Libraries/logic.scm")
 
 (level
   :id 'defend-capital
@@ -12,13 +12,14 @@
 
   :player 'playership
 
-  :mission (decisive-mission 'blue 'red
+  :logic (logic
+    (win-race 'blue 'red
     (all-of
-      (time-elapsed 60)
+      (level-delay 60)
       (destroy-all '(capitalship-red2)))
     (any-of
       (destroy-any '(capitalship-blue))
-      (time-elapsed 60)))
+      (level-delay 60))))
 
   :entities (list
     ;; Team: blue | Archetype: player-fighter | Count: 1

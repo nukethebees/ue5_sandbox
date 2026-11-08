@@ -1,4 +1,4 @@
-(load-script "Libraries/objectives.scm")
+(load-script "Libraries/logic.scm")
 (level :settings (load-script "Settings/base.scm")
   :id 'defence-screen-duty
   :title "Defence 01: Screen Duty"
@@ -9,9 +9,10 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue 'red
-    (time-elapsed 75)
-    (destroy-any '(player blue-capital)))
+  :logic (logic
+    (win-race 'blue 'red
+    (level-delay 75)
+    (destroy-any '(player blue-capital))))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

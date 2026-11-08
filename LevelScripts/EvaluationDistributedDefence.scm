@@ -1,4 +1,4 @@
-(load-script "Libraries/objectives.scm")
+(load-script "Libraries/logic.scm")
 (level :settings (load-script "Settings/base.scm")
   :id 'evaluation-distributed-defence
   :title "Evaluation 02: Distributed Defence"
@@ -9,13 +9,14 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue 'red
-    (time-elapsed 180)
+  :logic (logic
+    (win-race 'blue 'red
+    (level-delay 180)
     (destroy-any
       '(player
          blue-installation-west
          blue-installation-centre
-         blue-installation-east)))
+         blue-installation-east))))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

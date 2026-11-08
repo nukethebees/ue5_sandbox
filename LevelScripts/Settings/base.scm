@@ -70,8 +70,7 @@
     :damage-per-overlap-detection 50)
   :hud (hud
     :player-status-update-period 0.25
-    :entity-count-update-period 0.25
-    :mission-status-update-period 0.25)
+    :entity-count-update-period 0.25)
 
   :presentation (presentation
     :player-ship (player-ship-presentation

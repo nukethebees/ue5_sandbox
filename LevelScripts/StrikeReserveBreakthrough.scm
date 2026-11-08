@@ -1,4 +1,4 @@
-(load-script "Libraries/objectives.scm")
+(load-script "Libraries/logic.scm")
 (load-script "Libraries/formations.scm")
 
 (let ((reserve-id 'red-capital-2)
@@ -13,7 +13,8 @@
 
     :player 'player
 
-    :mission (decisive-mission 'blue 'red
+    :logic (logic
+    (win-race 'blue 'red
       (all-of
         (entity-kills-reached
           '(player blue-capital-0 blue-capital-1)
@@ -22,7 +23,7 @@
           (append
             '(red-capital-0 red-capital-1)
             (list reserve-id))))
-      (destroy-any '(player)))
+      (destroy-any '(player))))
 
     :entities (append
       (list

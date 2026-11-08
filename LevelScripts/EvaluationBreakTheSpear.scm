@@ -1,4 +1,4 @@
-(load-script "Libraries/objectives.scm")
+(load-script "Libraries/logic.scm")
 (load-script "Libraries/formations.scm")
 
 (level :settings (load-script "Settings/base.scm")
@@ -11,14 +11,15 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue 'red
+  :logic (logic
+    (win-race 'blue 'red
     (all-of
-      (time-elapsed 150)
+      (level-delay 150)
       (destroy-all '(red-flagship)))
     (any-of
       (destroy-any
         '(player blue-capital-0 blue-capital-1))
-      (time-elapsed 150)))
+      (level-delay 150))))
 
   :entities (append
     (list

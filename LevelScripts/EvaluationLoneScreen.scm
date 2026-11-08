@@ -1,4 +1,4 @@
-(load-script "Libraries/objectives.scm")
+(load-script "Libraries/logic.scm")
 (level :settings (load-script "Settings/base.scm")
   :id 'evaluation-lone-screen
   :title "Evaluation 03: Lone Screen"
@@ -9,9 +9,10 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue 'red
-    (time-elapsed 120)
-    (destroy-any '(player)))
+  :logic (logic
+    (win-race 'blue 'red
+    (level-delay 120)
+    (destroy-any '(player))))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

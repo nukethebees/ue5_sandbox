@@ -7,14 +7,12 @@ Copy an existing `.scm` scenario, give it a unique `:id`, and add its path to
 (level :id 'example :title "Example"
   :player 'player
   :settings (fighters :speed 3000)
-  :mission (mission
-    :objectives (list
-      (objective :id 'clear :team 'blue :title "Clear the range"
-        :wins-level 'yes
-        :pass (entity-destroyed 'turret)
-        :fail (entity-destroyed 'player))
-      (objective :id 'opposition :team 'red :wins-level 'yes
-        :pass (objective-resolved 'clear 'failed))))
+  :logic (logic
+    (define success (entity-destroyed 'turret))
+    (define decision
+      (latch :when (any-of success (entity-destroyed 'player)) :value success))
+    (on :when (latched-true decision) :do (win 'blue))
+    (on :when (latched-false decision) :do (win 'red)))
   :entities (list
     (entity :id 'player :archetype 'player-fighter
       :team 'blue :position '(0 0 0))
@@ -39,7 +37,7 @@ Use record accessors and functional updates to compose levels, for example
 `(level-with base :entities (append (level-ref base :entities) extras))`.
 `foo-with` replaces whole fields without mutating the original record; missing `foo-ref`
 properties are errors. Only proxies marked **Export** are serialized by the editor.
-See [objective authoring](docs/objectives.md).
+See [gameplay logic](docs/logic.md).
 
 Run a scenario with `coj benchmark native-simulation --level LevelScripts/your-level.scm --seconds 10`.
 See [the native guide](../native/README.md) and [benchmark guide](../docs/benchmarks.md)

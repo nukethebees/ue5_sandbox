@@ -1,4 +1,4 @@
-(load-script "Libraries/objectives.scm")
+(load-script "Libraries/logic.scm")
 (level :settings (load-script "Settings/base.scm")
   :id 'border-skirmish
   :title "Border Skirmish"
@@ -6,13 +6,14 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue 'red
+  :logic (logic
+    (win-race 'blue 'red
     (all-of
       (entity-kills-reached
         '(player blue-capital)
         2)
       (destroy-all '(red-capital)))
-    (destroy-any '(blue-capital)))
+    (destroy-any '(blue-capital))))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

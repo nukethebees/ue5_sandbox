@@ -1,4 +1,4 @@
-(load-script "Libraries/objectives.scm")
+(load-script "Libraries/logic.scm")
 (level :settings (load-script "Settings/base.scm")
   :id 'dev-three-second-failure
   :title "Dev: Three-Second Failure"
@@ -6,11 +6,12 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue 'red
+  :logic (logic
+    (win-race 'blue 'red
     (entity-kills-reached '(player) 1)
     (any-of
       (destroy-any '(player))
-      (time-elapsed 3)))
+      (level-delay 3))))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue
