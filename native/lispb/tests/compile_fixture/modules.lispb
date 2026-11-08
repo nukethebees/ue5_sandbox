@@ -25,7 +25,7 @@
     (value Six :groups (A)) (value Four :groups (B))
     (value Two :groups (A C)) (value Three :groups (A B C))
     (projections (cpp)))
-  (enum Manual std::uint8_t :enum-array true :native-api true :helpers (traits)
+  (enum Manual std::uint8_t :enum-array true :native-api true :helpers (traits cycle-next)
     :ordering manual
     (value One :groups (A B)) (value Two :groups (A C))
     (value Three :groups (A B C)) (value Four :groups (B))

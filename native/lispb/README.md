@@ -87,7 +87,10 @@ Native enums select optional helpers with `:helpers`:
 ```
 
 Available helpers are `to-string`, `try-parse`, `to-display-string`, `to-serialized-string`,
-`try-parse-serialized`, `traits` (`ioj::EnumTraits<Enum>::values`), and `formatter`.
+`try-parse-serialized`, `traits` (`ioj::EnumTraits<Enum>::values`), `cycle-next`, and `formatter`.
+`cycle-next` emits `cycle_next(Enum)`, following the emitted enum order and wrapping to the first
+value. It excludes a declared count sentinel and requires known, unique codes. Invalid input
+asserts; sparse codes are supported.
 The [formatter helper](docs/enum-formatting.md) requires `to-string` and supports selecting
 serialized/display representations when those helpers are present. Omit the list
 or use `:helpers ()` to omit optional helpers. Display formatting falls back

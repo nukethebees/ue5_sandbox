@@ -220,6 +220,33 @@ enum class Manual : ManualUnderlying {
     Six,
 };
 
+[[nodiscard]] constexpr auto cycle_next(Manual const value) noexcept -> Manual {
+    switch (value) {
+        case Manual::One: {
+            return Manual::Two;
+        }
+        case Manual::Two: {
+            return Manual::Three;
+        }
+        case Manual::Three: {
+            return Manual::Four;
+        }
+        case Manual::Four: {
+            return Manual::Five;
+        }
+        case Manual::Five: {
+            return Manual::Six;
+        }
+        case Manual::Six: {
+            return Manual::One;
+        }
+        default: {
+            assert((false));
+            return value;
+        }
+    }
+}
+
 inline constexpr std::array<Manual, 4ULL> manual_A_values{
     Manual::One, Manual::Two, Manual::Three, Manual::Six};
 

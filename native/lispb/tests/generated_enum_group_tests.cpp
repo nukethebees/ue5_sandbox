@@ -26,6 +26,9 @@ static_assert(std::to_underlying(Priority::Five) == 4);
 static_assert(std::to_underlying(Priority::Six) == 5);
 static_assert(std::to_underlying(Manual::One) == 0);
 static_assert(std::to_underlying(Manual::Six) == 5);
+static_assert(cycle_next(Manual::One) == Manual::Two);
+static_assert(cycle_next(Manual::Six) == Manual::One);
+static_assert(noexcept(cycle_next(Manual::One)));
 static_assert(std::to_underlying(Automatic::Three) != 5);
 static_assert(action_actionable_values == std::array{Action::Kill, Action::Move, Action::Kills});
 static_assert(sparse_selected_values ==

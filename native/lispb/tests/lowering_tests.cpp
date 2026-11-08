@@ -180,6 +180,7 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
         {NativeEnumHelper::to_serialized_string, "using ioj::to_serialized_string;"},
         {NativeEnumHelper::try_parse_serialized, "auto try_parse_serialized_state("},
         {NativeEnumHelper::traits, "struct EnumTraits<"},
+        {NativeEnumHelper::cycle_next, "auto cycle_next("},
     };
     for (auto const& [helper, spelling] : selections) {
         auto const selected{

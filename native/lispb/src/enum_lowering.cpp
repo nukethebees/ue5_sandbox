@@ -166,6 +166,10 @@ class EnumLowering : public CppIRBuilder {
             emission.header_prefix = prefix.build();
             auto decls{node_list()};
             decls.append({native_enum_declaration(ctx, schema), native_enum_parsers(ctx, schema)});
+            if (std::ranges::contains(ctx.declarations.items(enums.helpers[schema]),
+                                      NativeEnumHelper::cycle_next)) {
+                decls.add(native_enum_cycle_next(ctx, schema, enum_type), 2);
+            }
             decls.append(group_declarations(ctx, schema, enum_type, enums.name[schema]));
             emission.header = decls.build();
             emission.header_immediate_global = enum_range_declaration(ctx, schema, enum_type);
@@ -831,6 +835,37 @@ class EnumLowering : public CppIRBuilder {
                 2);
         }
         return parsers.build();
+    }
+    auto native_enum_cycle_next(LoweringContext& ctx,
+                                DeclarationHandle const schema,
+                                CppTypeId const enum_type) -> NodeId {
+        auto const& enums{ctx.declarations.enums};
+        std::vector<StringId> values;
+        for (auto const value : ctx.declarations.items(enums.values[schema])) {
+            auto const name{ctx.declarations.enumerators.name[value]};
+            if (!enums.count[schema] || name != *enums.count[schema]) {
+                values.push_back(name);
+            }
+        }
+        std::vector<SwitchCaseId> cases;
+        auto const count{values.size()};
+        for (std::size_t index{}; index < count; ++index) {
+            cases.push_back(switch_case(
+                scope_member(enum_type, values[index]),
+                block({return_stmt(scope_member(enum_type, values[(index + 1) % count]))})));
+        }
+        cases.push_back(switch_case(
+            std::nullopt, block({assertion(literal(false)), return_stmt(named("value"))})));
+        FunctionDefinition const function{
+            .name = name("cycle_next"),
+            .return_type = enum_type,
+            .return_syntax = ReturnSyntax::trailing,
+            .parameters = {parameter(decorate_type(enum_type, "", " const"), "value")},
+            .implementation = {.kind = FunctionImplementationKind::body,
+                               .body = {switch_stmt(named("value"), cases)}},
+            .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
+            .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true}};
+        return header_function(add_function(function));
     }
     auto native_enum_traits(LoweringContext& ctx,
                             DeclarationHandle schema,

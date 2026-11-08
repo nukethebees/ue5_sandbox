@@ -321,7 +321,8 @@
     (value to_serialized_string :serialized-name "to-serialized-string" :groups (string_conversion))
     (value try_parse_serialized :serialized-name "try-parse-serialized" :groups (parser))
     (value traits :serialized-name "traits")
-    (value formatter :serialized-name "formatter")))
+    (value formatter :serialized-name "formatter")
+    (value cycle_next :serialized-name "cycle-next")))
 
 
 (module semantic_relation_unit
