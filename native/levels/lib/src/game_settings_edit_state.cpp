@@ -205,9 +205,7 @@ void GameSettingsEditState::commit_all() {
 
 void GameSettingsEditState::commit_setting(GameSetting const setting) {
     auto const pending_value{game_setting_value(pending_, setting)};
-    auto const set{set_game_setting_value(applied_, setting, pending_value)};
-    assert(set);
-    static_cast<void>(set);
+    static_cast<void>(set_game_setting_value(applied_, setting, pending_value));
 }
 
 auto GameSettingsEditState::set_setting(GameSetting const setting, GameSettingValue const& value)
@@ -217,17 +215,11 @@ auto GameSettingsEditState::set_setting(GameSetting const setting, GameSettingVa
         return false;
     }
     if (setting == GameSetting::OverallQuality) {
-        auto const* preset{std::get_if<GameGraphicsPreset>(&value)};
-        if (preset == nullptr) {
-            return false;
-        }
-        apply_graphics_preset(pending_, *preset);
+        apply_graphics_preset(pending_, std::get<GameGraphicsPreset>(*normalized));
         return true;
     }
 
-    if (!set_game_setting_value(pending_, setting, *normalized)) {
-        return false;
-    }
+    static_cast<void>(set_game_setting_value(pending_, setting, *normalized));
     if (is_graphics_quality_setting(setting)) {
         pending_.overall_quality = graphics_preset(pending_);
     }

@@ -285,45 +285,25 @@ void lerp_2d(std::span<float const> from_x,
     vector_lerp_detail::require(out_x.size() == count);
     vector_lerp_detail::require(out_y.size() == count);
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), from_y.data(), from_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), alpha.data(), alpha.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_x.data(), out_x.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), alpha.data(), alpha.size_bytes()));
+        out_x.data(), out_x.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        alpha.data(), alpha.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        alpha.data(), alpha.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         out_x.data(), out_x.size_bytes(), out_y.data(), out_y.size_bytes()));
     vector_lerp_detail::lerp_2d_float_array_array_array_raw(from_x.data(),
@@ -350,33 +330,21 @@ void lerp_2d(std::span<float const> from_x,
     vector_lerp_detail::require(out_x.size() == count);
     vector_lerp_detail::require(out_y.size() == count);
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), from_y.data(), from_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_x.data(), out_x.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         out_x.data(), out_x.size_bytes(), out_y.data(), out_y.size_bytes()));
     vector_lerp_detail::lerp_2d_float_array_array_scalar_raw(from_x.data(),
@@ -404,45 +372,25 @@ void lerp_2d(std::span<double const> from_x,
     vector_lerp_detail::require(out_x.size() == count);
     vector_lerp_detail::require(out_y.size() == count);
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), from_y.data(), from_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), alpha.data(), alpha.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_x.data(), out_x.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), alpha.data(), alpha.size_bytes()));
+        out_x.data(), out_x.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        alpha.data(), alpha.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        alpha.data(), alpha.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         out_x.data(), out_x.size_bytes(), out_y.data(), out_y.size_bytes()));
     vector_lerp_detail::lerp_2d_double_array_array_array_raw(from_x.data(),
@@ -469,33 +417,21 @@ void lerp_2d(std::span<double const> from_x,
     vector_lerp_detail::require(out_x.size() == count);
     vector_lerp_detail::require(out_y.size() == count);
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), from_y.data(), from_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_x.data(), out_x.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         out_x.data(), out_x.size_bytes(), out_y.data(), out_y.size_bytes()));
     vector_lerp_detail::lerp_2d_double_array_array_scalar_raw(from_x.data(),
@@ -532,12 +468,6 @@ void lerp_2d_in_place(std::span<float> from_x,
         from_y.data(), from_y.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         from_y.data(), from_y.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::lerp_2d_float_array_array_array_in_place_raw(
         from_x.data(), from_y.data(), to_x.data(), to_y.data(), alpha.data(), count);
 }
@@ -561,8 +491,6 @@ void lerp_2d_in_place(std::span<float> from_x,
         from_y.data(), from_y.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         from_y.data(), from_y.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::lerp_2d_float_array_array_scalar_in_place_raw(
         from_x.data(), from_y.data(), to_x.data(), to_y.data(), alpha, count);
 }
@@ -591,12 +519,6 @@ void lerp_2d_in_place(std::span<double> from_x,
         from_y.data(), from_y.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         from_y.data(), from_y.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::lerp_2d_double_array_array_array_in_place_raw(
         from_x.data(), from_y.data(), to_x.data(), to_y.data(), alpha.data(), count);
 }
@@ -620,8 +542,6 @@ void lerp_2d_in_place(std::span<double> from_x,
         from_y.data(), from_y.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         from_y.data(), from_y.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::lerp_2d_double_array_array_scalar_in_place_raw(
         from_x.data(), from_y.data(), to_x.data(), to_y.data(), alpha, count);
 }
@@ -647,89 +567,47 @@ void lerp_3d(std::span<float const> from_x,
     vector_lerp_detail::require(out_y.size() == count);
     vector_lerp_detail::require(out_z.size() == count);
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), from_y.data(), from_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), from_z.data(), from_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_z.data(), out_z.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_z.data(), to_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), alpha.data(), alpha.size_bytes()));
+        out_z.data(), out_z.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_x.data(), out_x.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_z.data(), from_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_z.data(), from_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_z.data(), out_z.size_bytes()));
+        out_z.data(), out_z.size_bytes(), from_z.data(), from_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), from_z.data(), from_z.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_z.data(), out_z.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_z.data(), to_z.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), alpha.data(), alpha.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_x.data(), out_x.size_bytes()));
+        out_z.data(), out_z.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_z.data(), out_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_z.data(), out_z.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), to_z.data(), to_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        alpha.data(), alpha.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        alpha.data(), alpha.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        alpha.data(), alpha.size_bytes(), out_z.data(), out_z.size_bytes()));
+        out_z.data(), out_z.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         out_x.data(), out_x.size_bytes(), out_y.data(), out_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
@@ -769,71 +647,41 @@ void lerp_3d(std::span<float const> from_x,
     vector_lerp_detail::require(out_y.size() == count);
     vector_lerp_detail::require(out_z.size() == count);
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), from_y.data(), from_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), from_z.data(), from_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_z.data(), out_z.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_z.data(), to_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_x.data(), out_x.size_bytes()));
+        out_z.data(), out_z.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_z.data(), from_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_z.data(), out_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_z.data(), from_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), from_z.data(), from_z.size_bytes()));
+        out_z.data(), out_z.size_bytes(), from_z.data(), from_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_z.data(), to_z.size_bytes()));
+        out_z.data(), out_z.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_x.data(), out_x.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_z.data(), out_z.size_bytes()));
+        out_z.data(), out_z.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), out_z.data(), out_z.size_bytes()));
+        out_z.data(), out_z.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         out_x.data(), out_x.size_bytes(), out_y.data(), out_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
@@ -874,89 +722,47 @@ void lerp_3d(std::span<double const> from_x,
     vector_lerp_detail::require(out_y.size() == count);
     vector_lerp_detail::require(out_z.size() == count);
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), from_y.data(), from_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), from_z.data(), from_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_z.data(), out_z.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_z.data(), to_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), alpha.data(), alpha.size_bytes()));
+        out_z.data(), out_z.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_x.data(), out_x.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_z.data(), from_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_z.data(), from_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_z.data(), out_z.size_bytes()));
+        out_z.data(), out_z.size_bytes(), from_z.data(), from_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), from_z.data(), from_z.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_z.data(), out_z.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_z.data(), to_z.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), alpha.data(), alpha.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_x.data(), out_x.size_bytes()));
+        out_z.data(), out_z.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_z.data(), out_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_z.data(), out_z.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), to_z.data(), to_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        alpha.data(), alpha.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        alpha.data(), alpha.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        alpha.data(), alpha.size_bytes(), out_z.data(), out_z.size_bytes()));
+        out_z.data(), out_z.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         out_x.data(), out_x.size_bytes(), out_y.data(), out_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
@@ -996,71 +802,41 @@ void lerp_3d(std::span<double const> from_x,
     vector_lerp_detail::require(out_y.size() == count);
     vector_lerp_detail::require(out_z.size() == count);
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), from_y.data(), from_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), from_z.data(), from_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_z.data(), out_z.size_bytes(), from_x.data(), from_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), to_z.data(), to_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_x.data(), out_x.size_bytes()));
+        out_z.data(), out_z.size_bytes(), from_y.data(), from_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_x.data(), out_x.size_bytes(), from_z.data(), from_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_x.data(), from_x.size_bytes(), out_z.data(), out_z.size_bytes()));
+        out_y.data(), out_y.size_bytes(), from_z.data(), from_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), from_z.data(), from_z.size_bytes()));
+        out_z.data(), out_z.size_bytes(), from_z.data(), from_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), to_z.data(), to_z.size_bytes()));
+        out_z.data(), out_z.size_bytes(), to_x.data(), to_x.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_x.data(), out_x.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_y.data(), out_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_y.data(), from_y.size_bytes(), out_z.data(), out_z.size_bytes()));
+        out_z.data(), out_z.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), to_x.data(), to_x.size_bytes()));
+        out_x.data(), out_x.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), to_y.data(), to_y.size_bytes()));
+        out_y.data(), out_y.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        from_z.data(), from_z.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), out_z.data(), out_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), out_x.data(), out_x.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), out_y.data(), out_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), out_z.data(), out_z.size_bytes()));
+        out_z.data(), out_z.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         out_x.data(), out_x.size_bytes(), out_y.data(), out_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
@@ -1124,18 +900,6 @@ void lerp_3d_in_place(std::span<float> from_x,
         from_z.data(), from_z.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         from_z.data(), from_z.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::lerp_3d_float_array_array_array_in_place_raw(from_x.data(),
                                                                      from_y.data(),
                                                                      from_z.data(),
@@ -1183,12 +947,6 @@ void lerp_3d_in_place(std::span<float> from_x,
         from_z.data(), from_z.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         from_z.data(), from_z.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::lerp_3d_float_array_array_scalar_in_place_raw(from_x.data(),
                                                                       from_y.data(),
                                                                       from_z.data(),
@@ -1243,18 +1001,6 @@ void lerp_3d_in_place(std::span<double> from_x,
         from_z.data(), from_z.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         from_z.data(), from_z.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), alpha.data(), alpha.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_z.data(), to_z.size_bytes(), alpha.data(), alpha.size_bytes()));
     vector_lerp_detail::lerp_3d_double_array_array_array_in_place_raw(from_x.data(),
                                                                       from_y.data(),
                                                                       from_z.data(),
@@ -1302,12 +1048,6 @@ void lerp_3d_in_place(std::span<double> from_x,
         from_z.data(), from_z.size_bytes(), to_y.data(), to_y.size_bytes()));
     vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
         from_z.data(), from_z.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_y.data(), to_y.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_x.data(), to_x.size_bytes(), to_z.data(), to_z.size_bytes()));
-    vector_lerp_detail::require(!vector_lerp_detail::ranges_overlap(
-        to_y.data(), to_y.size_bytes(), to_z.data(), to_z.size_bytes()));
     vector_lerp_detail::lerp_3d_double_array_array_scalar_in_place_raw(from_x.data(),
                                                                        from_y.data(),
                                                                        from_z.data(),

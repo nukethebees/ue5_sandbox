@@ -3,7 +3,6 @@
 #include <ioj/files.h>
 
 #include <algorithm>
-#include <cassert>
 #include <format>
 #include <unordered_map>
 #include <unordered_set>
@@ -26,12 +25,8 @@ template <typename Definition>
 auto collect(std::span<DecodedCatalogEntry<Definition> const> const entries,
              std::vector<EntryState> states) -> std::vector<CatalogValidationIssue> {
     std::vector<CatalogValidationIssue> result;
-    std::unordered_set<CatalogEntryIndex> source_indices;
     auto const count{entries.size()};
     for (std::size_t index{}; index < count; ++index) {
-        [[maybe_unused]] auto const inserted{
-            source_indices.insert(entries[index].source_index).second};
-        assert(inserted);
         for (auto& diagnostic : states[index].issues) {
             diagnostic.source_path = entries[index].source_path;
             result.emplace_back(entries[index].source_index, std::move(diagnostic));

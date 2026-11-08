@@ -47,7 +47,6 @@ class PeriodicTickCountdownView {
             return false;
         }
 
-        assert(index < periods_.size());
         remaining_ticks_[index] = periods_[index];
         return true;
     }
@@ -87,7 +86,7 @@ class PeriodicTickCountdown {
     }
 
     [[nodiscard]] auto try_consume(size_type const index) noexcept -> bool {
-        return view().try_consume(to_index(index));
+        return view().try_consume(index);
     }
 
     void reset() {

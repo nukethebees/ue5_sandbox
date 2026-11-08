@@ -204,7 +204,9 @@ INSTANTIATE_TEST_SUITE_P(
                                      {"from_x[i] = from_x[i] + alpha * (to_x[i] - from_x[i]);",
                                       "from_y[i] = from_y[i] + alpha * (to_y[i] - from_y[i]);",
                                       "from_z[i] = from_z[i] + alpha * (to_z[i] - from_z[i]);"}},
-                                    {}},
+                                    {"ranges_overlap(to_x.data(), to_x.size_bytes(), to_y.data()",
+                                     "ranges_overlap(to_x.data(), to_x.size_bytes(), to_z.data()",
+                                     "ranges_overlap(to_y.data(), to_y.size_bytes(), to_z.data()"}},
                       RenderingCase{"RendersNamedConstantsForEachConcreteFloatingType",
                                     R"(
 (kernel-module constants

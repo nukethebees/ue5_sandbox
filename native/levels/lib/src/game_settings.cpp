@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <utility>
 #include <variant>
 
 namespace ioj {
@@ -675,7 +676,7 @@ auto game_setting_value(GameSettingsState const& state, GameSetting const id) ->
         }
     }
     assert((false));
-    return GameSettingValue{state.resolution};
+    std::unreachable();
 }
 
 auto set_game_setting_value(GameSettingsState& state,

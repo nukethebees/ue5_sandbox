@@ -260,14 +260,12 @@ class SettingsLowering : public CppIRBuilder {
                             block({return_stmt(init_list({member_access(state, name)},
                                                          intern_type("GameSettingValue")))})));
         }
-        auto const first_name{decls.settings.name[settings.front()]};
         auto const getter{create("game_setting_value",
                                  named_type("GameSettingValue"),
                                  {parameter(state_name + " const&", "state"), id_parameter},
                                  {switch_stmt(id, getter_cases),
                                   assertion(literal(false)),
-                                  return_stmt(init_list({member_access(state, first_name)},
-                                                        intern_type("GameSettingValue")))})};
+                                  expr_stmt(call(std_types().unreachable))})};
 
         std::vector<SwitchCaseId> setter_cases;
         auto const setting_count{settings.size()};

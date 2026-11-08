@@ -258,27 +258,21 @@ auto public_body(lispb::codegen::CppIR& cpp,
         output.push_back(checked_condition(cpp, condition, detail_namespace));
     }
     auto const operation{expanded.operation(id)};
-    if (operation.kind() == OperationKind::component_map ||
-        document.operations.aliasing(operation) == Aliasing::pairwise_disjoint) {
-        auto const count{arrays.size()};
-        for (std::size_t lhs{}; lhs < count; ++lhs) {
-            for (auto rhs{lhs + 1}; rhs < count; ++rhs) {
+    auto const targets{document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place
+                           ? output_names(document, id)
+                           : operand_names(document,
+                                           id,
+                                           document.operand_index(
+                                               expanded.operation(id),
+                                               *document.variants.target(expanded.variant(id))))};
+    auto const pairwise{document.operations.aliasing(operation) == Aliasing::pairwise_disjoint};
+    auto const count{arrays.size()};
+    for (std::size_t lhs{}; lhs < count; ++lhs) {
+        for (auto rhs{lhs + 1}; rhs < count; ++rhs) {
+            if (pairwise || std::ranges::contains(targets, arrays[lhs])) {
                 output.push_back(overlap_check(cpp, detail_namespace, arrays[lhs], arrays[rhs]));
-            }
-        }
-    } else {
-        auto const targets{document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place
-                               ? output_names(document, id)
-                               : operand_names(document,
-                                               id,
-                                               document.operand_index(expanded.operation(id),
-                                                                      *document.variants.target(
-                                                                          expanded.variant(id))))};
-        for (auto const& target : targets) {
-            for (auto const& array : arrays) {
-                if (array != target) {
-                    output.push_back(overlap_check(cpp, detail_namespace, target, array));
-                }
+            } else if (std::ranges::contains(targets, arrays[rhs])) {
+                output.push_back(overlap_check(cpp, detail_namespace, arrays[rhs], arrays[lhs]));
             }
         }
     }

@@ -24,7 +24,6 @@
 #include <cstddef>
 #include <filesystem>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -98,11 +97,6 @@ void append_type_dependencies(std::vector<TypeDependencyId>& result,
                               std::string const& key,
                               TypeRegistry const& types) {
     auto const found{types.find(key)};
-    if (!found.has_value() ||
-        types.cpp_types.dependencies(types.registered.cpp_type[types.registered.index(*found)])
-            .empty()) {
-        throw std::invalid_argument{"Unknown dependency type: " + key};
-    }
     auto const dependencies{
         types.cpp_types.dependencies(types.registered.cpp_type[types.registered.index(*found)])};
     result.insert(result.end(), dependencies.begin(), dependencies.end());
