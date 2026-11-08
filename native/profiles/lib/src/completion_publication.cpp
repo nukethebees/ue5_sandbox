@@ -27,7 +27,7 @@ auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profil
                    .level_name = metadata.id.value,
                    .team = team,
                    .outcome = outcome,
-                   .end_reason = std::string{to_serialized_string(result->reason)},
+                   .end_reason = result->reason,
                    .kills = kills,
                    .time_seconds = static_cast<float>(sim::simulation_time(
                        result->terminal.tick, simulation.clock().tick_period()))},

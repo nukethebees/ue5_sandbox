@@ -63,7 +63,10 @@ TEST(ProfileStorage, FailedReplacementPreservesPublishedRecordsAndRollsBackManag
     auto const root{directory.path / "profiles"};
     ProfileManager manager{make_file_profile_storage(root)};
     ASSERT_TRUE(manager.initialise());
-    ScoreRecord const original{.date = 1, .level_name = "mission", .kills = 7};
+    ScoreRecord const original{.date = 1,
+                               .level_name = "mission",
+                               .end_reason = sim::telemetry::RunEndReason::DurationReached,
+                               .kills = 7};
     ASSERT_TRUE(manager.append_score_record(original));
     auto const backup{root / "profile_default_profile.json.bak"};
     std::filesystem::remove(backup);

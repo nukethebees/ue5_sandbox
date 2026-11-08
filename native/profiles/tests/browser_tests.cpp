@@ -149,14 +149,15 @@ TEST(ProfileAdapter, BuildsLightweightProfileSummary) {
     EXPECT_EQ(summary.outcome_count, 2) << "Outcome count is retained";
 }
 
-TEST(ProfileAdapter, AdaptsTypedMissionResultsIntoReportOutcomes) {
+TEST(ProfileAdapter, AdaptsTypedLevelResultsIntoReportOutcomes) {
 
-    std::vector<ScoreRecord> const records{{.date = test_date(2026, 4, 3, 12, 30),
-                                            .level_name = "test_level_42",
-                                            .outcome = LevelOutcome::Defeat,
-                                            .end_reason = "deadline",
-                                            .kills = 8,
-                                            .time_seconds = 91.f}};
+    std::vector<ScoreRecord> const records{
+        {.date = test_date(2026, 4, 3, 12, 30),
+         .level_name = "test_level_42",
+         .outcome = LevelOutcome::Defeat,
+         .end_reason = sim::telemetry::RunEndReason::DurationReached,
+         .kills = 8,
+         .time_seconds = 91.f}};
 
     auto const report{make_report("profile", records)};
 
@@ -167,7 +168,7 @@ TEST(ProfileAdapter, AdaptsTypedMissionResultsIntoReportOutcomes) {
     EXPECT_EQ(outcome.kills, 8) << "Kills remain typed";
     EXPECT_EQ(outcome.result, std::string{"defeat"}) << "End state is displayed";
     EXPECT_EQ(outcome.statistics.size(), 1) << "Terminal reason becomes a display statistic";
-    EXPECT_EQ(outcome.statistics.back().value, std::string{"deadline"})
+    EXPECT_EQ(outcome.statistics.back().value, std::string{"duration_reached"})
         << "Failure reason is included";
 }
 

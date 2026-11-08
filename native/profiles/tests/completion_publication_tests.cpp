@@ -64,7 +64,7 @@ TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal
                                .level_name = "publication",
                                .team = Team::Blue,
                                .outcome = LevelOutcome::Victory,
-                               .end_reason = "level_completed",
+                               .end_reason = sim::telemetry::RunEndReason::LevelCompleted,
                                .kills = 2,
                                .time_seconds = 0.2f};
     EXPECT_EQ(publication->record, expected);

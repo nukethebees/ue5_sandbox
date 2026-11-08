@@ -28,11 +28,12 @@ void publish_level_completion(sim::LevelSim& simulation,
         par_time_seconds = *publication->par_time_seconds;
     }
     auto const& record{publication->record};
-    completed.Broadcast({.level_display_name = UTF8_TO_TCHAR(publication->level_title.c_str()),
-                         .state = to_unreal(record.outcome),
-                         .end_reason = UTF8_TO_TCHAR(record.end_reason.c_str()),
-                         .persisted = publication->save_result.persisted,
-                         .par_time_seconds = par_time_seconds,
-                         .new_best_time = publication->save_result.new_best_time});
+    completed.Broadcast(
+        {.level_display_name = UTF8_TO_TCHAR(publication->level_title.c_str()),
+         .state = to_unreal(record.outcome),
+         .end_reason = UTF8_TO_TCHAR(to_serialized_string(record.end_reason).data()),
+         .persisted = publication->save_result.persisted,
+         .par_time_seconds = par_time_seconds,
+         .new_best_time = publication->save_result.new_best_time});
 }
 }
