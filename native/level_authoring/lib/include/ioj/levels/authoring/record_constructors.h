@@ -7,305 +7,290 @@
 
 namespace ioj::levels::authoring {
 constexpr auto s7_record_constructors() -> std::string_view {
-    return "\n(define (lispb-record? tag value)\n  (and (pair? value) (eq? (car value) "
-           "tag)))\n(define (lispb-property properties key)\n  (cond ((null? properties) #f)\n     "
-           "   ((eq? (car properties) key) properties)\n        (else (lispb-property (cddr "
-           "properties) key))))\n(define (lispb-check-properties tag fields properties)\n  (if "
-           "(not (list? properties))\n      (error 'record-error \"~S: expected a property list\" "
-           "tag))\n  (let loop ((remaining properties) (seen '()))\n    (if (pair? remaining)\n    "
-           "    (let ((key (car remaining)))\n          (if (null? (cdr remaining))\n              "
-           "(error 'record-error \"~S: missing value for ~S\" tag key))\n          (if (not (memq "
-           "key fields))\n              (error 'record-error \"~S: unknown property ~S\" tag "
-           "key))\n          (if (memq key seen)\n              (error 'record-error \"~S: "
-           "duplicate property ~S\" tag key))\n          (loop (cddr remaining) (cons key "
-           "seen))))))\n(define (lispb-check-record tag fields positional value)\n  (if (or (not "
-           "(list? value)) (not (lispb-record? tag value)))\n      (error 'record-error \"Expected "
-           "a ~S record, received ~S\" tag value))\n  (if positional\n      (if (not (= (length "
-           "(cdr value)) (length fields)))\n          (error 'record-error \"~S: wrong number of "
-           "positional fields\" tag))\n      (lispb-check-properties tag fields (cdr "
-           "value))))\n(define (lispb-record-ref tag fields positional value key)\n  "
-           "(lispb-check-record tag fields positional value)\n  (if (not (memq key fields))\n      "
-           "(error 'record-error \"~S: unknown property ~S\" tag key))\n  (if positional\n      "
-           "(let loop ((keys fields) (values (cdr value)))\n        (if (eq? (car keys) key)\n     "
-           "       (car values)\n            (loop (cdr keys) (cdr values))))\n      (let "
-           "((property (lispb-property (cdr value) key)))\n        (if property (cadr property)\n  "
-           "          (error 'record-error \"~S: missing property ~S\" tag key)))))\n(define "
-           "(lispb-record-with tag fields positional value overrides)\n  (lispb-check-record tag "
-           "fields positional value)\n  (lispb-check-properties tag fields overrides)\n  (cons "
-           "tag\n    (if positional\n        (map (lambda (key old)\n               (let "
-           "((property (lispb-property overrides key)))\n                 (if property (cadr "
-           "property) old)))\n             fields (cdr value))\n        (let loop ((keys "
-           "fields))\n          (if (null? keys) '()\n              (let* ((key (car keys))\n      "
-           "               (property (or (lispb-property overrides key)\n                          "
-           "         (lispb-property (cdr value) key))))\n                (if property\n           "
-           "         (cons key (cons (cadr property) (loop (cdr keys))))\n                    "
-           "(loop (cdr keys)))))))))\n(define (attack-distance-band . arguments) (cons "
-           ":attack-distance-band arguments))\n(define (attack-distance-band? value) "
-           "(lispb-record? :attack-distance-band value))\n(define attack-distance-band-ref (let "
-           "((fields '(:minimum-ratio :desired-ratio :maximum-ratio )))\n  (lambda (value key) "
-           "(lispb-record-ref :attack-distance-band fields #f value key))))\n(define "
-           "attack-distance-band-with (let ((fields '(:minimum-ratio :desired-ratio :maximum-ratio "
-           ")))\n  (lambda (value . overrides) (lispb-record-with :attack-distance-band fields #f "
-           "value overrides))))\n(define (bright-star . arguments) (cons :bright-star "
-           "arguments))\n(define (bright-star? value) (lispb-record? :bright-star value))\n(define "
-           "bright-star-ref (let ((fields '(:fraction :size-multiplier :brightness-multiplier "
-           ":shape-strength )))\n  (lambda (value key) (lispb-record-ref :bright-star fields #f "
-           "value key))))\n(define bright-star-with (let ((fields '(:fraction :size-multiplier "
-           ":brightness-multiplier :shape-strength )))\n  (lambda (value . overrides) "
-           "(lispb-record-with :bright-star fields #f value overrides))))\n(define (camera . "
-           "arguments) (cons :camera arguments))\n(define (camera? value) (lispb-record? :camera "
-           "value))\n(define camera-ref (let ((fields '(:look-at :offset-direction :distance )))\n "
-           " (lambda (value key) (lispb-record-ref :camera fields #f value key))))\n(define "
-           "camera-with (let ((fields '(:look-at :offset-direction :distance )))\n  (lambda (value "
-           ". overrides) (lispb-record-with :camera fields #f value overrides))))\n(define "
-           "(campaign . arguments) (cons :campaign arguments))\n(define (campaign? value) "
-           "(lispb-record? :campaign value))\n(define campaign-ref (let ((fields '(:id :title "
-           ":levels )))\n  (lambda (value key) (lispb-record-ref :campaign fields #f value "
-           "key))))\n(define campaign-with (let ((fields '(:id :title :levels )))\n  (lambda "
-           "(value . overrides) (lispb-record-with :campaign fields #f value "
-           "overrides))))\n(define (capital-ships . arguments) (cons :capital-ships "
-           "arguments))\n(define (capital-ships? value) (lispb-record? :capital-ships "
-           "value))\n(define capital-ships-ref (let ((fields '(:spawn-delay :max-health )))\n  "
-           "(lambda (value key) (lispb-record-ref :capital-ships fields #f value key))))\n(define "
-           "capital-ships-with (let ((fields '(:spawn-delay :max-health )))\n  (lambda (value . "
-           "overrides) (lispb-record-with :capital-ships fields #f value overrides))))\n(define "
-           "(capital-ships-presentation . arguments) (cons :capital-ships-presentation "
-           "arguments))\n(define (capital-ships-presentation? value) (lispb-record? "
-           ":capital-ships-presentation value))\n(define capital-ships-presentation-ref (let "
-           "((fields '(:n-small-explosions :time-between-explosions :min-small-explosion-range "
-           ":max-small-explosion-range :large-explosion-delay :proxy-arrow-size )))\n  (lambda "
-           "(value key) (lispb-record-ref :capital-ships-presentation fields #f value "
-           "key))))\n(define capital-ships-presentation-with (let ((fields '(:n-small-explosions "
-           ":time-between-explosions :min-small-explosion-range :max-small-explosion-range "
-           ":large-explosion-delay :proxy-arrow-size )))\n  (lambda (value . overrides) "
-           "(lispb-record-with :capital-ships-presentation fields #f value overrides))))\n(define "
-           "(collision-grid . arguments) (cons :collision-grid arguments))\n(define "
-           "(collision-grid? value) (lispb-record? :collision-grid value))\n(define "
-           "collision-grid-ref (let ((fields '(:damage-per-overlap-detection :level-size "
-           ":cell-size )))\n  (lambda (value key) (lispb-record-ref :collision-grid fields #f "
-           "value key))))\n(define collision-grid-with (let ((fields "
-           "'(:damage-per-overlap-detection :level-size :cell-size )))\n  (lambda (value . "
-           "overrides) (lispb-record-with :collision-grid fields #f value overrides))))\n(define "
-           "(dust-lane . arguments) (cons :dust-lane arguments))\n(define (dust-lane? value) "
-           "(lispb-record? :dust-lane value))\n(define dust-lane-ref (let ((fields '(:strength "
-           ":width-degrees :irregularity )))\n  (lambda (value key) (lispb-record-ref :dust-lane "
-           "fields #f value key))))\n(define dust-lane-with (let ((fields '(:strength "
-           ":width-degrees :irregularity )))\n  (lambda (value . overrides) (lispb-record-with "
-           ":dust-lane fields #f value overrides))))\n(define (entity . arguments) (cons :entity "
-           "arguments))\n(define (entity? value) (lispb-record? :entity value))\n(define "
-           "entity-ref (let ((fields '(:id :archetype :team :position :rotation :spawn-at :health "
-           ":laser-damage :initial-spawn-delay :spawn-cooldown :initial-fire-point )))\n  (lambda "
-           "(value key) (lispb-record-ref :entity fields #f value key))))\n(define entity-with "
-           "(let ((fields '(:id :archetype :team :position :rotation :spawn-at :health "
-           ":laser-damage :initial-spawn-delay :spawn-cooldown :initial-fire-point )))\n  (lambda "
-           "(value . overrides) (lispb-record-with :entity fields #f value overrides))))\n(define "
-           "(entity-overlay . arguments) (cons :entity-overlay arguments))\n(define "
-           "(entity-overlay? value) (lispb-record? :entity-overlay value))\n(define "
-           "entity-overlay-ref (let ((fields '(:enabled :maximum-range :bar-size-pixels "
-           ":screen-offset-pixels :minimum-bar-scale :maximum-bar-scale :inset-pixels "
-           ":maximum-inset-height-ratio :objective-frame-pixels :objective-bar-height-scale "
-           ":screen-edge-padding-pixels :soft-target )))\n  (lambda (value key) (lispb-record-ref "
-           ":entity-overlay fields #f value key))))\n(define entity-overlay-with (let ((fields "
-           "'(:enabled :maximum-range :bar-size-pixels :screen-offset-pixels :minimum-bar-scale "
-           ":maximum-bar-scale :inset-pixels :maximum-inset-height-ratio :objective-frame-pixels "
-           ":objective-bar-height-scale :screen-edge-padding-pixels :soft-target )))\n  (lambda "
-           "(value . overrides) (lispb-record-with :entity-overlay fields #f value "
-           "overrides))))\n(define (fighters . arguments) (cons :fighters arguments))\n(define "
-           "(fighters? value) (lispb-record? :fighters value))\n(define fighters-ref (let ((fields "
-           "'(:max-live-fighters :fire-dot-product-threshold :attack-distance-band :speed "
-           ":turn-speed-unitless :avoidance-clear-update-frequency :avoidance-update-frequency "
-           ":avoidance-active-update-frequency :avoidance-immediate-update-frequency "
-           ":avoidance-lookahead-time :avoidance-clearance-buffer :separation-radius "
-           ":separation-strength :steering-memory-duration :dense-traffic-neighbour-threshold "
-           ":laser :health :attack-retry-cooldown :los-check-buffer )))\n  (lambda (value key) "
-           "(lispb-record-ref :fighters fields #f value key))))\n(define fighters-with (let "
-           "((fields '(:max-live-fighters :fire-dot-product-threshold :attack-distance-band :speed "
-           ":turn-speed-unitless :avoidance-clear-update-frequency :avoidance-update-frequency "
-           ":avoidance-active-update-frequency :avoidance-immediate-update-frequency "
-           ":avoidance-lookahead-time :avoidance-clearance-buffer :separation-radius "
-           ":separation-strength :steering-memory-duration :dense-traffic-neighbour-threshold "
-           ":laser :health :attack-retry-cooldown :los-check-buffer )))\n  (lambda (value . "
-           "overrides) (lispb-record-with :fighters fields #f value overrides))))\n(define "
-           "(galactic-band . arguments) (cons :galactic-band arguments))\n(define (galactic-band? "
-           "value) (lispb-record? :galactic-band value))\n(define galactic-band-ref (let ((fields "
-           "'(:strength :width-degrees )))\n  (lambda (value key) (lispb-record-ref :galactic-band "
-           "fields #f value key))))\n(define galactic-band-with (let ((fields '(:strength "
-           ":width-degrees )))\n  (lambda (value . overrides) (lispb-record-with :galactic-band "
-           "fields #f value overrides))))\n(define (galactic-core . arguments) (cons "
-           ":galactic-core arguments))\n(define (galactic-core? value) (lispb-record? "
-           ":galactic-core value))\n(define galactic-core-ref (let ((fields '(:strength "
-           ":width-degrees )))\n  (lambda (value key) (lispb-record-ref :galactic-core fields #f "
-           "value key))))\n(define galactic-core-with (let ((fields '(:strength :width-degrees "
-           ")))\n  (lambda (value . overrides) (lispb-record-with :galactic-core fields #f value "
-           "overrides))))\n(define (galactic-haze . arguments) (cons :galactic-haze "
-           "arguments))\n(define (galactic-haze? value) (lispb-record? :galactic-haze "
-           "value))\n(define galactic-haze-ref (let ((fields '(:strength :width-degrees )))\n  "
-           "(lambda (value key) (lispb-record-ref :galactic-haze fields #f value key))))\n(define "
-           "galactic-haze-with (let ((fields '(:strength :width-degrees )))\n  (lambda (value . "
-           "overrides) (lispb-record-with :galactic-haze fields #f value overrides))))\n(define "
-           "(generation . arguments) (cons :generation arguments))\n(define (generation? value) "
-           "(lispb-record? :generation value))\n(define generation-ref (let ((fields '(:star-count "
-           ":random-seed )))\n  (lambda (value key) (lispb-record-ref :generation fields #f value "
-           "key))))\n(define generation-with (let ((fields '(:star-count :random-seed )))\n  "
-           "(lambda (value . overrides) (lispb-record-with :generation fields #f value "
-           "overrides))))\n(define (hud . arguments) (cons :hud arguments))\n(define (hud? value) "
-           "(lispb-record? :hud value))\n(define hud-ref (let ((fields "
-           "'(:player-status-update-period :entity-count-update-period )))\n  (lambda (value key) "
-           "(lispb-record-ref :hud fields #f value key))))\n(define hud-with (let ((fields "
-           "'(:player-status-update-period :entity-count-update-period )))\n  (lambda (value . "
-           "overrides) (lispb-record-with :hud fields #f value overrides))))\n(define "
-           "(included-campaign . arguments) (cons :included-campaign arguments))\n(define "
-           "(included-campaign? value) (lispb-record? :included-campaign value))\n(define "
-           "included-campaign-ref (let ((fields '(:path :value :error )))\n  (lambda (value key) "
-           "(lispb-record-ref :included-campaign fields #f value key))))\n(define "
-           "included-campaign-with (let ((fields '(:path :value :error )))\n  (lambda (value . "
-           "overrides) (lispb-record-with :included-campaign fields #f value "
-           "overrides))))\n(define (included-level . arguments) (cons :included-level "
-           "arguments))\n(define (included-level? value) (lispb-record? :included-level "
-           "value))\n(define included-level-ref (let ((fields '(:path :value :error )))\n  (lambda "
-           "(value key) (lispb-record-ref :included-level fields #f value key))))\n(define "
-           "included-level-with (let ((fields '(:path :value :error )))\n  (lambda (value . "
-           "overrides) (lispb-record-with :included-level fields #f value overrides))))\n(define "
-           "(laser . arguments) (cons :laser arguments))\n(define (laser? value) (lispb-record? "
-           ":laser value))\n(define laser-ref (let ((fields '(:damage :projectile-speed "
-           ":max-distance :fire-cooldown )))\n  (lambda (value key) (lispb-record-ref :laser "
-           "fields #f value key))))\n(define laser-with (let ((fields '(:damage :projectile-speed "
-           ":max-distance :fire-cooldown )))\n  (lambda (value . overrides) (lispb-record-with "
-           ":laser fields #f value overrides))))\n(define (laser-projectiles . arguments) (cons "
-           ":laser-projectiles arguments))\n(define (laser-projectiles? value) (lispb-record? "
-           ":laser-projectiles value))\n(define laser-projectiles-ref (let ((fields "
-           "'(:n-preallocated-instances )))\n  (lambda (value key) (lispb-record-ref "
-           ":laser-projectiles fields #f value key))))\n(define laser-projectiles-with (let "
-           "((fields '(:n-preallocated-instances )))\n  (lambda (value . overrides) "
-           "(lispb-record-with :laser-projectiles fields #f value overrides))))\n(define "
-           "(laser-projectiles-presentation . arguments) (cons :laser-projectiles-presentation "
-           "arguments))\n(define (laser-projectiles-presentation? value) (lispb-record? "
-           ":laser-projectiles-presentation value))\n(define laser-projectiles-presentation-ref "
-           "(let ((fields '(:min-cull-distance :max-cull-distance )))\n  (lambda (value key) "
-           "(lispb-record-ref :laser-projectiles-presentation fields #f value key))))\n(define "
-           "laser-projectiles-presentation-with (let ((fields '(:min-cull-distance "
-           ":max-cull-distance )))\n  (lambda (value . overrides) (lispb-record-with "
-           ":laser-projectiles-presentation fields #f value overrides))))\n(define (level . "
-           "arguments) (cons :level arguments))\n(define (level? value) (lispb-record? :level "
-           "value))\n(define level-ref (let ((fields '(:id :title :description :par-time :unlock "
-           ":player :camera :settings :logic :entities )))\n  (lambda (value key) "
-           "(lispb-record-ref :level fields #f value key))))\n(define level-with (let ((fields "
-           "'(:id :title :description :par-time :unlock :player :camera :settings :logic :entities "
-           ")))\n  (lambda (value . overrides) (lispb-record-with :level fields #f value "
-           "overrides))))\n(define (level-completed . arguments) (cons :level-completed "
-           "arguments))\n(define (level-completed? value) (lispb-record? :level-completed "
-           "value))\n(define level-completed-ref (let ((fields '(:level-id )))\n  (lambda (value "
-           "key) (lispb-record-ref :level-completed fields #t value key))))\n(define "
-           "level-completed-with (let ((fields '(:level-id )))\n  (lambda (value . overrides) "
-           "(lispb-record-with :level-completed fields #t value overrides))))\n(define "
-           "(nebular-knot . arguments) (cons :nebular-knot arguments))\n(define (nebular-knot? "
-           "value) (lispb-record? :nebular-knot value))\n(define nebular-knot-ref (let ((fields "
-           "'(:strength :size-degrees )))\n  (lambda (value key) (lispb-record-ref :nebular-knot "
-           "fields #f value key))))\n(define nebular-knot-with (let ((fields '(:strength "
-           ":size-degrees )))\n  (lambda (value . overrides) (lispb-record-with :nebular-knot "
-           "fields #f value overrides))))\n(define (player-ship . arguments) (cons :player-ship "
-           "arguments))\n(define (player-ship? value) (lispb-record? :player-ship value))\n(define "
-           "player-ship-ref (let ((fields '(:thrust-energy-max :pitch-angle-max :pitch-speed "
-           ":yaw-angle-max :yaw-speed :turn-bank-angle-max :turn-bank-speed :laser :health "
-           ":laser-mode :laser-fire-rate )))\n  (lambda (value key) (lispb-record-ref :player-ship "
-           "fields #f value key))))\n(define player-ship-with (let ((fields '(:thrust-energy-max "
-           ":pitch-angle-max :pitch-speed :yaw-angle-max :yaw-speed :turn-bank-angle-max "
-           ":turn-bank-speed :laser :health :laser-mode :laser-fire-rate )))\n  (lambda (value . "
-           "overrides) (lispb-record-with :player-ship fields #f value overrides))))\n(define "
-           "(player-ship-presentation . arguments) (cons :player-ship-presentation "
-           "arguments))\n(define (player-ship-presentation? value) (lispb-record? "
-           ":player-ship-presentation value))\n(define player-ship-presentation-ref (let ((fields "
-           "'(:boost-effect-colour-intensity )))\n  (lambda (value key) (lispb-record-ref "
-           ":player-ship-presentation fields #f value key))))\n(define "
-           "player-ship-presentation-with (let ((fields '(:boost-effect-colour-intensity )))\n  "
-           "(lambda (value . overrides) (lispb-record-with :player-ship-presentation fields #f "
-           "value overrides))))\n(define (presentation . arguments) (cons :presentation "
-           "arguments))\n(define (presentation? value) (lispb-record? :presentation "
-           "value))\n(define presentation-ref (let ((fields '(:player-ship :laser-projectiles "
-           ":capital-ships :turrets :entity-overlay :radar )))\n  (lambda (value key) "
-           "(lispb-record-ref :presentation fields #f value key))))\n(define presentation-with "
-           "(let ((fields '(:player-ship :laser-projectiles :capital-ships :turrets "
-           ":entity-overlay :radar )))\n  (lambda (value . overrides) (lispb-record-with "
-           ":presentation fields #f value overrides))))\n(define (radar . arguments) (cons :radar "
-           "arguments))\n(define (radar? value) (lispb-record? :radar value))\n(define radar-ref "
-           "(let ((fields '(:enabled :combat-range :tactical-range :maximum-range "
-           ":combat-display-radius :grid-opacity :core-cell-radius :combat-cell-radius "
-           ":tactical-cell-radius :strategic-cell-radius :glyph-size-scale "
-           ":objective-size-multiplier :objective-ring-padding-pixels "
-           ":objective-ring-thickness-pixels )))\n  (lambda (value key) (lispb-record-ref :radar "
-           "fields #f value key))))\n(define radar-with (let ((fields '(:enabled :combat-range "
-           ":tactical-range :maximum-range :combat-display-radius :grid-opacity :core-cell-radius "
-           ":combat-cell-radius :tactical-cell-radius :strategic-cell-radius :glyph-size-scale "
-           ":objective-size-multiplier :objective-ring-padding-pixels "
-           ":objective-ring-thickness-pixels )))\n  (lambda (value . overrides) (lispb-record-with "
-           ":radar fields #f value overrides))))\n(define (settings . arguments) (cons :settings "
-           "arguments))\n(define (settings? value) (lispb-record? :settings value))\n(define "
-           "settings-ref (let ((fields '(:tick :player-ship :laser-projectiles :capital-ships "
-           ":fighters :turrets :tube-spinners :collision-grid :hud :presentation :starfield )))\n  "
-           "(lambda (value key) (lispb-record-ref :settings fields #f value key))))\n(define "
-           "settings-with (let ((fields '(:tick :player-ship :laser-projectiles :capital-ships "
-           ":fighters :turrets :tube-spinners :collision-grid :hud :presentation :starfield )))\n  "
-           "(lambda (value . overrides) (lispb-record-with :settings fields #f value "
-           "overrides))))\n(define (soft-target . arguments) (cons :soft-target "
-           "arguments))\n(define (soft-target? value) (lispb-record? :soft-target value))\n(define "
-           "soft-target-ref (let ((fields '(:acquisition-radius-pixels :retention-radius-pixels "
-           ":centre-tie-radius-pixels :switch-improvement-ratio :range-transition-start-multiplier "
-           ":minimum-radius-pixels :maximum-radius-pixels :bounds-padding-pixels "
-           ":bracket-start-radius-multiplier :opacity :pulse-opacity-boost :pulse-duration "
-           ":fade-out-duration )))\n  (lambda (value key) (lispb-record-ref :soft-target fields #f "
-           "value key))))\n(define soft-target-with (let ((fields '(:acquisition-radius-pixels "
-           ":retention-radius-pixels :centre-tie-radius-pixels :switch-improvement-ratio "
-           ":range-transition-start-multiplier :minimum-radius-pixels :maximum-radius-pixels "
-           ":bounds-padding-pixels :bracket-start-radius-multiplier :opacity :pulse-opacity-boost "
-           ":pulse-duration :fade-out-duration )))\n  (lambda (value . overrides) "
-           "(lispb-record-with :soft-target fields #f value overrides))))\n(define (star . "
-           "arguments) (cons :star arguments))\n(define (star? value) (lispb-record? :star "
-           "value))\n(define star-ref (let ((fields '(:scale :size-multiplier :global-brightness "
-           ":colour-variation-strength :parallax-strength )))\n  (lambda (value key) "
-           "(lispb-record-ref :star fields #f value key))))\n(define star-with (let ((fields "
-           "'(:scale :size-multiplier :global-brightness :colour-variation-strength "
-           ":parallax-strength )))\n  (lambda (value . overrides) (lispb-record-with :star fields "
-           "#f value overrides))))\n(define (starfield . arguments) (cons :starfield "
-           "arguments))\n(define (starfield? value) (lispb-record? :starfield value))\n(define "
-           "starfield-ref (let ((fields '(:generation :star :galactic-band :stellar-cluster "
-           ":dust-lane :bright-star :twinkle :galactic-haze :galactic-core :nebular-knot )))\n  "
-           "(lambda (value key) (lispb-record-ref :starfield fields #f value key))))\n(define "
-           "starfield-with (let ((fields '(:generation :star :galactic-band :stellar-cluster "
-           ":dust-lane :bright-star :twinkle :galactic-haze :galactic-core :nebular-knot )))\n  "
-           "(lambda (value . overrides) (lispb-record-with :starfield fields #f value "
-           "overrides))))\n(define (stellar-cluster . arguments) (cons :stellar-cluster "
-           "arguments))\n(define (stellar-cluster? value) (lispb-record? :stellar-cluster "
-           "value))\n(define stellar-cluster-ref (let ((fields '(:strength :width-degrees )))\n  "
-           "(lambda (value key) (lispb-record-ref :stellar-cluster fields #f value "
-           "key))))\n(define stellar-cluster-with (let ((fields '(:strength :width-degrees )))\n  "
-           "(lambda (value . overrides) (lispb-record-with :stellar-cluster fields #f value "
-           "overrides))))\n(define (tick . arguments) (cons :tick arguments))\n(define (tick? "
-           "value) (lispb-record? :tick value))\n(define tick-ref (let ((fields '(:tick-rate "
-           ":time-scale )))\n  (lambda (value key) (lispb-record-ref :tick fields #f value "
-           "key))))\n(define tick-with (let ((fields '(:tick-rate :time-scale )))\n  (lambda "
-           "(value . overrides) (lispb-record-with :tick fields #f value overrides))))\n(define "
-           "(tube-spinners . arguments) (cons :tube-spinners arguments))\n(define (tube-spinners? "
-           "value) (lispb-record? :tube-spinners value))\n(define tube-spinners-ref (let ((fields "
-           "'(:yaw-rotation-speed-degrees :laser )))\n  (lambda (value key) (lispb-record-ref "
-           ":tube-spinners fields #f value key))))\n(define tube-spinners-with (let ((fields "
-           "'(:yaw-rotation-speed-degrees :laser )))\n  (lambda (value . overrides) "
-           "(lispb-record-with :tube-spinners fields #f value overrides))))\n(define (turrets . "
-           "arguments) (cons :turrets arguments))\n(define (turrets? value) (lispb-record? "
-           ":turrets value))\n(define turrets-ref (let ((fields '(:detection-radius "
-           ":target-refresh-frequency :laser :max-health )))\n  (lambda (value key) "
-           "(lispb-record-ref :turrets fields #f value key))))\n(define turrets-with (let ((fields "
-           "'(:detection-radius :target-refresh-frequency :laser :max-health )))\n  (lambda (value "
-           ". overrides) (lispb-record-with :turrets fields #f value overrides))))\n(define "
-           "(turrets-presentation . arguments) (cons :turrets-presentation arguments))\n(define "
-           "(turrets-presentation? value) (lispb-record? :turrets-presentation value))\n(define "
-           "turrets-presentation-ref (let ((fields '(:death-effect-scale )))\n  (lambda (value "
-           "key) (lispb-record-ref :turrets-presentation fields #f value key))))\n(define "
-           "turrets-presentation-with (let ((fields '(:death-effect-scale )))\n  (lambda (value . "
-           "overrides) (lispb-record-with :turrets-presentation fields #f value "
-           "overrides))))\n(define (twinkle . arguments) (cons :twinkle arguments))\n(define "
-           "(twinkle? value) (lispb-record? :twinkle value))\n(define twinkle-ref (let ((fields "
-           "'(:strength :speed )))\n  (lambda (value key) (lispb-record-ref :twinkle fields #f "
-           "value key))))\n(define twinkle-with (let ((fields '(:strength :speed )))\n  (lambda "
-           "(value . overrides) (lispb-record-with :twinkle fields #f value overrides))))\n";
+    return R"cpp(
+(define (lispb-record? tag value)
+  (and (pair? value) (eq? (car value) tag)))
+(define (lispb-property properties key)
+  (cond ((null? properties) #f)
+        ((eq? (car properties) key) properties)
+        (else (lispb-property (cddr properties) key))))
+(define (lispb-check-properties tag fields properties)
+  (if (not (list? properties))
+      (error 'record-error "~S: expected a property list" tag))
+  (let loop ((remaining properties) (seen '()))
+    (if (pair? remaining)
+        (let ((key (car remaining)))
+          (if (null? (cdr remaining))
+              (error 'record-error "~S: missing value for ~S" tag key))
+          (if (not (memq key fields))
+              (error 'record-error "~S: unknown property ~S" tag key))
+          (if (memq key seen)
+              (error 'record-error "~S: duplicate property ~S" tag key))
+          (loop (cddr remaining) (cons key seen))))))
+(define (lispb-check-record tag fields positional value)
+  (if (or (not (list? value)) (not (lispb-record? tag value)))
+      (error 'record-error "Expected a ~S record, received ~S" tag value))
+  (if positional
+      (if (not (= (length (cdr value)) (length fields)))
+          (error 'record-error "~S: wrong number of positional fields" tag))
+      (lispb-check-properties tag fields (cdr value))))
+(define (lispb-record-ref tag fields positional value key)
+  (lispb-check-record tag fields positional value)
+  (if (not (memq key fields))
+      (error 'record-error "~S: unknown property ~S" tag key))
+  (if positional
+      (let loop ((keys fields) (values (cdr value)))
+        (if (eq? (car keys) key)
+            (car values)
+            (loop (cdr keys) (cdr values))))
+      (let ((property (lispb-property (cdr value) key)))
+        (if property (cadr property)
+            (error 'record-error "~S: missing property ~S" tag key)))))
+(define (lispb-record-with tag fields positional value overrides)
+  (lispb-check-record tag fields positional value)
+  (lispb-check-properties tag fields overrides)
+  (cons tag
+    (if positional
+        (map (lambda (key old)
+               (let ((property (lispb-property overrides key)))
+                 (if property (cadr property) old)))
+             fields (cdr value))
+        (let loop ((keys fields))
+          (if (null? keys) '()
+              (let* ((key (car keys))
+                     (property (or (lispb-property overrides key)
+                                   (lispb-property (cdr value) key))))
+                (if property
+                    (cons key (cons (cadr property) (loop (cdr keys))))
+                    (loop (cdr keys)))))))))
+(define (attack-distance-band . arguments) (cons :attack-distance-band arguments))
+(define (attack-distance-band? value) (lispb-record? :attack-distance-band value))
+(define attack-distance-band-ref (let ((fields '(:minimum-ratio :desired-ratio :maximum-ratio )))
+  (lambda (value key) (lispb-record-ref :attack-distance-band fields #f value key))))
+(define attack-distance-band-with (let ((fields '(:minimum-ratio :desired-ratio :maximum-ratio )))
+  (lambda (value . overrides) (lispb-record-with :attack-distance-band fields #f value overrides))))
+(define (bright-star . arguments) (cons :bright-star arguments))
+(define (bright-star? value) (lispb-record? :bright-star value))
+(define bright-star-ref (let ((fields '(:fraction :size-multiplier :brightness-multiplier :shape-strength )))
+  (lambda (value key) (lispb-record-ref :bright-star fields #f value key))))
+(define bright-star-with (let ((fields '(:fraction :size-multiplier :brightness-multiplier :shape-strength )))
+  (lambda (value . overrides) (lispb-record-with :bright-star fields #f value overrides))))
+(define (camera . arguments) (cons :camera arguments))
+(define (camera? value) (lispb-record? :camera value))
+(define camera-ref (let ((fields '(:look-at :offset-direction :distance )))
+  (lambda (value key) (lispb-record-ref :camera fields #f value key))))
+(define camera-with (let ((fields '(:look-at :offset-direction :distance )))
+  (lambda (value . overrides) (lispb-record-with :camera fields #f value overrides))))
+(define (campaign . arguments) (cons :campaign arguments))
+(define (campaign? value) (lispb-record? :campaign value))
+(define campaign-ref (let ((fields '(:id :title :levels )))
+  (lambda (value key) (lispb-record-ref :campaign fields #f value key))))
+(define campaign-with (let ((fields '(:id :title :levels )))
+  (lambda (value . overrides) (lispb-record-with :campaign fields #f value overrides))))
+(define (capital-ships . arguments) (cons :capital-ships arguments))
+(define (capital-ships? value) (lispb-record? :capital-ships value))
+(define capital-ships-ref (let ((fields '(:spawn-delay :max-health )))
+  (lambda (value key) (lispb-record-ref :capital-ships fields #f value key))))
+(define capital-ships-with (let ((fields '(:spawn-delay :max-health )))
+  (lambda (value . overrides) (lispb-record-with :capital-ships fields #f value overrides))))
+(define (capital-ships-presentation . arguments) (cons :capital-ships-presentation arguments))
+(define (capital-ships-presentation? value) (lispb-record? :capital-ships-presentation value))
+(define capital-ships-presentation-ref (let ((fields '(:n-small-explosions :time-between-explosions :min-small-explosion-range :max-small-explosion-range :large-explosion-delay :proxy-arrow-size )))
+  (lambda (value key) (lispb-record-ref :capital-ships-presentation fields #f value key))))
+(define capital-ships-presentation-with (let ((fields '(:n-small-explosions :time-between-explosions :min-small-explosion-range :max-small-explosion-range :large-explosion-delay :proxy-arrow-size )))
+  (lambda (value . overrides) (lispb-record-with :capital-ships-presentation fields #f value overrides))))
+(define (collision-grid . arguments) (cons :collision-grid arguments))
+(define (collision-grid? value) (lispb-record? :collision-grid value))
+(define collision-grid-ref (let ((fields '(:damage-per-overlap-detection :level-size :cell-size )))
+  (lambda (value key) (lispb-record-ref :collision-grid fields #f value key))))
+(define collision-grid-with (let ((fields '(:damage-per-overlap-detection :level-size :cell-size )))
+  (lambda (value . overrides) (lispb-record-with :collision-grid fields #f value overrides))))
+(define (dust-lane . arguments) (cons :dust-lane arguments))
+(define (dust-lane? value) (lispb-record? :dust-lane value))
+(define dust-lane-ref (let ((fields '(:strength :width-degrees :irregularity )))
+  (lambda (value key) (lispb-record-ref :dust-lane fields #f value key))))
+(define dust-lane-with (let ((fields '(:strength :width-degrees :irregularity )))
+  (lambda (value . overrides) (lispb-record-with :dust-lane fields #f value overrides))))
+(define (entity . arguments) (cons :entity arguments))
+(define (entity? value) (lispb-record? :entity value))
+(define entity-ref (let ((fields '(:id :archetype :team :position :rotation :spawn-at :health :laser-damage :initial-spawn-delay :spawn-cooldown :initial-fire-point )))
+  (lambda (value key) (lispb-record-ref :entity fields #f value key))))
+(define entity-with (let ((fields '(:id :archetype :team :position :rotation :spawn-at :health :laser-damage :initial-spawn-delay :spawn-cooldown :initial-fire-point )))
+  (lambda (value . overrides) (lispb-record-with :entity fields #f value overrides))))
+(define (entity-overlay . arguments) (cons :entity-overlay arguments))
+(define (entity-overlay? value) (lispb-record? :entity-overlay value))
+(define entity-overlay-ref (let ((fields '(:enabled :maximum-range :bar-size-pixels :screen-offset-pixels :minimum-bar-scale :maximum-bar-scale :inset-pixels :maximum-inset-height-ratio :objective-frame-pixels :objective-bar-height-scale :screen-edge-padding-pixels :soft-target )))
+  (lambda (value key) (lispb-record-ref :entity-overlay fields #f value key))))
+(define entity-overlay-with (let ((fields '(:enabled :maximum-range :bar-size-pixels :screen-offset-pixels :minimum-bar-scale :maximum-bar-scale :inset-pixels :maximum-inset-height-ratio :objective-frame-pixels :objective-bar-height-scale :screen-edge-padding-pixels :soft-target )))
+  (lambda (value . overrides) (lispb-record-with :entity-overlay fields #f value overrides))))
+(define (fighters . arguments) (cons :fighters arguments))
+(define (fighters? value) (lispb-record? :fighters value))
+(define fighters-ref (let ((fields '(:max-live-fighters :fire-dot-product-threshold :attack-distance-band :speed :turn-speed-unitless :avoidance-clear-update-frequency :avoidance-update-frequency :avoidance-active-update-frequency :avoidance-immediate-update-frequency :avoidance-lookahead-time :avoidance-clearance-buffer :separation-radius :separation-strength :steering-memory-duration :dense-traffic-neighbour-threshold :laser :health :attack-retry-cooldown :los-check-buffer )))
+  (lambda (value key) (lispb-record-ref :fighters fields #f value key))))
+(define fighters-with (let ((fields '(:max-live-fighters :fire-dot-product-threshold :attack-distance-band :speed :turn-speed-unitless :avoidance-clear-update-frequency :avoidance-update-frequency :avoidance-active-update-frequency :avoidance-immediate-update-frequency :avoidance-lookahead-time :avoidance-clearance-buffer :separation-radius :separation-strength :steering-memory-duration :dense-traffic-neighbour-threshold :laser :health :attack-retry-cooldown :los-check-buffer )))
+  (lambda (value . overrides) (lispb-record-with :fighters fields #f value overrides))))
+(define (galactic-band . arguments) (cons :galactic-band arguments))
+(define (galactic-band? value) (lispb-record? :galactic-band value))
+(define galactic-band-ref (let ((fields '(:strength :width-degrees )))
+  (lambda (value key) (lispb-record-ref :galactic-band fields #f value key))))
+(define galactic-band-with (let ((fields '(:strength :width-degrees )))
+  (lambda (value . overrides) (lispb-record-with :galactic-band fields #f value overrides))))
+(define (galactic-core . arguments) (cons :galactic-core arguments))
+(define (galactic-core? value) (lispb-record? :galactic-core value))
+(define galactic-core-ref (let ((fields '(:strength :width-degrees )))
+  (lambda (value key) (lispb-record-ref :galactic-core fields #f value key))))
+(define galactic-core-with (let ((fields '(:strength :width-degrees )))
+  (lambda (value . overrides) (lispb-record-with :galactic-core fields #f value overrides))))
+(define (galactic-haze . arguments) (cons :galactic-haze arguments))
+(define (galactic-haze? value) (lispb-record? :galactic-haze value))
+(define galactic-haze-ref (let ((fields '(:strength :width-degrees )))
+  (lambda (value key) (lispb-record-ref :galactic-haze fields #f value key))))
+(define galactic-haze-with (let ((fields '(:strength :width-degrees )))
+  (lambda (value . overrides) (lispb-record-with :galactic-haze fields #f value overrides))))
+(define (generation . arguments) (cons :generation arguments))
+(define (generation? value) (lispb-record? :generation value))
+(define generation-ref (let ((fields '(:star-count :random-seed )))
+  (lambda (value key) (lispb-record-ref :generation fields #f value key))))
+(define generation-with (let ((fields '(:star-count :random-seed )))
+  (lambda (value . overrides) (lispb-record-with :generation fields #f value overrides))))
+(define (hud . arguments) (cons :hud arguments))
+(define (hud? value) (lispb-record? :hud value))
+(define hud-ref (let ((fields '(:player-status-update-period :entity-count-update-period )))
+  (lambda (value key) (lispb-record-ref :hud fields #f value key))))
+(define hud-with (let ((fields '(:player-status-update-period :entity-count-update-period )))
+  (lambda (value . overrides) (lispb-record-with :hud fields #f value overrides))))
+(define (included-campaign . arguments) (cons :included-campaign arguments))
+(define (included-campaign? value) (lispb-record? :included-campaign value))
+(define included-campaign-ref (let ((fields '(:path :value :error )))
+  (lambda (value key) (lispb-record-ref :included-campaign fields #f value key))))
+(define included-campaign-with (let ((fields '(:path :value :error )))
+  (lambda (value . overrides) (lispb-record-with :included-campaign fields #f value overrides))))
+(define (included-level . arguments) (cons :included-level arguments))
+(define (included-level? value) (lispb-record? :included-level value))
+(define included-level-ref (let ((fields '(:path :value :error )))
+  (lambda (value key) (lispb-record-ref :included-level fields #f value key))))
+(define included-level-with (let ((fields '(:path :value :error )))
+  (lambda (value . overrides) (lispb-record-with :included-level fields #f value overrides))))
+(define (laser . arguments) (cons :laser arguments))
+(define (laser? value) (lispb-record? :laser value))
+(define laser-ref (let ((fields '(:damage :projectile-speed :max-distance :fire-cooldown )))
+  (lambda (value key) (lispb-record-ref :laser fields #f value key))))
+(define laser-with (let ((fields '(:damage :projectile-speed :max-distance :fire-cooldown )))
+  (lambda (value . overrides) (lispb-record-with :laser fields #f value overrides))))
+(define (laser-projectiles . arguments) (cons :laser-projectiles arguments))
+(define (laser-projectiles? value) (lispb-record? :laser-projectiles value))
+(define laser-projectiles-ref (let ((fields '(:n-preallocated-instances )))
+  (lambda (value key) (lispb-record-ref :laser-projectiles fields #f value key))))
+(define laser-projectiles-with (let ((fields '(:n-preallocated-instances )))
+  (lambda (value . overrides) (lispb-record-with :laser-projectiles fields #f value overrides))))
+(define (laser-projectiles-presentation . arguments) (cons :laser-projectiles-presentation arguments))
+(define (laser-projectiles-presentation? value) (lispb-record? :laser-projectiles-presentation value))
+(define laser-projectiles-presentation-ref (let ((fields '(:min-cull-distance :max-cull-distance )))
+  (lambda (value key) (lispb-record-ref :laser-projectiles-presentation fields #f value key))))
+(define laser-projectiles-presentation-with (let ((fields '(:min-cull-distance :max-cull-distance )))
+  (lambda (value . overrides) (lispb-record-with :laser-projectiles-presentation fields #f value overrides))))
+(define (level . arguments) (cons :level arguments))
+(define (level? value) (lispb-record? :level value))
+(define level-ref (let ((fields '(:id :title :description :par-time :unlock :player :camera :settings :logic :entities )))
+  (lambda (value key) (lispb-record-ref :level fields #f value key))))
+(define level-with (let ((fields '(:id :title :description :par-time :unlock :player :camera :settings :logic :entities )))
+  (lambda (value . overrides) (lispb-record-with :level fields #f value overrides))))
+(define (level-completed . arguments) (cons :level-completed arguments))
+(define (level-completed? value) (lispb-record? :level-completed value))
+(define level-completed-ref (let ((fields '(:level-id )))
+  (lambda (value key) (lispb-record-ref :level-completed fields #t value key))))
+(define level-completed-with (let ((fields '(:level-id )))
+  (lambda (value . overrides) (lispb-record-with :level-completed fields #t value overrides))))
+(define (nebular-knot . arguments) (cons :nebular-knot arguments))
+(define (nebular-knot? value) (lispb-record? :nebular-knot value))
+(define nebular-knot-ref (let ((fields '(:strength :size-degrees )))
+  (lambda (value key) (lispb-record-ref :nebular-knot fields #f value key))))
+(define nebular-knot-with (let ((fields '(:strength :size-degrees )))
+  (lambda (value . overrides) (lispb-record-with :nebular-knot fields #f value overrides))))
+(define (player-ship . arguments) (cons :player-ship arguments))
+(define (player-ship? value) (lispb-record? :player-ship value))
+(define player-ship-ref (let ((fields '(:thrust-energy-max :pitch-angle-max :pitch-speed :yaw-angle-max :yaw-speed :turn-bank-angle-max :turn-bank-speed :laser :health :laser-mode :laser-fire-rate )))
+  (lambda (value key) (lispb-record-ref :player-ship fields #f value key))))
+(define player-ship-with (let ((fields '(:thrust-energy-max :pitch-angle-max :pitch-speed :yaw-angle-max :yaw-speed :turn-bank-angle-max :turn-bank-speed :laser :health :laser-mode :laser-fire-rate )))
+  (lambda (value . overrides) (lispb-record-with :player-ship fields #f value overrides))))
+(define (player-ship-presentation . arguments) (cons :player-ship-presentation arguments))
+(define (player-ship-presentation? value) (lispb-record? :player-ship-presentation value))
+(define player-ship-presentation-ref (let ((fields '(:boost-effect-colour-intensity )))
+  (lambda (value key) (lispb-record-ref :player-ship-presentation fields #f value key))))
+(define player-ship-presentation-with (let ((fields '(:boost-effect-colour-intensity )))
+  (lambda (value . overrides) (lispb-record-with :player-ship-presentation fields #f value overrides))))
+(define (presentation . arguments) (cons :presentation arguments))
+(define (presentation? value) (lispb-record? :presentation value))
+(define presentation-ref (let ((fields '(:player-ship :laser-projectiles :capital-ships :turrets :entity-overlay :radar )))
+  (lambda (value key) (lispb-record-ref :presentation fields #f value key))))
+(define presentation-with (let ((fields '(:player-ship :laser-projectiles :capital-ships :turrets :entity-overlay :radar )))
+  (lambda (value . overrides) (lispb-record-with :presentation fields #f value overrides))))
+(define (radar . arguments) (cons :radar arguments))
+(define (radar? value) (lispb-record? :radar value))
+(define radar-ref (let ((fields '(:enabled :combat-range :tactical-range :maximum-range :combat-display-radius :grid-opacity :core-cell-radius :combat-cell-radius :tactical-cell-radius :strategic-cell-radius :glyph-size-scale :objective-size-multiplier :objective-ring-padding-pixels :objective-ring-thickness-pixels )))
+  (lambda (value key) (lispb-record-ref :radar fields #f value key))))
+(define radar-with (let ((fields '(:enabled :combat-range :tactical-range :maximum-range :combat-display-radius :grid-opacity :core-cell-radius :combat-cell-radius :tactical-cell-radius :strategic-cell-radius :glyph-size-scale :objective-size-multiplier :objective-ring-padding-pixels :objective-ring-thickness-pixels )))
+  (lambda (value . overrides) (lispb-record-with :radar fields #f value overrides))))
+(define (settings . arguments) (cons :settings arguments))
+(define (settings? value) (lispb-record? :settings value))
+(define settings-ref (let ((fields '(:tick :player-ship :laser-projectiles :capital-ships :fighters :turrets :tube-spinners :collision-grid :hud :presentation :starfield )))
+  (lambda (value key) (lispb-record-ref :settings fields #f value key))))
+(define settings-with (let ((fields '(:tick :player-ship :laser-projectiles :capital-ships :fighters :turrets :tube-spinners :collision-grid :hud :presentation :starfield )))
+  (lambda (value . overrides) (lispb-record-with :settings fields #f value overrides))))
+(define (soft-target . arguments) (cons :soft-target arguments))
+(define (soft-target? value) (lispb-record? :soft-target value))
+(define soft-target-ref (let ((fields '(:acquisition-radius-pixels :retention-radius-pixels :centre-tie-radius-pixels :switch-improvement-ratio :range-transition-start-multiplier :minimum-radius-pixels :maximum-radius-pixels :bounds-padding-pixels :bracket-start-radius-multiplier :opacity :pulse-opacity-boost :pulse-duration :fade-out-duration )))
+  (lambda (value key) (lispb-record-ref :soft-target fields #f value key))))
+(define soft-target-with (let ((fields '(:acquisition-radius-pixels :retention-radius-pixels :centre-tie-radius-pixels :switch-improvement-ratio :range-transition-start-multiplier :minimum-radius-pixels :maximum-radius-pixels :bounds-padding-pixels :bracket-start-radius-multiplier :opacity :pulse-opacity-boost :pulse-duration :fade-out-duration )))
+  (lambda (value . overrides) (lispb-record-with :soft-target fields #f value overrides))))
+(define (star . arguments) (cons :star arguments))
+(define (star? value) (lispb-record? :star value))
+(define star-ref (let ((fields '(:scale :size-multiplier :global-brightness :colour-variation-strength :parallax-strength )))
+  (lambda (value key) (lispb-record-ref :star fields #f value key))))
+(define star-with (let ((fields '(:scale :size-multiplier :global-brightness :colour-variation-strength :parallax-strength )))
+  (lambda (value . overrides) (lispb-record-with :star fields #f value overrides))))
+(define (starfield . arguments) (cons :starfield arguments))
+(define (starfield? value) (lispb-record? :starfield value))
+(define starfield-ref (let ((fields '(:generation :star :galactic-band :stellar-cluster :dust-lane :bright-star :twinkle :galactic-haze :galactic-core :nebular-knot )))
+  (lambda (value key) (lispb-record-ref :starfield fields #f value key))))
+(define starfield-with (let ((fields '(:generation :star :galactic-band :stellar-cluster :dust-lane :bright-star :twinkle :galactic-haze :galactic-core :nebular-knot )))
+  (lambda (value . overrides) (lispb-record-with :starfield fields #f value overrides))))
+(define (stellar-cluster . arguments) (cons :stellar-cluster arguments))
+(define (stellar-cluster? value) (lispb-record? :stellar-cluster value))
+(define stellar-cluster-ref (let ((fields '(:strength :width-degrees )))
+  (lambda (value key) (lispb-record-ref :stellar-cluster fields #f value key))))
+(define stellar-cluster-with (let ((fields '(:strength :width-degrees )))
+  (lambda (value . overrides) (lispb-record-with :stellar-cluster fields #f value overrides))))
+(define (tick . arguments) (cons :tick arguments))
+(define (tick? value) (lispb-record? :tick value))
+(define tick-ref (let ((fields '(:tick-rate :time-scale )))
+  (lambda (value key) (lispb-record-ref :tick fields #f value key))))
+(define tick-with (let ((fields '(:tick-rate :time-scale )))
+  (lambda (value . overrides) (lispb-record-with :tick fields #f value overrides))))
+(define (tube-spinners . arguments) (cons :tube-spinners arguments))
+(define (tube-spinners? value) (lispb-record? :tube-spinners value))
+(define tube-spinners-ref (let ((fields '(:yaw-rotation-speed-degrees :laser )))
+  (lambda (value key) (lispb-record-ref :tube-spinners fields #f value key))))
+(define tube-spinners-with (let ((fields '(:yaw-rotation-speed-degrees :laser )))
+  (lambda (value . overrides) (lispb-record-with :tube-spinners fields #f value overrides))))
+(define (turrets . arguments) (cons :turrets arguments))
+(define (turrets? value) (lispb-record? :turrets value))
+(define turrets-ref (let ((fields '(:detection-radius :target-refresh-frequency :laser :max-health )))
+  (lambda (value key) (lispb-record-ref :turrets fields #f value key))))
+(define turrets-with (let ((fields '(:detection-radius :target-refresh-frequency :laser :max-health )))
+  (lambda (value . overrides) (lispb-record-with :turrets fields #f value overrides))))
+(define (turrets-presentation . arguments) (cons :turrets-presentation arguments))
+(define (turrets-presentation? value) (lispb-record? :turrets-presentation value))
+(define turrets-presentation-ref (let ((fields '(:death-effect-scale )))
+  (lambda (value key) (lispb-record-ref :turrets-presentation fields #f value key))))
+(define turrets-presentation-with (let ((fields '(:death-effect-scale )))
+  (lambda (value . overrides) (lispb-record-with :turrets-presentation fields #f value overrides))))
+(define (twinkle . arguments) (cons :twinkle arguments))
+(define (twinkle? value) (lispb-record? :twinkle value))
+(define twinkle-ref (let ((fields '(:strength :speed )))
+  (lambda (value key) (lispb-record-ref :twinkle fields #f value key))))
+(define twinkle-with (let ((fields '(:strength :speed )))
+  (lambda (value . overrides) (lispb-record-with :twinkle fields #f value overrides))))
+)cpp";
 }
 } // namespace ioj::levels::authoring

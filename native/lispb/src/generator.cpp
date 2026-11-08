@@ -305,7 +305,7 @@ class ModuleLowering : public CppIRBuilder {
                 positional);
         }
         auto body{node_list()};
-        body.add(return_stmt(string_literal(store_text(source))));
+        body.add(return_stmt(ctx.ir.raw_string_literal(source)));
         FunctionDefinition const function{
             .name = this->name("s7_record_constructors"),
             .return_type = std_types().string_view,

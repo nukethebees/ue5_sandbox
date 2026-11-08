@@ -491,7 +491,7 @@ TEST_F(ExprTest, CollectsMemberObjectAndSubscriptIndexDependencies) {
               (std::vector<TypeDependencyId>{object, index}));
 }
 
-TEST_F(ExprTest, EscapesStringContentsWithoutConsumingFollowingDigits) {
+TEST_F(ExprTest, RendersStringLiteralsWithoutChangingContents) {
     expect_rendered(ir.string_literal(""), "\"\"");
     expect_rendered(ir.string_literal("a\"b\\c\n\r\t"), R"("a\"b\\c\n\r\t")");
     expect_rendered(ir.string_literal(std::string_view{"\0"
@@ -500,6 +500,10 @@ TEST_F(ExprTest, EscapesStringContentsWithoutConsumingFollowingDigits) {
                                                        5}),
                     R"("\0007\001f\177")");
     expect_rendered(ir.string_literal("caf\xc3\xa9"), "\"caf\xc3\xa9\"");
+    expect_rendered(ir.raw_string_literal(""), "R\"cpp()cpp\"");
+    expect_rendered(ir.raw_string_literal("(define name \"a\\b\")\n"),
+                    "R\"cpp((define name \"a\\b\")\n)cpp\"");
+    expect_rendered(ir.raw_string_literal(")cpp\" )cpp0\""), "R\"cpp1()cpp\" )cpp0\")cpp1\"");
     EXPECT_EQ(escape_cpp_string(std::string_view{"\0"
                                                  "7\001"
                                                  "f\177",

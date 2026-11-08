@@ -329,6 +329,7 @@ class CppIR {
     auto literal(CppTypeId type, std::string_view spelling) -> Expr;
     auto string_literal(std::string_view value) -> Expr;
     auto string_literal(StringId value) -> Expr;
+    auto raw_string_literal(std::string_view value) -> Expr;
     auto raw_expr(CppTypeId type,
                   StringId value,
                   std::span<TypeDependencyId const> dependencies = {}) -> Expr;

@@ -885,6 +885,17 @@ auto CppIR::string_literal(StringId value) -> Expr {
         types.decorate(
             types.std.char_, "", " const[" + std::to_string(strings.view(value).size() + 1) + "]"));
 }
+auto CppIR::raw_string_literal(std::string_view const value) -> Expr {
+    std::string delimiter{"cpp"};
+    for (std::size_t suffix{}; value.contains(")" + delimiter + "\""); ++suffix) {
+        delimiter = "cpp" + std::to_string(suffix);
+    }
+
+    auto const spelling{"R\"" + delimiter + "(" + std::string{value} + ")" + delimiter + "\""};
+    auto const type{
+        types.decorate(types.std.char_, "", " const[" + std::to_string(value.size() + 1) + "]")};
+    return literal(type, spelling);
+}
 auto CppIR::raw_expr(CppTypeId type,
                      std::string_view value,
                      std::span<TypeDependencyId const> dependencies) -> Expr {
