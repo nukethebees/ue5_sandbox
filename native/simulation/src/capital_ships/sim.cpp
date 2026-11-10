@@ -3,7 +3,7 @@
 #include <ioj/column_math.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/batch_operations.h>
-#include <ioj/sim/combat_events.h>
+#include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/health.h>
@@ -48,7 +48,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::resolve_damage_events");
     auto const entities{entities_.view()};
     auto const healths{entity_tables_.health.view<EntityType::CapitalShip>()};
-    sim::resolve_damage_events(inputs.combat_events.events_for(EntityType::CapitalShip),
+    sim::resolve_damage_events(inputs.damage_queue.events_for(EntityType::CapitalShip),
                                entity_tables_.lookups.for_type(EntityType::CapitalShip),
                                entities.entity_ids(),
                                entities.view_locations().const_view().resolve(),

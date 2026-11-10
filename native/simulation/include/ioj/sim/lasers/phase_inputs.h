@@ -11,7 +11,7 @@ class FrameMemoryResource;
 }
 
 namespace ioj::sim {
-class CombatEvents;
+class DamageQueue;
 struct SimClock;
 struct SpatialQueryManager;
 }
@@ -21,12 +21,11 @@ using LaserIndex = std::uint32_t;
 
 struct PreparationInputs {
     SimClock const& clock;
-    CombatEvents& combat_events;
 };
 
 struct ActionInputs {
     float dt;
-    CombatEvents& combat_events;
+    DamageQueue& damage_queue;
     SimTick tick;
     SpatialQueryManager const& spatial_query_manager;
     FrameMemoryResource& scratch_resource;

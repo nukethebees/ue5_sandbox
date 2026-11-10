@@ -113,7 +113,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     auto take_pending_level() -> std::optional<session::PendingLevel>;
 
     [[nodiscard]] auto return_to_level_select(FName preferred_level_id = NAME_None) -> bool;
-    auto take_menu_request() -> std::optional<session::MenuRequest>;
+    auto take_menu_request() -> std::optional<session::LevelSelectRequest>;
     static auto get_main_menu_level_name() -> FName;
 
     /* **************************************** */

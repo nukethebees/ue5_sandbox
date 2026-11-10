@@ -249,7 +249,7 @@ void LevelSim::prepare_tick(float const tick_period) {
     };
     fighters_phase.commit_spawns(fighter_inputs);
 
-    lasers_phase.commit_spawns({clock_, combat_events_});
+    lasers_phase.commit_spawns({clock_});
 
     // Borrow fresh owner views after all spawn commits.
     collision_pipeline_.collect_spawn_candidates(
@@ -335,7 +335,7 @@ void LevelSim::act_tick(float const tick_period,
     {
         lasers::ActionInputs const inputs{
             tick_period,
-            combat_events_,
+            damage_queue_,
             clock_.get_completed_ticks(),
             collision_pipeline_.queries(),
             phase_memory,
@@ -368,7 +368,7 @@ void LevelSim::act_tick(float const tick_period,
     }
 
     collision_pipeline_.detect_and_handle_overlaps(
-        read_access(), fighter_overlap_candidates, combat_events_, phase_memory);
+        read_access(), fighter_overlap_candidates, damage_queue_, phase_memory);
 }
 template <TickPlayerShipState PlayerState>
 void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_indices) {
@@ -389,24 +389,24 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
         EntityDeathInfo capital_deaths{phase_memory};
         EntityDeathInfo turret_deaths{phase_memory};
 
-        combat_events_.prepare(entity_tables_.lookups, &phase_memory);
+        damage_queue_.prepare(entity_tables_.lookups, &phase_memory);
 
         capital_ships::ResolutionInputs const capital_inputs{
-            combat_events_,
+            damage_queue_,
             entity_ledger_,
             clock_.get_completed_ticks(),
             capital_removal_indices,
             capital_deaths,
         };
         fighters::ResolutionInputs const fighter_inputs{
-            .combat_events = combat_events_,
+            .damage_queue = damage_queue_,
             .ledger = entity_ledger_,
             .tick = clock_.get_completed_ticks(),
             .local_indices_to_remove = fighter_removal_indices,
             .entity_death_info = fighter_deaths,
         };
         turrets::ResolutionInputs const turret_inputs{
-            combat_events_,
+            damage_queue_,
             entity_ledger_,
             clock_.get_completed_ticks(),
             turret_removal_indices,
@@ -414,7 +414,7 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
         };
 
         if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-            player::ResolutionInputs const inputs{combat_events_};
+            player::ResolutionInputs const inputs{damage_queue_};
             player::ResolutionInterface{*player_ship_simulation_}.resolve_damage_events(inputs);
         }
         capital_ships_phase.resolve_damage_events(capital_inputs);
@@ -466,7 +466,7 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
     turrets_commit.finish_action();
     lasers_commit.finish_action();
     clock_.complete_tick();
-    combat_events_.reset();
+    damage_queue_.reset();
 }
 
 /* **************************************** */

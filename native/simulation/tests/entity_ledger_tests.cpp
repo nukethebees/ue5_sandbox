@@ -1,6 +1,5 @@
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/batch_operations.h>
-#include <ioj/sim/combat_events.h>
 #include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
@@ -91,8 +90,8 @@ TEST(DamageResolution, SkipsRetiredAndAlreadyDeadRecipients) {
     queued.add(victim, 10, attacker);
     queued.add(victim, 100, attacker);
 
-    CombatEvents events;
-    events.queue_damage(queued);
+    DamageQueue events;
+    events.append(queued.const_view());
 
     FrameMemoryResource frame_memory{4096};
     {
@@ -127,7 +126,7 @@ TEST(DamageResolution, SkipsRetiredAndAlreadyDeadRecipients) {
     EXPECT_EQ(deaths.view().killers()[0], attacker);
 }
 
-TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
+TEST(EntityLedger, PreservesKillCountsAndResetsLevelIdentity) {
     EntityLedger ledger;
     EntityId killer;
     ledger.record_spawns(EntityType::Turret, Team::Red, Health{1}, {&killer, 1});
@@ -157,17 +156,13 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     ledger.record_deaths(deaths.const_view(), SimTick{6});
 
     EXPECT_EQ(ledger.kills(killer), 2u);
-    EXPECT_EQ(ledger.count_kills(), 2);
     EXPECT_EQ(ledger.count_alive(), 0);
-    EXPECT_EQ(ledger.unique_entities().killed_by()[ledger.history_index(first_victim)], killer);
-    EXPECT_EQ(ledger.unique_entities().killed_by()[ledger.history_index(second_victim)], killer);
 
     EXPECT_EQ((ledger.count_kills(Team::Green)), 2u);
 
     ledger.reset();
-    EXPECT_EQ(ledger.num_unique_ids_issued(), 0);
+    EXPECT_EQ(ledger.unique_entities().num(), 0);
     EXPECT_EQ(ledger.count_alive(), 0);
-    EXPECT_EQ(ledger.count_kills(), 0);
     EXPECT_FALSE(ledger.is_valid_unique_id(killer));
 
     EntityId restarted;
@@ -176,18 +171,16 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     EXPECT_EQ(ledger.history_index(restarted), 0);
     EXPECT_EQ(ledger.count_alive(), 1);
 }
-TEST(CombatStatistics, DerivesKillTotalAcrossTeamsAndResetsCounters) {
+TEST(CombatStatistics, CountsKillsPerTeamAndResetsCounters) {
     CombatStatistics statistics;
     statistics.record_kill(Team::Blue);
     statistics.record_kill(Team::Blue);
     statistics.record_kill(Team::Green);
 
-    EXPECT_EQ(statistics.cumulative_kill_count(), 3);
     EXPECT_EQ(statistics.kill_count(Team::Blue), 2);
     EXPECT_EQ(statistics.kill_count(Team::Green), 1);
 
     statistics.reset();
-    EXPECT_EQ(statistics.cumulative_kill_count(), 0);
     EXPECT_EQ(statistics.kill_count(Team::Blue), 0);
 }
 

@@ -17,7 +17,7 @@ ULevelCompletionWidget::ULevelCompletionWidget() {
 void ULevelCompletionWidget::prepare_for_open(FLevelCompletion completion) {
     completion_ = MoveTemp(completion);
     action_requested_ = false;
-    publish_report();
+    refresh_view();
 }
 
 void ULevelCompletionWidget::NativeOnInitialized() {
@@ -48,7 +48,7 @@ void ULevelCompletionWidget::NativeOnInitialized() {
                               .Audio(IsValid(game_) ? game_->get_audio() : FGameAudioFacade{})
                               .OnReturnToMissionControl(FSimpleDelegate::CreateUObject(
                                   this, &ThisClass::request_return_to_mission_control)));
-    publish_report();
+    refresh_view();
 }
 
 auto ULevelCompletionWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
@@ -82,9 +82,9 @@ void ULevelCompletionWidget::request_return_to_mission_control() {
     return_to_level_select_requested.Broadcast();
 }
 
-void ULevelCompletionWidget::publish_report() {
+void ULevelCompletionWidget::refresh_view() {
     if (view_.IsValid()) {
-        view_->update_report(completion_);
+        view_->set_completion(completion_);
     }
 }
 }

@@ -1,13 +1,13 @@
 #include "ioj/sim/overlap_handler.h"
 
-#include <ioj/sim/combat_events.h>
+#include <ioj/sim/damage_queue.h>
 
 namespace ioj::sim {
 OverlapHandler::OverlapHandler(
     Positive<Health::value_type> const damage_per_overlap_detection) noexcept
     : damage_per_overlap_detection_{damage_per_overlap_detection} {}
 
-void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps, CombatEvents& events) {
+void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps, DamageQueue& events) {
     overlaps.entity_static_overlaps.validate();
 
     damage_events_.reset();
@@ -29,7 +29,7 @@ void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps, Comb
     }
 
     if (!damage_events_.is_empty()) {
-        events.queue_damage(damage_events_);
+        events.append(damage_events_.const_view());
     }
 }
 

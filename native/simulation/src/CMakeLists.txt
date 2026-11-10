@@ -1,6 +1,5 @@
 set(simulation_headers
   batch_operations.h
-  combat_events.h
   combat_statistics.h
   damage_queue.h
   deterministic_bias.h

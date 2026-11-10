@@ -23,7 +23,7 @@ class SLevelCompletionView final : public SCompoundWidget {
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
-    void update_report(FLevelCompletion const& completion);
+    void set_completion(FLevelCompletion const& completion);
     void focus_primary_action();
 
     auto SupportsKeyboardFocus() const -> bool override { return true; }

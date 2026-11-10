@@ -72,7 +72,7 @@ auto FPlayerModalUi::show_main_menu(ASpaceGamePlayerController& owner) -> bool {
     auto* const game_instance{owner.GetGameInstance()};
     auto* const subsystem{UGameSubsystem::get(game_instance)};
     auto request{IsValid(subsystem) ? subsystem->take_menu_request()
-                                    : std::optional<session::MenuRequest>{}};
+                                    : std::optional<session::LevelSelectRequest>{}};
     if (!request && IsValid(subsystem) && subsystem->has_level_launch_error()) {
         request.emplace(session::LevelSelectRequest{});
     }

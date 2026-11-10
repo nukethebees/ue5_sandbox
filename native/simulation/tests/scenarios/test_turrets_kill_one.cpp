@@ -67,7 +67,7 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
     EXPECT_TRUE(harness.run_until_timeline_finished(3.5)) << "Turret combat timeline completes";
 
     if (scenario == TurretCombatScenario::KillEnemy) {
-        EXPECT_EQ(1, harness.ledger().count_kills()) << "One turret is killed";
+        EXPECT_EQ(1, harness.ledger().count_kills(Team::Blue)) << "One turret is killed";
         EXPECT_EQ(6, harness.ledger().count_alive()) << "Hero turrets remain alive";
         for (auto const target : harness.simulation().turrets().get_entities().target_ids()) {
             EXPECT_TRUE(!target.is_valid()) << "Targets clear after the enemy dies";

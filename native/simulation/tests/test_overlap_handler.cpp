@@ -35,9 +35,9 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
 
     OverlapHandler handler{Positive<Health::value_type>::make(37)};
     handler.handle({entity_overlaps.const_view(), static_overlaps.const_view()},
-                   owners.combat_events);
+                   owners.damage_queue);
 
-    auto const damage{owners.combat_events.all_events().const_view()};
+    auto const damage{owners.damage_queue.all_events().const_view()};
     EXPECT_EQ(damage.num(), 5) << "Every supported overlap endpoint queues damage";
     std::int32_t capital_count{};
     std::int32_t fighter_count{};
@@ -74,35 +74,35 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     FrameScratchScope scope{memory};
     OverlapHandler handler{
         Positive<Health::value_type>::make(OverlapResponseConfig{}.damage_per_overlap_detection)};
-    handler.handle({first_pairs.const_view(), {}}, owners.combat_events);
-    owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
+    handler.handle({first_pairs.const_view(), {}}, owners.damage_queue);
+    owners.damage_queue.prepare(owners.entity_tables.lookups, &memory);
 
-    auto const first_damage{owners.combat_events.all_events().const_view()};
+    auto const first_damage{owners.damage_queue.all_events().const_view()};
     EXPECT_EQ(first_damage.num(), 3) << "Only the live supported endpoint is damaged per pair";
     for (auto const recipient : first_damage.damaged_entities()) {
         EXPECT_TRUE(recipient == fighter) << "Skipped endpoints never enter the damage queue";
     }
 
-    owners.combat_events.reset();
+    owners.damage_queue.reset();
     owners.remove(doomed);
     auto const replacement{owners.spawn(EntityType::Turret)};
     owners.publish();
     collision::EntityEntityOverlaps retired_pair;
     add_overlap(retired_pair, fighter, doomed);
-    handler.handle({retired_pair.const_view(), {}}, owners.combat_events);
-    owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
-    auto const second_damage{owners.combat_events.all_events().const_view()};
+    handler.handle({retired_pair.const_view(), {}}, owners.damage_queue);
+    owners.damage_queue.prepare(owners.entity_tables.lookups, &memory);
+    auto const second_damage{owners.damage_queue.all_events().const_view()};
     EXPECT_EQ(second_damage.num(), 1) << "Retired endpoint is skipped independently";
     EXPECT_TRUE(second_damage.damaged_entities()[0] != replacement)
         << "Replacement is not accidentally damaged";
 
-    owners.combat_events.reset();
+    owners.damage_queue.reset();
     auto const fighter_data{owners.fighters.const_view()};
     owners.health_table.set_health(fighter_data.entity_ids()[0], Health{0});
     owners.publish();
-    handler.handle({retired_pair.const_view(), {}}, owners.combat_events);
-    owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
-    EXPECT_EQ(owners.combat_events.all_events().num(), 0);
+    handler.handle({retired_pair.const_view(), {}}, owners.damage_queue);
+    owners.damage_queue.prepare(owners.entity_tables.lookups, &memory);
+    EXPECT_EQ(owners.damage_queue.all_events().num(), 0);
 }
 
 } // namespace ioj::sim::tests

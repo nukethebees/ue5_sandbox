@@ -2,11 +2,8 @@
   :header "native/simulation/include/ioj/sim/entities/entity_history.h"
   :namespace ioj::sim
   (struct EntityHistory
-    (member entity_ids array @native_unique_id)
-    (member entity_types array @native_entity_type)
     (member teams array @native_team)
     (member kills array uint32)
-    (member killed_by array @native_unique_id)
     (member life_state array @native_life_state)
     (member death_ticks array @native_sim_tick)
     (member death_locations array @native_vector_3f)

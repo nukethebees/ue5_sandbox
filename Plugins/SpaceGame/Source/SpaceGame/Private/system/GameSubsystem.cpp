@@ -241,7 +241,7 @@ auto UGameSubsystem::return_to_level_select(FName const preferred_level_id) -> b
     return true;
 }
 
-auto UGameSubsystem::take_menu_request() -> std::optional<session::MenuRequest> {
+auto UGameSubsystem::take_menu_request() -> std::optional<session::LevelSelectRequest> {
     return launch_state_.take_menu_request();
 }
 

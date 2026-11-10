@@ -112,11 +112,11 @@ void run_worldless_laser_lifecycle(LaserLifecycleScenario const scenario) {
     } else if (scenario == LaserLifecycleScenario::SimultaneousLethalHits) {
         EXPECT_TRUE(target_health <= 0) << "Simultaneous hits are lethal";
         EXPECT_EQ(1, ledger.count_alive()) << "Target is removed once";
-        EXPECT_EQ(1, ledger.count_kills()) << "One kill is recorded";
+        EXPECT_EQ(1, ledger.kills(shooter)) << "One kill is recorded";
     } else {
         EXPECT_EQ(normal_target_health, target_health) << "Non-entity termination preserves health";
         EXPECT_EQ(2, ledger.count_alive()) << "Both entities remain alive";
-        EXPECT_EQ(0, ledger.count_kills()) << "No kill is recorded";
+        EXPECT_EQ(0, ledger.kills(shooter)) << "No kill is recorded";
     }
 }
 

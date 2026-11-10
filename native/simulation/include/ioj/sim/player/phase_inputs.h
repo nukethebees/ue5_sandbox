@@ -5,7 +5,7 @@ class FrameMemoryResource;
 }
 
 namespace ioj::sim {
-class CombatEvents;
+class DamageQueue;
 }
 
 namespace ioj::sim::lasers {
@@ -18,6 +18,6 @@ struct ActionInputs {
 };
 
 struct ResolutionInputs {
-    CombatEvents const& combat_events;
+    DamageQueue const& damage_queue;
 };
 } // namespace ioj::sim::player

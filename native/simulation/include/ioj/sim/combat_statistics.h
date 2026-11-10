@@ -15,9 +15,6 @@ class CombatStatistics {
     void record_kill(Team killer_team) noexcept;
 
     [[nodiscard]] auto alive_count() const noexcept -> std::int32_t;
-    [[nodiscard]] auto cumulative_kill_count() const noexcept -> std::int32_t;
-    [[nodiscard]] auto count_alive(EntityType type) const noexcept -> std::int32_t;
-    [[nodiscard]] auto count_alive_per_team() const noexcept -> TeamCounts;
     [[nodiscard]] auto count_alive_per_team_and_type() const noexcept -> EntityCounts const&;
     [[nodiscard]] auto kill_count(Team team) const noexcept -> std::int32_t;
   private:

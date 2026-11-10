@@ -10,7 +10,7 @@
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/collision/trace_hits.h>
-#include <ioj/sim/combat_events.h>
+#include <ioj/sim/damage_queue.h>
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
@@ -414,7 +414,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
 
     auto const data{entities_.view()};
     auto const healths{entity_tables_.health.view<EntityType::Fighter>()};
-    auto const damage_events{inputs.combat_events.events_for(EntityType::Fighter)};
+    auto const damage_events{inputs.damage_queue.events_for(EntityType::Fighter)};
     sim::resolve_damage_events(damage_events,
                                entity_tables_.lookups.for_type(EntityType::Fighter),
                                data.entity_ids(),

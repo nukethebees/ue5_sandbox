@@ -11,7 +11,7 @@
 #include <ioj/projectile_intercept.h>
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
-#include <ioj/sim/combat_events.h>
+#include <ioj/sim/damage_queue.h>
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
@@ -209,7 +209,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
 
     auto const entities{entities_.view()};
     auto const healths{entity_tables_.health.view<EntityType::Turret>()};
-    sim::resolve_damage_events(inputs.combat_events.events_for(EntityType::Turret),
+    sim::resolve_damage_events(inputs.damage_queue.events_for(EntityType::Turret),
                                entity_tables_.lookups.for_type(EntityType::Turret),
                                entities.entity_ids(),
                                entities.view_locations().const_view().resolve(),

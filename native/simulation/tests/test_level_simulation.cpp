@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <array>
+#include <functional>
 #include <type_traits>
 #include <utility>
 
@@ -352,7 +353,7 @@ TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumed
     EXPECT_TRUE(std::ranges::equal(simulation.events().preparation_events(), events));
     EXPECT_TRUE(simulation.events().pending_preparation_events().empty());
     simulation.advance(period);
-    EXPECT_EQ(simulation.entity_ledger().num_unique_ids_issued(), 2);
+    EXPECT_EQ(simulation.entity_ledger().unique_entities().num(), 2);
 }
 
 TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendingEvents) {
@@ -879,7 +880,9 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     EXPECT_TRUE(ledger.unique_entities().life_state()[ledger.history_index(player_id)] ==
                 LifeState::Unknown)
         << "Overlap death uses the environmental death path";
-    EXPECT_EQ(ledger.count_kills(), 0) << "Environmental overlap death gives no combat kill";
+    EXPECT_EQ(
+        std::ranges::fold_left(ledger.unique_entities().kills(), std::uint32_t{}, std::plus{}), 0)
+        << "Environmental overlap death gives no combat kill";
 }
 
 TEST(NativeSimulation, SimulationsKeepClocksAndEntitiesIndependent) {

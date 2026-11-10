@@ -23,7 +23,7 @@ struct LevelSimTestAccess {
     }
     static void queue_direct_damage_events(LevelSim& simulation,
                                            DirectDamageEvents::ConstView events) {
-        simulation.combat_events_.queue_damage(events);
+        simulation.damage_queue_.append(events);
     }
     static void queue_laser_spawns(LevelSim& simulation,
                                    lasers::LaserSpawnRequests::ConstView requests) {

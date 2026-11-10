@@ -39,7 +39,7 @@ class CollisionPipeline {
     // Run after all movement, while published entity rows still identify the same entities.
     void detect_and_handle_overlaps(LevelReadAccess const& level,
                                     std::span<EntityId const> moved_fighters,
-                                    CombatEvents& combat_events,
+                                    DamageQueue& damage_queue,
                                     FrameMemoryResource& scratch);
 
     auto queries() const noexcept -> SpatialQueryManager const& { return queries_; }

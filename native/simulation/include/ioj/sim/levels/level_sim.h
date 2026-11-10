@@ -4,7 +4,7 @@
 #include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/collision_pipeline.h>
-#include <ioj/sim/combat_events.h>
+#include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/entities/team_list.h>
@@ -148,7 +148,7 @@ struct LevelSim {
 
     LevelMemoryManager memory_manager_;
     EntityLedger entity_ledger_{memory_manager_.game_memory()};
-    CombatEvents combat_events_;
+    DamageQueue damage_queue_;
     EntityTables entity_tables_{clock_, memory_manager_.game_memory()};
     collision::CollisionPipeline collision_pipeline_;
 

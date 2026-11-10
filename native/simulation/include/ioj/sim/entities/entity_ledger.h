@@ -49,18 +49,8 @@ class EntityLedger {
         return history_index(id) != EntityIdAllocator::invalid_index;
     }
     auto issued_counts() const noexcept -> EntityTypeSizes const& { return ids_.issued_counts(); }
-    auto num_unique_ids_issued() const noexcept -> std::uint32_t { return history_.num(); }
     auto kills(EntityId id) const -> std::uint32_t;
     auto count_alive() const noexcept -> std::int32_t { return statistics_.alive_count(); }
-    auto count_alive(EntityType type) const noexcept -> std::int32_t {
-        return statistics_.count_alive(type);
-    }
-    auto count_kills() const noexcept -> std::int32_t {
-        return statistics_.cumulative_kill_count();
-    }
-    auto count_alive_per_team() const noexcept -> TeamCounts {
-        return statistics_.count_alive_per_team();
-    }
     auto count_alive_per_team_and_type() const noexcept -> EntityCounts {
         return statistics_.count_alive_per_team_and_type();
     }

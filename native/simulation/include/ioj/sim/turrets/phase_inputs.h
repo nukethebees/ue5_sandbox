@@ -11,7 +11,7 @@ class FrameMemoryResource;
 }
 
 namespace ioj::sim {
-class CombatEvents;
+class DamageQueue;
 class EntityLedger;
 struct EntityDeathInfo;
 struct SpatialQueryManager;
@@ -29,7 +29,7 @@ struct ThinkingInputs {
 };
 
 struct ResolutionInputs {
-    CombatEvents const& combat_events;
+    DamageQueue const& damage_queue;
     EntityLedger& ledger;
     SimTick tick;
     std::pmr::vector<std::uint32_t>& local_indices_to_remove;

@@ -46,8 +46,6 @@ void EntityLedger::record_spawns_impl(EntityType const type,
     auto const first{history_.num()};
     history_.add_defaulted(static_cast<EntityHistory::size_type>(count));
     auto const history{history_.right(static_cast<EntityHistory::size_type>(count))};
-    auto const history_ids{history.entity_ids()};
-    auto const history_types{history.entity_types()};
     auto const history_teams{history.teams()};
     auto const life_states{history.life_state()};
 
@@ -55,8 +53,6 @@ void EntityLedger::record_spawns_impl(EntityType const type,
         auto const alive{is_alive(healths[index])};
         auto const id{ids_.allocate(type, first + static_cast<HistoryIndex>(index))};
         ids[index] = id;
-        history_ids[index] = id;
-        history_types[index] = type;
         history_teams[index] = teams[index];
         life_states[index] = alive ? LifeState::Alive : LifeState::Unknown;
         statistics_.record_spawn(teams[index], type, alive);
@@ -116,7 +112,6 @@ void EntityLedger::record_deaths(EntityDeathInfo::ConstView const deaths, SimTic
     auto const life_states{history.life_state()};
     auto const death_ticks{history.death_ticks()};
     auto const death_locations{history.death_locations()};
-    auto const killed_by{history.killed_by()};
     auto const kills{history.kills()};
 
     for (std::uint32_t index{}; index < count; ++index) {
@@ -134,7 +129,6 @@ void EntityLedger::record_deaths(EntityDeathInfo::ConstView const deaths, SimTic
             continue;
         }
         auto const killer_row{require_history_index(killer)};
-        killed_by[row] = killer;
         ++kills[killer_row];
         statistics_.record_kill(teams[killer_row]);
     }

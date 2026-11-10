@@ -50,7 +50,7 @@ void SLevelCompletionView::Construct(FArguments const& args) {
                                                SVerticalBox::Slot().AutoHeight()[build_footer()]]]];
 }
 
-void SLevelCompletionView::update_report(FLevelCompletion const& completion) {
+void SLevelCompletionView::set_completion(FLevelCompletion const& completion) {
     auto const& level_display_name{completion.level_display_name};
     auto const state{completion.state};
     auto const& end_reason{completion.end_reason};

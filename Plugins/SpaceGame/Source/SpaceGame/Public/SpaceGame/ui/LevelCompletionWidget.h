@@ -45,7 +45,7 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     UPROPERTY(meta = (BindWidget))
     UNativeWidgetHost* view_host{nullptr};
   private:
-    void publish_report();
+    void refresh_view();
 
     FLevelCompletion completion_;
     TSharedPtr<SLevelCompletionView> view_{};

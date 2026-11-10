@@ -57,7 +57,7 @@ void CollisionPipeline::track_player_movement(EntityId const player,
 
 void CollisionPipeline::detect_and_handle_overlaps(LevelReadAccess const& level,
                                                    std::span<EntityId const> const moved_fighters,
-                                                   CombatEvents& combat_events,
+                                                   DamageQueue& damage_queue,
                                                    FrameMemoryResource& scratch) {
     SANDBOX_PROFILE_SCOPE("Refresh spatial index and detect overlaps");
 
@@ -70,7 +70,7 @@ void CollisionPipeline::detect_and_handle_overlaps(LevelReadAccess const& level,
     refresh_spatial_index(level);
 
     auto const overlaps{queries_.detect_overlaps(overlap_candidates_, &scratch)};
-    overlap_handler_.handle(overlaps, combat_events);
+    overlap_handler_.handle(overlaps, damage_queue);
 }
 
 } // namespace ioj::sim::collision

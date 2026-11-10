@@ -5,7 +5,7 @@
 #include <ioj/parallel_for.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/collision/trace_hits.h>
-#include <ioj/sim/combat_events.h>
+#include <ioj/sim/damage_queue.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/lasers/laser_hit_details.h>
 #include <ioj/sim/phase_checks.h>
@@ -277,7 +277,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
                         emission_direction.z(),
                         sources[element]);
     }
-    inputs.combat_events.queue_damage(collision_damage_events.const_view());
+    inputs.damage_queue.append(collision_damage_events.const_view());
 
     frame_output_.append_hits(hit_details.const_view(), inputs.tick);
 }

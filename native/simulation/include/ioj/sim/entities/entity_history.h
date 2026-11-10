@@ -6,9 +6,7 @@
 #include "ioj/levels/team.h"
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/entities/entity_life_state.h"
-#include "ioj/sim/entities/entity_type.h"
 #include "ioj/sim/sim_tick.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
@@ -30,22 +28,13 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout
-    : single_allocation_layout::ColumnLayouts<EntityId,
-                                              EntityType,
-                                              ::ioj::Team,
-                                              std::uint32_t,
-                                              EntityId,
-                                              LifeState,
-                                              SimTick,
-                                              Vector3f> {
-    static constexpr std::size_t entity_ids_column{0ULL};
-    static constexpr std::size_t entity_types_column{1ULL};
-    static constexpr std::size_t teams_column{2ULL};
-    static constexpr std::size_t kills_column{3ULL};
-    static constexpr std::size_t killed_by_column{4ULL};
-    static constexpr std::size_t life_state_column{5ULL};
-    static constexpr std::size_t death_ticks_column{6ULL};
-    static constexpr std::size_t death_locations_column{7ULL};
+    : single_allocation_layout::
+          ColumnLayouts<::ioj::Team, std::uint32_t, LifeState, SimTick, Vector3f> {
+    static constexpr std::size_t teams_column{0ULL};
+    static constexpr std::size_t kills_column{1ULL};
+    static constexpr std::size_t life_state_column{2ULL};
+    static constexpr std::size_t death_ticks_column{3ULL};
+    static constexpr std::size_t death_locations_column{4ULL};
 };
 
 /* **************************************** */
@@ -55,35 +44,23 @@ template <typename Byte>
 struct DataPointers {
     template <typename T>
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityId>* entity_ids{};
-    Element<EntityType>* entity_types{};
     Element<::ioj::Team>* teams{};
     Element<std::uint32_t>* kills{};
-    Element<EntityId>* killed_by{};
     Element<LifeState>* life_state{};
     Element<SimTick>* death_ticks{};
     Element<Vector3f>* death_locations{};
     template <typename Self, typename Func>
     static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.entity_ids,
-                    self.entity_types,
-                    self.teams,
-                    self.kills,
-                    self.killed_by,
-                    self.life_state,
-                    self.death_ticks,
-                    self.death_locations);
+        return func(
+            self.teams, self.kills, self.life_state, self.death_ticks, self.death_locations);
     }
 };
 
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.entity_ids(),
-                    source.entity_types(),
-                    source.teams(),
+        return func(source.teams(),
                     source.kills(),
-                    source.killed_by(),
                     source.life_state(),
                     source.death_ticks(),
                     source.death_locations());
@@ -106,11 +83,8 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->column(this->columns_.entity_ids); }
-    auto entity_types() const { return this->column(this->columns_.entity_types); }
     auto teams() const { return this->column(this->columns_.teams); }
     auto kills() const { return this->column(this->columns_.kills); }
-    auto killed_by() const { return this->column(this->columns_.killed_by); }
     auto life_state() const { return this->column(this->columns_.life_state); }
     auto death_ticks() const { return this->column(this->columns_.death_ticks); }
     auto death_locations() const { return this->column(this->columns_.death_locations); }
@@ -146,13 +120,8 @@ struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->template column<EntityId>(Layout::entity_ids_column); }
-    auto entity_types() const {
-        return this->template column<EntityType>(Layout::entity_types_column);
-    }
     auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
     auto kills() const { return this->template column<std::uint32_t>(Layout::kills_column); }
-    auto killed_by() const { return this->template column<EntityId>(Layout::killed_by_column); }
     auto life_state() const { return this->template column<LifeState>(Layout::life_state_column); }
     auto death_ticks() const { return this->template column<SimTick>(Layout::death_ticks_column); }
     auto death_locations() const {
@@ -178,11 +147,8 @@ static_assert(soa_storage_detail::validate_compact_view<View>());
 // Owner
 /* **************************************** */
 // Columns:
-// entity_ids: EntityId
-// entity_types: ioj::sim::EntityType
 // teams: ::ioj::Team
 // kills: std::uint32_t
-// killed_by: EntityId
 // life_state: LifeState
 // death_ticks: SimTick
 // death_locations: Vector3f
@@ -229,11 +195,8 @@ struct EntityHistory
     template <typename Byte>
     using DataPointers = entity_history::DataPointers<Byte>;
   public:
-    auto entity_ids(this auto& self) { return self.view().entity_ids(); }
-    auto entity_types(this auto& self) { return self.view().entity_types(); }
     auto teams(this auto& self) { return self.view().teams(); }
     auto kills(this auto& self) { return self.view().kills(); }
-    auto killed_by(this auto& self) { return self.view().killed_by(); }
     auto life_state(this auto& self) { return self.view().life_state(); }
     auto death_ticks(this auto& self) { return self.view().death_ticks(); }
     auto death_locations(this auto& self) { return self.view().death_locations(); }

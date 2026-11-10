@@ -3,6 +3,9 @@
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/testing/entity_observations.h>
 
+#include <algorithm>
+#include <functional>
+
 namespace ioj::sim {
 enum class SimulationCoreRegressionScenario : std::uint8_t { FixedTickLifecycle, DamageLifecycle };
 
@@ -104,7 +107,10 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     EXPECT_EQ(0, lethal.ledger_alive_count) << "Ledger death commits in the same tick";
     EXPECT_EQ(0, lethal.health) << "Owner retains terminal health for the dead handle";
     EXPECT_TRUE(!entity_is_alive(harness.simulation(), damaged_handle)) << "Killed ID is dead";
-    EXPECT_EQ(0, harness.ledger().count_kills()) << "Unattributed death does not create a kill";
+    EXPECT_EQ(0,
+              std::ranges::fold_left(
+                  harness.ledger().unique_entities().kills(), std::uint32_t{}, std::plus{}))
+        << "Unattributed death does not create a kill";
 }
 
 TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
@@ -113,7 +119,7 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
         std::int32_t player_health{};
         std::int32_t capital_health{};
         std::uint32_t dynamic_overlap_count{};
-        std::int32_t kill_count{};
+        std::uint32_t kill_count{};
         bool player_alive{};
     };
 
@@ -148,14 +154,16 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     harness.on_end_tick = [&](LevelSim& level) {
         auto const events{level.spatial_query_manager().aabb_overlap_events()};
         auto const capital{observe_entity(level, capital_id)};
-        samples.add(harness.time(),
-                    Sample{
-                        .player_health = player->health().health.value(),
-                        .capital_health = capital ? capital->health.value() : 0,
-                        .dynamic_overlap_count = events.entity_entity_overlaps.num(),
-                        .kill_count = harness.ledger().count_kills(),
-                        .player_alive = entity_is_alive(level, player_id),
-                    });
+        samples.add(
+            harness.time(),
+            Sample{
+                .player_health = player->health().health.value(),
+                .capital_health = capital ? capital->health.value() : 0,
+                .dynamic_overlap_count = events.entity_entity_overlaps.num(),
+                .kill_count = std::ranges::fold_left(
+                    harness.ledger().unique_entities().kills(), std::uint32_t{}, std::plus{}),
+                .player_alive = entity_is_alive(level, player_id),
+            });
     };
     harness.timeline.finish_after(collision_damage_test::duration);
     ASSERT_TRUE(harness.run_until_timeline_finished(2.0)) << "Collision damage timeline completes";

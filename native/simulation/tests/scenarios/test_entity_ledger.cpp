@@ -36,10 +36,8 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
 
     if (scenario == EntityLedgerScenario::TeamCounts) {
-        TeamCounts counts{};
         EntityCounts type_counts{};
         harness.on_end_tick = [&](LevelSim&) {
-            counts = harness.ledger().count_alive_per_team();
             type_counts = harness.ledger().count_alive_per_team_and_type();
         };
         harness.timeline.finish_at(0.1);
@@ -48,7 +46,6 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         for (auto const team : EnumTraits<Team>::values) {
             expected_type_counts[team, EntityType::CapitalShip] = expected_team_counts[team];
         }
-        EXPECT_PRED_FORMAT2(structurally_equal, expected_team_counts, counts);
         EXPECT_PRED_FORMAT2(structurally_equal, expected_type_counts, type_counts);
         return;
     }
@@ -74,7 +71,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         static_cast<std::size_t>(expected_kills))};
     struct Sample {
         std::int32_t player_kills{};
-        std::int32_t total_kills{};
+        std::int32_t team_kills{};
         std::int32_t alive_count{};
     };
     TimeSeriesData<Sample> samples;
@@ -82,7 +79,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         auto const& ledger{harness.ledger()};
         samples.add(harness.time(),
                     Sample{static_cast<std::int32_t>(ledger.kills(player_id)),
-                           ledger.count_kills(),
+                           ledger.count_kills(player->team),
                            ledger.count_alive()});
     };
     harness.timeline.then_after(0.1, [&] { harness.queue_kills(targets, player_id); });
@@ -93,7 +90,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         SCOPED_TRACE(time);
         auto const& sample{samples.nearest_value(time)};
         EXPECT_EQ(sample.player_kills, kills);
-        EXPECT_EQ(sample.total_kills, kills);
+        EXPECT_EQ(sample.team_kills, kills);
         EXPECT_EQ(sample.alive_count, initial_alive_count - kills);
     }};
     expect_sample(0.05, 0);

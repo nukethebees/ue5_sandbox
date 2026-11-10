@@ -1,7 +1,7 @@
 #pragma once
 #include <ioj/column_math.h>
 #include <ioj/sim/collision/entity_cell_data.h>
-#include <ioj/sim/combat_events.h>
+#include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/testing/entity_observations.h>
@@ -292,7 +292,7 @@ struct CollisionAgentStorage {
 
     SimClock clock;
     EntityLedger ledger;
-    CombatEvents combat_events;
+    DamageQueue damage_queue;
     EntityTables entity_tables{clock};
     HealthTable& health_table{entity_tables.health};
     CapitalEntityData capitals;

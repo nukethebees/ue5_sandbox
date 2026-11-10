@@ -4,7 +4,7 @@
 #include <ioj/diagnostics.h>
 #include <ioj/frame_array.h>
 #include <ioj/rotator_math.h>
-#include <ioj/sim/combat_events.h>
+#include <ioj/sim/damage_queue.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
@@ -150,7 +150,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
 
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::resolve_damage_events");
 
-    auto const damage_events{inputs.combat_events.events_for(EntityType::PlayerShip)};
+    auto const damage_events{inputs.damage_queue.events_for(EntityType::PlayerShip)};
     auto const original_health{health_table_.health(unique_entity_id)};
     auto health{health_table_.health(unique_entity_id)};
     EntityId killer{};

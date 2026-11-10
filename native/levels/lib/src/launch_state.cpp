@@ -12,7 +12,7 @@ void LaunchState::set_pending_level(levels::LevelDefinition definition,
 auto LaunchState::take_pending_level() -> std::optional<PendingLevel> {
     return std::exchange(pending_level_, std::nullopt);
 }
-auto LaunchState::request_menu(MenuRequest request) -> bool {
+auto LaunchState::request_menu(LevelSelectRequest request) -> bool {
     if (menu_request_) {
         return false;
     }
@@ -20,7 +20,7 @@ auto LaunchState::request_menu(MenuRequest request) -> bool {
     menu_request_ = std::move(request);
     return true;
 }
-auto LaunchState::take_menu_request() -> std::optional<MenuRequest> {
+auto LaunchState::take_menu_request() -> std::optional<LevelSelectRequest> {
     return std::exchange(menu_request_, std::nullopt);
 }
 void LaunchState::set_launch_error(std::string error) {

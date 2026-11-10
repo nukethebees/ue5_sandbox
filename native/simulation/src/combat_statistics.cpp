@@ -53,30 +53,6 @@ auto CombatStatistics::alive_count() const noexcept -> std::int32_t {
     return std::accumulate(alive_counts_.begin(), alive_counts_.end(), std::int32_t{});
 }
 
-auto CombatStatistics::cumulative_kill_count() const noexcept -> std::int32_t {
-    return std::accumulate(kill_counts_.begin(), kill_counts_.end(), std::int32_t{});
-}
-
-auto CombatStatistics::count_alive(EntityType const type) const noexcept -> std::int32_t {
-    assert(is_valid(type));
-
-    auto total{std::int32_t{}};
-    for (auto const team : EnumTraits<Team>::values) {
-        total += alive_counts_[team, type];
-    }
-    return total;
-}
-
-auto CombatStatistics::count_alive_per_team() const noexcept -> TeamCounts {
-    TeamCounts counts{};
-    for (auto const team : EnumTraits<Team>::values) {
-        for (auto const type : EnumTraits<EntityType>::values) {
-            counts[team] += alive_counts_[team, type];
-        }
-    }
-    return counts;
-}
-
 auto CombatStatistics::count_alive_per_team_and_type() const noexcept -> EntityCounts const& {
     return alive_counts_;
 }
