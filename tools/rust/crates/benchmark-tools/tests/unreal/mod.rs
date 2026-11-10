@@ -23,10 +23,6 @@ fn moved_automation_keeps_defaults_and_failure_detection() {
     ] {
         assert!(spark.iter().any(|value| value == argument));
     }
-    let benchmark =
-        Benchmark::Telemetry(TelemetryOptions::try_parse_from(["level-telemetry"]).unwrap());
-    let (telemetry, _) = measurement_arguments(&benchmark);
-    assert!(telemetry.contains(&"-SandboxTelemetryBenchmarkSamples=7".into()));
     for log in [
         "Found 0 automation tests based on x",
         "Test Completed. Result={Fail}",

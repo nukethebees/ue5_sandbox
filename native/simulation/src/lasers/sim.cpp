@@ -90,7 +90,6 @@ void Sim::process_pending_spawns(PreparationInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::process_pending_spawns");
 
     auto const n_to_add{pending_spawns_.num()};
-    inputs.combat_events.record_shots(pending_spawns_.const_view().instigator_ids());
 
     if (n_to_add <= 0) {
         return;

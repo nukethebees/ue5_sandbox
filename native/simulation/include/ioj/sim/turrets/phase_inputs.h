@@ -32,7 +32,6 @@ struct ResolutionInputs {
     CombatEvents const& combat_events;
     EntityLedger& ledger;
     SimTick tick;
-    FrameMemoryResource& scratch_resource;
     std::pmr::vector<std::uint32_t>& local_indices_to_remove;
     EntityDeathInfo& entity_death_info;
 };

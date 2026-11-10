@@ -22,7 +22,6 @@
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/tasks/task_manager.h>
-#include <ioj/sim/telemetry/level_telemetry_manager.h>
 #include <ioj/sim/turrets/sim.h>
 
 #include <cstdint>
@@ -75,11 +74,10 @@ struct LevelSim {
     }
 
     /* **************************************** */
-    // Telemetry and level results
+    // Level results
     /* **************************************** */
-    void stop_run(telemetry::RunEndReason reason);
+    void stop_run(RunEndReason reason);
     auto result() const -> std::optional<LevelResult>;
-    auto telemetry_run() const -> std::optional<telemetry::RunRecord>;
 
     /* **************************************** */
     // Accessors
@@ -102,9 +100,6 @@ struct LevelSim {
     auto level_metadata() const -> levels::LevelMetadata const& { return level_metadata_; }
     auto spatial_query_manager() const -> SpatialQueryManager const& {
         return collision_pipeline_.queries();
-    }
-    auto level_telemetry_manager() const -> LevelTelemetryManager const& {
-        return level_telemetry_manager_;
     }
     auto memory_stats() const noexcept -> memory::Statistics {
         return memory_manager_.game_memory().stats();
@@ -153,7 +148,7 @@ struct LevelSim {
 
     LevelMemoryManager memory_manager_;
     EntityLedger entity_ledger_{memory_manager_.game_memory()};
-    CombatEvents combat_events_{entity_ledger_};
+    CombatEvents combat_events_;
     EntityTables entity_tables_{clock_, memory_manager_.game_memory()};
     collision::CollisionPipeline collision_pipeline_;
 
@@ -172,6 +167,5 @@ struct LevelSim {
     levels::LevelMetadata level_metadata_;
     LevelEventManager event_manager_;
     LevelSpawnManager spawn_manager_;
-    LevelTelemetryManager level_telemetry_manager_;
 };
 } // namespace ioj::sim

@@ -151,13 +151,12 @@ TEST(ProfileAdapter, BuildsLightweightProfileSummary) {
 
 TEST(ProfileAdapter, AdaptsTypedLevelResultsIntoReportOutcomes) {
 
-    std::vector<ScoreRecord> const records{
-        {.date = test_date(2026, 4, 3, 12, 30),
-         .level_name = "test_level_42",
-         .outcome = LevelOutcome::Defeat,
-         .end_reason = sim::telemetry::RunEndReason::DurationReached,
-         .kills = 8,
-         .time_seconds = 91.f}};
+    std::vector<ScoreRecord> const records{{.date = test_date(2026, 4, 3, 12, 30),
+                                            .level_name = "test_level_42",
+                                            .outcome = LevelOutcome::Defeat,
+                                            .end_reason = sim::RunEndReason::DurationReached,
+                                            .kills = 8,
+                                            .time_seconds = 91.f}};
 
     auto const report{make_report("profile", records)};
 

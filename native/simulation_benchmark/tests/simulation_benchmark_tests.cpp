@@ -44,8 +44,8 @@ class SimulationBenchmarkCommandLine : public testing::Test {
 };
 
 TEST_F(SimulationBenchmarkCommandLine, ParsesRequiredOptions) {
-    auto const result{parse(
-        {"--seconds", "1.5", "--game-speed", "100", "--wait-for-profiler", "5", "--telemetry"})};
+    auto const result{
+        parse({"--seconds", "1.5", "--game-speed", "100", "--wait-for-profiler", "5"})};
 
     ASSERT_TRUE(result.options.has_value()) << result.standard_error;
     EXPECT_EQ(result.options->level_path, level_.path());
@@ -53,7 +53,6 @@ TEST_F(SimulationBenchmarkCommandLine, ParsesRequiredOptions) {
     EXPECT_EQ(result.options->game_speed, 100u);
     ASSERT_TRUE(result.options->profiler_connection_timeout_seconds.has_value());
     EXPECT_DOUBLE_EQ(*result.options->profiler_connection_timeout_seconds, 5.0);
-    EXPECT_TRUE(result.options->telemetry_enabled);
 }
 
 TEST_F(SimulationBenchmarkCommandLine, ParsesFighterStressOptions) {
@@ -209,18 +208,6 @@ TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {
     EXPECT_EQ(result->level_id, "dev-three-second-failure");
     EXPECT_EQ(result->requested_ticks.value(), 1);
     EXPECT_EQ(result->completed_ticks.value(), 1);
-    EXPECT_EQ(result->alive_entities, 1);
-    EXPECT_EQ(result->telemetry_rows, 0);
-}
-
-TEST(SimulationBenchmarkRunner, EnablesSampledHistoryOnRequest) {
-    auto const level_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts" /
-                          "DevThreeSecondFailure.scm"};
-    auto const result{run_benchmark(
-        {.level_path = level_path, .simulated_seconds = 0.01, .telemetry_enabled = true})};
-    ASSERT_TRUE(result) << result.error();
-    EXPECT_TRUE(result->telemetry_enabled);
-    EXPECT_EQ(result->telemetry_rows, 1);
     EXPECT_EQ(result->alive_entities, 1);
 }
 

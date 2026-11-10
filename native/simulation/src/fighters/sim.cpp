@@ -409,7 +409,6 @@ void Sim::apply_movement(ActionInputs const inputs) {
 
 // Resolution
 void Sim::resolve_damage_events(ResolutionInputs const inputs) {
-    auto* const scratch_resource{&inputs.scratch_resource};
 
     SANDBOX_PROFILE_SCOPE("fighters::Sim::resolve_damage_events");
 
@@ -422,9 +421,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                data.view_locations().const_view().resolve(),
                                healths,
                                inputs.local_indices_to_remove,
-                               inputs.entity_death_info,
-                               inputs.ledger,
-                               scratch_resource);
+                               inputs.entity_death_info);
 }
 void Sim::publish_deaths(ResolutionInputs const inputs) {
     inputs.ledger.record_deaths(inputs.entity_death_info.const_view(), inputs.tick);

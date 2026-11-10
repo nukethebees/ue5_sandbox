@@ -205,8 +205,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
                     if constexpr (std::same_as<T, WinEffect>) {
                         return definitions.add_win_event(effect.team);
                     } else if constexpr (std::same_as<T, StopEffect>) {
-                        return definitions.add_stop_event(
-                            sim::telemetry::RunEndReason::LevelCompleted);
+                        return definitions.add_stop_event(sim::RunEndReason::LevelCompleted);
                     } else if constexpr (std::same_as<T, SpawnEffect>) {
                         return spawn_effects[effect.group];
                     } else {

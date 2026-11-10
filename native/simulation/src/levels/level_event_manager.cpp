@@ -43,7 +43,7 @@ void LevelEventManager::enqueue(EventHandle const event) {
         preparation_events_.push_back(event);
     }
 }
-void LevelEventManager::enqueue_stop(telemetry::RunEndReason const reason) {
+void LevelEventManager::enqueue_stop(RunEndReason const reason) {
     enqueue(data_.add_stop_event(reason));
 }
 

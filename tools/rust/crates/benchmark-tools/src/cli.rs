@@ -43,8 +43,6 @@ pub enum Command {
     SandboxIsmcReport(IsmcReportOptions),
     /// Measure spark rendering through Unreal automation.
     Spark(SparkOptions),
-    /// Measure level telemetry storage through Unreal automation.
-    LevelTelemetry(TelemetryOptions),
     Heatmap(HeatmapOptions),
     #[command(name = "radar-3d")]
     Radar3d(RadarOptions),
@@ -106,8 +104,6 @@ pub struct SimulationOptions {
     pub saturation_timeout_seconds: f64,
     #[arg(long, default_value = "native-simulation-benchmark")]
     pub build_preset: String,
-    #[arg(long)]
-    pub telemetry: bool,
     #[arg(long)]
     pub skip_build: bool,
 }
@@ -442,16 +438,6 @@ pub struct SparkOptions {
     pub impacts_per_frame: u32,
     #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u32).range(0..=i32::MAX as i64))]
     pub warmup_frames: u32,
-}
-
-#[derive(Parser)]
-pub struct TelemetryOptions {
-    #[command(flatten)]
-    pub editor: EditorOptions,
-    #[arg(long, default_value_t = 7, value_parser = clap::value_parser!(u32).range(1..=100))]
-    pub samples: u32,
-    #[arg(long, default_value = ".local/benchmarks/level-telemetry")]
-    pub output_dir: PathBuf,
 }
 
 #[derive(Args)]

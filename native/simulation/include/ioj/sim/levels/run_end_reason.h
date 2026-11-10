@@ -12,7 +12,7 @@
 #include <optional>
 #include <string_view>
 
-namespace ioj::sim::telemetry {
+namespace ioj::sim {
 using RunEndReasonUnderlying = std::uint8_t;
 
 // Logical bit width: 3.
@@ -62,15 +62,15 @@ using ioj::to_serialized_string;
     }
 }
 
-} // namespace ioj::sim::telemetry
+} // namespace ioj::sim
 
 namespace ioj {
 template <>
-inline constexpr MinMax<sim::telemetry::RunEndReason> enum_range<sim::telemetry::RunEndReason>{
-    sim::telemetry::RunEndReason::LevelCompleted, sim::telemetry::RunEndReason::WorldEnd};
+inline constexpr MinMax<sim::RunEndReason> enum_range<sim::RunEndReason>{
+    sim::RunEndReason::LevelCompleted, sim::RunEndReason::WorldEnd};
 
 template <>
-inline constexpr auto enum_strings<sim::telemetry::RunEndReason, Serialized>{PackedStrings{
+inline constexpr auto enum_strings<sim::RunEndReason, Serialized>{PackedStrings{
     "level_completed\000battle_resolved\000duration_reached\000orchestrator_reset\000world_end",
     std::array<std::uint8_t, 6>{0, 16, 32, 49, 68, 78}}};
 } // namespace ioj

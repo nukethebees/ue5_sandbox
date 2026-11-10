@@ -3,7 +3,6 @@ target_link_libraries(native-simulation-tests
   PRIVATE
     native-test-support
     native-presentation
-    nlohmann_json::nlohmann_json
 )
 target_sources(native-simulation-tests PRIVATE
   entity_lookup_tables_tests.cpp
@@ -27,11 +26,6 @@ target_sources(native-simulation-tests PRIVATE
   test_unique_cell_membership.cpp
   test_bulk_range_queries.cpp
   test_fighter_live_cap.cpp
-  battle_history_tests.cpp
-  test_level_telemetry_manager.cpp
-  telemetry_analysis_tests.cpp
-  telemetry_run_catalog_tests.cpp
-  test_level_telemetry_json_validation.cpp
   test_game_memory.cpp
   test_spinner_spawning.cpp
   fighter_entity_data_test.cpp

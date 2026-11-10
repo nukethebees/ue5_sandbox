@@ -65,7 +65,7 @@ TEST(ProfileStorage, FailedReplacementPreservesPublishedRecordsAndRollsBackManag
     ASSERT_TRUE(manager.initialise());
     ScoreRecord const original{.date = 1,
                                .level_name = "mission",
-                               .end_reason = sim::telemetry::RunEndReason::DurationReached,
+                               .end_reason = sim::RunEndReason::DurationReached,
                                .kills = 7};
     ASSERT_TRUE(manager.append_score_record(original));
     auto const backup{root / "profile_default_profile.json.bak"};

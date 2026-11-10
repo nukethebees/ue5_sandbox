@@ -1,7 +1,7 @@
 add_library(native-profiles STATIC)
 target_sources(native-profiles
   PRIVATE
-    src/completion_publication.cpp
+    src/level_score.cpp
     src/profile.cpp
     src/profile_manager.cpp
     src/profile_storage.cpp

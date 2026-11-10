@@ -26,7 +26,6 @@ target_link_libraries(native-simulation
     "$<$<BOOL:${IOJ_WITH_TRACY}>:sandbox::profiling-api>"
   PRIVATE
     ioj::core_pch
-    nlohmann_json::nlohmann_json
     "$<$<BOOL:${IOJ_WITH_TRACY}>:sandbox::profiling>"
     "$<$<BOOL:${IOJ_WITH_UNREAL}>:ioj::unreal_avx2>"
 )

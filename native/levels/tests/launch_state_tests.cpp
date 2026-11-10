@@ -47,24 +47,13 @@ TEST(LaunchState, NavigationAndLaunchFailureInvalidatePendingWork) {
     ASSERT_TRUE(definition);
     LaunchState state;
     state.set_pending_level(*definition, "level.scm");
-    ASSERT_TRUE(state.request_menu(TelemetryRequest{std::unexpected{"write failed"}}));
+    ASSERT_TRUE(state.request_menu(LevelSelectRequest{.preferred_level_id = LevelId{"retry"}}));
     EXPECT_FALSE(state.take_pending_level());
     EXPECT_FALSE(state.request_menu({}));
-    auto request{state.take_menu_request()};
+    auto const request{state.take_menu_request()};
     ASSERT_TRUE(request);
-    auto const* telemetry{std::get_if<TelemetryRequest>(&*request)};
-    ASSERT_NE(telemetry, nullptr);
-    ASSERT_FALSE(telemetry->run);
-    EXPECT_EQ(telemetry->run.error(), "write failed");
+    EXPECT_EQ(request->preferred_level_id, LevelId{"retry"});
     EXPECT_FALSE(state.take_menu_request());
-    ASSERT_TRUE(state.request_menu(TelemetryRequest{}));
-    request = state.take_menu_request();
-    ASSERT_TRUE(request);
-    telemetry = std::get_if<TelemetryRequest>(&*request);
-    ASSERT_NE(telemetry, nullptr);
-    ASSERT_TRUE(telemetry->run);
-    EXPECT_TRUE(telemetry->run->empty());
-    EXPECT_TRUE(state.request_menu(LevelSelectRequest{.preferred_level_id = LevelId{"retry"}}));
 
     state.set_pending_level(*definition, "level.scm");
     state.set_launch_error("invalid configuration");

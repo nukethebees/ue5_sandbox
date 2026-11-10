@@ -138,7 +138,7 @@ Only SVG output is supported; Python and Matplotlib are not needed for plotting.
 
 Follow the [Unreal benchmark guide](../tools/rust/crates/benchmark-tools/docs/unreal-benchmarks.md)
 to prepare and compare SandboxISMC revisions, regenerate a report, or run GPU starfield, spark,
-level telemetry, and commandlet benchmarks. It includes options and output locations.
+and commandlet benchmarks. It includes options and output locations.
 
 ## Related documentation
 

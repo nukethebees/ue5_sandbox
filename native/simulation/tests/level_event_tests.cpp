@@ -17,7 +17,7 @@ TEST(LevelEvents, ConsumptionPreservesFifoHistoryAndIndependentStreams) {
     CompiledLevelEvents data;
     auto const spawn_first{data.add_spawn_event({0, 1})};
     auto const spawn_second{data.add_spawn_event({1, 1})};
-    auto const stop{data.add_stop_event(telemetry::RunEndReason::DurationReached)};
+    auto const stop{data.add_stop_event(RunEndReason::DurationReached)};
     EventHandle const pause{0, EventKind::Pause};
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
     EXPECT_FALSE(manager.consume_tick_end_event());
@@ -52,7 +52,7 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     auto const spawn{data.add_spawn_event({7, 2})};
     EventHandle const pause{0, EventKind::Pause};
     std::array const early{spawn, pause};
-    std::array const late{data.add_stop_event(telemetry::RunEndReason::DurationReached)};
+    std::array const late{data.add_stop_event(RunEndReason::DurationReached)};
     auto const early_timer{timers.add()};
     auto const late_timer{timers.add()};
     data.initial_events = {data.add_start_timer_event({early_timer, 2}),

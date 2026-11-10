@@ -1,5 +1,4 @@
 #pragma once
-#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/entity_lookup_table.h>
 #include <ioj/sim/entities/health_table.h>
@@ -12,7 +11,6 @@
 
 namespace ioj::sim {
 struct EntityDeathInfo;
-class EntityLedger;
 }
 namespace ioj::sim {
 void sort_removal_indices(std::pmr::vector<std::uint32_t>& local_indices_to_remove);
@@ -25,8 +23,6 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            vectors3f::ResolvedConstView locations,
                            HealthView healths,
                            std::pmr::vector<std::uint32_t>& local_indices_to_remove,
-                           EntityDeathInfo& entity_death_info,
-                           EntityLedger& ledger,
-                           FrameMemoryResource* scratch_resource);
+                           EntityDeathInfo& entity_death_info);
 
 }

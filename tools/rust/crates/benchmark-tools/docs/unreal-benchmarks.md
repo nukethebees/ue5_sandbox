@@ -87,7 +87,6 @@ coj benchmark sandbox-ismc-report `
 
 | Workload | Example | Adjustments |
 | --- | --- | --- |
-| Level telemetry | `coj benchmark level-telemetry --samples 7` | Development; default timeout 1,200 seconds. |
 | Spark rendering | `coj benchmark spark --seconds 10` | Defaults: `--capacity 50000 --sparks-per-hit 96 --impacts-per-frame 100 --warmup-frames 60`. Development; timeout 1,200 seconds. |
 | GPU starfield | `coj benchmark gpu-starfield --counts 100000,1000000 --resolutions 1920x1080,3840x2160` | Development; default timeout 2,400 seconds. Add `--size-multipliers 1,4 --camera-modes stationary` for the size matrix. |
 | Heatmap | `coj benchmark heatmap` | Set `--resolutions`. |
@@ -96,7 +95,7 @@ coj benchmark sandbox-ismc-report `
 | Volume heatmap | `coj benchmark volume-heatmap-3d` | Use `--warmup`, `--iterations`, and `--output`. |
 | Entity overlay | `coj benchmark entity-overlay` | Use `--warmup`, `--iterations`, and `--output`. |
 
-Spark and level telemetry accept `--build-dir` for an existing configured tree, `--skip-build`
+Spark accepts `--build-dir` for an existing configured tree, `--skip-build`
 for prepared binaries, and `--timeout-seconds`. GPU starfield writes to
 `Saved/Benchmarks/GpuStarfield`; use `--timeout-seconds` to change its limit.
 

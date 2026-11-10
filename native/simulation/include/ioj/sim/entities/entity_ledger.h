@@ -2,7 +2,6 @@
 
 #include <ioj/enum_array.h>
 #include <ioj/sim/combat_statistics.h>
-#include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_history.h>
 #include <ioj/sim/entities/entity_id_allocator.h>
@@ -34,10 +33,6 @@ class EntityLedger {
                        std::span<Team const> teams,
                        std::span<Health const> healths);
     void record_deaths(EntityDeathInfo::ConstView deaths, SimTick tick);
-    // Match applied damage to the event rows; use zero for unapplied events.
-    void record_damage(DirectDamageEvents::ConstView events,
-                       std::span<Health const> applied_damage);
-    void record_shots(std::span<EntityId const> instigators);
 
     // Read death metadata after record_deaths; it describes the latest death of that identity.
     auto unique_entities() const noexcept -> EntityHistory::ConstView {
@@ -63,14 +58,14 @@ class EntityLedger {
     auto count_kills() const noexcept -> std::int32_t {
         return statistics_.cumulative_kill_count();
     }
-    auto count_alive_per_team() const noexcept -> telemetry::TeamCounts {
+    auto count_alive_per_team() const noexcept -> TeamCounts {
         return statistics_.count_alive_per_team();
     }
-    auto count_alive_per_team_and_type() const noexcept -> telemetry::EntityCounts {
+    auto count_alive_per_team_and_type() const noexcept -> EntityCounts {
         return statistics_.count_alive_per_team_and_type();
     }
-    auto combat_telemetry() const noexcept -> telemetry::CombatTelemetryCounters const& {
-        return statistics_.combat_telemetry();
+    auto count_kills(Team team) const noexcept -> std::int32_t {
+        return statistics_.kill_count(team);
     }
   private:
     template <typename Teams, typename Healths>

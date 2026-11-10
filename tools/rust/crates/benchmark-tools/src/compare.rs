@@ -117,7 +117,6 @@ impl NativeBenchmarkConfig {
             saturation_timeout_seconds: self.timeout,
             build_preset: "native-simulation-benchmark".into(),
             skip_build: true,
-            telemetry: false,
         }
     }
 
@@ -190,7 +189,6 @@ fn read_case_conditions(value: &Value, case: &str) -> Result<Conditions> {
         "/schema_version",
         "/level/id",
         "/environment",
-        "/telemetry/enabled",
         "/workload/requested_ticks",
         "/workload/completed_ticks",
         "/workload/measured_ticks",

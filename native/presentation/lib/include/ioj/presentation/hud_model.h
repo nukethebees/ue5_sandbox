@@ -4,7 +4,6 @@
 #include <ioj/presentation/agent_display_batch.h>
 #include <ioj/presentation/entity_count_hud_data.h>
 #include <ioj/presentation/hud_changes.h>
-#include <ioj/presentation/kill_hud_data.h>
 #include <ioj/presentation/player_flight_hud_data.h>
 #include <ioj/presentation/player_status_hud_data.h>
 #include <ioj/presentation/sampled_speed_hud_view.h>
@@ -16,7 +15,6 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <vector>
 
 namespace ioj::presentation {
 class HudModel {
@@ -32,7 +30,6 @@ class HudModel {
 
     auto active() const -> bool { return simulation_.has_value(); }
     auto entity_count_data() const -> EntityCountHudData const& { return entity_count_data_; }
-    auto kill_data() const -> KillHudData const& { return kill_data_; }
     auto player_status_data() const -> std::optional<PlayerStatusHudData> const& {
         return player_status_data_;
     }
@@ -46,7 +43,6 @@ class HudModel {
     auto display_batches() const -> std::array<AgentDisplayBatch, 4>;
   private:
     auto collect_entity_count_data() -> bool;
-    void collect_kill_data();
     auto collect_player_status_data() -> bool;
     auto collect_player_flight_data() -> bool;
 
@@ -55,10 +51,8 @@ class HudModel {
     sim::FixedTickLoop tick_loop_;
     PeriodicTickCountdown8 update_timers_;
     EntityCountHudData entity_count_data_;
-    KillHudData kill_data_;
     std::optional<PlayerStatusHudData> player_status_data_;
     std::optional<PlayerFlightHudData> player_flight_data_;
-    std::vector<sim::EntityId> top_killer_ids_;
     std::string selected_mapping_context_;
 };
 }

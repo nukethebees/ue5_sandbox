@@ -1,7 +1,4 @@
-#include <ioj/profiles/completion_publication.h>
-#include <ioj/profiles/file_profile_storage.h>
-#include <ioj/profiles/profile_id.h>
-#include <ioj/profiles/profile_manager.h>
+#include <ioj/profiles/level_score.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/sim/levels/reference_level_simulation_data.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
@@ -9,7 +6,7 @@
 #include <gtest/gtest.h>
 
 namespace ioj::profiles {
-TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal) {
+TEST(LevelScore, QueriesRetainedPlayerResultWithoutSideEffects) {
     auto const definition{levels::LevelDefinition::make(
         {.metadata = {.id = levels::LevelId{"publication"},
                       .title = "Publication",
@@ -41,7 +38,7 @@ TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal
     auto built{sim::make_level_simulation_init_data(*definition, std::move(geometry.data))};
     ASSERT_TRUE(built) << built.error().front();
     sim::LevelSim simulation{std::move(*built)};
-    EXPECT_FALSE(publish_player_completion(simulation, nullptr, 17));
+    EXPECT_FALSE(make_level_score(simulation, 17));
 
     auto const player{simulation.player_ship_simulation()->unique_entity_id};
     sim::DirectDamageEvents damage;
@@ -50,30 +47,17 @@ TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal
     sim::LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
     simulation.start();
     simulation.advance(0.4);
-    auto const root{std::filesystem::temp_directory_path() / ("publication-" + make_profile_id())};
-    ProfileManager profiles{make_file_profile_storage(root)};
-    ASSERT_TRUE(profiles.initialise());
-    auto const publication{publish_player_completion(simulation, &profiles, 17)};
-    ASSERT_TRUE(publication);
-    EXPECT_EQ(publication->level_title, "Publication");
-    EXPECT_EQ(publication->par_time_seconds, 1.f);
+    auto const record{make_level_score(simulation, 17)};
+    ASSERT_TRUE(record);
     ScoreRecord const expected{.date = 17,
                                .level_name = "publication",
                                .team = Team::Blue,
                                .outcome = LevelOutcome::Victory,
-                               .end_reason = sim::telemetry::RunEndReason::LevelCompleted,
+                               .end_reason = sim::RunEndReason::LevelCompleted,
                                .kills = 2,
                                .time_seconds = 0.2f};
-    EXPECT_EQ(publication->record, expected);
-    EXPECT_TRUE(publication->save_result.persisted);
-    EXPECT_TRUE(publication->save_result.new_best_time);
-    ASSERT_EQ(profiles.active_records().size(), 1u);
-    EXPECT_EQ(profiles.active_records()[0], expected);
+    EXPECT_EQ(*record, expected);
+    EXPECT_EQ(make_level_score(simulation, 17), record);
     EXPECT_TRUE(simulation.result());
-    EXPECT_EQ(profiles.active_records().size(), 1u);
-    std::filesystem::remove_all(root);
-    auto lock_path{root};
-    lock_path += ".lock";
-    std::filesystem::remove(lock_path);
 }
 }

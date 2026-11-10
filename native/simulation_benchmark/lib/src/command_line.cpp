@@ -39,7 +39,6 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
                        options.saturation_timeout_seconds,
                        "Maximum simulated seconds allowed to reach the fighter cap")
             ->check(CLI::PositiveNumber)};
-    app.add_flag("--telemetry", options.telemetry_enabled, "Capture level telemetry");
 
     try {
         app.parse(argc, argv);

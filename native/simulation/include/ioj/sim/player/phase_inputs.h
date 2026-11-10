@@ -19,6 +19,5 @@ struct ActionInputs {
 
 struct ResolutionInputs {
     CombatEvents const& combat_events;
-    FrameMemoryResource& scratch_resource;
 };
 } // namespace ioj::sim::player

@@ -8,8 +8,8 @@
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
+#include <ioj/sim/levels/run_end_reason.h>
 #include <ioj/sim/levels/start_timer_event.h>
-#include <ioj/sim/telemetry/run_end_reason.h>
 
 #include <optional>
 #include <span>
@@ -23,7 +23,7 @@ struct WinEvent {
 struct CompiledLevelEvents {
     void add_spawn_group(EntityType type, std::int32_t offset, std::int32_t count);
     auto add_spawn_event(IndexSpan groups) -> EventHandle;
-    auto add_stop_event(telemetry::RunEndReason reason) -> EventHandle;
+    auto add_stop_event(RunEndReason reason) -> EventHandle;
     auto add_start_timer_event(StartTimerEvent event) -> EventHandle;
     auto add_win_event(Team team) -> EventHandle;
     void add_trigger(ExprHandle condition, std::span<EventHandle const> events);
@@ -39,7 +39,7 @@ struct CompiledLevelEvents {
     std::vector<EventTrigger> pending_triggers{};
     std::vector<EventHandle> trigger_events{};
     std::vector<IndexSpan> spawn_events{};
-    std::vector<telemetry::RunEndReason> stop_events{};
+    std::vector<RunEndReason> stop_events{};
     std::vector<StartTimerEvent> start_timer_events{};
     std::vector<EventHandle> initial_events{};
     std::vector<WinEvent> win_events;

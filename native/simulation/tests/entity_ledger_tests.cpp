@@ -71,7 +71,7 @@ TEST(DamageQueue, GroupsMixedOwnerEventsAndFiltersRetiredRecipients) {
     EXPECT_TRUE(queue.events_for(EntityType::CapitalShip).is_empty());
 }
 
-TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
+TEST(DamageResolution, SkipsRetiredAndAlreadyDeadRecipients) {
     EntityLedger ledger;
     EntityId attacker;
     ledger.record_spawns(EntityType::Turret, Team::Red, Health{1}, {&attacker, 1});
@@ -91,12 +91,8 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     queued.add(victim, 10, attacker);
     queued.add(victim, 100, attacker);
 
-    CombatEvents events{ledger};
+    CombatEvents events;
     events.queue_damage(queued);
-
-    auto const red{Team::Red};
-    auto const turret_type{EntityType::Turret};
-    EXPECT_EQ((ledger.combat_telemetry().hits[red, turret_type]), 0u);
 
     FrameMemoryResource frame_memory{4096};
     {
@@ -121,9 +117,7 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
                               locations.const_view().resolve(),
                               health_table.view<EntityType::Fighter>(),
                               removals,
-                              deaths,
-                              ledger,
-                              &frame_memory);
+                              deaths);
     }
 
     EXPECT_EQ(health_table.const_view<EntityType::Fighter>().health(victim).value(), -6);
@@ -131,10 +125,6 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     ASSERT_EQ(deaths.num(), 1);
     EXPECT_EQ(deaths.view().victims()[0], victim);
     EXPECT_EQ(deaths.view().killers()[0], attacker);
-
-    auto const& telemetry{ledger.combat_telemetry()};
-    EXPECT_EQ((telemetry.hits[red, turret_type]), 2u);
-    EXPECT_DOUBLE_EQ((telemetry.damage_dealt[red, turret_type]), 10.0);
 }
 
 TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
@@ -144,15 +134,10 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     EntityId first_victim;
     ledger.record_spawns(EntityType::CapitalShip, Team::Blue, Health{1}, {&first_victim, 1});
 
-    ledger.record_shots(std::array{killer});
     ledger.record_status(std::array{killer, first_victim},
                          std::array{Team::Green, Team::Yellow},
                          std::array<Health, 2>{Health{1}, Health{1}});
-    ledger.record_shots(std::array{killer, EntityId{}});
 
-    DirectDamageEvents damage;
-    damage.add(first_victim, 17, killer);
-    ledger.record_damage(damage.const_view(), std::array<Health, 1>{Health{17}});
     EntityDeathInfo deaths;
     deaths.add_defaulted(2);
     auto rows{deaths.view()};
@@ -177,18 +162,7 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     EXPECT_EQ(ledger.unique_entities().killed_by()[ledger.history_index(first_victim)], killer);
     EXPECT_EQ(ledger.unique_entities().killed_by()[ledger.history_index(second_victim)], killer);
 
-    auto const& telemetry{ledger.combat_telemetry()};
-    auto const red{Team::Red};
-    auto const green{Team::Green};
-    auto const yellow{Team::Yellow};
-    auto const turret_type{EntityType::Turret};
-    auto const capital_type{EntityType::CapitalShip};
-    EXPECT_EQ((telemetry.shots[red, turret_type]), 1u);
-    EXPECT_EQ((telemetry.shots[green, turret_type]), 1u);
-    EXPECT_EQ((telemetry.hits[green, turret_type]), 1u);
-    EXPECT_DOUBLE_EQ((telemetry.damage_dealt[green, turret_type]), 17.0);
-    EXPECT_EQ((telemetry.kills[green, turret_type]), 2u);
-    EXPECT_EQ((telemetry.destroyed[yellow, capital_type]), 1u);
+    EXPECT_EQ((ledger.count_kills(Team::Green)), 2u);
 
     ledger.reset();
     EXPECT_EQ(ledger.num_unique_ids_issued(), 0);
@@ -202,25 +176,19 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     EXPECT_EQ(ledger.history_index(restarted), 0);
     EXPECT_EQ(ledger.count_alive(), 1);
 }
-TEST(CombatStatistics, DerivesKillTotalAcrossTeamsAndTypesAndResetsCounters) {
+TEST(CombatStatistics, DerivesKillTotalAcrossTeamsAndResetsCounters) {
     CombatStatistics statistics;
-    statistics.record_kill(Team::Blue, EntityType::Fighter);
-    statistics.record_kill(Team::Blue, EntityType::CapitalShip);
-    statistics.record_kill(Team::Green, EntityType::Turret);
-    statistics.record_destroyed(Team::Red, EntityType::Fighter);
-    statistics.record_destroyed(Team::Yellow, EntityType::CapitalShip);
+    statistics.record_kill(Team::Blue);
+    statistics.record_kill(Team::Blue);
+    statistics.record_kill(Team::Green);
 
     EXPECT_EQ(statistics.cumulative_kill_count(), 3);
-    auto const& counters{statistics.combat_telemetry()};
-    EXPECT_EQ((counters.kills[Team::Blue, EntityType::Fighter]), 1u);
-    EXPECT_EQ((counters.kills[Team::Blue, EntityType::CapitalShip]), 1u);
-    EXPECT_EQ((counters.kills[Team::Green, EntityType::Turret]), 1u);
-    EXPECT_EQ((counters.destroyed[Team::Red, EntityType::Fighter]), 1u);
+    EXPECT_EQ(statistics.kill_count(Team::Blue), 2);
+    EXPECT_EQ(statistics.kill_count(Team::Green), 1);
 
     statistics.reset();
     EXPECT_EQ(statistics.cumulative_kill_count(), 0);
-    EXPECT_EQ(counters.kills, telemetry::Uint64EntityCounts{});
-    EXPECT_EQ(counters.destroyed, telemetry::Uint64EntityCounts{});
+    EXPECT_EQ(statistics.kill_count(Team::Blue), 0);
 }
 
 } // namespace ioj::sim::tests

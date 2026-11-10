@@ -69,7 +69,7 @@ auto CompiledLevelEvents::add_spawn_event(IndexSpan const groups) -> EventHandle
     spawn_events.push_back(groups);
     return EventHandle{index, EventKind::Spawn};
 }
-auto CompiledLevelEvents::add_stop_event(telemetry::RunEndReason const reason) -> EventHandle {
+auto CompiledLevelEvents::add_stop_event(RunEndReason const reason) -> EventHandle {
     auto const index{static_cast<std::uint32_t>(stop_events.size())};
     stop_events.push_back(reason);
     return EventHandle{index, EventKind::StopRun};

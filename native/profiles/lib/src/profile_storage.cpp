@@ -100,8 +100,8 @@ auto decode(Json const& json, ProfileResultsData& value) -> bool {
         auto const team{try_parse_serialized_team(row.at("team").get<std::string>())};
         auto const outcome{
             try_parse_serialized_level_outcome(row.at("outcome").get<std::string>())};
-        auto const reason{sim::telemetry::try_parse_serialized_run_end_reason(
-            row.at("end_reason").get<std::string>())};
+        auto const reason{
+            sim::try_parse_serialized_run_end_reason(row.at("end_reason").get<std::string>())};
         ScoreRecord record{.date = row.at("date").get<Timestamp>(),
                            .level_name = row.at("level").get<std::string>(),
                            .kills = row.at("kills").get<std::int32_t>(),

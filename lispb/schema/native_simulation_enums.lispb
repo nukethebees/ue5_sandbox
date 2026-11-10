@@ -51,9 +51,9 @@
         :native-header-include "ioj/sim/player/fire_rate.h"
         :reflection uenum))))
 
-(module native_level_telemetry_run_end_reason
-  :header "native/simulation/include/ioj/sim/telemetry/run_end_reason.h"
-  :namespace ioj::sim::telemetry
+(module native_run_end_reason
+  :header "native/simulation/include/ioj/sim/levels/run_end_reason.h"
+  :namespace ioj::sim
   (enum RunEndReason @native_uint8
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)

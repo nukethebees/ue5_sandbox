@@ -7,10 +7,10 @@
 #include <ioj/s7/simulation_settings_reader.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/reference_level_simulation_data.h>
+#include <ioj/sim/levels/run_end_reason.h>
 #include <ioj/sim/levels/simulation_settings.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
-#include <ioj/sim/telemetry/run_end_reason.h>
 
 #include <nlohmann/json.hpp>
 
@@ -219,15 +219,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         }
     }
 
-    data.telemetry_recording.enabled = options.telemetry_enabled;
-    if (options.telemetry_enabled) {
-        data.telemetry_metadata = sim::telemetry::RunMetadata{
-            .level_id = level_components.metadata().id.value,
-            .level_display_name = level_components.metadata().title,
-            .requested_duration_seconds = Duration::make(options.simulated_seconds),
-        };
-    }
-
     sim::LevelSim simulation{std::move(data)};
 
     auto const initial_capital_ships{simulation.capital_ships().num_instances()};
@@ -327,16 +318,10 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         return std::unexpected{"replacement fighters spawned during measured ticks"};
     }
 
-    if (options.telemetry_enabled) {
-        simulation.stop_run(sim::telemetry::RunEndReason::DurationReached);
-    } else {
-        simulation.pause();
-        simulation.advance(0.0);
-    }
+    simulation.stop_run(sim::RunEndReason::DurationReached);
 
     auto const tick_memory{simulation.tick_memory_stats()};
     auto const phase_memory{simulation.phase_memory_stats()};
-    auto const& telemetry{simulation.level_telemetry_manager()};
     auto const total_simulation_ticks{simulation.clock().get_completed_ticks()};
     auto const elapsed{std::chrono::duration<double>{finished_at - started_at}.count()};
     auto const total_elapsed{std::chrono::duration<double>{finished_at - total_started_at}.count()};
@@ -385,8 +370,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .frame_memory_total_padding_bytes = frame_summary.total_padding_bytes,
         .frame_memory_total_root_claims = frame_summary.total_root_claims,
         .frame_memory_overflow_count = tick_memory.overflow_count + phase_memory.overflow_count,
-        .telemetry_enabled = options.telemetry_enabled,
-        .telemetry_rows = telemetry.recorded_sample_count(),
         .hardware_threads = std::thread::hardware_concurrency(),
         .compiler = IOJ_BENCHMARK_COMPILER_ID,
         .build_type = IOJ_BENCHMARK_BUILD_TYPE,
@@ -475,9 +458,6 @@ auto to_json(BenchmarkResult const& result) -> std::string {
           result.frame_memory_total_padding_bytes,
           result.frame_memory_total_root_claims,
           result.frame_memory_overflow_count);
-    write(R"(,"telemetry":{{"enabled":{},"rows":{}}})",
-          result.telemetry_enabled,
-          result.telemetry_rows);
     write(
         R"(,"environment":{{"hardware_threads":{},"compiler":{},"build_type":{},"tracy_enabled":{}}}}})",
         result.hardware_threads,

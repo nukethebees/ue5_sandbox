@@ -74,18 +74,15 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
         std::uint32_t capital_count{};
         std::int32_t ledger_alive_count{};
         std::int32_t health{};
-        std::int32_t telemetry_active_count{};
     };
     TimeSeriesData<DamageSample> samples;
     harness.on_end_tick = [&](LevelSim& level) {
-        auto const telemetry{level.level_telemetry_manager().make_snapshot()};
         auto const state{observe_entity(level, damaged_handle)};
         samples.add(harness.time(),
                     DamageSample{
                         .capital_count = level.capital_ships().num_instances(),
                         .ledger_alive_count = harness.ledger().count_alive(),
                         .health = state ? state->health.value() : 0,
-                        .telemetry_active_count = telemetry.active_entities,
                     });
     };
     harness.timeline.at(nonlethal_damage_time,
@@ -105,7 +102,6 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     EXPECT_EQ(0, lethal.capital_count)
         << "Lethal damage removes batch entity in the same Action phase";
     EXPECT_EQ(0, lethal.ledger_alive_count) << "Ledger death commits in the same tick";
-    EXPECT_EQ(0, lethal.telemetry_active_count) << "Telemetry observes committed death before hook";
     EXPECT_EQ(0, lethal.health) << "Owner retains terminal health for the dead handle";
     EXPECT_TRUE(!entity_is_alive(harness.simulation(), damaged_handle)) << "Killed ID is dead";
     EXPECT_EQ(0, harness.ledger().count_kills()) << "Unattributed death does not create a kill";

@@ -81,7 +81,7 @@ for Thinking. During Resolution, use authoritative health to distinguish a retai
 2. Publish deaths to the persistent ledger.
 3. Commit previous latch captures, tick timers, sample Boolean expressions, capture latches and collect triggers.
 4. Enter ResolutionCommit and compact storage.
-5. Finalise frame outputs, telemetry, and tick accounting; enter BetweenTicks.
+5. Finalise frame outputs and tick accounting; enter BetweenTicks.
 
 Expression evaluation sees same-tick deaths before compaction. It does not depend on the packed health
 snapshot. Refresh surviving lookup rows in the next Preparation; do not rebuild the lookup tables

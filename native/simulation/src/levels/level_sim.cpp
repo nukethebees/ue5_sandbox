@@ -14,8 +14,6 @@
 #include <ioj/sim/turrets/phase_interface.h>
 
 #include <cassert>
-#include <chrono>
-#include <format>
 #include <optional>
 #include <span>
 #include <utility>
@@ -31,8 +29,6 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
           memory,
           data.tick_memory_capacity_bytes,
           data.phase_memory_capacity_bytes,
-          data.telemetry_recording.enabled ? LevelMemoryManager::default_level_memory_capacity_bytes
-                                          : 0,
       }
     , collision_pipeline_{entity_tables_, std::move(data.collision), &memory_manager_.game_memory()}
     , fighters_simulation_{entity_tables_}
@@ -53,15 +49,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
           data.capital_ships.fighter_spawn_slots_relative_transforms,
           memory_manager_.game_memory(),
       }
-    , level_telemetry_manager_{
-          clock_,
-          entity_ledger_,
-          lasers_simulation_,
-          memory_manager_.level_memory(),
-          data.telemetry_recording,
-          std::move(data.telemetry_metadata),
-      } {
-
+    {
     initialise_subsystems(data);
 
     spawn_manager_.initialise(event_manager_.data().spawn_count() +
@@ -84,8 +72,6 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
 
     state_ = LevelState::StableSetup;
     clock_.advance_to(SimulationPhase::Thinking);
-
-    level_telemetry_manager_.initialise();
 
     clock_.reset();
     state_ = LevelState::Paused;
@@ -123,9 +109,9 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
 }
 
 /* **************************************** */
-// Telemetry and level results
+// Level results
 /* **************************************** */
-void LevelSim::stop_run(telemetry::RunEndReason const reason) {
+void LevelSim::stop_run(RunEndReason const reason) {
     if (state_ == LevelState::Stopped) {
         return;
     }
@@ -139,20 +125,10 @@ auto LevelSim::result() const -> std::optional<LevelResult> {
     auto const& definitions{event_manager_.data()};
     auto const event{terminal_->event};
     if (event.kind() == EventKind::Win) {
-        return LevelResult{*terminal_,
-                           definitions.win_events[event.index()].winner,
-                           telemetry::RunEndReason::LevelCompleted};
+        return LevelResult{
+            *terminal_, definitions.win_events[event.index()].winner, RunEndReason::LevelCompleted};
     }
     return LevelResult{*terminal_, std::nullopt, definitions.stop_events[event.index()]};
-}
-
-auto LevelSim::telemetry_run() const -> std::optional<telemetry::RunRecord> {
-    auto const outcome{result()};
-    if (!outcome) {
-        return std::nullopt;
-    }
-    return level_telemetry_manager_.make_run_record(
-        {outcome->reason, terminal_->completed_utc, terminal_->tick});
 }
 
 /* **************************************** */
@@ -208,11 +184,7 @@ void LevelSim::dispatch_tick_end_events() {
             }
             case EventKind::Win:
             case EventKind::StopRun:
-                terminal_ = TerminalEvent{*event,
-                                          clock_.get_completed_ticks(),
-                                          std::format("{:%FT%TZ}",
-                                                      std::chrono::floor<std::chrono::milliseconds>(
-                                                          std::chrono::system_clock::now()))};
+                terminal_ = TerminalEvent{*event, clock_.get_completed_ticks()};
                 state_ = LevelState::Stopped;
                 return;
             case EventKind::Pause:
@@ -423,7 +395,6 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
             combat_events_,
             entity_ledger_,
             clock_.get_completed_ticks(),
-            phase_memory,
             capital_removal_indices,
             capital_deaths,
         };
@@ -431,7 +402,6 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
             .combat_events = combat_events_,
             .ledger = entity_ledger_,
             .tick = clock_.get_completed_ticks(),
-            .scratch_resource = phase_memory,
             .local_indices_to_remove = fighter_removal_indices,
             .entity_death_info = fighter_deaths,
         };
@@ -439,13 +409,12 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
             combat_events_,
             entity_ledger_,
             clock_.get_completed_ticks(),
-            phase_memory,
             turret_removal_indices,
             turret_deaths,
         };
 
         if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-            player::ResolutionInputs const inputs{combat_events_, phase_memory};
+            player::ResolutionInputs const inputs{combat_events_};
             player::ResolutionInterface{*player_ship_simulation_}.resolve_damage_events(inputs);
         }
         capital_ships_phase.resolve_damage_events(capital_inputs);
@@ -497,7 +466,6 @@ void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_
     turrets_commit.finish_action();
     lasers_commit.finish_action();
     clock_.complete_tick();
-    level_telemetry_manager_.tick();
     combat_events_.reset();
 }
 

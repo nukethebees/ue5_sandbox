@@ -36,9 +36,7 @@ fn capture_simulation_output(
         "--game-speed".into(),
         speed.to_string(),
     ];
-    if parsed.telemetry {
-        command.push("--telemetry".into());
-    }
+
     if let Some(cap) = parsed.fighter_stress_cap {
         command.extend(["--fighter-stress-cap".into(), cap.to_string()]);
     }
@@ -127,7 +125,6 @@ pub fn run_fighter_benchmark(root: &Path, parsed: &FighterOptions) -> Result<()>
         warmup_seconds: parsed.warmup_seconds,
         saturation_timeout_seconds: parsed.saturation_timeout_seconds,
         build_preset: "native-simulation-benchmark".into(),
-        telemetry: false,
         skip_build: parsed.skip_build,
     };
     let results = parse_json_lines(&run_simulation_benchmark(root, &command)?)?;
@@ -248,7 +245,6 @@ pub fn frame_memory_options(root: &Path, seconds: f64) -> SimulationOptions {
         fighter_stress_caps: None,
         warmup_seconds: 5.0,
         saturation_timeout_seconds: 60.0,
-        telemetry: false,
         skip_build: false,
     }
 }

@@ -57,7 +57,6 @@ set(entities_headers
   entity_lookup_table.h
   entity_table_operations.h
   entity_tables.h
-  entity_telemetry.h
   entity_type.h
   entity_type_runs.h
   health_table.h
@@ -153,16 +152,6 @@ set(tasks_headers
 
 list(TRANSFORM tasks_headers PREPEND "../include/ioj/sim/tasks/")
 
-set(telemetry_headers
-  battle_change_mask.h
-  recording_config.h
-  level_telemetry_manager.h
-  run_data.h
-  snapshot.h
-)
-
-list(TRANSFORM telemetry_headers PREPEND "../include/ioj/sim/telemetry/")
-
 set(testing_headers
   laser_spawns.h
   level_sim_test_access.h
@@ -194,7 +183,6 @@ target_sources(native-simulation
     levels/level_memory_manager.cpp
     levels/level_read_access.cpp
     levels/level_sim.cpp
-    telemetry/level_telemetry_manager.cpp
     expressions/expr_manager.cpp
     expressions/latches.cpp
     expressions/timers.cpp
@@ -220,7 +208,6 @@ target_sources(native-simulation
     ${player_headers}
     ${spinners_headers}
     ${tasks_headers}
-    ${telemetry_headers}
     ${testing_headers}
     ${turrets_headers}
 )
@@ -233,5 +220,4 @@ add_subdirectory(levels)
 add_subdirectory(memory)
 add_subdirectory(player)
 add_subdirectory(spinners)
-add_subdirectory(telemetry)
 add_subdirectory(turrets)

@@ -49,9 +49,7 @@ fn dispatch_benchmark_command(args: &[String]) -> Result<()> {
         Command::Spark(options) => {
             unreal::run_unreal_benchmark(&root()?, unreal::Benchmark::Spark(options))
         }
-        Command::LevelTelemetry(options) => {
-            unreal::run_unreal_benchmark(&root()?, unreal::Benchmark::Telemetry(options))
-        }
+
         Command::Heatmap(options) => {
             unreal::run_unreal_benchmark(&root()?, unreal::Benchmark::Heatmap(options))
         }

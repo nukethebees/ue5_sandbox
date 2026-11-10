@@ -1,22 +1,3 @@
-(module native_telemetry_metric
-  :header "native/simulation/include/ioj/sim/telemetry/metric.h"
-  :header-include "ioj/sim/telemetry/metric.h"
-  :namespace ioj::sim::telemetry
-  (enum Metric std::uint8_t
-    :enum-array true
-    (value ActiveEntities :groups (workload))
-    (value PlayerShips :groups (workload))
-    (value Turrets :groups (workload))
-    (value CapitalShips :groups (workload))
-    (value CapitalShipFighters :groups (workload))
-    (value TubeSpinners :groups (workload))
-    (value ActiveLasers :groups (workload))
-    (value SpawnRate :groups (rate))
-    (value DestructionRate :groups (rate))
-    (value KillRate :groups (rate))
-    (value LaserFireRate :groups (rate))
-    (projections (cpp))))
-
 (module native_level_state
   :header "native/simulation/include/ioj/sim/levels/level_state.h"
   :header-include "ioj/sim/levels/level_state.h"

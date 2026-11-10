@@ -61,7 +61,7 @@ TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
     EXPECT_EQ((hud.entity_count_data().alive_per_team_and_type[team, type]), 0);
 }
 
-TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
+TEST(HudModel, PlayerStatusAndFlightRetainPayloads) {
     auto const fixture{make_fixture()};
     auto data{hud_test::data()};
     auto player{make_player_spawn(fixture)};
@@ -116,34 +116,6 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
         EXPECT_GT(samples->samples[samples->oldest_index - 1].x(), 0.0);
         EXPECT_GT(samples->samples[samples->oldest_index - 1].y(), 0.0);
     }
-    auto const& kills{hud.kill_data()};
-    ASSERT_EQ(kills.top_killers.size(), 2);
-    EXPECT_EQ(kills.top_killers[0].entity_id, player_id);
-    EXPECT_EQ(kills.top_killers[0].entity_type, EntityType::PlayerShip);
-    EXPECT_EQ(kills.top_killers[0].team, Team::Blue);
-    EXPECT_EQ(kills.top_killers[0].kills, 1);
-    EXPECT_EQ(kills.top_killers[1].entity_id, rival);
-    EXPECT_EQ((kills.team_kill_matrix[Team::Blue, EntityType::CapitalShip]), 1);
-    EXPECT_EQ((kills.team_kill_matrix[Team::Red, EntityType::CapitalShip]), 1);
-    harness.queue_kills(std::array{player_id});
-    harness.advance(0.05);
-    hud.force_sample();
-    auto const* const dead_player{simulation.player_ship_simulation()};
-    ASSERT_NE(dead_player, nullptr);
-    EXPECT_EQ(dead_player->health().health.value(), 0);
-    EXPECT_EQ(simulation.entity_ledger().count_alive(EntityType::PlayerShip), 0);
-    ASSERT_TRUE(hud.player_status_data());
-    EXPECT_EQ(hud.player_status_data()->health.health.value(), 0);
-    EXPECT_TRUE(hud.player_flight_data());
-    {
-        auto const samples{hud.sampled_speed_view()};
-        ASSERT_TRUE(samples);
-        EXPECT_EQ(samples->samples.data(), dead_player->speed_samples.data());
-    }
-    hud.deactivate();
-    EXPECT_FALSE(hud.player_status_data());
-    EXPECT_FALSE(hud.player_flight_data());
-    EXPECT_FALSE(hud.sampled_speed_view());
 }
 
 }

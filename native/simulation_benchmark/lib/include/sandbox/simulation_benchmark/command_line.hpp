@@ -16,7 +16,6 @@ struct BenchmarkOptions {
     std::vector<std::int32_t> fighter_stress_caps{};
     double warmup_seconds{5.0};
     double saturation_timeout_seconds{60.0};
-    bool telemetry_enabled{};
 };
 
 struct CommandLineResult {

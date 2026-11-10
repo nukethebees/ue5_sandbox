@@ -9,7 +9,7 @@ contract.
 ## Level ownership and phases
 
 `LevelSim` owns the clock, entity ledger and tables, concrete entity simulations, collision,
-expressions, latches, timers, authored events and telemetry. It remains nonmovable because those owners retain
+expressions, latches, timers, authored events. It remains nonmovable because those owners retain
 references to one another. Declaration order keeps the clock, tables and frame-memory backing
 alive until their consumers have been destroyed.
 
@@ -24,9 +24,9 @@ preparation can reorder storage. Movement adds player and fighter candidates; th
 deduplicates them and refreshes the spatial index before overlap detection. Queries and temporary
 overlap results remain subject to the phase and scratch-lifetime contracts.
 
-Construction consumes all initialization data, including static geometry and telemetry metadata.
+Construction consumes all initialization data, including static geometry.
 It creates the optional player, dispatches initial spawn events, publishes entity lookups
-and the spatial index, begins telemetry in `LevelState::StableSetup`, then enters
+and the spatial index, then enters
 `LevelState::Paused` and dispatches initial tick-end events, which may immediately stop the run.
 Setup uses Preparation for population and Thinking for stable queries, then
 resets the independent clock to tick zero and `BetweenTicks` before returning. Its phase enum
@@ -34,12 +34,8 @@ contains only the repeating tick cycle. Logic evaluation during a tick
 follows published deaths and precedes `ResolutionCommit`, while entity row mappings are still valid.
 
 The first dispatched terminal event and its execution tick remain available through `result()`.
-Run completion records its timestamp, including explicit stops for reset and world teardown.
-Telemetry can be queried repeatedly. History ends at the latest scheduled sample; querying a run
-reads current totals without adding a final sample or consuming metadata. Reporting and navigation
-belong to consumers, not the telemetry manager.
-Winner and stop reason are derived from that event's payload. Result publication, telemetry and
-persistence use this terminal decision; there are no per-team mission completion records.
+Winner and stop reason are derived from that event's payload. Consumers copy the result and profile score before releasing the level. Saving profiles and displaying
+completion UI are outside the simulation. No sample history is recorded.
 Initial terminal effects also publish a result, without starting the stopped simulation.
 Duration limits compile to timer-triggered stop events. Living-team counts do not end a run.
 Battle launches without an explicit duration have no time limit. Benchmarks and simulation-only
@@ -50,8 +46,7 @@ retire only after a true sample, queueing their events once. False leaves them e
 to tick-end or Preparation streams. Each stream retains its append-only event storage and advances
 an independent read cursor in FIFO order. The first dispatched terminal event enters
 `LevelState::Stopped` and stops catch-up and dispatch; later events remain stored and unconsumed.
-Stopped levels append no further events and cannot resume. Pause retains pending spawns and
-leaves telemetry recording. Preparation after
+Stopped levels append no further events and cannot resume. Pause retains pending spawns. Preparation after
 resume routes the retained spawn span to `LevelSpawnManager`. `pause()` only queues a request;
 `advance()` consumes tick-end events before accumulating elapsed time and after each completed
 tick. Paused calls process queued events without accumulating time; `start()` resumes directly.

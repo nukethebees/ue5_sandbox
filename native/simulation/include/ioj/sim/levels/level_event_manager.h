@@ -16,7 +16,7 @@ class LevelEventManager {
 
     void collect_ready(ExprManager const& expressions);
     void enqueue(EventHandle event);
-    void enqueue_stop(telemetry::RunEndReason reason);
+    void enqueue_stop(RunEndReason reason);
 
     auto consume_preparation_event() -> std::optional<EventHandle>;
     auto preparation_events() const -> std::span<EventHandle const> { return preparation_events_; }

@@ -168,6 +168,7 @@ native/simulation/include/ioj/sim/levels/level_spawn_groups.h
 native/simulation/include/ioj/sim/levels/level_spinner_spawn_events.h
 native/simulation/include/ioj/sim/levels/level_state.h
 native/simulation/include/ioj/sim/levels/level_turret_spawn_events.h
+native/simulation/include/ioj/sim/levels/run_end_reason.h
 native/simulation/include/ioj/sim/levels/tick_player_ship_state.h
 native/simulation/include/ioj/sim/player/command_interface.h
 native/simulation/include/ioj/sim/player/flight_model_controller_state.h
@@ -189,9 +190,6 @@ native/simulation/include/ioj/sim/spinners/spinner_entity_data.h
 native/simulation/include/ioj/sim/tasks/instruction.h
 native/simulation/include/ioj/sim/tasks/instruction_handle.h
 native/simulation/include/ioj/sim/tasks/task_id.h
-native/simulation/include/ioj/sim/telemetry/battle_change_mask.h
-native/simulation/include/ioj/sim/telemetry/metric.h
-native/simulation/include/ioj/sim/telemetry/run_end_reason.h
 native/simulation/include/ioj/sim/turrets/phase_interface.h
 native/simulation/include/ioj/sim/turrets/spawn_interface.h
 native/simulation/include/ioj/sim/turrets/turret_entity_data.h

@@ -17,7 +17,6 @@ fn command_definitions_are_consistent_and_every_command_has_help() {
         "sandbox-ismc-revision-ab",
         "sandbox-ismc-report",
         "spark",
-        "level-telemetry",
         "heatmap",
         "radar-3d",
         "scatter-3d",

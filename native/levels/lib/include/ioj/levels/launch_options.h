@@ -4,7 +4,6 @@
 #include <ioj/levels/control_context.h>
 #include <ioj/levels/launch_mode.h>
 #include <ioj/levels/presentation_mode.h>
-#include <ioj/levels/results_navigation.h>
 
 #include <optional>
 
@@ -27,7 +26,6 @@ struct LaunchOptions {
     launch::TimeScale requested_time_scale{launch::default_time_scale};
     PresentationMode presentation_mode{PresentationMode::Visual};
     std::optional<PositiveFinite<double>> simulated_duration_seconds{};
-    ResultsNavigation results_navigation{ResultsNavigation::None};
     ControlContext control_context{ControlContext::Player};
 };
 

@@ -129,7 +129,6 @@ void EntityLedger::record_deaths(EntityDeathInfo::ConstView const deaths, SimTic
         death_ticks[row] = tick;
         death_locations[row] = locations[index];
         frame_deaths_[victim.entity_type()].push_back(row);
-        statistics_.record_destroyed(team, victim.entity_type());
         auto const killer{killers[index]};
         if (!killer.is_valid()) {
             continue;
@@ -137,45 +136,10 @@ void EntityLedger::record_deaths(EntityDeathInfo::ConstView const deaths, SimTic
         auto const killer_row{require_history_index(killer)};
         killed_by[row] = killer;
         ++kills[killer_row];
-        statistics_.record_kill(teams[killer_row], killer.entity_type());
+        statistics_.record_kill(teams[killer_row]);
     }
 }
-void EntityLedger::record_damage(DirectDamageEvents::ConstView const events,
-                                 std::span<Health const> const applied_damage) {
-    auto const count{events.num()};
-    assert(applied_damage.size() == count);
-    auto const victims{events.damaged_entities()};
-    auto const attackers{events.instigators()};
-    auto const history{unique_entities()};
-    auto const teams{history.teams()};
-    [[maybe_unused]] auto const life_states{history.life_state()};
 
-    for (std::uint32_t index{}; index < count; ++index) {
-        auto const damage{applied_damage[index].value()};
-        assert(damage >= 0);
-        if (damage == 0) {
-            continue;
-        }
-
-        auto const victim{victims[index]};
-        [[maybe_unused]] auto const victim_row{require_history_index(victim)};
-        assert(life_states[victim_row] == LifeState::Alive);
-        auto const attacker{attackers[index]};
-        if (attacker.is_valid()) {
-            auto const attacker_row{require_history_index(attacker)};
-            statistics_.record_hit(
-                teams[attacker_row], attacker.entity_type(), static_cast<double>(damage));
-        }
-    }
-}
-void EntityLedger::record_shots(std::span<EntityId const> const instigators) {
-    auto const teams{unique_entities().teams()};
-    for (auto const id : instigators) {
-        if (id.is_valid()) {
-            statistics_.record_shot(teams[require_history_index(id)], id.entity_type());
-        }
-    }
-}
 auto EntityLedger::kills(EntityId const id) const -> std::uint32_t {
     return unique_entities().kills()[require_history_index(id)];
 }

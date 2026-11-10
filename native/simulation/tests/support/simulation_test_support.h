@@ -31,8 +31,7 @@ inline void add_timed_events(LevelSimInitData& data,
     events.add_trigger(elapsed, effects);
 }
 inline void add_duration_limit(LevelSimInitData& data, Duration const duration) {
-    std::array const effects{
-        data.level_events.add_stop_event(telemetry::RunEndReason::DurationReached)};
+    std::array const effects{data.level_events.add_stop_event(RunEndReason::DurationReached)};
     add_timed_events(data, duration, effects);
 }
 }

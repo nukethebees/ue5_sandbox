@@ -1,6 +1,5 @@
 use crate::cli::{
     CommandletOptions, EditorOptions, HeatmapOptions, RadarOptions, ScatterOptions, SparkOptions,
-    TelemetryOptions,
 };
 use crate::support::*;
 use serde_json::Value;
@@ -95,7 +94,6 @@ fn validate_automation_log(log: &str) -> Result<()> {
 
 pub enum Benchmark {
     Spark(SparkOptions),
-    Telemetry(TelemetryOptions),
     Heatmap(HeatmapOptions),
     Radar(RadarOptions),
     Scatter(ScatterOptions),
@@ -107,7 +105,6 @@ impl Benchmark {
     fn editor(&self) -> &EditorOptions {
         match self {
             Self::Spark(options) => &options.editor,
-            Self::Telemetry(options) => &options.editor,
             Self::Heatmap(options) => &options.common.editor,
             Self::Radar(options) => &options.common.editor,
             Self::Scatter(options) => &options.common.editor,
@@ -118,7 +115,6 @@ impl Benchmark {
     fn name(&self) -> &'static str {
         match self {
             Self::Spark(_) => "spark",
-            Self::Telemetry(_) => "level-telemetry",
             Self::Heatmap(_) => "heatmap",
             Self::Radar(_) => "radar-3d",
             Self::Scatter(_) => "scatter-3d",
@@ -171,15 +167,6 @@ fn measurement_arguments(benchmark: &Benchmark) -> (Vec<String>, bool) {
             }
             (command, true)
         }
-        Benchmark::Telemetry(options) => (
-            vec![
-                "-ExecCmds=Automation Now; RunTests SandboxBenchmarks.LevelTelemetryStorage; Quit"
-                    .into(),
-                format!("-SandboxTelemetryBenchmarkSamples={}", options.samples),
-                "-FullStdOutLogOutput".into(),
-            ],
-            true,
-        ),
         Benchmark::EntityOverlay(_) => (
             [
                 "-run=EntityOverlayBenchmark",
@@ -253,12 +240,7 @@ pub fn run_unreal_benchmark(root: &Path, benchmark: Benchmark) -> Result<()> {
         .args(arguments)
         .args(["-unattended", "-nop4", "-nosplash", "-nosound", "-stdout"])
         .current_dir(root);
-    let log = match &benchmark {
-        Benchmark::Telemetry(options) => {
-            resolve_absolute_path(root, &options.output_dir)?.join("telemetry-benchmark.log")
-        }
-        _ => root.join(format!("Saved/Benchmarks/{}.log", benchmark.name())),
-    };
+    let log = root.join(format!("Saved/Benchmarks/{}.log", benchmark.name()));
     let output = require_process_success(run_editor_with_timeout(
         &mut command,
         &log,

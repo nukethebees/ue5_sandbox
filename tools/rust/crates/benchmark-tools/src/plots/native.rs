@@ -26,10 +26,7 @@ pub fn plot_fighters(document: &Value, output: &Path) -> Result<Vec<PathBuf>> {
             if y <= 0.0 {
                 return Err("Fighter timings must be positive.".into());
             }
-            points.push(Point {
-                x: cap as f64,
-                y,
-            });
+            points.push(Point { x: cap as f64, y });
         }
         points.sort_by(|a, b| a.x.total_cmp(&b.x));
         if points.windows(2).any(|pair| pair[0].x == pair[1].x) {

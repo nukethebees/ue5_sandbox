@@ -1,10 +1,8 @@
 #include "ioj/sim/batch_operations.h"
 
 #include <ioj/column_math.h>
-#include <ioj/frame_array.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/entity_death_info.h>
-#include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/health.h>
 #include <ioj/sim/profiling.h>
 
@@ -23,14 +21,10 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            vectors3f::ResolvedConstView const locations,
                            HealthView const healths,
                            std::pmr::vector<std::uint32_t>& local_indices_to_remove,
-                           EntityDeathInfo& entity_death_info,
-                           EntityLedger& ledger,
-                           FrameMemoryResource* const scratch_resource) {
+                           EntityDeathInfo& entity_death_info) {
     SANDBOX_PROFILE_SCOPE("resolve_damage_events");
 
     auto const n_direct_events{damage_events.num()};
-    FrameArray<Health> applied_damages{scratch_resource};
-    applied_damages.set_num(n_direct_events);
     auto const removal_count{local_indices_to_remove.size()};
     auto const death_count{entity_death_info.num()};
     local_indices_to_remove.resize(removal_count + static_cast<std::size_t>(n_direct_events));
@@ -62,10 +56,8 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
             continue;
         }
         auto health{healths.health(id)};
-        auto const applied_damage{Health{std::min(health.value(), requested_damage)}};
         health.set_value(health.value() - requested_damage);
         healths.set_health(id, health);
-        applied_damages[event_index] = applied_damage;
         if (is_alive(health)) {
             continue;
         }
@@ -81,7 +73,6 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
     }
     local_indices_to_remove.resize(static_cast<std::size_t>(current_removal_count));
     entity_death_info.set_num(current_death_count);
-    ledger.record_damage(damage_events, {applied_damages.data(), applied_damages.num()});
 }
 
 }

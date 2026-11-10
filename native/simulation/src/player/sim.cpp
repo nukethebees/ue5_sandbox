@@ -147,7 +147,6 @@ void Sim::apply_movement(ActionInputs const inputs) {
 
 // Resolution
 void Sim::resolve_damage_events(ResolutionInputs const inputs) {
-    auto* const scratch_resource{&inputs.scratch_resource};
 
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::resolve_damage_events");
 
@@ -156,8 +155,6 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     auto health{health_table_.health(unique_entity_id)};
     EntityId killer{};
     auto const damage_count{damage_events.num()};
-    FrameArray<Health> applied_damages{scratch_resource};
-    applied_damages.set_num(damage_count);
     [[maybe_unused]] auto const damaged_entities{damage_events.damaged_entities()};
     auto const damage_amounts{damage_events.damage_amounts()};
     auto const instigators{damage_events.instigators()};
@@ -173,15 +170,12 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
         if (requested_damage == 0) {
             continue;
         }
-        auto const applied_damage{Health{std::min(health.value(), requested_damage)}};
         health.set_value(health.value() - requested_damage);
-        applied_damages[event_index] = applied_damage;
         if (is_dead(health)) {
             killer = instigators[element];
         }
     }
 
-    ledger_.record_damage(damage_events, {applied_damages.data(), applied_damages.num()});
     health_table_.set_health(unique_entity_id, health);
 
     if (sim::is_alive(original_health) && is_dead(health)) {

@@ -6,17 +6,17 @@
 namespace ioj::sim {
 namespace {
 constexpr auto is_valid(Team const team) noexcept -> bool {
-    return std::to_underlying(team) < telemetry::team_count;
+    return std::to_underlying(team) < enum_count<Team>();
 }
 
 [[maybe_unused]] constexpr auto is_valid(EntityType const type) noexcept -> bool {
-    return std::to_underlying(type) < telemetry::entity_type_count;
+    return std::to_underlying(type) < enum_count<EntityType>();
 }
 } // namespace
 
 void CombatStatistics::reset() noexcept {
     alive_counts_ = {};
-    combat_telemetry_ = {};
+    kill_counts_ = {};
 }
 
 void CombatStatistics::record_spawn(Team const team,
@@ -25,7 +25,6 @@ void CombatStatistics::record_spawn(Team const team,
     assert(is_valid(team));
     assert(is_valid(type));
 
-    ++combat_telemetry_.spawned[team, type];
     if (alive) {
         adjust_alive_count(team, type, 1);
     }
@@ -44,36 +43,10 @@ void CombatStatistics::apply_alive_transition(Team const old_team,
     }
 }
 
-void CombatStatistics::record_destroyed(Team const team, EntityType const type) noexcept {
-    assert(is_valid(team));
-    assert(is_valid(type));
-
-    ++combat_telemetry_.destroyed[team, type];
-}
-
-void CombatStatistics::record_kill(Team const killer_team, EntityType const killer_type) noexcept {
+void CombatStatistics::record_kill(Team const killer_team) noexcept {
     assert(is_valid(killer_team));
-    assert(is_valid(killer_type));
 
-    ++combat_telemetry_.kills[killer_team, killer_type];
-}
-
-void CombatStatistics::record_hit(Team const attacker_team,
-                                  EntityType const attacker_type,
-                                  double const damage) noexcept {
-    assert(is_valid(attacker_team));
-    assert(is_valid(attacker_type));
-
-    ++combat_telemetry_.hits[attacker_team, attacker_type];
-    combat_telemetry_.damage_dealt[attacker_team, attacker_type] += damage;
-}
-
-void CombatStatistics::record_shot(Team const attacker_team,
-                                   EntityType const attacker_type) noexcept {
-    assert(is_valid(attacker_team));
-    assert(is_valid(attacker_type));
-
-    ++combat_telemetry_.shots[attacker_team, attacker_type];
+    ++kill_counts_[killer_team];
 }
 
 auto CombatStatistics::alive_count() const noexcept -> std::int32_t {
@@ -81,9 +54,7 @@ auto CombatStatistics::alive_count() const noexcept -> std::int32_t {
 }
 
 auto CombatStatistics::cumulative_kill_count() const noexcept -> std::int32_t {
-    auto const& kills{combat_telemetry_.kills};
-    auto const total{std::accumulate(kills.begin(), kills.end(), std::uint64_t{})};
-    return static_cast<std::int32_t>(total);
+    return std::accumulate(kill_counts_.begin(), kill_counts_.end(), std::int32_t{});
 }
 
 auto CombatStatistics::count_alive(EntityType const type) const noexcept -> std::int32_t {
@@ -96,8 +67,8 @@ auto CombatStatistics::count_alive(EntityType const type) const noexcept -> std:
     return total;
 }
 
-auto CombatStatistics::count_alive_per_team() const noexcept -> telemetry::TeamCounts {
-    telemetry::TeamCounts counts{};
+auto CombatStatistics::count_alive_per_team() const noexcept -> TeamCounts {
+    TeamCounts counts{};
     for (auto const team : EnumTraits<Team>::values) {
         for (auto const type : EnumTraits<EntityType>::values) {
             counts[team] += alive_counts_[team, type];
@@ -106,14 +77,12 @@ auto CombatStatistics::count_alive_per_team() const noexcept -> telemetry::TeamC
     return counts;
 }
 
-auto CombatStatistics::count_alive_per_team_and_type() const noexcept
-    -> telemetry::EntityCounts const& {
+auto CombatStatistics::count_alive_per_team_and_type() const noexcept -> EntityCounts const& {
     return alive_counts_;
 }
 
-auto CombatStatistics::combat_telemetry() const noexcept
-    -> telemetry::CombatTelemetryCounters const& {
-    return combat_telemetry_;
+auto CombatStatistics::kill_count(Team const team) const noexcept -> std::int32_t {
+    return kill_counts_[team];
 }
 
 void CombatStatistics::adjust_alive_count(Team const team,

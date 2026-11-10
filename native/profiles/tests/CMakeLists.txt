@@ -6,7 +6,7 @@ target_sources(native-profiles-tests
     profile_storage_tests.cpp
     browser_tests.cpp
     progression_tests.cpp
-    completion_publication_tests.cpp
+    level_score_tests.cpp
 )
 target_link_libraries(native-profiles-tests
   PRIVATE

@@ -99,7 +99,7 @@ Runtime launch state carries a validated `LevelDefinition`. Catalog selection, e
 preparation and direct file loading all evaluate the same authored root and hand the
 definition to the simulation compiler. Unreal resource preparation applies those resolved
 settings to asset-backed configuration without decoding another source or inheriting a
-runtime-map settings file. Telemetry stores the resolved authored record used for the run.
+runtime-map settings file.
 
 Shared static configuration records live under `native/levels`; runtime state remains under
 simulation. Unreal retains asset references and colour controls. Asset-derived members are

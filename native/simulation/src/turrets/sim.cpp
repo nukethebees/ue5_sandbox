@@ -204,7 +204,6 @@ void Sim::generate_fire_commands(ThinkingInputs const inputs) {
 
 // Resolution
 void Sim::resolve_damage_events(ResolutionInputs const inputs) {
-    auto* const scratch_resource{&inputs.scratch_resource};
 
     SANDBOX_PROFILE_SCOPE("turrets::Sim::resolve_damage_events");
 
@@ -216,9 +215,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                entities.view_locations().const_view().resolve(),
                                healths,
                                inputs.local_indices_to_remove,
-                               inputs.entity_death_info,
-                               inputs.ledger,
-                               scratch_resource);
+                               inputs.entity_death_info);
     auto const locations{entities.view_locations().resolve()};
 
     for (auto const index : inputs.local_indices_to_remove) {

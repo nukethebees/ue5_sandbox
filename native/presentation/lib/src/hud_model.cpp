@@ -39,17 +39,14 @@ void HudModel::initialise(sim::LevelReadAccess const view) {
             static_cast<PeriodicTickCountdown8::counter_type>(ticks)));
     }
     simulation_.emplace(view);
-    top_killer_ids_.reserve(view.entity_ledger().num_unique_ids_issued());
     force_sample();
 }
 void HudModel::deactivate() {
     simulation_.reset();
     update_timers_.reset();
     entity_count_data_ = {};
-    kill_data_ = {};
     player_status_data_ = {};
     player_flight_data_ = {};
-    top_killer_ids_.clear();
     selected_mapping_context_.clear();
 }
 auto HudModel::advance(double const delta_seconds) -> HudChanges {
@@ -81,7 +78,6 @@ auto HudModel::tick(PeriodicTickCountdown8::counter_type const num_ticks) -> Hud
     }
     if (update_timers_.try_consume(1)) {
         changes.entity_counts = collect_entity_count_data();
-        collect_kill_data();
     }
     return changes;
 }
@@ -90,7 +86,6 @@ auto HudModel::force_sample() -> HudChanges {
         return {};
     }
     auto const entity_counts{collect_entity_count_data()};
-    collect_kill_data();
     return {.entity_counts = entity_counts,
             .player_status = collect_player_status_data(),
             .player_flight = collect_player_flight_data(),
@@ -141,40 +136,7 @@ auto HudModel::collect_entity_count_data() -> bool {
         entity_count_data_,
         EntityCountHudData{simulation_->entity_ledger().count_alive_per_team_and_type()});
 }
-void HudModel::collect_kill_data() {
-    auto const& ledger{simulation_->entity_ledger()};
-    auto const& entities{ledger.unique_entities()};
-    auto const count{entities.num()};
-    auto const kills{entities.kills()};
-    auto const ids{entities.entity_ids()};
-    auto const types{entities.entity_types()};
-    auto const teams{entities.teams()};
-    auto const killed_by{entities.killed_by()};
-    top_killer_ids_.clear();
-    for (std::uint32_t index{}; index < count; ++index) {
-        if (kills[index] > 0) {
-            top_killer_ids_.push_back(ids[index]);
-        }
-    }
-    std::ranges::sort(top_killer_ids_, [&](sim::EntityId const lhs, sim::EntityId const rhs) {
-        auto const left{ledger.history_index(lhs)};
-        auto const right{ledger.history_index(rhs)};
-        return kills[left] != kills[right] ? kills[left] > kills[right] : left < right;
-    });
-    kill_data_.top_killers.clear();
-    for (auto const id : top_killer_ids_) {
-        auto const index{ledger.history_index(id)};
-        kill_data_.top_killers.push_back(
-            {id, types[index], teams[index], static_cast<std::int32_t>(kills[index])});
-    }
-    kill_data_.team_kill_matrix = {};
-    for (std::uint32_t index{}; index < count; ++index) {
-        if (killed_by[index].is_valid()) {
-            auto const killer{ledger.history_index(killed_by[index])};
-            ++kill_data_.team_kill_matrix[teams[killer], types[index]];
-        }
-    }
-}
+
 auto HudModel::collect_player_status_data() -> bool {
     std::optional<PlayerStatusHudData> next;
     if (auto const* player{player_for_collection()}) {

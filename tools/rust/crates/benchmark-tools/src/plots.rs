@@ -134,12 +134,7 @@ fn range(values: impl Iterator<Item = f64>) -> Result<std::ops::Range<f64>> {
     Ok((low - padding)..(high + padding))
 }
 
-fn line_plot(
-    path: &Path,
-    title: &str,
-    x_label: &str,
-    panels: &[Panel],
-) -> Result<()> {
+fn line_plot(path: &Path, title: &str, x_label: &str, panels: &[Panel]) -> Result<()> {
     let mut svg = String::new();
     {
         let legend_rows = panels

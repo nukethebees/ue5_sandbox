@@ -7,7 +7,7 @@ using ioj::testing::structurally_equal;
 enum class EntityLedgerScenario : std::uint8_t { TeamCounts, OnePlayerKill, TwoPlayerKills };
 
 namespace {
-constexpr telemetry::TeamCounts expected_team_counts{std::array{0, 1, 2, 3, 4, 5}};
+constexpr TeamCounts expected_team_counts{std::array{0, 1, 2, 3, 4, 5}};
 }
 
 void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config,
@@ -36,15 +36,15 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
 
     if (scenario == EntityLedgerScenario::TeamCounts) {
-        telemetry::TeamCounts counts{};
-        telemetry::EntityCounts type_counts{};
+        TeamCounts counts{};
+        EntityCounts type_counts{};
         harness.on_end_tick = [&](LevelSim&) {
             counts = harness.ledger().count_alive_per_team();
             type_counts = harness.ledger().count_alive_per_team_and_type();
         };
         harness.timeline.finish_at(0.1);
         EXPECT_TRUE(harness.run_until_timeline_finished(1.0)) << "Team-count timeline completes";
-        telemetry::EntityCounts expected_type_counts{};
+        EntityCounts expected_type_counts{};
         for (auto const team : EnumTraits<Team>::values) {
             expected_type_counts[team, EntityType::CapitalShip] = expected_team_counts[team];
         }
