@@ -50,17 +50,13 @@ TEST(NativeEnums, LevelOutcomeAndEndReasonSerializedNamesRoundTrip) {
         EXPECT_EQ(try_parse_serialized_level_outcome(to_serialized_string(value)), value);
     }
     using enum RunEndReason;
-    std::array const reasons{
-        LevelCompleted, BattleResolved, DurationReached, OrchestratorReset, WorldEnd};
+    std::array const reasons{LevelCompleted, DurationReached, OrchestratorReset, WorldEnd};
     for (auto const value : reasons) {
         EXPECT_EQ(try_parse_serialized_run_end_reason(to_serialized_string(value)), value);
     }
-    expect_enum_contracts(reasons,
-                          std::array{"level_completed",
-                                     "battle_resolved",
-                                     "duration_reached",
-                                     "orchestrator_reset",
-                                     "world_end"});
+    expect_enum_contracts(
+        reasons,
+        std::array{"level_completed", "duration_reached", "orchestrator_reset", "world_end"});
 }
 
 TEST(NativeEnums, PlayerEnumsPreserveHudNamesAndFireRateCount) {

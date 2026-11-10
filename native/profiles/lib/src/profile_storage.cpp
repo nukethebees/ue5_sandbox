@@ -92,6 +92,10 @@ auto encode(ProfileIndexData const& value) -> Json {
 auto decode(Json const& json, ProfileResultsData& value) -> bool {
     ProfileResultsData result;
     result.save_version = json.at("version").get<std::int32_t>();
+    if (result.save_version != ProfileResultsData::current_save_version) {
+        return false;
+    }
+
     auto const& rows{json.at("records")};
     if (!rows.is_array()) {
         return false;
@@ -121,6 +125,10 @@ auto decode(Json const& json, ProfileResultsData& value) -> bool {
 auto decode(Json const& json, ProfileIndexData& value) -> bool {
     ProfileIndexData result;
     result.save_version = json.at("version").get<std::int32_t>();
+    if (result.save_version != ProfileIndexData::current_save_version) {
+        return false;
+    }
+
     result.active_profile_id = json.at("active").get<std::string>();
     auto const& rows{json.at("profiles")};
     if (!rows.is_array()) {

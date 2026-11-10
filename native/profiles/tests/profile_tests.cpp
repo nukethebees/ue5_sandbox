@@ -308,31 +308,43 @@ TEST(ProfileManager, FailedDebugSettingsSaveRollsBack) {
 }
 
 TEST(ProfileManager, RejectsUnsupportedProfileVersions) {
+    for (std::int32_t version{}; version <= ProfileIndexData::current_save_version + 1; ++version) {
+        if (version == ProfileIndexData::current_save_version) {
+            continue;
+        }
+        SCOPED_TRACE(version);
+        FakeProfileStorage storage{
+            .index_exists = true,
+            .index = {.save_version = version,
+                      .active_profile_id = "unsupported",
+                      .profiles = {{.profile_id = "unsupported", .display_name = "Unsupported"}}},
+            .results = {{"unsupported", ProfileResultsData{}}},
+        };
+        ProfileManager manager{storage.make()};
+        EXPECT_FALSE(manager.initialise());
+        EXPECT_EQ(storage.index_save_count, 0) << "Rejected index is not rewritten";
+        EXPECT_FALSE(manager.has_active_profile());
+        EXPECT_TRUE(manager.profiles().empty());
+    }
 
-    FakeProfileStorage future_index{
-        .index_exists = true,
-        .index = {.save_version = ProfileIndexData::current_save_version + 1,
-                  .active_profile_id = "future",
-                  .profiles = {{.profile_id = "future", .display_name = "Future"}}},
-        .results = {{"future", ProfileResultsData{}}},
-    };
-    ProfileManager index_manager{future_index.make()};
-    EXPECT_FALSE(index_manager.initialise()) << "Future index version is rejected";
-    EXPECT_EQ(future_index.index_save_count, 0) << "Rejected index is not rewritten";
-
-    FakeProfileStorage future_results{
-        .index_exists = true,
-        .index = {.active_profile_id = "future",
-                  .profiles = {{.profile_id = "future", .display_name = "Future"}}},
-        .results = {{"future",
-                     ProfileResultsData{.save_version =
-                                            ProfileResultsData::current_save_version + 1}}},
-    };
-    ProfileManager results_manager{future_results.make()};
-    EXPECT_FALSE(results_manager.initialise()) << "Future results version is rejected";
-    EXPECT_EQ(future_results.index_save_count, 0) << "Rejected results do not rewrite the index";
-    EXPECT_FALSE(results_manager.has_active_profile());
-    EXPECT_TRUE(results_manager.profiles().empty());
+    for (std::int32_t version{}; version <= ProfileResultsData::current_save_version + 1;
+         ++version) {
+        if (version == ProfileResultsData::current_save_version) {
+            continue;
+        }
+        SCOPED_TRACE(version);
+        FakeProfileStorage storage{
+            .index_exists = true,
+            .index = {.active_profile_id = "unsupported",
+                      .profiles = {{.profile_id = "unsupported", .display_name = "Unsupported"}}},
+            .results = {{"unsupported", ProfileResultsData{.save_version = version}}},
+        };
+        ProfileManager manager{storage.make()};
+        EXPECT_FALSE(manager.initialise());
+        EXPECT_EQ(storage.index_save_count, 0) << "Rejected results do not rewrite the index";
+        EXPECT_FALSE(manager.has_active_profile());
+        EXPECT_TRUE(manager.profiles().empty());
+    }
 }
 
 TEST(ProfileManager, RejectsMissingResultsReferencedByAnExistingIndex) {

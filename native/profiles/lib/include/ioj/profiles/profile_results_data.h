@@ -6,7 +6,7 @@
 
 namespace ioj::profiles {
 struct ProfileResultsData {
-    static constexpr std::int32_t current_save_version{2};
+    static constexpr std::int32_t current_save_version{3};
 
     auto operator==(ProfileResultsData const&) const -> bool = default;
 

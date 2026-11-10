@@ -176,6 +176,15 @@ TEST(ProfileStorage, ConcurrentIndependentManagersKeepEveryResult) {
 TEST(ProfileStorage, RejectsUnsafeIdentifiersAndIncompleteSourcesWithoutPublication) {
     storage_tests::Directory directory;
     auto storage{make_file_profile_storage(directory.path / "source")};
+    for (auto const offset : {-1, 1}) {
+        EXPECT_FALSE(
+            storage.save_index({.save_version = ProfileIndexData::current_save_version + offset}));
+        EXPECT_FALSE(storage.save_results(
+            "unsupported", {.save_version = ProfileResultsData::current_save_version + offset}));
+    }
+    EXPECT_FALSE(std::filesystem::exists(directory.path / "source/profiles.json"));
+    EXPECT_FALSE(std::filesystem::exists(directory.path / "source/profile_unsupported.json"));
+
     EXPECT_FALSE(storage.save_results("../escaped", {}));
     EXPECT_FALSE(storage.save_results("invalid",
                                       {.score_records = {{.level_name = "mission", .kills = -1}}}));

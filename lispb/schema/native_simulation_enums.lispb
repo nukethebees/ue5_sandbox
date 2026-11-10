@@ -58,8 +58,7 @@
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value LevelCompleted :value "0" :serialized-name "level_completed")
-    (value BattleResolved :value "1" :serialized-name "battle_resolved")
-    (value DurationReached :value "2" :serialized-name "duration_reached")
-    (value OrchestratorReset :value "3" :serialized-name "orchestrator_reset")
-    (value WorldEnd :value "4" :serialized-name "world_end")
+    (value DurationReached :value "1" :serialized-name "duration_reached")
+    (value OrchestratorReset :value "2" :serialized-name "orchestrator_reset")
+    (value WorldEnd :value "3" :serialized-name "world_end")
     (projections (cpp))))

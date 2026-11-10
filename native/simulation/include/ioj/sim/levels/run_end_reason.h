@@ -6,6 +6,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
+#include "ioj/parse_enum.h"
 
 #include <array>
 #include <cstdint>
@@ -15,51 +16,21 @@
 namespace ioj::sim {
 using RunEndReasonUnderlying = std::uint8_t;
 
-// Logical bit width: 3.
+// Logical bit width: 2.
 enum class RunEndReason : RunEndReasonUnderlying {
     LevelCompleted = 0,
-    BattleResolved = 1,
-    DurationReached = 2,
-    OrchestratorReset = 3,
-    WorldEnd = 4,
+    DurationReached = 1,
+    OrchestratorReset = 2,
+    WorldEnd = 3,
 };
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_run_end_reason(std::string_view const value) noexcept
     -> std::optional<RunEndReason> {
-    switch (value.size()) {
-        case 9ULL: {
-            if (value == "world_end") {
-                return RunEndReason::WorldEnd;
-            }
-            return std::nullopt;
-        }
-        case 15ULL: {
-            if (value == "level_completed") {
-                return RunEndReason::LevelCompleted;
-            }
-            if (value == "battle_resolved") {
-                return RunEndReason::BattleResolved;
-            }
-            return std::nullopt;
-        }
-        case 16ULL: {
-            if (value == "duration_reached") {
-                return RunEndReason::DurationReached;
-            }
-            return std::nullopt;
-        }
-        case 18ULL: {
-            if (value == "orchestrator_reset") {
-                return RunEndReason::OrchestratorReset;
-            }
-            return std::nullopt;
-        }
-        default: {
-            return std::nullopt;
-        }
-    }
+    std::array<std::string_view, 4> constexpr names{
+        "level_completed", "duration_reached", "orchestrator_reset", "world_end"};
+    return try_parse_enum<RunEndReason>(value, names);
 }
 
 } // namespace ioj::sim
@@ -70,7 +41,7 @@ inline constexpr MinMax<sim::RunEndReason> enum_range<sim::RunEndReason>{
     sim::RunEndReason::LevelCompleted, sim::RunEndReason::WorldEnd};
 
 template <>
-inline constexpr auto enum_strings<sim::RunEndReason, Serialized>{PackedStrings{
-    "level_completed\000battle_resolved\000duration_reached\000orchestrator_reset\000world_end",
-    std::array<std::uint8_t, 6>{0, 16, 32, 49, 68, 78}}};
+inline constexpr auto enum_strings<sim::RunEndReason, Serialized>{
+    PackedStrings{"level_completed\000duration_reached\000orchestrator_reset\000world_end",
+                  std::array<std::uint8_t, 5>{0, 16, 33, 52, 62}}};
 } // namespace ioj
