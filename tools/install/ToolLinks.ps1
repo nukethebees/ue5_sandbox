@@ -24,21 +24,19 @@ function Assert-ToolLinkSupport([string]$Directory) {
     }
 }
 
-function Publish-ToolLinks([string]$Bin, [string[]]$Names, [string]$Directory) {
-    foreach ($name in $Names) {
-        $target = Join-Path ([IO.Path]::GetFullPath($Bin)) $name
-        if (-not (Test-Path -LiteralPath $target -PathType Leaf)) { throw "Missing tool for symlink publication: '$target'." }
-        $link = Join-Path $Directory $name
-        $existing = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
-        if ($existing) {
-            if ($existing.LinkType -eq 'SymbolicLink' -and $existing.LinkTarget -eq $target) { continue }
-            throw "Cannot publish '$link': an existing file or link belongs to another target. Move it aside explicitly, then rerun the installer. Expected target: '$target'."
-        }
-        try {
-            New-Item -ItemType SymbolicLink -Path $link -Target $target | Out-Null
-        } catch {
-            throw "Tool installed at '$target', but publishing symlink '$link' failed. Check Developer Mode and directory permissions, then rerun the installer. Windows reported: $($_.Exception.Message)"
-        }
+function Publish-ToolLink([string]$Target, [string]$Directory) {
+    $target = [IO.Path]::GetFullPath($Target)
+    if (-not (Test-Path -LiteralPath $target -PathType Leaf)) { throw "Missing tool for symlink publication: '$target'." }
+    $link = Join-Path $Directory (Split-Path -Leaf $target)
+    $existing = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
+    if ($existing) {
+        if ($existing.LinkType -eq 'SymbolicLink' -and $existing.LinkTarget -eq $target) { return }
+        throw "Cannot publish '$link': an existing file or link belongs to another target. Move it aside explicitly, then rerun the installer. Expected target: '$target'."
+    }
+    try {
+        New-Item -ItemType SymbolicLink -Path $link -Target $target | Out-Null
+    } catch {
+        throw "Tool installed at '$target', but publishing symlink '$link' failed. Check Developer Mode and directory permissions, then rerun the installer. Windows reported: $($_.Exception.Message)"
     }
     Write-Host "Tool links are in '$Directory'. Keep this one directory on PATH."
 }

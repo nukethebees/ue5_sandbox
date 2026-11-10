@@ -5,6 +5,8 @@ $ErrorActionPreference = 'Stop'
 $powershell_root = Split-Path -Parent $PSScriptRoot
 $scripts = @(Get-ChildItem -LiteralPath $powershell_root -Filter '*.ps1' -File -Recurse | Select-Object -ExpandProperty FullName)
 
+$scripts += Join-Path $powershell_root "../tools/install/ToolLinks.ps1"
+
 $failed = $false
 foreach ($script_path in $scripts) {
     $tokens = $null
