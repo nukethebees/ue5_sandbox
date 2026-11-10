@@ -40,9 +40,6 @@ class ProfileManager {
                               std::string display_name,
                               Timestamp created_at,
                               std::span<ScoreRecord const> records) -> ProfileMetadata;
-    static auto index_version_is_supported(ProfileIndexData const& index) -> bool;
-    static auto results_version_is_supported(ProfileResultsData const& results) -> bool;
-
     bool initialise_locked();
     bool reload_latest(std::string const& active_profile_id);
     bool create_initial_profile();

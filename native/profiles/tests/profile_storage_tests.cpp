@@ -177,10 +177,9 @@ TEST(ProfileStorage, RejectsUnsafeIdentifiersAndIncompleteSourcesWithoutPublicat
     storage_tests::Directory directory;
     auto storage{make_file_profile_storage(directory.path / "source")};
     for (auto const offset : {-1, 1}) {
+        EXPECT_FALSE(storage.save_index({.save_version = current_save_version + offset}));
         EXPECT_FALSE(
-            storage.save_index({.save_version = ProfileIndexData::current_save_version + offset}));
-        EXPECT_FALSE(storage.save_results(
-            "unsupported", {.save_version = ProfileResultsData::current_save_version + offset}));
+            storage.save_results("unsupported", {.save_version = current_save_version + offset}));
     }
     EXPECT_FALSE(std::filesystem::exists(directory.path / "source/profiles.json"));
     EXPECT_FALSE(std::filesystem::exists(directory.path / "source/profile_unsupported.json"));

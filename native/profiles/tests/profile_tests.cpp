@@ -308,8 +308,8 @@ TEST(ProfileManager, FailedDebugSettingsSaveRollsBack) {
 }
 
 TEST(ProfileManager, RejectsUnsupportedProfileVersions) {
-    for (std::int32_t version{}; version <= ProfileIndexData::current_save_version + 1; ++version) {
-        if (version == ProfileIndexData::current_save_version) {
+    for (std::int32_t version{}; version <= current_save_version + 1; ++version) {
+        if (version == current_save_version) {
             continue;
         }
         SCOPED_TRACE(version);
@@ -327,9 +327,8 @@ TEST(ProfileManager, RejectsUnsupportedProfileVersions) {
         EXPECT_TRUE(manager.profiles().empty());
     }
 
-    for (std::int32_t version{}; version <= ProfileResultsData::current_save_version + 1;
-         ++version) {
-        if (version == ProfileResultsData::current_save_version) {
+    for (std::int32_t version{}; version <= current_save_version + 1; ++version) {
+        if (version == current_save_version) {
             continue;
         }
         SCOPED_TRACE(version);

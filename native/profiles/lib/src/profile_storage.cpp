@@ -92,7 +92,7 @@ auto encode(ProfileIndexData const& value) -> Json {
 auto decode(Json const& json, ProfileResultsData& value) -> bool {
     ProfileResultsData result;
     result.save_version = json.at("version").get<std::int32_t>();
-    if (result.save_version != ProfileResultsData::current_save_version) {
+    if (result.save_version != current_save_version) {
         return false;
     }
 
@@ -125,7 +125,7 @@ auto decode(Json const& json, ProfileResultsData& value) -> bool {
 auto decode(Json const& json, ProfileIndexData& value) -> bool {
     ProfileIndexData result;
     result.save_version = json.at("version").get<std::int32_t>();
-    if (result.save_version != ProfileIndexData::current_save_version) {
+    if (result.save_version != current_save_version) {
         return false;
     }
 
@@ -486,13 +486,13 @@ auto clone_profile_files(std::filesystem::path const& source_root,
         return source.with_exclusive_access([&] {
             ProfileIndexData index;
             if (source.load_index(index) != LoadResult::succeeded ||
-                index.save_version != ProfileIndexData::current_save_version) {
+                index.save_version != current_save_version) {
                 return false;
             }
             for (auto const& profile : index.profiles) {
                 ProfileResultsData results;
                 if (source.load_results(profile.profile_id, results) != LoadResult::succeeded ||
-                    results.save_version != ProfileResultsData::current_save_version) {
+                    results.save_version != current_save_version) {
                     return false;
                 }
             }
@@ -536,7 +536,7 @@ auto merge_profile_files(std::span<std::filesystem::path const> sources,
         if (!storage.with_exclusive_access([&] {
                 ProfileIndexData index;
                 if (storage.load_index(index) != LoadResult::succeeded ||
-                    index.save_version != ProfileIndexData::current_save_version) {
+                    index.save_version != current_save_version) {
                     return false;
                 }
                 for (auto const& metadata : index.profiles) {
@@ -546,7 +546,7 @@ auto merge_profile_files(std::span<std::filesystem::path const> sources,
                     ProfileResultsData results;
                     if (storage.load_results(metadata.profile_id, results) !=
                             LoadResult::succeeded ||
-                        results.save_version != ProfileResultsData::current_save_version) {
+                        results.save_version != current_save_version) {
                         return false;
                     }
                     ++summary.source_profile_count;
