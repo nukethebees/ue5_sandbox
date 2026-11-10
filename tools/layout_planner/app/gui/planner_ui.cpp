@@ -53,7 +53,7 @@ void record_layout(layout::AnalysisStorage const& storage, layout::AggregateLayo
         ImGui::TableSetupColumn("Padding before");
         ImGui::TableHeadersRow();
         auto const end{record.members.begin + record.members.count};
-        auto const members{storage.components.get_const_view().resolve()};
+        auto const members{storage.components.view().resolve()};
         for (auto row{record.members.begin}; row < end; ++row) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
@@ -83,7 +83,7 @@ void packed_layout(layout::AnalysisStorage const& storage, layout::PackedLayout 
         ImGui::TableSetupColumn("Low bit");
         ImGui::TableHeadersRow();
         auto const end{packed.fields.begin + packed.fields.count};
-        auto const fields{storage.fields.get_const_view().resolve()};
+        auto const fields{storage.fields.view().resolve()};
         for (auto row{packed.fields.begin}; row < end; ++row) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
@@ -112,7 +112,7 @@ void soa_layout(layout::AnalysisStorage const& storage, layout::SoaLayout const&
         ImGui::TableSetupColumn("Allocation offset");
         ImGui::TableHeadersRow();
         auto const end{soa.columns.begin + soa.columns.count};
-        auto const columns{storage.columns.get_const_view().resolve()};
+        auto const columns{storage.columns.view().resolve()};
         for (auto row{soa.columns.begin}; row < end; ++row) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
