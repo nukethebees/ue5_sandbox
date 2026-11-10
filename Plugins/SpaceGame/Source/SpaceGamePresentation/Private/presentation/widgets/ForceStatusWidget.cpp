@@ -29,7 +29,7 @@ auto force_categories() -> TConstArrayView<FForceCategory> {
 }
 
 namespace ioj {
-void UForceStatusWidget::set_entity_counts(sim::telemetry::EntityCounts const& counts) {
+void UForceStatusWidget::set_entity_counts(sim::EntityCounts const& counts) {
     entity_counts_ = counts;
     refresh_content();
 }

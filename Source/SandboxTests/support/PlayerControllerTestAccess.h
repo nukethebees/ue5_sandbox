@@ -51,10 +51,7 @@ struct FPlayerControllerTestAccess {
     static auto has_modal(ioj::ASpaceGamePlayerController const& controller) -> bool {
         return controller.modal_ui_.has_modal();
     }
-    static void complete(ioj::ASpaceGamePlayerController& controller,
-                         FLevelCompletion const& completion) {
-        controller.on_level_completed(completion);
-    }
+
     static void close_completion(ioj::ASpaceGamePlayerController& controller) {
         if (auto* const menu{controller.modal_ui_.completion_menu_.Get()}; IsValid(menu)) {
             menu->DeactivateWidget();

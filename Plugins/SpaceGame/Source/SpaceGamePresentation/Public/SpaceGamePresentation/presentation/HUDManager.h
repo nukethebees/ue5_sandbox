@@ -75,7 +75,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     auto get_entity_count_data() const -> presentation::EntityCountHudData const& {
         return model_.entity_count_data();
     }
-    auto get_kill_data() const -> presentation::KillHudData const& { return model_.kill_data(); }
+
   private:
     using FWorldSoftTargetCustomDataBuffer =
         TArray<float, TInlineAllocator<soft_target_world::custom_data_count * 2>>;

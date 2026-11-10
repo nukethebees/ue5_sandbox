@@ -28,8 +28,6 @@ SPACEGAME_API auto prepare_level_simulation(FLevelSimulationRequest const& reque
     -> FLevelSimBuildResult;
 
 SPACEGAME_API auto configure_level_run(sim::LevelSimInitData& data,
-                                       UWorld const& world,
-                                       levels::LevelDefinition const& definition,
                                        levels::LaunchOptions const& options)
     -> std::expected<void, FLevelStartErrors>;
 

@@ -241,21 +241,6 @@ auto UGameSubsystem::return_to_level_select(FName const preferred_level_id) -> b
     return true;
 }
 
-auto UGameSubsystem::return_to_telemetry(std::expected<std::string, std::string> result) -> bool {
-    auto* const world{GetWorld()};
-    if (!IsValid(world)) {
-        UE_LOG(LogSandboxSubsystem,
-               Error,
-               TEXT("UGameSubsystem::return_to_telemetry: World is invalid."));
-        return false;
-    }
-    if (!launch_state_.request_menu(session::TelemetryRequest{std::move(result)})) {
-        return false;
-    }
-    UGameplayStatics::OpenLevel(world, get_main_menu_level_name());
-    return true;
-}
-
 auto UGameSubsystem::take_menu_request() -> std::optional<session::MenuRequest> {
     return launch_state_.take_menu_request();
 }

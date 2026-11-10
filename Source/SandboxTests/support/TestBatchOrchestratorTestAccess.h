@@ -2,7 +2,6 @@
 
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/telemetry/LevelTelemetryIntegration.h>
 
 struct FTestBatchOrchestratorTestAccess {
     static void queue_direct_damage_events(ioj::ATestBatchOrchestrator& orchestrator,
@@ -12,15 +11,8 @@ struct FTestBatchOrchestratorTestAccess {
             orchestrator.level_simulation_.GetValue(), events);
     }
     static void stop_run(ioj::ATestBatchOrchestrator& orchestrator,
-                         ::ioj::sim::telemetry::RunEndReason reason) {
+                         ::ioj::sim::RunEndReason reason) {
         check(orchestrator.level_simulation_.IsSet());
         orchestrator.level_simulation_->stop_run(reason);
-    }
-    static auto telemetry_report(ioj::ATestBatchOrchestrator& orchestrator)
-        -> TOptional<::ioj::sim::telemetry::Report> {
-        check(orchestrator.level_simulation_.IsSet());
-        return ::ioj::make_level_telemetry_report(orchestrator.level_simulation_.GetValue(),
-                                                  orchestrator.launch_options_,
-                                                  orchestrator.is_presentation_enabled());
     }
 };

@@ -13,7 +13,6 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestNiagaraComponent.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationHost.h>
@@ -26,11 +25,7 @@
 
 #include <Engine/StaticMesh.h>
 #include <Engine/World.h>
-#include <HAL/FileManager.h>
 #include <Misc/AutomationTest.h>
-#include <Misc/FileHelper.h>
-#include <Misc/Guid.h>
-#include <Misc/Paths.h>
 #include <Misc/ScopeExit.h>
 #include <NiagaraComponent.h>
 #include <NiagaraSystem.h>
@@ -671,40 +666,5 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
 
     TestTrue(TEXT("The test exercises removal churn"),
              lasers.get_number_spawned() > lasers.num_instances());
-    return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FLevelTelemetryFileAdapterTest,
-    "Sandbox.UnitTests.LevelSimulation.TelemetryFileAdapterWritesNativeReport",
-    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-auto FLevelTelemetryFileAdapterTest::RunTest(FString const&) -> bool {
-    auto data{compile_battle(make_battle())};
-    data.telemetry_metadata.run_id = "12345678-1234-1234-1234-123456789abc";
-    ::ioj::sim::LevelSim simulation{std::move(data)};
-
-    simulation.stop_run(::ioj::sim::telemetry::RunEndReason::WorldEnd);
-    auto run{simulation.telemetry_run()};
-    if (!TestTrue(TEXT("Stopped native run is available"), run.has_value())) {
-        return false;
-    }
-    ioj::sim::telemetry::Report report{std::move(*run)};
-    auto const directory{FPaths::Combine(
-        FPaths::ProjectSavedDir(), TEXT("Automation/Telemetry"), FGuid::NewGuid().ToString())};
-    ON_SCOPE_EXIT {
-        IFileManager::Get().DeleteDirectory(*directory, false, true);
-    };
-    auto const path{write_level_telemetry_run(report, directory)};
-    if (!TestTrue(TEXT("Unreal file adapter writes the report"), path.has_value())) {
-        return false;
-    }
-    FString text;
-    TestTrue(TEXT("Report can be read through Unreal"),
-             FFileHelper::LoadFileToString(text, **path));
-    TestTrue(TEXT("Written report retains the native run"),
-             ioj::to_string(text).find(report.run.metadata.run_id) != std::string::npos);
-    TestTrue(TEXT("Atomic publication leaves no temporary file"),
-             IFileManager::Get().FileSize(*(*path + TEXT(".tmp"))) < 0);
     return true;
 }

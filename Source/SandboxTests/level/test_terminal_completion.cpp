@@ -1,16 +1,9 @@
-#include <ioj/sim/telemetry/run_catalog.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/telemetry/LevelTelemetryJson.h>
 
-#include <CoreGlobals.h>
 #include <CQTest.h>
-#include <Misc/ScopeExit.h>
-
-#include <algorithm>
-#include <filesystem>
 
 TEST_CLASS(TerminalCompletion, "Sandbox.LevelTests")
 {
@@ -48,7 +41,7 @@ TEST_CLASS(TerminalCompletion, "Sandbox.LevelTests")
                                      : loaded.error().format(TEXT("terminal-test")));
     }
 
-    TEST_METHOD(InitialAndTickDrivenOutcomesAreReportedOnce)
+    TEST_METHOD(InitialAndTickDrivenOutcomesAreSavedOnce)
     {
         TestCommandBuilder.Do([this] {
             auto& orchestrator{*level_setup.get_orchestrator()};
@@ -57,16 +50,6 @@ TEST_CLASS(TerminalCompletion, "Sandbox.LevelTests")
             for (auto const initial : {true, false}) {
                 for (auto const winner : {ioj::Team::Blue, ioj::Team::Red}) {
                     auto const before{profiles.active_records().size()};
-                    TArray<FLevelCompletion> completions;
-                    auto const listener{orchestrator.on_level_completed.AddLambda(
-                        [&](FLevelCompletion const& completion) {
-                            completions.Add(completion);
-                            orchestrator.tick(0.0);
-                        })};
-                    ON_SCOPE_EXIT {
-                        orchestrator.on_level_completed.Remove(listener);
-                    };
-
                     ioj::levels::LogicDefinition logic;
                     if (initial) {
                         logic.initial_effects = {ioj::levels::WinEffect{winner}};
@@ -84,45 +67,34 @@ TEST_CLASS(TerminalCompletion, "Sandbox.LevelTests")
                         orchestrator.tick(
                             orchestrator.get_level_simulation()->clock().tick_period());
                     }
-                    auto const* simulation{orchestrator.get_level_simulation()};
-                    checks.is_true(simulation->result()->winner == winner,
-                                   TEXT("First terminal result retains the winning team"));
-                    checks.are_equal(initial ? uint64{0} : uint64{1},
-                                     simulation->result()->terminal.tick.value(),
-                                     TEXT("Completion retains the actual terminal tick"));
+                    checks.is_true(orchestrator.get_level_simulation() == nullptr,
+                                   TEXT("Ending the level releases the simulation"));
                     orchestrator.tick(0.0);
                     orchestrator.tick(1.0);
-                    checks.are_equal(1, completions.Num(), TEXT("Completion callback occurs once"));
-                    checks.are_equal(before + 1,
-                                     profiles.active_records().size(),
-                                     TEXT("Completion appends one profile record"));
-                    if (completions.Num() == 1) {
-                        checks.is_true(completions[0].state == (winner == ioj::Team::Blue
-                                                                    ? ioj::ELevelOutcome::Victory
-                                                                    : ioj::ELevelOutcome::Defeat),
-                                       TEXT("Callback distinguishes victory and defeat"));
-                        checks.are_equal(FString{TEXT("level_completed")},
-                                         completions[0].end_reason,
-                                         TEXT("Callback retains the termination reason"));
+                    if (!checks.are_equal(before + 1,
+                                          profiles.active_records().size(),
+                                          TEXT("Completion saves one profile record"))) {
+                        return;
                     }
-                    auto first{simulation->telemetry_run()};
-                    auto second{simulation->telemetry_run()};
-                    checks.is_true(first && second &&
-                                       first->completion.completed_ticks ==
-                                           second->completion.completed_ticks,
-                                   TEXT("Telemetry stays queryable after completion handling"));
+                    auto const& record{profiles.active_records().back()};
+                    checks.is_true(record.outcome == (winner == ioj::Team::Blue
+                                                          ? ioj::LevelOutcome::Victory
+                                                          : ioj::LevelOutcome::Defeat),
+                                   TEXT("Saved score distinguishes victory and defeat"));
+                    checks.is_true(record.end_reason == ioj::sim::RunEndReason::LevelCompleted,
+                                   TEXT("Saved score retains the termination reason"));
+                    checks.is_true(initial ? record.time_seconds == 0.f : record.time_seconds > 0.f,
+                                   TEXT("Saved time reflects initialization or tick completion"));
                     orchestrator.reset_for_new_level();
                     checks.are_equal(before + 1,
                                      profiles.active_records().size(),
-                                     TEXT("Teardown does not append another profile record"));
-                    checks.are_equal(
-                        1, completions.Num(), TEXT("Teardown does not replay the callback"));
+                                     TEXT("Reset does not save the same result again"));
                 }
             }
         });
     }
 
-    TEST_METHOD(ExternalStopWithoutAnotherTickIsReportedOnce)
+    TEST_METHOD(ExternalStopWithoutAnotherTickIsSavedOnce)
     {
         TestCommandBuilder.Do([this] {
             auto& orchestrator{*level_setup.get_orchestrator()};
@@ -132,35 +104,27 @@ TEST_CLASS(TerminalCompletion, "Sandbox.LevelTests")
             auto& profiles{
                 ioj::USpaceSaveSubsystem::get(orchestrator.GetGameInstance())->profiles()};
             auto const before{profiles.active_records().size()};
-            TArray<FLevelCompletion> completions;
-            auto const listener{orchestrator.on_level_completed.AddLambda(
-                [&](FLevelCompletion const& completion) { completions.Add(completion); })};
-            ON_SCOPE_EXIT {
-                orchestrator.on_level_completed.Remove(listener);
-            };
-            FTestBatchOrchestratorTestAccess::stop_run(
-                orchestrator, ioj::sim::telemetry::RunEndReason::DurationReached);
+            FTestBatchOrchestratorTestAccess::stop_run(orchestrator,
+                                                       ioj::sim::RunEndReason::DurationReached);
             orchestrator.tick(0.0);
             orchestrator.tick(0.0);
-            checks.are_equal(
-                uint64{0},
-                orchestrator.get_level_simulation()->clock().get_completed_ticks().value(),
-                TEXT("External completion needs no simulation tick"));
-            checks.are_equal(1, completions.Num(), TEXT("External stop is reported once"));
-            if (completions.Num() == 1) {
-                checks.is_true(completions[0].state == ioj::ELevelOutcome::Stopped,
-                               TEXT("Stopping does not invent a winner"));
-                checks.are_equal(FString{TEXT("duration_reached")},
-                                 completions[0].end_reason,
-                                 TEXT("External stop retains its reason"));
+            checks.is_true(orchestrator.get_level_simulation() == nullptr,
+                           TEXT("External stop releases the simulation"));
+            if (!checks.are_equal(before + 1,
+                                  profiles.active_records().size(),
+                                  TEXT("External stop saves one profile record"))) {
+                return;
             }
-            checks.are_equal(before + 1,
-                             profiles.active_records().size(),
-                             TEXT("External stop appends one profile record"));
+            auto const& record{profiles.active_records().back()};
+            checks.are_equal(0.f, record.time_seconds, TEXT("External stop needs no tick"));
+            checks.is_true(record.outcome == ioj::LevelOutcome::Stopped,
+                           TEXT("Stopping does not invent a winner"));
+            checks.is_true(record.end_reason == ioj::sim::RunEndReason::DurationReached,
+                           TEXT("External stop retains its reason"));
         });
     }
 
-    TEST_METHOD(TeardownSavesPendingResultsWithoutOpeningUi)
+    TEST_METHOD(TeardownSavesPendingResults)
     {
         TestCommandBuilder.Do([this] {
             auto& orchestrator{*level_setup.get_orchestrator()};
@@ -170,49 +134,19 @@ TEST_CLASS(TerminalCompletion, "Sandbox.LevelTests")
             auto& profiles{
                 ioj::USpaceSaveSubsystem::get(orchestrator.GetGameInstance())->profiles()};
             auto const before{profiles.active_records().size()};
-            int32 notifications{};
-            auto const listener{orchestrator.on_level_completed.AddLambda(
-                [&](FLevelCompletion const&) { ++notifications; })};
-            ON_SCOPE_EXIT {
-                orchestrator.on_level_completed.Remove(listener);
-            };
-            FTestBatchOrchestratorTestAccess::stop_run(
-                orchestrator, ioj::sim::telemetry::RunEndReason::DurationReached);
-            auto const run_id{
-                orchestrator.get_level_simulation()->telemetry_run()->metadata.run_id};
-            {
-                TGuardValue<bool> persist_reports{GIsAutomationTesting, false};
-                orchestrator.reset_for_new_level();
-            }
+            FTestBatchOrchestratorTestAccess::stop_run(orchestrator,
+                                                       ioj::sim::RunEndReason::DurationReached);
+            orchestrator.reset_for_new_level();
             checks.is_true(orchestrator.get_level_simulation() == nullptr,
                            TEXT("Teardown releases the simulation"));
-            checks.are_equal(0, notifications, TEXT("Teardown does not open completion UI"));
-            checks.are_equal(before + 1,
-                             profiles.active_records().size(),
-                             TEXT("Teardown records the pending result"));
-
-            ioj::sim::telemetry::RunCatalog catalog{
-                std::filesystem::path{*level_telemetry_runs_directory()}};
-            catalog.refresh();
-            auto const saved{std::ranges::find(
-                catalog.runs(), run_id, &ioj::sim::telemetry::RunSummary::run_id)};
-            if (!checks.is_true(saved != catalog.runs().end(),
-                                TEXT("Teardown persists telemetry"))) {
+            if (!checks.are_equal(before + 1,
+                                  profiles.active_records().size(),
+                                  TEXT("Teardown saves the pending result"))) {
                 return;
             }
-            ON_SCOPE_EXIT {
-                std::filesystem::remove(saved->path);
-            };
-            checks.is_true(catalog.select_run(run_id),
-                           TEXT("Saved telemetry reloads after teardown"));
-            if (auto const* report{catalog.selected_record()}) {
-                checks.is_true(report->run.completion.reason ==
-                                   ioj::sim::telemetry::RunEndReason::DurationReached,
-                               TEXT("Teardown preserves the original completion reason"));
-                checks.are_equal(uint64{0},
-                                 report->run.completion.completed_ticks.value(),
-                                 TEXT("Saved report preserves the terminal tick"));
-            }
+            checks.is_true(profiles.active_records().back().end_reason ==
+                               ioj::sim::RunEndReason::DurationReached,
+                           TEXT("Teardown preserves the pending completion reason"));
             if (!load()) {
                 return;
             }
@@ -220,8 +154,6 @@ TEST_CLASS(TerminalCompletion, "Sandbox.LevelTests")
             checks.are_equal(before + 1,
                              profiles.active_records().size(),
                              TEXT("Reset-only stops do not create profile results"));
-            checks.are_equal(
-                0, notifications, TEXT("Reset-only stops do not notify completion UI"));
         });
     }
 };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/sim/entities/entity_telemetry.h"
+#include "ioj/sim/entities/team_entity_array.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 
 #include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
@@ -22,7 +22,7 @@ class SPACEGAMEPRESENTATION_API USimulationHudWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     virtual void apply_ui_style(FGameUiStyle const& style);
-    void set_entity_counts(sim::telemetry::EntityCounts const& counts);
+    void set_entity_counts(sim::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
 
     void set_entity_overlay_frame_store(FEntityOverlayFrameStoreConstPtr frame_store);

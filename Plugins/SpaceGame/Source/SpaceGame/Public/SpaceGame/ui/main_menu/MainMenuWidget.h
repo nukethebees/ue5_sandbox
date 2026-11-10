@@ -13,12 +13,10 @@ class UGameSubsystem;
 class ULevelSelectWidget;
 class UOptionsWidget;
 class USaveGameViewerWidget;
-class UTelemetryDashboardWidget;
 
 enum class EMainMenuPage : uint8 {
     SelectMission,
     DataArchive,
-    Telemetry,
     Video,
     Gameplay,
     Audio,
@@ -36,10 +34,7 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
 
     void prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class,
                           bool focus_mission_content,
-                          FName preferred_level_id,
-                          bool show_telemetry = false,
-                          FString telemetry_run_id = {},
-                          FString telemetry_error = {});
+                          FName preferred_level_id);
     void select_page(EMainMenuPage page);
 
     [[nodiscard]] auto get_active_page() const noexcept -> EMainMenuPage { return active_page_; }
@@ -53,9 +48,7 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     [[nodiscard]] auto get_save_game_viewer() const -> USaveGameViewerWidget* {
         return save_game_viewer_;
     }
-    [[nodiscard]] auto get_telemetry_dashboard() const -> UTelemetryDashboardWidget* {
-        return telemetry_dashboard_;
-    }
+
   protected:
     void NativeOnInitialized() override;
     auto RebuildWidget() -> TSharedRef<SWidget> override;
@@ -84,8 +77,6 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     UPROPERTY(Transient)
     USaveGameViewerWidget* save_game_viewer_{nullptr};
     UPROPERTY(Transient)
-    UTelemetryDashboardWidget* telemetry_dashboard_{nullptr};
-    UPROPERTY(Transient)
     UOptionsWidget* options_widget_{nullptr};
     UPROPERTY(Transient)
     UDebugSettingsWidget* debug_settings_widget_{nullptr};
@@ -98,6 +89,5 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     bool focus_mission_content_{};
     bool options_open_{};
     bool page_modal_visible_{};
-    FString initial_telemetry_run_id_{};
 };
 } // namespace ioj

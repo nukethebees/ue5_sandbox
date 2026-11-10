@@ -108,7 +108,8 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void on_pause_menu_deactivated();
     void on_completion_menu_deactivated();
     void on_simulation_paused();
-    void on_level_completed(FLevelCompletion const& completion);
+    void finish_level();
+    void show_level_completion(FLevelCompletion const& completion);
     void return_to_level_select();
     void quit_game();
 

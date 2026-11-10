@@ -25,10 +25,7 @@ auto UGameUiRootLayout::initialise(UTestBatchGameUiData& ui_data) -> bool {
 }
 
 auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
-                                       FName const preferred_level_id,
-                                       bool const show_telemetry,
-                                       FString telemetry_run_id,
-                                       FString telemetry_error) -> bool {
+                                       FName const preferred_level_id) -> bool {
     auto* const ui_data{ui_data_.Get()};
     if (!IsValid(ui_data) || !IsValid(screen_stack)) {
         UE_LOG(LogSandboxUI,
@@ -42,18 +39,10 @@ auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
     auto const level_select_class{ui_data->get_widget_class<ULevelSelectWidget>()};
     auto* const main_menu{screen_stack->AddWidget<UMainMenuWidget>(
         main_menu_class,
-        [level_select_class,
-         show_level_select_screen,
-         preferred_level_id,
-         show_telemetry,
-         telemetry_run_id = MoveTemp(telemetry_run_id),
-         telemetry_error = MoveTemp(telemetry_error)](UMainMenuWidget& widget) {
-            widget.prepare_for_open(level_select_class,
-                                    show_level_select_screen,
-                                    preferred_level_id,
-                                    show_telemetry,
-                                    telemetry_run_id,
-                                    telemetry_error);
+        [level_select_class, show_level_select_screen, preferred_level_id](
+            UMainMenuWidget& widget) {
+            widget.prepare_for_open(
+                level_select_class, show_level_select_screen, preferred_level_id);
         })};
     if (!IsValid(main_menu)) {
         UE_LOG(LogSandboxUI,
@@ -65,8 +54,7 @@ auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
     return true;
 }
 
-auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action, FPauseMenuData data)
-    -> UPauseMenuWidget* {
+auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action) -> UPauseMenuWidget* {
     auto* const ui_data{ui_data_.Get()};
     if (!IsValid(ui_data) || !IsValid(modal_stack)) {
         UE_LOG(LogSandboxUI,
@@ -88,9 +76,7 @@ auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action, FPauseMenuD
     auto const pause_menu_class{ui_data->get_widget_class<UPauseMenuWidget>()};
     auto* const pause_menu{modal_stack->AddWidget<UPauseMenuWidget>(
         pause_menu_class,
-        [&toggle_action, data = MoveTemp(data)](UPauseMenuWidget& widget) mutable {
-            widget.prepare_for_open(toggle_action, MoveTemp(data));
-        })};
+        [&toggle_action](UPauseMenuWidget& widget) { widget.prepare_for_open(toggle_action); })};
     if (!IsValid(pause_menu)) {
         UE_LOG(LogSandboxUI,
                Error,
@@ -99,12 +85,7 @@ auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action, FPauseMenuD
     return pause_menu;
 }
 
-auto UGameUiRootLayout::show_level_completion(FString level_display_name,
-                                              ELevelOutcome const state,
-                                              FString const& end_reason,
-                                              sim::telemetry::Snapshot snapshot,
-                                              TOptional<float> const par_time_seconds,
-                                              bool const new_best_time) -> ULevelCompletionWidget* {
+auto UGameUiRootLayout::show_level_completion(FLevelCompletion data) -> ULevelCompletionWidget* {
     auto* const ui_data{ui_data_.Get()};
     if (!IsValid(ui_data) || !IsValid(modal_stack)) {
         UE_LOG(LogSandboxUI,
@@ -125,19 +106,8 @@ auto UGameUiRootLayout::show_level_completion(FString level_display_name,
 
     auto const completion_class{ui_data->get_widget_class<ULevelCompletionWidget>()};
     auto* const completion{modal_stack->AddWidget<ULevelCompletionWidget>(
-        completion_class,
-        [name = MoveTemp(level_display_name),
-         state,
-         end_reason,
-         snapshot = MoveTemp(snapshot),
-         par_time_seconds,
-         new_best_time](ULevelCompletionWidget& widget) mutable {
-            widget.prepare_for_open(MoveTemp(name),
-                                    state,
-                                    end_reason,
-                                    MoveTemp(snapshot),
-                                    par_time_seconds,
-                                    new_best_time);
+        completion_class, [data = MoveTemp(data)](ULevelCompletionWidget& widget) mutable {
+            widget.prepare_for_open(MoveTemp(data));
         })};
     if (!IsValid(completion)) {
         UE_LOG(LogSandboxUI,

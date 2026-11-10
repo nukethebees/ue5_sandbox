@@ -7,11 +7,10 @@ and teardown. Simulation policy and presentation work belong to the owners below
 | Owner | Responsibility |
 |---|---|
 | `prepare_level_simulation` | Validate effective configuration and compile an authored definition with Unreal mesh and collision resources into native initialization data |
-| `configure_level_run` | Apply run metadata and optional duration-limit events to initialization data |
+| `configure_level_run` | Apply optional duration-limit events to initialization data |
 | `FLevelLoader` | Validate launch options and create authored player/camera actors using an optional visual context with a controller reference |
 | `ioj::sim::LevelSim` | Own the worldless simulation and execute its fixed-tick phases |
 | `FLevelPresentationHost` | Bind actor-owned components, maintain HUD and presentation, and display collision snapshots |
-| `LevelTelemetryIntegration` | Read repeatable native reports and persist them |
 | `reset_level_world` | Remove gameplay actors while retaining framework actors; the level loader constructs the next authored level |
 
 The presentation host belongs to `SpaceGamePresentation` and receives native read access and
@@ -39,23 +38,29 @@ loading when the launch options request a running simulation.
 
 Harvest static geometry after the editor proxies have been removed from the PIE world, and put
 the bounds in `LevelSimInitData::collision.static_bounds` before construction. Native construction
-dispatches initial events, publishes entity lookup rows and the spatial index, initializes telemetry
+dispatches initial events, publishes entity lookup rows and the spatial index,
 and resets its clock to tick zero and `BetweenTicks`. The simulation returns paused, or stopped if
 an initial terminal event ends the run. Bind player commands and initialize presentation and HUD
 afterward, then activate controls and apply the requested start
 mode. Presentation derives initial entity transforms from the initialized native state.
 `LaunchOptions::presentation_mode` controls presentation throughout the run.
 
-Use `get_level_simulation()` for native timing, entity simulations, queries, logic results and telemetry.
+Use `get_level_simulation()` for native timing, entity simulations, queries and logic results.
 It returns null before construction and after release. Actor accessors cover configuration,
 presentation, player actors and launch behavior; `get_state()` also covers the absence of a level.
 
 A running Unreal frame advances the native fixed ticks before presenting the completed frame.
-Presentation observes the final tick of a catch-up frame. Player death and level-completion
-notifications follow presentation. After loading and on each ready-level frame, the orchestrator
-checks `LevelSim::result()`. One per-run flag prevents repeated profile writes, reports and UI
-notifications, including reentrant callbacks. Completion does not depend on advancing the clock.
-Telemetry itself remains repeatably queryable and knows nothing about these consumers.
+Presentation observes the final tick of a catch-up frame. After loading and on each ready-level
+frame, the orchestrator checks `LevelSim::result()`. `end_level()` captures the completion data and
+optional player score, clears controller and presentation bindings, and releases the simulation.
+It then saves the profile score and opens the completion screen. The screen owns its scalar data;
+it does not retain the simulation. Failed saving is logged but does not prevent displaying results.
+There is no completion broadcast or per-run publication flag. Later frames have no level to end.
+
+Profile records retain the level ID, player team, outcome, stop reason, kills, elapsed time and date.
+The mission selector uses them for best times and the profile archive displays previous results.
+The completion screen displays outcome, winner/reason, elapsed time and profile team kills, with par-time and best-time information. The pause menu contains resume, options and exit actions.
+HUD counts and ship instruments remain; there is no historical telemetry recording or dashboard.
 
 The actor keeps ticking while the level is paused. Every ready-level frame calls `advance()` to
 consume between-tick requests, while paused calls leave simulation time and presentation unchanged.
@@ -63,14 +68,10 @@ Pause requests take effect on the next advance; the orchestrator then notifies t
 open a pending pause menu and refresh run controls. Resume remains direct. Paused launches enter
 that state during initialization without queueing a pause request.
 
-During reset or world teardown, stop the run and release HUD/player bindings before destroying
-the native level. Reset the presentation host while its components and simulation are still
-alive. The same completion handler saves any pending terminal result and report before releasing
-the simulation, without callbacks or navigation during teardown. Stops created solely by world
-teardown or reset save telemetry but do not create profile scores. World reset removes gameplay
-actors. The next explicit authored load constructs its player, camera and simulation through the
-usual loader. Reset subscribers observe the cleared world.
-Automation skips persistence and navigation. Telemetry remains available for repeatable inspection.
+Reset and world teardown use the same ending sequence without opening a completion screen.
+An already completed result is saved before its simulation is released; reset-only and world-end
+stops do not create scores. World reset then removes gameplay actors. The next authored load
+constructs its player, camera and simulation through the usual loader.
 
 ## Collision and spawning
 

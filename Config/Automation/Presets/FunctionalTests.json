@@ -30,7 +30,6 @@
 		"Sandbox.LevelTests.SharedSimulation.Mission_SuccessIsTerminal",
 		"Sandbox.LevelTests.SharedSimulation.Mission_SurviveTime",
 		"Sandbox.LevelTests.SharedSimulation.Orchestrator_FixedStepPauseResumeAndCatchUp",
-		"Sandbox.LevelTests.SharedSimulation.Orchestrator_LevelTelemetry",
 		"Sandbox.LevelTests.SharedSimulation.Orchestrator_ResetForNewLevel",
 		"Sandbox.LevelTests.SharedSimulation.Orchestrator_SimulationClockConversions",
 		"Sandbox.LevelTests.SharedSimulation.Orchestrator_SpawnMissingActors",

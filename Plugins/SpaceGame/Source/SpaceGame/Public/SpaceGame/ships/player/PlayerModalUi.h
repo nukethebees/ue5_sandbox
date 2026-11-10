@@ -2,7 +2,6 @@
 
 #include <ioj/levels/control_context.h>
 #include <ioj/session/modal_resume_state.h>
-#include <ioj/sim/telemetry/snapshot.h>
 
 #include <CoreMinimal.h>
 
@@ -18,7 +17,6 @@ class ASpaceGamePlayerController;
 class UGameUiRootLayout;
 class UPauseMenuWidget;
 class ULevelCompletionWidget;
-struct FPauseMenuData;
 
 USTRUCT()
 struct SPACEGAME_API FPlayerModalUi {
@@ -37,11 +35,9 @@ struct SPACEGAME_API FPlayerModalUi {
     /* **************************************** */
     // Modal widgets and callbacks
     /* **************************************** */
-    auto show_pause(ASpaceGamePlayerController& owner, UInputAction& action, FPauseMenuData data)
+    auto show_pause(ASpaceGamePlayerController& owner, UInputAction& action) -> bool;
+    auto show_completion(ASpaceGamePlayerController& owner, FLevelCompletion const& completion)
         -> bool;
-    auto show_completion(ASpaceGamePlayerController& owner,
-                         FLevelCompletion const& completion,
-                         sim::telemetry::Snapshot snapshot) -> bool;
     void detach_callbacks(ASpaceGamePlayerController& owner);
     void clear_modals(ASpaceGamePlayerController& owner);
     void clear_menus(ASpaceGamePlayerController& owner);
@@ -50,6 +46,7 @@ struct SPACEGAME_API FPlayerModalUi {
     void deactivate_pause();
     auto has_root() const -> bool;
     auto has_modal() const -> bool;
+    auto completed_level_id() const -> FName;
     auto has_completion() const -> bool;
     auto is_pause_active() const -> bool;
     auto is_completion_active() const -> bool;

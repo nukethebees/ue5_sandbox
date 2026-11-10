@@ -2,14 +2,15 @@
 
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/launch_options.h>
+#include <ioj/profiles/level_score.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
+#include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/LevelWorldReset.h>
-#include <SpaceGame/telemetry/LevelTelemetryIntegration.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -71,15 +72,11 @@ void ATestBatchOrchestrator::BeginPlay() {
     }
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
-    release_level(sim::telemetry::RunEndReason::WorldEnd);
+    end_level(sim::RunEndReason::WorldEnd, false);
     Super::EndPlay(end_play_reason);
 }
-void ATestBatchOrchestrator::release_level(sim::telemetry::RunEndReason const reason) {
+void ATestBatchOrchestrator::release_level() {
     SetActorTickEnabled(false);
-    if (level_simulation_.IsSet()) {
-        level_simulation_->stop_run(reason);
-        report_run_completion(false);
-    }
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
     }
@@ -90,7 +87,6 @@ void ATestBatchOrchestrator::release_level(sim::telemetry::RunEndReason const re
         check(game_subsystem);
         game_subsystem->reset_level_memory();
     }
-    completion_reported_ = false;
 }
 void ATestBatchOrchestrator::start_simulation() {
     if (get_state() != sim::LevelState::Paused) {
@@ -113,7 +109,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
         UE_LOG(LogSandbox, Fatal, TEXT("Cannot reset level: world is invalid"));
         return;
     }
-    release_level(sim::telemetry::RunEndReason::OrchestratorReset);
+    end_level(sim::RunEndReason::OrchestratorReset, false);
     launch_options_ = {.presentation_mode = launch_options_.presentation_mode};
     clear_player_ship();
     reset_level_world(*world, *this);
@@ -261,7 +257,7 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
         return fail(ELevelLoadErrorCode::InvalidDefinition, build.error().format());
     }
 
-    auto configured{configure_level_run(*build, *world, definition, options)};
+    auto configured{configure_level_run(*build, options)};
     if (!configured) {
         return fail(ELevelLoadErrorCode::InvalidDefinition, configured.error().format());
     }
@@ -303,7 +299,10 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
             }
         }
     }
-    report_run_completion();
+    if (level_simulation_->result()) {
+        end_level(sim::RunEndReason::LevelCompleted);
+        return {};
+    }
     SetActorTickEnabled(true);
     return {};
 }
@@ -341,7 +340,7 @@ void ATestBatchOrchestrator::load_authored_level() {
         handle_level_start_failure(loaded.error().format(to_fstring(pending->source_path)));
         return;
     }
-    if (get_state() == sim::LevelState::Stopped) {
+    if (!level_simulation_.IsSet()) {
         return;
     }
     if (!is_presentation_enabled()) {
@@ -406,7 +405,7 @@ void ATestBatchOrchestrator::Tick(float dt) {
 void ATestBatchOrchestrator::tick(time_type const dt) {
     auto const state{get_state()};
     if (state == sim::LevelState::Stopped) {
-        report_run_completion();
+        end_level(sim::RunEndReason::LevelCompleted);
         return;
     }
     if (state != sim::LevelState::Running && state != sim::LevelState::Paused) {
@@ -428,50 +427,45 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         }
     }
 
-    report_run_completion();
+    if (level_simulation_->result()) {
+        end_level(sim::RunEndReason::LevelCompleted);
+        return;
+    }
     if (state == sim::LevelState::Running && get_state() == sim::LevelState::Paused) {
         on_simulation_paused.Broadcast();
     }
 }
-void ATestBatchOrchestrator::report_run_completion(bool const show_results) {
-    if (completion_reported_) {
+void ATestBatchOrchestrator::end_level(sim::RunEndReason const reason, bool const show_results) {
+    if (!level_simulation_.IsSet()) {
         return;
     }
-    auto const result{level_simulation_->result()};
-    if (!result) {
-        return;
+    level_simulation_->stop_run(reason);
+    auto completion{make_level_completion(*level_simulation_)};
+    auto const terminal_reason{level_simulation_->result()->reason};
+    auto const score{
+        terminal_reason == sim::RunEndReason::WorldEnd ||
+                terminal_reason == sim::RunEndReason::OrchestratorReset
+            ? std::optional<profiles::ScoreRecord>{}
+            : profiles::make_level_score(*level_simulation_, profiles::current_timestamp())};
+    auto* const controller{
+        Cast<ASpaceGamePlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0))};
+    if (IsValid(controller)) {
+        controller->finish_level();
     }
-    completion_reported_ = true;
+    release_level();
 
-    TOptional<FLevelCompletion> completion;
-    if (show_results || (result->reason != sim::telemetry::RunEndReason::WorldEnd &&
-                         result->reason != sim::telemetry::RunEndReason::OrchestratorReset)) {
-        completion = record_level_completion(*level_simulation_, GetGameInstance());
+    if (score) {
+        completion.team_kills = score->kills;
+        auto* const saves{USpaceSaveSubsystem::get(GetGameInstance())};
+        auto const saved{IsValid(saves) ? saves->profiles().append_score_record(*score)
+                                        : profiles::RecordSaveResult{}};
+        completion.new_best_time = saved.new_best_time;
+        if (!saved.persisted) {
+            UE_LOG(LogSandbox, Error, TEXT("Failed to save level score"));
+        }
     }
-    std::expected<std::string, std::string> report;
-    if (!GIsAutomationTesting) {
-        report = persist_level_telemetry_run(
-            *level_simulation_, launch_options_, is_presentation_enabled());
-    }
-    if (!show_results) {
-        return;
-    }
-
-    auto const navigate{!GIsAutomationTesting &&
-                        launch_options_.results_navigation == levels::ResultsNavigation::Telemetry};
-    if (completion) {
-        on_level_completed.Broadcast(*completion);
-    }
-    if (!navigate) {
-        return;
-    }
-    auto* const subsystem{UGameSubsystem::get(GetGameInstance())};
-    if (!IsValid(subsystem)) {
-        UE_LOG(LogSandbox, Error, TEXT("Cannot navigate to telemetry: subsystem is unavailable"));
-        return;
-    }
-    if (!subsystem->return_to_telemetry(std::move(report))) {
-        UE_LOG(LogSandbox, Error, TEXT("Cannot navigate to completed telemetry run"));
+    if (show_results && IsValid(controller)) {
+        controller->show_level_completion(completion);
     }
 }
 /* **************************************** */

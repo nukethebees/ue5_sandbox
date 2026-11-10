@@ -28,25 +28,14 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
             if (IsValid(widget)) {
                 auto const slate_widget{widget->TakeWidget()};
                 (void)slate_widget;
-                ioj::sim::telemetry::Snapshot snapshot;
-                snapshot.elapsed_seconds = ioj::Duration::make(3723.0);
-                snapshot.tick_rate_hz = ioj::Frequency::make(2.0);
-                snapshot.spawned_entities = 25;
-                snapshot.active_entities = 17;
-                snapshot.destroyed_entities = 8;
-                snapshot.kills = 6;
-                snapshot.lasers_fired = 120;
-                snapshot.active_lasers = 4;
-                snapshot.active_entity_count_data.add(0, 20);
-                snapshot.active_entity_count_data.add(4, 17);
-                snapshot.cumulative_kill_count_data.add(0, 0);
-                snapshot.cumulative_kill_count_data.add(4, 6);
-                widget->prepare_for_open(TEXT("Border Skirmish"),
-                                         ioj::ELevelOutcome::Victory,
-                                         FString{TEXT("primary")},
-                                         MoveTemp(snapshot),
-                                         TOptional<float>{3800.0f},
-                                         true);
+                widget->prepare_for_open({.level_display_name = TEXT("Border Skirmish"),
+                                          .state = ioj::ELevelOutcome::Victory,
+                                          .end_reason = TEXT("level_completed"),
+                                          .winner = TEXT("blue"),
+                                          .elapsed_time = ioj::Duration::make(3723.0),
+                                          .team_kills = 6,
+                                          .par_time_seconds = 3800.0f,
+                                          .new_best_time = true});
                 widget->ActivateWidget();
             }
             return widget;
@@ -61,15 +50,12 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Authored level title is retained by the report"),
                               widget->get_level_display_name(),
                               FString{TEXT("Border Skirmish")});
-        auto const& snapshot{widget->get_stats_snapshot()};
-        TestRunner->TestEqual(TEXT("Completion report retains elapsed time"),
-                              snapshot.elapsed_seconds.seconds(),
+        TestRunner->TestEqual(TEXT("Completion retains elapsed time"),
+                              widget->completion().elapsed_time.seconds(),
                               3723.0);
-        TestRunner->TestEqual(TEXT("Completion report retains kills"), snapshot.kills, 6);
-        TestRunner->TestEqual(
-            TEXT("Completion report retains destroyed entities"), snapshot.destroyed_entities, 8);
-        TestRunner->TestEqual(
-            TEXT("Completion report retains laser count"), snapshot.lasers_fired, 120);
+        TestRunner->TestEqual(TEXT("Completion retains profile team kills"),
+                              widget->completion().team_kills.GetValue(),
+                              6);
         TestRunner->TestEqual(TEXT("Completion report retains the par time"),
                               widget->get_par_time_seconds().GetValue(),
                               3800.0f);
@@ -84,13 +70,5 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
         widget->request_return_to_mission_control();
         widget->request_return_to_mission_control();
         TestRunner->TestEqual(TEXT("Return is emitted only once"), return_requests, 1);
-
-        auto* const keep_operating_widget{make_widget()};
-        if (TestRunner->TestTrue(TEXT("Keep Operating report is created"),
-                                 IsValid(keep_operating_widget))) {
-            keep_operating_widget->request_keep_operating();
-            TestRunner->TestFalse(TEXT("Keep Operating deactivates completion"),
-                                  keep_operating_widget->IsActivated());
-        }
     }
 };

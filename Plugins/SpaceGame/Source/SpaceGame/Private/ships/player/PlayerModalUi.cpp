@@ -76,18 +76,11 @@ auto FPlayerModalUi::show_main_menu(ASpaceGamePlayerController& owner) -> bool {
     if (!request && IsValid(subsystem) && subsystem->has_level_launch_error()) {
         request.emplace(session::LevelSelectRequest{});
     }
-    auto const* level_select{request ? std::get_if<session::LevelSelectRequest>(&*request)
-                                     : nullptr};
-    auto const* telemetry{request ? std::get_if<session::TelemetryRequest>(&*request) : nullptr};
-    if (!root_->show_main_menu(
-            level_select != nullptr,
-            level_select ? FName{*to_fstring(level_select->preferred_level_id.value)} : NAME_None,
-            telemetry != nullptr,
-            telemetry && telemetry->run ? to_fstring(*telemetry->run) : FString{},
-            telemetry && !telemetry->run ? to_fstring(telemetry->run.error()) : FString{})) {
+    if (!root_->show_main_menu(request.has_value(),
+                               request ? FName{*to_fstring(request->preferred_level_id.value)}
+                                       : NAME_None)) {
         return false;
     }
-
     return true;
 }
 void FPlayerModalUi::apply_main_menu_input_mode(ASpaceGamePlayerController& owner) {
@@ -104,14 +97,12 @@ void FPlayerModalUi::apply_main_menu_input_mode(ASpaceGamePlayerController& owne
 /* **************************************** */
 // Modal widgets and callbacks
 /* **************************************** */
-auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner,
-                                UInputAction& action,
-                                FPauseMenuData data) -> bool {
+auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner, UInputAction& action) -> bool {
     if (!has_root()) {
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));
         return false;
     }
-    pause_menu_ = root_->show_pause_menu(action, MoveTemp(data));
+    pause_menu_ = root_->show_pause_menu(action);
     if (!IsValid(pause_menu_)) {
         return false;
     }
@@ -127,18 +118,12 @@ auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner,
     return true;
 }
 auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
-                                     FLevelCompletion const& completion,
-                                     sim::telemetry::Snapshot snapshot) -> bool {
+                                     FLevelCompletion const& completion) -> bool {
     if (!has_root()) {
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));
         return false;
     }
-    completion_menu_ = root_->show_level_completion(completion.level_display_name,
-                                                    completion.state,
-                                                    completion.end_reason,
-                                                    MoveTemp(snapshot),
-                                                    completion.par_time_seconds,
-                                                    completion.new_best_time);
+    completion_menu_ = root_->show_level_completion(completion);
     if (!IsValid(completion_menu_)) {
         return false;
     }
@@ -230,3 +215,9 @@ auto FPlayerModalUi::resume_context(levels::ControlContext const fallback) const
 }
 
 } // namespace ioj
+
+namespace ioj {
+auto FPlayerModalUi::completed_level_id() const -> FName {
+    return IsValid(completion_menu_) ? completion_menu_->completion().level_id : NAME_None;
+}
+}

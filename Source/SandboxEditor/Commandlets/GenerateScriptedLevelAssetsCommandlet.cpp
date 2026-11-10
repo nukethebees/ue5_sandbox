@@ -18,8 +18,6 @@
 #include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ForceStatusWidget.h>
-#include <SpaceGamePresentation/presentation/widgets/TeamEntityTableWidget.h>
-#include <SpaceGamePresentation/presentation/widgets/TopKillersWidget.h>
 #include <SpaceGamePresentation/ui/common/MenuButtonWidget.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
@@ -32,20 +30,15 @@
 #include <Components/Border.h>
 #include <Components/Button.h>
 #include <Components/ButtonSlot.h>
-#include <Components/GridPanel.h>
-#include <Components/GridSlot.h>
 #include <Components/HorizontalBox.h>
 #include <Components/HorizontalBoxSlot.h>
 #include <Components/NativeWidgetHost.h>
 #include <Components/Overlay.h>
 #include <Components/OverlaySlot.h>
-#include <Components/ScrollBox.h>
-#include <Components/ScrollBoxSlot.h>
 #include <Components/SizeBox.h>
 #include <Components/TextBlock.h>
 #include <Components/VerticalBox.h>
 #include <Components/VerticalBoxSlot.h>
-#include <Components/WidgetSwitcher.h>
 #include <EdGraph/EdGraph.h>
 #include <EdGraph/EdGraphNode.h>
 #include <Engine/Blueprint.h>
@@ -81,9 +74,6 @@ constexpr TCHAR main_menu_widget_package_name[]{TEXT("/SpaceGame/UI/MainMenu/WBP
 constexpr TCHAR pause_menu_widget_object_path[]{
     TEXT("/Game/UI/pause_menu/WBP_PauseMenu.WBP_PauseMenu")};
 constexpr TCHAR pause_menu_widget_package_name[]{TEXT("/Game/UI/pause_menu/WBP_PauseMenu")};
-constexpr TCHAR team_entity_table_class_path[]{
-    TEXT("/Game/UI/ship_hud/WBP_TeamEntityTable.WBP_TeamEntityTable_C")};
-constexpr TCHAR top_killers_class_path[]{TEXT("/Game/UI/ship_hud/WBP_TopKillers.WBP_TopKillers_C")};
 constexpr TCHAR completion_widget_object_path[]{
     TEXT("/SpaceGame/UI/InGame/WBP_LevelCompletion.WBP_LevelCompletion")};
 constexpr TCHAR completion_widget_package_name[]{TEXT("/SpaceGame/UI/InGame/WBP_LevelCompletion")};
@@ -226,29 +216,6 @@ auto make_menu_button(UWidgetTree& tree,
     return button;
 }
 
-auto add_pause_stat_row(UWidgetTree& tree,
-                        UGridPanel& grid,
-                        int32 const row,
-                        FName const label_name,
-                        FText const& label,
-                        FName const value_name) -> UTextBlock* {
-    auto* const label_widget{make_widget<UTextBlock>(tree, label_name)};
-    label_widget->SetText(label);
-    label_widget->SetAutoWrapText(true);
-    auto* const label_slot{grid.AddChildToGrid(label_widget, row, 0)};
-    label_slot->SetPadding(FMargin{0.0f, 4.0f, 16.0f, 4.0f});
-    label_slot->SetVerticalAlignment(VAlign_Center);
-
-    auto* const value_widget{make_widget<UTextBlock>(tree, value_name)};
-    value_widget->SetText(FText::AsNumber(0));
-    value_widget->SetJustification(ETextJustify::Right);
-    auto* const value_slot{grid.AddChildToGrid(value_widget, row, 1)};
-    value_slot->SetPadding(FMargin{0.0f, 4.0f});
-    value_slot->SetHorizontalAlignment(HAlign_Fill);
-    value_slot->SetVerticalAlignment(VAlign_Center);
-    return value_widget;
-}
-
 auto generate_menu_button_widget() -> UClass* {
     auto* const blueprint{load_or_create_widget_blueprint(menu_button_object_path,
                                                           menu_button_package_name,
@@ -291,15 +258,6 @@ auto generate_root_layout_widget() -> UClass* {
 }
 
 auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
-    auto* const team_table_class{
-        LoadClass<ioj::UTeamEntityTableWidget>(nullptr, team_entity_table_class_path)};
-    auto* const top_killer_table_class{
-        LoadClass<ioj::UTopKillersWidget>(nullptr, top_killers_class_path)};
-    if (!IsValid(team_table_class) || !IsValid(top_killer_table_class)) {
-        UE_LOG(LogTemp, Error, TEXT("Could not load pause-menu battle table classes"));
-        return nullptr;
-    }
-
     auto* const blueprint{load_or_create_widget_blueprint(pause_menu_widget_object_path,
                                                           pause_menu_widget_package_name,
                                                           TEXT("WBP_PauseMenu"),
@@ -323,10 +281,6 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     paused->SetText(FText::FromString(TEXT("Paused")));
     actions->AddChildToVerticalBox(paused)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 18.0f});
     make_menu_button(tree, *actions, button_class, TEXT("resume_button"), TEXT("Resume"));
-    make_menu_button(tree, *actions, button_class, TEXT("overview_button"), TEXT("Overview"));
-    make_menu_button(tree, *actions, button_class, TEXT("forces_button"), TEXT("Forces"));
-    make_menu_button(tree, *actions, button_class, TEXT("combat_button"), TEXT("Combat"));
-    make_menu_button(tree, *actions, button_class, TEXT("telemetry_button"), TEXT("Telemetry"));
     make_menu_button(tree, *actions, button_class, TEXT("audio_button"), TEXT("Audio"));
     make_menu_button(tree, *actions, button_class, TEXT("controls_button"), TEXT("Controls"));
     make_menu_button(tree,
@@ -341,138 +295,9 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     auto* const heading{make_widget<UTextBlock>(tree, TEXT("page_heading"))};
     page->AddChildToVerticalBox(heading)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 16.0f});
 
-    auto* const switcher{make_widget<UWidgetSwitcher>(tree, TEXT("page_switcher"))};
-    page->AddChildToVerticalBox(switcher)->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
-
-    auto make_scroll_page{[&tree, switcher](FName const scroll_name) {
-        auto* const scroll{make_widget<UScrollBox>(tree, scroll_name)};
-        auto* const contents{tree.ConstructWidget<UVerticalBox>()};
-        auto* const contents_slot{CastChecked<UScrollBoxSlot>(scroll->AddChild(contents))};
-        contents_slot->SetHorizontalAlignment(HAlign_Fill);
-        switcher->AddChild(scroll);
-        return contents;
-    }};
-
-    auto* const overview_contents{make_scroll_page(TEXT("overview_scroll"))};
-    auto* const summary_heading{make_widget<UTextBlock>(tree, TEXT("overview_summary_heading"))};
-    summary_heading->SetText(FText::FromString(TEXT("Level Summary")));
-    overview_contents->AddChildToVerticalBox(summary_heading)
-        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
-
-    auto* const summary_panel{make_widget<UBorder>(tree, TEXT("overview_summary_panel"))};
-    auto* const summary_grid{tree.ConstructWidget<UGridPanel>()};
-    summary_grid->SetColumnFill(0, 0.7f);
-    summary_grid->SetColumnFill(1, 0.3f);
-    add_pause_stat_row(tree,
-                       *summary_grid,
-                       0,
-                       TEXT("overview_label_elapsed_time"),
-                       FText::FromString(TEXT("Elapsed Time")),
-                       TEXT("elapsed_time_value"));
-    add_pause_stat_row(tree,
-                       *summary_grid,
-                       1,
-                       TEXT("overview_label_entities_spawned"),
-                       FText::FromString(TEXT("Entities Spawned")),
-                       TEXT("entities_spawned_value"));
-    add_pause_stat_row(tree,
-                       *summary_grid,
-                       2,
-                       TEXT("overview_label_entities_active"),
-                       FText::FromString(TEXT("Entities Active")),
-                       TEXT("entities_active_value"));
-    add_pause_stat_row(tree,
-                       *summary_grid,
-                       3,
-                       TEXT("overview_label_entities_destroyed"),
-                       FText::FromString(TEXT("Entities Destroyed")),
-                       TEXT("entities_destroyed_value"));
-    add_pause_stat_row(tree,
-                       *summary_grid,
-                       4,
-                       TEXT("overview_label_kills"),
-                       FText::FromString(TEXT("Kills")),
-                       TEXT("kills_value"));
-    summary_panel->SetContent(summary_grid);
-    overview_contents->AddChildToVerticalBox(summary_panel)
-        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 20.0f});
-
-    auto* const forces_contents{make_scroll_page(TEXT("forces_scroll"))};
-    auto* const forces_heading{make_widget<UTextBlock>(tree, TEXT("forces_counts_heading"))};
-    forces_heading->SetText(FText::FromString(TEXT("Alive Entity Counts")));
-    forces_contents->AddChildToVerticalBox(forces_heading)
-        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
-    auto* const forces_table{
-        make_widget<ioj::UTeamEntityTableWidget>(tree, *team_table_class, TEXT("forces_table"))};
-    forces_contents->AddChildToVerticalBox(forces_table)
-        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 20.0f});
-
-    auto* const combat_contents{make_scroll_page(TEXT("combat_scroll"))};
-    auto* const top_killers_heading{
-        make_widget<UTextBlock>(tree, TEXT("combat_top_killers_heading"))};
-    top_killers_heading->SetText(FText::FromString(TEXT("Top Killers")));
-    combat_contents->AddChildToVerticalBox(top_killers_heading)
-        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
-    auto* const top_killers_table{make_widget<ioj::UTopKillersWidget>(
-        tree, *top_killer_table_class, TEXT("combat_top_killers_table"))};
-    combat_contents->AddChildToVerticalBox(top_killers_table)
-        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 20.0f});
-    auto* const team_kills_heading{
-        make_widget<UTextBlock>(tree, TEXT("combat_team_kills_heading"))};
-    team_kills_heading->SetText(FText::FromString(TEXT("Team Kills by Victim Type")));
-    combat_contents->AddChildToVerticalBox(team_kills_heading)
-        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
-    auto* const team_kills_table{make_widget<ioj::UTeamEntityTableWidget>(
-        tree, *team_table_class, TEXT("combat_team_kills_table"))};
-    combat_contents->AddChildToVerticalBox(team_kills_table)
-        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 20.0f});
-
-    auto* const telemetry_contents{make_scroll_page(TEXT("telemetry_scroll"))};
-    auto* const telemetry_summary_heading{
-        make_widget<UTextBlock>(tree, TEXT("telemetry_summary_heading"))};
-    telemetry_summary_heading->SetText(FText::FromString(TEXT("Weapon Activity")));
-    telemetry_contents->AddChildToVerticalBox(telemetry_summary_heading)
-        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
-    auto* const telemetry_summary_panel{
-        make_widget<UBorder>(tree, TEXT("telemetry_summary_panel"))};
-    auto* const telemetry_summary_grid{tree.ConstructWidget<UGridPanel>()};
-    telemetry_summary_grid->SetColumnFill(0, 0.7f);
-    telemetry_summary_grid->SetColumnFill(1, 0.3f);
-    add_pause_stat_row(tree,
-                       *telemetry_summary_grid,
-                       0,
-                       TEXT("telemetry_label_lasers_fired"),
-                       FText::FromString(TEXT("Lasers Fired")),
-                       TEXT("lasers_fired_value"));
-    add_pause_stat_row(tree,
-                       *telemetry_summary_grid,
-                       1,
-                       TEXT("telemetry_label_lasers_active"),
-                       FText::FromString(TEXT("Lasers Active")),
-                       TEXT("lasers_active_value"));
-    telemetry_summary_panel->SetContent(telemetry_summary_grid);
-    telemetry_contents->AddChildToVerticalBox(telemetry_summary_panel)
-        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 20.0f});
-
-    auto* const graph_heading{make_widget<UTextBlock>(tree, TEXT("telemetry_graph_heading"))};
-    graph_heading->SetText(FText::FromString(TEXT("Entity Activity")));
-    telemetry_contents->AddChildToVerticalBox(graph_heading)
-        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 4.0f});
-    auto* const graph_description{
-        make_widget<UTextBlock>(tree, TEXT("telemetry_graph_description"))};
-    graph_description->SetText(
-        FText::FromString(TEXT("Active entities and kills over simulation time (seconds).")));
-    graph_description->SetAutoWrapText(true);
-    telemetry_contents->AddChildToVerticalBox(graph_description)
-        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
-    auto* const graph_size{tree.ConstructWidget<USizeBox>()};
-    graph_size->SetHeightOverride(260.0f);
-    auto* const graph_host{make_widget<UNativeWidgetHost>(tree, TEXT("telemetry_graph_host"))};
-    graph_size->SetContent(graph_host);
-    telemetry_contents->AddChildToVerticalBox(graph_size)->SetHorizontalAlignment(HAlign_Fill);
-
+    heading->SetText(FText::FromString(TEXT("Options")));
     auto* const options{make_widget<ioj::UOptionsWidget>(tree, TEXT("options_widget"))};
-    switcher->AddChild(options);
+    page->AddChildToVerticalBox(options)->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
 
     tree.RootWidget = root;
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
@@ -1311,6 +1136,12 @@ auto configure_ui_data(UClass& root_class,
         return false;
     }
     ui_data->Modify();
+    auto const native_classes{ioj::UTestBatchGameUiData::get_native_widget_classes()};
+    for (auto entry{ui_data->widget_classes.classes.CreateIterator()}; entry; ++entry) {
+        if (!native_classes.Contains(entry.Key().Get())) {
+            entry.RemoveCurrent();
+        }
+    }
     ui_data->widget_classes.classes.Add(ioj::UGameUiRootLayout::StaticClass(), &root_class);
     ui_data->widget_classes.classes.Add(ioj::UMenuButtonWidget::StaticClass(), &button_class);
     ui_data->widget_classes.classes.Add(ioj::UMainMenuWidget::StaticClass(), &main_class);

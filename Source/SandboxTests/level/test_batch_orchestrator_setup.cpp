@@ -1,5 +1,4 @@
 #include "test_batch_orchestrator_setup_scenario.h"
-#include <ioj/sim/telemetry/level_telemetry_manager.h>
 #include <SandboxTests/support/simulation_step.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
@@ -122,7 +121,7 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
         orchestrator.start_simulation();
         advance_simulation(orchestrator, dt * 4.0, observe);
         FTestBatchOrchestratorTestAccess::stop_run(orchestrator,
-                                                   sim::telemetry::RunEndReason::DurationReached);
+                                                   sim::RunEndReason::DurationReached);
         checks.are_equal(
             uint32{2}, observations.num(), TEXT("Each catch-up frame produces one observation"));
         auto const sample_count{observations.num()};
@@ -138,16 +137,6 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
         checks.are_equal(uint64{8},
                          presentation->get_last_completed_tick(),
                          TEXT("Terminal presentation observes the final completed tick"));
-        auto report{FTestBatchOrchestratorTestAccess::telemetry_report(orchestrator)};
-        if (checks.is_true(report.IsSet(), TEXT("Terminal frame produces a telemetry report"))) {
-            checks.are_equal(uint64{8},
-                             report->run.completion.completed_ticks.value(),
-                             TEXT("Telemetry retains the final resolved tick"));
-            checks.is_true(report->run.final_state.completed_tick.value() == 8,
-                           TEXT("Current telemetry state observes the final resolved tick"));
-        }
-        checks.is_true(FTestBatchOrchestratorTestAccess::telemetry_report(orchestrator).IsSet(),
-                       TEXT("Completed report can be queried repeatedly"));
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     });
 }

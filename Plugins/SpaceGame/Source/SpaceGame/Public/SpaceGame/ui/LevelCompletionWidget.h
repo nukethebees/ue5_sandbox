@@ -1,9 +1,9 @@
 #pragma once
 
-#include "ioj/sim/telemetry/snapshot.h"
 #include "SpaceGame/levels/LevelOutcome.h"
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+#include <SpaceGame/levels/LevelCompletion.h>
 
 #include "LevelCompletionWidget.generated.h"
 
@@ -21,25 +21,17 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
   public:
     ULevelCompletionWidget();
 
-    void prepare_for_open(FString level_display_name,
-                          ELevelOutcome state,
-                          FString const& end_reason,
-                          sim::telemetry::Snapshot snapshot,
-                          TOptional<float> par_time_seconds = NullOpt,
-                          bool new_best_time = false);
+    void prepare_for_open(FLevelCompletion completion);
     void request_return_to_mission_control();
-    void request_keep_operating();
+    auto completion() const -> FLevelCompletion const& { return completion_; }
 
     [[nodiscard]] auto get_level_display_name() const -> FString const& {
-        return level_display_name_;
-    }
-    [[nodiscard]] auto get_stats_snapshot() const -> sim::telemetry::Snapshot const& {
-        return stats_snapshot_;
+        return completion_.level_display_name;
     }
     [[nodiscard]] auto get_par_time_seconds() const -> TOptional<float> const& {
-        return par_time_seconds_;
+        return completion_.par_time_seconds;
     }
-    [[nodiscard]] auto is_new_best_time() const -> bool { return new_best_time_; }
+    [[nodiscard]] auto is_new_best_time() const -> bool { return completion_.new_best_time; }
 
     FReturnToLevelSelectRequested return_to_level_select_requested;
   protected:
@@ -55,16 +47,11 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
   private:
     void publish_report();
 
-    FString level_display_name_{};
-    ELevelOutcome mission_state_{ELevelOutcome::Victory};
-    FString end_reason_{};
-    sim::telemetry::Snapshot stats_snapshot_{};
-    TOptional<float> par_time_seconds_{};
+    FLevelCompletion completion_;
     TSharedPtr<SLevelCompletionView> view_{};
     FGameUiStyle fallback_style_{};
     UPROPERTY(Transient)
     UGameSubsystem* game_{nullptr};
-    bool new_best_time_{false};
     bool action_requested_{false};
 };
 }

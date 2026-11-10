@@ -99,7 +99,7 @@ void USimulationHudWidget::apply_ui_style(FGameUiStyle const& style) {
     apply_entity_overlay_colours();
 }
 
-void USimulationHudWidget::set_entity_counts(sim::telemetry::EntityCounts const& counts) {
+void USimulationHudWidget::set_entity_counts(sim::EntityCounts const& counts) {
     if (force_status_widget) {
         force_status_widget->set_entity_counts(counts);
     }

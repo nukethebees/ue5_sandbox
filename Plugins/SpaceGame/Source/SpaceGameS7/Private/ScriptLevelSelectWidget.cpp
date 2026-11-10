@@ -473,7 +473,6 @@ void UScriptLevelSelectWidget::handle_launch() {
             options.simulated_duration_seconds =
                 PositiveFinite<double>::make(battle_duration_.GetValue());
         }
-        options.results_navigation = ::ioj::levels::ResultsNavigation::Telemetry;
     }
     launch_selected_level(MoveTemp(options));
 }

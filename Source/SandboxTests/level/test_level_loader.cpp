@@ -228,22 +228,6 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
                            !FPlayerControllerTestAccess::has_modal(*controller) &&
                            controller->is_observer_movement_enabled();
 
-    FLevelCompletion completion;
-    completion.persisted = true;
-    completion.state = ELevelOutcome::Victory;
-    completion.level_display_name = TEXT("Controller modal test");
-    orchestrator.pause_simulation();
-    orchestrator.tick(0.0);
-    FPlayerControllerTestAccess::complete(*controller, completion);
-    sample.completion_open = FPlayerControllerTestAccess::has_modal(*controller);
-    sample.completion_rejects_activation = rejects_activation();
-    sample.completion_suspended =
-        orchestrator.get_state() == sim::LevelState::Paused &&
-        controller->get_active_control_context() == ::ioj::levels::ControlContext::None;
-    FPlayerControllerTestAccess::close_completion(*controller);
-    sample.completion_resumed = orchestrator.get_state() == sim::LevelState::Running &&
-                                !FPlayerControllerTestAccess::has_modal(*controller) &&
-                                controller->is_observer_movement_enabled();
     sample.hud_restored = hud->GetVisibility() == visibility;
     sample.input_restored = component->GetActionEventBindings().Num() == binding_count;
     modal_sample_ = sample;
@@ -361,13 +345,6 @@ void FLevelLoaderCameraScenario::check_runtime() {
     checks.is_true(modal.pause_suspended, TEXT("Pause suspends simulation and gameplay input"));
     checks.is_true(modal.hud_hidden, TEXT("Pause hides the HUD"));
     checks.is_true(modal.pause_resumed, TEXT("Closing pause restores Observer and simulation"));
-    checks.is_true(modal.completion_open, TEXT("Completion opens a modal"));
-    checks.is_true(modal.completion_rejects_activation,
-                   TEXT("Completion rejects camera contexts without changing input or UI"));
-    checks.is_true(modal.completion_suspended,
-                   TEXT("Completion suspends simulation and gameplay input"));
-    checks.is_true(modal.completion_resumed,
-                   TEXT("Closing completion restores Observer and simulation"));
     checks.is_true(modal.hud_restored, TEXT("Modal close restores prior HUD visibility"));
     checks.is_true(modal.input_restored,
                    TEXT("Modal transitions do not duplicate global or gameplay bindings"));
@@ -395,19 +372,14 @@ void FLevelLoaderCameraScenario::check_terminal_completion() {
     }
 
     auto& orchestrator{context_.orchestrator};
-    FTestBatchOrchestratorTestAccess::stop_run(orchestrator,
-                                               sim::telemetry::RunEndReason::LevelCompleted);
-    FLevelCompletion completion;
-    completion.persisted = true;
-    completion.state = ELevelOutcome::Victory;
-    completion.level_display_name = TEXT("Terminal completion test");
-    FPlayerControllerTestAccess::complete(*controller, completion);
+    FTestBatchOrchestratorTestAccess::stop_run(orchestrator, sim::RunEndReason::LevelCompleted);
+    orchestrator.tick(0.0);
     checks.is_true(FPlayerControllerTestAccess::has_modal(*controller),
                    TEXT("Stopped levels can open their completion screen"));
     FPlayerControllerTestAccess::close_completion(*controller);
-    checks.is_true(orchestrator.get_state() == sim::LevelState::Stopped &&
+    checks.is_true(orchestrator.get_level_simulation() == nullptr &&
                        !FPlayerControllerTestAccess::has_modal(*controller),
-                   TEXT("Closing completion leaves the level stopped"));
+                   TEXT("Closing completion leaves the simulation released"));
     checks.is_true(controller->get_active_control_context() == levels::ControlContext::None,
                    TEXT("Closing terminal completion does not restore gameplay input"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);

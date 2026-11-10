@@ -367,14 +367,11 @@ void ASpaceGamePlayerController::bind_orchestrator_events() {
     orchestrator_ = orchestrator;
     orchestrator->on_reset.RemoveAll(this);
     orchestrator->on_reset.AddUObject(this, &ThisClass::on_orchestrator_reset);
-    orchestrator->on_level_completed.RemoveAll(this);
-    orchestrator->on_level_completed.AddUObject(this, &ThisClass::on_level_completed);
     orchestrator->on_simulation_paused.AddUObject(this, &ThisClass::on_simulation_paused);
 }
 void ASpaceGamePlayerController::unbind_orchestrator_events() {
     if (auto* const orchestrator{orchestrator_.Get()}; IsValid(orchestrator)) {
         orchestrator->on_reset.RemoveAll(this);
-        orchestrator->on_level_completed.RemoveAll(this);
         orchestrator->on_simulation_paused.RemoveAll(this);
     }
     orchestrator_.Reset();
@@ -666,8 +663,7 @@ void ASpaceGamePlayerController::show_initial_pause_menu() {
 auto ASpaceGamePlayerController::open_pause_menu() -> bool {
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(orchestrator) || orchestrator->get_state() != sim::LevelState::Paused ||
-        !modal_ui_.has_root() || !IsValid(global_input.toggle_menu) || !IsValid(ui_data) ||
-        !IsValid(ui_data->team_visual_data)) {
+        !modal_ui_.has_root() || !IsValid(global_input.toggle_menu)) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::open_pause_menu: Paused gameplay UI is not "
@@ -675,20 +671,7 @@ auto ASpaceGamePlayerController::open_pause_menu() -> bool {
         return false;
     }
 
-    auto& hud_manager{orchestrator->get_hud_manager()};
-    hud_manager.force_sample();
-    auto const& entity_counts{hud_manager.get_entity_count_data()};
-    auto const& kill_data{hud_manager.get_kill_data()};
-    auto const* const level{orchestrator->get_level_simulation()};
-    check(level);
-
-    FPauseMenuData pause_data;
-    pause_data.telemetry = level->level_telemetry_manager().make_snapshot();
-    pause_data.alive_per_team_and_type = entity_counts.alive_per_team_and_type;
-    pause_data.top_killers = kill_data.top_killers;
-    pause_data.team_kill_matrix = kill_data.team_kill_matrix;
-    pause_data.team_colours = ui_data->team_visual_data->build_team_colour_cache();
-    return modal_ui_.show_pause(*this, *global_input.toggle_menu, MoveTemp(pause_data));
+    return modal_ui_.show_pause(*this, *global_input.toggle_menu);
 }
 auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {
     auto* const orchestrator{orchestrator_.Get()};
@@ -762,15 +745,6 @@ void ASpaceGamePlayerController::on_pause_menu_deactivated() {
 }
 void ASpaceGamePlayerController::on_completion_menu_deactivated() {
     modal_ui_.close_completion(*this);
-    if (auto* const orchestrator{orchestrator_.Get()};
-        IsValid(orchestrator) && orchestrator->get_state() == sim::LevelState::Stopped) {
-        modal_ui_.clear_resume();
-        return;
-    }
-
-    if (is_gameplay_mode() && !return_to_level_select_pending_) {
-        resume_game();
-    }
 }
 void ASpaceGamePlayerController::on_simulation_paused() {
     if (!is_gameplay_mode() || return_to_level_select_pending_) {
@@ -786,31 +760,19 @@ void ASpaceGamePlayerController::on_simulation_paused() {
         resume_game();
     }
 }
-void ASpaceGamePlayerController::on_level_completed(FLevelCompletion const& completion) {
-    if (!is_gameplay_mode()) {
+void ASpaceGamePlayerController::finish_level() {
+    modal_ui_.clear_modals(*this);
+    control_contexts_.set_control_context(levels::ControlContext::None);
+    hud_.cancel_restore();
+    hud_.shutdown();
+    hud_.shutdown_benchmark(*this);
+}
+void ASpaceGamePlayerController::show_level_completion(FLevelCompletion const& completion) {
+    if (!is_gameplay_mode() || return_to_level_select_pending_) {
         return;
     }
-    if (!completion.persisted || return_to_level_select_pending_ || modal_ui_.has_modal()) {
-        return;
-    }
-    if (!modal_ui_.has_root() || !suspend_gameplay_for_modal()) {
-        return;
-    }
-
-    auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator)) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ASpaceGamePlayerController::on_level_completed: Orchestrator is invalid."));
-        resume_game();
-        return;
-    }
-
-    auto const* const level{orchestrator->get_level_simulation()};
-    check(level);
-    if (!modal_ui_.show_completion(
-            *this, completion, level->level_telemetry_manager().make_snapshot())) {
-        resume_game();
+    if (modal_ui_.initialise_root(*this, ui_data)) {
+        modal_ui_.show_completion(*this, completion);
     }
 }
 void ASpaceGamePlayerController::return_to_level_select() {
@@ -834,9 +796,10 @@ void ASpaceGamePlayerController::return_to_level_select() {
 
     return_to_level_select_pending_ = true;
     auto const* const level{orchestrator->get_level_simulation()};
-    check(level);
-    auto const preferred_level_id{level->level_metadata().id.value};
-    if (!subsystem->return_to_level_select(FName{UTF8_TO_TCHAR(preferred_level_id.c_str())})) {
+    auto const preferred_level_id{
+        level ? FName{UTF8_TO_TCHAR(level->level_metadata().id.value.c_str())}
+              : modal_ui_.completed_level_id()};
+    if (!subsystem->return_to_level_select(preferred_level_id)) {
         return_to_level_select_pending_ = false;
         return;
     }

@@ -14,18 +14,8 @@ ULevelCompletionWidget::ULevelCompletionWidget() {
     SetIsFocusable(true);
 }
 
-void ULevelCompletionWidget::prepare_for_open(FString level_display_name,
-                                              ELevelOutcome const state,
-                                              FString const& end_reason,
-                                              sim::telemetry::Snapshot snapshot,
-                                              TOptional<float> const par_time_seconds,
-                                              bool const new_best_time) {
-    level_display_name_ = MoveTemp(level_display_name);
-    mission_state_ = state;
-    end_reason_ = end_reason;
-    stats_snapshot_ = MoveTemp(snapshot);
-    par_time_seconds_ = par_time_seconds;
-    new_best_time_ = new_best_time;
+void ULevelCompletionWidget::prepare_for_open(FLevelCompletion completion) {
+    completion_ = MoveTemp(completion);
     action_requested_ = false;
     publish_report();
 }
@@ -57,9 +47,7 @@ void ULevelCompletionWidget::NativeOnInitialized() {
                               .Style(style)
                               .Audio(IsValid(game_) ? game_->get_audio() : FGameAudioFacade{})
                               .OnReturnToMissionControl(FSimpleDelegate::CreateUObject(
-                                  this, &ThisClass::request_return_to_mission_control))
-                              .OnKeepOperating(FSimpleDelegate::CreateUObject(
-                                  this, &ThisClass::request_keep_operating)));
+                                  this, &ThisClass::request_return_to_mission_control)));
     publish_report();
 }
 
@@ -94,22 +82,9 @@ void ULevelCompletionWidget::request_return_to_mission_control() {
     return_to_level_select_requested.Broadcast();
 }
 
-void ULevelCompletionWidget::request_keep_operating() {
-    if (action_requested_) {
-        return;
-    }
-    action_requested_ = true;
-    DeactivateWidget();
-}
-
 void ULevelCompletionWidget::publish_report() {
     if (view_.IsValid()) {
-        view_->update_report(level_display_name_,
-                             mission_state_,
-                             end_reason_,
-                             stats_snapshot_,
-                             par_time_seconds_,
-                             new_best_time_);
+        view_->update_report(completion_);
     }
 }
 }

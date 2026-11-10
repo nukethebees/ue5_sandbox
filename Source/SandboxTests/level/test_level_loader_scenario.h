@@ -16,10 +16,6 @@ class FLevelLoaderCameraScenario final : public FSimulationTestScenario {
         bool pause_rejects_activation{false};
         bool hud_hidden{false};
         bool pause_resumed{false};
-        bool completion_open{false};
-        bool completion_suspended{false};
-        bool completion_rejects_activation{false};
-        bool completion_resumed{false};
         bool hud_restored{false};
         bool input_restored{false};
     };

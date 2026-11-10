@@ -4,7 +4,6 @@
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
-#include <SpaceGame/ui/telemetry/TelemetryDashboardWidget.h>
 #include <SpaceGamePresentation/ui/style/SpaceGameUiSettings.h>
 #include <SpaceGamePresentation/ui/style/SpaceGameUiTheme.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
@@ -181,10 +180,9 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         auto* const options_widget{widget->get_options_widget()};
         auto* const debug_settings_widget{widget->get_debug_settings_widget()};
         auto* const save_game_viewer{widget->get_save_game_viewer()};
-        auto* const telemetry_dashboard{widget->get_telemetry_dashboard()};
         if (!TestRunner->TestTrue(TEXT("All command-deck pages are created"),
                                   IsValid(level_select_widget) && IsValid(options_widget) &&
-                                      IsValid(save_game_viewer) && IsValid(telemetry_dashboard) &&
+                                      IsValid(save_game_viewer) &&
                                       IsValid(debug_settings_widget))) {
             return;
         }
@@ -217,10 +215,6 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         widget->select_page(ioj::EMainMenuPage::DataArchive);
         TestRunner->TestTrue(TEXT("Data Archive is selectable"),
                              widget->get_active_page() == ioj::EMainMenuPage::DataArchive);
-
-        widget->select_page(ioj::EMainMenuPage::Telemetry);
-        TestRunner->TestTrue(TEXT("Telemetry is selectable"),
-                             widget->get_active_page() == ioj::EMainMenuPage::Telemetry);
 
         widget->select_page(ioj::EMainMenuPage::Video);
         TestRunner->TestTrue(TEXT("Video configuration is selectable"),
@@ -260,12 +254,5 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             return;
         }
         auto const switcher{StaticCastSharedPtr<SWidgetSwitcher>(switcher_widget)};
-        widget->prepare_for_open(level_select_class, false, NAME_None, true);
-        TestRunner->TestTrue(TEXT("A post-construction telemetry request updates the active page"),
-                             widget->get_active_page() == ioj::EMainMenuPage::Telemetry);
-        TestRunner->TestEqual(
-            TEXT("A post-construction telemetry request updates the visible page"),
-            switcher->GetActiveWidgetIndex(),
-            int32{2});
     }
 };

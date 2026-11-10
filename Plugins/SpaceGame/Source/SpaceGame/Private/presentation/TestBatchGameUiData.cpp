@@ -13,8 +13,6 @@
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipSpeedWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipThrusterEnergyWidget.h"
-#include "SpaceGamePresentation/presentation/widgets/TeamEntityTableWidget.h"
-#include "SpaceGamePresentation/presentation/widgets/TopKillersWidget.h"
 #include "SpaceGamePresentation/ui/common/MenuButtonWidget.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
@@ -42,12 +40,10 @@ auto ioj::test_batch_game_ui_data::get_data_asset() -> ioj::UTestBatchGameUiData
 namespace ioj {
 auto UTestBatchGameUiData::get_native_widget_classes() -> TConstArrayView<UClass*> {
     static UClass* const classes[]{
-        UTeamEntityTableWidget::StaticClass(),
         UShipHealthWidget::StaticClass(),
         UShipHudWidget::StaticClass(),
         UShipSpeedWidget::StaticClass(),
         UShipThrusterEnergyWidget::StaticClass(),
-        UTopKillersWidget::StaticClass(),
         UDebugGraphWidget::StaticClass(),
         UBenchmarkHudWidget::StaticClass(),
         UBattleViewerHudWidget::StaticClass(),

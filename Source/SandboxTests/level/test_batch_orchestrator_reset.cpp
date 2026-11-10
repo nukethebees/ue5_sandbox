@@ -94,12 +94,6 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     initial_ledger_alive = test_driver->get_ledger().count_alive();
     save_old_owned_actors(test_driver->orchestrator);
     save_old_transient_actors(test_driver->orchestrator);
-    {
-        auto const* const level{test_driver->orchestrator.get_level_simulation()};
-        check(level);
-        checks.is_true(level->level_telemetry_manager().recorded_sample_count() != 0,
-                       TEXT("Initial level telemetry is populated"));
-    }
     auto const resources{test_driver->orchestrator.get_presentation_resources()};
     test_driver->orchestrator.reset_for_new_level();
     auto const retained{test_driver->orchestrator.get_presentation_resources()};
@@ -125,16 +119,6 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     test_driver->orchestrator.SetActorTickEnabled(false);
     auto const* const level{test_driver->orchestrator.get_level_simulation()};
     check(level);
-    auto const history{level->level_telemetry_manager().materialize_history()};
-    checks.are_equal(
-        std::size_t{1}, history.size(), TEXT("Restart records one telemetry baseline"));
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-    auto const& baseline{history.front()};
-    checks.are_equal(
-        uint64{0}, baseline.completed_tick.value(), TEXT("Restart baseline uses tick zero"));
-    checks.are_equal(test_driver->get_ledger().count_alive(),
-                     sim::telemetry::total_count(baseline.alive),
-                     TEXT("Restart baseline records active entities"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 

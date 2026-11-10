@@ -1,13 +1,11 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
 
-#include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/telemetry/LevelTelemetryMetadata.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
 #include <SandboxCoreEngine/RotatorConversion.h>
@@ -177,19 +175,11 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request) -> FLevelS
         config, request.clock_settings, request.definition, MoveTemp(player), {}, player_mesh);
 }
 
-auto configure_level_run(sim::LevelSimInitData& data,
-                         UWorld const& world,
-                         levels::LevelDefinition const& definition,
-                         levels::LaunchOptions const& options)
+auto configure_level_run(sim::LevelSimInitData& data, levels::LaunchOptions const& options)
     -> std::expected<void, FLevelStartErrors> {
     FLevelStartErrors errors;
-    auto& metadata{data.telemetry_metadata};
-    metadata = make_level_telemetry_run_metadata(world, definition.metadata());
-    metadata.level_source =
-        levels::authoring::emit_level_source(levels::authoring::make_level_input(definition));
     if (options.simulated_duration_seconds.has_value()) {
         auto const duration{Duration::make(*options.simulated_duration_seconds)};
-        metadata.requested_duration_seconds = duration;
         sim::SimClock clock;
         clock.initialise(data.clock_settings);
         auto const ticks{levels::compile_timer_duration(duration, clock)};
@@ -201,8 +191,7 @@ auto configure_level_run(sim::LevelSimInitData& data,
         auto const timer{data.timers.add()};
         auto const elapsed{data.expressions.add_timer_elapsed(timer)};
         events.initial_events.push_back(events.add_start_timer_event({timer, *ticks}));
-        std::array const effects{
-            events.add_stop_event(sim::telemetry::RunEndReason::DurationReached)};
+        std::array const effects{events.add_stop_event(sim::RunEndReason::DurationReached)};
         events.add_trigger(elapsed, effects);
     }
     return {};

@@ -1,12 +1,8 @@
 #include "SLevelCompletionView.h"
 
-#include "LevelTelemetryPresentation.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
 #include "SpaceGame/ui/common/SGameButton.h"
 
-#include "SandboxUI/widgets/SGraphPlot.h"
-
-#include <InputCoreTypes.h>
 #include <Widgets/Images/SImage.h>
 #include <Widgets/Layout/SBorder.h>
 #include <Widgets/Layout/SBox.h>
@@ -15,6 +11,19 @@
 
 namespace ioj {
 namespace level_completion_detail {
+auto format_elapsed_time(Duration const elapsed) -> FText {
+    auto const total_seconds{FMath::FloorToInt64(elapsed.seconds())};
+    auto const seconds{total_seconds % 60};
+    auto const total_minutes{total_seconds / 60};
+    auto const minutes{total_minutes % 60};
+    auto const hours{total_minutes / 60};
+    if (hours > 0) {
+        return FText::FromString(
+            FString::Printf(TEXT("%lld:%02lld:%02lld"), hours, minutes, seconds));
+    }
+    return FText::FromString(FString::Printf(TEXT("%02lld:%02lld"), minutes, seconds));
+}
+
 auto reason_text(FString const& end_reason) -> FText {
     return FText::Format(NSLOCTEXT("LevelCompletion", "EndReason", "END REASON // {0}"),
                          FText::FromString(end_reason));
@@ -26,7 +35,6 @@ void SLevelCompletionView::Construct(FArguments const& args) {
     audio_ = args._Audio;
     check(style_ != nullptr);
     on_return_to_mission_control_ = args._OnReturnToMissionControl;
-    on_keep_operating_ = args._OnKeepOperating;
 
     auto const body{
         SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[build_summary()] +
@@ -40,20 +48,15 @@ void SLevelCompletionView::Construct(FArguments const& args) {
                                                SVerticalBox::Slot().AutoHeight()[build_header()] +
                                                SVerticalBox::Slot().FillHeight(1.0f)[body] +
                                                SVerticalBox::Slot().AutoHeight()[build_footer()]]]];
-
-    level_telemetry_presentation::apply_activity_graph_style(
-        *activity_graph_,
-        *style_,
-        NSLOCTEXT("LevelCompletion", "NoActivity", "No engagement activity recorded"),
-        {760.0f, 320.0f});
 }
 
-void SLevelCompletionView::update_report(FString const& level_display_name,
-                                         ELevelOutcome const state,
-                                         FString const& end_reason,
-                                         sim::telemetry::Snapshot const& snapshot,
-                                         TOptional<float> const par_time_seconds,
-                                         bool const new_best_time) {
+void SLevelCompletionView::update_report(FLevelCompletion const& completion) {
+    auto const& level_display_name{completion.level_display_name};
+    auto const state{completion.state};
+    auto const& end_reason{completion.end_reason};
+    auto const par_time_seconds{completion.par_time_seconds};
+    auto const new_best_time{completion.new_best_time};
+
     auto const succeeded{state == ELevelOutcome::Victory};
     mission_name_->SetText(level_display_name.IsEmpty()
                                ? NSLOCTEXT("LevelCompletion", "UnknownMission", "UNNAMED OPERATION")
@@ -68,56 +71,35 @@ void SLevelCompletionView::update_report(FString const& level_display_name,
     failure_reason_->SetColorAndOpacity(style_->palette().danger);
     failure_reason_->SetVisibility(succeeded ? EVisibility::Collapsed
                                              : EVisibility::HitTestInvisible);
-    objective_status_->SetText(state == ELevelOutcome::Stopped
-                                   ? NSLOCTEXT("LevelCompletion", "NoWinner", "NO WINNER")
-                                   : (succeeded
-                                          ? NSLOCTEXT("LevelCompletion", "Victory", "VICTORY")
-                                          : NSLOCTEXT("LevelCompletion", "Defeat", "DEFEAT")));
-    auto const elapsed_time{
-        level_telemetry_presentation::format_elapsed_time(snapshot.elapsed_seconds)};
+    objective_status_->SetText(
+        completion.winner.IsEmpty()
+            ? NSLOCTEXT("LevelCompletion", "NoWinner", "NO WINNER")
+            : FText::Format(NSLOCTEXT("LevelCompletion", "Winner", "WINNER // {0}"),
+                            FText::FromString(completion.winner.ToUpper())));
+    auto const elapsed_time{level_completion_detail::format_elapsed_time(completion.elapsed_time)};
     elapsed_time_->SetText(
         par_time_seconds.IsSet()
             ? FText::Format(NSLOCTEXT("LevelCompletion", "ElapsedTimeWithPar", "{0} (Par: {1})"),
                             elapsed_time,
-                            level_telemetry_presentation::format_elapsed_time(
+                            level_completion_detail::format_elapsed_time(
                                 Duration::make(par_time_seconds.GetValue())))
             : elapsed_time);
     new_best_time_->SetVisibility(succeeded && new_best_time ? EVisibility::HitTestInvisible
                                                              : EVisibility::Collapsed);
-    kills_->SetText(FText::AsNumber(snapshot.kills));
-    destroyed_entities_->SetText(FText::AsNumber(snapshot.destroyed_entities));
-    lasers_fired_->SetText(FText::AsNumber(snapshot.lasers_fired));
-    spawned_entities_->SetText(FText::AsNumber(snapshot.spawned_entities));
-    active_entities_->SetText(FText::AsNumber(snapshot.active_entities));
-    active_lasers_->SetText(FText::AsNumber(snapshot.active_lasers));
-    level_telemetry_presentation::update_activity_graph(
-        *activity_graph_, snapshot, style_->palette().honey, style_->palette().danger);
+    kills_->SetText(completion.team_kills.IsSet()
+                        ? FText::AsNumber(completion.team_kills.GetValue())
+                        : NSLOCTEXT("LevelCompletion", "NoPlayerScore", "N/A"));
 }
 
 void SLevelCompletionView::focus_primary_action() {
-    focus_action(ELevelCompletionAction::ReturnToMissionControl);
+    return_button_->focus();
 }
 
 auto SLevelCompletionView::OnFocusReceived(FGeometry const& geometry,
                                            FFocusEvent const& focus_event) -> FReply {
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
-    focus_action(focused_action_);
-    return FReply::Handled();
-}
-
-auto SLevelCompletionView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event)
-    -> FReply {
-    auto const key{key_event.GetKey()};
-    if (key != EKeys::Left && key != EKeys::Right && key != EKeys::Gamepad_DPad_Left &&
-        key != EKeys::Gamepad_DPad_Right) {
-        return SCompoundWidget::OnKeyDown(geometry, key_event);
-    }
-
-    auto const action{focused_action_ == ELevelCompletionAction::ReturnToMissionControl
-                          ? ELevelCompletionAction::KeepOperating
-                          : ELevelCompletionAction::ReturnToMissionControl};
-    focus_action(action);
+    focus_primary_action();
     return FReply::Handled();
 }
 
@@ -175,21 +157,6 @@ auto SLevelCompletionView::build_summary() -> TSharedRef<SWidget> {
                            .TextStyle(&style_->text(EGameTextStyle::Heading3))
                            .ColorAndOpacity(style_->palette().success)
                            .Visibility(EVisibility::Collapsed)];
-    details->AddSlot().AutoHeight().Padding(FMargin{0.0f, 22.0f})[SNew(SBox).HeightOverride(
-        2.0f)[SNew(SBorder).BorderImage(&style_->chrome().focus)]];
-    details->AddSlot().AutoHeight().Padding(
-        FMargin{0.0f,
-                0.0f,
-                0.0f,
-                12.0f})[SNew(STextBlock)
-                            .Text(NSLOCTEXT("LevelCompletion", "ForceState", "TERMINAL STATE"))
-                            .TextStyle(&style_->text(EGameTextStyle::Heading3))];
-    details->AddSlot().AutoHeight()[build_detail(
-        NSLOCTEXT("LevelCompletion", "EntitiesSpawned", "ENTITIES SPAWNED"), spawned_entities_)];
-    details->AddSlot().AutoHeight()[build_detail(
-        NSLOCTEXT("LevelCompletion", "EntitiesActive", "ENTITIES ACTIVE"), active_entities_)];
-    details->AddSlot().AutoHeight()[build_detail(
-        NSLOCTEXT("LevelCompletion", "LasersActive", "LASERS ACTIVE"), active_lasers_)];
     details->AddSlot().FillHeight(1.0f);
     details->AddSlot().AutoHeight()[SNew(STextBlock)
                                         .Text(NSLOCTEXT("LevelCompletion",
@@ -208,32 +175,7 @@ auto SLevelCompletionView::build_report() -> TSharedRef<SWidget> {
     metrics->AddSlot().FillWidth(1.0f)[build_metric(
         NSLOCTEXT("LevelCompletion", "ElapsedTime", "OPERATION TIME"), elapsed_time_)];
     metrics->AddSlot().FillWidth(1.0f).Padding(FMargin{
-        8.0f,
-        0.0f})[build_metric(NSLOCTEXT("LevelCompletion", "Kills", "CONFIRMED KILLS"), kills_)];
-    metrics->AddSlot().FillWidth(1.0f)[build_metric(
-        NSLOCTEXT("LevelCompletion", "Destroyed", "ENTITIES DESTROYED"), destroyed_entities_)];
-    metrics->AddSlot().FillWidth(1.0f).Padding(FMargin{8.0f, 0.0f, 0.0f, 0.0f})[build_metric(
-        NSLOCTEXT("LevelCompletion", "LasersFired", "LASERS FIRED"), lasers_fired_)];
-
-    auto const graph{
-        SNew(SBorder)
-            .BorderImage(&style_->panel().background)
-            .Padding(FMargin{
-                20.0f})[SNew(SVerticalBox) +
-                        SVerticalBox::Slot().AutoHeight()
-                            [SNew(STextBlock)
-                                 .Text(NSLOCTEXT(
-                                     "LevelCompletion", "ActivityTitle", "ENGAGEMENT ACTIVITY"))
-                                 .TextStyle(&style_->text(EGameTextStyle::Heading3))] +
-                        SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 5.0f, 0.0f, 14.0f})
-                            [SNew(STextBlock)
-                                 .Text(NSLOCTEXT(
-                                     "LevelCompletion",
-                                     "ActivityDescription",
-                                     "Active entities and confirmed kills across simulation time."))
-                                 .TextStyle(&style_->text(EGameTextStyle::Caption))] +
-                        SVerticalBox::Slot().FillHeight(1.0f)[SNew(SBox).MinDesiredHeight(
-                            260.0f)[SAssignNew(activity_graph_, SGraphPlot)]]]};
+        8.0f, 0.0f})[build_metric(NSLOCTEXT("LevelCompletion", "Kills", "TEAM KILLS"), kills_)];
 
     return SNew(SBorder)
         .BorderImage(&style_->chrome().body_background)
@@ -247,10 +189,9 @@ auto SLevelCompletionView::build_report() -> TSharedRef<SWidget> {
                  [SNew(STextBlock)
                       .Text(NSLOCTEXT("LevelCompletion",
                                       "ReportDescription",
-                                      "Final telemetry snapshot recorded at mission completion."))
+                                      "Level outcome and profile score."))
                       .TextStyle(&style_->text(EGameTextStyle::BodySecondary))] +
-             SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 0.0f, 0.0f, 16.0f})[metrics] +
-             SVerticalBox::Slot().FillHeight(1.0f)[graph]];
+             SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 0.0f, 0.0f, 16.0f})[metrics]];
 }
 
 auto SLevelCompletionView::build_footer() -> TSharedRef<SWidget> {
@@ -259,21 +200,9 @@ auto SLevelCompletionView::build_footer() -> TSharedRef<SWidget> {
             .Style(&style_->button(EGameButtonStyle::Primary))
             .Audio(audio_)
             .Text(NSLOCTEXT("LevelCompletion", "Return", "Return to Mission Control"))
-            .OnClicked(this,
-                       &SLevelCompletionView::activate_action,
-                       ELevelCompletionAction::ReturnToMissionControl,
-                       on_return_to_mission_control_)};
-    auto keep_operating_button{
-        SNew(SGameButton)
-            .Style(&style_->button(EGameButtonStyle::Secondary))
-            .Audio(audio_)
-            .Text(NSLOCTEXT("LevelCompletion", "KeepOperating", "Keep Operating"))
-            .OnClicked(this,
-                       &SLevelCompletionView::activate_action,
-                       ELevelCompletionAction::KeepOperating,
-                       on_keep_operating_)};
-    action_buttons_.Add(return_button);
-    action_buttons_.Add(keep_operating_button);
+            .OnClicked(
+                this, &SLevelCompletionView::activate_action, on_return_to_mission_control_)};
+    return_button_ = return_button;
 
     return SNew(SBorder)
         .BorderImage(&style_->chrome().footer_background)
@@ -281,13 +210,10 @@ auto SLevelCompletionView::build_footer() -> TSharedRef<SWidget> {
             [SNew(SHorizontalBox) +
              SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
                  [SNew(STextBlock)
-                      .Text(
-                          NSLOCTEXT("LevelCompletion", "ReportStatus", "REPORT STATUS // ARCHIVED"))
+                      .Text(NSLOCTEXT("LevelCompletion", "ReportStatus", "LEVEL ENDED"))
                       .TextStyle(&style_->text(EGameTextStyle::Caption))] +
              SHorizontalBox::Slot().AutoWidth().Padding(FMargin{
-                 0.0f, 0.0f, 8.0f, 0.0f})[SNew(SBox).MinDesiredWidth(230.0f)[return_button]] +
-             SHorizontalBox::Slot()
-                 .AutoWidth()[SNew(SBox).MinDesiredWidth(180.0f)[keep_operating_button]]];
+                 0.0f, 0.0f, 8.0f, 0.0f})[SNew(SBox).MinDesiredWidth(230.0f)[return_button]]];
 }
 
 auto SLevelCompletionView::build_metric(FText label, TSharedPtr<STextBlock>& value) const
@@ -305,30 +231,9 @@ auto SLevelCompletionView::build_metric(FText label, TSharedPtr<STextBlock>& val
                                               .TextStyle(&style_->text(EGameTextStyle::Heading2))]];
 }
 
-auto SLevelCompletionView::build_detail(FText label, TSharedPtr<STextBlock>& value) const
-    -> TSharedRef<SWidget> {
-    return SNew(SHorizontalBox) +
-           SHorizontalBox::Slot().FillWidth(1.0f).Padding(
-               FMargin{0.0f, 5.0f})[SNew(STextBlock)
-                                        .Text(MoveTemp(label))
-                                        .TextStyle(&style_->text(EGameTextStyle::Caption))] +
-           SHorizontalBox::Slot().AutoWidth().Padding(FMargin{
-               12.0f,
-               5.0f})[SAssignNew(value, STextBlock).TextStyle(&style_->text(EGameTextStyle::Body))];
-}
-
-auto SLevelCompletionView::activate_action(ELevelCompletionAction const action,
-                                           FSimpleDelegate delegate) -> FReply {
-    focused_action_ = action;
+auto SLevelCompletionView::activate_action(FSimpleDelegate delegate) -> FReply {
     delegate.ExecuteIfBound();
     return FReply::Handled();
 }
 
-void SLevelCompletionView::focus_action(ELevelCompletionAction const action) {
-    focused_action_ = action;
-    auto const index{static_cast<int32>(action)};
-    if (action_buttons_.IsValidIndex(index) && action_buttons_[index].IsValid()) {
-        action_buttons_[index]->focus();
-    }
-}
 } // namespace ioj
