@@ -1,9 +1,8 @@
 # coj
 
 The maintainer-installed CLI for worktree preparation, constrained feature Git operations,
-formatting, analysis invocation, Unreal authoring/launch operations, benchmark delegation,
-jobs-board coordination, and named Windows Codex sessions. CMake retains compilation,
-generated artifacts, and ordinary tests.
+formatting, analysis invocation, Unreal authoring/launch operations, and benchmark delegation.
+CMake retains compilation, generated artifacts, and ordinary tests.
 
 Start a task from anywhere inside its worktree:
 

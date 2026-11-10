@@ -22,11 +22,11 @@ pwsh -NoProfile -File PowerShell/InstallCoj.ps1 -SkipTests
 
 The install, executable `--version` check, and tool-link publication still run.
 
-The installer stages the update before renaming the previous executable, allowing existing
-`coj codex start` sessions to continue. It prints the rename and retained-file status at the
+The installer stages the update before renaming the previous executable, allowing running
+commands to finish using it. It prints the rename and retained-file status at the
 end; subsequent installs remove retired copies once they are no longer in use.
 
-## Worktree preparation and central tools
+## Worktree preparation
 
 Run `coj prepare-worktree` from anywhere inside the current worktree. It preserves incremental build output in
 `out`, synchronizes and initializes/updates recursive submodules, regenerates
@@ -35,16 +35,6 @@ It stops on the first failure, except a saved-settings failure warns and allows 
 to continue. Git, Python, CMake, and the repository build prerequisites must be available.
 It does not perform a broad project/test build. Clean compiled output explicitly with
 `cmake --build --preset native --target clean` when needed.
-
-After preparation, the maintainer can run `coj install central-tools`. This repeats
-submodule synchronization/update, configures `native`, and builds the C++ `jobserverd`
-target through CMake. Rust then replaces the installed daemon, registers its Windows logon
-task, and checks readiness. It stops on failure and does not repeat the remaining preparation
-steps. See [developer tools](../../../../README.md) for installation locations.
-
-Use `coj install jobserver` to select only jobserver. Both install commands accept `--force`
-to close active board tickets before replacement and report what was closed. Ticket processes
-keep running. See [jobserver installation](../../../../jobserver/docs/server.md).
 
 ## Formatting, presets, and analysis
 
@@ -116,8 +106,7 @@ If the profiling process is forcibly terminated, restore
 if the artifact instead contains `BuildConfiguration.original.absent`, remove that
 project configuration file. Normal command failures restore it automatically.
 
-Use the existing exclusive jobs-board workflow around a measurement. The runner
-does not acquire tickets. Compiler instrumentation adds overhead; use these captures
+Compiler instrumentation adds overhead; use these captures
 to locate costs and compare equivalent settings, not as uninstrumented benchmarks.
 
 ## Unreal operations and benchmarks
@@ -138,7 +127,6 @@ material compilation target before invoking existing commandlets. Mesh shapes us
 `coj benchmark <operation> [options]` builds `benchmark-tools-host` in the native tree
 and delegates all arguments to that revision-local tool. Workloads and reports remain in
 benchmark-tools; see [benchmark operations](../../../../../docs/benchmarks.md).
-These commands do not acquire jobs tickets; callers retain the existing coordination workflow.
 
 CMake invokes `coj unreal-build --build-script <path> --target <target> --platform <platform>
 --configuration <configuration> --project <path> --native-toolchain <name>` for Unreal targets.
@@ -219,63 +207,11 @@ alone does not preserve dirty files. Git stash is unsupported because it is repo
 Use separately permitted read-only Git for inspection, such as `git diff` and `git log`.
 Report unsupported mutations; raw mutations require an explicit maintainer exception.
 
-## Named Codex sessions (Windows)
-
-Launch from the worktree in an existing terminal:
-
-```powershell
-coj codex start dev1
-```
-
-The launcher joins a named Windows Job Object, then starts `codex --no-daemon` normally.
-Codex and its later tool processes inherit membership. It uses the existing console and
-does not open another PowerShell window. Keep running ordinary commands such as `ctest`
-and `cmake` directly; their approval prefixes are unchanged.
-The launcher sets `TMP` and `TEMP` to `%IOJ_ROOT%\tmp\<worktree-name>`, creating it if needed.
-It reads `IOJ_ROOT` from the environment and derives the worktree name from the checkout it starts in.
-Direct Cargo commands and other child tools inherit it. Allow writes there in the sandbox.
-
-Names contain 1-64 lowercase letters, digits, hyphens, or underscores and are scoped to
-the current worktree. The launcher accepts no additional Codex arguments.
-
-```powershell
-coj codex processes dev1
-coj codex clean dev1 --dry-run
-coj codex clean dev1
-```
-
-Run `clean` inside that session. It stops the job's current child work, preserving Codex,
-its runtime helpers, console hosts, and the cleanup command's ancestors. Processes outside
-the job are untouched. Finish or pause other work first; cleanup can stop background tools
-and third-party MCP servers in the session.
-
-The launcher saves Codex's PID under ignored `.local/codex/` and waits for Codex to exit.
-There is no crash recovery or automatic descendant termination on exit. Leftover processes
-require manual cleanup; a job with remaining processes prevents reuse of its session name.
-This tracks a launched CLI session, including its subagents, rather than an existing desktop
-session or individual agents within a shared session.
-
-After building the `tool-tests` preset, run `ctest --test-dir out/build/native -L '^coj$'`
-for coj tests with the configured temporary directory. For a focused direct run,
-`cargo test --locked -p coj --test codex_sessions` from `tools/rust` reads `IOJ_ROOT`
-through the shared test-support crate; no `TMP`/`TEMP` override is needed.
-
-## Integration and jobs
+## Integration
 
 After validation and explicit user authorization, run `coj integrate` from the feature worktree.
-Use `--keep-branch` to retain the feature branch. Integration does not build or test, and its
-cheap Git transaction needs no jobs-board ticket. A final-rebase conflict is aborted; resolve
-with `coj git rebase dev`, validate, and retry. Promotion or cleanup failures report
-retained state and require inspection before retrying.
+Use `--keep-branch` to retain the feature branch. Integration does not build or test.
+A final-rebase conflict is aborted; resolve with `coj git rebase dev`, validate, and retry.
+Promotion or cleanup failures report retained state and require inspection before retrying.
 
-Use `coj jobs` for manual shared/exclusive coordination. Tickets carry the current session
-name and worktree, and remain until ended, cancelled, or explicitly cleared. Maintainers can
-clear one ID or an owner with `coj jobs clear <id>` or `coj jobs clear --owner <name>`;
-add `--worktree <path>` to limit owner clearing. No board command affects processes. Follow the
-[jobs-board workflow](../../../../jobserver/README.md).
-
-`coj git`, `coj jobs`, ordinary preparation commands, and the narrowly scoped
-`coj codex processes` and `coj codex clean` commands may have unconditional
-allow rules. Keep `codex start` outside that allowance. Never whitelist all
-of `coj`: `integrate` is privileged.
 See the [repository policy](../../../../../AGENTS.md).

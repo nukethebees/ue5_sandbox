@@ -91,7 +91,7 @@ Zen cooked-output storage is a separate setting.
   for detail; use the editor's Derived Data widget → **View Cache Statistics** for hits/misses.
 - **Check reuse:** repeat the same shader workload across processes/worktrees and compare cache
   statistics and compiler-job counts. Duration alone does not prove a cache hit.
-- **Prime deliberately:** under a shared jobs ticket, run:
+- **Prime deliberately:** run:
 
 ```powershell
 & "$env:UE_ROOT/Engine/Binaries/Win64/UnrealEditor-Cmd.exe" "$PWD/Sandbox.uproject" -run=DerivedDataCache -fill -unattended -nop4 -stdout
@@ -136,8 +136,7 @@ See [PowerShell](../PowerShell/README.md) for Shipping packaging and configurati
   `-DIOJ_ENABLE_UBA_CACHE=OFF`; capacity uses `IOJ_UBA_CACHE_CAPACITY_GB`.
 - **Build profiling:** use `coj profile-build native` or `coj profile-build unreal`;
   see [profiling commands](../tools/rust/crates/coj/docs/usage.md#build-profiling).
-- **Heavy work:** follow the [jobs-board protocol](../tools/jobserver/README.md). Use exclusive
-  access for benchmarks and builds writing shared engine output; avoid concurrent editor/UBT runs.
+- **Heavy work:** avoid concurrent editor/UBT runs and other heavy workloads during benchmarks.
 - **Integration:** after checks pass and the maintainer authorizes it, use `coj integrate`.
 
 Details: [native development](../native/README.md), [build architecture](../cmake/ARCHITECTURE.md),

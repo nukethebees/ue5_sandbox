@@ -8,17 +8,15 @@ does not collect a trace or write a `.tracy` file unless a Tracy client connects
 running. The JSON result reports `environment.tracy_enabled`; confirm that it is `true` before
 profiling.
 
-Build the benchmark before reserving the machine for a measurement:
+Build the benchmark before measuring:
 
 ```powershell
 cmake --preset native-benchmark
 cmake --build --preset native-simulation-benchmark
 ```
 
-Open the Tracy Profiler desktop application, request an exclusive jobs-board ticket, check until
-Ready, and explicitly start it before running the benchmark. End it immediately when the command
-returns. The profiler connection wait keeps the timed workload from starting until the profiler
-connects (or the timeout expires).
+Open the Tracy Profiler desktop application before running the benchmark. The profiler connection
+wait keeps the timed workload from starting until the profiler connects (or the timeout expires).
 
 ```powershell
 $repo = (Get-Location).Path
@@ -55,4 +53,3 @@ source identity, workload controls, and requested/observed viewport. See the
 
 - [Benchmarks](benchmarks.md): supported benchmark workloads and runners.
 - [Level scripts](../LevelScripts/README.md): find S7 benchmark scenarios.
-- [Jobs board](../tools/jobserver/README.md): cooperative FIFO shared/exclusive tickets.

@@ -23,7 +23,7 @@ pub enum Command {
     FrameMemoryRevisionAb(FrameComparisonOptions),
     /// Compare native simulation timings across revisions.
     #[command(
-        after_help = "Results: raw JSON per process, captures.json, comparison.json/.csv/.md, SVG plots, source.diff.\nUse a shared jobs ticket for preparation and an exclusive ticket for measurement."
+        after_help = "Results: raw JSON per process, captures.json, comparison.json/.csv/.md, SVG plots, source.diff."
     )]
     Compare(CompareOptions),
     /// Summarize zones in a saved Tracy capture.

@@ -34,7 +34,7 @@ try {
     $env:TMP = $temporaryDirectory
     $env:TEMP = $temporaryDirectory
     if (-not $SkipTests) {
-        & cargo test --package coj --package jobserver-client --locked
+        & cargo test --package coj --locked
         if ($LASTEXITCODE -ne 0) {
             throw "coj tests exited with code $LASTEXITCODE."
         }
@@ -50,7 +50,7 @@ try {
         throw "Staged coj smoke test exited with code $LASTEXITCODE."
     }
 
-    # Rename the loaded image so existing Codex launchers can keep running it.
+    # Rename the loaded image so running commands can finish using it.
     New-Item -ItemType Directory -Path $installBin -Force | Out-Null
     Copy-Item -LiteralPath $stagedTool -Destination $nextTool
     if (Test-Path -LiteralPath $installed_tool) {
@@ -85,7 +85,6 @@ try {
 
     Write-Host "`nInstalled coj:`n  $installed_tool"
     Publish-ToolLinks $installBin @('coj.exe') $links
-    Write-Host "`nOn a fresh setup, install the shared project tools with:`n  coj install central-tools"
     Write-Host "`nPrepare tasks with 'coj prepare-worktree'; use 'coj git <args...>' for feature work."
     Write-Host "After validation and explicit user authorization, run 'coj integrate' for dev integration."
     Write-Host "`nRun 'coj --help' to see the available commands."
@@ -111,7 +110,7 @@ try {
         if ($restoredPrevious) {
             Write-Host 'Installation failed; the previous executable was restored to its original path.'
         } elseif (Test-Path -LiteralPath $retiredTool) {
-            Write-Host 'The renamed file is retained; existing sessions can continue using it. A later installation will retry cleanup.'
+            Write-Host 'The renamed file is retained; running commands can finish using it. A later installation will retry cleanup.'
         } else {
             Write-Host 'The renamed file was no longer in use and has been removed.'
         }

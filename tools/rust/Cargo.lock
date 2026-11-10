@@ -170,15 +170,13 @@ checksum = "1c133bc6a41be0d194c306b5506d15e6feeea7b1d6604bd3f8310dfb2ca96486"
 
 [[package]]
 name = "coj"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "clap",
  "ioj-test-support",
- "jobserver-client",
  "serde",
  "serde_json",
  "toml",
- "windows-sys",
 ]
 
 [[package]]
@@ -367,14 +365,6 @@ name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
-
-[[package]]
-name = "jobserver-client"
-version = "0.1.0"
-dependencies = [
- "serde_json",
- "windows-sys",
-]
 
 [[package]]
 name = "js-sys"

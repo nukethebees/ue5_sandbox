@@ -1,7 +1,7 @@
 # Unreal benchmarks
 
-Follow the [benchmark preparation and measurement workflow](../../../../../docs/benchmarks.md#before-measuring)
-for jobs-board coordination. Set `UE_ROOT` to your Editor installation. SandboxISMC also accepts
+Follow the [benchmark preparation and measurement workflow](../../../../../docs/benchmarks.md#before-measuring).
+Set `UE_ROOT` to your Editor installation. SandboxISMC also accepts
 `--editor <Engine/Binaries/Win64/UnrealEditor-Cmd.exe>`.
 
 All workloads use Unreal's [shared local Zen DDC](../../../../../docs/build-and-test.md#unreal-derived-data-cache).
@@ -20,14 +20,14 @@ prepared binary. `--timeout-seconds` defaults to 600 per measurement.
 
 ## Compare SandboxISMC revisions
 
-Prepare under a shared ticket:
+Prepare the inputs:
 
 ```powershell
 coj benchmark sandbox-ismc-revision-ab `
     --baseline <commit> --prepare-only --label "packed transform"
 ```
 
-End that ticket, obtain an exclusive ticket, and use the printed baseline path:
+Measure using the printed baseline path:
 
 ```powershell
 coj benchmark sandbox-ismc-revision-ab `

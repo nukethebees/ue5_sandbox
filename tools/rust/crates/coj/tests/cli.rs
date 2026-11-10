@@ -72,13 +72,11 @@ fn help_and_invalid_arguments_do_not_start_initialization() {
     assert!(help.status.success());
     let help = String::from_utf8_lossy(&help.stdout);
     assert!(help.contains("prepare-worktree"));
-    assert!(help.contains("install <tool>"));
     for arguments in [
         vec![],
         vec!["unknown"],
         vec!["start"],
         vec!["prepare-worktree", "--skip-build"],
-        vec!["install", "central-tools", "--all"],
     ] {
         let output = invoke(&directory.0, &arguments);
         assert_eq!(output.status.code(), Some(2));
@@ -87,51 +85,13 @@ fn help_and_invalid_arguments_do_not_start_initialization() {
 }
 
 #[test]
-fn jobs_help_and_invalid_syntax_work_without_an_external_client() {
-    let directory = TemporaryDirectory::new();
-    let help = tool(&directory.0, &["jobs", "--help"])
-        .env("PATH", directory.0.join("missing-tools"))
-        .output()
-        .unwrap();
-    assert!(help.status.success());
-    let text = String::from_utf8_lossy(&help.stdout);
-    for command in [
-        "request", "check", "start", "end", "cancel", "clear", "status",
-    ] {
-        assert!(text.contains(command), "{text}");
-    }
-    for arguments in [
-        vec!["jobs"],
-        vec!["jobs", "unknown"],
-        vec!["jobs", "jobs", "end", "85"],
-        vec!["jobs", "request", "other", "name"],
-        vec!["jobs", "request", "shared", ""],
-        vec!["jobs", "request", "shared"],
-        vec!["jobs", "check", "0"],
-        vec!["jobs", "start", "-1"],
-        vec!["jobs", "end", "1x"],
-        vec!["jobs", "cancel", "18446744073709551616"],
-        vec!["jobs", "status", "extra"],
-        vec!["jobs", "clear"],
-        vec!["jobs", "clear", "85", "--owner", "dev5"],
-        vec!["jobs", "clear", "--worktree", "."],
-    ] {
-        let output = invoke(&directory.0, &arguments);
-        assert_eq!(output.status.code(), Some(2), "{arguments:?}: {output:?}");
-        assert!(!output.stderr.is_empty(), "{arguments:?}: {output:?}");
-    }
-}
-
-#[test]
 fn outside_worktree_fails_without_removing_out() {
     let directory = TemporaryDirectory::new();
     fs::create_dir(directory.0.join("out")).unwrap();
-    for arguments in [vec!["prepare-worktree"], vec!["install", "central-tools"]] {
-        let output = invoke(&directory.0, &arguments);
-        assert!(!output.status.success());
-        assert!(String::from_utf8_lossy(&output.stderr).contains("run inside a Git worktree"));
-        assert!(directory.0.join("out").is_dir());
-    }
+    let output = invoke(&directory.0, &["prepare-worktree"]);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("run inside a Git worktree"));
+    assert!(directory.0.join("out").is_dir());
 }
 
 #[test]
@@ -236,58 +196,6 @@ fn invalid_saved_settings_warn_and_allow_code_generation() {
         ["presets", "generate-code"]
     );
     assert_eq!(fs::read(settings).unwrap(), [0xff]);
-}
-
-#[test]
-fn central_tool_installation_builds_jobserver_and_checks_artifacts() {
-    // Stop before deployment so this fixture cannot touch the installed board.
-    // Preserve the former PowerShell installer's ASAN rejection coverage here.
-    for asan in [false, true] {
-        let directory = fixture();
-        fs::create_dir(directory.0.join("out")).unwrap();
-        fs::write(directory.0.join("out/keep.txt"), "build output").unwrap();
-        fs::write(directory.0.join("CMakePresets.json"), r#"{
-            "version": 6,
-            "configurePresets": [{"name":"native", "generator":"Ninja", "binaryDir":"${sourceDir}/out/build/native"}],
-            "buildPresets": [{"name":"native", "configurePreset":"native"}]
-        }"#).unwrap();
-        fs::write(directory.0.join("CMakeLists.txt"), format!(r#"
-cmake_minimum_required(VERSION 3.25)
-project(Fixture NONE)
-file(APPEND "${{CMAKE_SOURCE_DIR}}/phases.txt" "configure\n")
-file(WRITE "${{CMAKE_BINARY_DIR}}/jobserver-install.json"
-  "{{\"daemon\":\"${{CMAKE_BINARY_DIR}}/jobserverd.exe\",\"asan_enabled\":{asan}}}")
-add_custom_target(jobserverd COMMAND "${{CMAKE_COMMAND}}" -E touch "${{CMAKE_SOURCE_DIR}}/built.txt")
-"#)).unwrap();
-        let output = invoke(&directory.0, &["install", "central-tools", "--force"]);
-        assert!(!output.status.success(), "{output:?}");
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(
-            stderr.contains(if asan {
-                "ASAN jobserver build is for local validation"
-            } else {
-                "CMake did not produce the jobserver executable"
-            }),
-            "{output:?}"
-        );
-        assert_eq!(directory.0.join("built.txt").is_file(), !asan);
-        assert_eq!(
-            fs::read_to_string(directory.0.join("phases.txt"))
-                .unwrap()
-                .trim(),
-            "configure"
-        );
-        assert_eq!(
-            fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
-            "build output"
-        );
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let sync = stdout.find("Synchronizing submodules").unwrap();
-        let update = stdout.find("Updating submodules").unwrap();
-        let configure = stdout.find("Configuring native build").unwrap();
-        assert!(sync < update && update < configure);
-        assert!(!stdout.contains("Installing canonical jobserver"));
-    }
 }
 
 #[test]

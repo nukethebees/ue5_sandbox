@@ -98,8 +98,7 @@ coj benchmark heatmap
 ```
 
 That target initially encountered a recursive Ninja prerequisite-build stall. After the editor
-build completed, the timed runs used this commandlet workload. To repeat it, use an exclusive
-[jobs-board ticket](../tools/jobserver/README.md): request, check until Ready, start, run, end.
+build completed, the timed runs used this commandlet workload:
 
 ```powershell
 & "C:\dev\UE5.8.0\Engine\Binaries\Win64\UnrealEditor-Win64-DebugGame-Cmd.exe" `
@@ -179,7 +178,7 @@ remain unchanged.
 ## Post-audit measurements
 
 The focused Unreal timing workload, used before and after removing the assertions, was the
-following. Use the same exclusive jobs-board request/check/start/end protocol when repeating it:
+following:
 
 ```powershell
 $timer = [Diagnostics.Stopwatch]::StartNew()

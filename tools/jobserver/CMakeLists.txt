@@ -1,4 +1,0 @@
-add_subdirectory(lib)
-add_subdirectory(platform)
-add_subdirectory(server)
-add_subdirectory(tests)

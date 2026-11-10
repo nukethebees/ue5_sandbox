@@ -5,13 +5,9 @@ Use `coj benchmark <operation>` to run a workload or compare revisions. Keep res
 
 ## Before measuring
 
-Build and prepare inputs under a shared [jobs-board ticket](../tools/jobserver/README.md).
-For measurement, request an exclusive ticket, check it until Ready, and start it immediately
-before the command. End it when the command returns, including on failure. Do not measure
-alongside an unmanaged Unreal build or Editor session.
+Build and prepare inputs before measuring. Avoid concurrent heavy workloads during measurement.
 
-Use `--skip-build` only when binaries match the sources you intend to measure. A command that
-builds and measures in one invocation needs an exclusive ticket for that invocation.
+Use `--skip-build` only when binaries match the sources you intend to measure.
 
 ## Run a native workload
 
@@ -39,18 +35,18 @@ choose the destination. Native simulation and frame-memory
 commands print their JSON results.
 
 For a frame-memory revision comparison, run `coj benchmark frame-memory-revision-ab
---baseline <ref>` under an exclusive ticket. Set `--iterations` and `--warmup-iterations` to
+--baseline <ref>`. Set `--iterations` and `--warmup-iterations` to
 control complete runs; read `raw-results.csv` and `paired-results.csv` in the printed directory.
 
 ## Native commit comparisons
 
-First prepare both inputs under a shared ticket:
+First prepare both inputs:
 
 ```powershell
 coj benchmark compare --baseline <before> --candidate <after> --prepare-only
 ```
 
-Then obtain an exclusive ticket and measure using the paths printed by preparation:
+Then measure using the paths printed by preparation:
 
 ```powershell
 coj benchmark compare --baseline <before> --candidate <after> --skip-build `
@@ -118,8 +114,7 @@ inclusive duration to assess parallel latency rather than summing worker duratio
 
 Use `--top` and `--worst` to adjust report size, or `--thread` to select a Tracy thread identifier.
 If an export exceeds the event limit, narrow the filters or raise `--max-events`. Keep raw
-traces as local artifacts and inspect compact reports. Use a shared ticket for expensive
-offline exports; reserve exclusive tickets for measurements.
+traces as local artifacts and inspect compact reports.
 
 ## Regenerate plots
 

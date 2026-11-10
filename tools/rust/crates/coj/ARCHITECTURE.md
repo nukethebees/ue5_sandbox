@@ -2,7 +2,6 @@
 
 coj is installed outside `out`. Preparation retains build outputs.
 Commands resolve the current worktree and launch subprocesses directly.
-Preparation and central-tool installation share recursive submodule synchronization/update.
 
 Developer operations use explicit command dispatch. CMake retains build prerequisites and writes
 `unreal-paths.json` with resolved editor, project, DDC, and staged-game paths. coj consumes
@@ -58,10 +57,6 @@ state. Validation belongs to the caller and is not repeated during integration.
 
 ## Subprocesses and settings
 
-The jobs commands use the linked `jobserver-client` Rust crate to exchange framed JSON with
-`jobserverd`. There is no separate client executable. The CLI attaches owner/worktree metadata;
-the daemon only stores tickets, schedules admission, and applies explicit board changes.
-
 The Unreal adapter validates build-script/project paths, sets `IOJ_NATIVE_TOOLCHAIN`, and
 forwards Unreal's exit code. Windows batch scripts use the command processor, with MSBuild
 node reuse disabled for the child.
@@ -69,25 +64,6 @@ node reuse disabled for the child.
 Live Coding edits preserve the saved INI file's encoding, byte-order mark, line endings,
 whitespace, and comments. Missing settings are left absent; decoding or writing failures warn
 without preventing code generation.
-
-## Codex process ownership (Windows)
-
-`codex start` creates a named Windows Job Object and assigns the launcher itself before
-spawning `codex.exe --no-daemon` with the standard process API. Descendants inherit job
-membership, including nested sandbox jobs. The name combines the worktree identity and
-session name. Only the Codex PID is saved under `.local/codex/`.
-
-The launcher waits in the existing console and lets Codex handle Ctrl+C. There is no daemon,
-suspended launch, session recovery, or exit-time process cleanup. The cooperative jobs board
-remains separate. The launcher supplies `COJ_CODEX_NAME` and `COJ_CODEX_WORKTREE` to descendants
-so jobs requests in that worktree carry the session name. Board ownership is descriptive;
-process cleanup still verifies Windows Job Object membership.
-
-`clean` requires actual membership in the named job. It enumerates members and preserves
-Codex installation executables, sandbox runners, console hosts, and the cleanup caller's
-ancestry. Console hosts do not protect their worker ancestors. Held process handles and
-membership checks scope termination to this job. Cleanup acts on one snapshot of child work.
-Externally brokered processes that do not join the job are outside its scope.
 
 ## Tests
 

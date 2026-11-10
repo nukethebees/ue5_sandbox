@@ -5,7 +5,7 @@ SDL and ImGui and does not require Unreal Engine.
 
 ## Build and run
 
-From the repository root, use the `coj` worktree and jobs-board workflow described
+From the repository root, use the `coj` worktree workflow described
 in [AGENTS.md](../../AGENTS.md), then build and test:
 
 ```powershell
@@ -34,8 +34,7 @@ component `layout-planner` installs the executable under the selected prefix's
 Build `native-layout-benchmarks` in Release to measure edits, undo and redo with
 bulk analysis at fixed history depths. Run the Google Benchmark executable from
 `native/layout/benchmarks/` in that build directory; standard benchmark filtering,
-repetition and JSON output flags are supported. Request an exclusive jobs-board
-ticket before timing runs.
+repetition and JSON output flags are supported.
 
 ## Edit a document
 

@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
     "crates/coj",
-    "crates/jobserver-client",
     "crates/native-binary-tools",
     "crates/game-package-tools",
     "crates/benchmark-tools",

@@ -741,9 +741,7 @@ cmake_language(DEFER CALL check_simulation_policy)
         self.assertFalse(inventory("-L", "^all$").keys() & tools.keys())
         expected_tools = {"native-layout-tests", "layout-exported-probe", "layout-planner-ui-tests", "image-lab-tests"}
         expected_tools.update(("benchmark-tools", "game-package-tools", "native-binary-tools"))
-        expected_tools.update(("coj", "jobserver-client"))
-        if sys.platform == "win32":
-            expected_tools.add("jobserver-client-integration")
+        expected_tools.add("coj")
         self.assertEqual(tools.keys(), expected_tools)
         self.assertEqual(inventory("-L", "^native-simulation$", "-LE", "soak|compile-contract").keys(),
                          {"native-simulation-tests"})

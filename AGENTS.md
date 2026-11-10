@@ -43,19 +43,11 @@ Unreal Engine 5.8 project.
   Run applicable expensive categories once against the final candidate.
   `native-simulation-tests` runs ordinary tests; `native-simulation-full-tests` adds the soak.
   `native-tests` includes native soak/compile contracts, excluding standalone developer tools.
-* Use stock Codex and the cooperative [jobs board](tools/jobserver/README.md). Cheap work needs
-  no ticket. Before heavy builds/tests, run `coj jobs request shared "operation"`; use `exclusive`
-  for benchmarks or work needing a quiet machine. Check `coj jobs check <id>` until Ready.
-  Run `coj jobs start <id>` immediately before the command and `coj jobs end <id>` immediately
-  after it returns, including failures. Cancel unused queued/ready tickets with
-  `coj jobs cancel <id>`. Inspect `coj jobs status`; never jump a queued exclusive ticket.
-  Follow this voluntary, unenforced protocol and report missing tools.
 * Run light, relevant tests after implementation and expensive relevant gates once on the final
   candidate. Do not build Unreal for tooling/native work without a dependency reason.
 * Use one simple shell command per tool invocation for routine work. Never combine commands with `;`,
   `&&`, `||`, pipelines, or script blocks, even if approved or cheap. Inspect through separate
   calls and read output directly; batch independent calls through the tool API, not shell strings.
-  Cheap inspections need no ticket; request tickets separately from coordinated commands.
   Do not redirect output to log files; existing build/test scripts may run normally.
 * Commit discrete chunks as you work, using judgement; avoid one commit for everything.
 * Run static analysis only when explicitly requested or modifying its tooling, not as normal
@@ -81,8 +73,8 @@ Unreal Engine 5.8 project.
 * Compare native simulation/fighter revisions with
   `coj benchmark compare --baseline <ref> [--candidate <ref>]`, not ad-hoc worktree/analysis scripts.
   It manages detached inputs under this workspace's `.local/benchmarks/wt/`. Omit `--candidate`
-  to include local edits. Run `--prepare-only` under a shared ticket, then use the printed
-  worktree paths with `--skip-build` under an exclusive ticket. See `docs/benchmarks.md`.
+  to include local edits. Run `--prepare-only`, then use the printed worktree paths with
+  `--skip-build`. See `docs/benchmarks.md`.
 * For probe-level performance, use `coj benchmark tracy-report --trace <capture.tracy>` with a
   relevant `--filter` and steady-state window. Compare probe distributions and full-tick timings.
   Keep raw traces/exports out of agent context; see `docs/benchmarks.md`.
@@ -105,7 +97,7 @@ Unreal Engine 5.8 project.
 * Suggest improvements beyond the requested changes rather than implementing them without asking.
 * Keep README.md files concise and user-oriented. Put detailed usage in local READMEs or `docs/`,
   and architecture in local `ARCHITECTURE.md` files.
-* For temporary shared-resource contention outside jobs-board tickets, wait rather than retrying
+* For temporary shared-resource contention, wait rather than retrying
   across consecutive turns. Sleep within the shell/tool invocation before retries: 10s, 30s, then
   60s, capped at 60s. Investigate and report unreasonable persistence.
 * When replacing experimental architecture/workflows on a feature branch, remove the old path

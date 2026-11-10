@@ -7,8 +7,7 @@ For commands and workflows, see [Benchmarks](../../../../../docs/benchmarks.md) 
 
 `coj benchmark` builds the invoking checkout's `benchmark-tools-host` target and delegates
 arguments to that executable. Workload orchestration, parsing, comparisons, and reports are
-revision-local Rust code, including SVG plotting with Plotters. The tools do not acquire
-jobs-board tickets or resource leases. Callers coordinate builds and measurements.
+revision-local Rust code, including SVG plotting with Plotters.
 
 | Module | Responsibility |
 | --- | --- |

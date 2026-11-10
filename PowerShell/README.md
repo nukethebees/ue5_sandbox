@@ -21,8 +21,8 @@ Agents assume the CLI is installed and report missing tools to the maintainer.
 Use `-SkipTests` to retry installation after tests have already passed, for example after
 fixing a file-access error. Installation and the executable smoke check still run.
 
-Updates stage and check the new executable before renaming the installed copy, so active
-`coj codex start` sessions can continue running. The installer ends with the old and renamed
+Updates stage and check the new executable before renaming the installed copy, so running
+commands can finish using the previous executable. The installer ends with the old and renamed
 paths and whether the renamed file was retained or removed. Later installations retry cleanup
 of retained copies. Failed replacement restores the previous executable.
 
@@ -35,8 +35,7 @@ After validation and explicit user authorization, run `coj integrate`; use
 - `PackageGame.ps1` composes CMake and CTest commands for Development or Shipping packages.
 - `tests/TestDeveloperScripts.ps1` checks the syntax of scripts in this directory.
 - `tests/TestUnrealEditorConfigurationTransition.ps1` builds and smoke-tests the Editor in
-  DebugGame, Development, then DebugGame again. Use an exclusive
-  [jobs-board ticket](../tools/jobserver/README.md) for the whole sequence.
+  DebugGame, Development, then DebugGame again.
 
 See [Build and test](../docs/build-and-test.md) for direct CMake build commands, packaging,
 project-file generation, and Editor launches.

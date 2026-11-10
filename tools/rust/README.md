@@ -14,8 +14,7 @@ CMake builds the three domain tools privately on demand; they are not installed 
 For coj installation and commands, see its [local guide](crates/coj/README.md).
 
 Run the complete tool suite with `cmake --workflow --preset tool-tests` from the repository
-root. Executable crates and the linked `jobserver-client` crate have matching CTest labels,
-including `coj`. CTest also runs the client's isolated daemon integration tests.
+root. Executable crates have matching CTest labels, including `coj`.
 For direct runs, use `cargo test --locked -p <package>` or `cargo test --workspace --locked`.
 Set `IOJ_ROOT` first. Tests use `ioj-test-support` to create `%IOJ_ROOT%\tmp\<worktree-name>`,
 deriving the checkout from the current directory. `temp_root()` returns that deterministic base;

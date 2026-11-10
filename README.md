@@ -25,7 +25,6 @@ Build and install the core tools from the repository root:
 ```powershell
 pwsh -NoProfile -File PowerShell/InstallCoj.ps1
 coj prepare-worktree
-coj install central-tools
 ```
 
 `coj` is a general purpose tool for repo management.
@@ -59,7 +58,7 @@ cmake --workflow --preset debug-game-unit-tests
 | `Source/` | Project Unreal modules and their adapters/tests | [Source map](Source/README.md) |
 | `Plugins/` | Reusable engine extensions and game plugins | [Plugin map](Plugins/README.md) |
 | `LevelScripts/` | S7-authored campaign, showcase, and benchmark scenarios | [Level scripts guide](LevelScripts/README.md) |
-| `tools/` | Shared developer tools, including the jobserver | [Tools guide](tools/README.md) |
+| `tools/` | Developer tools | [Tools guide](tools/README.md) |
 | `docs/` | Cross-cutting development and investigation documentation | [Documentation hub](docs/README.md) |
 
 ## Common destinations

@@ -14,10 +14,6 @@ prefix_rule(
     decision="allow"
 )
 prefix_rule(
-    pattern=["coj", "install-central-tools"],
-    decision="allow"
-)
-prefix_rule(
     pattern=["git", "status"], 
     decision="allow"
 )
@@ -87,13 +83,4 @@ prefix_rule(
 prefix_rule(
     pattern=["pyright"], 
     decision="allow"
-)
-
-# Named Codex session inspection and membership-checked self-cleanup only.
-# Launching or stopping a complete session is not covered by this allowance.
-prefix_rule(
-    pattern=["coj", "codex", ["processes", "clean"]],
-    decision="allow",
-    match=["coj codex processes dev1", "coj codex clean dev1 --dry-run", "coj codex clean dev1"],
-    not_match=["coj codex start dev1", "coj codex stop dev1"]
 )

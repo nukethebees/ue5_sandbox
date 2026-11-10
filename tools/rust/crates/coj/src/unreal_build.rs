@@ -66,7 +66,6 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
         .arg(project_argument)
         .arg("-WaitMutex")
         .env("IOJ_NATIVE_TOOLCHAIN", &args.native_toolchain)
-        // The cooperative jobs board does not own or reap MSBuild descendants.
         .env("MSBUILDDISABLENODEREUSE", "1")
         .status()
         .map_err(|e| {
