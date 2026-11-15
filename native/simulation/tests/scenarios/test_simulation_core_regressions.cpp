@@ -107,10 +107,11 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     EXPECT_EQ(0, lethal.ledger_alive_count) << "Ledger death commits in the same tick";
     EXPECT_EQ(0, lethal.health) << "Owner retains terminal health for the dead handle";
     EXPECT_TRUE(!entity_is_alive(harness.simulation(), damaged_handle)) << "Killed ID is dead";
+    auto const kills{harness.ledger().history().kills()};
+    auto const& counts{harness.ledger().issued_counts()};
     for (auto const type : EnumTraits<EntityType>::values) {
-        EXPECT_EQ(0,
-                  std::ranges::fold_left(
-                      harness.ledger().unique_entities(type).kills(), std::uint32_t{}, std::plus{}))
+        auto const issued_kills{kills.subspan(entity_identity_offsets[type], counts[type])};
+        EXPECT_EQ(0, std::ranges::fold_left(issued_kills, std::uint32_t{}, std::plus{}))
             << "Unattributed death does not create a kill";
     }
 }
@@ -156,10 +157,12 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     harness.on_end_tick = [&](LevelSim& level) {
         auto const events{level.spatial_query_manager().aabb_overlap_events()};
         auto const capital{observe_entity(level, capital_id)};
+        auto const kills{harness.ledger().history().kills()};
+        auto const& counts{harness.ledger().issued_counts()};
         std::uint32_t kill_count{};
         for (auto const type : EnumTraits<EntityType>::values) {
-            kill_count = std::ranges::fold_left(
-                harness.ledger().unique_entities(type).kills(), kill_count, std::plus{});
+            auto const issued_kills{kills.subspan(entity_identity_offsets[type], counts[type])};
+            kill_count = std::ranges::fold_left(issued_kills, kill_count, std::plus{});
         }
         samples.add(harness.time(),
                     Sample{

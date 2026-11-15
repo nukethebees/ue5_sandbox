@@ -7,7 +7,6 @@
 #include <ioj/sim/entities/entity_identity_layout.h>
 #include <ioj/sim/entities/health.h>
 
-#include <cassert>
 #include <limits>
 #include <memory_resource>
 #include <vector>
@@ -41,11 +40,6 @@ class EntityLedger {
     // Death metadata describes the latest death recorded for that identity.
     auto history() const noexcept -> EntityHistory::CompactConstView {
         return history_.const_view();
-    }
-    // Read issued entities of one type. Index with EntityId::index().
-    auto unique_entities(EntityType type) const noexcept -> EntityHistory::CompactConstView {
-        assert(is_valid(type));
-        return history_.const_view(entity_identity_offsets[type], issued_counts_[type]);
     }
     // Borrow history rows in publication order until the next frame or ledger mutation.
     auto frame_deaths(EntityType type) const -> std::span<HistoryIndex const> {

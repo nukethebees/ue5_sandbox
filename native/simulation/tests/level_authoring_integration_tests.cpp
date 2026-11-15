@@ -49,8 +49,9 @@ TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReference
     EXPECT_EQ(simulation.result()->winner, Team::Blue);
     EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
     EXPECT_EQ(simulation.turrets().num_instances(), 0);
-    EXPECT_EQ(simulation.entity_ledger().unique_entities(EntityType::CapitalShip).num(), 2);
-    EXPECT_EQ(simulation.entity_ledger().unique_entities(EntityType::Turret).num(), 1);
+    auto const& issued_counts{simulation.entity_ledger().issued_counts()};
+    EXPECT_EQ(issued_counts[EntityType::CapitalShip], 2);
+    EXPECT_EQ(issued_counts[EntityType::Turret], 1);
 
     auto fresh{build()};
     ASSERT_TRUE(fresh);

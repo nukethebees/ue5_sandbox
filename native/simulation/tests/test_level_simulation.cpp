@@ -349,13 +349,15 @@ TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumed
     EXPECT_TRUE(std::ranges::equal(simulation.events().pending_preparation_events(), events));
     simulation.advance(period);
     EXPECT_EQ(simulation.capital_ships().num_instances(), 2);
-    EXPECT_TRUE(std::ranges::equal(
-        simulation.entity_ledger().unique_entities(EntityType::CapitalShip).teams(),
-        std::array{Team::White, Team::Green}));
+    auto const& ledger{simulation.entity_ledger()};
+    auto const teams{
+        ledger.history().teams().subspan(entity_identity_offsets[EntityType::CapitalShip],
+                                         ledger.issued_counts()[EntityType::CapitalShip])};
+    EXPECT_TRUE(std::ranges::equal(teams, std::array{Team::White, Team::Green}));
     EXPECT_TRUE(std::ranges::equal(simulation.events().preparation_events(), events));
     EXPECT_TRUE(simulation.events().pending_preparation_events().empty());
     simulation.advance(period);
-    EXPECT_EQ(simulation.entity_ledger().unique_entities(EntityType::CapitalShip).num(), 2);
+    EXPECT_EQ(ledger.issued_counts()[EntityType::CapitalShip], 2);
 }
 
 TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendingEvents) {
@@ -500,9 +502,11 @@ TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTer
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
     EXPECT_EQ(simulation.capital_ships().num_instances(), 2);
     expect_health_mappings(simulation);
-    EXPECT_TRUE(std::ranges::equal(
-        simulation.entity_ledger().unique_entities(EntityType::CapitalShip).teams(),
-        std::array{Team::White, Team::Green}));
+    auto const& ledger{simulation.entity_ledger()};
+    auto const teams{
+        ledger.history().teams().subspan(entity_identity_offsets[EntityType::CapitalShip],
+                                         ledger.issued_counts()[EntityType::CapitalShip])};
+    EXPECT_TRUE(std::ranges::equal(teams, std::array{Team::White, Team::Green}));
     EXPECT_TRUE(std::ranges::equal(simulation.events().preparation_events(),
                                    std::array{second_spawn, first_spawn}));
     EXPECT_TRUE(simulation.events().pending_preparation_events().empty());
@@ -883,10 +887,11 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     EXPECT_TRUE(ledger.history().life_state()[ledger.history_index(player_id)] ==
                 LifeState::Unknown)
         << "Overlap death uses the environmental death path";
+    auto const kills{ledger.history().kills()};
+    auto const& counts{ledger.issued_counts()};
     for (auto const type : EnumTraits<EntityType>::values) {
-        EXPECT_EQ(std::ranges::fold_left(
-                      ledger.unique_entities(type).kills(), std::uint32_t{}, std::plus{}),
-                  0)
+        auto const issued_kills{kills.subspan(entity_identity_offsets[type], counts[type])};
+        EXPECT_EQ(std::ranges::fold_left(issued_kills, std::uint32_t{}, std::plus{}), 0)
             << "Environmental overlap death gives no combat kill";
     }
 }
