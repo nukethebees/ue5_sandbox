@@ -2,7 +2,6 @@
 
 #include <ioj/column_math.h>
 #include <ioj/sim/entities/entity_ledger.h>
-#include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>

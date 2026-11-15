@@ -3,7 +3,6 @@
 #include <ioj/column_math.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/lasers/laser_source.h>
-#include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGameRendering/SparkEffects.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
