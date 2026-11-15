@@ -86,7 +86,6 @@ auto SRadar2D::add_style(FRadar2DContactStyle style) -> int32 {
 }
 
 bool SRadar2D::set_style(int32 const style_index, FRadar2DContactStyle style) {
-    check_invariants();
     if (!styles_.IsValidIndex(style_index)) {
         return false;
     }
@@ -101,35 +100,28 @@ bool SRadar2D::set_style(int32 const style_index, FRadar2DContactStyle style) {
 
 bool SRadar2D::set_positions(int32 const style_index,
                              std::span<ioj::ui::Vector2f const> positions) {
-    check_invariants();
     if (!data_->native.set_positions(style_index, positions)) {
         return false;
     }
-    check_invariants();
     Invalidate(EInvalidateWidgetReason::Paint);
     return true;
 }
 
 bool SRadar2D::clear_positions(int32 const style_index) {
-    check_invariants();
     if (!data_->native.clear_positions(style_index)) {
         return false;
     }
-    check_invariants();
     Invalidate(EInvalidateWidgetReason::Paint);
     return true;
 }
 
 void SRadar2D::clear_positions() {
-    check_invariants();
     if (data_->native.clear_positions()) {
-        check_invariants();
         Invalidate(EInvalidateWidgetReason::Paint);
     }
 }
 
 void SRadar2D::clear_styles() {
-    check_invariants();
     if (styles_.IsEmpty()) {
         return;
     }
@@ -145,7 +137,6 @@ auto SRadar2D::get_range() const noexcept -> float {
 }
 
 auto SRadar2D::get_buckets() const -> TArray<FRadar2DStyleBucket> {
-    check_invariants();
     TArray<FRadar2DStyleBucket> result;
     result.Reserve(styles_.Num());
     auto const count{styles_.Num()};
@@ -168,7 +159,6 @@ int32 SRadar2D::OnPaint(FPaintArgs const&,
                         int32 const layer_id,
                         FWidgetStyle const& widget_style,
                         bool const parent_enabled) const {
-    check_invariants();
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
     auto const layout{
         ioj::ui::radar_2d::make_layout({widget_size.X, widget_size.Y}, data_->native.range())};
