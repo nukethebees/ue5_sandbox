@@ -203,6 +203,7 @@
       (parameter config (type-ref ioj::sim::FighterSimConfig :suffix " const&"))
       (parameter clock (type-ref @sim_clock :suffix " const&")))
     (method update_entity_lookup_table void
+      (parameter entity_tables (type-ref @entity_tables :suffix "&"))
       (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade PreparationInterface @fighters_sim simulation

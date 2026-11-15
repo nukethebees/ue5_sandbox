@@ -8,6 +8,7 @@
 #include <ioj/sim/collision/grid_traversal.h>
 #include <ioj/sim/collision/line_trace_batch.h>
 #include <ioj/sim/collision/trace_hits.h>
+#include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/entities/health.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/levels/level_read_access.h>
@@ -218,7 +219,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     append_batch(EntityType::Fighter,
                  fighters.entity_ids(),
                  fighters.view_locations().resolve(),
-                 level.fighters().healths(),
+                 level.entity_tables().health.const_view<EntityType::Fighter>(),
                  [fighter_directions](std::uint32_t row) {
                      return to_quaternion(direction_to_rotation(fighter_directions[row]));
                  });

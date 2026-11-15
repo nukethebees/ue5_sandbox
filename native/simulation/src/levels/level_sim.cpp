@@ -31,7 +31,6 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
           data.phase_memory_capacity_bytes,
       }
     , collision_pipeline_{std::move(data.collision), &memory_manager_.game_memory()}
-    , fighters_simulation_{entity_tables_}
     , capital_ships_simulation_{entity_tables_}
     , turrets_simulation_{entity_tables_}
     , spinners_simulation_{entity_tables_}
@@ -66,7 +65,8 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     }
     capital_ships::InitialisationInterface{capital_ships_simulation_}.update_entity_lookup_table(
         clock_);
-    fighters::InitialisationInterface{fighters_simulation_}.update_entity_lookup_table(clock_);
+    fighters::InitialisationInterface{fighters_simulation_}.update_entity_lookup_table(
+        entity_tables_, clock_);
     turrets::InitialisationInterface{turrets_simulation_}.update_entity_lookup_table(clock_);
     spinners::InitialisationInterface{spinners_simulation_}.update_entity_lookup_table(clock_);
     refresh_spatial_index();
@@ -228,6 +228,7 @@ void LevelSim::advance_tick(float const tick_period,
         dispatch_preparation_events();
 
         fighters::PreparationInputs const fighter_inputs{
+            .entity_tables = entity_tables_,
             .clock = clock_,
             .ledger = entity_ledger_,
             .participating_teams = participating_teams_,
@@ -279,6 +280,7 @@ void LevelSim::advance_tick(float const tick_period,
                     clock_, collision_pipeline_.queries(), lasers_simulation_, phase_memory};
                 fighters::NavigationCounters navigation_counters{};
                 fighters::ThinkingInputs const fighter_inputs{
+                    .entity_tables = entity_tables_,
                     .clock = clock_,
                     .task_manager = task_manager_,
                     .collision_radius =
@@ -390,6 +392,7 @@ void LevelSim::advance_tick(float const tick_period,
                     capital_deaths,
                 };
                 fighters::ResolutionInputs const fighter_inputs{
+                    .entity_tables = entity_tables_,
                     .damage_queue = damage_queue_,
                     .ledger = entity_ledger_,
                     .tick = clock_.get_completed_ticks(),
@@ -446,8 +449,8 @@ void LevelSim::advance_tick(float const tick_period,
 
                 SANDBOX_PROFILE_SCOPE("ResolutionCommit");
                 clock_.transition_to(SimulationPhase::ResolutionCommit);
-                fighters::ResolutionCommitInputs const fighter_inputs{clock_,
-                                                                      fighter_removal_indices};
+                fighters::ResolutionCommitInputs const fighter_inputs{
+                    entity_tables_, clock_, fighter_removal_indices};
                 capital_ships::ResolutionCommitInputs const capital_inputs{clock_,
                                                                            capital_removal_indices};
                 turrets::ResolutionCommitInputs const turret_inputs{clock_, turret_removal_indices};

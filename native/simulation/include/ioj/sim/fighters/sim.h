@@ -1,13 +1,13 @@
 #pragma once
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/trace_hits.h>
-#include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/fighters/fighter_entity_data.h>
 #include <ioj/sim/fighters/fighter_navigation.h>
 #include <ioj/sim/fighters/fighter_navigation_scratch.h>
 #include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/fighters/phase_inputs.h>
 #include <ioj/sim/fighters/runtime_config.h>
+#include <ioj/sim/tasks/task_id.h>
 #include <ioj/team_array.h>
 
 #include <cassert>
@@ -16,6 +16,7 @@
 #include <span>
 
 namespace ioj::sim {
+class EntityLookupTables;
 struct LevelSim;
 }
 
@@ -30,7 +31,7 @@ class ResolutionCommitInterface;
 struct Sim {
     using EntityStorage = FighterEntityData;
 
-    explicit Sim(EntityTables& entity_tables) noexcept;
+    Sim() = default;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -41,9 +42,6 @@ struct Sim {
     /* **************************************** */
     auto entities() const -> EntityStorage::CompactConstView { return entities_.const_view(); }
     auto num_instances() const noexcept -> std::uint32_t;
-    auto healths() const -> HealthConstView {
-        return entity_tables_.health.const_view<EntityType::Fighter>();
-    }
 
     /* **************************************** */
     // Spawning
@@ -64,11 +62,11 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void initialise(FighterSimConfig const& new_config, SimClock const& clock);
-    void update_entity_lookup_table(SimClock const& clock);
+    void update_entity_lookup_table(EntityTables& entity_tables, SimClock const& clock);
     void prepare_tick(PreparationInputs inputs);
     void think(ThinkingInputs const inputs);
-    void plan_instructions(tasks::TaskManager const& manager);
-    void change_task(std::uint32_t row, tasks::TaskId task, tasks::TaskManager const& manager);
+    void plan_instructions(ThinkingInputs inputs);
+    void change_task(std::uint32_t row, tasks::TaskId task, ThinkingInputs inputs);
     void clear_task_intent(std::uint32_t row);
     void plan_attack_positions();
     void plan_movement(ThinkingInputs const inputs);
@@ -116,7 +114,8 @@ struct Sim {
     /* **************************************** */
     // Destruction
     /* **************************************** */
-    void remove_dead_entities(std::span<std::uint32_t const> local_indices_to_remove);
+    void remove_dead_entities(std::span<std::uint32_t const> local_indices_to_remove,
+                              EntityLookupTables& lookups);
 
     /* **************************************** */
     // Targets
@@ -134,7 +133,6 @@ struct Sim {
     TeamArray<std::int32_t> remaining_team_capacity_{};
     std::int16_t attack_cleaner_{};
     EntityStorage entities_{};
-    EntityTables& entity_tables_;
     FighterSpawnQueue spawn_queue_;
 };
 } // namespace ioj::sim::fighters

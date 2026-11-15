@@ -2,6 +2,7 @@
 
 namespace ioj::sim {
 class EntityLedger;
+struct EntityTables;
 struct LevelSim;
 struct SimClock;
 
@@ -39,6 +40,7 @@ class LevelReadAccess {
     auto player() const -> player::Sim const*;
     auto clock() const -> SimClock const&;
     auto entity_ledger() const -> EntityLedger const&;
+    auto entity_tables() const -> EntityTables const&;
     auto interpolation_alpha() const -> double;
   private:
     LevelSim const& level_;

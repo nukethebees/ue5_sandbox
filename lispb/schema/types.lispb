@@ -430,6 +430,10 @@
   :spelling "ThinkingInputs"
   :header "ioj/sim/spinners/phase_inputs.h")
 
+(type entity_tables
+  :spelling "ioj::sim::EntityTables"
+  :header "ioj/sim/entities/entity_tables.h")
+
 (type sim_clock
   :spelling "ioj::sim::SimClock"
   :header "ioj/sim/sim_clock.h")

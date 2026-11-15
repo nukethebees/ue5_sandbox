@@ -68,12 +68,13 @@ inline auto observe_entity(LevelSim const& simulation, EntityId const id)
         case EntityType::Fighter: {
             auto const& view{access.fighters()};
             auto const entities{view.entities()};
-            return observe_entity_columns(id,
-                                          entities.entity_ids(),
-                                          entities.view_locations().resolve(),
-                                          entities.view_velocities().resolve(),
-                                          view.healths(),
-                                          entities.teams());
+            return observe_entity_columns(
+                id,
+                entities.entity_ids(),
+                entities.view_locations().resolve(),
+                entities.view_velocities().resolve(),
+                simulation.entity_tables().health.const_view<EntityType::Fighter>(),
+                entities.teams());
         }
         case EntityType::Turret: {
             auto const& view{access.turrets()};

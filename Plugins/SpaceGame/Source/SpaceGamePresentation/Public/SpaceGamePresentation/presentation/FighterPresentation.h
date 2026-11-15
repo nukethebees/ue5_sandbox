@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/sim/entities/health_table.h>
 #include <ioj/sim/fighters/sim.h>
 #include <SpaceGamePresentation/entities/TeamColours.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
@@ -24,12 +25,12 @@ struct SPACEGAMEPRESENTATION_API FFighterPresentation {
     auto simulation() const -> ::ioj::sim::fighters::Sim const& { return *simulation_; }
 
     void clear_runtime_state_presentation();
-    void begin_play_presentation();
-    void update_visual_data();
+    void begin_play_presentation(ioj::sim::HealthConstView healths);
+    void update_visual_data(ioj::sim::HealthConstView healths);
     void commit_visual_data();
 
     void configure_ismc();
-    void update_ismc();
+    void update_ismc(ioj::sim::HealthConstView healths);
     void draw_debug_shapes();
 
     ioj::USandboxISMCComponent* instances{nullptr};

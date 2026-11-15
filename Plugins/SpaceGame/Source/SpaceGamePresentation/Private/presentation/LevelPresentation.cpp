@@ -1,5 +1,6 @@
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 
+#include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/sim_clock.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
@@ -68,7 +69,8 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     turrets.clear_runtime_state_presentation();
     spinners.clear_runtime_state_presentation();
     capital_ships.begin_play_presentation();
-    capital_ship_fighters.begin_play_presentation();
+    capital_ship_fighters.begin_play_presentation(
+        view.entity_tables().health.const_view<sim::EntityType::Fighter>());
     turrets.begin_play_presentation();
     spinners.begin_play_presentation();
     lasers.begin_play_presentation();
@@ -89,7 +91,8 @@ void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) 
     }
     capital_ships.update_visual_data(view.entity_ledger());
     turrets.update_visual_data();
-    capital_ship_fighters.update_visual_data();
+    capital_ship_fighters.update_visual_data(
+        view.entity_tables().health.const_view<sim::EntityType::Fighter>());
     spinners.update_visual_data();
     lasers.update_visual_data();
     capital_ships.end_tick_presentation();

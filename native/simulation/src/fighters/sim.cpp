@@ -14,6 +14,7 @@
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/phase_checks.h>
@@ -90,8 +91,6 @@ void Sim::initialise(FighterSimConfig const& new_config, SimClock const& clock) 
     attack_cleaner_ = 0;
     assert(config_.settings.fire_point_distance >= 0.f);
 }
-Sim::Sim(EntityTables& entity_tables) noexcept
-    : entity_tables_{entity_tables} {}
 
 /* **************************************** */
 // Sim phases
@@ -139,19 +138,20 @@ void Sim::commit_spawns(PreparationInputs const inputs) {
     auto const entity_ids{new_data.entity_ids()};
     auto const teams{new_data.teams()};
     inputs.ledger.record_spawns(EntityType::Fighter, teams, config_.settings.health, entity_ids);
-    entity_tables_.health.initialise_entities<EntityType::Fighter>(entity_ids,
-                                                                   config_.settings.health);
-    entity_tables_.executors.initialise_entities<EntityType::Fighter>(entity_ids);
+    inputs.entity_tables.health.initialise_entities<EntityType::Fighter>(entity_ids,
+                                                                         config_.settings.health);
+    inputs.entity_tables.executors.initialise_entities<EntityType::Fighter>(entity_ids);
     make_deterministic_biases(
         std::span<EntityId const>{data.entity_ids()}.subspan(n_cur, n_new),
         std::span<std::uint32_t>{data.integral_biases()}.subspan(n_cur, n_new),
         std::span<float>{data.float_biases()}.subspan(n_cur, n_new));
 }
-void Sim::update_entity_lookup_table([[maybe_unused]] SimClock const& clock) {
+void Sim::update_entity_lookup_table(EntityTables& entity_tables,
+                                     [[maybe_unused]] SimClock const& clock) {
     assert(is_preparation_mutation_allowed(clock));
 
     auto const rows{entities_.const_view()};
-    entity_tables_.publish<EntityType::Fighter>(
+    entity_tables.publish<EntityType::Fighter>(
         rows.entity_ids(), rows.teams(), config_.settings.health);
 }
 void Sim::prepare_tick(PreparationInputs const inputs) {
@@ -167,7 +167,7 @@ void Sim::prepare_tick(PreparationInputs const inputs) {
         remaining_team_capacity_[team] = std::max(0, remaining_team_capacity_[team] - 1);
     }
     tick_countdowns<std::int16_t>(data.attack_cooldowns(), attack_cleaner_, 16384);
-    update_entity_lookup_table(inputs.clock);
+    update_entity_lookup_table(inputs.entity_tables, inputs.clock);
 }
 
 // Thinking
@@ -176,22 +176,23 @@ void Sim::think(ThinkingInputs const inputs) {
 
     SANDBOX_PROFILE_SCOPE("fighters::Sim::think");
     inputs.navigation_counters = {};
-    plan_instructions(inputs.task_manager);
+    plan_instructions(inputs);
     refresh_target_data(inputs);
     plan_attack_positions();
     plan_movement(inputs);
     publish_navigation_counters(inputs.navigation_counters);
 }
-void Sim::plan_instructions(tasks::TaskManager const& manager) {
+void Sim::plan_instructions(ThinkingInputs const inputs) {
+    auto const& manager{inputs.task_manager};
     auto const data{entities_.view()};
-    auto const executors{entity_tables_.executors.view<EntityType::Fighter>()};
+    auto const executors{inputs.entity_tables.executors.view<EntityType::Fighter>()};
     auto const entity_ids{data.entity_ids()};
     auto const target_ids{data.target_ids()};
 
     auto const count{data.num()};
     for (std::uint32_t row{}; row < count; ++row) {
         if (target_ids[row].is_valid() &&
-            !is_target_alive(target_ids[row], entity_tables_.lookups)) {
+            !is_target_alive(target_ids[row], inputs.entity_tables.lookups)) {
             target_ids[row] = {};
         }
 
@@ -199,13 +200,13 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
         auto const pending_task{executors.pending_tasks[index]};
 
         if (pending_task.is_valid()) {
-            change_task(row, pending_task, manager);
+            change_task(row, pending_task, inputs);
             continue;
         }
 
         auto& current_instruction{executors.current_instructions[index]};
         auto const instruction{manager.instruction(current_instruction)};
-        if (is_instruction_complete(instruction, entity_tables_.lookups)) {
+        if (is_instruction_complete(instruction, inputs.entity_tables.lookups)) {
             clear_task_intent(row);
             advance_instruction(current_instruction);
             continue;
@@ -232,13 +233,13 @@ void Sim::plan_instructions(tasks::TaskManager const& manager) {
 }
 void Sim::change_task(std::uint32_t const row,
                       tasks::TaskId const task,
-                      tasks::TaskManager const& manager) {
+                      ThinkingInputs const inputs) {
     clear_task_intent(row);
 
-    auto const executors{entity_tables_.executors.view<EntityType::Fighter>()};
+    auto const executors{inputs.entity_tables.executors.view<EntityType::Fighter>()};
     auto const index{entities_.const_view().entity_ids()[row].index()};
     executors.current_tasks[index] = task;
-    executors.current_instructions[index] = manager.first_instruction(task);
+    executors.current_instructions[index] = inputs.task_manager.first_instruction(task);
     executors.pending_tasks[index] = {};
 }
 void Sim::clear_task_intent(std::uint32_t const row) {
@@ -417,10 +418,10 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::resolve_damage_events");
 
     auto const data{entities_.view()};
-    auto const healths{entity_tables_.health.view<EntityType::Fighter>()};
+    auto const healths{inputs.entity_tables.health.view<EntityType::Fighter>()};
     auto const damage_events{inputs.damage_queue.events_for(EntityType::Fighter)};
     sim::resolve_damage_events(damage_events,
-                               entity_tables_.lookups.for_type(EntityType::Fighter),
+                               inputs.entity_tables.lookups.for_type(EntityType::Fighter),
                                data.entity_ids(),
                                data.view_locations().const_view().resolve(),
                                healths,
@@ -437,7 +438,7 @@ void Sim::remove_entities(ResolutionCommitInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_entities");
     sort_removal_indices(inputs.local_indices_to_remove);
 
-    remove_dead_entities(inputs.local_indices_to_remove);
+    remove_dead_entities(inputs.local_indices_to_remove, inputs.entity_tables.lookups);
 }
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::finish_action");
@@ -555,7 +556,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
     std::array<EntityId, max_separation_neighbours_> nearby_fighters;
     std::array<SeparationNeighbour, max_separation_neighbours_> neighbours;
     std::array<EntityInstanceHandle, max_separation_neighbours_> nearby_handles;
-    auto const& fighter_lookup{entity_tables_.lookups.for_type(EntityType::Fighter)};
+    auto const& fighter_lookup{inputs.entity_tables.lookups.for_type(EntityType::Fighter)};
     auto const separation_radius{config_.settings.separation_radius};
     auto const immediate_distance{inputs.collision_radius * 2.f};
     auto const close_distance{std::max(separation_radius * 0.5f, immediate_distance)};
@@ -587,14 +588,14 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
 
         auto const fighter_location{vector_at(locations, fighter_index)};
         auto const fighter_id{entity_ids[fighter_index]};
-        auto const n_nearby{
-            inputs.spatial_query_manager.collect_entities_of_type_in_range(entity_tables_.lookups,
-                                                                           fighter_location,
-                                                                           EntityType::Fighter,
-                                                                           separation_radius,
-                                                                           fighter_id,
-                                                                           nearby_fighters,
-                                                                           scratch_resource)};
+        auto const n_nearby{inputs.spatial_query_manager.collect_entities_of_type_in_range(
+            inputs.entity_tables.lookups,
+            fighter_location,
+            EntityType::Fighter,
+            separation_radius,
+            fighter_id,
+            nearby_fighters,
+            scratch_resource)};
         ++scratch.counters.separation_query_count;
         scratch.counters.separation_candidate_count += n_nearby;
 
@@ -950,7 +951,7 @@ void Sim::refresh_target_data(ThinkingInputs const inputs) {
     auto const target_radii{data.target_radii()};
     FrameArray<EntityInstanceHandle> targets{scratch_resource};
     targets.set_num(count);
-    inputs.spatial_query_manager.copy_entity_motion(entity_tables_.lookups,
+    inputs.spatial_query_manager.copy_entity_motion(inputs.entity_tables.lookups,
                                                     target_ids,
                                                     data.view_target_locations().resolve(),
                                                     data.view_target_velocities().resolve(),
@@ -992,14 +993,14 @@ auto Sim::queue_spawns(FighterSpawnQueue::CompactConstView const new_spawns) -> 
 /* **************************************** */
 // Destruction
 /* **************************************** */
-void Sim::remove_dead_entities(std::span<std::uint32_t const> const local_indices_to_remove) {
+void Sim::remove_dead_entities(std::span<std::uint32_t const> const local_indices_to_remove,
+                               EntityLookupTables& lookups) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_dead_entities");
     auto& data{entities_};
     auto const columns{data.const_view()};
     auto const entity_ids{columns.entity_ids()};
 
-    entity_tables_.lookups.for_type(EntityType::Fighter)
-        .retire_rows(entity_ids, local_indices_to_remove);
+    lookups.for_type(EntityType::Fighter).retire_rows(entity_ids, local_indices_to_remove);
     data.remove_at_swap(local_indices_to_remove);
 }
 

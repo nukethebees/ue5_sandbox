@@ -28,6 +28,10 @@ auto LevelReadAccess::clock() const -> SimClock const& {
 auto LevelReadAccess::entity_ledger() const -> EntityLedger const& {
     return level_.entity_ledger();
 }
+auto LevelReadAccess::entity_tables() const -> EntityTables const& {
+    return level_.entity_tables();
+}
+
 auto LevelReadAccess::interpolation_alpha() const -> double {
     return clock().interpolation_alpha();
 }

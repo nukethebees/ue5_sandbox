@@ -24,7 +24,7 @@ void FFighterPresentation::clear_runtime_state_presentation() {
     instances->clear_instances();
 }
 
-void FFighterPresentation::begin_play_presentation() {
+void FFighterPresentation::begin_play_presentation(ioj::sim::HealthConstView const healths) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::begin_play_presentation);
 
     if (!actor_config) {
@@ -40,13 +40,13 @@ void FFighterPresentation::begin_play_presentation() {
 
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = instances->GetWorld();
-    update_visual_data();
+    update_visual_data(healths);
     commit_visual_data();
 }
 
-void FFighterPresentation::update_visual_data() {
+void FFighterPresentation::update_visual_data(ioj::sim::HealthConstView const healths) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_visual_data);
-    update_ismc();
+    update_ismc(healths);
 }
 
 void FFighterPresentation::commit_visual_data() {
@@ -69,10 +69,9 @@ void FFighterPresentation::configure_ismc() {
     instances->set_num_custom_data_floats(n_custom_ismc_floats);
 }
 
-void FFighterPresentation::update_ismc() {
+void FFighterPresentation::update_ismc(ioj::sim::HealthConstView const healths) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_ismc);
 
-    auto const healths{simulation().healths()};
     auto const data{simulation().entities()};
     auto const count{static_cast<int32>(data.num())};
     auto const locations{data.view_locations()};

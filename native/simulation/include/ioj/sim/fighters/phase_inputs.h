@@ -18,6 +18,7 @@ namespace ioj::sim {
 class DamageQueue;
 class EntityLedger;
 struct EntityDeathInfo;
+struct EntityTables;
 struct SimClock;
 struct SpatialQueryManager;
 }
@@ -34,12 +35,14 @@ namespace ioj::sim::fighters {
 struct NavigationCounters;
 
 struct PreparationInputs {
+    EntityTables& entity_tables;
     SimClock const& clock;
     EntityLedger& ledger;
     std::span<Team const> participating_teams;
 };
 
 struct ThinkingInputs {
+    EntityTables& entity_tables;
     SimClock const& clock;
     tasks::TaskManager const& task_manager;
     float collision_radius;
@@ -58,6 +61,7 @@ struct ActionInputs {
 };
 
 struct ResolutionInputs {
+    EntityTables& entity_tables;
     DamageQueue const& damage_queue;
     EntityLedger& ledger;
     SimTick tick;
@@ -66,6 +70,7 @@ struct ResolutionInputs {
 };
 
 struct ResolutionCommitInputs {
+    EntityTables& entity_tables;
     SimClock const& clock;
     std::pmr::vector<std::uint32_t>& local_indices_to_remove;
 };

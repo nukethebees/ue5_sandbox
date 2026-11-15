@@ -123,8 +123,9 @@ void expect_health_mappings(LevelSim const& simulation) {
 
     validate.operator()<EntityType::CapitalShip>(world.capitals().get_entities(),
                                                  world.capitals().healths());
-    validate.operator()<EntityType::Fighter>(world.fighters().entities(),
-                                             world.fighters().healths());
+    validate.operator()<EntityType::Fighter>(
+        world.fighters().entities(),
+        simulation.entity_tables().health.const_view<EntityType::Fighter>());
     validate.operator()<EntityType::Turret>(world.turrets().get_entities(),
                                             world.turrets().healths());
     if (auto const* const player{simulation.player_ship_simulation()}) {

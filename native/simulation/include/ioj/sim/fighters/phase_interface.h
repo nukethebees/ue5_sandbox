@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/entities/entity_tables.h"
 #include "ioj/sim/fighters/fighter_sim_config.h"
 #include "ioj/sim/fighters/phase_inputs.h"
 #include "ioj/sim/fighters/sim.h"
@@ -18,8 +19,8 @@ class InitialisationInterface {
         simulation.initialise(config, clock);
     }
 
-    void update_entity_lookup_table(SimClock const& clock) {
-        simulation.update_entity_lookup_table(clock);
+    void update_entity_lookup_table(EntityTables& entity_tables, SimClock const& clock) {
+        simulation.update_entity_lookup_table(entity_tables, clock);
     }
 
     friend struct sim::LevelSim;

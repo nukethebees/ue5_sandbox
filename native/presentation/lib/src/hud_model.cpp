@@ -2,6 +2,7 @@
 
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/sim_clock.h>
@@ -120,7 +121,7 @@ auto HudModel::display_batches() const -> std::array<AgentDisplayBatch, 4> {
           fighters.entity_ids(),
           fighters.view_locations(),
           fighters.view_velocities(),
-          fighters_sim.healths(),
+          view.entity_tables().health.const_view<EntityType::Fighter>(),
           fighters.teams()},
          {EntityType::Turret,
           turrets.entity_ids(),
