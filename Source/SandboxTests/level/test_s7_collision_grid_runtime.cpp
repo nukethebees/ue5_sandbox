@@ -2,6 +2,7 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -92,7 +93,8 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                                TEXT("LevelSim grid bounds come from base plus current override"));
                 checks.is_true(actual.cell_dimensions == ioj::Vector3f{expected.cell_size},
                                TEXT("LevelSim cell size comes from base plus current override"));
-                checks.is_true(orchestrator->get_level_config() != base,
+                checks.is_true(FTestBatchOrchestratorTestAccess::level_config(*orchestrator) !=
+                                   base,
                                TEXT("Orchestrator owns the resolved settings"));
                 auto* const player{
                     const_cast<ioj::ATestSpaceShip*>(orchestrator->get_player_ship())};

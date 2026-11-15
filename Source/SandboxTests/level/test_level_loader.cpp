@@ -37,7 +37,7 @@ FLevelLoaderCameraScenario::FLevelLoaderCameraScenario(FSimulationTestContext& c
 void FLevelLoaderCameraScenario::load_fixture() {
     initialise_test_driver();
     auto& orchestrator{context_.orchestrator};
-    original_config_.Reset(const_cast<USpaceGameLevelConfig*>(orchestrator.get_level_config()));
+    original_config_.Reset(FTestBatchOrchestratorTestAccess::level_config(orchestrator));
     auto* const resources{duplicate_level_config(*original_config_, orchestrator)};
     checks.is_true(orchestrator.set_level_config(*resources),
                    TEXT("Loader resources are assigned"));
@@ -71,7 +71,8 @@ void FLevelLoaderCameraScenario::load_fixture() {
     if (!checks.is_true(static_cast<bool>(load_result), TEXT("Playerless definition loads"))) {
         return;
     }
-    checks.is_true(!orchestrator.get_level_config()->presentation.entity_overlay.enabled,
+    checks.is_true(!FTestBatchOrchestratorTestAccess::level_config(orchestrator)
+                        ->presentation.entity_overlay.enabled,
                    TEXT("Level override disables overlay before resource validation"));
 
     checks.are_equal(
@@ -243,7 +244,8 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
     orchestrator.reset_for_new_level();
     orchestrator.set_presentation_enabled(false);
 
-    auto* const config{duplicate_level_config(*orchestrator.get_level_config(), orchestrator)};
+    auto* const config{duplicate_level_config(
+        *FTestBatchOrchestratorTestAccess::level_config(orchestrator), orchestrator)};
     config->classes.player_controller_class = nullptr;
     orchestrator.set_level_config(*config);
     auto const player_level{levels::LevelDefinition::make(

@@ -56,10 +56,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Level configuration
     /* **************************************** */
     auto set_level_config(USpaceGameLevelConfig& config) -> bool;
-    auto get_level_config() noexcept -> USpaceGameLevelConfig* { return level_config.Get(); }
-    auto get_level_config() const noexcept -> USpaceGameLevelConfig const* {
-        return level_config.Get();
-    }
     void set_start_mode(EOrchestratorStartMode mode);
     void set_level_script(FString path);
     auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
@@ -113,10 +109,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Events, results, and presentation
     /* **************************************** */
     auto get_hud_manager() noexcept -> FHUDManager& { return presentation_host_.get_hud_manager(); }
-    auto get_level_presentation() const -> FLevelPresentation const* {
-        return presentation_host_.get_presentation();
-    }
-    auto get_presentation_resources() const -> FLevelPresentationResources;
   protected:
     /* **************************************** */
     // Actor lifecycle
@@ -144,6 +136,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     void bind_presentation_components();
     void refresh_collision_grid_visualization();
+    auto get_presentation_resources() const -> FLevelPresentationResources;
     /* **************************************** */
     // State
     /* **************************************** */

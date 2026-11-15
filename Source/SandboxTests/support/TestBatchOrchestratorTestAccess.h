@@ -4,6 +4,19 @@
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 struct FTestBatchOrchestratorTestAccess {
+    static auto level_config(ioj::ATestBatchOrchestrator& orchestrator)
+        -> ioj::USpaceGameLevelConfig* {
+        return orchestrator.level_config.Get();
+    }
+    static auto level_presentation(ioj::ATestBatchOrchestrator const& orchestrator)
+        -> ioj::FLevelPresentation const* {
+        return orchestrator.presentation_host_.get_presentation();
+    }
+    static auto presentation_resources(ioj::ATestBatchOrchestrator const& orchestrator)
+        -> ioj::FLevelPresentationResources {
+        return orchestrator.get_presentation_resources();
+    }
+
     static void
         queue_direct_damage_events(ioj::ATestBatchOrchestrator& orchestrator,
                                    ::ioj::sim::DirectDamageEvents::CompactConstView events) {

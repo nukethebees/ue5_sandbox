@@ -41,7 +41,8 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
         TestRunner->TestTrue(TEXT("Loaded orchestrator ticks to process control requests"),
                              orchestrator->IsActorTickEnabled());
 
-        auto const resources{orchestrator->get_presentation_resources()};
+        auto const resources{
+            FTestBatchOrchestratorTestAccess::presentation_resources(*orchestrator)};
         TestRunner->TestTrue(TEXT("Batch components are available"), resources.is_valid());
         TestRunner->TestTrue(TEXT("Orchestrator owns the laser batch component"),
                              resources.lasers->GetOwner() == orchestrator);
@@ -55,8 +56,9 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
                                      orchestrator->get_level_simulation())) {
             return;
         }
-        TestRunner->TestNotNull(TEXT("Loading initializes presentation"),
-                                orchestrator->get_level_presentation());
+        TestRunner->TestNotNull(
+            TEXT("Loading initializes presentation"),
+            FTestBatchOrchestratorTestAccess::level_presentation(*orchestrator));
         orchestrator->tick(1.0);
         TestRunner->TestEqual(
             TEXT("Loaded simulation stays at tick zero until started"),
@@ -86,7 +88,8 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             return;
         }
         orchestrator.start_simulation();
-        auto const* presentation{orchestrator.get_level_presentation()};
+        auto const* presentation{
+            FTestBatchOrchestratorTestAccess::level_presentation(orchestrator)};
         if (!checks.is_true(presentation != nullptr,
                             TEXT("Orchestrator constructs presentation"))) {
             SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -102,7 +105,8 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             observations.add(
                 clock.simulation_time(),
                 FFrameObservation{clock.get_completed_ticks().value(),
-                                  owner.get_level_presentation()->get_last_completed_tick()});
+                                  FTestBatchOrchestratorTestAccess::level_presentation(owner)
+                                      ->get_last_completed_tick()});
         }};
         auto const dt{orchestrator.get_level_simulation()->clock().tick_period()};
         advance_simulation(orchestrator, 0.0, observe);

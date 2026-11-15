@@ -4,6 +4,7 @@
 #include <ioj/sim/lasers/sim.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
@@ -94,9 +95,11 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     initial_ledger_alive = test_driver->get_ledger().count_alive();
     save_old_owned_actors(test_driver->orchestrator);
     save_old_transient_actors(test_driver->orchestrator);
-    auto const resources{test_driver->orchestrator.get_presentation_resources()};
+    auto const resources{
+        FTestBatchOrchestratorTestAccess::presentation_resources(test_driver->orchestrator)};
     test_driver->orchestrator.reset_for_new_level();
-    auto const retained{test_driver->orchestrator.get_presentation_resources()};
+    auto const retained{
+        FTestBatchOrchestratorTestAccess::presentation_resources(test_driver->orchestrator)};
     checks.is_true(
         resources.lasers == retained.lasers && resources.capital_ships == retained.capital_ships &&
             resources.fighters == retained.fighters && resources.turrets == retained.turrets &&
