@@ -365,13 +365,10 @@ void ASpaceGamePlayerController::bind_orchestrator_events() {
     }
     unbind_orchestrator_events();
     orchestrator_ = orchestrator;
-    orchestrator->on_reset.RemoveAll(this);
-    orchestrator->on_reset.AddUObject(this, &ThisClass::on_orchestrator_reset);
     orchestrator->on_simulation_paused.AddUObject(this, &ThisClass::on_simulation_paused);
 }
 void ASpaceGamePlayerController::unbind_orchestrator_events() {
     if (auto* const orchestrator{orchestrator_.Get()}; IsValid(orchestrator)) {
-        orchestrator->on_reset.RemoveAll(this);
         orchestrator->on_simulation_paused.RemoveAll(this);
     }
     orchestrator_.Reset();

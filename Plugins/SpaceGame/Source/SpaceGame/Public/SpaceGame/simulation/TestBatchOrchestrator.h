@@ -20,9 +20,6 @@ class UCollisionGridVisualizationComponent;
 class USandboxISMCComponent;
 class USparkRendererComponent;
 class ATestSpaceShip;
-class ATestBatchOrchestrator;
-
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnOrchestratorReset, ATestBatchOrchestrator&);
 
 UENUM(BlueprintType)
 enum class EOrchestratorStartMode : uint8 {
@@ -164,7 +161,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
     TObjectPtr<UInstancedStaticMeshComponent> soft_target_instances_;
   public:
-    FOnOrchestratorReset on_reset;
     FSimpleMulticastDelegate on_simulation_paused;
   private:
     UPROPERTY(EditAnywhere,

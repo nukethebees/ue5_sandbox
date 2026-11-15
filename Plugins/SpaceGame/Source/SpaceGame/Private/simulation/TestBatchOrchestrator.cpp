@@ -114,7 +114,11 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     clear_player_ship();
     reset_level_world(*world, *this);
 
-    on_reset.Broadcast(*this);
+    auto* const controller{
+        Cast<ASpaceGamePlayerController>(UGameplayStatics::GetPlayerController(world, 0))};
+    if (IsValid(controller) && controller->orchestrator_.Get() == this) {
+        controller->on_orchestrator_reset(*this);
+    }
 }
 
 /* **************************************** */
