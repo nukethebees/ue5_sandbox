@@ -15,7 +15,6 @@
 #include <misc/cpp/imgui_stdlib.h>
 
 #include <algorithm>
-#include <cassert>
 #include <charconv>
 #include <set>
 #include <sstream>
@@ -148,7 +147,6 @@ PlannerUi::PlannerUi(layout::EditorSession& editor, layout::Document document)
     , target_name_{document_->target_name()}
     , project_input_{project_path_.string()}
     , target_input_{target_name_} {
-    assert(&document_->session() == &editor_);
     synchronize();
 }
 
