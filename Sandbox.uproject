@@ -438,10 +438,6 @@
 			"Enabled": true
 		},
 		{
-			"Name": "SandboxNiagara",
-			"Enabled": true
-		},
-		{
 			"Name": "XInputDevice",
 			"Enabled": true,
 			"SupportedTargetPlatforms": [

@@ -105,9 +105,6 @@ Content/Fab
 /Content/SandboxReusableTestLevels
 /Content/SandboxCoreReusableTestLevels
 
-# Disposable Niagara experiment output
-/Plugins/SandboxNiagara/Content/Generated/
-
 # Assets
 Content/Purchased
 Content/Purchased/Derived

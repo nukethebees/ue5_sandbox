@@ -407,7 +407,8 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
 
     resources.config.presentation.capital_ships.n_small_explosions = 3;
     auto* const explosion{LoadObject<UNiagaraSystem>(
-        nullptr, TEXT("/SandboxNiagara/Templates/NS_SandboxNiagaraSeed.NS_SandboxNiagaraSeed"))};
+        nullptr,
+        TEXT("/Game/Tests/Niagara/NS_LevelSimulationDeathEffect.NS_LevelSimulationDeathEffect"))};
     if (!TestNotNull(TEXT("Death-effect fixture is a valid authored Niagara system"), explosion)) {
         return false;
     }

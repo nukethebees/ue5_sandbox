@@ -5,7 +5,7 @@ Use this map to find the owner before following a plugin's own README or source 
 
 | Group | Plugins |
 | --- | --- |
-| Core and shared game systems | `SandboxCore`, `SandboxGameShared`, `SandboxISMC`, `SandboxMesh`, `SandboxNiagara` |
+| Core and shared game systems | `SandboxCore`, `SandboxGameShared`, `SandboxISMC`, `SandboxMesh` |
 | Rendering, materials, and UI | `SandboxShaders`, `SandboxMaterialExprs`, `SandboxUI`, `USFLoader` |
 | Game and authoring | `SpaceGame`, `SandboxEditorTools` |
 
