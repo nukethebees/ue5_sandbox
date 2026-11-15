@@ -29,7 +29,6 @@ public class Sandbox : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
-            "RenderCore"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {

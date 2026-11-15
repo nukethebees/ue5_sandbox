@@ -1,8 +1,0 @@
-#ifndef SANDBOX_UTILITIES_USH
-#define SANDBOX_UTILITIES_USH
-
-float GetGameTime() {
-    return View.GameTime;
-}
-
-#endif
