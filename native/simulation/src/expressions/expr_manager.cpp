@@ -69,7 +69,6 @@ auto entity(ExprEvaluationContext const& inputs, LevelEntityRef const slot) -> E
 auto destroyed(EntityId const id,
                EntityLedger const& ledger,
                std::span<LifeState const> const life_states) -> bool {
-    assert(id.is_valid());
     auto const row{ledger.history_index(id)};
     assert(row < life_states.size());
     return life_states[row] != LifeState::Alive;
