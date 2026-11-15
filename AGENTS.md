@@ -5,16 +5,19 @@ Unreal Engine 5.8 project.
 * Simulation-heavy space combat game, primarily C++, with heavy SoA usage.
 * Prefer simple, explicit systems over speculative abstraction.
 * Keep gameplay logic out of UI.
-* Prefer `native/` until Unreal integration is needed; local code avoids shared engine contention.
+* Prefer `native/` until Unreal integration is needed; native code supports faster builds and
+  testing without Unreal.
 * Standalone developer tools may live under `tools/`.
 
 # Feature Workflow
 
+* Assume one active development session. Work in the current workspace. Create additional
+  development worktrees or delegate to other agents only when requested.
 * Use `coj`, the project workflow CLI. Start tasks with `coj --help`, then inspect relevant
   `coj <command> --help`. Prefer supported workflows over manual equivalents; skip unrelated help.
 * Run `coj prepare-worktree` in the current worktree once at the start of a fresh LLM session.
-  Do not repeat it for new tasks, follow-ups, context compaction, or delegated agents within
-  the same session. Invoke `coj` by name; ask the maintainer before installing/updating it or changing PATH.
+  Do not repeat it for new tasks, follow-ups, or context compaction within the same session.
+  Invoke `coj` by name; ask the maintainer before installing/updating it or changing PATH.
   If it cannot launch or is missing,
   halt and report it. If broken, report once; use a minimal alternative only under explicit
   maintainer instruction. Do not repeatedly retry or bypass it.
@@ -23,18 +26,20 @@ Unreal Engine 5.8 project.
 * `dev` is the integration branch. `dev`, `main`, and `master` are protected regardless of
   ASCII case: read them freely, but do not mutate them or switch agent worktrees onto them
   through the ordinary Git path.
-* Work on dedicated feature branches; create one with `coj git switch -c feature/<task> dev`.
-  `feature/` is a convention, not an ownership requirement.
+* Continue on the current feature branch for related work. Create a new feature branch for an
+  independent task with `coj git switch -c feature/<task> <base>`, choosing a base that preserves
+  required existing changes. Use `dev` when the task has no dependency on unintegrated work.
+  `feature/` is a naming convention.
 * Treat the current worktree as the workspace boundary. Do not access or modify worktrees outside that boundary.
-* Treat `coj` as a cooperative guardrail, not a hostile-process sandbox. Never bypass it with
+* Use `coj` for project workflows and Git guardrails. Never bypass its protections with
   raw mutating Git, `.git` edits, environment overrides, aliases, alternate Git executables,
   shell tricks, or other workarounds.
 * Follow these instructions unless explicitly told otherwise. Use the [CMake workflows](#builds).
 * Use this pipeline for every engineering task: inspect and plan, finish all implementation,
   deletions, test updates and documentation, review and format the complete diff, then build
-  and test. Finish delegated edits before starting validation. Do not build or test between
-  partial implementation steps merely to check progress; code generation needed to complete
-  edits is allowed. After the complete candidate enters validation, collect failures and batch
+  and test. Do not build or test between partial implementation steps merely to check progress;
+  code generation needed to complete edits is allowed. After the complete candidate enters
+  validation, collect failures and batch
   the required fixes before repeating affected checks. Do not alternate individual edits with
   rebuilds or retests, or expand validation without a concrete need. Report ready only after
   the required checks pass, and report accepted failures explicitly.
@@ -56,6 +61,9 @@ Unreal Engine 5.8 project.
 # Builds
 
 * Drive all builds, including UBT, through CMake. Read [CMake style](cmake/STYLE.md) before editing CMake files.
+* Do not run overlapping builds against the same build directory or shared Unreal output.
+  Run benchmarks without competing heavy workloads. Investigate actual lock or resource
+  conflicts before retrying.
 * Use the native unity presets for normal development work; their default batch size is 8.
   Preserve target-specific unity exclusions and use non-unity builds for include-isolation
   checks or unity-specific failures. Keep Unreal's configured unity policy unless measuring it separately.
@@ -97,9 +105,6 @@ Unreal Engine 5.8 project.
 * Suggest improvements beyond the requested changes rather than implementing them without asking.
 * Keep README.md files concise and user-oriented. Put detailed usage in local READMEs or `docs/`,
   and architecture in local `ARCHITECTURE.md` files.
-* For temporary shared-resource contention, wait rather than retrying
-  across consecutive turns. Sleep within the shell/tool invocation before retries: 10s, 30s, then
-  60s, capped at 60s. Investigate and report unreasonable persistence.
 * When replacing experimental architecture/workflows on a feature branch, remove the old path
   completely unless the maintainer requests compatibility. Branches provide rollback. Keep one
   canonical path: no obsolete implementations, compatibility wrappers, fallback execution,
@@ -109,14 +114,9 @@ Unreal Engine 5.8 project.
 * Invoke common tools such as `clang-tidy` from PATH, not explicit paths.
 
 Do not say "almost done", "virtually done", "nearly finished", or give percentage completion
-estimates unless all required validation steps are known and enumerated. Report these separately:
-
-* Implementation: complete/incomplete.
-* Tests: complete/incomplete.
-* Static analysis: not yet due/complete/failed.
-* Sanitizer validation: complete/incomplete.
-* Integration/build validation: complete/incomplete.
-* Unresolved issues.
+estimates unless all required validation steps are known and enumerated. Report the change,
+checks performed, and unresolved issues. Mention static analysis, sanitizers, and Unreal
+validation when requested or relevant; omit empty status categories.
 
 Retract earlier completion estimates if new issues invalidate validation or require more builds/tests.
 
