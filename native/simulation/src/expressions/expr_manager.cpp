@@ -292,7 +292,7 @@ void ExprManager::evaluate_leaves(ExprEvaluationContext const& inputs) {
 void ExprManager::evaluate_destroyed(std::span<LeafHandle const> const run,
                                      ExprEvaluationContext const& inputs) {
     auto const& leaves{leaves_};
-    auto const life_states{inputs.ledger.unique_entities().life_state()};
+    auto const life_states{inputs.ledger.history().life_state()};
 
     for (auto const handle : run) {
         auto const leaf{handle.index()};
@@ -338,7 +338,7 @@ void ExprManager::evaluate_kills(std::span<LeafHandle const> const run,
 void ExprManager::evaluate_reached_position(std::span<LeafHandle const> const run,
                                             ExprEvaluationContext const& inputs) {
     auto const& leaves{leaves_};
-    auto const life_states{inputs.ledger.unique_entities().life_state()};
+    auto const life_states{inputs.ledger.history().life_state()};
 
     FrameArray<EntityId> ids{&inputs.scratch};
     FrameArray<LeafIndex> live_leaves{&inputs.scratch};

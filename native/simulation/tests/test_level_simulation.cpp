@@ -349,12 +349,13 @@ TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumed
     EXPECT_TRUE(std::ranges::equal(simulation.events().pending_preparation_events(), events));
     simulation.advance(period);
     EXPECT_EQ(simulation.capital_ships().num_instances(), 2);
-    EXPECT_TRUE(std::ranges::equal(simulation.entity_ledger().unique_entities().teams(),
-                                   std::array{Team::White, Team::Green}));
+    EXPECT_TRUE(std::ranges::equal(
+        simulation.entity_ledger().unique_entities(EntityType::CapitalShip).teams(),
+        std::array{Team::White, Team::Green}));
     EXPECT_TRUE(std::ranges::equal(simulation.events().preparation_events(), events));
     EXPECT_TRUE(simulation.events().pending_preparation_events().empty());
     simulation.advance(period);
-    EXPECT_EQ(simulation.entity_ledger().unique_entities().num(), 2);
+    EXPECT_EQ(simulation.entity_ledger().unique_entities(EntityType::CapitalShip).num(), 2);
 }
 
 TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendingEvents) {
@@ -499,8 +500,9 @@ TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTer
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
     EXPECT_EQ(simulation.capital_ships().num_instances(), 2);
     expect_health_mappings(simulation);
-    EXPECT_TRUE(std::ranges::equal(simulation.entity_ledger().unique_entities().teams(),
-                                   std::array{Team::White, Team::Green}));
+    EXPECT_TRUE(std::ranges::equal(
+        simulation.entity_ledger().unique_entities(EntityType::CapitalShip).teams(),
+        std::array{Team::White, Team::Green}));
     EXPECT_TRUE(std::ranges::equal(simulation.events().preparation_events(),
                                    std::array{second_spawn, first_spawn}));
     EXPECT_TRUE(simulation.events().pending_preparation_events().empty());
@@ -878,12 +880,15 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
         << "The low-health entity dies after three detected overlaps";
     EXPECT_EQ(observe_entity(simulation, capital)->health.value(), 4850)
         << "The capital receives one contribution per detected tick";
-    EXPECT_TRUE(ledger.unique_entities().life_state()[ledger.history_index(player_id)] ==
+    EXPECT_TRUE(ledger.history().life_state()[ledger.history_index(player_id)] ==
                 LifeState::Unknown)
         << "Overlap death uses the environmental death path";
-    EXPECT_EQ(
-        std::ranges::fold_left(ledger.unique_entities().kills(), std::uint32_t{}, std::plus{}), 0)
-        << "Environmental overlap death gives no combat kill";
+    for (auto const type : EnumTraits<EntityType>::values) {
+        EXPECT_EQ(std::ranges::fold_left(
+                      ledger.unique_entities(type).kills(), std::uint32_t{}, std::plus{}),
+                  0)
+            << "Environmental overlap death gives no combat kill";
+    }
 }
 
 TEST(NativeSimulation, SimulationsKeepClocksAndEntitiesIndependent) {

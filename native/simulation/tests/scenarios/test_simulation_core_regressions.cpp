@@ -107,10 +107,12 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     EXPECT_EQ(0, lethal.ledger_alive_count) << "Ledger death commits in the same tick";
     EXPECT_EQ(0, lethal.health) << "Owner retains terminal health for the dead handle";
     EXPECT_TRUE(!entity_is_alive(harness.simulation(), damaged_handle)) << "Killed ID is dead";
-    EXPECT_EQ(0,
-              std::ranges::fold_left(
-                  harness.ledger().unique_entities().kills(), std::uint32_t{}, std::plus{}))
-        << "Unattributed death does not create a kill";
+    for (auto const type : EnumTraits<EntityType>::values) {
+        EXPECT_EQ(0,
+                  std::ranges::fold_left(
+                      harness.ledger().unique_entities(type).kills(), std::uint32_t{}, std::plus{}))
+            << "Unattributed death does not create a kill";
+    }
 }
 
 TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
@@ -154,16 +156,19 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     harness.on_end_tick = [&](LevelSim& level) {
         auto const events{level.spatial_query_manager().aabb_overlap_events()};
         auto const capital{observe_entity(level, capital_id)};
-        samples.add(
-            harness.time(),
-            Sample{
-                .player_health = player->health().health.value(),
-                .capital_health = capital ? capital->health.value() : 0,
-                .dynamic_overlap_count = events.entity_entity_overlaps.num(),
-                .kill_count = std::ranges::fold_left(
-                    harness.ledger().unique_entities().kills(), std::uint32_t{}, std::plus{}),
-                .player_alive = entity_is_alive(level, player_id),
-            });
+        std::uint32_t kill_count{};
+        for (auto const type : EnumTraits<EntityType>::values) {
+            kill_count = std::ranges::fold_left(
+                harness.ledger().unique_entities(type).kills(), kill_count, std::plus{});
+        }
+        samples.add(harness.time(),
+                    Sample{
+                        .player_health = player->health().health.value(),
+                        .capital_health = capital ? capital->health.value() : 0,
+                        .dynamic_overlap_count = events.entity_entity_overlaps.num(),
+                        .kill_count = kill_count,
+                        .player_alive = entity_is_alive(level, player_id),
+                    });
     };
     harness.timeline.finish_after(collision_damage_test::duration);
     ASSERT_TRUE(harness.run_until_timeline_finished(2.0)) << "Collision damage timeline completes";
@@ -183,9 +188,9 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     EXPECT_TRUE(!entity_is_alive(harness.simulation(), capital_id))
         << "Capital death commits in the third overlap tick";
     EXPECT_EQ(0, third.kill_count) << "Collision death grants no combat kill";
-    EXPECT_TRUE(harness.ledger()
-                    .unique_entities()
-                    .life_state()[harness.ledger().history_index(capital_id)] == LifeState::Unknown)
+    EXPECT_TRUE(
+        harness.ledger().history().life_state()[harness.ledger().history_index(capital_id)] ==
+        LifeState::Unknown)
         << "Collision death is environmental";
 }
 TEST(WorldlessSpaceGameSimulation, OrchestratorFixedStepPauseResumeAndCatchUp) {

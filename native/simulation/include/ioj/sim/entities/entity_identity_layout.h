@@ -19,6 +19,16 @@ inline constexpr EntityTypeSizes entity_lifetime_capacities{[] {
     return capacities;
 }()};
 
+inline constexpr EntityTypeSizes entity_identity_offsets{[] {
+    EntityTypeSizes offsets;
+    std::uint32_t offset{};
+    for (auto const type : EnumTraits<EntityType>::values) {
+        offsets[type] = offset;
+        offset += entity_lifetime_capacities[type];
+    }
+    return offsets;
+}()};
+
 inline constexpr std::uint32_t entity_identity_capacity{[] {
     std::uint32_t count{};
     auto const entity_type_count{EntityTypeSizes::size()};

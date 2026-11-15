@@ -55,7 +55,7 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
 }
 
 void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
-    auto const& unique_entities{test_driver->get_ledger().unique_entities()};
+    auto const history{test_driver->get_ledger().history()};
 
     if (!checks.is_true(test_driver->get_ledger().is_valid_unique_id(player_ship_id),
                         TEXT("Check player id is valid"))) {
@@ -64,17 +64,16 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
 
     auto const* const controller{
         Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
-    samples.add(
-        test_driver->get_time(),
-        FSimulationSample{
-            !sim::entity_is_alive(*test_driver->orchestrator.get_level_simulation(),
-                                  player_ship_id),
-            IsValid(player_ship.Get()),
-            unique_entities.life_state()[test_driver->get_ledger().history_index(player_ship_id)] ==
-                sim::LifeState::Alive,
-            IsValid(controller) && IsValid(controller->GetPawn()),
-            IsValid(controller) &&
-                controller->get_active_control_context() == ::ioj::levels::ControlContext::Player});
+    samples.add(test_driver->get_time(),
+                FSimulationSample{
+                    !sim::entity_is_alive(*test_driver->orchestrator.get_level_simulation(),
+                                          player_ship_id),
+                    IsValid(player_ship.Get()),
+                    history.life_state()[test_driver->get_ledger().history_index(player_ship_id)] ==
+                        sim::LifeState::Alive,
+                    IsValid(controller) && IsValid(controller->GetPawn()),
+                    IsValid(controller) && controller->get_active_control_context() ==
+                                               ::ioj::levels::ControlContext::Player});
 }
 
 void FTestPlayerShipDeathScenario::check_player_ship_death() {

@@ -445,7 +445,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     }
     auto const death_rows{
         death_frame.entity_ledger().frame_deaths(::ioj::sim::EntityType::CapitalShip)};
-    auto const death_ticks{death_frame.entity_ledger().unique_entities().death_ticks()};
+    auto const death_ticks{death_frame.entity_ledger().history().death_ticks()};
     TestNotEqual(TEXT("Separate fixed ticks retain separate death batches"),
                  death_ticks[death_rows[0]],
                  death_ticks[death_rows[1]]);

@@ -9,16 +9,18 @@
 namespace ioj::sim {
 EntityLedger::EntityLedger(std::pmr::memory_resource& memory)
     : history_{memory}
-    , ids_{memory}
     , frame_deaths_{{std::pmr::vector<HistoryIndex>{&memory},
                      std::pmr::vector<HistoryIndex>{&memory},
                      std::pmr::vector<HistoryIndex>{&memory},
                      std::pmr::vector<HistoryIndex>{&memory},
-                     std::pmr::vector<HistoryIndex>{&memory}}} {}
+                     std::pmr::vector<HistoryIndex>{&memory}}} {
+    history_.set_num(entity_identity_capacity);
+}
 
 void EntityLedger::reset() {
     history_.reset();
-    ids_.reset();
+    history_.set_num(entity_identity_capacity);
+    issued_counts_ = {};
     statistics_.reset();
     reset_frame_output();
 }
@@ -28,8 +30,8 @@ void EntityLedger::reset_frame_output() {
     }
 }
 auto EntityLedger::require_history_index(EntityId const id) const -> std::uint32_t {
-    auto const index{ids_.history_index(id)};
-    if (index == EntityIdAllocator::invalid_index) {
+    auto const index{history_index(id)};
+    if (index == invalid_history_index) {
         fatal_error(
             std::format("Combat accounting references unknown entity ID {}", id.raw_value()));
     }
@@ -42,16 +44,25 @@ void EntityLedger::record_spawns_impl(EntityType const type,
                                       std::span<EntityId> const ids) {
     auto const count{ids.size()};
     assert(std::ranges::size(teams) == count && std::ranges::size(healths) == count);
-    assert(std::in_range<EntityHistory::size_type>(count));
-    auto const first{history_.num()};
-    history_.add_defaulted(static_cast<EntityHistory::size_type>(count));
-    auto const history{history_.right(static_cast<EntityHistory::size_type>(count))};
+    if (!is_valid(type)) {
+        fatal_error("Cannot allocate an entity ID with an invalid type");
+    }
+    auto& issued{issued_counts_[type]};
+    auto const capacity{entity_lifetime_capacities[type]};
+    if (count > capacity - issued) {
+        fatal_error(std::format("Entity type {} exhausted its level lifetime ID budget ({})",
+                                static_cast<unsigned>(type),
+                                capacity));
+    }
+
+    auto const history{
+        history_.view(entity_identity_offsets[type] + issued, static_cast<HistoryIndex>(count))};
     auto const history_teams{history.teams()};
     auto const life_states{history.life_state()};
 
     for (std::size_t index{}; index < count; ++index) {
         auto const alive{is_alive(healths[index])};
-        auto const id{ids_.allocate(type, first + static_cast<HistoryIndex>(index))};
+        auto const id{EntityId{issued++, type}};
         ids[index] = id;
         history_teams[index] = teams[index];
         life_states[index] = alive ? LifeState::Alive : LifeState::Unknown;
@@ -136,6 +147,6 @@ void EntityLedger::record_deaths(EntityDeathInfo::CompactConstView const deaths,
 }
 
 auto EntityLedger::kills(EntityId const id) const -> std::uint32_t {
-    return unique_entities().kills()[require_history_index(id)];
+    return history_.const_view().kills()[require_history_index(id)];
 }
 }

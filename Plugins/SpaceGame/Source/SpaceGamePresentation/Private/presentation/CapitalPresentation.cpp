@@ -157,7 +157,7 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
 
 void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& ledger) {
     auto const deaths{ledger.frame_deaths(ioj::sim::EntityType::CapitalShip)};
-    auto const history{ledger.unique_entities()};
+    auto const history{ledger.history()};
     auto const death_ticks{history.death_ticks()};
     auto const death_locations{history.death_locations()};
     auto const n{static_cast<int32>(deaths.size())};
