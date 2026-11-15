@@ -18,14 +18,14 @@ class EntityLookupTables {
                    EntityLookupTable{EntityType::TubeSpinner, &memory}}} {}
 
     [[nodiscard]] auto for_type(EntityType const type) -> EntityLookupTable& {
-        assert(std::to_underlying(type) < enum_count<EntityType>());
+        assert(is_valid(type));
         return tables_[type];
     }
 
     [[nodiscard]] auto clock() const noexcept -> SimClock const& { return clock_; }
 
     [[nodiscard]] auto for_type(EntityType const type) const -> EntityLookupTable const& {
-        assert(std::to_underlying(type) < enum_count<EntityType>());
+        assert(is_valid(type));
         return tables_[type];
     }
 
