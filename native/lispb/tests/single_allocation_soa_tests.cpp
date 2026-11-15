@@ -27,6 +27,9 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
     CompilerTestContext ctx;
     auto const files{render_test_manifest(ctx, parse_test_manifest(ctx, R"(
         (module native :header "Native.h" :namespace example
+          (struct WorldAABBs (member xs array float))
+          (struct IDs (member values array std::uint32_t))
+          (struct HTTPServer (member values array std::uint32_t))
           (struct Child (member xs array float))
           (struct Rows
             (member ids array std::int32_t)
@@ -38,7 +41,10 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
     auto const& output{files.front().content};
     expect_contains_all(
         output,
-        {"namespace rows",
+        {"namespace world_aabbs",
+         "namespace ids",
+         "namespace http_server",
+         "namespace rows",
          "struct CompactView",
          "struct CompactConstView",
          "ColumnLayouts<std::int32_t, float, Token, sub::Token, other::Token, Base>",

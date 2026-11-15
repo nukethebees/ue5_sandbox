@@ -16,7 +16,7 @@
 #include <type_traits>
 
 namespace ioj::sim::collision {
-namespace world_aab_bs {
+namespace world_aabbs {
 struct Schema;
 struct CompactView;
 struct CompactConstView;
@@ -80,7 +80,7 @@ template <bool Const>
 struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
     using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = world_aab_bs::Layout;
+    using Layout = world_aabbs::Layout;
     using view_type = View;
     using const_view_type = ConstView;
     using soa_schema = Schema;
@@ -110,7 +110,7 @@ struct ConstView : ViewImpl<true> {
 struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ioj::sim::collision::world_aab_bs::Layout::column_types,
+        ioj::sim::collision::world_aabbs::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -129,7 +129,7 @@ struct CompactViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
     using soa_schema = Schema;
     using Base = soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = world_aab_bs::Layout;
+    using Layout = world_aabbs::Layout;
     using view_type = CompactView;
     using const_view_type = CompactConstView;
     using resolved_view_type = std::conditional_t<Const, ConstView, View>;
@@ -162,7 +162,7 @@ struct CompactView
           ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         CompactView,
-        ioj::sim::collision::world_aab_bs::Layout::column_types,
+        ioj::sim::collision::world_aabbs::Layout::column_types,
         CompactViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -174,7 +174,7 @@ struct CompactView
 };
 static_assert(std::is_trivially_copyable_v<CompactView>);
 
-} // namespace world_aab_bs
+} // namespace world_aabbs
 
 /* **************************************** */
 // Owner
@@ -189,11 +189,11 @@ static_assert(std::is_trivially_copyable_v<CompactView>);
 struct WorldAABBs
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<WorldAABBs,
-                                             world_aab_bs::Layout::column_types,
+                                             world_aabbs::Layout::column_types,
                                              native_soa::StorageOperations> {
-    using soa_schema = world_aab_bs::Schema;
+    using soa_schema = world_aabbs::Schema;
     using Operations = native_soa::StorageOperations;
-    using Layout = world_aab_bs::Layout;
+    using Layout = world_aabbs::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
     static constexpr auto capacity_granularity{Layout::capacity_granularity};
@@ -204,8 +204,8 @@ struct WorldAABBs
         return Layout::layout_bytes(blocks);
     }
 
-    using CompactView = world_aab_bs::CompactView;
-    using CompactConstView = world_aab_bs::CompactConstView;
+    using CompactView = world_aabbs::CompactView;
+    using CompactConstView = world_aabbs::CompactConstView;
 
     /* **************************************** */
     // Lifetime
@@ -227,7 +227,7 @@ struct WorldAABBs
     }
   protected:
     template <typename Byte>
-    using DataPointers = world_aab_bs::DataPointers<Byte>;
+    using DataPointers = world_aabbs::DataPointers<Byte>;
   public:
     auto view_min_points(this auto& self) { return self.view().view_min_points(); }
     auto view_max_points(this auto& self) { return self.view().view_max_points(); }

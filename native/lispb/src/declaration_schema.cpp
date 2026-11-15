@@ -324,8 +324,10 @@ auto soa_namespace_name(std::string_view const name) -> std::string {
         auto const character{name[index]};
         auto const previous_lower{index > 0 && ioj::islower(name[index - 1])};
         auto const next_lower{index + 1 < count && ioj::islower(name[index + 1])};
+        auto const plural_suffix{index > 0 && ioj::isupper(name[index - 1]) && index + 2 == count &&
+                                 name[index + 1] == 's'};
         if (ioj::isupper(character) && !result.empty() && result.back() != '_' &&
-            (previous_lower || next_lower)) {
+            (previous_lower || (next_lower && !plural_suffix))) {
             result += '_';
         }
         result += ioj::tolower(character);
