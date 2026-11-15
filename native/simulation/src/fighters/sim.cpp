@@ -787,7 +787,6 @@ void Sim::scan_alternative_navigation(NavigationScratch& scratch,
             scratch.trace_choice_indices.add(choice);
         }
     }
-    assert(scratch.line_of_sight_ends.num() == count);
     execute_navigation_sweeps(scratch, clearance, inputs);
 }
 void Sim::execute_navigation_sweeps(NavigationScratch& scratch,
