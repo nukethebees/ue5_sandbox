@@ -55,7 +55,6 @@ void SStackedBarChart::set_bars(TArray<FStackedBar> bars) {
 }
 
 void SStackedBarChart::clear_bars() {
-    check_invariants();
     if (data_->native.bars().empty()) {
         return;
     }
@@ -80,7 +79,6 @@ bool SStackedBarChart::set_style(FStackedBarChartStyle style) {
 }
 
 auto SStackedBarChart::get_bars() const -> TArray<FStackedBar> {
-    check_invariants();
     auto const native_bars{data_->native.bars()};
     TArray<FStackedBar> result;
     result.Reserve(labels_.Num());
@@ -109,7 +107,6 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
                                 int32 const layer_id,
                                 FWidgetStyle const& widget_style,
                                 bool const parent_enabled) const {
-    check_invariants();
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
     auto const native_layout{
         ioj::ui::chart_layout::make_layout({widget_size.X, widget_size.Y}, layout_settings_)};
