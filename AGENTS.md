@@ -54,6 +54,9 @@ Unreal Engine 5.8 project.
   `&&`, `||`, pipelines, or script blocks, even if approved or cheap. Inspect through separate
   calls and read output directly; batch independent calls through the tool API, not shell strings.
   Do not redirect output to log files; existing build/test scripts may run normally.
+* Commit completed changes by default after reviewing the diff and passing the required validation,
+  unless the maintainer explicitly asks to leave them uncommitted. Do not wait for a separate commit
+  request. Use `coj git` and report the commit hash in the final response.
 * Each commit must contain one logical change. Keep the implementation, required caller updates,
   generated outputs, tests and directly related documentation together. Commit independent
   refactors, documentation cleanups and workflow changes separately. Review the staged diff
