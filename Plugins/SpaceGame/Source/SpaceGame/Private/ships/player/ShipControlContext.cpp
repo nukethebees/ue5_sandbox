@@ -155,7 +155,6 @@ void FShipControlContext::select_flight_model_slot(sim::player::FlightModelSlot 
 }
 void FShipControlContext::bind_actions() {
     auto* const component{input_component_.Get()};
-    check(IsValid(component) && input_);
     auto const bind_value{
         [this, component](UInputAction* const action, ETriggerEvent const event, auto callback) {
             check(IsValid(action));

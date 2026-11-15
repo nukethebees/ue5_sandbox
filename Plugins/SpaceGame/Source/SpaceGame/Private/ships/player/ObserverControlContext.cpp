@@ -100,7 +100,6 @@ auto FObserverControlContext::get_movement_speed() const noexcept -> float {
 
 void FObserverControlContext::bind_actions() {
     auto* const input_component{input_component_.Get()};
-    check(IsValid(input_component) && input_);
 
     auto bind_value{[this, input_component](UInputAction* const action, auto method) {
         auto& binding{input_component->BindActionValueLambda(
