@@ -17,7 +17,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
                      std::int32_t const spawn_slots,
                      float const spawn_cooldown = 60.f) -> SimulationScenario {
     SimulationScenario data;
-    data.runtime.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
+    data.runtime.collision.grid_spec = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(32);
     data.runtime.collision.overlap_response.damage_per_overlap_detection =
         ioj::Positive<std::int32_t>{1};

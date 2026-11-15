@@ -117,10 +117,10 @@ native/simulation/include/ioj/sim/capital_ships/phase_interface.h
 native/simulation/include/ioj/sim/capital_ships/spawn_interface.h
 native/simulation/include/ioj/sim/collision/cell_coord_bounds.h
 native/simulation/include/ioj/sim/collision/cell_coords.h
+native/simulation/include/ioj/sim/collision/collision_grid_spec.h
 native/simulation/include/ioj/sim/collision/collision_scalar_types.h
 native/simulation/include/ioj/sim/collision/entity_cell_data.h
 native/simulation/include/ioj/sim/collision/entity_overlaps.h
-native/simulation/include/ioj/sim/collision/grid_geometry.h
 native/simulation/include/ioj/sim/collision/line_trace_result.h
 native/simulation/include/ioj/sim/collision/line_traces.h
 native/simulation/include/ioj/sim/collision/query_result_types.h

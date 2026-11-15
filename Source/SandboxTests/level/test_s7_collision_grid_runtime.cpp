@@ -85,7 +85,7 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
 
                 auto const dimensions{expected.calculate_grid_dimensions()};
                 auto const actual{
-                    orchestrator->get_level_simulation()->spatial_query_manager().grid_geometry()};
+                    orchestrator->get_level_simulation()->spatial_query_manager().grid_spec()};
                 checks.is_true(actual.dimensions == ioj::sim::collision::CellCoord{dimensions.X,
                                                                                    dimensions.Y,
                                                                                    dimensions.Z},

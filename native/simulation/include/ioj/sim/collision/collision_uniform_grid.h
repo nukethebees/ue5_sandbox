@@ -35,11 +35,11 @@ struct CollisionUniformGrid {
     void reset();
 
     /* **************************************** */
-    // Grid geometry
+    // Grid spec
     /* **************************************** */
     auto is_configured() const noexcept -> bool;
-    // Rebuild entity and static grids after changing geometry, before querying them.
-    void set_geometry(GridGeometry geometry) noexcept;
+    // Rebuild entity and static grids after changing the spec, before querying them.
+    void set_spec(CollisionGridSpec spec) noexcept;
     auto grid_dims() const noexcept -> CellCoord;
     auto max_grid_coord() const noexcept -> CellCoord;
     auto cell_dims() const noexcept -> Vector3f;
@@ -65,11 +65,11 @@ struct CollisionUniformGrid {
     /* **************************************** */
     void rebuild_entity_grid(EntityAABBs const& entity_aabbs, LevelReadAccess const& level);
     auto entity_world_bounds() const -> EntityCellData::CompactConstView;
-    auto entity_row_to_aabb_row(EntityType const type) const -> std::span<std::uint32_t const> {
+    auto entity_row_to_aabb_row(EntityType const type) const -> std::span<EntityAabbRow const> {
         return entity_storage_.entity_row_to_aabb_row[type];
     }
     auto cell_entities(CellCoord const cell_coord) const -> std::span<EntityId const> {
-        auto const dimensions{geometry_.dimensions};
+        auto const dimensions{spec_.dimensions};
         assert(cell_coord.x() >= 0 && cell_coord.x() < dimensions.x() && cell_coord.y() >= 0 &&
                cell_coord.y() < dimensions.y() && cell_coord.z() >= 0 &&
                cell_coord.z() < dimensions.z());
@@ -97,8 +97,8 @@ struct CollisionUniformGrid {
                                           FrameArray<EntityId>& out_entities) const;
 
     struct OverlapCounts {
-        std::uint32_t entities{};
-        std::uint32_t static_geometry{};
+        OverlapEntryCount entities{};
+        OverlapEntryCount static_geometry{};
     };
 
     // Count multi-cell duplicates so the caller can allocate exact output spans before writing.
@@ -123,7 +123,7 @@ struct CollisionUniformGrid {
     void begin_entity_grid();
     // Allocate output rows before binding the writer; keep storage fixed until writing finishes.
     void write_entity_bounds(entity_cell_data::View const& output,
-                             std::uint32_t output_row,
+                             EntityAabbRow output_row,
                              EntityId id,
                              WorldAABB bounds);
     void finish_entity_grid();
@@ -162,7 +162,7 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // State
     /* **************************************** */
-    GridGeometry geometry_{};
+    CollisionGridSpec spec_{};
     CollisionGridEntityStorage entity_storage_;
     CollisionGridStaticStorage static_storage_;
 };

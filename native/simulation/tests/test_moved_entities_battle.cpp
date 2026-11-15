@@ -22,7 +22,7 @@ struct FighterTransformSnapshot {
 auto make_long_running_battle() -> SimulationScenario {
     SimulationScenario data;
     data.runtime.clock_settings.tick_rate = ioj::Frequency::make(60.0);
-    data.runtime.collision.grid_geometry = {{96, 96, 32}, {{2000.f, 2000.f, 5000.f}}};
+    data.runtime.collision.grid_spec = {{96, 96, 32}, {{2000.f, 2000.f, 5000.f}}};
     data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(256);
     data.runtime.fighters.speed = 3000.f;
     data.runtime.fighters.laser.damage = 0;

@@ -73,7 +73,7 @@ auto make_simulation_data(SimulationFixture const& fixture) -> LevelSimInitData 
     data.turrets = fixture.data.turrets;
     data.spinners = fixture.data.spinners;
     data.collision.entity_bounds = fixture.data.collision.entity_bounds;
-    data.collision.grid_geometry = fixture.data.collision.grid_geometry;
+    data.collision.grid_spec = fixture.data.collision.grid_spec;
     data.tick_memory_capacity_bytes = fixture.data.tick_memory_capacity_bytes;
     data.phase_memory_capacity_bytes = fixture.data.phase_memory_capacity_bytes;
     return data;

@@ -274,7 +274,7 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
     }
 
     auto const static_bounds{FLevelCollisionHost::extract_static_geometry(
-        *world, level_config->collision_grid, build->collision.grid_geometry)};
+        *world, level_config->collision_grid, build->collision.grid_spec)};
     build->collision.static_bounds.reset();
     for (auto const& bounds : static_bounds) {
         build->collision.static_bounds.add(bounds.min, bounds.max);

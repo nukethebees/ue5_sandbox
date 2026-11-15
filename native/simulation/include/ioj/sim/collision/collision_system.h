@@ -7,7 +7,9 @@
 #include <ioj/sim/entities/entity_id.h>
 
 #include <cstdint>
+#include <memory_resource>
 #include <span>
+#include <vector>
 
 namespace ioj {
 class FrameMemoryResource;
@@ -36,7 +38,7 @@ class CollisionSystem {
     auto operator=(CollisionSystem const&) -> CollisionSystem& = delete;
     auto operator=(CollisionSystem&&) -> CollisionSystem& = delete;
 
-    void initialise(GridGeometry grid_geometry, EntityAABBs const& bounds);
+    void initialise(CollisionGridSpec grid_spec, EntityAABBs const& bounds);
     void set_static_collision(WorldAABBs bounds);
     auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
 
@@ -63,9 +65,13 @@ class CollisionSystem {
     /* **************************************** */
     // Events and bounds
     /* **************************************** */
+    void append_overlap_batch(EntityEntityOverlaps::CompactConstView entity_entity_overlaps,
+                              EntityStaticOverlaps::CompactConstView entity_static_overlaps);
     void reset_frame_collision_events();
     auto aabb_overlap_events() const -> AABBOverlapEventsView {
-        return overlap_event_storage_.view();
+        return {entity_entity_overlaps_.const_view(),
+                entity_static_overlaps_.const_view(),
+                overlap_batches_};
     }
     auto entity_collision_bounds() const -> EntityCellData::CompactConstView;
     auto static_collision_bounds() const -> WorldAABBs::CompactConstView;
@@ -76,6 +82,8 @@ class CollisionSystem {
     CollisionUniformGrid uniform_grid_;
 
     EntityAABBs entity_aabbs_{};
-    AABBOverlapEventStorage overlap_event_storage_;
+    EntityEntityOverlaps entity_entity_overlaps_;
+    EntityStaticOverlaps entity_static_overlaps_;
+    std::pmr::vector<AABBOverlapEventBatch> overlap_batches_;
 };
 }

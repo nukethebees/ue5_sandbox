@@ -18,10 +18,12 @@ namespace ioj::sim::collision {
 // Construction and setup
 /* **************************************** */
 CollisionSystem::CollisionSystem(std::pmr::memory_resource* resource) noexcept
-    : overlap_event_storage_{resource} {}
-void CollisionSystem::initialise(GridGeometry const grid_geometry,
+    : entity_entity_overlaps_{*resource}
+    , entity_static_overlaps_{*resource}
+    , overlap_batches_{resource} {}
+void CollisionSystem::initialise(CollisionGridSpec const grid_spec,
                                  collision::EntityAABBs const& bounds) {
-    uniform_grid_.set_geometry(grid_geometry);
+    uniform_grid_.set_spec(grid_spec);
     entity_aabbs_ = bounds;
     reset_frame_collision_events();
 }
@@ -56,9 +58,9 @@ auto CollisionSystem::detect_overlaps(EntityLookupTables const& lookups,
 
     auto const entity_entity_overlaps{entity_overlaps.const_view()};
     auto const entity_static_overlaps{static_overlaps.const_view()};
-    overlap_event_storage_.append_batch(entity_entity_overlaps, entity_static_overlaps);
+    append_overlap_batch(entity_entity_overlaps, entity_static_overlaps);
 
-    auto const events{overlap_event_storage_.view()};
+    auto const events{aabb_overlap_events()};
     return events.get_batch(static_cast<AABBOverlapEventBatchIndex>(events.batches.size() - 1));
 }
 void CollisionSystem::collect_overlaps_for_candidates(
@@ -105,8 +107,7 @@ void CollisionSystem::collect_overlaps_for_candidates(
                 continue;
             }
             auto const row{rows[handle.index()]};
-            if (row == EntityInstanceHandle::invalid_value ||
-                built_ids[row] != overlap_candidates[candidate]) {
+            if (row == invalid_entity_aabb_row || built_ids[row] != overlap_candidates[candidate]) {
                 continue;
             }
             bounds[candidate] = {min_points[row], max_points[row]};
@@ -137,15 +138,15 @@ void CollisionSystem::collect_overlaps_for_candidates(
         std::uint64_t entity_total{};
         std::uint64_t static_total{};
         for (std::uint32_t index{}; index < candidate_count; ++index) {
-            offsets[index] = {static_cast<std::uint32_t>(entity_total),
-                              static_cast<std::uint32_t>(static_total)};
+            offsets[index] = {static_cast<OverlapEntryCount>(entity_total),
+                              static_cast<OverlapEntryCount>(static_total)};
             entity_total += counts[index].entities;
             static_total += counts[index].static_geometry;
             assert(std::in_range<std::int32_t>(entity_total));
             assert(std::in_range<std::int32_t>(static_total));
         }
-        entity_overlaps.set_num(static_cast<std::uint32_t>(entity_total));
-        static_overlaps.set_num(static_cast<std::uint32_t>(static_total));
+        entity_overlaps.set_num(static_cast<OverlapEntryCount>(entity_total));
+        static_overlaps.set_num(static_cast<OverlapEntryCount>(static_total));
     }
 
     auto const entity_output{entity_overlaps.view()};
@@ -176,7 +177,7 @@ void CollisionSystem::collect_overlaps_for_candidates(
                     static_index_output.subspan(offset.static_geometry, count.static_geometry)};
 
                 uniform_grid_.write_overlaps(bounds[index], id, first_entities, static_indices);
-                for (std::uint32_t pair{}; pair < count.entities; ++pair) {
+                for (OverlapEntryCount pair{}; pair < count.entities; ++pair) {
                     auto const other{first_entities[pair]};
                     first_entities[pair] = std::min(id, other);
                     second_entities[pair] = std::max(id, other);
@@ -218,8 +219,8 @@ void CollisionSystem::finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
         apply_permutation(first_entities, indices);
         apply_permutation(second_entities, indices);
 
-        std::uint32_t write_index{1};
-        for (std::uint32_t read_index{1}; read_index < entity_overlap_count; ++read_index) {
+        OverlapEntryCount write_index{1};
+        for (OverlapEntryCount read_index{1}; read_index < entity_overlap_count; ++read_index) {
             if (first_entities[read_index] == first_entities[write_index - 1] &&
                 second_entities[read_index] == second_entities[write_index - 1]) {
                 continue;
@@ -243,8 +244,8 @@ void CollisionSystem::finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
         apply_permutation(static_entities, indices);
         apply_permutation(static_indices, indices);
 
-        std::uint32_t write_index{1};
-        for (std::uint32_t read_index{1}; read_index < static_overlap_count; ++read_index) {
+        OverlapEntryCount write_index{1};
+        for (OverlapEntryCount read_index{1}; read_index < static_overlap_count; ++read_index) {
             if (static_entities[read_index] == static_entities[write_index - 1] &&
                 static_indices[read_index] == static_indices[write_index - 1]) {
                 continue;
@@ -259,8 +260,30 @@ void CollisionSystem::finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
 /* **************************************** */
 // Events and bounds
 /* **************************************** */
+void CollisionSystem::append_overlap_batch(
+    collision::EntityEntityOverlaps::CompactConstView const entity_entity_overlaps,
+    collision::EntityStaticOverlaps::CompactConstView const entity_static_overlaps) {
+    auto const entity_entity_offset{entity_entity_overlaps_.num()};
+    auto const entity_static_offset{entity_static_overlaps_.num()};
+    entity_entity_overlaps_.append_from(entity_entity_overlaps);
+    entity_static_overlaps_.append_from(entity_static_overlaps);
+    overlap_batches_.push_back({
+        .entity_entity_overlaps =
+            {
+                .offset = entity_entity_offset,
+                .count = entity_entity_overlaps.num(),
+            },
+        .entity_static_overlaps =
+            {
+                .offset = entity_static_offset,
+                .count = entity_static_overlaps.num(),
+            },
+    });
+}
 void CollisionSystem::reset_frame_collision_events() {
-    overlap_event_storage_.reset();
+    entity_entity_overlaps_.reset();
+    entity_static_overlaps_.reset();
+    overlap_batches_.clear();
 }
 auto CollisionSystem::entity_collision_bounds() const -> EntityCellData::CompactConstView {
     return uniform_grid_.entity_world_bounds();

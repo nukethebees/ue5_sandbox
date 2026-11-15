@@ -25,19 +25,19 @@ auto CollisionGridStaticStorage::add_aabb(Vector3f const min_point, Vector3f con
     -> StaticGeometryIndex {
     return StaticGeometryIndex{aabbs_.add(min_point, max_point)};
 }
-auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
+auto CollisionGridStaticStorage::rebuild(CollisionGridSpec const spec)
     -> std::expected<void, StaticGridBuildError> {
     SANDBOX_PROFILE_SCOPE("CollisionGridStaticStorage::rebuild");
 
-    assert(is_configured(geometry));
+    assert(is_configured(spec));
 
     range_offsets_.clear();
     range_counts_.clear();
     aabb_indices_.clear();
 
-    auto const cell_count{num_cells(geometry).value()};
-    auto const row_stride{geometry.dimensions.x()};
-    auto const plane_stride{row_stride * geometry.dimensions.y()};
+    auto const cell_count{num_cells(spec).value()};
+    auto const row_stride{spec.dimensions.x()};
+    auto const plane_stride{row_stride * spec.dimensions.y()};
     cell_range_indices_.assign(static_cast<std::size_t>(cell_count), invalid_cell_range_index);
     std::vector<CellMembershipCount> cell_counts(static_cast<std::size_t>(cell_count));
 
@@ -51,9 +51,8 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     for (StaticGeometryIndex::value_type aabb_index{}; aabb_index < aabb_count; ++aabb_index) {
         auto const min_point{min_points[aabb_index]};
         auto const max_point{max_points[aabb_index]};
-        auto const [min_cell, max_cell]{to_cell_coord_bounds(geometry, min_point, max_point)};
-        if (!is_cell_coord_in_bounds(geometry, min_cell) ||
-            !is_cell_coord_in_bounds(geometry, max_cell)) {
+        auto const [min_cell, max_cell]{to_cell_coord_bounds(spec, min_point, max_point)};
+        if (!is_cell_coord_in_bounds(spec, min_cell) || !is_cell_coord_in_bounds(spec, max_cell)) {
             return std::unexpected{StaticGridBuildError{
                 .code = StaticGridBuildErrorCode::AabbOutOfBounds,
                 .aabb_index = StaticGeometryIndex{aabb_index},
@@ -111,7 +110,7 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     for (StaticGeometryIndex::value_type aabb_index{}; aabb_index < aabb_count; ++aabb_index) {
         auto const min_point{min_points[aabb_index]};
         auto const max_point{max_points[aabb_index]};
-        auto const [min_cell, max_cell]{to_cell_coord_bounds(geometry, min_point, max_point)};
+        auto const [min_cell, max_cell]{to_cell_coord_bounds(spec, min_point, max_point)};
         auto plane_index{min_cell.x() + min_cell.y() * row_stride + min_cell.z() * plane_stride};
         auto const max_x{max_cell.x()};
         auto const max_y{max_cell.y()};

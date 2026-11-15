@@ -45,9 +45,9 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
             errors.push_back(std::format("{}: {}", error.node_path, error.message));
         }
     }
-    if (!collision::is_configured(data.collision.grid_geometry)) {
+    if (!collision::is_configured(data.collision.grid_spec)) {
         errors.emplace_back("Collision grid requires positive dimensions and finite cell sizes");
-    } else if (!finite(collision::grid_half_size(data.collision.grid_geometry))) {
+    } else if (!finite(collision::grid_half_size(data.collision.grid_spec))) {
         errors.emplace_back("Collision grid extents must be finite");
     }
     for (auto const type : EnumTraits<EntityType>::values) {
@@ -104,7 +104,7 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
                 errors.emplace_back("Entity collision bounds must be finite");
                 return;
             }
-            auto const half_size{collision::grid_half_size(data.collision.grid_geometry)};
+            auto const half_size{collision::grid_half_size(data.collision.grid_spec)};
             for (std::size_t axis{}; axis < 3; ++axis) {
                 if (bounds.min[axis] < -half_size[axis] || bounds.min[axis] >= half_size[axis] ||
                     bounds.max[axis] > half_size[axis]) {

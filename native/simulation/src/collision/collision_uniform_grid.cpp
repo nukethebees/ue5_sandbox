@@ -29,7 +29,7 @@ namespace ioj::sim::collision {
 // Construction and lifecycle
 /* **************************************** */
 void CollisionUniformGrid::reset() {
-    geometry_ = {};
+    spec_ = {};
 
     auto& storage{entity_storage_};
     storage.cell_offsets.clear();
@@ -45,36 +45,36 @@ void CollisionUniformGrid::reset() {
 }
 
 /* **************************************** */
-// Grid geometry
+// Grid spec
 /* **************************************** */
 auto CollisionUniformGrid::is_configured() const noexcept -> bool {
-    return collision::is_configured(geometry_);
+    return collision::is_configured(spec_);
 }
-void CollisionUniformGrid::set_geometry(GridGeometry const geometry) noexcept {
-    geometry_ = geometry;
+void CollisionUniformGrid::set_spec(CollisionGridSpec const spec) noexcept {
+    spec_ = spec;
 }
 auto CollisionUniformGrid::grid_dims() const noexcept -> collision::CellCoord {
-    return geometry_.dimensions;
+    return spec_.dimensions;
 }
 auto CollisionUniformGrid::max_grid_coord() const noexcept -> collision::CellCoord {
-    return geometry_.dimensions - 1;
+    return spec_.dimensions - 1;
 }
 auto CollisionUniformGrid::cell_dims() const noexcept -> Vector3f {
-    return geometry_.cell_dimensions;
+    return spec_.cell_dimensions;
 }
 auto CollisionUniformGrid::num_cells() const -> GridCellCount {
-    return collision::num_cells(geometry_);
+    return collision::num_cells(spec_);
 }
 auto CollisionUniformGrid::to_cell_coord(Vector3f const pos) const -> collision::CellCoord {
-    return collision::to_cell_coord(geometry_, pos);
+    return collision::to_cell_coord(spec_, pos);
 }
 auto CollisionUniformGrid::to_cell_coord_bounds(Vector3f const min_point,
                                                 Vector3f const max_point) const -> CellCoordBounds {
-    auto const bounds{collision::to_cell_coord_bounds(geometry_, min_point, max_point)};
+    auto const bounds{collision::to_cell_coord_bounds(spec_, min_point, max_point)};
     return {bounds.min, bounds.max};
 }
 auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const coord) const -> bool {
-    return collision::is_cell_coord_in_bounds(geometry_, coord);
+    return collision::is_cell_coord_in_bounds(spec_, coord);
 }
 auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const min_coord,
                                                    collision::CellCoord const max_coord) const
@@ -85,7 +85,7 @@ void CollisionUniformGrid::are_spheres_in_bounds(
     vectors3f::ConstView const centres,
     float const radius,
     std::span<SphereInBoundsResult> const out_results) const {
-    collision::are_spheres_in_bounds(geometry_, centres, radius, out_results);
+    collision::are_spheres_in_bounds(spec_, centres, radius, out_results);
 }
 auto CollisionUniformGrid::to_string(collision::CellCoord const value) -> std::string {
     return std::format("({}, {}, {})", value.x(), value.y(), value.z());
@@ -123,7 +123,7 @@ auto CollisionUniformGrid::add_static_aabb(Vector3f const min_point, Vector3f co
 void CollisionUniformGrid::rebuild_static_grid() {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::rebuild_static_grid");
 
-    auto const result{static_storage_.rebuild(geometry_)};
+    auto const result{static_storage_.rebuild(spec_)};
     if (!result) {
         auto const error{result.error()};
         fatal_error(
@@ -153,7 +153,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     assert(max_entity_count <= EntityCellData::max_capacity);
     storage.rebuild_entity_data.add_uninitialised(static_cast<std::uint32_t>(max_entity_count));
     auto const output{storage.rebuild_entity_data.view().resolve()};
-    std::uint32_t output_row{};
+    EntityAabbRow output_row{};
 
     auto const append_batch{[&](EntityType const type,
                                 std::span<EntityId const> const ids,
@@ -161,7 +161,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
                                 HealthConstView const healths,
                                 auto orientation_at) {
         auto& rows{storage.entity_row_to_aabb_row[type]};
-        rows.assign(ids.size(), EntityInstanceHandle::invalid_value);
+        rows.assign(ids.size(), invalid_entity_aabb_row);
         auto const count{static_cast<std::uint32_t>(ids.size())};
         auto const append_row{[&](std::uint32_t const row) {
             rows[row] = output_row;
@@ -185,7 +185,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
         }
     }};
     auto& player_rows{storage.entity_row_to_aabb_row[EntityType::PlayerShip]};
-    player_rows.assign(player ? 1u : 0u, EntityInstanceHandle::invalid_value);
+    player_rows.assign(player ? 1u : 0u, invalid_entity_aabb_row);
     if (player && player->is_alive()) {
         player_rows[0] = output_row;
         write_entity_bounds(
@@ -239,9 +239,9 @@ void CollisionUniformGrid::begin_entity_grid() {
         fatal_error("Cannot rebuild an unconfigured collision grid");
     }
 
-    auto const& geometry{geometry_};
+    auto const& spec{spec_};
     auto& storage{entity_storage_};
-    auto const dimensions{geometry.dimensions};
+    auto const dimensions{spec.dimensions};
 
     {
         SANDBOX_PROFILE_SCOPE("prepare entity grid");
@@ -262,16 +262,16 @@ void CollisionUniformGrid::begin_entity_grid() {
     }
 }
 void CollisionUniformGrid::write_entity_bounds(entity_cell_data::View const& output,
-                                               std::uint32_t const output_row,
+                                               EntityAabbRow const output_row,
                                                EntityId const id,
                                                WorldAABB const bounds) {
-    auto const& geometry{geometry_};
+    auto const& spec{spec_};
     auto& storage{entity_storage_};
-    auto const row_stride{geometry.dimensions.x()};
-    auto const plane_stride{row_stride * geometry.dimensions.y()};
+    auto const row_stride{spec.dimensions.x()};
+    auto const plane_stride{row_stride * spec.dimensions.y()};
     auto const entity_type{id.entity_type()};
     auto const [min_coord,
-                max_coord]{collision::to_cell_coord_bounds(geometry, bounds.min, bounds.max)};
+                max_coord]{collision::to_cell_coord_bounds(spec, bounds.min, bounds.max)};
     if (!is_cell_coord_in_bounds(min_coord, max_coord)) {
         fatal_error(
             std::format("Collision-grid entity ID {} type {} has world AABB ({}, {}, {}) through "
@@ -286,7 +286,7 @@ void CollisionUniformGrid::write_entity_bounds(entity_cell_data::View const& out
                         bounds.max.z(),
                         to_string(min_coord),
                         to_string(max_coord),
-                        to_string(geometry.dimensions)));
+                        to_string(spec.dimensions)));
     }
 
     output.set(output_row, bounds.min, bounds.max, min_coord, max_coord, id);
@@ -313,10 +313,10 @@ void CollisionUniformGrid::write_entity_bounds(entity_cell_data::View const& out
     }
 }
 void CollisionUniformGrid::finish_entity_grid() {
-    auto const& geometry{geometry_};
+    auto const& spec{spec_};
     auto& storage{entity_storage_};
-    auto const row_stride{geometry.dimensions.x()};
-    auto const plane_stride{row_stride * geometry.dimensions.y()};
+    auto const row_stride{spec.dimensions.x()};
+    auto const plane_stride{row_stride * spec.dimensions.y()};
     {
         SANDBOX_PROFILE_SCOPE("calculate entity cell offsets");
 
@@ -458,8 +458,8 @@ auto CollisionUniformGrid::overlaps_impl(
     auto const entity_min_points{entity_aabbs.view_min_points().resolve()};
     auto const entity_max_points{entity_aabbs.view_max_points().resolve()};
 
-    auto const row_stride{geometry_.dimensions.x()};
-    auto const plane_stride{row_stride * geometry_.dimensions.y()};
+    auto const row_stride{spec_.dimensions.x()};
+    auto const plane_stride{row_stride * spec_.dimensions.y()};
 
     auto const entity_storage_view{std::span{entity_storage_.entities}};
     auto plane_index{min_coord.x() + min_coord.y() * row_stride + min_coord.z() * plane_stride};
@@ -591,7 +591,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
         return;
     }
 
-    auto const geometry{geometry_};
+    auto const spec{spec_};
     auto const max_cell_coord{max_grid_coord()};
     auto const static_aabbs{static_storage_.aabbs().const_view()};
     auto const entity_aabbs{entity_storage_.aabbs.const_view()};
@@ -603,9 +603,9 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
     CellCoord cell_padding{};
     if constexpr (Kind == TraceKind::Sweep) {
         cell_padding = {
-            static_cast<int>(std::ceil(moving_half_extent.x() / geometry.cell_dimensions.x())),
-            static_cast<int>(std::ceil(moving_half_extent.y() / geometry.cell_dimensions.y())),
-            static_cast<int>(std::ceil(moving_half_extent.z() / geometry.cell_dimensions.z())),
+            static_cast<int>(std::ceil(moving_half_extent.x() / spec.cell_dimensions.x())),
+            static_cast<int>(std::ceil(moving_half_extent.y() / spec.cell_dimensions.y())),
+            static_cast<int>(std::ceil(moving_half_extent.z() / spec.cell_dimensions.z())),
         };
     }
 
@@ -624,7 +624,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
         auto const end{traces.ends[trace_index]};
         auto const delta{end - start};
         GridTraversal traversal;
-        if (!GridTraversal::create(geometry, start, end, traversal)) {
+        if (!GridTraversal::create(spec, start, end, traversal)) {
             continue;
         }
 
@@ -715,8 +715,8 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                                          std::int32_t const y,
                                          std::int32_t const min_z,
                                          std::int32_t const max_z) {
-                auto cell_index{to_index(geometry, {x, y, min_z}).value()};
-                auto const plane_stride{geometry.dimensions.x() * geometry.dimensions.y()};
+                auto cell_index{to_index(spec, {x, y, min_z}).value()};
+                auto const plane_stride{spec.dimensions.x() * spec.dimensions.y()};
                 for (auto z{min_z}; z <= max_z; ++z) {
                     trace_cell(cell_index);
                     cell_index += plane_stride;
@@ -796,7 +796,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
             }
         } else {
             while (true) {
-                trace_cell(to_index(geometry, current_cell).value());
+                trace_cell(to_index(spec, current_cell).value());
                 if (!try_advance_traversal()) {
                     break;
                 }

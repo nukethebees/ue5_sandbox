@@ -131,7 +131,7 @@
     (member location @native_vector_3f)
     (projections (cpp))))
 
-(module native_collision_grid_geometry_cell_coord_bounds
+(module native_collision_cell_coord_bounds
   :header "native/simulation/include/ioj/sim/collision/cell_coord_bounds.h"
   :header-include "ioj/sim/collision/cell_coord_bounds.h"
   :namespace ioj::sim::collision
@@ -140,11 +140,11 @@
     (member max @native_cell_coord)
     (projections (cpp))))
 
-(module native_collision_grid_geometry_grid_geometry
-  :header "native/simulation/include/ioj/sim/collision/grid_geometry.h"
-  :header-include "ioj/sim/collision/grid_geometry.h"
+(module native_collision_grid_spec
+  :header "native/simulation/include/ioj/sim/collision/collision_grid_spec.h"
+  :header-include "ioj/sim/collision/collision_grid_spec.h"
   :namespace ioj::sim::collision
-  (record GridGeometry
+  (record CollisionGridSpec
     (member dimensions @native_cell_coord)
     (member cell_dimensions @native_vector_3f)
     (projections (cpp))))

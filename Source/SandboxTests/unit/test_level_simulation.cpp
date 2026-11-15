@@ -58,7 +58,7 @@ auto make_presentation_resources(AActor& owner, FLevelVisualConfig const& config
 
 auto make_battle_config() -> ::ioj::sim::LevelSimInitData {
     ::ioj::sim::LevelSimInitData data;
-    data.collision.grid_geometry = {{16, 16, 4}, {1000.f, 1000.f, 1000.f}};
+    data.collision.grid_spec = {{16, 16, 4}, {1000.f, 1000.f, 1000.f}};
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.capital_ships.fighter_spawn_slots = 0;
     for (auto const type : ioj::EnumTraits<::ioj::sim::EntityType>::values) {

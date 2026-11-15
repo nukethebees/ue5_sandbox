@@ -16,7 +16,7 @@ CollisionPipeline::CollisionPipeline(CollisionInitData data,
     : queries_{resource}
     , overlap_handler_{data.overlap_response.damage_per_overlap_detection}
     , overlap_candidates_{resource} {
-    queries_.initialise(data.grid_geometry, data.entity_bounds);
+    queries_.initialise(data.grid_spec, data.entity_bounds);
     queries_.set_static_collision(std::move(data.static_bounds));
 }
 

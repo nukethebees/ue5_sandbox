@@ -51,11 +51,11 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
             ASandboxTestOmittedCollisionActor::StaticClass());
 
         auto const configured_dims{config.calculate_grid_dimensions()};
-        auto const grid_geometry{ioj::sim::collision::GridGeometry{
+        auto const grid_spec{ioj::sim::collision::CollisionGridSpec{
             {configured_dims.X, configured_dims.Y, configured_dims.Z},
             ioj::Vector3f{config.cell_size}}};
         auto const bounds{
-            ioj::FLevelCollisionHost::extract_static_geometry(*world, config, grid_geometry)};
+            ioj::FLevelCollisionHost::extract_static_geometry(*world, config, grid_spec)};
 
         checks.are_equal(
             std::size_t{1},
@@ -71,7 +71,7 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
                        TEXT("Failed harvest leaves Unreal collision enabled"));
 
         auto const reharvested_bounds{
-            ioj::FLevelCollisionHost::extract_static_geometry(*world, config, grid_geometry)};
+            ioj::FLevelCollisionHost::extract_static_geometry(*world, config, grid_spec)};
         checks.are_equal(bounds.size(),
                          reharvested_bounds.size(),
                          TEXT("Reinitialization preserves native bounds count"));
@@ -80,8 +80,8 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
                        TEXT("Repeated extraction leaves component settings unchanged"));
 
         TArray<AActor const*> const excluded{harvested_actor};
-        auto const excluded_bounds{ioj::FLevelCollisionHost::extract_static_geometry(
-            *world, config, grid_geometry, excluded)};
+        auto const excluded_bounds{
+            ioj::FLevelCollisionHost::extract_static_geometry(*world, config, grid_spec, excluded)};
         checks.are_equal(std::size_t{0},
                          excluded_bounds.size(),
                          TEXT("Explicitly excluded actors contribute no static collision"));

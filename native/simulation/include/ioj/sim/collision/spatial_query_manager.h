@@ -43,9 +43,9 @@ struct SpatialQueryManager {
     auto operator=(SpatialQueryManager const&) -> SpatialQueryManager& = delete;
     auto operator=(SpatialQueryManager&&) -> SpatialQueryManager& = delete;
 
-    void initialise(collision::GridGeometry grid_geometry,
+    void initialise(collision::CollisionGridSpec grid_spec,
                     collision::EntityAABBs const& entity_bounds);
-    auto grid_geometry() const noexcept -> collision::GridGeometry {
+    auto grid_spec() const noexcept -> collision::CollisionGridSpec {
         auto const& grid{collision_system_.uniform_grid_};
         return {grid.grid_dims(), grid.cell_dims()};
     }

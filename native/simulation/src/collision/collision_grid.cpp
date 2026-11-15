@@ -33,19 +33,18 @@ auto to_closed_max_cell(float const value,
 }
 
 /* **************************************** */
-// Grid geometry
+// Grid spec
 /* **************************************** */
-auto is_configured(GridGeometry const geometry) noexcept -> bool {
-    if (geometry.dimensions.x() <= 0 || geometry.dimensions.y() <= 0 ||
-        geometry.dimensions.z() <= 0 || !std::isfinite(geometry.cell_dimensions.x()) ||
-        !std::isfinite(geometry.cell_dimensions.y()) ||
-        !std::isfinite(geometry.cell_dimensions.z()) || geometry.cell_dimensions.x() <= 0.0f ||
-        geometry.cell_dimensions.y() <= 0.0f || geometry.cell_dimensions.z() <= 0.0f) {
+auto is_configured(CollisionGridSpec const spec) noexcept -> bool {
+    if (spec.dimensions.x() <= 0 || spec.dimensions.y() <= 0 || spec.dimensions.z() <= 0 ||
+        !std::isfinite(spec.cell_dimensions.x()) || !std::isfinite(spec.cell_dimensions.y()) ||
+        !std::isfinite(spec.cell_dimensions.z()) || spec.cell_dimensions.x() <= 0.0f ||
+        spec.cell_dimensions.y() <= 0.0f || spec.cell_dimensions.z() <= 0.0f) {
         return false;
     }
 
     return levels::grid_cell_count_fits(
-        geometry.dimensions.x(), geometry.dimensions.y(), geometry.dimensions.z());
+        spec.dimensions.x(), spec.dimensions.y(), spec.dimensions.z());
 }
 auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_size) noexcept
     -> CellCoord {
@@ -53,46 +52,45 @@ auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_siz
             levels::grid_axis_count(grid_size.y(), cell_size.y()),
             levels::grid_axis_count(grid_size.z(), cell_size.z())};
 }
-auto grid_half_size(GridGeometry const geometry) noexcept -> Vector3f {
-    return Vector3f{geometry.dimensions} * geometry.cell_dimensions * 0.5f;
+auto grid_half_size(CollisionGridSpec const spec) noexcept -> Vector3f {
+    return Vector3f{spec.dimensions} * spec.cell_dimensions * 0.5f;
 }
 
-auto num_cells(GridGeometry const geometry) noexcept -> GridCellCount {
-    return GridCellCount{geometry.dimensions.product<GridCellCount::value_type>()};
+auto num_cells(CollisionGridSpec const spec) noexcept -> GridCellCount {
+    return GridCellCount{spec.dimensions.product<GridCellCount::value_type>()};
 }
-auto to_index(GridGeometry const geometry, CellCoord const coordinate) noexcept -> CellIndex {
+auto to_index(CollisionGridSpec const spec, CellCoord const coordinate) noexcept -> CellIndex {
     return CellIndex{static_cast<CellIndex::value_type>(
-        coordinate.x() + coordinate.y() * geometry.dimensions.x() +
-        coordinate.z() * geometry.dimensions.x() * geometry.dimensions.y())};
+        coordinate.x() + coordinate.y() * spec.dimensions.x() +
+        coordinate.z() * spec.dimensions.x() * spec.dimensions.y())};
 }
 auto to_cell_coord(float const value, float const cell_dimension, int const grid_dimension) noexcept
     -> int {
     auto const half_extent{static_cast<float>(grid_dimension) * cell_dimension * 0.5f};
     return to_cell(value, cell_dimension, half_extent);
 }
-auto to_cell_coord(GridGeometry const geometry, Vector3f const position) noexcept -> CellCoord {
-    auto const half_size{grid_half_size(geometry)};
+auto to_cell_coord(CollisionGridSpec const spec, Vector3f const position) noexcept -> CellCoord {
+    auto const half_size{grid_half_size(spec)};
     CellCoord result;
     for (std::size_t axis{}; axis < axis_count; ++axis) {
-        result[axis] = to_cell(position[axis], geometry.cell_dimensions[axis], half_size[axis]);
+        result[axis] = to_cell(position[axis], spec.cell_dimensions[axis], half_size[axis]);
     }
     return result;
 }
-auto to_max_cell_coord(GridGeometry const geometry, Vector3f const position) noexcept -> CellCoord {
-    auto const half_size{grid_half_size(geometry)};
+auto to_max_cell_coord(CollisionGridSpec const spec, Vector3f const position) noexcept
+    -> CellCoord {
+    auto const half_size{grid_half_size(spec)};
     CellCoord result;
     for (std::size_t axis{}; axis < axis_count; ++axis) {
-        result[axis] = to_closed_max_cell(position[axis],
-                                          geometry.cell_dimensions[axis],
-                                          geometry.dimensions[axis],
-                                          half_size[axis]);
+        result[axis] = to_closed_max_cell(
+            position[axis], spec.cell_dimensions[axis], spec.dimensions[axis], half_size[axis]);
     }
     return result;
 }
-auto to_cell_coord_bounds(GridGeometry const geometry,
+auto to_cell_coord_bounds(CollisionGridSpec const spec,
                           Vector3f const min_point,
                           Vector3f const max_point) noexcept -> CellCoordBounds {
-    return {to_cell_coord(geometry, min_point), to_max_cell_coord(geometry, max_point)};
+    return {to_cell_coord(spec, min_point), to_max_cell_coord(spec, max_point)};
 }
 auto to_cell_min(int const coordinate,
                  float const cell_dimension,
@@ -100,23 +98,23 @@ auto to_cell_min(int const coordinate,
     auto const half_extent{static_cast<float>(grid_dimension) * cell_dimension * 0.5f};
     return static_cast<float>(coordinate) * cell_dimension - half_extent;
 }
-auto to_cell_min(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
-    return Vector3f{coordinate} * geometry.cell_dimensions - grid_half_size(geometry);
+auto to_cell_min(CollisionGridSpec const spec, CellCoord const coordinate) noexcept -> Vector3f {
+    return Vector3f{coordinate} * spec.cell_dimensions - grid_half_size(spec);
 }
-auto to_cell_centre(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
-    return to_cell_min(geometry, coordinate) + geometry.cell_dimensions * 0.5f;
+auto to_cell_centre(CollisionGridSpec const spec, CellCoord const coordinate) noexcept -> Vector3f {
+    return to_cell_min(spec, coordinate) + spec.cell_dimensions * 0.5f;
 }
 
 /* **************************************** */
 // Bounds queries
 /* **************************************** */
-auto is_cell_coord_in_bounds(GridGeometry const geometry, CellCoord const coordinate) noexcept
+auto is_cell_coord_in_bounds(CollisionGridSpec const spec, CellCoord const coordinate) noexcept
     -> bool {
-    return coordinate.x() >= 0 && coordinate.x() < geometry.dimensions.x() && coordinate.y() >= 0 &&
-           coordinate.y() < geometry.dimensions.y() && coordinate.z() >= 0 &&
-           coordinate.z() < geometry.dimensions.z();
+    return coordinate.x() >= 0 && coordinate.x() < spec.dimensions.x() && coordinate.y() >= 0 &&
+           coordinate.y() < spec.dimensions.y() && coordinate.z() >= 0 &&
+           coordinate.z() < spec.dimensions.z();
 }
-void are_spheres_in_bounds(GridGeometry const geometry,
+void are_spheres_in_bounds(CollisionGridSpec const spec,
                            vectors3f::ConstView const centres,
                            float const radius,
                            std::span<SphereInBoundsResult> const results) noexcept {
@@ -124,7 +122,7 @@ void are_spheres_in_bounds(GridGeometry const geometry,
     assert(std::isfinite(radius));
     assert(radius >= 0.0f);
 
-    auto const half_size{grid_half_size(geometry)};
+    auto const half_size{grid_half_size(spec)};
     auto const min_x{-half_size.x() + radius};
     auto const min_y{-half_size.y() + radius};
     auto const min_z{-half_size.z() + radius};

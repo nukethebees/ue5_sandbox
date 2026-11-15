@@ -16,14 +16,14 @@ struct CollisionGridTestAccess {
     static void
         size_rows(collision::CollisionUniformGrid& grid, EntityType type, std::size_t count) {
         grid.entity_storage_.entity_row_to_aabb_row[type].assign(
-            count, EntityInstanceHandle::invalid_value);
+            count, collision::invalid_entity_aabb_row);
     }
     static void append(collision::CollisionUniformGrid& grid,
                        EntityId id,
                        std::uint32_t row,
                        collision::WorldAABB bounds) {
         auto& data{grid.entity_storage_.rebuild_entity_data};
-        auto const output_row{data.num()};
+        collision::EntityAabbRow const output_row{data.num()};
         data.add_uninitialised(1);
         auto const output{data.view().resolve()};
         grid.entity_storage_.entity_row_to_aabb_row[id.entity_type()][row] = output_row;

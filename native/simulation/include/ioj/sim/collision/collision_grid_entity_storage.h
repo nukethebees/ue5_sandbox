@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ioj/sim/collision/collision_grid.h"
+#include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/collision/entity_cell_data.h"
 #include "ioj/sim/collision/world_aabbs.h"
 #include "ioj/sim/entities/entity_id.h"
@@ -29,7 +30,7 @@ struct CollisionGridEntityStorage {
     std::vector<CellEntryOffset> cell_write_indices;
     EntityCellData rebuild_entity_data;
     // Map each per-type entity-storage row to its cached world-space AABB row.
-    // Rows omitted from the rebuild have EntityInstanceHandle::invalid_value.
-    EnumArray<std::vector<std::uint32_t>, EntityType> entity_row_to_aabb_row;
+    // Rows omitted from the rebuild have invalid_entity_aabb_row.
+    EnumArray<std::vector<EntityAabbRow>, EntityType> entity_row_to_aabb_row;
 };
 } // namespace ioj::sim::collision

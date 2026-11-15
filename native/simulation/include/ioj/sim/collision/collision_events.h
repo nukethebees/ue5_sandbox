@@ -5,7 +5,6 @@
 
 #include <cstdint>
 #include <span>
-#include <vector>
 
 namespace ioj::sim::collision {
 using AABBOverlapEventBatchIndex = std::int32_t;
@@ -31,24 +30,4 @@ struct AABBOverlapEventsView {
     [[nodiscard]] auto get_batch(AABBOverlapEventBatchIndex index) const -> DetectedOverlapsView;
 };
 
-/* **************************************** */
-// Event storage
-/* **************************************** */
-class AABBOverlapEventStorage {
-  public:
-    explicit AABBOverlapEventStorage(
-        std::pmr::memory_resource* resource = std::pmr::get_default_resource())
-        : entity_entity_overlaps_{*resource}
-        , entity_static_overlaps_{*resource}
-        , batches_{resource} {}
-
-    void reset() noexcept;
-    void append_batch(EntityEntityOverlaps::CompactConstView entity_entity_overlaps,
-                      EntityStaticOverlaps::CompactConstView entity_static_overlaps);
-    [[nodiscard]] auto view() const noexcept -> AABBOverlapEventsView;
-  private:
-    EntityEntityOverlaps entity_entity_overlaps_;
-    EntityStaticOverlaps entity_static_overlaps_;
-    std::pmr::vector<AABBOverlapEventBatch> batches_;
-};
 } // namespace ioj::sim::collision

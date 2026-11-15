@@ -11,7 +11,7 @@ namespace ioj::sim::tests::tick_phases {
 auto make_world() -> SimulationScenario {
     SimulationScenario data{};
     data.runtime.clock_settings.tick_rate = ioj::Frequency::make(10.0);
-    data.runtime.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
+    data.runtime.collision.grid_spec = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.runtime.capital_ships.fighter_spawn_slots = 0;
     data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(8);
     data.runtime.collision.overlap_response.damage_per_overlap_detection =

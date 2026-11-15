@@ -45,7 +45,7 @@ static_assert(
 namespace {
 auto make_battle_config() -> SimulationScenario {
     SimulationScenario data;
-    data.runtime.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
+    data.runtime.collision.grid_spec = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.runtime.capital_ships.fighter_spawn_slots = 0;
     for (auto const type : EnumTraits<EntityType>::values) {

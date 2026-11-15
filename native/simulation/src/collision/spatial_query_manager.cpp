@@ -232,9 +232,9 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
 SpatialQueryManager::SpatialQueryManager(std::pmr::memory_resource* resource)
     : collision_system_{resource} {}
 
-void SpatialQueryManager::initialise(collision::GridGeometry const grid_geometry,
+void SpatialQueryManager::initialise(collision::CollisionGridSpec const grid_spec,
                                      collision::EntityAABBs const& entity_bounds) {
-    collision_system_.initialise(grid_geometry, entity_bounds);
+    collision_system_.initialise(grid_spec, entity_bounds);
 
     for (auto const type : EnumTraits<EntityType>::values) {
         entity_radii_[type] = collision::get_entity_radius(entity_bounds, type);

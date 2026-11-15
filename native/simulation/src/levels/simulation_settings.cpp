@@ -110,7 +110,7 @@ void apply_settings(SimulationSettings const& settings, LevelSimInitData& target
     target.spinners = settings.spinners;
     target.spinners.fire_point_offsets = std::move(spinner_fire_points);
 
-    target.collision.grid_geometry = {
+    target.collision.grid_spec = {
         collision::calculate_grid_dimensions(settings.overlap_response.level_size,
                                              settings.overlap_response.cell_size),
         settings.overlap_response.cell_size};

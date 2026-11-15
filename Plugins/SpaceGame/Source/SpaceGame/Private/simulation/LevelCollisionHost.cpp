@@ -132,7 +132,7 @@ struct FStaticCollisionComponentData {
 };
 
 auto extract_static_collision_component(UPrimitiveComponent& component,
-                                        sim::collision::GridGeometry const grid_geometry,
+                                        sim::collision::CollisionGridSpec const grid_spec,
                                         AActor const* const expected_owner,
                                         TCHAR const*& rejection_reason)
     -> TOptional<FStaticCollisionComponentData> {
@@ -182,12 +182,12 @@ auto extract_static_collision_component(UPrimitiveComponent& component,
     FVector3f const min_point{aabb.Min};
     FVector3f const max_point{aabb.Max};
     auto const [min_coord, max_coord]{
-        sim::collision::to_cell_coord_bounds(grid_geometry,
+        sim::collision::to_cell_coord_bounds(grid_spec,
                                              Vector3f{min_point.X, min_point.Y, min_point.Z},
                                              Vector3f{max_point.X, max_point.Y, max_point.Z})};
     if (min_point.ContainsNaN() || max_point.ContainsNaN() ||
-        !sim::collision::is_cell_coord_in_bounds(grid_geometry, min_coord) ||
-        !sim::collision::is_cell_coord_in_bounds(grid_geometry, max_coord)) {
+        !sim::collision::is_cell_coord_in_bounds(grid_spec, min_coord) ||
+        !sim::collision::is_cell_coord_in_bounds(grid_spec, max_coord)) {
         rejection_reason = TEXT("world AABB is invalid or outside the collision grid");
         return {};
     }
@@ -216,7 +216,7 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
 auto FLevelCollisionHost::extract_static_geometry(
     UWorld& world,
     FCollisionGridConfig const& config,
-    sim::collision::GridGeometry const grid_geometry,
+    sim::collision::CollisionGridSpec const grid_spec,
     TConstArrayView<AActor const*> const excluded_actors)
     -> std::vector<sim::collision::WorldAABB> {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ioj::sim::FLevelCollisionHost::extract_static_geometry);
@@ -273,8 +273,8 @@ auto FLevelCollisionHost::extract_static_geometry(
             }};
 
             TCHAR const* rejection_reason{};
-            auto const data{extract_static_collision_component(
-                *component, grid_geometry, actor, rejection_reason)};
+            auto const data{
+                extract_static_collision_component(*component, grid_spec, actor, rejection_reason)};
             if (!data) {
                 reject_component(rejection_reason);
                 continue;

@@ -25,7 +25,7 @@ struct SPACEGAME_API FLevelCollisionHost {
     static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityBoundsExtractionResult;
     static auto extract_static_geometry(UWorld& world,
                                         FCollisionGridConfig const& config,
-                                        sim::collision::GridGeometry grid_geometry,
+                                        sim::collision::CollisionGridSpec grid_spec,
                                         TConstArrayView<AActor const*> excluded_actors = {})
         -> std::vector<sim::collision::WorldAABB>;
 };

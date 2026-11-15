@@ -7,7 +7,7 @@
 #include "ioj/sim/collision/cell_coord.h"
 
 namespace ioj::sim::collision {
-struct GridGeometry {
+struct CollisionGridSpec {
     CellCoord dimensions;
     Vector3f cell_dimensions;
 };

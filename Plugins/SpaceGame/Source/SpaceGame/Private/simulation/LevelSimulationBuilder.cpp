@@ -98,8 +98,8 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     data.fighters.fire_point_distance =
         IsValid(socket) ? static_cast<float>(socket->RelativeLocation.Size()) : 0.f;
     auto const dimensions{config.collision_grid.calculate_grid_dimensions()};
-    data.collision.grid_geometry = {{dimensions.X, dimensions.Y, dimensions.Z},
-                                    Vector3f{config.collision_grid.cell_size}};
+    data.collision.grid_spec = {{dimensions.X, dimensions.Y, dimensions.Z},
+                                Vector3f{config.collision_grid.cell_size}};
 
     FLevelCollisionHost::EntityMeshes meshes{};
     meshes[sim::EntityType::PlayerShip] = player_collision_mesh;

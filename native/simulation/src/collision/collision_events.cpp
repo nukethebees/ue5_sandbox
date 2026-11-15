@@ -17,35 +17,4 @@ auto AABBOverlapEventsView::get_batch(AABBOverlapEventBatchIndex const index) co
     };
 }
 
-/* **************************************** */
-// Event storage
-/* **************************************** */
-void AABBOverlapEventStorage::reset() noexcept {
-    entity_entity_overlaps_.reset();
-    entity_static_overlaps_.reset();
-    batches_.clear();
-}
-void AABBOverlapEventStorage::append_batch(
-    collision::EntityEntityOverlaps::CompactConstView const entity_entity_overlaps,
-    collision::EntityStaticOverlaps::CompactConstView const entity_static_overlaps) {
-    auto const entity_entity_offset{entity_entity_overlaps_.num()};
-    auto const entity_static_offset{entity_static_overlaps_.num()};
-    entity_entity_overlaps_.append_from(entity_entity_overlaps);
-    entity_static_overlaps_.append_from(entity_static_overlaps);
-    batches_.push_back({
-        .entity_entity_overlaps =
-            {
-                .offset = entity_entity_offset,
-                .count = entity_entity_overlaps.num(),
-            },
-        .entity_static_overlaps =
-            {
-                .offset = entity_static_offset,
-                .count = entity_static_overlaps.num(),
-            },
-    });
-}
-auto AABBOverlapEventStorage::view() const noexcept -> AABBOverlapEventsView {
-    return {entity_entity_overlaps_.const_view(), entity_static_overlaps_.const_view(), batches_};
-}
-} // namespace collision
+} // namespace ioj::sim::collision

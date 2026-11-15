@@ -3,7 +3,7 @@
 #include <ioj/math_types.h>
 #include <ioj/sim/collision/cell_coord.h>
 #include <ioj/sim/collision/cell_coord_bounds.h>
-#include <ioj/sim/collision/grid_geometry.h>
+#include <ioj/sim/collision/collision_grid_spec.h>
 
 #include <limits>
 
@@ -12,7 +12,7 @@ class GridTraversal {
   public:
     GridTraversal() noexcept = default;
     [[nodiscard]] static auto
-        create(GridGeometry geometry, Vector3f start, Vector3f end, GridTraversal& result) noexcept
+        create(CollisionGridSpec spec, Vector3f start, Vector3f end, GridTraversal& result) noexcept
         -> bool;
     [[nodiscard]] auto current_cell() const noexcept -> CellCoord;
     [[nodiscard]] auto advance() noexcept -> bool;

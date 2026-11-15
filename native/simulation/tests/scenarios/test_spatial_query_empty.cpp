@@ -14,7 +14,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryEmptyBatchesAndWorld) {
     auto data{tests::make_simulation_data(config)};
     tests::CollisionAgentStorage owners;
     SpatialQueryManager queries{};
-    queries.initialise(data.collision.grid_geometry, data.collision.entity_bounds);
+    queries.initialise(data.collision.grid_spec, data.collision.entity_bounds);
     owners.publish();
     owners.refresh(queries);
     std::vector<EntityId> ids{};
@@ -54,7 +54,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryTeamAndInclusiveRadiusFiltering) 
         owners.spawn(EntityType::CapitalShip, {{1000.f, 0.f, 0.f}}, {}, 100, Team::Red)};
     owners.spawn(EntityType::CapitalShip, {{1000.1f, 0.f, 0.f}}, {}, 100, Team::Red);
     SpatialQueryManager queries{};
-    queries.initialise(data.collision.grid_geometry, data.collision.entity_bounds);
+    queries.initialise(data.collision.grid_spec, data.collision.entity_bounds);
     owners.publish();
     owners.refresh(queries);
     std::array<EntityId, 4> results;

@@ -31,7 +31,7 @@ auto slot_for(player::FlightModelPreset const preset) -> player::FlightModelSlot
 
 auto make_data(player::FlightModelPreset const preset) -> SimulationScenario {
     SimulationScenario data;
-    data.runtime.collision.grid_geometry = {{16, 16, 4}, {{100000.f, 100000.f, 100000.f}}};
+    data.runtime.collision.grid_spec = {{16, 16, 4}, {{100000.f, 100000.f, 100000.f}}};
     data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.runtime.tick_memory_capacity_bytes = 1024 * 1024;
     data.runtime.phase_memory_capacity_bytes = 1024 * 1024;
