@@ -81,9 +81,9 @@ TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedEnt
 
     auto built{make_level_simulation_init_data(*definition, make_simulation_data(make_fixture()))};
     ASSERT_TRUE(built) << built.error().front();
-    auto const capital{built->level_events.capital_spawns.const_view()};
-    auto const turret{built->level_events.turret_spawns.const_view()};
-    auto const spinner{built->level_events.spinner_spawns.const_view()};
+    auto const capital{built->level_events.capital_spawns().const_view()};
+    auto const turret{built->level_events.turret_spawns().const_view()};
+    auto const spinner{built->level_events.spinner_spawns().const_view()};
     ASSERT_EQ(capital.num(), 1);
     ASSERT_EQ(turret.num(), 1);
     ASSERT_EQ(spinner.num(), 1);

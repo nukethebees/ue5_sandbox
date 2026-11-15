@@ -3,7 +3,7 @@
 #include <ioj/column_math.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/expressions/expr_compilation_context.h>
-#include <ioj/sim/levels/compiled_level_events.h>
+#include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/transform3d.h>
 
@@ -87,12 +87,12 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         turret_count += entity.archetype == EntityArchetype::StaticTurret ? 1 : 0;
         spinner_count += entity.archetype == EntityArchetype::TubeSpinner ? 1 : 0;
     }
-    definitions.capital_spawns.add_uninitialised(capital_count);
-    definitions.turret_spawns.add_uninitialised(turret_count);
-    definitions.spinner_spawns.add_uninitialised(spinner_count);
-    auto const capital_events{definitions.capital_spawns.view()};
-    auto const turret_events{definitions.turret_spawns.view()};
-    auto const spinner_events{definitions.spinner_spawns.view()};
+    definitions.capital_spawns().add_uninitialised(capital_count);
+    definitions.turret_spawns().add_uninitialised(turret_count);
+    definitions.spinner_spawns().add_uninitialised(spinner_count);
+    auto const capital_events{definitions.capital_spawns().view()};
+    auto const turret_events{definitions.turret_spawns().view()};
+    auto const spinner_events{definitions.spinner_spawns().view()};
     std::int32_t capital_end{};
     std::int32_t turret_end{};
     std::int32_t spinner_end{};
@@ -146,7 +146,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
             ++end;
         }
 
-        auto const group_offset{definitions.spawn_groups.num()};
+        auto const group_offset{definitions.spawn_groups().num()};
         definitions.add_spawn_group(
             sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
         definitions.add_spawn_group(
@@ -154,13 +154,14 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         definitions.add_spawn_group(
             sim::EntityType::TubeSpinner, spinner_offset, spinner_end - spinner_offset);
         auto const spawn{definitions.add_spawn_event(
-            {group_offset, definitions.spawn_groups.num() - group_offset})};
+            {group_offset, definitions.spawn_groups().num() - group_offset})};
         if (tick == 0) {
-            definitions.initial_events.push_back(spawn);
+            definitions.initial_events().push_back(spawn);
         } else {
             auto const timer{output.timers.add()};
-            auto const elapsed{output.expressions.add_timer_elapsed(timer)};
-            definitions.initial_events.push_back(definitions.add_start_timer_event({timer, tick}));
+            auto const elapsed{output.conditions.add_timer_elapsed(timer)};
+            definitions.initial_events().push_back(
+                definitions.add_start_timer_event({timer, tick}));
             definitions.add_trigger(elapsed, std::array{spawn});
         }
         first = end;
@@ -173,7 +174,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         for (auto const& id : group.entities) {
             append_entity(entity_index(definition, id));
         }
-        auto const first_group{definitions.spawn_groups.num()};
+        auto const first_group{definitions.spawn_groups().num()};
         definitions.add_spawn_group(
             sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
         definitions.add_spawn_group(
@@ -181,7 +182,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         definitions.add_spawn_group(
             sim::EntityType::TubeSpinner, spinner_offset, spinner_end - spinner_offset);
         spawn_effects.push_back(definitions.add_spawn_event(
-            {first_group, definitions.spawn_groups.num() - first_group}));
+            {first_group, definitions.spawn_groups().num() - first_group}));
     }
     auto const timers{output.timers.add(logic.timer_count, *std::pmr::get_default_resource())};
     std::unordered_map<EntityId, sim::LevelEntityRef> entities;
@@ -189,10 +190,10 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         entities.emplace(definition.entities()[i].id, sim::LevelEntityRef{i});
     }
     std::vector<sim::ExprHandle> expressions(logic.expressions.size());
-    output.expressions.append(logic.expressions, {entities, timers}, expressions);
+    output.conditions.append(logic.expressions, {entities, timers}, expressions);
 
     for (auto const& latch : logic.latches) {
-        output.latches.add({expressions[latch.when], expressions[latch.value]});
+        output.conditions.add_latch({expressions[latch.when], expressions[latch.value]});
     }
     auto compile_effects{[&](std::span<Effect const> effects)
                              -> std::expected<std::vector<sim::EventHandle>,
@@ -229,8 +230,8 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     if (!initial) {
         return std::unexpected{initial.error()};
     }
-    definitions.initial_events.insert(
-        definitions.initial_events.end(), initial->begin(), initial->end());
+    definitions.initial_events().insert(
+        definitions.initial_events().end(), initial->begin(), initial->end());
     for (auto const& rule : logic.rules) {
         auto effects{compile_effects(rule.effects)};
         if (!effects) {

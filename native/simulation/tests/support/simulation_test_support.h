@@ -25,9 +25,9 @@ inline void add_timed_events(LevelSimInitData& data,
     auto const ticks{levels::compile_timer_duration(duration, clock)};
     ASSERT_TRUE(ticks);
     auto const timer{data.timers.add()};
-    auto const elapsed{data.expressions.add_timer_elapsed(timer)};
+    auto const elapsed{data.conditions.add_timer_elapsed(timer)};
     auto& events{data.level_events};
-    events.initial_events.push_back(events.add_start_timer_event({timer, *ticks}));
+    events.initial_events().push_back(events.add_start_timer_event({timer, *ticks}));
     events.add_trigger(elapsed, effects);
 }
 inline void add_duration_limit(LevelSimInitData& data, Duration const duration) {

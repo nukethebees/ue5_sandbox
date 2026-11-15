@@ -1,6 +1,5 @@
 #include <ioj/sim/levels/level_sim.h>
 
-#include <ioj/diagnostics.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/expressions/expr_evaluation_context.h>
@@ -35,8 +34,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     , turrets_simulation_{entity_tables_}
     , spinners_simulation_{entity_tables_}
     , task_manager_{memory_manager_.game_memory()}
-    , latches_{std::move(data.latches)}
-    , expressions_{std::move(data.expressions)}
+    , conditions_{std::move(data.conditions)}
     , timers_{std::move(data.timers)}
     , level_metadata_{std::move(data.level_metadata)}
     , event_manager_{std::move(data.level_events), memory_manager_.level_memory()}
@@ -45,16 +43,21 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
           memory_manager_.game_memory(),
       }
     {
+    event_manager_.enqueue_initial_events();
     initialise_subsystems(data);
 
-    spawn_manager_.initialise(event_manager_.data().spawn_count() +
+    spawn_manager_.initialise(event_manager_.spawn_count() +
                               static_cast<std::uint32_t>(player_ship_simulation_.has_value()));
     if (data.player_entity_ref.is_valid()) {
         spawn_manager_.set_entity_id(data.player_entity_ref,
                                      player_ship_simulation_->unique_entity_id);
     }
 
-    dispatch_preparation_events();
+    event_manager_.dispatch_preparation(spawn_manager_,
+                                        capital_ships_simulation_,
+                                        turrets_simulation_,
+                                        spinners_simulation_,
+                                        {entity_ledger_, clock_});
 
     if (player_ship_simulation_) {
         player_ship_simulation_->update_entity_lookup_table();
@@ -72,7 +75,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
 
     clock_.reset();
     state_ = LevelState::Paused;
-    dispatch_tick_end_events();
+    event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_);
 }
 void LevelSim::start() {
     assert(state_ == LevelState::Paused);
@@ -98,7 +101,7 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
         data.capital_ships.max_health);
     auto const player_team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
                                                    : std::nullopt};
-    participating_teams_ = event_manager_.data().collect_participating_teams(player_team);
+    participating_teams_ = event_manager_.collect_participating_teams(player_team);
     fighters::InitialisationInterface{fighters_simulation_}.initialise(data.fighters, clock_);
     turrets::InitialisationInterface{turrets_simulation_}.initialise(data.turrets, clock_);
     spinners::InitialisationInterface{spinners_simulation_}.initialise(data.spinners, clock_);
@@ -113,19 +116,18 @@ void LevelSim::stop_run(RunEndReason const reason) {
         return;
     }
     event_manager_.enqueue_stop(reason);
-    dispatch_tick_end_events();
+    event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_);
 }
 auto LevelSim::result() const -> std::optional<LevelResult> {
     if (!terminal_) {
         return std::nullopt;
     }
-    auto const& definitions{event_manager_.data()};
     auto const event{terminal_->event};
     if (event.kind() == EventKind::Win) {
         return LevelResult{
-            *terminal_, definitions.win_events[event.index()].winner, RunEndReason::LevelCompleted};
+            *terminal_, event_manager_.win_event(event).winner, RunEndReason::LevelCompleted};
     }
-    return LevelResult{*terminal_, std::nullopt, definitions.stop_events[event.index()]};
+    return LevelResult{*terminal_, std::nullopt, event_manager_.stop_event(event)};
 }
 
 /* **************************************** */
@@ -137,7 +139,7 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
         return;
     }
 
-    dispatch_tick_end_events();
+    event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_);
     if (state_ != LevelState::Running) {
         return;
     }
@@ -160,51 +162,9 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
         }
 
         profiling::mark_frame("Simulation");
-        dispatch_tick_end_events();
+        event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_);
         if (state_ != LevelState::Running) {
             break;
-        }
-    }
-}
-
-void LevelSim::dispatch_tick_end_events() {
-    auto const& definitions{event_manager_.data()};
-    if (state_ == LevelState::Stopped) {
-        return;
-    }
-    while (auto const event = event_manager_.consume_tick_end_event()) {
-        switch (event->kind()) {
-            case EventKind::StartTimer: {
-                auto const& start{definitions.start_timer_events[event->index()]};
-                timers_.start(start.timer, start.duration);
-                break;
-            }
-            case EventKind::Win:
-            case EventKind::StopRun:
-                terminal_ = TerminalEvent{*event, clock_.get_completed_ticks()};
-                state_ = LevelState::Stopped;
-                return;
-            case EventKind::Pause:
-                state_ = LevelState::Paused;
-                break;
-            default:
-                fatal_error("Invalid tick-end event kind");
-        }
-    }
-}
-void LevelSim::dispatch_preparation_events() {
-    while (auto const event = event_manager_.consume_preparation_event()) {
-        switch (event->kind()) {
-            case EventKind::Spawn:
-                spawn_manager_.process_event(*event,
-                                             event_manager_,
-                                             capital_ships_simulation_,
-                                             turrets_simulation_,
-                                             spinners_simulation_,
-                                             {entity_ledger_, clock_});
-                break;
-            default:
-                fatal_error("Invalid Preparation event kind");
         }
     }
 }
@@ -226,7 +186,11 @@ void LevelSim::advance_tick(float const tick_period,
         clock_.transition_to(SimulationPhase::Preparation);
 
         auto const previous_issued_counts{entity_ledger_.issued_counts()};
-        dispatch_preparation_events();
+        event_manager_.dispatch_preparation(spawn_manager_,
+                                            capital_ships_simulation_,
+                                            turrets_simulation_,
+                                            spinners_simulation_,
+                                            {entity_ledger_, clock_});
 
         fighters::PreparationInputs const fighter_inputs{
             .entity_tables = entity_tables_,
@@ -428,18 +392,16 @@ void LevelSim::advance_tick(float const tick_period,
                 }
 
                 // Evaluate final health and deaths before invalidating row mappings.
-                latches_.commit();
+                conditions_.commit_latches();
                 timers_.tick(1);
                 assert(is_lookup_allowed(clock_));
-                expressions_.evaluate({entity_ledger_,
-                                       timers_,
-                                       spawn_manager_.entity_ids(),
-                                       latches_,
-                                       collision_pipeline_.queries(),
-                                       entity_tables_.lookups,
-                                       phase_memory});
-                latches_.evaluate(expressions_);
-                event_manager_.collect_ready(expressions_);
+                conditions_.evaluate({entity_ledger_,
+                                      timers_,
+                                      spawn_manager_.entity_ids(),
+                                      collision_pipeline_.queries(),
+                                      entity_tables_.lookups,
+                                      phase_memory});
+                event_manager_.collect_ready(conditions_);
             }
 
             capital_ships::ResolutionCommitInterface capital_ships_commit{

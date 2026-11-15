@@ -1,4 +1,4 @@
-#include <ioj/sim/expressions/expr_manager.h>
+#include <ioj/sim/expressions/condition_manager.h>
 
 #include <ioj/frame_array.h>
 #include <ioj/frame_memory_resource.h>
@@ -7,7 +7,6 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/expressions/expr_compilation_context.h>
 #include <ioj/sim/expressions/expr_evaluation_context.h>
-#include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
 #include <ioj/vector_value_math.h>
 #include <ioj/vectors3f.h>
@@ -78,9 +77,9 @@ auto destroyed(EntityId const id,
 /* **************************************** */
 // Compilation
 /* **************************************** */
-void ExprManager::append(std::span<levels::Expression const> const expressions,
-                         ExprCompilationContext const& ctx,
-                         std::span<ExprHandle> const references) {
+void ConditionManager::append(std::span<levels::Expression const> const expressions,
+                              ExprCompilationContext const& ctx,
+                              std::span<ExprHandle> const references) {
     assert(references.size() == expressions.size());
 
     auto& leaves{leaves_};
@@ -200,7 +199,7 @@ void ExprManager::append(std::span<levels::Expression const> const expressions,
         leaves.leaves_by_kind[kind].emplace_back(leaf, kind);
     }
 }
-auto ExprManager::add_timer_elapsed(TimerHandle const timer) -> ExprHandle {
+auto ConditionManager::add_timer_elapsed(TimerHandle const timer) -> ExprHandle {
     assert(timer.is_valid());
     auto const leaf{static_cast<LeafIndex>(leaves_.num_leaves())};
     auto const data{static_cast<LeafDataIndex>(leaves_.timers.size())};
@@ -214,16 +213,17 @@ auto ExprManager::add_timer_elapsed(TimerHandle const timer) -> ExprHandle {
 /* **************************************** */
 // Lifecycle
 /* **************************************** */
-void ExprManager::evaluate(ExprEvaluationContext const& inputs) {
+void ConditionManager::evaluate(ExprEvaluationContext const& inputs) {
     std::ranges::fill(leaves_.results, ExprResult{});
     evaluate_leaves(inputs);
     evaluate_composites();
+    evaluate_latches();
 }
 
 /* **************************************** */
 // Inspection
 /* **************************************** */
-auto ExprManager::result(ExprHandle const expression) const -> bool {
+auto ConditionManager::result(ExprHandle const expression) const -> bool {
     assert(expression.is_valid());
 
     auto const leaf{expression.kind() == ExprKind::Leaf};
@@ -236,7 +236,7 @@ auto ExprManager::result(ExprHandle const expression) const -> bool {
 /* **************************************** */
 // Composite evaluation
 /* **************************************** */
-void ExprManager::evaluate_composites() {
+void ConditionManager::evaluate_composites() {
     auto const count{composites_.results.size()};
     for (std::size_t index{}; index < count; ++index) {
         auto const kind{composites_.kinds[index]};
@@ -267,7 +267,7 @@ void ExprManager::evaluate_composites() {
         composites_.results[index] = value;
     }
 }
-void ExprManager::evaluate_leaves(ExprEvaluationContext const& inputs) {
+void ConditionManager::evaluate_leaves(ExprEvaluationContext const& inputs) {
     evaluate_destroyed(leaves_.leaves_by_kind[LeafKind::EntityDestroyed], inputs);
     evaluate_elapsed(leaves_.leaves_by_kind[LeafKind::TimerElapsed], inputs);
     evaluate_kills(leaves_.leaves_by_kind[LeafKind::EntityKillsReached], inputs);
@@ -280,17 +280,17 @@ void ExprManager::evaluate_leaves(ExprEvaluationContext const& inputs) {
     for (auto const handle : leaves_.leaves_by_kind[LeafKind::LatchedTrue]) {
         auto const index{handle.index()};
         leaves_.results[index] =
-            inputs.latches.latched_true(leaves_.true_latches[leaves_.data_handles[index].index()]);
+            latched_true(leaves_.true_latches[leaves_.data_handles[index].index()]);
     }
 
     for (auto const handle : leaves_.leaves_by_kind[LeafKind::LatchedFalse]) {
         auto const index{handle.index()};
-        leaves_.results[index] = inputs.latches.latched_false(
-            leaves_.false_latches[leaves_.data_handles[index].index()]);
+        leaves_.results[index] =
+            latched_false(leaves_.false_latches[leaves_.data_handles[index].index()]);
     }
 }
-void ExprManager::evaluate_destroyed(std::span<LeafHandle const> const run,
-                                     ExprEvaluationContext const& inputs) {
+void ConditionManager::evaluate_destroyed(std::span<LeafHandle const> const run,
+                                          ExprEvaluationContext const& inputs) {
     auto const& leaves{leaves_};
     auto const life_states{inputs.ledger.history().life_state()};
 
@@ -304,8 +304,8 @@ void ExprManager::evaluate_destroyed(std::span<LeafHandle const> const run,
         }
     }
 }
-void ExprManager::evaluate_elapsed(std::span<LeafHandle const> const run,
-                                   ExprEvaluationContext const& inputs) {
+void ConditionManager::evaluate_elapsed(std::span<LeafHandle const> const run,
+                                        ExprEvaluationContext const& inputs) {
     auto const& leaves{leaves_};
 
     for (auto const handle : run) {
@@ -315,8 +315,8 @@ void ExprManager::evaluate_elapsed(std::span<LeafHandle const> const run,
         leaves_.results[leaf] = inputs.timers.elapsed(leaves.timers[data]);
     }
 }
-void ExprManager::evaluate_kills(std::span<LeafHandle const> const run,
-                                 ExprEvaluationContext const& inputs) {
+void ConditionManager::evaluate_kills(std::span<LeafHandle const> const run,
+                                      ExprEvaluationContext const& inputs) {
     auto const& leaves{leaves_};
 
     for (auto const handle : run) {
@@ -335,8 +335,8 @@ void ExprManager::evaluate_kills(std::span<LeafHandle const> const run,
         leaves_.results[leaf] = kills >= leaves.kill_targets[data];
     }
 }
-void ExprManager::evaluate_reached_position(std::span<LeafHandle const> const run,
-                                            ExprEvaluationContext const& inputs) {
+void ConditionManager::evaluate_reached_position(std::span<LeafHandle const> const run,
+                                                 ExprEvaluationContext const& inputs) {
     auto const& leaves{leaves_};
     auto const life_states{inputs.ledger.history().life_state()};
 
@@ -379,6 +379,56 @@ void ExprManager::evaluate_reached_position(std::span<LeafHandle const> const ru
             leaves_.results[leaf] = true;
         }
     }
+}
+
+/* **************************************** */
+// Latches
+/* **************************************** */
+auto ConditionManager::add_latch(LatchInput const input) -> LatchHandle {
+    assert(input.when.is_valid() && input.value.is_valid());
+    assert(latch_states_.size() < LatchHandle::invalid_value);
+    LatchHandle const handle{static_cast<std::uint32_t>(latch_states_.size())};
+
+    latch_inputs_.push_back(input);
+    latch_states_.emplace_back();
+    active_latches_.push_back(handle);
+    return handle;
+}
+auto ConditionManager::latched_true(LatchHandle const handle) const -> bool {
+    return latch_state(handle) == LatchState::True;
+}
+auto ConditionManager::latched_false(LatchHandle const handle) const -> bool {
+    return latch_state(handle) == LatchState::False;
+}
+void ConditionManager::evaluate_latches() {
+    for (auto const handle : active_latches_) {
+        auto const index{handle.index()};
+        auto& state{latch_states_[index]};
+        auto const input{latch_inputs_[index]};
+        if (state.pending() == LatchState::Unset && result(input.when)) {
+            auto const value{result(input.value)};
+            state.set_pending(value ? LatchState::True : LatchState::False);
+        }
+    }
+}
+void ConditionManager::commit_latches() {
+    for (auto remaining{active_latches_.size()}; remaining > 0; --remaining) {
+        auto const index{remaining - 1};
+        auto& state{latch_states_[active_latches_[index].index()]};
+        auto const pending{state.pending()};
+        if (pending != LatchState::Unset) {
+            state.set_cached(pending);
+            active_latches_[index] = active_latches_.back();
+            active_latches_.pop_back();
+        }
+    }
+}
+auto ConditionManager::latch_state(LatchHandle const handle) const -> LatchState {
+    assert(is_valid(handle));
+    return latch_states_[handle.index()].cached();
+}
+auto ConditionManager::is_valid(LatchHandle const handle) const -> bool {
+    return handle.is_valid() && handle.index() < latch_states_.size();
 }
 
 }

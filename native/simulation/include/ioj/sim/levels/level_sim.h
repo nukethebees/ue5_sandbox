@@ -95,7 +95,9 @@ struct LevelSim {
     auto spinners() const -> spinners::Sim const& { return spinners_simulation_; }
     auto entity_ledger() const -> EntityLedger const& { return entity_ledger_; }
     auto entity_tables() const -> EntityTables const& { return entity_tables_; }
-    auto expressions() const -> ExprManager const& { return expressions_; }
+    auto conditions() const -> ConditionManager const& { return conditions_; }
+    auto conditions() -> ConditionManager& { return conditions_; }
+    auto events() -> LevelEventManager& { return event_manager_; }
     auto events() const -> LevelEventManager const& { return event_manager_; }
     auto task_manager() const -> tasks::TaskManager const& { return task_manager_; }
     auto level_metadata() const -> levels::LevelMetadata const& { return level_metadata_; }
@@ -105,8 +107,6 @@ struct LevelSim {
     auto memory_manager() const noexcept -> LevelMemoryManager const& { return memory_manager_; }
   private:
     void refresh_spatial_index();
-    void dispatch_tick_end_events();
-    void dispatch_preparation_events();
     friend struct LevelSimTestAccess;
     friend class LevelReadAccess;
 
@@ -139,9 +139,8 @@ struct LevelSim {
     spinners::Sim spinners_simulation_;
 
     tasks::TaskManager task_manager_;
-    Latches latches_;
     std::optional<TerminalEvent> terminal_;
-    ExprManager expressions_;
+    ConditionManager conditions_;
     Timers timers_;
     levels::LevelMetadata level_metadata_;
     LevelEventManager event_manager_;

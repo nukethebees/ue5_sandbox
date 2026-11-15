@@ -67,7 +67,7 @@ set(entities_headers
 list(TRANSFORM entities_headers PREPEND "../include/ioj/sim/entities/")
 
 set(expressions_headers
-  expr_manager.h
+  condition_manager.h
   expr_compilation_context.h
   expr_evaluation_context.h
   expr_leaves.h
@@ -85,7 +85,6 @@ set(expressions_headers
   latch_handle.h
   latch_memory.h
   latch_state.h
-  latches.h
   timer_handle.h
   timers.h
   timer_ticks.h
@@ -182,8 +181,7 @@ target_sources(native-simulation
     levels/level_memory_manager.cpp
     levels/level_read_access.cpp
     levels/level_sim.cpp
-    expressions/expr_manager.cpp
-    expressions/latches.cpp
+    expressions/condition_manager.cpp
     expressions/timers.cpp
     overlap_handler.cpp
     levels/reference_level_simulation_data.cpp

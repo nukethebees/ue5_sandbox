@@ -290,8 +290,8 @@ TEST(NativeSimulation, PositionSamplesCanBecomeFalseWhileLatchRemembersArrival) 
     data.logic.latches = {{0, 0}};
     data.logic.rules = {{1, {levels::WinEffect{Team::Blue}}}, {2, {levels::StopEffect{}}}};
     auto compiled{std::move(data).compile()};
-    auto const arrived{compiled.level_events.pending_triggers[0].condition};
-    auto const gone{compiled.level_events.pending_triggers[1].condition};
+    auto const arrived{compiled.level_events.triggers()[0].condition};
+    auto const gone{compiled.level_events.triggers()[1].condition};
     LevelSim simulation{std::move(compiled)};
 
     simulation.start();
@@ -303,8 +303,8 @@ TEST(NativeSimulation, PositionSamplesCanBecomeFalseWhileLatchRemembersArrival) 
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
     simulation.advance(dt);
     EXPECT_EQ(simulation.events().tick_end_events().size(), 2);
-    EXPECT_TRUE(simulation.expressions().result(arrived));
-    EXPECT_TRUE(simulation.expressions().result(gone));
+    EXPECT_TRUE(simulation.conditions().result(arrived));
+    EXPECT_TRUE(simulation.conditions().result(gone));
 }
 
 TEST(NativeSimulation, FirstDispatchedWinDeterminesResultAndStrandsOtherEffects) {
@@ -332,8 +332,8 @@ TEST(NativeSimulation, FirstDispatchedWinDeterminesResultAndStrandsOtherEffects)
 TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumedEvents) {
     auto data{make_battle().compile()};
     auto& definitions{data.level_events};
-    definitions.initial_events.clear();
-    definitions.spawn_groups = {};
+    definitions.initial_events().clear();
+    definitions.spawn_groups() = {};
     definitions.add_spawn_group(EntityType::CapitalShip, 0, 1);
     definitions.add_spawn_group(EntityType::CapitalShip, 1, 1);
     auto const first{definitions.add_spawn_event({0, 1})};
@@ -369,7 +369,7 @@ TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendin
     EventHandle const pause{0, EventKind::Pause};
     std::array const events{pause, first, second, pause};
     add_timed_events(data, Duration::make(0.21), events);
-    auto expected_history{definitions.initial_events};
+    auto expected_history{definitions.initial_events()};
     std::erase_if(expected_history,
                   [](EventHandle const event) { return !is_tick_end(event.kind()); });
     expected_history.append_range(events);
@@ -448,11 +448,11 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
     auto& definitions{data.runtime.level_events};
     auto const first_timer{data.runtime.timers.add()};
     auto const second_timer{data.runtime.timers.add()};
-    auto const first_elapsed{data.runtime.expressions.add_timer_elapsed(first_timer)};
-    auto const second_elapsed{data.runtime.expressions.add_timer_elapsed(second_timer)};
+    auto const first_elapsed{data.runtime.conditions.add_timer_elapsed(first_timer)};
+    auto const second_elapsed{data.runtime.conditions.add_timer_elapsed(second_timer)};
     auto const initial_start{definitions.add_start_timer_event({first_timer, 2})};
     auto const later_start{definitions.add_start_timer_event({second_timer, 3})};
-    definitions.initial_events.push_back(initial_start);
+    definitions.initial_events().push_back(initial_start);
     definitions.add_trigger(first_elapsed, std::array{later_start});
     auto const stop{definitions.add_stop_event(RunEndReason::DurationReached)};
     definitions.add_trigger(second_elapsed, std::array{stop});
@@ -461,7 +461,7 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
 
     EXPECT_EQ(simulation.state(), LevelState::Paused);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
-    EXPECT_EQ(simulation.expressions().result(first_elapsed), false);
+    EXPECT_EQ(simulation.conditions().result(first_elapsed), false);
     EXPECT_TRUE(simulation.events().pending_tick_end_events().empty());
     simulation.advance(10.0);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
@@ -473,7 +473,7 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
     simulation.advance(0.1);
     EXPECT_TRUE(std::ranges::equal(simulation.events().tick_end_events(),
                                    std::array{initial_start, later_start}));
-    EXPECT_EQ(simulation.expressions().result(second_elapsed), false);
+    EXPECT_EQ(simulation.conditions().result(second_elapsed), false);
     simulation.advance(0.2);
     EXPECT_EQ(simulation.state(), LevelState::Running);
     simulation.advance(0.1);
@@ -486,8 +486,8 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
 TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTerminalDispatch) {
     auto data{make_battle().compile()};
     auto& definitions{data.level_events};
-    definitions.initial_events.clear();
-    definitions.spawn_groups = {};
+    definitions.initial_events().clear();
+    definitions.spawn_groups() = {};
     definitions.add_spawn_group(EntityType::CapitalShip, 0, 1);
     definitions.add_spawn_group(EntityType::CapitalShip, 1, 1);
     auto const first_spawn{definitions.add_spawn_event({0, 1})};
@@ -495,7 +495,7 @@ TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTer
     auto const start{definitions.add_start_timer_event({data.timers.add(), 1})};
     auto const stop{definitions.add_stop_event(RunEndReason::WorldEnd)};
     auto const stranded{definitions.add_start_timer_event({data.timers.add(), 1})};
-    definitions.initial_events = {second_spawn, first_spawn, start, stop, stranded};
+    definitions.initial_events() = {second_spawn, first_spawn, start, stop, stranded};
 
     LevelSim simulation{std::move(data)};
 
@@ -523,6 +523,35 @@ TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTer
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
     EXPECT_TRUE(
         std::ranges::equal(simulation.events().pending_tick_end_events(), std::array{stranded}));
+}
+
+TEST(NativeSimulation, RuntimeDefinitionsAndTriggersExecuteInTheirExistingPhases) {
+    auto data{make_battle().compile()};
+    data.level_events.initial_events().clear();
+    auto const timer{data.timers.add()};
+    auto const elapsed{data.conditions.add_timer_elapsed(timer)};
+    LevelSim simulation{std::move(data)};
+    auto& events{simulation.events()};
+    auto const spawn{events.add_spawn_event({0, events.spawn_groups().num()})};
+    auto const start{events.add_start_timer_event({timer, 2})};
+    events.enqueue(spawn);
+    events.enqueue(start);
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 0);
+    simulation.start();
+    auto const dt{simulation.clock().tick_period()};
+    simulation.advance(dt);
+    EXPECT_EQ(simulation.capital_ships().num_instances(), 2);
+    EXPECT_FALSE(simulation.conditions().result(elapsed));
+
+    auto const win{events.add_win_event(Team::Green)};
+    EventHandle const pause{0, EventKind::Pause};
+    events.add_trigger(elapsed, std::array{pause, win});
+    EXPECT_FALSE(simulation.result());
+    simulation.advance(dt);
+    ASSERT_TRUE(simulation.result());
+    EXPECT_EQ(simulation.result()->winner, Team::Green);
+    EXPECT_EQ(simulation.result()->terminal.tick, SimTick{2});
+    EXPECT_TRUE(std::ranges::equal(events.tick_end_events(), std::array{start, pause, win}));
 }
 
 TEST(NativeSimulation, RunsWithoutACompletionOrDurationEvent) {
@@ -662,7 +691,7 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
                      ioj::settings::PositiveHealth::make(ioj::sim::Health{30}),
                      ioj::NonNegative<std::int32_t>::make(7));
     auto compiled{std::move(data).compile()};
-    auto const initial_events{compiled.level_events.initial_events};
+    auto const initial_events{compiled.level_events.initial_events()};
     LevelSim simulation{std::move(compiled)};
 
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});

@@ -51,7 +51,7 @@ resume routes the retained spawn span to `LevelSpawnManager`. `pause()` only que
 `advance()` consumes tick-end events before accumulating elapsed time and after each completed
 tick. Paused calls process queued events without accumulating time; `start()` resumes directly.
 Initial and delayed level spawns use the same event payloads and dispatch path. The event manager
-owns those payloads; `LevelSim` routes each spawn event to `LevelSpawnManager`, which resolves
+owns those payloads and dispatches each spawn event through `LevelSpawnManager`, which resolves
 spawn groups and dispatches typed payload views privately.
 `LevelSpawnManager` receives the destination simulations per spawn dispatch and a read-only
 carrier view plus the fighter destination when scheduling waves; it retains no simulation
@@ -75,11 +75,16 @@ remain readable. Timers have no reset operation; a fresh level owns fresh timer 
 
 Level compilation allocates timer IDs, creates start events and connects timer observations
 to triggers. Expression compilation only receives existing timer handles; it neither allocates
-timers nor creates effects. Logic compilation belongs to the level compiler. `CompiledLevelEvents` holds the
-resulting trigger and effect definitions directly; there is no separate schedule object.
+timers nor creates effects. Logic compilation belongs to the level compiler. `LevelEventManager` owns the
+resulting event payloads, trigger definitions, active trigger indices, and execution queues.
+Definitions can also be appended during simulation. Firing removes only the active trigger index;
+stable compaction preserves insertion order. Each collection pass snapshots its eligible prefix.
 The compiler fills gameplay fields directly in the builder's fresh `LevelSimInitData`, using
 the configuration already supplied there. Failed compilation discards that construction input.
-Initial events are queued during event-manager construction. Initialisation dispatches queued
+Definitions use their own default-backed storage before runtime memory exists. Moving the manager
+into `LevelSim` binds its execution queues to level memory and preserves queue cursors; ordinary
+moves do not activate initial events. `LevelSim` explicitly queues initial events during setup.
+Initialisation dispatches queued
 Preparation events before publishing entity lookups, then drains tick-end events immediately
 before returning. Timer starts therefore occur at tick zero without evaluating logic or advancing
 countdowns. Terminal events retain their stopping behaviour during initialisation.
@@ -87,19 +92,22 @@ Starting a timer becomes visible on the next expression evaluation.
 
 ## Boolean samples and latches
 
-`ExprManager` evaluates every leaf each Resolution, grouped by predicate kind, followed by a
+`ConditionManager` evaluates every leaf each Resolution, grouped by predicate kind, followed by a
 single dependency-ordered composite pass. Boolean results are sampled storage: no activation,
 retirement, reference counting or same-tick propagation. Proximity is a current-state predicate;
 destruction and lifetime kills query the ledger.
 
-`Latches` stores stable expression-input pairs and one byte per latch. Two bits hold a pending
-capture and two hold the cached observation: unset, false or true. Bulk evaluation reads sampled
+The same `ConditionManager` stores stable expression-input pairs and one byte per latch. Two bits
+hold a pending capture and two hold the cached observation: unset, false or true. Bulk evaluation reads sampled
 inputs and writes only pending captures. Commit copies pending to cached and swap-removes captured
 handles from the active list without moving definitions or state. Both fields then agree.
 
 The Resolution order is commit previous captures, tick timers, evaluate expressions, evaluate
-active latches, collect triggers. Captures become observable in the next logic cycle, consistently
-for direct observations and composites. Chained latches advance one capture per cycle. Runtime
+active latches, collect triggers. `ConditionManager::commit_latches()` commits the previous captures;
+`evaluate()` evaluates expressions and then captures latch inputs. `LevelSim` advances timers
+between these calls and delegates phase dispatch directly to `LevelEventManager`. Captures become
+observable in the next logic cycle, consistently for direct observations and composites.
+Chained latches advance one capture per cycle. Runtime
 state is owned independently by each `LevelSim` and reset through fresh construction.
 
 Scheme authoring uses a scoped `logic` macro and handle constructors. Compilation validates the

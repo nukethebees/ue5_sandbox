@@ -1,6 +1,6 @@
 (include "common_scalars.lispb")
 
-; Index into shared leaf arrays across all leaf kinds within one ExprManager.
+; Index into shared leaf arrays across all leaf kinds within one ConditionManager.
 ; Different expression managers may reuse the same index.
 (type expression_leaf_index
   :spelling "ioj::sim::LeafIndex"

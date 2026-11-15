@@ -3,178 +3,162 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_lookup_tables.h>
+#include <ioj/sim/expressions/condition_manager.h>
 #include <ioj/sim/expressions/expr_compilation_context.h>
 #include <ioj/sim/expressions/expr_evaluation_context.h>
-#include <ioj/sim/expressions/expr_manager.h>
-#include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
 
 #include <gtest/gtest.h>
 
 #include <array>
-#include <cstdint>
 #include <initializer_list>
 #include <utility>
 #include <vector>
 
 namespace ioj::sim::latch_tests {
-struct ExpressionSamples {
-    ExprManager expressions;
-    std::vector<ExprHandle> handles;
+struct Samples {
+    auto compile(std::initializer_list<levels::Expression> nodes) -> std::vector<ExprHandle> {
+        std::vector<ExprHandle> handles(nodes.size());
+        conditions.append(nodes, {{}, std::span{&timer, 1}}, handles);
+        return handles;
+    }
+    void evaluate() { conditions.evaluate({ledger, timers, {}, spatial, lookups, scratch}); }
+
+    ConditionManager conditions;
+    Timers timers;
+    TimerHandle timer{timers.add()};
+    EntityLedger ledger;
+    EntityLookupTables lookups;
+    SpatialQueryManager spatial;
+    FrameMemoryResource scratch{4096};
 };
 
-auto sample(std::initializer_list<bool> const values) -> ExpressionSamples {
-    std::vector<levels::Expression> nodes{{levels::AllExpr{}}, {levels::AnyExpr{}}};
-    for (bool const value : values) {
-        nodes.emplace_back(levels::AllExpr{.children = {value ? 0u : 1u}});
-    }
-
-    Timers timers;
-    EntityLedger ledger;
-    EntityLookupTables lookups{};
-    SpatialQueryManager spatial{};
-    FrameMemoryResource scratch{4096};
-    Latches latches;
-    ExpressionSamples result;
-    std::vector<ExprHandle> compiled(nodes.size());
-    result.expressions.append(nodes, {{}, {}}, compiled);
-    result.handles.assign(compiled.begin() + 2, compiled.end());
-    result.expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
-    return result;
-}
-
 TEST(Latches, UnsetUntilEnabledAndCommitted) {
-    auto samples{sample({false, true})};
-    LatchInput const input{samples.handles[0], samples.handles[1]};
-    Latches latches;
-    auto const handle{latches.add(input)};
-    EXPECT_FALSE(latches.latched_true(handle));
-    EXPECT_FALSE(latches.latched_false(handle));
+    Samples samples;
+    auto const handles{samples.compile({{levels::TimerElapsedExpr{0}}, {levels::AllExpr{}}})};
+    auto& conditions{samples.conditions};
+    auto const latch{conditions.add_latch({handles[0], handles[1]})};
+    samples.evaluate();
+    conditions.commit_latches();
+    EXPECT_FALSE(conditions.latched_true(latch));
+    EXPECT_FALSE(conditions.latched_false(latch));
 
-    latches.evaluate(samples.expressions);
-    latches.commit();
-    EXPECT_FALSE(latches.latched_true(handle));
-    EXPECT_FALSE(latches.latched_false(handle));
-
-    samples = sample({true, true});
-    latches.evaluate(samples.expressions);
-    EXPECT_FALSE(latches.latched_true(handle));
-    EXPECT_FALSE(latches.latched_false(handle));
-
-    latches.commit();
-    EXPECT_TRUE(latches.latched_true(handle));
-    EXPECT_FALSE(latches.latched_false(handle));
+    samples.timers.start(samples.timer, 1);
+    samples.timers.tick(1);
+    samples.evaluate();
+    EXPECT_FALSE(conditions.latched_true(latch));
+    EXPECT_FALSE(conditions.latched_false(latch));
+    conditions.commit_latches();
+    EXPECT_TRUE(conditions.latched_true(latch));
+    EXPECT_FALSE(conditions.latched_false(latch));
 }
 
 TEST(Latches, CapturesBothValuesOnlyOnceIncludingBeforeCommit) {
     for (bool const value : {false, true}) {
-        auto samples{sample({true, value})};
-        Latches latches;
-        auto const handle{latches.add({samples.handles[0], samples.handles[1]})};
-        latches.evaluate(samples.expressions);
-
-        samples = sample({true, !value});
-        latches.evaluate(samples.expressions);
-        latches.commit();
-        EXPECT_EQ(latches.latched_true(handle), value);
-        EXPECT_EQ(latches.latched_false(handle), !value);
-
-        latches.evaluate(samples.expressions);
-        latches.commit();
-        EXPECT_EQ(latches.latched_true(handle), value);
-        EXPECT_EQ(latches.latched_false(handle), !value);
+        Samples samples;
+        auto const handles{samples.compile(
+            {{levels::AllExpr{}}, {levels::TimerElapsedExpr{0}}, {levels::NotExpr{{1}}}})};
+        auto& conditions{samples.conditions};
+        auto const latch{conditions.add_latch({handles[0], handles[value ? 2 : 1]})};
+        samples.evaluate();
+        samples.timers.start(samples.timer, 1);
+        samples.timers.tick(1);
+        samples.evaluate();
+        conditions.commit_latches();
+        EXPECT_EQ(conditions.latched_true(latch), value);
+        EXPECT_EQ(conditions.latched_false(latch), !value);
+        samples.evaluate();
+        conditions.commit_latches();
+        EXPECT_EQ(conditions.latched_true(latch), value);
+        EXPECT_EQ(conditions.latched_false(latch), !value);
     }
 }
 
 TEST(Latches, ChainedCapturesReadPreviousCycleRegardlessOfEvaluationOrder) {
     for (bool const reverse : {false, true}) {
-        auto samples{sample({true, false})};
-        LatchInput const first_input{samples.handles[0], samples.handles[0]};
-        LatchInput const second_input{samples.handles[1], samples.handles[0]};
-        Latches latches;
-        auto first{latches.add(reverse ? second_input : first_input)};
-        auto second{latches.add(reverse ? first_input : second_input)};
+        Samples samples;
+        auto const handles{
+            samples.compile({{levels::AllExpr{}}, {levels::LatchedTrueExpr{reverse ? 1u : 0u}}})};
+        auto& conditions{samples.conditions};
+        LatchInput const first_input{handles[0], handles[0]};
+        LatchInput const second_input{handles[1], handles[0]};
+        auto first{conditions.add_latch(reverse ? second_input : first_input)};
+        auto second{conditions.add_latch(reverse ? first_input : second_input)};
         if (reverse) {
             std::swap(first, second);
         }
-
-        latches.commit();
-        samples = sample({true, latches.latched_true(first)});
-        latches.evaluate(samples.expressions);
-        EXPECT_FALSE(latches.latched_true(first));
-        EXPECT_FALSE(latches.latched_true(second));
-
-        latches.commit();
-        EXPECT_TRUE(latches.latched_true(first));
-        EXPECT_FALSE(latches.latched_true(second));
-        samples = sample({true, latches.latched_true(first)});
-        latches.evaluate(samples.expressions);
-        EXPECT_FALSE(latches.latched_true(second));
-
-        latches.commit();
-        EXPECT_TRUE(latches.latched_true(second));
+        samples.evaluate();
+        EXPECT_FALSE(conditions.latched_true(first));
+        EXPECT_FALSE(conditions.latched_true(second));
+        conditions.commit_latches();
+        EXPECT_TRUE(conditions.latched_true(first));
+        EXPECT_FALSE(conditions.latched_true(second));
+        samples.evaluate();
+        EXPECT_FALSE(conditions.latched_true(second));
+        conditions.commit_latches();
+        EXPECT_TRUE(conditions.latched_true(second));
     }
 }
 
 TEST(Latches, CapturedValueAlsoReadsOnlyCommittedState) {
-    auto samples{sample({true, false})};
-    Latches latches;
-    auto const first{latches.add({samples.handles[0], samples.handles[0]})};
-    auto const second{latches.add({samples.handles[0], samples.handles[1]})};
-    samples = sample({true, latches.latched_true(first)});
-    latches.evaluate(samples.expressions);
-    EXPECT_FALSE(latches.latched_true(first));
-    EXPECT_FALSE(latches.latched_false(second));
-    latches.commit();
-
-    EXPECT_TRUE(latches.latched_true(first));
-    EXPECT_TRUE(latches.latched_false(second));
+    Samples samples;
+    auto const handles{samples.compile({{levels::AllExpr{}}, {levels::LatchedTrueExpr{0}}})};
+    auto& conditions{samples.conditions};
+    auto const first{conditions.add_latch({handles[0], handles[0]})};
+    auto const second{conditions.add_latch({handles[0], handles[1]})};
+    samples.evaluate();
+    EXPECT_FALSE(conditions.latched_true(first));
+    EXPECT_FALSE(conditions.latched_false(second));
+    conditions.commit_latches();
+    EXPECT_TRUE(conditions.latched_true(first));
+    EXPECT_TRUE(conditions.latched_false(second));
 }
 
 TEST(Latches, RetirementPreservesUncapturedEntriesAndStableHandles) {
-    auto samples{sample({true, false, true, false})};
-    Latches latches;
-    std::array const handles{
-        latches.add({samples.handles[0], samples.handles[1]}),
-        latches.add({samples.handles[1], samples.handles[0]}),
-        latches.add({samples.handles[2], samples.handles[0]}),
-        latches.add({samples.handles[3], samples.handles[0]}),
+    Samples samples;
+    auto const handles{
+        samples.compile({{levels::AllExpr{}}, {levels::AnyExpr{}}, {levels::TimerElapsedExpr{0}}})};
+    auto& conditions{samples.conditions};
+    std::array const latches{
+        conditions.add_latch({handles[0], handles[1]}),
+        conditions.add_latch({handles[2], handles[0]}),
+        conditions.add_latch({handles[0], handles[0]}),
+        conditions.add_latch({handles[2], handles[0]}),
     };
-
-    latches.evaluate(samples.expressions);
-    latches.commit();
-    EXPECT_FALSE(latches.latched_true(handles[1]));
-    EXPECT_FALSE(latches.latched_false(handles[1]));
-    EXPECT_FALSE(latches.latched_true(handles[3]));
-    EXPECT_FALSE(latches.latched_false(handles[3]));
-    EXPECT_TRUE(latches.latched_false(handles[0]));
-    EXPECT_TRUE(latches.latched_true(handles[2]));
-
-    samples = sample({true, true, true, true});
-    latches.evaluate(samples.expressions);
-    latches.commit();
-    EXPECT_TRUE(latches.latched_false(handles[0]));
-    EXPECT_TRUE(latches.latched_true(handles[1]));
-    EXPECT_TRUE(latches.latched_true(handles[2]));
-    EXPECT_TRUE(latches.latched_true(handles[3]));
+    samples.evaluate();
+    conditions.commit_latches();
+    EXPECT_TRUE(conditions.latched_false(latches[0]));
+    EXPECT_TRUE(conditions.latched_true(latches[2]));
+    for (auto const index : {1, 3}) {
+        EXPECT_FALSE(conditions.latched_true(latches[index]));
+        EXPECT_FALSE(conditions.latched_false(latches[index]));
+    }
+    samples.timers.start(samples.timer, 1);
+    samples.timers.tick(1);
+    samples.evaluate();
+    conditions.commit_latches();
+    EXPECT_TRUE(conditions.latched_false(latches[0]));
+    for (auto const index : {1, 2, 3}) {
+        EXPECT_TRUE(conditions.latched_true(latches[index]));
+    }
 }
 
 TEST(Latches, SeparateInstancesStartUnsetAndDoNotShareCaptures) {
-    auto const samples{sample({true, false})};
-    Latches first;
-    auto const first_handle{first.add({samples.handles[0], samples.handles[0]})};
-    Latches second;
-    auto const second_handle{second.add({samples.handles[0], samples.handles[1]})};
-    first.evaluate(samples.expressions);
-    second.commit();
-    EXPECT_FALSE(second.latched_true(second_handle));
-    EXPECT_FALSE(second.latched_false(second_handle));
-
-    first.commit();
-    second.evaluate(samples.expressions);
-    second.commit();
-    EXPECT_TRUE(first.latched_true(first_handle));
-    EXPECT_TRUE(second.latched_false(second_handle));
+    Samples first;
+    Samples second;
+    auto const first_handles{first.compile({{levels::AllExpr{}}})};
+    auto const second_handles{second.compile({{levels::AllExpr{}}, {levels::AnyExpr{}}})};
+    auto const a{first.conditions.add_latch({first_handles[0], first_handles[0]})};
+    auto const b{second.conditions.add_latch({second_handles[0], second_handles[1]})};
+    first.evaluate();
+    second.conditions.commit_latches();
+    EXPECT_FALSE(second.conditions.latched_true(b));
+    EXPECT_FALSE(second.conditions.latched_false(b));
+    first.conditions.commit_latches();
+    second.evaluate();
+    second.conditions.commit_latches();
+    EXPECT_TRUE(first.conditions.latched_true(a));
+    EXPECT_TRUE(second.conditions.latched_false(b));
 }
 
 TEST(Latches, PackedMemoryKeepsCachedAndPendingFieldsIndependent) {

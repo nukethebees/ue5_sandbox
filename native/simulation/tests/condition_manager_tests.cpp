@@ -3,10 +3,9 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_lookup_tables.h>
+#include <ioj/sim/expressions/condition_manager.h>
 #include <ioj/sim/expressions/expr_compilation_context.h>
 #include <ioj/sim/expressions/expr_evaluation_context.h>
-#include <ioj/sim/expressions/expr_manager.h>
-#include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
 
 #include <gtest/gtest.h>
@@ -22,7 +21,6 @@ TEST(Expressions, BooleanOperatorsEvaluateSharedLeavesInDependencyOrder) {
     EntityLookupTables lookups{};
     SpatialQueryManager spatial{};
     FrameMemoryResource scratch{4096};
-    Latches latches;
     std::array const nodes{
         Expression{AllExpr{{1, 2}}},
         Expression{NotExpr{{3}}},
@@ -46,10 +44,10 @@ TEST(Expressions, BooleanOperatorsEvaluateSharedLeavesInDependencyOrder) {
             }
             timers.tick(1);
 
-            ExprManager expressions;
+            ConditionManager expressions;
             std::array<ExprHandle, nodes.size()> handles;
             expressions.append(nodes, {{}, timer_handles}, handles);
-            expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
+            expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
             EXPECT_FALSE(expressions.result(handles[0]));
             EXPECT_EQ(expressions.result(handles[1]), !a);
             EXPECT_EQ(expressions.result(handles[2]), a);
@@ -67,8 +65,7 @@ TEST(Expressions, LatchObservationsAndCompositesUseTheSameCycleSample) {
     SpatialQueryManager spatial{};
     FrameMemoryResource scratch{4096};
     Timers timers;
-    Latches latches;
-    ExprManager expressions;
+    ConditionManager expressions;
     std::array const nodes{
         Expression{AllExpr{}},
         Expression{LatchedTrueExpr{0}},
@@ -79,12 +76,11 @@ TEST(Expressions, LatchObservationsAndCompositesUseTheSameCycleSample) {
     std::array<ExprHandle, nodes.size()> handles;
     expressions.append(nodes, {{}, {}}, handles);
 
-    latches.add({handles[0], handles[0]});
-    latches.add({handles[2], handles[0]});
+    expressions.add_latch({handles[0], handles[0]});
+    expressions.add_latch({handles[2], handles[0]});
     for (int cycle{}; cycle < 3; ++cycle) {
-        latches.commit();
-        expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
-        latches.evaluate(expressions);
+        expressions.commit_latches();
+        expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
         EXPECT_EQ(expressions.result(handles[1]), cycle >= 1);
         EXPECT_EQ(expressions.result(handles[2]), cycle >= 1);
         EXPECT_EQ(expressions.result(handles[3]), cycle >= 2);
@@ -101,11 +97,10 @@ TEST(Expressions, SharedDagEvaluatesChildrenFirstWithoutRetiringSharedLeaves) {
     EntityLookupTables lookups{};
     SpatialQueryManager spatial{};
     FrameMemoryResource scratch{4096};
-    ExprManager expressions;
+    ConditionManager expressions;
     Timers timers;
     auto const first{timers.add()};
     auto const second{timers.add()};
-    Latches latches;
     std::array const nodes{Expression{AllExpr{.children = {1, 2}}},
                            Expression{AllExpr{.children = {3, 3, 4}}},
                            Expression{AnyExpr{.children = {3, 4}}},
@@ -119,13 +114,13 @@ TEST(Expressions, SharedDagEvaluatesChildrenFirstWithoutRetiringSharedLeaves) {
     timers.start(second, 20);
 
     timers.tick(10);
-    expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
+    expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
     EXPECT_EQ(expressions.result(handles[2]), true);
     EXPECT_EQ(expressions.result(handles[4]), false);
     EXPECT_EQ(expressions.result(handles[0]), false);
 
     timers.tick(10);
-    expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
+    expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
     EXPECT_EQ(expressions.result(handles[0]), true);
 }
 
@@ -134,11 +129,10 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
     EntityLookupTables lookups{};
     SpatialQueryManager spatial{};
     FrameMemoryResource scratch{4096};
-    ExprManager expressions;
+    ConditionManager expressions;
     Timers timers;
     auto const first{timers.add()};
     auto const second{timers.add()};
-    Latches latches;
     std::array<EntityId, 1> entities;
     std::array const nodes{timer(0),
                            Expression{EntityDestroyedExpr{levels::EntityId{"future"}}},
@@ -153,17 +147,17 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
     timers.start(first, 10);
     timers.start(second, 20);
     timers.tick(10);
-    expressions.evaluate({ledger, timers, entities, latches, spatial, lookups, scratch});
+    expressions.evaluate({ledger, timers, entities, spatial, lookups, scratch});
     EXPECT_EQ(expressions.result(handles[0]), true);
     EXPECT_EQ(expressions.result(handles[2]), false);
     timers.tick(10);
-    expressions.evaluate({ledger, timers, entities, latches, spatial, lookups, scratch});
+    expressions.evaluate({ledger, timers, entities, spatial, lookups, scratch});
     EXPECT_EQ(expressions.result(handles[2]), true);
     EXPECT_EQ(expressions.result(handles[3]), false);
 
     ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, entities);
     timers.tick(1);
-    expressions.evaluate({ledger, timers, entities, latches, spatial, lookups, scratch});
+    expressions.evaluate({ledger, timers, entities, spatial, lookups, scratch});
     EXPECT_EQ(expressions.result(handles[1]), false);
     EntityDeathInfo deaths;
     deaths.add_defaulted(1);
@@ -171,7 +165,7 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
     deaths.view().reasons()[0] = DeathReason::Combat;
     ledger.record_deaths(deaths.const_view(), SimTick{22});
     timers.tick(1);
-    expressions.evaluate({ledger, timers, entities, latches, spatial, lookups, scratch});
+    expressions.evaluate({ledger, timers, entities, spatial, lookups, scratch});
     EXPECT_EQ(expressions.result(handles[3]), true);
 }
 
@@ -180,15 +174,14 @@ TEST(Expressions, StoppedTimersAndStartAreVisibleOnNextEvaluation) {
     EntityLookupTables lookups{};
     SpatialQueryManager spatial{};
     FrameMemoryResource scratch{4096};
-    ExprManager expressions;
+    ConditionManager expressions;
     Timers timers;
-    Latches latches;
     auto const first{timers.add()};
     auto const second{timers.add()};
     auto const zero{expressions.add_timer_elapsed(first)};
     auto const delayed{expressions.add_timer_elapsed(second)};
     timers.tick(100);
-    expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
+    expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
     EXPECT_EQ(expressions.result(zero), false);
     EXPECT_EQ(expressions.result(delayed), false);
 
@@ -197,14 +190,14 @@ TEST(Expressions, StoppedTimersAndStartAreVisibleOnNextEvaluation) {
     EXPECT_EQ(expressions.result(zero), false);
     timers.tick(1);
     EXPECT_EQ(expressions.result(zero), false);
-    expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
+    expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
     EXPECT_EQ(expressions.result(zero), true);
     EXPECT_EQ(expressions.result(delayed), false);
     timers.tick(1);
-    expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
+    expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
     EXPECT_EQ(expressions.result(delayed), false);
     timers.tick(1);
-    expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
+    expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
     EXPECT_EQ(expressions.result(delayed), true);
 }
 }

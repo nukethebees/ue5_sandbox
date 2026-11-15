@@ -44,9 +44,8 @@ void LevelSpawnManager::process_event(EventHandle const event,
                                       turrets::Sim& turrets,
                                       spinners::Sim& spinners,
                                       SpawnContext const context) {
-    auto const& definitions{events.data()};
-    auto const range{definitions.spawn_events[event.index()]};
-    auto const groups{definitions.spawn_groups.const_view(range.offset, range.count)};
+    auto const range{events.spawn_event(event)};
+    auto const groups{events.spawn_groups().const_view(range.offset, range.count)};
     auto const types{groups.types()};
     auto const offsets{groups.offsets()};
     auto const counts{groups.counts()};
@@ -58,15 +57,14 @@ void LevelSpawnManager::process_event(EventHandle const event,
         switch (types[index]) {
             case EntityType::CapitalShip:
                 spawn_capitals(
-                    definitions.capital_spawns.const_view(offset, count), capital_ships, context);
+                    events.capital_spawns().const_view(offset, count), capital_ships, context);
                 break;
             case EntityType::Turret:
-                spawn_turrets(
-                    definitions.turret_spawns.const_view(offset, count), turrets, context);
+                spawn_turrets(events.turret_spawns().const_view(offset, count), turrets, context);
                 break;
             case EntityType::TubeSpinner:
                 spawn_spinners(
-                    definitions.spinner_spawns.const_view(offset, count), spinners, context);
+                    events.spinner_spawns().const_view(offset, count), spinners, context);
                 break;
             default:
                 fatal_error("Unsupported level spawn entity type");

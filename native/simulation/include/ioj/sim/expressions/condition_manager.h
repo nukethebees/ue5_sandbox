@@ -1,8 +1,10 @@
 #pragma once
 #include <ioj/sim/expressions/expr_leaves.h>
 #include <ioj/sim/expressions/expr_operators.h>
+#include <ioj/sim/expressions/latch_memory.h>
 
 #include <span>
+#include <vector>
 
 namespace ioj::levels {
 struct Expression;
@@ -12,17 +14,38 @@ namespace ioj::sim {
 struct ExprCompilationContext;
 struct ExprEvaluationContext;
 
-// Compile mission conditions. Evaluate their current results.
-class ExprManager {
+struct LatchInput {
+    ExprHandle when;
+    ExprHandle value;
+};
+
+// Own Boolean expressions and persistent latch state.
+class ConditionManager {
   public:
+    /* **************************************** */
+    // Compilation
+    /* **************************************** */
     // Require one output handle per input expression, in input order.
     void append(std::span<levels::Expression const> expressions,
                 ExprCompilationContext const& ctx,
                 std::span<ExprHandle> output);
     auto add_timer_elapsed(TimerHandle timer) -> ExprHandle;
+    auto add_latch(LatchInput input) -> LatchHandle;
+
+    /* **************************************** */
+    // Evaluation
+    /* **************************************** */
+    void commit_latches();
+    // Evaluate with committed latch values, then capture next-tick latch inputs.
     void evaluate(ExprEvaluationContext const& inputs);
     auto result(ExprHandle expression) const -> bool;
+    auto latched_true(LatchHandle handle) const -> bool;
+    auto latched_false(LatchHandle handle) const -> bool;
+
   private:
+    void evaluate_latches();
+    auto latch_state(LatchHandle handle) const -> LatchState;
+    auto is_valid(LatchHandle handle) const -> bool;
     void evaluate_composites();
     void evaluate_leaves(ExprEvaluationContext const& inputs);
     void evaluate_destroyed(std::span<LeafHandle const> run, ExprEvaluationContext const& inputs);
@@ -33,5 +56,9 @@ class ExprManager {
 
     ExprOperators composites_;
     ExprLeaves leaves_;
+
+    std::vector<LatchInput> latch_inputs_;
+    std::vector<LatchMemory> latch_states_;
+    std::vector<LatchHandle> active_latches_;
 };
 }

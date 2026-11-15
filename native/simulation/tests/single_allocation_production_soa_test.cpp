@@ -3,7 +3,7 @@
 #include <ioj/sim/fighters/fighter_entity_data.h>
 #include <ioj/sim/lasers/laser_frame_output.h>
 #include <ioj/sim/lasers/laser_hit_details.h>
-#include <ioj/sim/levels/compiled_level_events.h>
+#include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/spinners/spinner_entity_data.h>
 
 #include <gtest/gtest.h>
@@ -113,37 +113,37 @@ TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
 }
 
 TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMoves) {
-    CompiledLevelEvents events;
+    LevelEventManager events;
     constexpr std::int32_t row_count{65};
     // Deliberately grow by one row to exercise allocation-boundary preservation.
     for (std::int32_t index{}; index < row_count; ++index) {
-        events.capital_spawns.add(LevelEntityRef{static_cast<std::uint32_t>(index)},
-                                  {static_cast<float>(index), 1.f, 2.f},
-                                  {},
-                                  Team::Green,
-                                  Health{1000 + index},
-                                  {},
-                                  {});
-        events.turret_spawns.add(LevelEntityRef{static_cast<std::uint32_t>(index + 100)},
-                                 {static_cast<float>(index), 3.f, 4.f},
-                                 {},
-                                 Team::Green,
-                                 Health{1000},
-                                 NonNegative<std::int32_t>::make(index * 2));
-        events.spinner_spawns.add(LevelEntityRef{static_cast<std::uint32_t>(index + 200)},
-                                  {static_cast<float>(index), 5.f, 6.f},
-                                  static_cast<float>(index * 3),
-                                  NonNegative<std::int32_t>::make(index));
+        events.capital_spawns().add(LevelEntityRef{static_cast<std::uint32_t>(index)},
+                                    {static_cast<float>(index), 1.f, 2.f},
+                                    {},
+                                    Team::Green,
+                                    Health{1000 + index},
+                                    {},
+                                    {});
+        events.turret_spawns().add(LevelEntityRef{static_cast<std::uint32_t>(index + 100)},
+                                   {static_cast<float>(index), 3.f, 4.f},
+                                   {},
+                                   Team::Green,
+                                   Health{1000},
+                                   NonNegative<std::int32_t>::make(index * 2));
+        events.spinner_spawns().add(LevelEntityRef{static_cast<std::uint32_t>(index + 200)},
+                                    {static_cast<float>(index), 5.f, 6.f},
+                                    static_cast<float>(index * 3),
+                                    NonNegative<std::int32_t>::make(index));
     }
     events.add_spawn_group(EntityType::CapitalShip, 0, row_count);
     events.add_spawn_group(EntityType::TubeSpinner, 0, row_count);
     events.add_spawn_group(EntityType::Turret, 0, row_count);
 
-    CompiledLevelEvents moved{std::move(events)};
-    EXPECT_EQ(moved.spawn_groups.num(), 3u);
-    auto const capitals{moved.capital_spawns.const_view()};
-    auto const turrets{moved.turret_spawns.const_view()};
-    auto const spinners{moved.spinner_spawns.const_view()};
+    LevelEventManager moved{std::move(events)};
+    EXPECT_EQ(moved.spawn_groups().num(), 3u);
+    auto const capitals{moved.capital_spawns().const_view()};
+    auto const turrets{moved.turret_spawns().const_view()};
+    auto const spinners{moved.spinner_spawns().const_view()};
     EXPECT_EQ(capitals.entity_indices()[64].index(), 64) << "Capital event order survives growth";
     EXPECT_EQ(capitals.view_locations().xs()[64], 64.f) << "Capital nested values survive moves";
     EXPECT_EQ(turrets.entity_indices()[64].index(), 164) << "Scheduled turret order is unchanged";
