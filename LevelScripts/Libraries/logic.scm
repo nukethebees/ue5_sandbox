@@ -15,5 +15,9 @@
 ;; Latch the outcome and award victory, preferring success on ties.
 (define (win-race team opponent success failure)
   (let ((decision (latch :when (any-of success failure) :value success)))
-    (on :when (latched-true decision) :do (win team))
-    (on :when (latched-false decision) :do (win opponent))))
+    (on 
+      :when (latched-true decision) 
+      :do (win team))
+    (on 
+      :when (latched-false decision) 
+      :do (win opponent))))
