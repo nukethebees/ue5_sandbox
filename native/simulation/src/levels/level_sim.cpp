@@ -15,7 +15,6 @@
 
 #include <cassert>
 #include <optional>
-#include <span>
 #include <utility>
 
 namespace ioj::sim {
@@ -213,260 +212,252 @@ void LevelSim::dispatch_preparation_events() {
 template <TickPlayerShipState PlayerState>
 void LevelSim::advance_tick(float const tick_period,
                             fighters::NavigationCounters* const navigation_output) {
-    prepare_tick<PlayerState>(tick_period);
+    {
+        capital_ships::PreparationInterface capital_ships_phase{capital_ships_simulation_};
+        fighters::PreparationInterface fighters_phase{fighters_simulation_};
+        turrets::PreparationInterface turrets_phase{turrets_simulation_};
+        spinners::PreparationInterface spinners_phase{spinners_simulation_};
+        lasers::PreparationInterface lasers_phase{lasers_simulation_};
+
+        SANDBOX_PROFILE_SCOPE("Preparation");
+        clock_.transition_to(SimulationPhase::Preparation);
+
+        auto const previous_issued_counts{entity_ledger_.issued_counts()};
+        dispatch_preparation_events();
+
+        fighters::PreparationInputs const fighter_inputs{
+            .ledger = entity_ledger_,
+            .participating_teams = participating_teams_,
+        };
+        fighters_phase.commit_spawns(fighter_inputs);
+
+        lasers_phase.commit_spawns({clock_});
+
+        // Borrow fresh owner views after all spawn commits.
+        collision_pipeline_.collect_spawn_candidates(
+            previous_issued_counts,
+            capital_ships_simulation_.get_entities().entity_ids(),
+            fighters_simulation_.entities().entity_ids(),
+            turrets_simulation_.get_entities().entity_ids());
+
+        if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
+            player::PreparationInterface{*player_ship_simulation_}.prepare_tick(tick_period);
+        } else if constexpr (PlayerState == TickPlayerShipState::PresentDead) {
+            player_ship_simulation_->update_entity_lookup_table();
+        }
+        capital_ships_phase.prepare_tick();
+        fighters_phase.prepare_tick(fighter_inputs);
+        turrets_phase.prepare_tick();
+        spinners_phase.prepare_tick(tick_period);
+
+        refresh_spatial_index();
+    }
+
     {
         std::pmr::vector<lasers::LaserIndex> laser_removal_indices{&memory_manager_.tick_memory()};
         {
             FrameArray<std::uint32_t> fighter_fire_indices{&memory_manager_.tick_memory()};
             FrameArray<std::uint32_t> spinner_fire_indices{&memory_manager_.tick_memory()};
-            think_tick<PlayerState>(
-                tick_period, fighter_fire_indices, spinner_fire_indices, navigation_output);
-            act_tick<PlayerState>(
-                tick_period, fighter_fire_indices, spinner_fire_indices, laser_removal_indices);
+
+            {
+                fighters::ThinkingInterface fighters_phase{fighters_simulation_};
+                turrets::ThinkingInterface turrets_phase{turrets_simulation_};
+                spinners::ThinkingInterface spinners_phase{spinners_simulation_};
+
+                auto& phase_memory{memory_manager_.phase_memory()};
+                FrameScratchScope scratch_scope{phase_memory};
+
+                SANDBOX_PROFILE_SCOPE("Thinking");
+                clock_.transition_to(SimulationPhase::Thinking);
+
+                spawn_manager_.queue_fighter_spawns(tick_period, phase_memory);
+
+                turrets::ThinkingInputs const turret_inputs{
+                    collision_pipeline_.queries(), lasers_simulation_, phase_memory};
+                fighters::NavigationCounters navigation_counters{};
+                fighters::ThinkingInputs const fighter_inputs{
+                    .clock = clock_,
+                    .task_manager = task_manager_,
+                    .collision_radius =
+                        collision_pipeline_.queries().entity_type_radius(EntityType::Fighter),
+                    .spatial_query_manager = collision_pipeline_.queries(),
+                    .scratch_resource = phase_memory,
+                    .pending_fire_indices = fighter_fire_indices,
+                    .navigation_counters = navigation_counters,
+                };
+
+                turrets_phase.think(turret_inputs);
+                fighters_phase.think(fighter_inputs);
+                if (navigation_output) {
+                    *navigation_output = navigation_counters;
+                }
+                if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
+                    player::ThinkingInterface{*player_ship_simulation_}.think(tick_period);
+                }
+                spinners_phase.think(tick_period);
+
+                if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
+                    player::ThinkingInterface{*player_ship_simulation_}.generate_fire_commands();
+                }
+                fighters_phase.generate_fire_commands(fighter_inputs);
+                turrets_phase.generate_fire_commands(turret_inputs);
+                spinners_phase.generate_fire_commands({spinner_fire_indices});
+            }
+
+            {
+                fighters::ActionInterface fighters_phase{fighters_simulation_};
+                spinners::ActionInterface spinners_phase{spinners_simulation_};
+                lasers::ActionInterface lasers_phase{lasers_simulation_};
+                auto& phase_memory{memory_manager_.phase_memory()};
+                FrameScratchScope scratch_scope{phase_memory};
+                FrameArray<EntityId> fighter_overlap_candidates{&phase_memory};
+
+                SANDBOX_PROFILE_SCOPE("Action");
+                clock_.transition_to(SimulationPhase::Action);
+
+                {
+                    lasers::ActionInputs const inputs{
+                        tick_period,
+                        damage_queue_,
+                        clock_.get_completed_ticks(),
+                        collision_pipeline_.queries(),
+                        phase_memory,
+                        laser_removal_indices,
+                    };
+                    lasers_phase.simulate(inputs);
+                }
+
+                if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
+                    auto const before{player_ship_simulation_->physical_state().transform};
+                    player::ActionInputs const inputs{lasers_simulation_};
+                    player::ActionInterface{*player_ship_simulation_}.apply_movement(inputs);
+                    collision_pipeline_.track_player_movement(
+                        player_ship_simulation_->unique_entity_id,
+                        before,
+                        player_ship_simulation_->physical_state().transform);
+                }
+
+                {
+                    fighters::ActionInputs const fighter_inputs{
+                        tick_period,
+                        lasers_simulation_,
+                        phase_memory,
+                        fighter_fire_indices,
+                        fighter_overlap_candidates,
+                    };
+                    spinners::ActionInputs const spinner_inputs{lasers_simulation_,
+                                                                spinner_fire_indices};
+                    fighters_phase.apply_movement(fighter_inputs);
+                    spinners_phase.apply_movement(spinner_inputs);
+                }
+
+                collision_pipeline_.detect_and_handle_overlaps(
+                    read_access(), fighter_overlap_candidates, damage_queue_, phase_memory);
+            }
         }
-        resolve_tick<PlayerState>(laser_removal_indices);
+
+        {
+            capital_ships::ResolutionInterface capital_ships_phase{capital_ships_simulation_};
+            fighters::ResolutionInterface fighters_phase{fighters_simulation_};
+            turrets::ResolutionInterface turrets_phase{turrets_simulation_};
+            auto& phase_memory{memory_manager_.phase_memory()};
+            std::pmr::vector<std::uint32_t> fighter_removal_indices{&memory_manager_.tick_memory()};
+            std::pmr::vector<std::uint32_t> capital_removal_indices{&memory_manager_.tick_memory()};
+            std::pmr::vector<std::uint32_t> turret_removal_indices{&memory_manager_.tick_memory()};
+
+            SANDBOX_PROFILE_SCOPE("Resolution");
+            clock_.transition_to(SimulationPhase::Resolution);
+
+            {
+                FrameScratchScope scratch_scope{phase_memory};
+                EntityDeathInfo fighter_deaths{phase_memory};
+                EntityDeathInfo capital_deaths{phase_memory};
+                EntityDeathInfo turret_deaths{phase_memory};
+
+                damage_queue_.prepare(entity_tables_.lookups, &phase_memory);
+
+                capital_ships::ResolutionInputs const capital_inputs{
+                    damage_queue_,
+                    entity_ledger_,
+                    clock_.get_completed_ticks(),
+                    capital_removal_indices,
+                    capital_deaths,
+                };
+                fighters::ResolutionInputs const fighter_inputs{
+                    .damage_queue = damage_queue_,
+                    .ledger = entity_ledger_,
+                    .tick = clock_.get_completed_ticks(),
+                    .local_indices_to_remove = fighter_removal_indices,
+                    .entity_death_info = fighter_deaths,
+                };
+                turrets::ResolutionInputs const turret_inputs{
+                    damage_queue_,
+                    entity_ledger_,
+                    clock_.get_completed_ticks(),
+                    turret_removal_indices,
+                    turret_deaths,
+                };
+
+                if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
+                    player::ResolutionInputs const inputs{damage_queue_};
+                    player::ResolutionInterface{*player_ship_simulation_}.resolve_damage_events(
+                        inputs);
+                }
+                capital_ships_phase.resolve_damage_events(capital_inputs);
+                fighters_phase.resolve_damage_events(fighter_inputs);
+                turrets_phase.resolve_damage_events(turret_inputs);
+
+                {
+                    SANDBOX_PROFILE_SCOPE("LevelSim::advance::publish_entity_deaths");
+                    capital_ships_phase.publish_deaths(capital_inputs);
+                    fighters_phase.publish_deaths(fighter_inputs);
+                    turrets_phase.publish_deaths(turret_inputs);
+                }
+
+                // Evaluate final health and deaths before invalidating row mappings.
+                latches_.commit();
+                timers_.tick(1);
+                expressions_.evaluate({entity_ledger_,
+                                       timers_,
+                                       spawn_manager_.entity_ids(),
+                                       latches_,
+                                       &collision_pipeline_.queries(),
+                                       &phase_memory});
+                latches_.evaluate(expressions_);
+                event_manager_.collect_ready(expressions_);
+            }
+
+            capital_ships::ResolutionCommitInterface capital_ships_commit{
+                capital_ships_simulation_};
+            fighters::ResolutionCommitInterface fighters_commit{fighters_simulation_};
+            turrets::ResolutionCommitInterface turrets_commit{turrets_simulation_};
+            lasers::ResolutionCommitInterface lasers_commit{lasers_simulation_};
+
+            {
+                FrameScratchScope scratch_scope{phase_memory};
+
+                SANDBOX_PROFILE_SCOPE("ResolutionCommit");
+                clock_.transition_to(SimulationPhase::ResolutionCommit);
+                fighters::ResolutionCommitInputs const fighter_inputs{fighter_removal_indices};
+                capital_ships::ResolutionCommitInputs const capital_inputs{capital_removal_indices};
+                turrets::ResolutionCommitInputs const turret_inputs{turret_removal_indices};
+
+                capital_ships_commit.remove_entities(capital_inputs);
+                fighters_commit.remove_entities(fighter_inputs);
+                turrets_commit.remove_entities(turret_inputs);
+                lasers_commit.cleanup_entities({laser_removal_indices, clock_});
+            }
+
+            capital_ships_commit.finish_action();
+            fighters_commit.finish_action();
+            turrets_commit.finish_action();
+            lasers_commit.finish_action();
+            clock_.complete_tick();
+            damage_queue_.reset();
+        }
     }
     memory_manager_.tick_memory().reset();
     memory_manager_.phase_memory().reset();
-}
-template <TickPlayerShipState PlayerState>
-void LevelSim::prepare_tick(float const tick_period) {
-    capital_ships::PreparationInterface capital_ships_phase{capital_ships_simulation_};
-    fighters::PreparationInterface fighters_phase{fighters_simulation_};
-    turrets::PreparationInterface turrets_phase{turrets_simulation_};
-    spinners::PreparationInterface spinners_phase{spinners_simulation_};
-    lasers::PreparationInterface lasers_phase{lasers_simulation_};
-
-    SANDBOX_PROFILE_SCOPE("Preparation");
-    clock_.transition_to(SimulationPhase::Preparation);
-
-    auto const previous_issued_counts{entity_ledger_.issued_counts()};
-    dispatch_preparation_events();
-
-    fighters::PreparationInputs const fighter_inputs{
-        .ledger = entity_ledger_,
-        .participating_teams = participating_teams_,
-    };
-    fighters_phase.commit_spawns(fighter_inputs);
-
-    lasers_phase.commit_spawns({clock_});
-
-    // Borrow fresh owner views after all spawn commits.
-    collision_pipeline_.collect_spawn_candidates(
-        previous_issued_counts,
-        capital_ships_simulation_.get_entities().entity_ids(),
-        fighters_simulation_.entities().entity_ids(),
-        turrets_simulation_.get_entities().entity_ids());
-
-    if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-        player::PreparationInterface{*player_ship_simulation_}.prepare_tick(tick_period);
-    } else if constexpr (PlayerState == TickPlayerShipState::PresentDead) {
-        player_ship_simulation_->update_entity_lookup_table();
-    }
-    capital_ships_phase.prepare_tick();
-    fighters_phase.prepare_tick(fighter_inputs);
-    turrets_phase.prepare_tick();
-    spinners_phase.prepare_tick(tick_period);
-
-    refresh_spatial_index();
-}
-template <TickPlayerShipState PlayerState>
-void LevelSim::think_tick(float const tick_period,
-                          FrameArray<std::uint32_t>& fighter_fire_indices,
-                          FrameArray<std::uint32_t>& spinner_fire_indices,
-                          fighters::NavigationCounters* const navigation_output) {
-    fighters::ThinkingInterface fighters_phase{fighters_simulation_};
-    turrets::ThinkingInterface turrets_phase{turrets_simulation_};
-    spinners::ThinkingInterface spinners_phase{spinners_simulation_};
-
-    auto& phase_memory{memory_manager_.phase_memory()};
-    FrameScratchScope scratch_scope{phase_memory};
-
-    SANDBOX_PROFILE_SCOPE("Thinking");
-    clock_.transition_to(SimulationPhase::Thinking);
-
-    spawn_manager_.queue_fighter_spawns(tick_period, phase_memory);
-
-    turrets::ThinkingInputs const turret_inputs{
-        collision_pipeline_.queries(), lasers_simulation_, phase_memory};
-    fighters::NavigationCounters navigation_counters{};
-    fighters::ThinkingInputs const fighter_inputs{
-        .clock = clock_,
-        .task_manager = task_manager_,
-        .collision_radius = collision_pipeline_.queries().entity_type_radius(EntityType::Fighter),
-        .spatial_query_manager = collision_pipeline_.queries(),
-        .scratch_resource = phase_memory,
-        .pending_fire_indices = fighter_fire_indices,
-        .navigation_counters = navigation_counters,
-    };
-
-    turrets_phase.think(turret_inputs);
-    fighters_phase.think(fighter_inputs);
-    if (navigation_output) {
-        *navigation_output = navigation_counters;
-    }
-    if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-        player::ThinkingInterface{*player_ship_simulation_}.think(tick_period);
-    }
-    spinners_phase.think(tick_period);
-
-    if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-        player::ThinkingInterface{*player_ship_simulation_}.generate_fire_commands();
-    }
-    fighters_phase.generate_fire_commands(fighter_inputs);
-    turrets_phase.generate_fire_commands(turret_inputs);
-    spinners_phase.generate_fire_commands({spinner_fire_indices});
-}
-template <TickPlayerShipState PlayerState>
-void LevelSim::act_tick(float const tick_period,
-                        std::span<std::uint32_t const> const fighter_fire_indices,
-                        std::span<std::uint32_t const> const spinner_fire_indices,
-                        std::pmr::vector<lasers::LaserIndex>& laser_removal_indices) {
-    fighters::ActionInterface fighters_phase{fighters_simulation_};
-    spinners::ActionInterface spinners_phase{spinners_simulation_};
-    lasers::ActionInterface lasers_phase{lasers_simulation_};
-    auto& phase_memory{memory_manager_.phase_memory()};
-    FrameScratchScope scratch_scope{phase_memory};
-    FrameArray<EntityId> fighter_overlap_candidates{&phase_memory};
-
-    SANDBOX_PROFILE_SCOPE("Action");
-    clock_.transition_to(SimulationPhase::Action);
-
-    {
-        lasers::ActionInputs const inputs{
-            tick_period,
-            damage_queue_,
-            clock_.get_completed_ticks(),
-            collision_pipeline_.queries(),
-            phase_memory,
-            laser_removal_indices,
-        };
-        lasers_phase.simulate(inputs);
-    }
-
-    if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-        auto const before{player_ship_simulation_->physical_state().transform};
-        player::ActionInputs const inputs{lasers_simulation_};
-        player::ActionInterface{*player_ship_simulation_}.apply_movement(inputs);
-        collision_pipeline_.track_player_movement(
-            player_ship_simulation_->unique_entity_id,
-            before,
-            player_ship_simulation_->physical_state().transform);
-    }
-
-    {
-        fighters::ActionInputs const fighter_inputs{
-            tick_period,
-            lasers_simulation_,
-            phase_memory,
-            fighter_fire_indices,
-            fighter_overlap_candidates,
-        };
-        spinners::ActionInputs const spinner_inputs{lasers_simulation_, spinner_fire_indices};
-        fighters_phase.apply_movement(fighter_inputs);
-        spinners_phase.apply_movement(spinner_inputs);
-    }
-
-    collision_pipeline_.detect_and_handle_overlaps(
-        read_access(), fighter_overlap_candidates, damage_queue_, phase_memory);
-}
-template <TickPlayerShipState PlayerState>
-void LevelSim::resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_indices) {
-    capital_ships::ResolutionInterface capital_ships_phase{capital_ships_simulation_};
-    fighters::ResolutionInterface fighters_phase{fighters_simulation_};
-    turrets::ResolutionInterface turrets_phase{turrets_simulation_};
-    auto& phase_memory{memory_manager_.phase_memory()};
-    std::pmr::vector<std::uint32_t> fighter_removal_indices{&memory_manager_.tick_memory()};
-    std::pmr::vector<std::uint32_t> capital_removal_indices{&memory_manager_.tick_memory()};
-    std::pmr::vector<std::uint32_t> turret_removal_indices{&memory_manager_.tick_memory()};
-
-    SANDBOX_PROFILE_SCOPE("Resolution");
-    clock_.transition_to(SimulationPhase::Resolution);
-
-    {
-        FrameScratchScope scratch_scope{phase_memory};
-        EntityDeathInfo fighter_deaths{phase_memory};
-        EntityDeathInfo capital_deaths{phase_memory};
-        EntityDeathInfo turret_deaths{phase_memory};
-
-        damage_queue_.prepare(entity_tables_.lookups, &phase_memory);
-
-        capital_ships::ResolutionInputs const capital_inputs{
-            damage_queue_,
-            entity_ledger_,
-            clock_.get_completed_ticks(),
-            capital_removal_indices,
-            capital_deaths,
-        };
-        fighters::ResolutionInputs const fighter_inputs{
-            .damage_queue = damage_queue_,
-            .ledger = entity_ledger_,
-            .tick = clock_.get_completed_ticks(),
-            .local_indices_to_remove = fighter_removal_indices,
-            .entity_death_info = fighter_deaths,
-        };
-        turrets::ResolutionInputs const turret_inputs{
-            damage_queue_,
-            entity_ledger_,
-            clock_.get_completed_ticks(),
-            turret_removal_indices,
-            turret_deaths,
-        };
-
-        if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-            player::ResolutionInputs const inputs{damage_queue_};
-            player::ResolutionInterface{*player_ship_simulation_}.resolve_damage_events(inputs);
-        }
-        capital_ships_phase.resolve_damage_events(capital_inputs);
-        fighters_phase.resolve_damage_events(fighter_inputs);
-        turrets_phase.resolve_damage_events(turret_inputs);
-
-        {
-            SANDBOX_PROFILE_SCOPE("LevelSim::advance::publish_entity_deaths");
-            capital_ships_phase.publish_deaths(capital_inputs);
-            fighters_phase.publish_deaths(fighter_inputs);
-            turrets_phase.publish_deaths(turret_inputs);
-        }
-
-        // Evaluate final health and deaths before invalidating row mappings.
-        latches_.commit();
-        timers_.tick(1);
-        expressions_.evaluate({entity_ledger_,
-                               timers_,
-                               spawn_manager_.entity_ids(),
-                               latches_,
-                               &collision_pipeline_.queries(),
-                               &phase_memory});
-        latches_.evaluate(expressions_);
-        event_manager_.collect_ready(expressions_);
-    }
-
-    capital_ships::ResolutionCommitInterface capital_ships_commit{capital_ships_simulation_};
-    fighters::ResolutionCommitInterface fighters_commit{fighters_simulation_};
-    turrets::ResolutionCommitInterface turrets_commit{turrets_simulation_};
-    lasers::ResolutionCommitInterface lasers_commit{lasers_simulation_};
-
-    {
-        FrameScratchScope scratch_scope{phase_memory};
-
-        SANDBOX_PROFILE_SCOPE("ResolutionCommit");
-        clock_.transition_to(SimulationPhase::ResolutionCommit);
-        fighters::ResolutionCommitInputs const fighter_inputs{fighter_removal_indices};
-        capital_ships::ResolutionCommitInputs const capital_inputs{capital_removal_indices};
-        turrets::ResolutionCommitInputs const turret_inputs{turret_removal_indices};
-
-        capital_ships_commit.remove_entities(capital_inputs);
-        fighters_commit.remove_entities(fighter_inputs);
-        turrets_commit.remove_entities(turret_inputs);
-        lasers_commit.cleanup_entities({laser_removal_indices, clock_});
-    }
-
-    capital_ships_commit.finish_action();
-    fighters_commit.finish_action();
-    turrets_commit.finish_action();
-    lasers_commit.finish_action();
-    clock_.complete_tick();
-    damage_queue_.reset();
 }
 
 /* **************************************** */
