@@ -7,6 +7,8 @@
 #include <source_location>
 
 namespace ioj {
+class Frequency;
+
 class Duration {
   public:
     Duration() noexcept = default;
@@ -42,6 +44,8 @@ class Duration {
 
     [[nodiscard]] auto seconds() const noexcept -> double { return seconds_; }
   private:
+    friend class Frequency;
+
     explicit Duration(double const seconds) noexcept
         : seconds_{seconds} {}
 

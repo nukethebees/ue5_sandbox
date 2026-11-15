@@ -35,6 +35,11 @@ class Frequency {
         return Frequency{hz, Validated{}};
     }
 
+    // Widening a positive finite float preserves the frequency bounds.
+    [[nodiscard]] static constexpr auto make(PositiveFinite<float> const hz) noexcept -> Frequency {
+        return Frequency{hz.get(), Validated{}};
+    }
+
     // Return nullopt for an invalid frequency.
     [[nodiscard]] static constexpr auto try_make(double const hz) noexcept
         -> std::optional<Frequency> {
@@ -45,7 +50,8 @@ class Frequency {
     }
 
     [[nodiscard]] constexpr auto hz() const noexcept -> double { return hz_; }
-    [[nodiscard]] auto period() const noexcept -> Duration { return Duration::make(1.0 / hz_); }
+    // Frequency bounds guarantee a finite, positive reciprocal.
+    [[nodiscard]] auto period() const noexcept -> Duration { return Duration{1.0 / hz_}; }
   private:
     struct Validated {};
 
