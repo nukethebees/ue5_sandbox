@@ -135,7 +135,6 @@ auto analyze_distribution(AnalysisContext& context,
                          0);
         }
     } else {
-        assert(kind == lispb::schema::TypeDefinitionKind::union_type);
         auto const& aggregate{storage.types.aggregate()[analysis.value]};
         if (!aggregate) {
             context.report({DiagnosticSeverity::warning,
