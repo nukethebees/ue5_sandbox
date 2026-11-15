@@ -101,7 +101,8 @@ void EntityLedger::record_status(std::span<EntityId const> const ids,
         }
     }
 }
-void EntityLedger::record_deaths(EntityDeathInfo::ConstView const deaths, SimTick const tick) {
+void EntityLedger::record_deaths(EntityDeathInfo::CompactConstView const deaths,
+                                 SimTick const tick) {
     auto const count{deaths.num()};
     auto const victims{deaths.victims()};
     auto const killers{deaths.killers()};

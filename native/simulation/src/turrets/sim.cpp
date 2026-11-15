@@ -55,7 +55,7 @@ Sim::Sim(EntityTables& entity_tables) noexcept
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data,
+auto Sim::register_turrets(LevelTurretSpawnEvents::CompactConstView const spawn_data,
                            SpawnContext const context) -> std::vector<EntityId> {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::register_turrets");
     assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
@@ -313,10 +313,9 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
             has_line_of_sight.set_num_uninitialised(target_count);
             // Each turret produces a differently sized candidate batch.
             // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
-            vectors3f::ResolvedView const candidate_locations_view{
-                std::span{candidate_xs}.first(count),
-                std::span{candidate_ys}.first(count),
-                std::span{candidate_zs}.first(count)};
+            vectors3f::View const candidate_locations_view{std::span{candidate_xs}.first(count),
+                                                           std::span{candidate_ys}.first(count),
+                                                           std::span{candidate_zs}.first(count)};
             inputs.spatial_query_manager.copy_entity_locations(
                 entity_tables_.lookups, target_ids, candidate_locations_view, scratch_resource);
 

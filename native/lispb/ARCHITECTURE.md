@@ -348,13 +348,13 @@ and cycles. The layout planner walks these same members across module boundaries
 physical columns; logical access retains the groups. Vector and rotator containers use this path
 with explicit equivalent-value mappings and authored mathematical functions.
 
-Every dynamic declaration emits one owner named after the schema, `NameView`, `NameConstView`,
-resolved views, and `NameLayout`. Explicit view names can replace the defaults. `:layout-only true`
-supplies a reusable nested group without an owner or standalone views. Such types have no physical
+Every dynamic declaration emits one owner named after the schema and shared view and layout types
+in its snake-case namespace. `:layout-only true` supplies a reusable nested group with shared views
+but without an owner. Such types have no physical
 C++ spelling and cannot be record members or function parameter types. They remain valid logical
 relationship targets and nested groups.
 
-`NameLayout` derives from `ColumnLayouts<Ts...>` in physical leaf order and supplies named
+`Layout` derives from `ColumnLayouts<Ts...>` in physical leaf order and supplies named
 integer constants for column indices. Ordinary function parameters select columns;
 `make_column_layouts()` computes one constant metadata array without predecessor pointers or
 constructor chains. Linear offsets use direct arithmetic; capacity-dependent alignment scans
@@ -375,7 +375,7 @@ and assignment are deleted.
 
 `StorageOperations` coordinates lifetime, pointer access, copying, growth and removal using
 generated, typed column pointers. Each schema declares one named `DataPointers<Byte>` aggregate,
-shared by its owner and resolved views. These aggregates are initialized by
+shared by its owner and pointer views. These aggregates are initialized by
 `ColumnLayouts::make_data()` expanding the element types in physical order. Aggregate expansion
 shares pointer offsetting and default construction. One generated `Schema::with_columns()`
 maps named source accessors into physical order for source pointers and column iteration.
@@ -400,8 +400,10 @@ move path; allocation growth and non-overlapping append use the copy path.
 ## Shared schema views
 
 Each schema has one snake-case namespace containing `Layout`, `Schema`,
-`DataPointers`, `View`, `ConstView`, `ResolvedView` and `ResolvedConstView`. Owners retain their declared names
-and expose `View` and `ConstView` aliases. Nested accessors return the child's shared view;
+`DataPointers`, `View`, `ConstView`, `CompactView` and `CompactConstView`. `View` and `ConstView`
+store one pointer per physical column and support independently allocated columns. Owners retain
+their declared names and expose `CompactView` and `CompactConstView` aliases, matching the types
+returned by `.view()` and `.const_view()`. Nested accessors return the child's shared view;
 the generator does not create types for individual occurrences of a nested schema.
 
 `CompactViewBase<Const>` stores a state pointer, offset and count for mixed-schema owners.
@@ -409,27 +411,28 @@ the generator does not create types for individual occurrences of a nested schem
 schemas, including nested homogeneous groups. The existing layout guarantees evenly spaced,
 separate arrays of the same element type. Float groups occupy 16 bytes on native x64; types whose
 stride cannot safely fit the compact encoding use a `std::size_t` byte stride and occupy 24 bytes.
-Mixed nested groups use the child's resolved view. Scalar accessors return `std::span`.
+Mixed nested groups use the child's pointer view. Scalar accessors return `std::span`.
 
-`ResolvedViewBase` owns the schema's pointer aggregate and one row count. The layout's existing
+`ViewBase` owns the schema's pointer aggregate and one row count. The layout's existing
 type pack supplies its pointer and span constructor signatures. Pack expansion shares validation,
 mutable-to-const conversion and slicing without repeating physical fields. Named accessors pass
 their stored pointer to a shared span constructor.
 Named accessors remain generated to preserve owner borrowing and representation-specific nested
-view return types; compact and resolved accessors use one generator implementation.
+view return types; compact and pointer-view accessors use one generator implementation.
 
 All views remain trivially copyable and inherit `ViewOperations` for borrowing and slice convenience
 functions. Schema-specific accessors and custom methods are emitted once per representation.
 Mutable views convert only to their matching const view. Owner borrowing requires an lvalue and
 checks the initial range; slicing checks its subrange. Accessors trust these preconditions.
 
-Calling `.resolve()` materializes a pointer per physical column plus one count. Resolve once
-outside a hot loop when repeated layout calculations would be wasteful. Resolved views preserve
+Calling `.resolve()` on a compact view returns `View` or `ConstView`, materializing a pointer per
+physical column plus one count. Resolve once outside a hot loop when repeated layout calculations
+would be wasteful. Pointer views preserve
 physical column order through the layout's type pack; compact and strided bases share the
-construction, using the owner's layout and the borrowed stride respectively. Resolved views retain
+construction, using the owner's layout and the borrowed stride respectively. Pointer views retain
 logical nesting and the declared equivalent-value and custom view API. A dynamic nested group's
-resolved view uses the child's canonical resolved type, including layout-only groups.
-Resolving an already resolved view returns that view. External span constructors
+pointer view uses the child's canonical `View` or `ConstView`, including layout-only groups.
+Calling `.resolve()` on a pointer view returns that view. External span constructors
 check equal lengths, non-null pointers for nonempty columns, and row-count conversion.
 
 All representations borrow storage. The owner and resource must outlive them. Reallocation, owner

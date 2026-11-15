@@ -333,8 +333,7 @@ inline auto observe_entity(CollisionAgentStorage const& owners, EntityId const i
         return EntityObservation{
             player->location, player->velocity, owners.player_team, player->health, 0};
     }
-    auto observe = [&]<EntityType Type>(auto entities,
-                                        vectors3f::ResolvedConstView velocities = {}) {
+    auto observe = [&]<EntityType Type>(auto entities, vectors3f::ConstView velocities = {}) {
         return observe_entity_columns(id,
                                       entities.entity_ids(),
                                       entities.view_locations().resolve(),

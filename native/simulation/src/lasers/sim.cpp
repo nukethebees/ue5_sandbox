@@ -37,7 +37,7 @@ void Sim::initialise(LaserSimConfig const& new_config) {
     number_spawned_ = 0;
     preallocate_instances();
 }
-auto Sim::append_spawn_requests(std::uint32_t const count) -> LaserSpawnRequests::View {
+auto Sim::append_spawn_requests(std::uint32_t const count) -> LaserSpawnRequests::CompactView {
     pending_spawns_.add_uninitialised(count);
     return pending_spawns_.right(count);
 }

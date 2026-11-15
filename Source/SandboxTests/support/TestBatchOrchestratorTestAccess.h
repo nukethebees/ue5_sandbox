@@ -4,8 +4,9 @@
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 struct FTestBatchOrchestratorTestAccess {
-    static void queue_direct_damage_events(ioj::ATestBatchOrchestrator& orchestrator,
-                                           ::ioj::sim::DirectDamageEvents::ConstView events) {
+    static void
+        queue_direct_damage_events(ioj::ATestBatchOrchestrator& orchestrator,
+                                   ::ioj::sim::DirectDamageEvents::CompactConstView events) {
         check(orchestrator.level_simulation_.IsSet());
         ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(
             orchestrator.level_simulation_.GetValue(), events);

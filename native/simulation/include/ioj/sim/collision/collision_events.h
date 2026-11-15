@@ -14,8 +14,8 @@ using AABBOverlapEventBatchIndex = std::int32_t;
 // Event views
 /* **************************************** */
 struct DetectedOverlapsView {
-    EntityEntityOverlaps::ConstView entity_entity_overlaps;
-    EntityStaticOverlaps::ConstView entity_static_overlaps;
+    EntityEntityOverlaps::CompactConstView entity_entity_overlaps;
+    EntityStaticOverlaps::CompactConstView entity_static_overlaps;
 };
 
 struct AABBOverlapEventBatch {
@@ -24,8 +24,8 @@ struct AABBOverlapEventBatch {
 };
 
 struct AABBOverlapEventsView {
-    EntityEntityOverlaps::ConstView entity_entity_overlaps;
-    EntityStaticOverlaps::ConstView entity_static_overlaps;
+    EntityEntityOverlaps::CompactConstView entity_entity_overlaps;
+    EntityStaticOverlaps::CompactConstView entity_static_overlaps;
     std::span<AABBOverlapEventBatch const> batches;
 
     [[nodiscard]] auto get_batch(AABBOverlapEventBatchIndex index) const -> DetectedOverlapsView;
@@ -43,8 +43,8 @@ class AABBOverlapEventStorage {
         , batches_{resource} {}
 
     void reset() noexcept;
-    void append_batch(EntityEntityOverlaps::ConstView entity_entity_overlaps,
-                      EntityStaticOverlaps::ConstView entity_static_overlaps);
+    void append_batch(EntityEntityOverlaps::CompactConstView entity_entity_overlaps,
+                      EntityStaticOverlaps::CompactConstView entity_static_overlaps);
     [[nodiscard]] auto view() const noexcept -> AABBOverlapEventsView;
   private:
     EntityEntityOverlaps entity_entity_overlaps_;

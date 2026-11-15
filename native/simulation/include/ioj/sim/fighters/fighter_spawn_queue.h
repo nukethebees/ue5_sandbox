@@ -20,10 +20,10 @@
 namespace ioj::sim {
 namespace fighter_spawn_queue {
 struct Schema;
+struct CompactView;
+struct CompactConstView;
 struct View;
 struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
@@ -82,30 +82,29 @@ struct Schema {
 };
 
 /* **************************************** */
-// Resolved views
+// Views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl
-    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
     using Layout = fighter_spawn_queue::Layout;
-    using view_type = ResolvedView;
-    using const_view_type = ResolvedConstView;
+    using view_type = View;
+    using const_view_type = ConstView;
     using soa_schema = Schema;
     template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.locations_xs,
                 this->columns_.locations_ys,
                 this->columns_.locations_zs,
                 this->num()};
     }
     auto view_rotations() const
-        -> std::conditional_t<Const, rotators3f::ResolvedConstView, rotators3f::ResolvedView> {
+        -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
         return {this->columns_.rotations_pitches,
                 this->columns_.rotations_yaws,
                 this->columns_.rotations_rolls,
@@ -113,73 +112,10 @@ struct ResolvedViewImpl
     }
     auto teams() const { return this->column(this->columns_.teams); }
 };
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
-    using Base::Base;
-};
-struct ResolvedView
-    : soa_storage_detail::
-          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        ResolvedView,
-        ioj::sim::fighter_spawn_queue::Layout::column_types,
-        ResolvedViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             Vector3f const new_locations,
-             Rotator3f const new_rotations,
-             ::ioj::Team const new_teams) const {
-        assert((index < num()));
-        this->view_locations().set(index, new_locations);
-        this->view_rotations().set(index, new_rotations);
-        this->teams()[index] = new_teams;
-    }
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = fighter_spawn_queue::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::locations_xs_column,
-                    Layout::locations_ys_column);
-    }
-    auto view_rotations() const
-        -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, rotators3f::ConstView, rotators3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::rotations_pitches_column,
-                    Layout::rotations_yaws_column);
-    }
-    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-};
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(soa_storage_detail::validate_compact_view<ConstView>());
 struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
@@ -197,7 +133,70 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
         this->teams()[index] = new_teams;
     }
 };
-static_assert(soa_storage_detail::validate_compact_view<View>());
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+template <bool Const>
+struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
+    using Layout = fighter_spawn_queue::Layout;
+    using view_type = CompactView;
+    using const_view_type = CompactConstView;
+    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
+    template <bool Enabled = Const>
+    CompactViewImpl(CompactViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+    auto view_locations() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::locations_xs_column,
+                    Layout::locations_ys_column);
+    }
+    auto view_rotations() const
+        -> std::conditional_t<Const, rotators3f::CompactConstView, rotators3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, rotators3f::CompactConstView, rotators3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::rotations_pitches_column,
+                    Layout::rotations_yaws_column);
+    }
+    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
+};
+struct CompactConstView : CompactViewImpl<true> {
+    using Base = CompactViewImpl<true>;
+    using Base::Base;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        CompactView,
+        ioj::sim::fighter_spawn_queue::Layout::column_types,
+        CompactViewImpl<false>>;
+    using Base::Base;
+    using Base::set;
+    void set(size_type index,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             ::ioj::Team const new_teams) const {
+        assert((index < num()));
+        this->view_locations().set(index, new_locations);
+        this->view_rotations().set(index, new_rotations);
+        this->teams()[index] = new_teams;
+    }
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace fighter_spawn_queue
 
@@ -230,8 +229,8 @@ struct FighterSpawnQueue
         return Layout::layout_bytes(blocks);
     }
 
-    using View = fighter_spawn_queue::View;
-    using ConstView = fighter_spawn_queue::ConstView;
+    using CompactView = fighter_spawn_queue::CompactView;
+    using CompactConstView = fighter_spawn_queue::CompactConstView;
 
     /* **************************************** */
     // Lifetime

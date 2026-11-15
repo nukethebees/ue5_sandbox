@@ -19,10 +19,10 @@
 namespace ioj::sim {
 namespace entity_history {
 struct Schema;
+struct CompactView;
+struct CompactConstView;
 struct View;
 struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
@@ -68,19 +68,18 @@ struct Schema {
 };
 
 /* **************************************** */
-// Resolved views
+// Views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl
-    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
     using Layout = entity_history::Layout;
-    using view_type = ResolvedView;
-    using const_view_type = ResolvedConstView;
+    using view_type = View;
+    using const_view_type = ConstView;
     using soa_schema = Schema;
     template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto teams() const { return this->column(this->columns_.teams); }
@@ -89,17 +88,13 @@ struct ResolvedViewImpl
     auto death_ticks() const { return this->column(this->columns_.death_ticks); }
     auto death_locations() const { return this->column(this->columns_.death_locations); }
 };
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView
-    : soa_storage_detail::
-          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<ResolvedView,
-                                                   ioj::sim::entity_history::Layout::column_types,
-                                                   ResolvedViewImpl<false>>;
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::
+        ViewRowOperations<View, ioj::sim::entity_history::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
@@ -108,16 +103,16 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Schema;
     using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
     using Layout = entity_history::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
+    using view_type = CompactView;
+    using const_view_type = CompactConstView;
+    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
     template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
+    CompactViewImpl(CompactViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
@@ -128,18 +123,22 @@ struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
         return this->template column<Vector3f>(Layout::death_locations_column);
     }
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
+struct CompactConstView : CompactViewImpl<true> {
+    using Base = CompactViewImpl<true>;
     using Base::Base;
 };
-static_assert(soa_storage_detail::validate_compact_view<ConstView>());
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::sim::entity_history::Layout::column_types, ViewImpl<false>>;
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
+    using Base =
+        ioj::soa_storage_detail::ViewRowOperations<CompactView,
+                                                   ioj::sim::entity_history::Layout::column_types,
+                                                   CompactViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace entity_history
 
@@ -170,8 +169,8 @@ struct EntityHistory
         return Layout::layout_bytes(blocks);
     }
 
-    using View = entity_history::View;
-    using ConstView = entity_history::ConstView;
+    using CompactView = entity_history::CompactView;
+    using CompactConstView = entity_history::CompactConstView;
 
     /* **************************************** */
     // Lifetime

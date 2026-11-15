@@ -40,7 +40,7 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_entities() const -> EntityStorage::ConstView { return entities_.const_view(); }
+    auto get_entities() const -> EntityStorage::CompactConstView { return entities_.const_view(); }
     auto healths() const -> HealthConstView {
         return entity_tables_.health.const_view<EntityType::Turret>();
     }
@@ -73,8 +73,8 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data, SpawnContext context)
-        -> std::vector<EntityId>;
+    auto register_turrets(LevelTurretSpawnEvents::CompactConstView const spawn_data,
+                          SpawnContext context) -> std::vector<EntityId>;
 
     /* **************************************** */
     // Searching

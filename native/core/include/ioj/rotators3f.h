@@ -17,10 +17,10 @@
 namespace ioj {
 namespace rotators3f {
 struct Schema;
+struct CompactView;
+struct CompactConstView;
 struct View;
 struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
@@ -55,27 +55,26 @@ struct Schema {
 };
 
 /* **************************************** */
-// Resolved views
+// Views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl
-    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
     using Layout = rotators3f::Layout;
-    using view_type = ResolvedView;
-    using const_view_type = ResolvedConstView;
+    using view_type = View;
+    using const_view_type = ConstView;
     using soa_schema = Schema;
     template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto pitches() const { return this->column(this->columns_.pitches); }
     auto yaws() const { return this->column(this->columns_.yaws); }
     auto rolls() const { return this->column(this->columns_.rolls); }
 };
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
@@ -83,12 +82,9 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
-struct ResolvedView
-    : soa_storage_detail::
-          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<ResolvedView,
-                                                            ioj::rotators3f::Layout::column_types,
-                                                            ResolvedViewImpl<false>>;
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::
+        ViewRowOperations<View, ioj::rotators3f::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
     using Base::set;
     void set(size_type index, Rotator3f const value) const {
@@ -105,30 +101,30 @@ struct ResolvedView
 // Strided views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
+struct CompactViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
     using soa_schema = Schema;
     using Base = soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
     using Layout = rotators3f::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
+    using view_type = CompactView;
+    using const_view_type = CompactConstView;
+    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
     using State = std::conditional_t<Const,
                                      soa_storage_detail::StorageState const,
                                      soa_storage_detail::StorageState>;
-    ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
+    CompactViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{soa_storage_detail::make_strided_view<Base, Layout>(
               state, offset, count, Layout::pitches_column, Layout::yaws_column)} {}
     template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
+    CompactViewImpl(CompactViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto pitches() const { return this->column(0LL); }
     auto yaws() const { return this->column(1LL); }
     auto rolls() const { return this->column(2LL); }
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
+struct CompactConstView : CompactViewImpl<true> {
+    using Base = CompactViewImpl<true>;
     using Base::Base;
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
@@ -136,10 +132,13 @@ struct ConstView : ViewImpl<true> {
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
-static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::rotators3f::Layout::column_types, ViewImpl<false>>;
+static_assert(std::is_trivially_copyable_v<CompactConstView>);
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<CompactView,
+                                                            ioj::rotators3f::Layout::column_types,
+                                                            CompactViewImpl<false>>;
     using Base::Base;
     using Base::set;
     void set(size_type index, Rotator3f const value) const {
@@ -151,7 +150,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
-static_assert(std::is_trivially_copyable_v<View>);
+static_assert(std::is_trivially_copyable_v<CompactView>);
 
 } // namespace rotators3f
 
@@ -180,8 +179,8 @@ struct Rotators3f
         return Layout::layout_bytes(blocks);
     }
 
-    using View = rotators3f::View;
-    using ConstView = rotators3f::ConstView;
+    using CompactView = rotators3f::CompactView;
+    using CompactConstView = rotators3f::CompactConstView;
 
     /* **************************************** */
     // Lifetime

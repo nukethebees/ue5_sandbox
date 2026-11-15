@@ -24,8 +24,8 @@ class SPACEGAMEPRESENTATION_API UCollisionGridVisualizationComponent final
     UCollisionGridVisualizationComponent();
 
     void configure(TOptional<FCollisionGridVisualizationSettings> settings);
-    void update_collision_bounds(sim::collision::EntityCellData::ConstView entity_aabbs,
-                                 sim::collision::WorldAABBs::ConstView static_aabbs);
+    void update_collision_bounds(sim::collision::EntityCellData::CompactConstView entity_aabbs,
+                                 sim::collision::WorldAABBs::CompactConstView static_aabbs);
     void clear_collision_bounds();
     void clear();
 

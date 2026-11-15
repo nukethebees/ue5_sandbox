@@ -21,10 +21,10 @@
 namespace ioj::sim {
 namespace fighter_entity_data {
 struct Schema;
+struct CompactView;
+struct CompactConstView;
 struct View;
 struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
@@ -301,68 +301,67 @@ struct Schema {
 };
 
 /* **************************************** */
-// Resolved views
+// Views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl
-    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
     using Layout = fighter_entity_data::Layout;
-    using view_type = ResolvedView;
-    using const_view_type = ResolvedConstView;
+    using view_type = View;
+    using const_view_type = ConstView;
     using soa_schema = Schema;
     template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto entity_ids() const { return this->column(this->columns_.entity_ids); }
     auto integral_biases() const { return this->column(this->columns_.integral_biases); }
     auto float_biases() const { return this->column(this->columns_.float_biases); }
     auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.locations_xs,
                 this->columns_.locations_ys,
                 this->columns_.locations_zs,
                 this->num()};
     }
     auto view_desired_move_locations() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.desired_move_locations_xs,
                 this->columns_.desired_move_locations_ys,
                 this->columns_.desired_move_locations_zs,
                 this->num()};
     }
     auto view_aim_directions() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.aim_directions_xs,
                 this->columns_.aim_directions_ys,
                 this->columns_.aim_directions_zs,
                 this->num()};
     }
     auto view_planned_aim_directions() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.planned_aim_directions_xs,
                 this->columns_.planned_aim_directions_ys,
                 this->columns_.planned_aim_directions_zs,
                 this->num()};
     }
     auto view_desired_aiming_directions() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.desired_aiming_directions_xs,
                 this->columns_.desired_aiming_directions_ys,
                 this->columns_.desired_aiming_directions_zs,
                 this->num()};
     }
     auto view_movement_directions() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.movement_directions_xs,
                 this->columns_.movement_directions_ys,
                 this->columns_.movement_directions_zs,
                 this->num()};
     }
     auto view_velocities() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.velocities_xs,
                 this->columns_.velocities_ys,
                 this->columns_.velocities_zs,
@@ -378,7 +377,7 @@ struct ResolvedViewImpl
         return this->column(this->columns_.navigation_update_countdowns_periods);
     }
     auto view_separation_steering() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.separation_steering_xs,
                 this->columns_.separation_steering_ys,
                 this->columns_.separation_steering_zs,
@@ -399,14 +398,14 @@ struct ResolvedViewImpl
     auto attack_cooldowns() const { return this->column(this->columns_.attack_cooldowns); }
     auto target_ids() const { return this->column(this->columns_.target_ids); }
     auto view_target_locations() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.target_locations_xs,
                 this->columns_.target_locations_ys,
                 this->columns_.target_locations_zs,
                 this->num()};
     }
     auto view_target_velocities() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.target_velocities_xs,
                 this->columns_.target_velocities_ys,
                 this->columns_.target_velocities_zs,
@@ -417,252 +416,10 @@ struct ResolvedViewImpl
     auto target_distances() const { return this->column(this->columns_.target_distances); }
     auto target_radii() const { return this->column(this->columns_.target_radii); }
 };
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
-    using Base::Base;
-};
-struct ResolvedView
-    : soa_storage_detail::
-          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        ResolvedView,
-        ioj::sim::fighter_entity_data::Layout::column_types,
-        ResolvedViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             std::uint32_t const new_integral_biases,
-             float const new_float_biases,
-             Vector3f const new_locations,
-             Vector3f const new_desired_move_locations,
-             Vector3f const new_aim_directions,
-             Vector3f const new_planned_aim_directions,
-             Vector3f const new_desired_aiming_directions,
-             Vector3f const new_movement_directions,
-             Vector3f const new_velocities,
-             float const new_move_distances,
-             float const new_speeds,
-             ::ioj::Team const new_teams,
-             std::int16_t const new_navigation_update_countdowns_remaining_ticks,
-             std::int16_t const new_navigation_update_countdowns_periods,
-             Vector3f const new_separation_steering,
-             ioj::sim::fighters::NavigationRiskCode const new_navigation_risk_tiers,
-             ioj::sim::fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
-             ioj::sim::fighters::AvoidanceChoice const new_avoidance_choice_indices,
-             ioj::sim::fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
-             std::int16_t const new_attack_cooldowns,
-             EntityId const new_target_ids,
-             Vector3f const new_target_locations,
-             Vector3f const new_target_velocities,
-             float const new_intercept_times,
-             float const new_target_distance_sq,
-             float const new_target_distances,
-             float const new_target_radii) const {
-        assert((index < num()));
-        this->entity_ids()[index] = new_entity_ids;
-        this->integral_biases()[index] = new_integral_biases;
-        this->float_biases()[index] = new_float_biases;
-        this->view_locations().set(index, new_locations);
-        this->view_desired_move_locations().set(index, new_desired_move_locations);
-        this->view_aim_directions().set(index, new_aim_directions);
-        this->view_planned_aim_directions().set(index, new_planned_aim_directions);
-        this->view_desired_aiming_directions().set(index, new_desired_aiming_directions);
-        this->view_movement_directions().set(index, new_movement_directions);
-        this->view_velocities().set(index, new_velocities);
-        this->move_distances()[index] = new_move_distances;
-        this->speeds()[index] = new_speeds;
-        this->teams()[index] = new_teams;
-        this->navigation_update_countdowns_remaining_ticks()[index] =
-            new_navigation_update_countdowns_remaining_ticks;
-        this->navigation_update_countdowns_periods()[index] =
-            new_navigation_update_countdowns_periods;
-        this->view_separation_steering().set(index, new_separation_steering);
-        this->navigation_risk_tiers()[index] = new_navigation_risk_tiers;
-        this->navigation_lower_risk_scan_counts()[index] = new_navigation_lower_risk_scan_counts;
-        this->avoidance_choice_indices()[index] = new_avoidance_choice_indices;
-        this->avoidance_clear_scan_counts()[index] = new_avoidance_clear_scan_counts;
-        this->attack_cooldowns()[index] = new_attack_cooldowns;
-        this->target_ids()[index] = new_target_ids;
-        this->view_target_locations().set(index, new_target_locations);
-        this->view_target_velocities().set(index, new_target_velocities);
-        this->intercept_times()[index] = new_intercept_times;
-        this->target_distance_sq()[index] = new_target_distance_sq;
-        this->target_distances()[index] = new_target_distances;
-        this->target_radii()[index] = new_target_radii;
-    }
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = fighter_entity_data::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entity_ids() const { return this->template column<EntityId>(Layout::entity_ids_column); }
-    auto integral_biases() const {
-        return this->template column<std::uint32_t>(Layout::integral_biases_column);
-    }
-    auto float_biases() const { return this->template column<float>(Layout::float_biases_column); }
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::locations_xs_column,
-                    Layout::locations_ys_column);
-    }
-    auto view_desired_move_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::desired_move_locations_xs_column,
-                    Layout::desired_move_locations_ys_column);
-    }
-    auto view_aim_directions() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::aim_directions_xs_column,
-                    Layout::aim_directions_ys_column);
-    }
-    auto view_planned_aim_directions() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::planned_aim_directions_xs_column,
-                    Layout::planned_aim_directions_ys_column);
-    }
-    auto view_desired_aiming_directions() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::desired_aiming_directions_xs_column,
-                    Layout::desired_aiming_directions_ys_column);
-    }
-    auto view_movement_directions() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::movement_directions_xs_column,
-                    Layout::movement_directions_ys_column);
-    }
-    auto view_velocities() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::velocities_xs_column,
-                    Layout::velocities_ys_column);
-    }
-    auto move_distances() const {
-        return this->template column<float>(Layout::move_distances_column);
-    }
-    auto speeds() const { return this->template column<float>(Layout::speeds_column); }
-    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-    auto navigation_update_countdowns_remaining_ticks() const {
-        return this->template column<std::int16_t>(
-            Layout::navigation_update_countdowns_remaining_ticks_column);
-    }
-    auto navigation_update_countdowns_periods() const {
-        return this->template column<std::int16_t>(
-            Layout::navigation_update_countdowns_periods_column);
-    }
-    auto view_separation_steering() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::separation_steering_xs_column,
-                    Layout::separation_steering_ys_column);
-    }
-    auto navigation_risk_tiers() const {
-        return this->template column<fighters::NavigationRiskCode>(
-            Layout::navigation_risk_tiers_column);
-    }
-    auto navigation_lower_risk_scan_counts() const {
-        return this->template column<fighters::NavigationScanCount>(
-            Layout::navigation_lower_risk_scan_counts_column);
-    }
-    auto avoidance_choice_indices() const {
-        return this->template column<fighters::AvoidanceChoice>(
-            Layout::avoidance_choice_indices_column);
-    }
-    auto avoidance_clear_scan_counts() const {
-        return this->template column<fighters::NavigationScanCount>(
-            Layout::avoidance_clear_scan_counts_column);
-    }
-    auto attack_cooldowns() const {
-        return this->template column<std::int16_t>(Layout::attack_cooldowns_column);
-    }
-    auto target_ids() const { return this->template column<EntityId>(Layout::target_ids_column); }
-    auto view_target_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::target_locations_xs_column,
-                    Layout::target_locations_ys_column);
-    }
-    auto view_target_velocities() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::target_velocities_xs_column,
-                    Layout::target_velocities_ys_column);
-    }
-    auto intercept_times() const {
-        return this->template column<float>(Layout::intercept_times_column);
-    }
-    auto target_distance_sq() const {
-        return this->template column<float>(Layout::target_distance_sq_column);
-    }
-    auto target_distances() const {
-        return this->template column<float>(Layout::target_distances_column);
-    }
-    auto target_radii() const { return this->template column<float>(Layout::target_radii_column); }
-};
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(soa_storage_detail::validate_compact_view<ConstView>());
 struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
@@ -732,7 +489,249 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
         this->target_radii()[index] = new_target_radii;
     }
 };
-static_assert(soa_storage_detail::validate_compact_view<View>());
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+template <bool Const>
+struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
+    using Layout = fighter_entity_data::Layout;
+    using view_type = CompactView;
+    using const_view_type = CompactConstView;
+    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
+    template <bool Enabled = Const>
+    CompactViewImpl(CompactViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+    auto entity_ids() const { return this->template column<EntityId>(Layout::entity_ids_column); }
+    auto integral_biases() const {
+        return this->template column<std::uint32_t>(Layout::integral_biases_column);
+    }
+    auto float_biases() const { return this->template column<float>(Layout::float_biases_column); }
+    auto view_locations() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::locations_xs_column,
+                    Layout::locations_ys_column);
+    }
+    auto view_desired_move_locations() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::desired_move_locations_xs_column,
+                    Layout::desired_move_locations_ys_column);
+    }
+    auto view_aim_directions() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::aim_directions_xs_column,
+                    Layout::aim_directions_ys_column);
+    }
+    auto view_planned_aim_directions() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::planned_aim_directions_xs_column,
+                    Layout::planned_aim_directions_ys_column);
+    }
+    auto view_desired_aiming_directions() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::desired_aiming_directions_xs_column,
+                    Layout::desired_aiming_directions_ys_column);
+    }
+    auto view_movement_directions() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::movement_directions_xs_column,
+                    Layout::movement_directions_ys_column);
+    }
+    auto view_velocities() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::velocities_xs_column,
+                    Layout::velocities_ys_column);
+    }
+    auto move_distances() const {
+        return this->template column<float>(Layout::move_distances_column);
+    }
+    auto speeds() const { return this->template column<float>(Layout::speeds_column); }
+    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
+    auto navigation_update_countdowns_remaining_ticks() const {
+        return this->template column<std::int16_t>(
+            Layout::navigation_update_countdowns_remaining_ticks_column);
+    }
+    auto navigation_update_countdowns_periods() const {
+        return this->template column<std::int16_t>(
+            Layout::navigation_update_countdowns_periods_column);
+    }
+    auto view_separation_steering() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::separation_steering_xs_column,
+                    Layout::separation_steering_ys_column);
+    }
+    auto navigation_risk_tiers() const {
+        return this->template column<fighters::NavigationRiskCode>(
+            Layout::navigation_risk_tiers_column);
+    }
+    auto navigation_lower_risk_scan_counts() const {
+        return this->template column<fighters::NavigationScanCount>(
+            Layout::navigation_lower_risk_scan_counts_column);
+    }
+    auto avoidance_choice_indices() const {
+        return this->template column<fighters::AvoidanceChoice>(
+            Layout::avoidance_choice_indices_column);
+    }
+    auto avoidance_clear_scan_counts() const {
+        return this->template column<fighters::NavigationScanCount>(
+            Layout::avoidance_clear_scan_counts_column);
+    }
+    auto attack_cooldowns() const {
+        return this->template column<std::int16_t>(Layout::attack_cooldowns_column);
+    }
+    auto target_ids() const { return this->template column<EntityId>(Layout::target_ids_column); }
+    auto view_target_locations() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::target_locations_xs_column,
+                    Layout::target_locations_ys_column);
+    }
+    auto view_target_velocities() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::target_velocities_xs_column,
+                    Layout::target_velocities_ys_column);
+    }
+    auto intercept_times() const {
+        return this->template column<float>(Layout::intercept_times_column);
+    }
+    auto target_distance_sq() const {
+        return this->template column<float>(Layout::target_distance_sq_column);
+    }
+    auto target_distances() const {
+        return this->template column<float>(Layout::target_distances_column);
+    }
+    auto target_radii() const { return this->template column<float>(Layout::target_radii_column); }
+};
+struct CompactConstView : CompactViewImpl<true> {
+    using Base = CompactViewImpl<true>;
+    using Base::Base;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        CompactView,
+        ioj::sim::fighter_entity_data::Layout::column_types,
+        CompactViewImpl<false>>;
+    using Base::Base;
+    using Base::set;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             std::uint32_t const new_integral_biases,
+             float const new_float_biases,
+             Vector3f const new_locations,
+             Vector3f const new_desired_move_locations,
+             Vector3f const new_aim_directions,
+             Vector3f const new_planned_aim_directions,
+             Vector3f const new_desired_aiming_directions,
+             Vector3f const new_movement_directions,
+             Vector3f const new_velocities,
+             float const new_move_distances,
+             float const new_speeds,
+             ::ioj::Team const new_teams,
+             std::int16_t const new_navigation_update_countdowns_remaining_ticks,
+             std::int16_t const new_navigation_update_countdowns_periods,
+             Vector3f const new_separation_steering,
+             ioj::sim::fighters::NavigationRiskCode const new_navigation_risk_tiers,
+             ioj::sim::fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
+             ioj::sim::fighters::AvoidanceChoice const new_avoidance_choice_indices,
+             ioj::sim::fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
+             std::int16_t const new_attack_cooldowns,
+             EntityId const new_target_ids,
+             Vector3f const new_target_locations,
+             Vector3f const new_target_velocities,
+             float const new_intercept_times,
+             float const new_target_distance_sq,
+             float const new_target_distances,
+             float const new_target_radii) const {
+        assert((index < num()));
+        this->entity_ids()[index] = new_entity_ids;
+        this->integral_biases()[index] = new_integral_biases;
+        this->float_biases()[index] = new_float_biases;
+        this->view_locations().set(index, new_locations);
+        this->view_desired_move_locations().set(index, new_desired_move_locations);
+        this->view_aim_directions().set(index, new_aim_directions);
+        this->view_planned_aim_directions().set(index, new_planned_aim_directions);
+        this->view_desired_aiming_directions().set(index, new_desired_aiming_directions);
+        this->view_movement_directions().set(index, new_movement_directions);
+        this->view_velocities().set(index, new_velocities);
+        this->move_distances()[index] = new_move_distances;
+        this->speeds()[index] = new_speeds;
+        this->teams()[index] = new_teams;
+        this->navigation_update_countdowns_remaining_ticks()[index] =
+            new_navigation_update_countdowns_remaining_ticks;
+        this->navigation_update_countdowns_periods()[index] =
+            new_navigation_update_countdowns_periods;
+        this->view_separation_steering().set(index, new_separation_steering);
+        this->navigation_risk_tiers()[index] = new_navigation_risk_tiers;
+        this->navigation_lower_risk_scan_counts()[index] = new_navigation_lower_risk_scan_counts;
+        this->avoidance_choice_indices()[index] = new_avoidance_choice_indices;
+        this->avoidance_clear_scan_counts()[index] = new_avoidance_clear_scan_counts;
+        this->attack_cooldowns()[index] = new_attack_cooldowns;
+        this->target_ids()[index] = new_target_ids;
+        this->view_target_locations().set(index, new_target_locations);
+        this->view_target_velocities().set(index, new_target_velocities);
+        this->intercept_times()[index] = new_intercept_times;
+        this->target_distance_sq()[index] = new_target_distance_sq;
+        this->target_distances()[index] = new_target_distances;
+        this->target_radii()[index] = new_target_radii;
+    }
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace fighter_entity_data
 
@@ -806,8 +805,8 @@ struct FighterEntityData
         return Layout::layout_bytes(blocks);
     }
 
-    using View = fighter_entity_data::View;
-    using ConstView = fighter_entity_data::ConstView;
+    using CompactView = fighter_entity_data::CompactView;
+    using CompactConstView = fighter_entity_data::CompactConstView;
 
     /* **************************************** */
     // Lifetime

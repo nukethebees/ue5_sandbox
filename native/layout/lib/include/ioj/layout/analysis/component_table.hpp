@@ -21,10 +21,10 @@
 namespace ioj::layout {
 namespace component_table {
 struct Schema;
+struct CompactView;
+struct CompactConstView;
 struct View;
 struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
@@ -101,19 +101,18 @@ struct Schema {
 };
 
 /* **************************************** */
-// Resolved views
+// Views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl
-    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
     using Layout = component_table::Layout;
-    using view_type = ResolvedView;
-    using const_view_type = ResolvedConstView;
+    using view_type = View;
+    using const_view_type = ConstView;
     using soa_schema = Schema;
     template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto parent() const { return this->column(this->columns_.parent); }
@@ -127,17 +126,15 @@ struct ResolvedViewImpl
     auto padding_before_bytes() const { return this->column(this->columns_.padding_before_bytes); }
     auto slack_bytes() const { return this->column(this->columns_.slack_bytes); }
 };
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView
-    : soa_storage_detail::
-          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
-        ResolvedView,
+        View,
         ioj::layout::component_table::Layout::column_types,
-        ResolvedViewImpl<false>>;
+        ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
@@ -146,16 +143,16 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Schema;
     using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
     using Layout = component_table::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
+    using view_type = CompactView;
+    using const_view_type = CompactConstView;
+    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
     template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
+    CompactViewImpl(CompactViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto parent() const { return this->template column<AnalysisId>(Layout::parent_column); }
@@ -185,20 +182,22 @@ struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
         return this->template column<std::optional<std::uint64_t>>(Layout::slack_bytes_column);
     }
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
+struct CompactConstView : CompactViewImpl<true> {
+    using Base = CompactViewImpl<true>;
     using Base::Base;
 };
-static_assert(soa_storage_detail::validate_compact_view<ConstView>());
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
+        CompactView,
         ioj::layout::component_table::Layout::column_types,
-        ViewImpl<false>>;
+        CompactViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace component_table
 
@@ -234,8 +233,8 @@ struct ComponentTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = component_table::View;
-    using ConstView = component_table::ConstView;
+    using CompactView = component_table::CompactView;
+    using CompactConstView = component_table::CompactConstView;
 
     /* **************************************** */
     // Lifetime

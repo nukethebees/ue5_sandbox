@@ -38,7 +38,7 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_entities() const -> EntityStorage::ConstView { return entities_.const_view(); }
+    auto get_entities() const -> EntityStorage::CompactConstView { return entities_.const_view(); }
 
     /* **************************************** */
     // Accessors
@@ -60,7 +60,7 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto spawn_instances(vectors3f::ResolvedConstView const new_locations,
+    auto spawn_instances(vectors3f::ConstView const new_locations,
                          std::span<float const> const new_yaws,
                          std::span<NonNegative<std::int32_t> const> const new_fire_point_indices,
                          SpawnContext context) -> std::span<EntityId const>;

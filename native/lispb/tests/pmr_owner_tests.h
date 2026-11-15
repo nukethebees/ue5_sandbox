@@ -11,7 +11,7 @@ namespace pmr_test_support {
 template <typename Owner, typename FirstValue>
 void verify_pmr_owner(FirstValue first_value) {
     static_assert(sizeof(Owner) == 24);
-    static_assert(sizeof(typename Owner::View) == 16);
+    static_assert(sizeof(typename Owner::CompactView) == 16);
     static_assert(std::is_nothrow_move_constructible_v<Owner>);
     static_assert(!std::is_nothrow_move_assignable_v<Owner>);
     static_assert(!std::is_copy_constructible_v<Owner>);

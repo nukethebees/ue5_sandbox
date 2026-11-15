@@ -32,10 +32,10 @@ class EntityLedger {
     void record_status(std::span<EntityId const> ids,
                        std::span<Team const> teams,
                        std::span<Health const> healths);
-    void record_deaths(EntityDeathInfo::ConstView deaths, SimTick tick);
+    void record_deaths(EntityDeathInfo::CompactConstView deaths, SimTick tick);
 
     // Read death metadata after record_deaths; it describes the latest death of that identity.
-    auto unique_entities() const noexcept -> EntityHistory::ConstView {
+    auto unique_entities() const noexcept -> EntityHistory::CompactConstView {
         return history_.const_view();
     }
     // Borrow history rows in publication order until the next frame or ledger mutation.

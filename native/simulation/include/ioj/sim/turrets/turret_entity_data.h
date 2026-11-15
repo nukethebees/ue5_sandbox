@@ -22,10 +22,10 @@
 namespace ioj::sim {
 namespace turret_entity_data {
 struct Schema;
+struct CompactView;
+struct CompactConstView;
 struct View;
 struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
@@ -172,39 +172,38 @@ struct Schema {
 };
 
 /* **************************************** */
-// Resolved views
+// Views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl
-    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
     using Layout = turret_entity_data::Layout;
-    using view_type = ResolvedView;
-    using const_view_type = ResolvedConstView;
+    using view_type = View;
+    using const_view_type = ConstView;
     using soa_schema = Schema;
     template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto entity_ids() const { return this->column(this->columns_.entity_ids); }
     auto integral_biases() const { return this->column(this->columns_.integral_biases); }
     auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.locations_xs,
                 this->columns_.locations_ys,
                 this->columns_.locations_zs,
                 this->num()};
     }
     auto view_fire_point_locations() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.fire_point_locations_xs,
                 this->columns_.fire_point_locations_ys,
                 this->columns_.fire_point_locations_zs,
                 this->num()};
     }
     auto view_rotations() const
-        -> std::conditional_t<Const, rotators3f::ResolvedConstView, rotators3f::ResolvedView> {
+        -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
         return {this->columns_.rotations_pitches,
                 this->columns_.rotations_yaws,
                 this->columns_.rotations_rolls,
@@ -221,157 +220,24 @@ struct ResolvedViewImpl
     }
     auto target_ids() const { return this->column(this->columns_.target_ids); }
     auto view_target_locations() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.target_locations_xs,
                 this->columns_.target_locations_ys,
                 this->columns_.target_locations_zs,
                 this->num()};
     }
     auto view_target_velocities() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.target_velocities_xs,
                 this->columns_.target_velocities_ys,
                 this->columns_.target_velocities_zs,
                 this->num()};
     }
 };
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
-    using Base::Base;
-};
-struct ResolvedView
-    : soa_storage_detail::
-          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        ResolvedView,
-        ioj::sim::turret_entity_data::Layout::column_types,
-        ResolvedViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             std::uint32_t const new_integral_biases,
-             Vector3f const new_locations,
-             Vector3f const new_fire_point_locations,
-             Rotator3f const new_rotations,
-             ::ioj::Team const new_teams,
-             std::int16_t const new_laser_cooldowns,
-             std::int32_t const new_laser_damages,
-             std::int16_t const new_target_refresh_countdowns_periods,
-             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
-             EntityId const new_target_ids,
-             Vector3f const new_target_locations,
-             Vector3f const new_target_velocities) const {
-        assert((index < num()));
-        this->entity_ids()[index] = new_entity_ids;
-        this->integral_biases()[index] = new_integral_biases;
-        this->view_locations().set(index, new_locations);
-        this->view_fire_point_locations().set(index, new_fire_point_locations);
-        this->view_rotations().set(index, new_rotations);
-        this->teams()[index] = new_teams;
-        this->laser_cooldowns()[index] = new_laser_cooldowns;
-        this->laser_damages()[index] = new_laser_damages;
-        this->target_refresh_countdowns_periods()[index] = new_target_refresh_countdowns_periods;
-        this->target_refresh_countdowns_remaining_ticks()[index] =
-            new_target_refresh_countdowns_remaining_ticks;
-        this->target_ids()[index] = new_target_ids;
-        this->view_target_locations().set(index, new_target_locations);
-        this->view_target_velocities().set(index, new_target_velocities);
-    }
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = turret_entity_data::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entity_ids() const { return this->template column<EntityId>(Layout::entity_ids_column); }
-    auto integral_biases() const {
-        return this->template column<std::uint32_t>(Layout::integral_biases_column);
-    }
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::locations_xs_column,
-                    Layout::locations_ys_column);
-    }
-    auto view_fire_point_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::fire_point_locations_xs_column,
-                    Layout::fire_point_locations_ys_column);
-    }
-    auto view_rotations() const
-        -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, rotators3f::ConstView, rotators3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::rotations_pitches_column,
-                    Layout::rotations_yaws_column);
-    }
-    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-    auto laser_cooldowns() const {
-        return this->template column<std::int16_t>(Layout::laser_cooldowns_column);
-    }
-    auto laser_damages() const {
-        return this->template column<std::int32_t>(Layout::laser_damages_column);
-    }
-    auto target_refresh_countdowns_periods() const {
-        return this->template column<std::int16_t>(
-            Layout::target_refresh_countdowns_periods_column);
-    }
-    auto target_refresh_countdowns_remaining_ticks() const {
-        return this->template column<std::int16_t>(
-            Layout::target_refresh_countdowns_remaining_ticks_column);
-    }
-    auto target_ids() const { return this->template column<EntityId>(Layout::target_ids_column); }
-    auto view_target_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::target_locations_xs_column,
-                    Layout::target_locations_ys_column);
-    }
-    auto view_target_velocities() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::target_velocities_xs_column,
-                    Layout::target_velocities_ys_column);
-    }
-};
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(soa_storage_detail::validate_compact_view<ConstView>());
 struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
@@ -410,7 +276,140 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
         this->view_target_velocities().set(index, new_target_velocities);
     }
 };
-static_assert(soa_storage_detail::validate_compact_view<View>());
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+template <bool Const>
+struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
+    using Layout = turret_entity_data::Layout;
+    using view_type = CompactView;
+    using const_view_type = CompactConstView;
+    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
+    template <bool Enabled = Const>
+    CompactViewImpl(CompactViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+    auto entity_ids() const { return this->template column<EntityId>(Layout::entity_ids_column); }
+    auto integral_biases() const {
+        return this->template column<std::uint32_t>(Layout::integral_biases_column);
+    }
+    auto view_locations() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::locations_xs_column,
+                    Layout::locations_ys_column);
+    }
+    auto view_fire_point_locations() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::fire_point_locations_xs_column,
+                    Layout::fire_point_locations_ys_column);
+    }
+    auto view_rotations() const
+        -> std::conditional_t<Const, rotators3f::CompactConstView, rotators3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, rotators3f::CompactConstView, rotators3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::rotations_pitches_column,
+                    Layout::rotations_yaws_column);
+    }
+    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
+    auto laser_cooldowns() const {
+        return this->template column<std::int16_t>(Layout::laser_cooldowns_column);
+    }
+    auto laser_damages() const {
+        return this->template column<std::int32_t>(Layout::laser_damages_column);
+    }
+    auto target_refresh_countdowns_periods() const {
+        return this->template column<std::int16_t>(
+            Layout::target_refresh_countdowns_periods_column);
+    }
+    auto target_refresh_countdowns_remaining_ticks() const {
+        return this->template column<std::int16_t>(
+            Layout::target_refresh_countdowns_remaining_ticks_column);
+    }
+    auto target_ids() const { return this->template column<EntityId>(Layout::target_ids_column); }
+    auto view_target_locations() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::target_locations_xs_column,
+                    Layout::target_locations_ys_column);
+    }
+    auto view_target_velocities() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::target_velocities_xs_column,
+                    Layout::target_velocities_ys_column);
+    }
+};
+struct CompactConstView : CompactViewImpl<true> {
+    using Base = CompactViewImpl<true>;
+    using Base::Base;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        CompactView,
+        ioj::sim::turret_entity_data::Layout::column_types,
+        CompactViewImpl<false>>;
+    using Base::Base;
+    using Base::set;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             std::uint32_t const new_integral_biases,
+             Vector3f const new_locations,
+             Vector3f const new_fire_point_locations,
+             Rotator3f const new_rotations,
+             ::ioj::Team const new_teams,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_laser_damages,
+             std::int16_t const new_target_refresh_countdowns_periods,
+             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
+             EntityId const new_target_ids,
+             Vector3f const new_target_locations,
+             Vector3f const new_target_velocities) const {
+        assert((index < num()));
+        this->entity_ids()[index] = new_entity_ids;
+        this->integral_biases()[index] = new_integral_biases;
+        this->view_locations().set(index, new_locations);
+        this->view_fire_point_locations().set(index, new_fire_point_locations);
+        this->view_rotations().set(index, new_rotations);
+        this->teams()[index] = new_teams;
+        this->laser_cooldowns()[index] = new_laser_cooldowns;
+        this->laser_damages()[index] = new_laser_damages;
+        this->target_refresh_countdowns_periods()[index] = new_target_refresh_countdowns_periods;
+        this->target_refresh_countdowns_remaining_ticks()[index] =
+            new_target_refresh_countdowns_remaining_ticks;
+        this->target_ids()[index] = new_target_ids;
+        this->view_target_locations().set(index, new_target_locations);
+        this->view_target_velocities().set(index, new_target_velocities);
+    }
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace turret_entity_data
 
@@ -459,8 +458,8 @@ struct TurretEntityData
         return Layout::layout_bytes(blocks);
     }
 
-    using View = turret_entity_data::View;
-    using ConstView = turret_entity_data::ConstView;
+    using CompactView = turret_entity_data::CompactView;
+    using CompactConstView = turret_entity_data::CompactConstView;
 
     /* **************************************** */
     // Lifetime

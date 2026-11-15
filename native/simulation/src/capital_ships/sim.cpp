@@ -83,7 +83,7 @@ auto Sim::num_instances() const noexcept -> std::uint32_t {
 /* **************************************** */
 // Ship spawning
 /* **************************************** */
-auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data,
+auto Sim::register_ships(LevelCapitalSpawnEvents::CompactConstView const spawn_data,
                          SpawnContext const context) -> std::vector<EntityId> {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::register_ships");
     auto const n_to_add{spawn_data.num()};
@@ -118,7 +118,7 @@ auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data,
     }
     return new_ids;
 }
-void Sim::spawn_ships(LevelCapitalSpawnEvents::ConstView const spawn_data) {
+void Sim::spawn_ships(LevelCapitalSpawnEvents::CompactConstView const spawn_data) {
     assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::spawn_ships");
     spawn_data.validate();

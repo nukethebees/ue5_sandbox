@@ -85,7 +85,7 @@ auto Sim::num_instances() const noexcept -> std::uint32_t {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::spawn_instances(vectors3f::ResolvedConstView const new_locations,
+auto Sim::spawn_instances(vectors3f::ConstView const new_locations,
                           std::span<float const> const new_yaws,
                           std::span<NonNegative<std::int32_t> const> const new_fire_point_indices,
                           SpawnContext const context) -> std::span<EntityId const> {

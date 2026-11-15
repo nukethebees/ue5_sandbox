@@ -62,9 +62,9 @@ class LevelSpawnManager {
     auto entity_ids() const noexcept -> std::span<EntityId const> { return entity_ids_; }
 
   private:
-    void spawn_capitals(LevelCapitalSpawnEvents::ConstView events, SpawnContext context);
-    void spawn_turrets(LevelTurretSpawnEvents::ConstView events, SpawnContext context);
-    void spawn_spinners(LevelSpinnerSpawnEvents::ConstView events, SpawnContext context);
+    void spawn_capitals(LevelCapitalSpawnEvents::CompactConstView events, SpawnContext context);
+    void spawn_turrets(LevelTurretSpawnEvents::CompactConstView events, SpawnContext context);
+    void spawn_spinners(LevelSpinnerSpawnEvents::CompactConstView events, SpawnContext context);
 
     capital_ships::Sim& capital_ships_;
     fighters::Sim& fighters_;

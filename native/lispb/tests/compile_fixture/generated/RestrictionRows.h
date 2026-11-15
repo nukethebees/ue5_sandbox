@@ -15,10 +15,10 @@
 namespace codegen_compile_fixture {
 namespace single_restriction_rows {
 struct Schema;
+struct CompactView;
+struct CompactConstView;
 struct View;
 struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
@@ -49,64 +49,26 @@ struct Schema {
 };
 
 /* **************************************** */
-// Resolved views
+// Views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = single_restriction_rows::Layout;
-    using view_type = ResolvedView;
-    using const_view_type = ResolvedConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto restricted() const { return this->column(this->columns_.restricted); }
-};
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
-    using Base::Base;
-};
-struct ResolvedView
-    : ioj::soa_storage_detail::
-          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        ResolvedView,
-        codegen_compile_fixture::single_restriction_rows::Layout::column_types,
-        ResolvedViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : ioj::soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = ioj::soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
     using Layout = single_restriction_rows::Layout;
     using view_type = View;
     using const_view_type = ConstView;
-    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto restricted() const {
-        return this->template column<RestrictedLeaf>(Layout::restricted_column);
-    }
+    auto restricted() const { return this->column(this->columns_.restricted); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
 struct View
     : ioj::soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
@@ -116,7 +78,43 @@ struct View
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+template <bool Const>
+struct CompactViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
+    using Layout = single_restriction_rows::Layout;
+    using view_type = CompactView;
+    using const_view_type = CompactConstView;
+    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
+    template <bool Enabled = Const>
+    CompactViewImpl(CompactViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+    auto restricted() const {
+        return this->template column<RestrictedLeaf>(Layout::restricted_column);
+    }
+};
+struct CompactConstView : CompactViewImpl<true> {
+    using Base = CompactViewImpl<true>;
+    using Base::Base;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : ioj::soa_storage_detail::
+          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        CompactView,
+        codegen_compile_fixture::single_restriction_rows::Layout::column_types,
+        CompactViewImpl<false>>;
+    using Base::Base;
+    using Base::set;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace single_restriction_rows
 
@@ -143,8 +141,8 @@ struct SingleRestrictionRows
         return Layout::layout_bytes(blocks);
     }
 
-    using View = single_restriction_rows::View;
-    using ConstView = single_restriction_rows::ConstView;
+    using CompactView = single_restriction_rows::CompactView;
+    using CompactConstView = single_restriction_rows::CompactConstView;
 
     /* **************************************** */
     // Lifetime

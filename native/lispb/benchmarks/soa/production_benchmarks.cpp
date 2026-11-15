@@ -41,7 +41,7 @@ void laser_hit_accumulation(benchmark::State& state) {
     state.SetItemsProcessed(state.iterations() * count);
 }
 
-__declspec(noinline) void fighter_narrow_kernel(sim::FighterEntityData::View const view) {
+__declspec(noinline) void fighter_narrow_kernel(sim::FighterEntityData::CompactView const view) {
     auto const locations{view.view_locations().xs()};
     auto const velocities{view.view_velocities().xs()};
     auto const count{view.num()};
@@ -50,7 +50,7 @@ __declspec(noinline) void fighter_narrow_kernel(sim::FighterEntityData::View con
     }
 }
 
-__declspec(noinline) void laser_narrow_kernel(sim::lasers::LaserEntities::View const view) {
+__declspec(noinline) void laser_narrow_kernel(sim::lasers::LaserEntities::CompactView const view) {
     auto const locations{view.view_locations().xs()};
     auto const velocities{view.view_velocities().xs()};
     auto const lifetimes{view.lifetimes_remaining()};

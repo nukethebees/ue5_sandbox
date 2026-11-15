@@ -15,10 +15,10 @@ void sort_removal_indices(std::pmr::vector<std::uint32_t>& local_indices_to_remo
     std::ranges::sort(local_indices_to_remove, std::greater{});
 }
 
-void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
+void resolve_damage_events(DirectDamageEvents::CompactConstView damage_events,
                            EntityLookupTable const& lookup,
                            [[maybe_unused]] std::span<EntityId const> entity_ids,
-                           vectors3f::ResolvedConstView const locations,
+                           vectors3f::ConstView const locations,
                            HealthView const healths,
                            std::pmr::vector<std::uint32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info) {

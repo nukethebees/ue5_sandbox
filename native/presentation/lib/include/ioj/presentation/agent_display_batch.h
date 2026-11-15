@@ -32,8 +32,8 @@ struct AgentDisplayBatch {
 
     EntityType type{};
     std::span<EntityId const> ids;
-    vectors3f::ConstView locations;
-    vectors3f::ConstView velocities;
+    vectors3f::CompactConstView locations;
+    vectors3f::CompactConstView velocities;
     HealthConstView healths;
     std::span<Team const> teams;
 };

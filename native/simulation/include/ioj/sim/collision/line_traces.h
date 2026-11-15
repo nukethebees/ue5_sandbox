@@ -18,10 +18,10 @@
 namespace ioj::sim {
 namespace line_traces {
 struct Schema;
+struct CompactView;
+struct CompactConstView;
 struct View;
 struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
@@ -74,45 +74,38 @@ struct Schema {
 };
 
 /* **************************************** */
-// Resolved views
+// Views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl
-    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
     using Layout = line_traces::Layout;
-    using view_type = ResolvedView;
-    using const_view_type = ResolvedConstView;
+    using view_type = View;
+    using const_view_type = ConstView;
     using soa_schema = Schema;
     template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto view_starts() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+    auto view_starts() const -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.starts_xs,
                 this->columns_.starts_ys,
                 this->columns_.starts_zs,
                 this->num()};
     }
-    auto view_ends() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+    auto view_ends() const -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {
             this->columns_.ends_xs, this->columns_.ends_ys, this->columns_.ends_zs, this->num()};
     }
 };
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView
-    : soa_storage_detail::
-          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<ResolvedView,
-                                                   ioj::sim::line_traces::Layout::column_types,
-                                                   ResolvedViewImpl<false>>;
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::
+        ViewRowOperations<View, ioj::sim::line_traces::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
     using Base::set;
     void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) const {
@@ -126,39 +119,45 @@ struct ResolvedView
 // Strided views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
+struct CompactViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
     using soa_schema = Schema;
     using Base = soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
     using Layout = line_traces::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
+    using view_type = CompactView;
+    using const_view_type = CompactConstView;
+    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
     using State = std::conditional_t<Const,
                                      soa_storage_detail::StorageState const,
                                      soa_storage_detail::StorageState>;
-    ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
+    CompactViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{soa_storage_detail::make_strided_view<Base, Layout>(
               state, offset, count, Layout::starts_xs_column, Layout::starts_ys_column)} {}
     template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
+    CompactViewImpl(CompactViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto view_starts() const -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
+    auto view_starts() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
         return {this->column(0LL).data(), this->byte_stride(), this->num()};
     }
-    auto view_ends() const -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
+    auto view_ends() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
         return {this->column(3LL).data(), this->byte_stride(), this->num()};
     }
 };
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
+struct CompactConstView : CompactViewImpl<true> {
+    using Base = CompactViewImpl<true>;
     using Base::Base;
 };
-static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::sim::line_traces::Layout::column_types, ViewImpl<false>>;
+static_assert(std::is_trivially_copyable_v<CompactConstView>);
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
+    using Base =
+        ioj::soa_storage_detail::ViewRowOperations<CompactView,
+                                                   ioj::sim::line_traces::Layout::column_types,
+                                                   CompactViewImpl<false>>;
     using Base::Base;
     using Base::set;
     void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) const {
@@ -167,7 +166,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
         this->view_ends().set(index, new_ends);
     }
 };
-static_assert(std::is_trivially_copyable_v<View>);
+static_assert(std::is_trivially_copyable_v<CompactView>);
 
 } // namespace line_traces
 
@@ -199,8 +198,8 @@ struct LineTraces
         return Layout::layout_bytes(blocks);
     }
 
-    using View = line_traces::View;
-    using ConstView = line_traces::ConstView;
+    using CompactView = line_traces::CompactView;
+    using CompactConstView = line_traces::CompactConstView;
 
     /* **************************************** */
     // Lifetime

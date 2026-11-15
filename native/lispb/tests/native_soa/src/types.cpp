@@ -8,34 +8,34 @@
 namespace ioj::native_soa_fixture {
 
 namespace api_coordinates {
-auto ResolvedConstView::x_at(std::uint32_t index) const -> float {
-    return this->xs()[index];
-}
-auto ResolvedView::x_at(std::uint32_t index) const -> float {
-    return this->xs()[index];
-}
 auto ConstView::x_at(std::uint32_t index) const -> float {
     return this->xs()[index];
 }
-
 auto View::x_at(std::uint32_t index) const -> float {
+    return this->xs()[index];
+}
+auto CompactConstView::x_at(std::uint32_t index) const -> float {
+    return this->xs()[index];
+}
+
+auto CompactView::x_at(std::uint32_t index) const -> float {
     return this->xs()[index];
 }
 
 } // namespace api_coordinates
 
 namespace api_owner {
-auto ResolvedConstView::first_x() const -> float {
-    return this->view_positions().xs()[0];
-}
-auto ResolvedView::first_x() const -> float {
-    return this->view_positions().xs()[0];
-}
 auto ConstView::first_x() const -> float {
     return this->view_positions().xs()[0];
 }
-
 auto View::first_x() const -> float {
+    return this->view_positions().xs()[0];
+}
+auto CompactConstView::first_x() const -> float {
+    return this->view_positions().xs()[0];
+}
+
+auto CompactView::first_x() const -> float {
     return this->view_positions().xs()[0];
 }
 

@@ -304,8 +304,8 @@ void UCollisionGridVisualizationComponent::configure(
 }
 
 void UCollisionGridVisualizationComponent::update_collision_bounds(
-    sim::collision::EntityCellData::ConstView const entity_aabbs,
-    sim::collision::WorldAABBs::ConstView const static_aabbs) {
+    sim::collision::EntityCellData::CompactConstView const entity_aabbs,
+    sim::collision::WorldAABBs::CompactConstView const static_aabbs) {
     auto const max_draw_distance{FMath::Max(collision_bounds_max_draw_distance_, 0.f)};
     auto const visible{show_collision_bounds_};
     auto const settings_changed{collision_bounds_visible_ != visible ||

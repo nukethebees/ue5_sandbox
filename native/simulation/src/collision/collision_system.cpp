@@ -262,10 +262,10 @@ void CollisionSystem::finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
 void CollisionSystem::reset_frame_collision_events() {
     overlap_event_storage_.reset();
 }
-auto CollisionSystem::entity_collision_bounds() const -> EntityCellData::ConstView {
+auto CollisionSystem::entity_collision_bounds() const -> EntityCellData::CompactConstView {
     return uniform_grid_.entity_world_bounds();
 }
-auto CollisionSystem::static_collision_bounds() const -> WorldAABBs::ConstView {
+auto CollisionSystem::static_collision_bounds() const -> WorldAABBs::CompactConstView {
     return uniform_grid_.static_aabbs().const_view();
 }
 }

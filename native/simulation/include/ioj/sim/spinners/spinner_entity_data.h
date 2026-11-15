@@ -19,10 +19,10 @@
 namespace ioj::sim {
 namespace spinner_entity_data {
 struct Schema;
+struct CompactView;
+struct CompactConstView;
 struct View;
 struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
@@ -80,24 +80,23 @@ struct Schema {
 };
 
 /* **************************************** */
-// Resolved views
+// Views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl
-    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
     using Layout = spinner_entity_data::Layout;
-    using view_type = ResolvedView;
-    using const_view_type = ResolvedConstView;
+    using view_type = View;
+    using const_view_type = ConstView;
     using soa_schema = Schema;
     template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto entity_ids() const { return this->column(this->columns_.entity_ids); }
     auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.locations_xs,
                 this->columns_.locations_ys,
                 this->columns_.locations_zs,
@@ -109,74 +108,10 @@ struct ResolvedViewImpl
         return this->column(this->columns_.next_fire_point_indices);
     }
 };
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
-    using Base::Base;
-};
-struct ResolvedView
-    : soa_storage_detail::
-          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        ResolvedView,
-        ioj::sim::spinner_entity_data::Layout::column_types,
-        ResolvedViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             Vector3f const new_locations,
-             float const new_yaws,
-             std::int16_t const new_laser_cooldowns,
-             std::int32_t const new_next_fire_point_indices) const {
-        assert((index < num()));
-        this->entity_ids()[index] = new_entity_ids;
-        this->view_locations().set(index, new_locations);
-        this->yaws()[index] = new_yaws;
-        this->laser_cooldowns()[index] = new_laser_cooldowns;
-        this->next_fire_point_indices()[index] = new_next_fire_point_indices;
-    }
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = spinner_entity_data::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entity_ids() const { return this->template column<EntityId>(Layout::entity_ids_column); }
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::locations_xs_column,
-                    Layout::locations_ys_column);
-    }
-    auto yaws() const { return this->template column<float>(Layout::yaws_column); }
-    auto laser_cooldowns() const {
-        return this->template column<std::int16_t>(Layout::laser_cooldowns_column);
-    }
-    auto next_fire_point_indices() const {
-        return this->template column<std::int32_t>(Layout::next_fire_point_indices_column);
-    }
-};
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(soa_storage_detail::validate_compact_view<ConstView>());
 struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
@@ -198,7 +133,71 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
         this->next_fire_point_indices()[index] = new_next_fire_point_indices;
     }
 };
-static_assert(soa_storage_detail::validate_compact_view<View>());
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+template <bool Const>
+struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
+    using Layout = spinner_entity_data::Layout;
+    using view_type = CompactView;
+    using const_view_type = CompactConstView;
+    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
+    template <bool Enabled = Const>
+    CompactViewImpl(CompactViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+    auto entity_ids() const { return this->template column<EntityId>(Layout::entity_ids_column); }
+    auto view_locations() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::locations_xs_column,
+                    Layout::locations_ys_column);
+    }
+    auto yaws() const { return this->template column<float>(Layout::yaws_column); }
+    auto laser_cooldowns() const {
+        return this->template column<std::int16_t>(Layout::laser_cooldowns_column);
+    }
+    auto next_fire_point_indices() const {
+        return this->template column<std::int32_t>(Layout::next_fire_point_indices_column);
+    }
+};
+struct CompactConstView : CompactViewImpl<true> {
+    using Base = CompactViewImpl<true>;
+    using Base::Base;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        CompactView,
+        ioj::sim::spinner_entity_data::Layout::column_types,
+        CompactViewImpl<false>>;
+    using Base::Base;
+    using Base::set;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             Vector3f const new_locations,
+             float const new_yaws,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_next_fire_point_indices) const {
+        assert((index < num()));
+        this->entity_ids()[index] = new_entity_ids;
+        this->view_locations().set(index, new_locations);
+        this->yaws()[index] = new_yaws;
+        this->laser_cooldowns()[index] = new_laser_cooldowns;
+        this->next_fire_point_indices()[index] = new_next_fire_point_indices;
+    }
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace spinner_entity_data
 
@@ -231,8 +230,8 @@ struct SpinnerEntityData
         return Layout::layout_bytes(blocks);
     }
 
-    using View = spinner_entity_data::View;
-    using ConstView = spinner_entity_data::ConstView;
+    using CompactView = spinner_entity_data::CompactView;
+    using CompactConstView = spinner_entity_data::CompactConstView;
 
     /* **************************************** */
     // Lifetime

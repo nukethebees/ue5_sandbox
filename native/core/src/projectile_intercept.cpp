@@ -10,16 +10,15 @@ auto dot_product(ioj::Vector3f const lhs, ioj::Vector3f const rhs) noexcept -> f
     return ioj::dot(lhs, rhs);
 }
 
-auto at(ioj::vectors3f::ResolvedConstView const values, std::uint32_t const index) noexcept
+auto at(ioj::vectors3f::ConstView const values, std::uint32_t const index) noexcept
     -> ioj::Vector3f {
     return values[index];
 }
 
-auto validate_batch(
-    [[maybe_unused]] float const* const out_intercept_times,
-    ioj::vectors3f::ResolvedConstView const shooter_positions,
-    [[maybe_unused]] ioj::vectors3f::ResolvedConstView const target_positions,
-    [[maybe_unused]] ioj::vectors3f::ResolvedConstView const target_velocities) noexcept
+auto validate_batch([[maybe_unused]] float const* const out_intercept_times,
+                    ioj::vectors3f::ConstView const shooter_positions,
+                    [[maybe_unused]] ioj::vectors3f::ConstView const target_positions,
+                    [[maybe_unused]] ioj::vectors3f::ConstView const target_velocities) noexcept
     -> std::uint32_t {
     auto const count{shooter_positions.num()};
     assert(count == target_positions.num());
@@ -74,9 +73,9 @@ auto solve_intercept_time(Vector3f const shooter_position,
 
 namespace ioj::detail::solve_intercept_times_aos {
 void solve_intercept_times(float* const out_intercept_times,
-                           vectors3f::ResolvedConstView const shooter_positions,
-                           vectors3f::ResolvedConstView const target_positions,
-                           vectors3f::ResolvedConstView const target_velocities,
+                           vectors3f::ConstView const shooter_positions,
+                           vectors3f::ConstView const target_positions,
+                           vectors3f::ConstView const target_velocities,
                            float const projectile_speed) noexcept {
     auto const count{validate_batch(
         out_intercept_times, shooter_positions, target_positions, target_velocities)};
@@ -91,9 +90,9 @@ void solve_intercept_times(float* const out_intercept_times,
 
 namespace ioj::detail::solve_intercept_times_struct_loop {
 void solve_intercept_times(float* const out_intercept_times,
-                           vectors3f::ResolvedConstView const shooter_positions,
-                           vectors3f::ResolvedConstView const target_positions,
-                           vectors3f::ResolvedConstView const target_velocities,
+                           vectors3f::ConstView const shooter_positions,
+                           vectors3f::ConstView const target_positions,
+                           vectors3f::ConstView const target_velocities,
                            float const projectile_speed) noexcept {
     constexpr float no_intercept{};
     constexpr float epsilon{1e-8f};

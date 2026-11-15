@@ -18,10 +18,10 @@
 namespace ioj::sim::collision {
 namespace world_aab_bs {
 struct Schema;
+struct CompactView;
+struct CompactConstView;
 struct View;
 struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
@@ -74,92 +74,39 @@ struct Schema {
 };
 
 /* **************************************** */
-// Resolved views
+// Views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl
-    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = world_aab_bs::Layout;
-    using view_type = ResolvedView;
-    using const_view_type = ResolvedConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_min_points() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
-        return {this->columns_.min_points_xs,
-                this->columns_.min_points_ys,
-                this->columns_.min_points_zs,
-                this->num()};
-    }
-    auto view_max_points() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
-        return {this->columns_.max_points_xs,
-                this->columns_.max_points_ys,
-                this->columns_.max_points_zs,
-                this->num()};
-    }
-};
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
-    using Base::Base;
-};
-struct ResolvedView
-    : soa_storage_detail::
-          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        ResolvedView,
-        ioj::sim::collision::world_aab_bs::Layout::column_types,
-        ResolvedViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) const {
-        assert((index < num()));
-        this->view_min_points().set(index, new_min_points);
-        this->view_max_points().set(index, new_max_points);
-    }
-};
-
-/* **************************************** */
-// Strided views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::StridedViewBase<float, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
     using Layout = world_aab_bs::Layout;
     using view_type = View;
     using const_view_type = ConstView;
-    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
-    using State = std::conditional_t<Const,
-                                     soa_storage_detail::StorageState const,
-                                     soa_storage_detail::StorageState>;
-    ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{soa_storage_detail::make_strided_view<Base, Layout>(
-              state, offset, count, Layout::min_points_xs_column, Layout::min_points_ys_column)} {}
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto view_min_points() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->column(0LL).data(), this->byte_stride(), this->num()};
+        return {this->columns_.min_points_xs,
+                this->columns_.min_points_ys,
+                this->columns_.min_points_zs,
+                this->num()};
     }
     auto view_max_points() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->column(3LL).data(), this->byte_stride(), this->num()};
+        return {this->columns_.max_points_xs,
+                this->columns_.max_points_ys,
+                this->columns_.max_points_zs,
+                this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(std::is_trivially_copyable_v<ConstView>);
 struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
@@ -173,7 +120,59 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
         this->view_max_points().set(index, new_max_points);
     }
 };
-static_assert(std::is_trivially_copyable_v<View>);
+
+/* **************************************** */
+// Strided views
+/* **************************************** */
+template <bool Const>
+struct CompactViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::StridedViewBase<float, Const>;
+    using Base::Base;
+    using Layout = world_aab_bs::Layout;
+    using view_type = CompactView;
+    using const_view_type = CompactConstView;
+    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
+    using State = std::conditional_t<Const,
+                                     soa_storage_detail::StorageState const,
+                                     soa_storage_detail::StorageState>;
+    CompactViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
+        : Base{soa_storage_detail::make_strided_view<Base, Layout>(
+              state, offset, count, Layout::min_points_xs_column, Layout::min_points_ys_column)} {}
+    template <bool Enabled = Const>
+    CompactViewImpl(CompactViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+    auto view_min_points() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return {this->column(0LL).data(), this->byte_stride(), this->num()};
+    }
+    auto view_max_points() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return {this->column(3LL).data(), this->byte_stride(), this->num()};
+    }
+};
+struct CompactConstView : CompactViewImpl<true> {
+    using Base = CompactViewImpl<true>;
+    using Base::Base;
+};
+static_assert(std::is_trivially_copyable_v<CompactConstView>);
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        CompactView,
+        ioj::sim::collision::world_aab_bs::Layout::column_types,
+        CompactViewImpl<false>>;
+    using Base::Base;
+    using Base::set;
+    void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) const {
+        assert((index < num()));
+        this->view_min_points().set(index, new_min_points);
+        this->view_max_points().set(index, new_max_points);
+    }
+};
+static_assert(std::is_trivially_copyable_v<CompactView>);
 
 } // namespace world_aab_bs
 
@@ -205,8 +204,8 @@ struct WorldAABBs
         return Layout::layout_bytes(blocks);
     }
 
-    using View = world_aab_bs::View;
-    using ConstView = world_aab_bs::ConstView;
+    using CompactView = world_aab_bs::CompactView;
+    using CompactConstView = world_aab_bs::CompactConstView;
 
     /* **************************************** */
     // Lifetime

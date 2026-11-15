@@ -100,11 +100,11 @@ struct OverlapFixture {
         refresh_and_detect_overlaps({});
     }
 
-    auto get_entity_overlaps() const -> collision::EntityEntityOverlaps::ConstView {
+    auto get_entity_overlaps() const -> collision::EntityEntityOverlaps::CompactConstView {
         return query_manager.aabb_overlap_events().entity_entity_overlaps;
     }
 
-    auto get_static_overlaps() const -> collision::EntityStaticOverlaps::ConstView {
+    auto get_static_overlaps() const -> collision::EntityStaticOverlaps::CompactConstView {
         return query_manager.aabb_overlap_events().entity_static_overlaps;
     }
 
@@ -138,7 +138,7 @@ void expect_empty_collision_events(collision::AABBOverlapEventsView const& event
     EXPECT_TRUE(events.batches.empty());
 }
 
-void check_single_pair(collision::EntityEntityOverlaps::ConstView const overlaps,
+void check_single_pair(collision::EntityEntityOverlaps::CompactConstView const overlaps,
                        EntityId const lhs,
                        EntityId const rhs) {
     EXPECT_EQ(overlaps.num(), 1) << "Exactly one overlap pair is reported";
@@ -153,7 +153,7 @@ void check_single_pair(collision::EntityEntityOverlaps::ConstView const overlaps
     }
 }
 
-void check_single_static_overlap(collision::EntityStaticOverlaps::ConstView const overlaps,
+void check_single_static_overlap(collision::EntityStaticOverlaps::CompactConstView const overlaps,
                                  EntityId const entity,
                                  collision::StaticGeometryIndex const static_geometry_index) {
     EXPECT_EQ(overlaps.num(), 1) << "Exactly one static overlap is reported";

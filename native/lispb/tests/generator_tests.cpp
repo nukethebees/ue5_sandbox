@@ -62,8 +62,8 @@ TEST(Generator, LowersDynamicSoaIntoNativeOwnerAndViews) {
     auto const& source{files.back().content};
     expect_contains_all(header,
                         {"namespace f_data",
-                         "struct EXAMPLE_API ConstView",
-                         "ResolvedViewBase<",
+                         "struct EXAMPLE_API CompactConstView",
+                         "ViewBase<",
                          "std::pmr::memory_resource&",
                          "#include \"Project/Handle.h\"",
                          "using Operations = ioj::native_soa::StorageOperations;"});

@@ -39,7 +39,7 @@ struct Sim {
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto entities() const -> EntityStorage::ConstView { return entities_.const_view(); }
+    auto entities() const -> EntityStorage::CompactConstView { return entities_.const_view(); }
     auto num_instances() const noexcept -> std::uint32_t;
     auto healths() const -> HealthConstView {
         return entity_tables_.health.const_view<EntityType::Fighter>();
@@ -49,7 +49,7 @@ struct Sim {
     // Spawning
     /* **************************************** */
     // Queue a single-team wave for the next Preparation, subject to the team's live cap.
-    auto queue_spawns(FighterSpawnQueue::ConstView new_spawns) -> std::uint32_t;
+    auto queue_spawns(FighterSpawnQueue::CompactConstView new_spawns) -> std::uint32_t;
 
   private:
     using NavigationScratch = fighters::NavigationScratch;
@@ -82,7 +82,7 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
-    void move(EntityStorage::View fighters, ActionInputs inputs);
+    void move(EntityStorage::CompactView fighters, ActionInputs inputs);
     void update_navigation_steering(ThinkingInputs const inputs);
     void collect_navigation_updates(NavigationScratch& scratch);
     void update_separation_observations(NavigationScratch& scratch, ThinkingInputs const inputs);
@@ -106,7 +106,7 @@ struct Sim {
     /* **************************************** */
     // Combat
     /* **************************************** */
-    void handle_firing(EntityStorage::View data, ThinkingInputs const inputs);
+    void handle_firing(EntityStorage::CompactView data, ThinkingInputs const inputs);
 
     /* **************************************** */
     // Spawning

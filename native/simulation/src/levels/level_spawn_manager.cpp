@@ -78,7 +78,7 @@ void LevelSpawnManager::process_event(EventHandle const event,
     }
 }
 
-void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEvents::ConstView const events,
+void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEvents::CompactConstView const events,
                                        SpawnContext const context) {
     if (entity_ids_[events.entity_indices()[0].index()].is_valid()) {
         return;
@@ -142,7 +142,7 @@ void LevelSpawnManager::queue_fighter_spawns(float const dt,
     }
 }
 
-void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEvents::ConstView const events,
+void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEvents::CompactConstView const events,
                                       SpawnContext const context) {
     if (entity_ids_[events.entity_indices()[0].index()].is_valid()) {
         return;
@@ -156,7 +156,7 @@ void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEvents::ConstView const ev
     }
 }
 
-void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEvents::ConstView const events,
+void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEvents::CompactConstView const events,
                                        SpawnContext const context) {
     if (entity_ids_[events.entity_indices()[0].index()].is_valid()) {
         return;

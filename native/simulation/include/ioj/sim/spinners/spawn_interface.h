@@ -17,7 +17,7 @@ class SpawnInterface {
         : simulation{new_target} {}
 
     std::span<ioj::sim::EntityId const>
-        spawn_instances(vectors3f::ResolvedConstView const locations,
+        spawn_instances(vectors3f::ConstView const locations,
                         std::span<float const> const yaws,
                         std::span<ioj::NonNegative<std::int32_t> const> const fire_point_indices,
                         SpawnContext const context) {

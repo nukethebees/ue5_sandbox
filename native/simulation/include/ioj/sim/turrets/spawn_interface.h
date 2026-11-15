@@ -15,8 +15,9 @@ class SpawnInterface {
     SpawnInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    std::vector<ioj::sim::EntityId> register_turrets(LevelTurretSpawnEvents::ConstView const spawns,
-                                                     SpawnContext const context) {
+    std::vector<ioj::sim::EntityId>
+        register_turrets(LevelTurretSpawnEvents::CompactConstView const spawns,
+                         SpawnContext const context) {
         return simulation.register_turrets(spawns, context);
     }
 

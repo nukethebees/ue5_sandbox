@@ -6,8 +6,8 @@ namespace ioj::sim {
 struct SpatialQueryManagerTestAccess {
     static void set_motion(SpatialQueryManager& manager,
                            EntityType type,
-                           vectors3f::ResolvedConstView locations,
-                           vectors3f::ResolvedConstView velocities = {}) {
+                           vectors3f::ConstView locations,
+                           vectors3f::ConstView velocities = {}) {
         manager.locations_[type] = locations;
         manager.velocities_[type] = velocities;
     }

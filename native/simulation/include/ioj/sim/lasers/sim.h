@@ -35,8 +35,10 @@ struct Sim {
     auto operator=(Sim const&) -> Sim& = delete;
     auto operator=(Sim&&) -> Sim& = delete;
 
-    auto get_entities() const -> EntityStorage::ConstView { return entities_.const_view(); }
-    auto hits() const -> LaserHitDetails::ConstView { return frame_output_.hits.const_view(); }
+    auto get_entities() const -> EntityStorage::CompactConstView { return entities_.const_view(); }
+    auto hits() const -> LaserHitDetails::CompactConstView {
+        return frame_output_.hits.const_view();
+    }
     auto hit_ticks() const -> std::span<SimTick const> { return frame_output_.hit_ticks; }
     auto hit_ordinals() const -> std::span<std::int32_t const> {
         return frame_output_.hit_ordinals;
@@ -50,7 +52,7 @@ struct Sim {
     /* **************************************** */
     // Fill every appended column before another append or commit. Serialize appends and
     // discard the returned view and its spans before either operation can invalidate them.
-    auto append_spawn_requests(std::uint32_t count) -> LaserSpawnRequests::View;
+    auto append_spawn_requests(std::uint32_t count) -> LaserSpawnRequests::CompactView;
   private:
     /* **************************************** */
     // Tick phases

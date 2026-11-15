@@ -18,15 +18,16 @@ struct LevelSimTestAccess {
     static auto player_simulation(LevelSim& simulation) -> player::Sim& {
         return simulation.player_ship_simulation_.value();
     }
-    static void queue_fighter_spawns(LevelSim& simulation, FighterSpawnQueue::ConstView spawns) {
+    static void queue_fighter_spawns(LevelSim& simulation,
+                                     FighterSpawnQueue::CompactConstView spawns) {
         simulation.fighters_simulation_.queue_spawns(spawns);
     }
     static void queue_direct_damage_events(LevelSim& simulation,
-                                           DirectDamageEvents::ConstView events) {
+                                           DirectDamageEvents::CompactConstView events) {
         simulation.damage_queue_.append(events);
     }
     static void queue_laser_spawns(LevelSim& simulation,
-                                   lasers::LaserSpawnRequests::ConstView requests) {
+                                   lasers::LaserSpawnRequests::CompactConstView requests) {
         auto const destination{simulation.lasers_simulation_.append_spawn_requests(requests.num())};
         copy_vectors(destination.view_locations(), requests.view_locations());
         auto const rotations{destination.view_rotations().resolve()};

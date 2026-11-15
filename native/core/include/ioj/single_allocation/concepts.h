@@ -32,11 +32,11 @@ concept SoaSourceFor = SameSoaSchema<Source, Destination> &&
                         requires(Source const& source) { source.validate(); });
 
 template <typename Owner>
-using StorageConstView = typename std::remove_cvref_t<Owner>::ConstView;
+using StorageConstView = typename std::remove_cvref_t<Owner>::CompactConstView;
 template <typename Owner>
 using StorageView = std::conditional_t<std::is_const_v<std::remove_reference_t<Owner>>,
                                        StorageConstView<Owner>,
-                                       typename std::remove_cvref_t<Owner>::View>;
+                                       typename std::remove_cvref_t<Owner>::CompactView>;
 
 // Evaluate private-member requirements in the owners' friend context.
 struct StorageRequirements {

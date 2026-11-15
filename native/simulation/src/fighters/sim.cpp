@@ -443,7 +443,7 @@ void Sim::finish_action() {
 /* **************************************** */
 // Movement
 /* **************************************** */
-void Sim::move(EntityStorage::View fighters, ActionInputs const inputs) {
+void Sim::move(EntityStorage::CompactView fighters, ActionInputs const inputs) {
     auto const dt{inputs.dt};
     assert(dt > 0.f);
     auto const count{fighters.num()};
@@ -969,7 +969,7 @@ void Sim::refresh_target_data(ThinkingInputs const inputs) {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::queue_spawns(FighterSpawnQueue::ConstView const new_spawns) -> std::uint32_t {
+auto Sim::queue_spawns(FighterSpawnQueue::CompactConstView const new_spawns) -> std::uint32_t {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::queue_spawns");
     auto const teams{new_spawns.teams()};
     if (teams.empty()) {
@@ -1002,7 +1002,7 @@ void Sim::remove_dead_entities(std::span<std::uint32_t const> const local_indice
 /* **************************************** */
 // Combat
 /* **************************************** */
-void Sim::handle_firing(EntityStorage::View data, ThinkingInputs const inputs) {
+void Sim::handle_firing(EntityStorage::CompactView data, ThinkingInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
 
     SANDBOX_PROFILE_SCOPE("fighters::Sim::handle_firing");

@@ -33,7 +33,7 @@
 
 
 (type fighter_spawn_queue_const_view
-  :spelling "FighterSpawnQueue::ConstView"
+  :spelling "FighterSpawnQueue::CompactConstView"
   :header "ioj/sim/fighters/fighter_spawn_queue.h"
   :pass-by value)
 
@@ -443,11 +443,11 @@
   :header "ioj/sim/levels/spawn_context.h")
 
 (type capital_spawn_view
-  :spelling "ioj::sim::LevelCapitalSpawnEvents::ConstView"
+  :spelling "ioj::sim::LevelCapitalSpawnEvents::CompactConstView"
   :header "ioj/sim/levels/level_capital_spawn_events.h")
 
 (type turret_spawn_view
-  :spelling "ioj::sim::LevelTurretSpawnEvents::ConstView"
+  :spelling "ioj::sim::LevelTurretSpawnEvents::CompactConstView"
   :header "ioj/sim/levels/level_turret_spawn_events.h")
 
 (type spawned_entity_ids
@@ -459,7 +459,7 @@
   :header "span")
 
 (type resolved_locations_view
-  :spelling "ioj::vectors3f::ResolvedConstView"
+  :spelling "ioj::vectors3f::ConstView"
   :header "ioj/vectors3f.h")
 
 (type float_const_span

@@ -294,13 +294,13 @@ auto soa_generated_cpp_names(Declarations const& declarations, DeclarationHandle
     std::vector<StringId> result{strings.intern(scope)};
     for (auto const name : {"Schema",
                             "Layout",
+                            "CompactViewImpl",
+                            "CompactView",
+                            "CompactConstView",
                             "ViewImpl",
-                            "View",
-                            "ConstView",
-                            "ResolvedViewImpl",
                             "DataPointers",
-                            "ResolvedView",
-                            "ResolvedConstView"}) {
+                            "View",
+                            "ConstView"}) {
         result.push_back(strings.intern(scope + "::" + name));
     }
     if (!soas.layout_only[row]) {

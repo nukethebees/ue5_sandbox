@@ -23,10 +23,10 @@
 namespace ioj::sim {
 namespace level_turret_spawn_events {
 struct Schema;
+struct CompactView;
+struct CompactConstView;
 struct View;
 struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
@@ -105,31 +105,30 @@ struct Schema {
 };
 
 /* **************************************** */
-// Resolved views
+// Views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl
-    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
     using Layout = level_turret_spawn_events::Layout;
-    using view_type = ResolvedView;
-    using const_view_type = ResolvedConstView;
+    using view_type = View;
+    using const_view_type = ConstView;
     using soa_schema = Schema;
     template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto entity_indices() const { return this->column(this->columns_.entity_indices); }
     auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.locations_xs,
                 this->columns_.locations_ys,
                 this->columns_.locations_zs,
                 this->num()};
     }
     auto view_rotations() const
-        -> std::conditional_t<Const, rotators3f::ResolvedConstView, rotators3f::ResolvedView> {
+        -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
         return {this->columns_.rotations_pitches,
                 this->columns_.rotations_yaws,
                 this->columns_.rotations_rolls,
@@ -139,86 +138,10 @@ struct ResolvedViewImpl
     auto healths() const { return this->column(this->columns_.healths); }
     auto laser_damages() const { return this->column(this->columns_.laser_damages); }
 };
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
-    using Base::Base;
-};
-struct ResolvedView
-    : soa_storage_detail::
-          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        ResolvedView,
-        ioj::sim::level_turret_spawn_events::Layout::column_types,
-        ResolvedViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             ioj::sim::LevelEntityRef const new_entity_indices,
-             Vector3f const new_locations,
-             Rotator3f const new_rotations,
-             ::ioj::Team const new_teams,
-             Health const new_healths,
-             ioj::NonNegative<std::int32_t> const new_laser_damages) const {
-        assert((index < num()));
-        this->entity_indices()[index] = new_entity_indices;
-        this->view_locations().set(index, new_locations);
-        this->view_rotations().set(index, new_rotations);
-        this->teams()[index] = new_teams;
-        this->healths()[index] = new_healths;
-        this->laser_damages()[index] = new_laser_damages;
-    }
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = level_turret_spawn_events::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entity_indices() const {
-        return this->template column<LevelEntityRef>(Layout::entity_indices_column);
-    }
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::locations_xs_column,
-                    Layout::locations_ys_column);
-    }
-    auto view_rotations() const
-        -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, rotators3f::ConstView, rotators3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::rotations_pitches_column,
-                    Layout::rotations_yaws_column);
-    }
-    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-    auto healths() const { return this->template column<Health>(Layout::healths_column); }
-    auto laser_damages() const {
-        return this->template column<ioj::NonNegative<std::int32_t>>(Layout::laser_damages_column);
-    }
-};
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(soa_storage_detail::validate_compact_view<ConstView>());
 struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
@@ -242,7 +165,83 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
         this->laser_damages()[index] = new_laser_damages;
     }
 };
-static_assert(soa_storage_detail::validate_compact_view<View>());
+
+/* **************************************** */
+// Compact views
+/* **************************************** */
+template <bool Const>
+struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
+    using Layout = level_turret_spawn_events::Layout;
+    using view_type = CompactView;
+    using const_view_type = CompactConstView;
+    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
+    template <bool Enabled = Const>
+    CompactViewImpl(CompactViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+    auto entity_indices() const {
+        return this->template column<LevelEntityRef>(Layout::entity_indices_column);
+    }
+    auto view_locations() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::locations_xs_column,
+                    Layout::locations_ys_column);
+    }
+    auto view_rotations() const
+        -> std::conditional_t<Const, rotators3f::CompactConstView, rotators3f::CompactView> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, rotators3f::CompactConstView, rotators3f::CompactView>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::rotations_pitches_column,
+                    Layout::rotations_yaws_column);
+    }
+    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
+    auto healths() const { return this->template column<Health>(Layout::healths_column); }
+    auto laser_damages() const {
+        return this->template column<ioj::NonNegative<std::int32_t>>(Layout::laser_damages_column);
+    }
+};
+struct CompactConstView : CompactViewImpl<true> {
+    using Base = CompactViewImpl<true>;
+    using Base::Base;
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
+struct CompactView
+    : soa_storage_detail::
+          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        CompactView,
+        ioj::sim::level_turret_spawn_events::Layout::column_types,
+        CompactViewImpl<false>>;
+    using Base::Base;
+    using Base::set;
+    void set(size_type index,
+             ioj::sim::LevelEntityRef const new_entity_indices,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             ::ioj::Team const new_teams,
+             Health const new_healths,
+             ioj::NonNegative<std::int32_t> const new_laser_damages) const {
+        assert((index < num()));
+        this->entity_indices()[index] = new_entity_indices;
+        this->view_locations().set(index, new_locations);
+        this->view_rotations().set(index, new_rotations);
+        this->teams()[index] = new_teams;
+        this->healths()[index] = new_healths;
+        this->laser_damages()[index] = new_laser_damages;
+    }
+};
+static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 
 } // namespace level_turret_spawn_events
 
@@ -278,8 +277,8 @@ struct LevelTurretSpawnEvents
         return Layout::layout_bytes(blocks);
     }
 
-    using View = level_turret_spawn_events::View;
-    using ConstView = level_turret_spawn_events::ConstView;
+    using CompactView = level_turret_spawn_events::CompactView;
+    using CompactConstView = level_turret_spawn_events::CompactConstView;
 
     /* **************************************** */
     // Lifetime

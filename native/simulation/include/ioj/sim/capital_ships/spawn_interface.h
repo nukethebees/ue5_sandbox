@@ -15,8 +15,9 @@ class SpawnInterface {
     SpawnInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    std::vector<ioj::sim::EntityId> register_ships(LevelCapitalSpawnEvents::ConstView const spawns,
-                                                   SpawnContext const context) {
+    std::vector<ioj::sim::EntityId>
+        register_ships(LevelCapitalSpawnEvents::CompactConstView const spawns,
+                       SpawnContext const context) {
         return simulation.register_ships(spawns, context);
     }
 

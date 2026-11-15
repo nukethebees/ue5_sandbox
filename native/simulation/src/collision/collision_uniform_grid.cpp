@@ -82,7 +82,7 @@ auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const mi
     return is_cell_coord_in_bounds(min_coord) && is_cell_coord_in_bounds(max_coord);
 }
 void CollisionUniformGrid::are_spheres_in_bounds(
-    vectors3f::ResolvedConstView const centres,
+    vectors3f::ConstView const centres,
     float const radius,
     std::span<SphereInBoundsResult> const out_results) const {
     collision::are_spheres_in_bounds(geometry_, centres, radius, out_results);
@@ -157,7 +157,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
 
     auto const append_batch{[&](EntityType const type,
                                 std::span<EntityId const> const ids,
-                                vectors3f::ResolvedConstView const locations,
+                                vectors3f::ConstView const locations,
                                 HealthConstView const healths,
                                 auto orientation_at) {
         auto& rows{storage.entity_row_to_aabb_row[type]};
@@ -261,7 +261,7 @@ void CollisionUniformGrid::begin_entity_grid() {
         storage.rebuild_entity_data.reset();
     }
 }
-void CollisionUniformGrid::write_entity_bounds(entity_cell_data::ResolvedView const& output,
+void CollisionUniformGrid::write_entity_bounds(entity_cell_data::View const& output,
                                                std::uint32_t const output_row,
                                                EntityId const id,
                                                WorldAABB const bounds) {
@@ -380,7 +380,7 @@ void CollisionUniformGrid::finish_entity_grid() {
         }
     }
 }
-auto CollisionUniformGrid::entity_world_bounds() const -> EntityCellData::ConstView {
+auto CollisionUniformGrid::entity_world_bounds() const -> EntityCellData::CompactConstView {
     return entity_storage_.rebuild_entity_data.const_view();
 }
 
@@ -525,19 +525,19 @@ auto CollisionUniformGrid::overlaps_impl(
     return result;
 }
 void CollisionUniformGrid::trace_aabbs(LineTraceBatch const& traces,
-                                       TraceHits::View const& hits) const {
+                                       TraceHits::CompactView const& hits) const {
     trace_aabbs_impl<TraceKind::Line, IgnoredEntityMode::None, TraceEntityFilter::None>(
         traces, hits, {}, {});
 }
 void CollisionUniformGrid::trace_aabbs(LineTraceBatch const& traces,
-                                       TraceHits::View const& hits,
+                                       TraceHits::CompactView const& hits,
                                        std::span<EntityId const> const ignored_entities) const {
     trace_aabbs_impl<TraceKind::Line, IgnoredEntityMode::PerTrace, TraceEntityFilter::None>(
         traces, hits, ignored_entities, {});
 }
 void CollisionUniformGrid::sweep_aabbs(LineTraceBatch const& centre_paths,
                                        Vector3f const moving_half_extent,
-                                       TraceHits::View const& hits,
+                                       TraceHits::CompactView const& hits,
                                        std::span<EntityId const> const ignored_entities,
                                        TraceEntityFilter const entity_filter) const {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::sweep_aabbs");
@@ -575,7 +575,7 @@ template <CollisionUniformGrid::TraceKind Kind,
           CollisionUniformGrid::IgnoredEntityMode IgnoredMode,
           TraceEntityFilter EntityFilter>
 void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
-                                            TraceHits::View const hits,
+                                            TraceHits::CompactView const hits,
                                             std::span<EntityId const> const ignored_entities,
                                             Vector3f const moving_half_extent) const {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::trace_aabbs_impl");

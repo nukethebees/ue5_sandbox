@@ -117,7 +117,7 @@ auto is_cell_coord_in_bounds(GridGeometry const geometry, CellCoord const coordi
            coordinate.z() < geometry.dimensions.z();
 }
 void are_spheres_in_bounds(GridGeometry const geometry,
-                           vectors3f::ResolvedConstView const centres,
+                           vectors3f::ConstView const centres,
                            float const radius,
                            std::span<SphereInBoundsResult> const results) noexcept {
     assert(static_cast<std::size_t>(centres.num()) == results.size());

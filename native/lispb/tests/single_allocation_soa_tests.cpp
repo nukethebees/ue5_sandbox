@@ -39,12 +39,12 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
     expect_contains_all(
         output,
         {"namespace rows",
-         "struct View",
-         "struct ConstView",
+         "struct CompactView",
+         "struct CompactConstView",
          "ColumnLayouts<std::int32_t, float, Token, sub::Token, other::Token, Base>",
          "Element<Base>* shadowed_types",
          "struct DataPointers",
-         "ResolvedViewBase<Layout::column_types, DataPointers, Const>"});
+         "ViewBase<Layout::column_types, DataPointers, Const>"});
     EXPECT_FALSE(output.contains("make_data_unchecked("));
     expect_contains_all(output, {"auto ids() const", "ids_column{0ULL}", "nested_xs_column{1ULL}"});
     EXPECT_FALSE(output.contains("LayoutColumns"));
@@ -275,7 +275,7 @@ TEST_P(ConflictingSoaModuleDeclaration, RejectsSharedViewTypeCollisions) {
 
 INSTANTIATE_TEST_SUITE_P(SingleAllocationSoa,
                          ConflictingSoaModuleDeclaration,
-                         testing::Values("View", "DataPointers"));
+                         testing::Values("CompactView", "DataPointers"));
 
 TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
     auto const output{render(schemas() + R"(
@@ -286,8 +286,7 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
                         {"second_nested_wide_column{", "Layout::second_nested_wide_column"});
     expect_contains_none(
         output, {"last_column()", "GrandparentView_first", "GrandparentView_second_nested"});
-    expect_contains_all(output,
-                        {"rows::ResolvedView", "child::ResolvedView", "second_nested_view.wide()"});
+    expect_contains_all(output, {"rows::View", "child::View", "second_nested_view.wide()"});
 }
 
 TEST(SingleAllocationSoa, PreservesCommonApiInSchemaNamespace) {
@@ -307,8 +306,8 @@ TEST(SingleAllocationSoa, PreservesCommonApiInSchemaNamespace) {
     expect_contains_all(header,
                         {"struct ROWS_API LogicalRows",
                          "namespace logical_rows",
-                         "struct ROWS_API View",
-                         "struct ROWS_API ConstView",
+                         "struct ROWS_API CompactView",
+                         "struct ROWS_API CompactConstView",
                          "using Value = float;",
                          "read_first() const",
                          "clear_first()"});

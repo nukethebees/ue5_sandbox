@@ -48,7 +48,7 @@ struct CollisionUniformGrid {
     auto to_cell_coord_bounds(Vector3f min_point, Vector3f max_point) const -> CellCoordBounds;
     auto is_cell_coord_in_bounds(CellCoord coord) const -> bool;
     auto is_cell_coord_in_bounds(CellCoord min_coord, CellCoord max_coord) const -> bool;
-    void are_spheres_in_bounds(vectors3f::ResolvedConstView centres,
+    void are_spheres_in_bounds(vectors3f::ConstView centres,
                                float radius,
                                std::span<SphereInBoundsResult> out_results) const;
     static auto to_string(CellCoord value) -> std::string;
@@ -64,7 +64,7 @@ struct CollisionUniformGrid {
     // Entity collision
     /* **************************************** */
     void rebuild_entity_grid(EntityAABBs const& entity_aabbs, LevelReadAccess const& level);
-    auto entity_world_bounds() const -> EntityCellData::ConstView;
+    auto entity_world_bounds() const -> EntityCellData::CompactConstView;
     auto entity_row_to_aabb_row(EntityType const type) const -> std::span<std::uint32_t const> {
         return entity_storage_.entity_row_to_aabb_row[type];
     }
@@ -109,20 +109,20 @@ struct CollisionUniformGrid {
                         EntityId ignored_entity,
                         std::span<EntityId> out_entities,
                         std::span<StaticGeometryIndex> out_static_geometry_indices) const;
-    void trace_aabbs(LineTraceBatch const& traces, TraceHits::View const& hits) const;
+    void trace_aabbs(LineTraceBatch const& traces, TraceHits::CompactView const& hits) const;
     void trace_aabbs(LineTraceBatch const& traces,
-                     TraceHits::View const& hits,
+                     TraceHits::CompactView const& hits,
                      std::span<EntityId const> ignored_entities) const;
     void sweep_aabbs(LineTraceBatch const& centre_paths,
                      Vector3f moving_half_extent,
-                     TraceHits::View const& hits,
+                     TraceHits::CompactView const& hits,
                      std::span<EntityId const> ignored_entities = {},
                      TraceEntityFilter entity_filter = TraceEntityFilter::None) const;
   private:
     friend struct ::ioj::sim::CollisionGridTestAccess;
     void begin_entity_grid();
     // Allocate output rows before binding the writer; keep storage fixed until writing finishes.
-    void write_entity_bounds(entity_cell_data::ResolvedView const& output,
+    void write_entity_bounds(entity_cell_data::View const& output,
                              std::uint32_t output_row,
                              EntityId id,
                              WorldAABB bounds);
@@ -155,7 +155,7 @@ struct CollisionUniformGrid {
 
     template <TraceKind Kind, IgnoredEntityMode IgnoredMode, TraceEntityFilter EntityFilter>
     void trace_aabbs_impl(LineTraceBatch traces,
-                          TraceHits::View hits,
+                          TraceHits::CompactView hits,
                           std::span<EntityId const> ignored_entities,
                           Vector3f moving_half_extent) const;
 

@@ -56,7 +56,7 @@ struct MatchSource {
 struct ScanSources {
     EntityTypeSizes offsets;
     EnumArray<std::span<EntityInstanceHandle const>, EntityType> handles;
-    EnumArray<vectors3f::ResolvedConstView, EntityType> locations;
+    EnumArray<vectors3f::ConstView, EntityType> locations;
 };
 
 void collect_request_matches(collision::CollisionUniformGrid const& grid,
@@ -144,7 +144,7 @@ namespace tbb = oneapi::tbb;
 
 void SpatialQueryManager::collect_non_team_entities_in_range(
     EntityLookupTables const& lookups,
-    vectors3f::ResolvedConstView const origins,
+    vectors3f::ConstView const origins,
     std::span<Team const> const teams,
     float const radius,
     RangeQueryResults& out_results,

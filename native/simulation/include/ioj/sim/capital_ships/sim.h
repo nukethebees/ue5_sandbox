@@ -37,7 +37,7 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_entities() const -> EntityStorage::ConstView { return entities_.const_view(); }
+    auto get_entities() const -> EntityStorage::CompactConstView { return entities_.const_view(); }
     auto healths() const -> HealthConstView {
         return entity_tables_.health.const_view<EntityType::CapitalShip>();
     }
@@ -64,9 +64,9 @@ struct Sim {
     /* **************************************** */
     // Ship spawning
     /* **************************************** */
-    auto register_ships(LevelCapitalSpawnEvents::ConstView spawn_data, SpawnContext context)
+    auto register_ships(LevelCapitalSpawnEvents::CompactConstView spawn_data, SpawnContext context)
         -> std::vector<EntityId>;
-    void spawn_ships(LevelCapitalSpawnEvents::ConstView spawn_data);
+    void spawn_ships(LevelCapitalSpawnEvents::CompactConstView spawn_data);
 
     /* **************************************** */
     // Death handling

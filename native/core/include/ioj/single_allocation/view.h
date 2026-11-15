@@ -50,7 +50,7 @@ struct StorageState {
     std::uint32_t capacity_{};
 };
 
-// External sources may validate independent columns; generated resolved views validate on
+// External sources may validate independent columns; generated pointer views validate on
 // construction.
 template <typename Source>
 void validate_source(Source const& source) {
@@ -132,26 +132,25 @@ struct ViewOperations {
 };
 
 template <typename Columns, template <typename> typename Pointers, bool Const>
-struct ResolvedViewBase;
+struct ViewBase;
 
 template <template <typename> typename Pointers, bool Const, typename... Ts>
-struct ResolvedViewBase<single_allocation_layout::ColumnLayouts<Ts...>, Pointers, Const>
-    : ViewOperations {
+struct ViewBase<single_allocation_layout::ColumnLayouts<Ts...>, Pointers, Const> : ViewOperations {
     using size_type = std::uint32_t;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
     using PointerStorage = Pointers<Element<std::byte>>;
 
-    ResolvedViewBase() = default;
-    ResolvedViewBase(Element<Ts>*... pointers, size_type column_count)
+    ViewBase() = default;
+    ViewBase(Element<Ts>*... pointers, size_type column_count)
         : columns_{pointers...}
         , column_count_{column_count} {
         validate_column_pointers(column_count_, pointers...);
     }
-    ResolvedViewBase(std::span<Element<Ts>>... columns)
-        : ResolvedViewBase{columns.data()..., [](auto const& first, auto const&...) {
-                               return checked_row_count(first.size());
-                           }(columns...)} {
+    ViewBase(std::span<Element<Ts>>... columns)
+        : ViewBase{columns.data()..., [](auto const& first, auto const&...) {
+                       return checked_row_count(first.size());
+                   }(columns...)} {
         validate_column_sizes(column_count_, columns...);
     }
 
@@ -167,13 +166,11 @@ struct ResolvedViewBase<single_allocation_layout::ColumnLayouts<Ts...>, Pointers
     }
   protected:
     template <typename, template <typename> typename, bool>
-    friend struct ResolvedViewBase;
+    friend struct ViewBase;
 
     template <bool Enabled = Const>
         requires Enabled
-    ResolvedViewBase(
-        ResolvedViewBase<single_allocation_layout::ColumnLayouts<Ts...>, Pointers, false> const&
-            other)
+    ViewBase(ViewBase<single_allocation_layout::ColumnLayouts<Ts...>, Pointers, false> const& other)
         : column_count_{other.column_count_} {
         Pointers<std::byte>::with_columns(
             other.columns_, [this](auto*... source) { columns_ = PointerStorage{source...}; });
@@ -294,7 +291,7 @@ struct StridedViewBase : ViewOperations {
     StridedViewBase() = default;
 
     // All columns must belong to one allocation and have the same byte stride. Each must
-    // contain count live elements; independently allocated columns require a resolved view.
+    // contain count live elements; independently allocated columns require a pointer view.
     StridedViewBase(element_type* first, std::size_t byte_stride, size_type count)
         : first_{reinterpret_cast<Element<std::byte>*>(first)}
         , stride_{encode_stride(byte_stride)}

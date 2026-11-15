@@ -67,8 +67,8 @@ class CollisionSystem {
     auto aabb_overlap_events() const -> AABBOverlapEventsView {
         return overlap_event_storage_.view();
     }
-    auto entity_collision_bounds() const -> EntityCellData::ConstView;
-    auto static_collision_bounds() const -> WorldAABBs::ConstView;
+    auto entity_collision_bounds() const -> EntityCellData::CompactConstView;
+    auto static_collision_bounds() const -> WorldAABBs::CompactConstView;
 
     /* **************************************** */
     // State
