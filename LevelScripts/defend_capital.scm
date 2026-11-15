@@ -1,8 +1,6 @@
 (load-script "Libraries/logic.scm")
 
-(level
-  :id 'defend-capital
-  :title "defend_capital"
+(level-with (load-script "defend_capital/editor-config.scm")
   :settings (settings-layers
     (load-script "Settings/base.scm")
     (settings
@@ -10,109 +8,11 @@
         :level-size '(2000000 2000000 500000)
         :cell-size '(5000 5000 20000))))
 
-  :player 'playership
-
   :logic (logic
     (win-race 'blue 'red
-    (all-of
-      (level-delay 60)
-      (destroy-all '(capitalship-red2)))
-    (any-of
-      (destroy-any '(capitalship-blue))
-      (level-delay 60))))
-
-  :entities (list
-    ;; Team: blue | Archetype: player-fighter | Count: 1
-    (entity :id 'playership :archetype 'player-fighter :team 'blue
-      :position '(-20220 -12270 55330)
-      :rotation '(0 -40 0))
-
-    ;; Team: blue | Archetype: capital-ship | Count: 1
-    (entity :id 'capitalship-blue :archetype 'capital-ship :team 'blue
-      :position '(-60299.997 17850.002 53980)
-      :rotation '(0 50 0))
-
-    ;; Team: blue | Archetype: static-turret | Count: 36
-    (entity :id 'staticturret-blue :archetype 'static-turret :team 'blue
-      :position '(-38360 35020 54710))
-    (entity :id 'staticturret-blue10 :archetype 'static-turret :team 'blue
-      :position '(-37520 36420 52140))
-    (entity :id 'staticturret-blue11 :archetype 'static-turret :team 'blue
-      :position '(-36420 37610 52140))
-    (entity :id 'staticturret-blue12 :archetype 'static-turret :team 'blue
-      :position '(-39460 33830 52140))
-    (entity :id 'staticturret-blue13 :archetype 'static-turret :team 'blue
-      :position '(-38360 35020 52140))
-    (entity :id 'staticturret-blue14 :archetype 'static-turret :team 'blue
-      :position '(-71770 -6440 57120))
-    (entity :id 'staticturret-blue15 :archetype 'static-turret :team 'blue
-      :position '(-72870 -7630 57120))
-    (entity :id 'staticturret-blue16 :archetype 'static-turret :team 'blue
-      :position '(-75010 -10320 57120))
-    (entity :id 'staticturret-blue17 :archetype 'static-turret :team 'blue
-      :position '(-73910 -9130 57120))
-    (entity :id 'staticturret-blue18 :archetype 'static-turret :team 'blue
-      :position '(-76950 -12910 57120))
-    (entity :id 'staticturret-blue19 :archetype 'static-turret :team 'blue
-      :position '(-75850 -11720 57120))
-    (entity :id 'staticturret-blue2 :archetype 'static-turret :team 'blue
-      :position '(-72870 -7630 52140))
-    (entity :id 'staticturret-blue20 :archetype 'static-turret :team 'blue
-      :position '(-35380 39110 57120))
-    (entity :id 'staticturret-blue21 :archetype 'static-turret :team 'blue
-      :position '(-34280 40300 57120))
-    (entity :id 'staticturret-blue22 :archetype 'static-turret :team 'blue
-      :position '(-37520 36420 57120))
-    (entity :id 'staticturret-blue23 :archetype 'static-turret :team 'blue
-      :position '(-36420 37610 57120))
-    (entity :id 'staticturret-blue24 :archetype 'static-turret :team 'blue
-      :position '(-39460 33830 57120))
-    (entity :id 'staticturret-blue25 :archetype 'static-turret :team 'blue
-      :position '(-38360 35020 57120))
-    (entity :id 'staticturret-blue26 :archetype 'static-turret :team 'blue
-      :position '(-71770 -6440 54710))
-    (entity :id 'staticturret-blue27 :archetype 'static-turret :team 'blue
-      :position '(-72870 -7630 54710))
-    (entity :id 'staticturret-blue28 :archetype 'static-turret :team 'blue
-      :position '(-75010 -10320 54710))
-    (entity :id 'staticturret-blue29 :archetype 'static-turret :team 'blue
-      :position '(-73910 -9130 54710))
-    (entity :id 'staticturret-blue3 :archetype 'static-turret :team 'blue
-      :position '(-71770 -6440 52140))
-    (entity :id 'staticturret-blue30 :archetype 'static-turret :team 'blue
-      :position '(-76950 -12910 54710))
-    (entity :id 'staticturret-blue31 :archetype 'static-turret :team 'blue
-      :position '(-75850 -11720 54710))
-    (entity :id 'staticturret-blue32 :archetype 'static-turret :team 'blue
-      :position '(-35380 39110 54710))
-    (entity :id 'staticturret-blue33 :archetype 'static-turret :team 'blue
-      :position '(-34280 40300 54710))
-    (entity :id 'staticturret-blue34 :archetype 'static-turret :team 'blue
-      :position '(-37520 36420 54710))
-    (entity :id 'staticturret-blue35 :archetype 'static-turret :team 'blue
-      :position '(-36420 37610 54710))
-    (entity :id 'staticturret-blue36 :archetype 'static-turret :team 'blue
-      :position '(-39460 33830 54710))
-    (entity :id 'staticturret-blue4 :archetype 'static-turret :team 'blue
-      :position '(-75010 -10320 52140))
-    (entity :id 'staticturret-blue5 :archetype 'static-turret :team 'blue
-      :position '(-73910 -9130 52140))
-    (entity :id 'staticturret-blue6 :archetype 'static-turret :team 'blue
-      :position '(-76950 -12910 52140))
-    (entity :id 'staticturret-blue7 :archetype 'static-turret :team 'blue
-      :position '(-75850 -11720 52140))
-    (entity :id 'staticturret-blue8 :archetype 'static-turret :team 'blue
-      :position '(-35380 39110 52140))
-    (entity :id 'staticturret-blue9 :archetype 'static-turret :team 'blue
-      :position '(-34280 40300 52140))
-
-    ;; Team: red | Archetype: capital-ship | Count: 3
-    (entity :id 'capitalship-red :archetype 'capital-ship :team 'red
-      :position '(119430.003 -200679.998 53980)
-      :rotation '(0 -90 0))
-    (entity :id 'capitalship-red2 :archetype 'capital-ship :team 'red
-      :position '(119430.003 -130399.998 53980)
-      :rotation '(0 -90 0))
-    (entity :id 'capitalship-red3 :archetype 'capital-ship :team 'red
-      :position '(119430.003 -287339.998 53980)
-      :rotation '(0 -90 0))))
+      (all-of
+        (level-delay 60)
+        (destroy-all '(capitalship-red2)))
+      (any-of
+        (destroy-any '(capitalship-blue))
+        (level-delay 60)))))
