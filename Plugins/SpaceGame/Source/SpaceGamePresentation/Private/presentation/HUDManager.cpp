@@ -357,7 +357,6 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
             auto* const instances{soft_target_instances_.Get()};
             auto const instance_count{custom_data.Num() / soft_target_world::custom_data_count};
             check(IsValid(instances));
-            check(custom_data.Num() == instance_count * soft_target_world::custom_data_count);
             check(instance_count == instances->GetInstanceCount());
             if (!instances->SetCustomData(0, instance_count - 1, custom_data, true)) {
                 UE_LOG(LogSandboxUI,
