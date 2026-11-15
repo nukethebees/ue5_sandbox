@@ -20,7 +20,7 @@ template <std::integral Counter = SimTick::value_type>
     -> Positive<Counter> {
     auto const period{std::ceil(tick_rate.hz() / frequency.hz())};
     auto const upper_bound{std::ldexp(1.0, std::numeric_limits<Counter>::digits)};
-    require(std::isfinite(period) && period >= 1.0 && period < upper_bound,
+    require(period >= 1.0 && period < upper_bound,
             "Frequency tick period must fit the countdown type");
     return Positive<Counter>::make(static_cast<Counter>(period));
 }
@@ -33,8 +33,7 @@ template <std::integral Counter = SimTick::value_type>
     -> NonNegative<Counter> {
     auto const period{std::ceil(duration.seconds() * tick_rate.hz())};
     auto const upper_bound{std::ldexp(1.0, std::numeric_limits<Counter>::digits)};
-    require(std::isfinite(period) && period >= 0.0 && period < upper_bound,
-            "Duration tick period must fit the countdown type");
+    require(period < upper_bound, "Duration tick period must fit the countdown type");
     return NonNegative<Counter>::make(static_cast<Counter>(period));
 }
 
