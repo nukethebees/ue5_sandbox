@@ -7,7 +7,6 @@
 #include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
 #include <ioj/sim/levels/level_event_manager.h>
-#include <ioj/sim/sim_clock.h>
 
 #include <gtest/gtest.h>
 
@@ -52,8 +51,7 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     Timers timers;
     Latches latches;
     EntityLedger ledger;
-    SimClock clock{};
-    EntityLookupTables lookups{clock};
+    EntityLookupTables lookups{};
     SpatialQueryManager spatial{};
     FrameMemoryResource scratch{4096};
     CompiledLevelEvents data;

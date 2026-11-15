@@ -64,7 +64,7 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void initialise(FighterSimConfig const& new_config, SimClock const& clock);
-    void update_entity_lookup_table();
+    void update_entity_lookup_table(SimClock const& clock);
     void prepare_tick(PreparationInputs inputs);
     void think(ThinkingInputs const inputs);
     void plan_instructions(tasks::TaskManager const& manager);

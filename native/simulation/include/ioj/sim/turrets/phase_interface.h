@@ -18,7 +18,9 @@ class InitialisationInterface {
         simulation.initialise(config, clock);
     }
 
-    void update_entity_lookup_table() { simulation.update_entity_lookup_table(); }
+    void update_entity_lookup_table(SimClock const& clock) {
+        simulation.update_entity_lookup_table(clock);
+    }
 
     friend struct sim::LevelSim;
     Sim& simulation;
@@ -29,7 +31,7 @@ class PreparationInterface {
     PreparationInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void prepare_tick() { simulation.prepare_tick(); }
+    void prepare_tick(SimClock const& clock) { simulation.prepare_tick(clock); }
 
     friend struct sim::LevelSim;
     Sim& simulation;

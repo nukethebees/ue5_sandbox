@@ -33,13 +33,15 @@ Sim::Sim(EntityTables& entity_tables)
 // Sim phases
 /* **************************************** */
 // Preparation
-void Sim::update_entity_lookup_table() {
+void Sim::update_entity_lookup_table([[maybe_unused]] SimClock const& clock) {
+    assert(is_preparation_mutation_allowed(clock));
+
     auto const rows{entities_.const_view()};
     entity_tables_.publish<EntityType::CapitalShip>(rows.entity_ids(), rows.teams(), max_health_);
 }
-void Sim::prepare_tick() {
+void Sim::prepare_tick(SimClock const& clock) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::prepare_tick");
-    update_entity_lookup_table();
+    update_entity_lookup_table(clock);
 }
 
 // Resolution
@@ -62,7 +64,7 @@ void Sim::publish_deaths(ResolutionInputs const inputs) {
 
 // ResolutionCommit
 void Sim::remove_entities(ResolutionCommitInputs const inputs) {
-    assert(is_removal_allowed(entity_tables_.lookups.clock()));
+    assert(is_removal_allowed(inputs.clock));
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::remove_entities");
     sort_removal_indices(inputs.local_indices_to_remove);
 
@@ -92,6 +94,7 @@ auto Sim::register_ships(LevelCapitalSpawnEvents::CompactConstView const spawn_d
     }
 
     auto const first_new_index{entities_.num()};
+    assert(is_preparation_mutation_allowed(context.clock));
     spawn_ships(spawn_data);
 
     auto const spawn_teams{spawn_data.teams()};
@@ -119,7 +122,6 @@ auto Sim::register_ships(LevelCapitalSpawnEvents::CompactConstView const spawn_d
     return new_ids;
 }
 void Sim::spawn_ships(LevelCapitalSpawnEvents::CompactConstView const spawn_data) {
-    assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::spawn_ships");
     spawn_data.validate();
     auto const n_to_add{spawn_data.num()};

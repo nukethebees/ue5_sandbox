@@ -61,8 +61,8 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void initialise(TurretSimConfig const& new_config, SimClock const& clock);
-    void update_entity_lookup_table();
-    void prepare_tick();
+    void update_entity_lookup_table(SimClock const& clock);
+    void prepare_tick(SimClock const& clock);
     void think(ThinkingInputs const inputs);
     void generate_fire_commands(ThinkingInputs const inputs);
     void resolve_damage_events(ResolutionInputs const inputs);

@@ -1,6 +1,8 @@
 #include <ioj/sim/collision/collision_pipeline.h>
 
 #include <ioj/frame_memory_resource.h>
+#include <ioj/sim/levels/level_read_access.h>
+#include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/transform3d.h>
 
@@ -59,6 +61,8 @@ void CollisionPipeline::detect_and_handle_overlaps(LevelReadAccess const& level,
                                                    std::span<EntityId const> const moved_fighters,
                                                    DamageQueue& damage_queue,
                                                    FrameMemoryResource& scratch) {
+    assert(is_lookup_allowed(level.clock()));
+
     SANDBOX_PROFILE_SCOPE("Refresh spatial index and detect overlaps");
 
     overlap_candidates_.insert(

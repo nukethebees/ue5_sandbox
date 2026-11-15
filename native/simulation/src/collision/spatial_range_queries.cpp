@@ -5,7 +5,6 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/entities/entity_lookup_tables.h>
 #include <ioj/sim/entities/team_checks.h>
-#include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/vector_operations.h>
 
@@ -155,7 +154,6 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
     assert(origins.num() == teams.size());
     assert(std::isfinite(radius));
     assert(check_valid_teams(teams));
-    assert(is_lookup_allowed(lookups.clock()));
 
     assert(!out_results.query_started_);
     out_results.query_started_ = true;

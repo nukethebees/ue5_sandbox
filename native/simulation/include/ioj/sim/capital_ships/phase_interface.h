@@ -6,6 +6,7 @@
 #include "ioj/settings/simulation_constraints.h"
 #include "ioj/sim/capital_ships/phase_inputs.h"
 #include "ioj/sim/capital_ships/sim.h"
+#include "ioj/sim/sim_clock.h"
 
 namespace ioj::sim::capital_ships {
 class InitialisationInterface {
@@ -15,7 +16,9 @@ class InitialisationInterface {
 
     void initialise(settings::PositiveHealth max_health) { simulation.initialise(max_health); }
 
-    void update_entity_lookup_table() { simulation.update_entity_lookup_table(); }
+    void update_entity_lookup_table(SimClock const& clock) {
+        simulation.update_entity_lookup_table(clock);
+    }
 
     friend struct sim::LevelSim;
     Sim& simulation;
@@ -26,7 +29,7 @@ class PreparationInterface {
     PreparationInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void prepare_tick() { simulation.prepare_tick(); }
+    void prepare_tick(SimClock const& clock) { simulation.prepare_tick(clock); }
 
     friend struct sim::LevelSim;
     Sim& simulation;

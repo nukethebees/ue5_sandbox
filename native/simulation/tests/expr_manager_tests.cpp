@@ -8,7 +8,6 @@
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
-#include <ioj/sim/sim_clock.h>
 
 #include <gtest/gtest.h>
 
@@ -20,8 +19,7 @@ using namespace ioj::levels;
 
 TEST(Expressions, BooleanOperatorsEvaluateSharedLeavesInDependencyOrder) {
     EntityLedger ledger;
-    SimClock clock{};
-    EntityLookupTables lookups{clock};
+    EntityLookupTables lookups{};
     SpatialQueryManager spatial{};
     FrameMemoryResource scratch{4096};
     Latches latches;
@@ -65,8 +63,7 @@ TEST(Expressions, BooleanOperatorsEvaluateSharedLeavesInDependencyOrder) {
 
 TEST(Expressions, LatchObservationsAndCompositesUseTheSameCycleSample) {
     EntityLedger ledger;
-    SimClock clock{};
-    EntityLookupTables lookups{clock};
+    EntityLookupTables lookups{};
     SpatialQueryManager spatial{};
     FrameMemoryResource scratch{4096};
     Timers timers;
@@ -101,8 +98,7 @@ auto timer(std::uint32_t index) -> Expression {
 
 TEST(Expressions, SharedDagEvaluatesChildrenFirstWithoutRetiringSharedLeaves) {
     EntityLedger ledger;
-    SimClock clock{};
-    EntityLookupTables lookups{clock};
+    EntityLookupTables lookups{};
     SpatialQueryManager spatial{};
     FrameMemoryResource scratch{4096};
     ExprManager expressions;
@@ -135,8 +131,7 @@ TEST(Expressions, SharedDagEvaluatesChildrenFirstWithoutRetiringSharedLeaves) {
 
 TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
     EntityLedger ledger;
-    SimClock clock{};
-    EntityLookupTables lookups{clock};
+    EntityLookupTables lookups{};
     SpatialQueryManager spatial{};
     FrameMemoryResource scratch{4096};
     ExprManager expressions;
@@ -182,8 +177,7 @@ TEST(Expressions, MixedPayloadIndicesWaitForFutureEntityDestruction) {
 
 TEST(Expressions, StoppedTimersAndStartAreVisibleOnNextEvaluation) {
     EntityLedger ledger;
-    SimClock clock{};
-    EntityLookupTables lookups{clock};
+    EntityLookupTables lookups{};
     SpatialQueryManager spatial{};
     FrameMemoryResource scratch{4096};
     ExprManager expressions;

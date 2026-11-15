@@ -98,7 +98,7 @@ Sim::Sim(EntityTables& entity_tables) noexcept
 /* **************************************** */
 // Preparation
 void Sim::commit_spawns(PreparationInputs const inputs) {
-    assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
+    assert(is_preparation_mutation_allowed(inputs.clock));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_spawns");
 
     auto const n_cur{num_instances()};
@@ -147,7 +147,9 @@ void Sim::commit_spawns(PreparationInputs const inputs) {
         std::span<std::uint32_t>{data.integral_biases()}.subspan(n_cur, n_new),
         std::span<float>{data.float_biases()}.subspan(n_cur, n_new));
 }
-void Sim::update_entity_lookup_table() {
+void Sim::update_entity_lookup_table([[maybe_unused]] SimClock const& clock) {
+    assert(is_preparation_mutation_allowed(clock));
+
     auto const rows{entities_.const_view()};
     entity_tables_.publish<EntityType::Fighter>(
         rows.entity_ids(), rows.teams(), config_.settings.health);
@@ -165,11 +167,13 @@ void Sim::prepare_tick(PreparationInputs const inputs) {
         remaining_team_capacity_[team] = std::max(0, remaining_team_capacity_[team] - 1);
     }
     tick_countdowns<std::int16_t>(data.attack_cooldowns(), attack_cleaner_, 16384);
-    update_entity_lookup_table();
+    update_entity_lookup_table(inputs.clock);
 }
 
 // Thinking
 void Sim::think(ThinkingInputs const inputs) {
+    assert(is_lookup_allowed(inputs.clock));
+
     SANDBOX_PROFILE_SCOPE("fighters::Sim::think");
     inputs.navigation_counters = {};
     plan_instructions(inputs.task_manager);
@@ -429,7 +433,7 @@ void Sim::publish_deaths(ResolutionInputs const inputs) {
 
 // ResolutionCommit
 void Sim::remove_entities(ResolutionCommitInputs const inputs) {
-    assert(is_removal_allowed(entity_tables_.lookups.clock()));
+    assert(is_removal_allowed(inputs.clock));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_entities");
     sort_removal_indices(inputs.local_indices_to_remove);
 

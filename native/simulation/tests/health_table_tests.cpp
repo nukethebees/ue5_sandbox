@@ -88,8 +88,7 @@ TEST(HealthTable, WritesHealthDirectlyThroughBorrowedViews) {
 }
 
 TEST(EntityTables, RebuildsHandlesAfterOwnerReorderingAndMaximumHealthChanges) {
-    SimClock clock;
-    EntityTables tables{clock};
+    EntityTables tables{};
     std::array const ids{EntityId{2, EntityType::Fighter}, EntityId{6, EntityType::Fighter}};
     std::array const teams{Team::Blue, Team::Red};
     tables.health.initialise_entities<EntityType::Fighter>(
@@ -123,8 +122,7 @@ TEST(EntityTables, RebuildsHandlesAfterOwnerReorderingAndMaximumHealthChanges) {
 }
 
 TEST(EntityTables, KeepsRetiredIdsInvalidAndOtherTypeHealthUnchanged) {
-    SimClock clock;
-    EntityTables tables{clock};
+    EntityTables tables{};
     std::array const ids{EntityId{7, EntityType::Fighter}, EntityId{2, EntityType::Fighter}};
     std::array const player{EntityId{0, EntityType::PlayerShip}};
     tables.health.initialise_entities<EntityType::Fighter>(ids, Health{100});

@@ -143,7 +143,8 @@
     :target-storage reference
     (method initialise void
       (parameter max_health @settings_positive_health))
-    (method update_entity_lookup_table void))
+    (method update_entity_lookup_table void
+      (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade PreparationInterface @capital_ships_sim simulation
     :bind-access private
@@ -151,7 +152,8 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
-    (method prepare_tick void))
+    (method prepare_tick void
+      (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade ResolutionInterface @capital_ships_sim simulation
     :bind-access private
@@ -200,7 +202,8 @@
     (method initialise void
       (parameter config (type-ref ioj::sim::FighterSimConfig :suffix " const&"))
       (parameter clock (type-ref @sim_clock :suffix " const&")))
-    (method update_entity_lookup_table void))
+    (method update_entity_lookup_table void
+      (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade PreparationInterface @fighters_sim simulation
     :bind-access private
@@ -267,7 +270,8 @@
     (method initialise void
       (parameter config (type-ref ioj::sim::TurretSimConfig :suffix " const&"))
       (parameter clock (type-ref @sim_clock :suffix " const&")))
-    (method update_entity_lookup_table void))
+    (method update_entity_lookup_table void
+      (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade PreparationInterface @turrets_sim simulation
     :bind-access private
@@ -275,7 +279,8 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
-    (method prepare_tick void))
+    (method prepare_tick void
+      (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade ThinkingInterface @turrets_sim simulation
     :bind-access private
@@ -335,7 +340,8 @@
     (method initialise void
       (parameter config (type-ref ioj::sim::SpinnerSimConfig :suffix " const&"))
       (parameter clock (type-ref @sim_clock :suffix " const&")))
-    (method update_entity_lookup_table void))
+    (method update_entity_lookup_table void
+      (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade PreparationInterface @spinners_sim simulation
     :bind-access private
@@ -344,7 +350,8 @@
     :friend-kind struct
     :target-storage reference
     (method prepare_tick void
-      (parameter dt "float const")))
+      (parameter dt "float const")
+      (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade ThinkingInterface @spinners_sim simulation
     :bind-access private

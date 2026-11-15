@@ -135,7 +135,7 @@ struct LevelSim {
     LevelMemoryManager memory_manager_;
     EntityLedger entity_ledger_{memory_manager_.game_memory()};
     DamageQueue damage_queue_;
-    EntityTables entity_tables_{clock_, memory_manager_.game_memory()};
+    EntityTables entity_tables_{memory_manager_.game_memory()};
     collision::CollisionPipeline collision_pipeline_;
 
     lasers::Sim lasers_simulation_;

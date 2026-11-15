@@ -10,6 +10,7 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/ship_health.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/phase_checks.h>
 #include <ioj/sim/player/flight_model_evaluator.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/transform3d.h>
@@ -101,6 +102,8 @@ Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_table
 /* **************************************** */
 // Preparation
 void Sim::update_entity_lookup_table() {
+    assert(is_preparation_mutation_allowed(simulation_clock_));
+
     entity_tables_.publish<EntityType::PlayerShip>({&unique_entity_id, 1}, {&team, 1}, max_health_);
 }
 void Sim::prepare_tick(float const dt) {

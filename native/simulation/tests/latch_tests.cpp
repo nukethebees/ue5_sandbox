@@ -8,7 +8,6 @@
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
-#include <ioj/sim/sim_clock.h>
 
 #include <gtest/gtest.h>
 
@@ -32,8 +31,7 @@ auto sample(std::initializer_list<bool> const values) -> ExpressionSamples {
 
     Timers timers;
     EntityLedger ledger;
-    SimClock clock{};
-    EntityLookupTables lookups{clock};
+    EntityLookupTables lookups{};
     SpatialQueryManager spatial{};
     FrameMemoryResource scratch{4096};
     Latches latches;

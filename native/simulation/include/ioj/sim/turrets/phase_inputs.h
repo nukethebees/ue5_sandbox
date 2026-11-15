@@ -14,6 +14,7 @@ namespace ioj::sim {
 class DamageQueue;
 class EntityLedger;
 struct EntityDeathInfo;
+struct SimClock;
 struct SpatialQueryManager;
 }
 
@@ -23,6 +24,7 @@ struct Sim;
 
 namespace ioj::sim::turrets {
 struct ThinkingInputs {
+    SimClock const& clock;
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& laser_simulation;
     FrameMemoryResource& scratch_resource;
@@ -37,6 +39,7 @@ struct ResolutionInputs {
 };
 
 struct ResolutionCommitInputs {
+    SimClock const& clock;
     std::pmr::vector<std::uint32_t>& local_indices_to_remove;
 };
 } // namespace ioj::sim::turrets

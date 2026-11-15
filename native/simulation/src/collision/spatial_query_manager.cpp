@@ -9,7 +9,6 @@
 #include <ioj/sim/entities/entity_lookup_tables.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/levels/level_read_access.h>
-#include <ioj/sim/phase_checks.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spinners/sim.h>
@@ -406,7 +405,6 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
 auto SpatialQueryManager::any_non_team_entity(EntityLookupTables const& lookups,
                                               Team const team,
                                               EntityType const entity_type) const -> EntityId {
-    assert(is_lookup_allowed(lookups.clock()));
     auto const handles{lookups.for_type(entity_type).entries()};
     auto const count{static_cast<std::uint32_t>(handles.size())};
     for (std::uint32_t index{}; index < count; ++index) {

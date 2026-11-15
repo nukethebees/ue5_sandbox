@@ -7,6 +7,7 @@
 #include <ioj/sim/fighters/phase_interface.h>
 #include <ioj/sim/lasers/phase_interface.h>
 #include <ioj/sim/levels/spawn_context.h>
+#include <ioj/sim/phase_checks.h>
 #include <ioj/sim/player/phase_interface.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spinners/phase_interface.h>
@@ -63,10 +64,11 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     if (player_ship_simulation_) {
         player_ship_simulation_->update_entity_lookup_table();
     }
-    capital_ships::InitialisationInterface{capital_ships_simulation_}.update_entity_lookup_table();
-    fighters::InitialisationInterface{fighters_simulation_}.update_entity_lookup_table();
-    turrets::InitialisationInterface{turrets_simulation_}.update_entity_lookup_table();
-    spinners::InitialisationInterface{spinners_simulation_}.update_entity_lookup_table();
+    capital_ships::InitialisationInterface{capital_ships_simulation_}.update_entity_lookup_table(
+        clock_);
+    fighters::InitialisationInterface{fighters_simulation_}.update_entity_lookup_table(clock_);
+    turrets::InitialisationInterface{turrets_simulation_}.update_entity_lookup_table(clock_);
+    spinners::InitialisationInterface{spinners_simulation_}.update_entity_lookup_table(clock_);
     refresh_spatial_index();
 
     state_ = LevelState::StableSetup;
@@ -226,6 +228,7 @@ void LevelSim::advance_tick(float const tick_period,
         dispatch_preparation_events();
 
         fighters::PreparationInputs const fighter_inputs{
+            .clock = clock_,
             .ledger = entity_ledger_,
             .participating_teams = participating_teams_,
         };
@@ -245,10 +248,10 @@ void LevelSim::advance_tick(float const tick_period,
         } else if constexpr (PlayerState == TickPlayerShipState::PresentDead) {
             player_ship_simulation_->update_entity_lookup_table();
         }
-        capital_ships_phase.prepare_tick();
+        capital_ships_phase.prepare_tick(clock_);
         fighters_phase.prepare_tick(fighter_inputs);
-        turrets_phase.prepare_tick();
-        spinners_phase.prepare_tick(tick_period);
+        turrets_phase.prepare_tick(clock_);
+        spinners_phase.prepare_tick(tick_period, clock_);
 
         refresh_spatial_index();
     }
@@ -273,7 +276,7 @@ void LevelSim::advance_tick(float const tick_period,
                 spawn_manager_.queue_fighter_spawns(tick_period, phase_memory);
 
                 turrets::ThinkingInputs const turret_inputs{
-                    collision_pipeline_.queries(), lasers_simulation_, phase_memory};
+                    clock_, collision_pipeline_.queries(), lasers_simulation_, phase_memory};
                 fighters::NavigationCounters navigation_counters{};
                 fighters::ThinkingInputs const fighter_inputs{
                     .clock = clock_,
@@ -420,6 +423,7 @@ void LevelSim::advance_tick(float const tick_period,
                 // Evaluate final health and deaths before invalidating row mappings.
                 latches_.commit();
                 timers_.tick(1);
+                assert(is_lookup_allowed(clock_));
                 expressions_.evaluate({entity_ledger_,
                                        timers_,
                                        spawn_manager_.entity_ids(),
@@ -442,9 +446,11 @@ void LevelSim::advance_tick(float const tick_period,
 
                 SANDBOX_PROFILE_SCOPE("ResolutionCommit");
                 clock_.transition_to(SimulationPhase::ResolutionCommit);
-                fighters::ResolutionCommitInputs const fighter_inputs{fighter_removal_indices};
-                capital_ships::ResolutionCommitInputs const capital_inputs{capital_removal_indices};
-                turrets::ResolutionCommitInputs const turret_inputs{turret_removal_indices};
+                fighters::ResolutionCommitInputs const fighter_inputs{clock_,
+                                                                      fighter_removal_indices};
+                capital_ships::ResolutionCommitInputs const capital_inputs{clock_,
+                                                                           capital_removal_indices};
+                turrets::ResolutionCommitInputs const turret_inputs{clock_, turret_removal_indices};
 
                 capital_ships_commit.remove_entities(capital_inputs);
                 fighters_commit.remove_entities(fighter_inputs);

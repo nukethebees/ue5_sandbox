@@ -50,8 +50,8 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void initialise(SpinnerSimConfig const& new_config, SimClock const& clock);
-    void update_entity_lookup_table();
-    void prepare_tick(float dt);
+    void update_entity_lookup_table(SimClock const& clock);
+    void prepare_tick(float dt, SimClock const& clock);
     void think(float dt);
     void apply_movement(ActionInputs const inputs);
     void generate_fire_commands(ThinkingInputs const inputs);

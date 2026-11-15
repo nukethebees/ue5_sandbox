@@ -54,8 +54,8 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void initialise(settings::PositiveHealth max_health);
-    void update_entity_lookup_table();
-    void prepare_tick();
+    void update_entity_lookup_table(SimClock const& clock);
+    void prepare_tick(SimClock const& clock);
     void resolve_damage_events(ResolutionInputs const inputs);
     void publish_deaths(ResolutionInputs const inputs);
     void remove_entities(ResolutionCommitInputs const inputs);

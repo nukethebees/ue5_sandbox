@@ -34,6 +34,7 @@ namespace ioj::sim::fighters {
 struct NavigationCounters;
 
 struct PreparationInputs {
+    SimClock const& clock;
     EntityLedger& ledger;
     std::span<Team const> participating_teams;
 };
@@ -65,6 +66,7 @@ struct ResolutionInputs {
 };
 
 struct ResolutionCommitInputs {
+    SimClock const& clock;
     std::pmr::vector<std::uint32_t>& local_indices_to_remove;
 };
 } // namespace ioj::sim::fighters

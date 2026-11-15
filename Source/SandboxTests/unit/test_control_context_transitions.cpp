@@ -45,7 +45,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     ioj::FPlayerControlContexts contexts_;
     ::ioj::sim::SimClock clock_;
     ::ioj::sim::EntityLedger ledger_;
-    ::ioj::sim::EntityTables tables_{clock_};
+    ::ioj::sim::EntityTables tables_{};
     ::ioj::sim::player::Sim ship_simulation_{clock_, ledger_, tables_};
     ::ioj::sim::player::CommandInterface ship_commands_{ship_simulation_};
 

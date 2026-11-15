@@ -58,7 +58,7 @@ Sim::Sim(EntityTables& entity_tables) noexcept
 auto Sim::register_turrets(LevelTurretSpawnEvents::CompactConstView const spawn_data,
                            SpawnContext const context) -> std::vector<EntityId> {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::register_turrets");
-    assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
+    assert(is_preparation_mutation_allowed(context.clock));
     spawn_data.validate();
     auto const n_to_add{spawn_data.num()};
     if (n_to_add == 0) {
@@ -157,21 +157,25 @@ void Sim::handle_dead_entities(ResolutionCommitInputs const inputs) {
 // Sim phases
 /* **************************************** */
 // Preparation
-void Sim::update_entity_lookup_table() {
+void Sim::update_entity_lookup_table([[maybe_unused]] SimClock const& clock) {
+    assert(is_preparation_mutation_allowed(clock));
+
     auto const rows{entities_.const_view()};
     entity_tables_.publish<EntityType::Turret>(rows.entity_ids(), rows.teams(), config_.max_health);
 }
-void Sim::prepare_tick() {
+void Sim::prepare_tick(SimClock const& clock) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::prepare_tick");
 
     auto const entities{entities_.view()};
     tick_countdowns<std::int16_t>(entities.laser_cooldowns(), cooldown_cleaner_, 16384);
     tick_periodic_countdowns<std::int16_t>(entities.target_refresh_countdowns_remaining_ticks());
-    update_entity_lookup_table();
+    update_entity_lookup_table(clock);
 }
 
 // Thinking
 void Sim::think(ThinkingInputs const inputs) {
+    assert(is_lookup_allowed(inputs.clock));
+
     SANDBOX_PROFILE_SCOPE("turrets::Sim::think");
     refresh_target_data(inputs);
     perform_search(inputs);
@@ -229,7 +233,7 @@ void Sim::publish_deaths(ResolutionInputs const inputs) {
 
 // ResolutionCommit
 void Sim::remove_entities(ResolutionCommitInputs const inputs) {
-    assert(is_removal_allowed(entity_tables_.lookups.clock()));
+    assert(is_removal_allowed(inputs.clock));
     SANDBOX_PROFILE_SCOPE("turrets::Sim::remove_entities");
     sort_removal_indices(inputs.local_indices_to_remove);
 

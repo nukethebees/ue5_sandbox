@@ -2,16 +2,13 @@
 
 #include <ioj/sim/entities/entity_lookup_table.h>
 #include <ioj/sim/entities/entity_type_runs.h>
-#include <ioj/sim/phase_checks.h>
 
 namespace ioj::sim {
 class EntityLookupTables {
   public:
     explicit EntityLookupTables(
-        SimClock const& clock,
         std::pmr::memory_resource& memory = *std::pmr::get_default_resource())
-        : clock_{clock}
-        , tables_{{EntityLookupTable{EntityType::PlayerShip, &memory},
+        : tables_{{EntityLookupTable{EntityType::PlayerShip, &memory},
                    EntityLookupTable{EntityType::Turret, &memory},
                    EntityLookupTable{EntityType::CapitalShip, &memory},
                    EntityLookupTable{EntityType::Fighter, &memory},
@@ -22,8 +19,6 @@ class EntityLookupTables {
         return tables_[type];
     }
 
-    [[nodiscard]] auto clock() const noexcept -> SimClock const& { return clock_; }
-
     [[nodiscard]] auto for_type(EntityType const type) const -> EntityLookupTable const& {
         assert(is_valid(type));
         return tables_[type];
@@ -33,7 +28,6 @@ class EntityLookupTables {
     // Exclude the null tail from lookup and leave its output handles invalid.
     void lookup_handles(std::span<EntityId const> const ids,
                         std::span<EntityInstanceHandle> const output) const {
-        assert(is_lookup_allowed(clock_));
         assert(output.size() == ids.size());
 
         std::ranges::fill(output, EntityInstanceHandle{});
@@ -52,7 +46,6 @@ class EntityLookupTables {
     auto lookup_handles(std::span<EntityId const> const ids,
                         std::span<EntityTypeRuns::Offset> const order,
                         std::span<EntityInstanceHandle> const output) const -> EntityTypeRuns {
-        assert(is_lookup_allowed(clock_));
         assert(output.size() == ids.size());
         std::ranges::fill(output, EntityInstanceHandle{});
         auto runs{group_entity_ids(ids, order)};
@@ -71,7 +64,6 @@ class EntityLookupTables {
         return runs;
     }
   private:
-    SimClock const& clock_;
     EnumArray<EntityLookupTable, EntityType> tables_;
 };
 }

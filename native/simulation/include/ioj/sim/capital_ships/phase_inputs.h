@@ -14,6 +14,7 @@ namespace ioj::sim {
 class DamageQueue;
 class EntityLedger;
 struct EntityDeathInfo;
+struct SimClock;
 }
 
 namespace ioj::sim::capital_ships {
@@ -26,6 +27,7 @@ struct ResolutionInputs {
 };
 
 struct ResolutionCommitInputs {
+    SimClock const& clock;
     std::pmr::vector<std::uint32_t>& local_indices_to_remove;
 };
 } // namespace ioj::sim::capital_ships

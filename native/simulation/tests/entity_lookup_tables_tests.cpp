@@ -79,15 +79,13 @@ TEST(EntityLookupTables, PublishedCountIncludesDeadRowsUntilRepublished) {
 }
 
 TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
-    SimClock clock;
-    EntityLookupTables lookups{clock};
+    EntityLookupTables lookups{};
     std::array const fighters{EntityId{2, EntityType::Fighter}, EntityId{3, EntityType::Fighter}};
     std::array const capitals{EntityId{0, EntityType::CapitalShip}};
     lookups.for_type(EntityType::Fighter)
         .publish_rows(fighters, std::array{Team::Blue, Team::Blue});
     lookups.for_type(EntityType::CapitalShip).publish_rows(capitals, std::array{Team::Red});
     lookups.for_type(EntityType::Fighter).retire(std::span{fighters}.last(1));
-    clock.advance_to(SimulationPhase::Thinking);
     std::array const ids{fighters[0], EntityId{}, capitals[0], fighters[0], fighters[1]};
     std::array<std::uint32_t, ids.size()> order;
     std::array<EntityInstanceHandle, ids.size()> handles;
@@ -98,13 +96,11 @@ TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
 }
 
 TEST(EntityLookupTables, ResolvesTypeRunsAndPreservesDuplicateAndMissingSlots) {
-    SimClock clock;
-    EntityLookupTables lookups{clock};
+    EntityLookupTables lookups{};
     std::array const fighters{EntityId{2, EntityType::Fighter}, EntityId{5, EntityType::Fighter}};
     std::array const capitals{EntityId{0, EntityType::CapitalShip}};
     lookups.for_type(EntityType::Fighter).publish_rows(fighters, std::array{Team::Blue, Team::Red});
     lookups.for_type(EntityType::CapitalShip).publish_rows(capitals, std::array{Team::Green});
-    clock.advance_to(SimulationPhase::Thinking);
 
     std::array const ids{capitals[0],
                          fighters[1],
