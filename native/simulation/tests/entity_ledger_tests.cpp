@@ -125,15 +125,22 @@ TEST(DamageResolution, SkipsRetiredAndAlreadyDeadRecipients) {
     EXPECT_EQ(deaths.view().killers()[0], attacker);
 }
 
-TEST(EntityLedger, PreservesKillCountsAndResetsLevelIdentity) {
+TEST(EntityLedger, PreservesKillCountsAfterDeath) {
     GameMemory memory{*std::pmr::get_default_resource()};
     EntityLedger ledger{memory};
-    auto const* history_storage{ledger.history().teams().data()};
     EXPECT_EQ(ledger.history().num(), entity_identity_capacity);
     EXPECT_EQ(memory.stats().live_allocation_count, 1);
+    EXPECT_EQ(ledger.count_alive(), 0);
+    for (auto const type : EnumTraits<EntityType>::values) {
+        EXPECT_EQ(ledger.issued_counts()[type], 0);
+        EXPECT_TRUE(ledger.frame_deaths(type).empty());
+    }
 
     EntityId killer;
     ledger.record_spawns(EntityType::Turret, Team::Red, Health{1}, {&killer, 1});
+    EXPECT_EQ(killer, (EntityId{0, EntityType::Turret}));
+    EXPECT_EQ(ledger.history_index(killer), entity_identity_offsets[EntityType::Turret]);
+    EXPECT_EQ(ledger.kills(killer), 0);
     EXPECT_FALSE(ledger.is_valid_unique_id(EntityId{1, EntityType::Turret}));
     EXPECT_EQ(ledger.history_index(EntityId{1, EntityType::Turret}),
               EntityLedger::invalid_history_index);
@@ -166,24 +173,6 @@ TEST(EntityLedger, PreservesKillCountsAndResetsLevelIdentity) {
     EXPECT_EQ(ledger.count_alive(), 0);
 
     EXPECT_EQ((ledger.count_kills(Team::Green)), 2u);
-
-    auto const allocated_bytes{memory.stats().live_bytes};
-    ledger.reset();
-    EXPECT_EQ(ledger.history().teams().data(), history_storage);
-    EXPECT_EQ(memory.stats().live_bytes, allocated_bytes);
-    for (auto const type : EnumTraits<EntityType>::values) {
-        EXPECT_TRUE(ledger.unique_entities(type).is_empty());
-        EXPECT_TRUE(ledger.frame_deaths(type).empty());
-    }
-    EXPECT_EQ(ledger.count_alive(), 0);
-    EXPECT_FALSE(ledger.is_valid_unique_id(killer));
-
-    EntityId restarted;
-    ledger.record_spawns(EntityType::Turret, Team::Red, Health{1}, {&restarted, 1});
-    EXPECT_EQ(restarted, killer);
-    EXPECT_EQ(ledger.history_index(restarted), entity_identity_offsets[EntityType::Turret]);
-    EXPECT_EQ(ledger.kills(restarted), 0);
-    EXPECT_EQ(ledger.count_alive(), 1);
 }
 TEST(CombatStatistics, CountsKillsPerTeamAndResetsCounters) {
     CombatStatistics statistics;

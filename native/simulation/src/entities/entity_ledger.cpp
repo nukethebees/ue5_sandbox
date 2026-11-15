@@ -17,13 +17,6 @@ EntityLedger::EntityLedger(std::pmr::memory_resource& memory)
     history_.set_num(entity_identity_capacity);
 }
 
-void EntityLedger::reset() {
-    history_.reset();
-    history_.set_num(entity_identity_capacity);
-    issued_counts_ = {};
-    statistics_.reset();
-    reset_frame_output();
-}
 void EntityLedger::reset_frame_output() {
     for (auto& deaths : frame_deaths_) {
         deaths.clear();

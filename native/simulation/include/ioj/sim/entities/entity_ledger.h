@@ -21,7 +21,6 @@ class EntityLedger {
 
     explicit EntityLedger(std::pmr::memory_resource& memory = *std::pmr::get_default_resource());
 
-    void reset();
     void reset_frame_output();
     // Require equally sized columns and output IDs. Do not borrow inputs from this ledger.
     void record_spawns(EntityType type,
