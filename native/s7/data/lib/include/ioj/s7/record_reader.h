@@ -48,7 +48,6 @@ void read_record(DecodeContext context,
                               std::format("Unknown property ':{}'", name)});
             continue;
         }
-        assert(static_cast<std::size_t>(*field) < N);
         if (seen.has(*field)) {
             errors.push_back({AstErrorCode::DuplicateProperty,
                               location,
