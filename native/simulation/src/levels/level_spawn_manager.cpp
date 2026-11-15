@@ -49,8 +49,6 @@ void LevelSpawnManager::set_entity_id(LevelEntityRef const entity_index, EntityI
 void LevelSpawnManager::process_event(EventHandle const event,
                                       LevelEventManager const& events,
                                       SpawnContext const context) {
-    assert(event.kind() == EventKind::Spawn);
-
     auto const& definitions{events.data()};
     auto const range{definitions.spawn_events[event.index()]};
     auto const groups{definitions.spawn_groups.const_view(range.offset, range.count)};
