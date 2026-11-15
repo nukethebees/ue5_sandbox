@@ -216,10 +216,7 @@ struct Rotators3f
     }
     size_type add(Rotator3f const value) { return add(value.pitch, value.yaw, value.roll); }
     using equivalent_type = Rotator3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return const_view()[index];
-    }
+    auto operator[](std::uint32_t index) const -> equivalent_type { return const_view()[index]; }
   private:
     friend Operations;
     friend soa_storage_detail::StorageRequirements;

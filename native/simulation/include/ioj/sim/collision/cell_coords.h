@@ -219,10 +219,7 @@ struct CellCoords
     }
     size_type add(CellCoord const value) { return add(value.x(), value.y(), value.z()); }
     using equivalent_type = CellCoord;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return const_view()[index];
-    }
+    auto operator[](std::uint32_t index) const -> equivalent_type { return const_view()[index]; }
   private:
     friend Operations;
     friend soa_storage_detail::StorageRequirements;

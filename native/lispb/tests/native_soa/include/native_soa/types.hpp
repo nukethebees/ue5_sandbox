@@ -2428,10 +2428,7 @@ struct EquivalentOwner
     void set(size_type index, ApiPair const value) { set(index, value.x, value.y); }
     size_type add(ApiPair const value) { return add(value.x, value.y); }
     using equivalent_type = ApiPair;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return const_view()[index];
-    }
+    auto operator[](std::uint32_t index) const -> equivalent_type { return const_view()[index]; }
   private:
     friend Operations;
     friend soa_storage_detail::StorageRequirements;
@@ -2644,10 +2641,7 @@ struct AccessorOwner
     void set(size_type index, Vector3f const value) { set(index, value.x(), value.y(), value.z()); }
     size_type add(Vector3f const value) { return add(value.x(), value.y(), value.z()); }
     using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return const_view()[index];
-    }
+    auto operator[](std::uint32_t index) const -> equivalent_type { return const_view()[index]; }
   private:
     friend Operations;
     friend soa_storage_detail::StorageRequirements;

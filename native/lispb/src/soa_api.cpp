@@ -209,16 +209,18 @@ class SoaApiLowering : public CppIRBuilder {
                         ? call(reference_type(intern_type(ctx.text(*constructor_id))), arguments)
                         : init_list(arguments, named_type("equivalent_type"));
             }
+            auto body{node_list()};
+            if (receiver != SoaReceiver::owner) {
+                body.add(assertion(
+                    binary(BinaryOperator::less, named("index"), call(this->name("num")))));
+            }
+            body.add(return_stmt(expression));
             FunctionDefinition const function{
                 .name = this->name("operator[]"),
                 .return_type = intern_type("equivalent_type"),
                 .return_syntax = ReturnSyntax::trailing,
                 .parameters = {parameter(std_types().u32, "index")},
-                .implementation = {.kind = FunctionImplementationKind::body,
-                                   .body = {assertion(binary(BinaryOperator::less,
-                                                             named("index"),
-                                                             call(this->name("num")))),
-                                            return_stmt(expression)}},
+                .implementation = {.kind = FunctionImplementationKind::body, .body = body.build()},
                 .receiver = FunctionReceiver::const_,
                 .flags = {.is_inline = true, .define_in_header = true}};
             header.add(header_function(add_function(function))).new_lines(1);
