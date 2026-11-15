@@ -25,8 +25,12 @@ class BulkRangeQueries
     }
 
     void query(float const radius, RangeQueryResults& output) {
-        queries.collect_non_team_entities_in_range(
-            origins.const_view().resolve(), teams.view(), radius, output, &memory);
+        queries.collect_non_team_entities_in_range(owners.entity_tables.lookups,
+                                                   origins.const_view().resolve(),
+                                                   teams.view(),
+                                                   radius,
+                                                   output,
+                                                   &memory);
     }
 
     void expect_scalar_matches(float const radius, RangeQueryResults& output) {
@@ -49,8 +53,13 @@ class BulkRangeQueries
             ASSERT_EQ(range.offset, offset);
             ASSERT_LE(range.end(), output.matches.num());
             offset = range.end();
-            auto const count{queries.collect_non_team_entities_in_range(
-                locations[index], teams[index], radius, reference, &reference_memory)};
+            auto const count{
+                queries.collect_non_team_entities_in_range(owners.entity_tables.lookups,
+                                                           locations[index],
+                                                           teams[index],
+                                                           radius,
+                                                           reference,
+                                                           &reference_memory)};
             // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- result count depends on this request.
             auto const expected{reference_view.first(count)};
             std::vector<EntityId> actual;

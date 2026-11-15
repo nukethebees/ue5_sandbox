@@ -16,7 +16,7 @@
 #include <utility>
 
 namespace ioj::sim {
-struct EntityTables;
+class EntityLookupTables;
 class LevelReadAccess;
 struct RangeQueryResults;
 struct SpatialQueryManager;
@@ -30,13 +30,13 @@ class FrameMemoryResource;
 namespace ioj::sim {
 // Entity queries require published lookup rows and a current grid: LevelState::StableSetup,
 // Thinking, Action, or pre-compaction Resolution. Neither is valid between ticks.
+// Supplied lookups must correspond to the current grid and borrowed motion views.
 struct SpatialQueryManager {
   public:
     /* **************************************** */
     // Construction and setup
     /* **************************************** */
     explicit SpatialQueryManager(
-        EntityTables const& agents,
         std::pmr::memory_resource* resource = std::pmr::get_default_resource());
     SpatialQueryManager(SpatialQueryManager const&) = delete;
     SpatialQueryManager(SpatialQueryManager&&) = delete;
@@ -86,7 +86,8 @@ struct SpatialQueryManager {
     // Replace caller-owned results in request order; candidate order within each range is
     // unspecified. Range tests use inclusive centre distance and abs(radius). Directions point from
     // each origin to its candidate, with zero for squared distances below 1.e-8.
-    void collect_non_team_entities_in_range(vectors3f::ResolvedConstView origins,
+    void collect_non_team_entities_in_range(EntityLookupTables const& lookups,
+                                            vectors3f::ResolvedConstView origins,
                                             std::span<Team const> teams,
                                             float radius,
                                             RangeQueryResults& out_results,
@@ -108,29 +109,35 @@ struct SpatialQueryManager {
                        FrameMemoryResource* scratch_resource,
                        EntityId ignored_entity = {}) const -> LineTraceResult;
 
-    auto collect_non_team_entities_in_range(Vector3f const& origin,
+    auto collect_non_team_entities_in_range(EntityLookupTables const& lookups,
+                                            Vector3f const& origin,
                                             Team const team,
                                             float const radius,
                                             std::span<EntityId> const out_entities,
                                             FrameMemoryResource* scratch_resource) const
         -> std::uint32_t;
-    auto collect_entities_of_type_in_range(Vector3f const& origin,
+    auto collect_entities_of_type_in_range(EntityLookupTables const& lookups,
+                                           Vector3f const& origin,
                                            EntityType entity_type,
                                            float radius,
                                            EntityId ignored_entity,
                                            std::span<EntityId> out_entities,
                                            FrameMemoryResource* scratch_resource) const
         -> std::uint32_t;
-    auto any_non_team_entity(Team const team, EntityType const entity_type) const -> EntityId;
+    auto any_non_team_entity(EntityLookupTables const& lookups,
+                             Team const team,
+                             EntityType const entity_type) const -> EntityId;
     void are_spheres_in_bounds(vectors3f::ResolvedConstView centres,
                                float radius,
                                std::span<collision::SphereInBoundsResult> out_results) const;
     auto entity_type_radius(EntityType entity_type) const noexcept -> float;
     auto entity_type_radii() const noexcept -> EntityTypeRadii const&;
-    void copy_entity_locations(std::span<EntityId const> ids,
+    void copy_entity_locations(EntityLookupTables const& lookups,
+                               std::span<EntityId const> ids,
                                vectors3f::ResolvedView output,
                                FrameMemoryResource* scratch_resource) const;
-    void copy_entity_motion(std::span<EntityId const> ids,
+    void copy_entity_motion(EntityLookupTables const& lookups,
+                            std::span<EntityId const> ids,
                             vectors3f::ResolvedView locations,
                             vectors3f::ResolvedView velocities,
                             std::span<EntityInstanceHandle> handles,
@@ -143,7 +150,8 @@ struct SpatialQueryManager {
     auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point)
         -> collision::StaticGeometryIndex;
     void refresh_spatial_index(LevelReadAccess const& level);
-    auto detect_overlaps(std::span<EntityId const> overlap_candidates,
+    auto detect_overlaps(EntityLookupTables const& lookups,
+                         std::span<EntityId const> overlap_candidates,
                          FrameMemoryResource* const scratch_resource)
         -> collision::DetectedOverlapsView;
     void reset_frame_collision_events();
@@ -157,8 +165,6 @@ struct SpatialQueryManager {
     /* **************************************** */
     // State
     /* **************************************** */
-    EntityTables const& entity_tables_;
-
     collision::CollisionSystem collision_system_;
     EntityTypeRadii entity_radii_{};
     EnumArray<vectors3f::ResolvedConstView, EntityType> locations_;

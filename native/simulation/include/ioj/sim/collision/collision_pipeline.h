@@ -17,9 +17,7 @@ namespace ioj::sim::collision {
 
 class CollisionPipeline {
   public:
-    CollisionPipeline(EntityTables const& entities,
-                      CollisionInitData data,
-                      std::pmr::memory_resource* resource);
+    CollisionPipeline(CollisionInitData data, std::pmr::memory_resource* resource);
 
     CollisionPipeline(CollisionPipeline const&) = delete;
     CollisionPipeline(CollisionPipeline&&) = delete;
@@ -38,6 +36,7 @@ class CollisionPipeline {
         track_player_movement(EntityId player, Transform3d const& before, Transform3d const& after);
     // Run after all movement, while published entity rows still identify the same entities.
     void detect_and_handle_overlaps(LevelReadAccess const& level,
+                                    EntityLookupTables const& lookups,
                                     std::span<EntityId const> moved_fighters,
                                     DamageQueue& damage_queue,
                                     FrameMemoryResource& scratch);

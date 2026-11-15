@@ -14,7 +14,7 @@ class FrameMemoryResource;
 }
 
 namespace ioj::sim {
-struct EntityTables;
+class EntityLookupTables;
 class LevelReadAccess;
 struct SpatialQueryManager;
 struct SpatialQueryManagerTestAccess;
@@ -30,8 +30,7 @@ class CollisionSystem {
     /* **************************************** */
     // Construction and setup
     /* **************************************** */
-    explicit CollisionSystem(EntityTables const& agents,
-                             std::pmr::memory_resource* resource) noexcept;
+    explicit CollisionSystem(std::pmr::memory_resource* resource) noexcept;
     CollisionSystem(CollisionSystem const&) = delete;
     CollisionSystem(CollisionSystem&&) = delete;
     auto operator=(CollisionSystem const&) -> CollisionSystem& = delete;
@@ -49,9 +48,11 @@ class CollisionSystem {
     /* **************************************** */
     // Overlap detection
     /* **************************************** */
-    auto detect_overlaps(std::span<EntityId const> overlap_candidates,
+    auto detect_overlaps(EntityLookupTables const& lookups,
+                         std::span<EntityId const> overlap_candidates,
                          FrameMemoryResource* const scratch_resource) -> DetectedOverlapsView;
-    void collect_overlaps_for_candidates(std::span<EntityId const> overlap_candidates,
+    void collect_overlaps_for_candidates(EntityLookupTables const& lookups,
+                                         std::span<EntityId const> overlap_candidates,
                                          EntityEntityOverlaps& entity_overlaps,
                                          EntityStaticOverlaps& static_overlaps,
                                          FrameMemoryResource* const scratch_resource);
@@ -72,7 +73,6 @@ class CollisionSystem {
     /* **************************************** */
     // State
     /* **************************************** */
-    EntityTables const& entity_tables_;
     CollisionUniformGrid uniform_grid_;
 
     EntityAABBs entity_aabbs_{};

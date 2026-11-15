@@ -319,7 +319,7 @@ struct CollisionQueryFixture {
     }
 
     CollisionAgentStorage owners;
-    SpatialQueryManager queries{owners.entity_tables};
+    SpatialQueryManager queries{};
     collision::EntityAABBs bounds;
 };
 

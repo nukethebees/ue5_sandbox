@@ -185,7 +185,8 @@ void Sim::refresh_target_data(ThinkingInputs const inputs) {
     auto const target_ids{entities.target_ids()};
     FrameArray<EntityInstanceHandle> targets{scratch_resource};
     targets.set_num(count);
-    inputs.spatial_query_manager.copy_entity_motion(target_ids,
+    inputs.spatial_query_manager.copy_entity_motion(entity_tables_.lookups,
+                                                    target_ids,
                                                     entities.view_target_locations().resolve(),
                                                     entities.view_target_velocities().resolve(),
                                                     targets,
@@ -298,7 +299,12 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
 
             target_ids.set_num_uninitialised(
                 inputs.spatial_query_manager.collect_non_team_entities_in_range(
-                    turret_location, this_team, radius, target_capacity, scratch_resource));
+                    entity_tables_.lookups,
+                    turret_location,
+                    this_team,
+                    radius,
+                    target_capacity,
+                    scratch_resource));
 
             current_targets[i] = EntityId{};
 
@@ -312,7 +318,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
                 std::span{candidate_ys}.first(count),
                 std::span{candidate_zs}.first(count)};
             inputs.spatial_query_manager.copy_entity_locations(
-                target_ids, candidate_locations_view, scratch_resource);
+                entity_tables_.lookups, target_ids, candidate_locations_view, scratch_resource);
 
             inputs.spatial_query_manager.has_line_of_sight_to_targets(
                 vector_at(fire_point_locations, i),

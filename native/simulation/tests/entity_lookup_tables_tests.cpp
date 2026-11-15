@@ -156,15 +156,20 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     Vectors3f velocities;
     locations.set_num(static_cast<std::uint32_t>(ids.size()));
     velocities.set_num(locations.num());
-    SpatialQueryManager queries{owners.entity_tables};
+    SpatialQueryManager queries{};
     queries.initialise({{10, 10, 10}, {{100, 100, 100}}}, {});
     owners.refresh(queries);
     FrameMemoryResource scratch{4096};
-    queries.copy_entity_locations(ids, locations.view().resolve(), &scratch);
+    queries.copy_entity_locations(
+        owners.entity_tables.lookups, ids, locations.view().resolve(), &scratch);
     EXPECT_EQ(ids, original);
     std::array<EntityInstanceHandle, ids.size()> handles;
-    queries.copy_entity_motion(
-        ids, locations.view().resolve(), velocities.view().resolve(), handles, &scratch);
+    queries.copy_entity_motion(owners.entity_tables.lookups,
+                               ids,
+                               locations.view().resolve(),
+                               velocities.view().resolve(),
+                               handles,
+                               &scratch);
     std::array expected_validity{true, false, true, true, false, true, false};
     std::vector<Vector3f> expected_locations{
         {10, 20, 30}, {}, {40, 50, 60}, {10, 20, 30}, {}, {70, 80, 90}, {}};
@@ -184,8 +189,12 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     owners.remove(fighter);
     owners.publish();
     owners.refresh(queries);
-    queries.copy_entity_motion(
-        ids, locations.view().resolve(), velocities.view().resolve(), handles, &scratch);
+    queries.copy_entity_motion(owners.entity_tables.lookups,
+                               ids,
+                               locations.view().resolve(),
+                               velocities.view().resolve(),
+                               handles,
+                               &scratch);
     expected_validity[0] = false;
     expected_validity[3] = false;
     expected_locations[0] = {};

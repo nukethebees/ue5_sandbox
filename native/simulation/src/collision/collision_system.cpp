@@ -2,7 +2,7 @@
 
 #include <ioj/frame_array.h>
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/entities/entity_tables.h>
+#include <ioj/sim/entities/entity_lookup_tables.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/soa_permutation.h>
 
@@ -17,10 +17,8 @@ namespace ioj::sim::collision {
 /* **************************************** */
 // Construction and setup
 /* **************************************** */
-CollisionSystem::CollisionSystem(EntityTables const& agents,
-                                 std::pmr::memory_resource* resource) noexcept
-    : entity_tables_{agents}
-    , overlap_event_storage_{resource} {}
+CollisionSystem::CollisionSystem(std::pmr::memory_resource* resource) noexcept
+    : overlap_event_storage_{resource} {}
 void CollisionSystem::initialise(GridGeometry const grid_geometry,
                                  collision::EntityAABBs const& bounds) {
     uniform_grid_.set_geometry(grid_geometry);
@@ -46,14 +44,15 @@ void CollisionSystem::refresh_spatial_index(LevelReadAccess const& level) {
 /* **************************************** */
 // Overlap detection
 /* **************************************** */
-auto CollisionSystem::detect_overlaps(std::span<EntityId const> const overlap_candidates,
+auto CollisionSystem::detect_overlaps(EntityLookupTables const& lookups,
+                                      std::span<EntityId const> const overlap_candidates,
                                       FrameMemoryResource* const scratch_resource)
     -> DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::detect_overlaps");
     EntityEntityOverlaps entity_overlaps{*scratch_resource};
     EntityStaticOverlaps static_overlaps{*scratch_resource};
     collect_overlaps_for_candidates(
-        overlap_candidates, entity_overlaps, static_overlaps, scratch_resource);
+        lookups, overlap_candidates, entity_overlaps, static_overlaps, scratch_resource);
 
     auto const entity_entity_overlaps{entity_overlaps.const_view()};
     auto const entity_static_overlaps{static_overlaps.const_view()};
@@ -63,6 +62,7 @@ auto CollisionSystem::detect_overlaps(std::span<EntityId const> const overlap_ca
     return events.get_batch(static_cast<AABBOverlapEventBatchIndex>(events.batches.size() - 1));
 }
 void CollisionSystem::collect_overlaps_for_candidates(
+    EntityLookupTables const& lookups,
     std::span<EntityId const> const overlap_candidates,
     EntityEntityOverlaps& entity_overlaps,
     EntityStaticOverlaps& static_overlaps,
@@ -88,7 +88,7 @@ void CollisionSystem::collect_overlaps_for_candidates(
     order.set_num(candidate_count);
     handles.set_num(candidate_count);
     present.set_num(candidate_count);
-    auto const runs{entity_tables_.lookups.lookup_handles(overlap_candidates, order, handles)};
+    auto const runs{lookups.lookup_handles(overlap_candidates, order, handles)};
     auto const built{uniform_grid_.entity_world_bounds()};
     auto const built_ids{built.entity_ids()};
     auto const min_points{built.view_min_points().resolve()};

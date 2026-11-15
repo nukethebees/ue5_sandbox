@@ -11,10 +11,9 @@
 
 namespace ioj::sim::collision {
 
-CollisionPipeline::CollisionPipeline(EntityTables const& entities,
-                                     CollisionInitData data,
+CollisionPipeline::CollisionPipeline(CollisionInitData data,
                                      std::pmr::memory_resource* const resource)
-    : queries_{entities, resource}
+    : queries_{resource}
     , overlap_handler_{data.overlap_response.damage_per_overlap_detection}
     , overlap_candidates_{resource} {
     queries_.initialise(data.grid_geometry, data.entity_bounds);
@@ -56,6 +55,7 @@ void CollisionPipeline::track_player_movement(EntityId const player,
 }
 
 void CollisionPipeline::detect_and_handle_overlaps(LevelReadAccess const& level,
+                                                   EntityLookupTables const& lookups,
                                                    std::span<EntityId const> const moved_fighters,
                                                    DamageQueue& damage_queue,
                                                    FrameMemoryResource& scratch) {
@@ -69,7 +69,7 @@ void CollisionPipeline::detect_and_handle_overlaps(LevelReadAccess const& level,
 
     refresh_spatial_index(level);
 
-    auto const overlaps{queries_.detect_overlaps(overlap_candidates_, &scratch)};
+    auto const overlaps{queries_.detect_overlaps(lookups, overlap_candidates_, &scratch)};
     overlap_handler_.handle(overlaps, damage_queue);
 }
 

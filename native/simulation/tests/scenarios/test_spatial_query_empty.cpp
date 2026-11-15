@@ -13,7 +13,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryEmptyBatchesAndWorld) {
 
     auto data{tests::make_simulation_data(config)};
     tests::CollisionAgentStorage owners;
-    SpatialQueryManager queries{owners.entity_tables};
+    SpatialQueryManager queries{};
     queries.initialise(data.collision.grid_geometry, data.collision.entity_bounds);
     owners.publish();
     owners.refresh(queries);
@@ -26,10 +26,17 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryEmptyBatchesAndWorld) {
     queries.has_line_of_sight_to_targets(
         Vector3f{0.f, 0.f, 0.f}, ends.const_view().resolve(), {}, line_of_sight, &query_memory);
     std::vector<EntityId> results{};
-    auto const count{queries.collect_non_team_entities_in_range(
-        Vector3f{0.f, 0.f, 0.f}, Team::Blue, 1000.f, results, &query_memory)};
+    auto const count{queries.collect_non_team_entities_in_range(owners.entity_tables.lookups,
+                                                                Vector3f{0.f, 0.f, 0.f},
+                                                                Team::Blue,
+                                                                1000.f,
+                                                                results,
+                                                                &query_memory)};
     EXPECT_EQ(count, 0) << "Empty range query has no results";
-    EXPECT_TRUE(!queries.any_non_team_entity(Team::Blue, EntityType::CapitalShip).is_valid())
+    EXPECT_TRUE(
+        !queries
+             .any_non_team_entity(owners.entity_tables.lookups, Team::Blue, EntityType::CapitalShip)
+             .is_valid())
         << "Empty world has no arbitrary enemy";
 }
 
@@ -46,20 +53,25 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryTeamAndInclusiveRadiusFiltering) 
     auto const boundary_enemy{
         owners.spawn(EntityType::CapitalShip, {{1000.f, 0.f, 0.f}}, {}, 100, Team::Red)};
     owners.spawn(EntityType::CapitalShip, {{1000.1f, 0.f, 0.f}}, {}, 100, Team::Red);
-    SpatialQueryManager queries{owners.entity_tables};
+    SpatialQueryManager queries{};
     queries.initialise(data.collision.grid_geometry, data.collision.entity_bounds);
     owners.publish();
     owners.refresh(queries);
     std::array<EntityId, 4> results;
-    auto const count{queries.collect_non_team_entities_in_range(
-        Vector3f{0.f, 0.f, 0.f}, Team::Blue, 1000.f, results, &query_memory)};
+    auto const count{queries.collect_non_team_entities_in_range(owners.entity_tables.lookups,
+                                                                Vector3f{0.f, 0.f, 0.f},
+                                                                Team::Blue,
+                                                                1000.f,
+                                                                results,
+                                                                &query_memory)};
     EXPECT_EQ(count, 1) << "Only one enemy is within the inclusive radius";
     if (count == 1) {
         EXPECT_EQ(boundary_enemy, results[0]) << "Boundary enemy is included";
     }
 
     std::array<EntityId, 4> ids;
-    auto const type_count{queries.collect_entities_of_type_in_range(Vector3f{0.f, 0.f, 0.f},
+    auto const type_count{queries.collect_entities_of_type_in_range(owners.entity_tables.lookups,
+                                                                    Vector3f{0.f, 0.f, 0.f},
                                                                     EntityType::CapitalShip,
                                                                     1000.f,
                                                                     ignored_origin,

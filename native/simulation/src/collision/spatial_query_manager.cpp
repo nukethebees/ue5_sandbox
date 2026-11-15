@@ -6,7 +6,7 @@
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/line_trace_batch.h>
-#include <ioj/sim/entities/entity_tables.h>
+#include <ioj/sim/entities/entity_lookup_tables.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/phase_checks.h>
@@ -141,7 +141,7 @@ namespace ioj::sim {
 namespace {
 template <typename IncludeEntity>
 auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
-                               EntityTables const& agents,
+                               EntityLookupTables const& lookups,
                                EnumArray<vectors3f::ResolvedConstView, EntityType> const& locations,
                                FrameMemoryResource* const scratch_resource,
                                Vector3f const origin,
@@ -173,7 +173,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     for (std::size_t i{}; i < entity_type_count; ++i) {
         auto const type{static_cast<EntityType>(i)};
         offsets[type] = total_count;
-        total_count += agents.lookups.for_type(type).row_count();
+        total_count += lookups.for_type(type).row_count();
     }
     visited.set_num(total_count);
     auto const radius_squared{radius * radius};
@@ -181,7 +181,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     for (auto const type : EnumTraits<EntityType>::values) {
         // Bind each type's table once before scanning.
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-        handles[type] = agents.lookups.for_type(type).entries();
+        handles[type] = lookups.for_type(type).entries();
     }
     std::uint32_t count{};
     auto const max_x{max_coord.x()};
@@ -229,10 +229,8 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
 /* **************************************** */
 // Construction and setup
 /* **************************************** */
-SpatialQueryManager::SpatialQueryManager(EntityTables const& agents,
-                                         std::pmr::memory_resource* resource)
-    : entity_tables_{agents}
-    , collision_system_{agents, resource} {}
+SpatialQueryManager::SpatialQueryManager(std::pmr::memory_resource* resource)
+    : collision_system_{resource} {}
 
 void SpatialQueryManager::initialise(collision::GridGeometry const grid_geometry,
                                      collision::EntityAABBs const& entity_bounds) {
@@ -347,6 +345,7 @@ auto SpatialQueryManager::trace_closest(Vector3f const start_location,
 }
 
 auto SpatialQueryManager::collect_non_team_entities_in_range(
+    EntityLookupTables const& lookups,
     Vector3f const& origin,
     Team const team,
     float const radius,
@@ -365,7 +364,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
             "Sandbox::SpatialQueryManager::collect_non_team_entities_in_range::loop");
         return collect_entities_in_range(
             grid,
-            entity_tables_,
+            lookups,
             locations_,
             scratch_resource,
             origin,
@@ -376,6 +375,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
 }
 
 auto SpatialQueryManager::collect_entities_of_type_in_range(
+    EntityLookupTables const& lookups,
     Vector3f const& origin,
     EntityType const entity_type,
     float const radius,
@@ -391,7 +391,7 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     auto const& grid{collision_system_.uniform_grid_};
     validate_grid_for_range_query(grid, origin, radius);
     return collect_entities_in_range(grid,
-                                     entity_tables_,
+                                     lookups,
                                      locations_,
                                      scratch_resource,
                                      origin,
@@ -403,10 +403,11 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
                                      });
 }
 
-auto SpatialQueryManager::any_non_team_entity(Team const team, EntityType const entity_type) const
-    -> EntityId {
-    assert(is_lookup_allowed(entity_tables_.lookups.clock()));
-    auto const handles{entity_tables_.lookups.for_type(entity_type).entries()};
+auto SpatialQueryManager::any_non_team_entity(EntityLookupTables const& lookups,
+                                              Team const team,
+                                              EntityType const entity_type) const -> EntityId {
+    assert(is_lookup_allowed(lookups.clock()));
+    auto const handles{lookups.for_type(entity_type).entries()};
     auto const count{static_cast<std::uint32_t>(handles.size())};
     for (std::uint32_t index{}; index < count; ++index) {
         if (handles[index].is_valid() && handles[index].team() != team) {
@@ -431,7 +432,8 @@ auto SpatialQueryManager::entity_type_radii() const noexcept -> EntityTypeRadii 
     return entity_radii_;
 }
 
-void SpatialQueryManager::copy_entity_locations(std::span<EntityId const> const ids,
+void SpatialQueryManager::copy_entity_locations(EntityLookupTables const& lookups,
+                                                std::span<EntityId const> const ids,
                                                 vectors3f::ResolvedView const output,
                                                 FrameMemoryResource* const scratch_resource) const {
     auto const count{output.num()};
@@ -440,7 +442,7 @@ void SpatialQueryManager::copy_entity_locations(std::span<EntityId const> const 
     FrameArray<EntityInstanceHandle> handles{scratch_resource};
     order.set_num(count);
     handles.set_num(count);
-    auto const runs{entity_tables_.lookups.lookup_handles(ids, order, handles)};
+    auto const runs{lookups.lookup_handles(ids, order, handles)};
     for (std::uint32_t row{}; row < count; ++row) {
         output.set(row, {});
     }
@@ -457,7 +459,8 @@ void SpatialQueryManager::copy_entity_locations(std::span<EntityId const> const 
         }
     }
 }
-void SpatialQueryManager::copy_entity_motion(std::span<EntityId const> const ids,
+void SpatialQueryManager::copy_entity_motion(EntityLookupTables const& lookups,
+                                             std::span<EntityId const> const ids,
                                              vectors3f::ResolvedView const output_locations,
                                              vectors3f::ResolvedView const output_velocities,
                                              std::span<EntityInstanceHandle> const handles,
@@ -466,7 +469,7 @@ void SpatialQueryManager::copy_entity_motion(std::span<EntityId const> const ids
     assert(ids.size() == count && output_velocities.num() == count);
     FrameArray<std::uint32_t> order{scratch_resource};
     order.set_num(count);
-    auto const runs{entity_tables_.lookups.lookup_handles(ids, order, handles)};
+    auto const runs{lookups.lookup_handles(ids, order, handles)};
     for (std::uint32_t row{}; row < count; ++row) {
         output_locations.set(row, {});
         output_velocities.set(row, {});
@@ -526,12 +529,13 @@ void SpatialQueryManager::refresh_spatial_index(LevelReadAccess const& level) {
     }
     collision_system_.refresh_spatial_index(level);
 }
-auto SpatialQueryManager::detect_overlaps(std::span<EntityId const> const overlap_candidates,
+auto SpatialQueryManager::detect_overlaps(EntityLookupTables const& lookups,
+                                          std::span<EntityId const> const overlap_candidates,
                                           FrameMemoryResource* const scratch_resource)
     -> collision::DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::detect_overlaps");
 
-    return collision_system_.detect_overlaps(overlap_candidates, scratch_resource);
+    return collision_system_.detect_overlaps(lookups, overlap_candidates, scratch_resource);
 }
 void SpatialQueryManager::reset_frame_collision_events() {
     collision_system_.reset_frame_collision_events();

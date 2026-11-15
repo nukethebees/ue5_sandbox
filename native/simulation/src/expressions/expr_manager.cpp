@@ -341,7 +341,7 @@ void ExprManager::evaluate_reached_position(std::span<LeafHandle const> const ru
     auto const& leaves{leaves_};
     auto const life_states{inputs.ledger.unique_entities().life_state()};
 
-    assert(inputs.spatial && inputs.scratch);
+    assert(inputs.spatial && inputs.lookups && inputs.scratch);
 
     FrameArray<EntityId> ids{inputs.scratch};
     FrameArray<LeafIndex> live_leaves{inputs.scratch};
@@ -369,7 +369,7 @@ void ExprManager::evaluate_reached_position(std::span<LeafHandle const> const ru
     auto const output{positions.view().resolve()};
 
     inputs.spatial->copy_entity_locations(
-        std::span<EntityId const>{ids.data(), live_count}, output, inputs.scratch);
+        *inputs.lookups, std::span<EntityId const>{ids.data(), live_count}, output, inputs.scratch);
 
     for (std::uint32_t row{}; row < live_count; ++row) {
         auto const leaf{live_leaves[row]};

@@ -29,7 +29,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
           data.tick_memory_capacity_bytes,
           data.phase_memory_capacity_bytes,
       }
-    , collision_pipeline_{entity_tables_, std::move(data.collision), &memory_manager_.game_memory()}
+    , collision_pipeline_{std::move(data.collision), &memory_manager_.game_memory()}
     , fighters_simulation_{entity_tables_}
     , capital_ships_simulation_{entity_tables_}
     , turrets_simulation_{entity_tables_}
@@ -351,8 +351,11 @@ void LevelSim::advance_tick(float const tick_period,
                     spinners_phase.apply_movement(spinner_inputs);
                 }
 
-                collision_pipeline_.detect_and_handle_overlaps(
-                    read_access(), fighter_overlap_candidates, damage_queue_, phase_memory);
+                collision_pipeline_.detect_and_handle_overlaps(read_access(),
+                                                               entity_tables_.lookups,
+                                                               fighter_overlap_candidates,
+                                                               damage_queue_,
+                                                               phase_memory);
             }
         }
 
@@ -422,6 +425,7 @@ void LevelSim::advance_tick(float const tick_period,
                                        spawn_manager_.entity_ids(),
                                        latches_,
                                        &collision_pipeline_.queries(),
+                                       &entity_tables_.lookups,
                                        &phase_memory});
                 latches_.evaluate(expressions_);
                 event_manager_.collect_ready(expressions_);

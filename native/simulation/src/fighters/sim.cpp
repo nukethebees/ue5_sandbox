@@ -584,7 +584,8 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
         auto const fighter_location{vector_at(locations, fighter_index)};
         auto const fighter_id{entity_ids[fighter_index]};
         auto const n_nearby{
-            inputs.spatial_query_manager.collect_entities_of_type_in_range(fighter_location,
+            inputs.spatial_query_manager.collect_entities_of_type_in_range(entity_tables_.lookups,
+                                                                           fighter_location,
                                                                            EntityType::Fighter,
                                                                            separation_radius,
                                                                            fighter_id,
@@ -945,7 +946,8 @@ void Sim::refresh_target_data(ThinkingInputs const inputs) {
     auto const target_radii{data.target_radii()};
     FrameArray<EntityInstanceHandle> targets{scratch_resource};
     targets.set_num(count);
-    inputs.spatial_query_manager.copy_entity_motion(target_ids,
+    inputs.spatial_query_manager.copy_entity_motion(entity_tables_.lookups,
+                                                    target_ids,
                                                     data.view_target_locations().resolve(),
                                                     data.view_target_velocities().resolve(),
                                                     targets,

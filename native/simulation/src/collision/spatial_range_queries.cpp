@@ -3,7 +3,7 @@
 #include <ioj/parallel_for.h>
 #include <ioj/sim/collision/range_query_results.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
-#include <ioj/sim/entities/entity_tables.h>
+#include <ioj/sim/entities/entity_lookup_tables.h>
 #include <ioj/sim/entities/team_checks.h>
 #include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
@@ -143,6 +143,7 @@ namespace ioj::sim {
 namespace tbb = oneapi::tbb;
 
 void SpatialQueryManager::collect_non_team_entities_in_range(
+    EntityLookupTables const& lookups,
     vectors3f::ResolvedConstView const origins,
     std::span<Team const> const teams,
     float const radius,
@@ -154,7 +155,7 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
     assert(origins.num() == teams.size());
     assert(std::isfinite(radius));
     assert(check_valid_teams(teams));
-    assert(is_lookup_allowed(entity_tables_.lookups.clock()));
+    assert(is_lookup_allowed(lookups.clock()));
 
     assert(!out_results.query_started_);
     out_results.query_started_ = true;
@@ -181,10 +182,10 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
         EntityCount entity_count{};
         for (auto const type : EnumTraits<EntityType>::values) {
             sources.offsets[type] = entity_count;
-            entity_count += entity_tables_.lookups.for_type(type).row_count();
+            entity_count += lookups.for_type(type).row_count();
             // Bind each type's lookup table once before distributing requests.
             // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-            sources.handles[type] = entity_tables_.lookups.for_type(type).entries();
+            sources.handles[type] = lookups.for_type(type).entries();
         }
 
         // Give each worker independent deduplication and match storage.

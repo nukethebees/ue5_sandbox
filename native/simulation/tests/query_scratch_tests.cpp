@@ -55,7 +55,7 @@ namespace ioj::sim::tests {
 TEST(QueryScratch, ExhaustionForwardsToUpstream) {
     CollisionAgentStorage owners;
     owners.publish();
-    SpatialQueryManager manager{owners.entity_tables};
+    SpatialQueryManager manager{};
     query_scratch_detail::initialise_queries(manager, owners);
     query_scratch_detail::CountingResource upstream;
     {
@@ -74,7 +74,7 @@ TEST(QueryScratch, ConcurrentQueriesAllocateFromSharedFrameAndReleaseBeforeRecla
     CollisionAgentStorage owners;
     auto const id{owners.spawn(EntityType::CapitalShip)};
     owners.publish();
-    SpatialQueryManager manager{owners.entity_tables};
+    SpatialQueryManager manager{};
     query_scratch_detail::initialise_queries(manager, owners);
     query_scratch_detail::FrameBacking frame;
     {
@@ -88,8 +88,12 @@ TEST(QueryScratch, ConcurrentQueriesAllocateFromSharedFrameAndReleaseBeforeRecla
                     {{-10.f, 0.f, 0.f}}, {{10.f, 0.f, 0.f}}, &frame.resource)};
                 EXPECT_EQ(hit.entity, id);
                 std::array<EntityId, 4> nearby;
-                EXPECT_EQ(manager.collect_non_team_entities_in_range(
-                              {}, Team::Green, 20.f, nearby, &frame.resource),
+                EXPECT_EQ(manager.collect_non_team_entities_in_range(owners.entity_tables.lookups,
+                                                                     {},
+                                                                     Team::Green,
+                                                                     20.f,
+                                                                     nearby,
+                                                                     &frame.resource),
                           1u);
                 EXPECT_EQ(nearby[0], id);
             }};
@@ -109,7 +113,7 @@ TEST(QueryScratch, ManagerUsesExplicitScratchAndReleasesQueriesWithinEachEpoch) 
     auto const id{owners.spawn(EntityType::CapitalShip)};
     owners.publish();
     query_scratch_detail::CountingResource persistent;
-    SpatialQueryManager manager{owners.entity_tables, &persistent};
+    SpatialQueryManager manager{&persistent};
     query_scratch_detail::initialise_queries(manager, owners);
     query_scratch_detail::FrameBacking frame;
     for (int epoch{}; epoch < 3; ++epoch) {
@@ -120,9 +124,10 @@ TEST(QueryScratch, ManagerUsesExplicitScratchAndReleasesQueriesWithinEachEpoch) 
                 manager.trace_closest({{-10.f, 0.f, 0.f}}, {{10.f, 0.f, 0.f}}, &frame.resource)};
             EXPECT_EQ(hit.entity, id);
             std::array<EntityId, 4> nearby;
-            ASSERT_EQ(manager.collect_non_team_entities_in_range(
-                          {}, Team::Green, 20.f, nearby, &frame.resource),
-                      1u);
+            ASSERT_EQ(
+                manager.collect_non_team_entities_in_range(
+                    owners.entity_tables.lookups, {}, Team::Green, 20.f, nearby, &frame.resource),
+                1u);
             EXPECT_EQ(nearby[0], id);
             EXPECT_GT(frame.resource.stats().current_claimed_bytes, 0u);
             EXPECT_EQ(frame.resource.stats().outstanding_allocation_count, 0u);
@@ -137,7 +142,7 @@ TEST(QueryScratch, PublishedOverlapBatchesSurviveScratchEpochs) {
     std::array const ids{owners.spawn(EntityType::CapitalShip), owners.spawn(EntityType::Fighter)};
     owners.publish();
     query_scratch_detail::CountingResource persistent;
-    SpatialQueryManager manager{owners.entity_tables, &persistent};
+    SpatialQueryManager manager{&persistent};
     query_scratch_detail::initialise_queries(manager, owners);
     query_scratch_detail::FrameBacking frame;
     // Resolve each epoch's outputs and each distinct batch.
@@ -145,7 +150,8 @@ TEST(QueryScratch, PublishedOverlapBatchesSurviveScratchEpochs) {
     for (int epoch{}; epoch < 3; ++epoch) {
         {
             FrameScratchScope scratch_scope{frame.resource};
-            auto const overlaps{manager.detect_overlaps(ids, &frame.resource)};
+            auto const overlaps{
+                manager.detect_overlaps(owners.entity_tables.lookups, ids, &frame.resource)};
             ASSERT_EQ(overlaps.entity_entity_overlaps.num(), 1u);
             EXPECT_FALSE(
                 frame.resource.owns(overlaps.entity_entity_overlaps.first_entities().data()));

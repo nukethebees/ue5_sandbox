@@ -1131,8 +1131,10 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceInvarianceProperties
     tied.owners.rebuild(tied.grid, tied.aabbs);
     auto const reordered_tied_hits{run_traces(tied, tied_starts, tied_ends)};
     EXPECT_EQ(reordered_tied_hits.const_view().entities()[0], expected_id);
-    SpatialQueryManager const tied_queries{tied.owners.entity_tables};
-    EXPECT_EQ(tied_queries.any_non_team_entity(Team::Green, EntityType::CapitalShip), expected_id);
+    SpatialQueryManager const tied_queries{};
+    EXPECT_EQ(tied_queries.any_non_team_entity(
+                  tied.owners.entity_tables.lookups, Team::Green, EntityType::CapitalShip),
+              expected_id);
 
     Vector3f const aabb_half_extents{{18.f, 22.f, 15.f}};
     Vector3f const local_aabb_centre{{4.f, -3.f, 5.f}};
