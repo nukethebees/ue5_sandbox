@@ -4,6 +4,34 @@ Every playable authored map has a human-owned `LevelName.scm` entry point and an
 `LevelName/editor-config.scm`. Configuring a new map creates a root that loads the generated file;
 an existing root is never replaced. The generated baseline need not be playable by itself.
 
+## Create a playable entry point
+
+1. Save the map with its intended name, then click **Space Game Level** in the editor toolbar.
+   Entering this mode creates an S7 authoring document if the map has none, adopts supported
+   existing actors, and creates `LevelScripts/<MapName>.scm` plus
+   `LevelScripts/<MapName>/editor-config.scm`. Existing files are preserved.
+2. Place a player ship (`TestSpaceShip`, or the project's configured player-ship Blueprint).
+   Alternatively, enable **Use Observer Camera** on the authoring document and choose adopted
+   entities as camera **Targets**, with a nonzero **Offset Direction** and positive **Distance**.
+   Keep the entities inside the level's collision grid.
+3. Click **Adopt Entities** after placing actors. Leave **Export** enabled for entities whose
+   placement is owned by the editor, then click **Export Scene**.
+4. The new entry point initially contains `(load-script "<MapName>/editor-config.scm")`.
+   This is enough when the exported scene supplies a valid player or observer viewpoint.
+   Use **Open Script Editor** to add gameplay settings or mission logic to this root, and
+   **Save Source** (or **Save** in the script editor) before validation or PIE.
+5. Click **Validate Level** and resolve any diagnostics shown in the mode's status area.
+   Click **Set Up Playable Level** to configure the game mode, orchestrator and presentation
+   actors, then save the map and press **Play**.
+
+To use an existing level instead, open **Space Game Level** and choose **Load & Apply S7**,
+select its human-owned `.scm` entry point, then validate, set up play and save the map.
+If an already-associated entry point is missing, restore it from version control or load
+another existing root; **New** does not replace an existing authoring document or recreate
+its missing source. See [Level scripts](../../../LevelScripts/README.md) for Scheme examples.
+
+## Source and scene ownership
+
 Use **Export Scene** to write entity placements, supported spawn overrides and viewpoint data to
 the generated file. Unchanged output is not rewritten. The main source can include this baseline
 and use `level-ref` / `level-with` to add entities, objectives and settings with ordinary Scheme.

@@ -111,9 +111,21 @@ auto FSandboxEditorModule::RequestPIEPermissionInternal(bool) const -> TValueOrE
     if (!document) {
         return MakeError(FText::FromString(document.error()));
     }
-    if (!*document || !IFileManager::Get().FileExists(*(*document)->source_path)) {
+    if (!*document) {
         return MakeError(FText::FromString(
-            TEXT("Configure this playable map with an existing Scheme entry point before PIE.")));
+            TEXT("This map has no S7 authoring document. Open 'Space Game Level' in the editor "
+                 "toolbar to create LevelScripts/<MapName>.scm, or use 'Load & Apply S7' in that "
+                 "mode to select an existing level. Add a player ship or configure an observer "
+                 "camera, then use 'Export Scene', 'Save Source', 'Validate Level', and "
+                 "'Set Up Playable Level'. Save the map before PIE.")));
+    }
+    if (!IFileManager::Get().FileExists(*(*document)->source_path)) {
+        return MakeError(FText::FromString(FString::Printf(
+            TEXT("The Scheme entry-point file '%s' is missing. Restore that .scm file, or open "
+                 "'Space Game Level' in the editor toolbar and use 'Load & Apply S7' to select "
+                 "an existing level. Use 'Validate Level' and 'Set Up Playable Level', then "
+                 "save the map before PIE. See Source/SandboxEditor/levels/README.md for setup."),
+            *(*document)->source_path)));
     }
     auto exported{ioj::editor::export_s7_editor_config(*orchestrator->GetLevel(), **document)};
     if (!exported) {
