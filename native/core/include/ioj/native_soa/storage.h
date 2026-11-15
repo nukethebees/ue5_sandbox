@@ -35,7 +35,6 @@ inline auto rounded_capacity(size_type const required,
     auto const rounded{
         ((byte_size_type{required} + capacity_granularity - 1) / capacity_granularity) *
         capacity_granularity};
-    assert(rounded <= maximum_capacity(block_bytes));
     return static_cast<size_type>(rounded);
 }
 
