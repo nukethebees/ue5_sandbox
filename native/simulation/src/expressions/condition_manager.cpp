@@ -280,13 +280,15 @@ void ConditionManager::evaluate_leaves(ExprEvaluationContext const& inputs) {
     for (auto const handle : leaves_.leaves_by_kind[LeafKind::LatchedTrue]) {
         auto const index{handle.index()};
         leaves_.results[index] =
-            latched_true(leaves_.true_latches[leaves_.data_handles[index].index()]);
+            latch_state(leaves_.true_latches[leaves_.data_handles[index].index()]) ==
+            LatchState::True;
     }
 
     for (auto const handle : leaves_.leaves_by_kind[LeafKind::LatchedFalse]) {
         auto const index{handle.index()};
         leaves_.results[index] =
-            latched_false(leaves_.false_latches[leaves_.data_handles[index].index()]);
+            latch_state(leaves_.false_latches[leaves_.data_handles[index].index()]) ==
+            LatchState::False;
     }
 }
 void ConditionManager::evaluate_destroyed(std::span<LeafHandle const> const run,
@@ -393,12 +395,6 @@ auto ConditionManager::add_latch(LatchInput const input) -> LatchHandle {
     latch_states_.emplace_back();
     active_latches_.push_back(handle);
     return handle;
-}
-auto ConditionManager::latched_true(LatchHandle const handle) const -> bool {
-    return latch_state(handle) == LatchState::True;
-}
-auto ConditionManager::latched_false(LatchHandle const handle) const -> bool {
-    return latch_state(handle) == LatchState::False;
 }
 void ConditionManager::evaluate_latches() {
     for (auto const handle : active_latches_) {

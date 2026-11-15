@@ -40,17 +40,14 @@ TEST(Latches, UnsetUntilEnabledAndCommitted) {
     auto const latch{conditions.add_latch({handles[0], handles[1]})};
     samples.evaluate();
     conditions.commit_latches();
-    EXPECT_FALSE(conditions.latched_true(latch));
-    EXPECT_FALSE(conditions.latched_false(latch));
+    EXPECT_EQ(conditions.latch_state(latch), LatchState::Unset);
 
     samples.timers.start(samples.timer, 1);
     samples.timers.tick(1);
     samples.evaluate();
-    EXPECT_FALSE(conditions.latched_true(latch));
-    EXPECT_FALSE(conditions.latched_false(latch));
+    EXPECT_EQ(conditions.latch_state(latch), LatchState::Unset);
     conditions.commit_latches();
-    EXPECT_TRUE(conditions.latched_true(latch));
-    EXPECT_FALSE(conditions.latched_false(latch));
+    EXPECT_EQ(conditions.latch_state(latch), LatchState::True);
 }
 
 TEST(Latches, CapturesBothValuesOnlyOnceIncludingBeforeCommit) {
@@ -65,12 +62,10 @@ TEST(Latches, CapturesBothValuesOnlyOnceIncludingBeforeCommit) {
         samples.timers.tick(1);
         samples.evaluate();
         conditions.commit_latches();
-        EXPECT_EQ(conditions.latched_true(latch), value);
-        EXPECT_EQ(conditions.latched_false(latch), !value);
+        EXPECT_EQ(conditions.latch_state(latch), value ? LatchState::True : LatchState::False);
         samples.evaluate();
         conditions.commit_latches();
-        EXPECT_EQ(conditions.latched_true(latch), value);
-        EXPECT_EQ(conditions.latched_false(latch), !value);
+        EXPECT_EQ(conditions.latch_state(latch), value ? LatchState::True : LatchState::False);
     }
 }
 
@@ -88,15 +83,15 @@ TEST(Latches, ChainedCapturesReadPreviousCycleRegardlessOfEvaluationOrder) {
             std::swap(first, second);
         }
         samples.evaluate();
-        EXPECT_FALSE(conditions.latched_true(first));
-        EXPECT_FALSE(conditions.latched_true(second));
+        EXPECT_EQ(conditions.latch_state(first), LatchState::Unset);
+        EXPECT_EQ(conditions.latch_state(second), LatchState::Unset);
         conditions.commit_latches();
-        EXPECT_TRUE(conditions.latched_true(first));
-        EXPECT_FALSE(conditions.latched_true(second));
+        EXPECT_EQ(conditions.latch_state(first), LatchState::True);
+        EXPECT_EQ(conditions.latch_state(second), LatchState::Unset);
         samples.evaluate();
-        EXPECT_FALSE(conditions.latched_true(second));
+        EXPECT_EQ(conditions.latch_state(second), LatchState::Unset);
         conditions.commit_latches();
-        EXPECT_TRUE(conditions.latched_true(second));
+        EXPECT_EQ(conditions.latch_state(second), LatchState::True);
     }
 }
 
@@ -107,11 +102,11 @@ TEST(Latches, CapturedValueAlsoReadsOnlyCommittedState) {
     auto const first{conditions.add_latch({handles[0], handles[0]})};
     auto const second{conditions.add_latch({handles[0], handles[1]})};
     samples.evaluate();
-    EXPECT_FALSE(conditions.latched_true(first));
-    EXPECT_FALSE(conditions.latched_false(second));
+    EXPECT_EQ(conditions.latch_state(first), LatchState::Unset);
+    EXPECT_EQ(conditions.latch_state(second), LatchState::Unset);
     conditions.commit_latches();
-    EXPECT_TRUE(conditions.latched_true(first));
-    EXPECT_TRUE(conditions.latched_false(second));
+    EXPECT_EQ(conditions.latch_state(first), LatchState::True);
+    EXPECT_EQ(conditions.latch_state(second), LatchState::False);
 }
 
 TEST(Latches, RetirementPreservesUncapturedEntriesAndStableHandles) {
@@ -127,19 +122,18 @@ TEST(Latches, RetirementPreservesUncapturedEntriesAndStableHandles) {
     };
     samples.evaluate();
     conditions.commit_latches();
-    EXPECT_TRUE(conditions.latched_false(latches[0]));
-    EXPECT_TRUE(conditions.latched_true(latches[2]));
+    EXPECT_EQ(conditions.latch_state(latches[0]), LatchState::False);
+    EXPECT_EQ(conditions.latch_state(latches[2]), LatchState::True);
     for (auto const index : {1, 3}) {
-        EXPECT_FALSE(conditions.latched_true(latches[index]));
-        EXPECT_FALSE(conditions.latched_false(latches[index]));
+        EXPECT_EQ(conditions.latch_state(latches[index]), LatchState::Unset);
     }
     samples.timers.start(samples.timer, 1);
     samples.timers.tick(1);
     samples.evaluate();
     conditions.commit_latches();
-    EXPECT_TRUE(conditions.latched_false(latches[0]));
+    EXPECT_EQ(conditions.latch_state(latches[0]), LatchState::False);
     for (auto const index : {1, 2, 3}) {
-        EXPECT_TRUE(conditions.latched_true(latches[index]));
+        EXPECT_EQ(conditions.latch_state(latches[index]), LatchState::True);
     }
 }
 
@@ -152,13 +146,12 @@ TEST(Latches, SeparateInstancesStartUnsetAndDoNotShareCaptures) {
     auto const b{second.conditions.add_latch({second_handles[0], second_handles[1]})};
     first.evaluate();
     second.conditions.commit_latches();
-    EXPECT_FALSE(second.conditions.latched_true(b));
-    EXPECT_FALSE(second.conditions.latched_false(b));
+    EXPECT_EQ(second.conditions.latch_state(b), LatchState::Unset);
     first.conditions.commit_latches();
     second.evaluate();
     second.conditions.commit_latches();
-    EXPECT_TRUE(first.conditions.latched_true(a));
-    EXPECT_TRUE(second.conditions.latched_false(b));
+    EXPECT_EQ(first.conditions.latch_state(a), LatchState::True);
+    EXPECT_EQ(second.conditions.latch_state(b), LatchState::False);
 }
 
 TEST(Latches, PackedMemoryKeepsCachedAndPendingFieldsIndependent) {

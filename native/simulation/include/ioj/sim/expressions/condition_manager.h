@@ -39,12 +39,11 @@ class ConditionManager {
     // Evaluate with committed latch values, then capture next-tick latch inputs.
     void evaluate(ExprEvaluationContext const& inputs);
     auto result(ExprHandle expression) const -> bool;
-    auto latched_true(LatchHandle handle) const -> bool;
-    auto latched_false(LatchHandle handle) const -> bool;
+    // Return the committed state, excluding pending captures.
+    auto latch_state(LatchHandle handle) const -> LatchState;
 
   private:
     void evaluate_latches();
-    auto latch_state(LatchHandle handle) const -> LatchState;
     auto is_valid(LatchHandle handle) const -> bool;
     void evaluate_composites();
     void evaluate_leaves(ExprEvaluationContext const& inputs);
