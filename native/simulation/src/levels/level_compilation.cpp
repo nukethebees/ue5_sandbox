@@ -210,7 +210,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
                         return spawn_effects[effect.group];
                     } else {
                         auto duration{
-                            compile_timer_duration(Duration::make(effect.seconds.get()), clock)};
+                            compile_timer_duration(Duration::make(effect.seconds), clock)};
                         if (!duration) {
                             return std::unexpected{duration.error()};
                         }

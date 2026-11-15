@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/require.h>
+#include <ioj/constrained_numbers.h>
 
 #include <cmath>
 #include <optional>
@@ -22,6 +22,14 @@ class Duration {
         -> Duration {
         require(valid(seconds), "Duration seconds must be finite and nonnegative", location);
         return Duration{seconds};
+    }
+
+    [[nodiscard]] static auto make(NonNegativeFinite<float> const seconds) noexcept -> Duration {
+        return Duration{seconds.get()};
+    }
+
+    [[nodiscard]] static auto make(NonNegativeFinite<double> const seconds) noexcept -> Duration {
+        return Duration{seconds.get()};
     }
 
     // Return nullopt for an invalid duration.
