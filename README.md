@@ -40,6 +40,15 @@ cmake --workflow --preset debug-game
 
 #### Build and test
 
+Building and running the editor:
+
+```powershell
+cmake --workflow --preset debug-game
+coj unreal project-files
+```
+
+Normal test flow:
+
 ```powershell
 # Native simulation and tests
 cmake --workflow --preset native-simulation-tests
