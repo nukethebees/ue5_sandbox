@@ -6,7 +6,6 @@
 #include <ioj/profiles/timestamp.h>
 
 #include <algorithm>
-#include <cassert>
 #include <cctype>
 #include <utility>
 
@@ -154,7 +153,8 @@ bool ProfileManager::activate_profile(std::string const& profile_id) {
             return false;
         }
         index_ = std::move(latest_index);
-        if (!find_profile(profile_id)) {
+        auto* const metadata{find_profile(profile_id)};
+        if (!metadata) {
             return false;
         }
 
@@ -165,8 +165,6 @@ bool ProfileManager::activate_profile(std::string const& profile_id) {
         }
 
         index_.active_profile_id = profile_id;
-        auto* const metadata{find_profile(profile_id)};
-        assert(metadata);
         update_profile_metadata(*metadata, loaded_results.score_records);
         if (!storage_.save_index(index_)) {
             return false;
@@ -231,7 +229,6 @@ auto ProfileManager::append_score_record(ScoreRecord const& record) -> RecordSav
             }
 
             auto* const metadata{find_profile(active_profile_id)};
-            assert(metadata);
             update_profile_metadata(*metadata, active_results_->score_records);
             // Results are authoritative; initialization repairs stale aggregate metadata.
             static_cast<void>(storage_.save_index(index_));
