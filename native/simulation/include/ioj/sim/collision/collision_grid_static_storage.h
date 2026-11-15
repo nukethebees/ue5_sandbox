@@ -59,6 +59,8 @@ class CollisionGridStaticStorage {
     // State
     /* **************************************** */
     WorldAABBs aabbs_;
+    // Map each grid cell to a packed range; empty cells use invalid_cell_range_index.
+    // Use that range's offset and count to select its entries in aabb_indices_.
     std::vector<CellRangeIndex> cell_range_indices_;
     std::vector<RangeOffset> range_offsets_;
     std::vector<RangeCount> range_counts_;
