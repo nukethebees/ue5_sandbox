@@ -54,7 +54,10 @@ Unreal Engine 5.8 project.
   `&&`, `||`, pipelines, or script blocks, even if approved or cheap. Inspect through separate
   calls and read output directly; batch independent calls through the tool API, not shell strings.
   Do not redirect output to log files; existing build/test scripts may run normally.
-* Commit discrete chunks as you work, using judgement; avoid one commit for everything.
+* Each commit must contain one logical change. Keep the implementation, required caller updates,
+  generated outputs, tests and directly related documentation together. Commit independent
+  refactors, documentation cleanups and workflow changes separately. Review the staged diff
+  before committing; split it if its parts can be reviewed or reverted independently.
 * Run static analysis only when explicitly requested or modifying its tooling, not as normal
   feature validation.
 
