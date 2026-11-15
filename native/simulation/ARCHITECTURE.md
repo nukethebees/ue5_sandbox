@@ -53,6 +53,10 @@ tick. Paused calls process queued events without accumulating time; `start()` re
 Initial and delayed level spawns use the same event payloads and dispatch path. The event manager
 owns those payloads; `LevelSim` routes each spawn event to `LevelSpawnManager`, which resolves
 spawn groups and dispatches typed payload views privately.
+`LevelSpawnManager` receives the destination simulations per spawn dispatch and a read-only
+carrier view plus the fighter destination when scheduling waves; it retains no simulation
+references. Its persistent state is the authored entity-ID mapping, carrier cooldowns and spawn
+transforms. Accepted fighter requests remain in the fighter simulation until the next Preparation.
 Recurring carrier production remains separate from these one-shot events. Unreal editor proxies
 export authored records and are removed before PIE startup. Runtime initialization consumes the
 composed Scheme definition and extracts only Unreal resource and static-collision data.

@@ -41,10 +41,6 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     , level_metadata_{std::move(data.level_metadata)}
     , event_manager_{std::move(data.level_events), memory_manager_.level_memory()}
     , spawn_manager_{
-          capital_ships_simulation_,
-          fighters_simulation_,
-          turrets_simulation_,
-          spinners_simulation_,
           data.capital_ships.fighter_spawn_slots_relative_transforms,
           memory_manager_.game_memory(),
       }
@@ -200,7 +196,12 @@ void LevelSim::dispatch_preparation_events() {
     while (auto const event = event_manager_.consume_preparation_event()) {
         switch (event->kind()) {
             case EventKind::Spawn:
-                spawn_manager_.process_event(*event, event_manager_, {entity_ledger_, clock_});
+                spawn_manager_.process_event(*event,
+                                             event_manager_,
+                                             capital_ships_simulation_,
+                                             turrets_simulation_,
+                                             spinners_simulation_,
+                                             {entity_ledger_, clock_});
                 break;
             default:
                 fatal_error("Invalid Preparation event kind");
@@ -274,7 +275,10 @@ void LevelSim::advance_tick(float const tick_period,
                 SANDBOX_PROFILE_SCOPE("Thinking");
                 clock_.transition_to(SimulationPhase::Thinking);
 
-                spawn_manager_.queue_fighter_spawns(tick_period, phase_memory);
+                spawn_manager_.queue_fighter_spawns(tick_period,
+                                                    capital_ships_simulation_.get_entities(),
+                                                    fighters_simulation_,
+                                                    phase_memory);
 
                 turrets::ThinkingInputs const turret_inputs{
                     clock_, collision_pipeline_.queries(), lasers_simulation_, phase_memory};
