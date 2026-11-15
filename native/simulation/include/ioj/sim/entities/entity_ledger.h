@@ -52,7 +52,7 @@ class EntityLedger {
     auto frame_deaths(EntityType type) const -> std::span<HistoryIndex const> {
         return frame_deaths_[type];
     }
-    auto history_index(EntityId id) const noexcept -> std::uint32_t {
+    auto history_index(EntityId id) const noexcept -> HistoryIndex {
         return is_valid_unique_id(id) ? entity_identity_offsets[id.entity_type()] + id.index()
                                       : invalid_history_index;
     }
@@ -74,7 +74,7 @@ class EntityLedger {
                             Teams const& teams,
                             Healths const& healths,
                             std::span<EntityId> ids);
-    auto require_history_index(EntityId id) const -> std::uint32_t;
+    auto require_history_index(EntityId id) const -> HistoryIndex;
 
     // Entity ID -> type offset + ordinal -> fixed history row.
     EntityHistory history_;

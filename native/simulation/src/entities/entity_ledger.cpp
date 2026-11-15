@@ -29,7 +29,7 @@ void EntityLedger::reset_frame_output() {
         deaths.clear();
     }
 }
-auto EntityLedger::require_history_index(EntityId const id) const -> std::uint32_t {
+auto EntityLedger::require_history_index(EntityId const id) const -> HistoryIndex {
     auto const index{history_index(id)};
     if (index == invalid_history_index) {
         fatal_error(
