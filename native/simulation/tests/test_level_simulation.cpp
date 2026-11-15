@@ -71,6 +71,15 @@ auto make_battle() -> SimulationScenario {
     return data;
 }
 
+auto make_unspawned_battle() -> LevelSimInitData {
+    auto data{make_battle()};
+    data.logic.spawn_groups = {
+        {.name = "first", .entities = {data.entities[0].id}},
+        {.name = "second", .entities = {data.entities[1].id}},
+    };
+    return std::move(data).compile();
+}
+
 auto make_scheduled_battle() -> SimulationScenario {
     auto data{make_battle_config()};
     data.runtime.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{100});
@@ -330,12 +339,8 @@ TEST(NativeSimulation, FirstDispatchedWinDeterminesResultAndStrandsOtherEffects)
 }
 
 TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumedEvents) {
-    auto data{make_battle().compile()};
+    auto data{make_unspawned_battle()};
     auto& definitions{data.level_events};
-    definitions.initial_events().clear();
-    definitions.spawn_groups() = {};
-    definitions.add_spawn_group(EntityType::CapitalShip, 0, 1);
-    definitions.add_spawn_group(EntityType::CapitalShip, 1, 1);
     auto const first{definitions.add_spawn_event({0, 1})};
     auto const second{definitions.add_spawn_event({1, 1})};
     std::array const events{second, first};
@@ -369,9 +374,8 @@ TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendin
     EventHandle const pause{0, EventKind::Pause};
     std::array const events{pause, first, second, pause};
     add_timed_events(data, Duration::make(0.21), events);
-    auto expected_history{definitions.initial_events()};
-    std::erase_if(expected_history,
-                  [](EventHandle const event) { return !is_tick_end(event.kind()); });
+    auto const queued{definitions.tick_end_events()};
+    std::vector<EventHandle> expected_history{queued.begin(), queued.end()};
     expected_history.append_range(events);
     LevelSim simulation{std::move(data)};
 
@@ -452,7 +456,7 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
     auto const second_elapsed{data.runtime.conditions.add_timer_elapsed(second_timer)};
     auto const initial_start{definitions.add_start_timer_event({first_timer, 2})};
     auto const later_start{definitions.add_start_timer_event({second_timer, 3})};
-    definitions.initial_events().push_back(initial_start);
+    definitions.enqueue(initial_start);
     definitions.add_trigger(first_elapsed, std::array{later_start});
     auto const stop{definitions.add_stop_event(RunEndReason::DurationReached)};
     definitions.add_trigger(second_elapsed, std::array{stop});
@@ -484,18 +488,16 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
 }
 
 TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTerminalDispatch) {
-    auto data{make_battle().compile()};
+    auto data{make_unspawned_battle()};
     auto& definitions{data.level_events};
-    definitions.initial_events().clear();
-    definitions.spawn_groups() = {};
-    definitions.add_spawn_group(EntityType::CapitalShip, 0, 1);
-    definitions.add_spawn_group(EntityType::CapitalShip, 1, 1);
     auto const first_spawn{definitions.add_spawn_event({0, 1})};
     auto const second_spawn{definitions.add_spawn_event({1, 1})};
     auto const start{definitions.add_start_timer_event({data.timers.add(), 1})};
     auto const stop{definitions.add_stop_event(RunEndReason::WorldEnd)};
     auto const stranded{definitions.add_start_timer_event({data.timers.add(), 1})};
-    definitions.initial_events() = {second_spawn, first_spawn, start, stop, stranded};
+    for (auto const event : std::array{second_spawn, first_spawn, start, stop, stranded}) {
+        definitions.enqueue(event);
+    }
 
     LevelSim simulation{std::move(data)};
 
@@ -526,8 +528,7 @@ TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTer
 }
 
 TEST(NativeSimulation, RuntimeDefinitionsAndTriggersExecuteInTheirExistingPhases) {
-    auto data{make_battle().compile()};
-    data.level_events.initial_events().clear();
+    auto data{make_unspawned_battle()};
     auto const timer{data.timers.add()};
     auto const elapsed{data.conditions.add_timer_elapsed(timer)};
     LevelSim simulation{std::move(data)};
@@ -691,7 +692,8 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
                      ioj::settings::PositiveHealth::make(ioj::sim::Health{30}),
                      ioj::NonNegative<std::int32_t>::make(7));
     auto compiled{std::move(data).compile()};
-    auto const initial_events{compiled.level_events.initial_events()};
+    auto const queued{compiled.level_events.preparation_events()};
+    std::vector<EventHandle> const initial_events{queued.begin(), queued.end()};
     LevelSim simulation{std::move(compiled)};
 
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});

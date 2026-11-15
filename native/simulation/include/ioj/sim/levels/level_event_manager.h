@@ -40,6 +40,8 @@ struct WinEvent {
 
 class LevelEventManager {
   public:
+    using TriggerIndex = std::uint32_t;
+
     LevelEventManager() = default;
     LevelEventManager(LevelEventManager&& other, std::pmr::memory_resource& memory);
     LevelEventManager(LevelEventManager&&) = default;
@@ -66,8 +68,6 @@ class LevelEventManager {
     auto turret_spawns() const -> LevelTurretSpawnEvents const& { return turret_spawns_; }
     auto spinner_spawns() -> LevelSpinnerSpawnEvents& { return spinner_spawns_; }
     auto spinner_spawns() const -> LevelSpinnerSpawnEvents const& { return spinner_spawns_; }
-    auto initial_events() -> std::vector<EventHandle>& { return initial_events_; }
-    auto initial_events() const -> std::vector<EventHandle> const& { return initial_events_; }
     auto triggers() const -> std::span<EventTrigger const> { return triggers_; }
     auto spawn_event(EventHandle event) const -> IndexSpan { return spawn_events_[event.index()]; }
     auto stop_event(EventHandle event) const -> RunEndReason { return stop_events_[event.index()]; }
@@ -79,7 +79,6 @@ class LevelEventManager {
     /* **************************************** */
     // Scheduling and dispatch
     /* **************************************** */
-    void enqueue_initial_events();
     void collect_ready(ConditionManager const& conditions);
     void enqueue(EventHandle event);
     void enqueue_stop(RunEndReason reason);
@@ -113,11 +112,10 @@ class LevelEventManager {
     std::vector<RunEndReason> stop_events_;
     std::vector<StartTimerEvent> start_timer_events_;
     std::vector<WinEvent> win_events_;
-    std::vector<EventHandle> initial_events_;
 
     std::vector<EventTrigger> triggers_;
     std::vector<EventHandle> trigger_events_;
-    std::vector<std::uint32_t> active_triggers_;
+    std::vector<TriggerIndex> active_triggers_;
 
     std::pmr::vector<EventHandle> preparation_events_;
     std::size_t preparation_read_cursor_{};

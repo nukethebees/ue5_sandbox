@@ -190,7 +190,7 @@ auto configure_level_run(sim::LevelSimInitData& data, levels::LaunchOptions cons
         auto& events{data.level_events};
         auto const timer{data.timers.add()};
         auto const elapsed{data.conditions.add_timer_elapsed(timer)};
-        events.initial_events().push_back(events.add_start_timer_event({timer, *ticks}));
+        events.enqueue(events.add_start_timer_event({timer, *ticks}));
         std::array const effects{events.add_stop_event(sim::RunEndReason::DurationReached)};
         events.add_trigger(elapsed, effects);
     }

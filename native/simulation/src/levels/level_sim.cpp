@@ -43,7 +43,6 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
           memory_manager_.game_memory(),
       }
     {
-    event_manager_.enqueue_initial_events();
     initialise_subsystems(data);
 
     spawn_manager_.initialise(event_manager_.spawn_count() +

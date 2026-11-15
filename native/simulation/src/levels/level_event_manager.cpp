@@ -27,7 +27,6 @@ LevelEventManager::LevelEventManager(LevelEventManager&& other, std::pmr::memory
     , stop_events_{std::move(other.stop_events_)}
     , start_timer_events_{std::move(other.start_timer_events_)}
     , win_events_{std::move(other.win_events_)}
-    , initial_events_{std::move(other.initial_events_)}
     , triggers_{std::move(other.triggers_)}
     , trigger_events_{std::move(other.trigger_events_)}
     , active_triggers_{std::move(other.active_triggers_)}
@@ -110,24 +109,13 @@ void LevelEventManager::add_trigger(ExprHandle const condition,
     IndexSpan const range{static_cast<std::uint32_t>(trigger_events_.size()),
                           static_cast<std::uint32_t>(events.size())};
     trigger_events_.insert(trigger_events_.end(), events.begin(), events.end());
-    active_triggers_.push_back(static_cast<std::uint32_t>(triggers_.size()));
+    active_triggers_.push_back(static_cast<TriggerIndex>(triggers_.size()));
     triggers_.push_back({condition, range});
 }
 
 /* **************************************** */
 // Scheduling and dispatch
 /* **************************************** */
-void LevelEventManager::enqueue_initial_events() {
-    auto const tick_end_count{static_cast<std::size_t>(std::ranges::count_if(
-        trigger_events_, [](EventHandle const event) { return is_tick_end(event.kind()); }))};
-    tick_end_events_.reserve(tick_end_events_.size() + tick_end_count + initial_events_.size() + 2);
-    preparation_events_.reserve(preparation_events_.size() + trigger_events_.size() -
-                                tick_end_count);
-    auto const initial_events{std::exchange(initial_events_, {})};
-    for (auto const event : initial_events) {
-        enqueue(event);
-    }
-}
 void LevelEventManager::collect_ready(ConditionManager const& conditions) {
     auto const count{active_triggers_.size()};
     std::size_t retained{};

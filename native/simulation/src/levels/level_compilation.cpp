@@ -156,12 +156,11 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         auto const spawn{definitions.add_spawn_event(
             {group_offset, definitions.spawn_groups().num() - group_offset})};
         if (tick == 0) {
-            definitions.initial_events().push_back(spawn);
+            definitions.enqueue(spawn);
         } else {
             auto const timer{output.timers.add()};
             auto const elapsed{output.conditions.add_timer_elapsed(timer)};
-            definitions.initial_events().push_back(
-                definitions.add_start_timer_event({timer, tick}));
+            definitions.enqueue(definitions.add_start_timer_event({timer, tick}));
             definitions.add_trigger(elapsed, std::array{spawn});
         }
         first = end;
@@ -230,8 +229,9 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     if (!initial) {
         return std::unexpected{initial.error()};
     }
-    definitions.initial_events().insert(
-        definitions.initial_events().end(), initial->begin(), initial->end());
+    for (auto const event : *initial) {
+        definitions.enqueue(event);
+    }
     for (auto const& rule : logic.rules) {
         auto effects{compile_effects(rule.effects)};
         if (!effects) {

@@ -23,7 +23,6 @@ TEST(LevelEvents, ConsumptionPreservesFifoHistoryAndIndependentStreams) {
     auto const stop{data.add_stop_event(RunEndReason::DurationReached)};
     EventHandle const pause{0, EventKind::Pause};
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
-    manager.enqueue_initial_events();
     EXPECT_FALSE(manager.consume_tick_end_event());
     EXPECT_FALSE(manager.consume_preparation_event());
 
@@ -61,13 +60,14 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     std::array const late{data.add_stop_event(RunEndReason::DurationReached)};
     auto const early_timer{timers.add()};
     auto const late_timer{timers.add()};
-    data.initial_events() = {data.add_start_timer_event({early_timer, 2}),
-                             data.add_start_timer_event({late_timer, 3})};
+    std::array const initial_events{data.add_start_timer_event({early_timer, 2}),
+                                    data.add_start_timer_event({late_timer, 3})};
+    for (auto const event : initial_events) {
+        data.enqueue(event);
+    }
     data.add_trigger(expressions.add_timer_elapsed(early_timer), early);
     data.add_trigger(expressions.add_timer_elapsed(late_timer), late);
-    auto const initial_events{data.initial_events()};
     LevelEventManager manager{std::move(data), *std::pmr::get_default_resource()};
-    manager.enqueue_initial_events();
     for (auto const handle : initial_events) {
         ASSERT_EQ(manager.consume_tick_end_event(), handle);
         auto const& event{manager.start_timer_event(handle)};
@@ -224,15 +224,17 @@ TEST(LevelEvents, DefinitionGrowthPreservesHandlesAndDynamicStopRequests) {
     EXPECT_EQ(manager.stop_event(*dynamic_stop), RunEndReason::WorldEnd);
 }
 
-TEST(LevelEvents, MovesPreserveQueueCursorsAndDoNotReplayInitialEvents) {
+TEST(LevelEvents, MovesPreserveQueuedEventsAndReadCursors) {
     LevelEventManager data;
     auto const spawn{data.add_spawn_event({0, 1})};
     auto const stop{data.add_stop_event(RunEndReason::WorldEnd)};
     EventHandle const pause{0, EventKind::Pause};
-    data.initial_events() = {spawn, pause, stop};
+    for (auto const event : std::array{spawn, pause, stop}) {
+        data.enqueue(event);
+    }
     LevelEventManager first{std::move(data)};
-    EXPECT_TRUE(first.tick_end_events().empty());
-    first.enqueue_initial_events();
+    EXPECT_TRUE(std::ranges::equal(first.pending_tick_end_events(), std::array{pause, stop}));
+    EXPECT_TRUE(std::ranges::equal(first.pending_preparation_events(), std::array{spawn}));
     EXPECT_EQ(first.consume_tick_end_event(), pause);
     EXPECT_EQ(first.consume_preparation_event(), spawn);
 
@@ -240,7 +242,6 @@ TEST(LevelEvents, MovesPreserveQueueCursorsAndDoNotReplayInitialEvents) {
     LevelEventManager second{std::move(first), memory};
     LevelEventManager assigned;
     assigned = std::move(second);
-    assigned.enqueue_initial_events();
     EXPECT_TRUE(std::ranges::equal(assigned.tick_end_events(), std::array{pause, stop}));
     EXPECT_TRUE(std::ranges::equal(assigned.preparation_events(), std::array{spawn}));
     EXPECT_EQ(assigned.consume_tick_end_event(), stop);
