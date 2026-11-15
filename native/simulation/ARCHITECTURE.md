@@ -1,161 +1,84 @@
 # Simulation architecture
 
-The simulation uses explicit, compile-time systems and generated SoA containers. Entity identity,
-active storage layout, and component lifetime are separate concerns.
+The simulation uses concrete systems, explicit dependencies, index-based handles and generated
+SoA storage. See [phases and data validity](docs/phases-and-data-validity.md) for publication,
+mutation and scratch-lifetime contracts.
 
-See [phases and data validity](docs/phases-and-data-validity.md) for the publication and mutation
-contract.
+## Ownership
 
-## Level ownership and phases
+`LevelSim` owns the clock, memory resources, entity ledger and tables, entity simulations,
+collision pipeline, `ConditionManager`, `Timers`, `LevelEventManager` and `LevelSpawnManager`.
+It coordinates phases and remains nonmovable because subsystems borrow other owners.
+Declaration order keeps those dependencies alive until their consumers are destroyed.
 
-`LevelSim` owns the clock, entity ledger and tables, concrete entity simulations, collision,
-expressions, latches, timers, authored events. It remains nonmovable because those owners retain
-references to one another. Declaration order keeps the clock, tables and frame-memory backing
-alive until their consumers have been destroyed.
+- `ConditionManager` owns Boolean expressions, sampled results and persistent latch state.
+- `Timers` owns countdown state independently of conditions; start-event payloads own durations.
+- `LevelEventManager` owns event payloads, trigger definitions, active trigger indices and phase
+  queues. It dispatches events using dependencies supplied by `LevelSim`.
+- `LevelSpawnManager` owns authored-to-runtime entity mappings, carrier cooldowns and spawn
+  transforms. It borrows destination simulations per call. Fighter spawn requests remain in the
+  fighter simulation until the next Preparation.
+- `CollisionPipeline` owns spatial queries, overlap response and reusable candidate identities.
+  It captures spawn identities before row reordering and refreshes the index for collision queries.
 
-The level coordinates Preparation, Thinking, Action and Resolution through small, explicit
-phase methods. Each entity simulation receives only its phase inputs: queries, command sinks,
-combat events or scratch storage as required. These inputs borrow existing owners for the call;
-they do not change SoA storage or add runtime system dispatch.
+Level construction fills `LevelSimInitData` and queues startup events directly in the event
+manager. Definitions own their storage; moving the manager into `LevelSim` transfers queue
+contents to level memory while preserving read cursors. Tick and phase scratch must not escape
+their respective lifetimes.
 
-`collision::CollisionPipeline` owns the spatial-query manager, overlap response and reusable
-candidate IDs. It copies newly spawned identities after spawn commits and before entity-row
-preparation can reorder storage. Movement adds player and fighter candidates; the pipeline
-deduplicates them and refreshes the spatial index before overlap detection. Queries and temporary
-overlap results remain subject to the phase and scratch-lifetime contracts.
+## Conditions and timing
 
-Construction consumes all initialization data, including static geometry.
-It creates the optional player, dispatches initial spawn events, publishes entity lookups
-and the spatial index, then enters
-`LevelState::Paused` and dispatches initial tick-end events, which may immediately stop the run.
-Setup uses Preparation for population and Thinking for stable queries, then
-resets the independent clock to tick zero and `BetweenTicks` before returning. Its phase enum
-contains only the repeating tick cycle. Logic evaluation during a tick
-follows published deaths and precedes `ResolutionCommit`, while entity row mappings are still valid.
+Resolution publishes deaths, evaluates mission logic while entity mappings remain valid, then
+commits entity removals. Logic runs in this order:
 
-The first dispatched terminal event and its execution tick remain available through `result()`.
-Winner and stop reason are derived from that event's payload. Consumers copy the result and profile score before releasing the level. Saving profiles and displaying
-completion UI are outside the simulation. No sample history is recorded.
-Initial terminal effects also publish a result, without starting the stopped simulation.
-Duration limits compile to timer-triggered stop events. Living-team counts do not end a run.
-Battle launches without an explicit duration have no time limit. Benchmarks and simulation-only
-runs expose an End button independently of camera setup; visual gameplay retains its pause-menu exit.
+1. Commit the previous tick's pending latch captures.
+2. Advance timers.
+3. Evaluate expression leaves in predicate batches, then composites in dependency order.
+4. Capture enabled latch inputs for the following tick.
+5. Collect ready triggers.
 
-`LevelEventManager` maps expression roots to ranges of packed event handles. Triggers
-retire only after a true sample, queueing their events once. False leaves them eligible. Generated kind groups route events
-to tick-end or Preparation streams. Each stream retains its append-only event storage and advances
-an independent read cursor in FIFO order. The first dispatched terminal event enters
-`LevelState::Stopped` and stops catch-up and dispatch; later events remain stored and unconsumed.
-Stopped levels append no further events and cannot resume. Pause retains pending spawns. Preparation after
-resume routes the retained spawn span to `LevelSpawnManager`. `pause()` only queues a request;
-`advance()` consumes tick-end events before accumulating elapsed time and after each completed
-tick. Paused calls process queued events without accumulating time; `start()` resumes directly.
-Initial and delayed level spawns use the same event payloads and dispatch path. The event manager
-owns those payloads and dispatches each spawn event through `LevelSpawnManager`, which resolves
-spawn groups and dispatches typed payload views privately.
-`LevelSpawnManager` receives the destination simulations per spawn dispatch and a read-only
-carrier view plus the fighter destination when scheduling waves; it retains no simulation
-references. Its persistent state is the authored entity-ID mapping, carrier cooldowns and spawn
-transforms. Accepted fighter requests remain in the fighter simulation until the next Preparation.
-Recurring carrier production remains separate from these one-shot events. Unreal editor proxies
-export authored records and are removed before PIE startup. Runtime initialization consumes the
-composed Scheme definition and extracts only Unreal resource and static-collision data.
+`ConditionManager` performs steps 1, 3 and 4; `LevelSim` advances timers between its calls.
+Latches capture once. Every expression observes committed state, so chained latches advance
+one capture per cycle. Expression results remain current samples: proximity can become false,
+while destruction and lifetime kills use ledger history.
 
-Unreal lifecycle and presentation ownership are described in the
-[SpaceGame architecture](../../Plugins/SpaceGame/ARCHITECTURE.md).
+Timers start once; repeated starts do nothing. Finished handles remain readable. Timer-start
+events execute at tick end and become visible to expressions on their next evaluation.
+Fresh level construction resets conditions and timers.
 
-## Timer state
+## Events and dispatch
 
-`LevelSim` owns `Timers` independently of expression storage. Stable timer handles identify
-not-started, started or finished state. `StartTimer` event payloads own durations; the timer collection
-stores no duration before dispatch. Starting creates a countdown once; repeated starts do nothing.
-Resolution decrements active countdowns before evaluating expressions. Expiry marks the entry
-finished and swap-removes the countdown and its owner handle. Finished handles
-remain readable. Timers have no reset operation; a fresh level owns fresh timer state.
+Event definitions and triggers can be appended during construction or simulation. A trigger
+stores a condition handle and a range in the flat event-handle array. Active indices preserve
+registration order. A true condition queues the associated events once and retires only the
+active index. Triggers registered during collection become eligible on the next pass.
 
-Level compilation allocates timer IDs, creates start events and connects timer observations
-to triggers. Expression compilation only receives existing timer handles; it neither allocates
-timers nor creates effects. Logic compilation belongs to the level compiler. `LevelEventManager` owns the
-resulting event payloads, trigger definitions, active trigger indices, and execution queues.
-Definitions can also be appended during simulation. Firing removes only the active trigger index;
-stable compaction preserves insertion order. Each collection pass snapshots its eligible prefix.
-The compiler fills gameplay fields directly in the builder's fresh `LevelSimInitData`, using
-the configuration already supplied there. Failed compilation discards that construction input.
-Definitions use their own default-backed storage before runtime memory exists. Moving the manager
-into `LevelSim` binds its execution queues to level memory and preserves queue cursors; ordinary
-moves do not activate initial events. `LevelSim` explicitly queues initial events during setup.
-Initialisation dispatches queued
-Preparation events before publishing entity lookups, then drains tick-end events immediately
-before returning. Timer starts therefore occur at tick zero without evaluating logic or advancing
-countdowns. Terminal events retain their stopping behaviour during initialisation.
-Starting a timer becomes visible on the next expression evaluation.
+Preparation and tick-end queues preserve FIFO order independently. Preparation dispatches
+spawns; tick-end dispatches timer starts, pauses and terminal events. A terminal event stops
+tick-end dispatch immediately, retains later queued events, and records its handle and tick
+for `result()`. Stopped levels do not advance or resume.
 
-## Boolean samples and latches
+Construction dispatches queued spawns, publishes lookups and the spatial index, resets the clock
+to tick zero and `BetweenTicks`, then dispatches tick-end events from the paused state.
+It does not evaluate conditions or advance timers; a queued terminal event can stop the level
+during construction.
 
-`ConditionManager` evaluates every leaf each Resolution, grouped by predicate kind, followed by a
-single dependency-ordered composite pass. Boolean results are sampled storage: no activation,
-retirement, reference counting or same-tick propagation. Proximity is a current-state predicate;
-destruction and lifetime kills query the ledger.
+`advance()` dispatches tick-end events before accumulating time and after each completed tick.
+Paused calls process that queue without accumulating time. Pause retains pending spawns for
+Preparation after resume. Duration limits use timer-triggered stop events.
 
-The same `ConditionManager` stores stable expression-input pairs and one byte per latch. Two bits
-hold a pending capture and two hold the cached observation: unset, false or true. Bulk evaluation reads sampled
-inputs and writes only pending captures. Commit copies pending to cached and swap-removes captured
-handles from the active list without moving definitions or state. Both fields then agree.
+## Entity identity and lookup
 
-The Resolution order is commit previous captures, tick timers, evaluate expressions, evaluate
-active latches, collect triggers. `ConditionManager::commit_latches()` commits the previous captures;
-`evaluate()` evaluates expressions and then captures latch inputs. `LevelSim` advances timers
-between these calls and delegates phase dispatch directly to `LevelEventManager`. Captures become
-observable in the next logic cycle, consistently for direct observations and composites.
-Chained latches advance one capture per cycle. Runtime
-state is owned independently by each `LevelSim` and reset through fresh construction.
+`LevelEntityRef` identifies an authored declaration. The spawn manager maps it to a persistent
+`EntityId`; delayed entities remain unresolved until spawned. Death preserves this mapping and
+ledger history.
 
-Scheme authoring uses a scoped `logic` macro and handle constructors. Compilation validates the
-graph and resolves symbolic entity references before runtime. See
-[logic authoring](../../LevelScripts/docs/logic.md).
+`EntityId` identifies an entity type and lifetime offset. Lookup tables resolve it to the current
+active row, team and quantised health. Row handles and borrowed views must not survive structural
+mutation. Resolve queries in batches by entity type, with caller-owned scratch.
 
-## Entity lookup
+Authoritative health uses type-specific storage indexed by active row. Packed lookup health is
+a Thinking snapshot rebuilt during Preparation.
 
-`LevelEntityRef` is a generated 32-bit declaration index, with `0xffffffff` reserved for an
-invalid reference. Compilation resolves authored symbolic IDs to these references. The spawn
-manager owns a contiguous declaration-to-`EntityId` array; delayed entities retain invalid runtime
-IDs until their spawn event executes. Death preserves that slot for historical expressions.
-
-`EntityId` is the persistent external identity: entity type and type-local lifetime offset.
-Death does not erase its history or make the identity available for reuse. Each entity type owns
-a lookup table from that offset to a generated 32-bit `EntityInstanceHandle`:
-
-- 18 bits for the active row;
-- 3 bits for team;
-- 2 bits for quantised health;
-- 9 reserved bits, initially zero.
-
-The 18-bit limit applies to simultaneous active rows, not lifetime identities. Preserve each
-type's existing lifetime allocation budget independently of its active-row limit.
-
-Resolve batches grouped by entity type. Bind each type's table and component spans once per run.
-Keep temporary outputs caller-owned, with the caller choosing the scratch resource. Do not retain
-active handles across structural mutation.
-
-Health uses fixed type ranges and the active row directly. Its range base is known at compile time.
-Each type rebuilds every active handle from the current row, team, and health during Preparation.
-Health writes directly update the fixed ranges; no dirty flags or change queues are maintained.
-Packed health is a Thinking snapshot. Existing consumers continue to use authoritative component
-data until explicitly migrated.
-
-## Roadmap, not scope of this refactor
-
-The intended ECS/component model is compile-time and code-generated, not a runtime ECS. Different
-component storage policies are intentional:
-
-- Hot movement and rotation components may later use globally dense, contiguous SoA storage for
-  one-pass batched/SIMD processing across entity types.
-- Cold mandatory components can use direct fixed ranges based on entity capacities.
-- Components requiring independent dense lifetime or ordering may use generated component-index
-  maps plus a reverse stable `EntityId` owner to repair mappings after swap-remove.
-- Small qualitative/query data can live in per-instance handles, refreshed at phase boundaries
-  to avoid unnecessary component reads during Thinking.
-
-Generated mappings must support batch resolution. Do not introduce scalar lookup facades as the
-default processing model. These future storage migrations are separate work; the current change
-does not move movement, rotation, or AI onto new component storage.
+See [logic authoring](../../LevelScripts/docs/logic.md) for Scheme definitions and the
+[SpaceGame architecture](../../Plugins/SpaceGame/ARCHITECTURE.md) for Unreal lifecycle and presentation.
