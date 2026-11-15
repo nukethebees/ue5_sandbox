@@ -51,7 +51,6 @@ auto same_workload(AnalysisRequest const& first, AnalysisRequest const& second) 
 
 auto resolve_variant(Document const& document, VariantId id) -> ResolvedVariant {
     auto const& authored{document.variants()};
-    assert(authored.contains(id));
     ResolvedVariant result;
     result.id = id;
     result.name = authored.name(id);
