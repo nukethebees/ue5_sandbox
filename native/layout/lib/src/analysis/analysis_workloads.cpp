@@ -205,7 +205,6 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                         "Access analysis requires a physical layout projection."});
         return id;
     }
-    assert(request.abi != nullptr);
     auto const& memory{request.abi->memory_facts()};
     auto const cache_size{memory.cache_line_bytes && *memory.cache_line_bytes != 0
                               ? memory.cache_line_bytes
