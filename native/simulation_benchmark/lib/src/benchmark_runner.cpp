@@ -30,8 +30,9 @@ struct FrameMemorySummary {
     void record_tick(sim::LevelSim const& simulation) {
         std::size_t claimed_bytes{};
         std::size_t payload_bytes{};
+        auto const& memory{simulation.memory_manager()};
         for (auto const& stats :
-             std::array{simulation.tick_memory_stats(), simulation.phase_memory_stats()}) {
+             std::array{memory.tick_memory().stats(), memory.phase_memory().stats()}) {
             claimed_bytes += stats.last_frame_claimed_bytes;
             payload_bytes += stats.last_frame_payload_bytes;
             total_padding_bytes += stats.last_frame_padding_bytes;
@@ -320,8 +321,9 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 
     simulation.stop_run(sim::RunEndReason::DurationReached);
 
-    auto const tick_memory{simulation.tick_memory_stats()};
-    auto const phase_memory{simulation.phase_memory_stats()};
+    auto const& memory{simulation.memory_manager()};
+    auto const tick_memory{memory.tick_memory().stats()};
+    auto const phase_memory{memory.phase_memory().stats()};
     auto const total_simulation_ticks{simulation.clock().get_completed_ticks()};
     auto const elapsed{std::chrono::duration<double>{finished_at - started_at}.count()};
     auto const total_elapsed{std::chrono::duration<double>{finished_at - total_started_at}.count()};

@@ -102,15 +102,7 @@ struct LevelSim {
     auto spatial_query_manager() const -> SpatialQueryManager const& {
         return collision_pipeline_.queries();
     }
-    auto memory_stats() const noexcept -> memory::Statistics {
-        return memory_manager_.game_memory().stats();
-    }
-    auto tick_memory_stats() const noexcept -> FrameMemoryStats {
-        return memory_manager_.tick_memory().stats();
-    }
-    auto phase_memory_stats() const noexcept -> FrameMemoryStats {
-        return memory_manager_.phase_memory().stats();
-    }
+    auto memory_manager() const noexcept -> LevelMemoryManager const& { return memory_manager_; }
   private:
     void refresh_spatial_index();
     void dispatch_tick_end_events();

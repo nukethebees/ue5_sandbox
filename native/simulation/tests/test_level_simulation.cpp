@@ -233,7 +233,7 @@ TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
     simulation.advance(dt);
-    auto const first_tick_frame_memory{simulation.phase_memory_stats()};
+    auto const first_tick_frame_memory{simulation.memory_manager().phase_memory().stats()};
     EXPECT_EQ(first_tick_frame_memory.capacity_bytes, std::size_t{16 * 1024 * 1024})
         << "Frame memory uses the configured per-simulation capacity";
     EXPECT_EQ(first_tick_frame_memory.current_claimed_bytes, std::size_t{0})
@@ -266,12 +266,13 @@ TEST(NativeSimulation, LevelSimReturnsAllocationsToItsUpstream) {
 
     {
         LevelSim simulation{std::move(data).compile(), upstream};
-        auto const stats{simulation.memory_stats()};
+        auto const& memory{simulation.memory_manager()};
+        auto const stats{memory.game_memory().stats()};
         EXPECT_GE(stats.live_allocation_count, 2u);
         EXPECT_GE(stats.live_bytes, 2 * frame_capacity);
         EXPECT_EQ(stats.live_bytes, upstream.stats().live_bytes);
-        EXPECT_EQ(simulation.phase_memory_stats().capacity_bytes, frame_capacity);
-        EXPECT_EQ(simulation.tick_memory_stats().capacity_bytes, frame_capacity);
+        EXPECT_EQ(memory.phase_memory().stats().capacity_bytes, frame_capacity);
+        EXPECT_EQ(memory.tick_memory().stats().capacity_bytes, frame_capacity);
     }
 
     EXPECT_EQ(upstream.stats().live_allocation_count, 0u);
