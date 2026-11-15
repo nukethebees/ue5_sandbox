@@ -19,8 +19,8 @@ struct ExprEvaluationContext {
     Timers const& timers;
     std::span<EntityId const> entities;
     Latches const& latches;
-    SpatialQueryManager const* spatial{};
-    EntityLookupTables const* lookups{};
-    FrameMemoryResource* scratch{};
+    SpatialQueryManager const& spatial;
+    EntityLookupTables const& lookups;
+    FrameMemoryResource& scratch;
 };
 }

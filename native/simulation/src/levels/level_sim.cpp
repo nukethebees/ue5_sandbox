@@ -424,9 +424,9 @@ void LevelSim::advance_tick(float const tick_period,
                                        timers_,
                                        spawn_manager_.entity_ids(),
                                        latches_,
-                                       &collision_pipeline_.queries(),
-                                       &entity_tables_.lookups,
-                                       &phase_memory});
+                                       collision_pipeline_.queries(),
+                                       entity_tables_.lookups,
+                                       phase_memory});
                 latches_.evaluate(expressions_);
                 event_manager_.collect_ready(expressions_);
             }

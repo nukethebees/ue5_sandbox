@@ -1,9 +1,13 @@
+#include <ioj/frame_memory_resource.h>
+#include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/entities/entity_lookup_tables.h>
 #include <ioj/sim/expressions/expr_evaluation_context.h>
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
 #include <ioj/sim/levels/level_event_manager.h>
+#include <ioj/sim/sim_clock.h>
 
 #include <gtest/gtest.h>
 
@@ -48,6 +52,10 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     Timers timers;
     Latches latches;
     EntityLedger ledger;
+    SimClock clock{};
+    EntityLookupTables lookups{clock};
+    SpatialQueryManager spatial{};
+    FrameMemoryResource scratch{4096};
     CompiledLevelEvents data;
     auto const spawn{data.add_spawn_event({7, 2})};
     EventHandle const pause{0, EventKind::Pause};
@@ -68,14 +76,14 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     }
 
     timers.tick(1);
-    expressions.evaluate({ledger, timers, {}, latches});
+    expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
     manager.collect_ready(expressions);
     EXPECT_TRUE(manager.preparation_events().empty());
     EXPECT_TRUE(std::ranges::equal(manager.tick_end_events(), initial_events));
     EXPECT_TRUE(manager.pending_tick_end_events().empty());
 
     timers.tick(1);
-    expressions.evaluate({ledger, timers, {}, latches});
+    expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
     manager.collect_ready(expressions);
     manager.collect_ready(expressions);
     EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
@@ -84,14 +92,14 @@ TEST(LevelEvents, MixedTriggersRouteOnceAndQueuesDrainIndependently) {
     EXPECT_FALSE(manager.consume_tick_end_event());
 
     timers.tick(1);
-    expressions.evaluate({ledger, timers, {}, latches});
+    expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
     manager.collect_ready(expressions);
     EXPECT_TRUE(std::ranges::equal(manager.pending_tick_end_events(), late));
     EXPECT_TRUE(std::ranges::equal(manager.preparation_events(), std::array{spawn}));
     EXPECT_EQ(manager.consume_tick_end_event(), late.front());
     EXPECT_EQ(manager.consume_preparation_event(), spawn);
     timers.tick(1);
-    expressions.evaluate({ledger, timers, {}, latches});
+    expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
     manager.collect_ready(expressions);
     EXPECT_TRUE(manager.pending_preparation_events().empty());
     EXPECT_TRUE(manager.pending_tick_end_events().empty());

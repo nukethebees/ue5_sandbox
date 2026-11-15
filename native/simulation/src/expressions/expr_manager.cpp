@@ -341,10 +341,8 @@ void ExprManager::evaluate_reached_position(std::span<LeafHandle const> const ru
     auto const& leaves{leaves_};
     auto const life_states{inputs.ledger.unique_entities().life_state()};
 
-    assert(inputs.spatial && inputs.lookups && inputs.scratch);
-
-    FrameArray<EntityId> ids{inputs.scratch};
-    FrameArray<LeafIndex> live_leaves{inputs.scratch};
+    FrameArray<EntityId> ids{&inputs.scratch};
+    FrameArray<LeafIndex> live_leaves{&inputs.scratch};
     auto const count{static_cast<std::uint32_t>(run.size())};
     ids.set_num(count);
     live_leaves.set_num(count);
@@ -364,12 +362,12 @@ void ExprManager::evaluate_reached_position(std::span<LeafHandle const> const ru
         }
     }
 
-    Vectors3f positions{*inputs.scratch};
+    Vectors3f positions{inputs.scratch};
     positions.add_uninitialised(live_count);
     auto const output{positions.view().resolve()};
 
-    inputs.spatial->copy_entity_locations(
-        *inputs.lookups, std::span<EntityId const>{ids.data(), live_count}, output, inputs.scratch);
+    inputs.spatial.copy_entity_locations(
+        inputs.lookups, std::span<EntityId const>{ids.data(), live_count}, output, &inputs.scratch);
 
     for (std::uint32_t row{}; row < live_count; ++row) {
         auto const leaf{live_leaves[row]};

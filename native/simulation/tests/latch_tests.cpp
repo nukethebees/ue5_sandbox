@@ -1,10 +1,14 @@
+#include <ioj/frame_memory_resource.h>
 #include <ioj/levels/expression.h>
+#include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/entities/entity_lookup_tables.h>
 #include <ioj/sim/expressions/expr_compilation_context.h>
 #include <ioj/sim/expressions/expr_evaluation_context.h>
 #include <ioj/sim/expressions/expr_manager.h>
 #include <ioj/sim/expressions/latches.h>
 #include <ioj/sim/expressions/timers.h>
+#include <ioj/sim/sim_clock.h>
 
 #include <gtest/gtest.h>
 
@@ -28,12 +32,16 @@ auto sample(std::initializer_list<bool> const values) -> ExpressionSamples {
 
     Timers timers;
     EntityLedger ledger;
+    SimClock clock{};
+    EntityLookupTables lookups{clock};
+    SpatialQueryManager spatial{};
+    FrameMemoryResource scratch{4096};
     Latches latches;
     ExpressionSamples result;
     std::vector<ExprHandle> compiled(nodes.size());
     result.expressions.append(nodes, {{}, {}}, compiled);
     result.handles.assign(compiled.begin() + 2, compiled.end());
-    result.expressions.evaluate({ledger, timers, {}, latches});
+    result.expressions.evaluate({ledger, timers, {}, latches, spatial, lookups, scratch});
     return result;
 }
 
