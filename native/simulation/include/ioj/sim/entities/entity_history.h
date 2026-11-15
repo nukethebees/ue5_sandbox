@@ -179,17 +179,21 @@ struct EntityHistory
         : EntityHistory{*std::pmr::get_default_resource()} {}
     explicit EntityHistory(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~EntityHistory() { Operations::release_storage(*this); }
+
     EntityHistory(EntityHistory const&) = delete;
-    auto operator=(EntityHistory const&) -> EntityHistory& = delete;
     EntityHistory(EntityHistory&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(EntityHistory const&) -> EntityHistory& = delete;
     auto operator=(EntityHistory&& other) -> EntityHistory& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = entity_history::DataPointers<Byte>;

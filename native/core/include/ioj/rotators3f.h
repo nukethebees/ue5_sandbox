@@ -189,17 +189,21 @@ struct Rotators3f
         : Rotators3f{*std::pmr::get_default_resource()} {}
     explicit Rotators3f(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~Rotators3f() { Operations::release_storage(*this); }
+
     Rotators3f(Rotators3f const&) = delete;
-    auto operator=(Rotators3f const&) -> Rotators3f& = delete;
     Rotators3f(Rotators3f&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(Rotators3f const&) -> Rotators3f& = delete;
     auto operator=(Rotators3f&& other) -> Rotators3f& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = rotators3f::DataPointers<Byte>;

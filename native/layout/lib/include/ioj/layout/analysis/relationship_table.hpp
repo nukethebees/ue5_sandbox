@@ -178,17 +178,21 @@ struct RelationshipTable
         : RelationshipTable{*std::pmr::get_default_resource()} {}
     explicit RelationshipTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~RelationshipTable() { Operations::release_storage(*this); }
+
     RelationshipTable(RelationshipTable const&) = delete;
-    auto operator=(RelationshipTable const&) -> RelationshipTable& = delete;
     RelationshipTable(RelationshipTable&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(RelationshipTable const&) -> RelationshipTable& = delete;
     auto operator=(RelationshipTable&& other) -> RelationshipTable& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = relationship_table::DataPointers<Byte>;

@@ -235,17 +235,21 @@ struct LaserHitDetails
         : LaserHitDetails{*std::pmr::get_default_resource()} {}
     explicit LaserHitDetails(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~LaserHitDetails() { Operations::release_storage(*this); }
+
     LaserHitDetails(LaserHitDetails const&) = delete;
-    auto operator=(LaserHitDetails const&) -> LaserHitDetails& = delete;
     LaserHitDetails(LaserHitDetails&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(LaserHitDetails const&) -> LaserHitDetails& = delete;
     auto operator=(LaserHitDetails&& other) -> LaserHitDetails& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = laser_hit_details::DataPointers<Byte>;

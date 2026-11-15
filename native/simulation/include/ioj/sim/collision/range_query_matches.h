@@ -209,17 +209,21 @@ struct RangeQueryMatches
         : RangeQueryMatches{*std::pmr::get_default_resource()} {}
     explicit RangeQueryMatches(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~RangeQueryMatches() { Operations::release_storage(*this); }
+
     RangeQueryMatches(RangeQueryMatches const&) = delete;
-    auto operator=(RangeQueryMatches const&) -> RangeQueryMatches& = delete;
     RangeQueryMatches(RangeQueryMatches&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(RangeQueryMatches const&) -> RangeQueryMatches& = delete;
     auto operator=(RangeQueryMatches&& other) -> RangeQueryMatches& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = range_query_matches::DataPointers<Byte>;

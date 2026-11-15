@@ -305,17 +305,21 @@ struct WorkloadTable
         : WorkloadTable{*std::pmr::get_default_resource()} {}
     explicit WorkloadTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~WorkloadTable() { Operations::release_storage(*this); }
+
     WorkloadTable(WorkloadTable const&) = delete;
-    auto operator=(WorkloadTable const&) -> WorkloadTable& = delete;
     WorkloadTable(WorkloadTable&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(WorkloadTable const&) -> WorkloadTable& = delete;
     auto operator=(WorkloadTable&& other) -> WorkloadTable& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = workload_table::DataPointers<Byte>;

@@ -243,17 +243,21 @@ struct ComponentTable
         : ComponentTable{*std::pmr::get_default_resource()} {}
     explicit ComponentTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~ComponentTable() { Operations::release_storage(*this); }
+
     ComponentTable(ComponentTable const&) = delete;
-    auto operator=(ComponentTable const&) -> ComponentTable& = delete;
     ComponentTable(ComponentTable&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(ComponentTable const&) -> ComponentTable& = delete;
     auto operator=(ComponentTable&& other) -> ComponentTable& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = component_table::DataPointers<Byte>;

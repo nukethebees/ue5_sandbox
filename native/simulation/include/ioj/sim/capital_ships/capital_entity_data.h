@@ -251,17 +251,21 @@ struct CapitalEntityData
         : CapitalEntityData{*std::pmr::get_default_resource()} {}
     explicit CapitalEntityData(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~CapitalEntityData() { Operations::release_storage(*this); }
+
     CapitalEntityData(CapitalEntityData const&) = delete;
-    auto operator=(CapitalEntityData const&) -> CapitalEntityData& = delete;
     CapitalEntityData(CapitalEntityData&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(CapitalEntityData const&) -> CapitalEntityData& = delete;
     auto operator=(CapitalEntityData&& other) -> CapitalEntityData& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = capital_entity_data::DataPointers<Byte>;

@@ -287,17 +287,21 @@ struct LevelTurretSpawnEvents
         : LevelTurretSpawnEvents{*std::pmr::get_default_resource()} {}
     explicit LevelTurretSpawnEvents(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~LevelTurretSpawnEvents() { Operations::release_storage(*this); }
+
     LevelTurretSpawnEvents(LevelTurretSpawnEvents const&) = delete;
-    auto operator=(LevelTurretSpawnEvents const&) -> LevelTurretSpawnEvents& = delete;
     LevelTurretSpawnEvents(LevelTurretSpawnEvents&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(LevelTurretSpawnEvents const&) -> LevelTurretSpawnEvents& = delete;
     auto operator=(LevelTurretSpawnEvents&& other) -> LevelTurretSpawnEvents& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = level_turret_spawn_events::DataPointers<Byte>;

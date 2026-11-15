@@ -239,17 +239,21 @@ struct FighterSpawnQueue
         : FighterSpawnQueue{*std::pmr::get_default_resource()} {}
     explicit FighterSpawnQueue(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~FighterSpawnQueue() { Operations::release_storage(*this); }
+
     FighterSpawnQueue(FighterSpawnQueue const&) = delete;
-    auto operator=(FighterSpawnQueue const&) -> FighterSpawnQueue& = delete;
     FighterSpawnQueue(FighterSpawnQueue&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(FighterSpawnQueue const&) -> FighterSpawnQueue& = delete;
     auto operator=(FighterSpawnQueue&& other) -> FighterSpawnQueue& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = fighter_spawn_queue::DataPointers<Byte>;

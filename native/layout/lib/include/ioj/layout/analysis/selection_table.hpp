@@ -206,17 +206,21 @@ struct SelectionTable
         : SelectionTable{*std::pmr::get_default_resource()} {}
     explicit SelectionTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~SelectionTable() { Operations::release_storage(*this); }
+
     SelectionTable(SelectionTable const&) = delete;
-    auto operator=(SelectionTable const&) -> SelectionTable& = delete;
     SelectionTable(SelectionTable&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(SelectionTable const&) -> SelectionTable& = delete;
     auto operator=(SelectionTable&& other) -> SelectionTable& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = selection_table::DataPointers<Byte>;

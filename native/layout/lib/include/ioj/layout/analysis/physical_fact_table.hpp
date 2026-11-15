@@ -205,17 +205,21 @@ struct PhysicalFactTable
         : PhysicalFactTable{*std::pmr::get_default_resource()} {}
     explicit PhysicalFactTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~PhysicalFactTable() { Operations::release_storage(*this); }
+
     PhysicalFactTable(PhysicalFactTable const&) = delete;
-    auto operator=(PhysicalFactTable const&) -> PhysicalFactTable& = delete;
     PhysicalFactTable(PhysicalFactTable&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(PhysicalFactTable const&) -> PhysicalFactTable& = delete;
     auto operator=(PhysicalFactTable&& other) -> PhysicalFactTable& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = physical_fact_table::DataPointers<Byte>;

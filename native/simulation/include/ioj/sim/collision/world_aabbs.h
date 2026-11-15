@@ -214,17 +214,21 @@ struct WorldAABBs
         : WorldAABBs{*std::pmr::get_default_resource()} {}
     explicit WorldAABBs(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~WorldAABBs() { Operations::release_storage(*this); }
+
     WorldAABBs(WorldAABBs const&) = delete;
-    auto operator=(WorldAABBs const&) -> WorldAABBs& = delete;
     WorldAABBs(WorldAABBs&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(WorldAABBs const&) -> WorldAABBs& = delete;
     auto operator=(WorldAABBs&& other) -> WorldAABBs& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = world_aabbs::DataPointers<Byte>;

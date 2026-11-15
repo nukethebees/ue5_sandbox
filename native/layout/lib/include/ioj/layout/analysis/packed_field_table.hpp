@@ -404,17 +404,21 @@ struct PackedFieldTable
         : PackedFieldTable{*std::pmr::get_default_resource()} {}
     explicit PackedFieldTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~PackedFieldTable() { Operations::release_storage(*this); }
+
     PackedFieldTable(PackedFieldTable const&) = delete;
-    auto operator=(PackedFieldTable const&) -> PackedFieldTable& = delete;
     PackedFieldTable(PackedFieldTable&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(PackedFieldTable const&) -> PackedFieldTable& = delete;
     auto operator=(PackedFieldTable&& other) -> PackedFieldTable& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = packed_field_table::DataPointers<Byte>;

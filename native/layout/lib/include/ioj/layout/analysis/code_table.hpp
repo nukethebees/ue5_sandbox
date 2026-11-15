@@ -188,17 +188,21 @@ struct CodeTable
         : CodeTable{*std::pmr::get_default_resource()} {}
     explicit CodeTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~CodeTable() { Operations::release_storage(*this); }
+
     CodeTable(CodeTable const&) = delete;
-    auto operator=(CodeTable const&) -> CodeTable& = delete;
     CodeTable(CodeTable&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(CodeTable const&) -> CodeTable& = delete;
     auto operator=(CodeTable&& other) -> CodeTable& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = code_table::DataPointers<Byte>;

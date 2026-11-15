@@ -163,17 +163,21 @@ struct EntityDeathInfo
         : EntityDeathInfo{*std::pmr::get_default_resource()} {}
     explicit EntityDeathInfo(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~EntityDeathInfo() { Operations::release_storage(*this); }
+
     EntityDeathInfo(EntityDeathInfo const&) = delete;
-    auto operator=(EntityDeathInfo const&) -> EntityDeathInfo& = delete;
     EntityDeathInfo(EntityDeathInfo&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(EntityDeathInfo const&) -> EntityDeathInfo& = delete;
     auto operator=(EntityDeathInfo&& other) -> EntityDeathInfo& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = entity_death_info::DataPointers<Byte>;

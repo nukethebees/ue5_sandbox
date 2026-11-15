@@ -815,17 +815,21 @@ struct FighterEntityData
         : FighterEntityData{*std::pmr::get_default_resource()} {}
     explicit FighterEntityData(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~FighterEntityData() { Operations::release_storage(*this); }
+
     FighterEntityData(FighterEntityData const&) = delete;
-    auto operator=(FighterEntityData const&) -> FighterEntityData& = delete;
     FighterEntityData(FighterEntityData&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(FighterEntityData const&) -> FighterEntityData& = delete;
     auto operator=(FighterEntityData&& other) -> FighterEntityData& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = fighter_entity_data::DataPointers<Byte>;

@@ -192,17 +192,21 @@ struct CellCoords
         : CellCoords{*std::pmr::get_default_resource()} {}
     explicit CellCoords(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~CellCoords() { Operations::release_storage(*this); }
+
     CellCoords(CellCoords const&) = delete;
-    auto operator=(CellCoords const&) -> CellCoords& = delete;
     CellCoords(CellCoords&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(CellCoords const&) -> CellCoords& = delete;
     auto operator=(CellCoords&& other) -> CellCoords& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = cell_coords::DataPointers<Byte>;

@@ -222,17 +222,21 @@ struct TypeAnalysisTable
         : TypeAnalysisTable{*std::pmr::get_default_resource()} {}
     explicit TypeAnalysisTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~TypeAnalysisTable() { Operations::release_storage(*this); }
+
     TypeAnalysisTable(TypeAnalysisTable const&) = delete;
-    auto operator=(TypeAnalysisTable const&) -> TypeAnalysisTable& = delete;
     TypeAnalysisTable(TypeAnalysisTable&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(TypeAnalysisTable const&) -> TypeAnalysisTable& = delete;
     auto operator=(TypeAnalysisTable&& other) -> TypeAnalysisTable& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = type_analysis_table::DataPointers<Byte>;

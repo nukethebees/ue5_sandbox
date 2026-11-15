@@ -163,17 +163,21 @@ struct DirectDamageEvents
         : DirectDamageEvents{*std::pmr::get_default_resource()} {}
     explicit DirectDamageEvents(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~DirectDamageEvents() { Operations::release_storage(*this); }
+
     DirectDamageEvents(DirectDamageEvents const&) = delete;
-    auto operator=(DirectDamageEvents const&) -> DirectDamageEvents& = delete;
     DirectDamageEvents(DirectDamageEvents&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(DirectDamageEvents const&) -> DirectDamageEvents& = delete;
     auto operator=(DirectDamageEvents&& other) -> DirectDamageEvents& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = direct_damage_events::DataPointers<Byte>;

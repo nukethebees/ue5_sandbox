@@ -364,17 +364,21 @@ struct LaserEntities
         : LaserEntities{*std::pmr::get_default_resource()} {}
     explicit LaserEntities(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~LaserEntities() { Operations::release_storage(*this); }
+
     LaserEntities(LaserEntities const&) = delete;
-    auto operator=(LaserEntities const&) -> LaserEntities& = delete;
     LaserEntities(LaserEntities&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(LaserEntities const&) -> LaserEntities& = delete;
     auto operator=(LaserEntities&& other) -> LaserEntities& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = laser_entities::DataPointers<Byte>;

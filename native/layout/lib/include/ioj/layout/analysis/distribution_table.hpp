@@ -253,17 +253,21 @@ struct DistributionTable
         : DistributionTable{*std::pmr::get_default_resource()} {}
     explicit DistributionTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~DistributionTable() { Operations::release_storage(*this); }
+
     DistributionTable(DistributionTable const&) = delete;
-    auto operator=(DistributionTable const&) -> DistributionTable& = delete;
     DistributionTable(DistributionTable&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(DistributionTable const&) -> DistributionTable& = delete;
     auto operator=(DistributionTable&& other) -> DistributionTable& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = distribution_table::DataPointers<Byte>;

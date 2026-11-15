@@ -307,17 +307,21 @@ struct LevelCapitalSpawnEvents
         : LevelCapitalSpawnEvents{*std::pmr::get_default_resource()} {}
     explicit LevelCapitalSpawnEvents(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~LevelCapitalSpawnEvents() { Operations::release_storage(*this); }
+
     LevelCapitalSpawnEvents(LevelCapitalSpawnEvents const&) = delete;
-    auto operator=(LevelCapitalSpawnEvents const&) -> LevelCapitalSpawnEvents& = delete;
     LevelCapitalSpawnEvents(LevelCapitalSpawnEvents&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(LevelCapitalSpawnEvents const&) -> LevelCapitalSpawnEvents& = delete;
     auto operator=(LevelCapitalSpawnEvents&& other) -> LevelCapitalSpawnEvents& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = level_capital_spawn_events::DataPointers<Byte>;

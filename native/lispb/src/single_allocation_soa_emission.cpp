@@ -447,13 +447,17 @@ class SingleAllocationEmitter : public CppIRBuilder {
         result.append(section_header("Lifetime"))
             .new_lines(1)
             .append(adjacent({header_function(add_function(default_constructor)),
-                              header_function(add_function(resource_constructor)),
-                              header_function(add_function(resource_accessor)),
-                              header_function(add_function(destructor_value)),
-                              declaration(add_function(copy_constructor)),
-                              declaration(add_function(copy_assignment)),
-                              header_function(add_function(move_constructor)),
-                              header_function(add_function(move_assignment))}));
+                              header_function(add_function(resource_constructor))}))
+            .new_lines(2)
+            .add(header_function(add_function(destructor_value)))
+            .new_lines(2)
+            .append(adjacent({declaration(add_function(copy_constructor)),
+                              header_function(add_function(move_constructor))}))
+            .new_lines(2)
+            .append(adjacent({declaration(add_function(copy_assignment)),
+                              header_function(add_function(move_assignment))}))
+            .new_lines(2)
+            .add(header_function(add_function(resource_accessor)));
         return result.build();
     }
     auto data_pointers_node(SingleAllocationModelId model) -> NodeId {

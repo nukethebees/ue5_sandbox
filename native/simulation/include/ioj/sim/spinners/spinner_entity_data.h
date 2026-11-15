@@ -240,17 +240,21 @@ struct SpinnerEntityData
         : SpinnerEntityData{*std::pmr::get_default_resource()} {}
     explicit SpinnerEntityData(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~SpinnerEntityData() { Operations::release_storage(*this); }
+
     SpinnerEntityData(SpinnerEntityData const&) = delete;
-    auto operator=(SpinnerEntityData const&) -> SpinnerEntityData& = delete;
     SpinnerEntityData(SpinnerEntityData&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(SpinnerEntityData const&) -> SpinnerEntityData& = delete;
     auto operator=(SpinnerEntityData&& other) -> SpinnerEntityData& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = spinner_entity_data::DataPointers<Byte>;

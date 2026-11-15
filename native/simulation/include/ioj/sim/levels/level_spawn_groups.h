@@ -160,17 +160,21 @@ struct LevelSpawnGroups
         : LevelSpawnGroups{*std::pmr::get_default_resource()} {}
     explicit LevelSpawnGroups(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~LevelSpawnGroups() { Operations::release_storage(*this); }
+
     LevelSpawnGroups(LevelSpawnGroups const&) = delete;
-    auto operator=(LevelSpawnGroups const&) -> LevelSpawnGroups& = delete;
     LevelSpawnGroups(LevelSpawnGroups&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(LevelSpawnGroups const&) -> LevelSpawnGroups& = delete;
     auto operator=(LevelSpawnGroups&& other) -> LevelSpawnGroups& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = level_spawn_groups::DataPointers<Byte>;

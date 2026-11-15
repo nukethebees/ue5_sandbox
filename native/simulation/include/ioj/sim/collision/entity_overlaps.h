@@ -167,17 +167,21 @@ struct EntityEntityOverlaps
         : EntityEntityOverlaps{*std::pmr::get_default_resource()} {}
     explicit EntityEntityOverlaps(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~EntityEntityOverlaps() { Operations::release_storage(*this); }
+
     EntityEntityOverlaps(EntityEntityOverlaps const&) = delete;
-    auto operator=(EntityEntityOverlaps const&) -> EntityEntityOverlaps& = delete;
     EntityEntityOverlaps(EntityEntityOverlaps&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(EntityEntityOverlaps const&) -> EntityEntityOverlaps& = delete;
     auto operator=(EntityEntityOverlaps&& other) -> EntityEntityOverlaps& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = entity_entity_overlaps::DataPointers<Byte>;
@@ -339,17 +343,21 @@ struct EntityStaticOverlaps
         : EntityStaticOverlaps{*std::pmr::get_default_resource()} {}
     explicit EntityStaticOverlaps(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~EntityStaticOverlaps() { Operations::release_storage(*this); }
+
     EntityStaticOverlaps(EntityStaticOverlaps const&) = delete;
-    auto operator=(EntityStaticOverlaps const&) -> EntityStaticOverlaps& = delete;
     EntityStaticOverlaps(EntityStaticOverlaps&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(EntityStaticOverlaps const&) -> EntityStaticOverlaps& = delete;
     auto operator=(EntityStaticOverlaps&& other) -> EntityStaticOverlaps& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = entity_static_overlaps::DataPointers<Byte>;

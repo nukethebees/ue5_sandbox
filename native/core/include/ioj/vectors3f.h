@@ -189,17 +189,21 @@ struct Vectors3f
         : Vectors3f{*std::pmr::get_default_resource()} {}
     explicit Vectors3f(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~Vectors3f() { Operations::release_storage(*this); }
+
     Vectors3f(Vectors3f const&) = delete;
-    auto operator=(Vectors3f const&) -> Vectors3f& = delete;
     Vectors3f(Vectors3f&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(Vectors3f const&) -> Vectors3f& = delete;
     auto operator=(Vectors3f&& other) -> Vectors3f& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = vectors3f::DataPointers<Byte>;

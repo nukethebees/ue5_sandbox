@@ -159,17 +159,21 @@ struct Positions
         : Positions{*std::pmr::get_default_resource()} {}
     explicit Positions(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~Positions() { Operations::release_storage(*this); }
+
     Positions(Positions const&) = delete;
-    auto operator=(Positions const&) -> Positions& = delete;
     Positions(Positions&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(Positions const&) -> Positions& = delete;
     auto operator=(Positions&& other) -> Positions& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = positions::DataPointers<Byte>;

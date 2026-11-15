@@ -208,17 +208,21 @@ struct LineTraces
         : LineTraces{*std::pmr::get_default_resource()} {}
     explicit LineTraces(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~LineTraces() { Operations::release_storage(*this); }
+
     LineTraces(LineTraces const&) = delete;
-    auto operator=(LineTraces const&) -> LineTraces& = delete;
     LineTraces(LineTraces&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(LineTraces const&) -> LineTraces& = delete;
     auto operator=(LineTraces&& other) -> LineTraces& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = line_traces::DataPointers<Byte>;

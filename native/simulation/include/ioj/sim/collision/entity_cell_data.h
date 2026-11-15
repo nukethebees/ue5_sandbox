@@ -325,17 +325,21 @@ struct EntityCellData
         : EntityCellData{*std::pmr::get_default_resource()} {}
     explicit EntityCellData(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~EntityCellData() { Operations::release_storage(*this); }
+
     EntityCellData(EntityCellData const&) = delete;
-    auto operator=(EntityCellData const&) -> EntityCellData& = delete;
     EntityCellData(EntityCellData&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(EntityCellData const&) -> EntityCellData& = delete;
     auto operator=(EntityCellData&& other) -> EntityCellData& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = entity_cell_data::DataPointers<Byte>;

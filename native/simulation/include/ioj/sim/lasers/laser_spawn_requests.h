@@ -338,17 +338,21 @@ struct LaserSpawnRequests
         : LaserSpawnRequests{*std::pmr::get_default_resource()} {}
     explicit LaserSpawnRequests(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~LaserSpawnRequests() { Operations::release_storage(*this); }
+
     LaserSpawnRequests(LaserSpawnRequests const&) = delete;
-    auto operator=(LaserSpawnRequests const&) -> LaserSpawnRequests& = delete;
     LaserSpawnRequests(LaserSpawnRequests&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(LaserSpawnRequests const&) -> LaserSpawnRequests& = delete;
     auto operator=(LaserSpawnRequests&& other) -> LaserSpawnRequests& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = laser_spawn_requests::DataPointers<Byte>;

@@ -468,17 +468,21 @@ struct TurretEntityData
         : TurretEntityData{*std::pmr::get_default_resource()} {}
     explicit TurretEntityData(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~TurretEntityData() { Operations::release_storage(*this); }
+
     TurretEntityData(TurretEntityData const&) = delete;
-    auto operator=(TurretEntityData const&) -> TurretEntityData& = delete;
     TurretEntityData(TurretEntityData&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(TurretEntityData const&) -> TurretEntityData& = delete;
     auto operator=(TurretEntityData&& other) -> TurretEntityData& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = turret_entity_data::DataPointers<Byte>;

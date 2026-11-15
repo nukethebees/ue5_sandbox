@@ -173,15 +173,19 @@ struct Counts
         : Counts{*std::pmr::get_default_resource()} {}
     explicit Counts(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~Counts() { Operations::release_storage(*this); }
+
     Counts(Counts const&) = delete;
-    auto operator=(Counts const&) -> Counts& = delete;
     Counts(Counts&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(Counts const&) -> Counts& = delete;
     auto operator=(Counts&& other) -> Counts& { return Operations::move_assign(*this, other); }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = counts::DataPointers<Byte>;
@@ -350,15 +354,19 @@ struct PointerA
         : PointerA{*std::pmr::get_default_resource()} {}
     explicit PointerA(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~PointerA() { Operations::release_storage(*this); }
+
     PointerA(PointerA const&) = delete;
-    auto operator=(PointerA const&) -> PointerA& = delete;
     PointerA(PointerA&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(PointerA const&) -> PointerA& = delete;
     auto operator=(PointerA&& other) -> PointerA& { return Operations::move_assign(*this, other); }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = pointer_a::DataPointers<Byte>;
@@ -509,15 +517,19 @@ struct PointerB
         : PointerB{*std::pmr::get_default_resource()} {}
     explicit PointerB(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~PointerB() { Operations::release_storage(*this); }
+
     PointerB(PointerB const&) = delete;
-    auto operator=(PointerB const&) -> PointerB& = delete;
     PointerB(PointerB&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(PointerB const&) -> PointerB& = delete;
     auto operator=(PointerB&& other) -> PointerB& { return Operations::move_assign(*this, other); }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = pointer_b::DataPointers<Byte>;
@@ -668,17 +680,21 @@ struct MixedRows
         : MixedRows{*std::pmr::get_default_resource()} {}
     explicit MixedRows(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~MixedRows() { Operations::release_storage(*this); }
+
     MixedRows(MixedRows const&) = delete;
-    auto operator=(MixedRows const&) -> MixedRows& = delete;
     MixedRows(MixedRows&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(MixedRows const&) -> MixedRows& = delete;
     auto operator=(MixedRows&& other) -> MixedRows& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = mixed_rows::DataPointers<Byte>;
@@ -844,15 +860,19 @@ struct PairRows
         : PairRows{*std::pmr::get_default_resource()} {}
     explicit PairRows(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~PairRows() { Operations::release_storage(*this); }
+
     PairRows(PairRows const&) = delete;
-    auto operator=(PairRows const&) -> PairRows& = delete;
     PairRows(PairRows&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(PairRows const&) -> PairRows& = delete;
     auto operator=(PairRows&& other) -> PairRows& { return Operations::move_assign(*this, other); }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = pair_rows::DataPointers<Byte>;
@@ -1020,15 +1040,19 @@ struct Vectors
         : Vectors{*std::pmr::get_default_resource()} {}
     explicit Vectors(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~Vectors() { Operations::release_storage(*this); }
+
     Vectors(Vectors const&) = delete;
-    auto operator=(Vectors const&) -> Vectors& = delete;
     Vectors(Vectors&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(Vectors const&) -> Vectors& = delete;
     auto operator=(Vectors&& other) -> Vectors& { return Operations::move_assign(*this, other); }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = vectors::DataPointers<Byte>;
@@ -1493,17 +1517,21 @@ struct SingleRows
         : SingleRows{*std::pmr::get_default_resource()} {}
     explicit SingleRows(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~SingleRows() { Operations::release_storage(*this); }
+
     SingleRows(SingleRows const&) = delete;
-    auto operator=(SingleRows const&) -> SingleRows& = delete;
     SingleRows(SingleRows&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(SingleRows const&) -> SingleRows& = delete;
     auto operator=(SingleRows&& other) -> SingleRows& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = single_rows::DataPointers<Byte>;
@@ -1766,17 +1794,21 @@ struct SingleAlignmentRows
         : SingleAlignmentRows{*std::pmr::get_default_resource()} {}
     explicit SingleAlignmentRows(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~SingleAlignmentRows() { Operations::release_storage(*this); }
+
     SingleAlignmentRows(SingleAlignmentRows const&) = delete;
-    auto operator=(SingleAlignmentRows const&) -> SingleAlignmentRows& = delete;
     SingleAlignmentRows(SingleAlignmentRows&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(SingleAlignmentRows const&) -> SingleAlignmentRows& = delete;
     auto operator=(SingleAlignmentRows&& other) -> SingleAlignmentRows& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = single_alignment_rows::DataPointers<Byte>;
@@ -2172,15 +2204,19 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
         : ApiOwner{*std::pmr::get_default_resource()} {}
     explicit ApiOwner(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~ApiOwner() { Operations::release_storage(*this); }
+
     ApiOwner(ApiOwner const&) = delete;
-    auto operator=(ApiOwner const&) -> ApiOwner& = delete;
     ApiOwner(ApiOwner&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(ApiOwner const&) -> ApiOwner& = delete;
     auto operator=(ApiOwner&& other) -> ApiOwner& { return Operations::move_assign(*this, other); }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = ioj::native_soa_fixture::api_owner::DataPointers<Byte>;
@@ -2404,17 +2440,21 @@ struct EquivalentOwner
         : EquivalentOwner{*std::pmr::get_default_resource()} {}
     explicit EquivalentOwner(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~EquivalentOwner() { Operations::release_storage(*this); }
+
     EquivalentOwner(EquivalentOwner const&) = delete;
-    auto operator=(EquivalentOwner const&) -> EquivalentOwner& = delete;
     EquivalentOwner(EquivalentOwner&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(EquivalentOwner const&) -> EquivalentOwner& = delete;
     auto operator=(EquivalentOwner&& other) -> EquivalentOwner& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = equivalent_owner::DataPointers<Byte>;
@@ -2616,17 +2656,21 @@ struct AccessorOwner
         : AccessorOwner{*std::pmr::get_default_resource()} {}
     explicit AccessorOwner(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~AccessorOwner() { Operations::release_storage(*this); }
+
     AccessorOwner(AccessorOwner const&) = delete;
-    auto operator=(AccessorOwner const&) -> AccessorOwner& = delete;
     AccessorOwner(AccessorOwner&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(AccessorOwner const&) -> AccessorOwner& = delete;
     auto operator=(AccessorOwner&& other) -> AccessorOwner& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = accessor_owner::DataPointers<Byte>;

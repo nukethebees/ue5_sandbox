@@ -228,17 +228,21 @@ struct TraceHits
         : TraceHits{*std::pmr::get_default_resource()} {}
     explicit TraceHits(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~TraceHits() { Operations::release_storage(*this); }
+
     TraceHits(TraceHits const&) = delete;
-    auto operator=(TraceHits const&) -> TraceHits& = delete;
     TraceHits(TraceHits&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(TraceHits const&) -> TraceHits& = delete;
     auto operator=(TraceHits&& other) -> TraceHits& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = trace_hits::DataPointers<Byte>;

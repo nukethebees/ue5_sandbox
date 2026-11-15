@@ -249,17 +249,21 @@ struct ScalarTable
         : ScalarTable{*std::pmr::get_default_resource()} {}
     explicit ScalarTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+
     ~ScalarTable() { Operations::release_storage(*this); }
+
     ScalarTable(ScalarTable const&) = delete;
-    auto operator=(ScalarTable const&) -> ScalarTable& = delete;
     ScalarTable(ScalarTable&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
+
+    auto operator=(ScalarTable const&) -> ScalarTable& = delete;
     auto operator=(ScalarTable&& other) -> ScalarTable& {
         return Operations::move_assign(*this, other);
     }
+
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
   protected:
     template <typename Byte>
     using DataPointers = scalar_table::DataPointers<Byte>;
