@@ -36,6 +36,7 @@ namespace ioj::sim {
 
 struct LevelSimTestAccess;
 
+// Run level systems in tick-phase order.
 struct LevelSim {
     using tick_type = SimClock::tick_type;
     using time_type = SimClock::time_type;

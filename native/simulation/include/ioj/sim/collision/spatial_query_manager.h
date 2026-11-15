@@ -28,6 +28,7 @@ class FrameMemoryResource;
 }
 
 namespace ioj::sim {
+// Query published entity motion through the collision grid.
 // Entity queries require published lookup rows and a current grid: LevelState::StableSetup,
 // Thinking, Action, or pre-compaction Resolution. Neither is valid between ticks.
 // Supplied lookups must correspond to the current grid and borrowed motion views.

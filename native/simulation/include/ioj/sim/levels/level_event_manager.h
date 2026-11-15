@@ -10,6 +10,7 @@
 namespace ioj::sim {
 class ExprManager;
 
+// Queue ready mission events for their execution phase.
 class LevelEventManager {
   public:
     explicit LevelEventManager(CompiledLevelEvents data, std::pmr::memory_resource& memory);

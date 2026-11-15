@@ -20,6 +20,7 @@ class PreparationInterface;
 class ActionInterface;
 class ResolutionCommitInterface;
 
+// Advance laser projectiles. Produce hit damage.
 struct Sim {
     using LaserSpawnRequests = lasers::LaserSpawnRequests;
     using LaserEntities = lasers::LaserEntities;

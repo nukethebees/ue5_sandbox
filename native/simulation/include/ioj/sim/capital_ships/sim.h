@@ -25,6 +25,7 @@ class ResolutionInterface;
 class ResolutionCommitInterface;
 class SpawnInterface;
 
+// Simulate capital ship lifecycles.
 struct Sim {
     using EntityStorage = CapitalEntityData;
 

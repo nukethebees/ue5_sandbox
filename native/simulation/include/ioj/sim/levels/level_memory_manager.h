@@ -7,6 +7,7 @@
 #include <cstddef>
 
 namespace ioj::sim {
+// Own simulation allocators by lifetime.
 class LevelMemoryManager {
   public:
     static constexpr std::size_t default_level_memory_capacity_bytes{1024 * 1024};

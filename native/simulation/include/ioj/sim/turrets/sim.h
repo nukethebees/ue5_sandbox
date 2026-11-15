@@ -28,6 +28,7 @@ class ResolutionInterface;
 class ResolutionCommitInterface;
 class SpawnInterface;
 
+// Simulate turret targeting. Schedule weapon fire.
 struct Sim {
     using EntityStorage = TurretEntityData;
 

@@ -28,6 +28,7 @@ struct ExecutorView {
     std::span<InstructionHandle> current_instructions;
 };
 
+// Store per-entity task execution state.
 struct ExecutorTable : EntityTableOperations {
     using view_type = ExecutorView;
     using const_view_type = ExecutorConstView;

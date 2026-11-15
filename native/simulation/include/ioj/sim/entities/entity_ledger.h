@@ -10,7 +10,7 @@
 #include <vector>
 
 namespace ioj::sim {
-// Level-lifetime identity, history and combat accounting; no live agent storage.
+// Record lifetime identities. Accumulate combat history.
 class EntityLedger {
   public:
     using HistoryIndex = std::uint32_t;

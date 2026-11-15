@@ -56,6 +56,7 @@ struct PlayerSpawnData {
     ShipHealth health{Health{1000}};
 };
 
+// Simulate the controlled ship from player commands.
 struct Sim {
     /* **************************************** */
     // Construction and configuration

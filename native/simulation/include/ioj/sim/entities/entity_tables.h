@@ -5,6 +5,7 @@
 #include <ioj/sim/tasks/executor_table.h>
 
 namespace ioj::sim {
+// Own shared entity state indexed by stable identity.
 struct EntityTables {
     explicit EntityTables(std::pmr::memory_resource& memory = *std::pmr::get_default_resource())
         : lookups{memory}

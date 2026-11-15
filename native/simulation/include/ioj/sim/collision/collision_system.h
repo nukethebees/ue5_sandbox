@@ -24,6 +24,7 @@ struct SpatialQueryManagerTestAccess;
 
 namespace ioj::sim::collision {
 
+// Detect overlaps. Retain frame event batches.
 class CollisionSystem {
   private:
     friend struct ::ioj::sim::SpatialQueryManager;

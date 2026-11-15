@@ -26,6 +26,7 @@ class ThinkingInterface;
 class ActionInterface;
 class SpawnInterface;
 
+// Simulate rotating emitters. Schedule laser bursts.
 struct Sim {
     using EntityStorage = SpinnerEntityData;
 

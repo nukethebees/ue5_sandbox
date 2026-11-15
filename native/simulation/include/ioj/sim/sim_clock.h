@@ -11,6 +11,7 @@
 
 namespace ioj::sim {
 
+// Advance fixed simulation ticks. Track the active phase.
 struct SimClock {
     using tick_type = SimTick;
     using time_type = SimTime;

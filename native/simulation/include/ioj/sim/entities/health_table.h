@@ -91,6 +91,7 @@ class HealthView {
     std::span<Health> values_;
 };
 
+// Store health by stable entity ID.
 class HealthTable : public EntityTableOperations {
   public:
     using view_type = HealthView;

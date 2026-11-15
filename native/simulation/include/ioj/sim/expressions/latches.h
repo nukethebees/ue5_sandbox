@@ -14,6 +14,7 @@ struct LatchInput {
     ExprHandle value;
 };
 
+// Capture expression results when their conditions trigger.
 class Latches {
   public:
     auto add(LatchInput input) -> LatchHandle;

@@ -7,6 +7,7 @@
 #include <ioj/sim/index_span.h>
 
 namespace ioj::sim {
+// Collect damage events for resolution by entity type.
 class DamageQueue {
   public:
     void append(DirectDamageEvents::CompactConstView events) { events_.append_from(events); }

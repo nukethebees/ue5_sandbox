@@ -23,6 +23,7 @@ struct CollisionGridTestAccess;
 }
 
 namespace ioj::sim::collision {
+// Index world bounds for spatial queries.
 struct CollisionUniformGrid {
     /* **************************************** */
     // Construction and lifecycle

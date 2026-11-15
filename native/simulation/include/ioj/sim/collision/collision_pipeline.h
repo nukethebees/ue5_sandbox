@@ -15,6 +15,7 @@ struct Transform3d;
 
 namespace ioj::sim::collision {
 
+// Convert movement candidates into collision damage.
 class CollisionPipeline {
   public:
     CollisionPipeline(CollisionInitData data, std::pmr::memory_resource* resource);

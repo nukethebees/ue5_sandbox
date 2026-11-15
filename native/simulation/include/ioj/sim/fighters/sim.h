@@ -28,6 +28,7 @@ class ActionInterface;
 class ResolutionInterface;
 class ResolutionCommitInterface;
 
+// Simulate fighter behaviour across tick phases.
 struct Sim {
     using EntityStorage = FighterEntityData;
 

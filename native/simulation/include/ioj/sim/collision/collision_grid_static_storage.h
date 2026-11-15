@@ -27,6 +27,7 @@ struct StaticGridBuildError {
     MembershipCount count{};
 };
 
+// Index static AABBs by occupied grid cell.
 class CollisionGridStaticStorage {
   public:
     using CellRangeIndex = std::uint32_t;
@@ -58,9 +59,10 @@ class CollisionGridStaticStorage {
     /* **************************************** */
     // State
     /* **************************************** */
+    // Grid cell -> cell_range_indices_[cell] -> packed occupied-cell range.
+    // Range -> range_offsets_/range_counts_ -> aabb_indices_ slice -> aabbs_.
+    // Empty cells map to invalid_cell_range_index.
     WorldAABBs aabbs_;
-    // Map each grid cell to a packed range; empty cells use invalid_cell_range_index.
-    // Use that range's offset and count to select its entries in aabb_indices_.
     std::vector<CellRangeIndex> cell_range_indices_;
     std::vector<RangeOffset> range_offsets_;
     std::vector<RangeCount> range_counts_;

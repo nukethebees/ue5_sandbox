@@ -12,6 +12,7 @@ namespace ioj::sim {
 struct ExprCompilationContext;
 struct ExprEvaluationContext;
 
+// Compile mission conditions. Evaluate their current results.
 class ExprManager {
   public:
     // Require one output handle per input expression, in input order.

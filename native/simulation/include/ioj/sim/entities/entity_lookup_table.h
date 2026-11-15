@@ -20,6 +20,7 @@ namespace ioj::sim {
     return id != EntityId{} && id.entity_type() == type && id.index() < handle_count;
 }
 
+// Map one entity type's IDs to published row handles.
 class EntityLookupTable {
   public:
     explicit EntityLookupTable(

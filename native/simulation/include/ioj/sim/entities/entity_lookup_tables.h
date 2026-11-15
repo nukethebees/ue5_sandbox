@@ -4,6 +4,7 @@
 #include <ioj/sim/entities/entity_type_runs.h>
 
 namespace ioj::sim {
+// Resolve stable entity IDs to current row handles.
 class EntityLookupTables {
   public:
     explicit EntityLookupTables(

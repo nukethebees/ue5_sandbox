@@ -8,6 +8,7 @@
 #include <vector>
 
 namespace ioj::sim {
+// Track mission countdowns in simulation ticks.
 class Timers {
   public:
     auto add() -> TimerHandle;

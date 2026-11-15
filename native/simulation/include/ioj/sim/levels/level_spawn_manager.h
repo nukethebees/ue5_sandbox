@@ -36,6 +36,7 @@ namespace ioj::sim {
 class LevelEventManager;
 struct SpawnContext;
 
+// Spawn authored entities. Schedule carrier fighter waves.
 class LevelSpawnManager {
     struct FighterSpawnSource {
         EntityId capital_id{};

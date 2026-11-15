@@ -19,6 +19,7 @@
 namespace ioj::sim::tasks {
 struct TaskAllocationContext;
 
+// Store task programs. Allocate them to entities.
 class TaskManager {
   public:
     using Counts = std::pmr::vector<TaskEntityCount>;
