@@ -4,68 +4,9 @@
 #include <cassert>
 
 namespace ioj::sim::player::flight_model_config_detail {
-[[nodiscard]] auto valid_enum(TranslationSemantic const value) noexcept -> bool {
-    switch (value) {
-        case TranslationSemantic::Disabled:
-        case TranslationSemantic::TargetSpeed:
-        case TranslationSemantic::TargetVelocity:
-        case TranslationSemantic::Acceleration:
-            return true;
-    }
-    return false;
-}
-
-[[nodiscard]] auto valid_enum(RotationSemantic const value) noexcept -> bool {
-    switch (value) {
-        case RotationSemantic::Disabled:
-        case RotationSemantic::TargetAngularVelocity:
-        case RotationSemantic::AngularAcceleration:
-            return true;
-    }
-    return false;
-}
-
-[[nodiscard]] auto valid_enum(ReferenceFrame const value) noexcept -> bool {
-    switch (value) {
-        case ReferenceFrame::Ship:
-        case ReferenceFrame::World:
-            return true;
-    }
-    return false;
-}
-
-[[nodiscard]] auto valid_enum(TranslationInputSource const value) noexcept -> bool {
-    switch (value) {
-        case TranslationInputSource::Axis:
-        case TranslationInputSource::Accelerator:
-            return true;
-    }
-    return false;
-}
-
-[[nodiscard]] auto valid_enum(ResponseMode const value) noexcept -> bool {
-    switch (value) {
-        case ResponseMode::Direct:
-        case ResponseMode::RateLimited:
-        case ResponseMode::SecondOrder:
-            return true;
-    }
-    return false;
-}
-
-[[nodiscard]] auto valid_enum(FacingVelocityCoupling const value) noexcept -> bool {
-    switch (value) {
-        case FacingVelocityCoupling::Independent:
-        case FacingVelocityCoupling::AlignToFacing:
-        case FacingVelocityCoupling::LockedToFacing:
-            return true;
-    }
-    return false;
-}
-
 [[nodiscard]] auto validate_response(ResponseConfig const& config) noexcept
     -> std::expected<void, FlightModelConfigError> {
-    if (!valid_enum(config.mode)) {
+    if (!is_valid(config.mode)) {
         return std::unexpected{FlightModelConfigError::InvalidEnumValue};
     }
 
@@ -75,8 +16,8 @@ namespace ioj::sim::player::flight_model_config_detail {
 [[nodiscard]] auto validate_channel(TranslationChannelConfig const& config,
                                     bool const automatic) noexcept
     -> std::expected<void, FlightModelConfigError> {
-    if (!valid_enum(config.semantic) || !valid_enum(config.reference_frame) ||
-        !valid_enum(config.input_source)) {
+    if (!is_valid(config.semantic) || !is_valid(config.reference_frame) ||
+        !is_valid(config.input_source)) {
         return std::unexpected{FlightModelConfigError::InvalidEnumValue};
     }
     if (automatic) {
@@ -105,8 +46,8 @@ namespace ioj::sim::player::flight_model_config_detail {
         is_velocity_target(config.automatic.semantic)) {
         return std::unexpected{FlightModelConfigError::AmbiguousTargetChannels};
     }
-    if (!valid_enum(config.passive_drag_reference_frame) ||
-        !valid_enum(config.active_stabilization_reference_frame)) {
+    if (!is_valid(config.passive_drag_reference_frame) ||
+        !is_valid(config.active_stabilization_reference_frame)) {
         return std::unexpected{FlightModelConfigError::InvalidEnumValue};
     }
     return {};
@@ -114,7 +55,7 @@ namespace ioj::sim::player::flight_model_config_detail {
 
 [[nodiscard]] auto validate_axis(RotationAxisConfig const& config) noexcept
     -> std::expected<void, FlightModelConfigError> {
-    if (!valid_enum(config.manual_semantic)) {
+    if (!is_valid(config.manual_semantic)) {
         return std::unexpected{FlightModelConfigError::InvalidEnumValue};
     }
     if (auto const result{validate_response(config.response)}; !result) {
@@ -261,7 +202,7 @@ auto validate_flight_model_config(FlightModelConfig const& config) noexcept
     -> std::expected<void, FlightModelConfigError> {
     using namespace flight_model_config_detail;
 
-    if (!valid_enum(config.facing_velocity.mode)) {
+    if (!is_valid(config.facing_velocity.mode)) {
         return std::unexpected{FlightModelConfigError::InvalidEnumValue};
     }
 

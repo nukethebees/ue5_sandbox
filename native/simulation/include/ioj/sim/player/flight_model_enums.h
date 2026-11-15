@@ -194,4 +194,45 @@ struct EnumTraits<sim::player::FlightModelSlot> {
                                        sim::player::FlightModelSlot::Fourth};
 };
 
+template <>
+struct EnumTraits<sim::player::TranslationSemantic> {
+    static constexpr std::array values{sim::player::TranslationSemantic::Disabled,
+                                       sim::player::TranslationSemantic::TargetSpeed,
+                                       sim::player::TranslationSemantic::TargetVelocity,
+                                       sim::player::TranslationSemantic::Acceleration};
+};
+
+template <>
+struct EnumTraits<sim::player::RotationSemantic> {
+    static constexpr std::array values{sim::player::RotationSemantic::Disabled,
+                                       sim::player::RotationSemantic::TargetAngularVelocity,
+                                       sim::player::RotationSemantic::AngularAcceleration};
+};
+
+template <>
+struct EnumTraits<sim::player::ReferenceFrame> {
+    static constexpr std::array values{sim::player::ReferenceFrame::Ship,
+                                       sim::player::ReferenceFrame::World};
+};
+
+template <>
+struct EnumTraits<sim::player::TranslationInputSource> {
+    static constexpr std::array values{sim::player::TranslationInputSource::Axis,
+                                       sim::player::TranslationInputSource::Accelerator};
+};
+
+template <>
+struct EnumTraits<sim::player::ResponseMode> {
+    static constexpr std::array values{sim::player::ResponseMode::Direct,
+                                       sim::player::ResponseMode::RateLimited,
+                                       sim::player::ResponseMode::SecondOrder};
+};
+
+template <>
+struct EnumTraits<sim::player::FacingVelocityCoupling> {
+    static constexpr std::array values{sim::player::FacingVelocityCoupling::Independent,
+                                       sim::player::FacingVelocityCoupling::AlignToFacing,
+                                       sim::player::FacingVelocityCoupling::LockedToFacing};
+};
+
 } // namespace ioj

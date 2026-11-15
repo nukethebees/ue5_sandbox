@@ -61,30 +61,36 @@
     (value Fourth)
     (projections (cpp)))
   (enum TranslationSemantic std::uint8_t
+    :native-api true :helpers (traits)
     (value Disabled)
     (value TargetSpeed :groups (velocity_target))
     (value TargetVelocity :groups (velocity_target))
     (value Acceleration)
     (projections (cpp)))
   (enum RotationSemantic std::uint8_t
+    :native-api true :helpers (traits)
     (value Disabled)
     (value TargetAngularVelocity)
     (value AngularAcceleration)
     (projections (cpp)))
   (enum ReferenceFrame std::uint8_t
+    :native-api true :helpers (traits)
     (value Ship)
     (value World)
     (projections (cpp)))
   (enum TranslationInputSource std::uint8_t
+    :native-api true :helpers (traits)
     (value Axis)
     (value Accelerator)
     (projections (cpp)))
   (enum ResponseMode std::uint8_t
+    :native-api true :helpers (traits)
     (value Direct)
     (value RateLimited)
     (value SecondOrder)
     (projections (cpp)))
   (enum FacingVelocityCoupling std::uint8_t
+    :native-api true :helpers (traits)
     (value Independent)
     (value AlignToFacing)
     (value LockedToFacing)

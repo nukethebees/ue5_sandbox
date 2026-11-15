@@ -12,6 +12,17 @@ template <typename Enum>
 struct EnumTraits;
 
 template <typename Enum>
+    requires std::is_enum_v<Enum> && requires { EnumTraits<Enum>::values; }
+[[nodiscard]] constexpr auto is_valid(Enum const value) noexcept -> bool {
+    for (auto const candidate : EnumTraits<Enum>::values) {
+        if (value == candidate) {
+            return true;
+        }
+    }
+    return false;
+}
+
+template <typename Enum>
 [[nodiscard]] constexpr auto enum_count() noexcept -> std::size_t = delete;
 
 template <typename Enum>

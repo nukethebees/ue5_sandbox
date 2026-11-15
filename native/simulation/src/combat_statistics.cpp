@@ -4,15 +4,6 @@
 #include <numeric>
 
 namespace ioj::sim {
-namespace {
-constexpr auto is_valid(Team const team) noexcept -> bool {
-    return std::to_underlying(team) < enum_count<Team>();
-}
-
-[[maybe_unused]] constexpr auto is_valid(EntityType const type) noexcept -> bool {
-    return std::to_underlying(type) < enum_count<EntityType>();
-}
-} // namespace
 
 void CombatStatistics::reset() noexcept {
     alive_counts_ = {};

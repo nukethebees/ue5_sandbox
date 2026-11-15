@@ -21,7 +21,22 @@ enum class Layer {
     Front,
     Back,
 };
+
+enum class SparseKey {
+    Negative = -2,
+    Positive = 4,
+};
 }
+
+template <>
+struct ioj::EnumTraits<Key> {
+    static constexpr std::array values{Key::First, Key::Second};
+};
+
+template <>
+struct ioj::EnumTraits<SparseKey> {
+    static constexpr std::array values{SparseKey::Negative, SparseKey::Positive};
+};
 
 template <>
 constexpr auto ioj::enum_count<Key>() noexcept -> std::size_t {
@@ -39,6 +54,15 @@ constexpr auto ioj::enum_count<Layer>() noexcept -> std::size_t {
 }
 
 TEST(EnumArray, IndexesByEnum) {
+    static_assert(ioj::is_valid(Key::First));
+    static_assert(ioj::is_valid(Key::Second));
+    static_assert(!ioj::is_valid(static_cast<Key>(-1)));
+    static_assert(!ioj::is_valid(static_cast<Key>(2)));
+    static_assert(ioj::is_valid(SparseKey::Negative));
+    static_assert(ioj::is_valid(SparseKey::Positive));
+    static_assert(!ioj::is_valid(static_cast<SparseKey>(0)));
+    static_assert(!ioj::is_valid(static_cast<SparseKey>(5)));
+
     ioj::EnumArray<int, Key> values;
     values[Key::First] = 10;
     values[Key::Second] = 20;

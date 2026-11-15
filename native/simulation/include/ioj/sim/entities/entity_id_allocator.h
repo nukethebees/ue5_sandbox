@@ -9,6 +9,7 @@
 #include <vector>
 
 namespace ioj::sim {
+// Issue stable entity IDs for the level lifetime.
 class EntityIdAllocator {
   public:
     static constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
@@ -22,7 +23,7 @@ class EntityIdAllocator {
 
     [[nodiscard]] auto allocate(EntityType const type, std::uint32_t const history_row)
         -> EntityId {
-        if (std::to_underlying(type) >= enum_count<EntityType>()) {
+        if (!is_valid(type)) {
             fatal_error("Cannot allocate an entity ID with an invalid type");
         }
         auto& count{issued_counts_[type]};
