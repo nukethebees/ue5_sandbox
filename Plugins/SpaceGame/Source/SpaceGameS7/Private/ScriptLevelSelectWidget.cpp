@@ -37,7 +37,6 @@ auto progress_label(profiles::LevelProgressSummary const& progress) -> FString {
 
 auto level_details(FLevelScriptEntry const& entry, profiles::LevelProgressSummary const& progress)
     -> FString {
-    check(entry.definition.IsSet());
     auto const& definition{entry.definition.GetValue()};
     auto const teams{levels::participating_teams(definition)};
     auto details{
