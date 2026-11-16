@@ -46,6 +46,7 @@ TaskManager::TaskManager(std::pmr::memory_resource& resource)
     reset();
 }
 void TaskManager::reset() {
+    allocation_countdown_ = 1;
     instructions_.clear();
     instruction_data_.locations.clear();
     task_entries_.clear();
@@ -106,5 +107,12 @@ void TaskManager::remove_entities(Team const team, std::span<EntityId const> con
 /* **************************************** */
 // Planning and allocation
 /* **************************************** */
-void TaskManager::allocate(TaskAllocationContext) {}
+void TaskManager::allocate(TaskAllocationContext) {
+    --allocation_countdown_;
+    if (allocation_countdown_ != 0) {
+        return;
+    }
+
+    allocation_countdown_ = allocation_period_ticks;
+}
 }

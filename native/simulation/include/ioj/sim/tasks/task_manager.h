@@ -28,6 +28,7 @@ class TaskManager {
     static constexpr TaskId idle_task{0};
     static constexpr InstructionHandle idle_instruction{0};
     static constexpr Instruction jump_to_idle{Instruction::make_data_jump(idle_instruction)};
+    static constexpr std::uint32_t allocation_period_ticks{60};
 
     /* **************************************** */
     // Lifecycle
@@ -70,6 +71,7 @@ class TaskManager {
     /* **************************************** */
     // Planning and allocation
     /* **************************************** */
+    // Call once per simulation tick; allocation runs on the first call and every 60 ticks.
     void allocate(TaskAllocationContext ctx);
 
   private:
@@ -80,6 +82,7 @@ class TaskManager {
     std::pmr::vector<InstructionHandle> task_entries_;
 
     // Mutable
+    std::uint32_t allocation_countdown_{1};
     TeamArray<std::pmr::vector<TaskId>> active_tasks_;
     TeamEntityArray<Counts> task_entity_allocations_;
     TeamEntityArray<std::pmr::vector<EntityId>> free_entities_;
