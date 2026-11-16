@@ -113,6 +113,63 @@ TEST(EnumGroups, EmitsOneComparisonForUnsignedZeroBasedPrefixAndAcceptsMatchingE
         << files.front().content;
 }
 
+TEST(EnumGroups, ContiguousRangesUseNumericEndpointsAndPreserveAliasesAndCanonicalSource) {
+    CompilerTestContext ctx;
+    auto const manifest{parse_test_manifest(ctx, R"(
+      (module test :header "Test.h" :namespace ioj::nested
+        (enum Example std::int8_t :count Count :contiguous-groups (selected singleton)
+          (value Upper :value 0 :groups (selected))
+          (value First :value -2 :groups (selected))
+          (value Alias :value -2 :groups (selected))
+          (value Middle :value -1 :groups (selected))
+          (value Only :value 8 :groups (singleton))
+          (value Count :value 9 :groups (selected))
+          (projections (cpp)))))")};
+    auto const files{render_test_manifest(ctx, manifest)};
+    auto const& content{files.front().content};
+    EXPECT_NE(content.find("#include \"ioj/enumerator_range.h\""), std::string::npos);
+    EXPECT_NE(content.find("EnumeratorRange<Example> example_selected_range{Example::First,"),
+              std::string::npos)
+        << content;
+    EXPECT_NE(content.find("Example::Upper};"), std::string::npos);
+    EXPECT_NE(content.find("example_singleton_range{Example::Only, Example::Only}"),
+              std::string::npos);
+    auto const canonical{
+        schema::render_module_source(ctx.storage.declarations, manifest.modules.front())};
+    EXPECT_NE(canonical.find(":contiguous-groups (selected singleton)"), std::string::npos);
+    CompilerTestContext roundtrip;
+    auto const regenerated{
+        render_test_manifest(roundtrip, parse_test_manifest(roundtrip, canonical))};
+    EXPECT_EQ(regenerated.front().content, content);
+
+    auto& enums{ctx.storage.declarations.enums};
+    auto const original{
+        ctx.storage.declarations.normal_modules.declarations[manifest.modules.front()]};
+    auto const declaration{ctx.storage.declarations.items(original).front()};
+    auto const clone{enums.clone(declaration)};
+    EXPECT_TRUE(
+        std::ranges::equal(ctx.storage.declarations.items(enums.contiguous_groups[clone]),
+                           ctx.storage.declarations.items(enums.contiguous_groups[declaration])));
+    enums.clear();
+    auto const empty{enums.append()};
+    EXPECT_TRUE(enums.contiguous_groups[empty].empty());
+}
+
+TEST(EnumGroups, ContiguousGroupsAreCertifiedAfterPriorityAndAutomaticOrdering) {
+    for (auto const ordering : {"(selected)", "auto"}) {
+        CompilerTestContext ctx;
+        auto const source{std::format(R"(
+          (module test :header "Test.h" (enum Example std::uint8_t
+            :ordering {} :contiguous-groups (selected)
+            (value First :groups (selected)) (value Other)
+            (value Last :groups (selected)) (projections (cpp)))))",
+                                      ordering)};
+        auto const files{render_test_manifest(ctx, parse_test_manifest(ctx, source))};
+        EXPECT_NE(files.front().content.find("example_selected_range"), std::string::npos);
+        EXPECT_LT(files.front().content.find("Last,"), files.front().content.find("Other"));
+    }
+}
+
 class InvalidEnumGroups : public testing::TestWithParam<char const*> {};
 TEST_P(InvalidEnumGroups, RejectsInvalidDeclarations) {
     CompilerTestContext ctx;
@@ -125,20 +182,30 @@ TEST_P(InvalidEnumGroups, RejectsInvalidDeclarations) {
 INSTANTIATE_TEST_SUITE_P(
     Validation,
     InvalidEnumGroups,
-    testing::Values(":ordering (missing) (value One :groups (A))",
-                    ":ordering (A A) (value One :groups (A))",
-                    ":ordering (A) (value One :groups (A B))",
-                    ":ordering () (value One :groups (A))",
-                    ":ordering unknown (value One)",
-                    ":ordering priority (value One)",
-                    "(value One :groups A)",
-                    "(value One :groups (A A))",
-                    "(value One :groups (bad-name))",
-                    ":ordering (A) (value One :value 0) (value Two :value 1 :groups (A))",
-                    ":ordering auto (value One :value 9 :groups (A))",
-                    ":ordering (A) (value One :value \"1 << 2\" :groups (A))",
-                    "(value One :value 0 :groups (A)) (value Two :value 0)",
-                    ":enum-array true :ordering manual (value One :value 2 :groups (A))"));
+    testing::Values(
+        ":ordering (missing) (value One :groups (A))",
+        ":ordering (A A) (value One :groups (A))",
+        ":ordering (A) (value One :groups (A B))",
+        ":ordering () (value One :groups (A))",
+        ":ordering unknown (value One)",
+        ":ordering priority (value One)",
+        "(value One :groups A)",
+        "(value One :groups (A A))",
+        "(value One :groups (bad-name))",
+        ":ordering (A) (value One :value 0) (value Two :value 1 :groups (A))",
+        ":ordering auto (value One :value 9 :groups (A))",
+        ":ordering (A) (value One :value \"1 << 2\" :groups (A))",
+        "(value One :value 0 :groups (A)) (value Two :value 0)",
+        ":enum-array true :ordering manual (value One :value 2 :groups (A))",
+        ":contiguous-groups A (value One :groups (A))",
+        ":contiguous-groups (missing) (value One :groups (A))",
+        ":contiguous-groups (A A) (value One :groups (A))",
+        ":contiguous-groups (A) (value One :value 0 :groups (A)) (value Two :value 2 :groups (A))",
+        ":contiguous-groups (A) (value One :groups (A)) (value Other) (value Two :groups (A))",
+        ":contiguous-groups (A) (value One :value \"1 << 1\" :groups (A))",
+        ":contiguous-groups (A) (value One :value 0 :groups (A)) (value Other :value \"1 << 2\")",
+        ":contiguous-groups (A) (value One :value 0 :groups (A)) (value Other :value 0)",
+        ":count Count :contiguous-groups (A) (value One) (value Count :groups (A))"));
 
 TEST(EnumGroups, UnrealProjectionAndConversionsShareOrderedValues) {
     for (auto const projection_namespace : {"", ":namespace ioj::game"}) {
@@ -147,6 +214,7 @@ TEST(EnumGroups, UnrealProjectionAndConversionsShareOrderedValues) {
                                                 std::format(R"(
       (module test :header "Test.h" :namespace test
         (enum Example std::uint8_t :native-api true :helpers () :ordering (selected)
+          :contiguous-groups (selected)
           (value Other) (value First :groups (selected)) (value Last :groups (selected))
           (projections (cpp) (unreal-projection EExample {} :header "UE.h"
             :header-include "UE.h" :conversion-header "Conversions.h"
@@ -162,6 +230,10 @@ TEST(EnumGroups, UnrealProjectionAndConversionsShareOrderedValues) {
                                           ? "example_selected_values"
                                           : "e_example_selected_values"};
                 EXPECT_NE(file.content.find(array_name), std::string::npos);
+                auto const range_name{file.path.filename() == "Test.h"
+                                          ? "example_selected_range"
+                                          : "e_example_selected_range"};
+                EXPECT_NE(file.content.find(range_name), std::string::npos);
             }
             if (*projection_namespace != '\0' && file.path.filename() == "UE.h") {
                 EXPECT_NE(file.content.find("namespace ioj::game"), std::string::npos);

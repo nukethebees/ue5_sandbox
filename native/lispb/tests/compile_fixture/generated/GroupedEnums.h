@@ -5,6 +5,7 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/enumerator_range.h"
 #include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 
@@ -64,6 +65,8 @@ using ioj::to_string;
 
 inline constexpr std::array<Action, 3ULL> action_actionable_values{
     Action::Kill, Action::Move, Action::Kills};
+
+inline constexpr ioj::EnumeratorRange<Action> action_actionable_range{Action::Kill, Action::Kills};
 
 [[nodiscard]] constexpr auto is_actionable(Action const value) noexcept -> bool {
     return value <= Action::Kills;
@@ -302,6 +305,47 @@ inline constexpr MinMax<codegen_compile_fixture::groups::Sparse>
     enum_range<codegen_compile_fixture::groups::Sparse>{
         codegen_compile_fixture::groups::Sparse::Negative,
         codegen_compile_fixture::groups::Sparse::Other};
+} // namespace ioj
+
+namespace codegen_compile_fixture::groups {
+using SignedRangeUnderlying = std::int8_t;
+
+// Logical bit width: 5.
+enum class SignedRange : SignedRangeUnderlying {
+    Zero = 0,
+    Negative = -2,
+    Middle = -1,
+    Alias = -2,
+    Only = 8,
+};
+
+inline constexpr std::array<SignedRange, 4ULL> signed_range_selected_values{
+    SignedRange::Zero, SignedRange::Negative, SignedRange::Middle, SignedRange::Alias};
+
+inline constexpr ioj::EnumeratorRange<SignedRange> signed_range_selected_range{
+    SignedRange::Negative, SignedRange::Zero};
+
+[[nodiscard]] constexpr auto is_selected(SignedRange const value) noexcept -> bool {
+    return value >= SignedRange::Negative && value <= SignedRange::Zero;
+}
+
+inline constexpr std::array<SignedRange, 1ULL> signed_range_singleton_values{SignedRange::Only};
+
+inline constexpr ioj::EnumeratorRange<SignedRange> signed_range_singleton_range{SignedRange::Only,
+                                                                                SignedRange::Only};
+
+[[nodiscard]] constexpr auto is_singleton(SignedRange const value) noexcept -> bool {
+    return value == SignedRange::Only;
+}
+
+} // namespace codegen_compile_fixture::groups
+
+namespace ioj {
+template <>
+inline constexpr MinMax<codegen_compile_fixture::groups::SignedRange>
+    enum_range<codegen_compile_fixture::groups::SignedRange>{
+        codegen_compile_fixture::groups::SignedRange::Negative,
+        codegen_compile_fixture::groups::SignedRange::Only};
 } // namespace ioj
 
 namespace codegen_compile_fixture::groups {

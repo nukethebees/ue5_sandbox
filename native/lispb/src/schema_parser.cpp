@@ -646,6 +646,7 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
                      P::helpers,
                      P::bit_width,
                      P::ordering,
+                     P::contiguous_groups,
                      P::signed_},
                     {"value", "projections"});
     std::vector<EnumeratorId> values;
@@ -724,6 +725,8 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
         has_underlying_type ? std::optional{parse_type_ref(declarations, fields.positional(1))}
                             : std::nullopt;
     records.values[record_index] = declarations.range(values);
+    records.contiguous_groups[record_index] =
+        declarations.range(identifier_list_or(fields, P::contiguous_groups));
     records.count[record_index] = optional_identifier(fields, P::count);
     records.conversions[record_index] = declarations.range(conversions);
     records.export_specifier[record_index] = parse_export_specifier(fields);

@@ -4,6 +4,7 @@
   (enum Action std::uint8_t :bit-width 3 :enum-array true
     :native-api true :helpers (traits to-string to-serialized-string try-parse-serialized)
     :ordering (actionable)
+    :contiguous-groups (actionable)
     (value Timer :serialized-name "timer")
     (value Kill :groups (actionable) :serialized-name "kill")
     (value Observe :serialized-name "observe")
@@ -37,6 +38,13 @@
     (value Next :value -2 :groups (selected))
     (value Other :value 7)
     (value Alias :value 5 :groups (selected))
+    (projections (cpp)))
+  (enum SignedRange std::int8_t :contiguous-groups (selected singleton)
+    (value Zero :value 0 :groups (selected))
+    (value Negative :value -2 :groups (selected))
+    (value Middle :value -1 :groups (selected))
+    (value Alias :value -2 :groups (selected))
+    (value Only :value 8 :groups (singleton))
     (projections (cpp)))
   (enum Fragmented std::uint8_t
     (value A :groups (selected)) (value B)

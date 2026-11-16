@@ -165,6 +165,9 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
     }
     result.optional_field(
         "count", enums.count[schema], [this](auto value) { return ir_.atom(value); });
+    result.list_field("contiguous-groups",
+                      items(enums.contiguous_groups[schema]),
+                      [this](auto group) { return ir_.atom(group); });
     result.list_field("conversions", items(enums.conversions[schema]), [this](auto conversion) {
         return ir_.atom(codegen::to_serialized_string(conversion));
     });

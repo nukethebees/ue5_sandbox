@@ -11,6 +11,16 @@ Arrays follow the final enum declaration order, preserve named aliases, and excl
 declared count sentinel. They do not require enum traits. Unreal projection arrays use
 the projected enum name, including its `E` prefix.
 
+Declare `:contiguous-groups (group-name ...)` on an enum to require selected groups to
+cover consecutive numeric values after ordering. Each requested group also emits an
+`inline constexpr ioj::EnumeratorRange<Enum>` named `<snake_case_enum>_<group>_range`,
+with numeric minimum and maximum endpoints. Equal-valued aliases use the first member
+in final declaration order. Count sentinels are excluded, just as in group value arrays.
+Unknown or duplicate group names, empty groups after count exclusion, unresolved numeric
+codes, and numeric gaps are rejected. Aliases must still have identical memberships.
+For example, adding `:contiguous-groups (actionable)` below generates
+`leaf_kind_actionable_range`. Ordinary groups do not require contiguous values.
+
 ```lisp
 (enum LeafKind std::uint8_t
   :enum-array true

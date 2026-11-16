@@ -140,6 +140,7 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     value_type,
     pack,
     groups,
+    contiguous_groups,
     ordering,
 };
 
@@ -177,8 +178,8 @@ inline constexpr auto enum_strings<lispb::codegen::SchemaProperty, Serialized>{P
     "name\000static\000step\000storage\000suffix\000tag\000target-name\000target-storage\000target-"
     "access\000template-parameters\000tooltip\000total-bits\000trailing-return-"
     "type\000unit\000using-declarations\000validation\000validation-dependencies\000value\000value-"
-    "type\000pack\000groups\000ordering",
-    std::array<std::uint16_t, 127>{
+    "type\000pack\000groups\000contiguous-groups\000ordering",
+    std::array<std::uint16_t, 128>{
         0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,  132,
         141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  261,  269,  290,  312,  325,
         332,  345,  354,  365,  385,  408,  426,  442,  456,  473,  489,  505,  512,  525,  530,
@@ -187,5 +188,5 @@ inline constexpr auto enum_strings<lispb::codegen::SchemaProperty, Serialized>{P
         888,  895,  905,  914,  923,  935,  943,  960,  968,  977,  985,  996,  1005, 1014, 1029,
         1038, 1053, 1069, 1080, 1088, 1102, 1121, 1128, 1137, 1153, 1163, 1170, 1187, 1194, 1203,
         1214, 1221, 1226, 1234, 1241, 1245, 1257, 1272, 1286, 1306, 1314, 1325, 1346, 1351, 1370,
-        1381, 1405, 1411, 1422, 1427, 1434, 1443}}};
+        1381, 1405, 1411, 1422, 1427, 1434, 1452, 1461}}};
 } // namespace ioj

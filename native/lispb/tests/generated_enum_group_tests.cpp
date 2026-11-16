@@ -1,5 +1,6 @@
 #include "GroupedEnums.h"
 #include <ioj/enum_array.h>
+#include <ioj/enum_range_array.h>
 #include <ioj/enum_strings.h>
 #include <ioj/enum_traits.h>
 
@@ -34,6 +35,14 @@ static_assert(action_actionable_values == std::array{Action::Kill, Action::Move,
 static_assert(sparse_selected_values ==
               std::array{Sparse::Positive, Sparse::Negative, Sparse::Next, Sparse::Alias});
 static_assert(symbolic_selected_values == std::array{Symbolic::One});
+static_assert(action_actionable_range.first() == Action::Kill);
+static_assert(action_actionable_range.last() == Action::Kills);
+static_assert(signed_range_selected_range.first() == SignedRange::Negative);
+static_assert(signed_range_selected_range.last() == SignedRange::Zero);
+static_assert(signed_range_singleton_range.first() == SignedRange::Only);
+static_assert(signed_range_singleton_range.last() == SignedRange::Only);
+static_assert(ioj::EnumRangeArray<int, signed_range_selected_range>::size() == 3);
+static_assert(ioj::EnumRangeArray<int, action_actionable_range>::size() == 3);
 
 template <typename Enum>
 class GeneratedOverlappingGroups : public testing::Test {};

@@ -21,6 +21,7 @@ auto EnumSchemas::append() -> DeclarationHandle {
     declared_values.push_back({});
     ordering.push_back(EnumOrdering::manual);
     group_order.push_back({});
+    contiguous_groups.push_back({});
     count.push_back({});
     conversions.push_back({});
     export_specifier.push_back({});
@@ -44,6 +45,7 @@ auto EnumSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
                                     declared_values,
                                     ordering,
                                     group_order,
+                                    contiguous_groups,
                                     count,
                                     conversions,
                                     export_specifier,
@@ -63,6 +65,7 @@ void EnumSchemas::clear() {
                                  declared_values,
                                  ordering,
                                  group_order,
+                                 contiguous_groups,
                                  count,
                                  conversions,
                                  export_specifier,

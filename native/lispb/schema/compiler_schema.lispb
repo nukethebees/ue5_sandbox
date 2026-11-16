@@ -296,6 +296,7 @@
     (value value_type :serialized-name "value-type")
     (value pack :serialized-name "pack")
     (value groups :serialized-name "groups")
+    (value contiguous_groups :serialized-name "contiguous-groups")
     (value ordering :serialized-name "ordering")))
 
 (module compiler_enum_ordering

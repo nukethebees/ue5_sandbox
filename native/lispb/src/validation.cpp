@@ -824,6 +824,57 @@ class Validator {
         require_unique_names(value_names, enum_context + " values");
         require_unique_names(serialized_names, enum_context + " serialized names");
 
+        auto const contiguous_groups{declarations_.items(enums.contiguous_groups[schema])};
+        require_unique_names(enums.contiguous_groups[schema], enum_context + " contiguous groups");
+        for (auto const group : contiguous_groups) {
+            require_identifier(text(group), enum_context + " contiguous group");
+            auto const context{enum_context + " contiguous group '" + text(group) + "'"};
+            bool found{};
+            std::vector<PackedIntegerValue> codes;
+            for (std::size_t index{}; index < value_count; ++index) {
+                auto const value{enum_values[index]};
+                auto const member{
+                    std::ranges::contains(declarations_.items(enumerators.groups[value]), group)};
+                found = found || member;
+                if (enums.count[schema] && enumerators.name[value] == *enums.count[schema]) {
+                    continue;
+                }
+                auto const code{domains.code(domain, index)};
+                if (!code) {
+                    throw std::invalid_argument{context + " requires resolved numeric codes"};
+                }
+                if (member) {
+                    codes.push_back(
+                        PackedIntegerValue::from_parts(code->negative, code->magnitude));
+                }
+            }
+            if (!found) {
+                throw std::invalid_argument{context + " is unknown"};
+            }
+            if (codes.empty()) {
+                throw std::invalid_argument{context + " has no non-count members"};
+            }
+            std::ranges::sort(codes, packed_integer_less);
+            auto const duplicates{std::ranges::unique(codes)};
+            codes.erase(duplicates.begin(), duplicates.end());
+            auto const code_count{codes.size()};
+            for (std::size_t index{1}; index < code_count; ++index) {
+                auto const previous{codes[index - 1]};
+                auto const current{codes[index]};
+                auto const consecutive{
+                    previous.negative
+                        ? (previous.magnitude == 1
+                               ? current.magnitude == 0
+                               : current.negative && current.magnitude == previous.magnitude - 1)
+                        : !current.negative &&
+                              previous.magnitude != (std::numeric_limits<std::uint64_t>::max)() &&
+                              current.magnitude == previous.magnitude + 1};
+                if (!consecutive) {
+                    throw std::invalid_argument{context + " has a gap in its numeric values"};
+                }
+            }
+        }
+
         auto count_value{enum_values.end()};
         if (enums.count[schema].has_value()) {
             require_identifier(*enums.count[schema], enum_context + " count");

@@ -699,6 +699,37 @@ class EnumLowering : public CppIRBuilder {
                        2);
 
             std::vector<Expr> predicates;
+            if (std::ranges::contains(
+                    declarations.items(declarations.enums.contiguous_groups[schema]), group)) {
+                std::vector<std::size_t> range_members;
+                for (auto const ordinal : members) {
+                    if (!count_name || enumerators.name[values[ordinal]] != *count_name) {
+                        range_members.push_back(ordinal);
+                    }
+                }
+                std::stable_sort(
+                    range_members.begin(), range_members.end(), [&](auto left, auto right) {
+                        return packed_integer_less(code(left), code(right));
+                    });
+                auto const duplicates{
+                    std::ranges::unique(range_members, [&](auto left, auto right) {
+                        return code(left) == code(right);
+                    })};
+                range_members.erase(duplicates.begin(), duplicates.end());
+                auto const range_type{template_type(
+                    named_type("ioj::EnumeratorRange",
+                               NameOrigin::global,
+                               {dependency("ioj::EnumeratorRange", "ioj/enumerator_range.h")}),
+                    {enum_type})};
+                auto const range_name{snake_case_type_name(ctx.text(enum_name), false) + "_" +
+                                      ctx.text(group) + "_range"};
+                result.add(variable(range_type,
+                                    this->name(range_name),
+                                    init_list({member(range_members.front()),
+                                               member(range_members.back())}),
+                                    {.is_inline = true, .is_constexpr = true}),
+                           2);
+            }
             Nodes body;
             if (known) {
                 std::ranges::sort(members, [&](auto left, auto right) {

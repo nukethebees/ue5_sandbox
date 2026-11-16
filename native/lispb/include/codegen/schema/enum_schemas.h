@@ -35,6 +35,7 @@ struct EnumSchemas {
     Column<SchemaRange<EnumeratorId>> declared_values;
     Column<EnumOrdering> ordering;
     Column<SchemaRange<StringId>> group_order;
+    Column<SchemaRange<StringId>> contiguous_groups;
     Column<std::optional<StringId>> count;
     Column<SchemaRange<EnumConversion>> conversions;
     Column<StringId> export_specifier;
