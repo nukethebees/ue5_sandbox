@@ -49,7 +49,7 @@ TaskManager::TaskManager(std::pmr::memory_resource& resource)
     reset();
 }
 void TaskManager::reset() {
-    allocation_countdown_ = 1;
+    allocation_countdown_ = initial_allocation_countdown;
     instructions_.clear();
     instruction_data_.locations.clear();
     task_entries_.clear();
