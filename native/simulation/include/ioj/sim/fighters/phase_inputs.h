@@ -38,6 +38,7 @@ struct PreparationInputs {
     EntityTables& entity_tables;
     SimClock const& clock;
     EntityLedger& ledger;
+    tasks::TaskManager& task_manager;
     std::span<Team const> participating_teams;
 };
 
@@ -64,6 +65,7 @@ struct ResolutionInputs {
     EntityTables& entity_tables;
     DamageQueue const& damage_queue;
     EntityLedger& ledger;
+    tasks::TaskManager& task_manager;
     SimTick tick;
     std::pmr::vector<std::uint32_t>& local_indices_to_remove;
     EntityDeathInfo& entity_death_info;

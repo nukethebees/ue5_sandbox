@@ -40,7 +40,9 @@ TaskManager::TaskManager(std::pmr::memory_resource& resource)
     , active_tasks_{task_manager_detail::make_array<Team>(
           [&resource] { return std::pmr::vector<TaskId>{&resource}; })}
     , task_entity_allocations_{task_manager_detail::make_array<Team, EntityType>(
-          [&resource] { return Counts{&resource}; })} {
+          [&resource] { return Counts{&resource}; })}
+    , free_entities_{task_manager_detail::make_array<Team, EntityType>(
+          [&resource] { return std::pmr::vector<EntityId>{&resource}; })} {
     reset();
 }
 void TaskManager::reset() {
@@ -52,6 +54,9 @@ void TaskManager::reset() {
     }
     for (auto& counts : task_entity_allocations_) {
         counts.clear();
+    }
+    for (auto& entities : free_entities_) {
+        entities.clear();
     }
 
     static_cast<void>(add_task({Instruction::make_data_idle(), jump_to_idle}));
@@ -82,6 +87,20 @@ auto TaskManager::add_task(std::span<Instruction const> const instructions) -> T
 }
 auto TaskManager::add_task(std::initializer_list<Instruction> const instructions) -> TaskId {
     return add_task(std::span<Instruction const>{instructions.begin(), instructions.size()});
+}
+
+/* **************************************** */
+// Entity registration
+/* **************************************** */
+void TaskManager::register_entities(Team const team, std::span<EntityId const> const ids) {
+    for (auto const id : ids) {
+        free_entities_[team, id.entity_type()].push_back(id);
+    }
+}
+void TaskManager::remove_entities(Team const team, std::span<EntityId const> const ids) {
+    for (auto const id : ids) {
+        std::erase(free_entities_[team, id.entity_type()], id);
+    }
 }
 
 /* **************************************** */

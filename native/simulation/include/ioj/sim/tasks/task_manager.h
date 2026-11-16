@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/team_entity_array.h>
 #include <ioj/sim/tasks/instruction.h>
 #include <ioj/sim/tasks/instruction_data.h>
@@ -34,7 +35,7 @@ class TaskManager {
     // Keep the resource alive until after this manager and its storage are destroyed.
     explicit TaskManager(std::pmr::memory_resource& resource = *std::pmr::new_delete_resource());
 
-    // Invalidates custom task and instruction handles while retaining allocated storage.
+    // Clears free entities and invalidates custom task/instruction handles, retaining storage.
     void reset();
 
     /* **************************************** */
@@ -44,6 +45,12 @@ class TaskManager {
     // Task instructions must end with jump_to_idle. Registration is independent of team activation.
     [[nodiscard]] auto add_task(std::span<Instruction const> instructions) -> TaskId;
     [[nodiscard]] auto add_task(std::initializer_list<Instruction> instructions) -> TaskId;
+
+    /* **************************************** */
+    // Entity registration
+    /* **************************************** */
+    void register_entities(Team team, std::span<EntityId const> ids);
+    void remove_entities(Team team, std::span<EntityId const> ids);
 
     /* **************************************** */
     // Accessors
@@ -75,5 +82,6 @@ class TaskManager {
     // Mutable
     TeamArray<std::pmr::vector<TaskId>> active_tasks_;
     TeamEntityArray<Counts> task_entity_allocations_;
+    TeamEntityArray<std::pmr::vector<EntityId>> free_entities_;
 };
 }
