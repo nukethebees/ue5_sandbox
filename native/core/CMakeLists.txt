@@ -42,6 +42,8 @@ target_sources(native-core
     include/ioj/constrained_vectors.h
     include/ioj/constrained_strings.h
     include/ioj/enum_traits.h
+    include/ioj/enumerator_range.h
+    include/ioj/enum_range_array.h
     include/ioj/field_mask.h
     include/ioj/packed_value.h
     include/ioj/parallel_for.h
@@ -149,6 +151,7 @@ target_sources(native-core-tests
     tests/linked_vector_tests.cpp
     tests/countdown_tests.cpp
     tests/enum_array_tests.cpp
+    tests/enum_range_tests.cpp
     tests/interpolation_tests.cpp
     tests/invoke_tests.cpp
     tests/lock_free_mpsc_queue_tests.cpp
