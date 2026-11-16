@@ -2,8 +2,10 @@
 
 #include <ioj/enum_array.h>
 #include <ioj/require.h>
+#include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/tasks/task_allocation_context.h>
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <utility>
@@ -42,7 +44,8 @@ TaskManager::TaskManager(std::pmr::memory_resource& resource)
     , task_entity_allocations_{task_manager_detail::make_array<Team, EntityType>(
           [&resource] { return Counts{&resource}; })}
     , free_entities_{task_manager_detail::make_array<Team, EntityType>(
-          [&resource] { return std::pmr::vector<EntityId>{&resource}; })} {
+          [&resource] { return std::pmr::vector<EntityId>{&resource}; })}
+    , checked_trigger_runs_{&resource} {
     reset();
 }
 void TaskManager::reset() {
@@ -59,6 +62,7 @@ void TaskManager::reset() {
     for (auto& entities : free_entities_) {
         entities.clear();
     }
+    checked_trigger_runs_.clear();
 
     static_cast<void>(add_task({Instruction::make_data_idle(), jump_to_idle}));
 }
@@ -107,12 +111,56 @@ void TaskManager::remove_entities(Team const team, std::span<EntityId const> con
 /* **************************************** */
 // Planning and allocation
 /* **************************************** */
-void TaskManager::allocate(TaskAllocationContext) {
+void TaskManager::allocate(TaskAllocationContext const ctx) {
     --allocation_countdown_;
     if (allocation_countdown_ != 0) {
         return;
     }
 
     allocation_countdown_ = allocation_period_ticks;
+
+    auto const active_triggers{ctx.events.active_triggers()};
+    for (auto const index : active_triggers) {
+        if (is_trigger_checked(index)) {
+            continue;
+        }
+
+        // TODO: Analyse ctx.events.triggers()[index] for potential objectives.
+        add_checked_trigger_run({index, index + 1});
+    }
+}
+auto TaskManager::is_trigger_checked(std::uint32_t const index) const -> bool {
+    for (auto const run : checked_trigger_runs_) {
+        if (index < run.start) {
+            return false;
+        }
+        if (index < run.end) {
+            return true;
+        }
+    }
+    return false;
+}
+void TaskManager::add_checked_trigger_run(TriggerRun run) {
+    assert(run.start < run.end);
+
+    auto const end{checked_trigger_runs_.end()};
+    auto first{checked_trigger_runs_.begin()};
+    while (first != end && first->end < run.start) {
+        ++first;
+    }
+
+    auto last{first};
+    while (last != end && last->start <= run.end) {
+        run.start = std::min(run.start, last->start);
+        run.end = std::max(run.end, last->end);
+        ++last;
+    }
+
+    if (first == last) {
+        checked_trigger_runs_.insert(first, run);
+    } else {
+        *first = run;
+        checked_trigger_runs_.erase(first + 1, last);
+    }
 }
 }

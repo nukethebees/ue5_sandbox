@@ -22,6 +22,11 @@ struct TaskAllocationContext;
 
 // Store task programs. Allocate them to entities.
 class TaskManager {
+    struct TriggerRun {
+        std::uint32_t start;
+        std::uint32_t end;
+    };
+
   public:
     using Counts = std::pmr::vector<TaskEntityCount>;
 
@@ -36,7 +41,8 @@ class TaskManager {
     // Keep the resource alive until after this manager and its storage are destroyed.
     explicit TaskManager(std::pmr::memory_resource& resource = *std::pmr::new_delete_resource());
 
-    // Clears free entities and invalidates custom task/instruction handles, retaining storage.
+    // Clears free entities and checked triggers, invalidating custom task/instruction handles.
+    // Retains allocated storage.
     void reset();
 
     /* **************************************** */
@@ -75,6 +81,9 @@ class TaskManager {
     void allocate(TaskAllocationContext ctx);
 
   private:
+    auto is_trigger_checked(std::uint32_t index) const -> bool;
+    void add_checked_trigger_run(TriggerRun run);
+
     // Immutable
     std::pmr::vector<Instruction> instructions_;
     InstructionData instruction_data_;
@@ -86,5 +95,8 @@ class TaskManager {
     TeamArray<std::pmr::vector<TaskId>> active_tasks_;
     TeamEntityArray<Counts> task_entity_allocations_;
     TeamEntityArray<std::pmr::vector<EntityId>> free_entities_;
+
+    // Sorted half-open runs of trigger definition indices, with overlap and adjacency merged.
+    std::pmr::vector<TriggerRun> checked_trigger_runs_;
 };
 }

@@ -80,6 +80,7 @@ class LevelEventManager {
     // Scheduling and dispatch
     /* **************************************** */
     void collect_ready(ConditionManager const& conditions);
+    auto active_triggers() const -> std::span<TriggerIndex const> { return active_triggers_; }
     void enqueue(EventHandle event);
     void enqueue_stop(RunEndReason reason);
     void dispatch_preparation(LevelSpawnManager& spawns,
