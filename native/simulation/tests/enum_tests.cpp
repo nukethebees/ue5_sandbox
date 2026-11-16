@@ -1,6 +1,9 @@
+#include <ioj/expr_kind.h>
 #include <ioj/levels/level_outcome.h>
 #include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_type.h>
+#include <ioj/sim/expressions/expr_handle.h>
+#include <ioj/sim/expressions/leaf_data_handle.h>
 #include <ioj/sim/levels/run_end_reason.h>
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/space_ship_common.h>
@@ -31,6 +34,70 @@ TEST(NativeEnums, EntityTypeNamesAndSerializedNamesRemainStable) {
         std::array{
             "player_ship", "turret", "capital_ship", "capital_ship_fighter", "tube_spinner"});
     EXPECT_EQ(enum_count<EntityType>(), 5U);
+}
+
+TEST(NativeEnums, ExpressionKindsPreserveNumericValuesAndSerializedNames) {
+    using enum ExprKind;
+    std::array const kinds{All,
+                           Any,
+                           Not,
+                           Xor,
+                           EntityDestroyed,
+                           EntityReachedPosition,
+                           TimerElapsed,
+                           LatchedTrue,
+                           LatchedFalse,
+                           EntityKillsReached};
+    expect_enum_contracts(kinds,
+                          std::array{"all-of",
+                                     "any-of",
+                                     "not-of",
+                                     "xor-of",
+                                     "entity-destroyed",
+                                     "entity-reached-position",
+                                     "timer-elapsed",
+                                     "latched-true",
+                                     "latched-false",
+                                     "entity-kills-reached"});
+    for (auto const kind : kinds) {
+        EXPECT_EQ(try_parse_serialized_expr_kind(to_serialized_string(kind)), kind);
+        EXPECT_EQ(is_composite(kind), std::to_underlying(kind) < 4);
+        EXPECT_EQ(is_leaf(kind), std::to_underlying(kind) >= 4);
+    }
+    static_assert(expr_kind_composite_range.first() == All);
+    static_assert(expr_kind_composite_range.last() == Xor);
+    static_assert(expr_kind_leaf_range.first() == EntityDestroyed);
+    static_assert(expr_kind_leaf_range.last() == EntityKillsReached);
+    EXPECT_FALSE(try_parse_serialized_expr_kind("leaf"));
+}
+
+TEST(NativeEnums, ExpressionHandlesPackEveryKindWithBoundaryIndices) {
+    static_assert(sizeof(ExprHandle) == 4);
+    static_assert(sizeof(LeafDataHandle) == 4);
+    static_assert(ExprHandle{0x0fffffff, ExprKind::EntityKillsReached}.raw_value() == 0x9fffffff);
+    static_assert(!ExprHandle{}.is_valid());
+    static_assert(ExprHandle{}.raw_value() == 0xffffffff);
+    EXPECT_FALSE(ExprHandle::from_raw(0xffffffff).is_valid());
+    EXPECT_FALSE(ExprHandle::is_valid_index(0x10000000));
+    for (auto const kind : EnumTraits<ExprKind>::values) {
+        for (auto const index : {0u, 1u, 0x0fffffffu}) {
+            ExprHandle const handle{index, kind};
+            EXPECT_TRUE(handle.is_valid());
+            EXPECT_EQ(handle.index(), index);
+            EXPECT_EQ(handle.kind(), kind);
+            EXPECT_EQ(handle.raw_value(), index | (std::uint32_t{std::to_underlying(kind)} << 28));
+            EXPECT_EQ(ExprHandle::from_raw(handle.raw_value()), handle);
+        }
+    }
+    for (auto const kind : expr_kind_leaf_values) {
+        for (auto const index : {0u, 1u, 0x00ffffffu}) {
+            LeafDataHandle const handle{index, kind};
+            EXPECT_TRUE(handle.is_valid());
+            EXPECT_EQ(handle.index(), index);
+            EXPECT_EQ(handle.kind(), kind);
+            EXPECT_EQ(handle.raw_value(), index | (std::uint32_t{std::to_underlying(kind)} << 24));
+        }
+    }
 }
 
 TEST(NativeEnums, TeamSerializedNamesRoundTrip) {

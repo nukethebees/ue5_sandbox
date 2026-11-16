@@ -7,6 +7,7 @@ Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes
 Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeam.h
 Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeamConversion.h
 Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h
+native/core/include/ioj/expr_kind.h
 native/core/include/ioj/rotators3f.h
 native/core/include/ioj/vectors3f.h
 native/ismc/lib/include/ioj/ismc/quat32.h
@@ -27,7 +28,6 @@ native/levels/lib/include/ioj/levels/campaign_definition_reader.h
 native/levels/lib/include/ioj/levels/campaign_definition_writer.h
 native/levels/lib/include/ioj/levels/diagnostic_code.h
 native/levels/lib/include/ioj/levels/entity_archetype.h
-native/levels/lib/include/ioj/levels/expr_type.h
 native/levels/lib/include/ioj/levels/level_camera_definition.h
 native/levels/lib/include/ioj/levels/level_camera_definition_reader.h
 native/levels/lib/include/ioj/levels/level_camera_definition_writer.h
@@ -136,16 +136,12 @@ native/simulation/include/ioj/sim/entities/entity_id.h
 native/simulation/include/ioj/sim/entities/entity_instance_handle.h
 native/simulation/include/ioj/sim/entities/entity_life_state.h
 native/simulation/include/ioj/sim/entities/entity_type.h
-native/simulation/include/ioj/sim/expressions/composite_kind.h
 native/simulation/include/ioj/sim/expressions/detail/timer_state.h
 native/simulation/include/ioj/sim/expressions/expr_handle.h
-native/simulation/include/ioj/sim/expressions/expr_kind.h
 native/simulation/include/ioj/sim/expressions/latch_handle.h
 native/simulation/include/ioj/sim/expressions/latch_memory.h
 native/simulation/include/ioj/sim/expressions/latch_state.h
 native/simulation/include/ioj/sim/expressions/leaf_data_handle.h
-native/simulation/include/ioj/sim/expressions/leaf_handle.h
-native/simulation/include/ioj/sim/expressions/leaf_kind.h
 native/simulation/include/ioj/sim/expressions/timer_handle.h
 native/simulation/include/ioj/sim/fighters/fighter_entity_data.h
 native/simulation/include/ioj/sim/fighters/fighter_navigation_types.h

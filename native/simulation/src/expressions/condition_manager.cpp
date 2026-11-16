@@ -89,27 +89,10 @@ void ConditionManager::append(std::span<levels::Expression const> const expressi
 
     for (auto const index : order) {
         auto const& expression{expressions[index]};
-        if (is_composite(expression.type())) {
-            ExprCompositeIndex const composite{size(composites.results)};
-            CompositeKind kind{};
-            switch (expression.type()) {
-                case levels::ExprType::All:
-                    kind = CompositeKind::All;
-                    break;
-                case levels::ExprType::Any:
-                    kind = CompositeKind::Any;
-                    break;
-                case levels::ExprType::Not:
-                    kind = CompositeKind::Not;
-                    break;
-                case levels::ExprType::Xor:
-                    kind = CompositeKind::Xor;
-                    break;
-                default:
-                    std::unreachable();
-            }
-
-            references[index] = ExprHandle::make_data_composite(kind, composite);
+        auto const kind{expression.type()};
+        if (is_composite(kind)) {
+            auto const composite{size(composites.results)};
+            references[index] = ExprHandle{composite, kind};
             composites.results.push_back(false);
             composites.kinds.push_back(kind);
 
@@ -126,23 +109,20 @@ void ConditionManager::append(std::span<levels::Expression const> const expressi
         auto const leaf{static_cast<LeafIndex>(leaves.num_leaves())};
         leaves.results.push_back(false);
 
-        LeafKind kind{};
         LeafDataIndex data_index{};
-        switch (expression.type()) {
-            case levels::ExprType::EntityDestroyed: {
+        switch (kind) {
+            case ExprKind::EntityDestroyed: {
                 auto const& condition{std::get<levels::EntityDestroyedExpr>(expression.payload)};
 
-                kind = LeafKind::EntityDestroyed;
                 data_index = static_cast<LeafDataIndex>(leaves.destroyed_entities.size());
                 leaves.destroyed_entities.push_back(ctx.entities.at(condition.entity));
                 break;
             }
 
-            case levels::ExprType::EntityReachedPosition: {
+            case ExprKind::EntityReachedPosition: {
                 auto const& condition{
                     std::get<levels::EntityReachedPositionExpr>(expression.payload)};
 
-                kind = LeafKind::EntityReachedPosition;
                 data_index = static_cast<LeafDataIndex>(leaves.reached_entities.size());
                 leaves.reached_entities.push_back(ctx.entities.at(condition.entity));
                 leaves.positions.push_back(condition.position.get());
@@ -150,8 +130,7 @@ void ConditionManager::append(std::span<levels::Expression const> const expressi
                 break;
             }
 
-            case levels::ExprType::TimerElapsed: {
-                kind = LeafKind::TimerElapsed;
+            case ExprKind::TimerElapsed: {
                 data_index = static_cast<LeafDataIndex>(leaves.timers.size());
                 auto const timer_index{
                     std::get<levels::TimerElapsedExpr>(expression.payload).timer};
@@ -161,22 +140,19 @@ void ConditionManager::append(std::span<levels::Expression const> const expressi
                 break;
             }
 
-            case levels::ExprType::LatchedTrue:
-                kind = LeafKind::LatchedTrue;
+            case ExprKind::LatchedTrue:
                 data_index = size(leaves.true_latches);
                 leaves.true_latches.emplace_back(
                     std::get<levels::LatchedTrueExpr>(expression.payload).latch);
                 break;
-            case levels::ExprType::LatchedFalse:
-                kind = LeafKind::LatchedFalse;
+            case ExprKind::LatchedFalse:
                 data_index = size(leaves.false_latches);
                 leaves.false_latches.emplace_back(
                     std::get<levels::LatchedFalseExpr>(expression.payload).latch);
                 break;
 
-            case levels::ExprType::EntityKillsReached: {
+            case ExprKind::EntityKillsReached: {
                 auto const& condition{std::get<levels::EntityKillsReachedExpr>(expression.payload)};
-                kind = LeafKind::EntityKillsReached;
                 data_index = static_cast<LeafDataIndex>(leaves.kill_sources.size());
 
                 leaves.kill_sources.push_back(
@@ -194,9 +170,9 @@ void ConditionManager::append(std::span<levels::Expression const> const expressi
                 std::unreachable();
         }
 
-        references[index] = ExprHandle::make_data_leaf(LeafHandle{leaf, kind});
+        references[index] = ExprHandle{leaf, kind};
         leaves.data_handles.emplace_back(data_index, kind);
-        leaves.leaves_by_kind[kind].emplace_back(leaf, kind);
+        leaves.leaves_by_kind[kind].push_back(leaf);
     }
 }
 auto ConditionManager::add_timer_elapsed(TimerHandle const timer) -> ExprHandle {
@@ -205,9 +181,9 @@ auto ConditionManager::add_timer_elapsed(TimerHandle const timer) -> ExprHandle 
     auto const data{static_cast<LeafDataIndex>(leaves_.timers.size())};
     leaves_.timers.push_back(timer);
     leaves_.results.push_back(false);
-    leaves_.data_handles.emplace_back(data, LeafKind::TimerElapsed);
-    leaves_.leaves_by_kind[LeafKind::TimerElapsed].emplace_back(leaf, LeafKind::TimerElapsed);
-    return ExprHandle::make_data_leaf(LeafHandle{leaf, LeafKind::TimerElapsed});
+    leaves_.data_handles.emplace_back(data, ExprKind::TimerElapsed);
+    leaves_.leaves_by_kind[ExprKind::TimerElapsed].push_back(leaf);
+    return ExprHandle{leaf, ExprKind::TimerElapsed};
 }
 
 /* **************************************** */
@@ -226,9 +202,8 @@ void ConditionManager::evaluate(ExprEvaluationContext const& inputs) {
 auto ConditionManager::result(ExprHandle const expression) const -> bool {
     assert(expression.is_valid());
 
-    auto const leaf{expression.kind() == ExprKind::Leaf};
-    auto const& results{leaf ? leaves_.results : composites_.results};
-    auto const index{leaf ? expression.data_leaf_index() : expression.data_composite_index()};
+    auto const& results{is_composite(expression.kind()) ? composites_.results : leaves_.results};
+    auto const index{expression.index()};
     assert(index < results.size());
     return results[index];
 }
@@ -242,20 +217,20 @@ void ConditionManager::evaluate_composites() {
         auto const kind{composites_.kinds[index]};
         auto const range{composites_.child_ranges[index]};
         auto const children{std::span{composites_.children}.subspan(range.offset, range.count)};
-        bool value{kind == CompositeKind::All};
-        if (kind == CompositeKind::Not) {
+        bool value{kind == ExprKind::All};
+        if (kind == ExprKind::Not) {
             value = !result(children.front());
         } else {
             for (auto const child : children) {
                 auto const operand{result(child)};
                 switch (kind) {
-                    case CompositeKind::All:
+                    case ExprKind::All:
                         value &= operand;
                         break;
-                    case CompositeKind::Any:
+                    case ExprKind::Any:
                         value |= operand;
                         break;
-                    case CompositeKind::Xor:
+                    case ExprKind::Xor:
                         value ^= operand;
                         break;
                     default:
@@ -268,36 +243,33 @@ void ConditionManager::evaluate_composites() {
     }
 }
 void ConditionManager::evaluate_leaves(ExprEvaluationContext const& inputs) {
-    evaluate_destroyed(leaves_.leaves_by_kind[LeafKind::EntityDestroyed], inputs);
-    evaluate_elapsed(leaves_.leaves_by_kind[LeafKind::TimerElapsed], inputs);
-    evaluate_kills(leaves_.leaves_by_kind[LeafKind::EntityKillsReached], inputs);
+    evaluate_destroyed(leaves_.leaves_by_kind[ExprKind::EntityDestroyed], inputs);
+    evaluate_elapsed(leaves_.leaves_by_kind[ExprKind::TimerElapsed], inputs);
+    evaluate_kills(leaves_.leaves_by_kind[ExprKind::EntityKillsReached], inputs);
 
-    auto const& positions{leaves_.leaves_by_kind[LeafKind::EntityReachedPosition]};
+    auto const& positions{leaves_.leaves_by_kind[ExprKind::EntityReachedPosition]};
     if (!positions.empty()) {
         evaluate_reached_position(positions, inputs);
     }
 
-    for (auto const handle : leaves_.leaves_by_kind[LeafKind::LatchedTrue]) {
-        auto const index{handle.index()};
+    for (auto const index : leaves_.leaves_by_kind[ExprKind::LatchedTrue]) {
         leaves_.results[index] =
             latch_state(leaves_.true_latches[leaves_.data_handles[index].index()]) ==
             LatchState::True;
     }
 
-    for (auto const handle : leaves_.leaves_by_kind[LeafKind::LatchedFalse]) {
-        auto const index{handle.index()};
+    for (auto const index : leaves_.leaves_by_kind[ExprKind::LatchedFalse]) {
         leaves_.results[index] =
             latch_state(leaves_.false_latches[leaves_.data_handles[index].index()]) ==
             LatchState::False;
     }
 }
-void ConditionManager::evaluate_destroyed(std::span<LeafHandle const> const run,
+void ConditionManager::evaluate_destroyed(std::span<LeafIndex const> const run,
                                           ExprEvaluationContext const& inputs) {
     auto const& leaves{leaves_};
     auto const life_states{inputs.ledger.history().life_state()};
 
-    for (auto const handle : run) {
-        auto const leaf{handle.index()};
+    for (auto const leaf : run) {
         auto const data{leaves.data_handles[leaf].index()};
         auto const id{expr_evaluation_detail::entity(inputs, leaves.destroyed_entities[data])};
 
@@ -306,23 +278,21 @@ void ConditionManager::evaluate_destroyed(std::span<LeafHandle const> const run,
         }
     }
 }
-void ConditionManager::evaluate_elapsed(std::span<LeafHandle const> const run,
+void ConditionManager::evaluate_elapsed(std::span<LeafIndex const> const run,
                                         ExprEvaluationContext const& inputs) {
     auto const& leaves{leaves_};
 
-    for (auto const handle : run) {
-        auto const leaf{handle.index()};
+    for (auto const leaf : run) {
         auto const data{leaves.data_handles[leaf].index()};
 
         leaves_.results[leaf] = inputs.timers.elapsed(leaves.timers[data]);
     }
 }
-void ConditionManager::evaluate_kills(std::span<LeafHandle const> const run,
+void ConditionManager::evaluate_kills(std::span<LeafIndex const> const run,
                                       ExprEvaluationContext const& inputs) {
     auto const& leaves{leaves_};
 
-    for (auto const handle : run) {
-        auto const leaf{handle.index()};
+    for (auto const leaf : run) {
         auto const data{leaves.data_handles[leaf].index()};
         KillCount kills{};
         auto const sources{leaves.kill_sources[data]};
@@ -337,7 +307,7 @@ void ConditionManager::evaluate_kills(std::span<LeafHandle const> const run,
         leaves_.results[leaf] = kills >= leaves.kill_targets[data];
     }
 }
-void ConditionManager::evaluate_reached_position(std::span<LeafHandle const> const run,
+void ConditionManager::evaluate_reached_position(std::span<LeafIndex const> const run,
                                                  ExprEvaluationContext const& inputs) {
     auto const& leaves{leaves_};
     auto const life_states{inputs.ledger.history().life_state()};
@@ -349,8 +319,7 @@ void ConditionManager::evaluate_reached_position(std::span<LeafHandle const> con
     live_leaves.set_num(count);
     std::uint32_t live_count{};
 
-    for (auto const handle : run) {
-        auto const leaf{handle.index()};
+    for (auto const leaf : run) {
         auto const data{leaves.data_handles[leaf].index()};
         auto const id{expr_evaluation_detail::entity(inputs, leaves.reached_entities[data])};
         if (!id.is_valid()) {

@@ -19,7 +19,7 @@ auto expression(Reader const& reader, NodeIndex node, std::string_view path)
     if (values->empty() || ast.node(values->front()).kind != NodeKind::Keyword) {
         return read_error(AstErrorCode::ExpectedRecord, path, "Expected an expression record");
     }
-    auto type{try_parse_serialized_expr_type(ast.text(values->front()))};
+    auto type{try_parse_serialized_expr_kind(ast.text(values->front()))};
     if (!type) {
         return read_error(AstErrorCode::UnknownSymbol, path, "Unknown expression constructor");
     }
@@ -34,21 +34,21 @@ auto expression(Reader const& reader, NodeIndex node, std::string_view path)
             children.push_back(*index);
         }
         switch (*type) {
-            case ExprType::All:
+            case ExprKind::All:
                 return Expression{AllExpr{std::move(children)}};
-            case ExprType::Any:
+            case ExprKind::Any:
                 return Expression{AnyExpr{std::move(children)}};
-            case ExprType::Not:
+            case ExprKind::Not:
                 return Expression{NotExpr{std::move(children)}};
-            case ExprType::Xor:
+            case ExprKind::Xor:
                 return Expression{XorExpr{std::move(children)}};
             default:
                 std::unreachable();
         }
     }
-    auto const count{*type == ExprType::EntityReachedPosition
+    auto const count{*type == ExprKind::EntityReachedPosition
                          ? 3u
-                         : (*type == ExprType::EntityKillsReached ? 2u : 1u)};
+                         : (*type == ExprKind::EntityKillsReached ? 2u : 1u)};
     auto args{positional_arguments(reader, node, ast.text(values->front()), path, count)};
     if (!args) {
         return std::unexpected{args.error()};
@@ -62,27 +62,27 @@ auto expression(Reader const& reader, NodeIndex node, std::string_view path)
     }};
     Expression result;
     switch (*type) {
-        case ExprType::EntityDestroyed:
+        case ExprKind::EntityDestroyed:
             result = {EntityDestroyedExpr{field.template operator()<EntityId>(0, "entity")}};
             break;
-        case ExprType::EntityReachedPosition:
+        case ExprKind::EntityReachedPosition:
             result = {EntityReachedPositionExpr{
                 field.template operator()<EntityId>(0, "entity"),
                 field.template operator()<FiniteVector<double, 3>>(1, "position"),
                 field.template operator()<NonNegativeFinite<double>>(2, "radius")}};
             break;
-        case ExprType::EntityKillsReached:
+        case ExprKind::EntityKillsReached:
             result = {EntityKillsReachedExpr{
                 field.template operator()<std::vector<EntityId>>(0, "entities"),
                 field.template operator()<std::uint32_t>(1, "kills")}};
             break;
-        case ExprType::TimerElapsed:
+        case ExprKind::TimerElapsed:
             result = {TimerElapsedExpr{field.template operator()<std::uint32_t>(0, "timer")}};
             break;
-        case ExprType::LatchedTrue:
+        case ExprKind::LatchedTrue:
             result = {LatchedTrueExpr{field.template operator()<std::uint32_t>(0, "latch")}};
             break;
-        case ExprType::LatchedFalse:
+        case ExprKind::LatchedFalse:
             result = {LatchedFalseExpr{field.template operator()<std::uint32_t>(0, "latch")}};
             break;
         default:

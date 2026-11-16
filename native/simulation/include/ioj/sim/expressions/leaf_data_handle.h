@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "ioj/expr_kind.h"
 #include "ioj/packed_value.h"
 #include "ioj/sim/expressions/leaf_data_index.h"
-#include "ioj/sim/expressions/leaf_kind.h"
 
 #include <cassert>
 #include <compare>
@@ -28,11 +28,11 @@ struct LeafDataHandle : detail::LeafDataHandleBase {
     static constexpr PackedField<storage_type, LeafDataIndex, 0, 24> index_layout{};
 
     // kind
-    static constexpr PackedField<storage_type, LeafKind, 24, 3> kind_layout{};
+    static constexpr PackedField<storage_type, ExprKind, 24, 4> kind_layout{};
 
     constexpr LeafDataHandle() noexcept = default;
     constexpr explicit LeafDataHandle(LeafDataIndex const index_value,
-                                      LeafKind const kind_value) noexcept
+                                      ExprKind const kind_value) noexcept
         : Base{static_cast<storage_type>(packed_pack<decltype(index_layout)>(index_value) |
                                          packed_pack<decltype(kind_layout)>(kind_value))} {
         assert((is_valid_index(index_value)));
@@ -44,7 +44,7 @@ struct LeafDataHandle : detail::LeafDataHandleBase {
     [[nodiscard]] static constexpr auto is_valid_index(LeafDataIndex const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= index_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto is_valid_kind(LeafKind const value) noexcept -> bool {
+    [[nodiscard]] static constexpr auto is_valid_kind(ExprKind const value) noexcept -> bool {
         return value <= kind_layout.range.max;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
@@ -57,10 +57,10 @@ struct LeafDataHandle : detail::LeafDataHandleBase {
         assert((is_valid_index(value)));
         insert<decltype(index_layout)>(value);
     }
-    [[nodiscard]] constexpr auto kind() const noexcept -> LeafKind {
+    [[nodiscard]] constexpr auto kind() const noexcept -> ExprKind {
         return extract<decltype(kind_layout)>();
     }
-    constexpr void set_kind(LeafKind const value) noexcept {
+    constexpr void set_kind(ExprKind const value) noexcept {
         assert((is_valid_kind(value)));
         insert<decltype(kind_layout)>(value);
     }

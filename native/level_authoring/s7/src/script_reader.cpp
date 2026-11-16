@@ -1,12 +1,12 @@
 #include "logic_dsl.h"
 #include "reader_diagnostics.h"
+#include <ioj/expr_kind.h>
 #include <ioj/files.h>
 #include <ioj/levels/authoring/catalog_parser.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/grammar.h>
 #include <ioj/levels/authoring/record_constructors.h>
 #include <ioj/levels/campaign_validation.h>
-#include <ioj/levels/expr_type.h>
 #include <ioj/s7/interpreter.h>
 
 #include <codegen/sexpr/form_builder.h>

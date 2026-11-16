@@ -1,6 +1,6 @@
 #include <ioj/levels/expression.h>
 namespace ioj::levels {
-auto Expression::type() const -> ExprType {
+auto Expression::type() const -> ExprKind {
     return std::visit([](auto const& value) { return value.type; }, payload);
 }
 auto Expression::children() const -> std::span<ExprIndex const> {

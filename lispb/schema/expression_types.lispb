@@ -18,20 +18,22 @@
         :native-header-include "ioj/levels/level_outcome.h"
         :reflection uenum))))
 
-(module expr_type
-  :header "native/levels/lib/include/ioj/levels/expr_type.h"
-  :header-include "ioj/levels/expr_type.h"
-  :namespace ioj::levels
-  (enum ExprType std::uint8_t
+(module expr_kind
+  :header "native/core/include/ioj/expr_kind.h"
+  :header-include "ioj/expr_kind.h"
+  :namespace ioj
+  (enum ExprKind std::uint8_t
+    :bit-width 4
+    :contiguous-groups (composite leaf)
     :native-api true :helpers (traits to-serialized-string try-parse-serialized)
     (value All :serialized-name "all-of" :groups (composite))
     (value Any :serialized-name "any-of" :groups (composite))
     (value Not :serialized-name "not-of" :groups (composite))
     (value Xor :serialized-name "xor-of" :groups (composite))
-    (value EntityDestroyed :serialized-name "entity-destroyed")
-    (value EntityReachedPosition :serialized-name "entity-reached-position")
-    (value TimerElapsed :serialized-name "timer-elapsed")
-    (value LatchedTrue :serialized-name "latched-true")
-    (value LatchedFalse :serialized-name "latched-false")
-    (value EntityKillsReached :serialized-name "entity-kills-reached")
+    (value EntityDestroyed :serialized-name "entity-destroyed" :groups (leaf))
+    (value EntityReachedPosition :serialized-name "entity-reached-position" :groups (leaf))
+    (value TimerElapsed :serialized-name "timer-elapsed" :groups (leaf))
+    (value LatchedTrue :serialized-name "latched-true" :groups (leaf))
+    (value LatchedFalse :serialized-name "latched-false" :groups (leaf))
+    (value EntityKillsReached :serialized-name "entity-kills-reached" :groups (leaf))
     (projections (cpp))))

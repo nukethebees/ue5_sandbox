@@ -13,7 +13,7 @@ struct Expression {
 
     auto operator==(Expression const&) const -> bool = default;
 
-    auto type() const -> ExprType;
+    auto type() const -> ExprKind;
     auto children() const -> std::span<ExprIndex const>;
 
     ExprPayload payload{AllExpr{}};

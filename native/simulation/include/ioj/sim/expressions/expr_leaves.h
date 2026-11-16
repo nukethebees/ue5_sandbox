@@ -1,11 +1,12 @@
 #pragma once
 
-#include <ioj/enum_array.h>
+#include <ioj/enum_range_array.h>
+#include <ioj/expr_kind.h>
 #include <ioj/sim/expressions/expr_result.h>
 #include <ioj/sim/expressions/kill_count.h>
 #include <ioj/sim/expressions/latch_handle.h>
 #include <ioj/sim/expressions/leaf_data_handle.h>
-#include <ioj/sim/expressions/leaf_handle.h>
+#include <ioj/sim/expressions/leaf_index.h>
 #include <ioj/sim/expressions/timer_handle.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/level_entity_ref.h>
@@ -22,7 +23,7 @@ struct ExprLeaves {
     // Shared
     std::vector<ExprResult> results;
     std::vector<LeafDataHandle> data_handles;
-    EnumArray<std::vector<LeafHandle>, LeafKind> leaves_by_kind;
+    EnumRangeArray<std::vector<LeafIndex>, expr_kind_leaf_range> leaves_by_kind;
 
     // EntityDestroyed
     std::vector<LevelEntityRef> destroyed_entities;

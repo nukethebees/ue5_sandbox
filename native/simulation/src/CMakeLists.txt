@@ -73,14 +73,9 @@ set(expressions_headers
   expr_leaves.h
   expr_operators.h
   expr_handle.h
-  expr_kind.h
-  expr_composite_index.h
-  composite_kind.h
-  leaf_handle.h
   leaf_data_handle.h
   leaf_index.h
   leaf_data_index.h
-  leaf_kind.h
   kill_count.h
   latch_handle.h
   latch_memory.h

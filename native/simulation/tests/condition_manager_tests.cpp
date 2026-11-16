@@ -200,4 +200,53 @@ TEST(Expressions, StoppedTimersAndStartAreVisibleOnNextEvaluation) {
     expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
     EXPECT_EQ(expressions.result(delayed), true);
 }
+
+TEST(Expressions, DynamicRegistrationPreservesExistingHandlesAndLatchSampling) {
+    EntityLedger ledger;
+    EntityLookupTables lookups{};
+    SpatialQueryManager spatial{};
+    FrameMemoryResource scratch{4096};
+    Timers timers;
+    ConditionManager expressions;
+    auto const first{timers.add()};
+    auto const initial{expressions.add_timer_elapsed(first)};
+    timers.start(first, 0);
+    timers.tick(1);
+    expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
+    ASSERT_TRUE(expressions.result(initial));
+
+    auto const latch{expressions.add_latch({initial, initial})};
+    auto const second{timers.add()};
+    auto const dynamic{expressions.add_timer_elapsed(second)};
+    std::array const timer_handles{second};
+    std::array const nodes{
+        Expression{AllExpr{{1, 2}}},
+        Expression{LatchedTrueExpr{latch.index()}},
+        Expression{TimerElapsedExpr{0}},
+        Expression{NotExpr{{2}}},
+        Expression{LatchedFalseExpr{latch.index()}},
+    };
+    std::array<ExprHandle, nodes.size()> handles;
+    expressions.append(nodes, {{}, timer_handles}, handles);
+    EXPECT_EQ(initial.kind(), ExprKind::TimerElapsed);
+    EXPECT_EQ(handles[0].kind(), ExprKind::All);
+    EXPECT_EQ(handles[1].kind(), ExprKind::LatchedTrue);
+    EXPECT_NE(initial.index(), dynamic.index());
+    EXPECT_NE(dynamic.index(), handles[2].index());
+
+    expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
+    EXPECT_TRUE(expressions.result(initial));
+    EXPECT_TRUE(expressions.result(handles[3]));
+    EXPECT_FALSE(expressions.result(handles[1]));
+    expressions.commit_latches();
+    timers.start(second, 0);
+    timers.tick(1);
+    expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
+    EXPECT_TRUE(expressions.result(initial));
+    EXPECT_TRUE(expressions.result(dynamic));
+    EXPECT_TRUE(expressions.result(handles[0]));
+    EXPECT_TRUE(expressions.result(handles[1]));
+    EXPECT_FALSE(expressions.result(handles[3]));
+    EXPECT_FALSE(expressions.result(handles[4]));
+}
 }

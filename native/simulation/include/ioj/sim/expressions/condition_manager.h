@@ -47,10 +47,10 @@ class ConditionManager {
     auto is_valid(LatchHandle handle) const -> bool;
     void evaluate_composites();
     void evaluate_leaves(ExprEvaluationContext const& inputs);
-    void evaluate_destroyed(std::span<LeafHandle const> run, ExprEvaluationContext const& inputs);
-    void evaluate_elapsed(std::span<LeafHandle const> run, ExprEvaluationContext const& inputs);
-    void evaluate_kills(std::span<LeafHandle const> run, ExprEvaluationContext const& inputs);
-    void evaluate_reached_position(std::span<LeafHandle const> run,
+    void evaluate_destroyed(std::span<LeafIndex const> run, ExprEvaluationContext const& inputs);
+    void evaluate_elapsed(std::span<LeafIndex const> run, ExprEvaluationContext const& inputs);
+    void evaluate_kills(std::span<LeafIndex const> run, ExprEvaluationContext const& inputs);
+    void evaluate_reached_position(std::span<LeafIndex const> run,
                                    ExprEvaluationContext const& inputs);
 
     ExprOperators composites_;

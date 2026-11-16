@@ -1,11 +1,11 @@
 #pragma once
-#include <ioj/levels/expr_type.h>
+#include <ioj/expr_kind.h>
 
 #include <cstdint>
 namespace ioj::levels {
 struct LatchedFalseExpr {
     auto operator==(LatchedFalseExpr const&) const -> bool = default;
-    static constexpr ExprType type{ExprType::LatchedFalse};
+    static constexpr ExprKind type{ExprKind::LatchedFalse};
     std::uint32_t latch{};
 };
 }

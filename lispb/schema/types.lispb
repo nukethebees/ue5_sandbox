@@ -1,25 +1,10 @@
 (include "common_scalars.lispb")
 
-; Index into shared leaf arrays across all leaf kinds within one ConditionManager.
-; Different expression managers may reuse the same index.
-(type expression_leaf_index
-  :spelling "ioj::sim::LeafIndex"
-  :header "ioj/sim/expressions/leaf_index.h"
-  :pass-by value
-  (integer :signed false :bit-width 28))
-
 (type expression_leaf_data_index
   :spelling "ioj::sim::LeafDataIndex"
   :header "ioj/sim/expressions/leaf_data_index.h"
   :pass-by value
   (integer :signed false :bit-width 24))
-
-(type expression_composite_index
-  :spelling "ioj::sim::ExprCompositeIndex"
-  :header "ioj/sim/expressions/expr_composite_index.h"
-  :pass-by value
-  (integer :signed false :bit-width 28))
-
 (type ismc_packed_position
   :spelling "ioj::Vector<std::int16_t, 3>"
   :header "ioj/vector.h")
@@ -348,21 +333,9 @@
   :header "ioj/sim/player/phase_inputs.h")
 
 
-(type expression_leaf_kind
-  :spelling "ioj::sim::LeafKind"
-  :header "ioj/sim/expressions/leaf_kind.h"
-  :pass-by value)
-(type expression_leaf_handle
-  :spelling "ioj::sim::LeafHandle"
-  :header "ioj/sim/expressions/leaf_handle.h"
-  :pass-by value)
 (type expression_expr_kind
-  :spelling "ioj::sim::ExprKind"
-  :header "ioj/sim/expressions/expr_kind.h"
-  :pass-by value)
-(type expression_composite_kind
-  :spelling "ioj::sim::CompositeKind"
-  :header "ioj/sim/expressions/composite_kind.h"
+  :spelling "ioj::ExprKind"
+  :header "ioj/expr_kind.h"
   :pass-by value)
 
 (type latch_state

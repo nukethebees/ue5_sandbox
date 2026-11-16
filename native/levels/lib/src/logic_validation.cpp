@@ -105,7 +105,7 @@ auto validate_logic(LogicDefinition const& logic, std::span<EntitySpawnDefinitio
         for (std::size_t j{}; j < child_count; ++j) {
             require_expression(children[j], std::format("{}.children[{}]", path, j));
         }
-        if (expression.type() == ExprType::Not && child_count != 1) {
+        if (expression.type() == ExprKind::Not && child_count != 1) {
             error(path + ".children", "not-of requires one expression");
         }
         std::visit(

@@ -1,12 +1,12 @@
 #pragma once
+#include <ioj/expr_kind.h>
 #include <ioj/levels/expr_index.h>
-#include <ioj/levels/expr_type.h>
 
 #include <vector>
 namespace ioj::levels {
 struct XorExpr {
     auto operator==(XorExpr const&) const -> bool = default;
-    static constexpr ExprType type{ExprType::Xor};
+    static constexpr ExprKind type{ExprKind::Xor};
     std::vector<ExprIndex> children;
 };
 }
