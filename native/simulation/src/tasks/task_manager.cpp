@@ -215,6 +215,8 @@ void TaskManager::allocate_free_entities(ExecutorTable& executors) {
 
             auto const pending_tasks{executors.view(type).pending_tasks};
             auto& counts{task_entity_allocations_[team, type]};
+
+            // Round-robin assignment
             std::size_t task_index{};
             for (auto const entity : entities) {
                 auto const task{tasks[task_index]};
