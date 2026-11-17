@@ -69,6 +69,10 @@ class LevelEventManager {
     auto spinner_spawns() -> LevelSpinnerSpawnEvents& { return spinner_spawns_; }
     auto spinner_spawns() const -> LevelSpinnerSpawnEvents const& { return spinner_spawns_; }
     auto triggers() const -> std::span<EventTrigger const> { return triggers_; }
+    auto trigger_events(TriggerIndex index) const -> std::span<EventHandle const> {
+        auto const range{triggers_[index].events};
+        return std::span{trigger_events_}.subspan(range.offset, range.count);
+    }
     auto spawn_event(EventHandle event) const -> IndexSpan { return spawn_events_[event.index()]; }
     auto stop_event(EventHandle event) const -> RunEndReason { return stop_events_[event.index()]; }
     auto start_timer_event(EventHandle event) const -> StartTimerEvent {

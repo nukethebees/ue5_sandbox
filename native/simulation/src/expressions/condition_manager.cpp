@@ -207,6 +207,21 @@ auto ConditionManager::result(ExprHandle const expression) const -> bool {
     assert(index < results.size());
     return results[index];
 }
+auto ConditionManager::children(ExprHandle const expression) const -> std::span<ExprHandle const> {
+    assert(expression.is_valid() && is_composite(expression.kind()));
+    auto const index{expression.index()};
+    assert(index < composites_.child_ranges.size());
+
+    auto const range{composites_.child_ranges[index]};
+    return std::span{composites_.children}.subspan(range.offset, range.count);
+}
+auto ConditionManager::destroyed_entity(ExprHandle const expression) const -> LevelEntityRef {
+    assert(expression.is_valid() && expression.kind() == ExprKind::EntityDestroyed);
+    auto const index{expression.index()};
+    assert(index < leaves_.data_handles.size());
+
+    return leaves_.destroyed_entities[leaves_.data_handles[index].index()];
+}
 
 /* **************************************** */
 // Composite evaluation

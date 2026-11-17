@@ -38,7 +38,13 @@ class ConditionManager {
     void commit_latches();
     // Evaluate with committed latch values, then capture next-tick latch inputs.
     void evaluate(ExprEvaluationContext const& inputs);
+
+    /* **************************************** */
+    // Inspection
+    /* **************************************** */
     auto result(ExprHandle expression) const -> bool;
+    auto children(ExprHandle expression) const -> std::span<ExprHandle const>;
+    auto destroyed_entity(ExprHandle expression) const -> LevelEntityRef;
     // Return the committed state, excluding pending captures.
     auto latch_state(LatchHandle handle) const -> LatchState;
 
