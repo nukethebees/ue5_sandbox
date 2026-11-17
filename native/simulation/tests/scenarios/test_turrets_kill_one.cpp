@@ -8,81 +8,35 @@
 #include <limits>
 
 namespace ioj::sim {
-enum class TurretCombatScenario : std::uint8_t { KillEnemy, ZeroDamage };
-
 namespace {
 void add_worldless_turrets(tests::SimulationScenario& data,
                            std::span<Vector3f const> const locations,
                            std::span<Team const> const teams,
-                           std::int32_t const laser_damage,
-                           std::int32_t const blue_health = -1) {
+                           std::int32_t const laser_damage) {
     assert(static_cast<std::int32_t>(locations.size()) == static_cast<std::int32_t>(teams.size()));
     auto const count{static_cast<std::int32_t>(locations.size())};
     for (std::int32_t i{}; i < count; ++i) {
-        auto const health{blue_health != -1 && teams[i] == Team::Blue
-                              ? blue_health
-                              : data.runtime.turrets.max_health.get().value()};
         tests::add_turret_spawn(data,
                                 locations[i],
                                 {},
                                 teams[i],
-                                ioj::settings::PositiveHealth::make(ioj::sim::Health{health}),
+                                {},
                                 ioj::NonNegative<std::int32_t>::make(laser_damage));
     }
 }
 }
 
-void run_worldless_turret_combat(tests::SimulationFixture const& config,
-                                 TurretCombatScenario const scenario) {
-    static std::vector<Vector3f> const locations{{{3160.f, -3200.f, 40.f}},
-                                                 {{1710.f, -3200.f, 40.f}},
-                                                 {{190.f, -3200.f, 40.f}},
-                                                 {{-1050.f, -3200.f, 40.f}},
-                                                 {{-2380.f, -3200.f, 40.f}},
-                                                 {{-3550.f, -3200.f, 40.f}},
-                                                 {{190.f, 2280.f, 40.f}}};
-    static std::vector<Team> const teams{
-        Team::Blue, Team::Blue, Team::Blue, Team::Blue, Team::Blue, Team::Blue, Team::Red};
-    tests::SimulationScenario data{tests::make_simulation_data(config)};
-    data.runtime.capital_ships.fighter_spawn_slots = 0;
-    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-    auto const damage{
-        scenario == TurretCombatScenario::ZeroDamage ? 0 : data.runtime.turrets.laser.damage};
-    add_worldless_turrets(
-        data, locations, teams, damage, scenario == TurretCombatScenario::KillEnemy ? 100000 : -1);
-
-    tests::WorldlessSimulationTest harness{std::move(data).compile()};
-
-    std::vector<Health> initial_healths{};
-    auto const& initial_view{harness.simulation().turrets()};
-    auto const initial_entities{initial_view.get_entities()};
-    auto const initial_count{initial_entities.num()};
-    initial_healths.reserve(initial_count);
-    auto const healths{initial_view.healths()};
-    auto const entity_ids{initial_entities.entity_ids()};
-    for (std::uint32_t i{}; i < initial_count; ++i) {
-        initial_healths.push_back(healths.health(entity_ids[i]));
-    }
-    harness.timeline.finish_at(3.0);
-    EXPECT_TRUE(harness.run_until_timeline_finished(3.5)) << "Turret combat timeline completes";
-
-    if (scenario == TurretCombatScenario::KillEnemy) {
-        EXPECT_EQ(1, harness.ledger().count_kills(Team::Blue)) << "One turret is killed";
-        EXPECT_EQ(6, harness.ledger().count_alive()) << "Hero turrets remain alive";
-        for (auto const target : harness.simulation().turrets().get_entities().target_ids()) {
-            EXPECT_TRUE(!target.is_valid()) << "Targets clear after the enemy dies";
-        }
-        return;
-    }
-
-    EXPECT_EQ(initial_count, harness.ledger().count_alive()) << "Zero-damage turrets remain alive";
-    auto const& final_view{harness.simulation().turrets()};
-    auto const final_healths{final_view.healths()};
-    auto const final_entity_ids{final_view.get_entities().entity_ids()};
-    for (std::uint32_t i{}; i < initial_count; ++i) {
-        EXPECT_EQ(initial_healths[i], final_healths.health(final_entity_ids[i]))
-            << "Zero-damage combat preserves health";
-    }
+auto make_turret_duel(std::int32_t const laser_damage) -> LevelSimInitData {
+    tests::SimulationScenario data{tests::make_simulation_data(tests::make_fixture())};
+    auto const damage{NonNegative<std::int32_t>::make(laser_damage)};
+    tests::add_turret_spawn(data,
+                            {190.f, -3200.f, 40.f},
+                            {},
+                            Team::Blue,
+                            settings::PositiveHealth{Health{100000}},
+                            damage);
+    tests::add_turret_spawn(data, {190.f, 2280.f, 40.f}, {}, Team::Red, {}, damage);
+    return std::move(data).compile();
 }
 
 TEST(WorldlessSpaceGameSimulation, TurretsLineOfSightBlocking) {
@@ -141,11 +95,41 @@ TEST(WorldlessSpaceGameSimulation, TurretsSearchRequiresLineOfSight) {
 }
 
 TEST(WorldlessSpaceGameSimulation, TurretsKillEnemy) {
-    run_worldless_turret_combat(tests::make_fixture(), TurretCombatScenario::KillEnemy);
+    LevelSim simulation{make_turret_duel(100)};
+    simulation.start();
+    simulation.advance(3.0);
+
+    auto const survivors{simulation.turrets().get_entities()};
+    ASSERT_EQ(survivors.num(), 1);
+    EXPECT_EQ(survivors.teams()[0], Team::Blue);
+    EXPECT_EQ(simulation.entity_ledger().count_kills(Team::Blue), 1);
+}
+
+TEST(WorldlessSpaceGameSimulation, TurretsClearTargetsAfterEnemyDies) {
+    LevelSim simulation{make_turret_duel(100)};
+    simulation.start();
+    simulation.advance(3.0);
+
+    ASSERT_EQ(simulation.entity_ledger().count_kills(Team::Blue), 1);
+    auto const survivors{simulation.turrets().get_entities()};
+    ASSERT_EQ(survivors.num(), 1);
+    EXPECT_FALSE(survivors.target_ids()[0].is_valid());
 }
 
 TEST(WorldlessSpaceGameSimulation, TurretsZeroDamage) {
-    run_worldless_turret_combat(tests::make_fixture(), TurretCombatScenario::ZeroDamage);
+    LevelSim simulation{make_turret_duel(0)};
+    auto const& turrets{simulation.turrets()};
+    auto const ids{turrets.get_entities().entity_ids()};
+    auto const blue{ids[0]};
+    auto const red{ids[1]};
+    auto const blue_health{turrets.healths().health(blue)};
+    auto const red_health{turrets.healths().health(red)};
+    simulation.start();
+    simulation.advance(3.0);
+
+    ASSERT_EQ(turrets.num_instances(), 2);
+    EXPECT_EQ(turrets.healths().health(blue), blue_health);
+    EXPECT_EQ(turrets.healths().health(red), red_health);
 }
 
 }
