@@ -12,8 +12,6 @@ enum class TurretAcquisitionRegressionScenario : std::uint8_t {
 void run_worldless_turret_acquisition_regression(
     tests::SimulationFixture const& config, TurretAcquisitionRegressionScenario const scenario) {
     tests::SimulationScenario data{tests::make_simulation_data(config)};
-    data.runtime.capital_ships.fighter_spawn_slots = 0;
-    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const count{scenario == TurretAcquisitionRegressionScenario::NoOtherEntity ? 1 : 2};
     for (std::int32_t i{}; i < count; ++i) {
         auto const friendly{scenario == TurretAcquisitionRegressionScenario::FriendlyOnly ||
@@ -27,21 +25,19 @@ void run_worldless_turret_acquisition_regression(
                                 Vector3f{distance, 0.f, 0.f},
                                 {},
                                 friendly ? Team::Blue : Team::Red,
-                                ioj::settings::PositiveHealth::make(ioj::sim::Health{
-                                    data.runtime.turrets.max_health.get().value()}),
+                                {},
                                 ioj::NonNegative<std::int32_t>::make(0));
     }
-    tests::WorldlessSimulationTest harness{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile()};
+    simulation.start();
+    simulation.advance(0.5);
 
-    harness.timeline.finish_at(0.5);
-    EXPECT_TRUE(harness.run_until_timeline_finished(1.0))
-        << "Turret acquisition timeline completes";
-    auto const& turrets{harness.simulation().turrets()};
+    auto const& turrets{simulation.turrets()};
     EXPECT_EQ(count, turrets.num_instances()) << "All turrets are registered";
     for (auto const target : turrets.get_entities().target_ids()) {
         EXPECT_TRUE(!target.is_valid()) << "Invalid candidate does not become a target";
     }
-    EXPECT_EQ(0, harness.simulation().lasers().get_number_spawned())
+    EXPECT_EQ(0, simulation.lasers().get_number_spawned())
         << "Turrets without valid targets do not fire";
 }
 
