@@ -4,23 +4,14 @@
 
 namespace ioj::sim {
 using ioj::testing::structurally_equal;
-enum class EntityLedgerScenario : std::uint8_t { TeamCounts, OnePlayerKill, TwoPlayerKills };
-
-namespace {
-constexpr TeamCounts expected_team_counts{std::array{0, 1, 2, 3, 4, 5}};
-}
-
-void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config,
-                                          EntityLedgerScenario const scenario) {
-    tests::SimulationScenario data{tests::make_simulation_data(config)};
-    data.runtime.capital_ships.fighter_spawn_slots = 0;
-    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-    if (scenario != EntityLedgerScenario::TeamCounts) {
-        tests::add_player_spawn(data, tests::make_player_spawn(config));
-    }
+TEST(WorldlessSpaceGameSimulation, EntityLedgerCountsTeams) {
+    tests::SimulationScenario data{tests::make_simulation_data(tests::make_fixture())};
+    TeamCounts const expected_team_counts{std::array{0, 1, 2, 3, 4, 5}};
+    EntityCounts expected_type_counts{};
     std::int32_t actor_index{};
     for (auto const team : EnumTraits<Team>::values) {
         auto const team_entity_count{expected_team_counts[team]};
+        expected_type_counts[team, EntityType::CapitalShip] = team_entity_count;
         for (std::int32_t i{}; i < team_entity_count; ++i) {
             tests::add_capital_spawn(data,
                                      Vector3f{static_cast<float>(actor_index * 5000),
@@ -33,83 +24,50 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         }
     }
 
-    tests::WorldlessSimulationTest harness{std::move(data).compile()};
-
-    if (scenario == EntityLedgerScenario::TeamCounts) {
-        EntityCounts type_counts{};
-        harness.on_end_tick = [&](LevelSim&) {
-            type_counts = harness.ledger().count_alive_per_team_and_type();
-        };
-        harness.timeline.finish_at(0.1);
-        EXPECT_TRUE(harness.run_until_timeline_finished(1.0)) << "Team-count timeline completes";
-        EntityCounts expected_type_counts{};
-        for (auto const team : EnumTraits<Team>::values) {
-            expected_type_counts[team, EntityType::CapitalShip] = expected_team_counts[team];
-        }
-        EXPECT_PRED_FORMAT2(structurally_equal, expected_type_counts, type_counts);
-        return;
-    }
-
-    auto const expected_kills{scenario == EntityLedgerScenario::OnePlayerKill ? 1 : 2};
-    auto const* player{harness.simulation().player_ship_simulation()};
-    assert(player);
-    auto const player_id{player->unique_entity_id};
-    auto const initial_alive_count{harness.ledger().count_alive()};
-    std::vector<EntityId> available_targets;
-    auto const capitals{harness.simulation().capital_ships().get_entities()};
-    auto const capital_count{capitals.num()};
-    auto const teams{capitals.teams()};
-    auto const entity_ids{capitals.entity_ids()};
-    for (std::uint32_t index{}; index < capital_count; ++index) {
-        if (teams[index] != player->team) {
-            available_targets.push_back(entity_ids[index]);
-        }
-    }
-    EXPECT_GT(static_cast<std::int32_t>(available_targets.size()), expected_kills - 1)
-        << "Enough non-player-team targets are available";
-    auto const targets{std::span<EntityId const>{available_targets}.first(
-        static_cast<std::size_t>(expected_kills))};
-    struct Sample {
-        std::int32_t player_kills{};
-        std::int32_t team_kills{};
-        std::int32_t alive_count{};
-    };
-    TimeSeriesData<Sample> samples;
-    harness.on_end_tick = [&](LevelSim&) {
-        auto const& ledger{harness.ledger()};
-        samples.add(harness.time(),
-                    Sample{static_cast<std::int32_t>(ledger.kills(player_id)),
-                           ledger.count_kills(player->team),
-                           ledger.count_alive()});
-    };
-    harness.timeline.then_after(0.1, [&] { harness.queue_kills(targets, player_id); });
-    harness.timeline.finish_at(0.35);
-    ASSERT_TRUE(harness.run_until_timeline_finished(1.0)) << "Player-kill timeline completes";
-    ASSERT_FALSE(samples.is_empty()) << "Kill samples recorded";
-    auto const expect_sample{[&](double const time, std::int32_t const kills) {
-        SCOPED_TRACE(time);
-        auto const& sample{samples.nearest_value(time)};
-        EXPECT_EQ(sample.player_kills, kills);
-        EXPECT_EQ(sample.team_kills, kills);
-        EXPECT_EQ(sample.alive_count, initial_alive_count - kills);
-    }};
-    expect_sample(0.05, 0);
-    expect_sample(0.3, expected_kills);
-    expect_sample(0.35, expected_kills);
+    LevelSim simulation{std::move(data).compile()};
+    simulation.start();
+    simulation.advance(0.1);
+    EXPECT_PRED_FORMAT2(structurally_equal,
+                        expected_type_counts,
+                        simulation.entity_ledger().count_alive_per_team_and_type());
 }
 
-TEST(WorldlessSpaceGameSimulation, EntityLedgerCountsTeams) {
-    run_worldless_entity_ledger_scenario(tests::make_fixture(), EntityLedgerScenario::TeamCounts);
+void run_player_kills(std::int32_t const expected_kills) {
+    auto const config{tests::make_fixture()};
+    tests::SimulationScenario data{tests::make_simulation_data(config)};
+    auto player{tests::make_player_spawn(config)};
+    player.team = Team::Blue;
+    tests::add_player_spawn(data, player);
+    for (std::int32_t index{}; index < expected_kills; ++index) {
+        tests::add_capital_spawn(
+            data, {30000.f * static_cast<float>(index + 1), 0.f, 0.f}, Team::Red, 60.f);
+    }
+
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
+    auto& simulation{harness.simulation()};
+    auto const player_id{simulation.player_ship_simulation()->unique_entity_id};
+    auto const& ledger{harness.ledger()};
+    auto const expect_counts{[&](std::int32_t const kills) {
+        EXPECT_EQ(ledger.kills(player_id), kills);
+        EXPECT_EQ(ledger.count_kills(Team::Blue), kills);
+        EXPECT_EQ(ledger.count_alive(), expected_kills + 1 - kills);
+    }};
+    expect_counts(0);
+    harness.queue_kills(simulation.capital_ships().get_entities().entity_ids(), player_id);
+    simulation.start();
+    auto const dt{simulation.clock().tick_period()};
+    simulation.advance(dt);
+    expect_counts(expected_kills);
+    simulation.advance(dt);
+    expect_counts(expected_kills);
 }
 
 TEST(WorldlessSpaceGameSimulation, EntityLedgerOnePlayerKill) {
-    run_worldless_entity_ledger_scenario(tests::make_fixture(),
-                                         EntityLedgerScenario::OnePlayerKill);
+    run_player_kills(1);
 }
 
 TEST(WorldlessSpaceGameSimulation, EntityLedgerTwoPlayerKills) {
-    run_worldless_entity_ledger_scenario(tests::make_fixture(),
-                                         EntityLedgerScenario::TwoPlayerKills);
+    run_player_kills(2);
 }
 
 }
