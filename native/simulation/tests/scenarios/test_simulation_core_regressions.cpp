@@ -7,15 +7,6 @@
 #include <functional>
 
 namespace ioj::sim {
-enum class SimulationCoreRegressionScenario : std::uint8_t { FixedTickLifecycle, DamageLifecycle };
-
-namespace {
-constexpr double nonlethal_damage_time{0.05};
-constexpr double lethal_damage_time{0.15};
-constexpr double damage_test_end_time{0.25};
-constexpr std::int32_t initial_health{100};
-}
-
 namespace collision_damage_test {
 inline constexpr std::int32_t player_health{1000};
 inline constexpr std::int32_t capital_health{150};
@@ -23,97 +14,64 @@ inline constexpr std::int32_t overlap_damage{50};
 inline constexpr double duration{0.1};
 }
 
-void run_worldless_simulation_core_regression(tests::SimulationFixture const& config,
-                                              SimulationCoreRegressionScenario const scenario) {
-    tests::SimulationScenario data{tests::make_simulation_data(config)};
-    if (scenario == SimulationCoreRegressionScenario::DamageLifecycle) {
-        data.runtime.capital_ships.fighter_spawn_slots = 0;
-        data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-        tests::add_capital_spawn(
-            data,
-            {},
-            Team::White,
-            60.f,
-            60.f,
-            ioj::settings::PositiveHealth::make(ioj::sim::Health{initial_health}));
-    }
-
-    tests::WorldlessSimulationTest harness{std::move(data).compile()};
+TEST(WorldlessSpaceGameSimulation, OrchestratorFixedStepPauseResumeAndCatchUp) {
+    tests::WorldlessSimulationTest harness{tests::make_simulation_data(tests::make_fixture())};
 
     auto& simulation{harness.simulation()};
     auto const& clk{simulation.clock()};
-    if (scenario == SimulationCoreRegressionScenario::FixedTickLifecycle) {
-        std::int32_t end_tick_calls{};
-        harness.on_end_tick = [&](LevelSim&) { ++end_tick_calls; };
-        simulation.start();
-        auto const period{clk.tick_period()};
-        harness.advance(period * 0.5);
-        EXPECT_EQ(std::uint64_t{0}, clk.get_completed_ticks().value())
-            << "Half tick is accumulated";
-        harness.advance(period * 0.5);
-        EXPECT_EQ(std::uint64_t{1}, clk.get_completed_ticks().value())
-            << "Two half ticks advance once";
-        EXPECT_EQ(1, end_tick_calls) << "End-tick hook executes once per completed tick";
-        harness.advance(period * 3.25);
-        EXPECT_EQ(std::uint64_t{4}, clk.get_completed_ticks().value())
-            << "Large delta catches up deterministically";
-        EXPECT_EQ(2, end_tick_calls) << "Catch-up is observed once after the completed advance";
-        EXPECT_NEAR(period * 4.0, clk.simulation_time(), 1.e-9)
-            << "Simulation time derives from completed ticks";
-        simulation.pause();
-        harness.advance(period * 10.0);
-        EXPECT_EQ(std::uint64_t{4}, clk.get_completed_ticks().value())
-            << "Paused simulation ignores time";
-        simulation.start();
-        harness.advance(period * 0.75);
-        EXPECT_EQ(std::uint64_t{5}, clk.get_completed_ticks().value())
-            << "Resume preserves accumulated fraction";
-        EXPECT_EQ(3, end_tick_calls) << "Resumed tick executes one hook";
-        return;
-    }
+    std::int32_t end_tick_calls{};
+    harness.on_end_tick = [&](LevelSim&) { ++end_tick_calls; };
+    simulation.start();
+    auto const period{clk.tick_period()};
+    harness.advance(period * 0.5);
+    EXPECT_EQ(std::uint64_t{0}, clk.get_completed_ticks().value()) << "Half tick is accumulated";
+    harness.advance(period * 0.5);
+    EXPECT_EQ(std::uint64_t{1}, clk.get_completed_ticks().value()) << "Two half ticks advance once";
+    EXPECT_EQ(1, end_tick_calls) << "End-tick hook executes once per completed tick";
+    harness.advance(period * 3.25);
+    EXPECT_EQ(std::uint64_t{4}, clk.get_completed_ticks().value())
+        << "Large delta catches up deterministically";
+    EXPECT_EQ(2, end_tick_calls) << "Catch-up is observed once after the completed advance";
+    EXPECT_NEAR(period * 4.0, clk.simulation_time(), 1.e-9)
+        << "Simulation time derives from completed ticks";
+    simulation.pause();
+    harness.advance(period * 10.0);
+    EXPECT_EQ(std::uint64_t{4}, clk.get_completed_ticks().value())
+        << "Paused simulation ignores time";
+    simulation.start();
+    harness.advance(period * 0.75);
+    EXPECT_EQ(std::uint64_t{5}, clk.get_completed_ticks().value())
+        << "Resume preserves accumulated fraction";
+    EXPECT_EQ(3, end_tick_calls) << "Resumed tick executes one hook";
+}
 
-    auto const damaged_handle{simulation.capital_ships().get_entities().entity_ids()[0]};
-    struct DamageSample {
-        std::uint32_t capital_count{};
-        std::int32_t ledger_alive_count{};
-        std::int32_t health{};
-    };
-    TimeSeriesData<DamageSample> samples;
-    harness.on_end_tick = [&](LevelSim& level) {
-        auto const state{observe_entity(level, damaged_handle)};
-        samples.add(harness.time(),
-                    DamageSample{
-                        .capital_count = level.capital_ships().num_instances(),
-                        .ledger_alive_count = harness.ledger().count_alive(),
-                        .health = state ? state->health.value() : 0,
-                    });
-    };
-    harness.timeline.at(nonlethal_damage_time,
-                        [&] { harness.queue_damage(std::array{damaged_handle}, 25); });
-    harness.timeline.at(lethal_damage_time,
-                        [&] { harness.queue_damage(std::array{damaged_handle}, 75); });
-    harness.timeline.finish_at(damage_test_end_time);
-    ASSERT_TRUE(harness.run_until_timeline_finished(1.0)) << "Damage lifecycle timeline completes";
-    ASSERT_FALSE(samples.is_empty()) << "Damage lifecycle samples are recorded";
-    auto const& initial{samples.value_at(0)};
-    auto const& nonlethal{samples.nearest_value(0.10)};
-    auto const& lethal{samples.nearest_value(0.22)};
-    EXPECT_EQ(1, initial.capital_count) << "One capital starts active";
-    EXPECT_EQ(initial_health, initial.health) << "Capital starts at configured health";
-    EXPECT_EQ(1, nonlethal.capital_count) << "Nonlethal damage preserves batch entity";
-    EXPECT_EQ(75, nonlethal.health) << "Nonlethal damage is applied once";
-    EXPECT_EQ(0, lethal.capital_count)
-        << "Lethal damage removes batch entity in the same Action phase";
-    EXPECT_EQ(0, lethal.ledger_alive_count) << "Ledger death commits in the same tick";
-    EXPECT_EQ(0, lethal.health) << "Owner retains terminal health for the dead handle";
-    EXPECT_TRUE(!entity_is_alive(harness.simulation(), damaged_handle)) << "Killed ID is dead";
-    auto const kills{harness.ledger().history().kills()};
-    auto const& counts{harness.ledger().issued_counts()};
-    for (auto const type : EnumTraits<EntityType>::values) {
-        auto const issued_kills{kills.subspan(entity_identity_offsets[type], counts[type])};
-        EXPECT_EQ(0, std::ranges::fold_left(issued_kills, std::uint32_t{}, std::plus{}))
-            << "Unattributed death does not create a kill";
-    }
+TEST(WorldlessSpaceGameSimulation, EntitiesNonLethalThenLethalDamageCleansUpAtomically) {
+    tests::SimulationScenario data{tests::make_simulation_data(tests::make_fixture())};
+    tests::add_capital_spawn(
+        data, {}, Team::White, 60.f, 60.f, settings::PositiveHealth{Health{100}});
+    tests::WorldlessSimulationTest harness{std::move(data).compile()};
+    auto& simulation{harness.simulation()};
+    auto const& capitals{simulation.capital_ships()};
+    ASSERT_EQ(capitals.num_instances(), 1);
+    auto const victim{capitals.get_entities().entity_ids()[0]};
+    EXPECT_EQ(capitals.healths().health(victim), Health{100});
+
+    simulation.start();
+    auto const dt{simulation.clock().tick_period()};
+    harness.queue_damage(std::array{victim}, 25);
+    simulation.advance(dt);
+    ASSERT_EQ(capitals.num_instances(), 1);
+    EXPECT_EQ(capitals.healths().health(victim), Health{75});
+    simulation.advance(dt);
+    EXPECT_EQ(capitals.healths().health(victim), Health{75}) << "Damage is applied once";
+
+    harness.queue_damage(std::array{victim}, 75);
+    simulation.advance(dt);
+    EXPECT_EQ(capitals.num_instances(), 0);
+    EXPECT_EQ(harness.ledger().count_alive(), 0);
+    EXPECT_FALSE(entity_is_alive(simulation, victim));
+    EXPECT_EQ(capitals.healths().health(victim), Health{0});
+    EXPECT_EQ(harness.ledger().kills(victim), 0u) << "Unattributed death does not create a kill";
 }
 
 TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
@@ -196,14 +154,4 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
         LifeState::Unknown)
         << "Collision death is environmental";
 }
-TEST(WorldlessSpaceGameSimulation, OrchestratorFixedStepPauseResumeAndCatchUp) {
-    run_worldless_simulation_core_regression(tests::make_fixture(),
-                                             SimulationCoreRegressionScenario::FixedTickLifecycle);
-}
-
-TEST(WorldlessSpaceGameSimulation, EntitiesNonLethalThenLethalDamageCleansUpAtomically) {
-    run_worldless_simulation_core_regression(tests::make_fixture(),
-                                             SimulationCoreRegressionScenario::DamageLifecycle);
-}
-
 }
