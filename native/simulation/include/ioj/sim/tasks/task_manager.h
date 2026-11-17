@@ -19,6 +19,7 @@
 #include <vector>
 
 namespace ioj::sim::tasks {
+struct ExecutorTable;
 struct TaskAllocationContext;
 
 // Store task programs. Allocate them to entities.
@@ -85,6 +86,7 @@ class TaskManager {
 
   private:
     void add_kill_tasks(ExprHandle condition, Team team, TaskAllocationContext ctx);
+    void allocate_free_entities(ExecutorTable& executors);
     auto is_trigger_checked(std::uint32_t index) const -> bool;
     void add_checked_trigger_run(TriggerRun run);
 

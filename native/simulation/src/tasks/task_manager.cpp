@@ -1,10 +1,12 @@
 #include <ioj/sim/tasks/task_manager.h>
 
 #include <ioj/enum_array.h>
+#include <ioj/enum_traits.h>
 #include <ioj/require.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/expressions/condition_manager.h>
 #include <ioj/sim/levels/level_event_manager.h>
+#include <ioj/sim/tasks/executor_table.h>
 #include <ioj/sim/tasks/task_allocation_context.h>
 
 #include <algorithm>
@@ -147,6 +149,8 @@ void TaskManager::allocate(TaskAllocationContext const ctx) {
         // Discovery is one-shot, including targets that have not spawned yet.
         add_checked_trigger_run({index, index + 1});
     }
+
+    allocate_free_entities(ctx.executors);
 }
 void TaskManager::add_kill_tasks(ExprHandle const condition,
                                  Team const team,
@@ -192,6 +196,38 @@ void TaskManager::add_kill_tasks(ExprHandle const condition,
             }
             default:
                 break;
+        }
+    }
+}
+void TaskManager::allocate_free_entities(ExecutorTable& executors) {
+    for (auto const team : EnumTraits<Team>::values) {
+        auto const& tasks{active_tasks_[team]};
+        if (tasks.empty()) {
+            continue;
+        }
+
+        auto const task_count{tasks.size()};
+        for (auto const type : EnumTraits<EntityType>::values) {
+            auto& entities{free_entities_[team, type]};
+            if (entities.empty()) {
+                continue;
+            }
+
+            auto const pending_tasks{executors.view(type).pending_tasks};
+            auto& counts{task_entity_allocations_[team, type]};
+            std::size_t task_index{};
+            for (auto const entity : entities) {
+                auto const task{tasks[task_index]};
+                pending_tasks[entity.index()] = task;
+                ++counts[task.index()];
+
+                ++task_index;
+                if (task_index == task_count) {
+                    task_index = 0;
+                }
+            }
+
+            entities.clear();
         }
     }
 }

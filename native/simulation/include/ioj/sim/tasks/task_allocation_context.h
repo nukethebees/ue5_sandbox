@@ -11,10 +11,13 @@ class LevelEventManager;
 }
 
 namespace ioj::sim::tasks {
+struct ExecutorTable;
+
 struct TaskAllocationContext {
     LevelReadAccess level;
     LevelEventManager const& events;
     ConditionManager const& conditions;
     std::span<EntityId const> entities;
+    ExecutorTable& executors;
 };
 }
