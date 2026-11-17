@@ -4,6 +4,43 @@
 #include <ioj/sim/testing/level_sim_test_access.h>
 
 namespace ioj::sim::tests {
+TEST(LevelAuthoringIntegration, BlueFighterDestroysRedCapitalFromWinObjective) {
+    auto const definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
+      (level :id 'fighter-kill :title "Fighter kill"
+        :camera (camera :look-at '(blue-capital) :offset-direction '(-1 0 0) :distance 1000)
+        :settings (settings
+          :fighters (fighters
+            :max-live-fighters 2
+            :laser (laser :damage 100 :projectile-speed 40000 :max-distance 40000)))
+        :entities (list
+          (entity :id 'blue-capital :archetype 'capital-ship :team 'blue
+            :position '(-20000 0 0) :initial-spawn-delay 0 :spawn-cooldown 60)
+          (entity :id 'red-capital :archetype 'capital-ship :team 'red
+            :position '(20000 0 0) :health 30 :initial-spawn-delay 60 :spawn-cooldown 60))
+        :logic (logic
+          (on :when (entity-destroyed 'red-capital) :do (win 'blue)))))")};
+    ASSERT_TRUE(definition) << levels::format_diagnostics(definition.error());
+
+    auto built{make_level_simulation_init_data(*definition, make_simulation_data(make_fixture()))};
+    ASSERT_TRUE(built) << built.error().front();
+    LevelSim simulation{std::move(*built)};
+
+    auto const capitals{simulation.capital_ships().get_entities()};
+    ASSERT_EQ(capitals.num(), 2);
+    auto const red{capitals.entity_ids()[1]};
+
+    simulation.start();
+    simulation.advance(10.0);
+
+    auto const fighters{simulation.fighters().entities()};
+    ASSERT_EQ(fighters.num(), 1);
+    EXPECT_EQ(fighters.teams()[0], Team::Blue);
+    auto const& ledger{simulation.entity_ledger()};
+    EXPECT_EQ(ledger.issued_counts()[EntityType::Fighter], 1);
+    EXPECT_EQ(ledger.history().life_state()[ledger.history_index(red)], LifeState::Combat);
+    EXPECT_EQ(ledger.kills(fighters.entity_ids()[0]), 1u);
+}
+
 TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReferences) {
     auto const definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
       (level :id 'reserves :title "Reserves"
