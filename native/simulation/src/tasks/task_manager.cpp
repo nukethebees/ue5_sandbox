@@ -2,12 +2,15 @@
 
 #include <ioj/enum_array.h>
 #include <ioj/require.h>
+#include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/expressions/condition_manager.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/tasks/task_allocation_context.h>
 
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <unordered_set>
 #include <utility>
 
 namespace ioj::sim::tasks {
@@ -120,13 +123,76 @@ void TaskManager::allocate(TaskAllocationContext const ctx) {
     allocation_countdown_ = allocation_period_ticks;
 
     auto const active_triggers{ctx.events.active_triggers()};
+    auto const triggers{ctx.events.triggers()};
     for (auto const index : active_triggers) {
         if (is_trigger_checked(index)) {
             continue;
         }
 
-        // TODO: Analyse ctx.events.triggers()[index] for potential objectives.
+        auto const trigger{triggers[index]};
+        for (auto const event : ctx.events.trigger_events(index)) {
+            auto const kind{event.kind()};
+            switch (kind) {
+                case EventKind::Win:
+                    add_kill_tasks(trigger.condition, ctx.events.win_event(event).winner, ctx);
+                    goto trigger_checked;
+                case EventKind::StopRun:
+                    goto trigger_checked;
+                default:
+                    break;
+            }
+        }
+
+    trigger_checked:
+        // Discovery is one-shot, including targets that have not spawned yet.
         add_checked_trigger_run({index, index + 1});
+    }
+}
+void TaskManager::add_kill_tasks(ExprHandle const condition,
+                                 Team const team,
+                                 TaskAllocationContext const ctx) {
+    auto const& ledger{ctx.level.entity_ledger()};
+    auto const life_states{ledger.history().life_state()};
+    std::vector<ExprHandle> pending{condition};
+    std::unordered_set<ExprHandle> visited;
+    std::unordered_set<EntityId> targets;
+
+    while (!pending.empty()) {
+        auto const expression{pending.back()};
+        pending.pop_back();
+        if (!visited.insert(expression).second) {
+            continue;
+        }
+
+        auto const kind{expression.kind()};
+        switch (kind) {
+            case ExprKind::All: {
+                auto const children{ctx.conditions.children(expression)};
+                pending.insert(pending.end(), children.rbegin(), children.rend());
+                break;
+            }
+            case ExprKind::EntityDestroyed: {
+                auto const entity{ctx.conditions.destroyed_entity(expression)};
+                auto const entity_index{entity.index()};
+                assert(entity_index < ctx.entities.size());
+                auto const target{ctx.entities[entity_index]};
+                if (!target.is_valid() || !targets.insert(target).second) {
+                    break;
+                }
+
+                auto const row{ledger.history_index(target)};
+                assert(row < life_states.size());
+                if (life_states[row] != LifeState::Alive) {
+                    break;
+                }
+
+                auto const task{add_task({Instruction::make_data_kill(target), jump_to_idle})};
+                active_tasks_[team].push_back(task);
+                break;
+            }
+            default:
+                break;
+        }
     }
 }
 auto TaskManager::is_trigger_checked(std::uint32_t const index) const -> bool {

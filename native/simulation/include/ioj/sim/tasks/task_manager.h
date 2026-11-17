@@ -2,6 +2,7 @@
 
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/team_entity_array.h>
+#include <ioj/sim/expressions/expr_handle.h>
 #include <ioj/sim/tasks/instruction.h>
 #include <ioj/sim/tasks/instruction_data.h>
 #include <ioj/sim/tasks/instruction_handle.h>
@@ -83,6 +84,7 @@ class TaskManager {
     void allocate(TaskAllocationContext ctx);
 
   private:
+    void add_kill_tasks(ExprHandle condition, Team team, TaskAllocationContext ctx);
     auto is_trigger_checked(std::uint32_t index) const -> bool;
     void add_checked_trigger_run(TriggerRun run);
 

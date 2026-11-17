@@ -239,7 +239,12 @@ void LevelSim::advance_tick(float const tick_period,
                 SANDBOX_PROFILE_SCOPE("Thinking");
                 clock_.transition_to(SimulationPhase::Thinking);
 
-                task_manager_.allocate({.level = read_access(), .events = event_manager_});
+                task_manager_.allocate({
+                    .level = read_access(),
+                    .events = event_manager_,
+                    .conditions = conditions_,
+                    .entities = spawn_manager_.entity_ids(),
+                });
 
                 spawn_manager_.queue_fighter_spawns(tick_period,
                                                     capital_ships_simulation_.get_entities(),
