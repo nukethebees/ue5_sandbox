@@ -16,8 +16,5 @@ struct RangeQueryResults {
 
     RangeQueryMatches matches;
     FrameArray<IndexSpan> ranges;
-  private:
-    friend struct SpatialQueryManager;
-    bool query_started_{};
 };
 } // namespace ioj::sim

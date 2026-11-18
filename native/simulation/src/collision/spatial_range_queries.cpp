@@ -155,9 +155,6 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
     assert(std::isfinite(radius));
     assert(check_valid_teams(teams));
 
-    assert(!out_results.query_started_);
-    out_results.query_started_ = true;
-
     auto const request_count{origins.num()};
     out_results.ranges.set_num(request_count);
     if (request_count == 0) {
