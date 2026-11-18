@@ -181,15 +181,12 @@ void TaskManager::add_kill_tasks(ExprHandle const condition,
                 break;
             case ExprKind::EntityDestroyed: {
                 auto const entity{ctx.conditions.destroyed_entity(expression)};
-                auto const entity_index{entity.index()};
-                assert(entity_index < ctx.entities.size());
-                auto const target{ctx.entities[entity_index]};
+                auto const target{ctx.entities[entity.index()]};
                 if (!target.is_valid() || !targets.insert(target).second) {
                     break;
                 }
 
                 auto const row{ledger.history_index(target)};
-                assert(row < life_states.size());
                 if (life_states[row] != LifeState::Alive) {
                     break;
                 }

@@ -61,16 +61,10 @@ auto expression_order(std::span<levels::Expression const> const expressions)
 }
 
 namespace expr_evaluation_detail {
-auto entity(ExprEvaluationContext const& inputs, LevelEntityRef const slot) -> EntityId {
-    assert(slot.index() < inputs.entities.size());
-    return inputs.entities[slot.index()];
-}
 auto destroyed(EntityId const id,
                EntityLedger const& ledger,
                std::span<LifeState const> const life_states) -> bool {
-    auto const row{ledger.history_index(id)};
-    assert(row < life_states.size());
-    return life_states[row] != LifeState::Alive;
+    return life_states[ledger.history_index(id)] != LifeState::Alive;
 }
 }
 
@@ -200,34 +194,20 @@ void ConditionManager::evaluate(ExprEvaluationContext const& inputs) {
 // Inspection
 /* **************************************** */
 auto ConditionManager::result(ExprHandle const expression) const -> bool {
-    assert(expression.is_valid());
-
     auto const& results{is_composite(expression.kind()) ? composites_.results : leaves_.results};
-    auto const index{expression.index()};
-    assert(index < results.size());
-    return results[index];
+    return results[expression.index()];
 }
 auto ConditionManager::children(ExprHandle const expression) const -> std::span<ExprHandle const> {
-    assert(expression.is_valid() && is_composite(expression.kind()));
-    auto const index{expression.index()};
-    assert(index < composites_.child_ranges.size());
-
-    auto const range{composites_.child_ranges[index]};
+    auto const range{composites_.child_ranges[expression.index()]};
     return std::span{composites_.children}.subspan(range.offset, range.count);
 }
 auto ConditionManager::destroyed_entity(ExprHandle const expression) const -> LevelEntityRef {
-    assert(expression.is_valid() && expression.kind() == ExprKind::EntityDestroyed);
-    auto const index{expression.index()};
-    assert(index < leaves_.data_handles.size());
-
-    return leaves_.destroyed_entities[leaves_.data_handles[index].index()];
+    auto const data{leaves_.data_handles[expression.index()]};
+    return leaves_.destroyed_entities[data.index()];
 }
 auto ConditionManager::latched_true_value(ExprHandle const expression) const -> ExprHandle {
-    assert(expression.is_valid() && expression.kind() == ExprKind::LatchedTrue);
-    auto const index{expression.index()};
-    assert(index < leaves_.data_handles.size());
-    auto const latch{leaves_.true_latches[leaves_.data_handles[index].index()]};
-    assert(is_valid(latch));
+    auto const data{leaves_.data_handles[expression.index()]};
+    auto const latch{leaves_.true_latches[data.index()]};
     return latch_inputs_[latch.index()].value;
 }
 
@@ -294,7 +274,7 @@ void ConditionManager::evaluate_destroyed(std::span<LeafIndex const> const run,
 
     for (auto const leaf : run) {
         auto const data{leaves.data_handles[leaf].index()};
-        auto const id{expr_evaluation_detail::entity(inputs, leaves.destroyed_entities[data])};
+        auto const id{inputs.entities[leaves.destroyed_entities[data].index()]};
 
         if (id.is_valid() && expr_evaluation_detail::destroyed(id, inputs.ledger, life_states)) {
             leaves_.results[leaf] = true;
@@ -321,7 +301,7 @@ void ConditionManager::evaluate_kills(std::span<LeafIndex const> const run,
         auto const sources{leaves.kill_sources[data]};
         auto const sources_end{sources.end()};
         for (auto index{sources.start()}; index < sources_end; ++index) {
-            auto const id{expr_evaluation_detail::entity(inputs, leaves.kill_entities[index])};
+            auto const id{inputs.entities[leaves.kill_entities[index].index()]};
             if (id.is_valid()) {
                 kills += inputs.ledger.kills(id);
             }
@@ -344,7 +324,7 @@ void ConditionManager::evaluate_reached_position(std::span<LeafIndex const> cons
 
     for (auto const leaf : run) {
         auto const data{leaves.data_handles[leaf].index()};
-        auto const id{expr_evaluation_detail::entity(inputs, leaves.reached_entities[data])};
+        auto const id{inputs.entities[leaves.reached_entities[data].index()]};
         if (!id.is_valid()) {
             continue;
         }
