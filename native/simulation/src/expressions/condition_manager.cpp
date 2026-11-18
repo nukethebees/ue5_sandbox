@@ -222,6 +222,14 @@ auto ConditionManager::destroyed_entity(ExprHandle const expression) const -> Le
 
     return leaves_.destroyed_entities[leaves_.data_handles[index].index()];
 }
+auto ConditionManager::latched_true_value(ExprHandle const expression) const -> ExprHandle {
+    assert(expression.is_valid() && expression.kind() == ExprKind::LatchedTrue);
+    auto const index{expression.index()};
+    assert(index < leaves_.data_handles.size());
+    auto const latch{leaves_.true_latches[leaves_.data_handles[index].index()]};
+    assert(is_valid(latch));
+    return latch_inputs_[latch.index()].value;
+}
 
 /* **************************************** */
 // Composite evaluation

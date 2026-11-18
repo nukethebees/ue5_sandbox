@@ -170,11 +170,15 @@ void TaskManager::add_kill_tasks(ExprHandle const condition,
 
         auto const kind{expression.kind()};
         switch (kind) {
-            case ExprKind::All: {
+            case ExprKind::All:
+            case ExprKind::Any: {
                 auto const children{ctx.conditions.children(expression)};
                 pending.insert(pending.end(), children.rbegin(), children.rend());
                 break;
             }
+            case ExprKind::LatchedTrue:
+                pending.push_back(ctx.conditions.latched_true_value(expression));
+                break;
             case ExprKind::EntityDestroyed: {
                 auto const entity{ctx.conditions.destroyed_entity(expression)};
                 auto const entity_index{entity.index()};

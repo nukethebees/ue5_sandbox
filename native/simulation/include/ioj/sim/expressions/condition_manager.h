@@ -45,6 +45,7 @@ class ConditionManager {
     auto result(ExprHandle expression) const -> bool;
     auto children(ExprHandle expression) const -> std::span<ExprHandle const>;
     auto destroyed_entity(ExprHandle expression) const -> LevelEntityRef;
+    auto latched_true_value(ExprHandle expression) const -> ExprHandle;
     // Return the committed state, excluding pending captures.
     auto latch_state(LatchHandle handle) const -> LatchState;
 

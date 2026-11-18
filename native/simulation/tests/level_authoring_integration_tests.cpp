@@ -3,9 +3,13 @@
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 
+#include <format>
+
 namespace ioj::sim::tests {
-TEST(LevelAuthoringIntegration, BlueFighterDestroysRedCapitalFromWinObjective) {
-    auto const definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
+namespace {
+void expect_fighter_kill_from_objective(std::string_view const win_condition) {
+    auto const definition{
+        levels::authoring::DefinitionReader{}.read_level_source(std::format(R"(
       (level :id 'fighter-kill :title "Fighter kill"
         :camera (camera :look-at '(blue-capital) :offset-direction '(-1 0 0) :distance 1000)
         :settings (settings
@@ -18,7 +22,9 @@ TEST(LevelAuthoringIntegration, BlueFighterDestroysRedCapitalFromWinObjective) {
           (entity :id 'red-capital :archetype 'capital-ship :team 'red
             :position '(20000 0 0) :health 30 :initial-spawn-delay 60 :spawn-cooldown 60))
         :logic (logic
-          (on :when (entity-destroyed 'red-capital) :do (win 'blue)))))")};
+          (define target-dead (entity-destroyed 'red-capital))
+          (on :when {} :do (win 'blue)))))",
+                                                                            win_condition))};
     ASSERT_TRUE(definition) << levels::format_diagnostics(definition.error());
 
     auto built{make_level_simulation_init_data(*definition, make_simulation_data(make_fixture()))};
@@ -39,6 +45,17 @@ TEST(LevelAuthoringIntegration, BlueFighterDestroysRedCapitalFromWinObjective) {
     EXPECT_EQ(ledger.issued_counts()[EntityType::Fighter], 1);
     EXPECT_EQ(ledger.history().life_state()[ledger.history_index(red)], LifeState::Combat);
     EXPECT_EQ(ledger.kills(fighters.entity_ids()[0]), 1u);
+}
+}
+
+TEST(LevelAuthoringIntegration, BlueFighterDestroysRedCapitalFromWinObjective) {
+    expect_fighter_kill_from_objective("target-dead");
+}
+
+TEST(LevelAuthoringIntegration, BlueFighterAttacksTheValueOfALatchedWinCondition) {
+    expect_fighter_kill_from_objective(R"(
+        (latched-true (latch :when (any-of (entity-destroyed 'blue-capital) target-dead)
+                             :value target-dead)))");
 }
 
 TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReferences) {
