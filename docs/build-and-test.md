@@ -37,7 +37,7 @@ Run tool tests only when tools or shared tool infrastructure change.
 
 | Scope | Command |
 | --- | --- |
-| Simulation, including soak | `cmake --workflow --preset native-simulation-full-tests` |
+| Simulation | `cmake --workflow --preset native-simulation-tests` |
 | All native tests, including soak and compile contracts | `cmake --workflow --preset native-tests` |
 | Developer tools | `cmake --workflow --preset tool-tests` |
 | Generated inputs | `coj presets --check`; build target `check-generated-code` |

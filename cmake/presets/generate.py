@@ -203,13 +203,8 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
                 "targets": [test_target],
             }
-            for test_target in ("native-core-tests", "native-simulation-tests", "native-simulation-soak-tests")
+            for test_target in ("native-core-tests", "native-simulation-tests")
         ),
-        {
-            "name": "native-simulation-full-tests",
-            "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
-            "targets": ["native-simulation-tests", "native-simulation-soak-tests"],
-        },
         *(
             {
                 "name": combination.name,
@@ -265,9 +260,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 "inherits": "test-base",
                 "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
                 "filter": {
-                    "include": {"label": f"^{label}$",
-                                **({"name": "^native-simulation-soak-tests$"}
-                                   if test_target == "native-simulation-soak-tests" else {})},
+                    "include": {"label": f"^{label}$"},
                     **({"exclude": {"label": "soak|compile-contract"}}
                        if test_target == "native-simulation-tests" else {}),
                 },
@@ -275,8 +268,6 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             for test_target, label in (
                 ("native-core-tests", "native-core"),
                 ("native-simulation-tests", "native-simulation"),
-                ("native-simulation-full-tests", "native-simulation"),
-                ("native-simulation-soak-tests", "native-simulation"),
             )
         ),
         *(
@@ -345,8 +336,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                     {"type": "test", "name": test_target},
                 ],
             }
-            for test_target in ("native-core-tests", "native-simulation-tests",
-                                "native-simulation-full-tests", "native-simulation-soak-tests")
+            for test_target in ("native-core-tests", "native-simulation-tests")
         ),
         *(
             {

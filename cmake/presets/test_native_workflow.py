@@ -569,23 +569,17 @@ class NativeWorkflowTests(unittest.TestCase):
         self.assertEqual(unreal_test_presets["debug-game-unit-tests"]["filter"]["exclude"]["label"],
                          "^developer-tool$")
 
-    def test_simulation_presets_separate_iteration_from_final_validation(self) -> None:
+    def test_simulation_workflow_builds_and_runs_the_simulation_suite(self) -> None:
         builds = {preset["name"]: preset for preset in self.presets["buildPresets"]}
         tests = {preset["name"]: preset for preset in self.presets["testPresets"]}
         workflows = {preset["name"]: preset for preset in self.presets["workflowPresets"]}
-        normal, soak, full = "native-simulation-tests", "native-simulation-soak-tests", "native-simulation-full-tests"
-        self.assertEqual(builds[normal]["targets"], [normal])
-        self.assertEqual(builds[soak]["targets"], [soak])
-        self.assertEqual(builds[full]["targets"], [normal, soak])
-        self.assertEqual(tests[normal]["filter"], {
+        name = "native-simulation-tests"
+        self.assertEqual(builds[name]["targets"], [name])
+        self.assertEqual(tests[name]["filter"], {
             "include": {"label": "^native-simulation$"}, "exclude": {"label": "soak|compile-contract"}})
-        self.assertEqual(tests[full]["filter"], {"include": {"label": "^native-simulation$"}})
-        self.assertEqual(tests[soak]["filter"], {
-            "include": {"label": "^native-simulation$", "name": "^native-simulation-soak-tests$"}})
-        for name in (normal, soak, full):
-            self.assertEqual(workflows[name]["steps"], [
-                {"type": "configure", "name": "native"}, {"type": "build", "name": name},
-                {"type": "test", "name": name}])
+        self.assertEqual(workflows[name]["steps"], [
+            {"type": "configure", "name": "native"}, {"type": "build", "name": name},
+            {"type": "test", "name": name}])
 
     def test_native_target_dry_run_has_no_unreal_dependency(self) -> None:
         with tempfile.TemporaryDirectory(
@@ -595,7 +589,7 @@ class NativeWorkflowTests(unittest.TestCase):
             policy_check = Path(temporary_root) / "check_simulation_policy.cmake"
             policy_check.write_text('''
 function(check_simulation_policy)
-  foreach(target IN ITEMS native-simulation native-simulation-tests native-simulation-soak-tests)
+  foreach(target IN ITEMS native-simulation native-simulation-tests)
     get_target_property(runtime ${target} MSVC_RUNTIME_LIBRARY)
     get_target_property(warnings ${target} COMPILE_WARNING_AS_ERROR)
     if(NOT runtime STREQUAL "MultiThreadedDLL" OR
@@ -691,7 +685,7 @@ cmake_language(DEFER CALL check_simulation_policy)
             self.assertNotRegex(dry_run, r"(?i)(?:^|[\\/\s])unreal(?:[\\/\s]|$)")
             self.assertNotIn("layout-planner-ui-tests", dry_run)
             self.assertNotIn("image-lab-tests", dry_run)
-            self.assertIn("native-simulation-soak-tests", dry_run)
+            self.assertIn("native-simulation-tests", dry_run)
             self.check_test_inventory(build_directory)
 
             test_file = (build_directory / "native/core/CTestTestfile.cmake").read_text(encoding="utf-8")
@@ -736,7 +730,7 @@ cmake_language(DEFER CALL check_simulation_policy)
 
         native = inventory("-L", "^native$")
         tools = inventory("-L", "^developer-tool$")
-        self.assertTrue({"native-simulation-tests", "native-simulation-soak-tests"} <= native.keys())
+        self.assertTrue({"native-simulation-tests"} <= native.keys())
         self.assertFalse(native.keys() & tools.keys())
         self.assertFalse(inventory("-L", "^all$").keys() & tools.keys())
         expected_tools = {"native-layout-tests", "layout-exported-probe", "layout-planner-ui-tests", "image-lab-tests"}
@@ -746,7 +740,7 @@ cmake_language(DEFER CALL check_simulation_policy)
         self.assertEqual(inventory("-L", "^native-simulation$", "-LE", "soak|compile-contract").keys(),
                          {"native-simulation-tests"})
         self.assertEqual(inventory("-L", "^native-simulation$").keys(),
-                         {"native-simulation-tests", "native-simulation-soak-tests"})
+                         {"native-simulation-tests"})
         self.assertIn("CMake.RustHostTools", inventory("-L", "^cmake$"))
         workflow = inventory("-R", "^CMake.NativeWorkflow$")["CMake.NativeWorkflow"]
         root_argument = next(arg for arg in workflow["command"] if arg.startswith("--llvm-root="))

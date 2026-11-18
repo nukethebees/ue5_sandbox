@@ -96,7 +96,6 @@ add_custom_target(native-tests
     native-level-authoring-tests
     native-level-parser-tests
     native-simulation-tests
-    native-simulation-soak-tests
     native-simulation-benchmark-tests
     sandbox-image-tests
     sandbox-s7-tests

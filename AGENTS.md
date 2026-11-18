@@ -46,7 +46,7 @@ Unreal Engine 5.8 project.
 * After worktree preparation, build affected targets and run relevant CTest labels. Fast loop:
   `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"`.
   Run applicable expensive categories once against the final candidate.
-  `native-simulation-tests` runs ordinary tests; `native-simulation-full-tests` adds the soak.
+  `native-simulation-tests` runs the simulation suite.
   `native-tests` includes native soak/compile contracts, excluding standalone developer tools.
 * Run light, relevant tests after implementation and expensive relevant gates once on the final
   candidate. Do not build Unreal for tooling/native work without a dependency reason.

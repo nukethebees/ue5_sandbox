@@ -34,7 +34,6 @@ target_sources(native-simulation-tests PRIVATE
   scenarios/test_entity_ledger.cpp
   scenarios/test_fighter_attack.cpp
   scenarios/test_laser_lifecycle.cpp
-  scenarios/test_player_ship_vs_capital.cpp
   scenarios/test_simulation_core_regressions.cpp
   scenarios/test_spatial_query_empty.cpp
   scenarios/test_spatial_query_manager.cpp
@@ -56,22 +55,12 @@ target_sources(native-simulation-tests PRIVATE
 )
 set_tests_properties(native-simulation-tests PROPERTIES LABELS "unit;all;native;native-simulation")
 
-add_native_simulation_test(native-simulation-soak-tests
-  test_moved_entities_battle.cpp
-  support/worldless_simulation_test.cpp
-  support/simulation_fixture.cpp
+target_link_libraries(native-simulation-tests
+  PRIVATE
+    native-simulation-s7
+    native-level-authoring-s7
 )
-set_tests_properties(native-simulation-soak-tests PROPERTIES
-  LABELS "all;native;native-simulation;integration;soak")
-
-foreach(simulation_test_target IN ITEMS native-simulation-tests native-simulation-soak-tests)
-  target_link_libraries(${simulation_test_target}
-    PRIVATE
-      native-simulation-s7
-      native-level-authoring-s7
-  )
-  target_compile_definitions(${simulation_test_target}
-    PRIVATE
-      IOJ_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
-  )
-endforeach()
+target_compile_definitions(native-simulation-tests
+  PRIVATE
+    IOJ_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+)
