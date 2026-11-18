@@ -13,9 +13,6 @@ void CombatStatistics::reset() noexcept {
 void CombatStatistics::record_spawn(Team const team,
                                     EntityType const type,
                                     bool const alive) noexcept {
-    assert(is_valid(team));
-    assert(is_valid(type));
-
     if (alive) {
         adjust_alive_count(team, type, 1);
     }
