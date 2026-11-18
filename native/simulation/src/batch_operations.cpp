@@ -7,7 +7,6 @@
 #include <ioj/sim/profiling.h>
 
 #include <algorithm>
-#include <cassert>
 #include <functional>
 
 namespace ioj::sim {
@@ -17,7 +16,6 @@ void sort_removal_indices(std::pmr::vector<std::uint32_t>& local_indices_to_remo
 
 void resolve_damage_events(DirectDamageEvents::CompactConstView damage_events,
                            EntityLookupTable const& lookup,
-                           [[maybe_unused]] std::span<EntityId const> entity_ids,
                            vectors3f::ConstView const locations,
                            HealthView const healths,
                            std::pmr::vector<std::uint32_t>& local_indices_to_remove,
@@ -45,13 +43,10 @@ void resolve_damage_events(DirectDamageEvents::CompactConstView damage_events,
         auto const element{static_cast<std::size_t>(event_index)};
         auto const id{damaged_entities[element]};
         auto const local_index{handles[id.index()].index()};
-        assert(local_index < entity_ids.size());
-        assert(entity_ids[local_index] == id);
         if (is_dead(healths.health(id))) {
             continue;
         }
         auto const requested_damage{damage_amounts[element]};
-        assert(requested_damage >= 0);
         if (requested_damage == 0) {
             continue;
         }

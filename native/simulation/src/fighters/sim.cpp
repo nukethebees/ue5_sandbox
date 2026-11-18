@@ -434,7 +434,6 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     auto const damage_events{inputs.damage_queue.events_for(EntityType::Fighter)};
     sim::resolve_damage_events(damage_events,
                                inputs.entity_tables.lookups.for_type(EntityType::Fighter),
-                               data.entity_ids(),
                                data.view_locations().const_view().resolve(),
                                healths,
                                inputs.local_indices_to_remove,

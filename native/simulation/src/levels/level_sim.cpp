@@ -13,6 +13,7 @@
 #include <ioj/sim/tasks/task_allocation_context.h>
 #include <ioj/sim/turrets/phase_interface.h>
 
+#include <algorithm>
 #include <cassert>
 #include <optional>
 #include <utility>
@@ -359,6 +360,8 @@ void LevelSim::advance_tick(float const tick_period,
                 EntityDeathInfo turret_deaths{phase_memory};
 
                 damage_queue_.prepare(entity_tables_.lookups, &phase_memory);
+                assert(std::ranges::all_of(damage_queue_.all_events().const_view().damage_amounts(),
+                                           [](auto amount) { return amount >= 0; }));
 
                 capital_ships::ResolutionInputs const capital_inputs{
                     damage_queue_,

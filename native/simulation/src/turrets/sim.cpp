@@ -216,7 +216,6 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     auto const healths{entity_tables_.health.view<EntityType::Turret>()};
     sim::resolve_damage_events(inputs.damage_queue.events_for(EntityType::Turret),
                                entity_tables_.lookups.for_type(EntityType::Turret),
-                               entities.entity_ids(),
                                entities.view_locations().const_view().resolve(),
                                healths,
                                inputs.local_indices_to_remove,

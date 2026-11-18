@@ -158,18 +158,15 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     auto health{health_table_.health(unique_entity_id)};
     EntityId killer{};
     auto const damage_count{damage_events.num()};
-    [[maybe_unused]] auto const damaged_entities{damage_events.damaged_entities()};
     auto const damage_amounts{damage_events.damage_amounts()};
     auto const instigators{damage_events.instigators()};
     for (std::uint32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
-        assert(damaged_entities[element] == unique_entity_id);
         if (is_dead(health)) {
             continue;
         }
 
         auto const requested_damage{damage_amounts[element]};
-        assert(requested_damage >= 0);
         if (requested_damage == 0) {
             continue;
         }

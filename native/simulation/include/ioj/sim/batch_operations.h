@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <memory_resource>
-#include <span>
 #include <vector>
 
 namespace ioj::sim {
@@ -19,7 +18,6 @@ void sort_removal_indices(std::pmr::vector<std::uint32_t>& local_indices_to_remo
 // Earlier events in this batch may already have killed a recipient.
 void resolve_damage_events(DirectDamageEvents::CompactConstView damage_events,
                            EntityLookupTable const& lookup,
-                           [[maybe_unused]] std::span<EntityId const> entity_ids,
                            vectors3f::ConstView locations,
                            HealthView healths,
                            std::pmr::vector<std::uint32_t>& local_indices_to_remove,

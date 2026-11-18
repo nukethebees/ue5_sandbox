@@ -111,7 +111,6 @@ TEST(DamageResolution, SkipsRetiredAndAlreadyDeadRecipients) {
         FrameScratchScope scratch_scope{frame_memory};
         resolve_damage_events(events.events_for(EntityType::Fighter),
                               indexes.for_type(EntityType::Fighter),
-                              ids,
                               locations.const_view().resolve(),
                               health_table.view<EntityType::Fighter>(),
                               removals,
