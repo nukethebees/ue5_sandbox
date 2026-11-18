@@ -315,12 +315,9 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
     tests::add_turret_spawn(data, Vector3f{500.f, 500.f, 0.f}, {}, Team::Blue);
     tests::add_spinner_spawn(data, Vector3f{1500.f, 1500.f, 0.f}, 0.f, 0);
 
-    tests::WorldlessSimulationTest harness{std::move(data).compile()};
-
-    harness.timeline.finish_at(0.1);
-    ASSERT_TRUE(harness.run_until_timeline_finished(1.0)) << "Collision-grid timeline completes";
-
-    auto& simulation{harness.simulation()};
+    LevelSim simulation{std::move(data).compile()};
+    simulation.start();
+    simulation.advance(0.1);
     auto const* const player{simulation.player_ship_simulation()};
     auto const fighter_ids{simulation.fighters().entities().entity_ids()};
     ASSERT_NE(player, nullptr) << "Collision-grid player ship is available";

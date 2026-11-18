@@ -20,10 +20,4 @@ void check_health_decreased(int32 const before,
     checks.is_true(after < before, description);
 }
 
-void check_samples_recorded(int32 const sample_count,
-                            FSoftTestAssertions& checks,
-                            FString const& description) {
-    checks.is_greater_than(sample_count, int32{0}, description);
-}
-
 }

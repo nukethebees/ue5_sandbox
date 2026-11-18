@@ -1,6 +1,7 @@
 #pragma once
 #include "simulation_fixture.h"
-#include <ioj/test_timeline.h>
+
+#include <functional>
 
 namespace ioj::sim::tests {
 class WorldlessSimulationTest {
@@ -16,10 +17,7 @@ class WorldlessSimulationTest {
                       EntityId instigator = {});
     void queue_kills(std::span<EntityId const> targets, EntityId instigator = {});
     void advance(time_type dt);
-    auto run_until_timeline_finished(time_type maximum_time) -> bool;
     std::function<void(LevelSim&)> on_end_tick;
-    FTestTimeline timeline;
-    fighters::NavigationCounters navigation_counters;
   private:
     LevelSim simulation_;
 };

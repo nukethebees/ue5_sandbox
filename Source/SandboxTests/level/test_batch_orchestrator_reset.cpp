@@ -60,11 +60,6 @@ auto FTestBatchOrchestratorResetScenario::is_core_runtime_actor(AActor const& ac
                         APhysicsVolume>(actor);
 }
 
-void FTestBatchOrchestratorResetScenario::save_old_owned_actors(
-    ATestBatchOrchestrator const& orchestrator) {
-    old_owned_actors[0] = const_cast<ATestSpaceShip*>(orchestrator.get_player_ship());
-}
-
 void FTestBatchOrchestratorResetScenario::save_old_transient_actors(
     ATestBatchOrchestrator const& orchestrator) {
     for (TActorIterator<AActor> it{test_driver->get_world()}; it; ++it) {
@@ -93,7 +88,7 @@ void FTestBatchOrchestratorResetScenario::start_initial_simulation() {
 void FTestBatchOrchestratorResetScenario::reset_simulation() {
     initial_actor_count = count_actors(*test_driver->get_world());
     initial_ledger_alive = test_driver->get_ledger().count_alive();
-    save_old_owned_actors(test_driver->orchestrator);
+    old_player = test_driver->orchestrator.get_player_ship();
     save_old_transient_actors(test_driver->orchestrator);
     auto const resources{
         FTestBatchOrchestratorTestAccess::presentation_resources(test_driver->orchestrator)};
@@ -151,37 +146,21 @@ void FTestBatchOrchestratorResetScenario::check_reset() {
                        i);
     }
 
-    auto const& orchestrator{test_driver->orchestrator};
-    TStaticArray<AActor const*, owned_actor_count> const recreated_owned_actors{
-        orchestrator.get_player_ship(),
-    };
-    for (int32 i{0}; i < owned_actor_count; ++i) {
-        if (old_owned_actors[i] == nullptr) {
-            checks.is_true(
-                recreated_owned_actors[i] == nullptr, TEXT("Null owned actor remains null"), i);
-            continue;
-        }
-
-        checks.is_true(IsValid(recreated_owned_actors[i]), TEXT("Owned actor is recreated"), i);
-        checks.is_true(recreated_owned_actors[i] != old_owned_actors[i],
-                       TEXT("Owned actor has a new address"),
-                       i);
-    }
+    auto const* const player{test_driver->orchestrator.get_player_ship()};
+    checks.is_valid(player, TEXT("Player actor is recreated"));
+    checks.is_true(player != old_player, TEXT("Player actor has a new address"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 
 void FTestBatchOrchestratorResetScenario::run() {
-    TestCommandBuilder.Do([this] { start_initial_simulation(); })
-        .Until(
-            [this] {
-                advance_sample();
-                return test_driver->get_time() >= reset_time;
-            },
-            timeout)
-        .Then([this] { reset_simulation(); })
-        .Then([this] {
-            advance_sample();
-            check_reset();
-        });
+    TestCommandBuilder.Do([this] {
+        start_initial_simulation();
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+        advance_tick();
+        reset_simulation();
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+        advance_tick();
+        check_reset();
+    });
 }
 }

@@ -11,7 +11,6 @@ namespace collision_damage_test {
 inline constexpr std::int32_t player_health{1000};
 inline constexpr std::int32_t capital_health{150};
 inline constexpr std::int32_t overlap_damage{50};
-inline constexpr double duration{0.1};
 }
 
 TEST(WorldlessSpaceGameSimulation, OrchestratorFixedStepPauseResumeAndCatchUp) {
@@ -76,14 +75,6 @@ TEST(WorldlessSpaceGameSimulation, EntitiesNonLethalThenLethalDamageCleansUpAtom
 
 TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     auto const config{tests::make_fixture()};
-    struct Sample {
-        std::int32_t player_health{};
-        std::int32_t capital_health{};
-        std::uint32_t dynamic_overlap_count{};
-        std::uint32_t kill_count{};
-        bool player_alive{};
-    };
-
     tests::SimulationScenario data{tests::make_simulation_data(config)};
     data.runtime.collision.overlap_response.damage_per_overlap_detection =
         Positive<std::int32_t>{collision_damage_test::overlap_damage};
@@ -111,44 +102,30 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     auto const player_id{player->unique_entity_id};
     auto const capital_id{simulation.capital_ships().get_entities().entity_ids()[0]};
     simulation.player_ship_commands()->set_right_input(1.f);
-    TimeSeriesData<Sample> samples;
-    harness.on_end_tick = [&](LevelSim& level) {
-        auto const events{level.spatial_query_manager().aabb_overlap_events()};
-        auto const capital{observe_entity(level, capital_id)};
-        auto const kills{harness.ledger().history().kills()};
-        auto const& counts{harness.ledger().issued_counts()};
-        std::uint32_t kill_count{};
-        for (auto const type : EnumTraits<EntityType>::values) {
-            auto const issued_kills{kills.subspan(entity_identity_offsets[type], counts[type])};
-            kill_count = std::ranges::fold_left(issued_kills, kill_count, std::plus{});
-        }
-        samples.add(harness.time(),
-                    Sample{
-                        .player_health = player->health().health.value(),
-                        .capital_health = capital ? capital->health.value() : 0,
-                        .dynamic_overlap_count = events.entity_entity_overlaps.num(),
-                        .kill_count = kill_count,
-                        .player_alive = entity_is_alive(level, player_id),
-                    });
-    };
-    harness.timeline.finish_after(collision_damage_test::duration);
-    ASSERT_TRUE(harness.run_until_timeline_finished(2.0)) << "Collision damage timeline completes";
-    ASSERT_GT(samples.num(), 2) << "Three collision ticks are recorded";
-
+    simulation.start();
+    auto const dt{simulation.clock().tick_period()};
     for (std::int32_t index{}; index < 3; ++index) {
         SCOPED_TRACE(index);
-        auto const& sample{samples.value_at(index)};
+        simulation.advance(dt);
+        auto const events{simulation.spatial_query_manager().aabb_overlap_events()};
+        auto const capital{observe_entity(simulation, capital_id)};
         auto const damage{(index + 1) * collision_damage_test::overlap_damage};
-        EXPECT_EQ(sample.dynamic_overlap_count, 1);
-        EXPECT_EQ(sample.player_health, collision_damage_test::player_health - damage);
-        EXPECT_EQ(sample.capital_health,
+        EXPECT_EQ(events.entity_entity_overlaps.num(), 1);
+        EXPECT_EQ(player->health().health.value(), collision_damage_test::player_health - damage);
+        EXPECT_EQ(capital ? capital->health.value() : 0,
                   index == 2 ? 0 : collision_damage_test::capital_health - damage);
     }
-    auto const& third{samples.value_at(2)};
-    EXPECT_TRUE(third.player_alive) << "Player survives the third overlap tick";
-    EXPECT_TRUE(!entity_is_alive(harness.simulation(), capital_id))
+    EXPECT_TRUE(entity_is_alive(simulation, player_id)) << "Player survives the third overlap tick";
+    EXPECT_FALSE(entity_is_alive(simulation, capital_id))
         << "Capital death commits in the third overlap tick";
-    EXPECT_EQ(0, third.kill_count) << "Collision death grants no combat kill";
+    auto const kills{harness.ledger().history().kills()};
+    auto const& counts{harness.ledger().issued_counts()};
+    std::uint32_t kill_count{};
+    for (auto const type : EnumTraits<EntityType>::values) {
+        auto const issued_kills{kills.subspan(entity_identity_offsets[type], counts[type])};
+        kill_count = std::ranges::fold_left(issued_kills, kill_count, std::plus{});
+    }
+    EXPECT_EQ(0, kill_count) << "Collision death grants no combat kill";
     EXPECT_TRUE(
         harness.ledger().history().life_state()[harness.ledger().history_index(capital_id)] ==
         LifeState::Unknown)

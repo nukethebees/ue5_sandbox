@@ -16,7 +16,4 @@ void check_health_decreased(int32 before,
                             int32 after,
                             FSoftTestAssertions& checks,
                             FString const& description);
-void check_samples_recorded(int32 sample_count,
-                            FSoftTestAssertions& checks,
-                            FString const& description);
 }

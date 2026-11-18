@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <array>
 #include <expected>
+#include <optional>
 
 namespace s7_level_authoring_tests {
 struct FTemporarySourceDirectory {
@@ -71,6 +72,127 @@ auto entity(ioj::levels::LevelDefinition const& definition, std::string_view con
         std::ranges::find_if(entities, [id](auto const& value) { return value.id.value == id; })};
     return found == entities.end() ? nullptr : &*found;
 }
+struct FComposedLevelFixture {
+    UWorld* world;
+    AS7LevelAuthoringDocument* document;
+    FString generated_path;
+    FString human_source;
+    ioj::levels::LevelDefinition definition;
+};
+
+auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory const& directory)
+    -> std::optional<FComposedLevelFixture> {
+    using namespace ioj::levels;
+    using ioj::Team;
+    auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
+    if (!test.TestNotNull(TEXT("Editor world"), world)) {
+        return std::nullopt;
+    }
+    auto& level{*world->GetCurrentLevel()};
+    auto created{ioj::editor::create_level_authoring_document(level, directory.root())};
+    if (!assert_success(test, TEXT("Create authoring document"), created)) {
+        return std::nullopt;
+    }
+    auto& document{**created};
+    auto baseline{ioj::editor::read_s7_editor_input(document)};
+    if (!assert_success(test, TEXT("Read generated baseline"), baseline)) {
+        return std::nullopt;
+    }
+    baseline->id = LevelId{"export-test"};
+    baseline->title = "Export test";
+    baseline->player = EntityId{"player"};
+    baseline->entities = {
+        {.id = EntityId{"player"}, .archetype = EntityArchetype::PlayerFighter, .team = Team::Blue},
+        {.id = EntityId{"capital"},
+         .archetype = EntityArchetype::CapitalShip,
+         .team = Team::Red,
+         .position = {100000., 0., 0.}},
+        {.id = EntityId{"turret"},
+         .archetype = EntityArchetype::StaticTurret,
+         .team = Team::Blue,
+         .position = {-100000., 0., 0.}},
+        {.id = EntityId{"spinner"},
+         .archetype = EntityArchetype::TubeSpinner,
+         .team = Team::White,
+         .position = {300000., 0., 0.}},
+    };
+    auto const generated_path{ioj::editor::s7_editor_config_path(document)};
+    auto const human_source{
+        FString{TEXT("; Human-owned source must survive editor export.\n"
+                     "(let ((base (load-script \"Authoring/editor-config.scm\")))\n"
+                     "  (level-with base\n"
+                     "    :entities (append (level-ref base :entities)\n"
+                     "      (list (entity :id 'human :archetype 'capital-ship :team 'red\n"
+                     "        :position '(600000 0 0) :initial-spawn-delay 60)))\n"
+                     "    :logic (logic\n"
+                     "      (on :when (entity-destroyed 'capital)\n"
+                     "          :do (win 'blue)))))\n")}};
+    if (!test.TestTrue(TEXT("Write initial generated records"),
+                       write_source(generated_path,
+                                    ioj::to_fstring(authoring::emit_level_source(*baseline)))) ||
+        !test.TestTrue(TEXT("Write composed human root"),
+                       write_source(directory.root(), human_source))) {
+        return std::nullopt;
+    }
+    auto definition{ioj::editor::read_s7_authored_level(document)};
+    if (!assert_success(test, TEXT("Read composed level"), definition) ||
+        !assert_success(test,
+                        TEXT("Materialize composed level"),
+                        ioj::editor::import_s7_level(level, document, *definition))) {
+        return std::nullopt;
+    }
+    auto* const player_binding{binding(document, TEXT("player"))};
+    auto* const capital_binding{binding(document, TEXT("capital"))};
+    auto* const turret_binding{binding(document, TEXT("turret"))};
+    auto* const spinner_binding{binding(document, TEXT("spinner"))};
+    auto* const human_binding{binding(document, TEXT("human"))};
+    if (!test.TestNotNull(TEXT("Player binding"), player_binding) ||
+        !test.TestNotNull(TEXT("Capital binding"), capital_binding) ||
+        !test.TestNotNull(TEXT("Turret binding"), turret_binding) ||
+        !test.TestNotNull(TEXT("Spinner binding"), spinner_binding) ||
+        !test.TestNotNull(TEXT("Human binding"), human_binding)) {
+        return std::nullopt;
+    }
+    test.TestTrue(TEXT("Generated entities are exported"),
+                  player_binding->export_to_script && capital_binding->export_to_script &&
+                      turret_binding->export_to_script && spinner_binding->export_to_script);
+    test.TestFalse(TEXT("Human entity is not exported"), human_binding->export_to_script);
+    auto* const capital{Cast<ioj::ATestCapitalShipProxy>(capital_binding->actor)};
+    auto* const turret{Cast<ioj::ATestStaticTurretsProxy>(turret_binding->actor)};
+    auto* const spinner{Cast<ioj::ATestTubeSpinnerProxy>(spinner_binding->actor)};
+    if (!test.TestNotNull(TEXT("Capital proxy"), capital) ||
+        !test.TestNotNull(TEXT("Turret proxy"), turret) ||
+        !test.TestNotNull(TEXT("Spinner proxy"), spinner) ||
+        !test.TestTrue(TEXT("Spinner has multiple fire points"),
+                       document.level_config->tube_spinners.fire_point_offsets.Num() > 1)) {
+        return std::nullopt;
+    }
+    CastChecked<ioj::ATestSpaceShip>(player_binding->actor)->health_override = 123;
+    capital->spawn_time_seconds = 0.1;
+    capital->SetActorLocation(FVector{100000.123456789, 42.125, 100.5});
+    capital->SetActorRotation(FRotator{10., 20., 30.});
+    capital->health = 456;
+    capital->initial_spawn_delay = 7.25f;
+    capital->spawn_cooldown = 9.5f;
+    turret->health = 789;
+    turret->laser_damage = 321;
+    spinner->SetActorRotation(FRotator{0., 45., 0.});
+    spinner->initial_fire_point = 1;
+    human_binding->actor->SetActorLocation(FVector{700000., 0., 0.});
+
+    if (!assert_success(test,
+                        TEXT("Export editor-owned records"),
+                        ioj::editor::export_s7_editor_config(level, document))) {
+        return std::nullopt;
+    }
+    auto exported_definition{ioj::editor::read_s7_authored_level(document)};
+    if (!assert_success(test, TEXT("Recompose exported level"), exported_definition)) {
+        return std::nullopt;
+    }
+    return FComposedLevelFixture{
+        world, &document, generated_path, human_source, std::move(*exported_definition)};
+}
+
 }
 
 TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
@@ -196,119 +318,19 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                  exported_player.health->get().value() == 123);
     }
 
-    TEST_METHOD(ExportComposesWithHumanSourceAndPreservesOwnership)
+    TEST_METHOD(ExportComposesWithHumanSourceAndPreservesPrecision)
     {
         using namespace s7_level_authoring_tests;
-        using namespace ioj::levels;
-        using ioj::Team;
         FTemporarySourceDirectory directory;
-        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        if (!TestRunner->TestNotNull(TEXT("Editor world"), world)) {
+        auto fixture{make_composed_fixture(*TestRunner, directory)};
+        if (!fixture) {
             return;
         }
-        auto& level{*world->GetCurrentLevel()};
-        auto created{ioj::editor::create_level_authoring_document(level, directory.root())};
-        if (!assert_success(*TestRunner, TEXT("Create authoring document"), created)) {
-            return;
-        }
-        auto& document{**created};
-        auto baseline{ioj::editor::read_s7_editor_input(document)};
-        if (!assert_success(*TestRunner, TEXT("Read generated baseline"), baseline)) {
-            return;
-        }
-        baseline->id = LevelId{"export-test"};
-        baseline->title = "Export test";
-        baseline->player = EntityId{"player"};
-        baseline->entities = {
-            {.id = EntityId{"player"},
-             .archetype = EntityArchetype::PlayerFighter,
-             .team = Team::Blue},
-            {.id = EntityId{"capital"},
-             .archetype = EntityArchetype::CapitalShip,
-             .team = Team::Red,
-             .position = {100000., 0., 0.}},
-            {.id = EntityId{"turret"},
-             .archetype = EntityArchetype::StaticTurret,
-             .team = Team::Blue,
-             .position = {-100000., 0., 0.}},
-            {.id = EntityId{"spinner"},
-             .archetype = EntityArchetype::TubeSpinner,
-             .team = Team::White,
-             .position = {300000., 0., 0.}},
-        };
-        auto const generated_path{ioj::editor::s7_editor_config_path(document)};
-        auto const human_source{
-            FString{TEXT("; Human-owned source must survive editor export.\n"
-                         "(let ((base (load-script \"Authoring/editor-config.scm\")))\n"
-                         "  (level-with base\n"
-                         "    :entities (append (level-ref base :entities)\n"
-                         "      (list (entity :id 'human :archetype 'capital-ship :team 'red\n"
-                         "        :position '(600000 0 0) :initial-spawn-delay 60)))\n"
-                         "    :logic (logic\n"
-                         "      (on :when (entity-destroyed 'capital)\n"
-                         "          :do (win 'blue)))))\n")}};
-        if (!TestRunner->TestTrue(
-                TEXT("Write initial generated records"),
-                write_source(generated_path,
-                             ioj::to_fstring(authoring::emit_level_source(*baseline)))) ||
-            !TestRunner->TestTrue(TEXT("Write composed human root"),
-                                  write_source(directory.root(), human_source))) {
-            return;
-        }
-        auto definition{ioj::editor::read_s7_authored_level(document)};
-        if (!assert_success(*TestRunner, TEXT("Read composed level"), definition) ||
-            !assert_success(*TestRunner,
-                            TEXT("Materialize composed level"),
-                            ioj::editor::import_s7_level(level, document, *definition))) {
-            return;
-        }
-        auto* const player_binding{binding(document, TEXT("player"))};
-        auto* const capital_binding{binding(document, TEXT("capital"))};
-        auto* const turret_binding{binding(document, TEXT("turret"))};
-        auto* const spinner_binding{binding(document, TEXT("spinner"))};
-        auto* const human_binding{binding(document, TEXT("human"))};
-        if (!TestRunner->TestNotNull(TEXT("Player binding"), player_binding) ||
-            !TestRunner->TestNotNull(TEXT("Capital binding"), capital_binding) ||
-            !TestRunner->TestNotNull(TEXT("Turret binding"), turret_binding) ||
-            !TestRunner->TestNotNull(TEXT("Spinner binding"), spinner_binding) ||
-            !TestRunner->TestNotNull(TEXT("Human binding"), human_binding)) {
-            return;
-        }
-        TestRunner->TestTrue(
-            TEXT("Generated entities are exported"),
-            player_binding->export_to_script && capital_binding->export_to_script &&
-                turret_binding->export_to_script && spinner_binding->export_to_script);
-        TestRunner->TestFalse(TEXT("Human entity is not exported"),
-                              human_binding->export_to_script);
-        auto* const capital{Cast<ioj::ATestCapitalShipProxy>(capital_binding->actor)};
-        auto* const turret{Cast<ioj::ATestStaticTurretsProxy>(turret_binding->actor)};
-        auto* const spinner{Cast<ioj::ATestTubeSpinnerProxy>(spinner_binding->actor)};
-        if (!TestRunner->TestNotNull(TEXT("Capital proxy"), capital) ||
-            !TestRunner->TestNotNull(TEXT("Turret proxy"), turret) ||
-            !TestRunner->TestNotNull(TEXT("Spinner proxy"), spinner) ||
-            !TestRunner->TestTrue(TEXT("Spinner has multiple fire points"),
-                                  document.level_config->tube_spinners.fire_point_offsets.Num() >
-                                      1)) {
-            return;
-        }
-        CastChecked<ioj::ATestSpaceShip>(player_binding->actor)->health_override = 123;
-        capital->spawn_time_seconds = 0.1;
-        capital->SetActorLocation(FVector{100000.123456789, 42.125, 100.5});
-        capital->SetActorRotation(FRotator{10., 20., 30.});
-        capital->health = 456;
-        capital->initial_spawn_delay = 7.25f;
-        capital->spawn_cooldown = 9.5f;
-        turret->health = 789;
-        turret->laser_damage = 321;
-        spinner->SetActorRotation(FRotator{0., 45., 0.});
-        spinner->initial_fire_point = 1;
-        human_binding->actor->SetActorLocation(FVector{700000., 0., 0.});
-
-        if (!assert_success(*TestRunner,
-                            TEXT("Export editor-owned records"),
-                            ioj::editor::export_s7_editor_config(level, document))) {
-            return;
-        }
+        auto& document{*fixture->document};
+        auto& level{*fixture->world->GetCurrentLevel()};
+        auto const& definition{fixture->definition};
+        auto const& generated_path{fixture->generated_path};
+        auto const& human_source{fixture->human_source};
         FString saved_root;
         TestRunner->TestTrue(TEXT("Read human source"),
                              FFileHelper::LoadFileToString(saved_root, *directory.root()));
@@ -319,17 +341,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         TestRunner->TestEqual(
             TEXT("Only four entities are exported"), exported->entities.size(), size_t{4});
-        definition = ioj::editor::read_s7_authored_level(document);
-        if (!assert_success(*TestRunner, TEXT("Recompose exported level"), definition)) {
-            return;
-        }
         TestRunner->TestEqual(
-            TEXT("Human entity appears once"), definition->entities().size(), size_t{5});
-        auto const* saved_capital{entity(*definition, "capital")};
-        auto const* saved_turret{entity(*definition, "turret")};
-        auto const* saved_spinner{entity(*definition, "spinner")};
-        auto const* saved_player{entity(*definition, "player")};
-        auto const* saved_human{entity(*definition, "human")};
+            TEXT("Human entity appears once"), definition.entities().size(), size_t{5});
+        auto const* saved_capital{entity(definition, "capital")};
+        auto const* saved_turret{entity(definition, "turret")};
+        auto const* saved_spinner{entity(definition, "spinner")};
+        auto const* saved_player{entity(definition, "player")};
+        auto const* saved_human{entity(definition, "human")};
         if (!TestRunner->TestTrue(TEXT("Stable authored IDs survive export"),
                                   saved_capital && saved_turret && saved_spinner && saved_player &&
                                       saved_human)) {
@@ -375,8 +393,106 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Unchanged output is not rewritten"),
                               IFileManager::Get().GetTimeStamp(*generated_path),
                               written_at);
-        auto compiled{
-            ioj::editor::compile_playable_s7_definition(*definition, *document.level_config)};
+    }
+
+    TEST_METHOD(ImportRestoresExportedProperties)
+    {
+        using namespace s7_level_authoring_tests;
+        FTemporarySourceDirectory directory;
+        auto fixture{make_composed_fixture(*TestRunner, directory)};
+        if (!fixture) {
+            return;
+        }
+        auto& document{*fixture->document};
+        auto& level{*fixture->world->GetCurrentLevel()};
+        auto* const player_binding{binding(document, TEXT("player"))};
+        auto* const capital{
+            CastChecked<ioj::ATestCapitalShipProxy>(binding(document, TEXT("capital"))->actor)};
+        auto* const turret{
+            CastChecked<ioj::ATestStaticTurretsProxy>(binding(document, TEXT("turret"))->actor)};
+        auto* const spinner{
+            CastChecked<ioj::ATestTubeSpinnerProxy>(binding(document, TEXT("spinner"))->actor)};
+        capital->health.Reset();
+        capital->initial_spawn_delay.Reset();
+        capital->spawn_cooldown.Reset();
+        capital->spawn_time_seconds = 0.;
+        turret->health.Reset();
+        turret->laser_damage.Reset();
+        spinner->initial_fire_point.Reset();
+        CastChecked<ioj::ATestSpaceShip>(player_binding->actor)->health_override.Reset();
+        if (!assert_success(*TestRunner,
+                            TEXT("Refresh composed scene"),
+                            ioj::editor::import_s7_level(level, document, fixture->definition))) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Import restores capital properties on the proxy"),
+                             capital->health == 456 && capital->initial_spawn_delay == 7.25f &&
+                                 capital->spawn_cooldown == 9.5f &&
+                                 capital->spawn_time_seconds == 0.1);
+        TestRunner->TestTrue(TEXT("Import restores turret and spinner properties on the proxies"),
+                             turret->health == 789 && turret->laser_damage == 321 &&
+                                 spinner->initial_fire_point == 1);
+        TestRunner->TestTrue(
+            TEXT("Import restores the player authoring override"),
+            CastChecked<ioj::ATestSpaceShip>(binding(document, TEXT("player"))->actor)
+                    ->health_override == 123);
+    }
+
+    TEST_METHOD(OwnershipChangesPersistAndDuplicateDeclarationsAreRejected)
+    {
+        using namespace s7_level_authoring_tests;
+        FTemporarySourceDirectory directory;
+        auto fixture{make_composed_fixture(*TestRunner, directory)};
+        if (!fixture) {
+            return;
+        }
+        auto& document{*fixture->document};
+        auto& level{*fixture->world->GetCurrentLevel()};
+        auto* const human_binding{binding(document, TEXT("human"))};
+        auto* const previous_human{human_binding->actor.Get()};
+        human_binding->export_to_script = true;
+        if (!assert_success(*TestRunner,
+                            TEXT("Refresh adopted entity"),
+                            ioj::editor::import_s7_level(level, document, fixture->definition))) {
+            return;
+        }
+        auto* const refreshed_human{binding(document, TEXT("human"))};
+        TestRunner->TestTrue(TEXT("Explicit ownership choice persists by ID"),
+                             refreshed_human && refreshed_human->export_to_script &&
+                                 refreshed_human->actor == previous_human);
+        if (!assert_success(
+                *TestRunner,
+                TEXT("Import with new-root ownership"),
+                ioj::editor::import_s7_level(level, document, fixture->definition, true))) {
+            return;
+        }
+        auto* const new_root_human{binding(document, TEXT("human"))};
+        if (!TestRunner->TestNotNull(TEXT("Human binding after root change"), new_root_human)) {
+            return;
+        }
+        TestRunner->TestFalse(TEXT("Root changes discard the previous source's ownership choices"),
+                              new_root_human->export_to_script);
+        new_root_human->export_to_script = true;
+        if (!assert_success(*TestRunner,
+                            TEXT("Export explicitly adopted human entity"),
+                            ioj::editor::export_s7_editor_config(level, document))) {
+            return;
+        }
+        TestRunner->TestFalse(TEXT("Duplicate declaration is reported by normal validation"),
+                              ioj::editor::read_s7_authored_level(document).has_value());
+    }
+
+    TEST_METHOD(ExportedDefinitionSpawnsRuntimeEntities)
+    {
+        using namespace s7_level_authoring_tests;
+        FTemporarySourceDirectory directory;
+        auto fixture{make_composed_fixture(*TestRunner, directory)};
+        if (!fixture) {
+            return;
+        }
+        auto& document{*fixture->document};
+        auto compiled{ioj::editor::compile_playable_s7_definition(fixture->definition,
+                                                                  *document.level_config)};
         if (!assert_success(
                 *TestRunner, TEXT("Compile composed level and expression references"), compiled)) {
             return;
@@ -394,56 +510,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Delayed exported capital spawns"),
                               simulation.capital_ships().num_instances(),
                               uint32{2});
-
-        auto* const previous_human{human_binding->actor.Get()};
-        human_binding->export_to_script = true;
-        capital->health.Reset();
-        capital->initial_spawn_delay.Reset();
-        capital->spawn_cooldown.Reset();
-        capital->spawn_time_seconds = 0.;
-        turret->health.Reset();
-        turret->laser_damage.Reset();
-        spinner->initial_fire_point.Reset();
-        CastChecked<ioj::ATestSpaceShip>(player_binding->actor)->health_override.Reset();
-        if (!assert_success(*TestRunner,
-                            TEXT("Refresh composed scene"),
-                            ioj::editor::import_s7_level(level, document, *definition))) {
-            return;
-        }
-        auto* const refreshed_human{binding(document, TEXT("human"))};
-        TestRunner->TestTrue(TEXT("Import restores capital properties on the proxy"),
-                             capital->health == 456 && capital->initial_spawn_delay == 7.25f &&
-                                 capital->spawn_cooldown == 9.5f &&
-                                 capital->spawn_time_seconds == 0.1);
-        TestRunner->TestTrue(TEXT("Import restores turret and spinner properties on the proxies"),
-                             turret->health == 789 && turret->laser_damage == 321 &&
-                                 spinner->initial_fire_point == 1);
-        TestRunner->TestTrue(
-            TEXT("Import restores the player authoring override"),
-            CastChecked<ioj::ATestSpaceShip>(binding(document, TEXT("player"))->actor)
-                    ->health_override == 123);
-        TestRunner->TestTrue(TEXT("Explicit ownership choice persists by ID"),
-                             refreshed_human && refreshed_human->export_to_script &&
-                                 refreshed_human->actor == previous_human);
-        if (!assert_success(*TestRunner,
-                            TEXT("Import with new-root ownership"),
-                            ioj::editor::import_s7_level(level, document, *definition, true))) {
-            return;
-        }
-        auto* const new_root_human{binding(document, TEXT("human"))};
-        if (!TestRunner->TestNotNull(TEXT("Human binding after root change"), new_root_human)) {
-            return;
-        }
-        TestRunner->TestFalse(TEXT("Root changes discard the previous source's ownership choices"),
-                              new_root_human->export_to_script);
-        new_root_human->export_to_script = true;
-        if (!assert_success(*TestRunner,
-                            TEXT("Export explicitly adopted human entity"),
-                            ioj::editor::export_s7_editor_config(level, document))) {
-            return;
-        }
-        TestRunner->TestFalse(TEXT("Duplicate declaration is reported by normal validation"),
-                              ioj::editor::read_s7_authored_level(document).has_value());
     }
 
     TEST_METHOD(ImportEditsTheBaselineWithoutCompoundingHumanTransforms)

@@ -95,18 +95,18 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             return;
         }
-        struct FFrameObservation {
-            uint64 completed_ticks{};
-            uint64 presented_tick{};
-        };
-        TimeSeriesData<FFrameObservation> observations;
-        auto const observe{[&observations](ATestBatchOrchestrator& owner) {
-            auto const& clock{owner.get_level_simulation()->clock()};
-            observations.add(
-                clock.simulation_time(),
-                FFrameObservation{clock.get_completed_ticks().value(),
-                                  FTestBatchOrchestratorTestAccess::level_presentation(owner)
-                                      ->get_last_completed_tick()});
+        uint32 observation_count{};
+        auto const observe{[this, &observation_count](ATestBatchOrchestrator& owner) {
+            ++observation_count;
+            auto const completed_ticks{
+                owner.get_level_simulation()->clock().get_completed_ticks().value()};
+            checks.are_equal(static_cast<uint64>(observation_count * 4),
+                             completed_ticks,
+                             TEXT("Catch-up frames observe their final completed ticks"));
+            checks.are_equal(completed_ticks,
+                             FTestBatchOrchestratorTestAccess::level_presentation(owner)
+                                 ->get_last_completed_tick(),
+                             TEXT("Observations follow the frame presentation"));
         }};
         auto const dt{orchestrator.get_level_simulation()->clock().tick_period()};
         advance_simulation(orchestrator, 0.0, observe);
@@ -127,17 +127,7 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
         FTestBatchOrchestratorTestAccess::stop_run(orchestrator,
                                                    sim::RunEndReason::DurationReached);
         checks.are_equal(
-            uint32{2}, observations.num(), TEXT("Each catch-up frame produces one observation"));
-        auto const sample_count{observations.num()};
-        for (uint32 index{}; index < sample_count; ++index) {
-            auto const& sample{observations.value_at(index)};
-            checks.are_equal(static_cast<uint64>((index + 1) * 4),
-                             sample.completed_ticks,
-                             TEXT("Catch-up frames observe their final completed ticks"));
-            checks.are_equal(sample.completed_ticks,
-                             sample.presented_tick,
-                             TEXT("Observations follow the frame presentation"));
-        }
+            uint32{2}, observation_count, TEXT("Each catch-up frame produces one observation"));
         checks.are_equal(uint64{8},
                          presentation->get_last_completed_tick(),
                          TEXT("Terminal presentation observes the final completed tick"));

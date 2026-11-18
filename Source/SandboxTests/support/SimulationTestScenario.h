@@ -3,7 +3,6 @@
 #include "simulation_step.h"
 #include "SoftTestAssertions.h"
 #include "TestSimulationDriver.h"
-#include "time_series_test_data.h"
 
 #include <CoreMinimal.h>
 #include <CQTest.h>
@@ -17,8 +16,6 @@ class UWorld;
 namespace ioj {
 class ATestBatchOrchestrator;
 class USpaceGameLevelConfig;
-
-DECLARE_DELEGATE_OneParam(FSimulationSampleCallback, ATestBatchOrchestrator&);
 
 struct FSimulationTestContext {
     ATestBatchOrchestrator& orchestrator;
@@ -47,35 +44,7 @@ class FSimulationTestScenario {
 
     auto initialise_test_driver() -> TestSimulationDriver&;
 
-    template <typename Setup, typename Completion>
-    void run_until_timeline_finished(Setup&& setup,
-                                     FTimespan const timeout,
-                                     Completion&& completion) {
-        TestCommandBuilder
-            .Do([this, setup = Forward<Setup>(setup)]() mutable {
-                setup();
-                context_.orchestrator.SetActorTickEnabled(false);
-            })
-            .Until([this] { return advance_until_timeline_finished(); }, timeout)
-            .Then(Forward<Completion>(completion));
-    }
-
-    void advance_sample();
-    auto advance_until_timeline_finished() -> bool;
-    void set_sample_callback(FSimulationSampleCallback callback) {
-        sample_callback_ = MoveTemp(callback);
-    }
-
-    template <typename... ValueTypes>
-    void begin_timed_sampling(time_type const duration,
-                              FSimulationSampleCallback sample_hook,
-                              TimeSeriesData<ValueTypes>&... samples) {
-        check(test_driver.IsSet());
-
-        reset_and_reserve_time_series(test_driver->orchestrator, duration, samples...);
-        test_driver->timeline.finish_at(duration);
-        set_sample_callback(MoveTemp(sample_hook));
-    }
+    void advance_tick();
 
     virtual void on_tear_down() {}
 
@@ -85,6 +54,5 @@ class FSimulationTestScenario {
     FSoftTestAssertions& checks;
     FNoDiscardAsserter Assert;
     TOptional<TestSimulationDriver> test_driver{NullOpt};
-    FSimulationSampleCallback sample_callback_;
 };
 }

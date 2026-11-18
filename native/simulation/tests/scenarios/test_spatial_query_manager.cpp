@@ -25,9 +25,9 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
     for (auto const location : locations) {
         tests::add_capital_spawn(data, location, Team::White, 999.f, 999.f);
     }
-    tests::WorldlessSimulationTest harness{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile()};
 
-    auto const& capitals{harness.simulation().capital_ships()};
+    auto const& capitals{simulation.capital_ships()};
     auto const capital_ids{capitals.get_entities().entity_ids()};
     std::vector<EntityId> expected{};
     auto const location_count{static_cast<std::int32_t>(locations.size())};
@@ -48,7 +48,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
     }
     std::vector<EntityId> results{};
     results.resize(static_cast<std::size_t>(ends.num()));
-    harness.simulation().spatial_query_manager().trace_line_of_sight(
+    simulation.spatial_query_manager().trace_line_of_sight(
         starts.const_view().resolve(), ends.const_view().resolve(), results, &query_memory);
     auto const count{static_cast<std::int32_t>(locations.size())};
     for (std::int32_t i{}; i < count; ++i) {
@@ -60,7 +60,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
 
     std::vector<LineQueryResult> has_los{};
     has_los.resize(static_cast<std::size_t>(ends.num()));
-    harness.simulation().spatial_query_manager().has_line_of_sight_to_targets(
+    simulation.spatial_query_manager().has_line_of_sight_to_targets(
         Vector3f{0.f, 0.f, 0.f}, ends.const_view().resolve(), targets, has_los, &query_memory);
     auto expected_visibility{std::vector<LineQueryResult>(targets.size(), LineQueryResult{1})};
     EXPECT_PRED_FORMAT2(structurally_equal, expected_visibility, has_los)
@@ -70,7 +70,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
         targets[i + count] = other;
         targets[i + 2 * count] = other;
     }
-    harness.simulation().spatial_query_manager().has_line_of_sight_to_targets(
+    simulation.spatial_query_manager().has_line_of_sight_to_targets(
         Vector3f{0.f, 0.f, 0.f}, ends.const_view().resolve(), targets, has_los, &query_memory);
     std::fill(expected_visibility.begin() + count, expected_visibility.end(), LineQueryResult{0});
     EXPECT_PRED_FORMAT2(structurally_equal, expected_visibility, has_los)

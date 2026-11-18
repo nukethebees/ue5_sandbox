@@ -69,9 +69,27 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
                            ioj::FTestBatchOrchestratorSetupScenario,
                            ioj::EOrchestratorSetupScenario::PresentationFrameOrdering)
     SHARED_SIMULATION_TEST(Orchestrator_ResetForNewLevel, ioj::FTestBatchOrchestratorResetScenario)
-    SHARED_SIMULATION_TEST(LevelLoader_MaterialisesDefinition, ioj::FLevelLoaderScenario)
-    SHARED_SIMULATION_TEST(LevelLoader_MaterialisesPlayerlessCameraDefinition,
-                           ioj::FLevelLoaderCameraScenario)
+    SHARED_SIMULATION_TEST(LevelLoader_MaterialisesPlayerDefinition,
+                           ioj::FLevelLoaderScenario,
+                           ioj::ELevelLoaderScenario::PlayerMaterialisation)
+    SHARED_SIMULATION_TEST(LevelLoader_PossessionDuringPause,
+                           ioj::FLevelLoaderScenario,
+                           ioj::ELevelLoaderScenario::PossessionDuringPause)
+    SHARED_SIMULATION_TEST(LevelLoader_MaterialisesObserverDefinitionAndOverridesSettings,
+                           ioj::FLevelLoaderScenario,
+                           ioj::ELevelLoaderScenario::ObserverMaterialisation)
+    SHARED_SIMULATION_TEST(LevelLoader_ObserverModalTransitions,
+                           ioj::FLevelLoaderScenario,
+                           ioj::ELevelLoaderScenario::ObserverModalTransitions)
+    SHARED_SIMULATION_TEST(LevelLoader_SwitchesObserverAndBenchmark,
+                           ioj::FLevelLoaderScenario,
+                           ioj::ELevelLoaderScenario::ObserverBenchmarkSwitching)
+    SHARED_SIMULATION_TEST(LevelLoader_HeadlessLoadingAndRunControls,
+                           ioj::FLevelLoaderScenario,
+                           ioj::ELevelLoaderScenario::HeadlessRunControls)
+    SHARED_SIMULATION_TEST(LevelLoader_TerminalCompletion,
+                           ioj::FLevelLoaderScenario,
+                           ioj::ELevelLoaderScenario::TerminalCompletion)
 
     SHARED_SIMULATION_TEST(HUD_LateRegistrationSynchronisesAndUnregisters,
                            ioj::FTestHUDManagerScenario)

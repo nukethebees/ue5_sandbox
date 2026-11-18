@@ -520,6 +520,9 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeLogicEvaluation) {
     }
 
     // NOLINTEND(ioj-loop-view-accessor-call)
+}
+
+TEST(TickPhases, RemovalEventsReplaySwapRemovalAcrossTheCompleteFrame) {
     auto data{make_world()};
     for (auto const x : {-2000.f, 0.f, 2000.f}) {
         add_capital_spawn(data,

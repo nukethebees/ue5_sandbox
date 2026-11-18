@@ -6,7 +6,6 @@
 #include <ioj/sim/collision/entity_world_bounds.h>
 #include <ioj/sim/collision/line_traces.h>
 #include <ioj/sim/levels/level_compilation.h>
-#include <ioj/time_series_data.h>
 
 #include <gtest/gtest.h>
 

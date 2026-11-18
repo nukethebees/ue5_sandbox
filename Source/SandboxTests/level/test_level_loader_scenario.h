@@ -4,60 +4,40 @@
 
 #include <UObject/StrongObjectPtr.h>
 
-#include <optional>
-
 namespace ioj {
 class USpaceGameLevelConfig;
 
-class FLevelLoaderCameraScenario final : public FSimulationTestScenario {
-    struct FModalSample {
-        bool pause_open{false};
-        bool pause_suspended{false};
-        bool pause_rejects_activation{false};
-        bool hud_hidden{false};
-        bool pause_resumed{false};
-        bool hud_restored{false};
-        bool input_restored{false};
-    };
-    inline static FTimespan const timeout{0, 0, 2};
-  public:
-    explicit FLevelLoaderCameraScenario(FSimulationTestContext& context);
-    void run() override;
-  private:
-    void load_fixture();
-    void load_headless_fixture();
-    void sample_runtime(ATestBatchOrchestrator& orchestrator);
-    void sample_modal_transitions();
-    void check_runtime();
-    void check_terminal_completion();
-    void on_tear_down() override;
-
-    std::optional<FModalSample> modal_sample_;
-    TWeakObjectPtr<AActor> camera_;
-    TStrongObjectPtr<USpaceGameLevelConfig> original_config_;
+enum class ELevelLoaderScenario : uint8 {
+    PlayerMaterialisation,
+    PossessionDuringPause,
+    ObserverMaterialisation,
+    ObserverModalTransitions,
+    ObserverBenchmarkSwitching,
+    HeadlessRunControls,
+    TerminalCompletion,
 };
 
 class FLevelLoaderScenario final : public FSimulationTestScenario {
-    struct FControlLifecycleSample {
-        bool input_activated_after_initialisation{false};
-        bool hud_created_after_initialisation{false};
-        bool unpossessed_while_paused{false};
-        bool resumed_without_ship{false};
-        bool possession_enabled_ship{false};
-        bool possession_stayed_suspended{false};
-        bool resumed_with_ship{false};
-        bool bindings_restored{false};
-    };
-    inline static FTimespan const timeout{0, 0, 2};
   public:
-    explicit FLevelLoaderScenario(FSimulationTestContext& context);
+    FLevelLoaderScenario(FSimulationTestContext& context, ELevelLoaderScenario scenario);
     void run() override;
   private:
-    void load_fixture();
-    void sample_runtime(ATestBatchOrchestrator& orchestrator);
-    void sample_controller_lifecycle();
-    void check_runtime();
+    void start_simulation();
+    void load_player_fixture();
+    void check_player_materialisation();
+    void check_possession_during_pause();
+    void load_observer_fixture();
+    void check_observer_materialisation();
+    void check_observer_modal_transitions();
+    void activate_observer_benchmark();
+    void check_observer_benchmark_switching();
+    void check_headless_run_controls();
+    void check_terminal_completion();
+    void on_tear_down() override;
 
-    std::optional<FControlLifecycleSample> control_sample_;
+    ELevelLoaderScenario scenario_;
+    FTransform observer_transform_;
+    TWeakObjectPtr<AActor> camera_;
+    TStrongObjectPtr<USpaceGameLevelConfig> original_config_;
 };
 }

@@ -96,6 +96,22 @@ auto make_scheduled_battle() -> SimulationScenario {
     return data;
 }
 
+auto make_scheduled_acquisition_battle() -> SimulationScenario {
+    auto data{make_scheduled_battle()};
+    data.runtime.tick_memory_capacity_bytes = 16 * 1024 * 1024;
+    data.runtime.phase_memory_capacity_bytes = 16 * 1024 * 1024;
+    data.runtime.turrets.target_refresh_frequency = ::ioj::PositiveFinite<float>::make(10.f);
+    // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
+    data.runtime.turrets.fire_point_offset = Vector3f{20.f, 0.f, 0.f};
+    add_turret_spawn(data,
+                     {-1000.f, 1000.f, 0.f},
+                     {},
+                     Team::Blue,
+                     settings::PositiveHealth{Health{100}},
+                     NonNegative<std::int32_t>{0});
+    return data;
+}
+
 auto make_overlap_response_battle() -> SimulationScenario {
     auto data{make_battle()};
     data.runtime.collision.overlap_response.damage_per_overlap_detection =
@@ -225,32 +241,12 @@ TEST(NativeSimulation, NativeStartupRejectsFutureSpawnsOutsideGrid) {
 }
 
 TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
-    auto data{make_scheduled_battle()};
-    data.runtime.tick_memory_capacity_bytes = 16 * 1024 * 1024;
-    data.runtime.phase_memory_capacity_bytes = 16 * 1024 * 1024;
-    data.runtime.turrets.target_refresh_frequency = ::ioj::PositiveFinite<float>::make(10.f);
-    // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
-    data.runtime.turrets.fire_point_offset = Vector3f{20.f, 0.f, 0.f};
-    add_turret_spawn(data,
-                     {-1000.f, 1000.f, 0.f},
-                     {},
-                     Team::Blue,
-                     settings::PositiveHealth{Health{100}},
-                     NonNegative<std::int32_t>{0});
+    auto data{make_scheduled_acquisition_battle()};
     LevelSim simulation{std::move(data).compile()};
 
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
     simulation.advance(dt);
-    auto const first_tick_frame_memory{simulation.memory_manager().phase_memory().stats()};
-    EXPECT_EQ(first_tick_frame_memory.capacity_bytes, std::size_t{16 * 1024 * 1024})
-        << "Frame memory uses the configured per-simulation capacity";
-    EXPECT_EQ(first_tick_frame_memory.current_claimed_bytes, std::size_t{0})
-        << "Frame memory is reset after the completed tick";
-    EXPECT_TRUE(first_tick_frame_memory.last_frame_root_claim_count > 0)
-        << "Turret scratch claimed frame memory during the tick";
-    EXPECT_EQ(first_tick_frame_memory.outstanding_allocation_count, std::uint64_t{0})
-        << "No turret scratch allocation survives the reset";
     simulation.advance(dt);
     EXPECT_TRUE(!simulation.turrets().get_entities().target_ids()[0].is_valid())
         << "Turret has no enemy before the scheduled spawn";
@@ -264,6 +260,21 @@ TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     EXPECT_TRUE(simulation.turrets().get_entities().target_ids()[0] ==
                 simulation.capital_ships().get_entities().entity_ids()[1])
         << "Thinking retains the spawned enemy on the following tick";
+}
+
+TEST(NativeSimulation, QueryScratchMemoryIsReleasedAfterTheTick) {
+    LevelSim simulation{make_scheduled_acquisition_battle().compile()};
+    simulation.start();
+    simulation.advance(simulation.clock().tick_period());
+    auto const first_tick_frame_memory{simulation.memory_manager().phase_memory().stats()};
+    EXPECT_EQ(first_tick_frame_memory.capacity_bytes, std::size_t{16 * 1024 * 1024})
+        << "Frame memory uses the configured per-simulation capacity";
+    EXPECT_EQ(first_tick_frame_memory.current_claimed_bytes, std::size_t{0})
+        << "Frame memory is reset after the completed tick";
+    EXPECT_TRUE(first_tick_frame_memory.last_frame_root_claim_count > 0)
+        << "Turret scratch claimed frame memory during the tick";
+    EXPECT_EQ(first_tick_frame_memory.outstanding_allocation_count, std::uint64_t{0})
+        << "No turret scratch allocation survives the reset";
 }
 
 TEST(NativeSimulation, LevelSimReturnsAllocationsToItsUpstream) {
@@ -436,7 +447,7 @@ TEST(NativeSimulation, PlayerlessVictoryStopsAtTheTimerDeadline) {
 }
 
 TEST(NativeSimulation, ZeroDurationStopsOnFirstTick) {
-    auto data{make_battle().compile()};
+    auto data{make_battle_config().compile()};
     add_duration_limit(data, Duration::make(0));
     LevelSim simulation{std::move(data)};
 
@@ -556,7 +567,7 @@ TEST(NativeSimulation, RuntimeDefinitionsAndTriggersExecuteInTheirExistingPhases
 }
 
 TEST(NativeSimulation, RunsWithoutACompletionOrDurationEvent) {
-    auto data{make_battle()};
+    auto data{make_battle_config()};
     data.runtime.clock_settings.tick_rate = Frequency::make(10);
     LevelSim simulation{std::move(data).compile()};
 
@@ -724,7 +735,7 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
 }
 
 TEST(NativeSimulation, PlayerPreservesPartialSpawnHealth) {
-    auto data{make_battle()};
+    auto data{make_battle_config()};
     add_player_spawn(data, {});
     data.runtime.player->health = {Health{50}, Health{100}};
 
@@ -831,7 +842,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
 }
 
 TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
-    auto data{make_battle()};
+    auto data{make_battle_config()};
     add_player_spawn(data, {});
     data.runtime.player->flight_models.initial_slot = player::FlightModelSlot::Fourth;
     auto& gunship{player::flight_model_profile(data.runtime.player->flight_models,

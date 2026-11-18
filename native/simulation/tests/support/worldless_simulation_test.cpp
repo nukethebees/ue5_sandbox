@@ -7,19 +7,17 @@
 #include <ioj/sim/testing/level_sim_test_access.h>
 
 #include <algorithm>
-#include <cmath>
 namespace ioj::sim::tests {
 WorldlessSimulationTest::WorldlessSimulationTest(LevelSimInitData data)
     : simulation_{std::move(data)} {}
 
 void WorldlessSimulationTest::advance(time_type const dt) {
     auto const previous_tick{simulation_.clock().get_completed_ticks()};
-    simulation_.advance(dt, &navigation_counters);
+    simulation_.advance(dt);
     if (simulation_.clock().get_completed_ticks() != previous_tick) {
         if (on_end_tick) {
             on_end_tick(simulation_);
         }
-        timeline.tick(simulation_.clock().simulation_time());
     }
 }
 
@@ -45,21 +43,6 @@ void WorldlessSimulationTest::queue_kills(std::span<EntityId const> const target
     LevelSimTestAccess::queue_direct_damage_events(simulation_, events.const_view());
 }
 
-auto WorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {
-    assert(maximum_time > 0.0);
-    assert(simulation_.state() == LevelState::Paused);
-    simulation_.start();
-    auto const tick_period{simulation_.clock().tick_period()};
-    auto const maximum_ticks{
-        static_cast<SimTick::value_type>(std::ceil(maximum_time / tick_period))};
-    // NOLINTNEXTLINE(ioj-loop-condition-call) -- advancing the simulation can finish the timeline.
-    for (SimTick::value_type tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
-        advance(tick_period);
-    }
-    simulation_.pause();
-    simulation_.advance(0.0);
-    return timeline.is_finished();
-}
 }
 
 namespace ioj::sim::tests {

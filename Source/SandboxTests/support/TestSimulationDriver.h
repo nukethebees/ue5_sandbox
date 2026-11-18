@@ -1,6 +1,5 @@
 #pragma once
 #include <ioj/sim/entities/entity_id.h>
-#include <ioj/test_timeline.h>
 
 #include <HAL/Platform.h>
 
@@ -47,7 +46,6 @@ struct TestSimulationDriver {
     bool tick_wait_completed() const;
 
     auto get_time() const -> time_type;
-    void advance_timeline() { timeline.tick(get_time()); }
     void set_delta_time_wait(time_type dt);
     void set_time_wait(time_type dt);
     bool time_wait_completed() const;
@@ -58,6 +56,5 @@ struct TestSimulationDriver {
 
     uint64 tick_wait_end{0};
     time_type time_wait_end{0.f};
-    FTestTimeline timeline;
 };
 }

@@ -5,8 +5,6 @@
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/turrets/sim.h>
 
-#include <limits>
-
 namespace ioj::sim {
 namespace {
 void add_worldless_turrets(tests::SimulationScenario& data,
@@ -42,25 +40,18 @@ auto make_turret_duel(std::int32_t const laser_damage) -> LevelSimInitData {
 TEST(WorldlessSpaceGameSimulation, TurretsLineOfSightBlocking) {
     auto const config{tests::make_fixture()};
     tests::SimulationScenario data{tests::make_simulation_data(config)};
-    data.runtime.capital_ships.fighter_spawn_slots = 0;
-    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     std::vector<Vector3f> const locations{{{-5000.f, 0.f, 0.f}}, {{5000.f, 0.f, 0.f}}};
     std::vector<Team> const teams{Team::Blue, Team::Red};
     add_worldless_turrets(data, locations, teams, 0);
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
 
-    std::uint32_t spawn_count_before_blocker{std::numeric_limits<std::uint32_t>::max()};
-    harness.timeline
-        .at(2.0,
-            [&] {
-                spawn_count_before_blocker = harness.simulation().lasers().get_number_spawned();
-                LevelSimTestAccess::spatial_queries(harness.simulation())
-                    .add_static_collision_aabb({{-500.f, -3000.f, -3000.f}},
-                                               {{500.f, 3000.f, 3000.f}});
-            })
-        .finish_at(4.0);
-    EXPECT_TRUE(harness.run_until_timeline_finished(4.5))
-        << "Turret line-of-sight timeline completes";
+    auto& simulation{harness.simulation()};
+    simulation.start();
+    simulation.advance(2.0);
+    auto const spawn_count_before_blocker{simulation.lasers().get_number_spawned()};
+    LevelSimTestAccess::spatial_queries(simulation)
+        .add_static_collision_aabb({{-500.f, -3000.f, -3000.f}}, {{500.f, 3000.f, 3000.f}});
+    simulation.advance(2.0);
     EXPECT_GT(spawn_count_before_blocker, 0) << "Turrets fire before blocking";
     EXPECT_EQ(spawn_count_before_blocker, harness.simulation().lasers().get_number_spawned())
         << "Turrets stop firing after line of sight is blocked";
@@ -69,8 +60,6 @@ TEST(WorldlessSpaceGameSimulation, TurretsLineOfSightBlocking) {
 TEST(WorldlessSpaceGameSimulation, TurretsSearchRequiresLineOfSight) {
     auto const config{tests::make_fixture()};
     tests::SimulationScenario data{tests::make_simulation_data(config)};
-    data.runtime.capital_ships.fighter_spawn_slots = 0;
-    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     std::vector<Vector3f> const locations{
         {{-1000.f, 0.f, 0.f}}, {{1000.f, 0.f, 0.f}}, {{1000.f, 1000.f, 0.f}}};
     std::vector<Team> const teams{Team::Blue, Team::Red, Team::Red};
@@ -78,8 +67,8 @@ TEST(WorldlessSpaceGameSimulation, TurretsSearchRequiresLineOfSight) {
     data.runtime.collision.static_bounds.add({{-100.f, -300.f, -3000.f}}, {{100.f, 300.f, 3000.f}});
     tests::WorldlessSimulationTest harness{std::move(data).compile()};
 
-    harness.timeline.finish_at(1.0);
-    EXPECT_TRUE(harness.run_until_timeline_finished(1.5)) << "Turret search timeline completes";
+    harness.simulation().start();
+    harness.simulation().advance(1.0);
     auto const targets{harness.simulation().turrets().get_entities().target_ids()};
     EXPECT_EQ(3, static_cast<std::int32_t>(targets.size())) << "All turret targets are available";
     if (static_cast<std::int32_t>(targets.size()) != 3) {

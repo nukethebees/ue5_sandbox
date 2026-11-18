@@ -1,34 +1,11 @@
 #pragma once
 
-#include <ioj/sim/entities/entity_id.h>
-#include <ioj/time_series_data.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
 
 namespace ioj {
-class ATestSpaceShip;
-
 class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
-    struct FSimulationSample {
-        bool player_id_is_dead{false};
-        bool player_actor_is_valid{false};
-        bool player_unique_entity_is_alive{false};
-        bool controller_has_pawn{false};
-        bool ship_control_active{false};
-    };
-
-    inline static FTimespan const timeout{0, 0, 2};
-    static constexpr double kill_time{0.1};
-    static constexpr double post_kill_time{0.4};
   public:
     explicit FTestPlayerShipDeathScenario(FSimulationTestContext& context);
     void run() override;
-  private:
-    void queue_player_ship_death();
-    void on_end_tick(ATestBatchOrchestrator& orchestrator);
-    void check_player_ship_death();
-
-    TWeakObjectPtr<ATestSpaceShip> player_ship{nullptr};
-    sim::EntityId player_ship_id{};
-    TimeSeriesData<FSimulationSample> samples;
 };
 }

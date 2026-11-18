@@ -31,11 +31,212 @@
 #include <utility>
 
 namespace ioj {
-FLevelLoaderCameraScenario::FLevelLoaderCameraScenario(FSimulationTestContext& context)
-    : FSimulationTestScenario{context} {}
+namespace {
+auto read_loader_fixture(TCHAR const* filename) -> levels::authoring::LevelDefinitionReadResult {
+    auto const path{FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), filename)};
+    return levels::authoring::DefinitionReader{}.read_level_file(std::filesystem::path{*path});
+}
+}
 
-void FLevelLoaderCameraScenario::load_fixture() {
-    initialise_test_driver();
+FLevelLoaderScenario::FLevelLoaderScenario(FSimulationTestContext& context,
+                                           ELevelLoaderScenario scenario)
+    : FSimulationTestScenario{context}
+    , scenario_{scenario} {}
+
+void FLevelLoaderScenario::run() {
+    TestCommandBuilder.Do([this] {
+        initialise_test_driver();
+        switch (scenario_) {
+            case ELevelLoaderScenario::PlayerMaterialisation:
+                load_player_fixture();
+                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                check_player_materialisation();
+                break;
+            case ELevelLoaderScenario::PossessionDuringPause:
+                load_player_fixture();
+                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                start_simulation();
+                check_possession_during_pause();
+                break;
+            case ELevelLoaderScenario::ObserverMaterialisation:
+                load_observer_fixture();
+                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                check_observer_materialisation();
+                break;
+            case ELevelLoaderScenario::ObserverModalTransitions:
+                load_observer_fixture();
+                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                start_simulation();
+                check_observer_modal_transitions();
+                break;
+            case ELevelLoaderScenario::ObserverBenchmarkSwitching:
+                load_observer_fixture();
+                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                activate_observer_benchmark();
+                break;
+            case ELevelLoaderScenario::HeadlessRunControls:
+                check_headless_run_controls();
+                break;
+            case ELevelLoaderScenario::TerminalCompletion:
+                load_observer_fixture();
+                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                start_simulation();
+                check_terminal_completion();
+                break;
+        }
+    });
+    if (scenario_ == ELevelLoaderScenario::HeadlessRunControls ||
+        scenario_ == ELevelLoaderScenario::ObserverBenchmarkSwitching) {
+        // CommonUI applies the new input root on its next UI tick.
+        TestCommandBuilder
+            .Until(
+                [this] {
+                    if (!checks.all_passed) {
+                        return true;
+                    }
+                    auto const* const controller{CastChecked<ASpaceGamePlayerController>(
+                        context_.world.GetFirstPlayerController())};
+                    auto const* const viewport{context_.world.GetGameViewport()};
+                    return controller->ShouldShowMouseCursor() &&
+                           (!IsValid(viewport) ||
+                            viewport->GetMouseCaptureMode() == EMouseCaptureMode::NoCapture);
+                },
+                FTimespan{0, 0, 2})
+            .Then([this] {
+                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                if (scenario_ == ELevelLoaderScenario::ObserverBenchmarkSwitching) {
+                    check_observer_benchmark_switching();
+                } else {
+                    auto const* const controller{CastChecked<ASpaceGamePlayerController>(
+                        context_.world.GetFirstPlayerController())};
+                    checks.is_true(
+                        controller->ShouldShowMouseCursor(),
+                        TEXT("Simulation-only run exposes the pointer for the End button"));
+                    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                }
+            });
+    }
+}
+
+void FLevelLoaderScenario::start_simulation() {
+    auto& orchestrator{context_.orchestrator};
+    orchestrator.start_simulation();
+    orchestrator.SetActorTickEnabled(false);
+    orchestrator.tick(orchestrator.get_level_simulation()->clock().tick_period());
+}
+
+void FLevelLoaderScenario::load_player_fixture() {
+    auto const scripted_definition{read_loader_fixture(TEXT("BorderSkirmish.scm"))};
+    if (!checks.is_true(static_cast<bool>(scripted_definition),
+                        TEXT("Scheme produces a valid native definition"))) {
+        return;
+    }
+
+    auto const load_result{context_.orchestrator.load_level(scripted_definition.value())};
+    if (!checks.is_true(static_cast<bool>(load_result), TEXT("Valid definition loads"))) {
+        return;
+    }
+}
+
+void FLevelLoaderScenario::check_player_materialisation() {
+    checks.are_equal(
+        1, count_actors<ATestSpaceShip>(context_.world), TEXT("Loader spawns one player"));
+    checks.are_equal(0,
+                     count_actors<ATestCapitalShipProxy>(context_.world),
+                     TEXT("Loader does not create capital proxies"));
+    checks.are_equal(0,
+                     count_actors<ATestStaticTurretsProxy>(context_.world),
+                     TEXT("Loader does not create turret proxies"));
+
+    auto const* const player{context_.orchestrator.get_player_ship()};
+    if (checks.is_valid(player, TEXT("Loader binds the player to the orchestrator"))) {
+        auto* const player_controller{
+            Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
+        if (checks.is_valid(player_controller, TEXT("Test world has a player controller"))) {
+            checks.is_true(player_controller->GetPawn() == player,
+                           TEXT("Player controller possesses the authored player ship"));
+            checks.is_true(player_controller->get_active_control_context() ==
+                               ::ioj::levels::ControlContext::Player,
+                           TEXT("Loading initializes the simulation and activates player input"));
+            checks.is_true(Cast<UShipHudWidget>(player_controller->get_active_hud()) != nullptr,
+                           TEXT("Loading creates the player HUD"));
+        }
+        checks.are_equal(
+            ETestTeam::Blue, player->get_team(), TEXT("Loader resolves the player team"));
+        checks.dist_zero(FVector{0.0, -25000.0, 1000.0},
+                         player->GetActorLocation(),
+                         0.01,
+                         TEXT("Loader applies the player position"));
+    }
+
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+}
+
+void FLevelLoaderScenario::check_possession_during_pause() {
+    auto* const controller{
+        Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
+    if (!checks.is_valid(controller, TEXT("Possession test has a player controller"))) {
+        return;
+    }
+    auto* const ship{Cast<ATestSpaceShip>(controller->GetPawn())};
+    if (!checks.is_valid(ship, TEXT("Possession test starts with a possessed ship"))) {
+        return;
+    }
+    auto* const component{CastChecked<UEnhancedInputComponent>(controller->InputComponent)};
+    auto const binding_count{component->GetActionEventBindings().Num()};
+    auto& orchestrator{context_.orchestrator};
+    checks.is_true(controller->get_active_control_context() ==
+                       ::ioj::levels::ControlContext::Player,
+                   TEXT("Simulation initialization activates player input"));
+    checks.is_true(Cast<UShipHudWidget>(controller->get_active_hud()) != nullptr,
+                   TEXT("Simulation initialization creates the player HUD"));
+    FPlayerControllerTestAccess::toggle_pause(*controller);
+    orchestrator.tick(0.0);
+    controller->UnPossess();
+    checks.is_true(
+        orchestrator.get_state() == sim::LevelState::Paused && !IsValid(controller->GetPawn()) &&
+            controller->get_active_control_context() == ::ioj::levels::ControlContext::None,
+        TEXT("Unpossession during pause keeps gameplay suspended"));
+    FPlayerControllerTestAccess::toggle_pause(*controller);
+    checks.is_true(orchestrator.get_state() == sim::LevelState::Running &&
+                       controller->get_active_control_context() ==
+                           ::ioj::levels::ControlContext::None,
+                   TEXT("Closing pause without a ship resumes simulation with None"));
+    controller->Possess(ship);
+    checks.is_true(controller->get_active_control_context() ==
+                       ::ioj::levels::ControlContext::Player,
+                   TEXT("Possession enables ship control"));
+
+    FPlayerControllerTestAccess::toggle_pause(*controller);
+    orchestrator.tick(0.0);
+    controller->UnPossess();
+    controller->Possess(ship);
+    checks.is_true(orchestrator.get_state() == sim::LevelState::Paused &&
+                       controller->get_active_control_context() ==
+                           ::ioj::levels::ControlContext::None,
+                   TEXT("Possession during pause does not enable input"));
+    FPlayerControllerTestAccess::toggle_pause(*controller);
+    checks.is_true(orchestrator.get_state() == sim::LevelState::Running &&
+                       controller->get_active_control_context() ==
+                           ::ioj::levels::ControlContext::Player,
+                   TEXT("Closing pause restores the newly possessed ship"));
+    checks.is_true(component->GetActionEventBindings().Num() == binding_count,
+                   TEXT("Possession and modal transitions retain exactly one set of bindings"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+}
+
+void FLevelLoaderScenario::load_observer_fixture() {
+    auto* const controller{
+        Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
+    checks.is_valid(controller, TEXT("Observer fixture has a controller"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    // World reset removes transient camera managers while retaining the controller.
+    if (!IsValid(controller->PlayerCameraManager)) {
+        controller->SpawnPlayerCameraManager();
+    }
+    checks.is_valid(controller->PlayerCameraManager, TEXT("Observer fixture has a camera manager"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
     auto& orchestrator{context_.orchestrator};
     original_config_.Reset(FTestBatchOrchestratorTestAccess::level_config(orchestrator));
     auto* const resources{duplicate_level_config(*original_config_, orchestrator)};
@@ -46,10 +247,7 @@ void FLevelLoaderCameraScenario::load_fixture() {
     resources->entity_overlay.soft_target.material = nullptr;
     checks.is_true(!resources->is_valid(), TEXT("Unresolved overlay requires missing resources"));
 
-    levels::authoring::DefinitionReader reader;
-    auto const script_path{
-        FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("FleetOverview.scm"))};
-    auto const scripted_definition{reader.read_level_file(std::filesystem::path{*script_path})};
+    auto const scripted_definition{read_loader_fixture(TEXT("FleetOverview.scm"))};
     if (!checks.is_true(static_cast<bool>(scripted_definition),
                         TEXT("Playerless Scheme level produces a valid native definition"))) {
         return;
@@ -71,6 +269,13 @@ void FLevelLoaderCameraScenario::load_fixture() {
     if (!checks.is_true(static_cast<bool>(load_result), TEXT("Playerless definition loads"))) {
         return;
     }
+    camera_ = Cast<ACameraActor>(controller->GetViewTarget());
+    checks.is_valid(camera_.Get(), TEXT("Observer fixture has a camera"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+}
+
+void FLevelLoaderScenario::check_observer_materialisation() {
+    auto& orchestrator{context_.orchestrator};
     checks.is_true(!FTestBatchOrchestratorTestAccess::level_config(orchestrator)
                         ->presentation.entity_overlay.enabled,
                    TEXT("Level override disables overlay before resource validation"));
@@ -122,67 +327,11 @@ void FLevelLoaderCameraScenario::load_fixture() {
                        TEXT("Observer context creates the Battle Viewer HUD"));
         checks.is_true(Cast<UShipHudWidget>(player_controller->get_active_hud()) == nullptr,
                        TEXT("Observer context does not create the player HUD"));
-
-        auto const observer_transform{camera->GetActorTransform()};
-        checks.is_true(player_controller->activate_run_controls(),
-                       TEXT("Run controls can be activated independently of camera setup"));
-        checks.is_true(player_controller->get_active_control_context() ==
-                           ::ioj::levels::ControlContext::Benchmark,
-                       TEXT("Benchmark context becomes active"));
-        auto* const input_component{
-            CastChecked<UEnhancedInputComponent>(player_controller->InputComponent)};
-        auto const benchmark_binding_count{input_component->GetActionEventBindings().Num()};
-        checks.is_true(player_controller->activate_playerless_camera(
-                           *camera, ::ioj::levels::ControlContext::Benchmark),
-                       TEXT("Already-active benchmark can be requested again"));
-        checks.are_equal(benchmark_binding_count,
-                         input_component->GetActionEventBindings().Num(),
-                         TEXT("Repeated benchmark activation does not duplicate exit bindings"));
-        checks.is_true(!player_controller->is_observer_movement_enabled(),
-                       TEXT("Benchmark context disables observer movement"));
-        checks.is_true(player_controller->get_active_hud() == nullptr,
-                       TEXT("Benchmark context removes simulation HUDs"));
-        checks.is_true(player_controller->get_benchmark_hud() != nullptr,
-                       TEXT("Benchmark context creates the minimal benchmark HUD"));
-        checks.is_true(player_controller->get_benchmark_hud()->IsActivated(),
-                       TEXT("Benchmark HUD is the active CommonUI input root"));
-        checks.is_true(player_controller->ShouldShowMouseCursor(),
-                       TEXT("Benchmark context shows the mouse cursor"));
-        if (auto* const viewport{context_.world.GetGameViewport()}; IsValid(viewport)) {
-            checks.is_true(viewport->GetMouseCaptureMode() == EMouseCaptureMode::NoCapture,
-                           TEXT("Benchmark context releases mouse capture for HUD interaction"));
-        }
-        checks.is_true(camera->GetActorTransform().Equals(observer_transform),
-                       TEXT("Entering benchmark retains the observer camera transform"));
-
-        checks.is_true(player_controller->activate_playerless_camera(
-                           *camera, ::ioj::levels::ControlContext::Observer),
-                       TEXT("Observer context can be restored for continued development"));
-        checks.is_true(player_controller->get_active_control_context() ==
-                           ::ioj::levels::ControlContext::Observer,
-                       TEXT("Exiting benchmark returns to observer context"));
-        checks.is_true(player_controller->is_observer_movement_enabled(),
-                       TEXT("Exiting benchmark restores observer movement"));
-        checks.is_true(Cast<UBattleViewerHudWidget>(player_controller->get_active_hud()) != nullptr,
-                       TEXT("Exiting benchmark restores the Battle Viewer HUD"));
-        checks.is_true(camera->GetActorTransform().Equals(observer_transform),
-                       TEXT("Exiting benchmark retains the camera transform"));
     }
-
-    context_.orchestrator.start_simulation();
-    begin_timed_sampling(
-        0.05,
-        FSimulationSampleCallback::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime));
-    context_.orchestrator.SetActorTickEnabled(false);
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 
-void FLevelLoaderCameraScenario::sample_runtime(ATestBatchOrchestrator&) {
-    if (!modal_sample_ && test_driver->get_time() > 0.0) {
-        sample_modal_transitions();
-    }
-}
-
-void FLevelLoaderCameraScenario::sample_modal_transitions() {
+void FLevelLoaderScenario::check_observer_modal_transitions() {
     auto* const controller{
         Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
     if (!checks.is_valid(controller, TEXT("Modal test has a player controller"))) {
@@ -211,37 +360,97 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
         }
         return rejected;
     };
-    FModalSample sample;
     auto& orchestrator{context_.orchestrator};
     FPlayerControllerTestAccess::toggle_pause(*controller);
     checks.is_true(orchestrator.get_state() == sim::LevelState::Running &&
                        !FPlayerControllerTestAccess::has_modal(*controller),
                    TEXT("Pause waits for the next simulation advance before opening its menu"));
     orchestrator.tick(0.0);
-    sample.pause_open = FPlayerControllerTestAccess::has_modal(*controller);
-    sample.pause_rejects_activation = rejects_activation();
-    sample.pause_suspended =
-        orchestrator.get_state() == sim::LevelState::Paused &&
-        controller->get_active_control_context() == ::ioj::levels::ControlContext::None;
-    sample.hud_hidden = hud->GetVisibility() == ESlateVisibility::Collapsed;
+    checks.is_true(FPlayerControllerTestAccess::has_modal(*controller),
+                   TEXT("Pause opens a modal"));
+    checks.is_true(rejects_activation(),
+                   TEXT("Pause rejects camera contexts without changing input or UI"));
+    checks.is_true(orchestrator.get_state() == sim::LevelState::Paused &&
+                       controller->get_active_control_context() ==
+                           ::ioj::levels::ControlContext::None,
+                   TEXT("Pause suspends simulation and gameplay input"));
+    checks.is_true(hud->GetVisibility() == ESlateVisibility::Collapsed,
+                   TEXT("Pause hides the HUD"));
     FPlayerControllerTestAccess::toggle_pause(*controller);
-    sample.pause_resumed = orchestrator.get_state() == sim::LevelState::Running &&
-                           !FPlayerControllerTestAccess::has_modal(*controller) &&
-                           controller->is_observer_movement_enabled();
+    checks.is_true(orchestrator.get_state() == sim::LevelState::Running &&
+                       !FPlayerControllerTestAccess::has_modal(*controller) &&
+                       controller->is_observer_movement_enabled(),
+                   TEXT("Closing pause restores Observer and simulation"));
 
-    sample.hud_restored = hud->GetVisibility() == visibility;
-    sample.input_restored = component->GetActionEventBindings().Num() == binding_count;
-    modal_sample_ = sample;
+    checks.is_true(hud->GetVisibility() == visibility,
+                   TEXT("Modal close restores prior HUD visibility"));
+    checks.is_true(component->GetActionEventBindings().Num() == binding_count,
+                   TEXT("Modal transitions do not duplicate global or gameplay bindings"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 
-void FLevelLoaderCameraScenario::load_headless_fixture() {
+void FLevelLoaderScenario::activate_observer_benchmark() {
+    auto* const player_controller{
+        CastChecked<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
+    auto* const camera{CastChecked<ACameraActor>(camera_.Get())};
+    observer_transform_ = camera->GetActorTransform();
+    checks.is_true(player_controller->activate_run_controls(),
+                   TEXT("Run controls can be activated independently of camera setup"));
+    checks.is_true(player_controller->get_active_control_context() ==
+                       ::ioj::levels::ControlContext::Benchmark,
+                   TEXT("Benchmark context becomes active"));
+    auto* const input_component{
+        CastChecked<UEnhancedInputComponent>(player_controller->InputComponent)};
+    auto const benchmark_binding_count{input_component->GetActionEventBindings().Num()};
+    checks.is_true(player_controller->activate_playerless_camera(
+                       *camera, ::ioj::levels::ControlContext::Benchmark),
+                   TEXT("Already-active benchmark can be requested again"));
+    checks.are_equal(benchmark_binding_count,
+                     input_component->GetActionEventBindings().Num(),
+                     TEXT("Repeated benchmark activation does not duplicate exit bindings"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+}
+
+void FLevelLoaderScenario::check_observer_benchmark_switching() {
+    auto* const player_controller{
+        CastChecked<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
+    auto* const camera{CastChecked<ACameraActor>(camera_.Get())};
+    checks.is_true(!player_controller->is_observer_movement_enabled(),
+                   TEXT("Benchmark context disables observer movement"));
+    checks.is_true(player_controller->get_active_hud() == nullptr,
+                   TEXT("Benchmark context removes simulation HUDs"));
+    checks.is_true(player_controller->get_benchmark_hud() != nullptr,
+                   TEXT("Benchmark context creates the minimal benchmark HUD"));
+    checks.is_true(player_controller->get_benchmark_hud()->IsActivated(),
+                   TEXT("Benchmark HUD is the active CommonUI input root"));
+    checks.is_true(player_controller->ShouldShowMouseCursor(),
+                   TEXT("Benchmark context shows the mouse cursor"));
+    if (auto* const viewport{context_.world.GetGameViewport()}; IsValid(viewport)) {
+        checks.is_true(viewport->GetMouseCaptureMode() == EMouseCaptureMode::NoCapture,
+                       TEXT("Benchmark context releases mouse capture for HUD interaction"));
+    }
+    checks.is_true(camera->GetActorTransform().Equals(observer_transform_),
+                   TEXT("Entering benchmark retains the observer camera transform"));
+
+    checks.is_true(player_controller->activate_playerless_camera(
+                       *camera, ::ioj::levels::ControlContext::Observer),
+                   TEXT("Observer context can be restored for continued development"));
+    checks.is_true(player_controller->get_active_control_context() ==
+                       ::ioj::levels::ControlContext::Observer,
+                   TEXT("Exiting benchmark returns to observer context"));
+    checks.is_true(player_controller->is_observer_movement_enabled(),
+                   TEXT("Exiting benchmark restores observer movement"));
+    checks.is_true(Cast<UBattleViewerHudWidget>(player_controller->get_active_hud()) != nullptr,
+                   TEXT("Exiting benchmark restores the Battle Viewer HUD"));
+    checks.is_true(camera->GetActorTransform().Equals(observer_transform_),
+                   TEXT("Exiting benchmark retains the camera transform"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+}
+
+void FLevelLoaderScenario::check_headless_run_controls() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     auto& orchestrator{context_.orchestrator};
-    if (camera_.IsValid()) {
-        camera_->Destroy();
-        camera_.Reset();
-    }
-    orchestrator.reset_for_new_level();
+    original_config_.Reset(FTestBatchOrchestratorTestAccess::level_config(orchestrator));
     orchestrator.set_presentation_enabled(false);
 
     auto* const config{duplicate_level_config(
@@ -270,10 +479,7 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
     orchestrator.reset_for_new_level();
     config->classes.player_ship_class = nullptr;
     orchestrator.set_level_config(*config);
-    levels::authoring::DefinitionReader reader;
-    auto const script_path{
-        FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("FleetOverview.scm"))};
-    auto const definition{reader.read_level_file(std::filesystem::path{*script_path})};
+    auto const definition{read_loader_fixture(TEXT("FleetOverview.scm"))};
     checks.is_true(static_cast<bool>(definition), TEXT("Playerless fixture can be reloaded"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     auto const result{orchestrator.load_level(*definition)};
@@ -300,8 +506,6 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
         checks.is_true(controller->get_benchmark_hud() &&
                            controller->get_benchmark_hud()->IsActivated(),
                        TEXT("Simulation-only run exposes the End HUD"));
-        checks.is_true(controller->ShouldShowMouseCursor(),
-                       TEXT("Simulation-only run exposes the pointer for the End button"));
         checks.is_true(!orchestrator.get_run_ticks_remaining().IsSet(),
                        TEXT("Untimed run has no countdown"));
         auto* const button{Cast<UMenuButtonWidget>(
@@ -336,37 +540,7 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 
-void FLevelLoaderCameraScenario::check_runtime() {
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-    checks.is_true(modal_sample_.has_value(), TEXT("Modal transitions were sampled"));
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-    auto const& modal{*modal_sample_};
-    checks.is_true(modal.pause_open, TEXT("Pause opens a modal"));
-    checks.is_true(modal.pause_rejects_activation,
-                   TEXT("Pause rejects camera contexts without changing input or UI"));
-    checks.is_true(modal.pause_suspended, TEXT("Pause suspends simulation and gameplay input"));
-    checks.is_true(modal.hud_hidden, TEXT("Pause hides the HUD"));
-    checks.is_true(modal.pause_resumed, TEXT("Closing pause restores Observer and simulation"));
-    checks.is_true(modal.hud_restored, TEXT("Modal close restores prior HUD visibility"));
-    checks.is_true(modal.input_restored,
-                   TEXT("Modal transitions do not duplicate global or gameplay bindings"));
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-}
-
-void FLevelLoaderCameraScenario::on_tear_down() {
-    if (camera_.IsValid()) {
-        camera_->Destroy();
-    }
-    if (original_config_.IsValid()) {
-        auto& orchestrator{context_.orchestrator};
-        orchestrator.reset_for_new_level();
-        orchestrator.set_presentation_enabled(true);
-        orchestrator.set_level_config(*original_config_);
-        original_config_.Reset();
-    }
-}
-
-void FLevelLoaderCameraScenario::check_terminal_completion() {
+void FLevelLoaderScenario::check_terminal_completion() {
     auto* const controller{
         Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
     if (!checks.is_valid(controller, TEXT("Terminal completion has a player controller"))) {
@@ -387,149 +561,16 @@ void FLevelLoaderCameraScenario::check_terminal_completion() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 
-void FLevelLoaderCameraScenario::run() {
-    TestCommandBuilder.Do([this] { load_fixture(); })
-        .Until([this] { return advance_until_timeline_finished(); }, timeout)
-        .Then([this] { check_runtime(); })
-        .Then([this] { check_terminal_completion(); })
-        .Then([this] { load_headless_fixture(); });
-}
-
-FLevelLoaderScenario::FLevelLoaderScenario(FSimulationTestContext& context)
-    : FSimulationTestScenario{context} {}
-
-void FLevelLoaderScenario::load_fixture() {
-    initialise_test_driver();
-
-    levels::authoring::DefinitionReader reader;
-    auto const script_path{
-        FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("BorderSkirmish.scm"))};
-    auto const scripted_definition{reader.read_level_file(std::filesystem::path{*script_path})};
-    if (!checks.is_true(static_cast<bool>(scripted_definition),
-                        TEXT("Scheme produces a valid native definition"))) {
-        return;
+void FLevelLoaderScenario::on_tear_down() {
+    if (camera_.IsValid()) {
+        camera_->Destroy();
     }
-
-    auto const load_result{context_.orchestrator.load_level(scripted_definition.value())};
-    if (!checks.is_true(static_cast<bool>(load_result), TEXT("Valid definition loads"))) {
-        return;
+    if (original_config_.IsValid()) {
+        auto& orchestrator{context_.orchestrator};
+        orchestrator.reset_for_new_level();
+        orchestrator.set_presentation_enabled(true);
+        orchestrator.set_level_config(*original_config_);
+        original_config_.Reset();
     }
-
-    checks.are_equal(
-        1, count_actors<ATestSpaceShip>(context_.world), TEXT("Loader spawns one player"));
-    checks.are_equal(0,
-                     count_actors<ATestCapitalShipProxy>(context_.world),
-                     TEXT("Loader does not create capital proxies"));
-    checks.are_equal(0,
-                     count_actors<ATestStaticTurretsProxy>(context_.world),
-                     TEXT("Loader does not create turret proxies"));
-
-    auto const* const player{context_.orchestrator.get_player_ship()};
-    if (checks.is_valid(player, TEXT("Loader binds the player to the orchestrator"))) {
-        auto* const player_controller{
-            Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
-        if (checks.is_valid(player_controller, TEXT("Test world has a player controller"))) {
-            checks.is_true(player_controller->GetPawn() == player,
-                           TEXT("Player controller possesses the authored player ship"));
-            checks.is_true(player_controller->get_active_control_context() ==
-                               ::ioj::levels::ControlContext::Player,
-                           TEXT("Loading initializes the simulation and activates player input"));
-            checks.is_true(Cast<UShipHudWidget>(player_controller->get_active_hud()) != nullptr,
-                           TEXT("Loading creates the player HUD"));
-        }
-        checks.are_equal(
-            ETestTeam::Blue, player->get_team(), TEXT("Loader resolves the player team"));
-        checks.dist_zero(FVector{0.0, -25000.0, 1000.0},
-                         player->GetActorLocation(),
-                         0.01,
-                         TEXT("Loader applies the player position"));
-    }
-
-    context_.orchestrator.start_simulation();
-    begin_timed_sampling(
-        0.05, FSimulationSampleCallback::CreateRaw(this, &FLevelLoaderScenario::sample_runtime));
-    context_.orchestrator.SetActorTickEnabled(false);
-}
-
-void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator&) {
-    if (!control_sample_ && test_driver->get_time() > 0.0) {
-        sample_controller_lifecycle();
-    }
-}
-
-void FLevelLoaderScenario::check_runtime() {
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-    checks.is_true(control_sample_.has_value(), TEXT("Controller lifecycle was sampled"));
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-    auto const& control{*control_sample_};
-    checks.is_true(control.input_activated_after_initialisation,
-                   TEXT("Simulation initialization activates player input"));
-    checks.is_true(control.hud_created_after_initialisation,
-                   TEXT("Simulation initialization creates the player HUD"));
-    checks.is_true(control.unpossessed_while_paused,
-                   TEXT("Unpossession during pause keeps gameplay suspended"));
-    checks.is_true(control.resumed_without_ship,
-                   TEXT("Closing pause without a ship resumes simulation with None"));
-    checks.is_true(control.possession_enabled_ship, TEXT("Possession enables ship control"));
-    checks.is_true(control.possession_stayed_suspended,
-                   TEXT("Possession during pause does not enable input"));
-    checks.is_true(control.resumed_with_ship,
-                   TEXT("Closing pause restores the newly possessed ship"));
-    checks.is_true(control.bindings_restored,
-                   TEXT("Possession and modal transitions retain exactly one set of bindings"));
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-}
-
-void FLevelLoaderScenario::run() {
-    TestCommandBuilder.Do([this] { load_fixture(); })
-        .Until([this] { return advance_until_timeline_finished(); }, timeout)
-        .Then([this] { check_runtime(); });
-}
-
-void FLevelLoaderScenario::sample_controller_lifecycle() {
-    auto* const controller{
-        Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
-    if (!checks.is_valid(controller, TEXT("Possession test has a player controller"))) {
-        return;
-    }
-    auto* const ship{Cast<ATestSpaceShip>(controller->GetPawn())};
-    if (!checks.is_valid(ship, TEXT("Possession test starts with a possessed ship"))) {
-        return;
-    }
-    auto* const component{CastChecked<UEnhancedInputComponent>(controller->InputComponent)};
-    auto const binding_count{component->GetActionEventBindings().Num()};
-    auto& orchestrator{context_.orchestrator};
-    FControlLifecycleSample sample;
-    sample.input_activated_after_initialisation =
-        controller->get_active_control_context() == ::ioj::levels::ControlContext::Player;
-    sample.hud_created_after_initialisation =
-        Cast<UShipHudWidget>(controller->get_active_hud()) != nullptr;
-    FPlayerControllerTestAccess::toggle_pause(*controller);
-    orchestrator.tick(0.0);
-    controller->UnPossess();
-    sample.unpossessed_while_paused =
-        orchestrator.get_state() == sim::LevelState::Paused && !IsValid(controller->GetPawn()) &&
-        controller->get_active_control_context() == ::ioj::levels::ControlContext::None;
-    FPlayerControllerTestAccess::toggle_pause(*controller);
-    sample.resumed_without_ship =
-        orchestrator.get_state() == sim::LevelState::Running &&
-        controller->get_active_control_context() == ::ioj::levels::ControlContext::None;
-    controller->Possess(ship);
-    sample.possession_enabled_ship =
-        controller->get_active_control_context() == ::ioj::levels::ControlContext::Player;
-
-    FPlayerControllerTestAccess::toggle_pause(*controller);
-    orchestrator.tick(0.0);
-    controller->UnPossess();
-    controller->Possess(ship);
-    sample.possession_stayed_suspended =
-        orchestrator.get_state() == sim::LevelState::Paused &&
-        controller->get_active_control_context() == ::ioj::levels::ControlContext::None;
-    FPlayerControllerTestAccess::toggle_pause(*controller);
-    sample.resumed_with_ship =
-        orchestrator.get_state() == sim::LevelState::Running &&
-        controller->get_active_control_context() == ::ioj::levels::ControlContext::Player;
-    sample.bindings_restored = component->GetActionEventBindings().Num() == binding_count;
-    control_sample_ = sample;
 }
 }

@@ -33,6 +33,7 @@
 
 #include <algorithm>
 #include <array>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -54,6 +55,33 @@ auto make_presentation_resources(AActor& owner, FLevelVisualConfig const& config
             .spinners = make_presentation_component<UInstancedStaticMeshComponent>(owner),
             .sparks = make_presentation_component<ioj::USparkRendererComponent>(owner),
             .config = config};
+}
+
+struct FPresentationFixture {
+    FPresentationFixture(AActor& actor, FLevelVisualConfig const& config)
+        : owner{actor}
+        , resources{make_presentation_resources(actor, config)} {}
+    ~FPresentationFixture() { owner.Destroy(); }
+    FPresentationFixture(FPresentationFixture const&) = delete;
+    auto operator=(FPresentationFixture const&) -> FPresentationFixture& = delete;
+
+    AActor& owner;
+    ioj::FLevelPresentationResources resources;
+};
+
+auto make_presentation_fixture(FAutomationTestBase& test) -> std::optional<FPresentationFixture> {
+    auto const world{ioj::get_editor_world()};
+    auto const* config{ioj::load_default_level_config()};
+    if (!test.TestTrue(TEXT("Editor world is available for presentation"), world.has_value()) ||
+        !test.TestTrue(TEXT("Presentation assets load"), IsValid(config))) {
+        return std::nullopt;
+    }
+
+    auto* owner{world.value()->SpawnActor<AActor>()};
+    if (!test.TestTrue(TEXT("Presentation component owner is created"), IsValid(owner))) {
+        return std::nullopt;
+    }
+    return std::optional<FPresentationFixture>{std::in_place, *owner, config->get_visual_config()};
 }
 
 auto make_battle_config() -> ::ioj::sim::LevelSimInitData {
@@ -100,6 +128,30 @@ auto compile_battle(ioj::levels::LevelDefinitionComponents authored,
     return data;
 }
 
+auto make_reconciliation_battle() -> ioj::sim::LevelSimInitData {
+    auto scheduled_battle{make_battle()};
+    auto& hero{scheduled_battle.entities[0]};
+    hero.team = ioj::Team::Blue;
+    hero.overrides.health = ioj::settings::PositiveHealth{ioj::sim::Health{10000}};
+    auto& enemy{scheduled_battle.entities[1]};
+    enemy.team = ioj::Team::Red;
+    enemy.position = hero.position;
+    enemy.spawn_time_seconds = ioj::NonNegativeFinite<double>{0.21};
+    scheduled_battle.entities.push_back({
+        .id = ioj::levels::EntityId{"spinner"},
+        .archetype = ioj::levels::EntityArchetype::TubeSpinner,
+        .team = ioj::Team::White,
+        .position = {5000.0, 0.0, 0.0},
+        .spawn_time_seconds = ioj::NonNegativeFinite<double>{0.21},
+    });
+    auto scheduled_config{make_battle_config()};
+    scheduled_config.clock_settings.tick_rate = ioj::Frequency::make(10.0);
+    scheduled_config.spinners.fire_point_offsets.push_back({{100.f, 0.f, 0.f}, {}});
+    scheduled_config.collision.overlap_response.damage_per_overlap_detection =
+        ioj::Positive<std::int32_t>{100};
+    return compile_battle(std::move(scheduled_battle), std::move(scheduled_config));
+}
+
 void kill_enemy(::ioj::sim::LevelSim& simulation) {
     ::ioj::sim::DirectDamageEvents events;
     events.add(simulation.capital_ships().get_entities().entity_ids()[1],
@@ -115,20 +167,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
-    auto world{ioj::get_editor_world()};
-    auto* config{ioj::load_default_level_config()};
-    if (!TestTrue(TEXT("Editor world is available for presentation"), world.has_value()) ||
-        !TestTrue(TEXT("Presentation assets load"), IsValid(config))) {
+    auto fixture{make_presentation_fixture(*this)};
+    if (!fixture) {
         return false;
     }
-    auto* owner{world.value()->SpawnActor<AActor>()};
-    if (!TestTrue(TEXT("Presentation component owner is created"), IsValid(owner))) {
-        return false;
-    }
-    ON_SCOPE_EXIT {
-        owner->Destroy();
-    };
-    auto const resources{make_presentation_resources(*owner, config->get_visual_config())};
+    auto const& resources{fixture->resources};
     auto battle{make_battle()};
     battle.logic = {
         .expressions = {{ioj::levels::EntityDestroyedExpr{ioj::levels::EntityId{"enemy"}}}},
@@ -190,21 +233,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
-    auto world{ioj::get_editor_world()};
-    auto* const config{ioj::load_default_level_config()};
-    if (!TestTrue(TEXT("Editor world is available for presentation"), world.has_value()) ||
-        !TestTrue(TEXT("Presentation assets load"), IsValid(config))) {
+    auto fixture{make_presentation_fixture(*this)};
+    if (!fixture) {
         return false;
     }
-    auto* const owner{world.value()->SpawnActor<AActor>()};
-    if (!TestTrue(TEXT("Presentation component owner is created"), IsValid(owner))) {
-        return false;
-    }
-    ON_SCOPE_EXIT {
-        owner->Destroy();
-    };
-
-    auto const resources{make_presentation_resources(*owner, config->get_visual_config())};
+    auto const& resources{fixture->resources};
     ioj::FLevelPresentationComponents const components{
         .lasers = resources.lasers,
         .capital_ships = resources.capital_ships,
@@ -212,9 +245,9 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
         .turrets = resources.turrets,
         .spinners = resources.spinners,
         .sparks = resources.sparks,
-        .soft_targets = make_presentation_component<UInstancedStaticMeshComponent>(*owner),
+        .soft_targets = make_presentation_component<UInstancedStaticMeshComponent>(fixture->owner),
         .collision_grid =
-            make_presentation_component<ioj::UCollisionGridVisualizationComponent>(*owner)};
+            make_presentation_component<ioj::UCollisionGridVisualizationComponent>(fixture->owner)};
 
     auto data{make_battle()};
     std::array<ioj::Vector3f, 2> const locations{{{10.f, 20.f, 30.f}, {-40.f, 50.f, 60.f}}};
@@ -291,43 +324,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
-    auto world{ioj::get_editor_world()};
-    auto* config{ioj::load_default_level_config()};
-    if (!TestTrue(TEXT("Editor world is available for presentation"), world.has_value()) ||
-        !TestTrue(TEXT("Presentation assets load"), IsValid(config))) {
+    auto fixture{make_presentation_fixture(*this)};
+    if (!fixture) {
         return false;
     }
-    auto* owner{world.value()->SpawnActor<AActor>()};
-    if (!TestTrue(TEXT("Presentation component owner is created"), IsValid(owner))) {
-        return false;
-    }
-    ON_SCOPE_EXIT {
-        owner->Destroy();
-    };
-    auto resources{make_presentation_resources(*owner, config->get_visual_config())};
+    auto const& resources{fixture->resources};
 
-    auto scheduled_battle{make_battle()};
-    auto& hero{scheduled_battle.entities[0]};
-    hero.team = ioj::Team::Blue;
-    hero.overrides.health = ioj::settings::PositiveHealth{ioj::sim::Health{10000}};
-    auto& enemy{scheduled_battle.entities[1]};
-    enemy.team = ioj::Team::Red;
-    enemy.position = hero.position;
-    enemy.spawn_time_seconds = ioj::NonNegativeFinite<double>{0.21};
-    scheduled_battle.entities.push_back({
-        .id = ioj::levels::EntityId{"spinner"},
-        .archetype = ioj::levels::EntityArchetype::TubeSpinner,
-        .team = ioj::Team::White,
-        .position = {5000.0, 0.0, 0.0},
-        .spawn_time_seconds = ioj::NonNegativeFinite<double>{0.21},
-    });
-    auto scheduled_config{make_battle_config()};
-    scheduled_config.clock_settings.tick_rate = ioj::Frequency::make(10.0);
-    scheduled_config.spinners.fire_point_offsets.push_back({{100.f, 0.f, 0.f}, {}});
-    scheduled_config.collision.overlap_response.damage_per_overlap_detection =
-        ioj::Positive<std::int32_t>{100};
-    ::ioj::sim::LevelSim simulation{
-        compile_battle(std::move(scheduled_battle), std::move(scheduled_config))};
+    ioj::sim::LevelSim simulation{make_reconciliation_battle()};
 
     ioj::FLevelPresentation presentation{resources, simulation.read_access()};
     TestEqual(TEXT("Delayed spinner has no initial visual instance"),
@@ -391,6 +394,27 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     TestEqual(
         TEXT("Zero-step frame preserves instances"), resources.capital_ships->GetNumInstances(), 1);
 
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelPresentationLateAttachmentTest,
+    "Sandbox.UnitTests.LevelSimulation.LateAttachmentStartsFromLiveState",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLevelPresentationLateAttachmentTest::RunTest(FString const&) -> bool {
+    auto fixture{make_presentation_fixture(*this)};
+    if (!fixture) {
+        return false;
+    }
+    auto const& resources{fixture->resources};
+
+    ioj::sim::LevelSim simulation{make_reconciliation_battle()};
+    simulation.start();
+    auto const dt{simulation.clock().tick_period()};
+    simulation.advance(dt * 4.25);
+    simulation.advance(0.0);
+
     ioj::FLevelPresentation attached{resources, simulation.read_access()};
     TestEqual(TEXT("Late attachment starts from live state"),
               resources.capital_ships->GetNumInstances(),
@@ -400,6 +424,21 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Late attachment does not replay old spawns"),
               resources.capital_ships->GetNumInstances(),
               1);
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelPresentationDeathBatchesTest,
+    "Sandbox.UnitTests.LevelSimulation.DeathEffectsKeepIndependentTickBatches",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLevelPresentationDeathBatchesTest::RunTest(FString const&) -> bool {
+    auto fixture{make_presentation_fixture(*this)};
+    if (!fixture) {
+        return false;
+    }
+    auto& resources{fixture->resources};
 
     auto death_data{make_battle_config()};
     death_data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
