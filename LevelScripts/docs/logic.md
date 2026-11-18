@@ -66,5 +66,10 @@ Stopping without a winner records the reason without inventing a winner. A fresh
 resets timers, latches, rules and history.
 
 `Libraries/logic.scm` provides `destroy-all`, `destroy-any`, `level-delay` and `win-race` as ordinary
-Scheme helpers. The editor owns only its generated configuration; keep gameplay logic in the human
+Scheme helpers. `win-race` ends the level on the first tick where success or failure is true;
+success wins if both are true on that tick. Fighters can receive attack orders from positive
+`entity-destroyed` conditions in their team's win rules, including those under `all-of`,
+`any-of`, and the captured value of `latched-true`.
+
+The editor owns only its generated configuration; keep gameplay logic in the human
 root. Serialization preserves graph data and sharing, not the original Scheme source formatting.

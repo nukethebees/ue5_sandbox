@@ -11,6 +11,10 @@
 namespace ioj::sim {
 
 struct LevelSimTestAccess {
+    static auto level_entity_ids(LevelSim const& simulation) -> std::span<EntityId const> {
+        return simulation.spawn_manager_.entity_ids();
+    }
+
     static auto spatial_queries(LevelSim& simulation) -> SpatialQueryManager& {
         return simulation.collision_pipeline_.queries();
     }

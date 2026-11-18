@@ -12,12 +12,7 @@
     (initially (start-timer clock seconds))
     (timer-elapsed clock)))
 
-;; Latch the outcome and award victory, preferring success on ties.
+;; Award victory on the deciding tick, preferring success on ties.
 (define (win-race team opponent success failure)
-  (let ((decision (latch :when (any-of success failure) :value success)))
-    (on 
-      :when (latched-true decision) 
-      :do (win team))
-    (on 
-      :when (latched-false decision) 
-      :do (win opponent))))
+  (on :when success :do (win team))
+  (on :when (all-of failure (not-of success)) :do (win opponent)))

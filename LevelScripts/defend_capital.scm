@@ -1,6 +1,15 @@
 (load-script "Libraries/logic.scm")
 
-(level-with (load-script "defend_capital/editor-config.scm")
+(define scene (load-script "defend_capital/editor-config.scm"))
+
+;; Keep the first wave clear of the carrier's world-aligned collision bounds.
+(define (orient-launch-carrier ship)
+  (if (eq? (entity-ref ship :id) 'capitalship-blue)
+      (entity-with ship :rotation '(0 90 0))
+      ship))
+
+(level-with scene
+  :entities (map orient-launch-carrier (level-ref scene :entities))
   :settings (settings-layers
     (load-script "Settings/base.scm")
     (settings
@@ -10,9 +19,7 @@
 
   :logic (logic
     (win-race 'blue 'red
-      (all-of
-        (level-delay 60)
-        (destroy-all '(capitalship-red2)))
+      (entity-destroyed 'capitalship-red2)
       (any-of
-        (destroy-any '(capitalship-blue))
+        (entity-destroyed 'capitalship-blue)
         (level-delay 60)))))

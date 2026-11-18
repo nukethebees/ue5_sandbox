@@ -12,6 +12,7 @@ target_sources(native-simulation-tests PRIVATE
   timer_tests.cpp
   level_event_tests.cpp
   level_authoring_integration_tests.cpp
+  defend_capital_tests.cpp
   entity_id_tests.cpp
   entity_instance_handle_tests.cpp
   enum_tests.cpp
