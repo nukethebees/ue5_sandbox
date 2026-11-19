@@ -1,3 +1,4 @@
+#include "../../level_authoring/tests/module_fixture.h"
 #include "support/simulation_test_support.h"
 #include <ioj/column_math.h>
 #include <ioj/levels/authoring/definition_reader.h>
@@ -136,7 +137,8 @@ class DefendCapitalOutcome : public ::testing::TestWithParam<OutcomeCase> {};
 TEST_P(DefendCapitalOutcome, AwardsVictoryOnTheDecidingTick) {
     auto const& scenario{GetParam()};
     // Keep the live mission rules but isolate their inputs from incidental combat.
-    auto const level{levels::authoring::DefinitionReader{script_root()}.read_level_source(R"(
+    auto const level{ioj::levels::authoring::tests::read_test_level(
+        levels::authoring::DefinitionReader{script_root()}, R"(
       (copy-with (module-ref (import-module "defend_capital.scm") 'mission)
         :settings (settings :tick (tick :tick-rate 1))
         :entities (list

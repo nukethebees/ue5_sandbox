@@ -1,3 +1,4 @@
+#include "module_fixture.h"
 #include "settings_diff.h"
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/testing/math_diff.h>
@@ -36,7 +37,8 @@ constexpr char scheduled_level[]{R"(
 }
 
 TEST(S7LevelDefinition, DecodesScheduledSpawnsAndRules) {
-    auto const result{DefinitionReader{}.read_level_source(scheduled_level)};
+    auto const result{
+        ioj::levels::authoring::tests::read_test_level(DefinitionReader{}, scheduled_level)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(result->entities()[1].spawn_time_seconds, 1.25);
     EXPECT_EQ(std::get<EntityDestroyedExpr>(result->logic().expressions[0].payload).entity,
@@ -44,7 +46,7 @@ TEST(S7LevelDefinition, DecodesScheduledSpawnsAndRules) {
 }
 
 TEST(S7LevelDefinition, DecodesPlayerMissionMetadataAndPlacement) {
-    auto const result{DefinitionReader{}.read_level_source(R"(
+    auto const result{ioj::levels::authoring::tests::read_test_level(DefinitionReader{}, R"(
       (level :id 'player-mission :title "Player Mission" :par-time 75.5 :player 'player
         :logic (logic (on :when (entity-destroyed 'enemy) :do (win 'blue)))
         :entities (list
@@ -64,7 +66,8 @@ TEST(S7LevelDefinition, DecodesPlayerMissionMetadataAndPlacement) {
 }
 
 TEST(S7LevelDefinition, DecodesPlayerlessCameraDefinition) {
-    auto const result{DefinitionReader{}.read_level_source(valid_camera_level)};
+    auto const result{
+        ioj::levels::authoring::tests::read_test_level(DefinitionReader{}, valid_camera_level)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_TRUE(result->player_entity_id().empty());
     EXPECT_FALSE(result->metadata().par_time_seconds);
@@ -75,7 +78,7 @@ TEST(S7LevelDefinition, DecodesPlayerlessCameraDefinition) {
 }
 
 TEST(S7LevelDefinition, LexicalHandlesPreserveSharingAndLatchedRace) {
-    auto const result{DefinitionReader{}.read_level_source(R"(
+    auto const result{ioj::levels::authoring::tests::read_test_level(DefinitionReader{}, R"(
       (level :id 'race :title "Race" :player 'player
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
         :logic (logic
@@ -104,7 +107,7 @@ TEST(S7LevelDefinition, DecodesDeclarativeUnlockCriteria) {
     std::string source{scheduled_level};
     source.insert(source.size() - 2,
                   " :unlock (list (level-completed 'first-level) (level-completed 'second-level))");
-    auto const result{DefinitionReader{}.read_level_source(source)};
+    auto const result{ioj::levels::authoring::tests::read_test_level(DefinitionReader{}, source)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(result->unlock_level_ids(),
               (std::vector{LevelId{"first-level"}, LevelId{"second-level"}}));

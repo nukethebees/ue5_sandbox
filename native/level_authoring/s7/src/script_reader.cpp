@@ -4,12 +4,7 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/level_inputs_reader.h>
 #include <ioj/levels/authoring/record_constructors.h>
-#include <ioj/levels/campaign_validation.h>
 #include <ioj/s7/interpreter.h>
-
-#include <codegen/sexpr/form_builder.h>
-#include <codegen/sexpr/sexpr_renderer.h>
-#include <lispb/strings.h>
 
 #include <algorithm>
 #include <concepts>
@@ -18,7 +13,6 @@
 
 namespace ioj::levels::authoring {
 namespace {
-using MaterializedSource = std::expected<s7::Ast, Diagnostics>;
 
 auto dsl_source() -> std::string {
     std::string source{"(begin\n"};
@@ -45,13 +39,6 @@ auto with_interpreter(std::filesystem::path const& root, Run run)
     return run(interpreter);
 }
 
-auto evaluate(std::string_view source, std::filesystem::path const& root) -> MaterializedSource {
-    return with_interpreter(root, [&](s7::Interpreter& interpreter) {
-        return interpreter.evaluate_ast(std::format("(begin\n{}\n)", source))
-            .transform_error(detail::diagnostics);
-    });
-}
-
 template <typename Result>
 auto with_source_path(Result result, std::filesystem::path const& path) -> Result {
     if (!result) {
@@ -62,35 +49,6 @@ auto with_source_path(Result result, std::filesystem::path const& path) -> Resul
         }
     }
     return result;
-}
-
-auto decode_campaign(s7::Ast const& ast) -> CampaignDefinitionReadResult {
-    auto definition{parse_campaign(ast, ast.root)};
-    if (!definition) {
-        return definition;
-    }
-    auto validation{validate_campaign(*definition)};
-    if (!validation) {
-        return std::unexpected{std::move(validation.error())};
-    }
-    return definition;
-}
-
-auto module_value(std::string_view source,
-                  std::filesystem::path const& path,
-                  std::string_view export_name,
-                  std::filesystem::path const& root) -> MaterializedSource {
-    lispb::Strings strings;
-    lispb::codegen::sexpr::SExprIR ir{strings};
-    auto const module{
-        ir.form("read-module", {ir.string(ioj::path_to_utf8(path)), ir.string(source)}).build()};
-    auto const lookup{ir.form("module-ref", {module, ir.quote(export_name)}).build()};
-    return with_source_path(
-        evaluate(
-            lispb::codegen::sexpr::SExprRenderer{ir, lispb::codegen::sexpr::Dialect::scheme}.render(
-                lookup),
-            root),
-        path);
 }
 
 template <typename Definition, typename Decode>
@@ -113,7 +71,8 @@ auto read_entry(s7::Interpreter& interpreter,
     auto file{root / relative};
     std::string source;
     auto result{interpreter
-                    .import_ast(*path,
+                    .import_ast(ioj::path_to_utf8(root),
+                                *path,
                                 export_name,
                                 std::same_as<Definition, LevelDefinition> ? &source : nullptr)
                     .transform_error(detail::diagnostics)
@@ -122,19 +81,6 @@ auto read_entry(s7::Interpreter& interpreter,
     return {std::move(file), std::move(definition), std::move(source)};
 }
 
-auto read_source(std::filesystem::path const& path) -> std::expected<std::string, Diagnostics> {
-    auto source{ioj::read_file(path)};
-    if (!source) {
-        auto const& error{source.error()};
-        return std::unexpected{Diagnostics{
-            {error.code == ioj::FileReadErrorCode::OpenFailed ? DiagnosticCode::FileOpenFailed
-                                                              : DiagnosticCode::FileReadFailed,
-             "$",
-             std::format("Unable to read script file: {}", error.system_error.message()),
-             path}}};
-    }
-    return std::move(*source);
-}
 }
 
 DefinitionReader::DefinitionReader(std::filesystem::path script_library_root)
@@ -188,15 +134,20 @@ auto DefinitionReader::read_settings_file(std::filesystem::path const& path,
 }
 
 auto DefinitionReader::read_script_file(std::filesystem::path const& path,
-                                        std::string_view export_name) const
+                                        char const* export_name) const
     -> std::expected<s7::Ast, Diagnostics> {
-    auto source{read_source(path)};
-    if (!source) {
-        return std::unexpected{std::move(source.error())};
-    }
-    auto const root{script_library_root_.empty() ? std::filesystem::absolute(path).parent_path()
-                                                 : script_library_root_};
-    return module_value(*source, path, export_name, root);
+    auto const file{std::filesystem::absolute(path)};
+    auto const directory{file.parent_path()};
+    return with_source_path(
+        with_interpreter(script_library_root_.empty() ? directory : script_library_root_,
+                         [&](s7::Interpreter& interpreter) {
+                             return interpreter
+                                 .import_ast(ioj::path_to_utf8(directory),
+                                             ioj::path_to_utf8(file.filename()),
+                                             export_name)
+                                 .transform_error(detail::diagnostics);
+                         }),
+        path);
 }
 auto DefinitionReader::read_level_file(std::filesystem::path const& path) const
     -> LevelDefinitionReadResult {

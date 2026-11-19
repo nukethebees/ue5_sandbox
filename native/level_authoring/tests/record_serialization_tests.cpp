@@ -1,3 +1,4 @@
+#include "module_fixture.h"
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/levels/authoring/level_inputs_reader.h>
@@ -15,12 +16,12 @@ namespace ioj::levels::authoring::tests {
 namespace {
 template <typename T>
 auto decode_record(std::string_view source) -> T {
-    auto const ast{DefinitionReader{}.read_source_ast(source).value()};
+    auto const ast{read_test_value(DefinitionReader{}, source).value()};
     return s7::read<T>(s7::Reader{ast}, ast.root, "record").value();
 }
 template <typename T>
 auto apply_record(T const& base, std::string_view source) -> T {
-    auto const ast{DefinitionReader{}.read_source_ast(source).value()};
+    auto const ast{read_test_value(DefinitionReader{}, source).value()};
     return s7::read_override(s7::Reader{ast}, ast.root, "record", base).value();
 }
 }
@@ -55,7 +56,7 @@ TEST(SchemeRecords, RejectMalformedAccessAndUpdates) {
                               "(copy-with (level) :title)",
                               "(copy-with '(:level :title) :title 1)",
                               "(copy-with '(:level :title 1 :title 2) :description 3)"}) {
-        EXPECT_FALSE(DefinitionReader{}.read_source_ast(source)) << source;
+        EXPECT_FALSE(read_test_value(DefinitionReader{}, source)) << source;
     }
 }
 

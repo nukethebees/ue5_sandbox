@@ -116,13 +116,7 @@ Settings use the same concrete record and reader for creation and subsequent lay
 Load base settings before decoding level settings into a copy. No sparse companion structs,
 patch-reader specializations or generated `apply_overrides` functions are needed.
 
-`read_settings<T>(reader, node, section, existing)` in `ioj/s7/settings_reader.h` selects one
-settings section and applies ordered `settings-layers`, including nested layers. It checks
-structural/type and field-constraint errors during decoding. A later layer cannot hide an
-invalid earlier field. Cross-field checks belong to the consumer after all layers are applied.
-Other top-level sections belong to their own consumers. Generated `decode` functions are
-protocol hooks; ordinary callers use `read`, `read_override` or `read_settings` so partially
-decoded values cannot escape through a successful return. There is no second validation walk.
+The settings reader validates every layer before applying the next. Consumers select fields from the decoded settings.
 
 Level, entity, objective, mission, catalog/import, camera, collision-grid and
 campaign records use this path. `level_inputs.lispb` describes the script-facing records.

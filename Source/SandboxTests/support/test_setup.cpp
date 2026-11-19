@@ -1,5 +1,6 @@
 #include "test_setup.h"
 
+#include "../../../native/level_authoring/tests/module_fixture.h"
 #include "SimulationTestAssets.h"
 #include "TestBatchOrchestratorTestAccess.h"
 #include <ioj/levels/authoring/definition_reader.h>
@@ -58,7 +59,8 @@ auto spawn_visibility_blocker(UWorld& world, FTransform const& transform, FName 
 
 auto load_player_test_level(ATestBatchOrchestrator& orchestrator, FSoftTestAssertions& checks)
     -> bool {
-    auto const definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
+    auto const definition{
+        ioj::levels::authoring::tests::read_test_level(levels::authoring::DefinitionReader{}, R"(
         (level :id 'player-test :title "Player test"
           :player 'player
           :entities (list (entity :id 'player :archetype 'player-fighter

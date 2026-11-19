@@ -2,6 +2,8 @@
 
 namespace ioj::s7 {
 enum class AstErrorCode {
+    FileOpenFailed,
+    FileReadFailed,
     EvaluationFailed,
     UnsupportedValue,
     ImproperList,

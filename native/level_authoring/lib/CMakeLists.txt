@@ -7,7 +7,6 @@ target_sources(native-level-authoring
     ../s7/src/level_processing.cpp
     ../s7/src/campaign_parser.cpp
     src/identifiers.cpp
-    src/source_session.cpp
     src/definition_catalog.cpp
 )
 target_include_directories(native-level-authoring
@@ -29,13 +28,9 @@ set_target_properties(native-level-authoring PROPERTIES OUTPUT_NAME SandboxNativ
 
 add_library(native-level-authoring-s7 STATIC)
 target_sources(native-level-authoring-s7
-  PUBLIC
-    include/ioj/levels/authoring/starfield_reader.h
   PRIVATE
     ../s7/src/level_definition_writer.cpp
     ../s7/src/script_reader.cpp
-    ../s7/src/source_session_reader.cpp
-    ../s7/src/starfield_reader.cpp
 )
 target_include_directories(native-level-authoring-s7
   PUBLIC

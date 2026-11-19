@@ -1,3 +1,4 @@
+#include "../../../native/level_authoring/tests/module_fixture.h"
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
@@ -59,17 +60,16 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                     expected.grid_size = size_override;
                     expected.cell_size = cell_override;
                 }
-                auto const definition{
-                    ioj::levels::authoring::DefinitionReader{
-                        std::filesystem::path{
-                            *ioj::levels::authoring::default_level_script_directory()}}
-                        .read_level_source(std::format(
-                            R"((level :id 'grid-runtime :title "Grid runtime" :player 'player
+                auto const definition{ioj::levels::authoring::tests::read_test_level(
+                    ioj::levels::authoring::DefinitionReader{std::filesystem::path{
+                        *ioj::levels::authoring::default_level_script_directory()}},
+                    std::format(
+                        R"((level :id 'grid-runtime :title "Grid runtime" :player 'player
                         :entities (list (entity :id 'player :archetype 'player-fighter
                                                 :team 'blue :position '(0 0 0)))
                         :settings (settings-layers (module-ref (import-module "Settings/base.scm") 'game-settings)
                           (settings :collision-grid (collision-grid {})))))",
-                            grid))};
+                        grid))};
                 if (!checks.is_true(definition.has_value(), TEXT("Grid definition decodes"))) {
                     return;
                 }

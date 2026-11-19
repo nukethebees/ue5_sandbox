@@ -90,13 +90,18 @@ auto Interpreter::evaluate_ast(std::string_view const expression, ioj::s7::AstLi
     return impl_->ast(impl_->evaluate_value(expression), limits);
 }
 
-auto Interpreter::import_ast(std::string_view path, char const* export_name, std::string* source)
-    -> AstResult {
+auto Interpreter::import_ast(std::string_view directory,
+                             std::string_view path,
+                             char const* export_name,
+                             std::string* source) -> AstResult {
     if (source) {
         source->clear();
     }
-    auto const result{impl_->bindings_.import_value(path, export_name, source)};
-    return impl_->ast(impl_->unpack(result), {});
+    auto result{impl_->bindings_.import_value(directory, path, export_name, source)};
+    if (!result) {
+        return std::unexpected{AstDiagnostics{std::move(result.error())}};
+    }
+    return impl_->ast(impl_->unpack(*result), {});
 }
 
 auto Interpreter::Impl::ast(ValueResult value, AstLimits limits) -> AstResult {

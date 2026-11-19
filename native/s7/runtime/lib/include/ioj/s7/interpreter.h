@@ -26,7 +26,8 @@ class Interpreter {
     [[nodiscard]] auto evaluate_ast(std::string_view expression, AstLimits limits = {})
         -> AstResult;
     // A requested source snapshot is available even when evaluation of the captured file fails.
-    [[nodiscard]] auto import_ast(std::string_view path,
+    [[nodiscard]] auto import_ast(std::string_view directory,
+                                  std::string_view path,
                                   char const* export_name,
                                   std::string* source = nullptr) -> AstResult;
   private:

@@ -7,9 +7,6 @@
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/levels/authoring/level_inputs_reader.h>
 #include <ioj/levels/authoring/level_parser.h>
-#include <ioj/levels/authoring/source_session.h>
-#include <ioj/levels/authoring/starfield_reader.h>
-#include <ioj/levels/catalog_validation.h>
 #include <ioj/s7/interpreter.h>
 #include <ioj/s7/source_format.h>
 #include <ioj/settings/settings_values_writer.h>
@@ -167,7 +164,7 @@ TEST(NativeSettings, DerivesStarfieldBindingsAndPreservesSparseLayers) {
         :galactic-core (galactic-core :strength 22 :width-degrees 23)
         :nebular-knot (nebular-knot :strength 24 :size-degrees 25)))
       (settings :starfield (starfield :star (star :scale 1)))))")}}));
-    auto const result{read_starfield_settings_file(path)};
+    auto const result{DefinitionReader{}.read_settings_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     starfield::Settings const expected{.generation = {42, -7},
                                        .star = {starfield::Settings{}.star.scale, 3, 4, 5, 6},
@@ -179,13 +176,14 @@ TEST(NativeSettings, DerivesStarfieldBindingsAndPreservesSparseLayers) {
                                        .galactic_haze = {20, 21},
                                        .galactic_core = {22, 23},
                                        .nebular_knot = {24, 25}};
-    EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, result->starfield);
 }
 
 TEST(NativeSettings, DecodesPresentationLayersIntoExistingNativeValues) {
     settings::Settings initial;
     initial.presentation.entity_overlay.maximum_range = 4000;
-    auto const source{DefinitionReader{}.read_settings_source(R"(
+    auto const source{read_test_settings(DefinitionReader{},
+                                         R"(
       (settings-layers
         (settings :presentation (presentation
           :player-ship (player-ship-presentation :boost-effect-colour-intensity 80)
@@ -196,7 +194,7 @@ TEST(NativeSettings, DecodesPresentationLayersIntoExistingNativeValues) {
         (settings :presentation (presentation
           :player-ship (player-ship-presentation :boost-effect-colour-intensity 75)
           :entity-overlay (entity-overlay :soft-target (soft-target :pulse-duration 0.3))))))",
-                                                              initial)};
+                                         initial)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
     auto expected{initial};
     auto& presentation{expected.presentation};
@@ -217,16 +215,16 @@ TEST(NativeSettings, RecordTagsRegisterConstructorsWithoutHandwrittenBindings) {
         :entity-overlay (entity-overlay :enabled #f
           :soft-target (soft-target :opacity 0.5)))))"};
     DefinitionReader const reader;
-    auto const settings{reader.read_settings_source(source)};
+    auto const settings{read_test_settings(reader, source)};
     ASSERT_TRUE(settings) << format_diagnostics(settings.error());
     settings::Settings const expected{
         .presentation = {.entity_overlay = {.enabled = false, .soft_target = {.opacity = 0.5f}},
                          .radar = {.combat_range = 150000}}};
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *settings);
 
-    auto const ast{reader.read_source_ast(source)};
+    auto const ast{read_test_value(reader, source)};
     ASSERT_TRUE(ast) << format_diagnostics(ast.error());
-    auto const frozen{reader.read_settings_source(s7::serialize(*settings))};
+    auto const frozen{read_test_settings(reader, s7::serialize(*settings))};
     ASSERT_TRUE(frozen) << format_diagnostics(frozen.error());
     EXPECT_PRED_FORMAT2(structurally_equal, *settings, *frozen);
 }
@@ -235,11 +233,12 @@ TEST(NativeSettings, AccumulatesStructuralAndNestedErrorsWithoutChangingTheBase)
     settings::Settings base;
     base.fighters.speed = 7000.f;
     auto const original{base};
-    auto const result{DefinitionReader{}.read_settings_source(R"(
+    auto const result{read_test_settings(DefinitionReader{},
+                                         R"(
       (settings :unknown 1
         :fighters (fighters :speed 9000 :health #t :speed 1)
         :presentation (presentation :radar (radar :enabled 1))))",
-                                                              base)};
+                                         base)};
     ASSERT_FALSE(result);
     EXPECT_PRED_FORMAT2(structurally_equal, original, base);
     auto const& errors{result.error()};
@@ -254,8 +253,8 @@ TEST(NativeSettings, AccumulatesStructuralAndNestedErrorsWithoutChangingTheBase)
 
 TEST(NativeSettings, RejectsMalformedPresentationAtTheTypedDecodingBoundary) {
     for (auto const value : {"3", "#f", "'(1 2)", "'( :radar )"}) {
-        EXPECT_FALSE(DefinitionReader{}.read_settings_source(
-            std::format("(settings :presentation {})", value)))
+        EXPECT_FALSE(read_test_settings(DefinitionReader{},
+                                        std::format("(settings :presentation {})", value)))
             << value;
     }
 
@@ -285,7 +284,8 @@ TEST(NativeSettings, RejectsMalformedPresentationAtTheTypedDecodingBoundary) {
                DiagnosticCode::InvalidNumber,
                "presentation.entity-overlay.bar-size-pixels"}}) {
         SCOPED_TRACE(test.fields);
-        auto const result{DefinitionReader{}.read_settings_source(
+        auto const result{read_test_settings(
+            DefinitionReader{},
             std::format("(settings :presentation (presentation {}))", test.fields))};
         ASSERT_FALSE(result);
         ASSERT_FALSE(result.error().empty());
@@ -312,7 +312,7 @@ TEST(NativeSettings, RetainsStarfieldConversionAndDomainDiagnostics) {
                           module_source("game-settings",
                                         std::format("(settings :starfield (starfield :star {}))",
                                                     test.section))}}));
-        auto const result{read_starfield_settings_file(path)};
+        auto const result{DefinitionReader{}.read_settings_file(path)};
         ASSERT_FALSE(result);
         ASSERT_EQ(result.error().size(), 1u);
         EXPECT_EQ(result.error().front().code, test.code);
@@ -322,10 +322,10 @@ TEST(NativeSettings, RetainsStarfieldConversionAndDomainDiagnostics) {
 }
 
 TEST(NativeSettings, ReadsShippedStarfieldSettingsAndValidatesEachNestedLayer) {
-    auto shipped{read_starfield_settings_file(std::filesystem::path{IOJ_LEVEL_SCRIPTS} /
-                                              "Settings" / "base.scm")};
+    auto shipped{DefinitionReader{}.read_settings_file(std::filesystem::path{IOJ_LEVEL_SCRIPTS} /
+                                                       "Settings" / "base.scm")};
     ASSERT_TRUE(shipped) << format_diagnostics(shipped.error());
-    EXPECT_EQ(shipped->generation.star_count, 10000);
+    EXPECT_EQ(shipped->starfield.generation.star_count, 10000);
 
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "settings.scm"};
@@ -334,16 +334,16 @@ TEST(NativeSettings, ReadsShippedStarfieldSettingsAndValidatesEachNestedLayer) {
       :star (settings-layers
         (star :scale 2 :size-multiplier 3)
         (star :scale 1)))))")}}));
-    auto result{read_starfield_settings_file(path)};
+    auto result{DefinitionReader{}.read_settings_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     starfield::Settings expected;
     expected.star.size_multiplier = 3.f;
-    EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, result->starfield);
 
     ASSERT_TRUE(
         write_files({{path, module_source("game-settings", R"((settings :starfield (starfield
       :star (settings-layers (star :scale 0) (star :scale 1)))))")}}));
-    result = read_starfield_settings_file(path);
+    result = DefinitionReader{}.read_settings_file(path);
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().front().node_path, "starfield.star.scale");
 }
@@ -363,7 +363,7 @@ TEST(NativeSettings, RejectsMalformedStarfieldRecordsAndInvalidEffectiveValues) 
           "(settings :starfield (starfield :nebular-knot (nebular-knot :size-degrees 0)))"}) {
         SCOPED_TRACE(source);
         ASSERT_TRUE(write_files({{path, module_source("game-settings", source)}}));
-        auto result{read_starfield_settings_file(path)};
+        auto result{DefinitionReader{}.read_settings_file(path)};
         ASSERT_FALSE(result);
         EXPECT_FALSE(result.error().empty());
         EXPECT_EQ(result.error().front().source_path, path);
@@ -387,11 +387,12 @@ TEST(NativeLevelDefinition, VerifiesComponentsBeforeConstructionAndOwnsThem) {
 
 TEST(NativeLevelAuthoringReader, IntegerFieldsRequireExactInt32Values) {
     auto const read{[](std::string_view const value) {
-        return DefinitionReader{}.read_level_source(std::format(
-            R"((level :id 'integer :title "Integer" :player 'player
+        return read_test_level(DefinitionReader{},
+                               std::format(
+                                   R"((level :id 'integer :title "Integer" :player 'player
               :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                 :position '(0 0 0) :health {}))))",
-            value));
+                                   value));
     }};
 
     for (auto const value : {"2147483647", "2147483647.0", "4294967294/2"}) {
@@ -418,7 +419,7 @@ TEST(NativeLevelAuthoringReader, IntegerFieldsRequireExactInt32Values) {
 }
 
 TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithLogicAndSparseSettings) {
-    auto const level{DefinitionReader{}.read_level_source(R"(
+    auto const level{read_test_level(DefinitionReader{}, R"(
       (let ((distance (* 2 500)))
         (level :id 'generated-records :title "Generated records"
           :camera (camera :look-at '(capital) :distance distance :offset-direction '(-1 0 1))
@@ -461,9 +462,9 @@ TEST(NativeLevelAuthoringReader, RejectsForeignHandlesAndRestoresLogicScope) {
           "(logic (on :when 0 :do (stop)))",
           "(logic (on :when (timer) :do (stop)))",
           "(entity-destroyed 'player)"}) {
-        EXPECT_FALSE(reader.read_level_source(body));
+        EXPECT_FALSE(read_test_level(reader, body));
     }
-    EXPECT_TRUE(reader.read_level_source(minimal_source()));
+    EXPECT_TRUE(read_test_level(reader, minimal_source()));
 }
 
 TEST(NativeLevelAuthoringReader, FloatFieldsRejectNonfiniteAndUnrepresentableValues) {
@@ -471,13 +472,14 @@ TEST(NativeLevelAuthoringReader, FloatFieldsRejectNonfiniteAndUnrepresentableVal
         "0.5", "1e100", s7::literals::positive_infinity, s7::literals::nan};
     for (auto const value : sources) {
         SCOPED_TRACE(value);
-        auto const result{DefinitionReader{}.read_level_source(std::format(R"(
+        auto const result{read_test_level(DefinitionReader{},
+                                          std::format(R"(
           (level :id 'floats :title "Floats" :player 'player
             :entities (list
               (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0))
               (entity :id 'capital :archetype 'capital-ship :team 'blue :position '(100 0 0)
                       :initial-spawn-delay {}))))",
-                                                                           value))};
+                                                      value))};
         if (value == "0.5") {
             ASSERT_TRUE(result) << format_diagnostics(result.error());
             EXPECT_EQ(result->entities()[1].overrides.initial_spawn_delay, 0.5f);
@@ -521,7 +523,7 @@ TEST(NativeLevelAuthoringReader, RejectsInvalidLogicNumbersAndReferences) {
         SCOPED_TRACE(test.logic);
         auto source{minimal_source()};
         source.insert(source.size() - 1, std::format(" :logic {}", test.logic));
-        auto const result{DefinitionReader{}.read_level_source(source)};
+        auto const result{read_test_level(DefinitionReader{}, source)};
         ASSERT_FALSE(result);
         EXPECT_TRUE(std::ranges::any_of(result.error(), [&](auto const& error) {
             return error.node_path.starts_with(test.path);
@@ -542,62 +544,11 @@ TEST(NativeLevelAuthoringReader, RejectsCombinationalCyclesAndAuthoredLatchFeedb
     for (auto const& test : cases) {
         auto source{minimal_source()};
         source.insert(source.size() - 1, std::format(" :logic '{}", test.graph));
-        auto const result{DefinitionReader{}.read_level_source(source)};
+        auto const result{read_test_level(DefinitionReader{}, source)};
         ASSERT_FALSE(result);
         EXPECT_TRUE(has_code(result.error(), DiagnosticCode::InvalidLogicStructure));
         EXPECT_EQ(result.error().front().node_path, test.path);
     }
-}
-
-TEST(NativeSourceSession, ProtectsDiskChangesAndRetainsDetachedBuffersUntilDiscarded) {
-    TemporaryLevelDirectory directory;
-    auto const path{directory.path() / "source.scm"};
-    auto const next{directory.path() / "next.scm"};
-    for (auto const change : {"edit", "delete", "create"}) {
-        SCOPED_TRACE(change);
-        std::filesystem::remove(path);
-        if (std::string_view{change} != "create") {
-            ASSERT_TRUE(write_files({{path, "original"}}));
-        }
-        SourceSession session;
-        ASSERT_TRUE(session.attach(path));
-        session.set_buffer("unsaved");
-        if (std::string_view{change} == "delete") {
-            std::filesystem::remove(path);
-        } else {
-            ASSERT_TRUE(write_files({{path, "external"}}));
-        }
-        ASSERT_TRUE(session.refresh_external_conflict());
-        EXPECT_TRUE(session.state().disk_conflict);
-        EXPECT_FALSE(session.save());
-
-        session.detach();
-        EXPECT_FALSE(session.attach(next));
-        EXPECT_EQ(session.buffer(), "unsaved");
-        EXPECT_FALSE(session.save());
-        EXPECT_FALSE(session.is_attached());
-        EXPECT_FALSE(session.attach(next));
-        ASSERT_TRUE(session.discard_and_attach(next));
-        EXPECT_TRUE(session.is_attached());
-        EXPECT_FALSE(session.state().recovery_required);
-        session.set_buffer("next source");
-        ASSERT_TRUE(session.save());
-        EXPECT_EQ(read_file(next).value(), "next source");
-        EXPECT_FALSE(session.state().dirty());
-    }
-}
-
-TEST(NativeSourceSession, ReadsUtf8BomText) {
-    TemporaryLevelDirectory directory;
-    auto const path{directory.path() / "encoding.scm"};
-    std::string const bytes{"\xef\xbb\xbf"
-                            "A\xcf\x80"};
-    ASSERT_TRUE(write_files({{path, bytes}}));
-    SourceSession session;
-    ASSERT_TRUE(session.attach(path));
-    EXPECT_EQ(session.buffer(), "A\xcf\x80");
-    ASSERT_TRUE(session.save());
-    EXPECT_EQ(read_file(path).value(), session.buffer());
 }
 
 TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
@@ -746,20 +697,20 @@ TEST(NativeLevelAuthoringFiles, ReadsEmptyBinaryAndLargeFilesWithExplicitErrors)
 }
 TEST(NativeLevelAuthoringCampaignReader, DecodesAndValidatesCampaignData) {
     DefinitionReader reader;
-    auto const result{reader.read_campaign_source(
-        R"((campaign :id 'first-campaign :title "First Campaign" :levels '(alpha beta)))")};
+    auto const result{read_test_campaign(
+        reader, R"((campaign :id 'first-campaign :title "First Campaign" :levels '(alpha beta)))")};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     CampaignDefinition const expected{
         CampaignId{"first-campaign"}, "First Campaign", {LevelId{"alpha"}, LevelId{"beta"}}};
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
-    auto const duplicate{reader.read_campaign_source(
-        R"((campaign :id 'campaign :title "Duplicate" :levels '(alpha alpha)))")};
+    auto const duplicate{read_test_campaign(
+        reader, R"((campaign :id 'campaign :title "Duplicate" :levels '(alpha alpha)))")};
     ASSERT_FALSE(duplicate);
     EXPECT_TRUE(has_code(duplicate.error(), DiagnosticCode::DuplicateCampaignLevel));
 }
 TEST(NativeLevelAuthoringReader, ParsesClosedVocabulariesWithoutTeamDeclarations) {
     auto source{minimal_source()};
-    auto const result{DefinitionReader{}.read_level_source(source)};
+    auto const result{read_test_level(DefinitionReader{}, source)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(participating_teams(*result), (std::vector{Team::Blue}));
     ASSERT_EQ(result->entities().size(), 1u);
@@ -782,7 +733,7 @@ TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
                                          EntityId{"red-capital-ship-2"},
                                          EntityId{"blue-static-turret-0"}};
     for (int iteration{}; iteration < 2; ++iteration) {
-        auto const result{DefinitionReader{}.read_level_source(source)};
+        auto const result{read_test_level(DefinitionReader{}, source)};
         ASSERT_TRUE(result) << format_diagnostics(result.error());
         ASSERT_EQ(result->entities().size(), expected.size());
         auto const count{expected.size()};
@@ -809,7 +760,7 @@ TEST(NativeLevelAuthoringReader, OptionalPropertiesStillRejectMalformedValuesAnd
             (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0))
             (entity :archetype 'static-turret :team 'red :position '(1 2 3) {}))))",
                                       properties)};
-        EXPECT_FALSE(DefinitionReader{}.read_level_source(source)) << properties;
+        EXPECT_FALSE(read_test_level(DefinitionReader{}, source)) << properties;
     }
 }
 TEST(NativeLevelAuthoringReader, RestartsGeneratedIdsForEachDefinitionInOneRoot) {
@@ -839,7 +790,7 @@ TEST(NativeLevelAuthoringReader, RestartsGeneratedIdsForEachDefinitionInOneRoot)
 }
 TEST(NativeLevelAuthoringReader, MapsPositionsAndConstructsExplicitIdsInScheme) {
     auto const result{
-        DefinitionReader{}.read_level_source(R"((level :id 'formation :title "Formation"
+        read_test_level(DefinitionReader{}, R"((level :id 'formation :title "Formation"
       :camera (camera :look-at '(flagship-0 flagship-1) :distance 1000 :offset-direction '(-1 0 0))
       :entities (append
         (map (lambda (index)
@@ -879,7 +830,7 @@ TEST(NativeLevelAuthoringReader, DerivesDistinctTeamsIncludingScheduledSpawns) {
 TEST(NativeLevelAuthoringReader, RejectsRemovedTeamDeclarations) {
     auto source{minimal_source()};
     source.insert(source.size() - 1, " :teams '(blue)");
-    auto const result{DefinitionReader{}.read_level_source(source)};
+    auto const result{read_test_level(DefinitionReader{}, source)};
     ASSERT_FALSE(result);
     EXPECT_TRUE(has_code(result.error(), DiagnosticCode::UnknownProperty));
 }
@@ -887,13 +838,13 @@ TEST(NativeLevelAuthoringReader, RejectsUnknownTeamAndArchetypeIndependently) {
     auto source{minimal_source()};
     source.replace(source.find("'player-fighter"), 15, "'unknown-ship");
     source.replace(source.find(":team 'blue"), 11, ":team 'unknown-team");
-    auto const result{DefinitionReader{}.read_level_source(source)};
+    auto const result{read_test_level(DefinitionReader{}, source)};
     ASSERT_FALSE(result);
     EXPECT_TRUE(has_code(result.error(), DiagnosticCode::UnsupportedArchetype));
     EXPECT_TRUE(has_code(result.error(), DiagnosticCode::UnsupportedTeam));
 }
 TEST(NativeLevelAuthoringReader, ReportsIndependentMalformedProperties) {
-    auto const result{DefinitionReader{}.read_level_source(R"((level
+    auto const result{read_test_level(DefinitionReader{}, R"((level
       :id 17 :title 'not-text :title "duplicate" :unknown 4
       :entities (list (entity :id 4 :team 6 :archetype 7
         :position '(a b c) :rotation '(x y z) :spawn-at 'bad))))")};
@@ -911,16 +862,16 @@ TEST(NativeLevelAuthoringReader, RejectsMissingPropertiesOddListsAndWrongTags) {
                               "'(level :id x :title \"X\")",
                               "(level 'id 'x :title \"X\")",
                               "(campaign :id 'x :title \"X\")"}) {
-        EXPECT_FALSE(DefinitionReader{}.read_level_source(source)) << source;
+        EXPECT_FALSE(read_test_level(DefinitionReader{}, source)) << source;
     }
-    auto const missing{DefinitionReader{}.read_campaign_source("(campaign :id 'x)")};
+    auto const missing{read_test_campaign(DefinitionReader{}, "(campaign :id 'x)")};
     ASSERT_FALSE(missing);
     EXPECT_TRUE(has_code(missing.error(), DiagnosticCode::MissingProperty));
 }
 TEST(NativeLevelAuthoringReader, DistinguishesEvaluationConversionAndParsingFailures) {
-    auto const evaluation{DefinitionReader{}.read_level_source("(missing-function)")};
-    auto const conversion{DefinitionReader{}.read_level_source("(lambda () 1)")};
-    auto const parsing{DefinitionReader{}.read_level_source("'(1 2)")};
+    auto const evaluation{read_test_level(DefinitionReader{}, "(missing-function)")};
+    auto const conversion{read_test_level(DefinitionReader{}, "(lambda () 1)")};
+    auto const parsing{read_test_level(DefinitionReader{}, "'(1 2)")};
     ASSERT_FALSE(evaluation);
     ASSERT_FALSE(conversion);
     ASSERT_FALSE(parsing);

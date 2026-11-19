@@ -7,7 +7,7 @@ Scheme source -> sandbox-s7 -> owned s7::Ast
                       parse_level / parse_campaign / parse_settings
                                   |
                           native-levels
-                      semantic / catalog validation
+                      semantic validation
                                   |
                        simulation / Unreal
 ```
@@ -51,9 +51,7 @@ Lexical references share nodes. The scope emits a flat graph before AST material
 runtime compilation resolves declaration references and orders combinational dependencies.
 Authored latch feedback cycles are currently rejected.
 Generated entity-ID counters use fixed team/archetype slots.
-Catalog validators receive only successfully decoded definitions, retaining original
-discovery indices and filesystem paths. Diagnostics distinguish `node_path` from
-`source_path` and carry an error code and message.
+Catalog loading resolves unlock dependencies and campaign references in place. Broken entries retain their file paths and diagnostics.
 
 LispB schemas define grammar keywords and enum spellings. Generated parsers use string comparisons
 and switches without runtime lookup tables. See
@@ -62,10 +60,7 @@ because it emits evaluable constructors, while the AST represents their evaluate
 Literal vectors and ID lists are quoted; collections containing constructors use `list`.
 LispB generates writers from the same record metadata as readers. Full and baseline-difference
 serialization preserve floating-point precision and use the existing S-expression IR/renderer.
-The handwritten level writer only converts domain definitions back to authored inputs and
-handles expression variants. Serialized values round-trip semantically; human source is never
-reconstructed from those values. The existing symbol reader normalizes authored identifiers
-to lower case; round-tripping assumes those canonical decoded identifiers.
+The editor writes scene fields and preserves explicit settings overrides. Mission logic lives in the authored module.
 
 The `s7_constructors` module derives ordinary Scheme constructors from record tags, including
 positional forms, plus `foo?` and `foo-ref`. Common Scheme helpers provide tag
@@ -96,8 +91,7 @@ resource structs no longer contain copies of its component records. Renderers an
 the relevant native values alongside Unreal asset references. Debug/resource editor controls
 remain Unreal-owned.
 
-AST readers, Scheme file readers and serializers live under `s7/src/`. General authoring code
-such as source sessions remains under `lib/src/`. The AST-only and
+AST readers, Scheme file readers and serializers live under `s7/src/`. The AST-only and
 interpreter-backed libraries retain their dependency boundaries.
 
 Ordinary records with matching script/domain layouts (camera, grid and campaign)

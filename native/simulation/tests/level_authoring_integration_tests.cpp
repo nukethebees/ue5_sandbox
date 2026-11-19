@@ -1,3 +1,4 @@
+#include "../../level_authoring/tests/module_fixture.h"
 #include "support/simulation_test_support.h"
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
@@ -9,7 +10,8 @@ namespace ioj::sim::tests {
 namespace {
 void expect_fighter_kill_from_objective(std::string_view const win_condition) {
     auto const definition{
-        levels::authoring::DefinitionReader{}.read_level_source(std::format(R"(
+        ioj::levels::authoring::tests::read_test_level(levels::authoring::DefinitionReader{},
+                                                       std::format(R"(
       (level :id 'fighter-kill :title "Fighter kill"
         :camera (camera :look-at '(blue-capital) :offset-direction '(-1 0 0) :distance 1000)
         :settings (settings
@@ -24,7 +26,7 @@ void expect_fighter_kill_from_objective(std::string_view const win_condition) {
         :logic (logic
           (define target-dead (entity-destroyed 'red-capital))
           (on :when {} :do (win 'blue)))))",
-                                                                            win_condition))};
+                                                                   win_condition))};
     ASSERT_TRUE(definition) << levels::format_diagnostics(definition.error());
 
     auto built{make_level_simulation_init_data(*definition, make_simulation_data(make_fixture()))};
@@ -59,7 +61,8 @@ TEST(LevelAuthoringIntegration, BlueFighterAttacksTheValueOfALatchedWinCondition
 }
 
 TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReferences) {
-    auto const definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
+    auto const definition{
+        ioj::levels::authoring::tests::read_test_level(levels::authoring::DefinitionReader{}, R"(
       (level :id 'reserves :title "Reserves"
         :camera (camera :look-at '(hero) :offset-direction '(-1 0 0) :distance 1000)
         :entities (list
@@ -119,7 +122,8 @@ TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReference
 }
 
 TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedEntityReferences) {
-    auto definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
+    auto definition{
+        ioj::levels::authoring::tests::read_test_level(levels::authoring::DefinitionReader{}, R"(
       (level :id 'authored-spawns :title "Authored spawns"
         :camera (camera :look-at '(capital) :offset-direction '(-1 0 0) :distance 1000)
         :entities (list

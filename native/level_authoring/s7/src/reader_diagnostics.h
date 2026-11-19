@@ -6,6 +6,10 @@
 namespace ioj::levels::authoring::detail {
 inline auto diagnostic_code(s7::AstErrorCode const code) -> DiagnosticCode {
     switch (code) {
+        case s7::AstErrorCode::FileOpenFailed:
+            return DiagnosticCode::FileOpenFailed;
+        case s7::AstErrorCode::FileReadFailed:
+            return DiagnosticCode::FileReadFailed;
         case s7::AstErrorCode::EvaluationFailed:
             return DiagnosticCode::ScriptEvaluationFailed;
         case s7::AstErrorCode::UnsupportedValue:

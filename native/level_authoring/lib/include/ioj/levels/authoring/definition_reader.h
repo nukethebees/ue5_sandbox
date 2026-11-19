@@ -9,7 +9,7 @@
 #include <string_view>
 
 namespace ioj::levels::authoring {
-// Evaluate a root and its explicit imports in one interpreter, release it, then parse and validate.
+// Each read evaluates the selected file and its imports in a fresh interpreter.
 class DefinitionReader {
   public:
     DefinitionReader() = default;
@@ -17,22 +17,10 @@ class DefinitionReader {
     // Resolve all imports relative to the root file's directory. Each call starts fresh.
     [[nodiscard]] auto read_root_file(std::filesystem::path const& path) const
         -> std::expected<DefinitionCatalog, Diagnostics>;
-    [[nodiscard]] auto read_level_source(std::string_view source) const
-        -> LevelDefinitionReadResult;
-    [[nodiscard]] auto read_level_module(std::string_view source,
-                                         std::filesystem::path const& path) const
-        -> LevelDefinitionReadResult;
-    [[nodiscard]] auto read_campaign_source(std::string_view source) const
-        -> CampaignDefinitionReadResult;
-    [[nodiscard]] auto read_settings_source(std::string_view source,
-                                            settings::Settings base = {}) const
-        -> SettingsReadResult;
     [[nodiscard]] auto read_settings_file(std::filesystem::path const& path,
                                           settings::Settings base = {}) const -> SettingsReadResult;
     [[nodiscard]] auto read_script_file(std::filesystem::path const& path,
-                                        std::string_view export_name) const
-        -> std::expected<s7::Ast, Diagnostics>;
-    [[nodiscard]] auto read_source_ast(std::string_view source) const
+                                        char const* export_name) const
         -> std::expected<s7::Ast, Diagnostics>;
     // Standalone reads use this reader's import root, or the file's directory.
     [[nodiscard]] auto read_level_file(std::filesystem::path const& path) const
