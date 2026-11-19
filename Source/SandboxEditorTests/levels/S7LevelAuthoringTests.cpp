@@ -34,7 +34,8 @@ struct FTemporarySourceDirectory {
     FTemporarySourceDirectory() {
         auto const settings{FPaths::Combine(path, TEXT("Settings"))};
         IFileManager::Get().MakeDirectory(*settings, true);
-        FFileHelper::SaveStringToFile(TEXT("(settings :tick (tick :tick-rate 75))"),
+        FFileHelper::SaveStringToFile(TEXT("(export game-settings) (define game-settings (settings "
+                                           ":tick (tick :tick-rate 75)))"),
                                       *FPaths::Combine(settings, TEXT("base.scm")));
     }
     ~FTemporarySourceDirectory() { IFileManager::Get().DeleteDirectory(*path, false, true); }
@@ -121,17 +122,19 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
     auto const generated_path{ioj::editor::s7_editor_config_path(document)};
     auto const human_source{
         FString{TEXT("; Human-owned source must survive editor export.\n"
-                     "(let ((base (load-script \"Authoring/editor-config.scm\")))\n"
-                     "  (level-with base\n"
+                     "(export mission)\n(define base (module-ref (import-module "
+                     "\"Authoring/editor-config.scm\") 'scene))\n"
+                     "  (define mission (copy-with base\n"
                      "    :entities (append (level-ref base :entities)\n"
                      "      (list (entity :id 'human :archetype 'capital-ship :team 'red\n"
                      "        :position '(600000 0 0) :initial-spawn-delay 60)))\n"
                      "    :logic (logic\n"
                      "      (on :when (entity-destroyed 'capital)\n"
                      "          :do (win 'blue)))))\n")}};
-    if (!test.TestTrue(TEXT("Write initial generated records"),
-                       write_source(generated_path,
-                                    ioj::to_fstring(authoring::emit_level_source(*baseline)))) ||
+    if (!test.TestTrue(
+            TEXT("Write initial generated records"),
+            write_source(generated_path,
+                         ioj::to_fstring(authoring::emit_editor_level_source(*baseline)))) ||
         !test.TestTrue(TEXT("Write composed human root"),
                        write_source(directory.root(), human_source))) {
         return std::nullopt;
@@ -545,16 +548,17 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(
                 TEXT("Write generated baseline"),
                 write_source(ioj::editor::s7_editor_config_path(document),
-                             ioj::to_fstring(authoring::emit_level_source(*baseline)))) ||
+                             ioj::to_fstring(authoring::emit_editor_level_source(*baseline)))) ||
             !TestRunner->TestTrue(
                 TEXT("Write human transformations"),
                 write_source(
                     directory.root(),
-                    TEXT("(let ((base (load-script \"Authoring/editor-config.scm\")))\n"
-                         "  (level-with base\n"
+                    TEXT("(export mission)\n(define base (module-ref (import-module "
+                         "\"Authoring/editor-config.scm\") 'scene))\n"
+                         "  (define mission (copy-with base\n"
                          "    :title (string-append (level-ref base :title) \" suffix\")\n"
                          "    :entities (map (lambda (ship)\n"
-                         "      (entity-with ship :position\n"
+                         "      (copy-with ship :position\n"
                          "        (map (lambda (x) (+ x 10)) (entity-ref ship :position))))\n"
                          "      (level-ref base :entities))))\n")))) {
             return;

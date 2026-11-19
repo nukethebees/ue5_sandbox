@@ -70,7 +70,7 @@ namespace {
 auto read_editor_ast(AS7LevelAuthoringDocument const& document) -> std::expected<s7::Ast, FString> {
     return levels::authoring::DefinitionReader{
         std::filesystem::path{*FPaths::GetPath(document.source_path)}}
-        .read_script_file(std::filesystem::path{*s7_editor_config_path(document)})
+        .read_script_file(std::filesystem::path{*s7_editor_config_path(document)}, "scene")
         .transform_error(
             [](auto const& errors) { return to_fstring(levels::format_diagnostics(errors)); });
 }
@@ -349,11 +349,14 @@ auto create_level_authoring_document(ULevel& level, FString source_path)
     if (human_exists) {
         return document;
     }
-    auto const source{FString::Printf(TEXT("(let ((scene (load-script \"%s/editor-config.scm\")))\n"
-                                           "  (level-with scene :settings (settings-layers\n"
-                                           "    (load-script \"Settings/base.scm\")\n"
-                                           "    (level-ref scene :settings))))\n"),
-                                      *FPaths::GetBaseFilename(root))};
+    auto const source{FString::Printf(
+        TEXT("(export mission)\n"
+             "(define scene (module-ref (import-module \"%s/editor-config.scm\") 'scene))\n"
+             "(define mission\n"
+             "  (copy-with scene :settings (settings-layers\n"
+             "    (module-ref (import-module \"Settings/base.scm\") 'game-settings)\n"
+             "    (level-ref scene :settings))))\n"),
+        *FPaths::GetBaseFilename(root))};
     if (!FFileHelper::SaveStringToFile(source,
                                        *root,
                                        FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM,

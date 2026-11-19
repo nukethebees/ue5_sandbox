@@ -33,7 +33,7 @@ its missing source. See [Level scripts](../../../LevelScripts/README.md) for Sch
 
 Use **Export Scene** to write entity placements, supported spawn overrides and viewpoint data to
 the generated file. Unchanged output is not rewritten. The main source can include this baseline
-and use `level-ref` / `level-with` to add entities, objectives and settings with ordinary Scheme.
+and use `level-ref` / `copy-with` to add entities, objectives and settings with ordinary Scheme.
 **Save** writes the human source buffer exactly; export never rewrites it. Use **Load Source** to
 associate another existing root. There is no Save As operation that relocates a level's files.
 

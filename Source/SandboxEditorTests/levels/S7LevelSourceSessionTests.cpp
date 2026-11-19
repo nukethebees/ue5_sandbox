@@ -37,9 +37,10 @@ auto write_source(FStringView const source, FString const& path) -> bool {
 
 auto level_source(FStringView const title) -> FString {
     return FString::Printf(
-        TEXT("(level :id 'source-session :title \"%s\" :player 'player :entities "
+        TEXT("(export mission) (define mission (level :id 'source-session :title \"%s\" :player "
+             "'player :entities "
              "(list (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0) "
-             ":rotation '(0 0 0))))"),
+             ":rotation '(0 0 0)))))"),
         *FString{title});
 }
 }
