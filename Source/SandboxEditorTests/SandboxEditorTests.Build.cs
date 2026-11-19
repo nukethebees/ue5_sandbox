@@ -12,6 +12,7 @@ public class SandboxEditorTests : ModuleRules
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "SandboxEditor",
+            "SandboxShaders",
             "SandboxCore",
             "NativeSimulation",
             "NativeLevelAuthoring",

@@ -15,10 +15,12 @@
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/strings.h>
+#include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CoreGlobals.h>
 #include <Engine/World.h>
+#include <EngineUtils.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Paths.h>
 #include <SandboxISMCComponent.h>
@@ -266,6 +268,11 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
         return fail(ELevelLoadErrorCode::InvalidDefinition, configured.error().format());
     }
 
+    if (is_presentation_enabled()) {
+        for (TActorIterator<AGpuStarfieldActor> actor{world}; actor; ++actor) {
+            actor->set_starfield_settings(definition.settings().starfield);
+        }
+    }
     auto const resources{get_presentation_resources()};
     if (is_presentation_enabled() && !resources.is_valid()) {
         return fail(ELevelLoadErrorCode::MissingInfrastructure,

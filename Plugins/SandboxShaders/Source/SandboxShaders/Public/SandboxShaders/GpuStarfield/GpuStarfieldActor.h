@@ -15,11 +15,11 @@ class SANDBOXSHADERS_API AGpuStarfieldActor : public AActor {
   public:
     AGpuStarfieldActor();
 
-    void OnConstruction(FTransform const& transform) override;
     void PostRegisterAllComponents() override;
+    void set_starfield_settings(starfield::Settings const& settings);
 
     UFUNCTION(CallInEditor, BlueprintCallable, Category = "GPU Starfield")
-    void apply_settings();
+    void load_preview_settings();
 
     UPROPERTY(EditAnywhere,
               Category = "GPU Starfield",
@@ -29,8 +29,6 @@ class SANDBOXSHADERS_API AGpuStarfieldActor : public AActor {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GPU Starfield")
     FGpuStarfieldColours colours;
   protected:
-    starfield::Settings settings_;
-
     UPROPERTY(VisibleAnywhere, Category = "GPU Starfield")
     TObjectPtr<UGpuStarfieldComponent> starfield_component_;
 };

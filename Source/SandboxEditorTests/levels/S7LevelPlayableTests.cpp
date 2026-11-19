@@ -8,6 +8,7 @@
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxCoreEngine/strings.h>
+#include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 
 #include <Camera/CameraActor.h>
 #include <CQTest.h>
@@ -116,6 +117,18 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                                       FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))) {
             return;
         }
+        if (!TestRunner->TestTrue(
+                TEXT("Set the mission star scale"),
+                FFileHelper::SaveStringToFile(
+                    TEXT("\n(set! mission (copy-with mission :settings (settings-layers (level-ref "
+                         "mission :settings) "
+                         "(settings :starfield (starfield :star (star :scale 2))))))\n"),
+                    *root,
+                    FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM,
+                    &IFileManager::Get(),
+                    FILEWRITE_Append))) {
+            return;
+        }
         auto definition{ioj::editor::read_s7_authored_level(*document)};
         if (!assert_success(*TestRunner, TEXT("Evaluate human entry point"), definition) ||
             !assert_success(*TestRunner,
@@ -162,10 +175,16 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
             }
         }
 
+        TActorIterator<ioj::AGpuStarfieldActor> preview{world};
+        if (!TestRunner->TestTrue(TEXT("Editor starfield exists"), static_cast<bool>(preview))) {
+            return;
+        }
+        auto const preview_radius{
+            preview->GetRootComponent()->CalcBounds(FTransform::Identity).SphereRadius};
         TestCommandBuilder.Do([] { FStartPIECommand{false}.Update(); })
             .Until([] { return GEditor->PlayWorld && GEditor->PlayWorld->HasBegunPlay(); },
                    FTimespan::FromSeconds(30))
-            .Then([this, observer] {
+            .Then([this, observer, preview_radius] {
                 auto* const play_world{GEditor->PlayWorld.Get()};
                 if (!TestRunner->TestNotNull(TEXT("PIE world"), play_world)) {
                     return;
@@ -180,6 +199,15 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                                               ioj::sim::LevelState::Running)) {
                     return;
                 }
+                TActorIterator<ioj::AGpuStarfieldActor> starfield{play_world};
+                if (!TestRunner->TestTrue(TEXT("Runtime starfield exists"),
+                                          static_cast<bool>(starfield))) {
+                    return;
+                }
+                auto const radius{
+                    starfield->GetRootComponent()->CalcBounds(FTransform::Identity).SphereRadius};
+                TestRunner->TestTrue(TEXT("Mission scale doubles the starfield bounds"),
+                                     FMath::IsNearlyEqual(radius, 2. * preview_radius));
                 orchestrator.SetActorTickEnabled(false);
                 auto* const controller{Cast<ioj::ASpaceGamePlayerController>(
                     UGameplayStatics::GetPlayerController(play_world, 0))};
