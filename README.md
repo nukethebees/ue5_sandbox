@@ -63,17 +63,17 @@ cmake --workflow --preset debug-game-unit-tests
 | `cmake/` | CMake wrapper, presets, and Unreal orchestration | [CMake guide](cmake/README.md) |
 | `PowerShell/` | coj installation, packaging, and script checks | [PowerShell guide](PowerShell/README.md) |
 | `native/` | Standalone C++ libraries, tools, simulations, and tests | [Native guide](native/README.md) |
-| `Codegen/` and `lispb/` | Generated C++/Slate/material outputs and their inputs | [Code generation guide](Codegen/README.md) |
+| `lispb/` | Generation targets and sources for C++, Slate, kernels, and materials | [Lispb guide](native/lispb/README.md) |
 | `Source/` | Project Unreal modules and their adapters/tests | [Source map](Source/README.md) |
 | `Plugins/` | Reusable engine extensions and game plugins | [Plugin map](Plugins/README.md) |
 | `LevelScripts/` | S7-authored campaign, showcase, and benchmark scenarios | [Level scripts guide](LevelScripts/README.md) |
 | `tools/` | Developer tools | [Tools guide](tools/README.md) |
-| `docs/` | Cross-cutting development and investigation documentation | [Documentation hub](docs/README.md) |
+| `docs/` | Build, test, benchmarking, and profiling guides | [Documentation hub](docs/README.md) |
 
 ## Common destinations
 
 - [Build, test, debug, and package](docs/build-and-test.md)
 - [Run benchmarks correctly](docs/benchmarks.md)
 - [Profile native level benchmarks with Tracy](docs/profiling.md)
-- [Regenerate committed code](Codegen/README.md)
+- [Regenerate committed code](native/lispb/README.md)
 - [Author or find a level scenario](LevelScripts/README.md)

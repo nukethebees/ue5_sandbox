@@ -72,7 +72,7 @@ SDL3, SDL_GPU, and Dear ImGui for presentation; image generation remains CPU-nat
 
 Simulation tests live in `simulation/tests/`. Asset geometry and presentation remain
 covered by Unreal tests. See [Build and test](../docs/build-and-test.md) for the full test workflows
-and [Code generation](../Codegen/README.md) for generated outputs.
+and [Lispb](lispb/README.md) for generated outputs.
 
 To run a deterministic S7 level as a native benchmark, use
 `out/build/native/rust-tools/release/benchmark-tools.exe native-simulation`; the fighter and frame-memory report runners build

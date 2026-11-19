@@ -16,8 +16,8 @@ not persistent identifiers. Registered native types which match a declaration re
 declaration. Other registered or raw C++ types become explicit external leaf nodes, retaining the
 known spelling, header, and passing policy. Optional registry scalar contracts describe integer
 domains or IEEE floating-point formats without changing external identity or supplying ABI layout
-facts. Matching plain C++ references also receive this metadata. See the
-[external scalar registry](ARCHITECTURE.md#external-scalar-registry) for syntax and include rules.
+facts. Matching plain C++ references also receive this metadata. For registration syntax, see the
+[compiler type registry](schema/compiler_types.lispb).
 
 The graph keeps logical meaning separate from C++ projections. Records and unions reference common
 child occurrences; the record concatenates children and the union overlaps alternatives. A tag

@@ -4,6 +4,10 @@ Lispb generates native C++ schemas and SoA containers, SandboxCore kernels, Slat
 Unreal material assets. Use the repository CMake generation targets. Generated headers and sources
 are checked in beside handwritten code in their normal public include and source directories.
 
+After configuring the native preset, regenerate committed C++ with
+`cmake --build --preset native --target generate-code`. To check for stale output, run
+`cmake --build --preset native --target check-generated-code`.
+
 Records, unions, enums and scalar encodings are logical declarations. Add `(projections (cpp))`
 to request an owning C++ type. Native records use ordinary C++ members; packed records and unions
 use one unsigned integer and compile-time bit offsets:
