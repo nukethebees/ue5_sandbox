@@ -7,13 +7,12 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/levels/authoring/positional_inputs.h"
-#include "ioj/levels/campaign_definition.h"
 #include "ioj/levels/entity_archetype.h"
 #include "ioj/levels/identifiers.h"
 #include "ioj/levels/level_camera_definition.h"
 #include "ioj/levels/logic_definition.h"
 #include "ioj/levels/team.h"
-#include "ioj/s7/raw_node.h"
+#include "ioj/s7/ast_result.h"
 #include "ioj/settings/settings.h"
 #include "ioj/settings/simulation_constraints.h"
 #include "ioj/vector_value_math.h"
@@ -150,21 +149,9 @@ struct LevelInput {
     std::vector<ioj::levels::authoring::EntityInput> entities{};
 };
 
-struct IncludedLevelInput {
-    std::string path{};
-    std::optional<ioj::s7::ReadResult<ioj::s7::RawNode>> value{};
-    std::optional<std::string> error{};
-};
-
-struct IncludedCampaignInput {
-    std::string path{};
-    std::optional<ioj::s7::ReadResult<ioj::levels::CampaignDefinition>> value{};
-    std::optional<std::string> error{};
-};
-
 struct CatalogInput {
-    std::vector<ioj::s7::ReadResult<ioj::levels::authoring::IncludedLevelInput>> levels{};
-    std::vector<ioj::s7::ReadResult<ioj::levels::authoring::IncludedCampaignInput>> campaigns{};
+    std::vector<ioj::s7::ReadResult<std::string>> levels{};
+    std::vector<ioj::s7::ReadResult<std::string>> campaigns{};
 };
 } // namespace ioj::levels::authoring
 namespace ioj {

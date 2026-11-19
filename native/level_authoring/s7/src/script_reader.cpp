@@ -1,10 +1,8 @@
 #include "logic_dsl.h"
 #include "reader_diagnostics.h"
-#include <ioj/expr_kind.h>
 #include <ioj/files.h>
-#include <ioj/levels/authoring/catalog_parser.h>
 #include <ioj/levels/authoring/definition_reader.h>
-#include <ioj/levels/authoring/grammar.h>
+#include <ioj/levels/authoring/level_inputs_reader.h>
 #include <ioj/levels/authoring/record_constructors.h>
 #include <ioj/levels/campaign_validation.h>
 #include <ioj/s7/interpreter.h>
@@ -13,70 +11,45 @@
 #include <codegen/sexpr/sexpr_renderer.h>
 #include <lispb/strings.h>
 
+#include <algorithm>
+#include <concepts>
 #include <format>
-#include <optional>
 #include <utility>
 
 namespace ioj::levels::authoring {
 namespace {
 using MaterializedSource = std::expected<s7::Ast, Diagnostics>;
 
-using detail::diagnostic_code;
-
 auto dsl_source() -> std::string {
     std::string source{"(begin\n"};
     source.append(s7_record_constructors());
     source.append(logic_dsl_source);
     source.append("(define (settings-layers . layers) (cons :settings-layers layers))\n");
-    source.append(R"(
-      (define catalog
-        (let ((include-format format))
-          (define (include tag path)
-            (catch #t
-              (lambda () (list tag :path path :value
-                (module-ref (import-module path) (if (eq? tag :included-level) 'mission 'campaign))))
-              (lambda (type info)
-                (list tag :path path :error (apply include-format #f info)))))
-          (define (load-properties properties)
-            (if (or (null? properties) (null? (cdr properties)))
-                properties
-                (let ((name (car properties)) (value (cadr properties)))
-                  (cons name
-                    (cons (if (and (memq name '(:levels :campaigns)) (list? value))
-                              (map (lambda (path)
-                                     (include (if (eq? name :levels)
-                                                  :included-level :included-campaign) path))
-                                   value)
-                              value)
-                          (load-properties (cddr properties)))))))
-          (lambda properties (cons :catalog (load-properties properties)))))
-    )");
     source.append("\n)");
     return source;
 }
 
-auto evaluate(std::string_view const expression, std::filesystem::path const& root)
-    -> MaterializedSource {
+template <typename Run>
+auto with_interpreter(std::filesystem::path const& root, Run run)
+    -> decltype(run(std::declval<s7::Interpreter&>())) {
     s7::InterpreterOptions options;
     if (!root.empty()) {
         options.script_library_root_utf8 = ioj::path_to_utf8(root);
     }
     s7::Interpreter interpreter{std::move(options)};
-    auto const initialized{interpreter.evaluate(dsl_source())};
+    auto initialized{interpreter.evaluate(dsl_source())};
     if (!initialized) {
-        return std::unexpected{
-            Diagnostics{{DiagnosticCode::ScriptEvaluationFailed, "$", initialized.error()}}};
+        return std::unexpected{Diagnostics{
+            {DiagnosticCode::ScriptEvaluationFailed, "$", std::move(initialized.error())}}};
     }
-    auto ast{interpreter.evaluate_ast(std::format("(begin\n{}\n)", expression))};
-    if (!ast) {
-        Diagnostics errors;
-        for (auto& error : ast.error()) {
-            errors.emplace_back(
-                diagnostic_code(error.code), std::move(error.node_path), std::move(error.message));
-        }
-        return std::unexpected{std::move(errors)};
-    }
-    return std::move(*ast);
+    return run(interpreter);
+}
+
+auto evaluate(std::string_view source, std::filesystem::path const& root) -> MaterializedSource {
+    return with_interpreter(root, [&](s7::Interpreter& interpreter) {
+        return interpreter.evaluate_ast(std::format("(begin\n{}\n)", source))
+            .transform_error(detail::diagnostics);
+    });
 }
 
 template <typename Result>
@@ -103,16 +76,14 @@ auto decode_campaign(s7::Ast const& ast) -> CampaignDefinitionReadResult {
     return definition;
 }
 
-auto module_value(std::optional<std::string_view> source,
+auto module_value(std::string_view source,
                   std::filesystem::path const& path,
                   std::string_view export_name,
                   std::filesystem::path const& root) -> MaterializedSource {
     lispb::Strings strings;
     lispb::codegen::sexpr::SExprIR ir{strings};
     auto const module{
-        source ? ir.form("read-module", {ir.string(ioj::path_to_utf8(path)), ir.string(*source)})
-                     .build()
-               : ir.form("import-module", {ir.string(ioj::path_to_utf8(path.filename()))}).build()};
+        ir.form("read-module", {ir.string(ioj::path_to_utf8(path)), ir.string(source)}).build()};
     auto const lookup{ir.form("module-ref", {module, ir.quote(export_name)}).build()};
     return with_source_path(
         evaluate(
@@ -120,6 +91,35 @@ auto module_value(std::optional<std::string_view> source,
                 lookup),
             root),
         path);
+}
+
+template <typename Definition, typename Decode>
+auto read_entry(s7::Interpreter& interpreter,
+                std::filesystem::path const& root,
+                s7::ReadResult<std::string> const& path,
+                char const* export_name,
+                Decode decode) -> DefinitionEntry<Definition> {
+    if (!path) {
+        return {.definition = std::unexpected{detail::diagnostics(path.error())}};
+    }
+    auto const relative{std::filesystem::path{std::u8string{path->begin(), path->end()}}};
+    if (relative.empty() || relative.has_root_path() ||
+        std::ranges::any_of(relative, [](auto const& part) { return part == ".."; })) {
+        return {.definition = std::unexpected{
+                    Diagnostics{{DiagnosticCode::InvalidType,
+                                 "path",
+                                 "Definition paths must be relative to the root directory"}}}};
+    }
+    auto file{root / relative};
+    std::string source;
+    auto result{interpreter
+                    .import_ast(*path,
+                                export_name,
+                                std::same_as<Definition, LevelDefinition> ? &source : nullptr)
+                    .transform_error(detail::diagnostics)
+                    .and_then(decode)};
+    auto definition{with_source_path(std::move(result), file)};
+    return {std::move(file), std::move(definition), std::move(source)};
 }
 
 auto read_source(std::filesystem::path const& path) -> std::expected<std::string, Diagnostics> {
@@ -143,33 +143,33 @@ DefinitionReader::DefinitionReader(std::filesystem::path script_library_root)
 auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
     -> std::expected<DefinitionCatalog, Diagnostics> {
     auto const full_path{std::filesystem::absolute(path)};
-    auto ast{module_value(std::nullopt, full_path, "catalog", full_path.parent_path())};
-    if (!ast) {
-        return std::unexpected{std::move(ast.error())};
-    }
-
-    auto catalog{parse_catalog(*ast, full_path.parent_path())};
-    if (catalog) {
-        for (auto& entry : catalog->levels) {
-            auto source{read_source(entry.source_path)};
-            if (source) {
-                entry.source_text = std::move(*source);
-            } else if (entry.definition) {
-                entry.definition = std::unexpected{std::move(source.error())};
-            }
-            entry.definition = with_source_path(std::move(entry.definition), entry.source_path);
-        }
-        for (auto& entry : catalog->campaigns) {
-            if (entry.definition) {
-                auto validation{validate_campaign(*entry.definition)};
-                if (!validation) {
-                    entry.definition = std::unexpected{std::move(validation.error())};
+    auto const root{full_path.parent_path()};
+    return with_source_path(
+        with_interpreter(
+            root,
+            [&](s7::Interpreter& interpreter) -> std::expected<DefinitionCatalog, Diagnostics> {
+                auto paths{
+                    interpreter.import_ast(ioj::path_to_utf8(full_path.filename()), "catalog")
+                        .and_then([](s7::Ast const& ast) {
+                            return s7::read<CatalogInput>(s7::Reader{ast}, ast.root, "catalog");
+                        })};
+                if (!paths) {
+                    return std::unexpected{detail::diagnostics(std::move(paths.error()))};
                 }
-            }
-            entry.definition = with_source_path(std::move(entry.definition), entry.source_path);
-        }
-    }
-    return with_source_path(std::move(catalog), full_path);
+                DefinitionCatalog catalog;
+                for (auto const& path : paths->levels) {
+                    catalog.levels.push_back(read_entry<LevelDefinition>(
+                        interpreter, root, path, "mission", [](s7::Ast const& ast) {
+                            return parse_level(ast, ast.root);
+                        }));
+                }
+                for (auto const& path : paths->campaigns) {
+                    catalog.campaigns.push_back(read_entry<CampaignDefinition>(
+                        interpreter, root, path, "campaign", decode_campaign));
+                }
+                return catalog;
+            }),
+        full_path);
 }
 
 auto DefinitionReader::read_source_ast(std::string_view const source) const

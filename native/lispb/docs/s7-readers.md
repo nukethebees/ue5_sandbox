@@ -16,7 +16,7 @@ A module with `:s7-constructors true` emits `s7_record_constructors()`, containi
 constructors, predicates, accessors and functional updates for tagged records. Evaluate this
 source before authored scripts. For an `example` tag these are `example`, `example?`,
 `example-ref` and `copy-with`. Tags and emitted function names must be unique.
-Use `:s7-constructor false` for special DSL forms such as `catalog`.
+Use `:s7-constructor false` for forms that supply their own constructor.
 
 Constructors preserve argument lists; typed readers enforce field values and positional
 arity. Shared Scheme helpers validate record structure and field names for access and updates.

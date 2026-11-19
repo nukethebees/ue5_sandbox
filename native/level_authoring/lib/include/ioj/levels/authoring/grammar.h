@@ -31,9 +31,6 @@ enum class Property : PropertyUnderlying {
     Settings,
     Levels,
     Campaigns,
-    Path,
-    Value,
-    Error,
     LevelSize,
     CellSize,
     LookAt,
@@ -61,9 +58,6 @@ using ioj::to_serialized_string;
             return std::nullopt;
         }
         case 4ULL: {
-            if (value == "path") {
-                return Property::Path;
-            }
             if (value == "team") {
                 return Property::Team;
             }
@@ -75,12 +69,6 @@ using ioj::to_serialized_string;
             }
             if (value == "logic") {
                 return Property::Logic;
-            }
-            if (value == "value") {
-                return Property::Value;
-            }
-            if (value == "error") {
-                return Property::Error;
             }
             return std::nullopt;
         }
@@ -238,13 +226,11 @@ inline constexpr MinMax<levels::authoring::Property> enum_range<levels::authorin
 namespace ioj::levels::authoring {
 using RecordKindUnderlying = std::uint8_t;
 
-// Logical bit width: 4.
+// Logical bit width: 3.
 enum class RecordKind : RecordKindUnderlying {
     Level,
     Campaign,
     Catalog,
-    IncludedLevel,
-    IncludedCampaign,
     Entity,
     Logic,
     Camera,
@@ -304,9 +290,6 @@ struct EnumTraits<levels::authoring::Property> {
                                        levels::authoring::Property::Settings,
                                        levels::authoring::Property::Levels,
                                        levels::authoring::Property::Campaigns,
-                                       levels::authoring::Property::Path,
-                                       levels::authoring::Property::Value,
-                                       levels::authoring::Property::Error,
                                        levels::authoring::Property::LevelSize,
                                        levels::authoring::Property::CellSize,
                                        levels::authoring::Property::LookAt,
@@ -324,21 +307,21 @@ struct EnumTraits<levels::authoring::Property> {
 };
 
 template <>
-inline constexpr auto enum_strings<levels::authoring::Property, Serialized>{PackedStrings{
-    "id\000title\000description\000par-time\000collision-"
-    "grid\000unlock\000player\000camera\000logic\000entities\000settings\000levels\000campaigns\000"
-    "path\000value\000error\000level-size\000cell-size\000look-at\000distance\000offset-"
-    "direction\000archetype\000team\000position\000rotation\000spawn-at\000health\000laser-"
-    "damage\000initial-spawn-delay\000spawn-cooldown",
-    std::array<std::uint16_t, 31>{0,   3,   9,   21,  30,  45,  52,  59,  66,  72,  81,
-                                  90,  97,  107, 112, 118, 124, 135, 145, 153, 162, 179,
-                                  189, 194, 203, 212, 221, 228, 241, 261, 276}}};
+inline constexpr auto enum_strings<levels::authoring::Property, Serialized>{
+    PackedStrings{"id\000title\000description\000par-time\000collision-"
+                  "grid\000unlock\000player\000camera\000logic\000entities\000settings\000levels"
+                  "\000campaigns\000level-size\000cell-size\000look-at\000distance\000offset-"
+                  "direction\000archetype\000team\000position\000rotation\000spawn-"
+                  "at\000health\000laser-damage\000initial-spawn-delay\000spawn-cooldown",
+                  std::array<std::uint16_t, 28>{0,   3,   9,   21,  30,  45,  52,  59,  66,  72,
+                                                81,  90,  97,  107, 118, 128, 136, 145, 162, 172,
+                                                177, 186, 195, 204, 211, 224, 244, 259}}};
 
 template <>
 inline constexpr auto enum_strings<levels::authoring::RecordKind, Serialized>{
-    PackedStrings{"level\000campaign\000catalog\000included-level\000included-"
-                  "campaign\000entity\000logic\000camera\000collision-grid\000level-completed",
-                  std::array<std::uint8_t, 11>{0, 6, 15, 23, 38, 56, 63, 69, 76, 91, 107}}};
+    PackedStrings{"level\000campaign\000catalog\000entity\000logic\000camera\000collision-"
+                  "grid\000level-completed",
+                  std::array<std::uint8_t, 9>{0, 6, 15, 23, 30, 36, 43, 58, 74}}};
 
 template <>
 struct EnumTraits<levels::authoring::EffectSyntax> {

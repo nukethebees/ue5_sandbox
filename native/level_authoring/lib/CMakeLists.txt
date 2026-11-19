@@ -6,7 +6,6 @@ target_sources(native-level-authoring
     ../s7/src/level_parser.cpp
     ../s7/src/level_processing.cpp
     ../s7/src/campaign_parser.cpp
-    ../s7/src/catalog_parser.cpp
     src/identifiers.cpp
     src/source_session.cpp
     src/definition_catalog.cpp

@@ -3,8 +3,6 @@
 ```text
 Scheme source -> sandbox-s7 -> owned s7::Ast
                                   |
-                    interpreter destroyed
-                                  |
                     native-level-authoring
                       parse_level / parse_campaign / parse_settings
                                   |
@@ -28,23 +26,13 @@ the validated file handle through reading and lives under `runtime/lib/src/platf
 
 `native-level-authoring` depends on `native-s7-data` and `native-levels`, without the
 interpreter or simulation. Its parsers accept a valid AST and return `std::expected`
-definitions with structured diagnostics. Level and campaign parsers borrow the AST and take
-an explicit root node, so catalog parsing never changes or copies AST storage.
-`native-level-parser-tests` links this boundary
-without s7. The `native-level-authoring-s7` library provides source/file reader entry points;
-`DefinitionReader::read_root_file` evaluates one explicit root and its imports in one
-interpreter. `catalog` accepts `:levels` and `:campaigns` filename lists and evaluates
-them in the supplied order. There is no directory discovery or automatic library preloading.
-Each `import-module` evaluates a fresh environment rooted in the shared DSL. Paths are relative
-to the catalog directory. Readers use `module-ref` to select a named export. Standalone level reads remain
-available to the editor and benchmark runner.
+definitions with structured diagnostics. The standalone parsers operate on owned ASTs and are tested without s7.
 
-The evaluated catalog retains definition source paths and per-file evaluation failures.
-It is materialized into the same flat AST, then the interpreter is destroyed before
-`parse_catalog` and semantic validation. The catalog parser belongs to the runtime-free
-authoring library and dispatches to the existing level/campaign parsers. Each selected source
-produces a `DefinitionEntry<T>` containing its path and `std::expected<T, Diagnostics>`.
-Catalog validators still consume only successful definitions.
+A catalog exports ordered lists of relative level and campaign paths. One interpreter loads the
+catalog and imports each entry with a shared file and byte budget. C++ decodes each exported
+definition individually. Entries retain their source path and diagnostics so a broken file
+does not prevent valid siblings from loading. The level selector displays the bytes captured
+when the level was imported.
 
 The runtime privately roots s7's internal hooks after revoking their public bindings, keeping
 global redefinition and error handling safe across garbage collections.

@@ -49,20 +49,9 @@
     (member logic @input_logic :initializer "")
     (member entities @input_entities :initializer "")
     (projections (cpp)))
-  (record IncludedLevelInput :generate-s7-reader true :s7-tag "included-level"
-    (member path @native_string :initializer "" :required true)
-    (member value @input_level_value :initializer "")
-    (member error @input_optional_string :initializer "")
-    (projections (cpp)))
-  (record IncludedCampaignInput :generate-s7-reader true :s7-tag "included-campaign"
-    :s7-reader-includes ("ioj/levels/campaign_definition_reader.h")
-    (member path @native_string :initializer "" :required true)
-    (member value @input_campaign_value :initializer "")
-    (member error @input_optional_string :initializer "")
-    (projections (cpp)))
-  (record CatalogInput :generate-s7-reader true :s7-tag "catalog" :s7-constructor false
-    (member levels @input_levels :initializer "")
-    (member campaigns @input_campaigns :initializer "")
+  (record CatalogInput :generate-s7-reader true :s7-tag "catalog"
+    (member levels @catalog_paths :initializer "")
+    (member campaigns @catalog_paths :initializer "")
     (projections (cpp))))
 
 (module s7_constructors

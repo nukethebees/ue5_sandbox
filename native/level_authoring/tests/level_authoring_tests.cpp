@@ -657,18 +657,26 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
              module_source("campaign",
                            "(campaign :id 'shared :title shared-title :levels '(test))")},
         {root / "catalog.scm",
-         module_source("catalog", R"((catalog :levels '("first.scm" "broken.scm" "second.scm")
+         module_source(
+             "catalog",
+             R"((catalog :levels '("first.scm" "broken.scm" "second.scm" "../outside.scm" 42)
           :campaigns '("campaign.scm")))")},
     }));
     auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
     ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
     auto const& levels{catalog->levels};
-    ASSERT_EQ(levels.size(), 3u);
+    ASSERT_EQ(levels.size(), 5u);
     ASSERT_EQ(catalog->campaigns.size(), 1u);
     ASSERT_TRUE(levels[0].definition);
     EXPECT_EQ(levels[0].source_text, mission);
     EXPECT_EQ(levels[0].definition->metadata().title, "Shared");
     ASSERT_FALSE(levels[1].definition);
+    EXPECT_EQ(levels[1].source_text, "(undefined-function)");
+    ASSERT_FALSE(levels[3].definition);
+    EXPECT_TRUE(levels[3].source_text.empty());
+    EXPECT_EQ(levels[3].definition.error().front().code, DiagnosticCode::InvalidType);
+    ASSERT_FALSE(levels[4].definition);
+    EXPECT_EQ(levels[4].definition.error().front().node_path, "catalog.levels[4]");
     EXPECT_EQ(levels[1].definition.error().front().source_path, root / "broken.scm");
     ASSERT_TRUE(levels[2].definition);
     EXPECT_EQ(levels[2].definition->metadata().title, "Shared");
@@ -691,6 +699,27 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     ASSERT_TRUE(variation->levels[0].definition);
     EXPECT_EQ(variation->levels[0].definition->metadata().title, "Shared");
 }
+TEST(NativeLevelAuthoringReader, CatalogAndNestedImportsShareOneFileBudget) {
+    TemporaryLevelDirectory directory;
+    auto const& root{directory.path()};
+    auto const limit{s7::InterpreterOptions{}.max_loaded_files};
+    auto const paths{std::format("(make-list {} \"level.scm\")", limit)};
+    ASSERT_TRUE(write_files({
+        {root / "catalog.scm", module_source("catalog", "(catalog :levels " + paths + ")")},
+        {root / "level.scm",
+         "(import-module \"helper.scm\")\n" + module_source("mission", minimal_source())},
+        {root / "helper.scm", ""},
+    }));
+    auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
+    ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
+    ASSERT_EQ(catalog->levels.size(), limit);
+    auto const admitted{(limit - 1) / 2};
+    ASSERT_TRUE(catalog->levels[admitted - 1].definition);
+    ASSERT_FALSE(catalog->levels[admitted].definition);
+    EXPECT_TRUE(
+        catalog->levels[admitted].definition.error().front().message.contains("file count limit"));
+}
+
 TEST(NativeLevelAuthoringReader, RootReportsEvaluationAndGrammarErrors) {
     TemporaryLevelDirectory directory;
     auto const root{directory.path() / "catalog.scm"};

@@ -6,7 +6,6 @@
 #include "ioj/levels/authoring/input_readers.h"
 #include "ioj/levels/authoring/level_inputs.h"
 #include "ioj/levels/authoring/positional_inputs_reader.h"
-#include "ioj/levels/campaign_definition_reader.h"
 #include "ioj/levels/level_camera_definition_reader.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
@@ -119,76 +118,6 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
                                                                   "entities"};
     static constexpr auto required{
         required_fields<Field, field_names.size()>({Field::id, Field::title})};
-};
-
-template <>
-struct TypeReader<levels::authoring::IncludedLevelInput>
-    : RecordReader<levels::authoring::IncludedLevelInput> {
-    static void decode(DecodeContext ctx, value_type& result) {
-        decode_record<Field>(
-            ctx,
-            "included-level",
-            field_names,
-            [&result](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::path:
-                        read(result.path);
-                        break;
-                    case Field::value:
-                        read(result.value);
-                        break;
-                    case Field::error:
-                        read(result.error);
-                        break;
-                }
-            },
-            required);
-    }
-
-  private:
-    enum class Field : std::uint8_t {
-        path,
-        value,
-        error,
-    };
-
-    static constexpr std::array<std::string_view, 3> field_names{"path", "value", "error"};
-    static constexpr auto required{required_fields<Field, field_names.size()>({Field::path})};
-};
-
-template <>
-struct TypeReader<levels::authoring::IncludedCampaignInput>
-    : RecordReader<levels::authoring::IncludedCampaignInput> {
-    static void decode(DecodeContext ctx, value_type& result) {
-        decode_record<Field>(
-            ctx,
-            "included-campaign",
-            field_names,
-            [&result](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::path:
-                        read(result.path);
-                        break;
-                    case Field::value:
-                        read(result.value);
-                        break;
-                    case Field::error:
-                        read(result.error);
-                        break;
-                }
-            },
-            required);
-    }
-
-  private:
-    enum class Field : std::uint8_t {
-        path,
-        value,
-        error,
-    };
-
-    static constexpr std::array<std::string_view, 3> field_names{"path", "value", "error"};
-    static constexpr auto required{required_fields<Field, field_names.size()>({Field::path})};
 };
 
 template <>
