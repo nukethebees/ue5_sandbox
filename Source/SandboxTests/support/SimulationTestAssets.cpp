@@ -1,10 +1,11 @@
 #include "SimulationTestAssets.h"
 
+#include <ioj/levels/authoring/definition_reader.h>
 #include <SandboxTests/SandboxTestLogCategories.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
-#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
+#include <Misc/Paths.h>
 #include <UObject/Package.h>
 #include <UObject/SoftObjectPath.h>
 #include <UObject/SoftObjectPtr.h>
@@ -26,12 +27,12 @@ auto load_default_level_config() -> USpaceGameLevelConfig* {
                 LogSandboxTest, Error, TEXT("Cannot load default simulation-test asset package"));
             return nullptr;
         }
+        auto const root{FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"))};
+        levels::authoring::DefinitionReader reader{std::filesystem::path{*root}};
         auto const settings{
-            read_game_settings_source(TEXT("LevelScripts/Settings/base.scm"), *resources)};
+            reader.read_settings_file(std::filesystem::path{*root} / "Settings/base.scm")};
         check(settings);
-        auto const loaded{prepare_level_resources(*settings, *resources, GetTransientPackage())};
-        check(loaded);
-        resolved.Reset(*loaded);
+        resolved.Reset(resources->with_settings(*settings, GetTransientPackage()));
     }
     auto* const config{resolved.Get()};
     if (IsValid(config)) {

@@ -3,12 +3,9 @@
 #include <ioj/format_writer.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/level_parser.h>
-#include <ioj/rotator3d.h>
-#include <ioj/s7/simulation_settings_reader.h>
-#include <ioj/sim/levels/level_compilation.h>
+#include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/sim/levels/reference_level_simulation_data.h>
 #include <ioj/sim/levels/run_end_reason.h>
-#include <ioj/sim/levels/simulation_settings.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -102,14 +99,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         return std::unexpected{read_error(level_result)};
     }
     auto const& level{*level_result};
-    auto const& level_components{level};
-
-    auto const loaded_settings{sim::resolve_simulation_settings(level.settings())};
-    if (!loaded_settings) {
-        return std::unexpected{levels::format_diagnostics(loaded_settings.error())};
-    }
-    auto const& settings{*loaded_settings};
-    auto const tick_rate_hz{settings.clock.tick_rate};
+    auto settings{level.settings()};
+    auto const tick_rate_hz{settings.tick.tick_rate};
     auto const requested_ticks{calculate_tick_count(options.simulated_seconds, tick_rate_hz)};
     if (!requested_ticks) {
         return std::unexpected{requested_ticks.error()};
@@ -167,39 +158,21 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 #endif
 
     auto reference{sim::make_reference_level_simulation_data()};
-    auto& data{reference.data};
-    sim::apply_settings(settings, data);
-    reference.player.config = settings.player;
-    data.clock_settings.time_scale = PositiveFinite<double>::make(1.0);
+    settings.tick.time_scale = PositiveFinite<double>::make(1.0);
     if (options.fighter_stress_cap.has_value()) {
-        data.fighters.max_live_fighters =
+        settings.fighters.max_live_fighters =
             NonNegative<std::int32_t>::make(*options.fighter_stress_cap);
-        data.fighters.laser.damage = 0;
+        settings.fighters.laser.damage = 0;
         auto const health{settings::PositiveHealth{
             sim::Health{std::numeric_limits<sim::Health::value_type>::max() / 2}}};
-        data.fighters.health = health;
-        data.capital_ships.max_health = health;
+        settings.fighters.health = health;
+        settings.capital_ships.max_health = health;
     }
 
-    if (level_components.player_entity_id().empty()) {
-        data.player.reset();
-    } else {
-        auto const player_definition{std::ranges::find(level_components.entities(),
-                                                       level_components.player_entity_id(),
-                                                       &levels::EntitySpawnDefinition::id)};
-        auto player{reference.player};
-        sim::apply_settings(settings, player);
-        player.team = player_definition->team;
-        if (player_definition->overrides.health) {
-            auto const health{*player_definition->overrides.health};
-            player.health = {sim::Health{health}, sim::Health{health}};
-        }
-        player.transform.location = player_definition->position;
-        player.transform.rotation = to_quaternion(player_definition->rotation);
-        data.player = player;
+    if (!level.player_entity_id().empty()) {
+        reference.data.player = std::move(reference.player);
     }
-
-    auto compiled{levels::compile_level(level, data)};
+    auto compiled{sim::make_level_simulation_init_data(level, std::move(reference.data), settings)};
     if (!compiled) {
         std::string output;
         auto write{ioj::FormatWriter{std::back_inserter(output)}};
@@ -209,6 +182,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         return std::unexpected{std::move(output)};
     }
 
+    auto& data{*compiled};
     if (options.fighter_stress_cap.has_value()) {
         auto const team_count{data.level_events
                                   .collect_participating_teams(
@@ -330,8 +304,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto const timing_summary{summarize_tick_timings(std::move(tick_microseconds))};
     return BenchmarkResult{
         .level_path = options.level_path.generic_string(),
-        .level_id = level_components.metadata().id.value,
-        .level_title = level_components.metadata().title,
+        .level_id = level.metadata().id.value,
+        .level_title = level.metadata().title,
         .requested_seconds = options.simulated_seconds,
         .tick_rate_hz = simulation.clock().tick_rate().hz(),
         .game_speed = options.game_speed,

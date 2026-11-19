@@ -68,18 +68,22 @@ auto FCollisionGridConfig::is_valid() const noexcept -> bool {
     return collision_grid_dimensions_are_valid(*this) && collision_class_lists_are_valid(*this);
 }
 
-void USpaceGameLevelConfig::apply_settings(sim::SimulationSettings const& settings) {
-    overlap_response = settings.overlap_response;
-    player_ship.simulation = settings.player;
-    laser_projectiles.simulation = settings.lasers;
-    capital_ships.simulation = settings.capital_ships;
-    capital_ships.simulation.fighter_spawn_slots =
-        capital_ships.fighter_spawn_slots_relative_transforms.Num();
-    fighters.simulation = settings.fighters;
-    turrets.simulation = settings.turrets;
-    tube_spinners.simulation = settings.spinners;
-    collision_grid.grid_size = to_unreal(settings.overlap_response.level_size);
-    collision_grid.cell_size = to_unreal(settings.overlap_response.cell_size);
+auto USpaceGameLevelConfig::with_settings(settings::Settings const& settings, UObject* outer) const
+    -> USpaceGameLevelConfig* {
+    auto* config{DuplicateObject<USpaceGameLevelConfig>(this, outer)};
+    config->overlap_response = settings.collision_grid;
+    config->player_ship.simulation = settings.player_ship;
+    config->laser_projectiles.simulation = settings.laser_projectiles;
+    config->capital_ships.simulation = settings.capital_ships;
+    config->capital_ships.simulation.fighter_spawn_slots =
+        config->capital_ships.fighter_spawn_slots_relative_transforms.Num();
+    config->fighters.simulation = settings.fighters;
+    config->turrets.simulation = settings.turrets;
+    config->tube_spinners.simulation = settings.tube_spinners;
+    config->collision_grid.grid_size = to_unreal(settings.collision_grid.level_size);
+    config->collision_grid.cell_size = to_unreal(settings.collision_grid.cell_size);
+    config->presentation = settings.presentation;
+    return config;
 }
 
 auto USpaceGameLevelConfig::is_valid(bool const require_presentation) const noexcept -> bool {

@@ -5,7 +5,6 @@
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include <ioj/levels/launch_options.h>
 #include <Sandbox/environment/effects/ShipPostProcessing.h>
-#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -84,11 +83,8 @@ auto validate_playable_s7_level(AS7LevelAuthoringDocument const& document)
 auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
                                     USpaceGameLevelConfig const& resources)
     -> std::expected<sim::LevelSimInitData, FString> {
-    auto prepared{prepare_level_resources(definition.settings(), resources, GetTransientPackage())};
-    if (!prepared) {
-        return std::unexpected{std::move(prepared.error())};
-    }
-    TStrongObjectPtr<USpaceGameLevelConfig> effective_config{*prepared};
+    TStrongObjectPtr<USpaceGameLevelConfig> effective_config{
+        resources.with_settings(definition.settings(), GetTransientPackage())};
     levels::LaunchOptions const options;
     auto build{prepare_level_simulation({.config = *effective_config,
                                          .clock_settings = definition.settings().tick,

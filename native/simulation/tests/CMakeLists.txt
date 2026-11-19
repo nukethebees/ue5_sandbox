@@ -58,7 +58,6 @@ set_tests_properties(native-simulation-tests PROPERTIES LABELS "unit;all;native;
 
 target_link_libraries(native-simulation-tests
   PRIVATE
-    native-simulation-s7
     native-level-authoring-s7
 )
 target_compile_definitions(native-simulation-tests

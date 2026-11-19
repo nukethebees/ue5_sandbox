@@ -5,7 +5,6 @@
 #include <ioj/profiles/level_score.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
-#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -211,11 +210,7 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
                     TEXT("Level configuration is invalid"));
     }
 
-    auto resolved{prepare_level_resources(definition.settings(), *level_config, this)};
-    if (!resolved) {
-        return fail(ELevelLoadErrorCode::InvalidLevelConfig, std::move(resolved.error()));
-    }
-    if (!set_level_config(**resolved)) {
+    if (!set_level_config(*level_config->with_settings(definition.settings(), this))) {
         return fail(ELevelLoadErrorCode::InvalidLevelConfig,
                     TEXT("Failed to resolve game settings"));
     }

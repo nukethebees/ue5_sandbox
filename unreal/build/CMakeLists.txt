@@ -1,7 +1,6 @@
 set(sandbox_unreal_native_dependency_targets
   sbx-mimalloc
   native-simulation
-  native-simulation-s7
   native-level-authoring-s7
   sandbox-s7
   native-core

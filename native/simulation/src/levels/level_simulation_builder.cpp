@@ -25,26 +25,11 @@ auto finite(Transform3d const& transform) -> bool {
            std::isfinite(rotation.z()) && std::isfinite(rotation.w());
 }
 
-auto settings_from_data(LevelSimInitData const& data) -> SimulationSettings {
-    return {.clock = data.clock_settings,
-            .player = data.player ? data.player->config : PlayerSimConfig{},
-            .lasers = data.lasers,
-            .capital_ships = data.capital_ships,
-            .fighters = data.fighters,
-            .turrets = data.turrets,
-            .spinners = data.spinners,
-            .overlap_response = data.collision.overlap_response};
-}
 }
 
 auto validate_level_simulation_init_data(LevelSimInitData const& data)
     -> std::expected<void, LevelSimulationBuildErrors> {
     LevelSimulationBuildErrors errors;
-    if (auto valid{validate_settings(settings_from_data(data))}; !valid) {
-        for (auto const& error : valid.error()) {
-            errors.push_back(std::format("{}: {}", error.node_path, error.message));
-        }
-    }
     if (!collision::is_configured(data.collision.grid_spec)) {
         errors.emplace_back("Collision grid requires positive dimensions and finite cell sizes");
     } else if (!finite(collision::grid_half_size(data.collision.grid_spec))) {
@@ -153,25 +138,15 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
 
 auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
                                      LevelSimInitData inputs,
-                                     std::optional<settings::TickSettings> const clock_override)
+                                     settings::Settings const& settings)
     -> LevelSimulationBuildResult {
-    auto resolved{resolve_simulation_settings(definition.settings())};
+    auto resolved{resolve_simulation_settings(settings)};
     if (!resolved) {
         LevelSimulationBuildErrors errors;
         for (auto const& error : resolved.error()) {
             errors.push_back(std::format("{}: {}", error.node_path, error.message));
         }
         return std::unexpected{std::move(errors)};
-    }
-    if (clock_override) {
-        resolved->clock = *clock_override;
-        if (auto valid{validate_settings(*resolved)}; !valid) {
-            LevelSimulationBuildErrors errors;
-            for (auto const& error : valid.error()) {
-                errors.push_back(std::format("{}: {}", error.node_path, error.message));
-            }
-            return std::unexpected{std::move(errors)};
-        }
     }
     if (!definition.player_entity_id().empty()) {
         auto& player{inputs.player ? *inputs.player : inputs.player.emplace()};
@@ -199,5 +174,10 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
         return std::unexpected{std::move(valid.error())};
     }
     return inputs;
+}
+
+auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
+                                     LevelSimInitData inputs) -> LevelSimulationBuildResult {
+    return make_level_simulation_init_data(definition, std::move(inputs), definition.settings());
 }
 }

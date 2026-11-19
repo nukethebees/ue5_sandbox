@@ -199,6 +199,17 @@ TEST(SimulationBenchmarkJson, EmitsStableSchemaAndEscapesStrings) {
     EXPECT_NE(json.find("\"maximum_measured_fighters\":2000"), std::string::npos);
 }
 
+TEST(SimulationBenchmarkRunner, RejectsPlayerBoundsOutsideTheCollisionGrid) {
+    TemporaryFile file;
+    std::ofstream{file.path()} << R"((export mission)
+        (define mission (level :id 'outside :title "Outside" :player 'pilot
+            :entities (list (entity :id 'pilot :archetype 'player-fighter
+                                    :team 'blue :position '(100000000 0 0))))))";
+    auto result{run_benchmark({.level_path = file.path(), .simulated_seconds = 0.01})};
+    ASSERT_FALSE(result);
+    EXPECT_TRUE(result.error().contains("outside the collision grid")) << result.error();
+}
+
 TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {
     auto const level_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts" /
                           "DevThreeSecondFailure.scm"};

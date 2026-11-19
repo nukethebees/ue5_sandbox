@@ -109,7 +109,6 @@ add_unreal_automation_test(
   Sandbox.S7AuthoringTests
   FILTERS
     Sandbox.UnitTests.S7LevelAuthoring
-    Sandbox.UnitTests.S7LevelSourceSession
     Sandbox.UnitTests.LevelScriptCatalog
     Sandbox.UnitTests.LevelSimulation
     Sandbox.UnitTests.SpaceGameLevelConfig

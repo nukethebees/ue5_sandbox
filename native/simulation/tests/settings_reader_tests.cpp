@@ -1,6 +1,7 @@
+#include "../../level_authoring/tests/module_fixture.h"
 #include "../../level_authoring/tests/settings_diff.h"
 #include <ioj/levels/authoring/definition_reader.h>
-#include <ioj/s7/simulation_settings_reader.h>
+#include <ioj/sim/levels/simulation_settings.h>
 #include <ioj/testing/structural_diff.h>
 
 #include <gtest/gtest.h>
@@ -15,12 +16,13 @@ using levels::authoring::DefinitionReader;
 TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefaults) {
     SimulationSettings const defaults;
     auto const source{
-        DefinitionReader{}.read_settings_source(std::format(R"(
+        ioj::levels::authoring::tests::read_test_settings(DefinitionReader{},
+                                                          std::format(R"(
       (settings-layers
         (settings :fighters (fighters :speed 9000 :laser (laser :damage 17 :max-distance 50000))
                   :turrets (turrets :laser (laser :damage 23)))
         (settings :fighters (fighters :speed {} :laser (laser :damage 31)))))",
-                                                            defaults.fighters.speed))};
+                                                                      defaults.fighters.speed))};
     ASSERT_TRUE(source);
     settings::Settings expected;
     expected.fighters.laser.damage = 31;
@@ -39,7 +41,9 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
 
 TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelLogic) {
     auto const root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
-    auto const base{s7::read_simulation_settings(root / "Settings/base.scm", root)};
+    auto const base{DefinitionReader{root}
+                        .read_settings_file(root / "Settings/base.scm")
+                        .and_then(resolve_simulation_settings)};
     ASSERT_TRUE(base);
     EXPECT_EQ(base->fighters.speed, 4500);
     EXPECT_EQ(base->fighters.laser.damage, 10);
@@ -49,7 +53,7 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelLogic) {
     ASSERT_TRUE(base_values);
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization) -- Independent mutation snapshot.
     auto const original{*base_values};
-    auto const level{DefinitionReader{root}.read_level_source(R"(
+    auto const level{ioj::levels::authoring::tests::read_test_level(DefinitionReader{root}, R"(
       (level :id 'settings-logic :title "Settings and logic" :player 'player
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                :position '(0 0 0)))
@@ -71,17 +75,21 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelLogic) {
 
     for (auto const field : {"", ":settings (settings)", ":settings (settings-layers)"}) {
         SCOPED_TRACE(field);
-        auto const inherited{DefinitionReader{}.read_level_source(std::format(R"(
+        auto const inherited{ioj::levels::authoring::tests::read_test_level(DefinitionReader{},
+                                                                            std::format(R"(
           (level :id 'inherited :title "Inherited" :player 'player {}
             :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                    :position '(0 0 0)))))",
-                                                                              field))};
+                                                                                        field))};
         ASSERT_TRUE(inherited) << levels::format_diagnostics(inherited.error());
         EXPECT_PRED_FORMAT2(structurally_equal, settings::Settings{}, inherited->settings());
     }
-    EXPECT_FALSE(DefinitionReader{}.read_level_source("(level :title \"Missing id\")"));
-    EXPECT_FALSE(DefinitionReader{}.read_settings_source(
-        "(settings :fighters (fighters :speed 1 :laser (laser :damage 'invalid)))", *base_values));
+    EXPECT_FALSE(ioj::levels::authoring::tests::read_test_level(DefinitionReader{},
+                                                                "(level :title \"Missing id\")"));
+    EXPECT_FALSE(ioj::levels::authoring::tests::read_test_settings(
+        DefinitionReader{},
+        "(settings :fighters (fighters :speed 1 :laser (laser :damage 'invalid)))",
+        *base_values));
     EXPECT_PRED_FORMAT2(structurally_equal, original, *base_values);
 }
 
@@ -91,7 +99,7 @@ TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings
     base.collision_grid.level_size = {80000.f, 60000.f, 40000.f};
     base.collision_grid.damage_per_overlap_detection = ioj::Positive<std::int32_t>{75};
     auto const original{base};
-    auto const level{DefinitionReader{}.read_level_source(R"(
+    auto const level{ioj::levels::authoring::tests::read_test_level(DefinitionReader{}, R"(
       (level :id 'grid :title "Grid" :player 'player
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                :position '(0 0 0)))
@@ -108,7 +116,7 @@ TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings
     ASSERT_TRUE(resolved) << levels::format_diagnostics(resolved.error());
     EXPECT_PRED_FORMAT2(structurally_equal, original.collision_grid, resolved->overlap_response);
 
-    auto const legacy{DefinitionReader{}.read_level_source(R"(
+    auto const legacy{ioj::levels::authoring::tests::read_test_level(DefinitionReader{}, R"(
       (level :id 'grid :title "Grid" :player 'player
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                :position '(0 0 0)))
@@ -142,10 +150,9 @@ TEST(SimulationSettingsReader, RetainsUnknownFieldConversionAndFinalValidationEr
           Case{"(settings :tick (tick :tick-rate 0))", InvalidNumber, "tick.tick-rate"},
           Case{"(settings :tick (tick :tick-rate -1))", InvalidNumber, "tick.tick-rate"}}) {
         SCOPED_TRACE(test.source);
-        auto const source{DefinitionReader{}.read_settings_source(test.source)};
-        auto const resolved{source
-                                ? sim::resolve_simulation_settings(*source)
-                                : s7::SimulationSettingsReadResult{std::unexpect, source.error()}};
+        auto const source{
+            ioj::levels::authoring::tests::read_test_settings(DefinitionReader{}, test.source)};
+        auto const resolved{source.and_then(sim::resolve_simulation_settings)};
         ASSERT_FALSE(resolved);
         ASSERT_FALSE(resolved.error().empty());
         EXPECT_EQ(resolved.error().front().code, test.code);

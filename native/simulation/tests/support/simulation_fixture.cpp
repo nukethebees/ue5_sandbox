@@ -1,6 +1,6 @@
 #include "simulation_fixture.h"
 
-#include <ioj/s7/simulation_settings_reader.h>
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/sim/levels/simulation_settings.h>
 
 #include <filesystem>
@@ -10,8 +10,9 @@ namespace ioj::sim::tests {
 auto make_fixture() -> SimulationFixture {
     static auto const settings{[] {
         auto const script_root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
-        auto const loaded{
-            s7::read_simulation_settings(script_root / "Settings" / "base.scm", script_root)};
+        auto const loaded{levels::authoring::DefinitionReader{script_root}
+                              .read_settings_file(script_root / "Settings/base.scm")
+                              .and_then(resolve_simulation_settings)};
         if (!loaded) {
             throw std::runtime_error{levels::format_diagnostics(loaded.error())};
         }

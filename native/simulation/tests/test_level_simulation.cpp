@@ -1,3 +1,4 @@
+#include "../../level_authoring/tests/module_fixture.h"
 #include "support/simulation_checks.h"
 #include "support/simulation_test_support.h"
 #include <ioj/column_math.h>
@@ -84,7 +85,8 @@ auto make_scheduled_battle() -> SimulationScenario {
     auto data{make_battle_config()};
     data.runtime.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.runtime.clock_settings.tick_rate = Frequency::make(10.0);
-    auto definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
+    auto definition{
+        ioj::levels::authoring::tests::read_test_level(levels::authoring::DefinitionReader{}, R"(
         (level :id 'scheduled-battle :title "Scheduled Battle"
           :camera (camera :look-at '(hero) :offset-direction '(-1 0 0) :distance 1000)
           :entities (list
@@ -226,7 +228,8 @@ TEST(NativeSimulation, NativeStartupRejectsInvalidSpawnGeometryBeforeConstructin
 }
 
 TEST(NativeSimulation, NativeStartupRejectsFutureSpawnsOutsideGrid) {
-    auto definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
+    auto definition{
+        ioj::levels::authoring::tests::read_test_level(levels::authoring::DefinitionReader{}, R"(
       (level :id 'geometry :title "Geometry"
         :camera (camera :look-at '(capital) :offset-direction '(-1 0 0) :distance 1000)
         :entities (list (entity :id 'capital :archetype 'capital-ship :team 'blue

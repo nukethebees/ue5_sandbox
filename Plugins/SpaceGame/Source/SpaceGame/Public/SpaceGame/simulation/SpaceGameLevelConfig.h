@@ -106,7 +106,8 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
                 presentation,
                 sparks};
     }
-    void apply_settings(sim::SimulationSettings const& settings);
+    [[nodiscard]] auto with_settings(settings::Settings const& settings, UObject* outer) const
+        -> USpaceGameLevelConfig*;
     [[nodiscard]] auto is_valid(bool require_presentation = true) const noexcept -> bool;
     void get_validation_errors(TArray<FString>& errors, bool require_presentation = true) const;
     void get_validation_warnings(TArray<FString>& warnings) const;

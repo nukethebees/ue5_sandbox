@@ -34,12 +34,10 @@ SPACEGAME_API auto configure_level_run(sim::LevelSimInitData& data,
 SPACEGAME_API void configure_player_actor(ATestSpaceShip& player,
                                           USpaceGameLevelConfig const& config);
 
-SPACEGAME_API auto
-    make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                    settings::TickSettings const& clock_settings = {},
-                                    TOptional<sim::player::PlayerSpawnData> player = NullOpt,
-                                    UStaticMesh const* player_collision_mesh = nullptr)
-        -> FLevelSimBuildResult;
+SPACEGAME_API auto extract_level_geometry(USpaceGameLevelConfig const& config,
+                                          TOptional<sim::player::PlayerSpawnData> player = NullOpt,
+                                          UStaticMesh const* player_collision_mesh = nullptr)
+    -> FLevelSimBuildResult;
 
 SPACEGAME_API auto
     make_level_simulation_init_data(USpaceGameLevelConfig const& config,

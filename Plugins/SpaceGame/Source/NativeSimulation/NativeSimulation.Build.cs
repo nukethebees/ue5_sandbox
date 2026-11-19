@@ -32,8 +32,6 @@ public class NativeSimulation : ModuleRules
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "simulation", "include"));
         PublicSystemIncludePaths.Add(
-            Path.Combine(repositoryRoot, "native", "simulation", "s7", "lib", "include"));
-        PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "profiling", "include"));
 
         if (!Target.bGenerateProjectFiles)
@@ -49,15 +47,6 @@ public class NativeSimulation : ModuleRules
                     Target.Platform.ToString(),
                     Target.Configuration.ToString(),
                     "SandboxNativeSimulation.lib"),
-                Path.Combine(
-                    repositoryRoot,
-                    "Binaries",
-                    "Native",
-                    "Simulation",
-                    nativeToolchain,
-                    Target.Platform.ToString(),
-                    Target.Configuration.ToString(),
-                    "SandboxNativeSimulationS7.lib"),
                 Path.Combine(
                     repositoryRoot,
                     "Binaries",

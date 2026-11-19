@@ -47,10 +47,9 @@ void configure_player_actor(ATestSpaceShip& player, USpaceGameLevelConfig const&
     player.set_actor_config(&config.player_ship);
 }
 
-auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                     settings::TickSettings const& clock_settings,
-                                     TOptional<sim::player::PlayerSpawnData> player,
-                                     UStaticMesh const* const player_collision_mesh)
+auto extract_level_geometry(USpaceGameLevelConfig const& config,
+                            TOptional<sim::player::PlayerSpawnData> player,
+                            UStaticMesh const* const player_collision_mesh)
     -> FLevelSimBuildResult {
     FLevelStartErrors errors;
     auto const require_mesh{[&errors](UStaticMesh const* const mesh, TCHAR const* const name) {
@@ -72,21 +71,12 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
 
     FLevelSimBuildResult result{std::in_place};
     auto& data{result.value()};
-    data.clock_settings = clock_settings;
-    data.collision.overlap_response = config.overlap_response;
-    data.lasers = config.laser_projectiles.simulation;
-    data.capital_ships = config.capital_ships.simulation;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     for (auto const& transform : config.capital_ships.fighter_spawn_slots_relative_transforms) {
         data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(to_native(transform));
     }
     data.capital_ships.fighter_spawn_slots = static_cast<std::int32_t>(
         data.capital_ships.fighter_spawn_slots_relative_transforms.size());
-    data.fighters = config.fighters.simulation;
-    data.turrets = config.turrets.simulation;
     data.turrets.fire_point_offset = Vector3f{config.turrets.fire_point_offset.GetLocation()};
-    data.spinners = config.tube_spinners.simulation;
-    data.spinners.fire_point_offsets.clear();
     for (auto const& offset : config.tube_spinners.fire_point_offsets) {
         data.spinners.fire_point_offsets.push_back(
             {Vector3f{offset.GetLocation()}, Rotator3f{offset.Rotator()}});
@@ -97,10 +87,6 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     auto const* socket{config.fighters.mesh->FindSocket(TEXT("Gun"))};
     data.fighters.fire_point_distance =
         IsValid(socket) ? static_cast<float>(socket->RelativeLocation.Size()) : 0.f;
-    auto const dimensions{config.collision_grid.calculate_grid_dimensions()};
-    data.collision.grid_spec = {{dimensions.X, dimensions.Y, dimensions.Z},
-                                Vector3f{config.collision_grid.cell_size}};
-
     FLevelCollisionHost::EntityMeshes meshes{};
     meshes[sim::EntityType::PlayerShip] = player_collision_mesh;
     meshes[sim::EntityType::CapitalShip] = config.capital_ships.mesh;
@@ -112,10 +98,6 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         return FLevelSimBuildResult{std::unexpect, MoveTemp(bounds.error())};
     }
     data.collision.entity_bounds = MoveTemp(bounds.value());
-    if (auto valid{sim::validate_level_simulation_init_data(data)}; !valid) {
-        level_simulation_builder::append_native_errors(valid.error(), errors);
-        return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
-    }
     return result;
 }
 
@@ -126,14 +108,15 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
                                      sim::collision::WorldAABBs static_bounds,
                                      UStaticMesh const* const player_collision_mesh)
     -> FLevelSimBuildResult {
-    auto result{make_level_simulation_init_data(
-        config, clock_settings, MoveTemp(player), player_collision_mesh)};
+    auto result{extract_level_geometry(config, MoveTemp(player), player_collision_mesh)};
     if (!result) {
         return result;
     }
     auto& data{result.value()};
     data.collision.static_bounds = MoveTemp(static_bounds);
-    auto native{sim::make_level_simulation_init_data(definition, std::move(data), clock_settings)};
+    auto settings{definition.settings()};
+    settings.tick = clock_settings;
+    auto native{sim::make_level_simulation_init_data(definition, std::move(data), settings)};
     if (!native) {
         FLevelStartErrors errors;
         level_simulation_builder::append_native_errors(native.error(), errors);

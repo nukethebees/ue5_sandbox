@@ -1,8 +1,9 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/level_definition.h>
 #include <ioj/sim/collision/entity_world_bounds.h>
+#include <ioj/sim/levels/level_simulation_builder.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
-#include <SpaceGame/s7/GameSettingsReader.h>
+#include <SandboxTests/support/WorldlessSimulationTest.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
@@ -70,20 +71,15 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
 
-        auto const loaded{
-            prepare_level_resources(definition->settings(), *resources, GetTransientPackage())};
-        if (!TestRunner->TestTrue(loaded ? TEXT("Level resources prepare") : *loaded.error(),
-                                  loaded.has_value())) {
-            return;
-        }
+        auto const* loaded{resources->with_settings(definition->settings(), GetTransientPackage())};
         TestRunner->TestEqual(TEXT("Runtime uses resolved fighter speed"),
-                              (*loaded)->fighters.simulation.speed,
+                              loaded->fighters.simulation.speed,
                               input.settings.fighters.speed);
         TestRunner->TestTrue(TEXT("Runtime uses resolved collision dimensions"),
-                             (*loaded)->collision_grid.grid_size ==
+                             loaded->collision_grid.grid_size ==
                                  ioj::to_unreal(input.settings.collision_grid.level_size));
         TestRunner->TestTrue(TEXT("Runtime uses resolved collision cells"),
-                             (*loaded)->collision_grid.cell_size ==
+                             loaded->collision_grid.cell_size ==
                                  ioj::to_unreal(input.settings.collision_grid.cell_size));
     }
 
@@ -155,7 +151,8 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Authored fighter spawn slots have collision clearance"),
                              minimum_distance >= clearance_radius * 2.f);
 
-        auto const result{ioj::make_level_simulation_init_data(*config)};
+        auto const geometry{ioj::make_worldless_simulation_test_data(*config)};
+        auto const result{ioj::sim::validate_level_simulation_init_data(geometry)};
         TestRunner->TestTrue(TEXT("Authored fighter spawn slots pass level-start validation"),
                              result.has_value());
     }

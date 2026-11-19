@@ -2,6 +2,7 @@
 
 #include <ioj/column_math.h>
 #include <ioj/sim/direct_damage_events.h>
+#include <ioj/sim/levels/simulation_settings.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -22,8 +23,18 @@ auto make_worldless_simulation_test_data(USpaceGameLevelConfig const& config)
     check(IsValid(config.classes.player_ship_class));
     auto const* player{config.classes.player_ship_class->GetDefaultObject<ATestSpaceShip>()};
     check(player);
-    auto result{make_level_simulation_init_data(config, {}, NullOpt, player->get_collision_mesh())};
+    auto result{extract_level_geometry(config, NullOpt, player->get_collision_mesh())};
     check(result);
+    sim::SimulationSettings settings{.player = config.player_ship.simulation,
+                                     .lasers = config.laser_projectiles.simulation,
+                                     .capital_ships = config.capital_ships.simulation,
+                                     .fighters = config.fighters.simulation,
+                                     .turrets = config.turrets.simulation,
+                                     .spinners = config.tube_spinners.simulation,
+                                     .overlap_response = config.overlap_response};
+    settings.overlap_response.level_size = Vector3f{config.collision_grid.grid_size};
+    settings.overlap_response.cell_size = Vector3f{config.collision_grid.cell_size};
+    sim::apply_settings(settings, *result);
     return MoveTemp(result.value());
 }
 

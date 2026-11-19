@@ -17,9 +17,11 @@ using LevelSimulationBuildResult = std::expected<LevelSimInitData, LevelSimulati
 
 // Inputs supply plain collision bounds and weapon/spawn sockets. A declared player does not
 // require a presentation object; optional player input supplies its sockets and flight loadout.
-[[nodiscard]] auto make_level_simulation_init_data(
-    levels::LevelDefinition const& definition,
-    LevelSimInitData inputs,
-    std::optional<settings::TickSettings> clock_override = std::nullopt)
+[[nodiscard]] auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
+                                                   LevelSimInitData inputs,
+                                                   settings::Settings const& settings)
+    -> LevelSimulationBuildResult;
+[[nodiscard]] auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
+                                                   LevelSimInitData inputs)
     -> LevelSimulationBuildResult;
 }
