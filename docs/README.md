@@ -1,7 +1,6 @@
 # Documentation hub
 
-Use this directory for cross-cutting guidance and design notes. Documentation that belongs to a
-single subsystem lives beside that subsystem instead.
+Build, test, and measure the project using the guides below.
 
 | Task | Start here |
 | --- | --- |
@@ -10,15 +9,10 @@ single subsystem lives beside that subsystem instead.
 | Capture a native level benchmark with Tracy | [Profiling](profiling.md) |
 | Run native clang-tidy | [Native clang-tidy](clang-tidy.md) |
 | Work on standalone C++ libraries or simulation | [Native guide](../native/README.md) |
-| Regenerate C++, Slate, kernel, or material outputs | [Code generation guide](../Codegen/README.md) |
+| Regenerate C++, Slate, kernel, or material outputs | [Lispb guide](../native/lispb/README.md) |
 | Find an Unreal module or its responsibility | [Source map](../Source/README.md) |
 | Find an engine extension or game plugin | [Plugin map](../Plugins/README.md) |
 | Find or author an S7 scenario | [Level scripts guide](../LevelScripts/README.md) |
 | Install coj or run benchmarks | [PowerShell guide](../PowerShell/README.md) and [Benchmarks](benchmarks.md) |
 | Understand CMake presets and build coordination | [CMake guide](../cmake/README.md) |
 | Work on a standalone tool | [Tools guide](../tools/README.md) |
-
-Existing investigation notes remain here:
-
-- [Ray/AABB slab-ordering benchmark](ray_aabb_slab_ordering_benchmark.md)
-- [Spark rendering-path experiment](spark_rendering_path_experiment.md)
