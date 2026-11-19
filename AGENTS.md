@@ -2,129 +2,99 @@ Unreal Engine 5.8 project.
 
 # Project Context
 
-* Simulation-heavy space combat game, primarily C++, with heavy SoA usage.
-* Prefer simple, explicit systems over speculative abstraction.
-* Keep gameplay logic out of UI.
-* Prefer `native/` until Unreal integration is needed; native code supports faster builds and
-  testing without Unreal.
-* Standalone developer tools may live under `tools/`.
+* Simulation-heavy C++ space combat game with heavy SoA use. Prefer simple, explicit systems.
+* Prefer `native/` for faster builds and tests until Unreal integration is needed.
+  Standalone developer tools may live under `tools/`.
 
 # Feature Workflow
 
-* Assume one active development session. Work in the current workspace. Create additional
-  development worktrees or delegate to other agents only when requested.
-* Use `coj`, the project workflow CLI. Start tasks with `coj --help`, then inspect relevant
-  `coj <command> --help`. Prefer supported workflows over manual equivalents; skip unrelated help.
-* Run `coj prepare-worktree` in the current worktree once at the start of a fresh LLM session.
-  Do not repeat it for new tasks, follow-ups, or context compaction within the same session.
-  Invoke `coj` by name; ask the maintainer before installing/updating it or changing PATH.
-  If it cannot launch or is missing,
-  halt and report it. If broken, report once; use a minimal alternative only under explicit
-  maintainer instruction. Do not repeatedly retry or bypass it.
-* Use `coj git` for mutating Git operations. Ask the maintainer before using unsupported Git
-  commands directly. Stash is unsupported because it is repository-global; use branches.
-* `dev` is the integration branch. `dev`, `main`, and `master` are protected regardless of
-  ASCII case: read them freely, but do not mutate them or switch agent worktrees onto them
-  through the ordinary Git path.
-* Continue on the current feature branch for related work. Create a new feature branch for an
-  independent task with `coj git switch -c feature/<task> <base>`, choosing a base that preserves
-  required existing changes. Use `dev` when the task has no dependency on unintegrated work.
-  `feature/` is a naming convention.
-* Treat the current worktree as the workspace boundary. Do not access or modify worktrees outside that boundary.
-* Use `coj` for project workflows and Git guardrails. Never bypass its protections with
-  raw mutating Git, `.git` edits, environment overrides, aliases, alternate Git executables,
-  shell tricks, or other workarounds.
-* Follow these instructions unless explicitly told otherwise. Use the [CMake workflows](#builds).
-* Use this pipeline for every engineering task: inspect and plan, finish all implementation,
-  deletions, test updates and documentation, review and format the complete diff, then build
-  and test. Do not build or test between partial implementation steps merely to check progress;
-  code generation needed to complete edits is allowed. After the complete candidate enters
-  validation, collect failures and batch
-  the required fixes before repeating affected checks. Do not alternate individual edits with
-  rebuilds or retests, or expand validation without a concrete need. Report ready only after
-  the required checks pass, and report accepted failures explicitly.
-* After worktree preparation, build affected targets and run relevant CTest labels. Fast loop:
-  `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"`.
-  Run applicable expensive categories once against the final candidate.
-  `native-simulation-tests` runs the simulation suite.
-  `native-tests` includes native soak/compile contracts, excluding standalone developer tools.
-* Run light, relevant tests after implementation and expensive relevant gates once on the final
-  candidate. Do not build Unreal for tooling/native work without a dependency reason.
-* Use one simple shell command per tool invocation for routine work. Never combine commands with `;`,
-  `&&`, `||`, pipelines, or script blocks, even if approved or cheap. Inspect through separate
-  calls and read output directly; batch independent calls through the tool API, not shell strings.
-  Do not redirect output to log files; existing build/test scripts may run normally.
-* Commit completed changes by default after reviewing the diff and passing the required validation,
-  unless the maintainer explicitly asks to leave them uncommitted. Do not wait for a separate commit
-  request. Use `coj git` and report the commit hash in the final response.
-* Each commit must contain one logical change. Keep the implementation, required caller updates,
-  generated outputs, tests and directly related documentation together. Commit independent
-  refactors, documentation cleanups and workflow changes separately. Review the staged diff
-  before committing; split it if its parts can be reviewed or reverted independently.
-* Run static analysis only when explicitly requested or modifying its tooling, not as normal
-  feature validation.
+* Follow these instructions unless explicitly told otherwise. Assume one active session.
+  Keep worktree access within this workspace. Create additional worktrees or delegate only when requested.
+* Start tasks with `coj --help`, then read the relevant subcommand help. Use supported workflows.
+  Run `coj prepare-worktree` once per fresh LLM session, never again for follow-ups or compaction.
+* Invoke `coj` by name. Ask before installing/updating it or changing PATH. If missing or
+  unlaunchable, halt and report it. If broken, report once. Use a minimal alternative only on
+  explicit maintainer instruction. Never bypass guardrails through raw Git, `.git` edits,
+  environment overrides, aliases, alternate executables, shell tricks, or other workarounds.
+* Use `coj git` for Git mutations. Ask before using unsupported Git commands directly.
+  Use branches in place of repository-global stash. The integration branch is `dev`.
+  Treat `dev`, `main`, and `master` as read-only through ordinary Git, regardless of ASCII case.
+  Never switch an agent worktree onto them through that path.
+* Continue related work on its feature branch. For independent work, use
+  `coj git switch -c feature/<task> <base>`. Base on `dev` unless unintegrated changes are
+  required. The `feature/` prefix is a naming convention.
+* For engineering tasks, inspect and plan, finish implementation, deletions, tests and docs,
+  then review and format the complete diff before building and testing. Code generation needed
+  for edits is allowed. Collect validation failures, batch fixes, and rerun affected checks.
+  Expand validation only for a concrete reason. Report ready only after required checks pass,
+  identifying any failures explicitly accepted by the maintainer.
+* Use one simple shell command per tool invocation. Batch independent calls through the tool API.
+  Never combine routine commands with `;`, `&&`, `||`, pipelines, or script blocks, even if
+  approved. Read output directly without redirecting it to logs. Existing build/test scripts may run normally.
+
+## Review and commits
+
+* Leave your changes **unstaged** for review, including after validation. Stage changes only
+  when the maintainer asks to stage or commit them. Commit only on an explicit commit request.
+* When committing, use `coj git` and stage one small, logical change at a time. Keep required
+  caller updates, generated outputs, tests and directly related docs with their implementation.
+  Split independently reviewable or revertible work, including unrelated refactors, docs and
+  workflow changes. Review each staged diff before committing and report every commit hash.
 
 # Builds
 
 * Drive all builds, including UBT, through CMake. Read [CMake style](cmake/STYLE.md) before editing CMake files.
-* Do not run overlapping builds against the same build directory or shared Unreal output.
-  Run benchmarks without competing heavy workloads. Investigate actual lock or resource
-  conflicts before retrying.
-* Use the native unity presets for normal development work; their default batch size is 8.
-  Preserve target-specific unity exclusions and use non-unity builds for include-isolation
-  checks or unity-specific failures. Keep Unreal's configured unity policy unless measuring it separately.
-* Set `IOJ_ROOT` to the absolute shared-tools/temp root. Install stable tools
-  under `%IOJ_ROOT%\tools\<ToolName>\bin`; invoke them from PATH. Installing a new tool or updating
-  an existing tool is allowed with maintainer approval, including tools not mentioned here.
-  Ask before installing or updating unless already authorized in the current task. Do not
-  construct local fallbacks. Report missing commands; use `--version` for manual source/install
-  comparison when needed. CMake privately builds revision-local game-package-tools,
-  native-binary-tools, and benchmark-tools on demand.
-* Use `%IOJ_ROOT%\tmp\<worktree-name>` for Windows temporary files. Allow that directory in the
-  sandbox; do not grant user-profile access to fix temporary-path failures.
-* Build and test only affected work for final integration. Integration does not rerun validation.
-* Limit benchmarks to three minutes total.
-* Compare native simulation/fighter revisions with
-  `coj benchmark compare --baseline <ref> [--candidate <ref>]`, not ad-hoc worktree/analysis scripts.
-  It manages detached inputs under this workspace's `.local/benchmarks/wt/`. Omit `--candidate`
-  to include local edits. Run `--prepare-only`, then use the printed worktree paths with
-  `--skip-build`. See `docs/benchmarks.md`.
-* For probe-level performance, use `coj benchmark tracy-report --trace <capture.tracy>` with a
-  relevant `--filter` and steady-state window. Compare probe distributions and full-tick timings.
-  Keep raw traces/exports out of agent context; see `docs/benchmarks.md`.
-* Exclude standalone developer-tool tests from default validation. Run
-  `cmake --workflow --preset tool-tests` only for changes affecting tools/tests, their directly
-  consumed interfaces/protocols/formats/configuration, shared build/tool infrastructure, or tool
-  diagnosis. Do not run them for unrelated native/game/runtime work because a broad command exists.
-  Choose focused tests for affected dependencies; use the complete suite for shared/unknown tool
-  infrastructure.
+* After worktree preparation, build affected targets and run relevant CTest labels. Fast loop:
+  `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"`.
+  Run relevant light checks after implementation and expensive categories once on the final
+  candidate. Integration does not rerun validation. Build Unreal for tooling/native work only
+  when a dependency requires it.
+* `native-simulation-tests` runs the simulation suite. `native-tests` includes native soak and
+  compile contracts and excludes standalone developer tools.
+* Developer-tool tests are opt-in by scope: run them for changes to tools/tests, their directly
+  consumed interfaces, protocols, formats or configuration, shared build/tool infrastructure,
+  or tool diagnosis. Use focused tests for affected dependencies and
+  `cmake --workflow --preset tool-tests` for shared or uncertain tool infrastructure.
+* Never overlap builds against the same build directory or shared Unreal output. Investigate
+  lock or resource conflicts before retrying. Use native unity presets (default batch size 8)
+  and preserve target-specific exclusions. Use non-unity builds for include isolation or unity
+  failures. Keep Unreal's configured unity policy unless measuring it separately.
+* Set `IOJ_ROOT` to the absolute shared tools/temp root. Stable tools live under
+  `%IOJ_ROOT%\tools\<ToolName>\bin`. Invoke tools, including `clang-tidy`, from PATH.
+  Obtain maintainer approval before installing or updating any tool unless already authorised
+  for the task. Report missing commands. Do not create local fallbacks. Use `--version` for manual
+  source/install comparisons. CMake privately builds revision-local game-package-tools,
+  native-binary-tools and benchmark-tools on demand.
+* Use `%IOJ_ROOT%\tmp\<worktree-name>` for Windows temporary files. Allow that directory in
+  the sandbox without granting user-profile access for temp-path failures.
+* Limit benchmarks to three minutes total and avoid competing heavy workloads. Compare native
+  simulation/fighter revisions with `coj benchmark compare --baseline <ref> [--candidate <ref>]`.
+  Omit `--candidate` to include local edits. Run `--prepare-only`, then use its printed detached
+  worktree paths under `.local/benchmarks/wt/` with `--skip-build`. Do not use ad-hoc scripts.
+* For probe timings, use `coj benchmark tracy-report --trace <capture.tracy>` with a relevant
+  `--filter` and steady-state window. Compare probe distributions and full-tick timings. Keep raw
+  traces/exports out of agent context. See [benchmarks](docs/benchmarks.md).
 
 # Agent Behaviour
 
-* Avoid overly defensive programming. When you identify a possible risk, design gap, or suspected
-  mistake, explain it, suggest options, and ask the maintainer to decide how to handle it.
-  Do not assume the intended policy or add unrequested guards, fallbacks, or fixes.
-* Establish facts through targeted repository inspection. Do not guess; ask when unclear.
-  Once context is sufficient, implement rather than continuing exploration.
-* Answer maintainer questions in the final response after completing the work item, where tool
-  output cannot bury them. Use progress updates for work status.
-* Suggest improvements beyond the requested changes rather than implementing them without asking.
-* Keep README.md files concise and user-oriented. Put detailed usage in local READMEs or `docs/`,
-  and architecture in local `ARCHITECTURE.md` files.
-* When replacing experimental architecture/workflows on a feature branch, remove the old path
-  completely unless the maintainer requests compatibility. Branches provide rollback. Keep one
-  canonical path: no obsolete implementations, compatibility wrappers, fallback execution,
-  duplicate configuration, or speculative alternate workflows.
-* When granted autonomy, resolve reasonable ambiguities with judgement and keep scope controlled.
-* Keep local roadmaps in `.local/plans/` and disposable hand-offs in `.local/handoffs/`; never commit either.
-* Invoke common tools such as `clang-tidy` from PATH, not explicit paths.
-
-Do not say "almost done", "virtually done", "nearly finished", or give percentage completion
-estimates unless all required validation steps are known and enumerated. Report the change,
-checks performed, and unresolved issues. Mention static analysis, sanitizers, and Unreal
-validation when requested or relevant; omit empty status categories.
-
-Retract earlier completion estimates if new issues invalidate validation or require more builds/tests.
+* Inspect relevant code to establish facts. Ask when unclear and implement once context is
+  sufficient. When granted autonomy, resolve reasonable ambiguities and keep scope controlled.
+* For a risk, design gap or suspected mistake, explain it, suggest options and ask the
+  maintainer to decide. Avoid unrequested guards, fallbacks or fixes. Suggest out-of-scope
+  improvements for approval.
+* Use progress updates for status and answer maintainer questions in the final response.
+  Report changes, checks and unresolved issues. Mention static analysis, sanitizers or Unreal
+  validation only when requested or relevant.
+* Use “almost done”, “virtually done”, “nearly finished” or percentage estimates only when all
+  required validation steps are known and enumerated. Retract estimates if new issues require
+  more builds/tests or invalidate validation.
+* Keep READMEs concise and user-oriented. Put detailed usage in local READMEs or `docs/`,
+  architecture in local `ARCHITECTURE.md`, local roadmaps in `.local/plans/` and disposable
+  hand-offs in `.local/handoffs/`. Never commit roadmaps or hand-offs from those directories.
+* When replacing experimental architecture or workflows on a feature branch, remove the old
+  path unless the maintainer requests compatibility. Use the branch for rollback. Remove
+  obsolete implementations, wrappers, fallback execution and duplicate configuration. Avoid
+  speculative alternatives.
 
 # Coding Style
 
@@ -197,11 +167,11 @@ Retract earlier completion estimates if new issues invalidate validation or requ
 
 # Testing
 
+* Run static analysis only when explicitly requested or modifying its tooling. Run AddressSanitizer (ASAN)
+  builds/tests only when explicitly requested.
 * Do not add data members to production classes solely to support tests or benchmarks without
   explicit maintainer approval. Prefer APIs that serve both production and validation needs;
   keep test-specific state in fixtures and pass inputs or output collectors explicitly.
-* Run AddressSanitizer (ASAN) builds/tests only when explicitly requested. ASAN is not a default
-  validation, readiness, or integration requirement.
 * Create tests only when explicitly asked.
 * Keep automated tests/fixtures separate from production, in `tests/` or dedicated Unreal test modules.
 * Put all Rust test implementations, fixtures, and helpers in each crate's `tests/`, never inline
