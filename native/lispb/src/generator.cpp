@@ -190,7 +190,7 @@ class ModuleLowering : public CppIRBuilder {
     auto lower_s7_constructors(detail::LoweringContext& ctx) -> detail::DeclarationEmission {
         auto const& records{ctx.declarations.records};
         std::map<std::string, std::size_t> tags;
-        std::set<std::string> functions;
+        std::set<std::string> functions{"copy-with"};
         auto const count{records.s7_tag.size()};
         for (std::size_t row{}; row < count; ++row) {
             if (!records.s7_tag[row]) {
@@ -208,7 +208,7 @@ class ModuleLowering : public CppIRBuilder {
                 throw std::invalid_argument{std::format("Duplicate S7 record tag '{}'", tag)};
             }
             if (records.s7_constructor[row]) {
-                for (auto const suffix : {"", "?", "-ref", "-with"}) {
+                for (auto const suffix : {"", "?", "-ref"}) {
                     auto const function{tag + suffix};
                     if (!functions.insert(function).second) {
                         throw std::invalid_argument{
@@ -274,6 +274,8 @@ class ModuleLowering : public CppIRBuilder {
                     (cons key (cons (cadr property) (loop (cdr keys))))
                     (loop (cdr keys)))))))))
 )"};
+        std::string updates{"(define (copy-with value . overrides)\n"
+                            "  (case (and (pair? value) (car value))\n"};
         auto const& members{ctx.declarations.child_occurrences};
         for (auto const& [tag, row] : tags) {
             if (!records.s7_constructor[row]) {
@@ -296,14 +298,18 @@ class ModuleLowering : public CppIRBuilder {
                 "(define ({0} . arguments) (cons :{0} arguments))\n"
                 "(define ({0}? value) (lispb-record? :{0} value))\n"
                 "(define {0}-ref (let ((fields '({1})))\n"
-                "  (lambda (value key) (lispb-record-ref :{0} fields {2} value key))))\n"
-                "(define {0}-with (let ((fields '({1})))\n"
-                "  (lambda (value . overrides)"
-                " (lispb-record-with :{0} fields {2} value overrides))))\n",
+                "  (lambda (value key) (lispb-record-ref :{0} fields {2} value key))))\n",
                 tag,
                 fields,
                 positional);
+            updates +=
+                std::format("    ((:{0}) (lispb-record-with :{0} '({1}) {2} value overrides))\n",
+                            tag,
+                            fields,
+                            positional);
         }
+        source += updates;
+        source += "    (else (error 'record-error \"Unknown record for copy-with: ~S\" value))))\n";
         auto body{node_list()};
         body.add(return_stmt(ctx.ir.raw_string_literal(source)));
         FunctionDefinition const function{

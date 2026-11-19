@@ -45,7 +45,7 @@ TEST(RecordLowering, GeneratesUniqueConstructorsAndPreservesSpecialForms) {
     EXPECT_EQ(output.find("(define (shared . arguments)", constructor + 1), std::string::npos);
     EXPECT_FALSE(output.contains("(define (special"));
     EXPECT_TRUE(output.contains("(define shared-ref"));
-    EXPECT_TRUE(output.contains("(define shared-with"));
+    EXPECT_TRUE(output.contains("((:shared) (lispb-record-with"));
     EXPECT_TRUE(output.contains("(define (shared?"));
 }
 

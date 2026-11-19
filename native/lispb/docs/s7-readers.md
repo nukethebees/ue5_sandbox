@@ -15,13 +15,13 @@ interpreter dependency to their normal header:
 A module with `:s7-constructors true` emits `s7_record_constructors()`, containing Scheme
 constructors, predicates, accessors and functional updates for tagged records. Evaluate this
 source before authored scripts. For an `example` tag these are `example`, `example?`,
-`example-ref` and `example-with`. Tags and emitted function names must be unique.
+`example-ref` and `copy-with`. Tags and emitted function names must be unique.
 Use `:s7-constructor false` for special DSL forms such as `catalog`.
 
 Constructors preserve argument lists; typed readers enforce field values and positional
 arity. Shared Scheme helpers validate record structure and field names for access and updates.
 `example-ref` errors on an omitted field, even when `#f` is a legitimate field value.
-`example-with` returns a new shallow record, replacing supplied fields and preserving all
+`copy-with` returns a new shallow record, replacing supplied fields and preserving all
 others. Unknown or repeated override keys are errors. Nested values are shared, not mutated
 or recursively merged. Positional records use the same keyword field names for access/update.
 
