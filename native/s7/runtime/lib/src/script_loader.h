@@ -1,13 +1,12 @@
 #pragma once
 
 #include "active_load.h"
-#include "load_decision.h"
+#include "load_token.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 namespace ioj::s7 {
@@ -15,7 +14,7 @@ struct InterpreterOptions;
 }
 
 namespace ioj::s7::detail {
-using LoadAdmission = std::expected<LoadDecision, std::string>;
+using LoadAdmission = std::expected<LoadToken, std::string>;
 
 class ScriptLoader {
   public:
@@ -33,7 +32,7 @@ class ScriptLoader {
     std::size_t max_total_bytes_;
     std::size_t max_files_;
     std::size_t max_depth_;
-    std::unordered_set<std::string> loaded_files_;
+    std::size_t loaded_files_{};
     std::vector<ActiveLoad> active_loads_;
     std::size_t loaded_bytes_{};
     std::size_t reserved_bytes_{};

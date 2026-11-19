@@ -18,49 +18,72 @@ auto prepare_loader_factory(s7_scheme* const scheme) -> s7_pointer {
               (host-read read)
               (host-eof? eof-object?)
               (host-close-input-port close-input-port)
+              (host-sublet sublet)
+              (host-let-ref let-ref)
+              (host-defined? defined?)
               (sandbox-root (rootlet))
-              (host-format format)
-              (no-value (if #f #f)))
+              (host-format format))
+          (define (read-module filename source)
+            (let ((env (host-sublet sandbox-root))
+                  (exports ())
+                  (port (host-open-input-string source)))
+              (define (declare spec)
+                (let* ((renamed (and (list? spec) (= (length spec) 3) (eq? (car spec) 'rename)))
+                       (local (if renamed (cadr spec) spec))
+                       (public (if renamed (caddr spec) spec)))
+                  (unless (and (symbol? local) (symbol? public))
+                    (error 'module-error "Invalid export ~S" spec))
+                  (when (assq public exports)
+                    (error 'module-error "Duplicate export ~S" public))
+                  (set! exports (cons (cons public local) exports))))
+              (dynamic-wind
+                (lambda () #f)
+                (lambda ()
+                  (catch #t
+                    (lambda ()
+                      (let loop ((form (host-read port)))
+                        (unless (host-eof? form)
+                          (if (and (pair? form) (eq? (car form) 'export))
+                              (for-each declare (cdr form))
+                              (host-evaluate form env))
+                          (loop (host-read port))))
+                      (for-each
+                        (lambda (binding)
+                          (unless (host-defined? (cdr binding) env #t)
+                            (error 'module-error "Undefined export ~S" (cdr binding))))
+                        exports))
+                    (lambda (type info)
+                      (error type "~A: ~A" filename (apply host-format #f info)))))
+                (lambda () (host-close-input-port port)))
+              (lambda (name)
+                (let ((binding (assq name exports)))
+                  (unless binding
+                    (error 'module-error "~A does not export ~S" filename name))
+                  (host-let-ref env (cdr binding))))))
           (lambda (context resolve complete abort)
-            (let ((results (make-hash-table)))
-             (lambda (path)
-              (let* ((resolution (resolve context path))
-                     (status (car resolution)))
-                (cond ((= status 0) (error 'load-script-error (cdr resolution)))
-                      ((= status 1) (results (cdr resolution)))
-                      (else
-                        (let ((token (cadr resolution))
-                              (filename (caddr resolution))
-                              (port (host-open-input-string (cadddr resolution)))
-                              (finished #f))
-                          (dynamic-wind
-                            (lambda ()
-                              (if finished
-                                  (error 'load-script-error "Cannot reenter a finished script load.")))
-                            (lambda ()
-                              (catch #t
-                                (lambda ()
-                                  (let ((value
-                                         (let loop ((form (host-read port)) (last no-value))
-                                           (if (host-eof? form)
-                                               last
-                                               (let ((value (host-evaluate form sandbox-root)))
-                                                 (loop (host-read port) value))))))
-                                    (complete context token)
-                                    (set! (results filename) value)
-                                    (set! finished #t)
-                                    value))
-                                (lambda (type info)
-                                  (error type "~A: ~A" filename (apply host-format #f info)))))
-                            (lambda ()
-                              (host-close-input-port port)
-                              (unless finished
-                                (abort context token)
-                                (set! finished #t)))))))))))))");
+            (define (import-module path)
+              (let ((resolution (resolve context path)))
+                (when (string? resolution)
+                  (error 'module-error "~A" resolution))
+                (let ((token (car resolution)) (finished #f))
+                  (dynamic-wind
+                    (lambda ()
+                      (when finished
+                        (error 'module-error "Cannot reenter a finished module import.")))
+                    (lambda ()
+                      (let ((module (read-module (cadr resolution) (caddr resolution))))
+                        (complete context token)
+                        (set! finished #t)
+                        module))
+                    (lambda ()
+                      (unless finished
+                        (abort context token)
+                        (set! finished #t)))))))
+            (list import-module (lambda (module name) (module name)) read-module))))");
 }
 
 auto load_failure(s7_scheme* const scheme, std::string const& message) -> s7_pointer {
-    return s7_cons(scheme, s7_make_integer(scheme, 0), s7_make_string(scheme, message.c_str()));
+    return s7_make_string(scheme, message.c_str());
 }
 
 ScriptBindings::ScriptBindings(s7_scheme* const scheme,
@@ -83,13 +106,15 @@ void ScriptBindings::install(s7_pointer const factory) {
         scheme_,
         s7_make_function(scheme_, "#<sandbox-abort-script>", abort_callback, 2, 0, false, nullptr)};
     GcProtection const owner{scheme_, s7_make_c_pointer(scheme_, this)};
-    GcProtection const load_script{
+    GcProtection const functions{
         scheme_,
         s7_apply_function(
             scheme_,
             factory,
             s7_list(scheme_, 4, owner.get(), resolve.get(), complete.get(), abort.get()))};
-    install_binding(scheme_, "load-script", load_script.get());
+    install_binding(scheme_, "import-module", s7_car(functions.get()));
+    install_binding(scheme_, "module-ref", s7_cadr(functions.get()));
+    install_binding(scheme_, "read-module", s7_caddr(functions.get()));
 }
 auto ScriptBindings::context(s7_pointer const arguments) -> ScriptBindings& {
     auto const value{s7_car(arguments)};
@@ -114,7 +139,7 @@ auto ScriptBindings::abort_callback(s7_scheme* const scheme, s7_pointer const ar
 auto ScriptBindings::resolve(s7_pointer const path) -> s7_pointer {
     // Return errors as data: never non-locally exit across file/string owners.
     if (!s7_is_string(path)) {
-        return load_failure(scheme_, "load-script requires a relative .scm path string.");
+        return load_failure(scheme_, "import-module requires a relative .scm path string.");
     }
     if (!root_) {
         return load_failure(scheme_, "No script library root is configured for this runtime.");
@@ -126,22 +151,17 @@ auto ScriptBindings::resolve(s7_pointer const path) -> s7_pointer {
         return load_failure(scheme_, file.error());
     }
     if (file->file_size > static_cast<std::size_t>(std::numeric_limits<s7_int>::max())) {
-        return load_failure(scheme_, "The load-script source size limit was exceeded.");
+        return load_failure(scheme_, "The import-module source size limit was exceeded.");
     }
 
     auto const admission{loader_.begin_load(path_key(file->narrow_path), file->file_size)};
     if (!admission) {
         return load_failure(scheme_, admission.error());
     }
-    if (admission->status == LoadStatus::already_loaded) {
-        return s7_cons(scheme_,
-                       s7_make_integer(scheme_, 1),
-                       s7_make_string(scheme_, path_key(file->narrow_path).c_str()));
-    }
 
     auto const source{read_script_source(*file)};
     if (!source) {
-        loader_.abort_load(admission->token);
+        loader_.abort_load(*admission);
         return load_failure(scheme_, source.error());
     }
     GcProtection const filename{scheme_,
@@ -149,8 +169,7 @@ auto ScriptBindings::resolve(s7_pointer const path) -> s7_pointer {
     GcProtection const contents{
         scheme_,
         s7_make_string_with_length(scheme_, source->c_str(), static_cast<s7_int>(source->size()))};
-    GcProtection const token{scheme_, s7_make_integer(scheme_, admission->token.value)};
-    return s7_list(
-        scheme_, 4, s7_make_integer(scheme_, 2), token.get(), filename.get(), contents.get());
+    GcProtection const token{scheme_, s7_make_integer(scheme_, admission->value)};
+    return s7_list(scheme_, 3, token.get(), filename.get(), contents.get());
 }
 }

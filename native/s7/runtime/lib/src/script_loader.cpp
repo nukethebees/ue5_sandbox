@@ -15,13 +15,9 @@ ScriptLoader::ScriptLoader(InterpreterOptions const& options)
     , max_depth_{options.max_load_depth} {}
 
 auto ScriptLoader::begin_load(std::string key, std::size_t const file_size) -> LoadAdmission {
-    if (loaded_files_.contains(key)) {
-        return LoadAdmission{std::in_place, LoadStatus::already_loaded};
-    }
-
     auto const active{std::ranges::find(active_loads_, key, &ActiveLoad::key)};
     if (active != active_loads_.end()) {
-        std::string cycle{"Recursive load-script cycle: "};
+        std::string cycle{"Recursive import-module cycle: "};
         for (auto iterator{active}; iterator != active_loads_.end(); ++iterator) {
             if (iterator != active) {
                 cycle += " -> ";
@@ -32,35 +28,35 @@ auto ScriptLoader::begin_load(std::string key, std::size_t const file_size) -> L
         return LoadAdmission{std::unexpect, std::move(cycle)};
     }
     auto const active_count{active_loads_.size()};
-    auto const loaded_count{loaded_files_.size()};
+    auto const loaded_count{loaded_files_};
     if (active_count >= max_depth_) {
-        return LoadAdmission{std::unexpect, "The load-script nesting limit was exceeded."};
+        return LoadAdmission{std::unexpect, "The import-module nesting limit was exceeded."};
     }
     if (loaded_count >= max_files_ || active_count >= max_files_ - loaded_count) {
-        return LoadAdmission{std::unexpect, "The load-script file count limit was exceeded."};
+        return LoadAdmission{std::unexpect, "The import-module file count limit was exceeded."};
     }
 
     assert(loaded_bytes_ <= max_total_bytes_);
     assert(reserved_bytes_ <= max_total_bytes_ - loaded_bytes_);
     if (file_size > max_file_bytes_ ||
         file_size > max_total_bytes_ - loaded_bytes_ - reserved_bytes_) {
-        return LoadAdmission{std::unexpect, "The load-script source size limit was exceeded."};
+        return LoadAdmission{std::unexpect, "The import-module source size limit was exceeded."};
     }
     if (next_token_.value == std::numeric_limits<std::int64_t>::max()) {
-        return LoadAdmission{std::unexpect, "The load-script identity limit was exceeded."};
+        return LoadAdmission{std::unexpect, "The import-module identity limit was exceeded."};
     }
 
     auto const token{next_token_};
     active_loads_.emplace_back(token, std::move(key), file_size);
     ++next_token_.value;
     reserved_bytes_ += file_size;
-    return LoadAdmission{std::in_place, LoadStatus::admitted, token};
+    return LoadAdmission{token};
 }
 void ScriptLoader::complete_load(LoadToken const token) {
     auto const active{std::ranges::find(active_loads_, token, &ActiveLoad::token)};
     assert(active != active_loads_.end());
 
-    loaded_files_.insert(active->key);
+    ++loaded_files_;
     loaded_bytes_ += active->bytes;
     reserved_bytes_ -= active->bytes;
     active_loads_.erase(active);

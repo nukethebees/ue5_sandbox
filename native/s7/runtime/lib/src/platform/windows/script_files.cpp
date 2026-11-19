@@ -37,7 +37,7 @@ auto open_script_file(std::string_view const root_utf8, std::string_view const r
     -> ScriptFileResult {
     if (requested_path.empty() || requested_path.front() == '/' || requested_path.front() == '\\' ||
         requested_path.contains(':') || requested_path.contains('\0')) {
-        return std::unexpected("load-script requires a relative .scm path.");
+        return std::unexpected("import-module requires a relative .scm path.");
     }
     std::size_t component_start{};
     auto const path_size{requested_path.size()};
@@ -48,14 +48,14 @@ auto open_script_file(std::string_view const root_utf8, std::string_view const r
 
         auto const component{requested_path.substr(component_start, index - component_start)};
         if (component.empty() || component == "." || component == "..") {
-            return std::unexpected("load-script paths cannot contain '.' or '..'.");
+            return std::unexpected("import-module paths cannot contain '.' or '..'.");
         }
         component_start = index + 1;
     }
     if (path_size < 4 ||
         !std::ranges::equal(
             requested_path.substr(path_size - 4), std::string_view{".scm"}, {}, ioj::tolower)) {
-        return std::unexpected("load-script only accepts .scm files.");
+        return std::unexpected("import-module only accepts .scm files.");
     }
 
     auto const root_source{utf8_to_wide(root_utf8)};
