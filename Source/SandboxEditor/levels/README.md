@@ -16,10 +16,9 @@ an existing root is never replaced. The generated baseline need not be playable 
    Keep the entities inside the level's collision grid.
 3. Click **Adopt Entities** after placing actors. Leave **Export** enabled for entities whose
    placement is owned by the editor, then click **Export Scene**.
-4. The new entry point initially contains `(load-script "<MapName>/editor-config.scm")`.
-   This is enough when the exported scene supplies a valid player or observer viewpoint.
-   Use **Open Script Editor** to add gameplay settings or mission logic to this root, and
-   **Save Source** (or **Save** in the script editor) before validation or PIE.
+4. The new entry point layers editor settings over `Settings/base.scm`. Add mission overrides
+   last in `settings-layers` and put mission logic in the entry point. Use **Save Source**
+   before validation or Play.
 5. Click **Validate Level** and resolve any diagnostics shown in the mode's status area.
    Click **Set Up Playable Level** to configure the game mode, orchestrator and presentation
    actors, then save the map and press **Play**.

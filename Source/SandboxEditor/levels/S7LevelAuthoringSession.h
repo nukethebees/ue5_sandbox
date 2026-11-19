@@ -20,9 +20,9 @@ SANDBOXEDITOR_API auto adopt_unbound_level_entities(ULevel& level,
 SANDBOXEDITOR_API auto s7_editor_config_path(AS7LevelAuthoringDocument const& document) -> FString;
 SANDBOXEDITOR_API auto read_s7_editor_input(AS7LevelAuthoringDocument const& document)
     -> std::expected<levels::authoring::LevelInput, FString>;
-SANDBOXEDITOR_API auto collect_s7_editor_input(ULevel const& level,
-                                               AS7LevelAuthoringDocument const& document)
-    -> std::expected<levels::authoring::LevelInput, FString>;
+SANDBOXEDITOR_API auto s7_scene_needs_export(ULevel const& level,
+                                             AS7LevelAuthoringDocument const& document)
+    -> std::expected<bool, FString>;
 SANDBOXEDITOR_API auto export_s7_editor_config(ULevel& level, AS7LevelAuthoringDocument& document)
     -> std::expected<void, FString>;
 SANDBOXEDITOR_API auto read_s7_authored_level(AS7LevelAuthoringDocument const& document)

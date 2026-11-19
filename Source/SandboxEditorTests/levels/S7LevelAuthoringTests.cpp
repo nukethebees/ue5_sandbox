@@ -34,7 +34,12 @@
 
 namespace s7_level_authoring_tests {
 struct FTemporarySourceDirectory {
-    FTemporarySourceDirectory() { IFileManager::Get().MakeDirectory(*path, true); }
+    FTemporarySourceDirectory() {
+        auto const settings{FPaths::Combine(path, TEXT("Settings"))};
+        IFileManager::Get().MakeDirectory(*settings, true);
+        FFileHelper::SaveStringToFile(TEXT("(settings :tick (tick :tick-rate 75))"),
+                                      *FPaths::Combine(settings, TEXT("base.scm")));
+    }
     ~FTemporarySourceDirectory() { IFileManager::Get().DeleteDirectory(*path, false, true); }
 
     auto root() const -> FString { return FPaths::Combine(path, TEXT("Authoring.scm")); }
@@ -616,6 +621,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 *TestRunner, TEXT("Generated root includes its own configuration"), definition)) {
             return;
         }
+        TestRunner->TestEqual(TEXT("New roots inherit the shared base"),
+                              definition->settings().tick.tick_rate.hz(),
+                              75.);
         TestRunner->TestTrue(TEXT("Entry point resolves the adopted player"),
                              definition->player_entity_id() == ioj::levels::EntityId{"pilot"});
     }

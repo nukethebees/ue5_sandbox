@@ -2,14 +2,13 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
-#include <ioj/files.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/identifiers.h>
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/levels/authoring/level_inputs_reader.h>
+#include <ioj/levels/authoring/level_inputs_writer.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -67,20 +66,18 @@ auto s7_editor_config_path(AS7LevelAuthoringDocument const& document) -> FString
                            TEXT("editor-config.scm"));
 }
 
-auto read_s7_editor_input(AS7LevelAuthoringDocument const& document)
-    -> std::expected<levels::authoring::LevelInput, FString> {
-    auto const path{s7_editor_config_path(document)};
-    auto source{read_file(std::filesystem::path{*path})};
-    if (!source) {
-        return std::unexpected{FString::Printf(TEXT("Cannot read generated file '%s'."), *path)};
-    }
-    auto ast{levels::authoring::DefinitionReader{
+namespace {
+auto read_editor_ast(AS7LevelAuthoringDocument const& document) -> std::expected<s7::Ast, FString> {
+    return levels::authoring::DefinitionReader{
         std::filesystem::path{*FPaths::GetPath(document.source_path)}}
-                 .read_source_ast(*source)};
-    if (!ast) {
-        return std::unexpected{to_fstring(levels::format_diagnostics(ast.error()))};
-    }
-    auto input{s7::read<levels::authoring::LevelInput>(s7::Reader{*ast}, ast->root, "level")};
+        .read_script_file(std::filesystem::path{*s7_editor_config_path(document)})
+        .transform_error(
+            [](auto const& errors) { return to_fstring(levels::format_diagnostics(errors)); });
+}
+
+auto decode_editor_input(s7::Ast const& ast)
+    -> std::expected<levels::authoring::LevelInput, FString> {
+    auto input{s7::read<levels::authoring::LevelInput>(s7::Reader{ast}, ast.root, "level")};
     if (!input) {
         FString errors;
         for (auto const& error : input.error()) {
@@ -89,6 +86,12 @@ auto read_s7_editor_input(AS7LevelAuthoringDocument const& document)
         return std::unexpected{MoveTemp(errors)};
     }
     return std::move(*input);
+}
+}
+
+auto read_s7_editor_input(AS7LevelAuthoringDocument const& document)
+    -> std::expected<levels::authoring::LevelInput, FString> {
+    return read_editor_ast(document).and_then(decode_editor_input);
 }
 
 auto find_level_authoring_document(ULevel const& level)
@@ -137,14 +140,11 @@ auto adopt_unbound_level_entities(ULevel& level, AS7LevelAuthoringDocument& docu
     return count;
 }
 
-auto collect_s7_editor_input(ULevel const& level, AS7LevelAuthoringDocument const& document)
-    -> std::expected<levels::authoring::LevelInput, FString> {
+namespace {
+auto collect_editor_scene(ULevel const& level,
+                          AS7LevelAuthoringDocument const& document,
+                          levels::authoring::LevelInput& input) -> std::expected<void, FString> {
     using namespace s7_level_authoring_session_detail;
-    auto baseline{read_s7_editor_input(document)};
-    if (!baseline) {
-        return std::unexpected{baseline.error()};
-    }
-    auto& input{*baseline};
     input.entities.clear();
     input.logic = {};
     input.player = {};
@@ -152,7 +152,10 @@ auto collect_s7_editor_input(ULevel const& level, AS7LevelAuthoringDocument cons
     TMap<AActor const*, levels::EntityId> ids;
     for (auto const& binding : document.entities) {
         auto* const actor{binding.actor.Get()};
-        if (!IsValid(actor) || actor->GetLevel() != &level || binding.id.IsEmpty()) {
+        if (!IsValid(actor)) {
+            continue;
+        }
+        if (actor->GetLevel() != &level || binding.id.IsEmpty()) {
             return std::unexpected{
                 TEXT("Entity bindings require a stable ID and an actor in this level.")};
         }
@@ -229,18 +232,63 @@ auto collect_s7_editor_input(ULevel const& level, AS7LevelAuthoringDocument cons
             input.camera->target_entity_ids.push_back(*entity);
         }
     }
-    return std::move(input);
+    return {};
+}
+}
+
+auto s7_scene_needs_export(ULevel const& level, AS7LevelAuthoringDocument const& document)
+    -> std::expected<bool, FString> {
+    for (auto const actor : level.Actors) {
+        if (IsValid(actor) && resolve_s7_level_actor(*actor) &&
+            !document.entities.ContainsByPredicate(
+                [&](auto const& binding) { return binding.actor == actor; })) {
+            return true;
+        }
+    }
+    auto saved{read_s7_editor_input(document)};
+    if (!saved) {
+        return std::unexpected{saved.error()};
+    }
+    levels::authoring::LevelInput scene;
+    auto collected{collect_editor_scene(level, document, scene)};
+    if (!collected) {
+        return std::unexpected{collected.error()};
+    }
+    std::ranges::sort(saved->entities, {}, &levels::authoring::EntityInput::id);
+    auto const same_entity{[](levels::authoring::EntityInput live,
+                              levels::authoring::EntityInput const& saved_entity) {
+        auto const orientation{[](Vector3d angles) {
+            return FRotator{angles.x(), angles.y(), angles.z()}.Quaternion();
+        }};
+        if (!orientation(live.rotation)
+                 .Equals(orientation(saved_entity.rotation), UE_DOUBLE_SMALL_NUMBER)) {
+            return false;
+        }
+        live.rotation = saved_entity.rotation;
+        return s7::equivalent(live, saved_entity);
+    }};
+    return saved->player != scene.player || !s7::equivalent(saved->camera, scene.camera) ||
+           !std::ranges::equal(scene.entities, saved->entities, same_entity);
 }
 
 auto export_s7_editor_config(ULevel& level, AS7LevelAuthoringDocument& document)
     -> std::expected<void, FString> {
     adopt_unbound_level_entities(level, document);
-    auto input{collect_s7_editor_input(level, document)};
+    auto ast{read_editor_ast(document)};
+    if (!ast) {
+        return std::unexpected{ast.error()};
+    }
+    auto input{decode_editor_input(*ast)};
     if (!input) {
         return std::unexpected{input.error()};
     }
+    auto collected{collect_editor_scene(level, document, *input)};
+    if (!collected) {
+        return collected;
+    }
     return s7_level_authoring_session_detail::save_generated(
-        s7_editor_config_path(document), to_fstring(levels::authoring::emit_level_source(*input)));
+        s7_editor_config_path(document),
+        to_fstring(levels::authoring::emit_editor_level_source(*input, &*ast)));
 }
 
 auto read_s7_authored_level(AS7LevelAuthoringDocument const& document)
@@ -279,33 +327,32 @@ auto create_level_authoring_document(ULevel& level, FString source_path)
     if (!IsValid(document->level_config)) {
         return std::unexpected{TEXT("Canonical level resources are unavailable.")};
     }
-    auto settings{
-        read_game_settings_source(TEXT("LevelScripts/Settings/base.scm"), *document->level_config)};
-    if (!settings) {
-        return std::unexpected{settings.error()};
-    }
     levels::authoring::LevelInput input{
         .id = levels::LevelId{to_string(
             canonical_s7_level_entity_id(map_name, TEXTVIEW("level")).ToString())},
-        .title = to_string(map_name),
-        .settings = std::move(*settings)};
-    std::expected<void, FString> saved;
+        .title = to_string(map_name)};
     if (!IFileManager::Get().FileExists(*s7_editor_config_path(*document))) {
-        saved = s7_level_authoring_session_detail::save_generated(
+        if (!human_exists) {
+            adopt_unbound_level_entities(level, *document);
+            auto collected{collect_editor_scene(level, *document, input)};
+            if (!collected) {
+                return std::unexpected{collected.error()};
+            }
+        }
+        auto saved = s7_level_authoring_session_detail::save_generated(
             s7_editor_config_path(*document),
-            to_fstring(levels::authoring::emit_level_source(input)));
-    }
-    if (!saved) {
-        return std::unexpected{saved.error()};
+            to_fstring(levels::authoring::emit_editor_level_source(input)));
+        if (!saved) {
+            return std::unexpected{saved.error()};
+        }
     }
     if (human_exists) {
         return document;
     }
-    saved = export_s7_editor_config(level, *document);
-    if (!saved) {
-        return std::unexpected{saved.error()};
-    }
-    auto const source{FString::Printf(TEXT("(load-script \"%s/editor-config.scm\")\n"),
+    auto const source{FString::Printf(TEXT("(let ((scene (load-script \"%s/editor-config.scm\")))\n"
+                                           "  (level-with scene :settings (settings-layers\n"
+                                           "    (load-script \"Settings/base.scm\")\n"
+                                           "    (level-ref scene :settings))))\n"),
                                       *FPaths::GetBaseFilename(root))};
     if (!FFileHelper::SaveStringToFile(source,
                                        *root,
@@ -324,9 +371,9 @@ auto import_s7_level(ULevel& level,
                      bool const reset_export_ownership) -> std::expected<void, FString> {
     using namespace s7_level_authoring_session_detail;
     if (!IFileManager::Get().FileExists(*s7_editor_config_path(document))) {
-        levels::authoring::LevelInput input{.settings = definition.settings()};
+        levels::authoring::LevelInput input;
         auto saved{save_generated(s7_editor_config_path(document),
-                                  to_fstring(levels::authoring::emit_level_source(input)))};
+                                  to_fstring(levels::authoring::emit_editor_level_source(input)))};
         if (!saved) {
             return saved;
         }

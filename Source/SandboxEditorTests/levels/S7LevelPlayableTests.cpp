@@ -60,6 +60,16 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                                             TEXT("Automation"),
                                             TEXT("S7PlayableLevel"),
                                             FGuid::NewGuid().ToString());
+        auto const settings{FPaths::Combine(source_directory_, TEXT("Settings"))};
+        IFileManager::Get().MakeDirectory(*settings, true);
+        if (!TestRunner->TestTrue(TEXT("Install shared settings"),
+                                  IFileManager::Get().Copy(
+                                      *FPaths::Combine(settings, TEXT("base.scm")),
+                                      *FPaths::Combine(FPaths::ProjectDir(),
+                                                       TEXT("LevelScripts/Settings/base.scm"))) ==
+                                      COPY_OK)) {
+            return;
+        }
         auto const root{FPaths::Combine(source_directory_, TEXT("Playable.scm"))};
         auto& editor_level{*world->GetCurrentLevel()};
         auto created{ioj::editor::create_level_authoring_document(editor_level, root)};
@@ -97,7 +107,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
             });
             baseline->player = EntityId{"player"};
         }
-        auto const source{ioj::to_fstring(authoring::emit_level_source(*baseline))};
+        auto const source{ioj::to_fstring(authoring::emit_editor_level_source(*baseline))};
         if (!TestRunner->TestTrue(TEXT("Write generated records"),
                                   FFileHelper::SaveStringToFile(
                                       source,

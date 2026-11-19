@@ -151,14 +151,35 @@ TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {
                          std::format("composed-level-{}",
                                      std::chrono::steady_clock::now().time_since_epoch().count())};
     std::filesystem::create_directories(directory / "Example");
+    std::filesystem::create_directories(directory / "Settings");
+    auto const config{directory / "Example/editor-config.scm"};
+    auto const base{directory / "Settings/base.scm"};
     ASSERT_TRUE(testing::write_files(
-        {{directory / "Example/editor-config.scm",
-          R"((level :id 'example :title "Example" :player 'pilot :entities (list)))"},
+        {{base,
+          "(settings :fighters (fighters :speed 4000) :tick (tick :tick-rate 60 :time-scale 1))"},
+         {config,
+          R"((level :id 'example :title "Example" :player 'pilot :entities (list)
+                   :settings (settings :fighters (fighters :speed 4000) :tick (tick :time-scale 2))))"},
          {directory / "Example.scm", R"((let ((base (load-script "Example/editor-config.scm")))
-          (level-with base :entities (append (level-ref base :entities)
+          (level-with base :settings (settings-layers (load-script "Settings/base.scm")
+                                       (level-ref base :settings) (settings :tick (tick :time-scale 3)))
+            :entities (append (level-ref base :entities)
             (list (entity :id 'pilot :archetype 'player-fighter :team 'blue :position '(0 0 0)))))))"}}));
+    auto const scene{DefinitionReader{}.read_script_file(config)};
+    ASSERT_TRUE(scene) << format_diagnostics(scene.error());
+    auto const input{s7::read<LevelInput>(s7::Reader{*scene}, scene->root, "level")};
+    ASSERT_TRUE(input);
+    auto const exported{emit_editor_level_source(*input, &*scene)};
+    EXPECT_FALSE(exported.contains(":tick-rate"));
+    ASSERT_TRUE(testing::write_files({{config, exported},
+                                      {base,
+                                       "(settings :fighters (fighters :speed 5000) :tick (tick "
+                                       ":tick-rate 90 :time-scale 1))"}}));
     auto const level{DefinitionReader{}.read_level_file(directory / "Example.scm")};
     ASSERT_TRUE(level) << format_diagnostics(level.error());
+    EXPECT_EQ(level->settings().fighters.speed, 4000.f);
+    EXPECT_EQ(level->settings().tick.tick_rate.hz(), 90.);
+    EXPECT_EQ(level->settings().tick.time_scale.get(), 3.);
     EXPECT_EQ(level->entities().size(), 1u);
     EXPECT_EQ(level->player_entity_id(), EntityId{"pilot"});
     std::filesystem::remove_all(directory);

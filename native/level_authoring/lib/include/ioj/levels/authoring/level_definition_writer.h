@@ -4,8 +4,15 @@
 
 #include <string>
 
+namespace ioj::s7 {
+struct Ast;
+}
+
 namespace ioj::levels::authoring {
 [[nodiscard]] auto make_entity_input(EntitySpawnDefinition const& entity) -> EntityInput;
 [[nodiscard]] auto make_level_input(LevelDefinition const& level) -> LevelInput;
 [[nodiscard]] auto emit_level_source(LevelInput const& level) -> std::string;
+// Keep the explicit settings fields from the decoded editor scene across exports.
+[[nodiscard]] auto emit_editor_level_source(LevelInput const& level,
+                                            s7::Ast const* saved_scene = nullptr) -> std::string;
 }

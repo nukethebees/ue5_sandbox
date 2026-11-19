@@ -12,10 +12,10 @@
   :entities (map orient-launch-carrier (level-ref scene :entities))
   :settings (settings-layers
     (load-script "Settings/base.scm")
+    (level-ref scene :settings)
     (settings
       :collision-grid (collision-grid
-        :level-size '(2000000 2000000 500000)
-        :cell-size '(5000 5000 20000))))
+        :level-size '(2000000 2000000 500000))))
 
   :logic (logic
     (win-race 'blue 'red

@@ -31,8 +31,18 @@ in its `:settings` field; launchers do not inject a baseline. Compose overrides 
 
 Imports are relative to `LevelScripts/`. Shared formation helpers live in
 `Libraries/`. Assets, colours and scene bindings stay in Unreal properties.
-Editor exports write only `LevelName/editor-config.scm`; the human-owned `LevelName.scm`
-loads and extends that baseline. The generated baseline need not be playable on its own.
+For editor-backed levels, the human-owned entry point sets the order explicitly:
+
+```scheme
+(define scene (load-script "LevelName/editor-config.scm"))
+(level-with scene :settings (settings-layers
+  (load-script "Settings/base.scm")
+  (level-ref scene :settings)
+  (fighters :speed 3000))) ; mission override
+```
+
+**Export Scene** updates placements and viewpoint in `editor-config.scm` and preserves its
+explicit settings overrides. **Play** uses the saved files.
 Use record accessors and functional updates to compose levels, for example
 `(level-with base :entities (append (level-ref base :entities) extras))`.
 `foo-with` replaces whole fields without mutating the original record; missing `foo-ref`
