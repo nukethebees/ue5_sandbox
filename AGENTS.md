@@ -34,6 +34,7 @@ Unreal Engine 5.8 project.
 
 ## Review and commits
 
+* When reporting line diffs, give additions, deletions and net change separately for handwritten files and generated output.
 * Leave your changes **unstaged** for review, including after validation. Stage changes only
   when the maintainer asks to stage or commit them. Commit only on an explicit commit request.
 * When committing, use `coj git` and stage one small, logical change at a time. Keep required
