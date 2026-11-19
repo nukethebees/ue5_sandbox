@@ -61,25 +61,30 @@ auto prepare_loader_factory(s7_scheme* const scheme) -> s7_pointer {
                     (error 'module-error "~A does not export ~S" filename name))
                   (host-let-ref env (cdr binding))))))
           (lambda (context resolve complete abort)
-            (define (import-module path)
-              (let ((resolution (resolve context path)))
-                (when (string? resolution)
-                  (error 'module-error "~A" resolution))
-                (let ((token (car resolution)) (finished #f))
-                  (dynamic-wind
-                    (lambda ()
-                      (when finished
-                        (error 'module-error "Cannot reenter a finished module import.")))
-                    (lambda ()
-                      (let ((module (read-module (cadr resolution) (caddr resolution))))
-                        (complete context token)
-                        (set! finished #t)
-                        module))
-                    (lambda ()
-                      (unless finished
-                        (abort context token)
-                        (set! finished #t)))))))
-            (list import-module (lambda (module name) (module name)) read-module))))");
+            (define (import-resolved resolution)
+              (when (string? resolution)
+                (error 'module-error "~A" resolution))
+              (let ((token (car resolution)) (finished #f))
+                (dynamic-wind
+                  (lambda ()
+                    (when finished
+                      (error 'module-error "Cannot reenter a finished module import.")))
+                  (lambda ()
+                    (let ((module (read-module (cadr resolution) (caddr resolution))))
+                      (complete context token)
+                      (set! finished #t)
+                      module))
+                  (lambda ()
+                    (unless finished
+                      (abort context token)
+                      (set! finished #t))))))
+            (list (lambda (path) (import-resolved (resolve context path)))
+                  (lambda (module name) (module name))
+                  read-module
+                  (lambda (resolution name)
+                    (catch #t
+                      (lambda () (cons #t ((import-resolved resolution) name)))
+                      (lambda (type info) (cons #f (apply host-format #f info)))))))))");
 }
 
 auto load_failure(s7_scheme* const scheme, std::string const& message) -> s7_pointer {
@@ -115,6 +120,15 @@ void ScriptBindings::install(s7_pointer const factory) {
     install_binding(scheme_, "import-module", s7_car(functions.get()));
     install_binding(scheme_, "module-ref", s7_cadr(functions.get()));
     install_binding(scheme_, "read-module", s7_caddr(functions.get()));
+    import_export_.emplace(scheme_, s7_cadddr(functions.get()));
+}
+auto ScriptBindings::import_value(std::string_view path,
+                                  char const* export_name,
+                                  std::string* source) -> s7_pointer {
+    GcProtection const resolution{scheme_, resolve(path, source)};
+    return s7_call(scheme_,
+                   import_export_->get(),
+                   s7_list(scheme_, 2, resolution.get(), s7_make_symbol(scheme_, export_name)));
 }
 auto ScriptBindings::context(s7_pointer const arguments) -> ScriptBindings& {
     auto const value{s7_car(arguments)};
@@ -123,8 +137,13 @@ auto ScriptBindings::context(s7_pointer const arguments) -> ScriptBindings& {
     assert(owner != nullptr);
     return *owner;
 }
-auto ScriptBindings::resolve_callback(s7_scheme*, s7_pointer const arguments) -> s7_pointer {
-    return context(arguments).resolve(s7_cadr(arguments));
+auto ScriptBindings::resolve_callback(s7_scheme* scheme, s7_pointer const arguments) -> s7_pointer {
+    auto const path{s7_cadr(arguments)};
+    if (!s7_is_string(path)) {
+        return load_failure(scheme, "import-module requires a relative .scm path string.");
+    }
+    return context(arguments).resolve(
+        {s7_string(path), static_cast<std::size_t>(s7_string_length(path))}, nullptr);
 }
 auto ScriptBindings::complete_callback(s7_scheme* const scheme, s7_pointer const arguments)
     -> s7_pointer {
@@ -136,17 +155,13 @@ auto ScriptBindings::abort_callback(s7_scheme* const scheme, s7_pointer const ar
     context(arguments).loader_.abort_load({s7_integer(s7_cadr(arguments))});
     return s7_unspecified(scheme);
 }
-auto ScriptBindings::resolve(s7_pointer const path) -> s7_pointer {
+auto ScriptBindings::resolve(std::string_view path, std::string* captured_source) -> s7_pointer {
     // Return errors as data: never non-locally exit across file/string owners.
-    if (!s7_is_string(path)) {
-        return load_failure(scheme_, "import-module requires a relative .scm path string.");
-    }
     if (!root_) {
         return load_failure(scheme_, "No script library root is configured for this runtime.");
     }
 
-    auto const file{open_script_file(
-        *root_, {s7_string(path), static_cast<std::size_t>(s7_string_length(path))})};
+    auto const file{open_script_file(*root_, path)};
     if (!file) {
         return load_failure(scheme_, file.error());
     }
@@ -159,7 +174,7 @@ auto ScriptBindings::resolve(s7_pointer const path) -> s7_pointer {
         return load_failure(scheme_, admission.error());
     }
 
-    auto const source{read_script_source(*file)};
+    auto source{read_script_source(*file)};
     if (!source) {
         loader_.abort_load(*admission);
         return load_failure(scheme_, source.error());
@@ -170,6 +185,9 @@ auto ScriptBindings::resolve(s7_pointer const path) -> s7_pointer {
         scheme_,
         s7_make_string_with_length(scheme_, source->c_str(), static_cast<s7_int>(source->size()))};
     GcProtection const token{scheme_, s7_make_integer(scheme_, admission->value)};
+    if (captured_source) {
+        *captured_source = std::move(*source);
+    }
     return s7_list(scheme_, 3, token.get(), filename.get(), contents.get());
 }
 }

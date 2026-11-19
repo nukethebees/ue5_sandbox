@@ -34,11 +34,11 @@ auto object_to_string(s7_scheme* const scheme, s7_pointer const value) -> std::s
 }
 
 struct Interpreter::Impl {
-    using ValueEvaluationResult = std::expected<void, std::string>;
-    using ValueConsumer = void (*)(void*, s7_scheme&, s7_pointer);
+    using ValueResult = std::expected<s7_pointer, std::string>;
     explicit Impl(InterpreterOptions options);
-    auto evaluate_value(std::string_view expression, void* context, ValueConsumer consume_value)
-        -> ValueEvaluationResult;
+    auto evaluate_value(std::string_view expression) -> ValueResult;
+    auto unpack(s7_pointer result) -> ValueResult;
+    auto ast(ValueResult value, AstLimits limits) -> AstResult;
 
     std::unique_ptr<s7_scheme, void (*)(s7_scheme*)> scheme_;
     detail::ScriptLoader loader_;
@@ -87,38 +87,35 @@ Interpreter::~Interpreter() = default;
 
 auto Interpreter::evaluate_ast(std::string_view const expression, ioj::s7::AstLimits const limits)
     -> ioj::s7::AstResult {
-    struct Conversion {
-        AstLimits limits;
-        AstResult result;
-    } conversion{limits, {}};
-    auto evaluation{impl_->evaluate_value(
-        expression, &conversion, [](void* context, s7_scheme& scheme, s7_pointer value) {
-            auto& conversion{*static_cast<Conversion*>(context)};
-            conversion.result = detail::materialize_ast(scheme, value, conversion.limits);
-        })};
-    if (!evaluation) {
-        return std::unexpected{ioj::s7::AstDiagnostics{
-            {ioj::s7::AstErrorCode::EvaluationFailed, "$", std::move(evaluation.error())}}};
+    return impl_->ast(impl_->evaluate_value(expression), limits);
+}
+
+auto Interpreter::import_ast(std::string_view path, char const* export_name, std::string* source)
+    -> AstResult {
+    if (source) {
+        source->clear();
     }
-    return std::move(conversion.result);
+    auto const result{impl_->bindings_.import_value(path, export_name, source)};
+    return impl_->ast(impl_->unpack(result), {});
+}
+
+auto Interpreter::Impl::ast(ValueResult value, AstLimits limits) -> AstResult {
+    if (!value) {
+        return std::unexpected{
+            AstDiagnostics{{AstErrorCode::EvaluationFailed, "$", std::move(value.error())}}};
+    }
+    detail::GcProtection const protection{scheme_.get(), *value};
+    return detail::materialize_ast(*scheme_, *value, limits);
 }
 
 auto Interpreter::evaluate(std::string_view const expression) -> EvaluationResult {
-    std::string value;
-    auto result{impl_->evaluate_value(
-        expression, &value, [](void* const context, s7_scheme& scheme, s7_pointer const payload) {
-            auto& output{*static_cast<std::string*>(context)};
-            output = detail::object_to_string(&scheme, payload);
-        })};
-    if (!result) {
-        return EvaluationResult{std::unexpect, std::move(result.error())};
-    }
-    return EvaluationResult{std::in_place, std::move(value)};
+    return impl_->evaluate_value(expression).transform([&](s7_pointer value) {
+        detail::GcProtection const protection{impl_->scheme_.get(), value};
+        return detail::object_to_string(impl_->scheme_.get(), value);
+    });
 }
 
-auto Interpreter::Impl::evaluate_value(std::string_view const expression,
-                                       void* const context,
-                                       ValueConsumer const consume_value) -> ValueEvaluationResult {
+auto Interpreter::Impl::evaluate_value(std::string_view expression) -> ValueResult {
     auto const* const source{expression.empty() ? "" : expression.data()};
     auto const source_value{
         s7_make_string_with_length(scheme_.get(), source, static_cast<s7_int>(expression.size()))};
@@ -126,22 +123,24 @@ auto Interpreter::Impl::evaluate_value(std::string_view const expression,
 
     s7_pointer const result{s7_call_with_catch(
         scheme_.get(), s7_t(scheme_.get()), evaluation_body_.get(), error_handler_.get())};
+    return unpack(result);
+}
+
+auto Interpreter::Impl::unpack(s7_pointer result) -> ValueResult {
     loader_.evaluation_ended();
     if (!s7_is_pair(result) || !s7_is_boolean(s7_car(result))) {
-        return ValueEvaluationResult{std::unexpect, "s7 returned an invalid evaluation result."};
+        return ValueResult{std::unexpect, "s7 returned an invalid evaluation result."};
     }
 
     bool const succeeded{s7_boolean(scheme_.get(), s7_car(result))};
     s7_pointer const payload{s7_cdr(result)};
     if (succeeded) {
-        detail::GcProtection const protection{scheme_.get(), payload};
-        consume_value(context, *scheme_, payload);
-        return {};
+        return payload;
     }
     if (!s7_is_string(payload)) {
-        return ValueEvaluationResult{std::unexpect, "s7 returned an invalid error result."};
+        return ValueResult{std::unexpect, "s7 returned an invalid error result."};
     }
 
-    return ValueEvaluationResult{std::unexpect, s7_string(payload)};
+    return ValueResult{std::unexpect, s7_string(payload)};
 }
 }
