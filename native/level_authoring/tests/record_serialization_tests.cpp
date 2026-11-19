@@ -29,25 +29,32 @@ TEST(SchemeRecords, FunctionalUpdatesPreserveOriginalAndNestedValues) {
     EXPECT_TRUE(decode_record<bool>(R"(
       (let* ((ship (entity :id 'enemy :health 10))
              (base (level :title "Original" :entities (list ship)))
-             (changed (level-with base :title "Changed" :description "Added")))
+             (changed (copy-with base :title "Changed" :description "Added")))
         (and (level? base) (not (entity? base)) (not (level? #f))
              (equal? (level-ref base :title) "Original")
              (equal? (level-ref changed :title) "Changed")
              (equal? (level-ref changed :description) "Added")
              (eq? (car (level-ref changed :entities)) ship)
-             (= (entity-ref (entity-with ship :health 20) :health) 20)
+             (= (entity-ref (copy-with ship :health 20) :health) 20)
              (= (entity-ref ship :health) 10))))"));
+    EXPECT_TRUE(decode_record<bool>(R"(
+      (let* ((base (settings :tick (tick :tick-rate 60 :time-scale 1)))
+             (changed (copy-with base :tick (copy-with (settings-ref base :tick) :tick-rate 90))))
+        (and (= (tick-ref (settings-ref base :tick) :tick-rate) 60)
+             (= (tick-ref (settings-ref changed :tick) :tick-rate) 90)
+             (= (tick-ref (settings-ref changed :tick) :time-scale) 1))))"));
     EXPECT_FALSE(decode_record<bool>(R"((radar-ref (radar :enabled #f) :enabled))"));
 }
 
 TEST(SchemeRecords, RejectMalformedAccessAndUpdates) {
     for (auto const source : {"(level-ref (level) :title)",
+                              "(copy-with 1 :title 1)",
                               "(level-ref (entity :title 1) :title)",
-                              "(level-with (level) :unknown 1)",
-                              "(level-with (level) :title 1 :title 2)",
-                              "(level-with (level) :title)",
-                              "(level-with '(:level :title) :title 1)",
-                              "(level-with '(:level :title 1 :title 2) :description 3)"}) {
+                              "(copy-with (level) :unknown 1)",
+                              "(copy-with (level) :title 1 :title 2)",
+                              "(copy-with (level) :title)",
+                              "(copy-with '(:level :title) :title 1)",
+                              "(copy-with '(:level :title 1 :title 2) :description 3)"}) {
         EXPECT_FALSE(DefinitionReader{}.read_source_ast(source)) << source;
     }
 }
@@ -55,7 +62,7 @@ TEST(SchemeRecords, RejectMalformedAccessAndUpdates) {
 TEST(SchemeRecords, PositionalRecordsUseSchemaFieldNames) {
     auto const input{decode_record<UnlockInput>(R"(
       (let* ((base (level-completed 'first))
-             (changed (level-completed-with base :level-id 'second)))
+             (changed (copy-with base :level-id 'second)))
         (if (and (level-completed? changed)
                  (eq? (level-completed-ref base :level-id) 'first))
             changed
@@ -81,11 +88,11 @@ TEST(SchemeSerialization, CompleteLevelInputsPreserveAllAuthoredFields) {
           (on :when (entity-destroyed 'turret) :do (win 'blue)))))")};
     auto const encoded{emit_level_source(original)};
     EXPECT_EQ(encoded, emit_level_source(original));
-    EXPECT_TRUE(s7::equivalent(decode_record<LevelInput>(encoded), original));
-    auto const definition{DefinitionReader{}.read_level_source(encoded)};
+    EXPECT_TRUE(s7::equivalent(decode_record<LevelInput>(s7::serialize(original)), original));
+    auto const definition{DefinitionReader{}.read_level_module(encoded, "roundtrip.scm")};
     ASSERT_TRUE(definition) << format_diagnostics(definition.error());
     auto const resolved{make_level_input(*definition)};
-    EXPECT_TRUE(s7::equivalent(decode_record<LevelInput>(emit_level_source(resolved)), resolved));
+    EXPECT_TRUE(s7::equivalent(decode_record<LevelInput>(s7::serialize(resolved)), resolved));
 }
 
 TEST(SchemeSerialization, SparseOverridesClearOptionalsAndReplaceCollections) {
@@ -156,16 +163,18 @@ TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {
     auto const base{directory / "Settings/base.scm"};
     ASSERT_TRUE(testing::write_files(
         {{base,
-          "(settings :fighters (fighters :speed 4000) :tick (tick :tick-rate 60 :time-scale 1))"},
+          "(export game-settings) (define game-settings (settings :fighters (fighters :speed 4000) "
+          ":tick (tick :tick-rate 60 :time-scale 1)))"},
          {config,
-          R"((level :id 'example :title "Example" :player 'pilot :entities (list)
-                   :settings (settings :fighters (fighters :speed 4000) :tick (tick :time-scale 2))))"},
-         {directory / "Example.scm", R"((let ((base (load-script "Example/editor-config.scm")))
-          (level-with base :settings (settings-layers (load-script "Settings/base.scm")
+          R"((export scene) (define scene (level :id 'example :title "Example" :player 'pilot :entities (list)
+                   :settings (settings :fighters (fighters :speed 4000) :tick (tick :time-scale 2)))))"},
+         {directory / "Example.scm",
+          R"((export mission) (define base (module-ref (import-module "Example/editor-config.scm") 'scene))
+          (define mission (copy-with base :settings (settings-layers (module-ref (import-module "Settings/base.scm") 'game-settings)
                                        (level-ref base :settings) (settings :tick (tick :time-scale 3)))
             :entities (append (level-ref base :entities)
             (list (entity :id 'pilot :archetype 'player-fighter :team 'blue :position '(0 0 0)))))))"}}));
-    auto const scene{DefinitionReader{}.read_script_file(config)};
+    auto const scene{DefinitionReader{}.read_script_file(config, "scene")};
     ASSERT_TRUE(scene) << format_diagnostics(scene.error());
     auto const input{s7::read<LevelInput>(s7::Reader{*scene}, scene->root, "level")};
     ASSERT_TRUE(input);
@@ -173,8 +182,9 @@ TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {
     EXPECT_FALSE(exported.contains(":tick-rate"));
     ASSERT_TRUE(testing::write_files({{config, exported},
                                       {base,
-                                       "(settings :fighters (fighters :speed 5000) :tick (tick "
-                                       ":tick-rate 90 :time-scale 1))"}}));
+                                       "(export game-settings) (define game-settings (settings "
+                                       ":fighters (fighters :speed 5000) :tick (tick "
+                                       ":tick-rate 90 :time-scale 1)))"}}));
     auto const level{DefinitionReader{}.read_level_file(directory / "Example.scm")};
     ASSERT_TRUE(level) << format_diagnostics(level.error());
     EXPECT_EQ(level->settings().fighters.speed, 4000.f);

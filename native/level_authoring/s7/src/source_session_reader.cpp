@@ -10,6 +10,6 @@ auto SourceSession::read(std::filesystem::path const& library_root) const
                                             "The source buffer is not attached to a level."}}};
     }
     auto const root{library_root.empty() ? path().parent_path() : library_root};
-    return DefinitionReader{root}.read_level_source(buffer());
+    return DefinitionReader{root}.read_level_module(buffer(), path());
 }
 }

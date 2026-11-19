@@ -9,7 +9,7 @@ namespace ioj::levels::authoring {
 auto read_starfield_settings_file(std::filesystem::path const& path,
                                   std::filesystem::path const& script_library_root)
     -> std::expected<starfield::Settings, Diagnostics> {
-    auto ast{DefinitionReader{script_library_root}.read_script_file(path)};
+    auto ast{DefinitionReader{script_library_root}.read_script_file(path, "game-settings")};
     if (!ast) {
         return std::unexpected{std::move(ast.error())};
     }

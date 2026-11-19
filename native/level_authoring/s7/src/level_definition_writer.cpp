@@ -45,7 +45,7 @@ auto make_level_input(LevelDefinition const& level) -> LevelInput {
 }
 
 auto emit_level_source(LevelInput const& level) -> std::string {
-    return s7::serialize(level) + "\n";
+    return "(export mission)\n(define mission " + s7::serialize(level) + ")\n";
 }
 namespace {
 auto settings_form(s7::SExprIR& ir, s7::Ast const& ast, s7::NodeIndex node) -> s7::Expr {
@@ -108,9 +108,10 @@ auto emit_editor_level_source(LevelInput const& level, s7::Ast const* saved_scen
         }
     }};
     s7::TypeWriter<LevelInput>::properties(visit);
-    return lispb::codegen::sexpr::SExprRenderer{ir, lispb::codegen::sexpr::Dialect::scheme}.render(
+    return "(export scene)\n(define scene " +
+           lispb::codegen::sexpr::SExprRenderer{ir, lispb::codegen::sexpr::Dialect::scheme}.render(
                form.build()) +
-           "\n";
+           ")\n";
 }
 }
 

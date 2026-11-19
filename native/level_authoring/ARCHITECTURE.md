@@ -35,8 +35,8 @@ without s7. The `native-level-authoring-s7` library provides source/file reader 
 `DefinitionReader::read_root_file` evaluates one explicit root and its imports in one
 interpreter. `catalog` accepts `:levels` and `:campaigns` filename lists and evaluates
 them in the supplied order. There is no directory discovery or automatic library preloading.
-`load-script` caches each successful file's final value, so repeated imports do not reevaluate
-it. Paths are relative to the root file's directory. Standalone level/campaign reads remain
+Each `import-module` evaluates a fresh environment rooted in the shared DSL. Paths are relative
+to the catalog directory. Readers use `module-ref` to select a named export. Standalone level reads remain
 available to the editor and benchmark runner.
 
 The evaluated catalog retains definition source paths and per-file evaluation failures.
@@ -46,8 +46,6 @@ authoring library and dispatches to the existing level/campaign parsers. Each se
 produces a `DefinitionEntry<T>` containing its path and `std::expected<T, Diagnostics>`.
 Catalog validators still consume only successful definitions.
 
-Bindings are shared during a root load, including changes made before an evaluation error.
-A new root load starts fresh; no interpreter or bindings persist between catalog refreshes.
 The runtime privately roots s7's internal hooks after revoking their public bindings, keeping
 global redefinition and error handling safe across garbage collections.
 
@@ -82,13 +80,13 @@ reconstructed from those values. The existing symbol reader normalizes authored 
 to lower case; round-tripping assumes those canonical decoded identifiers.
 
 The `s7_constructors` module derives ordinary Scheme constructors from record tags, including
-positional forms, plus `foo?`, `foo-ref`, and `foo-with`. Common Scheme helpers provide tag
-checks, property access and shallow functional updates. Tags and generated function names
+positional forms, plus `foo?` and `foo-ref`. Common Scheme helpers provide tag
+checks, property access and generic `copy-with` updates. Tags and generated function names
 must be unique. Catalog and logic operators retain their specialized bindings.
 
 Settings constructors return records; `settings-layers` groups records in application order.
 `parse_settings` decodes them into a copy of a supplied `SettingsValues` configuration.
-Level roots explicitly compose shared settings with `load-script` and `settings-layers`.
+Level roots explicitly compose shared settings with `import-module` and `settings-layers`.
 Level decoding always starts from C++ defaults; launchers cannot inject different baselines.
 Simulation, presentation and starfield use the same typed readers.
 Unknown fields, duplicate properties, incompatible values and field constraints are checked

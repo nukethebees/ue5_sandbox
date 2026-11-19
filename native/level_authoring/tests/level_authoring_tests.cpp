@@ -28,6 +28,9 @@ namespace ioj::levels::authoring::tests {
 using ioj::testing::structurally_equal;
 using ioj::testing::write_files;
 namespace {
+auto module_source(std::string_view name, std::string_view value) -> std::string {
+    return std::format("(export (rename result {}))\n(define result {})\n", name, value);
+}
 auto emit_source(LevelDefinition const& level) -> std::expected<std::string, Diagnostics> {
     return emit_level_source(make_level_input(level));
 }
@@ -158,7 +161,7 @@ TEST(NativeSettings, AssignsWholeVectorsOnlyAfterEveryComponentConverts) {
 TEST(NativeSettings, DerivesStarfieldBindingsAndPreservesSparseLayers) {
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "settings.scm"};
-    ASSERT_TRUE(write_files({{path, R"((settings-layers
+    ASSERT_TRUE(write_files({{path, module_source("game-settings", R"((settings-layers
       (settings :starfield (starfield
         :generation (generation :star-count 42 :random-seed -7)
         :star (star :scale 2 :size-multiplier 3 :global-brightness 4
@@ -172,7 +175,7 @@ TEST(NativeSettings, DerivesStarfieldBindingsAndPreservesSparseLayers) {
         :galactic-haze (galactic-haze :strength 20 :width-degrees 21)
         :galactic-core (galactic-core :strength 22 :width-degrees 23)
         :nebular-knot (nebular-knot :strength 24 :size-degrees 25)))
-      (settings :starfield (starfield :star (star :scale 1)))))"}}));
+      (settings :starfield (starfield :star (star :scale 1)))))")}}));
     auto const result{read_starfield_settings_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     starfield::Settings const expected{.generation = {42, -7},
@@ -195,13 +198,13 @@ TEST(NativeSettings, DecodesPresentationLayersIntoExistingNativeValues) {
       (settings-layers
         (settings :presentation (presentation
           :player-ship (player-ship-presentation :boost-effect-colour-intensity 80)
-          :entity-overlay (settings-section 'entity-overlay :enabled #f :bar-size-pixels '(32 6)
-                           :soft-target (settings-section 'soft-target :opacity 0.5))
+          :entity-overlay (entity-overlay :enabled #f :bar-size-pixels '(32 6)
+                           :soft-target (soft-target :opacity 0.5))
           :capital-ships (capital-ships-presentation :n-small-explosions 3)
-          :radar (settings-section 'radar :combat-range 150000)))
+          :radar (radar :combat-range 150000)))
         (settings :presentation (presentation
           :player-ship (player-ship-presentation :boost-effect-colour-intensity 75)
-          :entity-overlay (settings-section 'entity-overlay :soft-target (settings-section 'soft-target :pulse-duration 0.3))))))",
+          :entity-overlay (entity-overlay :soft-target (soft-target :pulse-duration 0.3))))))",
                                                               initial)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
     auto expected{initial};
@@ -271,13 +274,13 @@ TEST(NativeSettings, RejectsMalformedPresentationAtTheTypedDecodingBoundary) {
         std::string_view path;
     };
     for (auto const& test :
-         {Case{":radar (settings-section 'radar :unknown 3)",
+         {Case{":radar (radar :unknown 3)",
                DiagnosticCode::UnknownProperty,
                "presentation.radar.unknown"},
-          Case{":radar (settings-section 'radar :enabled 1)",
+          Case{":radar (radar :enabled 1)",
                DiagnosticCode::InvalidType,
                "presentation.radar.enabled"},
-          Case{":radar (settings-section 'radar :enabled #t :enabled #f)",
+          Case{":radar (radar :enabled #t :enabled #f)",
                DiagnosticCode::DuplicateProperty,
                "presentation.radar[3]"},
           Case{":capital-ships (capital-ships-presentation :n-small-explosions 1.5)",
@@ -287,7 +290,7 @@ TEST(NativeSettings, RejectsMalformedPresentationAtTheTypedDecodingBoundary) {
               ":capital-ships (capital-ships-presentation :min-small-explosion-range '(1 2 1e100))",
               DiagnosticCode::InvalidNumber,
               "presentation.capital-ships.min-small-explosion-range[2]"},
-          Case{":entity-overlay (settings-section 'entity-overlay :bar-size-pixels '(1 +inf.0))",
+          Case{":entity-overlay (entity-overlay :bar-size-pixels '(1 +inf.0))",
                DiagnosticCode::InvalidNumber,
                "presentation.entity-overlay.bar-size-pixels"}}) {
         SCOPED_TRACE(test.fields);
@@ -313,8 +316,11 @@ TEST(NativeSettings, RetainsStarfieldConversionAndDomainDiagnostics) {
           Case{"(star :scale 1e100)", DiagnosticCode::InvalidNumber, "star.scale"},
           Case{"(star :scale 0)", DiagnosticCode::InvalidNumber, "star.scale"}}) {
         SCOPED_TRACE(test.section);
-        ASSERT_TRUE(write_files(
-            {{path, std::format("(settings :starfield (starfield :star {}))", test.section)}}));
+        ASSERT_TRUE(
+            write_files({{path,
+                          module_source("game-settings",
+                                        std::format("(settings :starfield (starfield :star {}))",
+                                                    test.section))}}));
         auto const result{read_starfield_settings_file(path)};
         ASSERT_FALSE(result);
         ASSERT_EQ(result.error().size(), 1u);
@@ -332,18 +338,20 @@ TEST(NativeSettings, ReadsShippedStarfieldSettingsAndValidatesEachNestedLayer) {
 
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "settings.scm"};
-    ASSERT_TRUE(write_files({{path, R"((settings :starfield (starfield
+    ASSERT_TRUE(
+        write_files({{path, module_source("game-settings", R"((settings :starfield (starfield
       :star (settings-layers
         (star :scale 2 :size-multiplier 3)
-        (star :scale 1)))))"}}));
+        (star :scale 1)))))")}}));
     auto result{read_starfield_settings_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     starfield::Settings expected;
     expected.star.size_multiplier = 3.f;
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
 
-    ASSERT_TRUE(write_files({{path, R"((settings :starfield (starfield
-      :star (settings-layers (star :scale 0) (star :scale 1)))))"}}));
+    ASSERT_TRUE(
+        write_files({{path, module_source("game-settings", R"((settings :starfield (starfield
+      :star (settings-layers (star :scale 0) (star :scale 1)))))")}}));
     result = read_starfield_settings_file(path);
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().front().node_path, "starfield.star.scale");
@@ -363,7 +371,7 @@ TEST(NativeSettings, RejectsMalformedStarfieldRecordsAndInvalidEffectiveValues) 
           "(settings :starfield (starfield :galactic-band (galactic-band :width-degrees 91)))",
           "(settings :starfield (starfield :nebular-knot (nebular-knot :size-degrees 0)))"}) {
         SCOPED_TRACE(source);
-        ASSERT_TRUE(write_files({{path, source}}));
+        ASSERT_TRUE(write_files({{path, module_source("game-settings", source)}}));
         auto result{read_starfield_settings_file(path)};
         ASSERT_FALSE(result);
         EXPECT_FALSE(result.error().empty());
@@ -608,8 +616,11 @@ TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
     auto const path{directory.path() / "level.scm"};
     ASSERT_TRUE(write_files({
         {directory.path() / "Libraries" / "metadata.scm",
-         "(define benchmark-title \"Loaded From Library\")"},
-        {path, "(load-script \"Libraries/metadata.scm\")\n" + source},
+         module_source("benchmark-title", "\"Loaded From Library\"")},
+        {path,
+         "(define benchmark-title (module-ref (import-module \"Libraries/metadata.scm\") "
+         "'benchmark-title))\n" +
+             module_source("mission", source)},
     }));
     auto const result{DefinitionReader{}.read_level_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
@@ -632,18 +643,22 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     source.insert(source.size() - 1, R"(
       :settings (settings :fighters (fighters :speed 7300) :collision-grid
         (collision-grid :cell-size '(100000000 100000000 100000000) :level-size '(2000000000 2000000000 2000000000))))");
+    auto const title_import{
+        R"((define shared-title (module-ref (import-module "metadata.scm") 'title)))"};
+    auto const mission{title_import + module_source("mission", source)};
     ASSERT_TRUE(write_files({
-        {root / "first.scm", "(define shared-title \"Shared\")\n" + source},
-        {root / "second.scm", source},
+        {root / "metadata.scm", module_source("title", "\"Shared\"")},
+        {root / "first.scm", mission},
+        {root / "second.scm", mission},
         {root / "broken.scm", "(undefined-function)"},
         {root / "ignored.scm", "(error 'ignored \"Must not be loaded\")"},
-        {root / "campaign.scm", "(campaign :id 'shared :title shared-title :levels '(test))"},
-        {root / "catalog.scm", R"(
-        (catalog
-          :levels (list "first.scm"
-                        "broken.scm"
-                        "second.scm")
-          :campaigns (list "campaign.scm")))"},
+        {root / "campaign.scm",
+         title_import +
+             module_source("campaign",
+                           "(campaign :id 'shared :title shared-title :levels '(test))")},
+        {root / "catalog.scm",
+         module_source("catalog", R"((catalog :levels '("first.scm" "broken.scm" "second.scm")
+          :campaigns '("campaign.scm")))")},
     }));
     auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
     ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
@@ -651,7 +666,7 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     ASSERT_EQ(levels.size(), 3u);
     ASSERT_EQ(catalog->campaigns.size(), 1u);
     ASSERT_TRUE(levels[0].definition);
-    EXPECT_EQ(levels[0].source_text, "(define shared-title \"Shared\")\n" + source);
+    EXPECT_EQ(levels[0].source_text, mission);
     EXPECT_EQ(levels[0].definition->metadata().title, "Shared");
     ASSERT_FALSE(levels[1].definition);
     EXPECT_EQ(levels[1].definition.error().front().source_path, root / "broken.scm");
@@ -667,36 +682,14 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     CampaignDefinition const expected{CampaignId{"shared"}, "Shared", {LevelId{"test"}}};
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *campaign);
 
-    ASSERT_TRUE(write_files({{root / "variation.scm", "(catalog :levels (list \"second.scm\"))"}}));
+    ASSERT_TRUE(
+        write_files({{root / "variation.scm",
+                      module_source("catalog", "(catalog :levels (list \"second.scm\"))")}}));
     auto const variation{DefinitionReader{}.read_root_file(root / "variation.scm")};
     ASSERT_TRUE(variation);
     ASSERT_EQ(variation->levels.size(), 1u);
-    ASSERT_FALSE(variation->levels[0].definition);
-    EXPECT_EQ(variation->levels[0].definition.error().front().code,
-              DiagnosticCode::ScriptEvaluationFailed);
-    EXPECT_EQ(levels[0].definition->metadata().title, "Shared");
-}
-TEST(NativeLevelAuthoringReader, RootLoadsSharedLibrariesOnce) {
-    TemporaryLevelDirectory directory;
-    auto const& root{directory.path()};
-    auto source{minimal_source()};
-    source.replace(source.find("\"Test\""), 6, "(number->string library-load-count)");
-    ASSERT_TRUE(write_files({
-        {root / "Libraries" / "count.scm", "(set! library-load-count (+ library-load-count 1))"},
-        {root / "level.scm", "(load-script \"Libraries/count.scm\")\n" + source},
-        {root / "catalog.scm", R"(
-        (define library-load-count 0)
-        (load-script "Libraries/count.scm")
-        (catalog :levels (list "level.scm"
-                               "level.scm")))"},
-    }));
-    auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
-    ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
-    ASSERT_EQ(catalog->levels.size(), 2u);
-    for (auto const& entry : catalog->levels) {
-        ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
-        EXPECT_EQ(entry.definition->metadata().title, "1");
-    }
+    ASSERT_TRUE(variation->levels[0].definition);
+    EXPECT_EQ(variation->levels[0].definition->metadata().title, "Shared");
 }
 TEST(NativeLevelAuthoringReader, RootReportsEvaluationAndGrammarErrors) {
     TemporaryLevelDirectory directory;
@@ -706,7 +699,8 @@ TEST(NativeLevelAuthoringReader, RootReportsEvaluationAndGrammarErrors) {
     ASSERT_FALSE(evaluation);
     EXPECT_EQ(evaluation.error().front().code, DiagnosticCode::ScriptEvaluationFailed);
     EXPECT_EQ(evaluation.error().front().source_path, root);
-    ASSERT_TRUE(write_files({{root, "(catalog :levels 42 :unexpected #t)"}}));
+    ASSERT_TRUE(
+        write_files({{root, module_source("catalog", "(catalog :levels 42 :unexpected #t)")}}));
     auto const grammar{DefinitionReader{}.read_root_file(root)};
     ASSERT_FALSE(grammar);
     EXPECT_GE(grammar.error().size(), 2u);
@@ -780,7 +774,7 @@ TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
         auto const emitted{emit_source(*result)};
         ASSERT_TRUE(emitted) << format_diagnostics(emitted.error());
         EXPECT_TRUE(emitted->contains(":id 'red-capital-ship-1"));
-        auto const round_trip{DefinitionReader{}.read_level_source(*emitted)};
+        auto const round_trip{DefinitionReader{}.read_level_module(*emitted, "emitted.scm")};
         ASSERT_TRUE(round_trip) << format_diagnostics(round_trip.error());
         for (auto const& original : result->entities()) {
             auto const found{
@@ -813,15 +807,17 @@ TEST(NativeLevelAuthoringReader, RestartsGeneratedIdsForEachDefinitionInOneRoot)
     auto const& root{directory.path()};
     for (auto const name : {"first", "second"}) {
         ASSERT_TRUE(write_files({{root / std::format("{}.scm", name),
-                                  std::format(R"(
+                                  module_source("mission",
+                                                std::format(R"(
           (level :id '{} :title "Generated" :player 'player
             :entities (list
               (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0))
               (entity :archetype 'static-turret :team 'red :position '(1 2 3)))))",
-                                              name)}}));
+                                                            name))}}));
     }
-    ASSERT_TRUE(
-        write_files({{root / "catalog.scm", R"((catalog :levels '("first.scm" "second.scm")))"}}));
+    ASSERT_TRUE(write_files(
+        {{root / "catalog.scm",
+          module_source("catalog", R"((catalog :levels '("first.scm" "second.scm")))")}}));
     auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
     ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
     ASSERT_EQ(catalog->levels.size(), 2u);
@@ -868,7 +864,7 @@ TEST(NativeLevelAuthoringReader, DerivesDistinctTeamsIncludingScheduledSpawns) {
     auto const source{emit_source(definition)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
     EXPECT_FALSE(source->contains(":teams"));
-    auto const parsed{DefinitionReader{}.read_level_source(*source)};
+    auto const parsed{DefinitionReader{}.read_level_module(*source, "emitted.scm")};
     ASSERT_TRUE(parsed);
     EXPECT_EQ(participating_teams(*parsed),
               participating_teams(LevelDefinition::make(definition).value()));
@@ -946,7 +942,7 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
     ASSERT_TRUE(b);
     EXPECT_EQ(*a, *b);
     EXPECT_TRUE(a->contains(":spawn-at 2.5"));
-    auto const loaded{DefinitionReader{}.read_level_source(*a)};
+    auto const loaded{DefinitionReader{}.read_level_module(*a, "emitted.scm")};
     ASSERT_TRUE(loaded) << format_diagnostics(loaded.error());
     EXPECT_EQ(loaded->metadata().title, first.metadata.title);
     EXPECT_EQ(loaded->metadata().description, first.metadata.description);
@@ -958,7 +954,7 @@ TEST(NativeLevelAuthoringWriter, HandlesEmptyCollectionsEscapesAndNumericBoundar
     definition.entities[0].position = {-0.0001, 0.0005, 1.0e100};
     auto source{emit_source(definition)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
-    auto parsed{DefinitionReader{}.read_level_source(*source)};
+    auto parsed{DefinitionReader{}.read_level_module(*source, "emitted.scm")};
     ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
     EXPECT_EQ(parsed->metadata().description, definition.metadata.description);
     EXPECT_EQ(parsed->entities()[0].position, definition.entities[0].position);
@@ -990,7 +986,7 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
         EXPECT_PRED_FORMAT2(structurally_equal, expected, definition->settings());
         auto const source{emit_source(*definition)};
         ASSERT_TRUE(source) << format_diagnostics(source.error());
-        auto const parsed{DefinitionReader{}.read_level_source(*source)};
+        auto const parsed{DefinitionReader{}.read_level_module(*source, "emitted.scm")};
         ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
         EXPECT_PRED_FORMAT2(structurally_equal, expected, parsed->settings());
     }

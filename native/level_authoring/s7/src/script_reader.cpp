@@ -14,6 +14,7 @@
 #include <lispb/strings.h>
 
 #include <format>
+#include <optional>
 #include <utility>
 
 namespace ioj::levels::authoring {
@@ -27,14 +28,13 @@ auto dsl_source() -> std::string {
     source.append(s7_record_constructors());
     source.append(logic_dsl_source);
     source.append("(define (settings-layers . layers) (cons :settings-layers layers))\n");
-    source.append(
-        "(define (settings-section name . properties) (cons (symbol->keyword name) properties))\n");
     source.append(R"(
       (define catalog
-        (let ((include-load load-script) (include-format format))
+        (let ((include-format format))
           (define (include tag path)
             (catch #t
-              (lambda () (list tag :path path :value (include-load path)))
+              (lambda () (list tag :path path :value
+                (module-ref (import-module path) (if (eq? tag :included-level) 'mission 'campaign))))
               (lambda (type info)
                 (list tag :path path :error (apply include-format #f info)))))
           (define (load-properties properties)
@@ -103,6 +103,25 @@ auto decode_campaign(s7::Ast const& ast) -> CampaignDefinitionReadResult {
     return definition;
 }
 
+auto module_value(std::optional<std::string_view> source,
+                  std::filesystem::path const& path,
+                  std::string_view export_name,
+                  std::filesystem::path const& root) -> MaterializedSource {
+    lispb::Strings strings;
+    lispb::codegen::sexpr::SExprIR ir{strings};
+    auto const module{
+        source ? ir.form("read-module", {ir.string(ioj::path_to_utf8(path)), ir.string(*source)})
+                     .build()
+               : ir.form("import-module", {ir.string(ioj::path_to_utf8(path.filename()))}).build()};
+    auto const lookup{ir.form("module-ref", {module, ir.quote(export_name)}).build()};
+    return with_source_path(
+        evaluate(
+            lispb::codegen::sexpr::SExprRenderer{ir, lispb::codegen::sexpr::Dialect::scheme}.render(
+                lookup),
+            root),
+        path);
+}
+
 auto read_source(std::filesystem::path const& path) -> std::expected<std::string, Diagnostics> {
     auto source{ioj::read_file(path)};
     if (!source) {
@@ -124,18 +143,9 @@ DefinitionReader::DefinitionReader(std::filesystem::path script_library_root)
 auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
     -> std::expected<DefinitionCatalog, Diagnostics> {
     auto const full_path{std::filesystem::absolute(path)};
-    lispb::Strings strings;
-    lispb::codegen::sexpr::SExprIR ir{strings};
-    auto const expression{
-        ir.form("load-script", {ir.string(ioj::path_to_utf8(full_path.filename()))}).build()};
-    auto ast{evaluate(
-        lispb::codegen::sexpr::SExprRenderer{ir, lispb::codegen::sexpr::Dialect::scheme}.render(
-            expression),
-        full_path.parent_path())};
+    auto ast{module_value(std::nullopt, full_path, "catalog", full_path.parent_path())};
     if (!ast) {
-        return with_source_path(
-            std::expected<DefinitionCatalog, Diagnostics>{std::unexpect, std::move(ast.error())},
-            full_path);
+        return std::unexpected{std::move(ast.error())};
     }
 
     auto catalog{parse_catalog(*ast, full_path.parent_path())};
@@ -174,6 +184,18 @@ auto DefinitionReader::read_level_source(std::string_view const source) const
     });
 }
 
+auto DefinitionReader::read_level_module(std::string_view source,
+                                         std::filesystem::path const& path) const
+    -> LevelDefinitionReadResult {
+    auto const root{script_library_root_.empty() ? std::filesystem::absolute(path).parent_path()
+                                                 : script_library_root_};
+    return with_source_path(
+        module_value(source, path, "mission", root).and_then([](s7::Ast const& ast) {
+            return parse_level(ast, ast.root);
+        }),
+        path);
+}
+
 auto DefinitionReader::read_campaign_source(std::string_view const source) const
     -> CampaignDefinitionReadResult {
     return evaluate(source, script_library_root_).and_then(decode_campaign);
@@ -188,13 +210,15 @@ auto DefinitionReader::read_settings_source(std::string_view const source,
 
 auto DefinitionReader::read_settings_file(std::filesystem::path const& path,
                                           settings::Settings base) const -> SettingsReadResult {
-    return with_source_path(read_script_file(path).and_then([&](s7::Ast const& ast) {
-        return parse_settings(ast, ast.root, std::move(base));
-    }),
-                            path);
+    return with_source_path(
+        read_script_file(path, "game-settings").and_then([&](s7::Ast const& ast) {
+            return parse_settings(ast, ast.root, std::move(base));
+        }),
+        path);
 }
 
-auto DefinitionReader::read_script_file(std::filesystem::path const& path) const
+auto DefinitionReader::read_script_file(std::filesystem::path const& path,
+                                        std::string_view export_name) const
     -> std::expected<s7::Ast, Diagnostics> {
     auto source{read_source(path)};
     if (!source) {
@@ -202,16 +226,13 @@ auto DefinitionReader::read_script_file(std::filesystem::path const& path) const
     }
     auto const root{script_library_root_.empty() ? std::filesystem::absolute(path).parent_path()
                                                  : script_library_root_};
-    return with_source_path(evaluate(*source, root), path);
+    return module_value(*source, path, export_name, root);
 }
 auto DefinitionReader::read_level_file(std::filesystem::path const& path) const
     -> LevelDefinitionReadResult {
-    return with_source_path(read_script_file(path).and_then(
-                                [&](s7::Ast const& ast) { return parse_level(ast, ast.root); }),
+    return with_source_path(read_script_file(path, "mission").and_then([&](s7::Ast const& ast) {
+        return parse_level(ast, ast.root);
+    }),
                             path);
-}
-auto DefinitionReader::read_campaign_file(std::filesystem::path const& path) const
-    -> CampaignDefinitionReadResult {
-    return with_source_path(read_script_file(path).and_then(decode_campaign), path);
 }
 }
