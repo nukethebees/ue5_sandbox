@@ -1,24 +1,12 @@
 #pragma once
 
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
-#include "SandboxEditor/levels/S7LevelSourceSession.h"
 
 #include <Tools/LegacyEdModeWidgetHelpers.h>
 
 #include "S7LevelAuthoringMode.generated.h"
 
 class AS7LevelAuthoringDocument;
-
-DECLARE_MULTICAST_DELEGATE(FOnS7LevelAuthoringChanged);
-
-namespace ioj::editor {}
-
-struct SANDBOXEDITOR_API FS7LevelScriptEditorState {
-    FString path{};
-    bool source_dirty{};
-    bool disk_conflict{};
-    bool detached{};
-};
 
 UCLASS(Transient)
 class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEdMode {
@@ -42,11 +30,7 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
                  FCanvas* canvas) override;
 
     [[nodiscard]] auto document() const -> AS7LevelAuthoringDocument*;
-    [[nodiscard]] auto source_session() -> ioj::editor::FS7LevelSourceSession&;
-    [[nodiscard]] auto source_session() const -> ioj::editor::FS7LevelSourceSession const&;
-    [[nodiscard]] auto script_editor_state() const -> FS7LevelScriptEditorState;
     [[nodiscard]] auto status() const -> FText const&;
-    auto on_changed() -> FOnS7LevelAuthoringChanged&;
 
     void create_document();
     void adopt_entities();
@@ -54,11 +38,9 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void open_level_config();
     void validate_playable_level();
     void set_up_playable_level();
-    auto load_s7() -> bool;
-    void reload_s7();
-    void set_source_buffer(FString source);
-    void import_source();
-    void save();
+    void load_s7();
+    void open_script_editor();
+    void import_source(bool root_changed = false);
     void export_scene();
   private:
     auto current_level() const -> ULevel*;
@@ -67,8 +49,6 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void notify_changed(ioj::settings::Settings const* settings = nullptr);
 
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
-    ioj::editor::FS7LevelSourceSession source_session_{};
     FText status_{};
-    FOnS7LevelAuthoringChanged changed_{};
     float refresh_elapsed_seconds_{};
 };

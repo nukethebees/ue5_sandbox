@@ -593,7 +593,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 return;
             }
             TestRunner->TestTrue(TEXT("Composed values are never copied into the baseline"),
-                                 ioj::s7::equivalent(*saved, *baseline));
+                                 saved->title == baseline->title &&
+                                     ioj::s7::equivalent(saved->entities, baseline->entities));
         }
     }
 

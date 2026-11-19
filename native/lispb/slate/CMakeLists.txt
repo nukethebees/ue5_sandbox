@@ -76,7 +76,6 @@ add_test(NAME SlateExpandCli
 set_tests_properties(SlateExpandCli PROPERTIES LABELS "unit;all;native;codegen")
 
 set(SLATE_CODEGEN_DOCUMENTS
-  "Source/SandboxEditor/levels/S7LevelScriptEditor.lispb"
   "Source/SandboxEditor/levels/S7LevelAuthoringModeToolkit.lispb"
   "Plugins/SandboxUI/Source/SandboxUI/Private/widgets/CoreWidgets.lispb"
   "Plugins/SandboxExperiments/Source/SandboxUIExamples/Private/SandboxUIShowcase.lispb"

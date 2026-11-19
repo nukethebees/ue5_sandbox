@@ -6,7 +6,6 @@
 #include "SandboxEditor/levels/S7LevelObserverCamera.h"
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include <ioj/levels/authoring/level_definition_writer.h>
-#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/level_script_catalog.h>
@@ -20,8 +19,8 @@
 #include <Engine/Level.h>
 #include <Engine/Selection.h>
 #include <Framework/Application/SlateApplication.h>
+#include <HAL/PlatformProcess.h>
 #include <IDesktopPlatform.h>
-#include <Misc/MessageDialog.h>
 #include <Misc/Paths.h>
 #include <SceneManagement.h>
 #include <SceneView.h>
@@ -52,14 +51,6 @@ auto select_source_path() -> TOptional<FString> {
         return NullOpt;
     }
     return MoveTemp(paths[0]);
-}
-
-auto confirm_discard_source_buffer() -> bool {
-    return FMessageDialog::Open(
-               EAppMsgType::YesNo,
-               LOCTEXT("DiscardSourceBuffer",
-                       "Discard the unsaved S7 source buffer and reload the file from disk?")) ==
-           EAppReturnType::Yes;
 }
 
 auto selected_bound_entity(AS7LevelAuthoringDocument& document)
@@ -112,7 +103,6 @@ void US7LevelAuthoringMode::Enter() {
 
 void US7LevelAuthoringMode::Exit() {
     document_.Reset();
-    source_session_.detach();
     Super::Exit();
 }
 
@@ -127,14 +117,11 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* viewport_client, float d
         return;
     }
     refresh_elapsed_seconds_ = 0.0f;
+    auto const previous{document_};
     refresh_document();
-    if (source_session_.is_attached()) {
-        auto refreshed{source_session_.refresh_external_conflict()};
-        if (!refreshed) {
-            set_status(FText::FromString(refreshed.error()));
-        }
+    if (document_ != previous) {
+        notify_changed();
     }
-    changed_.Broadcast();
 }
 
 void US7LevelAuthoringMode::Render(FSceneView const* const view,
@@ -236,27 +223,8 @@ auto US7LevelAuthoringMode::document() const -> AS7LevelAuthoringDocument* {
     return document_.Get();
 }
 
-auto US7LevelAuthoringMode::source_session() -> FS7LevelSourceSession& {
-    return source_session_;
-}
-
-auto US7LevelAuthoringMode::source_session() const -> FS7LevelSourceSession const& {
-    return source_session_;
-}
-
-auto US7LevelAuthoringMode::script_editor_state() const -> FS7LevelScriptEditorState {
-    return {.path = source_session_.path(),
-            .source_dirty = source_session_.is_dirty(),
-            .disk_conflict = source_session_.has_external_conflict(),
-            .detached = !source_session_.is_attached()};
-}
-
 auto US7LevelAuthoringMode::status() const -> FText const& {
     return status_;
-}
-
-auto US7LevelAuthoringMode::on_changed() -> FOnS7LevelAuthoringChanged& {
-    return changed_;
 }
 
 auto US7LevelAuthoringMode::current_level() const -> ULevel* {
@@ -270,22 +238,13 @@ void US7LevelAuthoringMode::refresh_document() {
                          ? find_level_authoring_document(*level)
                          : std::expected<AS7LevelAuthoringDocument*, FString>{
                                std::unexpected{TEXT("The current editor level is unavailable.")}}};
-    auto* const next{found ? *found : nullptr};
-    if (document_.Get() != next || !IsValid(next)) {
-        source_session_.detach();
-        document_ = next;
-    }
+    document_ = found ? *found : nullptr;
     if (!found) {
         set_status(FText::FromString(found.error()));
         return;
     }
     if (!document_.IsValid()) {
         create_document();
-        return;
-    }
-    auto const attached{source_session_.attach(*document_)};
-    if (!attached) {
-        set_status(FText::FromString(attached.error()));
     }
 }
 
@@ -297,7 +256,6 @@ void US7LevelAuthoringMode::notify_changed(ioj::settings::Settings const* settin
     if (Toolkit.IsValid()) {
         StaticCastSharedPtr<FS7LevelAuthoringModeToolkit>(Toolkit)->refresh(settings);
     }
-    changed_.Broadcast();
 }
 
 void US7LevelAuthoringMode::create_document() {
@@ -311,11 +269,8 @@ void US7LevelAuthoringMode::create_document() {
         set_status(FText::FromString(created.error()));
     } else {
         document_ = *created;
-        auto const attached{source_session_.attach(*document_)};
         auto const adopted{adopt_unbound_level_entities(*level, *document_)};
-        if (!attached) {
-            set_status(FText::FromString(attached.error()));
-        } else if (had_document) {
+        if (had_document) {
             set_status(FText::Format(
                 LOCTEXT("ExistingDocumentAdopted", "Adopted {0} existing level entities."),
                 adopted));
@@ -423,36 +378,27 @@ void US7LevelAuthoringMode::set_up_playable_level() {
     notify_changed();
 }
 
-auto US7LevelAuthoringMode::load_s7() -> bool {
+void US7LevelAuthoringMode::load_s7() {
     auto const path{select_source_path()};
     if (!path.IsSet()) {
-        return false;
+        return;
     }
     if (!document_.IsValid()) {
         auto* const level{current_level()};
         if (!IsValid(level)) {
-            return false;
+            return;
         }
         auto created{create_level_authoring_document(*level, *path)};
         if (!created) {
             set_status(FText::FromString(created.error()));
             notify_changed();
-            return false;
+            return;
         }
         document_ = *created;
     }
-    if (!document_.IsValid()) {
-        return false;
-    }
-    auto const loaded{source_session_.load(*document_, path.GetValue())};
-    if (!loaded) {
-        set_status(FText::FromString(loaded.error()));
-        notify_changed();
-        return false;
-    }
-    auto const root_changed{!FPaths::IsSamePath(document_->source_path, source_session_.path())};
+    auto const root_changed{!FPaths::IsSamePath(document_->source_path, path.GetValue())};
     document_->Modify();
-    document_->source_path = source_session_.path();
+    document_->source_path = path.GetValue();
     for (auto const actor : document_->GetLevel()->Actors) {
         if (auto* orchestrator{Cast<ioj::ATestBatchOrchestrator>(actor.Get())};
             IsValid(orchestrator)) {
@@ -460,63 +406,26 @@ auto US7LevelAuthoringMode::load_s7() -> bool {
             orchestrator->set_level_script(document_->source_path);
         }
     }
-    auto definition{source_session_.read()};
-    if (!definition) {
-        set_status(
-            FText::FromString(ioj::to_fstring(levels::format_diagnostics(definition.error()))));
-        notify_changed();
-        return false;
-    }
-    auto imported{import_s7_level(*document_->GetLevel(), *document_, *definition, root_changed)};
-    set_status(imported ? LOCTEXT("Imported",
-                                  "Imported editor baseline values for editing and human-owned "
-                                  "entities for reference. Play uses the composed level.")
-                        : FText::FromString(imported.error()));
-    notify_changed();
-    return imported.has_value();
+    import_source(root_changed);
 }
 
-void US7LevelAuthoringMode::reload_s7() {
-    if (!document_.IsValid()) {
-        return;
+void US7LevelAuthoringMode::open_script_editor() {
+    if (document_.IsValid()) {
+        auto const path{FPaths::ConvertRelativePathToFull(document_->source_path)};
+        FPlatformProcess::LaunchFileInDefaultExternalApplication(*path);
     }
-    if ((source_session_.is_dirty() || source_session_.state().recovery_required) &&
-        !confirm_discard_source_buffer()) {
-        return;
-    }
-    auto const reloaded{source_session_.document() == document_.Get()
-                            ? source_session_.reload()
-                            : source_session_.discard_and_attach(*document_)};
-    if (!reloaded) {
-        set_status(FText::FromString(reloaded.error()));
-    } else {
-        set_status(LOCTEXT("SourceReloaded", "Attached the document source from disk."));
-    }
-    notify_changed();
 }
 
-void US7LevelAuthoringMode::set_source_buffer(FString source) {
-    auto const revision{source_session_.revision()};
-    source_session_.set_buffer(MoveTemp(source));
-    if (source_session_.revision() != revision) {
-        set_status(LOCTEXT(
-            "BufferUpdated",
-            "Source buffer updated. Save it or import the buffer to view it in the scene."));
-    }
-    notify_changed();
-}
-
-void US7LevelAuthoringMode::import_source() {
+void US7LevelAuthoringMode::import_source(bool root_changed) {
     auto* const level{current_level()};
     if (!IsValid(level) || !document_.IsValid()) {
         return;
     }
-    auto definition{source_session_.read()};
+    auto definition{read_s7_authored_level(*document_)};
     if (!definition) {
-        set_status(
-            FText::FromString(ioj::to_fstring(levels::format_diagnostics(definition.error()))));
+        set_status(FText::FromString(definition.error()));
     } else {
-        auto imported{import_s7_level(*level, *document_, *definition)};
+        auto imported{import_s7_level(*level, *document_, *definition, root_changed)};
         set_status(imported ? LOCTEXT("Imported",
                                       "Imported editor baseline values for editing and human-owned "
                                       "entities for reference. Play uses the composed level.")
@@ -537,22 +446,6 @@ void US7LevelAuthoringMode::export_scene() {
                   "Exported",
                   "Saved editor-config.scm. Edits to entities with Export disabled are not saved.")
             : FText::FromString(exported.error()));
-    notify_changed();
-}
-
-void US7LevelAuthoringMode::save() {
-    if (source_session_.buffer().IsEmpty()) {
-        set_status(LOCTEXT("NoSourceBuffer", "There is no source buffer to save."));
-        notify_changed();
-        return;
-    }
-    auto const saved{source_session_.save()};
-    if (!saved) {
-        set_status(FText::FromString(saved.error()));
-    } else {
-        set_status(FText::FromString(FString::Printf(TEXT("Saved the source buffer exactly to %s."),
-                                                     *source_session_.path())));
-    }
     notify_changed();
 }
 

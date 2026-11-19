@@ -8,7 +8,7 @@ Copy an existing `.scm` scenario, give it a unique `:id`, and add its path to
 (define mission
   (level :id 'example :title "Example"
     :player 'player
-    :settings (fighters :speed 3000)
+    :settings (settings :fighters (fighters :speed 3000))
     :logic (logic
       (define success (entity-destroyed 'turret))
       (define decision
@@ -36,7 +36,7 @@ explicit editor overrides and mission overrides in that order.
 (define scene (module-ref (import-module "LevelName/editor-config.scm") 'scene))
 (define mission
   (copy-with scene :settings
-    (settings-layers defaults (level-ref scene :settings) (fighters :speed 3000))))
+    (settings-layers defaults (level-ref scene :settings) (settings :fighters (fighters :speed 3000)))))
 ```
 
 **Export Scene** updates placements and viewpoint in `editor-config.scm` and preserves its

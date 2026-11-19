@@ -23,10 +23,7 @@
             (authoring-action "Export" "Export Scene" export_scene))
           (authoring-row
             (authoring-action "Adopt" "Adopt Entities" adopt_entities)
-            (authoring-action "Save" "Save Source" save))
-          (authoring-row
-            (authoring-action "OpenScriptEditor" "Open Script Editor" open_script_editor)
-            (SBox))
+            (authoring-action "OpenScriptEditor" "Edit Mission Source" open_script_editor))
           (authoring-row
             (authoring-action "SetUpPlayableLevel" "Set Up Playable Level" set_up_playable_level)
             (authoring-action "ValidatePlayableLevel" "Validate Level" validate_playable_level))

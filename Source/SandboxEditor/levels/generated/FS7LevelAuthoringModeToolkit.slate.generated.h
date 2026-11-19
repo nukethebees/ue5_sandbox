@@ -48,18 +48,10 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                                   .OnClicked(&self_, &ThisClass::adopt_entities)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
-                                  .Text(NSLOCTEXT(
-                                      "FS7LevelAuthoringModeToolkit", "Save", "Save Source"))
-                                  .OnClicked(&self_, &ThisClass::save)]] +
-                    SandboxUI::Slate::vbox_auto_slot()
-                        [SNew(SHorizontalBox) +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                             [SNew(SButton)
                                   .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
                                                   "OpenScriptEditor",
-                                                  "Open Script Editor"))
-                                  .OnClicked(&self_, &ThisClass::open_script_editor)] +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})[SNew(SBox)]] +
+                                                  "Edit Mission Source"))
+                                  .OnClicked(&self_, &ThisClass::open_script_editor)]] +
                     SandboxUI::Slate::vbox_auto_slot()
                         [SNew(SHorizontalBox) +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})

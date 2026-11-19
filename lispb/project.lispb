@@ -114,8 +114,7 @@
     :output-root (project-path "Plugins/SandboxUI/Source/SandboxUI/Private/widgets/generated"))
 
   (slate slate-s7-script-editor
-    :sources ("Source/SandboxEditor/levels/S7LevelScriptEditor.lispb"
-              "Source/SandboxEditor/levels/S7LevelAuthoringModeToolkit.lispb")
+    :sources ("Source/SandboxEditor/levels/S7LevelAuthoringModeToolkit.lispb")
     :output-root (project-path "Source/SandboxEditor/levels/generated"))
   (slate slate-ui-showcase
     :sources ("Plugins/SandboxExperiments/Source/SandboxUIExamples/Private/SandboxUIShowcase.lispb")

@@ -17,8 +17,7 @@ an existing root is never replaced. The generated baseline need not be playable 
 3. Click **Adopt Entities** after placing actors. Leave **Export** enabled for entities whose
    placement is owned by the editor, then click **Export Scene**.
 4. The new entry point layers editor settings over `Settings/base.scm`. Add mission overrides
-   last in `settings-layers` and put mission logic in the entry point. Use **Save Source**
-   before validation or Play.
+   last in `settings-layers` and put mission logic in the entry point. Use **Edit Mission Source** to open the file in your external editor and save it there.
 5. Click **Validate Level** and resolve any diagnostics shown in the mode's status area.
    Click **Set Up Playable Level** to configure the game mode, orchestrator and presentation
    actors, then save the map and press **Play**.
@@ -34,8 +33,7 @@ its missing source. See [Level scripts](../../../LevelScripts/README.md) for Sch
 Use **Export Scene** to write entity placements, supported spawn overrides and viewpoint data to
 the generated file. Unchanged output is not rewritten. The main source can include this baseline
 and use `level-ref` / `copy-with` to add entities, objectives and settings with ordinary Scheme.
-**Save** writes the human source buffer exactly; export never rewrites it. Use **Load Source** to
-associate another existing root. There is no Save As operation that relocates a level's files.
+**Load & Apply S7** associates a different saved mission with the map.
 
 **Import Source** loads generated entities from the generated baseline and human-added entities
 from the composed root. Generated entities default to **Export** enabled; human-added entities

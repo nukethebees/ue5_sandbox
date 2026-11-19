@@ -35,7 +35,6 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     auto load_s7() -> FReply;
     auto open_script_editor() -> FReply;
     auto import_source() -> FReply;
-    auto save() -> FReply;
     auto export_scene() -> FReply;
 
     TWeakObjectPtr<US7LevelAuthoringMode> mode_{};

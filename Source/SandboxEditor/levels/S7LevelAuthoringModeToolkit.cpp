@@ -3,7 +3,6 @@
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
-#include "SandboxEditor/SandboxEditor.h"
 #include <ioj/sim/collision/collision_grid.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
@@ -110,29 +109,15 @@ FORWARD_ACTION(adopt_entities)
 FORWARD_ACTION(open_level_config)
 FORWARD_ACTION(validate_playable_level)
 FORWARD_ACTION(set_up_playable_level)
-auto FS7LevelAuthoringModeToolkit::load_s7() -> FReply {
-    if (mode_.IsValid()) {
-        mode_->load_s7();
-    }
-    return FReply::Handled();
-}
+FORWARD_ACTION(load_s7)
 auto FS7LevelAuthoringModeToolkit::rename_selected_entity() -> FReply {
     if (mode_.IsValid() && entity_id_.IsValid()) {
         mode_->rename_selected_entity(entity_id_->GetText().ToString());
     }
     return FReply::Handled();
 }
-auto FS7LevelAuthoringModeToolkit::open_script_editor() -> FReply {
-    FSandboxEditorModule::open_s7_level_script_editor();
-    return FReply::Handled();
-}
+FORWARD_ACTION(open_script_editor)
 FORWARD_ACTION(import_source)
-auto FS7LevelAuthoringModeToolkit::save() -> FReply {
-    if (mode_.IsValid()) {
-        mode_->save();
-    }
-    return FReply::Handled();
-}
 FORWARD_ACTION(export_scene)
 
 #undef FORWARD_ACTION
