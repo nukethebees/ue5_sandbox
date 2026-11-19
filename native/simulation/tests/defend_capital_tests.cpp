@@ -8,7 +8,6 @@
 #include <cmath>
 #include <filesystem>
 #include <format>
-#include <initializer_list>
 #include <vector>
 
 namespace ioj::sim::tests::defend_capital {
@@ -125,9 +124,17 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
     EXPECT_TRUE(simulation.result()) << "The mission finishes within 80 simulated seconds";
 }
 
-void expect_winner(double const advance_before_decision,
-                   std::initializer_list<Team> const destroyed_capitals,
-                   Team const winner) {
+struct OutcomeCase {
+    char const* name;
+    double seconds_before_decision;
+    std::vector<Team> destroyed_capitals;
+    Team winner;
+};
+
+class DefendCapitalOutcome : public ::testing::TestWithParam<OutcomeCase> {};
+
+TEST_P(DefendCapitalOutcome, AwardsVictoryOnTheDecidingTick) {
+    auto const& scenario{GetParam()};
     // Keep the live mission rules but isolate their inputs from incidental combat.
     auto const level{levels::authoring::DefinitionReader{script_root()}.read_level_source(R"(
       (level-with (load-script "defend_capital.scm")
@@ -144,33 +151,28 @@ void expect_winner(double const advance_before_decision,
     WorldlessSimulationTest harness{std::move(*built)};
     auto& simulation{harness.simulation()};
     simulation.start();
-    simulation.advance(advance_before_decision);
+    simulation.advance(scenario.seconds_before_decision);
     ASSERT_FALSE(simulation.result());
 
     std::vector<EntityId> victims;
-    for (auto const team : destroyed_capitals) {
+    for (auto const team : scenario.destroyed_capitals) {
         victims.push_back(capital_id(
             simulation, *level, team == Team::Blue ? "capitalship-blue" : "capitalship-red2"));
     }
     harness.queue_kills(victims, {});
     simulation.advance(simulation.clock().tick_period());
     ASSERT_TRUE(simulation.result());
-    EXPECT_EQ(simulation.result()->winner, winner);
+    EXPECT_EQ(simulation.result()->winner, scenario.winner);
 }
 
-TEST(DefendCapital, DestroyingTheRedObjectiveWinsEarly) {
-    expect_winner(1, {Team::Red}, Team::Blue);
-}
-TEST(DefendCapital, DestroyingTheBlueCapitalWinsEarly) {
-    expect_winner(1, {Team::Blue}, Team::Red);
-}
-TEST(DefendCapital, ProtectingTheRedObjectiveUntilTimeoutWins) {
-    expect_winner(59, {}, Team::Red);
-}
-TEST(DefendCapital, DestroyingTheRedObjectiveOnTheDeadlineWins) {
-    expect_winner(59, {Team::Red}, Team::Blue);
-}
-TEST(DefendCapital, SimultaneousCapitalLossesFavourBlue) {
-    expect_winner(1, {Team::Blue, Team::Red}, Team::Blue);
-}
+INSTANTIATE_TEST_SUITE_P(
+    MissionRules,
+    DefendCapitalOutcome,
+    ::testing::Values(OutcomeCase{"RedObjectiveDestroyedEarly", 1, {Team::Red}, Team::Blue},
+                      OutcomeCase{"BlueCapitalDestroyedEarly", 1, {Team::Blue}, Team::Red},
+                      OutcomeCase{"RedObjectiveSurvivesDeadline", 59, {}, Team::Red},
+                      OutcomeCase{"RedObjectiveDestroyedOnDeadline", 59, {Team::Red}, Team::Blue},
+                      OutcomeCase{
+                          "SimultaneousCapitalLosses", 1, {Team::Blue, Team::Red}, Team::Blue}),
+    [](auto const& info) { return info.param.name; });
 }
