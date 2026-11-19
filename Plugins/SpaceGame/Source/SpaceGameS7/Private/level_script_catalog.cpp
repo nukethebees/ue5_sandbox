@@ -23,10 +23,6 @@ auto default_level_script_directory() -> FString {
         FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts")));
 }
 
-auto default_campaign_script_directory() -> FString {
-    return FPaths::Combine(default_level_script_directory(), TEXT("Campaigns"));
-}
-
 auto default_level_script_root() -> FString {
     return FPaths::Combine(default_level_script_directory(), TEXT("catalog.scm"));
 }
@@ -41,16 +37,6 @@ auto load_level_script_catalog(FStringView const root_path) -> FLevelScriptCatal
         return result;
     }
 
-    for (auto const& campaign : catalog->campaigns) {
-        if (!campaign.definition) {
-            append_error(result.error, to_fstring(format_diagnostics(campaign.definition.error())));
-        }
-    }
-    auto const issues{resolve_catalog(*catalog)};
-    if (!issues.empty()) {
-        append_error(result.error, to_fstring(format_diagnostics(issues)));
-    }
-
     for (auto& native : catalog->levels) {
         auto const path{to_fstring(path_to_utf8(native.source_path))};
         FLevelScriptEntry entry{
@@ -61,6 +47,7 @@ auto load_level_script_catalog(FStringView const root_path) -> FLevelScriptCatal
         };
         if (!native.definition) {
             entry.error = to_fstring(format_diagnostics(native.definition.error()));
+            append_error(result.error, entry.error);
         } else {
             entry.definition = std::move(*native.definition);
             entry.display_title = to_fstring(entry.definition->metadata().title);
@@ -73,6 +60,7 @@ auto load_level_script_catalog(FStringView const root_path) -> FLevelScriptCatal
         FCampaignScriptEntry entry{.filename = FPaths::GetCleanFilename(path), .path = path};
         if (!native.definition) {
             entry.error = to_fstring(format_diagnostics(native.definition.error()));
+            append_error(result.error, entry.error);
         } else {
             entry.definition = std::move(*native.definition);
         }

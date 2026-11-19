@@ -640,7 +640,8 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     ASSERT_TRUE(write_files({
         {root / "metadata.scm", module_source("title", "\"Shared\"")},
         {root / "first.scm", mission},
-        {root / "second.scm", mission},
+        {root / "second.scm",
+         title_import + module_source("mission", "(copy-with " + source + " :id 'second)")},
         {root / "broken.scm", "(undefined-function)"},
         {root / "ignored.scm", "(error 'ignored \"Must not be loaded\")"},
         {root / "campaign.scm",
@@ -705,7 +706,9 @@ TEST(NativeLevelAuthoringReader, CatalogAndNestedImportsShareOneFileBudget) {
     ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
     ASSERT_EQ(catalog->levels.size(), limit);
     auto const admitted{(limit - 1) / 2};
-    ASSERT_TRUE(catalog->levels[admitted - 1].definition);
+    ASSERT_FALSE(catalog->levels[admitted - 1].definition);
+    EXPECT_TRUE(has_code(catalog->levels[admitted - 1].definition.error(),
+                         DiagnosticCode::DuplicateLevelId));
     ASSERT_FALSE(catalog->levels[admitted].definition);
     EXPECT_TRUE(
         catalog->levels[admitted].definition.error().front().message.contains("file count limit"));
@@ -962,63 +965,42 @@ TEST(NativeLevelAuthoringCollisionGrid, RejectsMalformedAndInvalidExplicitDimens
         auto source{minimal_source()};
         source.insert(source.size() - 1,
                       std::format(" :settings (settings :collision-grid {})", grid));
-        EXPECT_FALSE(DefinitionReader{}.read_level_source(source)) << grid;
+        EXPECT_FALSE(read_test_level(DefinitionReader{}, source)) << grid;
     }
 }
 
 TEST(NativeLevelAuthoringCatalog, RejectsDuplicatesCyclesAndUnavailableDependencies) {
-    std::vector<LevelCatalogEntry> duplicates{{7, "a.scm", checked_level("same")},
-                                              {31, "b.scm", checked_level("same")}};
-    auto const duplicate_issues{validate_level_catalog(duplicates)};
-    ASSERT_EQ(duplicate_issues.size(), 2u);
-    EXPECT_EQ(duplicate_issues[0].entry_index, 7u);
-    EXPECT_EQ(duplicate_issues[1].entry_index, 31u);
-    std::vector<LevelCatalogEntry> cycles{{2, "a.scm", checked_level("a", {LevelId{"b"}})},
-                                          {4, "b.scm", checked_level("b", {LevelId{"a"}})},
-                                          {9, "c.scm", checked_level("c", {LevelId{"a"}})}};
-    auto const cycle_issues{validate_level_catalog(cycles)};
-    EXPECT_EQ(cycle_issues.size(), 3u);
-    for (std::size_t index{}; index < 2; ++index) {
-        EXPECT_EQ(cycle_issues[index].diagnostic.code, DiagnosticCode::UnlockCycle);
-        EXPECT_TRUE(cycle_issues[index].diagnostic.message.contains("a -> b -> a"));
+    DefinitionCatalog catalog{
+        {{"a.scm", checked_level("a", {LevelId{"b"}})},
+         {"b.scm", checked_level("b", {LevelId{"a"}})},
+         {"c.scm", checked_level("c", {LevelId{"a"}})},
+         {"d.scm", checked_level("d", {LevelId{"missing"}})}},
+        {{"first.scm", CampaignDefinition{CampaignId{"same"}, "First", {LevelId{"a"}}}},
+         {"second.scm", CampaignDefinition{CampaignId{"same"}, "Second", {LevelId{"missing"}}}}}};
+    for (auto const& entry : catalog.levels) {
+        ASSERT_FALSE(entry.definition);
     }
-    std::vector<LevelCatalogEntry> missing{{2, "a.scm", checked_level("a", {LevelId{"missing"}})},
-                                           {8, "b.scm", checked_level("b", {LevelId{"a"}})}};
-    EXPECT_EQ(validate_level_catalog(missing).size(), 2u);
-}
-TEST(NativeLevelAuthoringCatalog, ValidatesCampaignIdsAndLevelReferences) {
-    std::vector<LevelCatalogEntry> levels{{3, "a.scm", checked_level("a")}};
-    std::vector<CampaignCatalogEntry> campaigns{
-        {5, "first.scm", {CampaignId{"same"}, "First", {LevelId{"a"}}}},
-        {8, "second.scm", {CampaignId{"same"}, "Second", {LevelId{"missing"}}}}};
-    auto const issues{validate_campaign_catalog(campaigns, levels)};
-    EXPECT_EQ(issues.size(), 3u);
-    campaigns.resize(1);
-    campaigns[0].definition.level_ids = {LevelId{"missing"}};
-    auto const missing{validate_campaign_catalog(campaigns, levels)};
-    ASSERT_EQ(missing.size(), 1u);
-    EXPECT_EQ(missing[0].entry_index, 5u);
-    EXPECT_EQ(missing[0].diagnostic.code, DiagnosticCode::UnavailableLevel);
-
-    campaigns = {{0, "first.scm", {CampaignId{"first"}, "First", {LevelId{"a"}}}},
-                 {1, "second.scm", {CampaignId{"second"}, "Second", {LevelId{"a"}}}}};
-    EXPECT_TRUE(validate_campaign_catalog(campaigns, levels).empty());
+    EXPECT_TRUE(has_code(catalog.levels[0].definition.error(), DiagnosticCode::UnlockCycle));
+    EXPECT_TRUE(has_code(catalog.levels[1].definition.error(), DiagnosticCode::UnlockCycle));
+    EXPECT_TRUE(has_code(catalog.levels[2].definition.error(), DiagnosticCode::UnavailableLevel));
+    EXPECT_TRUE(has_code(catalog.levels[3].definition.error(), DiagnosticCode::UnavailableLevel));
+    for (auto const& entry : catalog.campaigns) {
+        ASSERT_FALSE(entry.definition);
+        EXPECT_TRUE(has_code(entry.definition.error(), DiagnosticCode::DuplicateCampaignId));
+        EXPECT_TRUE(has_code(entry.definition.error(), DiagnosticCode::UnavailableLevel));
+    }
 }
 
 TEST(NativeLevelAuthoringCatalog, ResolvesInvalidEntriesAndOrdersValidCampaigns) {
     DefinitionCatalog catalog{
-        .levels = {{"first.scm", checked_level("same")},
-                   {"second.scm", checked_level("same")},
-                   {"valid.scm", checked_level("valid")}},
-        .campaigns =
-            {{"zulu.scm", CampaignDefinition{CampaignId{"zulu"}, "Zulu", {LevelId{"valid"}}}},
-             {"invalid.scm",
-              CampaignDefinition{CampaignId{"invalid"}, "Invalid", {LevelId{"same"}}}},
-             {"second-alpha.scm", CampaignDefinition{CampaignId{"b"}, "alpha", {LevelId{"valid"}}}},
-             {"first-alpha.scm", CampaignDefinition{CampaignId{"a"}, "Alpha", {LevelId{"valid"}}}}},
+        {{"first.scm", checked_level("same")},
+         {"second.scm", checked_level("same")},
+         {"valid.scm", checked_level("valid")}},
+        {{"zulu.scm", CampaignDefinition{CampaignId{"zulu"}, "Zulu", {LevelId{"valid"}}}},
+         {"invalid.scm", CampaignDefinition{CampaignId{"invalid"}, "Invalid", {LevelId{"same"}}}},
+         {"second-alpha.scm", CampaignDefinition{CampaignId{"b"}, "alpha", {LevelId{"valid"}}}},
+         {"first-alpha.scm", CampaignDefinition{CampaignId{"a"}, "Alpha", {LevelId{"valid"}}}}},
     };
-    auto const errors{resolve_catalog(catalog)};
-    EXPECT_EQ(errors.size(), 3u);
     EXPECT_FALSE(catalog.levels[0].definition);
     EXPECT_FALSE(catalog.levels[1].definition);
     ASSERT_TRUE(catalog.levels[2].definition);
@@ -1041,23 +1023,17 @@ TEST(NativeLevelAuthoringCatalog, ResolvesInvalidEntriesAndOrdersValidCampaigns)
 
 TEST(NativeLevelAuthoringFixtures, ReadsEveryCheckedInLevelAndCampaign) {
     std::filesystem::path const root{IOJ_LEVEL_SCRIPTS};
-    std::vector<LevelCatalogEntry> levels;
-    std::vector<CampaignCatalogEntry> campaigns;
     auto catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
     ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
     for (auto& entry : catalog->levels) {
         ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
-        levels.emplace_back(levels.size(), entry.source_path, std::move(*entry.definition));
     }
     for (auto& entry : catalog->campaigns) {
         ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
-        campaigns.emplace_back(campaigns.size(), entry.source_path, std::move(*entry.definition));
     }
     auto const benchmark{DefinitionReader{}.read_level_file(root / "Batch_benchmark.scm")};
     ASSERT_TRUE(benchmark) << format_diagnostics(benchmark.error());
-    EXPECT_GT(levels.size(), 30u);
-    EXPECT_GT(campaigns.size(), 5u);
-    EXPECT_TRUE(validate_level_catalog(levels).empty());
-    EXPECT_TRUE(validate_campaign_catalog(campaigns, levels).empty());
+    EXPECT_GT(catalog->levels.size(), 30u);
+    EXPECT_GT(catalog->campaigns.size(), 5u);
 }
 }

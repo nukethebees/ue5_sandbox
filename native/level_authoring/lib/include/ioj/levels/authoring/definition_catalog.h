@@ -7,10 +7,11 @@
 
 namespace ioj::levels::authoring {
 struct DefinitionCatalog {
+    DefinitionCatalog(std::vector<DefinitionEntry<LevelDefinition>> levels,
+                      std::vector<DefinitionEntry<CampaignDefinition>> campaigns);
+
     std::vector<DefinitionEntry<LevelDefinition>> levels;
     std::vector<DefinitionEntry<CampaignDefinition>> campaigns;
 };
 
-// Invalidates entries involved in cross-definition errors and orders campaigns for display.
-[[nodiscard]] auto resolve_catalog(DefinitionCatalog& catalog) -> Diagnostics;
 }

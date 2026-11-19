@@ -148,64 +148,34 @@ auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
         with_interpreter(
             root,
             [&](s7::Interpreter& interpreter) -> std::expected<DefinitionCatalog, Diagnostics> {
-                auto paths{
-                    interpreter.import_ast(ioj::path_to_utf8(full_path.filename()), "catalog")
-                        .and_then([](s7::Ast const& ast) {
-                            return s7::read<CatalogInput>(s7::Reader{ast}, ast.root, "catalog");
-                        })};
+                auto paths{interpreter
+                               .import_ast(ioj::path_to_utf8(root),
+                                           ioj::path_to_utf8(full_path.filename()),
+                                           "catalog")
+                               .and_then([](s7::Ast const& ast) {
+                                   return s7::read<CatalogInput>(
+                                       s7::Reader{ast}, ast.root, "catalog");
+                               })};
                 if (!paths) {
                     return std::unexpected{detail::diagnostics(std::move(paths.error()))};
                 }
-                DefinitionCatalog catalog;
+                std::vector<DefinitionEntry<LevelDefinition>> levels;
+                std::vector<DefinitionEntry<CampaignDefinition>> campaigns;
                 for (auto const& path : paths->levels) {
-                    catalog.levels.push_back(read_entry<LevelDefinition>(
+                    levels.push_back(read_entry<LevelDefinition>(
                         interpreter, root, path, "mission", [](s7::Ast const& ast) {
                             return parse_level(ast, ast.root);
                         }));
                 }
                 for (auto const& path : paths->campaigns) {
-                    catalog.campaigns.push_back(read_entry<CampaignDefinition>(
-                        interpreter, root, path, "campaign", decode_campaign));
+                    campaigns.push_back(read_entry<CampaignDefinition>(
+                        interpreter, root, path, "campaign", [](s7::Ast const& ast) {
+                            return parse_campaign(ast, ast.root);
+                        }));
                 }
-                return catalog;
+                return DefinitionCatalog{std::move(levels), std::move(campaigns)};
             }),
         full_path);
-}
-
-auto DefinitionReader::read_source_ast(std::string_view const source) const
-    -> std::expected<s7::Ast, Diagnostics> {
-    return evaluate(source, script_library_root_);
-}
-
-auto DefinitionReader::read_level_source(std::string_view const source) const
-    -> LevelDefinitionReadResult {
-    return evaluate(source, script_library_root_).and_then([&](s7::Ast const& ast) {
-        return parse_level(ast, ast.root);
-    });
-}
-
-auto DefinitionReader::read_level_module(std::string_view source,
-                                         std::filesystem::path const& path) const
-    -> LevelDefinitionReadResult {
-    auto const root{script_library_root_.empty() ? std::filesystem::absolute(path).parent_path()
-                                                 : script_library_root_};
-    return with_source_path(
-        module_value(source, path, "mission", root).and_then([](s7::Ast const& ast) {
-            return parse_level(ast, ast.root);
-        }),
-        path);
-}
-
-auto DefinitionReader::read_campaign_source(std::string_view const source) const
-    -> CampaignDefinitionReadResult {
-    return evaluate(source, script_library_root_).and_then(decode_campaign);
-}
-
-auto DefinitionReader::read_settings_source(std::string_view const source,
-                                            settings::Settings base) const -> SettingsReadResult {
-    return evaluate(source, script_library_root_).and_then([&](s7::Ast const& ast) {
-        return parse_settings(ast, ast.root, std::move(base));
-    });
 }
 
 auto DefinitionReader::read_settings_file(std::filesystem::path const& path,

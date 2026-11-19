@@ -34,7 +34,6 @@ struct SPACEGAMES7_API FLevelScriptCatalogResult {
 };
 
 SPACEGAMES7_API auto default_level_script_directory() -> FString;
-SPACEGAMES7_API auto default_campaign_script_directory() -> FString;
 SPACEGAMES7_API auto default_level_script_root() -> FString;
 SPACEGAMES7_API auto load_level_script_catalog(FStringView root_path) -> FLevelScriptCatalogResult;
 SPACEGAMES7_API auto load_level_script_catalog() -> FLevelScriptCatalogResult;
