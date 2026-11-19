@@ -28,10 +28,7 @@ Settings use ordinary records and readers; there is no separate settings-record 
 Simulation, presentation and starfield settings use these typed readers. `settings-layers`
 applies patches in order, validating supplied fields as they are decoded. Simulation's
 handwritten root receives the resolved groups, then validates cross-field constraints.
-Load base settings first and pass the result to `DefinitionReader::read_level_source` or
-`read_level_file`. A decoded level holds complete effective settings, not a patch that can
-be applied to an unrelated base later. Reading a level without a seed uses C++ defaults;
-omitting settings altogether leaves its optional configuration absent.
+A mission imports shared settings and composes its layers in Scheme. The file reader decodes the result over C++ defaults.
 Shared configuration types live in `native/levels`; runtime state remains in simulation.
 Archetype-specific entity spawn overrides remain handwritten.
 

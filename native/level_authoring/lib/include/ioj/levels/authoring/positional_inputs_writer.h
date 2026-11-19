@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ioj/levels/authoring/input_writers.h"
+#include "ioj/levels/authoring/identifier_writer.h"
 #include "ioj/levels/authoring/positional_inputs.h"
 #include "ioj/levels/level_camera_definition_writer.h"
 #include <ioj/s7/writer.h>

@@ -71,48 +71,6 @@ TEST(SchemeRecords, PositionalRecordsUseSchemaFieldNames) {
     EXPECT_EQ(decode_record<UnlockInput>(s7::serialize(input)).level, input.level);
 }
 
-TEST(SchemeSerialization, CompleteLevelInputsPreserveAllAuthoredFields) {
-    auto original{decode_record<LevelInput>(R"(
-      (level :id 'roundtrip :title "Quote \" and slash \\" :description "line\nline"
-        :par-time 15.25 :player 'pilot
-        :entities (list
-          (entity :id 'pilot :archetype 'player-fighter :team 'blue :position '(0 0 0) :health 123)
-          (entity :id 'capital :archetype 'capital-ship :team 'red
-            :position '(1000.1234567890123 -0.00001 20.5) :rotation '(10 20 30)
-            :health 456 :initial-spawn-delay 3.25 :spawn-cooldown 7.5)
-          (entity :id 'turret :archetype 'static-turret :team 'red :position '(9000 0 0)
-            :health 789 :laser-damage 321 :spawn-at 30)
-          (entity :id 'spinner :archetype 'tube-spinner :team 'white :position '(5000 0 0)
-            :rotation '(0 45 0) :initial-fire-point 2))
-        :logic (logic
-          (on :when (entity-destroyed 'turret) :do (win 'blue)))))")};
-    auto const encoded{emit_level_source(original)};
-    EXPECT_EQ(encoded, emit_level_source(original));
-    EXPECT_TRUE(s7::equivalent(decode_record<LevelInput>(s7::serialize(original)), original));
-    auto const definition{DefinitionReader{}.read_level_module(encoded, "roundtrip.scm")};
-    ASSERT_TRUE(definition) << format_diagnostics(definition.error());
-    auto const resolved{make_level_input(*definition)};
-    EXPECT_TRUE(s7::equivalent(decode_record<LevelInput>(s7::serialize(resolved)), resolved));
-}
-
-TEST(SchemeSerialization, SparseOverridesClearOptionalsAndReplaceCollections) {
-    LevelInput base;
-    base.id = LevelId{"example"};
-    base.title = "Example";
-    base.entities.push_back({.id = EntityId{"old"}});
-    base.camera = LevelCameraDefinition{{EntityId{"old"}}, {-1., 0., 0.}, 1000.};
-    auto changed{base};
-    changed.entities.clear();
-    changed.camera.reset();
-    changed.settings.fighters.speed = 4321.125f;
-    auto const encoded{s7::serialize(changed, base)};
-    EXPECT_TRUE(encoded.contains(":camera :none"));
-    EXPECT_TRUE(encoded.contains(":entities (list)"));
-    EXPECT_FALSE(encoded.contains(":title"));
-    EXPECT_TRUE(s7::equivalent(apply_record(base, encoded), changed));
-    EXPECT_TRUE(s7::equivalent(apply_record(base, s7::serialize(base, base)), base));
-}
-
 TEST(SchemeSerialization, SettingsRoundTripWithNestedDifferencesAndFalseValues) {
     settings::Settings base;
     auto changed{base};
@@ -144,13 +102,6 @@ TEST(SchemeSerialization, SymbolsRemainSymbolsAndOptionalRecordsPreserveTheirBas
         EXPECT_TRUE(s7::equivalent(decode_record<EntityInput>(s7::serialize(changed)), changed));
         EXPECT_TRUE(s7::equivalent(apply_record(base, s7::serialize(changed, base)), changed));
     }
-    LevelInput level;
-    level.id = LevelId{"example"};
-    level.title = "Example";
-    level.camera = LevelCameraDefinition{{EntityId{"enemy"}}, {-1., 0., 0.}, 1000.};
-    auto changed{level};
-    changed.camera->distance = 2000.;
-    EXPECT_TRUE(s7::equivalent(apply_record(level, s7::serialize(changed, level)), changed));
 }
 
 TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {

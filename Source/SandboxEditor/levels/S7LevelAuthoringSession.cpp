@@ -146,7 +146,6 @@ auto collect_editor_scene(ULevel const& level,
                           levels::authoring::LevelInput& input) -> std::expected<void, FString> {
     using namespace s7_level_authoring_session_detail;
     input.entities.clear();
-    input.logic = {};
     input.player = {};
     input.camera.reset();
     TMap<AActor const*, levels::EntityId> ids;

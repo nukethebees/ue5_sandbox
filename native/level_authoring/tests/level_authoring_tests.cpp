@@ -1,3 +1,4 @@
+#include "module_fixture.h"
 #include "settings_diff.h"
 #include <ioj/files.h>
 #include <ioj/levels/authoring/campaign_parser.h>
@@ -31,16 +32,6 @@ namespace {
 auto module_source(std::string_view name, std::string_view value) -> std::string {
     return std::format("(export (rename result {}))\n(define result {})\n", name, value);
 }
-auto emit_source(LevelDefinition const& level) -> std::expected<std::string, Diagnostics> {
-    return emit_level_source(make_level_input(level));
-}
-
-auto emit_source(LevelDefinitionComponents definition) -> std::expected<std::string, Diagnostics> {
-    return LevelDefinition::make(std::move(definition)).transform([](LevelDefinition const& level) {
-        return emit_level_source(make_level_input(level));
-    });
-}
-
 auto make_level(std::string id, std::vector<LevelId> unlocks = {}) -> LevelDefinitionComponents {
     LevelDefinitionComponents result{
         .metadata = {.id = LevelId{std::move(id)}, .title = "Test Level"},
@@ -799,19 +790,6 @@ TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
             EXPECT_DOUBLE_EQ(entity.rotation.yaw, 0.0);
             EXPECT_DOUBLE_EQ(entity.rotation.roll, 0.0);
         }
-
-        auto const emitted{emit_source(*result)};
-        ASSERT_TRUE(emitted) << format_diagnostics(emitted.error());
-        EXPECT_TRUE(emitted->contains(":id 'red-capital-ship-1"));
-        auto const round_trip{DefinitionReader{}.read_level_module(*emitted, "emitted.scm")};
-        ASSERT_TRUE(round_trip) << format_diagnostics(round_trip.error());
-        for (auto const& original : result->entities()) {
-            auto const found{
-                std::ranges::find(round_trip->entities(), original.id, &EntitySpawnDefinition::id)};
-            ASSERT_NE(found, round_trip->entities().end());
-            EXPECT_DOUBLE_EQ(found->position.x(), original.position.x());
-            EXPECT_DOUBLE_EQ(found->spawn_time_seconds, original.spawn_time_seconds);
-        }
     }
 }
 TEST(NativeLevelAuthoringReader, OptionalPropertiesStillRejectMalformedValuesAndDuplicateIds) {
@@ -890,13 +868,6 @@ TEST(NativeLevelAuthoringReader, DerivesDistinctTeamsIncludingScheduledSpawns) {
     EXPECT_TRUE(LevelDefinition::make(definition));
     EXPECT_EQ(participating_teams(LevelDefinition::make(definition).value()),
               (std::vector{Team::Red, Team::Blue}));
-    auto const source{emit_source(definition)};
-    ASSERT_TRUE(source) << format_diagnostics(source.error());
-    EXPECT_FALSE(source->contains(":teams"));
-    auto const parsed{DefinitionReader{}.read_level_module(*source, "emitted.scm")};
-    ASSERT_TRUE(parsed);
-    EXPECT_EQ(participating_teams(*parsed),
-              participating_teams(LevelDefinition::make(definition).value()));
     definition.entities.back().team = static_cast<Team>(255);
     auto const invalid{LevelDefinition::make(definition)};
     ASSERT_FALSE(invalid);
@@ -954,41 +925,7 @@ TEST(NativeLevelAuthoringReader, DistinguishesEvaluationConversionAndParsingFail
     EXPECT_TRUE(has_code(conversion.error(), DiagnosticCode::UnsupportedValue));
     EXPECT_TRUE(has_code(parsing.error(), DiagnosticCode::ExpectedRecord));
 }
-TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
-    auto first{make_level("writer-example")};
-    first.metadata.title = "Writer \"Example\"";
-    first.metadata.description = "Line one\nLine two.";
-    first.entities.push_back({.id = EntityId{"red-capital"},
-                              .archetype = EntityArchetype::CapitalShip,
-                              .team = Team::Red,
-                              .position = {1000.0, 200.12349, -300.5},
-                              .rotation = {0.0, 90.0, 0.0},
-                              .spawn_time_seconds = NonNegativeFinite<double>{2.5}});
-    auto second{first};
-    auto const a{emit_source(first)};
-    auto const b{emit_source(second)};
-    ASSERT_TRUE(a) << format_diagnostics(a.error());
-    ASSERT_TRUE(b);
-    EXPECT_EQ(*a, *b);
-    EXPECT_TRUE(a->contains(":spawn-at 2.5"));
-    auto const loaded{DefinitionReader{}.read_level_module(*a, "emitted.scm")};
-    ASSERT_TRUE(loaded) << format_diagnostics(loaded.error());
-    EXPECT_EQ(loaded->metadata().title, first.metadata.title);
-    EXPECT_EQ(loaded->metadata().description, first.metadata.description);
-    EXPECT_EQ(loaded->entities().size(), 2u);
-}
-TEST(NativeLevelAuthoringWriter, HandlesEmptyCollectionsEscapesAndNumericBoundaries) {
-    auto definition{make_level("numbers")};
-    definition.metadata.description = std::string{"a\0b\t\r\\\"", 7};
-    definition.entities[0].position = {-0.0001, 0.0005, 1.0e100};
-    auto source{emit_source(definition)};
-    ASSERT_TRUE(source) << format_diagnostics(source.error());
-    auto parsed{DefinitionReader{}.read_level_module(*source, "emitted.scm")};
-    ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-    EXPECT_EQ(parsed->metadata().description, definition.metadata.description);
-    EXPECT_EQ(parsed->entities()[0].position, definition.entities[0].position);
-}
-TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourceRoundTrip) {
+TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverrides) {
     settings::Settings base;
     base.fighters.speed = 7000.f;
     base.collision_grid.cell_size = {2500.f, 2500.f, 10000.f};
@@ -1010,14 +947,9 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
                   :collision-grid (collision-grid :cell-size '(2500 2500 10000)))
                 (settings :collision-grid (collision-grid{}))))",
                                     fields));
-        auto const definition{DefinitionReader{}.read_level_source(authored)};
+        auto const definition{read_test_level(DefinitionReader{}, authored)};
         ASSERT_TRUE(definition) << format_diagnostics(definition.error());
         EXPECT_PRED_FORMAT2(structurally_equal, expected, definition->settings());
-        auto const source{emit_source(*definition)};
-        ASSERT_TRUE(source) << format_diagnostics(source.error());
-        auto const parsed{DefinitionReader{}.read_level_module(*source, "emitted.scm")};
-        ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-        EXPECT_PRED_FORMAT2(structurally_equal, expected, parsed->settings());
     }
 }
 TEST(NativeLevelAuthoringCollisionGrid, RejectsMalformedAndInvalidExplicitDimensions) {

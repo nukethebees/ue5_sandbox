@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ioj/levels/authoring/input_writers.h"
+#include "ioj/levels/authoring/identifier_writer.h"
 #include "ioj/levels/authoring/level_inputs.h"
 #include "ioj/levels/authoring/positional_inputs_writer.h"
 #include "ioj/levels/level_camera_definition_writer.h"
@@ -31,27 +31,6 @@ struct TypeWriter<levels::authoring::EntityInput> : RecordWriter<levels::authori
         visit("initial-spawn-delay", &T::initial_spawn_delay);
         visit("spawn-cooldown", &T::spawn_cooldown);
         visit("initial-fire-point", &T::initial_fire_point);
-    }
-};
-
-template <>
-struct TypeWriter<levels::authoring::LevelInput> : RecordWriter<levels::authoring::LevelInput> {
-    static constexpr std::string_view tag() { return "level"; }
-
-    template <typename Visitor>
-    static void properties(Visitor& visit) {
-        using T = ioj::levels::authoring::LevelInput;
-
-        visit("id", &T::id);
-        visit("title", &T::title);
-        visit("description", &T::description);
-        visit("par-time", &T::par_time);
-        visit("unlock", &T::unlock);
-        visit("player", &T::player);
-        visit("camera", &T::camera);
-        visit("settings", &T::settings);
-        visit("logic", &T::logic);
-        visit("entities", &T::entities);
     }
 };
 

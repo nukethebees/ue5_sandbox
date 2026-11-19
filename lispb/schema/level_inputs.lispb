@@ -4,7 +4,7 @@
   :namespace ioj::levels::authoring
 
   (record UnlockInput :generate-s7-writer true
-    :s7-writer-includes ("ioj/levels/authoring/input_writers.h" "ioj/levels/level_camera_definition_writer.h")
+    :s7-writer-includes ("ioj/levels/authoring/identifier_writer.h" "ioj/levels/level_camera_definition_writer.h")
     :generate-s7-reader true :s7-tag "level-completed" :s7-positional true
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
     (member level @input_level_id :initializer "" :s7-name "level-id")
@@ -16,7 +16,7 @@
   :header-include "ioj/levels/authoring/level_inputs.h"
   :namespace ioj::levels::authoring
   (record EntityInput :generate-s7-writer true
-    :s7-writer-includes ("ioj/levels/authoring/input_writers.h" "ioj/levels/authoring/positional_inputs_writer.h" "ioj/levels/level_camera_definition_writer.h")
+    :s7-writer-includes ("ioj/levels/authoring/identifier_writer.h" "ioj/levels/authoring/positional_inputs_writer.h" "ioj/levels/level_camera_definition_writer.h")
     :generate-visitor true :generate-s7-reader true :s7-tag "entity"
     :s7-reader-includes ("ioj/levels/authoring/input_readers.h"
                         "ioj/levels/authoring/positional_inputs_reader.h")
@@ -34,8 +34,7 @@
     (projections (cpp)))
 
 
-  (record LevelInput :generate-s7-writer true
-    :s7-writer-includes ("ioj/levels/authoring/input_writers.h" "ioj/levels/authoring/positional_inputs_writer.h" "ioj/levels/level_camera_definition_writer.h")
+  (record LevelInput
     :generate-s7-reader true :s7-tag "level"
     :s7-reader-includes ("ioj/levels/level_camera_definition_reader.h")
     (member id @input_level_id :initializer "" :required true)
