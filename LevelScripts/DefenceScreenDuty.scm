@@ -1,28 +1,34 @@
-(load-script "Libraries/logic.scm")
-(level :settings (load-script "Settings/base.scm")
-  :id 'defence-screen-duty
-  :title "Defence 01: Screen Duty"
-  :description "Keep the assigned capital ship operational until the enemy attack window closes."
+(export mission)
 
-  :unlock (list
-    (level-completed 'strike-reserve-breakthrough))
+(define logic-library (import-module "Libraries/logic.scm"))
+(define destroy-any (module-ref logic-library 'destroy-any))
+(define level-delay (module-ref logic-library 'level-delay))
+(define win-race (module-ref logic-library 'win-race))
+(define mission
+  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    :id 'defence-screen-duty
+    :title "Defence 01: Screen Duty"
+    :description "Keep the assigned capital ship operational until the enemy attack window closes."
 
-  :player 'player
+    :unlock (list
+      (level-completed 'strike-reserve-breakthrough))
 
-  :logic (logic
-    (win-race 'blue 'red
-    (level-delay 75)
-    (destroy-any '(player blue-capital))))
+    :player 'player
 
-  :entities (list
-    (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 -95000 8000)
-      :rotation '(0 90 0))
+    :logic (logic
+      (win-race 'blue 'red
+      (level-delay 75)
+      (destroy-any '(player blue-capital))))
 
-    (entity :id 'blue-capital :archetype 'capital-ship :team 'blue
-      :position '(0 -50000 0)
-      :rotation '(0 90 0))
+    :entities (list
+      (entity :id 'player :archetype 'player-fighter :team 'blue
+        :position '(0 -95000 8000)
+        :rotation '(0 90 0))
 
-    (entity :id 'red-capital :archetype 'capital-ship :team 'red
-      :position '(0 70000 0)
-      :rotation '(0 -90 0))))
+      (entity :id 'blue-capital :archetype 'capital-ship :team 'blue
+        :position '(0 -50000 0)
+        :rotation '(0 90 0))
+
+      (entity :id 'red-capital :archetype 'capital-ship :team 'red
+        :position '(0 70000 0)
+        :rotation '(0 -90 0)))))

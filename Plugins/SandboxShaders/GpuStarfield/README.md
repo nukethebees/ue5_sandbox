@@ -6,9 +6,11 @@ properties. Use **Apply Settings** to reload a script in the editor; actor const
 it. Settings layers apply in order, so an override can change only the required fields:
 
 ```scheme
-(settings-layers
-  (load-script "Settings/base.scm")
-  (starfield :generation (generation :star-count 100000)))
+(export game-settings)
+(define game-settings
+  (settings-layers
+    (module-ref (import-module "Settings/base.scm") 'game-settings)
+    (starfield :generation (generation :star-count 100000))))
 ```
 
 Run the CMake benchmark or matrix workflow for target-hardware evidence.

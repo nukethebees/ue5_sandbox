@@ -1,51 +1,60 @@
-(load-script "Libraries/logic.scm")
-(load-script "Libraries/formations.scm")
+(export mission)
 
-(level :settings (load-script "Settings/base.scm")
-  :id 'evaluation-break-the-spear
-  :title "Evaluation 01: Break the Spear"
-  :description "Destroy the enemy flagship while keeping the task group alive for 150 seconds."
+(define logic-library (import-module "Libraries/logic.scm"))
+(define destroy-all (module-ref logic-library 'destroy-all))
+(define destroy-any (module-ref logic-library 'destroy-any))
+(define level-delay (module-ref logic-library 'level-delay))
+(define win-race (module-ref logic-library 'win-race))
+(define formations (import-module "Libraries/formations.scm"))
+(define entities-at (module-ref formations 'entities-at))
+(define named-capitals (module-ref formations 'named-capitals))
 
-  :unlock (list
-    (level-completed 'counteroffensive-fleet-termination))
+(define mission
+  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    :id 'evaluation-break-the-spear
+    :title "Evaluation 01: Break the Spear"
+    :description "Destroy the enemy flagship while keeping the task group alive for 150 seconds."
 
-  :player 'player
+    :unlock (list
+      (level-completed 'counteroffensive-fleet-termination))
 
-  :logic (logic
-    (win-race 'blue 'red
-    (all-of
-      (level-delay 150)
-      (destroy-all '(red-flagship)))
-    (any-of
-      (destroy-any
-        '(player blue-capital-0 blue-capital-1))
-      (level-delay 150))))
+    :player 'player
 
-  :entities (append
-    (list
-      (entity :id 'player :archetype 'player-fighter :team 'blue
-        :position '(0 -95000 8000)
-        :rotation '(0 90 0)))
+    :logic (logic
+      (win-race 'blue 'red
+      (all-of
+        (level-delay 150)
+        (destroy-all '(red-flagship)))
+      (any-of
+        (destroy-any
+          '(player blue-capital-0 blue-capital-1))
+        (level-delay 150))))
 
-    (named-capitals 'blue '(0 90 0)
-      '((blue-capital-0 (-35000 -50000 -4000))
-        (blue-capital-1 (35000 -50000 4000))))
+    :entities (append
+      (list
+        (entity :id 'player :archetype 'player-fighter :team 'blue
+          :position '(0 -95000 8000)
+          :rotation '(0 90 0)))
 
-    (entities-at 'static-turret 'blue '(0 90 0)
-      '((-85000 -20000 0)
-        (85000 -20000 0)))
+      (named-capitals 'blue '(0 90 0)
+        '((blue-capital-0 (-35000 -50000 -4000))
+          (blue-capital-1 (35000 -50000 4000))))
 
-    (list
-      (entity :id 'red-flagship :archetype 'capital-ship :team 'red
-        :position '(0 115000 5000)
-        :rotation '(0 -90 0)))
+      (entities-at 'static-turret 'blue '(0 90 0)
+        '((-85000 -20000 0)
+          (85000 -20000 0)))
 
-    (entities-at 'capital-ship 'red '(0 -90 0)
-      '((-70000 95000 -5000)
-        (70000 95000 -5000)))
+      (list
+        (entity :id 'red-flagship :archetype 'capital-ship :team 'red
+          :position '(0 115000 5000)
+          :rotation '(0 -90 0)))
 
-    (list
-      (entity :archetype 'capital-ship :team 'red
-        :position '(0 165000 -5000)
-        :rotation '(0 -90 0)
-        :spawn-at 75))))
+      (entities-at 'capital-ship 'red '(0 -90 0)
+        '((-70000 95000 -5000)
+          (70000 95000 -5000)))
+
+      (list
+        (entity :archetype 'capital-ship :team 'red
+          :position '(0 165000 -5000)
+          :rotation '(0 -90 0)
+          :spawn-at 75)))))

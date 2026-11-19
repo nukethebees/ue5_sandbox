@@ -1,4 +1,6 @@
-(level
+(export scene)
+
+(define scene (level
   :id 'defend-capital
   :title "defend_capital"
   :description ""
@@ -499,4 +501,4 @@
       :laser-damage :none
       :initial-spawn-delay :none
       :spawn-cooldown :none
-      :initial-fire-point :none)))
+      :initial-fire-point :none))))

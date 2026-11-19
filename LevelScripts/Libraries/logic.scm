@@ -1,3 +1,5 @@
+(export destroy-all destroy-any level-delay win-race)
+
 ;; Require every listed entity to be destroyed.
 (define (destroy-all ids)
   (apply all-of (map entity-destroyed ids)))

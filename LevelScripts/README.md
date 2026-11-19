@@ -4,48 +4,46 @@ Copy an existing `.scm` scenario, give it a unique `:id`, and add its path to
 `catalog.scm` or a campaign. Use symbols for IDs and quoted lists for positions.
 
 ```scheme
-(level :id 'example :title "Example"
-  :player 'player
-  :settings (fighters :speed 3000)
-  :logic (logic
-    (define success (entity-destroyed 'turret))
-    (define decision
-      (latch :when (any-of success (entity-destroyed 'player)) :value success))
-    (on :when (latched-true decision) :do (win 'blue))
-    (on :when (latched-false decision) :do (win 'red)))
-  :entities (list
-    (entity :id 'player :archetype 'player-fighter
-      :team 'blue :position '(0 0 0))
-    (entity :id 'turret :archetype 'static-turret :team 'red
-      :position '(0 10000 0))))
+(export mission)
+(define mission
+  (level :id 'example :title "Example"
+    :player 'player
+    :settings (fighters :speed 3000)
+    :logic (logic
+      (define success (entity-destroyed 'turret))
+      (define decision
+        (latch :when (any-of success (entity-destroyed 'player)) :value success))
+      (on :when (latched-true decision) :do (win 'blue))
+      (on :when (latched-false decision) :do (win 'red)))
+    :entities (list
+      (entity :id 'player :archetype 'player-fighter
+        :team 'blue :position '(0 0 0))
+      (entity :id 'turret :archetype 'static-turret :team 'red
+        :position '(0 10000 0)))))
 ```
 
-Settings start from C++ defaults. Each level explicitly includes any shared settings
-in its `:settings` field; launchers do not inject a baseline. Compose overrides in order:
+Each import evaluates a fresh module. Definitions are private unless listed in a top-level
+`(export name ...)` declaration. Use `(export (rename local public))` to publish an alias.
+Paths are relative to the script root. The catalog reads the `mission` export from levels
+and the `campaign` export from campaigns.
+
+Settings start from C++ defaults. For an editor-backed level, apply shared settings,
+explicit editor overrides and mission overrides in that order.
 
 ```scheme
-(settings-layers
-  (load-script "Settings/base.scm")
-  (fighters :speed 3000))
-```
-
-Imports are relative to `LevelScripts/`. Shared formation helpers live in
-`Libraries/`. Assets, colours and scene bindings stay in Unreal properties.
-For editor-backed levels, the human-owned entry point sets the order explicitly:
-
-```scheme
-(define scene (load-script "LevelName/editor-config.scm"))
-(level-with scene :settings (settings-layers
-  (load-script "Settings/base.scm")
-  (level-ref scene :settings)
-  (fighters :speed 3000))) ; mission override
+(export mission)
+(define defaults (module-ref (import-module "Settings/base.scm") 'game-settings))
+(define scene (module-ref (import-module "LevelName/editor-config.scm") 'scene))
+(define mission
+  (copy-with scene :settings
+    (settings-layers defaults (level-ref scene :settings) (fighters :speed 3000))))
 ```
 
 **Export Scene** updates placements and viewpoint in `editor-config.scm` and preserves its
 explicit settings overrides. **Play** uses the saved files.
 Use record accessors and functional updates to compose levels, for example
-`(level-with base :entities (append (level-ref base :entities) extras))`.
-`foo-with` replaces whole fields without mutating the original record; missing `foo-ref`
+`(copy-with base :entities (append (level-ref base :entities) extras))`.
+`copy-with` replaces whole fields without mutating the original record; missing `foo-ref`
 properties are errors. Only proxies marked **Export** are serialized by the editor.
 See [gameplay logic](docs/logic.md).
 

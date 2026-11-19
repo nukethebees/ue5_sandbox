@@ -1,61 +1,68 @@
-(load-script "Libraries/logic.scm")
-(load-script "Libraries/formations.scm")
+(export mission)
 
-(let ((first-reserve-id 'red-capital-4)
-      (first-reserve-time 75)
-      (second-reserve-id 'red-capital-5)
-      (second-reserve-time 150))
-  (level :settings (load-script "Settings/base.scm")
-    :id 'counteroffensive-fleet-termination
-    :title "Counteroffensive 04: Fleet Termination"
-    :description "Destroy the enemy fleet and both reserve carriers before the operation expires."
+(define logic-library (import-module "Libraries/logic.scm"))
+(define destroy-all (module-ref logic-library 'destroy-all))
+(define destroy-any (module-ref logic-library 'destroy-any))
+(define level-delay (module-ref logic-library 'level-delay))
+(define win-race (module-ref logic-library 'win-race))
+(define named-capitals (module-ref (import-module "Libraries/formations.scm") 'named-capitals))
 
-    :unlock (list
-      (level-completed 'counteroffensive-three-axes))
+(define mission
+  (let ((first-reserve-id 'red-capital-4)
+        (first-reserve-time 75)
+        (second-reserve-id 'red-capital-5)
+        (second-reserve-time 150))
+    (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+      :id 'counteroffensive-fleet-termination
+      :title "Counteroffensive 04: Fleet Termination"
+      :description "Destroy the enemy fleet and both reserve carriers before the operation expires."
 
-    :player 'player
+      :unlock (list
+        (level-completed 'counteroffensive-three-axes))
 
-    :logic (logic
-    (win-race 'blue 'red
-      (all-of
-        (entity-kills-reached
-          '(player blue-capital-0 blue-capital-1 blue-capital-2 blue-capital-3)
-          6)
-        (destroy-all
-          (append
-            '(red-capital-0 red-capital-1 red-capital-2 red-capital-3)
-            (list first-reserve-id)
-            (list second-reserve-id))))
-      (any-of
-        (destroy-any '(player))
-        (level-delay 330))))
+      :player 'player
 
-    :entities (append
-      (list
-        (entity :id 'player :archetype 'player-fighter :team 'blue
-          :position '(0 -95000 8000)
-          :rotation '(0 90 0)))
+      :logic (logic
+      (win-race 'blue 'red
+        (all-of
+          (entity-kills-reached
+            '(player blue-capital-0 blue-capital-1 blue-capital-2 blue-capital-3)
+            6)
+          (destroy-all
+            (append
+              '(red-capital-0 red-capital-1 red-capital-2 red-capital-3)
+              (list first-reserve-id)
+              (list second-reserve-id))))
+        (any-of
+          (destroy-any '(player))
+          (level-delay 330))))
 
-      (named-capitals 'blue '(0 90 0)
-        '((blue-capital-0 (-60000 -55000 -6000))
-          (blue-capital-1 (-20000 -55000 2000))
-          (blue-capital-2 (20000 -55000 -2000))
-          (blue-capital-3 (60000 -55000 6000))))
+      :entities (append
+        (list
+          (entity :id 'player :archetype 'player-fighter :team 'blue
+            :position '(0 -95000 8000)
+            :rotation '(0 90 0)))
 
-      (named-capitals 'red '(0 -90 0)
-        '((red-capital-0 (-75000 75000 8000))
-          (red-capital-1 (-25000 75000 -3000))
-          (red-capital-2 (25000 75000 3000))
-          (red-capital-3 (75000 75000 -8000))))
+        (named-capitals 'blue '(0 90 0)
+          '((blue-capital-0 (-60000 -55000 -6000))
+            (blue-capital-1 (-20000 -55000 2000))
+            (blue-capital-2 (20000 -55000 -2000))
+            (blue-capital-3 (60000 -55000 6000))))
 
-      (list
-        (entity :id first-reserve-id :archetype 'capital-ship :team 'red
-          :position '(-35000 160000 8000)
-          :rotation '(0 -90 0)
-          :spawn-at first-reserve-time))
+        (named-capitals 'red '(0 -90 0)
+          '((red-capital-0 (-75000 75000 8000))
+            (red-capital-1 (-25000 75000 -3000))
+            (red-capital-2 (25000 75000 3000))
+            (red-capital-3 (75000 75000 -8000))))
 
-      (list
-        (entity :id second-reserve-id :archetype 'capital-ship :team 'red
-          :position '(35000 180000 -8000)
-          :rotation '(0 -90 0)
-          :spawn-at second-reserve-time)))))
+        (list
+          (entity :id first-reserve-id :archetype 'capital-ship :team 'red
+            :position '(-35000 160000 8000)
+            :rotation '(0 -90 0)
+            :spawn-at first-reserve-time))
+
+        (list
+          (entity :id second-reserve-id :archetype 'capital-ship :team 'red
+            :position '(35000 180000 -8000)
+            :rotation '(0 -90 0)
+            :spawn-at second-reserve-time))))))

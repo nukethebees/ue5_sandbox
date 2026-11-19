@@ -53,7 +53,7 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelLogic) {
       (level :id 'settings-logic :title "Settings and logic" :player 'player
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                :position '(0 0 0)))
-        :settings (settings-layers (load-script "Settings/base.scm")
+        :settings (settings-layers (module-ref (import-module "Settings/base.scm") 'game-settings)
                     (settings :fighters (fighters :laser (laser :damage 77))))
         :logic (logic
           (define delay (timer))

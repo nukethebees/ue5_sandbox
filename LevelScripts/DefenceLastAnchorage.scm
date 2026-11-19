@@ -1,47 +1,55 @@
-(load-script "Libraries/logic.scm")
-(load-script "Libraries/formations.scm")
+(export mission)
 
-(level :settings (load-script "Settings/base.scm")
-  :id 'defence-last-anchorage
-  :title "Defence 04: Last Anchorage"
-  :description "Hold the fleet anchorage against three carriers and a delayed reserve formation."
+(define logic-library (import-module "Libraries/logic.scm"))
+(define destroy-any (module-ref logic-library 'destroy-any))
+(define level-delay (module-ref logic-library 'level-delay))
+(define win-race (module-ref logic-library 'win-race))
+(define formations (import-module "Libraries/formations.scm"))
+(define entities-at (module-ref formations 'entities-at))
+(define named-capitals (module-ref formations 'named-capitals))
 
-  :unlock (list
-    (level-completed 'defence-dual-custody))
+(define mission
+  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    :id 'defence-last-anchorage
+    :title "Defence 04: Last Anchorage"
+    :description "Hold the fleet anchorage against three carriers and a delayed reserve formation."
 
-  :player 'player
+    :unlock (list
+      (level-completed 'defence-dual-custody))
 
-  :logic (logic
-    (win-race 'blue 'red
-    (level-delay 150)
-    (destroy-any
-      '(player blue-capital-0 blue-capital-1))))
+    :player 'player
 
-  :entities (append
-    (list
-      (entity :id 'player :archetype 'player-fighter :team 'blue
-        :position '(0 -95000 8000)
-        :rotation '(0 90 0)))
+    :logic (logic
+      (win-race 'blue 'red
+      (level-delay 150)
+      (destroy-any
+        '(player blue-capital-0 blue-capital-1))))
 
-    (named-capitals 'blue '(0 90 0)
-      '((blue-capital-0 (-30000 -50000 -4000))
-        (blue-capital-1 (30000 -50000 4000))))
+    :entities (append
+      (list
+        (entity :id 'player :archetype 'player-fighter :team 'blue
+          :position '(0 -95000 8000)
+          :rotation '(0 90 0)))
 
-    (entities-at 'static-turret 'blue '(0 90 0)
-      '((-45000 -38000 -2500)
-        (-30000 -36000 2500)
-        (-15000 -38000 -2500)
-        (15000 -38000 2500)
-        (30000 -36000 -2500)
-        (45000 -38000 2500)))
+      (named-capitals 'blue '(0 90 0)
+        '((blue-capital-0 (-30000 -50000 -4000))
+          (blue-capital-1 (30000 -50000 4000))))
 
-    (entities-at 'capital-ship 'red '(0 -90 0)
-      '((-55000 70000 6000)
-        (0 70000 0)
-        (55000 70000 -6000)))
+      (entities-at 'static-turret 'blue '(0 90 0)
+        '((-45000 -38000 -2500)
+          (-30000 -36000 2500)
+          (-15000 -38000 -2500)
+          (15000 -38000 2500)
+          (30000 -36000 -2500)
+          (45000 -38000 2500)))
 
-    (list
-      (entity :archetype 'capital-ship :team 'red
-        :position '(-25000 150000 8000)
-        :rotation '(0 -90 0)
-        :spawn-at 75))))
+      (entities-at 'capital-ship 'red '(0 -90 0)
+        '((-55000 70000 6000)
+          (0 70000 0)
+          (55000 70000 -6000)))
+
+      (list
+        (entity :archetype 'capital-ship :team 'red
+          :position '(-25000 150000 8000)
+          :rotation '(0 -90 0)
+          :spawn-at 75)))))

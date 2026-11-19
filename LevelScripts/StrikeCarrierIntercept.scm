@@ -1,41 +1,47 @@
-(load-script "Libraries/logic.scm")
-(load-script "Libraries/formations.scm")
+(export mission)
 
-(level :settings (load-script "Settings/base.scm")
-  :id 'strike-carrier-intercept
-  :title "Strike 03: Carrier Intercept"
-  :description "Support a fleet carrier and destroy an enemy capital ship protected by a forward battery."
+(define logic-library (import-module "Libraries/logic.scm"))
+(define destroy-all (module-ref logic-library 'destroy-all))
+(define destroy-any (module-ref logic-library 'destroy-any))
+(define win-race (module-ref logic-library 'win-race))
+(define entities-at (module-ref (import-module "Libraries/formations.scm") 'entities-at))
 
-  :unlock (list
-    (level-completed 'strike-layered-battery))
+(define mission
+  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    :id 'strike-carrier-intercept
+    :title "Strike 03: Carrier Intercept"
+    :description "Support a fleet carrier and destroy an enemy capital ship protected by a forward battery."
 
-  :player 'player
+    :unlock (list
+      (level-completed 'strike-layered-battery))
 
-  :logic (logic
-    (win-race 'blue 'red
-    (all-of
-      (entity-kills-reached
-        '(player blue-capital)
-        1)
-      (destroy-all '(red-capital)))
-    (destroy-any '(player))))
+    :player 'player
 
-  :entities (append
-    (list
-      (entity :id 'player :archetype 'player-fighter :team 'blue
-        :position '(0 -85000 6000)
-        :rotation '(0 90 0)))
+    :logic (logic
+      (win-race 'blue 'red
+      (all-of
+        (entity-kills-reached
+          '(player blue-capital)
+          1)
+        (destroy-all '(red-capital)))
+      (destroy-any '(player))))
 
-    (list
-      (entity :id 'blue-capital :archetype 'capital-ship :team 'blue
-        :position '(0 -40000 0)
-        :rotation '(0 90 0)))
+    :entities (append
+      (list
+        (entity :id 'player :archetype 'player-fighter :team 'blue
+          :position '(0 -85000 6000)
+          :rotation '(0 90 0)))
 
-    (list
-      (entity :id 'red-capital :archetype 'capital-ship :team 'red
-        :position '(0 60000 0)
-        :rotation '(0 -90 0)))
+      (list
+        (entity :id 'blue-capital :archetype 'capital-ship :team 'blue
+          :position '(0 -40000 0)
+          :rotation '(0 90 0)))
 
-    (entities-at 'static-turret 'red '(0 -90 0)
-      '((-7000 48000 -2500)
-        (7000 48000 2500)))))
+      (list
+        (entity :id 'red-capital :archetype 'capital-ship :team 'red
+          :position '(0 60000 0)
+          :rotation '(0 -90 0)))
+
+      (entities-at 'static-turret 'red '(0 -90 0)
+        '((-7000 48000 -2500)
+          (7000 48000 2500))))))

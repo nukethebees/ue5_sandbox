@@ -1,39 +1,46 @@
-(load-script "Libraries/logic.scm")
-(load-script "Libraries/formations.scm")
+(export mission)
 
-(level :settings (load-script "Settings/base.scm")
-  :id 'counteroffensive-decapitation
-  :title "Counteroffensive 01: Decapitation"
-  :description "Destroy an outnumbering enemy capital formation before its operating window closes."
+(define logic-library (import-module "Libraries/logic.scm"))
+(define destroy-all (module-ref logic-library 'destroy-all))
+(define destroy-any (module-ref logic-library 'destroy-any))
+(define level-delay (module-ref logic-library 'level-delay))
+(define win-race (module-ref logic-library 'win-race))
+(define named-capitals (module-ref (import-module "Libraries/formations.scm") 'named-capitals))
 
-  :unlock (list
-    (level-completed 'defence-last-anchorage))
+(define mission
+  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    :id 'counteroffensive-decapitation
+    :title "Counteroffensive 01: Decapitation"
+    :description "Destroy an outnumbering enemy capital formation before its operating window closes."
 
-  :player 'player
+    :unlock (list
+      (level-completed 'defence-last-anchorage))
 
-  :logic (logic
-    (win-race 'blue 'red
-    (all-of
-      (entity-kills-reached
-        '(player blue-capital-0 blue-capital-1)
-        3)
-      (destroy-all
-        '(red-capital-0 red-capital-1 red-capital-2)))
-    (any-of
-      (destroy-any '(player))
-      (level-delay 210))))
+    :player 'player
 
-  :entities (append
-    (list
-      (entity :id 'player :archetype 'player-fighter :team 'blue
-        :position '(0 -95000 8000)
-        :rotation '(0 90 0)))
+    :logic (logic
+      (win-race 'blue 'red
+      (all-of
+        (entity-kills-reached
+          '(player blue-capital-0 blue-capital-1)
+          3)
+        (destroy-all
+          '(red-capital-0 red-capital-1 red-capital-2)))
+      (any-of
+        (destroy-any '(player))
+        (level-delay 210))))
 
-    (named-capitals 'blue '(0 90 0)
-      '((blue-capital-0 (-25000 -50000 -4000))
-        (blue-capital-1 (25000 -50000 4000))))
+    :entities (append
+      (list
+        (entity :id 'player :archetype 'player-fighter :team 'blue
+          :position '(0 -95000 8000)
+          :rotation '(0 90 0)))
 
-    (named-capitals 'red '(0 -90 0)
-      '((red-capital-0 (-45000 70000 6000))
-        (red-capital-1 (0 70000 0))
-        (red-capital-2 (45000 70000 -6000))))))
+      (named-capitals 'blue '(0 90 0)
+        '((blue-capital-0 (-25000 -50000 -4000))
+          (blue-capital-1 (25000 -50000 4000))))
+
+      (named-capitals 'red '(0 -90 0)
+        '((red-capital-0 (-45000 70000 6000))
+          (red-capital-1 (0 70000 0))
+          (red-capital-2 (45000 70000 -6000)))))))

@@ -1,6 +1,9 @@
-(load-script "Libraries/benchmark-fleet.scm")
+(export mission)
 
-(benchmark-fleet-level 'benchmark-fleet-07
-  "Benchmark Fleet 07 — 160 Capitals"
-  "160 capital ships across two opposing fleets; up to 1120 entities after all fighter wings deploy."
-  80 10)
+(define benchmark-fleet-level (module-ref (import-module "Libraries/benchmark-fleet.scm") 'benchmark-fleet-level))
+
+(define mission
+  (benchmark-fleet-level 'benchmark-fleet-07
+    "Benchmark Fleet 07 — 160 Capitals"
+    "160 capital ships across two opposing fleets; up to 1120 entities after all fighter wings deploy."
+    80 10))

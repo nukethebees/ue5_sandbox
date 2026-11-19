@@ -1,62 +1,68 @@
-(load-script "Libraries/logic.scm")
-(level :settings (load-script "Settings/base.scm")
-  :id 'evaluation-distributed-defence
-  :title "Evaluation 02: Distributed Defence"
-  :description "Hold three separated defence installations against a converging capital-ship attack."
+(export mission)
 
-  :unlock (list
-    (level-completed 'evaluation-break-the-spear))
+(define logic-library (import-module "Libraries/logic.scm"))
+(define destroy-any (module-ref logic-library 'destroy-any))
+(define level-delay (module-ref logic-library 'level-delay))
+(define win-race (module-ref logic-library 'win-race))
+(define mission
+  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    :id 'evaluation-distributed-defence
+    :title "Evaluation 02: Distributed Defence"
+    :description "Hold three separated defence installations against a converging capital-ship attack."
 
-  :player 'player
+    :unlock (list
+      (level-completed 'evaluation-break-the-spear))
 
-  :logic (logic
-    (win-race 'blue 'red
-    (level-delay 180)
-    (destroy-any
-      '(player
-         blue-installation-west
-         blue-installation-centre
-         blue-installation-east))))
+    :player 'player
 
-  :entities (list
-    (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 -105000 7000)
-      :rotation '(0 90 0))
+    :logic (logic
+      (win-race 'blue 'red
+      (level-delay 180)
+      (destroy-any
+        '(player
+           blue-installation-west
+           blue-installation-centre
+           blue-installation-east))))
 
-    (entity :id 'blue-installation-west :archetype 'static-turret :team 'blue
-      :position '(-110000 -20000 0)
-      :rotation '(0 90 0))
+    :entities (list
+      (entity :id 'player :archetype 'player-fighter :team 'blue
+        :position '(0 -105000 7000)
+        :rotation '(0 90 0))
 
-    (entity :id 'blue-installation-centre :archetype 'static-turret :team 'blue
-      :position '(0 0 0)
-      :rotation '(0 90 0))
+      (entity :id 'blue-installation-west :archetype 'static-turret :team 'blue
+        :position '(-110000 -20000 0)
+        :rotation '(0 90 0))
 
-    (entity :id 'blue-installation-east :archetype 'static-turret :team 'blue
-      :position '(110000 -20000 0)
-      :rotation '(0 90 0))
+      (entity :id 'blue-installation-centre :archetype 'static-turret :team 'blue
+        :position '(0 0 0)
+        :rotation '(0 90 0))
 
-    (entity :archetype 'capital-ship :team 'blue
-      :position '(0 -55000 -6000)
-      :rotation '(0 90 0))
+      (entity :id 'blue-installation-east :archetype 'static-turret :team 'blue
+        :position '(110000 -20000 0)
+        :rotation '(0 90 0))
 
-    (entity :id 'red-capital-west :archetype 'capital-ship :team 'red
-      :position '(-150000 85000 6000)
-      :rotation '(0 -90 0))
+      (entity :archetype 'capital-ship :team 'blue
+        :position '(0 -55000 -6000)
+        :rotation '(0 90 0))
 
-    (entity :id 'red-capital-centre :archetype 'capital-ship :team 'red
-      :position '(0 115000 -6000)
-      :rotation '(0 -90 0))
+      (entity :id 'red-capital-west :archetype 'capital-ship :team 'red
+        :position '(-150000 85000 6000)
+        :rotation '(0 -90 0))
 
-    (entity :id 'red-capital-east :archetype 'capital-ship :team 'red
-      :position '(150000 85000 6000)
-      :rotation '(0 -90 0))
+      (entity :id 'red-capital-centre :archetype 'capital-ship :team 'red
+        :position '(0 115000 -6000)
+        :rotation '(0 -90 0))
 
-    (entity :id 'red-capital-reserve-west :archetype 'capital-ship :team 'red
-      :position '(-90000 165000 -6000)
-      :rotation '(0 -90 0)
-      :spawn-at 70)
+      (entity :id 'red-capital-east :archetype 'capital-ship :team 'red
+        :position '(150000 85000 6000)
+        :rotation '(0 -90 0))
 
-    (entity :id 'red-capital-reserve-east :archetype 'capital-ship :team 'red
-      :position '(90000 165000 -6000)
-      :rotation '(0 -90 0)
-      :spawn-at 120)))
+      (entity :id 'red-capital-reserve-west :archetype 'capital-ship :team 'red
+        :position '(-90000 165000 -6000)
+        :rotation '(0 -90 0)
+        :spawn-at 70)
+
+      (entity :id 'red-capital-reserve-east :archetype 'capital-ship :team 'red
+        :position '(90000 165000 -6000)
+        :rotation '(0 -90 0)
+        :spawn-at 120))))

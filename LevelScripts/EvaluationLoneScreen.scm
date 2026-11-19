@@ -1,34 +1,40 @@
-(load-script "Libraries/logic.scm")
-(level :settings (load-script "Settings/base.scm")
-  :id 'evaluation-lone-screen
-  :title "Evaluation 03: Lone Screen"
-  :description "Survive alone through repeated enemy fighter launches for two minutes."
+(export mission)
 
-  :unlock (list
-    (level-completed 'evaluation-distributed-defence))
+(define logic-library (import-module "Libraries/logic.scm"))
+(define destroy-any (module-ref logic-library 'destroy-any))
+(define level-delay (module-ref logic-library 'level-delay))
+(define win-race (module-ref logic-library 'win-race))
+(define mission
+  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    :id 'evaluation-lone-screen
+    :title "Evaluation 03: Lone Screen"
+    :description "Survive alone through repeated enemy fighter launches for two minutes."
 
-  :player 'player
+    :unlock (list
+      (level-completed 'evaluation-distributed-defence))
 
-  :logic (logic
-    (win-race 'blue 'red
-    (level-delay 120)
-    (destroy-any '(player))))
+    :player 'player
 
-  :entities (list
-    (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 -120000 0)
-      :rotation '(0 90 0))
+    :logic (logic
+      (win-race 'blue 'red
+      (level-delay 120)
+      (destroy-any '(player))))
 
-    (entity :archetype 'capital-ship :team 'red
-      :position '(0 130000 0)
-      :rotation '(0 -90 0))
+    :entities (list
+      (entity :id 'player :archetype 'player-fighter :team 'blue
+        :position '(0 -120000 0)
+        :rotation '(0 90 0))
 
-    (entity :archetype 'capital-ship :team 'red
-      :position '(-85000 175000 6000)
-      :rotation '(0 -90 0)
-      :spawn-at 35)
+      (entity :archetype 'capital-ship :team 'red
+        :position '(0 130000 0)
+        :rotation '(0 -90 0))
 
-    (entity :archetype 'capital-ship :team 'red
-      :position '(85000 175000 -6000)
-      :rotation '(0 -90 0)
-      :spawn-at 75)))
+      (entity :archetype 'capital-ship :team 'red
+        :position '(-85000 175000 6000)
+        :rotation '(0 -90 0)
+        :spawn-at 35)
+
+      (entity :archetype 'capital-ship :team 'red
+        :position '(85000 175000 -6000)
+        :rotation '(0 -90 0)
+        :spawn-at 75))))

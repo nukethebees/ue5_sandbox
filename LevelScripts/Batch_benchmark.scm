@@ -1,12 +1,14 @@
+(export mission)
+
 ;; Initial-state seed exported from Unreal Editor.
 
-(level
+(define mission (level
   :id 'batch-benchmark
   :title "Batch Benchmark"
 
   ;; Include the elevated capital ships and their fighter spawn slots.
   :settings (settings-layers
-    (load-script "Settings/base.scm")
+    (module-ref (import-module "Settings/base.scm") 'game-settings)
     (settings
       :collision-grid (collision-grid :level-size '(2000000 2000000 500000))))
 
@@ -5138,4 +5140,4 @@
       :rotation '(0 0 0))
     (entity :id 'static-turret-red99 :archetype 'static-turret :team 'red
       :position '(-55800 36790 0)
-      :rotation '(0 0 0))))
+      :rotation '(0 0 0)))))

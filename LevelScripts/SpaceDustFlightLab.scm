@@ -1,20 +1,26 @@
-(load-script "Libraries/logic.scm")
-(level :settings (load-script "Settings/base.scm")
-  :id 'space-dust-flight-lab
-  :title "Space Dust Flight Lab"
-  :description "A quiet player-flight lab for tuning velocity-driven space dust. A friendly capital ship provides an optional depth-occlusion reference."
+(export mission)
 
-  :player 'player
+(define logic-library (import-module "Libraries/logic.scm"))
+(define destroy-any (module-ref logic-library 'destroy-any))
+(define level-delay (module-ref logic-library 'level-delay))
+(define win-race (module-ref logic-library 'win-race))
+(define mission
+  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    :id 'space-dust-flight-lab
+    :title "Space Dust Flight Lab"
+    :description "A quiet player-flight lab for tuning velocity-driven space dust. A friendly capital ship provides an optional depth-occlusion reference."
 
-  :logic (logic
-    (win-race 'blue 'red
-    (level-delay 3600)
-    (destroy-any '(player))))
+    :player 'player
 
-  :entities (list
-    (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 0 0))
+    :logic (logic
+      (win-race 'blue 'red
+      (level-delay 3600)
+      (destroy-any '(player))))
 
-    (entity :id 'occlusion-reference :archetype 'capital-ship :team 'blue
-      :position '(50000 0 0)
-      :rotation '(0 180 0))))
+    :entities (list
+      (entity :id 'player :archetype 'player-fighter :team 'blue
+        :position '(0 0 0))
+
+      (entity :id 'occlusion-reference :archetype 'capital-ship :team 'blue
+        :position '(50000 0 0)
+        :rotation '(0 180 0)))))

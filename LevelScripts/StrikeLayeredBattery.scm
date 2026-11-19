@@ -1,32 +1,37 @@
-(load-script "Libraries/logic.scm")
-(load-script "Libraries/formations.scm")
+(export mission)
 
-(level :settings (load-script "Settings/base.scm")
-  :id 'strike-layered-battery
-  :title "Strike 02: Layered Battery"
-  :description "Clear two mutually supporting turret clusters distributed across multiple elevations."
+(define logic-library (import-module "Libraries/logic.scm"))
+(define destroy-any (module-ref logic-library 'destroy-any))
+(define win-race (module-ref logic-library 'win-race))
+(define entities-at (module-ref (import-module "Libraries/formations.scm") 'entities-at))
 
-  :unlock (list
-    (level-completed 'strike-range-clearance))
+(define mission
+  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    :id 'strike-layered-battery
+    :title "Strike 02: Layered Battery"
+    :description "Clear two mutually supporting turret clusters distributed across multiple elevations."
 
-  :player 'player
+    :unlock (list
+      (level-completed 'strike-range-clearance))
 
-  :logic (logic
-    (win-race 'blue 'red
-    (entity-kills-reached '(player) 8)
-    (destroy-any '(player))))
+    :player 'player
 
-  :entities (cons
-    (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 -75000 1000)
-      :rotation '(0 90 0))
+    :logic (logic
+      (win-race 'blue 'red
+      (entity-kills-reached '(player) 8)
+      (destroy-any '(player))))
 
-    (entities-at 'static-turret 'red '(0 -90 0)
-      '((-12000 10000 -2500)
-        (-8000 6000 2500)
-        (-4000 10000 2500)
-        (-8000 14000 -2500)
-        (4000 10000 -2500)
-        (8000 6000 -2500)
-        (12000 10000 2500)
-        (8000 14000 2500)))))
+    :entities (cons
+      (entity :id 'player :archetype 'player-fighter :team 'blue
+        :position '(0 -75000 1000)
+        :rotation '(0 90 0))
+
+      (entities-at 'static-turret 'red '(0 -90 0)
+        '((-12000 10000 -2500)
+          (-8000 6000 2500)
+          (-4000 10000 2500)
+          (-8000 14000 -2500)
+          (4000 10000 -2500)
+          (8000 6000 -2500)
+          (12000 10000 2500)
+          (8000 14000 2500))))))

@@ -1,5 +1,9 @@
-(load-script "Libraries/logic.scm")
-(load-script "Libraries/formations.scm")
+(export turret-trial)
+
+(define logic-library (import-module "Libraries/logic.scm"))
+(define level-delay (module-ref logic-library 'level-delay))
+(define win-race (module-ref logic-library 'win-race))
+(define entities-at (module-ref (import-module "Libraries/formations.scm") 'entities-at))
 
 (define* (turret-trial number description player-position turret-positions
                       (time-limit #f) (par-time #f))
@@ -8,7 +12,7 @@
 
   (apply level
     (append
-      (list :settings (load-script "Settings/base.scm")
+      (list :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
             :id (trial-id number)
             :title (format #f "Turret Trial ~A" number)
             :description description

@@ -137,7 +137,7 @@ TEST_P(DefendCapitalOutcome, AwardsVictoryOnTheDecidingTick) {
     auto const& scenario{GetParam()};
     // Keep the live mission rules but isolate their inputs from incidental combat.
     auto const level{levels::authoring::DefinitionReader{script_root()}.read_level_source(R"(
-      (level-with (load-script "defend_capital.scm")
+      (copy-with (module-ref (import-module "defend_capital.scm") 'mission)
         :settings (settings :tick (tick :tick-rate 1))
         :entities (list
           (entity :id 'playership :archetype 'player-fighter :team 'blue :position '(0 10000 0))

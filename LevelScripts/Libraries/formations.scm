@@ -1,3 +1,5 @@
+(export entities-at named-capitals positions-on-line translate-positions)
+
 ;; Return entities in position order so generated IDs and spawn order remain stable.
 (define (entities-at archetype team rotation positions)
   (map
