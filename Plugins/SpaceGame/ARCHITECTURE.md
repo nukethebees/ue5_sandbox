@@ -23,9 +23,8 @@ validity flags. An absent visual context selects headless loading.
 ## Startup and lifetime
 
 Every playable level uses a Scheme entry point or a definition already decoded from that entry
-point. Editor export writes the generated configuration included by the human-owned root. PIE
-validates and compiles that composed definition before launch, discarding the validation result.
-PIE and packaged launches pass the definition through the same runtime builder; native launches
+point. Editor export writes the generated configuration included by the human-owned root. PIE and
+packaged launches load the saved definition through the same runtime builder. Native launches
 use the same definition and native compiler.
 Editor proxies are authoring objects and never initialize simulation entities.
 

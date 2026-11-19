@@ -1,5 +1,6 @@
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 
+#include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include <ioj/levels/launch_options.h>
@@ -8,7 +9,6 @@
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/system/GameSubsystem.h>
 
 #include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 
@@ -28,40 +28,48 @@ inline constexpr TCHAR game_mode_class_path[]{
 
 }
 
-auto launch_s7_level_for_pie(UWorld& world, levels::LevelDefinition definition)
-    -> std::expected<void, FString> {
-    AS7LevelAuthoringDocument* document{};
-    ATestBatchOrchestrator* orchestrator{};
-    for (TActorIterator<AS7LevelAuthoringDocument> it{&world}; it; ++it) {
-        document = *it;
-    }
+void prepare_s7_scene_for_pie(UWorld& world) {
     for (TActorIterator<ATestBatchOrchestrator> it{&world}; it; ++it) {
-        orchestrator = *it;
-    }
-    check(document && orchestrator);
-    auto* const game{UGameSubsystem::get(world.GetGameInstance())};
-    if (!IsValid(game)) {
-        return std::unexpected{TEXT("The PIE game subsystem is unavailable.")};
-    }
-    levels::LaunchOptions options;
-    options.control_context =
-        definition.camera() ? levels::ControlContext::Observer : levels::ControlContext::Player;
-    orchestrator->clear_player_ship();
-    for (auto const& binding : document->entities) {
-        if (IsValid(binding.actor) && !world.DestroyActor(binding.actor.Get(), false, false)) {
-            return std::unexpected{TEXT("Could not remove an authoring preview actor before PIE.")};
+        auto const mode{it->get_start_mode()};
+        if (mode != EOrchestratorStartMode::AuthoredLevel &&
+            mode != EOrchestratorStartMode::Automatic) {
+            continue;
+        }
+        auto& level{*it->GetLevel()};
+        auto document{find_level_authoring_document(level)};
+        if (!document) {
+            UE_LOG(LogTemp, Warning, TEXT("%s"), *document.error());
+            continue;
+        }
+        if (!*document) {
+            continue;
+        }
+        auto stale{s7_scene_needs_export(level, **document)};
+        if (!stale) {
+            UE_LOG(LogTemp,
+                   Warning,
+                   TEXT("Cannot compare the scene with its export: %s"),
+                   *stale.error());
+        } else if (*stale) {
+            UE_LOG(LogTemp,
+                   Warning,
+                   TEXT("Scene changes haven't been exported. Playing the saved level. Use Export "
+                        "Scene to include them."));
+        }
+
+        it->set_level_script((*document)->source_path);
+        it->clear_player_ship();
+        auto const actors{level.Actors};
+        for (auto const actor : actors) {
+            if (IsValid(actor) && resolve_s7_level_actor(*actor)) {
+                world.DestroyActor(actor.Get(), false, false);
+            }
         }
     }
-    game->set_pending_level(std::move(definition), document->source_path, options);
-    return {};
 }
 
-auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
+auto validate_playable_s7_level(AS7LevelAuthoringDocument const& document)
     -> std::expected<FString, FString> {
-    auto exported{export_s7_editor_config(level, document)};
-    if (!exported) {
-        return std::unexpected{exported.error()};
-    }
     auto definition{read_s7_authored_level(document)};
     if (!definition) {
         return std::unexpected{definition.error()};
@@ -100,7 +108,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
         !IsValid(world_settings) || document.GetLevel() != &level) {
         return std::unexpected{TEXT("The current editor level is unavailable.")};
     }
-    auto const validation{validate_playable_s7_level(level, document)};
+    auto const validation{validate_playable_s7_level(document)};
     if (!validation) {
         return std::unexpected{validation.error()};
     }

@@ -1,12 +1,9 @@
 #include "SandboxEditor/SandboxEditor.h"
 
-#include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
-#include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include "SandboxEditor/levels/S7LevelScriptEditor.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include "Editor.h"
 #include "Editor/EditorEngine.h"
@@ -19,27 +16,16 @@
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
 #include <Engine/World.h>
-#include <EngineUtils.h>
-#include <Features/IModularFeatures.h>
-#include <HAL/FileManager.h>
-
 #define LOCTEXT_NAMESPACE "FSandboxEditorModule"
 
 FName const FSandboxEditorModule::s7_level_script_editor_tab_id{
     TEXT("Sandbox.S7LevelScriptEditor")};
 
 void FSandboxEditorModule::StartupModule() {
-    IModularFeatures::Get().RegisterModularFeature(IPIEAuthorizer::GetModularFeatureName(), this);
     s7_pie_handle_ = FWorldDelegates::OnWorldInitializedActors.AddLambda(
-        [this](FActorsInitializedParams const& params) {
-            if (params.World->WorldType != EWorldType::PIE || !prepared_level_) {
-                return;
-            }
-            auto prepared{
-                ioj::editor::launch_s7_level_for_pie(*params.World, std::move(*prepared_level_))};
-            prepared_level_.reset();
-            if (!prepared) {
-                UE_LOG(LogTemp, Error, TEXT("S7 PIE preparation failed: %s"), *prepared.error());
+        [](FActorsInitializedParams const& params) {
+            if (params.World->WorldType == EWorldType::PIE) {
+                ioj::editor::prepare_s7_scene_for_pie(*params.World);
             }
         });
     constexpr auto logger{NestedLogger<"StartupModule">()};
@@ -68,7 +54,6 @@ void FSandboxEditorModule::StartupModule() {
     }
 }
 void FSandboxEditorModule::ShutdownModule() {
-    IModularFeatures::Get().UnregisterModularFeature(IPIEAuthorizer::GetModularFeatureName(), this);
     FWorldDelegates::OnWorldInitializedActors.Remove(s7_pie_handle_);
     if (IsValid(GEditor) && GEditor->PlayWorld != nullptr) {
         GEditor->EndPlayMap();
@@ -79,69 +64,6 @@ void FSandboxEditorModule::ShutdownModule() {
     }
     s7_level_script_editor_.Reset();
     FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(s7_level_script_editor_tab_id);
-}
-
-auto FSandboxEditorModule::IsPIEAuthorizedInternal(bool) const -> TValueOrError<bool, FText> {
-    return MakeValue(true);
-}
-
-auto FSandboxEditorModule::RequestPIEPermissionInternal(bool) const -> TValueOrError<bool, FText> {
-    prepared_level_.reset();
-    auto* const world{GEditor ? GEditor->GetEditorWorldContext().World() : nullptr};
-    if (!IsValid(world)) {
-        return MakeValue(true);
-    }
-    ioj::ATestBatchOrchestrator* orchestrator{};
-    for (TActorIterator<ioj::ATestBatchOrchestrator> it{world}; it; ++it) {
-        auto const mode{it->get_start_mode()};
-        if (mode != ioj::EOrchestratorStartMode::AuthoredLevel &&
-            mode != ioj::EOrchestratorStartMode::Automatic) {
-            continue;
-        }
-        if (orchestrator) {
-            return MakeError(
-                FText::FromString(TEXT("Playable maps require one level orchestrator.")));
-        }
-        orchestrator = *it;
-    }
-    if (!orchestrator) {
-        return MakeValue(true);
-    }
-    auto document{ioj::editor::find_level_authoring_document(*orchestrator->GetLevel())};
-    if (!document) {
-        return MakeError(FText::FromString(document.error()));
-    }
-    if (!*document) {
-        return MakeError(FText::FromString(
-            TEXT("This map has no S7 authoring document. Open 'Space Game Level' in the editor "
-                 "toolbar to create LevelScripts/<MapName>.scm, or use 'Load & Apply S7' in that "
-                 "mode to select an existing level. Add a player ship or configure an observer "
-                 "camera, then use 'Export Scene', 'Save Source', 'Validate Level', and "
-                 "'Set Up Playable Level'. Save the map before PIE.")));
-    }
-    if (!IFileManager::Get().FileExists(*(*document)->source_path)) {
-        return MakeError(FText::FromString(FString::Printf(
-            TEXT("The Scheme entry-point file '%s' is missing. Restore that .scm file, or open "
-                 "'Space Game Level' in the editor toolbar and use 'Load & Apply S7' to select "
-                 "an existing level. Use 'Validate Level' and 'Set Up Playable Level', then "
-                 "save the map before PIE. See Source/SandboxEditor/levels/README.md for setup."),
-            *(*document)->source_path)));
-    }
-    auto exported{ioj::editor::export_s7_editor_config(*orchestrator->GetLevel(), **document)};
-    if (!exported) {
-        return MakeError(FText::FromString(exported.error()));
-    }
-    auto definition{ioj::editor::read_s7_authored_level(**document)};
-    if (!definition) {
-        return MakeError(FText::FromString(definition.error()));
-    }
-    auto compiled{
-        ioj::editor::compile_playable_s7_definition(*definition, *(*document)->level_config)};
-    if (!compiled) {
-        return MakeError(FText::FromString(compiled.error()));
-    }
-    prepared_level_.emplace(std::move(*definition));
-    return MakeValue(true);
 }
 
 auto FSandboxEditorModule::open_s7_level_script_editor() -> TSharedPtr<SDockTab> {

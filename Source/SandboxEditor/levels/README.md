@@ -46,12 +46,7 @@ apply during gameplay without being copied back into editable baseline values.
 Edits to a proxy with Export disabled are not saved back to human source. Enabling Export for an
 entity still declared by the human source produces a normal duplicate-ID validation error.
 
-PIE exports editor data, evaluates the saved human entry point, validates the complete level and
-compiles simulation initialization before authorizing play. Missing or invalid roots reject PIE.
-The prepared definition launches directly; preview actors do not initialize gameplay entities.
-Save source-buffer changes before PIE. Native and packaged loading use the same Scheme entry point
-without editor actors.
-
-Shared meshes, classes and other Unreal resources remain in the level configuration asset.
-Gameplay settings belong in Scheme. Full serialization preserves resolved values; difference
-serialization cannot distinguish a value explicitly pinned to its baseline from an inherited value.
+**Validate Level** compiles the saved entry point. **Play** loads that same entry point and logs
+a warning if the scene needs exporting. Use **Export Scene** to play changed placements,
+spawn overrides or viewpoint. Shared meshes and classes live in the level configuration asset.
+Editor settings start empty and preserve explicitly set fields across exports.

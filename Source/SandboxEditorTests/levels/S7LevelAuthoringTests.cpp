@@ -4,13 +4,11 @@
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
 #include <SandboxEditor/levels/S7LevelAuthoringSession.h>
 #include <SandboxEditor/levels/S7LevelPlayableSetup.h>
-#include <SandboxEditor/SandboxEditor.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -21,7 +19,6 @@
 #include <Misc/FileHelper.h>
 #include <Misc/Guid.h>
 #include <Misc/Paths.h>
-#include <Modules/ModuleManager.h>
 #include <Serialization/MemoryReader.h>
 #include <Serialization/MemoryWriter.h>
 #include <Serialization/ObjectAndNameAsStringProxyArchive.h>
@@ -389,6 +386,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Human source controls its entity"),
                              saved_human->position.x() == 600000.);
 
+        binding(document, TEXT("human"))->actor->SetActorLocation(FVector{800000., 0., 0.});
+        TestRunner->TestTrue(TEXT("Changes to excluded actors leave the export current"),
+                             ioj::editor::s7_scene_needs_export(level, document) == false);
         auto const written_at{IFileManager::Get().GetTimeStamp(*generated_path)};
         if (!assert_success(*TestRunner,
                             TEXT("Repeat unchanged export"),
@@ -398,6 +398,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Unchanged output is not rewritten"),
                               IFileManager::Get().GetTimeStamp(*generated_path),
                               written_at);
+        binding(document, TEXT("capital"))->actor->Destroy();
+        TestRunner->TestTrue(TEXT("Deleting an exported actor requires export"),
+                             ioj::editor::s7_scene_needs_export(level, document) == true);
     }
 
     TEST_METHOD(ImportRestoresExportedProperties)
@@ -606,6 +609,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestNotNull(TEXT("New player proxy"), player)) {
             return;
         }
+        TestRunner->TestTrue(TEXT("An unbound player requires export"),
+                             ioj::editor::s7_scene_needs_export(level, document) == true);
         player->SetActorLabel(TEXT("pilot"));
         player->set_team(ioj::ETestTeam::Blue);
         if (!assert_success(*TestRunner,
@@ -651,7 +656,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                              ioj::editor::read_s7_editor_input(**created).has_value());
     }
 
-    TEST_METHOD(MissingAndInvalidEntryPointsDenyPIEPermission)
+    TEST_METHOD(ValidationReportsMissingAndInvalidSavedEntryPoints)
     {
         using namespace s7_level_authoring_tests;
         FTemporarySourceDirectory directory;
@@ -661,28 +666,17 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!assert_success(*TestRunner, TEXT("Create authoring document"), created)) {
             return;
         }
-        auto* const orchestrator{world->SpawnActor<ioj::ATestBatchOrchestrator>()};
-        if (!TestRunner->TestNotNull(TEXT("Playable orchestrator"), orchestrator)) {
-            return;
-        }
-        orchestrator->set_start_mode(ioj::EOrchestratorStartMode::AuthoredLevel);
-        auto& module{
-            FModuleManager::LoadModuleChecked<FSandboxEditorModule>(TEXT("SandboxEditor"))};
         if (!TestRunner->TestTrue(TEXT("Remove entry point"),
                                   IFileManager::Get().Delete(*directory.root()))) {
             return;
         }
-        TestRunner->TestTrue(TEXT("Missing mandatory root rejects PIE"),
-                             module.RequestPIEPermissionInternal(false).HasError());
+        TestRunner->TestTrue(TEXT("Validate reports the missing root"),
+                             !ioj::editor::validate_playable_s7_level(**created).has_value());
         if (!TestRunner->TestTrue(TEXT("Write malformed root"),
                                   write_source(directory.root(), TEXT("(level")))) {
             return;
         }
-        TestRunner->TestTrue(TEXT("Invalid root rejects PIE"),
-                             module.RequestPIEPermissionInternal(false).HasError());
-        orchestrator->set_start_mode(ioj::EOrchestratorStartMode::PausedInTest);
-        auto const unrelated{module.RequestPIEPermissionInternal(false)};
-        TestRunner->TestTrue(TEXT("Non-playable utility world is not subject to mandatory scripts"),
-                             unrelated.HasValue() && unrelated.GetValue());
+        TestRunner->TestTrue(TEXT("Validate reports the malformed root"),
+                             !ioj::editor::validate_playable_s7_level(**created).has_value());
     }
 };

@@ -87,6 +87,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
              .archetype = EntityArchetype::CapitalShip,
              .team = ioj::Team::Red,
              .position = {30000., 0., 0.},
+             .rotation = {10., 370., 20.},
              .spawn_at = ioj::NonNegativeFinite<double>{5.},
              .initial_spawn_delay = ioj::NonNegativeFinite<float>{60.f}},
         };
@@ -131,7 +132,31 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
             return;
         }
         auto* const editor_enemy{enemy_binding->actor.Get()};
-        if (observer) {
+        TestRunner->TestTrue(TEXT("An imported scene matches its saved export"),
+                             ioj::editor::s7_scene_needs_export(editor_level, *document) == false);
+        if (!observer) {
+            editor_enemy->SetActorLocation(FVector{90000., 0., 0.});
+            TestRunner->TestTrue(TEXT("Moving an exported actor requires export"),
+                                 ioj::editor::s7_scene_needs_export(editor_level, *document) ==
+                                     true);
+            CastChecked<ioj::ATestCapitalShipProxy>(editor_enemy)->spawn_time_seconds = 0.;
+            world->SpawnActor<ioj::ATestCapitalShipProxy>();
+            TestRunner->AddExpectedMessage(TEXT("Scene changes haven't been exported"),
+                                           ELogVerbosity::Warning,
+                                           EAutomationExpectedMessageFlags::Contains,
+                                           1);
+            if (!assert_success(*TestRunner,
+                                TEXT("Validate the saved scene with pending edits"),
+                                ioj::editor::validate_playable_s7_level(*document))) {
+                return;
+            }
+        } else {
+            auto const targets{document->camera.targets};
+            document->camera.targets = {editor_enemy};
+            TestRunner->TestTrue(TEXT("Changing the observer target requires export"),
+                                 ioj::editor::s7_scene_needs_export(editor_level, *document) ==
+                                     true);
+            document->camera.targets = targets;
             for (TActorIterator<ioj::ATestBatchOrchestrator> it{world}; it; ++it) {
                 it->set_start_mode(ioj::EOrchestratorStartMode::Automatic);
             }
@@ -189,16 +214,27 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                                       simulation->capital_ships().num_instances(),
                                       initial_capitals);
                 orchestrator.tick(1.1);
-                TestRunner->TestEqual(TEXT("Authored event spawns the delayed entity"),
-                                      simulation->capital_ships().num_instances(),
-                                      initial_capitals + 1);
+                auto const& capitals{simulation->capital_ships()};
+                if (TestRunner->TestEqual(TEXT("Authored event spawns the delayed entity"),
+                                          capitals.num_instances(),
+                                          initial_capitals + 1)) {
+                    TestRunner->TestEqual(
+                        TEXT("Enemy spawns at its saved position"),
+                        capitals.get_entities().view_locations().xs()[initial_capitals],
+                        30000.f);
+                }
             })
-            .Then([this, document, editor_enemy] {
+            .Then([this, document, editor_enemy, source] {
                 GEditor->EndPlayMap();
                 if (!TestRunner->TestTrue(TEXT("PIE preserves editor actors"),
                                           IsValid(document) && IsValid(editor_enemy))) {
                     return;
                 }
+                FString saved;
+                TestRunner->TestTrue(TEXT("Play preserves the saved scene"),
+                                     FFileHelper::LoadFileToString(
+                                         saved, *ioj::editor::s7_editor_config_path(*document)) &&
+                                         saved == source);
                 auto const* binding{document->entities.FindByPredicate(
                     [](auto const& value) { return value.id == TEXT("enemy"); })};
                 TestRunner->TestTrue(TEXT("PIE preserves editor binding identity"),

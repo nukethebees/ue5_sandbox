@@ -402,11 +402,10 @@ void US7LevelAuthoringMode::open_level_config() {
 }
 
 void US7LevelAuthoringMode::validate_playable_level() {
-    auto* const level{current_level()};
-    if (!IsValid(level) || !document_.IsValid()) {
+    if (!document_.IsValid()) {
         set_status(LOCTEXT("NoLevelForValidation", "Open an S7 level before validating it."));
     } else {
-        auto const result{validate_playable_s7_level(*level, *document_)};
+        auto const result{validate_playable_s7_level(*document_)};
         set_status(FText::FromString(result ? *result : result.error()));
     }
     notify_changed();
