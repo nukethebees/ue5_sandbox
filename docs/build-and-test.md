@@ -35,6 +35,11 @@ Replace the target and label for your subsystem. Use `ctest -N` to preview selec
 The `native` label covers product libraries; `developer-tool` covers standalone tools.
 Run tool tests only when tools or shared tool infrastructure change.
 
+Native configuration requires the DirectX Shader Compiler (`dxc`) on PATH. After configuring
+the native preset, run the standalone HLSL compile checks with
+`ctest --preset native-tests -L '^native-shader$' --output-on-failure`.
+Shader sources, entry points and profiles are registered in the [shader test target](../native/shaders/CMakeLists.txt).
+
 | Scope | Command |
 | --- | --- |
 | Simulation | `cmake --workflow --preset native-simulation-tests` |
