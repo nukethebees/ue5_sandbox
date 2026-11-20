@@ -8,6 +8,7 @@
 #include <cmath>
 #include <concepts>
 #include <limits>
+#include <optional>
 
 namespace ioj::sim {
 using SimTime = double;
@@ -28,13 +29,24 @@ template <std::integral Counter = SimTick::value_type>
 // Allow zero duration. Require a rounded period representable by Counter.
 template <std::integral Counter = SimTick::value_type>
     requires (!std::same_as<Counter, bool>)
-[[nodiscard]] auto duration_to_tick_period(Frequency const tick_rate,
-                                           Duration const duration) noexcept
-    -> NonNegative<Counter> {
+[[nodiscard]] auto try_duration_to_tick_period(Frequency const tick_rate,
+                                               Duration const duration) noexcept
+    -> std::optional<NonNegative<Counter>> {
     auto const period{std::ceil(duration.seconds() * tick_rate.hz())};
     auto const upper_bound{std::ldexp(1.0, std::numeric_limits<Counter>::digits)};
-    require(period < upper_bound, "Duration tick period must fit the countdown type");
+    if (period >= upper_bound) {
+        return std::nullopt;
+    }
     return NonNegative<Counter>::make(static_cast<Counter>(period));
+}
+
+template <std::integral Counter = SimTick::value_type>
+    requires (!std::same_as<Counter, bool>)
+[[nodiscard]] auto duration_to_tick_period(Frequency tick_rate, Duration duration) noexcept
+    -> NonNegative<Counter> {
+    auto const period{try_duration_to_tick_period<Counter>(tick_rate, duration)};
+    require(period.has_value(), "Duration tick period must fit the countdown type");
+    return *period;
 }
 
 [[nodiscard]] auto simulation_time(SimTick completed_ticks, double tick_period) noexcept -> double;

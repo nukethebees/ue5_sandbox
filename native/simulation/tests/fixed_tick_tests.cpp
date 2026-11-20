@@ -60,6 +60,14 @@ TEST(FixedTick, ConsumesMultipleAccumulatedTicks) {
 TEST(SimulationClock, ConvertsDurationsAndFrequencies) {
     EXPECT_EQ(frequency_to_tick_period(Frequency::make(60.0), Frequency::make(7.0)).get(), 9);
     EXPECT_EQ(duration_to_tick_period(Frequency::make(60.0), Duration::make(0.11)).get(), 7);
+    auto const timer_max{std::numeric_limits<std::int32_t>::max()};
+    auto const rate{Frequency::make(2.)};
+    auto const last_tick{
+        try_duration_to_tick_period<std::int32_t>(rate, Duration::make(timer_max / 2.))};
+    ASSERT_TRUE(last_tick);
+    EXPECT_EQ(last_tick->get(), timer_max);
+    EXPECT_FALSE(
+        try_duration_to_tick_period<std::int32_t>(rate, Duration::make((timer_max + 0.5) / 2.)));
     EXPECT_DOUBLE_EQ(simulation_time(SimTick{12}, 0.25), 3.0);
 }
 

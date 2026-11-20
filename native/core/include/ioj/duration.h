@@ -34,6 +34,10 @@ class Duration {
         return Duration{seconds.get()};
     }
 
+    [[nodiscard]] static auto make(PositiveFinite<double> const seconds) noexcept -> Duration {
+        return Duration{seconds.get()};
+    }
+
     // Return nullopt for an invalid duration.
     [[nodiscard]] static auto try_make(double const seconds) noexcept -> std::optional<Duration> {
         if (!valid(seconds)) {
