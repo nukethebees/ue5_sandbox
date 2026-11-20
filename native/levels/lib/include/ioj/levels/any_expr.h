@@ -9,7 +9,7 @@ namespace ioj::levels {
 struct AnyExpr {
     auto operator==(AnyExpr const&) const -> bool = default;
 
-    static constexpr ExprKind type{ExprKind::Any};
+    static constexpr auto type() -> ExprKind { return ExprKind::Any; }
     std::vector<ExprIndex> children{};
 };
 }

@@ -1,3 +1,61 @@
+(module logic_payloads
+  :header "native/levels/lib/include/ioj/levels/logic_payloads.h"
+  :header-include "ioj/levels/logic_payloads.h"
+  :namespace ioj::levels
+  :prelude ("#include <vector>")
+  (record EntityDestroyedExpr :comparison equality
+    :generate-s7-reader true :s7-tag "entity-destroyed" :s7-positional true :s7-constructor false
+    :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
+    (member entity @input_entity_id :initializer "")
+    (function type ioj::ExprKind :static true :constexpr true :body ("return ExprKind::EntityDestroyed;"))
+    (projections (cpp)))
+  (record EntityReachedPositionExpr :comparison equality
+    :generate-s7-reader true :s7-tag "entity-reached-position" :s7-positional true :s7-constructor false
+    :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
+    (member entity @input_entity_id :initializer "")
+    (member position @finite_position :initializer "")
+    (member radius @nonnegative_double :initializer "")
+    (function type ioj::ExprKind :static true :constexpr true :body ("return ExprKind::EntityReachedPosition;"))
+    (projections (cpp)))
+  (record EntityKillsReachedExpr :comparison equality
+    :generate-s7-reader true :s7-tag "entity-kills-reached" :s7-positional true :s7-constructor false
+    :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
+    (member entities @native_entity_ids :initializer "")
+    (member kills @kill_count :initializer "")
+    (function type ioj::ExprKind :static true :constexpr true :body ("return ExprKind::EntityKillsReached;"))
+    (projections (cpp)))
+  (record TimerElapsedExpr :comparison equality
+    :generate-s7-reader true :s7-tag "timer-elapsed" :s7-positional true :s7-constructor false
+    (member timer std::uint32_t :initializer "")
+    (function type ioj::ExprKind :static true :constexpr true :body ("return ExprKind::TimerElapsed;"))
+    (projections (cpp)))
+  (record LatchedTrueExpr :comparison equality
+    :generate-s7-reader true :s7-tag "latched-true" :s7-positional true :s7-constructor false
+    (member latch std::uint32_t :initializer "")
+    (function type ioj::ExprKind :static true :constexpr true :body ("return ExprKind::LatchedTrue;"))
+    (projections (cpp)))
+  (record LatchedFalseExpr :comparison equality
+    :generate-s7-reader true :s7-tag "latched-false" :s7-positional true :s7-constructor false
+    (member latch std::uint32_t :initializer "")
+    (function type ioj::ExprKind :static true :constexpr true :body ("return ExprKind::LatchedFalse;"))
+    (projections (cpp)))
+  (record WinEffect :comparison equality
+    :generate-s7-reader true :s7-tag "win" :s7-positional true :s7-constructor false
+    (member team ioj::Team :initializer "")
+    (projections (cpp)))
+  (record StopEffect :comparison equality
+    :generate-s7-reader true :s7-tag "stop" :s7-positional true :s7-constructor false
+    (projections (cpp)))
+  (record SpawnEffect :comparison equality
+    :generate-s7-reader true :s7-tag "spawn" :s7-positional true :s7-constructor false
+    (member group std::uint32_t :initializer "")
+    (projections (cpp)))
+  (record StartTimerEffect :comparison equality
+    :generate-s7-reader true :s7-tag "start-timer" :s7-positional true :s7-constructor false
+    (member timer std::uint32_t :initializer "")
+    (member seconds @nonnegative_double :initializer "")
+    (projections (cpp))))
+
 (module positional_inputs
   :header "native/level_authoring/lib/include/ioj/levels/authoring/positional_inputs.h"
   :header-include "ioj/levels/authoring/positional_inputs.h"
@@ -25,7 +83,7 @@
     (member team ioj::Team :initializer "" :required true)
     (member position @native_vector3d :initializer "" :required true)
     (member rotation @native_vector3d :initializer "")
-    (member spawn_at @input_spawn_time :initializer "")
+    (member spawn_at @nonnegative_double :initializer "")
     (member health @input_optional_health :initializer "")
     (member laser_damage @input_optional_nonnegative_int :initializer "")
     (member initial_spawn_delay @input_optional_delay :initializer "")

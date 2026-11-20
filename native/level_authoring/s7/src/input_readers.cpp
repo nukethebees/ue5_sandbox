@@ -1,209 +1,168 @@
 #include <ioj/levels/authoring/input_readers.h>
 
 #include <ioj/levels/authoring/grammar.h>
+#include <ioj/levels/logic_payloads_reader.h>
 
 #include <array>
-#include <concepts>
 #include <format>
-#include <type_traits>
 namespace ioj::s7 {
-namespace logic_reading {
 using namespace levels;
-auto expression(Reader const& reader, NodeIndex node, std::string_view path)
-    -> ReadResult<Expression> {
-    auto values{reader.list(node, path)};
-    if (!values) {
-        return std::unexpected{values.error()};
-    }
-    auto const& ast{reader.ast()};
-    if (values->empty() || ast.node(values->front()).kind != NodeKind::Keyword) {
-        return read_error(AstErrorCode::ExpectedRecord, path, "Expected an expression record");
-    }
-    auto type{try_parse_serialized_expr_kind(ast.text(values->front()))};
-    if (!type) {
-        return read_error(AstErrorCode::UnknownSymbol, path, "Unknown expression constructor");
-    }
-    if (is_composite(*type)) {
-        std::vector<ExprIndex> children;
-        for (auto child : values->subspan(1)) {
-            auto index{s7::read<ExprIndex>(
-                reader, child, std::format("{}.children[{}]", path, children.size()))};
-            if (!index) {
-                return std::unexpected{index.error()};
+
+template <typename Result, typename Payload>
+auto read_payload(Reader const& reader, NodeIndex node, std::string_view path)
+    -> ReadResult<Result> {
+    return s7::read<Payload>(reader, node, path).transform([](Payload value) {
+        return Result{std::move(value)};
+    });
+}
+
+template <>
+struct TypeReader<Expression> {
+    static auto read(Reader const& reader, NodeIndex node, std::string_view path)
+        -> ReadResult<Expression> {
+        auto values{reader.list(node, path)};
+        if (!values) {
+            return std::unexpected{values.error()};
+        }
+        auto const& ast{reader.ast()};
+        if (values->empty() || ast.node(values->front()).kind != NodeKind::Keyword) {
+            return read_error(AstErrorCode::ExpectedRecord, path, "Expected an expression record");
+        }
+        auto type{try_parse_serialized_expr_kind(ast.text(values->front()))};
+        if (!type) {
+            return read_error(AstErrorCode::UnknownSymbol, path, "Unknown expression constructor");
+        }
+        if (is_composite(*type)) {
+            std::vector<ExprIndex> children;
+            for (auto child : values->subspan(1)) {
+                auto index{s7::read<ExprIndex>(
+                    reader, child, std::format("{}.children[{}]", path, children.size()))};
+                if (!index) {
+                    return std::unexpected{index.error()};
+                }
+                children.push_back(*index);
             }
-            children.push_back(*index);
+            switch (*type) {
+                case ExprKind::All:
+                    return Expression{AllExpr{std::move(children)}};
+                case ExprKind::Any:
+                    return Expression{AnyExpr{std::move(children)}};
+                case ExprKind::Not:
+                    return Expression{NotExpr{std::move(children)}};
+                case ExprKind::Xor:
+                    return Expression{XorExpr{std::move(children)}};
+                default:
+                    std::unreachable();
+            }
         }
         switch (*type) {
-            case ExprKind::All:
-                return Expression{AllExpr{std::move(children)}};
-            case ExprKind::Any:
-                return Expression{AnyExpr{std::move(children)}};
-            case ExprKind::Not:
-                return Expression{NotExpr{std::move(children)}};
-            case ExprKind::Xor:
-                return Expression{XorExpr{std::move(children)}};
+            case ExprKind::EntityDestroyed:
+                return read_payload<Expression, EntityDestroyedExpr>(reader, node, path);
+            case ExprKind::EntityReachedPosition:
+                return read_payload<Expression, EntityReachedPositionExpr>(reader, node, path);
+            case ExprKind::EntityKillsReached:
+                return read_payload<Expression, EntityKillsReachedExpr>(reader, node, path);
+            case ExprKind::TimerElapsed:
+                return read_payload<Expression, TimerElapsedExpr>(reader, node, path);
+            case ExprKind::LatchedTrue:
+                return read_payload<Expression, LatchedTrueExpr>(reader, node, path);
+            case ExprKind::LatchedFalse:
+                return read_payload<Expression, LatchedFalseExpr>(reader, node, path);
             default:
                 std::unreachable();
         }
     }
-    auto const count{*type == ExprKind::EntityReachedPosition
-                         ? 3u
-                         : (*type == ExprKind::EntityKillsReached ? 2u : 1u)};
-    auto args{positional_arguments(reader, node, ast.text(values->front()), path, count)};
-    if (!args) {
-        return std::unexpected{args.error()};
-    }
-    AstDiagnostics errors;
-    auto field{[&]<typename T>(std::size_t index, std::string_view name) {
-        T value{};
-        decode_field({reader, (*args)[index], field_path(path, name), ReadMode::Create, errors},
-                     value);
-        return value;
-    }};
-    Expression result;
-    switch (*type) {
-        case ExprKind::EntityDestroyed:
-            result = {EntityDestroyedExpr{field.template operator()<EntityId>(0, "entity")}};
-            break;
-        case ExprKind::EntityReachedPosition:
-            result = {EntityReachedPositionExpr{
-                field.template operator()<EntityId>(0, "entity"),
-                field.template operator()<FiniteVector<double, 3>>(1, "position"),
-                field.template operator()<NonNegativeFinite<double>>(2, "radius")}};
-            break;
-        case ExprKind::EntityKillsReached:
-            result = {EntityKillsReachedExpr{
-                field.template operator()<std::vector<EntityId>>(0, "entities"),
-                field.template operator()<std::uint32_t>(1, "kills")}};
-            break;
-        case ExprKind::TimerElapsed:
-            result = {TimerElapsedExpr{field.template operator()<std::uint32_t>(0, "timer")}};
-            break;
-        case ExprKind::LatchedTrue:
-            result = {LatchedTrueExpr{field.template operator()<std::uint32_t>(0, "latch")}};
-            break;
-        case ExprKind::LatchedFalse:
-            result = {LatchedFalseExpr{field.template operator()<std::uint32_t>(0, "latch")}};
-            break;
-        default:
-            std::unreachable();
-    }
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-    return result;
-}
-auto effect(Reader const& reader, NodeIndex node, std::string_view path) -> ReadResult<Effect> {
-    auto values{reader.list(node, path)};
-    if (!values) {
-        return std::unexpected{values.error()};
-    }
-    auto const& ast{reader.ast()};
-    if (values->empty() || ast.node(values->front()).kind != NodeKind::Keyword) {
-        return read_error(AstErrorCode::ExpectedRecord, path, "Expected an effect");
-    }
-    using authoring::EffectSyntax;
-    auto type{authoring::try_parse_serialized_effect_syntax(ast.text(values->front()))};
-    if (!type) {
-        return read_error(AstErrorCode::UnknownSymbol, path, "Unknown effect");
-    }
-    auto const count{*type == EffectSyntax::Stop ? 0u
-                                                 : (*type == EffectSyntax::StartTimer ? 2u : 1u)};
-    auto args{positional_arguments(reader, node, ast.text(values->front()), path, count)};
-    if (!args) {
-        return std::unexpected{args.error()};
-    }
-    switch (*type) {
-        case EffectSyntax::Stop:
-            return StopEffect{};
-        case EffectSyntax::Win:
-            return s7::read<Team>(reader, (*args)[0], field_path(path, "team"))
-                .transform([](auto v) -> Effect { return WinEffect{v}; });
-        case EffectSyntax::Spawn:
-            return s7::read<std::uint32_t>(reader, (*args)[0], field_path(path, "group"))
-                .transform([](auto v) -> Effect { return SpawnEffect{v}; });
-        case EffectSyntax::StartTimer: {
-            auto timer{s7::read<std::uint32_t>(reader, (*args)[0], field_path(path, "timer"))};
-            auto duration{s7::read<NonNegativeFinite<double>>(
-                reader, (*args)[1], field_path(path, "seconds"))};
-            if (!timer) {
-                return std::unexpected{timer.error()};
-            }
-            if (!duration) {
-                return std::unexpected{duration.error()};
-            }
-            return StartTimerEffect{*timer, *duration};
+};
+template <>
+struct TypeReader<Effect> {
+    static auto read(Reader const& reader, NodeIndex node, std::string_view path)
+        -> ReadResult<Effect> {
+        auto values{reader.list(node, path)};
+        if (!values) {
+            return std::unexpected{values.error()};
         }
+        auto const& ast{reader.ast()};
+        if (values->empty() || ast.node(values->front()).kind != NodeKind::Keyword) {
+            return read_error(AstErrorCode::ExpectedRecord, path, "Expected an effect");
+        }
+        using authoring::EffectSyntax;
+        auto type{authoring::try_parse_serialized_effect_syntax(ast.text(values->front()))};
+        if (!type) {
+            return read_error(AstErrorCode::UnknownSymbol, path, "Unknown effect");
+        }
+        switch (*type) {
+            case EffectSyntax::Win:
+                return read_payload<Effect, WinEffect>(reader, node, path);
+            case EffectSyntax::Stop:
+                return read_payload<Effect, StopEffect>(reader, node, path);
+            case EffectSyntax::Spawn:
+                return read_payload<Effect, SpawnEffect>(reader, node, path);
+            case EffectSyntax::StartTimer:
+                return read_payload<Effect, StartTimerEffect>(reader, node, path);
+        }
+        std::unreachable();
     }
-    std::unreachable();
-}
-template <typename T, typename Read>
-auto sequence(Reader const& reader, NodeIndex node, std::string_view path, Read read)
-    -> ReadResult<std::vector<T>> {
-    auto values{reader.list(node, path)};
-    if (!values) {
-        return std::unexpected{values.error()};
+};
+template <>
+struct TypeReader<SpawnGroupDefinition> {
+    static auto read(Reader const& reader, NodeIndex node, std::string_view path)
+        -> ReadResult<SpawnGroupDefinition> {
+        auto fields{s7::read<std::array<RawNode, 2>>(reader, node, path)};
+        if (!fields) {
+            return std::unexpected{fields.error()};
+        }
+        auto name{reader.symbol((*fields)[0].index, field_path(path, "name"))};
+        auto entities{s7::read<std::vector<EntityId>>(
+            reader, (*fields)[1].index, field_path(path, "entities"))};
+        if (!name) {
+            return std::unexpected{name.error()};
+        }
+        if (!entities) {
+            return std::unexpected{entities.error()};
+        }
+        return SpawnGroupDefinition{std::move(*name), std::move(*entities)};
     }
-    std::vector<T> result;
-    for (auto item : *values) {
-        auto value{read(reader, item, std::format("{}[{}]", path, result.size()))};
+};
+template <>
+struct TypeReader<EventRule> {
+    static auto read(Reader const& reader, NodeIndex node, std::string_view path)
+        -> ReadResult<EventRule> {
+        auto fields{s7::read<std::array<RawNode, 2>>(reader, node, path)};
+        if (!fields) {
+            return std::unexpected{fields.error()};
+        }
+        auto when{s7::read<ExprIndex>(reader, (*fields)[0].index, field_path(path, "when"))};
+        auto effects{
+            s7::read<std::vector<Effect>>(reader, (*fields)[1].index, field_path(path, "effects"))};
+        if (!when) {
+            return std::unexpected{when.error()};
+        }
+        if (!effects) {
+            return std::unexpected{effects.error()};
+        }
+        return EventRule{*when, std::move(*effects)};
+    }
+};
+
+template <>
+struct TypeReader<LatchDefinition> {
+    static auto read(Reader const& reader, NodeIndex node, std::string_view path)
+        -> ReadResult<LatchDefinition> {
+        auto fields{s7::read<std::array<RawNode, 2>>(reader, node, path)};
+        if (!fields) {
+            return std::unexpected{fields.error()};
+        }
+        auto when{s7::read<ExprIndex>(reader, (*fields)[0].index, field_path(path, "when"))};
+        auto value{s7::read<ExprIndex>(reader, (*fields)[1].index, field_path(path, "value"))};
+        if (!when) {
+            return std::unexpected{when.error()};
+        }
         if (!value) {
             return std::unexpected{value.error()};
         }
-        result.push_back(std::move(*value));
+        return LatchDefinition{*when, *value};
     }
-    return result;
-}
-auto group(Reader const& reader, NodeIndex node, std::string_view path)
-    -> ReadResult<SpawnGroupDefinition> {
-    auto fields{s7::read<std::array<RawNode, 2>>(reader, node, path)};
-    if (!fields) {
-        return std::unexpected{fields.error()};
-    }
-    auto name{reader.symbol((*fields)[0].index, field_path(path, "name"))};
-    auto entities{
-        s7::read<std::vector<EntityId>>(reader, (*fields)[1].index, field_path(path, "entities"))};
-    if (!name) {
-        return std::unexpected{name.error()};
-    }
-    if (!entities) {
-        return std::unexpected{entities.error()};
-    }
-    return SpawnGroupDefinition{std::move(*name), std::move(*entities)};
-}
-auto rule(Reader const& reader, NodeIndex node, std::string_view path) -> ReadResult<EventRule> {
-    auto fields{s7::read<std::array<RawNode, 2>>(reader, node, path)};
-    if (!fields) {
-        return std::unexpected{fields.error()};
-    }
-    auto when{s7::read<ExprIndex>(reader, (*fields)[0].index, field_path(path, "when"))};
-    auto effects{sequence<Effect>(reader, (*fields)[1].index, field_path(path, "effects"), effect)};
-    if (!when) {
-        return std::unexpected{when.error()};
-    }
-    if (!effects) {
-        return std::unexpected{effects.error()};
-    }
-    return EventRule{*when, std::move(*effects)};
-}
-
-auto latch(Reader const& reader, NodeIndex node, std::string_view path)
-    -> ReadResult<LatchDefinition> {
-    auto fields{s7::read<std::array<RawNode, 2>>(reader, node, path)};
-    if (!fields) {
-        return std::unexpected{fields.error()};
-    }
-    auto when{s7::read<ExprIndex>(reader, (*fields)[0].index, field_path(path, "when"))};
-    auto value{s7::read<ExprIndex>(reader, (*fields)[1].index, field_path(path, "value"))};
-    if (!when) {
-        return std::unexpected{when.error()};
-    }
-    if (!value) {
-        return std::unexpected{value.error()};
-    }
-    return LatchDefinition{*when, *value};
-}
-}
+};
 auto TypeReader<levels::LogicDefinition>::read(Reader const& reader,
                                                NodeIndex node,
                                                std::string_view path)
@@ -213,17 +172,16 @@ auto TypeReader<levels::LogicDefinition>::read(Reader const& reader,
     if (!args) {
         return std::unexpected{args.error()};
     }
-    auto expressions{logic_reading::sequence<Expression>(
-        reader, (*args)[0], field_path(path, "expressions"), logic_reading::expression)};
-    auto latches{logic_reading::sequence<LatchDefinition>(
-        reader, (*args)[1], field_path(path, "latches"), logic_reading::latch)};
+    auto expressions{
+        s7::read<std::vector<Expression>>(reader, (*args)[0], field_path(path, "expressions"))};
+    auto latches{
+        s7::read<std::vector<LatchDefinition>>(reader, (*args)[1], field_path(path, "latches"))};
     auto timers{s7::read<std::uint32_t>(reader, (*args)[2], field_path(path, "timer-count"))};
-    auto groups{logic_reading::sequence<SpawnGroupDefinition>(
-        reader, (*args)[3], field_path(path, "spawn-groups"), logic_reading::group)};
-    auto initial{logic_reading::sequence<Effect>(
-        reader, (*args)[4], field_path(path, "initial-effects"), logic_reading::effect)};
-    auto rules{logic_reading::sequence<EventRule>(
-        reader, (*args)[5], field_path(path, "rules"), logic_reading::rule)};
+    auto groups{s7::read<std::vector<SpawnGroupDefinition>>(
+        reader, (*args)[3], field_path(path, "spawn-groups"))};
+    auto initial{
+        s7::read<std::vector<Effect>>(reader, (*args)[4], field_path(path, "initial-effects"))};
+    auto rules{s7::read<std::vector<EventRule>>(reader, (*args)[5], field_path(path, "rules"))};
     if (!expressions) {
         return std::unexpected{expressions.error()};
     }

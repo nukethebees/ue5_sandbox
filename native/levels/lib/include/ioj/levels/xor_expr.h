@@ -6,7 +6,7 @@
 namespace ioj::levels {
 struct XorExpr {
     auto operator==(XorExpr const&) const -> bool = default;
-    static constexpr ExprKind type{ExprKind::Xor};
+    static constexpr auto type() -> ExprKind { return ExprKind::Xor; }
     std::vector<ExprIndex> children;
 };
 }

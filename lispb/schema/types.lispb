@@ -350,7 +350,7 @@
 (type input_optional_health :spelling "std::optional<ioj::settings::PositiveHealth>" :header "ioj/settings/simulation_constraints.h")
 (type input_optional_nonnegative_int :spelling "std::optional<ioj::NonNegative<std::int32_t>>" :header "ioj/constrained_numbers.h")
 (type input_optional_delay :spelling "std::optional<ioj::NonNegativeFinite<float>>" :header "ioj/constrained_numbers.h")
-(type input_spawn_time :spelling "ioj::NonNegativeFinite<double>" :header "ioj/constrained_numbers.h")
+(type nonnegative_double :spelling "ioj::NonNegativeFinite<double>" :header "ioj/constrained_numbers.h")
 (type input_optional_float :spelling "std::optional<float>" :header "optional")
 
 
@@ -450,3 +450,6 @@
 (type nonnegative_int32_const_span :spelling "std::span<ioj::NonNegative<std::int32_t> const>" :header "ioj/constrained_numbers.h")
 
 (type input_logic :spelling "ioj::levels::LogicDefinition" :header "ioj/levels/logic_definition.h")
+
+(type finite_position :spelling "ioj::FiniteVector<double, 3>" :header "ioj/constrained_vectors.h")
+(type kill_count :spelling "ioj::KillCount" :header "ioj/kill_count.h")

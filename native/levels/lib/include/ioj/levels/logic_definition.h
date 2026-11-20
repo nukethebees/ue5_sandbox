@@ -18,22 +18,6 @@ struct SpawnGroupDefinition {
     std::string name;
     std::vector<EntityId> entities;
 };
-struct WinEffect {
-    auto operator==(WinEffect const&) const -> bool = default;
-    Team team{};
-};
-struct StopEffect {
-    auto operator==(StopEffect const&) const -> bool = default;
-};
-struct SpawnEffect {
-    auto operator==(SpawnEffect const&) const -> bool = default;
-    std::uint32_t group{};
-};
-struct StartTimerEffect {
-    auto operator==(StartTimerEffect const&) const -> bool = default;
-    std::uint32_t timer{};
-    NonNegativeFinite<double> seconds{};
-};
 using Effect = std::variant<WinEffect, StopEffect, SpawnEffect, StartTimerEffect>;
 struct EventRule {
     auto operator==(EventRule const&) const -> bool = default;

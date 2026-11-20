@@ -124,7 +124,8 @@ Decode the complete input first; only then assign entity IDs, resolve objective-
 expression names, assemble domain definitions and run semantic validation. Processing
 functions receive typed inputs and never access the AST. Named expressions, expression
 references, outcome dependencies and unlock criteria use generated positional readers.
-Recursive mission composition and leaf-payload selection still use a typed adapter.
+Fixed-arity mission expressions and effects also use generated positional readers. The mission
+adapter selects the payload type and reads the children of variadic expressions.
 
 Catalog entries capture `ReadResult<T>` so a bad imported definition remains an error
 associated with that file without discarding successful siblings. Simulation, presentation

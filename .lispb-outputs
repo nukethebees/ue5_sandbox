@@ -32,6 +32,8 @@ native/levels/lib/include/ioj/levels/level_camera_definition.h
 native/levels/lib/include/ioj/levels/level_camera_definition_reader.h
 native/levels/lib/include/ioj/levels/level_camera_definition_writer.h
 native/levels/lib/include/ioj/levels/level_outcome.h
+native/levels/lib/include/ioj/levels/logic_payloads.h
+native/levels/lib/include/ioj/levels/logic_payloads_reader.h
 native/levels/lib/include/ioj/levels/team.h
 native/levels/lib/include/ioj/settings/attack_distance_band.h
 native/levels/lib/include/ioj/settings/attack_distance_band_reader.h

@@ -6,7 +6,7 @@
 namespace ioj::levels {
 struct NotExpr {
     auto operator==(NotExpr const&) const -> bool = default;
-    static constexpr ExprKind type{ExprKind::Not};
+    static constexpr auto type() -> ExprKind { return ExprKind::Not; }
     std::vector<ExprIndex> children;
 };
 }
