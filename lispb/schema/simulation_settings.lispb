@@ -76,12 +76,48 @@
     (member entity_count_update_period @settings_nonnegative_float :initializer 0.25f)
     (projections (cpp))))
 
+(module geometry_shapes
+  :header "native/levels/lib/include/ioj/settings/geometry_shapes.h"
+  :header-include "ioj/settings/geometry_shapes.h"
+  :namespace ioj::settings
+  (record MeshBounds :comparison equality :generate-visitor true :generate-s7-reader true :generate-s7-writer true :s7-tag "mesh-bounds"
+    (member centre @native_vector_3f :initializer "")
+    (member half_extents @native_vector_3f :initializer "")
+    (projections (cpp)))
+  (record AttachmentTransform :comparison equality :generate-visitor true :generate-s7-reader true :generate-s7-writer true :s7-tag "attachment-transform"
+    (member location @native_vector3d :initializer "")
+    (member rotation @geometry_quaternion :initializer "0., 0., 0., 1.")
+    (member scale @native_vector3d :initializer "1., 1., 1.")
+    (projections (cpp))))
+
+(module entity_geometry
+  :header "native/levels/lib/include/ioj/settings/entity_geometry.h"
+  :header-include "ioj/settings/entity_geometry.h"
+  :namespace ioj::settings
+  :prelude ("#include <vector>")
+  (record EntityGeometry :comparison equality :generate-visitor true :generate-s7-reader true :generate-s7-writer true :s7-tag "entity-geometry"
+    (member player_ship ioj::settings::MeshBounds :initializer "")
+    (member capital_ship ioj::settings::MeshBounds :initializer "")
+    (member fighter ioj::settings::MeshBounds :initializer "")
+    (member turret ioj::settings::MeshBounds :initializer "")
+    (member tube_spinner ioj::settings::MeshBounds :initializer "")
+    (member fighter_launch_slots @geometry_transforms :initializer "")
+    (member fighter_fire_point_distance float :initializer "")
+    (member turret_fire_point @native_vector_3f :initializer "")
+    (member spinner_fire_points @geometry_transforms :initializer "")
+    (member player_body ioj::settings::AttachmentTransform :initializer "")
+    (member player_left_socket ioj::settings::AttachmentTransform :initializer "")
+    (member player_middle_socket ioj::settings::AttachmentTransform :initializer "")
+    (member player_right_socket ioj::settings::AttachmentTransform :initializer "")
+    (projections (cpp))))
+
 (module settings_values
   :header "native/levels/lib/include/ioj/settings/settings_values.h"
   :header-include "ioj/settings/settings_values.h"
   :namespace ioj::settings
   (record SettingsValues :comparison equality :generate-visitor true
     :generate-s7-reader true :generate-s7-writer true :s7-tag "settings"
+    (member entity_geometry ioj::settings::EntityGeometry :initializer "")
     (member tick ioj::settings::TickSettings :initializer "")
     (member player_ship ioj::sim::PlayerSimConfig :initializer "")
     (member laser_projectiles ioj::sim::LaserSimConfig :initializer "")

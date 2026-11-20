@@ -17,6 +17,7 @@
 #include <Engine/World.h>
 #include <EngineUtils.h>
 #include <HAL/FileManager.h>
+#include <HAL/PlatformFileManager.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Guid.h>
@@ -62,13 +63,12 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                                             TEXT("S7PlayableLevel"),
                                             FGuid::NewGuid().ToString());
         auto const settings{FPaths::Combine(source_directory_, TEXT("Settings"))};
-        IFileManager::Get().MakeDirectory(*settings, true);
-        if (!TestRunner->TestTrue(TEXT("Install shared settings"),
-                                  IFileManager::Get().Copy(
-                                      *FPaths::Combine(settings, TEXT("base.scm")),
-                                      *FPaths::Combine(FPaths::ProjectDir(),
-                                                       TEXT("LevelScripts/Settings/base.scm"))) ==
-                                      COPY_OK)) {
+        if (!TestRunner->TestTrue(
+                TEXT("Install shared settings and geometry"),
+                FPlatformFileManager::Get().GetPlatformFile().CopyDirectoryTree(
+                    *settings,
+                    *FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts/Settings")),
+                    true))) {
             return;
         }
         auto const root{FPaths::Combine(source_directory_, TEXT("Playable.scm"))};

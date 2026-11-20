@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/gfx/starfield_settings_writer.h"
+#include "ioj/settings/entity_geometry_writer.h"
 #include "ioj/settings/presentation_writer.h"
 #include "ioj/settings/settings_values.h"
 #include "ioj/settings/tick_settings_writer.h"
@@ -28,6 +29,7 @@ struct TypeWriter<settings::SettingsValues> : RecordWriter<settings::SettingsVal
     static void properties(Visitor& visit) {
         using T = ioj::settings::SettingsValues;
 
+        visit("entity-geometry", &T::entity_geometry);
         visit("tick", &T::tick);
         visit("player-ship", &T::player_ship);
         visit("laser-projectiles", &T::laser_projectiles);

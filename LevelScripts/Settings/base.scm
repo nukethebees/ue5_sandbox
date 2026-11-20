@@ -1,9 +1,8 @@
 (export game-settings)
 
-; Retain DA_FT_soa_entities_LevelConfig tuning from the exported native reference.
-; Tick, collision and HUD defaults retain the existing runtime defaults.
 (define game-settings
   (settings
+    :entity-geometry (module-ref (import-module "Settings/entity-geometry.scm") 'entity-geometry)
     :tick (tick
       :tick-rate 60
       :time-scale 1)

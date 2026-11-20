@@ -41,6 +41,9 @@ native/levels/lib/include/ioj/settings/attack_distance_band_writer.h
 native/levels/lib/include/ioj/settings/capital_presentation.h
 native/levels/lib/include/ioj/settings/capital_presentation_reader.h
 native/levels/lib/include/ioj/settings/capital_presentation_writer.h
+native/levels/lib/include/ioj/settings/entity_geometry.h
+native/levels/lib/include/ioj/settings/entity_geometry_reader.h
+native/levels/lib/include/ioj/settings/entity_geometry_writer.h
 native/levels/lib/include/ioj/settings/entity_overlay.h
 native/levels/lib/include/ioj/settings/entity_overlay_reader.h
 native/levels/lib/include/ioj/settings/entity_overlay_writer.h
@@ -57,6 +60,9 @@ native/levels/lib/include/ioj/settings/game_setting_value_type.h
 native/levels/lib/include/ioj/settings/game_settings.h
 native/levels/lib/include/ioj/settings/game_settings_access.h
 native/levels/lib/include/ioj/settings/game_settings_state.h
+native/levels/lib/include/ioj/settings/geometry_shapes.h
+native/levels/lib/include/ioj/settings/geometry_shapes_reader.h
+native/levels/lib/include/ioj/settings/geometry_shapes_writer.h
 native/levels/lib/include/ioj/settings/laser_presentation.h
 native/levels/lib/include/ioj/settings/laser_presentation_reader.h
 native/levels/lib/include/ioj/settings/laser_presentation_writer.h

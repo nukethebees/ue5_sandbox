@@ -5,6 +5,7 @@
 
 #include "ioj/gfx/starfield_settings_reader.h"
 #include "ioj/s7/record_reader.h"
+#include "ioj/settings/entity_geometry_reader.h"
 #include "ioj/settings/presentation_reader.h"
 #include "ioj/settings/settings_values.h"
 #include "ioj/settings/tick_settings_reader.h"
@@ -35,7 +36,8 @@ struct TypeReader<settings::SettingsValues> : RecordReader<settings::SettingsVal
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 11> field_names{"tick",
+    static constexpr std::array<std::string_view, 12> field_names{"entity-geometry",
+                                                                  "tick",
                                                                   "player-ship",
                                                                   "laser-projectiles",
                                                                   "capital-ships",

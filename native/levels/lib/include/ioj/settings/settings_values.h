@@ -6,6 +6,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/gfx/starfield_settings.h"
+#include "ioj/settings/entity_geometry.h"
 #include "ioj/settings/presentation.h"
 #include "ioj/settings/tick_settings.h"
 #include "ioj/sim/capital_ships/capital_ship_sim_config.h"
@@ -30,6 +31,7 @@ struct SettingsValues {
     bool operator==(SettingsValues const&) const = default;
 
     enum class Field : std::uint8_t {
+        entity_geometry,
         tick,
         player_ship,
         laser_projectiles,
@@ -48,6 +50,9 @@ struct SettingsValues {
         requires (std::same_as<std::remove_const_t<Self>, SettingsValues> &&
                   std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
+        if constexpr (Selected == Field::entity_geometry) {
+            return (self.entity_geometry);
+        }
         if constexpr (Selected == Field::tick) {
             return (self.tick);
         }
@@ -93,6 +98,8 @@ struct SettingsValues {
         requires std::same_as<std::remove_const_t<Self>, SettingsValues>
     {
         switch (field) {
+            case Field::entity_geometry:
+                return invoke_field<Field::entity_geometry>(self, std::forward<Visitor>(visitor));
             case Field::tick:
                 return invoke_field<Field::tick>(self, std::forward<Visitor>(visitor));
             case Field::player_ship:
@@ -120,6 +127,7 @@ struct SettingsValues {
         std::unreachable();
     }
 
+    EntityGeometry entity_geometry{};
     TickSettings tick{};
     sim::PlayerSimConfig player_ship{};
     sim::LaserSimConfig laser_projectiles{};
@@ -136,12 +144,13 @@ struct SettingsValues {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<settings::SettingsValues::Field>() noexcept -> std::size_t {
-    return 11ULL;
+    return 12ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<settings::SettingsValues::Field, Name>{PackedStrings{
-    "tick\000player_ship\000laser_projectiles\000capital_ships\000fighters\000turrets\000tube_"
-    "spinners\000collision_grid\000hud\000presentation\000starfield",
-    std::array<std::uint8_t, 12>{0, 5, 17, 35, 49, 58, 66, 80, 95, 99, 112, 122}}};
+    "entity_geometry\000tick\000player_ship\000laser_projectiles\000capital_"
+    "ships\000fighters\000turrets\000tube_spinners\000collision_"
+    "grid\000hud\000presentation\000starfield",
+    std::array<std::uint8_t, 13>{0, 16, 21, 33, 51, 65, 74, 82, 96, 111, 115, 128, 138}}};
 } // namespace ioj
