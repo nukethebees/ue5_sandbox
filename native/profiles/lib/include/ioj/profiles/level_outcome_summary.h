@@ -1,5 +1,5 @@
 #pragma once
-
+#include <ioj/kill_count.h>
 #include <ioj/profiles/level_outcome_statistic.h>
 #include <ioj/profiles/timestamp.h>
 
@@ -11,7 +11,7 @@ struct LevelOutcomeSummary {
     std::string display_name{};
     Timestamp completed_at{};
     float simulation_duration_seconds{};
-    std::int32_t kills{};
+    KillCount kills{};
     std::string result{};
     std::vector<LevelOutcomeStatistic> statistics{};
 };

@@ -139,7 +139,7 @@ void EntityLedger::record_deaths(EntityDeathInfo::CompactConstView const deaths,
     }
 }
 
-auto EntityLedger::kills(EntityId const id) const -> std::uint32_t {
+auto EntityLedger::kills(EntityId const id) const -> KillCount {
     return history_.const_view().kills()[require_history_index(id)];
 }
 }

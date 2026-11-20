@@ -1,6 +1,6 @@
 #pragma once
-
 #include <ioj/enum_array.h>
+#include <ioj/kill_count.h>
 #include <ioj/sim/combat_statistics.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_history.h>
@@ -53,14 +53,12 @@ class EntityLedger {
         return id.is_valid() && id.index() < issued_counts_[id.entity_type()];
     }
     auto issued_counts() const noexcept -> EntityTypeSizes const& { return issued_counts_; }
-    auto kills(EntityId id) const -> std::uint32_t;
+    auto kills(EntityId id) const -> KillCount;
     auto count_alive() const noexcept -> std::int32_t { return statistics_.alive_count(); }
     auto count_alive_per_team_and_type() const noexcept -> EntityCounts {
         return statistics_.count_alive_per_team_and_type();
     }
-    auto count_kills(Team team) const noexcept -> std::int32_t {
-        return statistics_.kill_count(team);
-    }
+    auto count_kills(Team team) const noexcept -> KillCount { return statistics_.kill_count(team); }
   private:
     template <typename Teams, typename Healths>
     void record_spawns_impl(EntityType type,

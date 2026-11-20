@@ -3,7 +3,7 @@
   :namespace ioj::sim
   (struct EntityHistory
     (member teams array @native_team)
-    (member kills array uint32)
+    (member kills array @kill_count)
     (member life_state array @native_life_state)
     (member death_ticks array @native_sim_tick)
     (member death_locations array @native_vector_3f)

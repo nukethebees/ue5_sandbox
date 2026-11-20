@@ -597,8 +597,8 @@ auto Sim::consume_death_notification() noexcept -> bool {
     return std::exchange(death_notification_pending_, false);
 }
 
-auto Sim::kills() const -> std::int32_t {
-    return static_cast<std::int32_t>(ledger_.kills(unique_entity_id));
+auto Sim::kills() const -> KillCount {
+    return ledger_.kills(unique_entity_id);
 }
 
 auto Sim::speed() const noexcept -> float {

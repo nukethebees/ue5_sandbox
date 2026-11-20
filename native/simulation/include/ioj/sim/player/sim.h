@@ -1,6 +1,7 @@
 #include <ioj/sim/entities/entity_tables.h>
 #pragma once
 #include <ioj/frame_memory_resource.h>
+#include <ioj/kill_count.h>
 #include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/health_table.h>
@@ -131,7 +132,7 @@ struct Sim {
     [[nodiscard]] auto is_alive() const -> bool;
     auto consume_death_notification() noexcept -> bool;
 
-    auto kills() const -> std::int32_t;
+    auto kills() const -> KillCount;
     auto speed() const noexcept -> float;
     auto is_sampling_target_speed() const noexcept -> bool { return sampling_target_speed_; }
     auto sampled_target_speed_scale() const noexcept -> Vector2d {

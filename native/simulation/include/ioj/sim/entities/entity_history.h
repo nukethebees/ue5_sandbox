@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/kill_count.h"
 #include "ioj/levels/team.h"
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
@@ -12,7 +13,6 @@
 #include "ioj/single_allocation/view.h"
 
 #include <cstddef>
-#include <cstdint>
 #include <memory_resource>
 #include <type_traits>
 
@@ -29,7 +29,7 @@ struct ConstView;
 /* **************************************** */
 struct Layout
     : single_allocation_layout::
-          ColumnLayouts<::ioj::Team, std::uint32_t, LifeState, SimTick, Vector3f> {
+          ColumnLayouts<::ioj::Team, KillCount, LifeState, SimTick, Vector3f> {
     static constexpr std::size_t teams_column{0ULL};
     static constexpr std::size_t kills_column{1ULL};
     static constexpr std::size_t life_state_column{2ULL};
@@ -45,7 +45,7 @@ struct DataPointers {
     template <typename T>
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<::ioj::Team>* teams{};
-    Element<std::uint32_t>* kills{};
+    Element<KillCount>* kills{};
     Element<LifeState>* life_state{};
     Element<SimTick>* death_ticks{};
     Element<Vector3f>* death_locations{};
@@ -116,7 +116,7 @@ struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
         requires Enabled
         : Base{other} {}
     auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-    auto kills() const { return this->template column<std::uint32_t>(Layout::kills_column); }
+    auto kills() const { return this->template column<KillCount>(Layout::kills_column); }
     auto life_state() const { return this->template column<LifeState>(Layout::life_state_column); }
     auto death_ticks() const { return this->template column<SimTick>(Layout::death_ticks_column); }
     auto death_locations() const {
@@ -147,7 +147,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 /* **************************************** */
 // Columns:
 // teams: ::ioj::Team
-// kills: std::uint32_t
+// kills: ioj::KillCount
 // life_state: LifeState
 // death_ticks: SimTick
 // death_locations: Vector3f

@@ -45,7 +45,7 @@ auto CombatStatistics::count_alive_per_team_and_type() const noexcept -> EntityC
     return alive_counts_;
 }
 
-auto CombatStatistics::kill_count(Team const team) const noexcept -> std::int32_t {
+auto CombatStatistics::kill_count(Team const team) const noexcept -> KillCount {
     return kill_counts_[team];
 }
 

@@ -156,7 +156,7 @@ void ATestSpaceShip::set_actor_config(FPlayerShipConfig const* const new_config)
     }
 }
 
-auto ATestSpaceShip::get_kills() const -> int32 {
+auto ATestSpaceShip::get_kills() const -> KillCount {
     return simulation().kills();
 }
 

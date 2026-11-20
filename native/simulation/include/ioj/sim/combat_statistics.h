@@ -1,6 +1,6 @@
 #pragma once
-
 #include "ioj/sim/entities/team_entity_array.h"
+#include <ioj/kill_count.h>
 
 #include <cstdint>
 
@@ -16,11 +16,11 @@ class CombatStatistics {
 
     [[nodiscard]] auto alive_count() const noexcept -> std::int32_t;
     [[nodiscard]] auto count_alive_per_team_and_type() const noexcept -> EntityCounts const&;
-    [[nodiscard]] auto kill_count(Team team) const noexcept -> std::int32_t;
+    [[nodiscard]] auto kill_count(Team team) const noexcept -> KillCount;
   private:
     void adjust_alive_count(Team team, EntityType type, std::int32_t delta) noexcept;
 
     EntityCounts alive_counts_{};
-    TeamCounts kill_counts_{};
+    TeamArray<KillCount> kill_counts_{};
 };
 } // namespace ioj::sim

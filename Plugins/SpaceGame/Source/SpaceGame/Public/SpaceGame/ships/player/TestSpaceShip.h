@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/kill_count.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/player/command_interface.h>
@@ -64,7 +65,7 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     }
 
     void set_actor_config(FPlayerShipConfig const* new_config) noexcept;
-    auto get_kills() const -> int32;
+    auto get_kills() const -> KillCount;
 
     /* **************************************** */
     // Flight controls

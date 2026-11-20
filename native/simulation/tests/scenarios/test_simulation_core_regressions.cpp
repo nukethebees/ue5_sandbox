@@ -120,7 +120,7 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
         << "Capital death commits in the third overlap tick";
     auto const kills{harness.ledger().history().kills()};
     auto const& counts{harness.ledger().issued_counts()};
-    std::uint32_t kill_count{};
+    KillCount kill_count{};
     for (auto const type : EnumTraits<EntityType>::values) {
         auto const issued_kills{kills.subspan(entity_identity_offsets[type], counts[type])};
         kill_count = std::ranges::fold_left(issued_kills, kill_count, std::plus{});

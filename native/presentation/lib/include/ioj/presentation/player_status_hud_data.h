@@ -1,5 +1,5 @@
 #pragma once
-
+#include <ioj/kill_count.h>
 #include <ioj/sim/entities/ship_health.h>
 #include <ioj/sim/player/fire_rate.h>
 
@@ -13,7 +13,7 @@ struct PlayerStatusHudData {
     float speed{};
     float target_speed{};
     float energy{1.f};
-    std::int32_t points{};
+    KillCount points{};
     sim::ShipFireRate fire_rate{sim::ShipFireRate::Single};
 };
 }

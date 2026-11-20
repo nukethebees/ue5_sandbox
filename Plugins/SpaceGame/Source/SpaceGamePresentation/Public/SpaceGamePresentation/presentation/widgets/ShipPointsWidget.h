@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/kill_count.h>
 
 #include "Blueprint/UserWidget.h"
 #include "CoreMinimal.h"
@@ -14,7 +15,7 @@ class SPACEGAMEPRESENTATION_API UShipPointsWidget : public UUserWidget {
   public:
     GENERATED_BODY()
 
-    void set_points(int32 points);
+    void set_points(KillCount points);
     void apply_hud_style(FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32;

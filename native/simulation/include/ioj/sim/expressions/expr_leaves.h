@@ -2,8 +2,8 @@
 
 #include <ioj/enum_range_array.h>
 #include <ioj/expr_kind.h>
+#include <ioj/kill_count.h>
 #include <ioj/sim/expressions/expr_result.h>
-#include <ioj/sim/expressions/kill_count.h>
 #include <ioj/sim/expressions/latch_handle.h>
 #include <ioj/sim/expressions/leaf_data_handle.h>
 #include <ioj/sim/expressions/leaf_index.h>

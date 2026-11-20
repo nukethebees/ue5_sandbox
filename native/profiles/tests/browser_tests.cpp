@@ -11,7 +11,7 @@
 namespace ioj::profiles {
 
 namespace save_game_browser_test {
-auto make_summary(std::string profile_id, Timestamp last_played_at, std::int32_t const total_kills)
+auto make_summary(std::string profile_id, Timestamp last_played_at, std::uint64_t const total_kills)
     -> ProfileSummary {
     return {
         .profile_id = std::move(profile_id),

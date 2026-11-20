@@ -60,7 +60,7 @@ auto level_details(FLevelScriptEntry const& entry, profiles::LevelProgressSummar
     }
 
     details += FString::Printf(TEXT("\nATTEMPTS  //  %d    COMPLETIONS  //  %d    "
-                                    "BEST KILLS  //  %d"),
+                                    "BEST KILLS  //  %u"),
                                progress.attempt_count,
                                progress.completion_count,
                                progress.best_kills);

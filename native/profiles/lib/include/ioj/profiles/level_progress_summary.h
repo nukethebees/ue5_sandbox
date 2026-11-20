@@ -1,5 +1,5 @@
 #pragma once
-
+#include <ioj/kill_count.h>
 #include <ioj/profiles/level_progress_state.h>
 #include <ioj/profiles/timestamp.h>
 
@@ -15,6 +15,6 @@ struct LevelProgressSummary {
     std::int32_t completion_count{};
     Timestamp last_played_at{};
     float best_completion_time_seconds{-1.f};
-    std::int32_t best_kills{};
+    KillCount best_kills{};
 };
 }

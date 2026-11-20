@@ -76,7 +76,6 @@ set(expressions_headers
   leaf_data_handle.h
   leaf_index.h
   leaf_data_index.h
-  kill_count.h
   latch_handle.h
   latch_memory.h
   latch_state.h

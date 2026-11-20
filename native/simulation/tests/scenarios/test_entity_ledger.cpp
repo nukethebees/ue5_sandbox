@@ -32,13 +32,13 @@ TEST(WorldlessSpaceGameSimulation, EntityLedgerCountsTeams) {
                         simulation.entity_ledger().count_alive_per_team_and_type());
 }
 
-void run_player_kills(std::int32_t const expected_kills) {
+void run_player_kills(KillCount const expected_kills) {
     auto const config{tests::make_fixture()};
     tests::SimulationScenario data{tests::make_simulation_data(config)};
     auto player{tests::make_player_spawn(config)};
     player.team = Team::Blue;
     tests::add_player_spawn(data, player);
-    for (std::int32_t index{}; index < expected_kills; ++index) {
+    for (KillCount index{}; index < expected_kills; ++index) {
         tests::add_capital_spawn(
             data, {30000.f * static_cast<float>(index + 1), 0.f, 0.f}, Team::Red, 60.f);
     }
@@ -47,7 +47,7 @@ void run_player_kills(std::int32_t const expected_kills) {
     auto& simulation{harness.simulation()};
     auto const player_id{simulation.player_ship_simulation()->unique_entity_id};
     auto const& ledger{harness.ledger()};
-    auto const expect_counts{[&](std::int32_t const kills) {
+    auto const expect_counts{[&](KillCount const kills) {
         EXPECT_EQ(ledger.kills(player_id), kills);
         EXPECT_EQ(ledger.count_kills(Team::Blue), kills);
         EXPECT_EQ(ledger.count_alive(), expected_kills + 1 - kills);

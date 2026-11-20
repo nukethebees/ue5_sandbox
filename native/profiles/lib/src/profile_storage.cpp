@@ -106,11 +106,16 @@ auto decode(Json const& json, ProfileResultsData& value) -> bool {
             try_parse_serialized_level_outcome(row.at("outcome").get<std::string>())};
         auto const reason{
             sim::try_parse_serialized_run_end_reason(row.at("end_reason").get<std::string>())};
+        auto const& kills{row.at("kills")};
+        if (!kills.is_number_unsigned() ||
+            kills.get<std::uint64_t>() > std::numeric_limits<KillCount>::max()) {
+            return false;
+        }
         ScoreRecord record{.date = row.at("date").get<Timestamp>(),
                            .level_name = row.at("level").get<std::string>(),
-                           .kills = row.at("kills").get<std::int32_t>(),
+                           .kills = kills.get<KillCount>(),
                            .time_seconds = row.at("seconds").get<float>()};
-        if (!team || !outcome || !reason || record.level_name.empty() || record.kills < 0 ||
+        if (!team || !outcome || !reason || record.level_name.empty() ||
             !std::isfinite(record.time_seconds) || record.time_seconds < 0.f) {
             return false;
         }
@@ -135,20 +140,22 @@ auto decode(Json const& json, ProfileIndexData& value) -> bool {
         return false;
     }
     for (auto const& row : rows) {
+        if (!row.at("kills").is_number_unsigned()) {
+            return false;
+        }
         ProfileMetadata profile{
             .profile_id = row.at("id").get<std::string>(),
             .display_name = row.at("name").get<std::string>(),
             .created_at = row.at("created").get<Timestamp>(),
             .last_played_at = row.at("last_played").get<Timestamp>(),
             .total_simulation_duration_seconds = row.at("duration").get<float>(),
-            .total_kills = row.at("kills").get<std::int32_t>(),
+            .total_kills = row.at("kills").get<std::uint64_t>(),
             .outcome_count = row.at("outcomes").get<std::int32_t>(),
             .debug_settings = {.unlock_all_missions = row.at("unlock_all").get<bool>(),
                                .start_levels_paused = row.at("start_paused").get<bool>()}};
         if (!valid_identifier(profile.profile_id) || profile.display_name.empty() ||
             !std::isfinite(profile.total_simulation_duration_seconds) ||
-            profile.total_simulation_duration_seconds < 0.f || profile.total_kills < 0 ||
-            profile.outcome_count < 0 ||
+            profile.total_simulation_duration_seconds < 0.f || profile.outcome_count < 0 ||
             std::ranges::any_of(
                 result.profiles,
                 [&](auto const& existing) { return existing.profile_id == profile.profile_id; })) {

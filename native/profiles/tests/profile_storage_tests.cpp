@@ -7,6 +7,7 @@
 #include <array>
 #include <atomic>
 #include <fstream>
+#include <limits>
 #include <thread>
 
 namespace ioj::profiles {
@@ -66,7 +67,7 @@ TEST(ProfileStorage, FailedReplacementPreservesPublishedRecordsAndRollsBackManag
     ScoreRecord const original{.date = 1,
                                .level_name = "mission",
                                .end_reason = sim::RunEndReason::DurationReached,
-                               .kills = 7};
+                               .kills = std::numeric_limits<KillCount>::max()};
     ASSERT_TRUE(manager.append_score_record(original));
     auto const backup{root / "profile_default_profile.json.bak"};
     std::filesystem::remove(backup);
@@ -86,7 +87,10 @@ TEST(ProfileStorage, FailedReplacementPreservesPublishedRecordsAndRollsBackManag
 TEST(ProfileStorage, MergeDeduplicatesPayloadsAndRebuildsMetadataBeforePublication) {
     storage_tests::Directory directory;
     std::array const sources{directory.path / "one", directory.path / "two"};
-    ScoreRecord const first{.date = 1, .level_name = "mission", .kills = 7, .time_seconds = 3.f};
+    ScoreRecord const first{.date = 1,
+                            .level_name = "mission",
+                            .kills = std::numeric_limits<KillCount>::max(),
+                            .time_seconds = 3.f};
     ScoreRecord const second{.date = 2, .level_name = "mission", .kills = 4, .time_seconds = 5.f};
     for (auto const& source : sources) {
         ProfileManager manager{make_file_profile_storage(source)};
@@ -107,7 +111,7 @@ TEST(ProfileStorage, MergeDeduplicatesPayloadsAndRebuildsMetadataBeforePublicati
     ASSERT_EQ(result.active_records().size(), 2u);
     EXPECT_EQ(result.active_records()[0], first);
     EXPECT_EQ(result.active_records()[1], second);
-    EXPECT_EQ(result.profiles()[0].total_kills, 11);
+    EXPECT_EQ(result.profiles()[0].total_kills, std::uint64_t{first.kills} + second.kills);
     EXPECT_EQ(result.profiles()[0].total_simulation_duration_seconds, 8.f);
     EXPECT_TRUE(result.unlock_all_missions());
     EXPECT_FALSE(merge_profile_files(sources, {}, destination));
@@ -141,14 +145,14 @@ TEST(ProfileStorage, ConcurrentIndependentManagersKeepEveryResult) {
     ASSERT_TRUE(initial.initialise());
     std::atomic<bool> succeeded{true};
     std::vector<std::thread> workers;
-    for (int producer{}; producer < 4; ++producer) {
+    for (std::uint32_t producer{}; producer < 4; ++producer) {
         workers.emplace_back([&, producer] {
             ProfileManager manager{make_file_profile_storage(root)};
             if (!manager.initialise()) {
                 succeeded = false;
                 return;
             }
-            for (int row{}; row < 4; ++row) {
+            for (std::uint32_t row{}; row < 4; ++row) {
                 if (!manager.append_score_record({.date = producer * 4 + row + 1,
                                                   .level_name = "mission",
                                                   .kills = producer * 4 + row})) {
@@ -167,7 +171,6 @@ TEST(ProfileStorage, ConcurrentIndependentManagersKeepEveryResult) {
     ASSERT_EQ(records.size(), 16u);
     std::array<bool, 16> seen{};
     for (auto const& record : records) {
-        ASSERT_GE(record.kills, 0);
         ASSERT_LT(record.kills, 16);
         EXPECT_FALSE(seen[record.kills]);
         seen[record.kills] = true;
@@ -185,8 +188,8 @@ TEST(ProfileStorage, RejectsUnsafeIdentifiersAndIncompleteSourcesWithoutPublicat
     EXPECT_FALSE(std::filesystem::exists(directory.path / "source/profile_unsupported.json"));
 
     EXPECT_FALSE(storage.save_results("../escaped", {}));
-    EXPECT_FALSE(storage.save_results("invalid",
-                                      {.score_records = {{.level_name = "mission", .kills = -1}}}));
+    EXPECT_FALSE(storage.save_results(
+        "invalid", {.score_records = {{.level_name = "mission", .time_seconds = -1.f}}}));
     EXPECT_FALSE(std::filesystem::exists(directory.path / "source/profile_invalid.json"));
     ProfileResultsData ignored;
     EXPECT_EQ(storage.load_results("../escaped", ignored), LoadResult::failed);

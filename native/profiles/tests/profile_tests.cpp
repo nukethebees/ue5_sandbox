@@ -63,7 +63,7 @@ struct FakeProfileStorage {
     }
 };
 namespace save_profile_manager_test {
-auto make_record(Timestamp date, std::string level, std::int32_t kills) -> ScoreRecord {
+auto make_record(Timestamp date, std::string level, KillCount kills) -> ScoreRecord {
     return {.date = date,
             .level_name = std::move(level),
             .outcome = LevelOutcome::Victory,

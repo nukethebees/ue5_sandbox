@@ -274,7 +274,7 @@ void UShipHudWidget::set_energy_widget_visibility(ESlateVisibility const new_vis
     set_widget_visibility_checked(energy_widget, new_visibility);
 }
 
-void UShipHudWidget::set_points(int32 value) {
+void UShipHudWidget::set_points(KillCount value) {
     RETURN_IF_NULLPTR(points_widget);
     points_widget->set_points(value);
 }

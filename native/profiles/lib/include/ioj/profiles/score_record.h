@@ -1,5 +1,5 @@
 #pragma once
-
+#include <ioj/kill_count.h>
 #include <ioj/levels/level_outcome.h>
 #include <ioj/levels/team.h>
 #include <ioj/profiles/timestamp.h>
@@ -16,7 +16,7 @@ struct ScoreRecord {
     Team team{Team::White};
     LevelOutcome outcome{LevelOutcome::Defeat};
     sim::RunEndReason end_reason{sim::RunEndReason::LevelCompleted};
-    std::int32_t kills{};
+    KillCount kills{};
     float time_seconds{};
 };
 }

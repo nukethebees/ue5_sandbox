@@ -1,8 +1,8 @@
 #pragma once
-
 #include "SpaceGamePresentation/entities/ShipHealth.h"
 #include "SpaceGamePresentation/presentation/HudCrosshairDistances.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
+#include <ioj/kill_count.h>
 #include <ioj/vector.h>
 
 #include "SandboxUI/Radar/RadarFrameStore.h"
@@ -53,7 +53,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void set_energy(float value);
     void set_energy_widget_visibility(ESlateVisibility const new_visibility);
 
-    void set_points(int32 value);
+    void set_points(KillCount value);
     void set_points_widget_visibility(ESlateVisibility const new_visibility);
 
     void set_stopwatch_time(float const time_s);

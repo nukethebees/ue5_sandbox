@@ -5,7 +5,7 @@
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 namespace ioj {
-void UShipPointsWidget::set_points(int32 points) {
+void UShipPointsWidget::set_points(KillCount points) {
     RETURN_IF_NULLPTR(widget);
     widget->update(points);
 }
