@@ -1,5 +1,6 @@
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
 
+#include "SandboxEditor/levels/S7EntityGeometryExport.h"
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringModeToolkit.h"
@@ -431,6 +432,13 @@ void US7LevelAuthoringMode::import_source(bool root_changed) {
                                       "entities for reference. Play uses the composed level.")
                             : FText::FromString(imported.error()));
     }
+    notify_changed();
+}
+
+void US7LevelAuthoringMode::export_geometry() {
+    auto result{export_entity_geometry(entity_geometry_path())};
+    set_status(result ? LOCTEXT("GeometryExported", "Saved shared entity geometry.")
+                      : FText::FromString(result.error()));
     notify_changed();
 }
 

@@ -78,7 +78,12 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                                                          "Edit shared game resources. Author "
                                                          "simulation settings in the S7 sources."))
                                   .OnClicked(&self_, &ThisClass::open_level_config)] +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})[SNew(SBox)]] +
+                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
+                             [SNew(SButton)
+                                  .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
+                                                  "ExportGeometry",
+                                                  "Export Entity Geometry"))
+                                  .OnClicked(&self_, &ThisClass::export_geometry)]] +
                     SandboxUI::Slate::vbox_auto_slot()
                         [SNew(SHorizontalBox) +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})

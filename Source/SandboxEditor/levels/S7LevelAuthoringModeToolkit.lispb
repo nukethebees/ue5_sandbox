@@ -33,7 +33,7 @@
               :ToolTipText (loc "FS7LevelAuthoringModeToolkit" "EditLevelConfigTooltip"
                 "Edit shared game resources. Author simulation settings in the S7 sources.")
               :OnClicked (method open_level_config))
-            (SBox))
+            (authoring-action "ExportGeometry" "Export Entity Geometry" export_geometry))
           (authoring-row
             (assign entity_id_ SEditableTextBox
               :HintText (loc "FS7LevelAuthoringModeToolkit" "EntityIdHint" "Selected entity ID"))

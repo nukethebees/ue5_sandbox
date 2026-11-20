@@ -84,12 +84,11 @@ void FS7LevelAuthoringModeToolkit::refresh(ioj::settings::Settings const* settin
         }
         settings = &*resolved;
     }
-    auto collision_grid{config->collision_grid};
-    collision_grid.grid_size = ioj::to_unreal(settings->collision_grid.level_size);
-    collision_grid.cell_size = ioj::to_unreal(settings->collision_grid.cell_size);
-    auto const dimensions{collision_grid.calculate_grid_dimensions()};
-    auto const half_bounds{ioj::to_unreal(ioj::sim::collision::grid_half_size(
-        {{dimensions.X, dimensions.Y, dimensions.Z}, ioj::Vector3f{collision_grid.cell_size}}))};
+    auto const& grid{settings->collision_grid};
+    auto const dimensions{
+        ioj::sim::collision::calculate_grid_dimensions(grid.level_size, grid.cell_size)};
+    auto const half_bounds{
+        ioj::to_unreal(ioj::sim::collision::grid_half_size({dimensions, grid.cell_size}))};
     grid_summary_ =
         FText::FromString(FString::Printf(TEXT("Resources: %s | Resolved grid bounds: +/-%s cm"),
                                           *config->GetName(),
@@ -119,6 +118,7 @@ auto FS7LevelAuthoringModeToolkit::rename_selected_entity() -> FReply {
 FORWARD_ACTION(open_script_editor)
 FORWARD_ACTION(import_source)
 FORWARD_ACTION(export_scene)
+FORWARD_ACTION(export_geometry)
 
 #undef FORWARD_ACTION
 #undef LOCTEXT_NAMESPACE

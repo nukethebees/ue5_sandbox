@@ -1,4 +1,5 @@
 #include <ioj/levels/authoring/level_definition_writer.h>
+#include <SandboxEditor/levels/S7EntityGeometryExport.h>
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
 #include <SandboxEditor/levels/S7LevelAuthoringSession.h>
 #include <SandboxEditor/levels/S7LevelPlayableSetup.h>
@@ -275,6 +276,83 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
     { play_authored_scene(true); }
     TEST_METHOD(DelayedPlayerScenePlaysThroughAuthoredRuntime)
     { play_authored_scene(false); }
+
+    TEST_METHOD(RepeatedGeometryExportsMatch)
+    {
+        source_directory_ = FPaths::Combine(
+            FPaths::ProjectSavedDir(), TEXT("Automation"), FGuid::NewGuid().ToString());
+        IFileManager::Get().MakeDirectory(*source_directory_, true);
+        FString previous;
+        for (auto const filename : {TEXT("first.scm"), TEXT("second.scm")}) {
+            auto const path{FPaths::Combine(source_directory_, filename)};
+            if (!s7_level_playable_tests::assert_success(
+                    *TestRunner,
+                    TEXT("Export configured meshes"),
+                    ioj::editor::export_entity_geometry(path))) {
+                return;
+            }
+            FString source;
+            if (!TestRunner->TestTrue(TEXT("Read exported module"),
+                                      FFileHelper::LoadFileToString(source, *path))) {
+                return;
+            }
+            if (!previous.IsEmpty()) {
+                TestRunner->TestEqual(
+                    TEXT("Identical assets give identical output"), source, previous);
+            }
+            previous = MoveTemp(source);
+        }
+    }
+
+    TEST_METHOD(DefendCapitalStartsWithExportedGeometry)
+    {
+        using namespace ioj;
+        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
+        auto& level{*world->GetCurrentLevel()};
+        auto const root{FPaths::ConvertRelativePathToFull(
+            FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts/defend_capital.scm")))};
+        auto document{editor::create_level_authoring_document(level, root)};
+        if (!s7_level_playable_tests::assert_success(
+                *TestRunner, TEXT("Open Defend Capital"), document)) {
+            return;
+        }
+        auto definition{editor::read_s7_authored_level(**document)};
+        if (!s7_level_playable_tests::assert_success(
+                *TestRunner, TEXT("Load mission"), definition) ||
+            !s7_level_playable_tests::assert_success(
+                *TestRunner,
+                TEXT("Import scene"),
+                editor::import_s7_level(level, **document, *definition)) ||
+            !s7_level_playable_tests::assert_success(
+                *TestRunner,
+                TEXT("Set up Play"),
+                editor::set_up_playable_s7_level(level, **document))) {
+            return;
+        }
+        auto const bounds{definition->settings().entity_geometry.player_ship.half_extents};
+        TestCommandBuilder.Do([] { FStartPIECommand{false}.Update(); })
+            .Until([] { return GEditor->PlayWorld && GEditor->PlayWorld->HasBegunPlay(); },
+                   FTimespan::FromSeconds(30))
+            .Then([this, bounds] {
+                TActorIterator<ATestBatchOrchestrator> it{GEditor->PlayWorld.Get()};
+                if (!TestRunner->TestTrue(TEXT("PIE orchestrator"), static_cast<bool>(it))) {
+                    return;
+                }
+                auto* simulation{it->get_level_simulation()};
+                if (!TestRunner->TestNotNull(TEXT("Defend Capital simulation"), simulation)) {
+                    return;
+                }
+                TestRunner->TestEqual(TEXT("PIE uses the exported player collision radius"),
+                                      simulation->spatial_query_manager().entity_type_radius(
+                                          sim::EntityType::PlayerShip),
+                                      std::max({bounds.x(), bounds.y(), bounds.z()}));
+                it->SetActorTickEnabled(false);
+                it->tick(8.0);
+                simulation = it->get_level_simulation();
+                TestRunner->TestTrue(TEXT("Fighters launch and survive in Play"),
+                                     simulation && simulation->fighters().num_instances() > 0);
+            });
+    }
 
     FString source_directory_;
 };

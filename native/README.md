@@ -84,9 +84,9 @@ caught C++ exceptions because the LLVM 21 Windows ASAN runtime terminates while 
 The exclusions are explicit in `cmake/presets/features.py`; the corresponding non-ASAN clang-cl and
 MSVC tests remain enabled.
 
-Simulation tests and benchmarks load tuning from `LevelScripts/Settings/base.scm`. The checked-in
-`simulation/src/levels/reference_level_simulation_data.cpp` retains mesh/socket geometry so native
-validation does not require Unreal assets.
+Simulation tests, benchmarks and Unreal Play load tuning and entity geometry through
+`LevelScripts/Settings/base.scm`. After editing mesh collision, launch slots or weapon sockets,
+use **Export Entity Geometry** in the Unreal level authoring panel.
 
 Application settings descriptors and edit transactions are native. Flight-model settings use the
 versioned `flight-model:2:` text codec; previous Unreal/Base64 development values are intentionally

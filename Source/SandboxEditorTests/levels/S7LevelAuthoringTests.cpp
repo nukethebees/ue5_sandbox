@@ -1,6 +1,7 @@
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/levels/authoring/level_inputs_writer.h>
 #include <ioj/sim/levels/level_sim.h>
+#include <SandboxEditor/levels/S7EntityGeometryExport.h>
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
 #include <SandboxEditor/levels/S7LevelAuthoringSession.h>
 #include <SandboxEditor/levels/S7LevelPlayableSetup.h>
@@ -34,8 +35,14 @@ struct FTemporarySourceDirectory {
     FTemporarySourceDirectory() {
         auto const settings{FPaths::Combine(path, TEXT("Settings"))};
         IFileManager::Get().MakeDirectory(*settings, true);
-        FFileHelper::SaveStringToFile(TEXT("(export game-settings) (define game-settings (settings "
-                                           ":tick (tick :tick-rate 75)))"),
+        IFileManager::Get().Copy(*FPaths::Combine(settings, TEXT("entity-geometry.scm")),
+                                 *ioj::editor::entity_geometry_path());
+        FFileHelper::SaveStringToFile(TEXT(
+                                          R"scm((export game-settings)
+(define game-settings
+  (settings
+    :entity-geometry (module-ref (import-module "Settings/entity-geometry.scm") 'entity-geometry)
+    :tick (tick :tick-rate 75))))scm"),
                                       *FPaths::Combine(settings, TEXT("base.scm")));
     }
     ~FTemporarySourceDirectory() { IFileManager::Get().DeleteDirectory(*path, false, true); }
@@ -120,17 +127,21 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
          .position = {300000., 0., 0.}},
     };
     auto const generated_path{ioj::editor::s7_editor_config_path(document)};
-    auto const human_source{
-        FString{TEXT("; Human-owned source must survive editor export.\n"
-                     "(export mission)\n(define base (module-ref (import-module "
-                     "\"Authoring/editor-config.scm\") 'scene))\n"
-                     "  (define mission (copy-with base\n"
-                     "    :entities (append (level-ref base :entities)\n"
-                     "      (list (entity :id 'human :archetype 'capital-ship :team 'red\n"
-                     "        :position '(600000 0 0) :initial-spawn-delay 60)))\n"
-                     "    :logic (logic\n"
-                     "      (on :when (entity-destroyed 'capital)\n"
-                     "          :do (win 'blue)))))\n")}};
+    auto const human_source{FString{TEXT(R"scm(; Human-owned source must survive editor export.
+(export mission)
+(define base (module-ref (import-module "Authoring/editor-config.scm") 'scene))
+(define mission
+  (copy-with base
+    :settings (settings-layers
+      (module-ref (import-module "Settings/base.scm") 'game-settings)
+      (level-ref base :settings))
+    :entities (append (level-ref base :entities)
+      (list (entity :id 'human :archetype 'capital-ship :team 'red
+        :position '(600000 0 0) :initial-spawn-delay 60)))
+    :logic (logic
+      (on :when (entity-destroyed 'capital)
+          :do (win 'blue)))))
+)scm")}};
     if (!test.TestTrue(
             TEXT("Write initial generated records"),
             write_source(generated_path,
@@ -549,18 +560,17 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 TEXT("Write generated baseline"),
                 write_source(ioj::editor::s7_editor_config_path(document),
                              ioj::to_fstring(authoring::emit_editor_level_source(*baseline)))) ||
-            !TestRunner->TestTrue(
-                TEXT("Write human transformations"),
-                write_source(
-                    directory.root(),
-                    TEXT("(export mission)\n(define base (module-ref (import-module "
-                         "\"Authoring/editor-config.scm\") 'scene))\n"
-                         "  (define mission (copy-with base\n"
-                         "    :title (string-append (level-ref base :title) \" suffix\")\n"
-                         "    :entities (map (lambda (ship)\n"
-                         "      (copy-with ship :position\n"
-                         "        (map (lambda (x) (+ x 10)) (entity-ref ship :position))))\n"
-                         "      (level-ref base :entities))))\n")))) {
+            !TestRunner->TestTrue(TEXT("Write human transformations"),
+                                  write_source(directory.root(), TEXT(R"scm((export mission)
+(define base (module-ref (import-module "Authoring/editor-config.scm") 'scene))
+(define mission
+  (copy-with base
+    :title (string-append (level-ref base :title) " suffix")
+    :entities (map (lambda (ship)
+      (copy-with ship :position
+        (map (lambda (x) (+ x 10)) (entity-ref ship :position))))
+      (level-ref base :entities))))
+)scm")))) {
             return;
         }
         for (auto iteration{0}; iteration < 2; ++iteration) {
@@ -642,7 +652,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
     {
         using namespace s7_level_authoring_tests;
         FTemporarySourceDirectory directory;
-        auto const source{FString{TEXT("; Keep my source\n(level :title \"Human\")\n")}};
+        auto const source{FString{TEXT(R"scm(; Keep my source
+(level :title "Human")
+)scm")}};
         if (!TestRunner->TestTrue(TEXT("Write existing human file"),
                                   write_source(directory.root(), source))) {
             return;

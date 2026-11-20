@@ -48,3 +48,6 @@ entity still declared by the human source produces a normal duplicate-ID validat
 a warning if the scene needs exporting. Use **Export Scene** to play changed placements,
 spawn overrides or viewpoint. Shared meshes and classes live in the level configuration asset.
 Editor settings start empty and preserve explicitly set fields across exports.
+
+Use **Export Entity Geometry** after changing a shared ship mesh, socket or launch layout.
+Play and native runs read the exported values from `Settings/entity-geometry.scm`.

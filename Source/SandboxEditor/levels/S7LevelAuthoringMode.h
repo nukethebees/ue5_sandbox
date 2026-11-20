@@ -42,6 +42,7 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void open_script_editor();
     void import_source(bool root_changed = false);
     void export_scene();
+    void export_geometry();
   private:
     auto current_level() const -> ULevel*;
     void refresh_document();

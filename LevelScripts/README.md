@@ -5,10 +5,11 @@ Copy an existing `.scm` scenario, give it a unique `:id`, and add its path to
 
 ```scheme
 (export mission)
+(define defaults (module-ref (import-module "Settings/base.scm") 'game-settings))
 (define mission
   (level :id 'example :title "Example"
     :player 'player
-    :settings (settings :fighters (fighters :speed 3000))
+    :settings (settings-layers defaults (settings :fighters (fighters :speed 3000)))
     :logic (logic
       (define success (entity-destroyed 'turret))
       (define decision
@@ -40,7 +41,8 @@ explicit editor overrides and mission overrides in that order.
 ```
 
 **Export Scene** updates placements and viewpoint in `editor-config.scm` and preserves its
-explicit settings overrides. **Play** uses the saved files.
+explicit settings overrides. **Export Entity Geometry** updates the mesh bounds and attachment
+points imported by `Settings/base.scm`. **Play** uses the saved files.
 Use record accessors and functional updates to compose levels, for example
 `(copy-with base :entities (append (level-ref base :entities) extras))`.
 `copy-with` replaces whole fields without mutating the original record; missing `foo-ref`
