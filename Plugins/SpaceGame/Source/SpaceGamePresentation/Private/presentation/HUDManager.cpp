@@ -92,11 +92,7 @@ void FHUDManager::initialise(sim::LevelReadAccess const view,
         .capital_ship = native_colours(level_config.capital_ships.team_visual_data),
         .fighter = native_colours(level_config.fighters.team_visual_data),
         .turret = native_colours(level_config.turrets.team_visual_data)};
-    entity_overlay_maximum_health_ = {
-        .capital_ship = level_config.capital_ships.simulation.max_health.get().value(),
-        .fighter = level_config.fighters.simulation.health.get().value(),
-        .turret = level_config.turrets.simulation.max_health.get().value(),
-    };
+    entity_overlay_maximum_health_ = level_config.health_maximums;
     soft_target_selection_settings_ = overlay.soft_target;
     entity_overlay_objective_roles_.Reset();
 

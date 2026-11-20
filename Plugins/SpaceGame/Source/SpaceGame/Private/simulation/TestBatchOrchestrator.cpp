@@ -140,13 +140,16 @@ auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> 
 #if WITH_EDITOR
     if (auto const* const world{GetWorld()}; IsValid(world) && !world->IsGameWorld()) {
         Modify();
+        if (IsValid(player_ship)) {
+            player_ship->Modify();
+        }
     }
 #endif
 
     level_config = &config;
     refresh_collision_grid_visualization();
     if (IsValid(player_ship)) {
-        configure_player_actor(*player_ship, config);
+        player_ship->set_actor_config(&config.player_ship);
     }
     return true;
 }
@@ -210,15 +213,10 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
                     TEXT("Level configuration is invalid"));
     }
 
-    if (!set_level_config(*level_config->with_settings(definition.settings(), this))) {
-        return fail(ELevelLoadErrorCode::InvalidLevelConfig,
-                    TEXT("Failed to resolve game settings"));
-    }
-
-    auto clock_settings{definition.settings().tick};
+    sim::LevelRunTiming timing{.duration = launch_options_.simulated_duration_seconds.transform(
+                                   [](auto seconds) { return Duration::make(seconds); })};
     if (start_mode == EOrchestratorStartMode::AuthoredLevel) {
-        clock_settings.time_scale =
-            PositiveFinite<time_type>::make(launch_options_.requested_time_scale);
+        timing.time_scale = PositiveFinite<time_type>::make(launch_options_.requested_time_scale);
     }
     presentation_host_.get_hud_manager().configure(definition.settings().hud);
 
@@ -230,7 +228,7 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
             return fail(ELevelLoadErrorCode::MissingInfrastructure,
                         TEXT("Authored level requires a space-game player controller"));
         }
-        if (!get_presentation_resources().is_valid()) {
+        if (!get_presentation_resources(definition.settings()).is_valid()) {
             return fail(ELevelLoadErrorCode::MissingInfrastructure,
                         TEXT("Orchestrator simulation infrastructure is incomplete"));
         }
@@ -249,7 +247,7 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
     auto const& options{launch_options_};
     auto build{prepare_level_simulation({
         .config = *level_config,
-        .clock_settings = clock_settings,
+        .timing = timing,
         .launch_options = options,
         .definition = definition,
         .player = player_ship.Get(),
@@ -258,17 +256,12 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
         return fail(ELevelLoadErrorCode::InvalidDefinition, build.error().format());
     }
 
-    auto configured{configure_level_run(*build, options)};
-    if (!configured) {
-        return fail(ELevelLoadErrorCode::InvalidDefinition, configured.error().format());
-    }
-
     if (is_presentation_enabled()) {
         for (TActorIterator<AGpuStarfieldActor> actor{world}; actor; ++actor) {
             actor->set_starfield_settings(definition.settings().starfield);
         }
     }
-    auto const resources{get_presentation_resources()};
+    auto const resources{get_presentation_resources(definition.settings())};
     if (is_presentation_enabled() && !resources.is_valid()) {
         return fail(ELevelLoadErrorCode::MissingInfrastructure,
                     TEXT("Level presentation resources are incomplete"));
@@ -286,6 +279,7 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
         build->collision.static_bounds.add(bounds.min, bounds.max);
     }
     level_simulation_.Emplace(MoveTemp((*build)), game_subsystem->get_memory_resource());
+    refresh_collision_grid_visualization();
     auto const* const player_simulation{level_simulation_->player_ship_simulation()};
     if (IsValid(player_ship) && player_simulation) {
         player_ship->bind_simulation(*level_simulation_->player_ship_commands(),
@@ -381,11 +375,14 @@ void ATestBatchOrchestrator::bind_presentation_components() {
 }
 void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
     TOptional<FCollisionGridVisualizationSettings> settings;
-    if (is_presentation_enabled() && IsValid(level_config)) {
+    if (is_presentation_enabled() && IsValid(level_config) && level_simulation_.IsSet()) {
+        auto const grid{level_simulation_->spatial_query_manager().grid_spec()};
         auto const& collision_grid{level_config->collision_grid};
         settings.Emplace(FCollisionGridVisualizationSettings{
-            .dimensions = collision_grid.calculate_grid_dimensions(),
-            .cell_size = collision_grid.cell_size,
+            .dimensions = {grid.dimensions.x(), grid.dimensions.y(), grid.dimensions.z()},
+            .cell_size = {grid.cell_dimensions.x(),
+                          grid.cell_dimensions.y(),
+                          grid.cell_dimensions.z()},
             .line_colour = collision_grid.line_colour,
             .line_thickness = collision_grid.line_thickness,
             .show_grid = collision_grid.show_grid,
@@ -393,9 +390,10 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
     }
     presentation_host_.configure_collision_grid(MoveTemp(settings));
 }
-auto ATestBatchOrchestrator::get_presentation_resources() const -> FLevelPresentationResources {
+auto ATestBatchOrchestrator::get_presentation_resources(settings::Settings const& settings) const
+    -> FLevelPresentationResources {
     return presentation_host_.make_resources(
-        level_config->get_visual_config(),
+        level_config->get_visual_config(settings),
         IsValid(player_ship)
             ? TOptional<FPlayerPresentationResources>{player_ship->get_presentation_resources()}
             : NullOpt);

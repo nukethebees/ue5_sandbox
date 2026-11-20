@@ -133,7 +133,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     void bind_presentation_components();
     void refresh_collision_grid_visualization();
-    auto get_presentation_resources() const -> FLevelPresentationResources;
+    auto get_presentation_resources(settings::Settings const& settings) const
+        -> FLevelPresentationResources;
     /* **************************************** */
     // State
     /* **************************************** */

@@ -2,8 +2,8 @@
 #include <ioj/levels/level_definition.h>
 #include <ioj/sim/collision/entity_world_bounds.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
+#include <ioj/sim/levels/simulation_settings.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
-#include <SandboxTests/support/WorldlessSimulationTest.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
@@ -71,16 +71,16 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
 
-        auto const* loaded{resources->with_settings(definition->settings(), GetTransientPackage())};
+        auto const loaded{ioj::sim::make_level_simulation_init_data(*definition, {}, {})};
+        if (!TestRunner->TestTrue(TEXT("Settings compile"), loaded.has_value())) {
+            return;
+        }
         TestRunner->TestEqual(TEXT("Runtime uses resolved fighter speed"),
-                              loaded->fighters.simulation.speed,
+                              loaded->fighters.speed,
                               input.settings.fighters.speed);
-        TestRunner->TestTrue(TEXT("Runtime uses resolved collision dimensions"),
-                             loaded->collision_grid.grid_size ==
-                                 ioj::to_unreal(input.settings.collision_grid.level_size));
         TestRunner->TestTrue(TEXT("Runtime uses resolved collision cells"),
-                             loaded->collision_grid.cell_size ==
-                                 ioj::to_unreal(input.settings.collision_grid.cell_size));
+                             loaded->collision.grid_spec.cell_dimensions ==
+                                 input.settings.collision_grid.cell_size);
     }
 
     TEST_METHOD(DuplicatePreservesNestedValuesAndAssetReferences)
@@ -100,15 +100,9 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 
         TestRunner->TestTrue(TEXT("Copy has a different address"), source != copy);
         TestRunner->TestTrue(TEXT("Copied level config is valid"), copy->is_valid());
-        TestRunner->TestEqual(TEXT("Player laser damage is preserved"),
-                              copy->player_ship.simulation.laser.damage,
-                              source->player_ship.simulation.laser.damage);
         TestRunner->TestEqual(TEXT("Fighter spawn transforms are preserved"),
                               copy->capital_ships.fighter_spawn_slots_relative_transforms.Num(),
                               source->capital_ships.fighter_spawn_slots_relative_transforms.Num());
-        TestRunner->TestEqual(TEXT("Turret projectile speed is preserved"),
-                              copy->turrets.simulation.laser.projectile_speed.get(),
-                              source->turrets.simulation.laser.projectile_speed.get());
         TestRunner->TestTrue(TEXT("Player team visual remains shared"),
                              copy->player_ship.team_visual_data ==
                                  source->player_ship.team_visual_data);
@@ -122,10 +116,6 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                              copy->turrets.mesh == source->turrets.mesh);
         TestRunner->TestTrue(TEXT("Spinner mesh remains shared"),
                              copy->tube_spinners.mesh == source->tube_spinners.mesh);
-        TestRunner->TestTrue(TEXT("Collision-grid size is preserved"),
-                             copy->collision_grid.grid_size == source->collision_grid.grid_size);
-        TestRunner->TestTrue(TEXT("Collision-grid cell size is preserved"),
-                             copy->collision_grid.cell_size == source->collision_grid.cell_size);
     }
 
     TEST_METHOD(FighterSpawnSlotsHaveClearance)
@@ -137,8 +127,9 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         }
 
         auto const& transforms{config->capital_ships.fighter_spawn_slots_relative_transforms};
-        auto const clearance_radius{config->fighters.mesh->GetBounds().SphereRadius +
-                                    config->fighters.simulation.avoidance_clearance_buffer};
+        auto const clearance_radius{
+            config->fighters.mesh->GetBounds().SphereRadius +
+            ioj::default_test_settings().fighters.avoidance_clearance_buffer};
         auto minimum_distance{TNumericLimits<float>::Max()};
         for (int32 i{}; i < transforms.Num(); ++i) {
             for (int32 j{i + 1}; j < transforms.Num(); ++j) {
@@ -151,7 +142,8 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Authored fighter spawn slots have collision clearance"),
                              minimum_distance >= clearance_radius * 2.f);
 
-        auto const geometry{ioj::make_worldless_simulation_test_data(*config)};
+        ioj::sim::LevelSimInitData geometry;
+        ioj::sim::apply_settings(ioj::default_test_settings(), geometry);
         auto const result{ioj::sim::validate_level_simulation_init_data(geometry)};
         TestRunner->TestTrue(TEXT("Authored fighter spawn slots pass level-start validation"),
                              result.has_value());
@@ -188,8 +180,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{
-            ioj::make_level_simulation_init_data(*runtime, {}, scripted_definition.value())};
+        auto const result{ioj::sim::make_level_simulation_init_data(*scripted_definition, {}, {})};
         TestRunner->TestTrue(TEXT("Runtime config starts Turret Trial 0"), result.has_value());
     }
 

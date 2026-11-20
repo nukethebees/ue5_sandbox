@@ -1,5 +1,5 @@
 #pragma once
-
+#include "SimulationTestAssets.h"
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
@@ -14,7 +14,7 @@ struct FTestBatchOrchestratorTestAccess {
     }
     static auto presentation_resources(ioj::ATestBatchOrchestrator const& orchestrator)
         -> ioj::FLevelPresentationResources {
-        return orchestrator.get_presentation_resources();
+        return orchestrator.get_presentation_resources(ioj::default_test_settings());
     }
 
     static void

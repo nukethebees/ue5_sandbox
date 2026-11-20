@@ -13,28 +13,24 @@
 #include <UObject/UObjectGlobals.h>
 
 namespace ioj {
+auto default_test_settings() -> settings::Settings const& {
+    static auto const settings{[] {
+        auto const root{
+            std::filesystem::path{*FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"))}};
+        auto result{levels::authoring::DefinitionReader{root}.read_settings_file(
+            root / "Settings/base.scm")};
+        check(result);
+        return std::move(*result);
+    }()};
+    return settings;
+}
 auto load_default_level_config() -> USpaceGameLevelConfig* {
     static TSoftObjectPtr<USpaceGameLevelConfig> const default_config{
         FSoftObjectPath{TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/"
                              "DA_FT_soa_entities_LevelConfig."
                              "DA_FT_soa_entities_LevelConfig")}};
 
-    static TStrongObjectPtr<USpaceGameLevelConfig> resolved;
-    if (!resolved.IsValid()) {
-        auto* const resources{default_config.LoadSynchronous()};
-        if (!IsValid(resources)) {
-            UE_LOG(
-                LogSandboxTest, Error, TEXT("Cannot load default simulation-test asset package"));
-            return nullptr;
-        }
-        auto const root{FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"))};
-        levels::authoring::DefinitionReader reader{std::filesystem::path{*root}};
-        auto const settings{
-            reader.read_settings_file(std::filesystem::path{*root} / "Settings/base.scm")};
-        check(settings);
-        resolved.Reset(resources->with_settings(*settings, GetTransientPackage()));
-    }
-    auto* const config{resolved.Get()};
+    auto* const config{default_config.LoadSynchronous()};
     if (IsValid(config)) {
         UE_LOG(LogSandboxTest,
                Log,
@@ -59,16 +55,6 @@ auto duplicate_level_config(USpaceGameLevelConfig const& config, UObject& outer)
     -> USpaceGameLevelConfig* {
     auto* const copy{DuplicateObject<USpaceGameLevelConfig>(&config, &outer)};
     check(copy);
-    copy->player_ship = config.player_ship;
-    copy->laser_projectiles = config.laser_projectiles;
-    copy->capital_ships = config.capital_ships;
-    copy->fighters = config.fighters;
-    copy->turrets = config.turrets;
-    copy->tube_spinners = config.tube_spinners;
-    copy->collision_grid = config.collision_grid;
-    copy->entity_overlay = config.entity_overlay;
-    copy->presentation = config.presentation;
-    copy->overlap_response = config.overlap_response;
     return copy;
 }
 

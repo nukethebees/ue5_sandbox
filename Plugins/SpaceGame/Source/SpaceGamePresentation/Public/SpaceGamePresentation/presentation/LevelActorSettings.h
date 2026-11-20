@@ -1,12 +1,6 @@
 #pragma once
-#include <ioj/settings/presentation.h>
-#include <ioj/sim/capital_ships/capital_ship_sim_config.h>
-#include <ioj/sim/fighters/fighter_sim_config.h>
-#include <ioj/sim/lasers/laser_sim_config.h>
-#include <ioj/sim/levels/simulation_settings.h>
-#include <ioj/sim/player/player_sim_config.h>
-#include <ioj/sim/spinners/spinner_sim_config.h>
-#include <ioj/sim/turrets/turret_sim_config.h>
+#include <ioj/presentation/entity_overlay_health_maximums.h>
+#include <ioj/settings/settings.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 #include <SpaceGameRendering/SparkBurstStyle.h>
@@ -35,8 +29,6 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
     GENERATED_BODY()
 
-    sim::PlayerSimConfig simulation;
-
     UPROPERTY(EditAnywhere, Category = "Visuals")
     FLinearColor engine_colour{FLinearColor::Blue};
 
@@ -51,8 +43,6 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FLaserProjectileConfig {
     GENERATED_BODY()
 
-    sim::LaserSimConfig simulation;
-
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
 
@@ -66,8 +56,6 @@ struct SPACEGAMEPRESENTATION_API FLaserProjectileConfig {
 USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FCapitalShipConfig {
     GENERATED_BODY()
-
-    sim::CapitalShipSimConfig simulation;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
@@ -105,8 +93,6 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FFighterConfig {
     GENERATED_BODY()
 
-    sim::FighterSimConfig simulation;
-
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
 
@@ -120,8 +106,6 @@ struct SPACEGAMEPRESENTATION_API FFighterConfig {
 USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FTurretConfig {
     GENERATED_BODY()
-
-    sim::TurretSimConfig simulation;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
@@ -152,8 +136,6 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FTubeSpinnerConfig {
     GENERATED_BODY()
 
-    sim::SpinnerSimConfig simulation;
-
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
 
@@ -181,5 +163,7 @@ struct SPACEGAMEPRESENTATION_API FLevelVisualConfig {
     bool turret_debug_entities{};
     ioj::FEntityOverlaySettings entity_overlay;
     ioj::settings::Presentation presentation;
+    ioj::presentation::EntityOverlayHealthMaximums health_maximums;
+    int32 laser_instance_reserve{};
     ioj::FSparkRendererSettings sparks;
 };

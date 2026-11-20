@@ -14,7 +14,7 @@ using ioj::testing::structurally_equal;
 using levels::authoring::DefinitionReader;
 
 TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefaults) {
-    SimulationSettings const defaults;
+    settings::Settings const defaults;
     auto const source{
         ioj::levels::authoring::tests::read_test_settings(DefinitionReader{},
                                                           std::format(R"(
@@ -29,25 +29,16 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
     expected.fighters.laser.max_distance = ::ioj::PositiveFinite<float>::make(50000);
     expected.turrets.laser.damage = 23;
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *source);
-    auto const resolved{sim::resolve_simulation_settings(*source)};
-    ASSERT_TRUE(resolved) << resolved.error().front().message;
-    FighterSimConfig const expected_fighters{
-        .laser = {.damage = 31, .max_distance = PositiveFinite<float>{50000.f}}};
-    EXPECT_PRED_FORMAT2(structurally_equal, expected_fighters, resolved->fighters);
-    EXPECT_PRED_FORMAT2(
-        structurally_equal, TurretSimConfig{.laser = {.damage = 23}}, resolved->turrets);
-    EXPECT_PRED_FORMAT2(structurally_equal, defaults.player, resolved->player);
+    EXPECT_TRUE(validate_settings(*source));
 }
 
 TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelLogic) {
     auto const root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
-    auto const base{DefinitionReader{root}
-                        .read_settings_file(root / "Settings/base.scm")
-                        .and_then(resolve_simulation_settings)};
+    auto const base{DefinitionReader{root}.read_settings_file(root / "Settings/base.scm")};
     ASSERT_TRUE(base);
     EXPECT_EQ(base->fighters.speed, 4500);
     EXPECT_EQ(base->fighters.laser.damage, 10);
-    EXPECT_EQ(base->spinners.laser.damage, 2);
+    EXPECT_EQ(base->tube_spinners.laser.damage, 2);
 
     auto const base_values{DefinitionReader{root}.read_settings_file(root / "Settings/base.scm")};
     ASSERT_TRUE(base_values);
@@ -65,12 +56,10 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelLogic) {
           (on :when (timer-elapsed delay) :do (win 'blue)))))")};
     ASSERT_TRUE(level) << level.error().front().message;
     auto const logic{level->logic()};
-    auto const resolved{sim::resolve_simulation_settings(level->settings())};
-    ASSERT_TRUE(resolved);
+    ASSERT_TRUE(validate_settings(level->settings()));
     auto expected{*base_values};
     expected.fighters.laser.damage = 77;
     EXPECT_PRED_FORMAT2(structurally_equal, expected, level->settings());
-    EXPECT_PRED_FORMAT2(structurally_equal, expected.fighters, resolved->fighters);
     EXPECT_EQ(level->logic(), logic);
 
     for (auto const field : {"", ":settings (settings)", ":settings (settings-layers)"}) {
@@ -112,9 +101,7 @@ TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings
     ASSERT_TRUE(level) << levels::format_diagnostics(level.error());
     EXPECT_PRED_FORMAT2(structurally_equal, original, level->settings());
     EXPECT_PRED_FORMAT2(structurally_equal, original, base);
-    auto const resolved{sim::resolve_simulation_settings(level->settings())};
-    ASSERT_TRUE(resolved) << levels::format_diagnostics(resolved.error());
-    EXPECT_PRED_FORMAT2(structurally_equal, original.collision_grid, resolved->overlap_response);
+    ASSERT_TRUE(validate_settings(level->settings()));
 
     auto const legacy{ioj::levels::authoring::tests::read_test_level(DefinitionReader{}, R"(
       (level :id 'grid :title "Grid" :player 'player
@@ -152,7 +139,7 @@ TEST(SimulationSettingsReader, RetainsUnknownFieldConversionAndFinalValidationEr
         SCOPED_TRACE(test.source);
         auto const source{
             ioj::levels::authoring::tests::read_test_settings(DefinitionReader{}, test.source)};
-        auto const resolved{source.and_then(sim::resolve_simulation_settings)};
+        auto const resolved{source.and_then(sim::validate_settings)};
         ASSERT_FALSE(resolved);
         ASSERT_FALSE(resolved.error().empty());
         EXPECT_EQ(resolved.error().front().code, test.code);

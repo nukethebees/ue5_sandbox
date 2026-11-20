@@ -112,7 +112,6 @@ set(levels_headers
   level_sim.h
   level_state.h
   spawn_context.h
-  reference_level_simulation_data.h
   tick_player_ship_state.h
 )
 
@@ -178,7 +177,6 @@ target_sources(native-simulation
     expressions/condition_manager.cpp
     expressions/timers.cpp
     overlap_handler.cpp
-    levels/reference_level_simulation_data.cpp
     player/ship_flight_model.cpp
     sim_time.cpp
     collision/spatial_query_manager.cpp

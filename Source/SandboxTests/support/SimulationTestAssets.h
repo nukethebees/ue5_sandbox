@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/settings/settings.h>
 
 class UObject;
 namespace ioj {
@@ -7,6 +8,7 @@ struct FFighterConfig;
 class USpaceGameLevelConfig;
 struct FSoftTestAssertions;
 
+auto default_test_settings() -> settings::Settings const&;
 auto load_default_level_config() -> USpaceGameLevelConfig*;
 auto get_default_level_config(FSoftTestAssertions& checks) -> USpaceGameLevelConfig const*;
 auto duplicate_level_config(USpaceGameLevelConfig const& config, UObject& outer)

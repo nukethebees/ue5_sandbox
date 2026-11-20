@@ -83,13 +83,9 @@ auto validate_playable_s7_level(AS7LevelAuthoringDocument const& document)
 auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
                                     USpaceGameLevelConfig const& resources)
     -> std::expected<sim::LevelSimInitData, FString> {
-    TStrongObjectPtr<USpaceGameLevelConfig> effective_config{
-        resources.with_settings(definition.settings(), GetTransientPackage())};
     levels::LaunchOptions const options;
-    auto build{prepare_level_simulation({.config = *effective_config,
-                                         .clock_settings = definition.settings().tick,
-                                         .launch_options = options,
-                                         .definition = definition})};
+    auto build{prepare_level_simulation(
+        {.config = resources, .launch_options = options, .definition = definition})};
     if (!build) {
         return std::unexpected{build.error().format()};
     }

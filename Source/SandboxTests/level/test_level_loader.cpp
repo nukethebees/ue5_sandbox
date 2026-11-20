@@ -242,7 +242,6 @@ void FLevelLoaderScenario::load_observer_fixture() {
     auto* const resources{duplicate_level_config(*original_config_, orchestrator)};
     checks.is_true(orchestrator.set_level_config(*resources),
                    TEXT("Loader resources are assigned"));
-    resources->presentation.entity_overlay.enabled = true;
     resources->entity_overlay.soft_target.mesh = nullptr;
     resources->entity_overlay.soft_target.material = nullptr;
     checks.is_true(!resources->is_valid(), TEXT("Unresolved overlay requires missing resources"));
@@ -276,9 +275,6 @@ void FLevelLoaderScenario::load_observer_fixture() {
 
 void FLevelLoaderScenario::check_observer_materialisation() {
     auto& orchestrator{context_.orchestrator};
-    checks.is_true(!FTestBatchOrchestratorTestAccess::level_config(orchestrator)
-                        ->presentation.entity_overlay.enabled,
-                   TEXT("Level override disables overlay before resource validation"));
 
     checks.are_equal(
         0, count_actors<ATestSpaceShip>(context_.world), TEXT("Loader spawns no player"));

@@ -48,7 +48,6 @@ auto make_battle_config() -> SimulationScenario {
     SimulationScenario data;
     data.runtime.collision.grid_spec = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
-    data.runtime.capital_ships.fighter_spawn_slots = 0;
     for (auto const type : EnumTraits<EntityType>::values) {
         data.runtime.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
@@ -166,6 +165,12 @@ void expect_health_mappings(LevelSim const& simulation) {
 /* **************************************** */
 
 TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGeometry) {
+    auto const root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
+    auto settings{levels::authoring::DefinitionReader{root}
+                      .read_settings_file(root / "Settings/base.scm")
+                      .value()};
+    settings.tick.tick_rate = Frequency::make(30.);
+    settings.fighters.speed = 1234.f;
     auto definition{levels::LevelDefinition::make(
         {.metadata = {.id = levels::LevelId{"headless-player"}, .title = "Headless player"},
          .player_entity_id = levels::EntityId{"player"},
@@ -174,13 +179,12 @@ TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGe
                        .team = Team::Blue,
                        .position = {1200.0, 200.0, 0.0},
                        .overrides = {.health = settings::PositiveHealth{Health{275}}}}},
-         .settings = {.tick = {.tick_rate = Frequency::make(30.0)},
-                      .fighters = {.speed = 1234.f}}})};
+         .settings = std::move(settings)})};
     ASSERT_TRUE(definition);
     auto const fixture{make_fixture()};
     LevelSimInitData geometry{make_simulation_data(fixture)};
     geometry.player = fixture.player;
-    auto built{sim::make_level_simulation_init_data(*definition, std::move(geometry))};
+    auto built{sim::make_level_simulation_init_data(*definition, std::move(geometry), {})};
     ASSERT_TRUE(built) << built.error().front();
     ASSERT_TRUE(built->player);
     EXPECT_EQ(built->player->transform.location, (Vector3d{1200.0, 200.0, 0.0}));
@@ -236,7 +240,7 @@ TEST(NativeSimulation, NativeStartupRejectsFutureSpawnsOutsideGrid) {
                                :position '(2000000 0 0) :spawn-at 5))))")};
     ASSERT_TRUE(definition);
     LevelSimInitData input{make_simulation_data(make_fixture())};
-    auto built{sim::make_level_simulation_init_data(*definition, std::move(input))};
+    auto built{sim::make_level_simulation_init_data(*definition, std::move(input), {})};
     ASSERT_FALSE(built);
     EXPECT_TRUE(std::ranges::any_of(built.error(), [](auto const& error) {
         return error.contains("outside the collision grid");
@@ -775,7 +779,6 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
                      ioj::settings::PositiveHealth::make(ioj::sim::Health{100}),
                      ioj::NonNegative<std::int32_t>::make(0));
 
-    data.runtime.capital_ships.fighter_spawn_slots = 2;
     data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.resize(2);
     data.runtime.capital_ships.fighter_spawn_slots_relative_transforms[0].location.y() = -100.0;
     data.runtime.capital_ships.fighter_spawn_slots_relative_transforms[1].location.y() = 100.0;

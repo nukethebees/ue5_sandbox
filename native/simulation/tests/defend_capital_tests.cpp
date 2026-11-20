@@ -16,13 +16,6 @@ auto script_root() -> std::filesystem::path {
     return std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts";
 }
 
-auto build_defence_level(levels::LevelDefinition const& level) -> LevelSimulationBuildResult {
-    auto const fixture{make_fixture()};
-    auto data{make_simulation_data(fixture)};
-    data.player = make_player_spawn(fixture);
-    return make_level_simulation_init_data(level, std::move(data));
-}
-
 auto capital_id(LevelSim const& simulation, levels::LevelDefinition const& level, char const* name)
     -> EntityId {
     auto const& capital{level.entity(levels::EntityId{name})};
@@ -57,7 +50,7 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
     auto const level{levels::authoring::DefinitionReader{script_root()}.read_level_file(path)};
     ASSERT_TRUE(level) << levels::format_diagnostics(level.error());
 
-    auto built{build_defence_level(*level)};
+    auto built{make_level_simulation_init_data(*level, {}, {})};
     ASSERT_TRUE(built) << built.error().front();
     LevelSim simulation{std::move(*built)};
     auto const blue_capital{capital_id(simulation, *level, "capitalship-blue")};
@@ -148,7 +141,7 @@ TEST_P(DefendCapitalOutcome, AwardsVictoryOnTheDecidingTick) {
           (entity :id 'capitalship-red2 :archetype 'capital-ship :team 'red
                   :position '(20000 0 0) :initial-spawn-delay 90))))")};
     ASSERT_TRUE(level) << levels::format_diagnostics(level.error());
-    auto built{build_defence_level(*level)};
+    auto built{make_level_simulation_init_data(*level, {}, {})};
     ASSERT_TRUE(built) << built.error().front();
     WorldlessSimulationTest harness{std::move(*built)};
     auto& simulation{harness.simulation()};

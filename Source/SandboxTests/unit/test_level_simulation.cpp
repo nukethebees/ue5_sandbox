@@ -81,14 +81,14 @@ auto make_presentation_fixture(FAutomationTestBase& test) -> std::optional<FPres
     if (!test.TestTrue(TEXT("Presentation component owner is created"), IsValid(owner))) {
         return std::nullopt;
     }
-    return std::optional<FPresentationFixture>{std::in_place, *owner, config->get_visual_config()};
+    return std::optional<FPresentationFixture>{
+        std::in_place, *owner, config->get_visual_config(ioj::default_test_settings())};
 }
 
 auto make_battle_config() -> ::ioj::sim::LevelSimInitData {
     ::ioj::sim::LevelSimInitData data;
     data.collision.grid_spec = {{16, 16, 4}, {1000.f, 1000.f, 1000.f}};
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
-    data.capital_ships.fighter_spawn_slots = 0;
     for (auto const type : ioj::EnumTraits<::ioj::sim::EntityType>::values) {
         data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
@@ -556,8 +556,10 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     auto* engine{NewObject<UTestNiagaraComponent>(actor)};
     resources.pulse = pulse;
     resources.engine = engine;
-    ioj::FPlayerPresentation presentation{
-        resources, config->player_ship, config->presentation.player_ship, *player};
+    ioj::FPlayerPresentation presentation{resources,
+                                          config->player_ship,
+                                          ioj::default_test_settings().presentation.player_ship,
+                                          *player};
     simulation.player_ship_commands()->start_boost();
     simulation.advance(0.325);
     auto const& frame{*player};
@@ -574,8 +576,10 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     presentation.tick(frame);
     TestEqual(
         TEXT("Repeated observation does not replay the pulse"), pulse->activation_count, uint64{1});
-    ioj::FPlayerPresentation attached{
-        resources, config->player_ship, config->presentation.player_ship, frame};
+    ioj::FPlayerPresentation attached{resources,
+                                      config->player_ship,
+                                      ioj::default_test_settings().presentation.player_ship,
+                                      frame};
     attached.tick(frame);
     TestEqual(TEXT("Late attachment does not replay historical boost starts"),
               pulse->activation_count,

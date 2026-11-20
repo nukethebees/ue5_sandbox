@@ -1,6 +1,5 @@
 #include <ioj/profiles/level_score.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
-#include <ioj/sim/levels/reference_level_simulation_data.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 
 #include <gtest/gtest.h>
@@ -28,14 +27,7 @@ TEST(LevelScore, QueriesRetainedPlayerResultWithoutSideEffects) {
                        .team = Team::Red,
                        .position = {20000., 0., 0.}}}})};
     ASSERT_TRUE(definition);
-    auto geometry{sim::make_reference_level_simulation_data()};
-    geometry.data.player = geometry.player;
-    geometry.data.collision.grid_spec.dimensions = {16, 16, 4};
-    geometry.data.collision.grid_spec.cell_dimensions = {10000.f, 10000.f, 10000.f};
-    geometry.data.tick_memory_capacity_bytes = 4 * 1024 * 1024;
-    geometry.data.phase_memory_capacity_bytes = 4 * 1024 * 1024;
-    geometry.data.clock_settings.tick_rate = Frequency::make(10.);
-    auto built{sim::make_level_simulation_init_data(*definition, std::move(geometry.data))};
+    auto built{sim::make_level_simulation_init_data(*definition, {}, {})};
     ASSERT_TRUE(built) << built.error().front();
     sim::LevelSim simulation{std::move(*built)};
     EXPECT_FALSE(completed_level(simulation));

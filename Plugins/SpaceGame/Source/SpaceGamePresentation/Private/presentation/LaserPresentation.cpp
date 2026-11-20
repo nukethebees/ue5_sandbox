@@ -34,7 +34,7 @@ void FLaserPresentation::clear_runtime_state_presentation() {
     visible_indices_.Reset();
 }
 
-void FLaserPresentation::begin_play_presentation() {
+void FLaserPresentation::begin_play_presentation(int32 reserve) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::begin_play_presentation);
     TRACE_COUNTER_SET(SandboxTestLaserISMCCount, 0);
 
@@ -46,8 +46,8 @@ void FLaserPresentation::begin_play_presentation() {
     }
 
     configure_ismc();
-    visible_indices_.Reserve(actor_config->simulation.n_preallocated_instances);
-    instances->reserve_instances(actor_config->simulation.n_preallocated_instances);
+    visible_indices_.Reserve(reserve);
+    instances->reserve_instances(reserve);
 
 #if WITH_EDITOR
     debug_drawer.world = instances->GetWorld();

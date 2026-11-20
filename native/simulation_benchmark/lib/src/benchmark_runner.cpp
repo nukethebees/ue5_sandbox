@@ -3,8 +3,8 @@
 #include <ioj/format_writer.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/level_parser.h>
+#include <ioj/sim/levels/level_sim.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
-#include <ioj/sim/levels/reference_level_simulation_data.h>
 #include <ioj/sim/levels/run_end_reason.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
@@ -157,8 +157,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     }
 #endif
 
-    auto reference{sim::make_reference_level_simulation_data()};
-    settings.tick.time_scale = PositiveFinite<double>::make(1.0);
     if (options.fighter_stress_cap.has_value()) {
         settings.fighters.max_live_fighters =
             NonNegative<std::int32_t>::make(*options.fighter_stress_cap);
@@ -169,10 +167,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         settings.capital_ships.max_health = health;
     }
 
-    if (!level.player_entity_id().empty()) {
-        reference.data.player = std::move(reference.player);
-    }
-    auto compiled{sim::make_level_simulation_init_data(level, std::move(reference.data), settings)};
+    auto compiled{sim::make_level_simulation_init_data(
+        level, {}, settings, {.time_scale = PositiveFinite<double>{1.}, .duration = {}})};
     if (!compiled) {
         std::string output;
         auto write{ioj::FormatWriter{std::back_inserter(output)}};

@@ -4,17 +4,24 @@
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 
+#include <filesystem>
 #include <format>
 
 namespace ioj::sim::tests {
 namespace {
+auto mission_reader() -> levels::authoring::DefinitionReader {
+    return levels::authoring::DefinitionReader{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} /
+                                               "LevelScripts"};
+}
+
 void expect_fighter_kill_from_objective(std::string_view const win_condition) {
     auto const definition{
-        ioj::levels::authoring::tests::read_test_level(levels::authoring::DefinitionReader{},
+        ioj::levels::authoring::tests::read_test_level(mission_reader(),
                                                        std::format(R"(
       (level :id 'fighter-kill :title "Fighter kill"
         :camera (camera :look-at '(blue-capital) :offset-direction '(-1 0 0) :distance 1000)
         :settings (settings
+          :entity-geometry (module-ref (import-module "Settings/entity-geometry.scm") 'entity-geometry)
           :fighters (fighters
             :max-live-fighters 2
             :laser (laser :damage 100 :projectile-speed 40000 :max-distance 40000)))
@@ -29,7 +36,7 @@ void expect_fighter_kill_from_objective(std::string_view const win_condition) {
                                                                    win_condition))};
     ASSERT_TRUE(definition) << levels::format_diagnostics(definition.error());
 
-    auto built{make_level_simulation_init_data(*definition, make_simulation_data(make_fixture()))};
+    auto built{make_level_simulation_init_data(*definition, {}, {})};
     ASSERT_TRUE(built) << built.error().front();
     LevelSim simulation{std::move(*built)};
 
@@ -61,8 +68,7 @@ TEST(LevelAuthoringIntegration, BlueFighterAttacksTheValueOfALatchedWinCondition
 }
 
 TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReferences) {
-    auto const definition{
-        ioj::levels::authoring::tests::read_test_level(levels::authoring::DefinitionReader{}, R"(
+    auto const definition{ioj::levels::authoring::tests::read_test_level(mission_reader(), R"(
       (level :id 'reserves :title "Reserves"
         :camera (camera :look-at '(hero) :offset-direction '(-1 0 0) :distance 1000)
         :entities (list
@@ -79,9 +85,7 @@ TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReference
           (on :when dead :do (spawn group))
           (on :when (latched-true remembered) :do (win 'blue)))))")};
     ASSERT_TRUE(definition) << levels::format_diagnostics(definition.error());
-    auto build{[&] {
-        return make_level_simulation_init_data(*definition, make_simulation_data(make_fixture()));
-    }};
+    auto build{[&] { return make_level_simulation_init_data(*definition, {}, {}); }};
     auto built{build()};
     ASSERT_TRUE(built);
     LevelSim simulation{std::move(*built)};
@@ -122,9 +126,9 @@ TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReference
 }
 
 TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedEntityReferences) {
-    auto definition{
-        ioj::levels::authoring::tests::read_test_level(levels::authoring::DefinitionReader{}, R"(
+    auto definition{ioj::levels::authoring::tests::read_test_level(mission_reader(), R"(
       (level :id 'authored-spawns :title "Authored spawns"
+        :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
         :camera (camera :look-at '(capital) :offset-direction '(-1 0 0) :distance 1000)
         :entities (list
           (entity :id 'capital :archetype 'capital-ship :team 'blue
@@ -137,7 +141,7 @@ TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedEnt
           (on :when (entity-destroyed 'target) :do (win 'blue)))))")};
     ASSERT_TRUE(definition) << levels::format_diagnostics(definition.error());
 
-    auto built{make_level_simulation_init_data(*definition, make_simulation_data(make_fixture()))};
+    auto built{make_level_simulation_init_data(*definition, {}, {})};
     ASSERT_TRUE(built) << built.error().front();
     auto const capital{built->level_events.capital_spawns().const_view()};
     auto const turret{built->level_events.turret_spawns().const_view()};

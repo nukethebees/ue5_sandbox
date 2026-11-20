@@ -10,16 +10,15 @@ namespace ioj::sim::tests {
 auto make_fixture() -> SimulationFixture {
     static auto const settings{[] {
         auto const script_root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
-        auto const loaded{levels::authoring::DefinitionReader{script_root}
-                              .read_settings_file(script_root / "Settings/base.scm")
-                              .and_then(resolve_simulation_settings)};
+        auto const loaded{levels::authoring::DefinitionReader{script_root}.read_settings_file(
+            script_root / "Settings/base.scm")};
         if (!loaded) {
             throw std::runtime_error{levels::format_diagnostics(loaded.error())};
         }
         return *loaded;
     }()};
 
-    auto fixture{make_reference_level_simulation_data()};
+    SimulationFixture fixture;
     apply_settings(settings, fixture.data);
     apply_settings(settings, fixture.player);
     fixture.data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(256);

@@ -47,7 +47,7 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
             auto const size_override{FVector3f{2450000.f, 2250000.f, 550000.f}};
             auto const cell_override{FVector3f{47000.f, 53000.f, 35000.f}};
             for (auto const override_grid : {true, false}) {
-                auto expected{base->collision_grid};
+                auto expected{ioj::default_test_settings().collision_grid};
                 std::string grid;
                 if (override_grid) {
                     grid = std::format(":level-size '({} {} {}) :cell-size '({} {} {})",
@@ -57,8 +57,8 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                                        cell_override.X,
                                        cell_override.Y,
                                        cell_override.Z);
-                    expected.grid_size = size_override;
-                    expected.cell_size = cell_override;
+                    expected.level_size = ioj::Vector3f{size_override};
+                    expected.cell_size = ioj::Vector3f{cell_override};
                 }
                 auto const definition{ioj::levels::authoring::tests::read_test_level(
                     ioj::levels::authoring::DefinitionReader{std::filesystem::path{
@@ -84,18 +84,17 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                     return;
                 }
 
-                auto const dimensions{expected.calculate_grid_dimensions()};
+                auto const dimensions{ioj::sim::collision::calculate_grid_dimensions(
+                    expected.level_size, expected.cell_size)};
                 auto const actual{
                     orchestrator->get_level_simulation()->spatial_query_manager().grid_spec()};
-                checks.is_true(actual.dimensions == ioj::sim::collision::CellCoord{dimensions.X,
-                                                                                   dimensions.Y,
-                                                                                   dimensions.Z},
+                checks.is_true(actual.dimensions == dimensions,
                                TEXT("LevelSim grid bounds come from base plus current override"));
                 checks.is_true(actual.cell_dimensions == ioj::Vector3f{expected.cell_size},
                                TEXT("LevelSim cell size comes from base plus current override"));
-                checks.is_true(FTestBatchOrchestratorTestAccess::level_config(*orchestrator) !=
+                checks.is_true(FTestBatchOrchestratorTestAccess::level_config(*orchestrator) ==
                                    base,
-                               TEXT("Orchestrator owns the resolved settings"));
+                               TEXT("Runs share the configured resource asset"));
                 auto* const player{
                     const_cast<ioj::ATestSpaceShip*>(orchestrator->get_player_ship())};
                 if (IsValid(player)) {

@@ -72,23 +72,12 @@ auto ATestSpaceShip::make_spawn_data() const -> sim::player::PlayerSpawnData {
     sim::player::PlayerSpawnData result;
     result.team = to_native(team);
     result.transform = to_native(GetActorTransform());
-    result.body_transform =
-        to_native(ship_mesh ? ship_mesh->GetRelativeTransform() : FTransform::Identity);
     result.laser_mode = initial_.laser_mode;
     result.laser_fire_rate = initial_.laser_fire_rate;
     result.health = {initial_.health, initial_.health};
     result.flight_models = flight_models_;
 
-    if (actor_config) {
-        result.config = actor_config->simulation;
-    }
-    if (ship_mesh) {
-        result.left_socket = to_native(ship_mesh->GetSocketTransform(Sockets::left, RTS_Component));
-        result.right_socket =
-            to_native(ship_mesh->GetSocketTransform(Sockets::right, RTS_Component));
-        result.middle_socket =
-            to_native(ship_mesh->GetSocketTransform(Sockets::middle, RTS_Component));
-    }
+    result.config = initial_;
     return result;
 }
 
@@ -148,12 +137,6 @@ void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
 
 void ATestSpaceShip::set_actor_config(FPlayerShipConfig const* const new_config) noexcept {
     actor_config = new_config;
-    if (new_config && !bound_simulation) {
-        initial_ = new_config->simulation;
-    }
-    if (new_config && bound_simulation) {
-        commands().set_config(new_config->simulation);
-    }
 }
 
 auto ATestSpaceShip::get_kills() const -> KillCount {

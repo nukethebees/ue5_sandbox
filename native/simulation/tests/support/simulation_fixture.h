@@ -1,9 +1,12 @@
 #pragma once
 #include <ioj/levels/level_definition_components.h>
-#include <ioj/sim/levels/reference_level_simulation_data.h>
+#include <ioj/sim/levels/level_sim.h>
 
 namespace ioj::sim::tests {
-using SimulationFixture = ReferenceLevelSimulationData;
+struct SimulationFixture {
+    LevelSimInitData data;
+    player::PlayerSpawnData player;
+};
 
 struct SimulationScenario {
     explicit SimulationScenario(LevelSimInitData data = {})

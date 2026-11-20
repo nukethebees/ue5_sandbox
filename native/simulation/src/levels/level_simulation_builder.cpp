@@ -14,15 +14,9 @@
 
 namespace ioj::sim {
 namespace {
-auto finite(Vector3f const value) -> bool {
-    return std::isfinite(value.x()) && std::isfinite(value.y()) && std::isfinite(value.z());
-}
-
-auto finite(Transform3d const& transform) -> bool {
-    auto const& rotation{transform.rotation};
-    return finite(Vector3f{transform.location}) && finite(Vector3f{transform.scale}) &&
-           std::isfinite(rotation.x()) && std::isfinite(rotation.y()) &&
-           std::isfinite(rotation.z()) && std::isfinite(rotation.w());
+auto is_finite(Transform3d const& transform) -> bool {
+    return is_finite(Vector3f{transform.location}) && is_finite(Vector3f{transform.scale}) &&
+           is_finite(transform.rotation.components);
 }
 
 }
@@ -32,32 +26,28 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
     LevelSimulationBuildErrors errors;
     if (!collision::is_configured(data.collision.grid_spec)) {
         errors.emplace_back("Collision grid requires positive dimensions and finite cell sizes");
-    } else if (!finite(collision::grid_half_size(data.collision.grid_spec))) {
+    } else if (!is_finite(collision::grid_half_size(data.collision.grid_spec))) {
         errors.emplace_back("Collision grid extents must be finite");
     }
     for (auto const type : EnumTraits<EntityType>::values) {
         auto const centre{data.collision.entity_bounds.centre(type)};
         auto const extent{data.collision.entity_bounds.half_extents(type)};
-        if (!finite(centre) || !finite(extent) || extent.x() < 0.f || extent.y() < 0.f ||
+        if (!is_finite(centre) || !is_finite(extent) || extent.x() < 0.f || extent.y() < 0.f ||
             extent.z() < 0.f) {
             errors.emplace_back("Entity collision bounds must be finite with nonnegative extents");
         }
     }
     auto const& capital{data.capital_ships};
-    if (capital.fighter_spawn_slots !=
-        static_cast<std::int32_t>(capital.fighter_spawn_slots_relative_transforms.size())) {
-        errors.emplace_back("Fighter spawn slot count does not match the supplied transforms");
-    }
     for (auto const& slot : capital.fighter_spawn_slots_relative_transforms) {
-        if (!finite(slot)) {
+        if (!is_finite(slot)) {
             errors.emplace_back("Fighter spawn transforms must be finite");
         }
     }
     if (data.player) {
         auto const& player{*data.player};
-        if (!finite(player.transform) || !finite(player.body_transform) ||
-            !finite(player.left_socket) || !finite(player.right_socket) ||
-            !finite(player.middle_socket)) {
+        if (!is_finite(player.transform) || !is_finite(player.body_transform) ||
+            !is_finite(player.left_socket) || !is_finite(player.right_socket) ||
+            !is_finite(player.middle_socket)) {
             errors.emplace_back("Player geometry and socket transforms must be finite");
         }
     }
@@ -85,7 +75,7 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
         [&](EntityType const type, Vector3f const position, Quaternion4f const rotation) {
             auto const bounds{collision::make_entity_world_bounds(
                 data.collision.entity_bounds, type, position, rotation)};
-            if (!finite(bounds.min) || !finite(bounds.max)) {
+            if (!is_finite(bounds.min) || !is_finite(bounds.max)) {
                 errors.emplace_back("Entity collision bounds must be finite");
                 return;
             }
@@ -138,9 +128,9 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
 
 auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
                                      LevelSimInitData inputs,
-                                     settings::Settings const& settings)
-    -> LevelSimulationBuildResult {
-    auto resolved{resolve_simulation_settings(settings)};
+                                     settings::Settings const& settings,
+                                     LevelRunTiming timing) -> LevelSimulationBuildResult {
+    auto resolved{validate_settings(settings)};
     if (!resolved) {
         LevelSimulationBuildErrors errors;
         for (auto const& error : resolved.error()) {
@@ -158,7 +148,10 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
         return std::unexpected{LevelSimulationBuildErrors{
             "Player input was supplied for a level without a player entity"}};
     }
-    apply_settings(*resolved, inputs);
+    apply_settings(settings, inputs);
+    if (timing.time_scale) {
+        inputs.clock_settings.time_scale = *timing.time_scale;
+    }
     if (inputs.player) {
         auto const& entity{definition.entity(definition.player_entity_id())};
         if (entity.overrides.health) {
@@ -170,6 +163,19 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
     if (!compiled) {
         return std::unexpected{std::move(compiled.error())};
     }
+    if (timing.duration) {
+        auto ticks{
+            levels::compile_timer_duration(*timing.duration, inputs.clock_settings.tick_rate)};
+        if (!ticks) {
+            return std::unexpected{std::move(ticks.error())};
+        }
+        auto& events{inputs.level_events};
+        auto const timer{inputs.timers.add()};
+        auto const elapsed{inputs.conditions.add_timer_elapsed(timer)};
+        events.enqueue(events.add_start_timer_event({timer, *ticks}));
+        std::array const effects{events.add_stop_event(RunEndReason::DurationReached)};
+        events.add_trigger(elapsed, effects);
+    }
     if (auto valid{validate_level_simulation_init_data(inputs)}; !valid) {
         return std::unexpected{std::move(valid.error())};
     }
@@ -177,7 +183,9 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
 }
 
 auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
-                                     LevelSimInitData inputs) -> LevelSimulationBuildResult {
-    return make_level_simulation_init_data(definition, std::move(inputs), definition.settings());
+                                     LevelSimInitData inputs,
+                                     LevelRunTiming timing) -> LevelSimulationBuildResult {
+    return make_level_simulation_init_data(
+        definition, std::move(inputs), definition.settings(), timing);
 }
 }

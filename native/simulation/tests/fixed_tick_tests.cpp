@@ -101,7 +101,7 @@ TEST(SimulationClock, InitialisesRuntimeStateFromStaticSettings) {
 }
 
 TEST(SimulationSettings, AcceptsFrequenciesAboveTickRate) {
-    SimulationSettings fast;
+    settings::Settings fast;
     for (auto const member : {&FighterSimConfig::avoidance_clear_update_frequency,
                               &FighterSimConfig::avoidance_update_frequency,
                               &FighterSimConfig::avoidance_active_update_frequency,
@@ -115,12 +115,12 @@ TEST(SimulationSettings, AcceptsFrequenciesAboveTickRate) {
 
 TEST(SimulationSettings, ChecksCountdownFrequencyBoundsBeforeNarrowing) {
     auto check_boundary = [](auto assign, double const maximum, std::string_view const path) {
-        SimulationSettings settings;
-        settings.clock.tick_rate = Frequency::make(maximum);
+        settings::Settings settings;
+        settings.tick.tick_rate = Frequency::make(maximum);
         assign(settings, 1.f);
         EXPECT_TRUE(validate_settings(settings));
 
-        settings.clock.tick_rate = Frequency::make(settings.clock.tick_rate.hz() + 0.25);
+        settings.tick.tick_rate = Frequency::make(settings.tick.tick_rate.hz() + 0.25);
         auto const result{validate_settings(settings)};
         ASSERT_FALSE(result);
         EXPECT_TRUE(std::ranges::any_of(
@@ -142,8 +142,8 @@ TEST(SimulationSettings, ChecksCountdownFrequencyBoundsBeforeNarrowing) {
 
 TEST(SimulationSettings, ChecksCountdownDurationBoundsBeforeNarrowing) {
     auto check_boundary = [](auto assign) {
-        SimulationSettings settings;
-        settings.clock.tick_rate = Frequency::make(1.0);
+        settings::Settings settings;
+        settings.tick.tick_rate = Frequency::make(1.0);
         assign(settings, static_cast<float>(std::numeric_limits<std::int16_t>::max()));
         EXPECT_TRUE(validate_settings(settings));
         assign(settings, 32767.5f);
@@ -161,7 +161,7 @@ TEST(SimulationSettings, ChecksCountdownDurationBoundsBeforeNarrowing) {
         s.turrets.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(value);
     });
     check_boundary([](auto& s, float value) {
-        s.spinners.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(value);
+        s.tube_spinners.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(value);
     });
 }
 

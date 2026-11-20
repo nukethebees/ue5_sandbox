@@ -33,7 +33,7 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
     auto simulation() const -> ::ioj::sim::lasers::Sim const& { return *simulation_; }
 
     void clear_runtime_state_presentation();
-    void begin_play_presentation();
+    void begin_play_presentation(int32 reserve);
     void update_visual_data(bool consume_hits = true);
     void end_tick_presentation();
 

@@ -62,12 +62,7 @@ struct SPACEGAME_API FCollisionGridConfig {
 
     FCollisionGridConfig();
 
-    [[nodiscard]] auto calculate_grid_dimensions() const noexcept -> FIntVector3;
     [[nodiscard]] auto is_valid() const noexcept -> bool;
-
-    FVector3f grid_size{2000000.f, 2000000.f, 100000.f};
-
-    FVector3f cell_size{5000.f, 5000.f, 20000.f};
 
     UPROPERTY(EditAnywhere, Category = "Collision|Static Geometry")
     TArray<TSubclassOf<AActor>> harvested_collision_actor_classes;
@@ -89,7 +84,7 @@ UCLASS(BlueprintType)
 class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
     GENERATED_BODY()
   public:
-    auto get_visual_config() const -> FLevelVisualConfig {
+    auto get_visual_config(settings::Settings const& settings) const -> FLevelVisualConfig {
         return {player_ship,
                 laser_projectiles,
                 capital_ships,
@@ -103,13 +98,17 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
                 turret_debug_targets,
                 turret_debug_entities,
                 entity_overlay,
-                presentation,
+                settings.presentation,
+                {settings.capital_ships.max_health.get().value(),
+                 settings.fighters.health.get().value(),
+                 settings.turrets.max_health.get().value()},
+                settings.laser_projectiles.n_preallocated_instances.get(),
                 sparks};
     }
-    [[nodiscard]] auto with_settings(settings::Settings const& settings, UObject* outer) const
-        -> USpaceGameLevelConfig*;
     [[nodiscard]] auto is_valid(bool require_presentation = true) const noexcept -> bool;
-    void get_validation_errors(TArray<FString>& errors, bool require_presentation = true) const;
+    void get_validation_errors(TArray<FString>& errors,
+                               bool require_presentation = true,
+                               settings::Presentation const& presentation = {}) const;
     void get_validation_warnings(TArray<FString>& warnings) const;
 
 #if WITH_EDITOR
@@ -160,9 +159,6 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
     FEntityOverlaySettings entity_overlay;
-
-    settings::Presentation presentation;
-    sim::OverlapResponseConfig overlap_response;
 
     UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ShowOnlyInnerProperties))
     FSparkRendererSettings sparks;

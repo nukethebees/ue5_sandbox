@@ -44,16 +44,11 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         unsupported_component->RegisterComponent();
 
         ioj::FCollisionGridConfig config;
-        config.grid_size = FVector3f{4000.f, 4000.f, 4000.f};
-        config.cell_size = FVector3f{100.f, 100.f, 100.f};
         config.harvested_collision_actor_classes.Add(ASandboxTestCollisionActor::StaticClass());
         config.omitted_collision_actor_classes.Add(
             ASandboxTestOmittedCollisionActor::StaticClass());
 
-        auto const configured_dims{config.calculate_grid_dimensions()};
-        auto const grid_spec{ioj::sim::collision::CollisionGridSpec{
-            {configured_dims.X, configured_dims.Y, configured_dims.Z},
-            ioj::Vector3f{config.cell_size}}};
+        ioj::sim::collision::CollisionGridSpec const grid_spec{{40, 40, 40}, {100.f, 100.f, 100.f}};
         auto const bounds{
             ioj::FLevelCollisionHost::extract_static_geometry(*world, config, grid_spec)};
 

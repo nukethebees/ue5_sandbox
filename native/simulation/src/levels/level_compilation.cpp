@@ -4,7 +4,7 @@
 #include <ioj/rotator_math.h>
 #include <ioj/sim/expressions/expr_compilation_context.h>
 #include <ioj/sim/levels/level_event_manager.h>
-#include <ioj/sim/sim_clock.h>
+#include <ioj/sim/sim_time.h>
 #include <ioj/transform3d.h>
 
 #include <algorithm>
@@ -30,21 +30,20 @@ auto entity_index(LevelDefinition const& definition, EntityId const& id) -> sim:
 
 } // namespace
 
-auto compile_timer_duration(Duration const duration, sim::SimClock const& clock)
+auto compile_timer_duration(Duration const duration, Frequency const tick_rate)
     -> std::expected<sim::TimerTicks, LevelCompilationErrors> {
-    auto const ticks{duration.seconds() * clock.tick_rate().hz()};
-    if (ticks > static_cast<double>(std::numeric_limits<sim::TimerTicks>::max())) {
+    auto const ticks{sim::try_duration_to_tick_period<sim::TimerTicks>(tick_rate, duration)};
+    if (!ticks) {
         return std::unexpected{LevelCompilationErrors{"Timer duration exceeds tick range"}};
     }
-    return clock.duration_to_tick_period<sim::TimerTicks>(duration).get();
+    return ticks->get();
 }
 
 auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     -> std::expected<void, LevelCompilationErrors> {
     auto const& definition{level};
 
-    sim::SimClock clock;
-    clock.initialise(output.clock_settings);
+    auto const tick_rate{output.clock_settings.tick_rate};
     auto const& capital_config{output.capital_ships};
     auto const& turret_config{output.turrets};
     auto& definitions{output.level_events};
@@ -66,7 +65,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         auto const& entity{definition.entities()[static_cast<std::size_t>(index)]};
         if (entity.archetype != EntityArchetype::PlayerFighter && !grouped.contains(entity.id)) {
             auto const tick{
-                compile_timer_duration(Duration::make(entity.spawn_time_seconds), clock)};
+                compile_timer_duration(Duration::make(entity.spawn_time_seconds), tick_rate)};
             if (!tick) {
                 return std::unexpected{tick.error()};
             }
@@ -210,7 +209,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
                         return spawn_effects[effect.group];
                     } else {
                         auto duration{
-                            compile_timer_duration(Duration::make(effect.seconds), clock)};
+                            compile_timer_duration(Duration::make(effect.seconds), tick_rate)};
                         if (!duration) {
                             return std::unexpected{duration.error()};
                         }

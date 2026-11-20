@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/duration.h>
 #include <ioj/levels/level_definition.h>
 #include <ioj/sim/levels/level_sim_init_data.h>
 
@@ -15,13 +16,18 @@ using LevelSimulationBuildResult = std::expected<LevelSimInitData, LevelSimulati
 [[nodiscard]] auto validate_level_simulation_init_data(LevelSimInitData const& data)
     -> std::expected<void, LevelSimulationBuildErrors>;
 
-// Inputs supply plain collision bounds and weapon/spawn sockets. A declared player does not
-// require a presentation object; optional player input supplies its sockets and flight loadout.
+struct LevelRunTiming {
+    std::optional<PositiveFinite<double>> time_scale;
+    std::optional<Duration> duration;
+};
+
 [[nodiscard]] auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
                                                    LevelSimInitData inputs,
-                                                   settings::Settings const& settings)
+                                                   settings::Settings const& settings,
+                                                   LevelRunTiming timing)
     -> LevelSimulationBuildResult;
 [[nodiscard]] auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
-                                                   LevelSimInitData inputs)
+                                                   LevelSimInitData inputs,
+                                                   LevelRunTiming timing)
     -> LevelSimulationBuildResult;
 }

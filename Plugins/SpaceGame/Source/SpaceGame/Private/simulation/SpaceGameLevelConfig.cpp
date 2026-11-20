@@ -44,11 +44,6 @@ auto collision_class_lists_are_valid(FCollisionGridConfig const& config) -> bool
     return true;
 }
 
-auto collision_grid_dimensions_are_valid(FCollisionGridConfig const& config) -> bool {
-    auto const dimensions{config.calculate_grid_dimensions()};
-    return sim::collision::is_configured(
-        {{dimensions.X, dimensions.Y, dimensions.Z}, Vector3f{config.cell_size}});
-}
 }
 
 FScenarioClassConfig::FScenarioClassConfig()
@@ -58,32 +53,8 @@ FCollisionGridConfig::FCollisionGridConfig()
     : harvested_collision_actor_classes{AStaticMeshActor::StaticClass()}
     , omitted_collision_actor_classes{ATestSpaceShip::StaticClass()} {}
 
-auto FCollisionGridConfig::calculate_grid_dimensions() const noexcept -> FIntVector3 {
-    auto const dimensions{
-        sim::collision::calculate_grid_dimensions(Vector3f{grid_size}, Vector3f{cell_size})};
-    return {dimensions.x(), dimensions.y(), dimensions.z()};
-}
-
 auto FCollisionGridConfig::is_valid() const noexcept -> bool {
-    return collision_grid_dimensions_are_valid(*this) && collision_class_lists_are_valid(*this);
-}
-
-auto USpaceGameLevelConfig::with_settings(settings::Settings const& settings, UObject* outer) const
-    -> USpaceGameLevelConfig* {
-    auto* config{DuplicateObject<USpaceGameLevelConfig>(this, outer)};
-    config->overlap_response = settings.collision_grid;
-    config->player_ship.simulation = settings.player_ship;
-    config->laser_projectiles.simulation = settings.laser_projectiles;
-    config->capital_ships.simulation = settings.capital_ships;
-    config->capital_ships.simulation.fighter_spawn_slots =
-        config->capital_ships.fighter_spawn_slots_relative_transforms.Num();
-    config->fighters.simulation = settings.fighters;
-    config->turrets.simulation = settings.turrets;
-    config->tube_spinners.simulation = settings.tube_spinners;
-    config->collision_grid.grid_size = to_unreal(settings.collision_grid.level_size);
-    config->collision_grid.cell_size = to_unreal(settings.collision_grid.cell_size);
-    config->presentation = settings.presentation;
-    return config;
+    return collision_class_lists_are_valid(*this);
 }
 
 auto USpaceGameLevelConfig::is_valid(bool const require_presentation) const noexcept -> bool {
@@ -92,14 +63,20 @@ auto USpaceGameLevelConfig::is_valid(bool const require_presentation) const noex
     return errors.IsEmpty();
 }
 
-void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
-                                                  bool const require_presentation) const {
+void
+    USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
+                                                 bool const require_presentation,
+                                                 settings::Presentation const& presentation) const {
 #define REQUIRE_CONFIG(condition, message) \
     if (!(condition)) {                    \
         errors.Emplace(TEXT(message));     \
     }
 
     if (require_presentation) {
+        REQUIRE_CONFIG(capital_ships.mesh, "capital_ships.mesh is null");
+        REQUIRE_CONFIG(fighters.mesh, "fighters.mesh is null");
+        REQUIRE_CONFIG(turrets.mesh, "turrets.mesh is null");
+        REQUIRE_CONFIG(tube_spinners.mesh, "tube_spinners.mesh is null");
         REQUIRE_CONFIG(classes.player_controller_class, "classes.player_controller_class is null");
         REQUIRE_CONFIG(laser_projectiles.mesh, "laser_projectiles.mesh is null");
         REQUIRE_CONFIG(laser_projectiles.material, "laser_projectiles.material is null");
@@ -114,21 +91,9 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
     REQUIRE_CONFIG(presentation.laser_projectiles.max_cull_distance >=
                        presentation.laser_projectiles.min_cull_distance,
                    "laser_projectiles cull distance range is invalid");
-    REQUIRE_CONFIG(capital_ships.mesh, "capital_ships.mesh is null");
-    REQUIRE_CONFIG(fighters.mesh, "fighters.mesh is null");
-    REQUIRE_CONFIG(turrets.mesh, "turrets.mesh is null");
-    REQUIRE_CONFIG(tube_spinners.mesh, "tube_spinners.mesh is null");
-    REQUIRE_CONFIG(collision_grid.grid_size.X > 0.f && collision_grid.grid_size.Y > 0.f &&
-                       collision_grid.grid_size.Z > 0.f,
-                   "collision_grid.grid_size components must be positive");
-    REQUIRE_CONFIG(collision_grid.cell_size.X > 0.f && collision_grid.cell_size.Y > 0.f &&
-                       collision_grid.cell_size.Z > 0.f,
-                   "collision_grid.cell_size components must be positive");
     REQUIRE_CONFIG(FMath::IsFinite(collision_grid.line_thickness) &&
                        collision_grid.line_thickness > 0.f,
                    "collision_grid.line_thickness must be finite and positive");
-    REQUIRE_CONFIG(collision_grid_dimensions_are_valid(collision_grid),
-                   "collision_grid calculated dimensions and cell count must fit in int32");
     REQUIRE_CONFIG(collision_class_lists_are_valid(collision_grid),
                    "collision_grid static collision actor class lists are invalid or overlap");
 

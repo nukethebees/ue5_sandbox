@@ -73,7 +73,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
         view.entity_tables().health.const_view<sim::EntityType::Fighter>());
     turrets.begin_play_presentation();
     spinners.begin_play_presentation();
-    lasers.begin_play_presentation();
+    lasers.begin_play_presentation(config.laser_instance_reserve);
 }
 
 void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) {

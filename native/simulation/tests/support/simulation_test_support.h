@@ -19,9 +19,7 @@ namespace ioj::sim::tests {
 inline void add_timed_events(LevelSimInitData& data,
                              Duration const duration,
                              std::span<EventHandle const> const effects) {
-    SimClock clock;
-    clock.initialise(data.clock_settings);
-    auto const ticks{levels::compile_timer_duration(duration, clock)};
+    auto const ticks{levels::compile_timer_duration(duration, data.clock_settings.tick_rate)};
     ASSERT_TRUE(ticks);
     auto const timer{data.timers.add()};
     auto const elapsed{data.conditions.add_timer_elapsed(timer)};
