@@ -25,6 +25,10 @@ class ATestCapitalShipProxy : public AActor {
     void set_team(ETestTeam const new_team) noexcept { team = new_team; }
 
 #if WITH_EDITOR
+    void set_preview_settings(settings::Settings const& settings) {
+        preview_clearance_ = settings.fighters.avoidance_clearance_buffer;
+        preview_arrow_size_ = settings.presentation.capital_ships.proxy_arrow_size;
+    }
     void Tick(float delta_seconds) override;
     auto ShouldTickIfViewportsOnly() const -> bool override { return true; }
     void PostRegisterAllComponents() override;
@@ -69,6 +73,8 @@ class ATestCapitalShipProxy : public AActor {
     void update_spawn_configuration_status();
     void draw_fighter_spawn_preview();
     FString spawn_preview_error;
+    float preview_clearance_{sim::FighterSimConfig{}.avoidance_clearance_buffer};
+    float preview_arrow_size_{settings::CapitalPresentation{}.proxy_arrow_size};
 #endif
 
   public:

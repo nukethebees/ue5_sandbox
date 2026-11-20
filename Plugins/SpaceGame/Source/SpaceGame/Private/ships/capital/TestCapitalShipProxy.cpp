@@ -122,9 +122,9 @@ void ATestCapitalShipProxy::update_spawn_configuration_status() {
                   arrow->GetComponentTransform().GetRelativeTransform(frame).Equals(slots[i], 0.01);
     }
     spawn_configuration_status =
-        matches ? TEXT("Live arrows match the shared runtime layout (not a clearance check).")
-                : TEXT("UNSAVED DIFFERENCE: Save these arrows, or Apply to use the shared runtime "
-                       "layout.");
+        matches ? TEXT("Launch arrows match the shared asset.")
+                : TEXT("Launch arrows differ from the shared asset. Apply to reload them, or save "
+                       "the arrows and use Export Entity Geometry for Play.");
 }
 
 void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
@@ -177,7 +177,7 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
     auto const bounds{make_world_bounds(sim::EntityType::CapitalShip,
                                         FVector3f{GetActorLocation()},
                                         FRotator3f{GetActorRotation()})};
-    auto const clearance{config->fighters.simulation.avoidance_clearance_buffer};
+    auto const clearance{preview_clearance_};
     TArray<FBox3f> fighter_bounds;
     fighter_bounds.SetNum(slot_count);
     for (int32 i{}; i < slot_count; ++i) {
@@ -314,7 +314,6 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
     for (auto const slot : fighter_spawn_slots) {
         capital_config.fighter_spawn_slots_relative_transforms.Add(
             slot->GetComponentTransform().GetRelativeTransform(spawn_frame));
-        level_config_asset->presentation.capital_ships.proxy_arrow_size = slot->ArrowSize;
     }
     level_config_asset->MarkPackageDirty();
     update_spawn_configuration_status();
@@ -368,7 +367,7 @@ void ATestCapitalShipProxy::apply_spawn_configuration(USpaceGameLevelConfig& con
 
         spawn_point->SetWorldTransform(capital_config.fighter_spawn_slots_relative_transforms[i] *
                                        spawn_frame);
-        spawn_point->SetArrowSize(config.presentation.capital_ships.proxy_arrow_size);
+        spawn_point->SetArrowSize(preview_arrow_size_);
     }
     MarkPackageDirty();
     update_spawn_configuration_status();

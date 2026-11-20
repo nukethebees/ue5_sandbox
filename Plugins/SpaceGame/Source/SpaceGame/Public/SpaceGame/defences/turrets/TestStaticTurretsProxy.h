@@ -26,9 +26,12 @@ class ATestStaticTurretsProxy : public AActor {
     void set_level_config_asset(USpaceGameLevelConfig* const config) noexcept {
         level_config_asset = config;
     }
+    void set_preview_radius(float radius) { preview_radius_ = radius; }
     void set_team(ETestTeam const new_team) noexcept { team = new_team; }
 
   protected:
+    float preview_radius_{sim::TurretSimConfig{}.detection_radius};
+
     void OnConstruction(FTransform const& transform) override;
     void configure_component(UPrimitiveComponent& component);
     void apply_actor_configuration();

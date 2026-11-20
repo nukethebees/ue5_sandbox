@@ -1,5 +1,4 @@
 #pragma once
-
 #include <ioj/levels/entity_archetype.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 

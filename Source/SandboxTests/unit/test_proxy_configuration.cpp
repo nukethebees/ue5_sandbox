@@ -79,7 +79,6 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
         first->SetActorLocationAndRotation(FVector{1200., -500., 300.}, FRotator{15., 125., 5.});
         second->SetActorLocationAndRotation(FVector{-3400., 1500., 200.}, FRotator{0., -45., 0.});
         first->set_level_config_asset(config);
-        config->capital_ships.simulation.fighter_spawn_slots = 2;
         config->capital_ships.fighter_spawn_slots_relative_transforms = {
             FTransform{FVector{10000., -3000., 0.}}, FTransform{FVector{10000., 3000., 0.}}};
         invoke(*first, TEXT("apply_asset_configuration_to_all_instances"));
@@ -116,9 +115,10 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
         invoke(*proxy, TEXT("apply_asset_configuration"));
         proxy->RerunConstructionScripts();
         auto const points{arrows(*proxy, TEXT("fighter_spawn_slots"))};
-        if (!TestRunner->TestEqual(TEXT("Construction preserves slot count"),
-                                   points.Num(),
-                                   config->capital_ships.simulation.fighter_spawn_slots)) {
+        if (!TestRunner->TestEqual(
+                TEXT("Construction preserves slot count"),
+                points.Num(),
+                config->capital_ships.fighter_spawn_slots_relative_transforms.Num())) {
             return;
         }
         check_arrow_layout(points,
@@ -158,7 +158,7 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
         auto* const first{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
         auto* const second{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
         first->set_level_config_asset(config);
-        config->turrets.simulation.detection_radius = 4321.f;
+        first->set_preview_radius(4321.f);
         config->turrets.fire_point_offset = FTransform{FVector{100., 200., 300.}};
         invoke(*first, TEXT("apply_asset_configuration_to_all_instances"));
         for (auto* const proxy : {first, second}) {

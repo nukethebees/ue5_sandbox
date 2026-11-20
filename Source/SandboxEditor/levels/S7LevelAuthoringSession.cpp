@@ -433,11 +433,13 @@ auto import_s7_level(ULevel& level,
         if (auto* player{Cast<ATestSpaceShip>(actor)}) {
             player->health_override = optional(entity.health);
         } else if (auto* capital{Cast<ATestCapitalShipProxy>(actor)}) {
+            capital->set_preview_settings(definition.settings());
             capital->spawn_time_seconds = entity.spawn_at.get();
             capital->health = optional(entity.health);
             capital->initial_spawn_delay = optional(entity.initial_spawn_delay);
             capital->spawn_cooldown = optional(entity.spawn_cooldown);
         } else if (auto* turret{Cast<ATestStaticTurretsProxy>(actor)}) {
+            turret->set_preview_radius(definition.settings().turrets.detection_radius);
             turret->spawn_time_seconds = entity.spawn_at.get();
             turret->health = optional(entity.health);
             turret->laser_damage = optional(entity.laser_damage);

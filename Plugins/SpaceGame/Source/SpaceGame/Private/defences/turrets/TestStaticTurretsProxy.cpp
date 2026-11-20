@@ -58,7 +58,7 @@ void ATestStaticTurretsProxy::apply_actor_configuration() {
     auto const* actor_config{&level_config_asset->turrets};
 
     mesh->SetStaticMesh(actor_config->mesh);
-    detection->SetSphereRadius(actor_config->simulation.detection_radius);
+    detection->SetSphereRadius(preview_radius_);
     fire_point->SetRelativeTransform(actor_config->fire_point_offset);
     detection->SetVisibility(actor_config->show_collision);
 
@@ -92,9 +92,10 @@ void ATestStaticTurretsProxy::apply_asset_configuration_to_all_instances() {
     auto* const config{level_config_asset.Get()};
     FScopedTransaction const transaction{
         NSLOCTEXT("TurretProxy", "ApplyAll", "Apply configuration to all turrets")};
-    for_each_instance(*this, [config](ThisClass& proxy) {
+    for_each_instance(*this, [config, radius = preview_radius_](ThisClass& proxy) {
         proxy.Modify();
         proxy.set_level_config_asset(config);
+        proxy.set_preview_radius(radius);
         proxy.apply_asset_configuration();
     });
 }
