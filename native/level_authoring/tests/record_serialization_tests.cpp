@@ -85,7 +85,7 @@ TEST(SchemeSerialization, SettingsRoundTripWithNestedDifferencesAndFalseValues) 
     EXPECT_EQ(apply_record(base, differences), changed);
     EXPECT_EQ(s7::serialize(base, base), "(settings)");
     auto resource_changes{base};
-    resource_changes.capital_ships.fighter_spawn_slots = 20;
+    resource_changes.capital_ships.fighter_spawn_slots_relative_transforms.resize(2);
     resource_changes.turrets.fire_point_offset = {1.f, 2.f, 3.f};
     resource_changes.tube_spinners.fire_point_offsets.push_back({{4.f, 5.f, 6.f}, {}});
     EXPECT_EQ(s7::serialize(resource_changes, base), "(settings)");

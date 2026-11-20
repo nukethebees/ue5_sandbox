@@ -9,7 +9,6 @@ namespace ioj::sim {
 namespace laser_lifecycle_test {
 auto make_fixture(std::int32_t const target_health = 100) -> tests::SimulationScenario {
     tests::SimulationScenario data{tests::make_simulation_data(tests::make_fixture())};
-    data.runtime.capital_ships.fighter_spawn_slots = 0;
     data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     tests::add_capital_spawn(
         data, {-4000.f, 0.f, 0.f}, Team::Blue, 60.f, 60.f, settings::PositiveHealth{Health{100}});

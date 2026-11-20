@@ -35,7 +35,6 @@ auto make_data(player::FlightModelPreset const preset) -> SimulationScenario {
     data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.runtime.tick_memory_capacity_bytes = 1024 * 1024;
     data.runtime.phase_memory_capacity_bytes = 1024 * 1024;
-    data.runtime.capital_ships.fighter_spawn_slots = 0;
     data.runtime.clock_settings.tick_rate = ioj::Frequency::make(60.0);
     for (auto const type : EnumTraits<EntityType>::values) {
         data.runtime.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});

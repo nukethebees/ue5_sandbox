@@ -20,7 +20,6 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
                                           {{distance, 0.f, 0.f}},
                                           {{-distance, 0.f, 0.f}}};
     tests::SimulationScenario data{tests::make_simulation_data(config)};
-    data.runtime.capital_ships.fighter_spawn_slots = 0;
     data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     for (auto const location : locations) {
         tests::add_capital_spawn(data, location, Team::White, 999.f, 999.f);

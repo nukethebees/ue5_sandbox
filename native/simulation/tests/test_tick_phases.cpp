@@ -12,7 +12,6 @@ auto make_world() -> SimulationScenario {
     SimulationScenario data{};
     data.runtime.clock_settings.tick_rate = ioj::Frequency::make(10.0);
     data.runtime.collision.grid_spec = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
-    data.runtime.capital_ships.fighter_spawn_slots = 0;
     data.runtime.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(8);
     data.runtime.collision.overlap_response.damage_per_overlap_detection =
         ioj::Positive<std::int32_t>{25};
@@ -179,7 +178,6 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
                       60.f,
                       60.f,
                       ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
-    data.runtime.capital_ships.fighter_spawn_slots = 1;
     data.runtime.capital_ships.fighter_spawn_slots_relative_transforms = {{}};
     data.runtime.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.runtime.fighters.speed = 0.f;
@@ -466,7 +464,6 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeLogicEvaluation) {
                               0.f,
                               60.f,
                               ioj::settings::PositiveHealth::make(ioj::sim::Health{100}))};
-        data.runtime.capital_ships.fighter_spawn_slots = 1;
         data.runtime.capital_ships.fighter_spawn_slots_relative_transforms = {
             {.location = {0.0, 500.0, 0.0}}};
 
