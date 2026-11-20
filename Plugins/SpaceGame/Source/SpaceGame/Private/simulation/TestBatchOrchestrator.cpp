@@ -446,13 +446,9 @@ void ATestBatchOrchestrator::end_level(sim::RunEndReason const reason, bool cons
         return;
     }
     level_simulation_->stop_run(reason);
-    auto completion{make_level_completion(*level_simulation_)};
-    auto const terminal_reason{level_simulation_->result()->reason};
-    auto const score{
-        terminal_reason == sim::RunEndReason::WorldEnd ||
-                terminal_reason == sim::RunEndReason::OrchestratorReset
-            ? std::optional<profiles::ScoreRecord>{}
-            : profiles::make_level_score(*level_simulation_, profiles::current_timestamp())};
+    auto const completed{profiles::completed_level(*level_simulation_).value()};
+    auto completion{make_level_completion(completed)};
+    auto const score{profiles::make_level_score(completed, profiles::current_timestamp())};
     auto* const controller{
         Cast<ASpaceGamePlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0))};
     if (IsValid(controller)) {

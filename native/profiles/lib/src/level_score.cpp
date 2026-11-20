@@ -3,26 +3,37 @@
 #include <ioj/sim/levels/level_sim.h>
 
 namespace ioj::profiles {
-auto make_level_score(sim::LevelSim const& simulation, Timestamp date)
-    -> std::optional<ScoreRecord> {
+auto completed_level(sim::LevelSim const& simulation) -> std::optional<CompletedLevel> {
     auto const result{simulation.result()};
-    auto const* player{simulation.player_ship_simulation()};
-    if (!result || !player) {
+    if (!result) {
         return std::nullopt;
     }
-    auto const team{player->team};
-    auto const outcome{
-        !result->winner ? LevelOutcome::Stopped
-                        : (*result->winner == team ? LevelOutcome::Victory : LevelOutcome::Defeat)};
+    auto const* player{simulation.player_ship_simulation()};
+    auto const outcome{!result->winner
+                           ? LevelOutcome::Stopped
+                           : (!player || player->team == *result->winner ? LevelOutcome::Victory
+                                                                         : LevelOutcome::Defeat)};
+    return CompletedLevel{simulation.level_metadata(),
+                          result->reason,
+                          result->winner,
+                          player ? std::optional{player->team} : std::nullopt,
+                          outcome,
+                          Duration::make(sim::simulation_time(result->terminal.tick,
+                                                              simulation.clock().tick_period())),
+                          player ? simulation.entity_ledger().count_kills(player->team) : 0};
+}
 
-    auto const& metadata{simulation.level_metadata()};
+auto make_level_score(CompletedLevel const& level, Timestamp date) -> std::optional<ScoreRecord> {
+    if (!level.player_team || level.reason == sim::RunEndReason::WorldEnd ||
+        level.reason == sim::RunEndReason::OrchestratorReset) {
+        return std::nullopt;
+    }
     return ScoreRecord{.date = date,
-                       .level_name = metadata.id.value,
-                       .team = team,
-                       .outcome = outcome,
-                       .end_reason = result->reason,
-                       .kills = simulation.entity_ledger().count_kills(team),
-                       .time_seconds = static_cast<float>(sim::simulation_time(
-                           result->terminal.tick, simulation.clock().tick_period()))};
+                       .level_name = level.metadata.id.value,
+                       .team = *level.player_team,
+                       .outcome = level.outcome,
+                       .end_reason = level.reason,
+                       .kills = level.player_team_kills,
+                       .time_seconds = static_cast<float>(level.elapsed_time.seconds())};
 }
 }

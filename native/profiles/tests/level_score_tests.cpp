@@ -38,7 +38,7 @@ TEST(LevelScore, QueriesRetainedPlayerResultWithoutSideEffects) {
     auto built{sim::make_level_simulation_init_data(*definition, std::move(geometry.data))};
     ASSERT_TRUE(built) << built.error().front();
     sim::LevelSim simulation{std::move(*built)};
-    EXPECT_FALSE(make_level_score(simulation, 17));
+    EXPECT_FALSE(completed_level(simulation));
 
     auto const player{simulation.player_ship_simulation()->unique_entity_id};
     sim::DirectDamageEvents damage;
@@ -47,7 +47,9 @@ TEST(LevelScore, QueriesRetainedPlayerResultWithoutSideEffects) {
     sim::LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
     simulation.start();
     simulation.advance(0.4);
-    auto const record{make_level_score(simulation, 17)};
+    auto const completed{completed_level(simulation)};
+    ASSERT_TRUE(completed);
+    auto const record{make_level_score(*completed, 17)};
     ASSERT_TRUE(record);
     ScoreRecord const expected{.date = 17,
                                .level_name = "publication",
@@ -57,7 +59,7 @@ TEST(LevelScore, QueriesRetainedPlayerResultWithoutSideEffects) {
                                .kills = 2,
                                .time_seconds = 0.2f};
     EXPECT_EQ(*record, expected);
-    EXPECT_EQ(make_level_score(simulation, 17), record);
+    EXPECT_EQ(make_level_score(*completed, 17), record);
     EXPECT_TRUE(simulation.result());
 }
 }
