@@ -8,9 +8,9 @@
 #include "ioj/expr_kind.h"
 #include "ioj/kill_count.h"
 #include "ioj/levels/identifiers.h"
+#include "ioj/levels/logic_indices.h"
 #include "ioj/levels/team.h"
 
-#include <cstdint>
 #include <vector>
 
 namespace ioj::levels {
@@ -46,7 +46,7 @@ struct TimerElapsedExpr {
 
     static constexpr ExprKind type() { return ExprKind::TimerElapsed; }
 
-    std::uint32_t timer{};
+    TimerIndex timer{};
 };
 
 struct LatchedTrueExpr {
@@ -54,7 +54,7 @@ struct LatchedTrueExpr {
 
     static constexpr ExprKind type() { return ExprKind::LatchedTrue; }
 
-    std::uint32_t latch{};
+    LatchIndex latch{};
 };
 
 struct LatchedFalseExpr {
@@ -62,7 +62,7 @@ struct LatchedFalseExpr {
 
     static constexpr ExprKind type() { return ExprKind::LatchedFalse; }
 
-    std::uint32_t latch{};
+    LatchIndex latch{};
 };
 
 struct WinEffect {
@@ -78,13 +78,13 @@ struct StopEffect {
 struct SpawnEffect {
     bool operator==(SpawnEffect const&) const = default;
 
-    std::uint32_t group{};
+    SpawnGroupIndex group{};
 };
 
 struct StartTimerEffect {
     bool operator==(StartTimerEffect const&) const = default;
 
-    std::uint32_t timer{};
+    TimerIndex timer{};
     ioj::NonNegativeFinite<double> seconds{};
 };
 } // namespace ioj::levels

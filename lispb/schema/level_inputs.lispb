@@ -26,17 +26,17 @@
     (projections (cpp)))
   (record TimerElapsedExpr :comparison equality
     :generate-s7-reader true :s7-tag "timer-elapsed" :s7-positional true :s7-constructor false
-    (member timer std::uint32_t :initializer "")
+    (member timer @timer_index :initializer "")
     (function type ioj::ExprKind :static true :constexpr true :body ("return ExprKind::TimerElapsed;"))
     (projections (cpp)))
   (record LatchedTrueExpr :comparison equality
     :generate-s7-reader true :s7-tag "latched-true" :s7-positional true :s7-constructor false
-    (member latch std::uint32_t :initializer "")
+    (member latch @latch_index :initializer "")
     (function type ioj::ExprKind :static true :constexpr true :body ("return ExprKind::LatchedTrue;"))
     (projections (cpp)))
   (record LatchedFalseExpr :comparison equality
     :generate-s7-reader true :s7-tag "latched-false" :s7-positional true :s7-constructor false
-    (member latch std::uint32_t :initializer "")
+    (member latch @latch_index :initializer "")
     (function type ioj::ExprKind :static true :constexpr true :body ("return ExprKind::LatchedFalse;"))
     (projections (cpp)))
   (record WinEffect :comparison equality
@@ -48,11 +48,11 @@
     (projections (cpp)))
   (record SpawnEffect :comparison equality
     :generate-s7-reader true :s7-tag "spawn" :s7-positional true :s7-constructor false
-    (member group std::uint32_t :initializer "")
+    (member group @spawn_group_index :initializer "")
     (projections (cpp)))
   (record StartTimerEffect :comparison equality
     :generate-s7-reader true :s7-tag "start-timer" :s7-positional true :s7-constructor false
-    (member timer std::uint32_t :initializer "")
+    (member timer @timer_index :initializer "")
     (member seconds @nonnegative_double :initializer "")
     (projections (cpp))))
 

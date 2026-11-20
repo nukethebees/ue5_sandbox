@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/expr_kind.h>
-#include <ioj/levels/expr_index.h>
+#include <ioj/levels/logic_indices.h>
 
 #include <vector>
 
