@@ -18,6 +18,7 @@ struct FS7LevelResolvedActor {
 };
 
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor>;
+auto s7_actor_export_setting(AActor& actor) -> bool*;
 auto s7_level_actor_class(levels::EntityArchetype archetype, USpaceGameLevelConfig const& config)
     -> UClass*;
 void configure_s7_level_actor(AActor& actor,

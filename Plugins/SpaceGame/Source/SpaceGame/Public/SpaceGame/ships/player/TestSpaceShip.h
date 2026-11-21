@@ -187,6 +187,13 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     sim::player::Sim const* bound_simulation{nullptr};
 
   public:
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditInstanceOnly,
+              Category = "Level Authoring",
+              meta = (DisplayName = "Export", ToolTip = "Save this entity to editor-config.scm."))
+    bool export_to_script{true};
+#endif
+
     UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "1"))
     TOptional<int32> health_override;
 };

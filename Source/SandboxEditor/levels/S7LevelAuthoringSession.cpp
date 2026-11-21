@@ -160,7 +160,8 @@ auto collect_editor_scene(ULevel const& level,
         }
         auto const entity_id{id(binding.id)};
         ids.Add(actor, entity_id);
-        if (!binding.export_to_script) {
+        auto const* setting{s7_actor_export_setting(*actor)};
+        if (setting && !*setting) {
             continue;
         }
         auto const resolved{resolve_s7_level_actor(*actor)};
@@ -238,9 +239,10 @@ auto collect_editor_scene(ULevel const& level,
 auto s7_scene_needs_export(ULevel const& level, AS7LevelAuthoringDocument const& document)
     -> std::expected<bool, FString> {
     for (auto const actor : level.Actors) {
-        if (IsValid(actor) && resolve_s7_level_actor(*actor) &&
-            !document.entities.ContainsByPredicate(
-                [&](auto const& binding) { return binding.actor == actor; })) {
+        auto const* setting{IsValid(actor) ? s7_actor_export_setting(*actor) : nullptr};
+        if (setting && *setting && !document.entities.ContainsByPredicate([&](auto const& binding) {
+                return binding.actor == actor;
+            })) {
             return true;
         }
     }
@@ -402,15 +404,16 @@ auto import_s7_level(ULevel& level,
         auto const* previous{existing.Find(name)};
         auto const generated{std::ranges::find(
             baseline->entities, candidate.id, &levels::authoring::EntityInput::id)};
-        auto const export_entity{previous && !reset_export_ownership
-                                     ? previous->export_to_script
-                                     : generated != baseline->entities.end()};
+        auto* actor{previous ? previous->actor.Get() : nullptr};
+        auto const* previous_setting{
+            !reset_export_ownership && IsValid(actor) ? s7_actor_export_setting(*actor) : nullptr};
+        bool const export_entity{previous_setting ? *previous_setting
+                                                  : generated != baseline->entities.end()};
         auto const authored{std::ranges::find(
             definition.entities(), candidate.id, &levels::EntitySpawnDefinition::id)};
         auto const entity{!export_entity && authored != definition.entities().end()
                               ? levels::authoring::make_entity_input(*authored)
                               : candidate};
-        auto* actor{previous ? previous->actor.Get() : nullptr};
         auto* type{s7_level_actor_class(entity.archetype, *document.level_config)};
         if (!IsValid(type)) {
             return std::unexpected{
@@ -431,20 +434,24 @@ auto import_s7_level(ULevel& level,
         actor->Modify();
         actor->bIsEditorOnlyActor = true;
         if (auto* player{Cast<ATestSpaceShip>(actor)}) {
+            player->export_to_script = export_entity;
             player->health_override = optional(entity.health);
         } else if (auto* capital{Cast<ATestCapitalShipProxy>(actor)}) {
+            capital->export_to_script = export_entity;
             capital->set_preview_settings(definition.settings());
             capital->spawn_time_seconds = entity.spawn_at.get();
             capital->health = optional(entity.health);
             capital->initial_spawn_delay = optional(entity.initial_spawn_delay);
             capital->spawn_cooldown = optional(entity.spawn_cooldown);
         } else if (auto* turret{Cast<ATestStaticTurretsProxy>(actor)}) {
+            turret->export_to_script = export_entity;
             turret->set_preview_radius(definition.settings().turrets.detection_radius);
             turret->spawn_time_seconds = entity.spawn_at.get();
             turret->health = optional(entity.health);
             turret->laser_damage = optional(entity.laser_damage);
         } else {
             auto& spinner{*CastChecked<ATestTubeSpinnerProxy>(actor)};
+            spinner.export_to_script = export_entity;
             spinner.spawn_time_seconds = entity.spawn_at.get();
             spinner.initial_fire_point = optional(entity.initial_fire_point);
         }
@@ -454,7 +461,7 @@ auto import_s7_level(ULevel& level,
                                  *document.level_config,
                                  transform,
                                  FName{name});
-        bindings.Add({.id = name, .actor = actor, .export_to_script = export_entity});
+        bindings.Add({.id = name, .actor = actor});
         existing.Remove(name);
     }
     for (auto const& entry : existing) {

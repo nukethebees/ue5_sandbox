@@ -40,13 +40,14 @@ explicit editor overrides and mission overrides in that order.
     (settings-layers defaults (level-ref scene :settings) (settings :fighters (fighters :speed 3000)))))
 ```
 
+Mark actors for export under **Details → Level Authoring → Export**.
 **Export Scene** updates placements and viewpoint in `editor-config.scm` and preserves its
 explicit settings overrides. **Export Entity Geometry** updates the mesh bounds and attachment
 points imported by `Settings/base.scm`. **Play** uses the saved files.
 Use record accessors and functional updates to compose levels, for example
 `(copy-with base :entities (append (level-ref base :entities) extras))`.
 `copy-with` replaces whole fields without mutating the original record; missing `foo-ref`
-properties are errors. Only proxies marked **Export** are serialized by the editor.
+properties are errors.
 See [gameplay logic](docs/logic.md).
 
 Run a scenario with `coj benchmark native-simulation --level LevelScripts/your-level.scm --seconds 10`.

@@ -14,8 +14,8 @@ an existing root is never replaced. The generated baseline need not be playable 
    Alternatively, enable **Use Observer Camera** on the authoring document and choose adopted
    entities as camera **Targets**, with a nonzero **Offset Direction** and positive **Distance**.
    Keep the entities inside the level's collision grid.
-3. Click **Adopt Entities** after placing actors. Leave **Export** enabled for entities whose
-   placement is owned by the editor, then click **Export Scene**.
+3. Mark actors for export under **Details → Level Authoring → Export**. Click **Export Scene**
+   to save placements and adopt new supported actors.
 4. The new entry point layers editor settings over `Settings/base.scm`. Add mission overrides
    last in `settings-layers` and put mission logic in the entry point. Use **Edit Mission Source** to open the file in your external editor and save it there.
 5. Click **Validate Level** and resolve any diagnostics shown in the mode's status area.

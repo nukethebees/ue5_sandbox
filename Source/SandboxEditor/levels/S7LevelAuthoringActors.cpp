@@ -13,6 +13,22 @@
 
 namespace ioj::editor {
 
+auto s7_actor_export_setting(AActor& actor) -> bool* {
+    if (auto* player{Cast<ATestSpaceShip>(&actor)}) {
+        return &player->export_to_script;
+    }
+    if (auto* capital{Cast<ATestCapitalShipProxy>(&actor)}) {
+        return &capital->export_to_script;
+    }
+    if (auto* turret{Cast<ATestStaticTurretsProxy>(&actor)}) {
+        return &turret->export_to_script;
+    }
+    if (auto* spinner{Cast<ATestTubeSpinnerProxy>(&actor)}) {
+        return &spinner->export_to_script;
+    }
+    return nullptr;
+}
+
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor> {
     levels::EntityArchetype archetype{};
     ETestTeam team{};

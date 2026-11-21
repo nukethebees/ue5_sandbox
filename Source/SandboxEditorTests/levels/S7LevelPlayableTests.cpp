@@ -145,7 +145,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         if (!TestRunner->TestNotNull(TEXT("Editor enemy binding"), enemy_binding)) {
             return;
         }
-        auto* const editor_enemy{enemy_binding->actor.Get()};
+        auto* const editor_enemy{CastChecked<ioj::ATestCapitalShipProxy>(enemy_binding->actor)};
         TestRunner->TestTrue(TEXT("An imported scene matches its saved export"),
                              ioj::editor::s7_scene_needs_export(editor_level, *document) == false);
         if (!observer) {
@@ -153,7 +153,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
             TestRunner->TestTrue(TEXT("Moving an exported actor requires export"),
                                  ioj::editor::s7_scene_needs_export(editor_level, *document) ==
                                      true);
-            CastChecked<ioj::ATestCapitalShipProxy>(editor_enemy)->spawn_time_seconds = 0.;
+            editor_enemy->spawn_time_seconds = 0.;
             world->SpawnActor<ioj::ATestCapitalShipProxy>();
             TestRunner->AddExpectedMessage(TEXT("Scene changes haven't been exported"),
                                            ELogVerbosity::Warning,
@@ -268,7 +268,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                     [](auto const& value) { return value.id == TEXT("enemy"); })};
                 TestRunner->TestTrue(TEXT("PIE preserves editor binding identity"),
                                      binding && binding->actor == editor_enemy &&
-                                         binding->export_to_script);
+                                         editor_enemy->export_to_script);
             });
     }
 

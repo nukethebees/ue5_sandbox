@@ -18,11 +18,6 @@ struct FS7LevelEntityBinding {
 
     UPROPERTY(VisibleAnywhere, Category = "Level Authoring")
     TObjectPtr<AActor> actor{nullptr};
-
-    UPROPERTY(EditAnywhere,
-              Category = "Level Authoring",
-              meta = (DisplayName = "Export", ToolTip = "Save this entity to editor-config.scm."))
-    bool export_to_script{true};
 };
 
 USTRUCT()
@@ -67,7 +62,7 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
               meta = (ToolTip = "Shared canonical S7 runtime resources"))
     TObjectPtr<ioj::USpaceGameLevelConfig> level_config{nullptr};
 
-    UPROPERTY(EditAnywhere, EditFixedSize, Category = "Entities", meta = (TitleProperty = "id"))
+    UPROPERTY(VisibleAnywhere, Category = "Entities", meta = (TitleProperty = "id"))
     TArray<FS7LevelEntityBinding> entities{};
 
     UPROPERTY(EditAnywhere, Category = "Viewpoint")

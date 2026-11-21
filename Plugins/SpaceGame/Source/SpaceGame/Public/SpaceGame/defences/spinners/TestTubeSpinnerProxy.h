@@ -58,6 +58,13 @@ class ATestTubeSpinnerProxy : public AActor {
     TArray<TObjectPtr<UArrowComponent>> fire_points{};
 
   public:
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditInstanceOnly,
+              Category = "Level Authoring",
+              meta = (DisplayName = "Export", ToolTip = "Save this entity to editor-config.scm."))
+    bool export_to_script{true};
+#endif
+
     UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.0", Units = "s"))
     double spawn_time_seconds{};
 

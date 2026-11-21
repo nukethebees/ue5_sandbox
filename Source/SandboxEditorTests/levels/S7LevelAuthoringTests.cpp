@@ -169,10 +169,7 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
         !test.TestNotNull(TEXT("Human binding"), human_binding)) {
         return std::nullopt;
     }
-    test.TestTrue(TEXT("Generated entities are exported"),
-                  player_binding->export_to_script && capital_binding->export_to_script &&
-                      turret_binding->export_to_script && spinner_binding->export_to_script);
-    test.TestFalse(TEXT("Human entity is not exported"), human_binding->export_to_script);
+    auto* const player{CastChecked<ioj::ATestSpaceShip>(player_binding->actor)};
     auto* const capital{Cast<ioj::ATestCapitalShipProxy>(capital_binding->actor)};
     auto* const turret{Cast<ioj::ATestStaticTurretsProxy>(turret_binding->actor)};
     auto* const spinner{Cast<ioj::ATestTubeSpinnerProxy>(spinner_binding->actor)};
@@ -183,7 +180,12 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
                        document.level_config->tube_spinners.fire_point_offsets.Num() > 1)) {
         return std::nullopt;
     }
-    CastChecked<ioj::ATestSpaceShip>(player_binding->actor)->health_override = 123;
+    test.TestTrue(TEXT("Generated entities are exported"),
+                  player->export_to_script && capital->export_to_script &&
+                      turret->export_to_script && spinner->export_to_script);
+    test.TestFalse(TEXT("Human entity is not exported"),
+                   CastChecked<ioj::ATestCapitalShipProxy>(human_binding->actor)->export_to_script);
+    player->health_override = 123;
     capital->spawn_time_seconds = 0.1;
     capital->SetActorLocation(FVector{100000.123456789, 42.125, 100.5});
     capital->SetActorRotation(FRotator{10., 20., 30.});
@@ -234,6 +236,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         capital_actor->initial_spawn_delay = 2.25f;
         capital_actor->spawn_cooldown = 3.5f;
         turret_actor->set_team(ioj::ETestTeam::Blue);
+        turret_actor->export_to_script = false;
         turret_actor->spawn_time_seconds = 1.5;
         turret_actor->health = 789;
         turret_actor->laser_damage = 321;
@@ -243,7 +246,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         player_actor->health_override = 123;
         document->entities = {
             {.id = TEXT("capital"), .actor = capital_actor},
-            {.id = TEXT("turret"), .actor = turret_actor, .export_to_script = false},
+            {.id = TEXT("turret"), .actor = turret_actor},
             {.id = TEXT("spinner"), .actor = spinner_actor},
             {.id = TEXT("player"), .actor = player_actor},
         };
@@ -264,6 +267,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         capital_actor->initial_spawn_delay.Reset();
         capital_actor->spawn_cooldown.Reset();
         turret_actor->set_team(ioj::ETestTeam::White);
+        turret_actor->export_to_script = true;
         turret_actor->spawn_time_seconds = 0.;
         turret_actor->health.Reset();
         turret_actor->laser_damage.Reset();
@@ -289,7 +293,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                  capital_actor->initial_spawn_delay == 2.25f &&
                                  capital_actor->spawn_cooldown == 3.5f);
         TestRunner->TestTrue(TEXT("Turret authoring and ownership persist"),
-                             !document->entities[1].export_to_script &&
+                             !turret_actor->export_to_script &&
                                  turret_actor->get_team() == ioj::ETestTeam::Blue &&
                                  turret_actor->spawn_time_seconds == 1.5 &&
                                  turret_actor->health == 789 && turret_actor->laser_damage == 321);
@@ -471,8 +475,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         auto& document{*fixture->document};
         auto& level{*fixture->world->GetCurrentLevel()};
         auto* const human_binding{binding(document, TEXT("human"))};
-        auto* const previous_human{human_binding->actor.Get()};
-        human_binding->export_to_script = true;
+        auto* const previous_human{CastChecked<ioj::ATestCapitalShipProxy>(human_binding->actor)};
+        previous_human->export_to_script = true;
         if (!assert_success(*TestRunner,
                             TEXT("Refresh adopted entity"),
                             ioj::editor::import_s7_level(level, document, fixture->definition))) {
@@ -480,8 +484,22 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         auto* const refreshed_human{binding(document, TEXT("human"))};
         TestRunner->TestTrue(TEXT("Explicit ownership choice persists by ID"),
-                             refreshed_human && refreshed_human->export_to_script &&
-                                 refreshed_human->actor == previous_human);
+                             refreshed_human && refreshed_human->actor == previous_human &&
+                                 previous_human->export_to_script);
+        // A different configured class replaces the actor on the next import.
+        document.level_config = DuplicateObject(document.level_config.Get(), &document);
+        document.level_config->classes.capital_ship_proxy_class =
+            ioj::ATestCapitalShipProxy::StaticClass();
+        if (!assert_success(*TestRunner,
+                            TEXT("Refresh with replacement proxy class"),
+                            ioj::editor::import_s7_level(level, document, fixture->definition))) {
+            return;
+        }
+        auto const* replacement{binding(document, TEXT("human"))};
+        TestRunner->TestTrue(
+            TEXT("Replacement actor inherits Export for the same ID"),
+            replacement && replacement->actor != previous_human &&
+                CastChecked<ioj::ATestCapitalShipProxy>(replacement->actor)->export_to_script);
         if (!assert_success(
                 *TestRunner,
                 TEXT("Import with new-root ownership"),
@@ -492,9 +510,10 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestNotNull(TEXT("Human binding after root change"), new_root_human)) {
             return;
         }
+        auto* const new_root_actor{CastChecked<ioj::ATestCapitalShipProxy>(new_root_human->actor)};
         TestRunner->TestFalse(TEXT("Root changes discard the previous source's ownership choices"),
-                              new_root_human->export_to_script);
-        new_root_human->export_to_script = true;
+                              new_root_actor->export_to_script);
+        new_root_actor->export_to_script = true;
         if (!assert_success(*TestRunner,
                             TEXT("Export explicitly adopted human entity"),
                             ioj::editor::export_s7_editor_config(level, document))) {
@@ -626,6 +645,10 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         TestRunner->TestTrue(TEXT("An unbound player requires export"),
                              ioj::editor::s7_scene_needs_export(level, document) == true);
+        player->export_to_script = false;
+        TestRunner->TestTrue(TEXT("An excluded unbound player matches the empty export"),
+                             ioj::editor::s7_scene_needs_export(level, document) == false);
+        player->export_to_script = true;
         player->SetActorLabel(TEXT("pilot"));
         player->set_team(ioj::ETestTeam::Blue);
         if (!assert_success(*TestRunner,
@@ -635,7 +658,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         auto const* adopted{binding(document, TEXT("pilot"))};
         TestRunner->TestTrue(TEXT("New proxy defaults to Export"),
-                             adopted && adopted->export_to_script && adopted->actor == player);
+                             adopted && adopted->actor == player && player->export_to_script);
         auto definition{ioj::editor::read_s7_authored_level(document)};
         if (!assert_success(
                 *TestRunner, TEXT("Generated root includes its own configuration"), definition)) {
