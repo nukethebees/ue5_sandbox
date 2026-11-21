@@ -26,7 +26,6 @@ class HudModel {
     auto advance(double delta_seconds) -> HudChanges;
     auto tick(PeriodicTickCountdown8::counter_type num_ticks) -> HudChanges;
     auto force_sample() -> HudChanges;
-    void set_selected_mapping_context(std::string context);
 
     auto active() const -> bool { return simulation_.has_value(); }
     auto entity_count_data() const -> EntityCountHudData const& { return entity_count_data_; }
@@ -53,6 +52,5 @@ class HudModel {
     EntityCountHudData entity_count_data_;
     std::optional<PlayerStatusHudData> player_status_data_;
     std::optional<PlayerFlightHudData> player_flight_data_;
-    std::string selected_mapping_context_;
 };
 }

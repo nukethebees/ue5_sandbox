@@ -1,22 +1,14 @@
 target_sources(native-simulation PRIVATE
   ../../include/ioj/sim/player/command_interface.h
-  ../../include/ioj/sim/player/flight_model_config.h
-  ../../include/ioj/sim/player/flight_model_evaluator.h
   ../../include/ioj/sim/player/physical_movement_state.h
   ../../include/ioj/sim/player/player_flight_intent.h
-  ../../include/ioj/sim/player/flight_model_controller_state.h
   ../../include/ioj/sim/player/player_resource_state.h
   ../../include/ioj/sim/player/player_presentation_state.h
   ../../include/ioj/sim/player/player_simulation_state.h
   ../../include/ioj/sim/player/laser_firing_state.h
   ../../include/ioj/sim/player/phase_interface.h
-  ../../include/ioj/sim/player/scalar_response.h
   ../../include/ioj/sim/player/sim.h
   ../../include/ioj/sim/player/space_ship_common.h
-  flight_model_config.cpp
-  flight_model_settings_codec.cpp
   game_settings_session.cpp
-  flight_model_evaluator.cpp
-  scalar_response.cpp
   sim.cpp
 )

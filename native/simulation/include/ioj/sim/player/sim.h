@@ -7,7 +7,7 @@
 #include <ioj/sim/entities/health_table.h>
 #include <ioj/sim/entities/ship_health.h>
 #include <ioj/sim/player/fire_rate.h>
-#include <ioj/sim/player/flight_model_controller_state.h>
+#include <ioj/sim/player/flight_controller_state.h>
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/phase_inputs.h>
 #include <ioj/sim/player/physical_movement_state.h>
@@ -49,8 +49,6 @@ struct PlayerSpawnData {
     Transform3d right_socket{Transform3d{}};
     Transform3d middle_socket{Transform3d{}};
 
-    FlightModelLoadout flight_models{make_default_flight_model_loadout()};
-
     ShipLaserMode laser_mode{ShipLaserMode::Single};
     ShipFireRate laser_fire_rate{ShipFireRate::Burst3};
 
@@ -69,7 +67,7 @@ struct Sim {
     auto operator=(Sim&&) -> Sim& = delete;
 
     auto physical_state() const noexcept -> PhysicalMovementState const& { return state_.physical; }
-    auto controller_state() const noexcept -> FlightModelControllerState const& {
+    auto controller_state() const noexcept -> FlightControllerState const& {
         return state_.controller;
     }
     auto resource_state() const noexcept -> PlayerResourceState const& { return state_.resources; }
@@ -77,15 +75,7 @@ struct Sim {
         return state_.presentation;
     }
     auto flight_intent() const noexcept -> PlayerFlightIntent const& { return flight_intent_; }
-    auto active_flight_model_slot() const noexcept -> FlightModelSlot {
-        return active_flight_model_slot_;
-    }
-    auto active_flight_model_profile() const noexcept -> FlightModelProfile const& {
-        return flight_model_profile(flight_models_, active_flight_model_slot_);
-    }
-    auto active_flight_model_config() const noexcept -> FlightModelConfig const& {
-        return active_flight_model_profile().config;
-    }
+    auto target_speed() const noexcept -> float;
     void set_config(PlayerSimConfig const& new_config) noexcept;
     void set_team(Team new_team) noexcept;
     void set_speed_sampling_enabled(bool enabled) noexcept { speed_sampling_enabled = enabled; }
@@ -93,16 +83,8 @@ struct Sim {
     /* **************************************** */
     // Flight controls
     /* **************************************** */
-    void set_forward_input(float input) noexcept;
-    void set_right_input(float input) noexcept;
-    void set_up_input(float input) noexcept;
-    void set_ship_2d_control(Vector2d input);
-    void start_sampling() noexcept;
-    void stop_sampling();
-    void adjust_desired_forward_velocity(float direction);
     void set_pitch_input(float input) noexcept;
     void set_yaw_input(float input) noexcept;
-    void set_roll_input(float input) noexcept;
     void set_accelerator(float input) noexcept;
     void start_boost();
     void stop_boost();
@@ -110,9 +92,6 @@ struct Sim {
     void start_emergency_brake();
     void stop_emergency_brake();
     void stop_brake();
-    void select_flight_model_slot(FlightModelSlot slot) noexcept;
-    [[nodiscard]] auto set_flight_model_slot_profile(FlightModelSlot slot,
-                                                     FlightModelProfile profile) noexcept -> bool;
 
     /* **************************************** */
     // Weapons
@@ -134,10 +113,6 @@ struct Sim {
 
     auto kills() const -> KillCount;
     auto speed() const noexcept -> float;
-    auto is_sampling_target_speed() const noexcept -> bool { return sampling_target_speed_; }
-    auto sampled_target_speed_scale() const noexcept -> Vector2d {
-        return sampled_target_speed_scale_;
-    }
     auto energy() const -> float;
     auto energy_is_full() const -> bool;
     auto get_middle_socket() const -> Transform3d;
@@ -182,6 +157,8 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
+    void reset_speed_responses(PlayerSimulationState& state) const noexcept;
+    void update_movement(float dt, PlayerSimulationState& state) const noexcept;
     void update_body_orientation(float dt, PlayerSimulationState& state);
     void update_boost_brake(float dt, PlayerSimulationState& state);
     void refresh_effective_action(PlayerSimulationState& state) noexcept;
@@ -221,10 +198,6 @@ struct Sim {
     PlayerSimulationState state_{};
     PlayerSimulationState planned_state_{};
     PlayerFlightIntent flight_intent_{};
-    Vector2d sampled_target_speed_scale_{};
-    bool sampling_target_speed_{};
-    FlightModelLoadout flight_models_{make_default_flight_model_loadout()};
-    FlightModelSlot active_flight_model_slot_{FlightModelSlot::First};
     bool fire_requested_{};
     PlayerSimConfig config_{};
     EntityLedger& ledger_;

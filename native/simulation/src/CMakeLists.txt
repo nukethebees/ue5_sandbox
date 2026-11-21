@@ -118,7 +118,7 @@ list(TRANSFORM levels_headers PREPEND "../include/ioj/sim/levels/")
 
 set(player_headers
   player_spatial_data.h
-  ship_flight_model.h
+  flight_response.h
 )
 
 list(TRANSFORM player_headers PREPEND "../include/ioj/sim/player/")
@@ -175,7 +175,6 @@ target_sources(native-simulation
     expressions/condition_manager.cpp
     expressions/timers.cpp
     overlap_handler.cpp
-    player/ship_flight_model.cpp
     sim_time.cpp
     collision/spatial_query_manager.cpp
     collision/spatial.cpp

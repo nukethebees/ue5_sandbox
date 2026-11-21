@@ -9,15 +9,8 @@
       (parameter team @native_team))
     (method set_speed_sampling_enabled void :noexcept true
       (parameter enabled bool))
-    (method set_forward_input void :noexcept true
-      (parameter input float))
-    (method set_right_input void :noexcept true
-      (parameter input float))
-    (method set_up_input void :noexcept true
-      (parameter input float))
     (method set_pitch_input void :noexcept true (parameter input float))
     (method set_yaw_input void :noexcept true (parameter input float))
-    (method set_roll_input void :noexcept true (parameter input float))
     (method set_accelerator void :noexcept true (parameter input float))
     (method start_boost void)
     (method stop_boost void)
@@ -25,11 +18,6 @@
     (method start_emergency_brake void)
     (method stop_emergency_brake void)
     (method stop_brake void)
-    (method select_flight_model_slot void :noexcept true
-      (parameter slot "FlightModelSlot"))
-    (method set_flight_model_slot_profile bool :noexcept true
-      (parameter slot "FlightModelSlot")
-      (parameter profile "FlightModelProfile"))
     (method start_fire_laser void)
     (method stop_fire_laser void)
     (method upgrade_laser void :noexcept true)

@@ -204,7 +204,6 @@ TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGe
     ASSERT_NE(player, nullptr);
     auto commands{simulation.player_ship_commands()};
     ASSERT_TRUE(commands);
-    commands->set_forward_input(1.f);
     simulation.start();
     simulation.advance(0.5);
     EXPECT_EQ(simulation.clock().get_completed_ticks().value(), 15);
@@ -848,56 +847,6 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     EXPECT_EQ(simulation.turrets().num_instances(), 2);
 }
 
-TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
-    auto data{make_battle_config()};
-    add_player_spawn(data, {});
-    data.runtime.player->flight_models.initial_slot = player::FlightModelSlot::Fourth;
-    auto& gunship{player::flight_model_profile(data.runtime.player->flight_models,
-                                               player::FlightModelSlot::Fourth)};
-    gunship.config.translation.right.manual.response.mode = player::ResponseMode::Direct;
-    gunship.config.translation.up.manual.response.mode = player::ResponseMode::Direct;
-
-    LevelSim simulation{std::move(data).compile()};
-
-    simulation.start();
-
-    auto* const player{simulation.player_ship_simulation()};
-    ASSERT_NE(player, nullptr) << "Planar movement fixture has a player";
-
-    auto const dt{simulation.clock().tick_period()};
-    auto local_velocity = [player] {
-        return player->physical_state().transform.inverse_transform_vector_no_scale(
-            player->physical_state().velocity);
-    };
-
-    simulation.player_ship_commands()->set_right_input(1.f);
-    simulation.advance(dt);
-    EXPECT_TRUE((std::abs(local_velocity().y() - 3000.0) <= 0.1))
-        << "Held lateral input adds the configured local offset";
-    auto const initial_target_scale{player->sampled_target_speed_scale()};
-    EXPECT_TRUE((std::abs(initial_target_scale.x()) <= 1.e-4 &&
-                 std::abs(initial_target_scale.y()) <= 1.e-4))
-        << "Lateral input does not change desired planar velocity";
-
-    simulation.player_ship_commands()->set_right_input(0.f);
-    simulation.player_ship_commands()->set_up_input(1.f);
-    simulation.advance(dt);
-    EXPECT_TRUE((std::abs(local_velocity().z() - 3000.0) <= 0.1))
-        << "Held vertical input adds the configured local offset";
-    EXPECT_TRUE((std::abs(local_velocity().y()) <= 0.1))
-        << "Released lateral input removes its local offset";
-
-    simulation.player_ship_commands()->set_up_input(0.f);
-    simulation.advance(dt);
-    auto const released_velocity{local_velocity()};
-    EXPECT_TRUE((std::abs(released_velocity.z()) <= 0.1))
-        << "Released vertical input removes its local offset";
-    auto const final_target_scale{player->sampled_target_speed_scale()};
-    EXPECT_TRUE(
-        (std::abs(final_target_scale.x()) <= 1.e-4 && std::abs(final_target_scale.y()) <= 1.e-4))
-        << "Movement offsets remain temporary";
-}
-
 TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     LevelSim simulation{make_overlap_response_battle().compile()};
 
@@ -906,7 +855,6 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     auto* player{simulation.player_ship_simulation()};
     ASSERT_NE(player, nullptr) << "The overlap fixture has a movable low-health entity";
 
-    simulation.player_ship_commands()->set_right_input(1.f);
     auto const player_id{player->unique_entity_id};
     auto const capital{simulation.capital_ships().get_entities().entity_ids()[0]};
     auto const& ledger{simulation.entity_ledger()};

@@ -5,7 +5,6 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
-#include "ioj/vector_value_math.h"
 
 #include <array>
 #include <cassert>
@@ -18,8 +17,8 @@
 namespace ioj::sim::player {
 struct PlayerFlightIntent {
     enum class Field : std::uint8_t {
-        translation,
-        rotation,
+        pitch,
+        yaw,
         accelerator,
         boost_held,
         brake_held,
@@ -31,11 +30,11 @@ struct PlayerFlightIntent {
         requires (std::same_as<std::remove_const_t<Self>, PlayerFlightIntent> &&
                   std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
-        if constexpr (Selected == Field::translation) {
-            return (self.translation);
+        if constexpr (Selected == Field::pitch) {
+            return (self.pitch);
         }
-        if constexpr (Selected == Field::rotation) {
-            return (self.rotation);
+        if constexpr (Selected == Field::yaw) {
+            return (self.yaw);
         }
         if constexpr (Selected == Field::accelerator) {
             return (self.accelerator);
@@ -61,10 +60,10 @@ struct PlayerFlightIntent {
         requires std::same_as<std::remove_const_t<Self>, PlayerFlightIntent>
     {
         switch (field) {
-            case Field::translation:
-                return invoke_field<Field::translation>(self, std::forward<Visitor>(visitor));
-            case Field::rotation:
-                return invoke_field<Field::rotation>(self, std::forward<Visitor>(visitor));
+            case Field::pitch:
+                return invoke_field<Field::pitch>(self, std::forward<Visitor>(visitor));
+            case Field::yaw:
+                return invoke_field<Field::yaw>(self, std::forward<Visitor>(visitor));
             case Field::accelerator:
                 return invoke_field<Field::accelerator>(self, std::forward<Visitor>(visitor));
             case Field::boost_held:
@@ -79,8 +78,8 @@ struct PlayerFlightIntent {
         std::unreachable();
     }
 
-    Vector3d translation{};
-    Vector3d rotation{};
+    float pitch{};
+    float yaw{};
     float accelerator{};
     bool boost_held{};
     bool brake_held{};
@@ -95,7 +94,7 @@ template <>
 }
 
 template <>
-inline constexpr auto enum_strings<sim::player::PlayerFlightIntent::Field, Name>{PackedStrings{
-    "translation\000rotation\000accelerator\000boost_held\000brake_held\000emergency_brake_held",
-    std::array<std::uint8_t, 7>{0, 12, 21, 33, 44, 55, 76}}};
+inline constexpr auto enum_strings<sim::player::PlayerFlightIntent::Field, Name>{
+    PackedStrings{"pitch\000yaw\000accelerator\000boost_held\000brake_held\000emergency_brake_held",
+                  std::array<std::uint8_t, 7>{0, 6, 10, 22, 33, 44, 65}}};
 } // namespace ioj

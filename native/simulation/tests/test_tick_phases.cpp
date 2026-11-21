@@ -23,15 +23,17 @@ auto make_world() -> SimulationScenario {
     return data;
 }
 
-void add_moving_player(SimulationScenario& data, Vector3d const location = {}) {
+void add_moving_player(SimulationScenario& data,
+                       Vector3d const location = {},
+                       float const cruise_speed = 0.f) {
     player::PlayerSpawnData spawn{};
     spawn.transform.location = location;
-    spawn.flight_models.initial_slot = player::FlightModelSlot::Fourth;
-    auto& gunship{
-        player::flight_model_profile(spawn.flight_models, player::FlightModelSlot::Fourth)};
-    gunship.config.translation.right.manual.response.mode = player::ResponseMode::Direct;
-    gunship.config.translation.right.normal.positive_speed_limit = NonNegativeFinite<float>{1000.f};
-    gunship.config.translation.right.normal.negative_speed_limit = NonNegativeFinite<float>{1000.f};
+    spawn.config.cruise_speed = NonNegativeFinite<float>::make(cruise_speed);
+    spawn.config.response_settling_time = PositiveFinite<float>{0.005f};
+    if (cruise_speed > 0.f) {
+        spawn.transform.rotation = to_quaternion(Rotator3d{0.0, 90.0, 0.0});
+        spawn.middle_socket.rotation = to_quaternion(Rotator3d{0.0, -90.0, 0.0});
+    }
     spawn.health = {Health{100}, Health{100}};
     spawn.team = Team::Green;
 
@@ -200,14 +202,13 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndClearsTheCarrier) {
 
 TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
     auto data{make_world()};
-    add_moving_player(data);
+    add_moving_player(data, {}, 1000.f);
 
     LevelSim simulation{std::move(data).compile()};
 
     auto const clk_period{simulation.clock().tick_period()};
 
     auto commands{simulation.player_ship_commands()};
-    commands->set_right_input(1.f);
     commands->start_fire_laser();
 
     auto const& player{*simulation.player_ship_simulation()};
@@ -231,7 +232,7 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
 
 TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
     auto data{make_world()};
-    add_moving_player(data);
+    add_moving_player(data, {}, 1000.f);
     add_capital_spawn(data,
                       {{0.f, 100.f, 0.f}},
                       Team::White,
@@ -242,7 +243,6 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
     LevelSim simulation{std::move(data).compile()};
 
     auto const clk_period{simulation.clock().tick_period()};
-    simulation.player_ship_commands()->set_right_input(1.f);
 
     simulation.start();
     simulation.advance(clk_period);
@@ -334,7 +334,7 @@ TEST(TickPhases, DelayedEntityDeathTriggersAfterResolutionWithoutDuplicateOverla
 
 TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterward) {
     auto data{make_world()};
-    add_moving_player(data, {500.0, 0.0, 0.0});
+    add_moving_player(data, {500.0, 0.0, 0.0}, 1000.f);
     add_capital_spawn(data,
                       {{-2000.f, 0.f, 0.f}},
                       Team::White,
@@ -345,7 +345,6 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterwa
     LevelSim simulation{std::move(data).compile()};
 
     auto const& laser_sim{simulation.lasers()};
-    simulation.player_ship_commands()->set_right_input(1.f);
 
     queue_capital_laser(simulation);
 

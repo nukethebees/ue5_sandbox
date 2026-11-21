@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ioj/sim/player/flight_model_controller_state.h"
+#include "ioj/sim/player/flight_controller_state.h"
 #include "ioj/sim/player/physical_movement_state.h"
 #include "ioj/sim/player/player_presentation_state.h"
 #include "ioj/sim/player/player_resource_state.h"
@@ -11,7 +11,7 @@
 namespace ioj::sim::player {
 struct PlayerSimulationState {
     PhysicalMovementState physical{};
-    FlightModelControllerState controller{};
+    FlightControllerState controller{};
     PlayerResourceState resources{};
     PlayerPresentationState presentation{};
 };

@@ -16,12 +16,10 @@ target_sources(native-simulation-tests PRIVATE
   entity_id_tests.cpp
   entity_instance_handle_tests.cpp
   enum_tests.cpp
-  flight_model_config_tests.cpp
   game_settings_tests.cpp
-  scalar_response_tests.cpp
   test_tick_phases.cpp
   test_level_simulation.cpp
-  test_player_flight_models.cpp
+  test_player_flight.cpp
   test_overlap_handler.cpp
   test_entity_aabb_overlaps.cpp
   test_fighter_live_cap.cpp

@@ -97,7 +97,6 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
 
     auto const player_id{player->unique_entity_id};
     auto const capital_id{simulation.capital_ships().get_entities().entity_ids()[0]};
-    simulation.player_ship_commands()->set_right_input(1.f);
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
     for (std::int32_t index{}; index < 3; ++index) {

@@ -21,17 +21,9 @@ class CommandInterface {
         simulation.set_speed_sampling_enabled(enabled);
     }
 
-    void set_forward_input(float input) noexcept { simulation.set_forward_input(input); }
-
-    void set_right_input(float input) noexcept { simulation.set_right_input(input); }
-
-    void set_up_input(float input) noexcept { simulation.set_up_input(input); }
-
     void set_pitch_input(float input) noexcept { simulation.set_pitch_input(input); }
 
     void set_yaw_input(float input) noexcept { simulation.set_yaw_input(input); }
-
-    void set_roll_input(float input) noexcept { simulation.set_roll_input(input); }
 
     void set_accelerator(float input) noexcept { simulation.set_accelerator(input); }
 
@@ -46,14 +38,6 @@ class CommandInterface {
     void stop_emergency_brake() { simulation.stop_emergency_brake(); }
 
     void stop_brake() { simulation.stop_brake(); }
-
-    void select_flight_model_slot(FlightModelSlot slot) noexcept {
-        simulation.select_flight_model_slot(slot);
-    }
-
-    bool set_flight_model_slot_profile(FlightModelSlot slot, FlightModelProfile profile) noexcept {
-        return simulation.set_flight_model_slot_profile(slot, profile);
-    }
 
     void start_fire_laser() { simulation.start_fire_laser(); }
 

@@ -93,18 +93,15 @@ TEST(HudModel, PlayerStatusAndFlightRetainPayloads) {
     auto commands{simulation.player_ship_commands()};
     ASSERT_TRUE(commands);
     commands->set_speed_sampling_enabled(true);
-    commands->set_forward_input(1.f);
     harness.queue_kills(std::array{capitals.get_entities().entity_ids()[0]}, player_id);
     harness.queue_kills(std::array{capitals.get_entities().entity_ids()[1]}, rival);
     simulation.start();
     harness.advance(0.05);
-    hud.set_selected_mapping_context("Flight");
     hud.force_sample();
 
     ASSERT_TRUE(hud.player_status_data());
     EXPECT_EQ(hud.player_status_data()->points, 1);
     ASSERT_TRUE(hud.player_flight_data());
-    EXPECT_EQ(hud.player_flight_data()->selected_mapping_context, "Flight");
     {
         auto const samples{hud.sampled_speed_view()};
         ASSERT_TRUE(samples);

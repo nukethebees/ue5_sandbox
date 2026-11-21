@@ -48,7 +48,6 @@ void HudModel::deactivate() {
     entity_count_data_ = {};
     player_status_data_ = {};
     player_flight_data_ = {};
-    selected_mapping_context_.clear();
 }
 auto HudModel::advance(double const delta_seconds) -> HudChanges {
     HudChanges changes;
@@ -91,9 +90,6 @@ auto HudModel::force_sample() -> HudChanges {
             .player_status = collect_player_status_data(),
             .player_flight = collect_player_flight_data(),
             .sampled_speed = player_for_collection() != nullptr};
-}
-void HudModel::set_selected_mapping_context(std::string context) {
-    selected_mapping_context_ = std::move(context);
 }
 auto HudModel::seconds_per_tick() const -> float {
     return static_cast<float>(tick_loop_.get_tick_period());
@@ -141,13 +137,12 @@ auto HudModel::collect_entity_count_data() -> bool {
 auto HudModel::collect_player_status_data() -> bool {
     std::optional<PlayerStatusHudData> next;
     if (auto const* player{player_for_collection()}) {
-        next.emplace(PlayerStatusHudData{
-            .health = player->health(),
-            .speed = player->speed(),
-            .target_speed = player->controller_state().persistent_forward_target_speed,
-            .energy = player->energy(),
-            .points = player->kills(),
-            .fire_rate = player->laser_fire_rate});
+        next.emplace(PlayerStatusHudData{.health = player->health(),
+                                         .speed = player->speed(),
+                                         .target_speed = player->target_speed(),
+                                         .energy = player->energy(),
+                                         .points = player->kills(),
+                                         .fire_rate = player->laser_fire_rate});
     }
     return hud_detail::replace(player_status_data_, next);
 }
@@ -155,35 +150,24 @@ auto HudModel::collect_player_flight_data() -> bool {
     std::optional<PlayerFlightHudData> next;
     if (auto const* player{player_for_collection()}) {
         auto& data{next.emplace()};
-        data.selected_mapping_context = selected_mapping_context_;
         auto const socket{player->get_middle_socket()};
         auto const& physical{player->physical_state()};
         auto const local{physical.transform.inverse_transform_vector_no_scale(physical.velocity)};
         auto const& intent{player->flight_intent()};
         auto const& controller{player->controller_state()};
-        auto const& profile{player->active_flight_model_profile()};
-        auto const forward_limit{
-            std::max(profile.config.translation.forward.normal.positive_speed_limit.get(), 1.f)};
-        auto const right_limit{
-            std::max(profile.config.translation.right.normal.positive_speed_limit.get(), 1.f)};
+        auto const speed_limit{std::max(player->target_speed(), 1.f)};
         data.flight_vector_debug = {
-            .turn_input = {intent.rotation.y(), intent.rotation.x()},
-            .move_input = {intent.translation.y(), intent.translation.x()},
-            .target_velocity = Vector2f{player->sampled_target_speed_scale()},
-            .local_velocity = {static_cast<float>(local.y() / right_limit),
-                               static_cast<float>(local.x() / forward_limit)}};
+            .turn_input = {intent.yaw, intent.pitch},
+            .local_velocity = {static_cast<float>(local.y() / speed_limit),
+                               static_cast<float>(local.x() / speed_limit)}};
         data.ship_velocity = physical.velocity;
-        data.target_velocity =
-            physical.transform.forward() * controller.persistent_forward_target_speed +
-            physical.transform.right() * controller.persistent_right_target_speed;
-        data.flight_model_preset = profile.base_preset;
-        data.flight_model_customized = profile.customized;
+        data.target_velocity = physical.transform.forward() * player->target_speed();
         data.throttle = intent.accelerator;
         data.boost_brake_state = controller.effective_action;
         data.crosshair_origin = socket.location;
         data.crosshair_direction = socket.forward();
     }
-    return hud_detail::replace(player_flight_data_, std::move(next));
+    return hud_detail::replace(player_flight_data_, next);
 }
 auto HudModel::sampled_speed_view() const -> std::optional<SampledSpeedHudView> {
     if (!active()) {
