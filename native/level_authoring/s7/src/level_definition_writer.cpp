@@ -19,6 +19,26 @@ auto make_entity_input(EntitySpawnDefinition const& entity) -> EntityInput {
 }
 
 namespace {
+auto entity_form(s7::SExprIR& ir, EntityInput const& entity) -> s7::Expr {
+    auto form{ir.form("entity")};
+    s7::PropertyWriter<EntityInput> placement{ir, form, entity, nullptr};
+    placement("id", &EntityInput::id);
+    placement("archetype", &EntityInput::archetype);
+    placement("team", &EntityInput::team);
+    placement("position", &EntityInput::position);
+
+    EntityInput const defaults{};
+    s7::PropertyWriter<EntityInput> overrides{ir, form, entity, &defaults};
+    overrides("rotation", &EntityInput::rotation);
+    overrides("spawn-at", &EntityInput::spawn_at);
+    overrides("health", &EntityInput::health);
+    overrides("laser-damage", &EntityInput::laser_damage);
+    overrides("initial-spawn-delay", &EntityInput::initial_spawn_delay);
+    overrides("spawn-cooldown", &EntityInput::spawn_cooldown);
+    overrides("initial-fire-point", &EntityInput::initial_fire_point);
+    return form.build();
+}
+
 auto settings_form(s7::SExprIR& ir, s7::Ast const& ast, s7::NodeIndex node) -> s7::Expr {
     switch (ast.node(node).kind) {
         case s7::NodeKind::List: {
@@ -65,11 +85,17 @@ auto emit_editor_level_source(LevelInput const& level, s7::Ast const* saved_scen
     writer("id", &LevelInput::id);
     writer("title", &LevelInput::title);
     writer("description", &LevelInput::description);
-    writer("par-time", &LevelInput::par_time);
-    writer("unlock", &LevelInput::unlock);
+    auto const write_value{[&ir](auto const& value) { return s7::write(ir, value); }};
+    form.optional_field("par-time", level.par_time, write_value);
+    form.optional_field("unlock", level.unlock, write_value);
     writer("player", &LevelInput::player);
-    writer("camera", &LevelInput::camera);
-    writer("entities", &LevelInput::entities);
+    form.optional_field("camera", level.camera, write_value);
+
+    auto entities{ir.form("list")};
+    for (auto const& entity : level.entities) {
+        entities.add(entity_form(ir, entity));
+    }
+    form.field("entities", entities.build());
     auto settings{ir.form("settings").build()};
     if (saved_scene) {
         auto const fields{saved_scene->children(saved_scene->root)};

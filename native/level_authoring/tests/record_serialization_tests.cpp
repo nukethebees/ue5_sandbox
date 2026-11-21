@@ -119,7 +119,9 @@ TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {
           "(export game-settings) (define game-settings (settings :fighters (fighters :speed 4000) "
           ":tick (tick :tick-rate 60 :time-scale 1)))"},
          {config,
-          R"((export scene) (define scene (level :id 'example :title "Example" :player 'pilot :entities (list)
+          R"((export scene) (define scene (level :id 'example :title "Example" :player 'pilot
+                   :entities (list (entity :id 'carrier :archetype 'capital-ship :team 'blue
+                                           :position '(0 0 0) :initial-spawn-delay 0))
                    :settings (settings :fighters (fighters :speed 4000) :tick (tick :time-scale 2)))))"},
          {entry,
           R"((export mission) (define base (module-ref (import-module "Example/editor-config.scm") 'scene))
@@ -133,6 +135,9 @@ TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {
     ASSERT_TRUE(input);
     auto const exported{emit_editor_level_source(*input, &*scene)};
     EXPECT_FALSE(exported.contains(":tick-rate"));
+    EXPECT_FALSE(exported.contains(":none"));
+    EXPECT_FALSE(exported.contains(":rotation"));
+    EXPECT_FALSE(exported.contains(":spawn-at"));
     ASSERT_TRUE(testing::write_files({{config, exported},
                                       {base,
                                        "(export game-settings) (define game-settings (settings "
@@ -143,7 +148,9 @@ TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {
     EXPECT_EQ(level->settings().fighters.speed, 4000.f);
     EXPECT_EQ(level->settings().tick.tick_rate.hz(), 90.);
     EXPECT_EQ(level->settings().tick.time_scale.get(), 3.);
-    EXPECT_EQ(level->entities().size(), 1u);
+    ASSERT_EQ(level->entities().size(), 2u);
+    EXPECT_TRUE(
+        s7::equivalent(make_entity_input(level->entities().front()), input->entities.front()));
     EXPECT_EQ(level->player_entity_id(), EntityId{"pilot"});
     std::filesystem::remove_all(directory);
 }
