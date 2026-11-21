@@ -93,7 +93,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 f'include("{self.source_dir.as_posix()}/cmake/unreal_packaging.cmake")\n'
                 'set(UE_EDITOR_CMD_EXE "UnrealEditor-Cmd.exe")\n'
                 'set(IOJ_UPROJECT "Game Root/Game.uproject")\n'
-                'set(UE_RUN_UAT_SCRIPT "RunUAT.bat")\n'
+                'set(UE_RUN_UAT_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/Engine Root/RunUAT.bat")\n'
                 'set(IOJ_NATIVE_TOOLCHAIN clang-cl)\n'
                 'set(UE_PLATFORM Win64)\nset(UE_CONFIGURATION Development)\n'
                 'add_unreal_automation_test(Ordinary FILTERS Sandbox.UnitTests LABELS unit)\n'
@@ -120,6 +120,15 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertIn("IOJ_NATIVE_TOOLCHAIN=clang-cl", commands)
             self.assertIn("BuildCookRun", commands)
             self.assertIn("-run=MaterialSynth", commands)
+            if os.name == "nt":
+                engine = fixture / "Engine Root"
+                engine.mkdir()
+                (engine / "RunUAT.bat").write_text(
+                    '@echo off\nif not "%~1"=="BuildCookRun" exit /b 1\n'
+                    'if not "%~2"=="-project=Game Root/Game.uproject" exit /b 2\n',
+                    encoding="ascii",
+                )
+                self.run_cmake("--build", str(build), "--target", "cook")
 
     def test_compile_options_do_not_require_an_executable_link(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sandbox option probes ") as directory:
