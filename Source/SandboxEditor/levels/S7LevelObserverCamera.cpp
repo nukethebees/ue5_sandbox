@@ -12,12 +12,14 @@
 namespace ioj::editor {
 auto make_s7_observer_camera_transform(ULevel const& level,
                                        AS7LevelAuthoringDocument const& document)
-    -> std::expected<TOptional<FObserverCameraPreview>, FString> {
+    -> S7AuthoringResult<TOptional<FObserverCameraPreview>> {
+    using Result = S7AuthoringResult<TOptional<FObserverCameraPreview>>;
+
     if (!document.use_observer_camera) {
-        return TOptional<FObserverCameraPreview>{};
+        return Result{std::in_place};
     }
     if (document.camera.targets.IsEmpty()) {
-        return std::unexpected{TEXT("Observer camera requires at least one target.")};
+        return Result{std::unexpect, TEXT("Observer camera requires at least one target.")};
     }
 
     TSet<AActor const*> bound;
@@ -28,11 +30,12 @@ auto make_s7_observer_camera_transform(ULevel const& level,
     target_positions.reserve(document.camera.targets.Num());
     for (auto const target : document.camera.targets) {
         if (!IsValid(target) || target->GetLevel() != &level) {
-            return std::unexpected{
-                TEXT("Every observer camera target must be a valid level actor.")};
+            return Result{std::unexpect,
+                          TEXT("Every observer camera target must be a valid level actor.")};
         }
         if (!bound.Contains(target)) {
-            return std::unexpected{TEXT("Every observer camera target must be an adopted entity.")};
+            return Result{std::unexpect,
+                          TEXT("Every observer camera target must be an adopted entity.")};
         }
         target_positions.emplace_back(target->GetActorLocation());
     }
@@ -40,10 +43,12 @@ auto make_s7_observer_camera_transform(ULevel const& level,
     auto const transform{presentation::make_observer_camera_transform(
         target_positions, Vector3d{document.camera.offset_direction}, document.camera.distance)};
     if (!transform) {
-        return std::unexpected{TEXT(
-            "Observer camera needs finite targets, a non-zero direction, and positive distance.")};
+        return Result{std::unexpect,
+                      TEXT("Observer camera needs finite targets, a non-zero direction, and "
+                           "positive distance.")};
     }
-    return TOptional<FObserverCameraPreview>{
+    return Result{
+        std::in_place,
         FObserverCameraPreview{to_unreal(transform->focus), to_unreal(transform->transform)}};
 }
 }

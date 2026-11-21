@@ -23,10 +23,13 @@ auto entity_geometry_path() -> FString {
     return FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts/Settings/entity-geometry.scm"));
 }
 
-auto export_entity_geometry(FString const& path) -> std::expected<void, FString> {
+auto export_entity_geometry(FString const& path) -> S7AuthoringResult<void> {
+    using Result = S7AuthoringResult<void>;
+
     auto const* config{s7_level_config::load_canonical()};
     if (!IsValid(config) || !config->classes.player_ship_class) {
-        return std::unexpected{TEXT("Canonical level resources or player class are unavailable.")};
+        return Result{std::unexpect,
+                      TEXT("Canonical level resources or player class are unavailable.")};
     }
     auto const* player{config->classes.player_ship_class.GetDefaultObject()};
     auto const mesh{player->get_presentation_resources().mesh};
@@ -39,13 +42,14 @@ auto export_entity_geometry(FString const& path) -> std::expected<void, FString>
     meshes[TubeSpinner] = config->tube_spinners.mesh;
     for (auto const type : EnumTraits<sim::EntityType>::values) {
         if (!IsValid(meshes[type])) {
-            return std::unexpected{FString::Printf(TEXT("Missing collision mesh for %s."),
-                                                   *to_fstring(to_serialized_string(type)))};
+            return Result{std::unexpect,
+                          FString::Printf(TEXT("Missing collision mesh for %s."),
+                                          *to_fstring(to_serialized_string(type)))};
         }
     }
     auto const bounds{FLevelCollisionHost::extract_entity_bounds(meshes)};
     if (!bounds) {
-        return std::unexpected{bounds.error().format()};
+        return Result{std::unexpect, bounds.error().format()};
     }
     auto box = [&](sim::EntityType type) -> settings::MeshBounds {
         return {bounds->centre(type), bounds->half_extents(type)};
@@ -67,7 +71,7 @@ auto export_entity_geometry(FString const& path) -> std::expected<void, FString>
     }
     auto const* gun{config->fighters.mesh->FindSocket(TEXT("Gun"))};
     if (!IsValid(gun)) {
-        return std::unexpected{TEXT("The fighter mesh is missing its Gun socket.")};
+        return Result{std::unexpect, TEXT("The fighter mesh is missing its Gun socket.")};
     }
     geometry.fighter_fire_point_distance = static_cast<float>(gun->RelativeLocation.Size());
     geometry.turret_fire_point = Vector3f{config->turrets.fire_point_offset.GetLocation()};
@@ -78,8 +82,8 @@ auto export_entity_geometry(FString const& path) -> std::expected<void, FString>
     using Sockets = ATestSpaceShip::Sockets;
     for (auto const socket : {Sockets::left, Sockets::middle, Sockets::right}) {
         if (!mesh->DoesSocketExist(socket)) {
-            return std::unexpected{
-                FString::Printf(TEXT("Missing player socket %s."), *socket.ToString())};
+            return Result{std::unexpect,
+                          FString::Printf(TEXT("Missing player socket %s."), *socket.ToString())};
         }
     }
     geometry.player_body = attachment(mesh->GetRelativeTransform());
@@ -94,7 +98,7 @@ auto export_entity_geometry(FString const& path) -> std::expected<void, FString>
     preview.player.emplace();
     sim::apply_settings(settings, preview);
     if (auto valid{sim::validate_level_simulation_init_data(preview)}; !valid) {
-        return std::unexpected{to_fstring(valid.error().front())};
+        return Result{std::unexpect, to_fstring(valid.error().front())};
     }
 
     auto const source{to_fstring("(export entity-geometry)\n(define entity-geometry " +
@@ -108,7 +112,7 @@ auto export_entity_geometry(FString const& path) -> std::expected<void, FString>
             source, *temp, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM) ||
         !IFileManager::Get().Move(*path, *temp)) {
         IFileManager::Get().Delete(*temp);
-        return std::unexpected{FString::Printf(TEXT("Cannot write geometry to %s."), *path)};
+        return Result{std::unexpect, FString::Printf(TEXT("Cannot write geometry to %s."), *path)};
     }
     return {};
 }
