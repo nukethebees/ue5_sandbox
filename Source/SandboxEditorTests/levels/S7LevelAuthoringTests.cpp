@@ -8,15 +8,18 @@
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/fighter/TestFighterProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <SandboxCoreEngine/strings.h>
 
 #include <Components/SceneComponent.h>
+#include <Components/StaticMeshComponent.h>
 #include <CQTest.h>
 #include <Editor.h>
 #include <Engine/Level.h>
+#include <Engine/StaticMesh.h>
 #include <Engine/World.h>
 #include <FileHelpers.h>
 #include <HAL/FileManager.h>
@@ -752,6 +755,16 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         ignored->export_to_script = false;
         bool const was_editor_only{ignored->bIsEditorOnlyActor != 0};
         document.camera.targets.Add(ignored);
+        FVector const wing_position{5000, 1500, 1000};
+        FRotator const wing_rotation{25, 70, 30};
+        auto* wing{world->SpawnActor<ioj::ATestFighterProxy>(wing_position, wing_rotation)};
+        wing->SetActorLabel(TEXT("wing"));
+        wing->set_team(ioj::ETestTeam::Red);
+        auto* mesh{CastChecked<UStaticMeshComponent>(wing->GetRootComponent())};
+        TestRunner->TestTrue(TEXT("Placed fighter previews the runtime mesh"),
+                             mesh->GetStaticMesh() &&
+                                 mesh->GetStaticMesh() ==
+                                     document.level_config->fighters.mesh.Get());
         player->SetActorLabel(TEXT("pilot"));
         player->set_team(ioj::ETestTeam::Blue);
         if (!assert_success(*TestRunner,
@@ -773,7 +786,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("New proxy defaults to Export"),
                              adopted && adopted->actor == player && player->export_to_script);
         TestRunner->TestEqual(
-            TEXT("Inactive camera target stays unbound"), document.entities.Num(), 1);
+            TEXT("Only the pilot and fighter are bound"), document.entities.Num(), 2);
         TestRunner->TestEqual(TEXT("Export preserves the target actor flags"),
                               ignored->bIsEditorOnlyActor != 0,
                               was_editor_only);
@@ -787,6 +800,23 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               75.);
         TestRunner->TestTrue(TEXT("Entry point resolves the adopted player"),
                              definition->player_entity_id() == ioj::levels::EntityId{"pilot"});
+
+        auto compiled{
+            ioj::editor::compile_playable_s7_definition(*definition, *document.level_config)};
+        if (!assert_success(*TestRunner, TEXT("Compile carrier-free level"), compiled)) {
+            return;
+        }
+        ioj::sim::LevelSim sim{std::move(*compiled)};
+        auto const fighters{sim.fighters().entities()};
+        if (!TestRunner->TestEqual(
+                TEXT("Fighter starts without a carrier"), fighters.num(), uint32{1})) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Spawned fighter has the authored team"),
+                             fighters.teams()[0] == ioj::Team::Red);
+        TestRunner->TestTrue(TEXT("Export drops fighter roll"),
+                             definition->entity(ioj::levels::EntityId{"wing"}).rotation.roll ==
+                                 0.0);
 
         FString standalone;
         if (!TestRunner->TestTrue(TEXT("Read exported scene"),
@@ -809,6 +839,15 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                             ioj::editor::import_s7_level(level, document))) {
             return;
         }
+        auto const* wing_binding{binding(document, TEXT("wing"))};
+        if (!TestRunner->TestNotNull(TEXT("Authored fighter ID survives rebuild"), wing_binding)) {
+            return;
+        }
+        auto* restored{CastChecked<ioj::ATestFighterProxy>(wing_binding->actor)};
+        TestRunner->TestTrue(TEXT("Rebuilt fighter retains its placement and team"),
+                             restored->GetActorLocation().Equals(wing_position) &&
+                                 restored->GetActorForwardVector().Equals(wing_rotation.Vector()) &&
+                                 restored->get_team() == ioj::ETestTeam::Red);
         auto const* standalone_pilot{binding(document, TEXT("pilot"))};
         TestRunner->TestTrue(
             TEXT("Standalone mission owns its pilot"),

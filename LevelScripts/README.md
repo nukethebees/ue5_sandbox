@@ -40,6 +40,7 @@ explicit editor overrides and mission overrides in that order.
     (settings-layers defaults (level-ref scene :settings) (settings :fighters (fighters :speed 3000)))))
 ```
 
+Place a **Fighter Proxy** to set an AI fighter’s position, heading, and team. Carrier launches share `:max-live-auto-spawned-fighters` equally across all authored teams, including future spawns.
 Export actors with **Details → Level Authoring → Export**.
 Saving the map or choosing **Export Scene** updates placements and viewpoint in `editor-config.scm` and preserves its
 explicit settings overrides. **Tools → Export Entity Geometry** updates the mesh bounds and attachment

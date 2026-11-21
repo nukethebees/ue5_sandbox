@@ -4,6 +4,7 @@
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/fighter/TestFighterProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
@@ -22,6 +23,11 @@ auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedAc
         archetype = levels::EntityArchetype::PlayerFighter;
         export_to_script = player->export_to_script;
         team = player->get_team();
+    } else if (auto const* const fighter{Cast<ATestFighterProxy>(&actor)}) {
+        archetype = levels::EntityArchetype::Fighter;
+        export_to_script = fighter->export_to_script;
+        team = fighter->get_team();
+        spawn_time_seconds = fighter->spawn_time_seconds;
     } else if (auto const* const capital{Cast<ATestCapitalShipProxy>(&actor)}) {
         archetype = levels::EntityArchetype::CapitalShip;
         export_to_script = capital->export_to_script;
@@ -53,6 +59,8 @@ auto s7_level_actor_class(levels::EntityArchetype const archetype,
     switch (archetype) {
         case levels::EntityArchetype::PlayerFighter:
             return config.classes.player_ship_class.Get();
+        case levels::EntityArchetype::Fighter:
+            return ATestFighterProxy::StaticClass();
         case levels::EntityArchetype::CapitalShip:
             return config.classes.capital_ship_proxy_class.Get();
         case levels::EntityArchetype::StaticTurret:
@@ -75,6 +83,8 @@ void configure_s7_level_actor(AActor& actor,
         auto& player{*CastChecked<ATestSpaceShip>(&actor)};
         player.set_actor_config(&config.player_ship);
         player.set_team(team);
+    } else if (archetype == levels::EntityArchetype::Fighter) {
+        CastChecked<ATestFighterProxy>(&actor)->set_team(team);
     } else if (archetype == levels::EntityArchetype::CapitalShip) {
         auto& capital{*CastChecked<ATestCapitalShipProxy>(&actor)};
         capital.set_level_config_asset(&config);

@@ -12,6 +12,7 @@
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/fighter/TestFighterProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
@@ -129,6 +130,7 @@ auto find_level_authoring_document(ULevel const& level)
 namespace {
 struct SceneActors {
     TArray<ATestSpaceShip*> players;
+    TArray<ATestFighterProxy*> fighters;
     TArray<ATestCapitalShipProxy*> capitals;
     TArray<ATestStaticTurretsProxy*> turrets;
     TArray<ATestTubeSpinnerProxy*> spinners;
@@ -141,6 +143,8 @@ auto gather_actors(ULevel const& level) -> SceneActors {
         }
         if (auto* player{Cast<ATestSpaceShip>(actor)}) {
             result.players.Add(player);
+        } else if (auto* fighter{Cast<ATestFighterProxy>(actor)}) {
+            result.fighters.Add(fighter);
         } else if (auto* capital{Cast<ATestCapitalShipProxy>(actor)}) {
             result.capitals.Add(capital);
         } else if (auto* turret{Cast<ATestStaticTurretsProxy>(actor)}) {
@@ -172,6 +176,8 @@ auto collect_editor_scene(ULevel const& level,
     auto const collect{[&](auto const& actors,
                            levels::EntityArchetype archetype) -> S7AuthoringResult<void> {
         for (auto* actor : actors) {
+            using ActorPtr = decltype(actor);
+
             auto const* known{bound.Find(actor)};
             if (!actor->export_to_script && !known) {
                 continue;
@@ -196,9 +202,12 @@ auto collect_editor_scene(ULevel const& level,
             if (!actor->export_to_script) {
                 continue;
             }
-            auto const rotation{actor->GetActorRotation()};
+            auto rotation{actor->GetActorRotation()};
+            if constexpr (std::is_same_v<ActorPtr, ATestFighterProxy*>) {
+                rotation.Roll = 0.;
+            }
             double time{};
-            if constexpr (!std::is_same_v<decltype(actor), ATestSpaceShip*>) {
+            if constexpr (!std::is_same_v<ActorPtr, ATestSpaceShip*>) {
                 time = actor->spawn_time_seconds;
             }
             auto const spawn_at{NonNegativeFinite<double>::try_make(time)};
@@ -209,7 +218,7 @@ auto collect_editor_scene(ULevel const& level,
                                     *name)};
             }
             Team team{Team::White};
-            if constexpr (!std::is_same_v<decltype(actor), ATestTubeSpinnerProxy*>) {
+            if constexpr (!std::is_same_v<ActorPtr, ATestTubeSpinnerProxy*>) {
                 team = to_native(actor->get_team());
             }
             levels::authoring::EntityInput entity{
@@ -232,8 +241,8 @@ auto collect_editor_scene(ULevel const& level,
                 }
                 return output.has_value();
             }};
-            bool valid{};
-            if constexpr (std::is_same_v<decltype(actor), ATestSpaceShip*>) {
+            bool valid{true};
+            if constexpr (std::is_same_v<ActorPtr, ATestSpaceShip*>) {
                 if (!document.use_observer_camera && !input.player.value.empty()) {
                     return Result{std::unexpect,
                                   TEXT("Multiple exported players. Export one player or "
@@ -241,17 +250,17 @@ auto collect_editor_scene(ULevel const& level,
                 }
                 input.player = entity_id;
                 valid = convert(entity.health, actor->health_override, TEXT("health"));
-            } else if constexpr (std::is_same_v<decltype(actor), ATestCapitalShipProxy*>) {
+            } else if constexpr (std::is_same_v<ActorPtr, ATestCapitalShipProxy*>) {
                 valid =
                     convert(entity.health, actor->health, TEXT("health")) &&
                     convert(entity.initial_spawn_delay,
                             actor->initial_spawn_delay,
                             TEXT("initial spawn delay")) &&
                     convert(entity.spawn_cooldown, actor->spawn_cooldown, TEXT("spawn cooldown"));
-            } else if constexpr (std::is_same_v<decltype(actor), ATestStaticTurretsProxy*>) {
+            } else if constexpr (std::is_same_v<ActorPtr, ATestStaticTurretsProxy*>) {
                 valid = convert(entity.health, actor->health, TEXT("health")) &&
                         convert(entity.laser_damage, actor->laser_damage, TEXT("laser damage"));
-            } else {
+            } else if constexpr (std::is_same_v<ActorPtr, ATestTubeSpinnerProxy*>) {
                 valid = convert(entity.initial_fire_point,
                                 actor->initial_fire_point,
                                 TEXT("initial fire point"));
@@ -269,6 +278,9 @@ auto collect_editor_scene(ULevel const& level,
     auto const actors{gather_actors(level)};
     using enum levels::EntityArchetype;
     if (auto r{collect(actors.players, PlayerFighter)}; !r) {
+        return r;
+    }
+    if (auto r{collect(actors.fighters, Fighter)}; !r) {
         return r;
     }
     if (auto r{collect(actors.capitals, CapitalShip)}; !r) {
@@ -591,6 +603,9 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
         if (auto* player{Cast<ATestSpaceShip>(actor)}) {
             player->export_to_script = export_entity;
             player->health_override = optional(entity.health);
+        } else if (auto* fighter{Cast<ATestFighterProxy>(actor)}) {
+            fighter->export_to_script = export_entity;
+            fighter->spawn_time_seconds = entity.spawn_at.get();
         } else if (auto* capital{Cast<ATestCapitalShipProxy>(actor)}) {
             capital->export_to_script = export_entity;
             capital->set_preview_settings(definition->settings());
