@@ -14,10 +14,7 @@ void submit_test_snapshot(
     int32 const count,
     Fill&& fill,
     ESandboxISMCParallelism const parallelism = ESandboxISMCParallelism::Sequential) {
-    component.set_instances(count,
-                            FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-                            parallelism,
-                            Forward<Fill>(fill));
+    component.set_instances(count, parallelism, Forward<Fill>(fill));
 }
 
 void write_indexed_instances(FSandboxISMCInstanceChunkWriter& chunk) {
@@ -424,7 +421,6 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
         component->set_instances(
             2,
-            FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
             local_bounds,
             ESandboxISMCParallelism::Sequential,
             [&](FSandboxISMCInstanceChunkWriter& chunk) {
@@ -447,18 +443,16 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                               actual.SphereRadius,
                               expected.SphereRadius);
 
-        component->set_instances(
-            0,
-            FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-            local_bounds,
-            ESandboxISMCParallelism::Sequential,
-            [](FSandboxISMCInstanceChunkWriter&) {});
+        component->set_instances(0,
+                                 local_bounds,
+                                 ESandboxISMCParallelism::Sequential,
+                                 [](FSandboxISMCInstanceChunkWriter&) {});
         TestRunner->TestEqual(TEXT("An empty snapshot clears supplied bounds"),
                               component->CalcBounds(FTransform::Identity).SphereRadius,
                               0.0);
     }
 
-    TEST_METHOD(SuppliedSourceBoundsContainDecodedGeometryAtRoundingExtremes)
+    TEST_METHOD(SuppliedSourceBoundsContainDecodedGeometry)
     {
         auto* component{NewObject<ioj::USandboxISMCComponent>()};
         auto* cube{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
@@ -471,11 +465,9 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
             auto const rotation{FRotator3f{31, -123, 179.99f}.Quaternion()};
             FTransform3f const source{rotation, position};
             auto const source_bounds{mesh_box.TransformBy(source.ToMatrixWithScale())};
-            FBox3f const domain{FVector3f{-32}, FVector3f{32}};
             FSandboxISMCRenderInstance packed{};
             component->set_instances(
                 1,
-                domain,
                 source_bounds,
                 ESandboxISMCParallelism::Sequential,
                 [&](FSandboxISMCInstanceChunkWriter& writer) {
@@ -485,8 +477,6 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                                                               {},
                                                               0,
                                                               0,
-                                                              domain,
-                                                              FVector3f::ZeroVector,
                                                               FVector3f::ZeroVector,
                                                               FVector3f::ZeroVector};
                     sandbox_ismc_tests::write_transform<ESandboxISMCBoundsMode::Supplied>(
@@ -494,9 +484,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                 });
             auto const q{ioj::ismc::unpack_quat32(packed.rotation)};
             FTransform3f const decoded{FQuat4f{q.x(), q.y(), q.z(), q.w()},
-                                       FVector3f{packed.position[0] * 16.0f,
-                                                 packed.position[1] * 16.0f,
-                                                 packed.position[2] * 16.0f}};
+                                       sandbox_ismc_tests::decode_position(packed)};
             auto const actual{component->CalcBounds(FTransform::Identity).GetBox()};
             for (int32 corner{0}; corner < 8; ++corner) {
                 FVector3f const point{(corner & 1) ? mesh_box.Max.X : mesh_box.Min.X,

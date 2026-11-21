@@ -92,11 +92,7 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
         }
         int32 const visible_indices[]{0, count == 3 ? 1 : 1024, count == 3 ? 2 : 4096};
         component_->set_instances(
-            count,
-            FBox3f{FVector3f{0, -128, FMath::Min(0.0f, height)},
-                   FVector3f{0, 10000, FMath::Max(0.0f, height)}},
-            ESandboxISMCParallelism::Auto,
-            [&](FSandboxISMCInstanceChunkWriter& chunk) {
+            count, ESandboxISMCParallelism::Auto, [&](FSandboxISMCInstanceChunkWriter& chunk) {
                 auto const [offset, chunk_count]{chunk.range()};
                 sandbox_ismc_tests::write_transforms(
                     chunk,
@@ -240,7 +236,48 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
             .Do([this] { check_image(TEXT("Instances leave the frustum again"), 128, 0, true); });
     }
 
-    TEST_METHOD(PackedGpuSilhouettesMatchCpuDecodedTransformsAcrossRootChanges)
+    TEST_METHOD(RendersBothEndsOfOneWideSnapshot)
+    {
+        TestCommandBuilder.Do([this] {
+            setup();
+            if (!component_ || !capture_) {
+                return;
+            }
+
+            constexpr float distance{250000000.0f};
+            component_->set_instances(
+                6,
+                ESandboxISMCParallelism::Sequential,
+                [&](FSandboxISMCInstanceChunkWriter& chunk) {
+                    sandbox_ismc_tests::write_transforms(
+                        chunk, 6, [&](int32 index, FVector3f& position, FQuat4f& rotation) {
+                            auto const slot{index % 3};
+                            auto const side{index / 3};
+                            position = {
+                                0.125f, (side ? distance : -distance) + (slot - 1) * 128.0f, 0};
+                            rotation = FQuat4f::Identity;
+                            auto data{chunk.custom_data(index)};
+                            for (int32 channel{}; channel < 3; ++channel) {
+                                data[channel] = channel == (slot + side) % 3 ? 1.0f : 0.0f;
+                            }
+                        });
+                });
+            spawner->GetWorld().SendAllEndOfFrameUpdates();
+            FlushRenderingCommands();
+
+            auto const bounds{component_->CalcBounds(FTransform::Identity).GetBox()};
+            for (int32 side{}; side < 2; ++side) {
+                double const y{side ? distance : -distance};
+                TestRunner->TestTrue(
+                    TEXT("Bounds enclose the outer cube faces"),
+                    bounds.IsInsideOrOn(FVector{0, y + (side ? 178.0 : -178.0), 0}));
+                capture_->SetWorldLocation(FVector{-500, y, 0});
+                check_image(TEXT("Local view of distant instances"), 128, side);
+            }
+        });
+    }
+
+    TEST_METHOD(PackedGpuSilhouettesMatchCpuDecodedTransformsAcrossSnapshotChanges)
     {
         TestCommandBuilder.Do([this] {
             setup();
@@ -255,28 +292,25 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
             reference->SetNumCustomDataFloats(3);
             reference->RegisterComponent();
 
-            // Includes a nonzero far-away root, returning to an earlier root, and proxy recreation.
-            for (auto const root : {FVector3f{100000, -80000, 50000},
-                                    FVector3f{-70000, 90000, -60000},
-                                    FVector3f{100000, -80000, 50000}}) {
-                auto const domain{FBox3f{root - FVector3f{512}, root + FVector3f{512}}};
-                TArray<FVector3f> const positions{root + FVector3f{-8.0f, -136.1f, -40.0f},
-                                                  root + FVector3f{8.0f, 7.9f, 40.1f},
-                                                  root + FVector3f{7.9f, 136.0f, -39.9f}};
+            for (auto const center : {FVector3f{100000, -80000, 50000},
+                                      FVector3f{-70000, 90000, -60000},
+                                      FVector3f{100000, -80000, 50000}}) {
+                TArray<FVector3f> const positions{center + FVector3f{-8.0f, -136.1f, -40.0f},
+                                                  center + FVector3f{8.0f, 7.9f, 40.1f},
+                                                  center + FVector3f{7.9f, 136.0f, -39.9f}};
                 TArray<FQuat4f> const rotations{FRotator3f{27, 63, -18}.Quaternion(),
                                                 FRotator3f{-80, 172, 91}.Quaternion(),
                                                 FRotator3f{178, -34, 43}.Quaternion()};
                 TArray<FSandboxISMCRenderInstance> packed;
                 packed.SetNumUninitialized(3);
                 FSandboxISMCInstanceChunkWriter cpu{
-                    packed, {}, 0, 0, domain, root, FVector3f::ZeroVector, FVector3f::ZeroVector};
+                    packed, {}, 0, 0, FVector3f::ZeroVector, FVector3f::ZeroVector};
                 reference->ClearInstances();
                 cpu.set_transforms<ESandboxISMCBoundsMode::Supplied>(positions, rotations);
                 for (int32 index{0}; index < 3; ++index) {
                     auto const& value{packed[index]};
                     auto const q{ioj::ismc::unpack_quat32(value.rotation)};
-                    FVector const location{FVector{root} +
-                                           FVector{sandbox_ismc_tests::decode_position(value)}};
+                    FVector const location{positions[index]};
                     reference->AddInstance(FTransform{FQuat{q.x(), q.y(), q.z(), q.w()}, location});
                     for (int32 channel{0}; channel < 3; ++channel) {
                         reference->SetCustomDataValue(
@@ -285,7 +319,6 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                 }
                 component_->set_instances(
                     3,
-                    domain,
                     ESandboxISMCParallelism::Sequential,
                     [&](FSandboxISMCInstanceChunkWriter& chunk) {
                         sandbox_ismc_tests::write_transforms(
@@ -302,7 +335,7 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                     });
                 spawner->GetWorld().SendAllEndOfFrameUpdates();
                 FlushRenderingCommands();
-                capture_->SetWorldLocation(FVector{root} + FVector{-500, 0, 0});
+                capture_->SetWorldLocation(FVector{center} + FVector{-500, 0, 0});
                 auto const capture_pixels{[&](UPrimitiveComponent* primitive) {
                     capture_->ClearShowOnlyComponents();
                     capture_->ShowOnlyComponent(primitive);

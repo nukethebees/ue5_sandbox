@@ -10,9 +10,8 @@
   :header "native/ismc/lib/include/ioj/ismc/render.h"
   :header-include "ioj/ismc/render.h"
   :namespace ioj::ismc
-  ; 12-byte GPU ABI: position XYZ, unused padding, then aligned quat32.
+  ; 16-byte GPU ABI: float XYZ followed by quat32.
   (record PackedTransform
-    (member position @ismc_packed_position :initializer "")
-    (member reserved std::uint16_t :initializer "")
+    (member position @native_vector_3f :initializer "")
     (member rotation ioj::ismc::Quat32 :initializer "")
     (projections (cpp))))

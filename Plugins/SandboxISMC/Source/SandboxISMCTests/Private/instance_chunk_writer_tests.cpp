@@ -9,14 +9,8 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
     {
         TArray<FSandboxISMCRenderInstance> packed;
         packed.SetNumUninitialized(2);
-        FSandboxISMCInstanceChunkWriter writer{packed,
-                                               {},
-                                               0,
-                                               1024,
-                                               FBox3f{FVector3f{0, 0, 0}, FVector3f{192, 192, 192}},
-                                               FVector3f{96, 96, 96},
-                                               FVector3f::ZeroVector,
-                                               FVector3f::ZeroVector};
+        FSandboxISMCInstanceChunkWriter writer{
+            packed, {}, 0, 1024, FVector3f::ZeroVector, FVector3f::ZeroVector};
 
         auto const positions{TArray<FVector3f>{{64.0f, 80.0f, 96.0f}, {112.0f, 128.0f, 144.0f}}};
         auto const rotations{
@@ -26,9 +20,9 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         auto const [offset, count]{writer.range()};
         TestRunner->TestEqual(TEXT("The writer exposes its source offset"), offset, 1024);
         TestRunner->TestEqual(TEXT("The writer exposes its range length"), count, 2);
-        TestRunner->TestEqual(TEXT("Packed transforms occupy 12 bytes"),
+        TestRunner->TestEqual(TEXT("Packed transforms occupy 16 bytes"),
                               static_cast<int32>(sizeof(FSandboxISMCRenderInstance)),
-                              12);
+                              16);
 
         for (auto index = 0; index < packed.Num(); ++index) {
             auto const& value{packed[index]};
@@ -37,9 +31,8 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
             TestRunner->TestTrue(TEXT("Quaternion error stays below 0.3 degrees"),
                                  orientation.AngularDistance(rotations[index]) <
                                      FMath::DegreesToRadians(0.3f));
-            TestRunner->TestTrue(TEXT("Position decodes relative to snapshot root"),
-                                 (FVector3f{96.0f} + sandbox_ismc_tests::decode_position(value))
-                                     .Equals(positions[index], UE_KINDA_SMALL_NUMBER));
+            TestRunner->TestTrue(TEXT("Position preserves its float coordinates"),
+                                 sandbox_ismc_tests::decode_position(value) == positions[index]);
         }
     }
 
@@ -53,15 +46,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         for (auto const rotation : {FQuat4f::Identity,
                                     FQuat4f{FVector3f::UpVector, UE_HALF_PI},
                                     FRotator3f{27.0f, 63.0f, -18.0f}.Quaternion()}) {
-            FSandboxISMCInstanceChunkWriter writer{
-                packed,
-                {},
-                0,
-                0,
-                FBox3f{FVector3f{-100, -100, -100}, FVector3f{100, 100, 100}},
-                FVector3f::ZeroVector,
-                center,
-                extent};
+            FSandboxISMCInstanceChunkWriter writer{packed, {}, 0, 0, center, extent};
             FVector3f const position{10.0f, -20.0f, 30.0f};
             sandbox_ismc_tests::write_transform(writer, position, rotation);
             auto const expected{
@@ -73,17 +58,15 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         }
     }
 
-    TEST_METHOD(BoundsContainDecodedCornersAfterPositionAndRotationRounding)
+    TEST_METHOD(BoundsContainDecodedCornersAfterRotationPacking)
     {
         TArray<FSandboxISMCRenderInstance> packed;
         packed.SetNumUninitialized(1);
         FVector3f const origin{13, -27, 9};
         FVector3f const extent{70, 30, 12};
-        FBox3f const domain{FVector3f{-327000}, FVector3f{327000}};
         FRandomStream random{613};
         for (int32 sample{0}; sample < 100; ++sample) {
-            FSandboxISMCInstanceChunkWriter writer{
-                packed, {}, 0, 0, domain, FVector3f::ZeroVector, origin, extent};
+            FSandboxISMCInstanceChunkWriter writer{packed, {}, 0, 0, origin, extent};
             FVector3f const position{static_cast<float>(random.FRandRange(-300000.0f, 300000.0f)),
                                      static_cast<float>(random.FRandRange(-300000.0f, 300000.0f)),
                                      static_cast<float>(random.FRandRange(-300000.0f, 300000.0f))};
@@ -114,14 +97,8 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         packed.SetNumUninitialized(2);
         TArray<float> custom_data;
         custom_data.SetNumUninitialized(6);
-        FSandboxISMCInstanceChunkWriter writer{packed,
-                                               custom_data,
-                                               3,
-                                               50,
-                                               FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
-                                               FVector3f::ZeroVector,
-                                               FVector3f::ZeroVector,
-                                               FVector3f::ZeroVector};
+        FSandboxISMCInstanceChunkWriter writer{
+            packed, custom_data, 3, 50, FVector3f::ZeroVector, FVector3f::ZeroVector};
 
         auto first{writer.custom_data(0)};
         first[0] = 0.1f;
@@ -155,7 +132,6 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
             auto const value{static_cast<float>(index)};
             positions.Add(FVector3f{value * 17 - 100, value * -23 + 200, value * 11 - 300});
             rotations.Add(FRotator3f{value * 13, value * -29, value * 37}.Quaternion());
-            packed[index].reserved = 0xbeef;
             auto const rotation{rotations[index]};
             auto const x{rotation.RotateVector(FVector3f::ForwardVector)};
             auto const y{rotation.RotateVector(FVector3f::RightVector)};
@@ -165,14 +141,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                    z.GetAbs() * extent.Z};
             expected += FBox3f{center - half_extent, center + half_extent};
         }
-        FSandboxISMCInstanceChunkWriter writer{packed,
-                                               {},
-                                               0,
-                                               0,
-                                               FBox3f{FVector3f{-1000}, FVector3f{1000}},
-                                               FVector3f::ZeroVector,
-                                               origin,
-                                               extent};
+        FSandboxISMCInstanceChunkWriter writer{packed, {}, 0, 0, origin, extent};
         writer.set_transforms<ESandboxISMCBoundsMode::Calculate>(positions, rotations);
         TestRunner->TestTrue(TEXT("SIMD minimum matches rotated Unreal basis"),
                              writer.bounds().Min.Equals(expected.Min, 0.001f));
@@ -188,14 +157,10 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                 packed[index].rotation.bits,
                 ioj::ismc::pack_normalized_quat32(rotation.X, rotation.Y, rotation.Z, rotation.W)
                     .bits);
-            TestRunner->TestEqual(TEXT("Reserved halfword is untouched"),
-                                  packed[index].reserved,
-                                  static_cast<uint16>(0xbeef));
             for (int32 axis{}; axis < 3; ++axis) {
-                TestRunner->TestEqual(
-                    TEXT("Native input view preserves position components"),
-                    packed[index].position[axis],
-                    ioj::ismc::quantize_position_unchecked(positions[index][axis], 0));
+                TestRunner->TestEqual(TEXT("Native input view preserves position components"),
+                                      packed[index].position[axis],
+                                      positions[index][axis]);
             }
         }
     }

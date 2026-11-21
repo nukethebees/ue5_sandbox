@@ -5,10 +5,6 @@
   :header "ioj/sim/expressions/leaf_data_index.h"
   :pass-by value
   (integer :signed false :bit-width 24))
-(type ismc_packed_position
-  :spelling "ioj::Vector<std::int16_t, 3>"
-  :header "ioj/vector.h")
-
 (type collision_enabled
   :spelling "ECollisionEnabled::Type"
   :header "Engine/EngineTypes.h"

@@ -79,12 +79,10 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             unsupported->bAutomaticallySetUsageInEditor = false;
             component->SetMaterial(0, unsupported);
             component->SetCastShadow(true);
-            component->set_instances(1,
-                                     FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
-                                     ESandboxISMCParallelism::Sequential,
-                                     [](FSandboxISMCInstanceChunkWriter& chunk) {
-                                         sandbox_ismc_tests::write_transform(chunk);
-                                     });
+            component->set_instances(
+                1, ESandboxISMCParallelism::Sequential, [](FSandboxISMCInstanceChunkWriter& chunk) {
+                    sandbox_ismc_tests::write_transform(chunk);
+                });
             component->RegisterComponent();
             world.SendAllEndOfFrameUpdates();
 
@@ -113,84 +111,83 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
                 fallback->GetRelevance_Concurrent(world.Scene->GetShaderPlatform())};
             auto const feature_level{world.GetFeatureLevel()};
             auto* scene{world.Scene};
-            ENQUEUE_RENDER_COMMAND(
-                CheckSandboxISMCBatches)([this,
-                                          proxy,
-                                          declaration,
-                                          fallback,
-                                          fallback_relevance,
-                                          feature_level,
-                                          scene](FRHICommandListImmediate& command_list) {
-                FSceneViewFamilyContext family{FSceneViewFamily::ConstructionValues{
-                    nullptr,
-                    scene,
-                    FEngineShowFlags{ESFIM_Game}}.SetTime(FGameTime::CreateUndilated(0.0, 0.0f))};
-                FSceneViewInitOptions options;
-                options.ViewFamily = &family;
-                options.SetViewRectangle(FIntRect{0, 0, 64, 64});
-                FSceneView view{options};
-                auto const relevance{proxy->GetViewRelevance(&view)};
-                TestRunner->TestEqual(TEXT("Draw relevance uses the resolved opaque material"),
-                                      relevance.bOpaque != 0,
-                                      fallback_relevance.bOpaque != 0);
-                TestRunner->TestEqual(TEXT("Occlusion uses the resolved depth-test state"),
-                                      proxy->CanBeOccluded(),
-                                      !fallback_relevance.bDisableDepthTest);
+            ENQUEUE_RENDER_COMMAND(CheckSandboxISMCBatches)(
+                [this, proxy, declaration, fallback, fallback_relevance, feature_level, scene](
+                    FRHICommandListImmediate& command_list) {
+                    FSceneViewFamilyContext family{FSceneViewFamily::ConstructionValues{
+                        nullptr,
+                        scene,
+                        FEngineShowFlags{ESFIM_Game}}.SetTime(FGameTime::CreateUndilated(0.0,
+                                                                                         0.0f))};
+                    FSceneViewInitOptions options;
+                    options.ViewFamily = &family;
+                    options.SetViewRectangle(FIntRect{0, 0, 64, 64});
+                    FSceneView view{options};
+                    auto const relevance{proxy->GetViewRelevance(&view)};
+                    TestRunner->TestEqual(TEXT("Draw relevance uses the resolved opaque material"),
+                                          relevance.bOpaque != 0,
+                                          fallback_relevance.bOpaque != 0);
+                    TestRunner->TestEqual(TEXT("Occlusion uses the resolved depth-test state"),
+                                          proxy->CanBeOccluded(),
+                                          !fallback_relevance.bDisableDepthTest);
 
-                FSceneRenderingBulkObjectAllocator allocator;
-                SandboxISMCContractTests::MeshCollector collector{
-                    feature_level, allocator, command_list};
-                TArray<FMeshBatchAndRelevance, SceneRenderingAllocator> meshes[2];
-                FSimpleElementCollector simple;
-                collector.AddViewMeshArrays(&view, &meshes[0], &simple, nullptr);
-                collector.AddViewMeshArrays(&view, &meshes[1], &simple, nullptr);
-                collector.SetPrimitive(proxy, FHitProxyId{});
-                TArray<FSceneView const*> views{&view, &view};
-                proxy->GetDynamicMeshElements(views, family, 3, collector);
-                if (TestRunner->TestEqual(TEXT("LOD0 emits both sections"), meshes[0].Num(), 2) &&
-                    TestRunner->TestEqual(
-                        TEXT("Both views receive the sections"), meshes[1].Num(), 2)) {
-                    auto const& first{*meshes[0][0].Mesh};
-                    auto const& second{*meshes[0][1].Mesh};
-                    TestRunner->TestFalse(
-                        TEXT("The emitted batch honours disabled section shadows"),
-                        first.CastShadow);
-                    TestRunner->TestTrue(TEXT("The other emitted section still casts shadows"),
-                                         second.CastShadow);
-                    TestRunner->TestTrue(TEXT("The emitted batch draws the fallback"),
-                                         first.MaterialRenderProxy == fallback->GetRenderProxy());
-                    TestRunner->TestTrue(
-                        TEXT("Sections and views share one primitive uniform resource"),
-                        first.Elements[0].PrimitiveUniformBufferResource ==
-                                second.Elements[0].PrimitiveUniformBufferResource &&
+                    FSceneRenderingBulkObjectAllocator allocator;
+                    SandboxISMCContractTests::MeshCollector collector{
+                        feature_level, allocator, command_list};
+                    TArray<FMeshBatchAndRelevance, SceneRenderingAllocator> meshes[2];
+                    FSimpleElementCollector simple;
+                    collector.AddViewMeshArrays(&view, &meshes[0], &simple, nullptr);
+                    collector.AddViewMeshArrays(&view, &meshes[1], &simple, nullptr);
+                    collector.SetPrimitive(proxy, FHitProxyId{});
+                    TArray<FSceneView const*> views{&view, &view};
+                    proxy->GetDynamicMeshElements(views, family, 3, collector);
+                    if (TestRunner->TestEqual(
+                            TEXT("LOD0 emits both sections"), meshes[0].Num(), 2) &&
+                        TestRunner->TestEqual(
+                            TEXT("Both views receive the sections"), meshes[1].Num(), 2)) {
+                        auto const& first{*meshes[0][0].Mesh};
+                        auto const& second{*meshes[0][1].Mesh};
+                        TestRunner->TestFalse(
+                            TEXT("The emitted batch honours disabled section shadows"),
+                            first.CastShadow);
+                        TestRunner->TestTrue(TEXT("The other emitted section still casts shadows"),
+                                             second.CastShadow);
+                        TestRunner->TestTrue(TEXT("The emitted batch draws the fallback"),
+                                             first.MaterialRenderProxy ==
+                                                 fallback->GetRenderProxy());
+                        TestRunner->TestTrue(
+                            TEXT("Sections and views share one primitive uniform resource"),
                             first.Elements[0].PrimitiveUniformBufferResource ==
-                                meshes[1][0].Mesh->Elements[0].PrimitiveUniformBufferResource);
-                    FVertexDeclarationElementList actual_elements;
-                    FVertexDeclarationElementList precache_elements;
-                    first.VertexFactory->GetDeclaration(EVertexInputStreamType::Default)
-                        ->GetInitializer(actual_elements);
-                    declaration->GetInitializer(precache_elements);
-                    TestRunner->TestTrue(
-                        TEXT("Precache matches the actual instanced vertex declaration"),
-                        actual_elements == precache_elements);
-                    int32 instance_rows{0};
-                    for (auto const& element : actual_elements) {
-                        TestRunner->TestTrue(TEXT("Attribute 11 is no longer an instance input"),
-                                             element.AttributeIndex != 11);
-                        if (element.AttributeIndex >= 8 && element.AttributeIndex <= 10) {
-                            ++instance_rows;
-                            TestRunner->TestTrue(
-                                TEXT("Instance words use the 12-byte instanced uint stream"),
-                                element.Stride == 12 && element.Type == VET_UInt &&
-                                    element.Offset == (element.AttributeIndex - 8) * 4 &&
-                                    element.bUseInstanceIndex);
+                                    second.Elements[0].PrimitiveUniformBufferResource &&
+                                first.Elements[0].PrimitiveUniformBufferResource ==
+                                    meshes[1][0].Mesh->Elements[0].PrimitiveUniformBufferResource);
+                        FVertexDeclarationElementList actual_elements;
+                        FVertexDeclarationElementList precache_elements;
+                        first.VertexFactory->GetDeclaration(EVertexInputStreamType::Default)
+                            ->GetInitializer(actual_elements);
+                        declaration->GetInitializer(precache_elements);
+                        TestRunner->TestTrue(
+                            TEXT("Precache matches the actual instanced vertex declaration"),
+                            actual_elements == precache_elements);
+                        int32 instance_rows{0};
+                        for (auto const& element : actual_elements) {
+                            if (element.AttributeIndex >= 8 && element.AttributeIndex <= 11) {
+                                ++instance_rows;
+                                auto const position{element.AttributeIndex == 8};
+                                TestRunner->TestTrue(
+                                    TEXT("Float XYZ and quat32 share a 16-byte instance stream"),
+                                    element.Stride == 16 && element.bUseInstanceIndex &&
+                                        ((position && element.Type == VET_Float3 &&
+                                          element.Offset == 0) ||
+                                         (element.AttributeIndex == 9 && element.Type == VET_UInt &&
+                                          element.Offset == 12)));
+                            }
                         }
+                        TestRunner->TestEqual(
+                            TEXT("Both instance attributes are present"), instance_rows, 2);
                     }
-                    TestRunner->TestEqual(
-                        TEXT("All three instance words are present"), instance_rows, 3);
-                }
-                collector.Finish();
-            });
+                    collector.Finish();
+                });
             FlushRenderingCommands();
         });
     }
@@ -204,12 +201,10 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             actor->SetRootComponent(component);
             actor->AddInstanceComponent(component);
             component->set_static_mesh(*NewObject<UStaticMesh>(component));
-            component->set_instances(1,
-                                     FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
-                                     ESandboxISMCParallelism::Sequential,
-                                     [](FSandboxISMCInstanceChunkWriter& chunk) {
-                                         sandbox_ismc_tests::write_transform(chunk);
-                                     });
+            component->set_instances(
+                1, ESandboxISMCParallelism::Sequential, [](FSandboxISMCInstanceChunkWriter& chunk) {
+                    sandbox_ismc_tests::write_transform(chunk);
+                });
             TestRunner->AddExpectedError(
                 TEXT("requires initialized, non-empty, inlined, non-optional LOD0"),
                 EAutomationExpectedErrorFlags::Contains,
@@ -226,12 +221,10 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             FAssetCompilingManager::Get().FinishAllCompilation();
             mesh->GetRenderData()->LODResources[0].bBuffersInlined = false;
             component->set_static_mesh(*mesh);
-            component->set_instances(1,
-                                     FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
-                                     ESandboxISMCParallelism::Sequential,
-                                     [](FSandboxISMCInstanceChunkWriter& chunk) {
-                                         sandbox_ismc_tests::write_transform(chunk);
-                                     });
+            component->set_instances(
+                1, ESandboxISMCParallelism::Sequential, [](FSandboxISMCInstanceChunkWriter& chunk) {
+                    sandbox_ismc_tests::write_transform(chunk);
+                });
             TestRunner->AddExpectedError(
                 TEXT("requires initialized, non-empty, inlined, non-optional LOD0"),
                 EAutomationExpectedErrorFlags::Contains,

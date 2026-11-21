@@ -149,12 +149,7 @@ void ASandboxISMCLabActor::clear_instances() {
 
 void ASandboxISMCLabActor::submit_instances() {
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCLabActor::submit_instances);
-    FBox3f position_bounds{ForceInit};
-    for (auto const& instance : instance_data_) {
-        position_bounds += instance.position;
-    }
     instances_->set_instances(instance_data_.Num(),
-                              position_bounds,
                               ESandboxISMCParallelism::Auto,
                               [&](FSandboxISMCInstanceChunkWriter& chunk) {
                                   auto const [first_index, chunk_count]{chunk.range()};

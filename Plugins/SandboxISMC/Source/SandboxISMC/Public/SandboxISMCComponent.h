@@ -43,35 +43,25 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     // Reserve CPU staging capacity as each slot next becomes writable; never waits or shrinks.
     auto reserve_instances(int32 instance_count) -> void;
 
-    // Non-empty snapshots require a static mesh and a domain containing every instance position
-    // in component space.
-    // Its rounded centre selects the shared quantization root; it is not a geometry/culling bound.
+    // Instance positions are in component space.
     template <typename FillChunk>
     auto set_instances(int32 instance_count,
-                       FBox3f position_bounds,
                        ESandboxISMCParallelism parallelism,
                        FillChunk&& fill_chunk) -> void {
-        set_instances_impl<ESandboxISMCBoundsMode::Calculate>(instance_count,
-                                                              position_bounds,
-                                                              parallelism,
-                                                              FBox3f{ForceInit},
-                                                              Forward<FillChunk>(fill_chunk));
+        set_instances_impl<ESandboxISMCBoundsMode::Calculate>(
+            instance_count, parallelism, FBox3f{ForceInit}, Forward<FillChunk>(fill_chunk));
     }
 
     // Supplied render bounds contain source geometry; SandboxISMC adds codec error.
     template <typename FillChunk>
     auto set_instances(int32 instance_count,
-                       FBox3f position_bounds,
                        FBox3f local_bounds,
                        ESandboxISMCParallelism parallelism,
                        FillChunk&& fill_chunk) -> void {
         checkf(instance_count <= 0 || local_bounds.IsValid != 0,
                TEXT("SandboxISMC bounds must be valid when instances are submitted"));
-        set_instances_impl<ESandboxISMCBoundsMode::Supplied>(instance_count,
-                                                             position_bounds,
-                                                             parallelism,
-                                                             local_bounds,
-                                                             Forward<FillChunk>(fill_chunk));
+        set_instances_impl<ESandboxISMCBoundsMode::Supplied>(
+            instance_count, parallelism, local_bounds, Forward<FillChunk>(fill_chunk));
     }
 
     auto clear_instances() -> void;
@@ -96,7 +86,6 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
 
     template <ESandboxISMCBoundsMode BoundsMode, typename FillChunk>
     auto set_instances_impl(int32 instance_count,
-                            FBox3f position_bounds,
                             ESandboxISMCParallelism parallelism,
                             FBox3f local_bounds,
                             FillChunk&& fill_chunk) -> void {
@@ -105,23 +94,7 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
         SCOPE_CYCLE_COUNTER(STAT_SandboxISMCBuild);
         auto& buffer{begin_instance_update(instance_count)};
         auto const start_cycles{FPlatformTime::Cycles64()};
-        FVector3f root{FVector3f::ZeroVector};
-        if (instance_count > 0) {
-            auto const center{ismc::position_root(
-                Vector3f{position_bounds.Min.X, position_bounds.Min.Y, position_bounds.Min.Z},
-                Vector3f{position_bounds.Max.X, position_bounds.Max.Y, position_bounds.Max.Z})};
-            if (!position_bounds.IsValid || !center) {
-                UE_LOG(
-                    LogTemp,
-                    Fatal,
-                    TEXT(
-                        "SandboxISMC invalid or unrepresentable position domain %s: require finite "
-                        "bounds fitting +/-524272 UU (16 UU quantum) around the rounded centre"),
-                    *position_bounds.ToString());
-            }
-            root = FVector3f{center->x(), center->y(), center->z()};
-        }
-        buffer.position_root_quantum = FVector4f{root, ismc::position_quantum};
+
         auto instances{MakeArrayView(buffer.instances)};
         auto custom_data{MakeArrayView(buffer.custom_data)};
         auto const chunk_count{FMath::DivideAndRoundUp(instance_count, instance_chunk_size)};
@@ -140,8 +113,6 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
                                   count * num_custom_data_floats_),
                 num_custom_data_floats_,
                 first_index,
-                position_bounds,
-                root,
                 mesh_bounds_origin_,
                 mesh_bounds_extent_};
             fill_chunk(writer);

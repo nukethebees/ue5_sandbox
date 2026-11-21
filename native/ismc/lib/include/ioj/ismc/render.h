@@ -4,14 +4,11 @@
 #pragma once
 
 #include "ioj/ismc/quat32.h"
-#include "ioj/vector.h"
-
-#include <cstdint>
+#include "ioj/math_types.h"
 
 namespace ioj::ismc {
 struct PackedTransform {
-    ioj::Vector<std::int16_t, 3> position{};
-    std::uint16_t reserved{};
+    Vector3f position{};
     Quat32 rotation{};
 };
 } // namespace ioj::ismc

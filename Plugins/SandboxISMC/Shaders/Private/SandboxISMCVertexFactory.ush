@@ -1,12 +1,11 @@
 // The engine owns all vertex-factory logic; only instance inputs are customized.
-// Expose decoder and uniform dependencies to UE's source scanner before the
+// Expose decoder dependencies to UE's source scanner before the
 // generated include emits the adapter after the engine's instance-input types.
 #include "/SandboxISMC/Private/PackedInstanceInput.ush"
 
-#define LOCALVF_INSTANCE_ATTRIBUTES     \
-    uint PackedPositionXY : ATTRIBUTE8; \
-    uint PackedPositionZ : ATTRIBUTE9;  \
-    uint PackedRotation : ATTRIBUTE10;
+#define LOCALVF_INSTANCE_ATTRIBUTES       \
+    float3 InstancePosition : ATTRIBUTE8; \
+    uint PackedRotation : ATTRIBUTE9;
 
 #include "/Engine/Private/LocalVertexFactory.ush"
 

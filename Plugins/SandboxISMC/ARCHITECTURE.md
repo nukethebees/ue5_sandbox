@@ -7,21 +7,19 @@ packs the snapshot on the CPU and the vertex factory decodes it on the GPU.
 ## Meshes and bounds
 
 The mesh needs resident, inlined, non-optional LOD0 vertex and index buffers in the cooked asset.
-Mesh replacement invalidates the previous snapshot. Each non-empty submission supplies a finite
-position domain containing every instance. Render bounds can be computed from the mesh or supplied
-by the caller. Include material vertex displacement in supplied bounds. The component adds the
-margin for transform quantisation.
+Mesh replacement invalidates the previous snapshot. Render bounds can be computed from the mesh
+or supplied by the caller. Include material vertex displacement in supplied bounds. The component
+adds a margin for packed rotation and floating-point arithmetic.
 
 ## Snapshot lifetime and format
 
 Three reusable CPU staging slots separate packing from render-thread uploads. A queued upload
 retains its slot until the render thread copies it. GPU buffers retain capacity and upload the
-live prefix. The snapshot carries its own position origin so an asynchronous upload decodes
-against the origin used for packing.
+live prefix.
 
-The little-endian transform occupies 12 bytes with four-byte alignment. Bytes 0–5 hold three
-signed 16-bit position offsets in steps of 16 Unreal units. Bytes 6–7 are reserved. Bytes 8–11 hold
-a smallest-three encoded quaternion. The native packer and shader decoder share this format.
+Each 16-byte transform stores finite component-space XYZ as three floats, then a packed quaternion
+at byte 12. At ±2,500 km from the component origin, adjacent coordinates are 16 cm apart.
+Gameplay boundaries come from the mission collision grid.
 [Schema](../../lispb/schema/sandbox_ismc.lispb), [native transform contract](../../native/ismc/lib/include/ioj/ismc/transform.h)
 and [shader decoder](Shaders/Private/PackedTransform.ush).
 

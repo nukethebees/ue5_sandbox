@@ -53,21 +53,6 @@ struct QuatBatch {
     VF w;
 };
 
-auto quantize_position(VF value, VF root) noexcept -> VI {
-    auto const offset{(value - root) * hn::Set(df, inverse_position_quantum)};
-
-    // Quantizable positions fit int16, so the int32 conversion needs no saturation.
-    // Round to the nearest integer; break ties toward positive infinity.
-    auto const integral{hn::ConvertInRangeTo(di, offset)};
-    auto const fraction{offset - hn::ConvertTo(df, integral)};
-
-    auto const increment{hn::IfThenElse(
-        hn::RebindMask(di, hn::Ge(fraction, hn::Set(df, 0.5f))), hn::Set(di, 1), hn::Zero(di))};
-    auto const decrement{hn::IfThenElse(
-        hn::RebindMask(di, hn::Lt(fraction, hn::Set(df, -0.5f))), hn::Set(di, 1), hn::Zero(di))};
-
-    return integral + increment - decrement;
-}
 auto quantize_component(VF value) noexcept -> VI {
     constexpr auto scale{component_max / (2.0f * quaternion_component_limit)};
     auto const mapped{(value + hn::Set(df, quaternion_component_limit)) * hn::Set(df, scale) +
@@ -193,34 +178,22 @@ auto pack(TransformInput input,
     Vec3Batch const extent{hn::Set(df, params.mesh_extent.x()),
                            hn::Set(df, params.mesh_extent.y()),
                            hn::Set(df, params.mesh_extent.z())};
-    Vec3Batch const root{hn::Set(df, params.position_root.x()),
-                         hn::Set(df, params.position_root.y()),
-                         hn::Set(df, params.position_root.z())};
 
     auto* const dst{output.data()};
     auto const simd_end{output.size() / lanes * lanes};
     for (std::size_t index{}; index < simd_end; index += lanes) {
         Vec3Batch p{};
 
-        std::array<std::int32_t, lanes> packed_x{};
-        std::array<std::int32_t, lanes> packed_y{};
-        std::array<std::int32_t, lanes> packed_z{};
+        std::array<float, 3 * lanes> xyz{};
         std::array<std::uint32_t, lanes> packed_rotation{};
 
         if constexpr (fields != PackingFields::Rotations) {
             // Copy object representations without assuming alignment or typed aliases.
-            std::array<float, 3 * lanes> xyz{};
             std::memcpy(
                 xyz.data(), input.positions.data() + index * 3 * sizeof(float), sizeof(xyz));
-            hn::LoadInterleaved3(df, xyz.data(), p.x, p.y, p.z);
-
-            auto const quantized_x{quantize_position(p.x, root.x)};
-            auto const quantized_y{quantize_position(p.y, root.y)};
-            auto const quantized_z{quantize_position(p.z, root.z)};
-
-            hn::StoreU(quantized_x, di, packed_x.data());
-            hn::StoreU(quantized_y, di, packed_y.data());
-            hn::StoreU(quantized_z, di, packed_z.data());
+            if constexpr (bounds_mode == BoundsMode::Calculate) {
+                hn::LoadInterleaved3(df, xyz.data(), p.x, p.y, p.z);
+            }
         }
 
         if constexpr (fields != PackingFields::Positions) {
@@ -238,13 +211,10 @@ auto pack(TransformInput input,
             }
         }
 
-        // Preserve the reserved halfword in each 12-byte output.
         for (auto lane{0U}; lane < lanes; ++lane) {
             auto& packed{dst[index + lane]};
             if constexpr (fields != PackingFields::Rotations) {
-                packed.position = {static_cast<std::int16_t>(packed_x[lane]),
-                                   static_cast<std::int16_t>(packed_y[lane]),
-                                   static_cast<std::int16_t>(packed_z[lane])};
+                packed.position = {xyz[3 * lane], xyz[3 * lane + 1], xyz[3 * lane + 2]};
             }
 
             if constexpr (fields != PackingFields::Positions) {
@@ -261,8 +231,7 @@ auto pack(TransformInput input,
                                        input.rotations.subspan(simd_end * 4 * sizeof(float))};
         bounds = scalar::pack_transforms(remaining, params, tail, bounds_mode);
     } else if constexpr (fields == PackingFields::Positions) {
-        scalar::pack_positions(
-            input.positions.subspan(simd_end * 3 * sizeof(float)), params.position_root, tail);
+        scalar::pack_positions(input.positions.subspan(simd_end * 3 * sizeof(float)), tail);
     } else {
         scalar::pack_rotations(input.rotations.subspan(simd_end * 4 * sizeof(float)), tail);
     }
@@ -278,10 +247,8 @@ auto pack(TransformInput input,
 }
 
 auto pack_positions(std::span<std::byte const> positions,
-                    Vector3f root,
                     std::span<PackedTransform> output) noexcept -> void {
-    highway_detail::pack<PackingFields::Positions, BoundsMode::Skip>(
-        {positions, {}}, {root, {}, {}}, output);
+    highway_detail::pack<PackingFields::Positions, BoundsMode::Skip>({positions, {}}, {}, output);
 }
 auto pack_rotations(std::span<std::byte const> rotations,
                     std::span<PackedTransform> output) noexcept -> void {

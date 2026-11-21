@@ -14,9 +14,9 @@ auto supports_highway_avx2() noexcept -> bool {
 auto TransformPacker::pack_positions(std::span<std::byte const> positions,
                                      std::span<PackedTransform> output) const noexcept -> void {
     if (backend_ == PackingBackend::Production && packing_dispatch::supports_highway_avx2()) {
-        highway_avx2::pack_positions(positions, parameters_.position_root, output);
+        highway_avx2::pack_positions(positions, output);
     } else {
-        scalar::pack_positions(positions, parameters_.position_root, output);
+        scalar::pack_positions(positions, output);
     }
 }
 auto TransformPacker::pack_rotations(std::span<std::byte const> rotations,

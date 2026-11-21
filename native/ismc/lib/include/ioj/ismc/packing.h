@@ -10,7 +10,7 @@ namespace ioj::ismc {
 // Production input is two AoS arrays: tightly packed float XYZ and float XYZW.
 // Byte views allow Unreal and native callers to share their object representations
 // without aliasing unrelated vector/quaternion types or copying whole batches.
-// Inputs must be finite, positions quantizable, rotations normalized, and input
+// Inputs must be finite, rotations normalized, and input
 // and output storage disjoint. Input sizes must match the output instance count.
 struct TransformInput {
     std::span<std::byte const> positions;
@@ -18,7 +18,6 @@ struct TransformInput {
 };
 
 struct PackingParameters {
-    Vector3f position_root{};
     Vector3f mesh_origin{};
     Vector3f mesh_extent{};
 };
@@ -38,7 +37,7 @@ enum class PackingFields { Positions, Rotations, Transforms };
 enum class BoundsMode { Skip, Calculate };
 enum class PackingBackend { Production, Scalar };
 
-// Partial operations write only their respective fields. All operations preserve reserved.
+// Partial operations write only their respective fields.
 // Production selects Highway AVX2 when the CPU and OS support it, otherwise scalar.
 class TransformPacker {
   public:

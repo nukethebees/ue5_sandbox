@@ -72,58 +72,12 @@ TEST(SandboxISMCPacking, RandomQuaternionRoundTrips) {
     EXPECT_LT(2.0 * std::sin(maximum * std::numbers::pi / 360.0), rotation_error_chord);
 }
 
-TEST(SandboxISMCPacking, PositionRangeAndRounding) {
-    auto const quantize_units{[](float value, float root) {
-        return quantize_position(value * position_quantum, root * position_quantum);
-    }};
-    EXPECT_EQ(quantize_units(1000, 1000), 0);
-    EXPECT_EQ(quantize_units(1000.5f, 1000), 1);
-    EXPECT_EQ(quantize_units(999.5f, 1000), 0);
-    EXPECT_EQ(quantize_units(998.5f, 1000), -1);
-    EXPECT_EQ(quantize_units(32767, 0), 32767);
-    EXPECT_EQ(quantize_units(-32767, 0), -32767);
-    EXPECT_FALSE(quantize_units(32767.5f, 0).has_value());
-    EXPECT_FALSE(quantize_units(-32767.501f, 0).has_value());
-    EXPECT_FALSE(quantize_units(std::numeric_limits<float>::quiet_NaN(), 0).has_value());
-    for (auto const root : {-262144.0f, 262144.0f}) {
-        for (auto const position :
-             {std::nextafter(8.0f, 0.0f), 8.0f, std::nextafter(-8.0f, -9.0f), -8.0f}) {
-            auto const packed{quantize_position(position, root)};
-            ASSERT_TRUE(packed.has_value());
-            auto const decoded{static_cast<double>(root) + *packed * 16.0};
-            EXPECT_LE(std::abs(decoded - position), 8.0 + 0.03125);
-        }
-    }
-    std::mt19937 random{17};
-    std::uniform_real_distribution<float> values{-32767, 32767};
-    for (auto index{0}; index < 512; ++index) {
-        auto const value{values(random)};
-        auto const packed{quantize_units(value, 0)};
-        ASSERT_TRUE(packed.has_value());
-        EXPECT_LE(std::abs(value - static_cast<float>(*packed)), 0.5f);
-    }
-}
-
-TEST(SandboxISMCPacking, FloatBoundarySidesAndTies) {
-    for (auto const boundary : {-24.0f, -8.0f, 8.0f, 24.0f}) {
-        auto const below{std::nextafter(boundary, -std::numeric_limits<float>::infinity())};
-        auto const above{std::nextafter(boundary, std::numeric_limits<float>::infinity())};
-        auto const upper_bucket{static_cast<std::int16_t>(std::floor(boundary / 16.0f + 0.5f))};
-        EXPECT_EQ(quantize_position(below, 0), upper_bucket - 1);
-        EXPECT_EQ(quantize_position(boundary, 0), upper_bucket);
-        EXPECT_EQ(quantize_position(above, 0), upper_bucket);
-    }
-}
-
-TEST(SandboxISMCPacking, ScalarBatchPreservesPaddingAndBoundsUseSourceGeometry) {
+TEST(SandboxISMCPacking, ScalarBoundsUseSourceGeometry) {
     std::array const positions{std::array{17.0f, -25.0f, 31.0f}, std::array{-1.0f, 5.0f, 9.0f}};
     std::array const rotations{std::array{0.0f, 0.0f, 0.0f, 1.0f},
                                std::array{0.0f, 0.0f, 0.0f, -1.0f}};
     std::array<PackedTransform, 2> output{};
-    for (auto& packed : output) {
-        packed.reserved = 0xbeef;
-    }
-    PackingParameters const parameters{{}, Vector3f{2, -3, 4}, Vector3f{5, 6, 7}};
+    PackingParameters const parameters{Vector3f{2, -3, 4}, Vector3f{5, 6, 7}};
     TransformBounds bounds{};
     TransformPacker const packer{parameters, BoundsMode::Calculate, PackingBackend::Scalar};
     bounds = packer.pack_transforms(
@@ -132,10 +86,9 @@ TEST(SandboxISMCPacking, ScalarBatchPreservesPaddingAndBoundsUseSourceGeometry) 
     EXPECT_EQ(bounds.minimum, (Vector3f{-4, -34, 6}));
     EXPECT_EQ(bounds.maximum, (Vector3f{24, 8, 42}));
     for (auto const& packed : output) {
-        EXPECT_EQ(packed.reserved, 0xbeef);
         EXPECT_EQ(packed.rotation.bits, 0x80200803U);
     }
-    EXPECT_EQ(output[0].position, (Vector<std::int16_t, 3>{1, -2, 2}));
+    EXPECT_EQ(output[0].position, (Vector3f{17, -25, 31}));
     bounds = packer.pack_transforms({}, {});
     EXPECT_TRUE(bounds.empty());
 }
@@ -160,25 +113,13 @@ TEST(SandboxISMCPacking, NormalizedEncoderContractAndComponentEdges) {
     EXPECT_EQ(pack_normalized_quat32(Quaternion4f{0.5f, 0.5f, 0.5f, 0.5f}).bits, 0xda769da4U);
 }
 
-TEST(SandboxISMCPacking, PositionDomainChoosesAnAlignedCentreAndRejectsExcessRange) {
-    auto const root{
-        position_root(Vector3f{-480000, -1608, 1600000}, Vector3f{480000, 1624, 1600320})};
-    ASSERT_TRUE(root.has_value());
-    EXPECT_EQ(*root, (Vector3f{0, 16, 1600160}));
-    EXPECT_FALSE(position_root(Vector3f{-524288, 0, 0}, Vector3f{524288, 0, 0}).has_value());
-    EXPECT_FALSE(position_root(Vector3f{1, 0, 0}, Vector3f{0, 0, 0}).has_value());
-    EXPECT_FALSE(
-        position_root(Vector3f{0, 0, 0}, Vector3f{std::numeric_limits<float>::infinity(), 0, 0})
-            .has_value());
-}
-
 TEST(SandboxISMCPacking, LittleEndianGpuWords) {
     PackedTransform packed{};
-    packed.position = {-1, 32767, -32767};
+    packed.position = {-1.0f, 2.0f, 0.5f};
     packed.rotation.bits = 0x80200803;
-    EXPECT_EQ(packed.reserved, 0);
-    auto const words{std::bit_cast<std::array<std::uint32_t, 3>>(packed)};
-    EXPECT_EQ(words, (std::array<std::uint32_t, 3>{0x7fffffff, 0x00008001, 0x80200803}));
+    auto const words{std::bit_cast<std::array<std::uint32_t, 4>>(packed)};
+    EXPECT_EQ(words,
+              (std::array<std::uint32_t, 4>{0xbf800000, 0x40000000, 0x3f000000, 0x80200803}));
 }
 }
 }

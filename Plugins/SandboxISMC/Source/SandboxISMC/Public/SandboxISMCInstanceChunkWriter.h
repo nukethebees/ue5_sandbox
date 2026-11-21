@@ -20,16 +20,12 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
                                     TArrayView<float> custom_data,
                                     int32 num_custom_data_floats,
                                     int32 first_index,
-                                    FBox3f position_bounds,
-                                    FVector3f position_root,
                                     FVector3f mesh_bounds_origin,
                                     FVector3f mesh_bounds_extent)
         : instances_{instances}
         , custom_data_{custom_data}
         , num_custom_data_floats_{num_custom_data_floats}
         , first_index_{first_index}
-        , position_bounds_{position_bounds}
-        , position_root_{position_root}
         , mesh_bounds_origin_{mesh_bounds_origin}
         , mesh_bounds_extent_{mesh_bounds_extent} {
         check(num_custom_data_floats >= 0);
@@ -48,7 +44,7 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
 
     // Views cover this entire chunk and must not overlap the packed output storage.
     // With checks enabled, the full batch is validated before any instances or bounds are written.
-    // Positions must be finite and in the snapshot domain, rotations finite and normalized.
+    // Positions must be finite, rotations finite and normalized.
     // Instances have unit scale. Builds without checks assume valid input.
     template <ESandboxISMCBoundsMode BoundsMode>
     auto set_transforms(TConstArrayView<FVector3f> positions, TConstArrayView<FQuat4f> rotations)
@@ -78,8 +74,6 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
     FBox3f bounds_{ForceInit};
     int32 num_custom_data_floats_{0};
     int32 first_index_{0};
-    FBox3f position_bounds_{ForceInit};
-    FVector3f position_root_{FVector3f::ZeroVector};
     FVector3f mesh_bounds_origin_{FVector3f::ZeroVector};
     FVector3f mesh_bounds_extent_{FVector3f::ZeroVector};
 };

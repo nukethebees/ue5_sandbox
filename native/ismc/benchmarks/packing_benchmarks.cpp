@@ -55,8 +55,7 @@ auto run(benchmark::State& state) -> void {
     }
     TransformInput const input{std::as_bytes(std::span{buffers.positions}),
                                std::as_bytes(std::span{buffers.rotations})};
-    PackingParameters const parameters{
-        Vector3f{262144, -262144, 1000000}, Vector3f{31, -57, 123}, Vector3f{100, 17, 300}};
+    PackingParameters const parameters{Vector3f{31, -57, 123}, Vector3f{100, 17, 300}};
     TransformPacker const packer{
         parameters,
         operation == Operation::TransformBounds ? BoundsMode::Calculate : BoundsMode::Skip,
