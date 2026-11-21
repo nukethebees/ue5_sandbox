@@ -19,16 +19,22 @@
 #include <vector>
 
 namespace ioj::sim {
-LevelSpawnManager::LevelSpawnManager(std::size_t wave_size,
-                                     collision::EntityAABBs const& bounds,
+LevelSpawnManager::LevelSpawnManager(std::size_t fighters_per_carrier_launch,
+                                     EntityCount max_live_carrier_fighters,
+                                     TeamCount team_count,
                                      float clearance_buffer,
                                      std::pmr::memory_resource& memory)
     : entity_ids_{&memory}
-    , wave_size_{static_cast<std::uint32_t>(wave_size)}
-    , bounds_{bounds}
+    , fighters_per_carrier_launch_{static_cast<SpawnRequestCount>(fighters_per_carrier_launch)}
+    , max_live_carrier_fighters_per_team_{team_count == 0 ? 0
+                                                          : max_live_carrier_fighters / team_count}
+    , carrier_launches_{&memory}
+    , launch_placements_{memory}
     , clearance_buffer_{clearance_buffer}
     , fighter_spawn_sources_{&memory} {
-    assert(std::in_range<std::uint32_t>(wave_size));
+    if (!std::in_range<SpawnRequestCount>(fighters_per_carrier_launch)) {
+        fatal_error("Fighters per carrier launch exceeds 65535");
+    }
 }
 
 void LevelSpawnManager::initialise(std::uint32_t const entity_count) {
@@ -57,17 +63,9 @@ void LevelSpawnManager::process_event(EventHandle const event,
         auto const offset{offsets[index]};
         auto const count{counts[index].value()};
         switch (types[index]) {
-            case EntityType::Fighter: {
-                auto const placements{events.fighter_spawns().const_view(offset, count)};
-                auto const refs{placements.entity_indices()};
-                if (!entity_ids_[refs.front().index()].is_valid()) {
-                    auto const ids{level.fighters.spawn(placements, level.fighter_inputs)};
-                    for (std::uint32_t row{}; row < placements.num(); ++row) {
-                        set_entity_id(refs[row], ids[row]);
-                    }
-                }
+            case EntityType::Fighter:
+                spawn_fighters(events.fighter_spawns().const_view(offset, count), level);
                 break;
-            }
             case EntityType::CapitalShip:
                 spawn_capitals(
                     events.capital_spawns().const_view(offset, count), level.capitals, context);
@@ -83,6 +81,20 @@ void LevelSpawnManager::process_event(EventHandle const event,
             default:
                 fatal_error("Unsupported level spawn entity type");
         }
+    }
+}
+
+void LevelSpawnManager::spawn_fighters(FighterSpawnQueue::CompactConstView const placements,
+                                       LevelSpawnContext const& level) {
+    auto const refs{placements.entity_indices()};
+    if (entity_ids_[refs.front().index()].is_valid()) {
+        return;
+    }
+
+    auto const ids{level.fighters.spawn(placements, level.fighter_inputs)};
+    auto const count{placements.num()};
+    for (std::uint32_t row{}; row < count; ++row) {
+        set_entity_id(refs[row], ids[row]);
     }
 }
 
@@ -108,7 +120,7 @@ void LevelSpawnManager::queue_fighter_spawns(
     float const dt,
     CapitalEntityData::CompactConstView const capitals,
     std::span<EntityInstanceHandle const> const capital_handles,
-    fighters::Sim& fighters) {
+    collision::EntityAABBs const& bounds) {
     std::erase_if(fighter_spawn_sources_, [capital_handles](FighterSpawnSource const& source) {
         return !capital_handles[source.capital_id.index()].is_valid();
     });
@@ -125,22 +137,46 @@ void LevelSpawnManager::queue_fighter_spawns(
         source.remaining_delay = source.cooldown;
         auto const handle{capital_handles[source.capital_id.index()]};
         auto const team{handle.team()};
-        auto const wave{fighters.reserve_carrier_spawns(team, wave_size_)};
-        auto const count{wave.num()};
-        if (count == 0) {
+        if (fighters_per_carrier_launch_ == 0) {
             continue;
         }
 
         auto const index{handle.index()};
         auto const location{vector_at(locations, index)};
         auto const rotation{rotation_at(rotations, index)};
-        auto const column{fighter_launch_column(bounds_, location, rotation, clearance_buffer_)};
-
-        auto const direction{forward_direction(column.heading)};
-        for (std::uint32_t slot{}; slot < count; ++slot) {
-            wave.set(slot, LevelEntityRef{}, column.position(slot), direction, team);
-        }
+        carrier_launches_.push_back(
+            {team, fighter_launch_column(bounds, location, rotation, clearance_buffer_)});
     }
+}
+
+void LevelSpawnManager::commit_carrier_launches(LevelSpawnContext const& level) {
+    for (auto const& launch : carrier_launches_) {
+        auto const remaining{max_live_carrier_fighters_per_team_ -
+                             level.fighters.live_carrier_fighters_[launch.team]};
+        assert(remaining >= 0);
+        auto const count{static_cast<SpawnRequestCount>(
+            std::min<EntityCount>(fighters_per_carrier_launch_, remaining))};
+        if (count == 0) {
+            continue;
+        }
+
+        spawn_carrier_fighters(launch, count, level);
+    }
+    carrier_launches_.clear();
+}
+
+void LevelSpawnManager::spawn_carrier_fighters(CarrierLaunch const& launch,
+                                               SpawnRequestCount count,
+                                               LevelSpawnContext const& level) {
+    launch_placements_.add_uninitialised(count);
+    auto const placements{launch_placements_.view()};
+    auto const direction{forward_direction(launch.column.heading)};
+    for (SpawnRequestCount slot{}; slot < count; ++slot) {
+        placements.set(
+            slot, LevelEntityRef{}, launch.column.position(slot), direction, launch.team);
+    }
+    level.fighters.spawn(launch_placements_.const_view(), level.fighter_inputs);
+    launch_placements_.reset();
 }
 
 void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEvents::CompactConstView const events,

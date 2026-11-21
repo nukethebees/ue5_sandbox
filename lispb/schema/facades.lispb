@@ -201,7 +201,6 @@
     :target-storage reference
     (method initialise void
       (parameter config (type-ref ioj::sim::FighterSimConfig :suffix " const&"))
-      (parameter team_count @native_int32)
       (parameter clock (type-ref @sim_clock :suffix " const&")))
     (method update_entity_lookup_table void
       (parameter entity_tables (type-ref @entity_tables :suffix "&"))
@@ -214,8 +213,6 @@
     :friend-kind struct
     :target-storage reference
     (method prepare_tick void
-      (parameter inputs (type-ref @fighters_preparation_inputs :suffix " const")))
-    (method commit_spawns void
       (parameter inputs (type-ref @fighters_preparation_inputs :suffix " const"))))
 
   (facade ThinkingInterface @fighters_sim simulation

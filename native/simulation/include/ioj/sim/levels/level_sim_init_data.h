@@ -14,6 +14,7 @@
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/sim/turrets/turret_sim_config.h>
+#include <ioj/team_array.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -31,7 +32,7 @@ struct LevelSimInitData {
 
     std::optional<player::PlayerSpawnData> player;
     LevelEntityRef player_entity_ref{};
-    std::int32_t participating_team_count{};
+    TeamCount participating_team_count{};
     LevelEventManager level_events;
     ConditionManager conditions;
     Timers timers;

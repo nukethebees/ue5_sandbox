@@ -16,7 +16,7 @@ struct LevelSimTestAccess {
     }
 
     static auto spatial_queries(LevelSim& simulation) -> SpatialQueryManager& {
-        return simulation.collision_pipeline_.queries();
+        return simulation.spatial_queries_;
     }
 
     static auto player_simulation(LevelSim& simulation) -> player::Sim& {

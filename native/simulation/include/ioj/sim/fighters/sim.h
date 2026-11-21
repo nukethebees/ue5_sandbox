@@ -1,6 +1,7 @@
 #pragma once
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/trace_hits.h>
+#include <ioj/sim/entities/team_entity_array.h>
 #include <ioj/sim/fighters/fighter_entity_data.h>
 #include <ioj/sim/fighters/fighter_navigation.h>
 #include <ioj/sim/fighters/fighter_navigation_scratch.h>
@@ -8,7 +9,6 @@
 #include <ioj/sim/fighters/phase_inputs.h>
 #include <ioj/sim/fighters/runtime_config.h>
 #include <ioj/sim/tasks/task_id.h>
-#include <ioj/team_array.h>
 
 #include <cassert>
 #include <cstddef>
@@ -17,6 +17,7 @@
 
 namespace ioj::sim {
 class EntityLookupTables;
+class LevelSpawnManager;
 struct LevelSim;
 }
 
@@ -44,15 +45,6 @@ struct Sim {
     auto entities() const -> EntityStorage::CompactConstView { return entities_.const_view(); }
     auto num_instances() const noexcept -> std::uint32_t;
 
-    /* **************************************** */
-    // Spawning
-    /* **************************************** */
-    auto spawn(FighterSpawnQueue::CompactConstView spawns, PreparationInputs inputs)
-        -> std::span<EntityId const>;
-    // Fill the accepted rows before reserving another wave.
-    auto reserve_carrier_spawns(Team team, std::uint32_t requested)
-        -> FighterSpawnQueue::CompactView;
-
   private:
     using NavigationScratch = fighters::NavigationScratch;
     using NavigationRiskTier = fighters::NavigationRiskTier;
@@ -65,9 +57,7 @@ struct Sim {
     /* **************************************** */
     // Sim phases
     /* **************************************** */
-    void initialise(FighterSimConfig const& new_config,
-                    std::int32_t team_count,
-                    SimClock const& clock);
+    void initialise(FighterSimConfig const& new_config, SimClock const& clock);
     void update_entity_lookup_table(EntityTables& entity_tables, SimClock const& clock);
     void prepare_tick(PreparationInputs inputs);
     void think(ThinkingInputs const inputs);
@@ -115,7 +105,8 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    void commit_spawns(PreparationInputs inputs);
+    auto spawn(FighterSpawnQueue::CompactConstView spawns, PreparationInputs inputs)
+        -> std::span<EntityId const>;
 
     /* **************************************** */
     // Destruction
@@ -128,6 +119,7 @@ struct Sim {
     /* **************************************** */
     void refresh_target_data(ThinkingInputs const inputs);
 
+    friend class sim::LevelSpawnManager;
     friend class InitialisationInterface;
     friend class PreparationInterface;
     friend class ThinkingInterface;
@@ -136,9 +128,8 @@ struct Sim {
     friend class ResolutionCommitInterface;
 
     RuntimeConfig config_{};
-    TeamArray<std::int32_t> remaining_team_capacity_{};
+    TeamCounts live_carrier_fighters_{};
     std::int16_t attack_cleaner_{};
     EntityStorage entities_{};
-    FighterSpawnQueue spawn_queue_;
 };
 } // namespace ioj::sim::fighters

@@ -83,12 +83,9 @@ static void publish_navigation_counters(NavigationCounters const& counters) {
 // Configuration
 /* **************************************** */
 // Level initialisation
-void Sim::initialise(FighterSimConfig const& new_config,
-                     std::int32_t const team_count,
-                     SimClock const& clock) {
+void Sim::initialise(FighterSimConfig const& new_config, SimClock const& clock) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::initialise");
     config_ = RuntimeConfig{new_config, clock};
-    remaining_team_capacity_.fill(config_.per_team_limit(team_count));
     profiling::plot("Sandbox/FighterCount", 0);
     publish_navigation_counters({});
     attack_cleaner_ = 0;
@@ -99,12 +96,6 @@ void Sim::initialise(FighterSimConfig const& new_config,
 // Sim phases
 /* **************************************** */
 // Preparation
-void Sim::commit_spawns(PreparationInputs const inputs) {
-    if (spawn_queue_.num() > 0) {
-        spawn(spawn_queue_.const_view(), inputs);
-        spawn_queue_.reset();
-    }
-}
 auto Sim::spawn(FighterSpawnQueue::CompactConstView const spawns, PreparationInputs const inputs)
     -> std::span<EntityId const> {
     assert(is_preparation_mutation_allowed(inputs.clock));
@@ -130,12 +121,15 @@ auto Sim::spawn(FighterSpawnQueue::CompactConstView const spawns, PreparationInp
     std::ranges::fill(new_data.navigation_update_countdowns_periods(), navigation_period);
 
     copy_vectors(new_data.view_aim_directions().resolve(), spawns.view_directions().resolve());
-    std::ranges::transform(spawns.entity_indices(),
-                           new_data.carrier_launched().begin(),
-                           [](LevelEntityRef ref) { return !ref.is_valid(); });
+    auto const refs{spawns.entity_indices()};
+    auto const launched{new_data.carrier_launched()};
+    auto const teams{new_data.teams()};
+    for (std::uint32_t row{}; row < n_new; ++row) {
+        launched[row] = !refs[row].is_valid();
+        live_carrier_fighters_[teams[row]] += launched[row];
+    }
 
     auto const entity_ids{new_data.entity_ids()};
-    auto const teams{new_data.teams()};
     inputs.ledger.record_spawns(EntityType::Fighter, teams, config_.settings.health, entity_ids);
     inputs.entity_tables.health.initialise_entities<EntityType::Fighter>(entity_ids,
                                                                          config_.settings.health);
@@ -986,20 +980,6 @@ void Sim::refresh_target_data(ThinkingInputs const inputs) {
 }
 
 /* **************************************** */
-// Spawning
-/* **************************************** */
-auto Sim::reserve_carrier_spawns(Team const team, std::uint32_t const requested)
-    -> FighterSpawnQueue::CompactView {
-    SANDBOX_PROFILE_SCOPE("fighters::Sim::reserve_carrier_spawns");
-    auto& capacity{remaining_team_capacity_[team]};
-    assert(capacity >= 0);
-    auto const accepted_count{std::min(requested, static_cast<std::uint32_t>(capacity))};
-    spawn_queue_.add_uninitialised(accepted_count);
-    capacity -= static_cast<std::int32_t>(accepted_count);
-    return spawn_queue_.right(accepted_count);
-}
-
-/* **************************************** */
 // Destruction
 /* **************************************** */
 void Sim::remove_dead_entities(std::span<std::uint32_t const> const local_indices_to_remove,
@@ -1012,7 +992,7 @@ void Sim::remove_dead_entities(std::span<std::uint32_t const> const local_indice
     auto const teams{columns.teams()};
     auto const launched{columns.carrier_launched()};
     for (auto const row : local_indices_to_remove) {
-        remaining_team_capacity_[teams[row]] += launched[row];
+        live_carrier_fighters_[teams[row]] -= launched[row];
     }
 
     lookups.for_type(EntityType::Fighter).retire_rows(entity_ids, local_indices_to_remove);

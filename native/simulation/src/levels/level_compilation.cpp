@@ -52,7 +52,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     auto& definitions{output.level_events};
     output.level_metadata = definition.metadata();
     output.participating_team_count =
-        static_cast<std::int32_t>(participating_teams(definition).size());
+        static_cast<TeamCount>(participating_teams(definition).size());
     if (!definition.player_entity_id().empty()) {
         output.player_entity_ref = entity_index(definition, definition.player_entity_id());
     }

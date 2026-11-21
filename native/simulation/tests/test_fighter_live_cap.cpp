@@ -7,6 +7,7 @@
 #include <ioj/sim/testing/level_sim_test_access.h>
 
 #include <algorithm>
+#include <array>
 #include <type_traits>
 
 namespace ioj::sim::tests {
@@ -58,6 +59,32 @@ auto count_team(LevelSim const& simulation, Team const team) -> std::int32_t {
     return count;
 }
 
+}
+
+TEST(FighterLiveCap, FirstQueuedCarrierGetsSlotFreedDuringResolution) {
+    std::array const carriers{Team::Blue, Team::Blue};
+    LevelSim simulation{make_cap_battle(carriers, 3, 2, 0.f).compile()};
+    start_and_tick(simulation);
+    ASSERT_EQ(simulation.fighters().num_instances(), 3u);
+
+    auto const issued{simulation.entity_ledger().issued_counts()[EntityType::Fighter]};
+    auto const victim{simulation.fighters().entities().entity_ids().front()};
+    DirectDamageEvents damage;
+    damage.add(victim, 10000, {});
+    LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
+
+    auto const dt{simulation.clock().tick_period()};
+    simulation.advance(dt);
+    ASSERT_EQ(simulation.fighters().num_instances(), 2u);
+    simulation.advance(dt);
+    auto const fighters{simulation.fighters().entities()};
+    ASSERT_EQ(fighters.num(), 3u);
+    auto const ids{fighters.entity_ids()};
+    auto const replacement{
+        std::ranges::find_if(ids, [issued](EntityId id) { return id.index() == issued; })};
+    ASSERT_NE(replacement, ids.end());
+    auto const row{static_cast<std::uint32_t>(replacement - ids.begin())};
+    EXPECT_NEAR(vector_at(fighters.view_locations(), row).x(), 0.f, 100.f);
 }
 
 TEST(FighterLiveCap, TeamPartitionsAndRemainders) {

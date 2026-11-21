@@ -3,7 +3,7 @@
 #include <ioj/frame_memory_resource.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/collision/collision_pipeline.h>
+#include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
@@ -17,6 +17,7 @@
 #include <ioj/sim/levels/level_spawn_manager.h>
 #include <ioj/sim/levels/level_state.h>
 #include <ioj/sim/levels/tick_player_ship_state.h>
+#include <ioj/sim/overlap_handler.h>
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spinners/sim.h>
@@ -100,9 +101,7 @@ struct LevelSim {
     auto events() const -> LevelEventManager const& { return event_manager_; }
     auto task_manager() const -> tasks::TaskManager const& { return task_manager_; }
     auto level_metadata() const -> levels::LevelMetadata const& { return level_metadata_; }
-    auto spatial_query_manager() const -> SpatialQueryManager const& {
-        return collision_pipeline_.queries();
-    }
+    auto spatial_query_manager() const -> SpatialQueryManager const& { return spatial_queries_; }
     auto memory_manager() const noexcept -> LevelMemoryManager const& { return memory_manager_; }
   private:
     void refresh_spatial_index();
@@ -121,6 +120,12 @@ struct LevelSim {
     template <TickPlayerShipState PlayerState>
     void advance_tick(float tick_period, fighters::NavigationCounters* navigation_output);
 
+    void collect_spawn_candidates(EntityTypeSizes const& previous_issued_counts);
+    void
+        track_player_movement(EntityId player, Transform3d const& before, Transform3d const& after);
+    void detect_and_handle_overlaps(std::span<EntityId const> moved_fighters,
+                                    FrameMemoryResource& scratch);
+
     LevelState state_{LevelState::Uninitialised};
     SimClock clock_;
 
@@ -128,7 +133,9 @@ struct LevelSim {
     EntityLedger entity_ledger_{memory_manager_.game_memory()};
     DamageQueue damage_queue_;
     EntityTables entity_tables_{memory_manager_.game_memory()};
-    collision::CollisionPipeline collision_pipeline_;
+    SpatialQueryManager spatial_queries_;
+    OverlapHandler overlap_handler_;
+    std::pmr::vector<EntityId> overlap_candidates_;
 
     lasers::Sim lasers_simulation_;
     std::optional<player::Sim> player_ship_simulation_;

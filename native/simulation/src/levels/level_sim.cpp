@@ -13,6 +13,7 @@
 #include <ioj/sim/turrets/phase_interface.h>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <optional>
 #include <utility>
@@ -29,7 +30,8 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
           data.tick_memory_capacity_bytes,
           data.phase_memory_capacity_bytes,
       }
-    , collision_pipeline_{std::move(data.collision), &memory_manager_.game_memory()}
+    , overlap_handler_{data.collision.overlap_response.damage_per_overlap_detection}
+    , overlap_candidates_{&memory_manager_.game_memory()}
     , capital_ships_simulation_{entity_tables_}
     , turrets_simulation_{entity_tables_}
     , spinners_simulation_{entity_tables_}
@@ -40,11 +42,14 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     , event_manager_{std::move(data.level_events), memory_manager_.level_memory()}
     , spawn_manager_{
           data.capital_ships.fighter_spawn_slots_relative_transforms.size(),
-          collision_pipeline_.queries().local_entity_bounds(),
+          data.fighters.max_live_auto_spawned_fighters.get(),
+          data.participating_team_count,
           data.fighters.avoidance_clearance_buffer,
           memory_manager_.game_memory(),
       }
     {
+    spatial_queries_.initialise(data.collision.grid_spec, data.collision.entity_bounds);
+    spatial_queries_.set_static_collision(std::move(data.collision.static_bounds));
     initialise_subsystems(data);
 
     spawn_manager_.initialise(event_manager_.spawn_count() +
@@ -101,8 +106,7 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
 
     capital_ships::InitialisationInterface{capital_ships_simulation_}.initialise(
         data.capital_ships.max_health);
-    fighters::InitialisationInterface{fighters_simulation_}.initialise(
-        data.fighters, data.participating_team_count, clock_);
+    fighters::InitialisationInterface{fighters_simulation_}.initialise(data.fighters, clock_);
     turrets::InitialisationInterface{turrets_simulation_}.initialise(data.turrets, clock_);
     spinners::InitialisationInterface{spinners_simulation_}.initialise(data.spinners, clock_);
     lasers::InitialisationInterface{lasers_simulation_}.initialise(data.lasers);
@@ -187,16 +191,12 @@ void LevelSim::advance_tick(float const tick_period,
         auto const previous_issued_counts{entity_ledger_.issued_counts()};
         auto const spawn_context{level_spawn_context()};
         event_manager_.dispatch_preparation(spawn_manager_, spawn_context);
-        fighters_phase.commit_spawns(spawn_context.fighter_inputs);
+        spawn_manager_.commit_carrier_launches(spawn_context);
 
         lasers_phase.commit_spawns({clock_});
 
         // Borrow fresh owner views after all spawn commits.
-        collision_pipeline_.collect_spawn_candidates(
-            previous_issued_counts,
-            capital_ships_simulation_.get_entities().entity_ids(),
-            fighters_simulation_.entities().entity_ids(),
-            turrets_simulation_.get_entities().entity_ids());
+        collect_spawn_candidates(previous_issued_counts);
 
         if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
             player::PreparationInterface{*player_ship_simulation_}.prepare_tick(tick_period);
@@ -240,18 +240,17 @@ void LevelSim::advance_tick(float const tick_period,
                     tick_period,
                     capital_ships_simulation_.get_entities(),
                     entity_tables_.lookups.for_type(EntityType::CapitalShip).entries(),
-                    fighters_simulation_);
+                    spatial_queries_.local_entity_bounds());
 
                 turrets::ThinkingInputs const turret_inputs{
-                    clock_, collision_pipeline_.queries(), lasers_simulation_, phase_memory};
+                    clock_, spatial_queries_, lasers_simulation_, phase_memory};
                 fighters::NavigationCounters navigation_counters{};
                 fighters::ThinkingInputs const fighter_inputs{
                     .entity_tables = entity_tables_,
                     .clock = clock_,
                     .task_manager = task_manager_,
-                    .collision_radius =
-                        collision_pipeline_.queries().entity_type_radius(EntityType::Fighter),
-                    .spatial_query_manager = collision_pipeline_.queries(),
+                    .collision_radius = spatial_queries_.entity_type_radius(EntityType::Fighter),
+                    .spatial_query_manager = spatial_queries_,
                     .scratch_resource = phase_memory,
                     .pending_fire_indices = fighter_fire_indices,
                     .navigation_counters = navigation_counters,
@@ -291,7 +290,7 @@ void LevelSim::advance_tick(float const tick_period,
                         tick_period,
                         damage_queue_,
                         clock_.get_completed_ticks(),
-                        collision_pipeline_.queries(),
+                        spatial_queries_,
                         phase_memory,
                         laser_removal_indices,
                     };
@@ -302,10 +301,9 @@ void LevelSim::advance_tick(float const tick_period,
                     auto const before{player_ship_simulation_->physical_state().transform};
                     player::ActionInputs const inputs{lasers_simulation_};
                     player::ActionInterface{*player_ship_simulation_}.apply_movement(inputs);
-                    collision_pipeline_.track_player_movement(
-                        player_ship_simulation_->unique_entity_id,
-                        before,
-                        player_ship_simulation_->physical_state().transform);
+                    track_player_movement(player_ship_simulation_->unique_entity_id,
+                                          before,
+                                          player_ship_simulation_->physical_state().transform);
                 }
 
                 {
@@ -322,11 +320,7 @@ void LevelSim::advance_tick(float const tick_period,
                     spinners_phase.apply_movement(spinner_inputs);
                 }
 
-                collision_pipeline_.detect_and_handle_overlaps(read_access(),
-                                                               entity_tables_.lookups,
-                                                               fighter_overlap_candidates,
-                                                               damage_queue_,
-                                                               phase_memory);
+                detect_and_handle_overlaps(fighter_overlap_candidates, phase_memory);
             }
         }
 
@@ -399,7 +393,7 @@ void LevelSim::advance_tick(float const tick_period,
                 conditions_.evaluate({entity_ledger_,
                                       timers_,
                                       spawn_manager_.entity_ids(),
-                                      collision_pipeline_.queries(),
+                                      spatial_queries_,
                                       entity_tables_.lookups,
                                       phase_memory});
                 event_manager_.collect_ready(conditions_);
@@ -441,10 +435,56 @@ void LevelSim::advance_tick(float const tick_period,
 }
 
 /* **************************************** */
-// Read views
+// Spatial queries and collision damage
 /* **************************************** */
 
 void LevelSim::refresh_spatial_index() {
-    collision_pipeline_.refresh_spatial_index(read_access());
+    spatial_queries_.refresh_spatial_index(read_access());
 }
+void LevelSim::collect_spawn_candidates(EntityTypeSizes const& previous_issued_counts) {
+    auto const capitals{capital_ships_simulation_.get_entities().entity_ids()};
+    auto const fighters{fighters_simulation_.entities().entity_ids()};
+    auto const turrets{turrets_simulation_.get_entities().entity_ids()};
+    overlap_candidates_.clear();
+    for (auto const ids : std::array{capitals, fighters, turrets}) {
+        for (auto const id : ids) {
+            if (id.index() >= previous_issued_counts[id.entity_type()]) {
+                overlap_candidates_.push_back(id);
+            }
+        }
+    }
+}
+void LevelSim::track_player_movement(EntityId const player,
+                                     Transform3d const& before,
+                                     Transform3d const& after) {
+    auto const before_location{Vector3f{before.location}};
+    auto const after_location{Vector3f{after.location}};
+    auto const before_rotation{Rotator3f{before.rotator()}};
+    auto const after_rotation{Rotator3f{after.rotator()}};
+    if (before_location != after_location || before_rotation != after_rotation) {
+        overlap_candidates_.push_back(player);
+    }
+}
+void LevelSim::detect_and_handle_overlaps(std::span<EntityId const> const moved_fighters,
+                                          FrameMemoryResource& scratch) {
+    assert(is_lookup_allowed(clock_));
+
+    SANDBOX_PROFILE_SCOPE("Refresh spatial index and detect overlaps");
+
+    overlap_candidates_.insert(
+        overlap_candidates_.end(), moved_fighters.begin(), moved_fighters.end());
+    std::ranges::sort(overlap_candidates_);
+    auto const duplicates{std::ranges::unique(overlap_candidates_)};
+    overlap_candidates_.erase(duplicates.begin(), duplicates.end());
+
+    refresh_spatial_index();
+
+    collision::EntityEntityOverlaps entity_overlaps{scratch};
+    collision::EntityStaticOverlaps static_overlaps{scratch};
+    spatial_queries_.detect_overlaps(
+        entity_tables_.lookups, overlap_candidates_, entity_overlaps, static_overlaps, &scratch);
+    overlap_handler_.handle({entity_overlaps.const_view(), static_overlaps.const_view()},
+                            damage_queue_);
+}
+
 } // namespace ioj::sim

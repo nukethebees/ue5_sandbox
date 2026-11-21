@@ -1,7 +1,7 @@
 # Simulation architecture
 
 `LevelSim` owns the world and advances it in fixed ticks. Each entity simulation owns its
-component data. The entity ledger keeps lifetime history, and the collision pipeline owns the
+component data. The entity ledger keeps lifetime history, and `SpatialQueryManager` owns the
 spatial index. The task manager assigns work to fighters. The phase order is defined in
 [level_sim.cpp](src/levels/level_sim.cpp).
 
@@ -20,6 +20,9 @@ A `LevelEntityRef` names an authored slot. The spawn manager fills it with a lif
 when the entity spawns. The ID and its ledger history survive death. Lookup tables map a live ID
 to its current row. Authoritative health is indexed by lifetime ID within each entity type.
 The quantised health in a lookup handle is a Thinking snapshot.
+
+Preparation drains carrier launches in FIFO order and drops excess fighters at each team's cap.
+Authored fighters bypass the cap.
 
 Reacquire borrowed views after storage is reordered or resized. Use phase scratch for work
 within one phase and tick scratch for data passed to a later phase of the same tick.
