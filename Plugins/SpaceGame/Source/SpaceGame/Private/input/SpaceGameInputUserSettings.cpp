@@ -30,43 +30,6 @@ void USpaceGameInputUserSettings::finalize_canonical_registration() {
     }
 }
 
-void USpaceGameInputUserSettings::set_mouse_turn_sensitivity(float const value) noexcept {
-    mouse_turn_sensitivity_ = input::clamp_sensitivity(value);
-}
-
-void USpaceGameInputUserSettings::set_gamepad_turn_sensitivity(float const value) noexcept {
-    gamepad_turn_sensitivity_ = input::clamp_sensitivity(value);
-}
-
-void USpaceGameInputUserSettings::set_gamepad_turn_dead_zone(float const value) noexcept {
-    gamepad_turn_dead_zone_ = input::clamp_dead_zone(value);
-}
-
-void USpaceGameInputUserSettings::set_gamepad_move_dead_zone(float const value) noexcept {
-    gamepad_move_dead_zone_ = input::clamp_dead_zone(value);
-}
-
-void USpaceGameInputUserSettings::set_invert_mouse_pitch(bool const value) noexcept {
-    invert_mouse_pitch_ = value;
-}
-void USpaceGameInputUserSettings::set_invert_mouse_yaw(bool const value) noexcept {
-    invert_mouse_yaw_ = value;
-}
-
-void USpaceGameInputUserSettings::set_invert_gamepad_pitch(bool const value) noexcept {
-    invert_gamepad_pitch_ = value;
-}
-void USpaceGameInputUserSettings::set_invert_gamepad_yaw(bool const value) noexcept {
-    invert_gamepad_yaw_ = value;
-}
-void USpaceGameInputUserSettings::set_invert_gamepad_roll(bool const value) noexcept {
-    invert_gamepad_roll_ = value;
-}
-void USpaceGameInputUserSettings::set_invert_gamepad_vertical_translation(
-    bool const value) noexcept {
-    invert_gamepad_vertical_translation_ = value;
-}
-
 auto USpaceGameInputUserSettings::chord_mapping_for_mapping(FString const& profile_id,
                                                             FPlayerKeyMapping const& mapping) const
     -> FPlayerKeyMapping const* {

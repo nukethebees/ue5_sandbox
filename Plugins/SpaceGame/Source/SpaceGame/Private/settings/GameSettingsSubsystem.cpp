@@ -3,31 +3,82 @@
 #include "SpaceGame/input/CanonicalShipControls.h"
 #include "SpaceGame/input/SpaceGameInputUserSettings.h"
 #include "SpaceGame/settings/SpaceGameUserSettings.h"
+#include <ioj/levels/authoring/game_configuration.h>
 
 #include "Containers/Ticker.h"
 #include "Engine/Engine.h"
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputSubsystems.h"
 #include "HAL/PlatformTime.h"
+#include <Engine/GameInstance.h>
+#include <HAL/PlatformProcess.h>
+#include <Misc/App.h>
+#include <Misc/MessageDialog.h>
+#include <Misc/Paths.h>
 
 namespace ioj {
+namespace {
+auto script_root() -> std::filesystem::path {
+    return std::filesystem::path{*FPaths::ConvertRelativePathToFull(FPaths::ProjectDir())} /
+           "LevelScripts";
+}
+auto personal_settings_path() -> std::filesystem::path {
+#if WITH_EDITOR
+    return script_root() / "Settings/user-settings.scm";
+#else
+    auto const local{FPlatformProcess::GetApplicationSettingsDir(
+        {FPlatformProcess::ApplicationSettingsContext::Context::LocalUser, false})};
+    return std::filesystem::path{*local} / "IsleOfJebbers/Config/user-settings.scm";
+#endif
+}
+auto load_preferences() -> levels::authoring::UserSettingsResult {
+    auto const desktop{GEngine->GetGameUserSettings()->GetDesktopResolution()};
+    return levels::authoring::read_user_settings(
+        script_root(),
+        personal_settings_path(),
+        {desktop.X > 0 ? desktop.X : 1920, desktop.Y > 0 ? desktop.Y : 1080});
+}
+void report_settings_error(std::string const& error, bool interactive) {
+    auto const message{FText::FromString(UTF8_TO_TCHAR(error.c_str()))};
+    UE_LOG(LogTemp, Error, TEXT("%s"), *message.ToString());
+    if (interactive && !FApp::IsUnattended() && !GIsAutomationTesting) {
+        FMessageDialog::Open(EAppMsgType::Ok, message);
+    }
+}
+auto persist(GameSettingsState const& state, GameSettingsState const& defaults) -> bool {
+    auto result{levels::authoring::save_user_settings(personal_settings_path(), state, defaults)};
+    if (!result) {
+        report_settings_error(result.error(), true);
+    }
+    return result.has_value();
+}
+}
 
 /* **************************************** */
 // Lifecycle
 /* **************************************** */
 void UGameSettingsSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
-    auto const* settings{Cast<USpaceGameUserSettings>(GEngine->GetGameUserSettings())};
-    session_.initialise(backend_.read(),
-                        backend_.defaults(),
-                        settings != nullptr ? settings->flight_model_loadout()
-                                            : sim::player::make_default_flight_model_loadout());
+    auto app{levels::authoring::read_application_settings(script_root())};
+    if (!app) {
+        UE_LOG(LogTemp, Fatal, TEXT("%s"), UTF8_TO_TCHAR(app.error().c_str()));
+        return;
+    }
+    application_ = *app;
+    auto config{load_preferences()};
+    if (!config) {
+        report_settings_error(config.error(), false);
+        return;
+    }
+    session_.initialise(config->applied, config->defaults);
+    backend_.apply_non_display(config->applied);
+    backend_.apply_display(config->applied);
+    backend_.confirm_display();
 }
 
 void UGameSettingsSubsystem::Deinitialize() {
-    if (display_confirmation_ticker_.IsValid()) {
-        FTSTicker::GetCoreTicker().RemoveTicker(display_confirmation_ticker_);
-        display_confirmation_ticker_.Reset();
+    if (session_.is_awaiting_display_confirmation()) {
+        revert_display_changes();
     }
     Super::Deinitialize();
 }
@@ -39,11 +90,19 @@ void UGameSettingsSubsystem::begin_edit(ULocalPlayer* const local_player) {
     if (session_.is_awaiting_display_confirmation()) {
         return;
     }
-    backend_.set_local_player(local_player);
     editing_local_player_ = local_player;
-    if (!session_.begin_edit(backend_.read(), backend_.defaults())) {
+    auto config{load_preferences()};
+    if (!config) {
+        cancel();
+        report_settings_error(config.error(), true);
         return;
     }
+    if (!session_.begin_edit(config->applied, config->defaults)) {
+        return;
+    }
+    backend_.apply_non_display(config->applied);
+    backend_.apply_display(config->applied);
+    backend_.confirm_display();
     capture_input_edit_state();
     settings_changed.Broadcast();
 }
@@ -54,9 +113,7 @@ void UGameSettingsSubsystem::cancel() {
     }
     auto const before{session_.settings_state()};
     restore_input_edit_state();
-    preview_immediate_settings(session_.applied_state());
     session_.cancel();
-    flight_model_config_changed.Broadcast();
     for (auto const& descriptor : game_setting_descriptors()) {
         if (game_setting_value(before, descriptor.id) != session_.value(descriptor.id)) {
             setting_changed.Broadcast(descriptor.id);
@@ -71,21 +128,22 @@ void UGameSettingsSubsystem::apply() {
     }
     auto const& pending{session_.settings_state()};
     auto const bindings_changed{input_is_dirty()};
-    auto const input_changed{bindings_changed || session_.is_dirty(GameSettingCategory::Controls)};
-    backend_.apply_non_display(pending);
-    if (auto* const settings{Cast<USpaceGameUserSettings>(GEngine->GetGameUserSettings())}) {
-        settings->set_flight_model_loadout(session_.flight_model_loadout());
+    auto next{session_};
+    auto const result{next.apply(FPlatformTime::Seconds(), bindings_changed)};
+    if (next.applied_state() != session_.applied_state() &&
+        !persist(next.applied_state(), next.default_state())) {
+        return;
     }
-    if (input_changed) {
+    backend_.apply_non_display(pending);
+    if (bindings_changed) {
         if (auto* const input_settings{input_user_settings()}) {
             input_settings->ApplySettings();
             input_settings->AsyncSaveSettings();
         }
     }
-    auto const result{session_.apply(FPlatformTime::Seconds(), bindings_changed)};
+    session_ = std::move(next);
     capture_input_edit_state();
     if (result == GameSettingsApplyResult::Applied) {
-        backend_.save();
         settings_changed.Broadcast();
         return;
     }
@@ -102,14 +160,12 @@ void UGameSettingsSubsystem::reset_category(GameSettingCategory const category) 
         return;
     }
     if (category == GameSettingCategory::Controls) {
-        flight_model_config_changed.Broadcast();
         reset_all_control_bindings();
     }
     for (auto const& descriptor : game_setting_descriptors()) {
         if (descriptor.category == category &&
             descriptor.apply_mode == SettingApplyMode::Immediate &&
             game_setting_value(before, descriptor.id) != session_.value(descriptor.id)) {
-            backend_.preview_immediate(session_.settings_state(), descriptor.id);
             setting_changed.Broadcast(descriptor.id);
         }
     }
@@ -117,11 +173,12 @@ void UGameSettingsSubsystem::reset_category(GameSettingCategory const category) 
 }
 
 void UGameSettingsSubsystem::confirm_display_changes() {
-    if (!session_.confirm_display()) {
+    if (!session_.is_awaiting_display_confirmation() ||
+        !persist(session_.settings_state(), session_.default_state()) ||
+        !session_.confirm_display()) {
         return;
     }
     backend_.confirm_display();
-    backend_.save();
     if (display_confirmation_ticker_.IsValid()) {
         FTSTicker::GetCoreTicker().RemoveTicker(display_confirmation_ticker_);
         display_confirmation_ticker_.Reset();
@@ -135,7 +192,6 @@ void UGameSettingsSubsystem::revert_display_changes() {
         return;
     }
     backend_.revert_display();
-    backend_.save();
     if (display_confirmation_ticker_.IsValid()) {
         FTSTicker::GetCoreTicker().RemoveTicker(display_confirmation_ticker_);
         display_confirmation_ticker_.Reset();
@@ -147,6 +203,13 @@ void UGameSettingsSubsystem::revert_display_changes() {
 /* **************************************** */
 // Settings state
 /* **************************************** */
+auto UGameSettingsSubsystem::application_settings(UGameInstance const* instance)
+    -> ApplicationSettings const& {
+    auto const* settings{UGameInstance::GetSubsystem<UGameSettingsSubsystem>(instance)};
+    check(settings);
+    return settings->application_;
+}
+
 auto UGameSettingsSubsystem::settings_state() const -> GameSettingsState const& {
     return session_.settings_state();
 }
@@ -175,9 +238,6 @@ void UGameSettingsSubsystem::set_setting(GameSetting const setting, GameSettingV
                TEXT("Rejected invalid value for game setting %s"),
                UTF8_TO_TCHAR(descriptor.name));
         return;
-    }
-    if (descriptor.apply_mode == SettingApplyMode::Immediate) {
-        backend_.preview_immediate(session_.settings_state(), setting);
     }
     setting_changed.Broadcast(setting);
     settings_changed.Broadcast();
@@ -224,29 +284,6 @@ auto UGameSettingsSubsystem::is_at_defaults(GameSettingCategory const category) 
     return session_.is_at_defaults(category);
 }
 
-auto UGameSettingsSubsystem::flight_model_profile(EShipControlScope const scope) const
-    -> sim::player::FlightModelProfile const& {
-    check(scope != EShipControlScope::General);
-    return session_.flight_model_profile(flight_model_slot(scope));
-}
-
-auto UGameSettingsSubsystem::flight_model_loadout() const
-    -> sim::player::FlightModelLoadout const& {
-    return session_.flight_model_loadout();
-}
-
-auto UGameSettingsSubsystem::set_flight_model_profile(EShipControlScope const scope,
-                                                      sim::player::FlightModelProfile profile)
-    -> bool {
-    if (scope == EShipControlScope::General ||
-        !session_.set_flight_model_profile(flight_model_slot(scope), profile)) {
-        return false;
-    }
-    flight_model_config_changed.Broadcast();
-    settings_changed.Broadcast();
-    return true;
-}
-
 auto UGameSettingsSubsystem::is_awaiting_display_confirmation() const -> bool {
     return session_.is_awaiting_display_confirmation();
 }
@@ -269,14 +306,6 @@ auto UGameSettingsSubsystem::tick_display_confirmation(float const delta_seconds
     }
     display_confirmation_changed.Broadcast(true);
     return true;
-}
-
-void UGameSettingsSubsystem::preview_immediate_settings(GameSettingsState const& state) {
-    for (auto const& descriptor : game_setting_descriptors()) {
-        if (descriptor.apply_mode == SettingApplyMode::Immediate) {
-            backend_.preview_immediate(state, descriptor.id);
-        }
-    }
 }
 
 auto UGameSettingsSubsystem::normalize_value(GameSettingDescriptor const& descriptor,
@@ -355,7 +384,6 @@ auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBind
                     .display_category = mapping.GetDisplayCategory(),
                     .display_group = presentation->group,
                     .display_order = presentation->display_order,
-                    .scope = presentation->scope,
                     .device_type = mapping.GetPrimaryDeviceType(),
                     .current_key = mapping.GetCurrentKey(),
                     .default_key = mapping.GetDefaultKey(),
@@ -400,14 +428,6 @@ auto UGameSettingsSubsystem::control_bindings(EHardwareDevicePrimaryType const d
 
     return bindings.FilterByPredicate([device_type](auto const& binding) {
         return control_binding_matches_device(binding, device_type);
-    });
-}
-
-auto UGameSettingsSubsystem::control_bindings(EHardwareDevicePrimaryType const device_type,
-                                              EShipControlScope const scope) const
-    -> TArray<FControlBindingView> {
-    return control_bindings(device_type).FilterByPredicate([scope](auto const& binding) {
-        return binding.scope == scope;
     });
 }
 

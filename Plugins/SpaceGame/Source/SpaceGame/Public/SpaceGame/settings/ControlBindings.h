@@ -48,9 +48,6 @@ inline auto native_control_binding(FControlBindingView const& binding) -> Contro
             .default_key = binding.default_key.IsValid()
                              ? TCHAR_TO_UTF8(*binding.default_key.GetFName().ToString().ToLower())
                              : "",
-            .scope = binding.scope == EShipControlScope::General
-                       ? std::nullopt
-                       : std::optional{static_cast<std::uint32_t>(binding.scope)},
             .chord = binding.chord.IsSet()
                        ? std::optional{native_control_binding_address(binding.chord->address)}
                        : std::nullopt};

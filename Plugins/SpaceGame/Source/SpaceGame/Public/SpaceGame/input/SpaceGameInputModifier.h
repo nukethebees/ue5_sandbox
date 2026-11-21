@@ -10,7 +10,6 @@ UENUM()
 enum class ESpaceGameInputResponse : uint8 {
     TurnPointerDelta,
     GamepadTurn,
-    GamepadMove,
 };
 
 UENUM()
@@ -18,8 +17,6 @@ enum class ESpaceGameInputAxis : uint8 {
     None,
     Pitch,
     Yaw,
-    Roll,
-    VerticalTranslation,
 };
 
 UCLASS(NotBlueprintable, meta = (DisplayName = "Space Game Input Response"))
@@ -27,7 +24,7 @@ class SPACEGAME_API USpaceGameInputModifier final : public UInputModifier {
     GENERATED_BODY()
   public:
     UPROPERTY(EditAnywhere, Category = "Settings")
-    ESpaceGameInputResponse response{ESpaceGameInputResponse::GamepadMove};
+    ESpaceGameInputResponse response{ESpaceGameInputResponse::GamepadTurn};
 
     UPROPERTY(EditAnywhere, Category = "Settings")
     ESpaceGameInputAxis axis{ESpaceGameInputAxis::None};

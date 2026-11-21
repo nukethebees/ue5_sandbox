@@ -10,43 +10,6 @@
 
 TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
 {
-    TEST_METHOD(DefaultsAndConfigRoundTripPreserveRenderingEffects)
-    {
-        auto* const source{NewObject<ioj::USpaceGameUserSettings>()};
-        source->SetToDefaults();
-        TestRunner->TestTrue(TEXT("Bloom defaults to enabled"), source->bloom_enabled());
-        TestRunner->TestFalse(TEXT("Motion blur defaults to disabled"),
-                              source->motion_blur_enabled());
-        source->set_bloom_enabled(false);
-        source->set_motion_blur_enabled(true);
-        source->set_master_volume(0.35f);
-        auto loadout{ioj::sim::player::make_default_flight_model_loadout()};
-        loadout.profiles[3].config.translation.up.normal.positive_target_speed =
-            ioj::NonNegativeFinite<float>{1234.f};
-        source->set_flight_model_loadout(loadout);
-
-        auto const config_path{FPaths::CreateTempFilename(
-            *FPaths::ProjectSavedDir(), TEXT("SpaceGameUserSettings"), TEXT(".ini"))};
-        ON_SCOPE_EXIT {
-            GConfig->UnloadFile(config_path);
-            IFileManager::Get().Delete(*config_path);
-        };
-
-        source->SaveConfig(CPF_Config, *config_path);
-        GConfig->UnloadFile(config_path);
-
-        auto* const loaded{NewObject<ioj::USpaceGameUserSettings>()};
-        loaded->LoadConfig(ioj::USpaceGameUserSettings::StaticClass(), *config_path);
-
-        TestRunner->TestFalse(TEXT("Bloom survives a config round trip"), loaded->bloom_enabled());
-        TestRunner->TestTrue(TEXT("Motion blur survives a config round trip"),
-                             loaded->motion_blur_enabled());
-        TestRunner->TestTrue(TEXT("Existing custom settings still round trip"),
-                             FMath::IsNearlyEqual(loaded->master_volume(), 0.35f));
-        TestRunner->TestTrue(TEXT("Four-slot tuning survives a config round trip"),
-                             loaded->flight_model_loadout() == loadout);
-    }
-
     TEST_METHOD(RenderingEffectOverridesTakePrecedenceOverScalability)
     {
         auto* const live_settings{

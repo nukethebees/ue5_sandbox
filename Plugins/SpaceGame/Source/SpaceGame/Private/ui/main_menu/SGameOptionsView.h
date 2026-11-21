@@ -22,17 +22,15 @@ class SGameButton;
 class UGameSettingsSubsystem;
 struct FGameCapabilities;
 
-enum class EControlsFocusKind : uint8 { Device, Scope, Binding };
+enum class EControlsFocusKind : uint8 { Device, Binding };
 
 struct FControlsFocusIdentity {
     EControlsFocusKind kind{EControlsFocusKind::Device};
     GameSettingDevice device{GameSettingDevice::Shared};
-    EShipControlScope scope{EShipControlScope::General};
     ControlBindingIdentity binding{};
 
     auto operator==(FControlsFocusIdentity const& other) const -> bool {
-        return kind == other.kind && device == other.device && scope == other.scope &&
-               binding == other.binding;
+        return kind == other.kind && device == other.device && binding == other.binding;
     }
 };
 
@@ -225,7 +223,6 @@ class SGameOptionsView final : public SCompoundWidget {
     bool display_prompt_visible_{};
     bool binding_management_visible_{};
     GameSettingDevice controls_device_{GameSettingDevice::KeyboardMouse};
-    EShipControlScope controls_scope_{EShipControlScope::General};
 };
 
 } // namespace ioj

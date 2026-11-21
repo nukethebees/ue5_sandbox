@@ -12,7 +12,6 @@ struct FControlBindingView {
     FText display_category;
     EControlBindingGroup display_group{EControlBindingGroup::Flight};
     int32 display_order{};
-    EShipControlScope scope{EShipControlScope::General};
     EHardwareDevicePrimaryType device_type{EHardwareDevicePrimaryType::Unspecified};
     FKey current_key;
     FKey default_key;

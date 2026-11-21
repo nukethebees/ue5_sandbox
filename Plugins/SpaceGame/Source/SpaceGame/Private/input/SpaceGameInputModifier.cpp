@@ -1,26 +1,23 @@
 #include "SpaceGame/input/SpaceGameInputModifier.h"
 
 #include "ioj/input/response.h"
-#include "SpaceGame/input/SpaceGameInputUserSettings.h"
+#include "SpaceGame/settings/GameSettingsSubsystem.h"
 
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedPlayerInput.h"
 #include "GameFramework/PlayerController.h"
+#include <Engine/GameInstance.h>
 
 namespace ioj {
 namespace {
 auto input_settings(UEnhancedPlayerInput const* const player_input)
-    -> USpaceGameInputUserSettings const* {
-    auto const* const controller{
-        player_input != nullptr ? Cast<APlayerController>(player_input->GetOuter()) : nullptr};
-    auto const* const local_player{controller != nullptr ? controller->GetLocalPlayer() : nullptr};
-    auto const* const subsystem{
-        local_player != nullptr
-            ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)
-            : nullptr};
-    return subsystem != nullptr ? Cast<USpaceGameInputUserSettings>(subsystem->GetUserSettings())
-                                : nullptr;
+    -> UGameSettingsSubsystem const* {
+    auto const* controller{player_input ? Cast<APlayerController>(player_input->GetOuter())
+                                        : nullptr};
+    return controller
+             ? UGameInstance::GetSubsystem<UGameSettingsSubsystem>(controller->GetGameInstance())
+             : nullptr;
 }
 
 auto native_response(ESpaceGameInputResponse const response) -> input::Response {
@@ -29,11 +26,9 @@ auto native_response(ESpaceGameInputResponse const response) -> input::Response 
             return input::Response::TurnPointerDelta;
         case ESpaceGameInputResponse::GamepadTurn:
             return input::Response::GamepadTurn;
-        case ESpaceGameInputResponse::GamepadMove:
-            return input::Response::GamepadMove;
     }
     checkNoEntry();
-    return input::Response::GamepadMove;
+    return input::Response::GamepadTurn;
 }
 auto native_axis(ESpaceGameInputAxis const axis) -> input::Axis {
     switch (axis) {
@@ -43,10 +38,6 @@ auto native_axis(ESpaceGameInputAxis const axis) -> input::Axis {
             return input::Axis::Pitch;
         case ESpaceGameInputAxis::Yaw:
             return input::Axis::Yaw;
-        case ESpaceGameInputAxis::Roll:
-            return input::Axis::Roll;
-        case ESpaceGameInputAxis::VerticalTranslation:
-            return input::Axis::VerticalTranslation;
     }
     checkNoEntry();
     return input::Axis::None;
@@ -62,17 +53,7 @@ auto USpaceGameInputModifier::ModifyRaw_Implementation(
     if (settings == nullptr) {
         return current_value;
     }
-    GameSettingsState const values{.mouse_turn_sensitivity = settings->mouse_turn_sensitivity(),
-                                   .gamepad_turn_sensitivity = settings->gamepad_turn_sensitivity(),
-                                   .gamepad_turn_dead_zone = settings->gamepad_turn_dead_zone(),
-                                   .gamepad_move_dead_zone = settings->gamepad_move_dead_zone(),
-                                   .invert_mouse_pitch = settings->invert_mouse_pitch(),
-                                   .invert_mouse_yaw = settings->invert_mouse_yaw(),
-                                   .invert_gamepad_pitch = settings->invert_gamepad_pitch(),
-                                   .invert_gamepad_yaw = settings->invert_gamepad_yaw(),
-                                   .invert_gamepad_roll = settings->invert_gamepad_roll(),
-                                   .invert_gamepad_vertical_translation =
-                                       settings->invert_gamepad_vertical_translation()};
+    auto const& values{settings->settings_state()};
     auto const response_type{native_response(response)};
     auto const response_axis{native_axis(axis)};
     switch (current_value.GetValueType()) {

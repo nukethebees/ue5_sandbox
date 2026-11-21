@@ -54,3 +54,10 @@ See [gameplay logic](docs/logic.md).
 Run a scenario with `coj benchmark native-simulation --level LevelScripts/your-level.scm --seconds 10`.
 See [the native guide](../native/README.md) and [benchmark guide](../docs/benchmarks.md)
 for builds and profiling.
+
+## Settings
+
+- Set process and debug flags in `Settings/application.scm`.
+- Tune flight and gameplay in `Settings/simulation.scm` and visuals in `Settings/presentation.scm`. Missions import `Settings/level-defaults.scm`.
+- Set factory preferences in `Settings/user-defaults.scm`. Edit personal overrides in `Settings/user-settings.scm` or use **Options → Apply**. Packaged games store the same file under the local application settings directory in `IsleOfJebbers/Config/`.
+- Reset a category in **Options**, then **Apply**. Enhanced Input saves key mappings separately.
