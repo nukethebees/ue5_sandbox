@@ -17,9 +17,13 @@ SANDBOXEDITOR_API auto
     set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_path = {})
         -> S7AuthoringResult<AS7LevelAuthoringDocument*>;
 SANDBOXEDITOR_API auto s7_mission_path(AS7LevelAuthoringDocument const& document) -> FString;
-SANDBOXEDITOR_API auto check_s7_export(ULevel const& level,
-                                       AS7LevelAuthoringDocument const& document)
-    -> S7AuthoringResult<void>;
+struct FS7SceneCheck {
+    levels::LevelDefinition definition;
+    TArray<FString> warnings;
+};
+SANDBOXEDITOR_API auto check_s7_scene(ULevel const& level,
+                                      AS7LevelAuthoringDocument const& document)
+    -> S7AuthoringResult<FS7SceneCheck>;
 SANDBOXEDITOR_API auto s7_editor_config_path(AS7LevelAuthoringDocument const& document) -> FString;
 SANDBOXEDITOR_API auto read_s7_editor_input(AS7LevelAuthoringDocument const& document)
     -> S7AuthoringResult<levels::authoring::LevelInput>;

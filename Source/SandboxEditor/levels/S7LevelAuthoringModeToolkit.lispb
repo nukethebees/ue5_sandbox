@@ -17,8 +17,8 @@
       (auto :padding 2
         (vbox
           (authoring-row
-            (authoring-action "CheckExport" "Check Export"
-              (loc "FS7LevelAuthoringModeToolkit" "CheckExportTooltip" "Validate the current scene for export without writing files.") check_export)
+            (authoring-action "CheckScene" "Check Scene"
+              (loc "FS7LevelAuthoringModeToolkit" "CheckSceneTooltip" "Check pending placements, the linked script and shared assets without writing files.") check_scene)
             (authoring-action "Export" "Export Scene"
               (loc "FS7LevelAuthoringModeToolkit" "ExportTooltip" "Write enabled actors and the viewpoint to editor-config.scm.") export_scene))
           (authoring-row
@@ -29,18 +29,15 @@
           (authoring-row
             (authoring-action "Rebuild" "Rebuild Scene from Script"
               (loc "FS7LevelAuthoringModeToolkit" "RebuildTooltip" "Replace bound actors from the saved script. Unexported edits to those actors will be lost.") rebuild_scene)
-            (authoring-action "ValidateSaved" "Validate Saved Level"
-              (loc "FS7LevelAuthoringModeToolkit" "ValidateSavedTooltip" "Check the saved level script and shared assets. Report errors and missing optional assets.") validate_playable_level))
-          (authoring-row
             (authoring-action "EditScript" "Edit Level Script"
-              (loc "FS7LevelAuthoringModeToolkit" "EditScriptTooltip" "Open the linked .scm file in your external editor.") open_script_editor)
-            (authoring-action "EditResources" "Edit Shared Assets"
-              (loc "FS7LevelAuthoringModeToolkit" "EditResourcesTooltip" "Open the asset containing meshes, team palettes, effects, and actor classes shared by levels.") open_level_config))
-          (authoring-row
-            (assign entity_id_ SEditableTextBox
-              :HintText (loc "FS7LevelAuthoringModeToolkit" "EntityIdHint" "Selected entity ID"))
-            (authoring-action "RenameEntity" "Rename Entity ID"
-              (loc "FS7LevelAuthoringModeToolkit" "RenameEntityTooltip" "Change the selected bound actor's script ID on the next export.") rename_selected_entity))))
+              (loc "FS7LevelAuthoringModeToolkit" "EditScriptTooltip" "Open the linked .scm file in your external editor.") open_script_editor))
+          (auto :padding 2
+            (assign script_id_row_ SBox
+              (hbox
+                (auto :padding 2 (STextBlock :Text (loc "FS7LevelAuthoringModeToolkit" "ScriptId" "Script ID")))
+                (fill :padding 2 (assign entity_id_ SEditableTextBox
+                  :ToolTipText (loc "FS7LevelAuthoringModeToolkit" "ScriptIdTooltip" "Press Enter to rename this actor's exported ID. Update references in handwritten scripts.")
+                  :OnTextCommitted (method commit_script_id))))))))
       (auto :padding 4
         (assign status_ SMultiLineEditableTextBox :IsReadOnly true :AutoWrapText true))
       (auto (existing details)))))

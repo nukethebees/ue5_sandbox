@@ -50,13 +50,16 @@ auto FS7LevelAuthoringModeToolkit::GetInlineContent() const -> TSharedPtr<SWidge
 }
 
 void FS7LevelAuthoringModeToolkit::refresh() {
-    if (!mode_.IsValid()) {
+    if (!mode_.IsValid() || !status_.IsValid()) {
         return;
     }
     if (displayed_document_.Get() != mode_->document()) {
         displayed_document_ = mode_->document();
         details_->SetObject(displayed_document_.Get());
     }
+    auto const id{mode_->selected_script_id()};
+    script_id_row_->SetVisibility(id.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible);
+    entity_id_->SetText(FText::FromString(id));
     status_->SetText(mode_->status());
 }
 
@@ -69,19 +72,19 @@ void FS7LevelAuthoringModeToolkit::refresh() {
     }
 
 FORWARD_ACTION(create_document)
-FORWARD_ACTION(open_level_config)
-FORWARD_ACTION(validate_playable_level)
 FORWARD_ACTION(link_script)
-auto FS7LevelAuthoringModeToolkit::rename_selected_entity() -> FReply {
-    if (mode_.IsValid() && entity_id_.IsValid()) {
-        mode_->rename_selected_entity(entity_id_->GetText().ToString());
+void FS7LevelAuthoringModeToolkit::commit_script_id(FText const& text,
+                                                    ETextCommit::Type const commit) {
+    if (commit == ETextCommit::OnEnter && mode_.IsValid()) {
+        mode_->rename_selected_entity(text.ToString());
+    } else {
+        refresh();
     }
-    return FReply::Handled();
 }
 FORWARD_ACTION(open_script_editor)
 FORWARD_ACTION(rebuild_scene)
 FORWARD_ACTION(export_scene)
-FORWARD_ACTION(check_export)
+FORWARD_ACTION(check_scene)
 
 #undef FORWARD_ACTION
 #undef LOCTEXT_NAMESPACE

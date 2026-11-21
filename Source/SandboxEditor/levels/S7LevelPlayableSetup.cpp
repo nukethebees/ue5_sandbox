@@ -54,30 +54,6 @@ void prepare_s7_scene_for_pie(UWorld& world) {
     }
 }
 
-auto validate_playable_s7_level(AS7LevelAuthoringDocument const& document)
-    -> S7AuthoringResult<FString> {
-    auto definition{read_s7_authored_level(document)};
-    if (!definition) {
-        return S7AuthoringResult<FString>{std::unexpect, std::move(definition.error())};
-    }
-    if (!IsValid(document.level_config)) {
-        return S7AuthoringResult<FString>{std::unexpect,
-                                          TEXT("Shared level asset unavailable. Link the level "
-                                               "script to restore its asset reference.")};
-    }
-    auto compiled{compile_playable_s7_definition(*definition, *document.level_config)};
-    if (!compiled) {
-        return S7AuthoringResult<FString>{std::unexpect, std::move(compiled.error())};
-    }
-    TArray<FString> warnings;
-    document.level_config->get_validation_warnings(warnings, definition->settings().presentation);
-    if (!warnings.IsEmpty()) {
-        return FString::Printf(TEXT("Level passed with warnings. Check Edit Shared Assets.\n%s"),
-                               *FString::Join(warnings, TEXT("\n")));
-    }
-    return TEXT("Saved level and shared assets passed validation.");
-}
-
 auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
                                     USpaceGameLevelConfig const& resources)
     -> S7AuthoringResult<sim::LevelSimInitData> {

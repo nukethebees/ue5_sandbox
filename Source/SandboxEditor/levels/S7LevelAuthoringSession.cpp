@@ -326,10 +326,20 @@ auto s7_scene_needs_export(AS7LevelAuthoringDocument const& document) -> S7Autho
 }
 
 namespace {
-auto prepare_export(ULevel const& level,
-                    AS7LevelAuthoringDocument const& document,
-                    TArray<FS7LevelEntityBinding>& bindings) -> S7AuthoringResult<FString> {
-    using Result = S7AuthoringResult<FString>;
+struct PreparedExport {
+    FString source;
+    levels::LevelDefinition definition;
+    TArray<FS7LevelEntityBinding> bindings;
+};
+
+auto prepare_export(ULevel const& level, AS7LevelAuthoringDocument const& document)
+    -> S7AuthoringResult<PreparedExport> {
+    using Result = S7AuthoringResult<PreparedExport>;
+    if (!IsValid(document.level_config)) {
+        return Result{std::unexpect,
+                      TEXT("Shared level asset unavailable. Link the level script to restore its "
+                           "asset reference.")};
+    }
 
     auto ast{read_editor_ast(document)};
     if (!ast) {
@@ -342,6 +352,7 @@ auto prepare_export(ULevel const& level,
     if (!input) {
         return Result{std::unexpect, std::move(input.error())};
     }
+    TArray<FS7LevelEntityBinding> bindings;
     auto collected{collect_editor_scene(level, document, *input, bindings)};
     if (!collected) {
         return Result{std::unexpect, std::move(collected.error())};
@@ -371,24 +382,31 @@ auto prepare_export(ULevel const& level,
     if (!compiled) {
         return Result{std::unexpect, std::move(compiled.error())};
     }
-    return to_fstring(source);
+    return Result{std::in_place, to_fstring(source), std::move(*definition), MoveTemp(bindings)};
 }
 }
-auto check_s7_export(ULevel const& level, AS7LevelAuthoringDocument const& document)
-    -> S7AuthoringResult<void> {
-    TArray<FS7LevelEntityBinding> bindings;
-    return prepare_export(level, document, bindings).transform([](FString const&) {});
+auto check_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& document)
+    -> S7AuthoringResult<FS7SceneCheck> {
+    auto prepared{prepare_export(level, document)};
+    if (!prepared) {
+        return S7AuthoringResult<FS7SceneCheck>{std::unexpect, std::move(prepared.error())};
+    }
+    TArray<FString> warnings;
+    document.level_config->get_validation_warnings(warnings,
+                                                   prepared->definition.settings().presentation);
+    return S7AuthoringResult<FS7SceneCheck>{
+        std::in_place, std::move(prepared->definition), MoveTemp(warnings)};
 }
 auto export_s7_editor_config(ULevel& level, AS7LevelAuthoringDocument& document)
     -> S7AuthoringResult<void> {
-    TArray<FS7LevelEntityBinding> bindings;
-    auto source{prepare_export(level, document, bindings)};
-    if (!source) {
+    auto prepared{prepare_export(level, document)};
+    if (!prepared) {
         document.set_needs_export(true);
-        return S7AuthoringResult<void>{std::unexpect, std::move(source.error())};
+        return S7AuthoringResult<void>{std::unexpect, std::move(prepared.error())};
     }
     auto saved{s7_level_authoring_session_detail::save_generated(s7_editor_config_path(document),
-                                                                 *source)};
+                                                                 prepared->source)};
+    auto const& bindings{prepared->bindings};
     if (saved &&
         (!bindings.IsEmpty() || document.entities.ContainsByPredicate(
                                     [](auto const& value) { return !IsValid(value.actor); }))) {

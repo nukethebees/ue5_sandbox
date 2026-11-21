@@ -4,7 +4,6 @@
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringModeToolkit.h"
 #include "SandboxEditor/levels/S7LevelObserverCamera.h"
-#include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -28,8 +27,8 @@
 #include <SceneView.h>
 #include <ScopedTransaction.h>
 #include <Styling/AppStyle.h>
-#include <Subsystems/AssetEditorSubsystem.h>
 #include <UnrealClient.h>
+#include <UObject/ObjectSaveContext.h>
 
 #define LOCTEXT_NAMESPACE "US7LevelAuthoringMode"
 
@@ -55,36 +54,6 @@ auto select_source_path() -> TOptional<FString> {
     return MoveTemp(paths[0]);
 }
 
-auto selected_bound_entity(AS7LevelAuthoringDocument& document)
-    -> S7AuthoringResult<FS7LevelEntityBinding*> {
-    using Result = S7AuthoringResult<FS7LevelEntityBinding*>;
-
-    if (!GEditor) {
-        return Result{std::unexpect, TEXT("The editor selection is unavailable.")};
-    }
-
-    TArray<AActor*> selected;
-    for (FSelectionIterator it{*GEditor->GetSelectedActors()}; it; ++it) {
-        auto* const actor{Cast<AActor>(*it)};
-        if (IsValid(actor)) {
-            selected.AddUnique(actor);
-        }
-    }
-    if (selected.Num() != 1) {
-        return Result{std::unexpect, TEXT("Select exactly one bound entity first.")};
-    }
-
-    auto* const binding{document.entities.FindByPredicate(
-        [actor = selected[0]](FS7LevelEntityBinding const& candidate) {
-            return candidate.actor == actor;
-        })};
-    if (!binding) {
-        return Result{std::unexpect,
-                      TEXT("The selected actor is not an bound S7 entity. Rename an "
-                           "unbound actor in the Outliner before its first export.")};
-    }
-    return binding;
-}
 }
 
 namespace levels = ioj::levels;
@@ -104,13 +73,30 @@ US7LevelAuthoringMode::US7LevelAuthoringMode() {
 
 void US7LevelAuthoringMode::Enter() {
     Super::Enter();
+    FEditorDelegates::PostSaveWorldWithContext.AddWeakLambda(
+        this, [this](UWorld* world, FObjectPostSaveContext) {
+            if (document_.IsValid() && document_->GetWorld() == world) {
+                notify_changed();
+            }
+        });
     refresh_document();
     notify_changed();
 }
 
 void US7LevelAuthoringMode::Exit() {
+    FEditorDelegates::PostSaveWorldWithContext.RemoveAll(this);
     document_.Reset();
     Super::Exit();
+}
+
+void US7LevelAuthoringMode::ActorSelectionChangeNotify() {
+    Super::ActorSelectionChangeNotify();
+    notify_changed();
+}
+
+void US7LevelAuthoringMode::PostUndo() {
+    Super::PostUndo();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::CreateToolkit() {
@@ -285,35 +271,46 @@ void US7LevelAuthoringMode::create_document() {
     notify_changed();
 }
 
+auto US7LevelAuthoringMode::selected_binding() const -> FS7LevelEntityBinding* {
+    if (!document_.IsValid() || !GEditor) {
+        return nullptr;
+    }
+    auto* const selection{GEditor->GetSelectedActors()};
+    if (selection->Num() != 1) {
+        return nullptr;
+    }
+    auto* const actor{Cast<AActor>(selection->GetSelectedObject(0))};
+    return IsValid(actor)
+             ? document_->entities.FindByPredicate(
+                   [actor](FS7LevelEntityBinding const& binding) { return binding.actor == actor; })
+             : nullptr;
+}
+auto US7LevelAuthoringMode::selected_script_id() const -> FString {
+    auto const* binding{selected_binding()};
+    return binding ? binding->id : FString{};
+}
 void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
-    if (!document_.IsValid()) {
-        set_status(LOCTEXT("NoDocumentForRename", "Create an S7 authoring document first."));
-        notify_changed();
-        return;
-    }
-
-    auto const binding{selected_bound_entity(*document_)};
+    auto* const binding{selected_binding()};
     if (!binding) {
-        set_status(FText::FromString(binding.error()));
+        set_status(LOCTEXT("NoBoundActor", "Select one bound actor to edit its Script ID."));
         notify_changed();
         return;
     }
 
-    auto const& new_id{id};
     if (!is_canonical_s7_level_entity_id(FStringView{id})) {
         set_status(LOCTEXT("InvalidEntityId",
                            "Entity IDs must be lowercase S7 symbols beginning with a letter."));
         notify_changed();
         return;
     }
-    if ((*binding)->id == new_id) {
+    if (binding->id == id) {
         set_status(LOCTEXT("UnchangedEntityId", "The selected entity already has that ID."));
         notify_changed();
         return;
     }
     if (document_->entities.ContainsByPredicate(
-            [binding = *binding, new_id](FS7LevelEntityBinding const& candidate) {
-                return &candidate != binding && candidate.id == new_id;
+            [binding, &id](FS7LevelEntityBinding const& candidate) {
+                return &candidate != binding && candidate.id == id;
             })) {
         set_status(LOCTEXT("DuplicateEntityId", "That S7 entity ID is already in use."));
         notify_changed();
@@ -322,34 +319,10 @@ void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
 
     FScopedTransaction transaction{LOCTEXT("RenameEntityId", "Rename S7 Entity ID")};
     document_->Modify();
-    (*binding)->id = new_id;
+    binding->id = id;
     document_->set_needs_export(true);
     set_status(FText::Format(LOCTEXT("RenamedEntityId", "Renamed selected entity to '{0}'."),
-                             FText::FromString(new_id)));
-    notify_changed();
-}
-
-void US7LevelAuthoringMode::open_level_config() {
-    auto* const config{document_.IsValid() ? document_->level_config.Get() : nullptr};
-    auto* const assets{GEditor ? GEditor->GetEditorSubsystem<UAssetEditorSubsystem>() : nullptr};
-    if (!IsValid(config) || !IsValid(assets) || !assets->OpenEditorForAsset(config)) {
-        set_status(
-            LOCTEXT("OpenLevelConfigFailed", "Could not open the linked level's shared asset."));
-    } else {
-        set_status(LOCTEXT(
-            "OpenLevelConfig",
-            "This asset supplies meshes, effects and team palettes for all linked levels."));
-    }
-    notify_changed();
-}
-
-void US7LevelAuthoringMode::validate_playable_level() {
-    if (!document_.IsValid()) {
-        set_status(LOCTEXT("NoLevelForValidation", "Open an S7 level before validating it."));
-    } else {
-        auto const result{validate_playable_s7_level(*document_)};
-        set_status(FText::FromString(result ? *result : result.error()));
-    }
+                             FText::FromString(id)));
     notify_changed();
 }
 
@@ -398,14 +371,21 @@ void US7LevelAuthoringMode::rebuild_scene() {
     notify_changed();
 }
 
-void US7LevelAuthoringMode::check_export() {
-    auto* level{current_level()};
-    if (!level || !document_.IsValid()) {
-        return;
+void US7LevelAuthoringMode::check_scene() {
+    auto* const level{current_level()};
+    if (!IsValid(level) || !document_.IsValid()) {
+        set_status(
+            LOCTEXT("NoScene", "Create a level script or link one before checking the scene."));
+    } else if (auto checked{check_s7_scene(*level, *document_)}) {
+        set_status(checked->warnings.IsEmpty()
+                       ? LOCTEXT("SceneChecked", "Scene passes export checks.")
+                       : FText::Format(
+                             LOCTEXT("SceneWarnings",
+                                     "Scene passes export checks. Check Shared Level Assets:\n{0}"),
+                             FText::FromString(FString::Join(checked->warnings, TEXT("\n")))));
+    } else {
+        set_status(FText::FromString(checked.error()));
     }
-    auto result{check_s7_export(*level, *document_)};
-    set_status(result ? LOCTEXT("ExportChecked", "Scene passes export checks.")
-                      : FText::FromString(result.error()));
     notify_changed();
 }
 

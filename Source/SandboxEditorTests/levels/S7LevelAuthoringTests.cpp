@@ -3,6 +3,7 @@
 #include <ioj/sim/levels/level_sim.h>
 #include <SandboxEditor/levels/S7EntityGeometryExport.h>
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
+#include <SandboxEditor/levels/S7LevelAuthoringMode.h>
 #include <SandboxEditor/levels/S7LevelAuthoringSession.h>
 #include <SandboxEditor/levels/S7LevelPlayableSetup.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
@@ -19,6 +20,7 @@
 #include <Components/StaticMeshComponent.h>
 #include <CQTest.h>
 #include <Editor.h>
+#include <EditorModeManager.h>
 #include <Engine/Level.h>
 #include <Engine/StaticMesh.h>
 #include <Engine/World.h>
@@ -511,8 +513,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Script-owned replacement defaults to excluded"),
                               replacement->export_to_script);
         replacement->export_to_script = true;
-        TestRunner->TestFalse(TEXT("Check Export rejects the duplicate ID"),
-                              ioj::editor::check_s7_export(level, document).has_value());
+        TestRunner->TestFalse(TEXT("Check Scene rejects the duplicate ID"),
+                              ioj::editor::check_s7_scene(level, document).has_value());
         TestRunner->TestFalse(TEXT("Export rejects the duplicate ID"),
                               ioj::editor::export_s7_editor_config(level, document).has_value());
         TestRunner->TestTrue(TEXT("Saved mission remains playable"),
@@ -790,7 +792,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         player->set_team(ioj::ETestTeam::Blue);
         if (!assert_success(*TestRunner,
                             TEXT("Check unbound actor"),
-                            ioj::editor::check_s7_export(level, document))) {
+                            ioj::editor::check_s7_scene(level, document))) {
             return;
         }
         TestRunner->TestTrue(TEXT("Checking leaves edits pending"), document.needs_export);
@@ -803,6 +805,39 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                             ioj::editor::export_s7_editor_config(level, document))) {
             return;
         }
+        auto& modes{GLevelEditorModeTools()};
+        auto const had_mode{modes.IsModeActive(US7LevelAuthoringMode::mode_id)};
+        modes.ActivateMode(US7LevelAuthoringMode::mode_id);
+        ON_SCOPE_EXIT {
+            if (!had_mode) {
+                modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
+            }
+        };
+        auto& mode{*CastChecked<US7LevelAuthoringMode>(
+            modes.GetActiveScriptableMode(US7LevelAuthoringMode::mode_id))};
+        GEditor->SelectNone(false, true);
+        GEditor->SelectActor(player, true, true);
+        TestRunner->TestEqual(TEXT("Selected player shows its bound ID"),
+                              mode.selected_script_id(),
+                              FString{TEXT("pilot")});
+        mode.rename_selected_entity(TEXT("wing"));
+        TestRunner->TestEqual(TEXT("Duplicate ID keeps the binding"),
+                              mode.selected_script_id(),
+                              FString{TEXT("pilot")});
+        mode.rename_selected_entity(TEXT("lead"));
+        TestRunner->TestEqual(
+            TEXT("Renaming updates the binding"), mode.selected_script_id(), FString{TEXT("lead")});
+        GEditor->UndoTransaction();
+        TestRunner->TestEqual(
+            TEXT("Undo restores the script ID"), mode.selected_script_id(), FString{TEXT("pilot")});
+        GEditor->SelectActor(wing, true, true);
+        TestRunner->TestTrue(TEXT("Multiple selection hides the ID"),
+                             mode.selected_script_id().IsEmpty());
+        GEditor->SelectNone(false, true);
+        GEditor->SelectActor(ignored, true, true);
+        TestRunner->TestTrue(TEXT("Unbound selection hides the ID"),
+                             mode.selected_script_id().IsEmpty());
+
         auto const* adopted{binding(document, TEXT("pilot"))};
         TestRunner->TestTrue(TEXT("New proxy defaults to Export"),
                              adopted && adopted->actor == player && player->export_to_script);
@@ -854,7 +889,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Play ignores orphaned editor config"),
                              ioj::editor::s7_scene_needs_export(document) == false);
         TestRunner->TestFalse(TEXT("A standalone mission cannot export its orphaned config"),
-                              ioj::editor::check_s7_export(level, document).has_value());
+                              ioj::editor::check_s7_scene(level, document).has_value());
         if (!assert_success(*TestRunner,
                             TEXT("Rebuild standalone mission"),
                             ioj::editor::import_s7_level(level, document))) {
@@ -900,7 +935,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                   directory.path, TEXT("Authoring/editor-config.scm"))));
     }
 
-    TEST_METHOD(ValidateSavedLevelReportsScriptAndAssetIssues)
+    TEST_METHOD(CheckSceneReportsPlacementScriptAndAssetIssues)
     {
         using namespace s7_level_authoring_tests;
         FTemporarySourceDirectory directory;
@@ -909,33 +944,45 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         auto& document{*fixture->document};
-        auto* const assets{DuplicateObject(document.level_config.Get(), &document)};
+        auto& level{*fixture->world->GetCurrentLevel()};
+        auto* const shared{document.level_config.Get()};
+        auto* const assets{DuplicateObject(shared, &document)};
         document.level_config = assets;
         assets->capital_ships.main_death_explosion = nullptr;
-        auto const warnings{ioj::editor::validate_playable_s7_level(document)};
+        auto const warnings{ioj::editor::check_s7_scene(level, document)};
         TestRunner->TestTrue(TEXT("Missing optional effect gives an actionable warning"),
-                             warnings &&
-                                 warnings->Contains(TEXT("capital_ships.main_death_explosion")));
+                             warnings && FString::Join(warnings->warnings, TEXT("\n"))
+                                             .Contains(TEXT("capital_ships.main_death_explosion")));
         assets->capital_ships.mesh = nullptr;
-        auto const errors{ioj::editor::validate_playable_s7_level(document)};
+        auto const errors{ioj::editor::check_s7_scene(level, document)};
         TestRunner->TestTrue(TEXT("Missing required mesh fails validation"),
                              !errors && errors.error().Contains(TEXT("capital_ships.mesh")));
         document.level_config = nullptr;
-        auto const missing{ioj::editor::validate_playable_s7_level(document)};
+        auto const missing{ioj::editor::check_s7_scene(level, document)};
         TestRunner->TestTrue(TEXT("Missing shared resource asset is diagnosed"),
                              !missing && missing.error().Contains(TEXT("Shared level asset")));
+
+        document.level_config = shared;
+        auto* const capital{binding(document, TEXT("capital"))->actor.Get()};
+        auto const location{capital->GetActorLocation()};
+        capital->SetActorLocation(FVector{1.e8, 0., 0.});
+        auto const placement{ioj::editor::check_s7_scene(level, document)};
+        TestRunner->TestTrue(TEXT("Check sees an unexported out-of-grid placement"),
+                             !placement &&
+                                 placement.error().Contains(TEXT("outside the collision grid")));
+        capital->SetActorLocation(location);
 
         if (!TestRunner->TestTrue(TEXT("Remove entry point"),
                                   IFileManager::Get().Delete(*directory.root()))) {
             return;
         }
         TestRunner->TestTrue(TEXT("Validate reports the missing root"),
-                             !ioj::editor::validate_playable_s7_level(document).has_value());
+                             !ioj::editor::check_s7_scene(level, document).has_value());
         if (!TestRunner->TestTrue(TEXT("Write malformed root"),
                                   write_source(directory.root(), TEXT("(level")))) {
             return;
         }
         TestRunner->TestTrue(TEXT("Validate reports the malformed root"),
-                             !ioj::editor::validate_playable_s7_level(document).has_value());
+                             !ioj::editor::check_s7_scene(level, document).has_value());
     }
 };

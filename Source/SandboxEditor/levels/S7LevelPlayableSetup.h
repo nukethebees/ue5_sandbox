@@ -22,8 +22,6 @@ namespace ioj::editor {
 SANDBOXEDITOR_API void prepare_s7_scene_for_pie(UWorld& world);
 auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
     -> S7AuthoringResult<FString>;
-SANDBOXEDITOR_API auto validate_playable_s7_level(AS7LevelAuthoringDocument const& document)
-    -> S7AuthoringResult<FString>;
 SANDBOXEDITOR_API auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
                                                       USpaceGameLevelConfig const& resources)
     -> S7AuthoringResult<sim::LevelSimInitData>;

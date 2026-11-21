@@ -3,6 +3,7 @@
 #include <Toolkits/BaseToolkit.h>
 
 class IDetailsView;
+class SBox;
 class SEditableTextBox;
 class SMultiLineEditableTextBox;
 class UEdMode;
@@ -24,18 +25,17 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     void refresh();
   private:
     auto create_document() -> FReply;
-    auto rename_selected_entity() -> FReply;
-    auto open_level_config() -> FReply;
-    auto validate_playable_level() -> FReply;
+    void commit_script_id(FText const& text, ETextCommit::Type commit);
     auto link_script() -> FReply;
     auto open_script_editor() -> FReply;
     auto rebuild_scene() -> FReply;
     auto export_scene() -> FReply;
-    auto check_export() -> FReply;
+    auto check_scene() -> FReply;
 
     TWeakObjectPtr<US7LevelAuthoringMode> mode_{};
     TWeakObjectPtr<AS7LevelAuthoringDocument> displayed_document_{};
     TSharedPtr<IDetailsView> details_{};
+    TSharedPtr<SBox> script_id_row_{};
     TSharedPtr<SEditableTextBox> entity_id_{};
     TSharedPtr<SMultiLineEditableTextBox> status_{};
     TSharedPtr<SWidget> content_{};

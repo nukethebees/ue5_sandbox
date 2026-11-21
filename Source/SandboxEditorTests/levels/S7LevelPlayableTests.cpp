@@ -154,9 +154,13 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                                  ioj::editor::s7_scene_needs_export(*document) == true);
             editor_enemy->spawn_time_seconds = 0.;
             world->SpawnActor<ioj::ATestCapitalShipProxy>();
-            if (!assert_success(*TestRunner,
-                                TEXT("Validate the saved scene with pending edits"),
-                                ioj::editor::validate_playable_s7_level(*document))) {
+            if (!assert_success(
+                    *TestRunner,
+                    TEXT("Validate the saved scene with pending edits"),
+                    ioj::editor::read_s7_authored_level(*document).and_then([&](auto const& saved) {
+                        return ioj::editor::compile_playable_s7_definition(saved,
+                                                                           *document->level_config);
+                    }))) {
                 return;
             }
         } else {

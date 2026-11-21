@@ -20,14 +20,14 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                         [SNew(SHorizontalBox) +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
-                                  .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                  "CheckExport",
-                                                  "Check Export"))
-                                  .ToolTipText(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                         "CheckExportTooltip",
-                                                         "Validate the current scene for export "
-                                                         "without writing files."))
-                                  .OnClicked(&self_, &ThisClass::check_export)] +
+                                  .Text(NSLOCTEXT(
+                                      "FS7LevelAuthoringModeToolkit", "CheckScene", "Check Scene"))
+                                  .ToolTipText(
+                                      NSLOCTEXT("FS7LevelAuthoringModeToolkit",
+                                                "CheckSceneTooltip",
+                                                "Check pending placements, the linked script and "
+                                                "shared assets without writing files."))
+                                  .OnClicked(&self_, &ThisClass::check_scene)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT(
@@ -76,54 +76,29 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                  "ValidateSaved",
-                                                  "Validate Saved Level"))
-                                  .ToolTipText(
-                                      NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                "ValidateSavedTooltip",
-                                                "Check the saved level script and shared assets. "
-                                                "Report errors and missing optional assets."))
-                                  .OnClicked(&self_, &ThisClass::validate_playable_level)]] +
-                    SandboxUI::Slate::vbox_auto_slot()
-                        [SNew(SHorizontalBox) +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                             [SNew(SButton)
-                                  .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
                                                   "EditScript",
                                                   "Edit Level Script"))
                                   .ToolTipText(NSLOCTEXT(
                                       "FS7LevelAuthoringModeToolkit",
                                       "EditScriptTooltip",
                                       "Open the linked .scm file in your external editor."))
-                                  .OnClicked(&self_, &ThisClass::open_script_editor)] +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                             [SNew(SButton)
-                                  .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                  "EditResources",
-                                                  "Edit Shared Assets"))
-                                  .ToolTipText(
-                                      NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                "EditResourcesTooltip",
-                                                "Open the asset containing meshes, team palettes, "
-                                                "effects, and actor classes shared by levels."))
-                                  .OnClicked(&self_, &ThisClass::open_level_config)]] +
-                    SandboxUI::Slate::vbox_auto_slot()
-                        [SNew(SHorizontalBox) +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                             [SAssignNew(self_.entity_id_, SEditableTextBox)
-                                  .HintText(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                      "EntityIdHint",
-                                                      "Selected entity ID"))] +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                             [SNew(SButton)
-                                  .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                  "RenameEntity",
-                                                  "Rename Entity ID"))
-                                  .ToolTipText(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                         "RenameEntityTooltip",
-                                                         "Change the selected bound actor's script "
-                                                         "ID on the next export."))
-                                  .OnClicked(&self_, &ThisClass::rename_selected_entity)]]] +
+                                  .OnClicked(&self_, &ThisClass::open_script_editor)]] +
+                    SandboxUI::Slate::vbox_auto_slot(FMargin{2.0f})[SAssignNew(
+                        self_.script_id_row_,
+                        SBox)[SNew(SHorizontalBox) +
+                              SandboxUI::Slate::hbox_auto_slot(
+                                  FMargin{2.0f})[SNew(STextBlock)
+                                                     .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
+                                                                     "ScriptId",
+                                                                     "Script ID"))] +
+                              SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
+                                  [SAssignNew(self_.entity_id_, SEditableTextBox)
+                                       .ToolTipText(NSLOCTEXT(
+                                           "FS7LevelAuthoringModeToolkit",
+                                           "ScriptIdTooltip",
+                                           "Press Enter to rename this actor's exported ID. Update "
+                                           "references in handwritten scripts."))
+                                       .OnTextCommitted(&self_, &ThisClass::commit_script_id)]]]] +
                SandboxUI::Slate::vbox_auto_slot(
                    FMargin{4.0f})[SAssignNew(self_.status_, SMultiLineEditableTextBox)
                                       .IsReadOnly(true)

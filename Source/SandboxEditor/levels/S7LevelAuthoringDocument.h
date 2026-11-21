@@ -13,10 +13,10 @@ USTRUCT()
 struct FS7LevelEntityBinding {
     GENERATED_BODY()
 
-    UPROPERTY(VisibleAnywhere, Category = "Level Authoring")
+    UPROPERTY()
     FString id;
 
-    UPROPERTY(VisibleAnywhere, Category = "Level Authoring")
+    UPROPERTY()
     TObjectPtr<AActor> actor{nullptr};
 };
 
@@ -24,13 +24,13 @@ USTRUCT()
 struct FS7LevelCameraAuthoringData {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, Category = "Level Authoring")
+    UPROPERTY(EditAnywhere, Category = "Viewpoint")
     TArray<TObjectPtr<AActor>> targets{};
 
-    UPROPERTY(EditAnywhere, Category = "Level Authoring")
+    UPROPERTY(EditAnywhere, Category = "Viewpoint")
     FVector offset_direction{-1.0, -1.0, 0.7};
 
-    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.001"))
+    UPROPERTY(EditAnywhere, Category = "Viewpoint", meta = (ClampMin = "0.001"))
     double distance{100000.0};
 };
 
@@ -46,6 +46,8 @@ UCLASS(NotBlueprintable,
                          Physics,
                          Replication,
                          Rendering,
+                         Tick,
+                         TransformCommon,
                          WorldPartition))
 class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     GENERATED_BODY()
@@ -62,12 +64,14 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     UPROPERTY(VisibleAnywhere, Category = "Document")
     FString source_path{};
 
-    UPROPERTY(VisibleAnywhere,
-              Category = "Level",
-              meta = (ToolTip = "Shared canonical S7 runtime resources"))
+    UPROPERTY(
+        VisibleAnywhere,
+        Category = "Level",
+        meta = (DisplayName = "Shared Level Assets",
+                ToolTip = "Meshes, palettes, effects and collision classes shared by levels."))
     TObjectPtr<ioj::USpaceGameLevelConfig> level_config{nullptr};
 
-    UPROPERTY(VisibleAnywhere, Category = "Entities", meta = (TitleProperty = "id"))
+    UPROPERTY()
     TArray<FS7LevelEntityBinding> entities{};
 
     UPROPERTY(EditAnywhere, Category = "Viewpoint")

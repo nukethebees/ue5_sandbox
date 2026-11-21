@@ -7,6 +7,7 @@
 #include "S7LevelAuthoringMode.generated.h"
 
 class AS7LevelAuthoringDocument;
+struct FS7LevelEntityBinding;
 
 UCLASS(Transient)
 class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEdMode {
@@ -19,6 +20,8 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void Enter() override;
     void Exit() override;
     void CreateToolkit() override;
+    void ActorSelectionChangeNotify() override;
+    void PostUndo() override;
     bool RequiresLegacyViewportInteractions() const override { return false; }
     void Tick(FEditorViewportClient* viewport_client, float delta_time) override;
     void Render(FSceneView const* view,
@@ -34,15 +37,15 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
 
     void create_document();
     void rename_selected_entity(FString id);
-    void open_level_config();
-    void validate_playable_level();
+    auto selected_script_id() const -> FString;
     void link_script();
     void open_script_editor();
     void rebuild_scene();
     void export_scene();
-    void check_export();
+    void check_scene();
   private:
     auto current_level() const -> ULevel*;
+    auto selected_binding() const -> FS7LevelEntityBinding*;
     void refresh_document();
     void set_status(FText text);
     void notify_changed();
