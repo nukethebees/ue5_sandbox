@@ -106,8 +106,7 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                     IsValid(key_settings)
                         ? Cast<ioj::UControlBindingMetadata>(key_settings->Metadata)
                         : nullptr};
-                TestRunner->TestTrue(TEXT("Mapping metadata has owning scope"),
-                                     IsValid(metadata) && metadata->scope == definition.scope);
+                TestRunner->TestTrue(TEXT("Mapping metadata has owning scope"), IsValid(metadata));
             }
         }
 
@@ -118,23 +117,14 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                 TestRunner->TestTrue(name, action->ValueType == expected);
             }
         };
-        for (auto const* const name : {TEXT("IA_Ship_TranslateForward"),
-                                       TEXT("IA_Ship_TranslateRight"),
-                                       TEXT("IA_Ship_TranslateUp"),
-                                       TEXT("IA_Ship_Pitch"),
-                                       TEXT("IA_Ship_Yaw"),
-                                       TEXT("IA_Ship_Roll"),
-                                       TEXT("IA_Ship_Accelerate")}) {
+        for (auto const* const name :
+             {TEXT("IA_Ship_Pitch"), TEXT("IA_Ship_Yaw"), TEXT("IA_Ship_Accelerate")}) {
             check_action(name, EInputActionValueType::Axis1D);
         }
         for (auto const* const name : {TEXT("IA_Ship_Brake"),
                                        TEXT("IA_Ship_Boost"),
                                        TEXT("IA_Ship_EmergencyBrake"),
-                                       TEXT("IA_Ship_FirePrimary"),
-                                       TEXT("IA_Ship_SelectStarfox"),
-                                       TEXT("IA_Ship_SelectFighter"),
-                                       TEXT("IA_Ship_SelectSkater"),
-                                       TEXT("IA_Ship_SelectGunship")}) {
+                                       TEXT("IA_Ship_FirePrimary")}) {
             check_action(name, EInputActionValueType::Boolean);
         }
     }
@@ -158,17 +148,9 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                                       FString{action}.ToLower());
             }
         };
-        check_scope(EShipControlScope::General,
-                    {{EKeys::Escape, TEXT("IA_pause")},
-                     {EKeys::Gamepad_Special_Right, TEXT("IA_pause")},
-                     {EKeys::One, TEXT("IA_Ship_SelectStarfox")},
-                     {EKeys::Two, TEXT("IA_Ship_SelectFighter")},
-                     {EKeys::Three, TEXT("IA_Ship_SelectSkater")},
-                     {EKeys::Four, TEXT("IA_Ship_SelectGunship")},
-                     {EKeys::Gamepad_DPad_Up, TEXT("IA_Ship_SelectStarfox")},
-                     {EKeys::Gamepad_DPad_Right, TEXT("IA_Ship_SelectFighter")},
-                     {EKeys::Gamepad_DPad_Down, TEXT("IA_Ship_SelectSkater")},
-                     {EKeys::Gamepad_DPad_Left, TEXT("IA_Ship_SelectGunship")}});
+        check_scope(
+            EShipControlScope::General,
+            {{EKeys::Escape, TEXT("IA_pause")}, {EKeys::Gamepad_Special_Right, TEXT("IA_pause")}});
         check_scope(EShipControlScope::Starfox,
                     {{EKeys::MouseY, TEXT("IA_Ship_Pitch")},
                      {EKeys::MouseX, TEXT("IA_Ship_Yaw")},
@@ -184,145 +166,16 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                      {EKeys::Gamepad_RightShoulder, TEXT("IA_Ship_Boost")},
                      {EKeys::Gamepad_FaceButton_Left, TEXT("IA_Ship_EmergencyBrake")},
                      {EKeys::Gamepad_RightTriggerAxis, TEXT("IA_Ship_FirePrimary")}});
-        check_scope(EShipControlScope::Fighter,
-                    {{EKeys::MouseY, TEXT("IA_Ship_Pitch")},
-                     {EKeys::MouseX, TEXT("IA_Ship_Yaw")},
-                     {EKeys::LeftMouseButton, TEXT("IA_Ship_FirePrimary")},
-                     {EKeys::W, TEXT("IA_Ship_Accelerate")},
-                     {EKeys::S, TEXT("IA_Ship_Brake")},
-                     {EKeys::LeftShift, TEXT("IA_Ship_Boost")},
-                     {EKeys::X, TEXT("IA_Ship_EmergencyBrake")},
-                     {EKeys::Q, TEXT("IA_Ship_Roll")},
-                     {EKeys::E, TEXT("IA_Ship_Roll")},
-                     {EKeys::Gamepad_RightY, TEXT("IA_Ship_Pitch")},
-                     {EKeys::Gamepad_RightX, TEXT("IA_Ship_Yaw")},
-                     {EKeys::Gamepad_LeftX, TEXT("IA_Ship_Roll")},
-                     {EKeys::Gamepad_LeftTriggerAxis, TEXT("IA_Ship_Accelerate")},
-                     {EKeys::Gamepad_LeftShoulder, TEXT("IA_Ship_Brake")},
-                     {EKeys::Gamepad_RightShoulder, TEXT("IA_Ship_Boost")},
-                     {EKeys::Gamepad_FaceButton_Right, TEXT("IA_Ship_EmergencyBrake")},
-                     {EKeys::Gamepad_RightTriggerAxis, TEXT("IA_Ship_FirePrimary")}});
-        check_scope(EShipControlScope::Skater,
-                    {{EKeys::MouseY, TEXT("IA_Ship_Pitch")},
-                     {EKeys::MouseX, TEXT("IA_Ship_Yaw")},
-                     {EKeys::LeftMouseButton, TEXT("IA_Ship_FirePrimary")},
-                     {EKeys::W, TEXT("IA_Ship_Accelerate")},
-                     {EKeys::S, TEXT("IA_Ship_Brake")},
-                     {EKeys::LeftShift, TEXT("IA_Ship_Boost")},
-                     {EKeys::X, TEXT("IA_Ship_EmergencyBrake")},
-                     {EKeys::A, TEXT("IA_Ship_Roll")},
-                     {EKeys::D, TEXT("IA_Ship_Roll")},
-                     {EKeys::Gamepad_LeftY, TEXT("IA_Ship_Pitch")},
-                     {EKeys::Gamepad_LeftX, TEXT("IA_Ship_Yaw")},
-                     {EKeys::Gamepad_RightX, TEXT("IA_Ship_Roll")},
-                     {EKeys::Gamepad_LeftTriggerAxis, TEXT("IA_Ship_Accelerate")},
-                     {EKeys::Gamepad_LeftShoulder, TEXT("IA_Ship_Brake")},
-                     {EKeys::Gamepad_RightShoulder, TEXT("IA_Ship_Boost")},
-                     {EKeys::Gamepad_FaceButton_Right, TEXT("IA_Ship_EmergencyBrake")},
-                     {EKeys::Gamepad_RightTriggerAxis, TEXT("IA_Ship_FirePrimary")}});
-        check_scope(EShipControlScope::Gunship,
-                    {{EKeys::MouseY, TEXT("IA_Ship_Pitch")},
-                     {EKeys::MouseX, TEXT("IA_Ship_Yaw")},
-                     {EKeys::LeftMouseButton, TEXT("IA_Ship_FirePrimary")},
-                     {EKeys::W, TEXT("IA_Ship_TranslateForward")},
-                     {EKeys::S, TEXT("IA_Ship_TranslateForward")},
-                     {EKeys::D, TEXT("IA_Ship_TranslateRight")},
-                     {EKeys::A, TEXT("IA_Ship_TranslateRight")},
-                     {EKeys::SpaceBar, TEXT("IA_Ship_TranslateUp")},
-                     {EKeys::C, TEXT("IA_Ship_TranslateUp")},
-                     {EKeys::LeftShift, TEXT("IA_Ship_Boost")},
-                     {EKeys::LeftControl, TEXT("IA_Ship_Brake")},
-                     {EKeys::X, TEXT("IA_Ship_EmergencyBrake")},
-                     {EKeys::Gamepad_LeftY, TEXT("IA_Ship_TranslateForward")},
-                     {EKeys::Gamepad_LeftX, TEXT("IA_Ship_TranslateRight")},
-                     {EKeys::Gamepad_RightY, TEXT("IA_Ship_Pitch")},
-                     {EKeys::Gamepad_RightX, TEXT("IA_Ship_Yaw")},
-                     {EKeys::Gamepad_FaceButton_Top, TEXT("IA_Ship_TranslateUp")},
-                     {EKeys::Gamepad_FaceButton_Bottom, TEXT("IA_Ship_TranslateUp")},
-                     {EKeys::Gamepad_RightShoulder, TEXT("IA_Ship_Boost")},
-                     {EKeys::Gamepad_LeftShoulder, TEXT("IA_Ship_Brake")},
-                     {EKeys::Gamepad_LeftTriggerAxis, TEXT("IA_Ship_EmergencyBrake")},
-                     {EKeys::Gamepad_RightTriggerAxis, TEXT("IA_Ship_FirePrimary")}});
-    }
-
-    TEST_METHOD(DirectionalBindingsPreserveSign)
-    {
-        using ioj::EShipControlScope;
-        auto check_sign = [this](EShipControlScope const scope,
-                                 FKey const key,
-                                 TCHAR const* const action,
-                                 bool const negative) {
-            auto const* const context{ioj::load_ship_control_context(scope)};
-            if (!TestRunner->TestNotNull(TEXT("Directional context loads"), context)) {
-                return;
-            }
-            int32 matching{};
-            for (auto const& mapping : context->GetMappings()) {
-                if (mapping.Key != key) {
-                    continue;
-                }
-                ++matching;
-                TestRunner->TestEqual(
-                    TEXT("Directional action"), mapping.Action->GetName(), FString{action});
-                int32 negate_count{};
-                int32 response_count{};
-                int32 negate_index{INDEX_NONE};
-                int32 response_index{INDEX_NONE};
-                for (int32 index{}; index < mapping.Modifiers.Num(); ++index) {
-                    auto const modifier_ptr{mapping.Modifiers[index]};
-                    auto const* const modifier{modifier_ptr.Get()};
-                    if (modifier->IsA<UInputModifierNegate>()) {
-                        ++negate_count;
-                        negate_index = index;
-                    }
-                    if (modifier->IsA<ioj::USpaceGameInputModifier>()) {
-                        ++response_count;
-                        response_index = index;
-                    }
-                }
-                TestRunner->TestEqual(TEXT("Negate presence matches authored direction"),
-                                      negate_count,
-                                      negative ? 1 : 0);
-                TestRunner->TestEqual(TEXT("Gamepad directional response remains present"),
-                                      response_count,
-                                      key.IsGamepadKey() ? 1 : 0);
-                TestRunner->TestEqual(TEXT("No unexpected directional modifier"),
-                                      mapping.Modifiers.Num(),
-                                      negate_count + response_count);
-                if (negative && response_count == 1) {
-                    TestRunner->TestTrue(TEXT("Authored Negate runs before user inversion"),
-                                         negate_index < response_index);
-                }
-            }
-            TestRunner->TestEqual(TEXT("Directional key has one mapping"), matching, 1);
-        };
-        check_sign(EShipControlScope::Fighter, EKeys::Q, TEXT("IA_Ship_Roll"), true);
-        check_sign(EShipControlScope::Fighter, EKeys::E, TEXT("IA_Ship_Roll"), false);
-        check_sign(EShipControlScope::Skater, EKeys::A, TEXT("IA_Ship_Roll"), true);
-        check_sign(EShipControlScope::Skater, EKeys::D, TEXT("IA_Ship_Roll"), false);
-        for (auto const& [positive, negative, action] :
-             {std::tuple{EKeys::W, EKeys::S, TEXT("IA_Ship_TranslateForward")},
-              std::tuple{EKeys::D, EKeys::A, TEXT("IA_Ship_TranslateRight")},
-              std::tuple{EKeys::SpaceBar, EKeys::C, TEXT("IA_Ship_TranslateUp")},
-              std::tuple{EKeys::Gamepad_FaceButton_Top,
-                         EKeys::Gamepad_FaceButton_Bottom,
-                         TEXT("IA_Ship_TranslateUp")}}) {
-            check_sign(EShipControlScope::Gunship, positive, action, false);
-            check_sign(EShipControlScope::Gunship, negative, action, true);
-        }
     }
 
     TEST_METHOD(ControllerAxesCarrySemanticIdentity)
     {
         using ioj::EShipControlScope;
         using ioj::ESpaceGameInputAxis;
-        for (auto const scope : {EShipControlScope::Starfox,
-                                 EShipControlScope::Fighter,
-                                 EShipControlScope::Skater,
-                                 EShipControlScope::Gunship}) {
-            auto const* const context{ioj::load_ship_control_context(scope)};
+        {
+            auto const* const context{ioj::load_ship_control_context(EShipControlScope::Starfox)};
             if (!TestRunner->TestNotNull(TEXT("Flight context loads"), context)) {
-                continue;
+                return;
             }
             for (auto const& mapping : context->GetMappings()) {
                 if (!mapping.Key.IsGamepadKey() && mapping.Key != EKeys::MouseX &&
@@ -335,10 +188,6 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                     expected = ESpaceGameInputAxis::Pitch;
                 } else if (name == TEXT("IA_Ship_Yaw")) {
                     expected = ESpaceGameInputAxis::Yaw;
-                } else if (name == TEXT("IA_Ship_Roll")) {
-                    expected = ESpaceGameInputAxis::Roll;
-                } else if (name == TEXT("IA_Ship_TranslateUp")) {
-                    expected = ESpaceGameInputAxis::VerticalTranslation;
                 } else {
                     continue;
                 }
@@ -381,14 +230,5 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Starfox asset"),
                              input.starfox ==
                                  ioj::load_ship_control_context(ioj::EShipControlScope::Starfox));
-        TestRunner->TestTrue(TEXT("Fighter asset"),
-                             input.fighter ==
-                                 ioj::load_ship_control_context(ioj::EShipControlScope::Fighter));
-        TestRunner->TestTrue(TEXT("Skater asset"),
-                             input.skater ==
-                                 ioj::load_ship_control_context(ioj::EShipControlScope::Skater));
-        TestRunner->TestTrue(TEXT("Gunship asset"),
-                             input.gunship ==
-                                 ioj::load_ship_control_context(ioj::EShipControlScope::Gunship));
     }
 };

@@ -70,18 +70,9 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     /* **************************************** */
     // Flight controls
     /* **************************************** */
-    void set_forward_input(float input);
-    void set_right_input(float input);
-    void set_up_input(float input);
     void set_pitch_input(float input);
     void set_yaw_input(float input);
-    void set_roll_input(float input);
     void set_accelerator(float input);
-    void select_flight_model_slot(sim::player::FlightModelSlot slot);
-    auto get_active_flight_model_slot() const -> sim::player::FlightModelSlot;
-    auto set_flight_model_slot_profile(sim::player::FlightModelSlot slot,
-                                       sim::player::FlightModelProfile profile) -> bool;
-    auto get_active_flight_model_profile() const -> sim::player::FlightModelProfile;
     void start_boost();
     void stop_boost();
     void start_brake();
@@ -90,8 +81,6 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     void stop_brake();
     auto get_velocity() const -> FVector;
     auto get_speed() const -> float;
-    auto get_persistent_forward_target_speed() const -> float;
-    auto get_sampled_target_speed_scale() const -> FVector2D;
 
     /* **************************************** */
     // Energy and weapons
@@ -172,9 +161,6 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Logging", meta = (AllowPrivateAccess))
     FActorLoggingConfig log_config{1.f};
-
-    sim::player::FlightModelLoadout flight_models_{
-        sim::player::make_default_flight_model_loadout()};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Debug", meta = (AllowPrivateAccess))

@@ -16,8 +16,6 @@ void UFlightVectorDebugWidget::NativePreConstruct() {
     if (IsDesignTime()) {
         data_ = {
             .turn_input = Vector2f{0.4f, -0.2f},
-            .move_input = Vector2f{-0.3f, 0.8f},
-            .target_velocity = Vector2f{0.2f, 0.9f},
             .local_velocity = Vector2f{-0.6f, 0.7f},
         };
     }
@@ -53,18 +51,12 @@ void UFlightVectorDebugWidget::rebuild_widget_tree() {
     }
 
     configure_vector_widget(turn_input_widget_, TEXT("turn_input_widget"), INVTEXT("Turning"));
-    configure_vector_widget(move_input_widget_, TEXT("move_input_widget"), INVTEXT("Movement"));
-    configure_vector_widget(
-        target_velocity_widget_, TEXT("target_velocity_widget"), INVTEXT("Target velocity"));
     configure_vector_widget(
         local_velocity_widget_, TEXT("local_velocity_widget"), INVTEXT("Local velocity"));
 }
 
 void UFlightVectorDebugWidget::update_widgets() {
-    for (auto* const widget : {turn_input_widget_,
-                               move_input_widget_,
-                               target_velocity_widget_,
-                               local_velocity_widget_}) {
+    for (auto* const widget : {turn_input_widget_, local_velocity_widget_}) {
         if (!IsValid(widget)) {
             continue;
         }
@@ -77,12 +69,6 @@ void UFlightVectorDebugWidget::update_widgets() {
 
     if (turn_input_widget_) {
         turn_input_widget_->update(to_unreal(Vector2d{data_.turn_input}));
-    }
-    if (move_input_widget_) {
-        move_input_widget_->update(to_unreal(Vector2d{data_.move_input}));
-    }
-    if (target_velocity_widget_) {
-        target_velocity_widget_->update(to_unreal(Vector2d{data_.target_velocity}));
     }
     if (local_velocity_widget_) {
         local_velocity_widget_->update(to_unreal(Vector2d{data_.local_velocity}));
@@ -105,19 +91,8 @@ void UFlightVectorDebugWidget::configure_vector_widget(UVector2DWidget*& widget,
     slot->SetHorizontalAlignment(HAlign_Fill);
     slot->SetVerticalAlignment(VAlign_Fill);
 
-    if (widget == turn_input_widget_) {
-        slot->SetRow(0);
-        slot->SetColumn(0);
-    } else if (widget == move_input_widget_) {
-        slot->SetRow(0);
-        slot->SetColumn(1);
-    } else if (widget == target_velocity_widget_) {
-        slot->SetRow(1);
-        slot->SetColumn(0);
-    } else {
-        slot->SetRow(1);
-        slot->SetColumn(1);
-    }
+    slot->SetRow(0);
+    slot->SetColumn(widget == turn_input_widget_ ? 0 : 1);
 }
 
 } // namespace ioj

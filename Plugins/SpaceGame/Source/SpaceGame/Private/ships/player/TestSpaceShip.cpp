@@ -75,7 +75,6 @@ auto ATestSpaceShip::make_spawn_data() const -> sim::player::PlayerSpawnData {
     result.laser_mode = initial_.laser_mode;
     result.laser_fire_rate = initial_.laser_fire_rate;
     result.health = {initial_.health, initial_.health};
-    result.flight_models = flight_models_;
 
     result.config = initial_;
     return result;
@@ -146,53 +145,14 @@ auto ATestSpaceShip::get_kills() const -> KillCount {
 /* **************************************** */
 // Flight controls
 /* **************************************** */
-void ATestSpaceShip::set_forward_input(float const input) {
-    commands().set_forward_input(input);
-}
-void ATestSpaceShip::set_right_input(float const input) {
-    commands().set_right_input(input);
-}
-void ATestSpaceShip::set_up_input(float const input) {
-    commands().set_up_input(input);
-}
 void ATestSpaceShip::set_pitch_input(float const input) {
     commands().set_pitch_input(input);
 }
 void ATestSpaceShip::set_yaw_input(float const input) {
     commands().set_yaw_input(input);
 }
-void ATestSpaceShip::set_roll_input(float const input) {
-    commands().set_roll_input(input);
-}
 void ATestSpaceShip::set_accelerator(float const input) {
     commands().set_accelerator(input);
-}
-
-void ATestSpaceShip::select_flight_model_slot(sim::player::FlightModelSlot const slot) {
-    flight_models_.initial_slot = slot;
-    if (bound_commands_) {
-        commands().select_flight_model_slot(slot);
-    }
-}
-auto ATestSpaceShip::get_active_flight_model_slot() const -> sim::player::FlightModelSlot {
-    return bound_simulation ? bound_simulation->active_flight_model_slot()
-                            : flight_models_.initial_slot;
-}
-
-auto ATestSpaceShip::set_flight_model_slot_profile(sim::player::FlightModelSlot const slot,
-                                                   sim::player::FlightModelProfile profile)
-    -> bool {
-    if (bound_commands_ && !commands().set_flight_model_slot_profile(slot, profile)) {
-        return false;
-    }
-
-    return sim::player::try_set_flight_model_profile(flight_models_, slot, std::move(profile));
-}
-auto ATestSpaceShip::get_active_flight_model_profile() const -> sim::player::FlightModelProfile {
-    if (!bound_simulation) {
-        return sim::player::flight_model_profile(flight_models_, flight_models_.initial_slot);
-    }
-    return bound_simulation->active_flight_model_profile();
 }
 
 void ATestSpaceShip::start_boost() {
@@ -229,14 +189,6 @@ auto ATestSpaceShip::GetVelocity() const -> FVector {
 
 auto ATestSpaceShip::get_speed() const -> float {
     return simulation().speed();
-}
-
-auto ATestSpaceShip::get_persistent_forward_target_speed() const -> float {
-    return simulation().controller_state().persistent_forward_target_speed;
-}
-
-auto ATestSpaceShip::get_sampled_target_speed_scale() const -> FVector2D {
-    return to_unreal(simulation().sampled_target_speed_scale());
 }
 
 /* **************************************** */

@@ -66,7 +66,6 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
 
     void register_hud(USimulationHudWidget& hud);
     void unregister_hud(USimulationHudWidget& hud);
-    void set_selected_mapping_context(FString const& context_name);
 
     auto get_state() const noexcept -> EHUDManagerState {
         return model_.active() ? EHUDManagerState::Active : EHUDManagerState::Disabled;

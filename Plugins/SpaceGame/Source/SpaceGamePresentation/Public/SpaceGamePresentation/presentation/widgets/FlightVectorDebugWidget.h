@@ -32,10 +32,6 @@ class SPACEGAMEPRESENTATION_API UFlightVectorDebugWidget : public UUserWidget {
     UPROPERTY(Transient)
     UVector2DWidget* turn_input_widget_{nullptr};
     UPROPERTY(Transient)
-    UVector2DWidget* move_input_widget_{nullptr};
-    UPROPERTY(Transient)
-    UVector2DWidget* target_velocity_widget_{nullptr};
-    UPROPERTY(Transient)
     UVector2DWidget* local_velocity_widget_{nullptr};
 
     UPROPERTY(EditAnywhere,

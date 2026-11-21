@@ -3,6 +3,7 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 
+#include <InputAction.h>
 #include <InputMappingContext.h>
 
 struct FPlayerControllerTestAccess {
@@ -21,7 +22,7 @@ struct FPlayerControllerTestAccess {
                               ioj::FSpaceShipControllerInputs const& input) {
         controller.input = input;
         controller.global_input.mapping_context = NewObject<UInputMappingContext>(&controller);
-        controller.global_input.toggle_menu = input.select_starfox;
+        controller.global_input.toggle_menu = NewObject<UInputAction>(&controller);
         controller.control_contexts_.initialise(controller,
                                                 component,
                                                 subsystem,

@@ -227,10 +227,6 @@ void FHUDManager::unregister_hud(USimulationHudWidget& hud) {
     registered_huds.RemoveAt(index);
 }
 
-void FHUDManager::set_selected_mapping_context(FString const& context_name) {
-    model_.set_selected_mapping_context(TCHAR_TO_UTF8(*context_name));
-}
-
 void FHUDManager::update_entity_overlays(float const delta_seconds) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_entity_overlays);
     TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, 0);
@@ -617,29 +613,9 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     }
 
     hud.set_crosshair_widget_visibility(ESlateVisibility::Visible);
-    hud.set_selected_imc(to_fstring(data->selected_mapping_context));
     hud.set_flight_vector_debug(data->flight_vector_debug);
     hud.set_ship_velocity(to_unreal(data->ship_velocity));
     hud.set_target_velocity(to_unreal(data->target_velocity));
-    FString flight_model;
-    switch (data->flight_model_preset) {
-        case sim::player::FlightModelPreset::Starfox:
-            flight_model = TEXT("Starfox");
-            break;
-        case sim::player::FlightModelPreset::Fighter:
-            flight_model = TEXT("Fighter");
-            break;
-        case sim::player::FlightModelPreset::Skater:
-            flight_model = TEXT("Skater");
-            break;
-        case sim::player::FlightModelPreset::Gunship:
-            flight_model = TEXT("Gunship");
-            break;
-    }
-    if (data->flight_model_customized) {
-        flight_model = FString::Printf(TEXT("Custom (based on %s)"), *flight_model);
-    }
-    hud.set_flight_model(flight_model);
     hud.set_flight_action(data->throttle,
                           to_fstring(sim::player::to_string(data->boost_brake_state)));
 

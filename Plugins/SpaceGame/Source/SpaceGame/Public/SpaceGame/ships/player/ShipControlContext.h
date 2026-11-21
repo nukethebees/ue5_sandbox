@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ioj/sim/player/flight_model_config.h>
 #include <SpaceGame/ships/common/SpaceShipControllerInputs.h>
 
 #include <CoreMinimal.h>
@@ -9,7 +8,6 @@ class UEnhancedInputComponent;
 class UInputMappingContext;
 class IEnhancedInputSubsystemInterface;
 struct FInputActionValue;
-struct FShipControlContextTestAccess;
 
 namespace ioj {
 class ATestSpaceShip;
@@ -34,19 +32,12 @@ struct SPACEGAME_API FShipControlContext {
     [[nodiscard]] auto can_bind() const -> bool;
     [[nodiscard]] auto is_initialised() const noexcept -> bool { return initialised_; }
     [[nodiscard]] auto is_bound() const noexcept -> bool { return bound_; }
-    [[nodiscard]] auto active_mode_mapping() const -> UInputMappingContext* {
-        return active_mode_mapping_.Get();
-    }
   private:
     void bind_actions();
     void remove_action_bindings();
     void neutralise_ship_input();
-    void select_flight_model_slot(sim::player::FlightModelSlot slot);
-    void verify_mode_invariant() const;
-    auto context_for_slot(sim::player::FlightModelSlot slot) const -> UInputMappingContext*;
     auto get_ship() const -> ATestSpaceShip*;
 
-    void set_up_input(FInputActionValue const& value);
     void set_pitch_input(FInputActionValue const& value);
     void start_fire_primary();
 
@@ -57,11 +48,8 @@ struct SPACEGAME_API FShipControlContext {
     IEnhancedInputSubsystemInterface* input_subsystem_{nullptr};
     FSpaceShipControllerInputs const* input_{nullptr};
     TArray<uint32> binding_handles_;
-    TWeakObjectPtr<UInputMappingContext> active_mode_mapping_;
     bool initialised_{false};
     bool bound_{false};
-
-    friend struct ::FShipControlContextTestAccess;
 };
 
 } // namespace ioj

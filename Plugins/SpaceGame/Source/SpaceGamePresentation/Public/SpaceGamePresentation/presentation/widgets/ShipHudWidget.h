@@ -73,12 +73,9 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
 
     void set_target_speed(float value);
 
-    void set_selected_imc(FStringView value);
-
     void set_flight_vector_debug(presentation::FlightVectorDebugData const& value);
     void set_ship_velocity(FVector value);
     void set_target_velocity(FVector value);
-    void set_flight_model(FStringView value);
     void set_flight_action(float throttle, FStringView action);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
@@ -118,21 +115,13 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     UPROPERTY(meta = (BindWidget))
     UValueWidget* target_speed_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UValueWidget* selected_imc_widget{nullptr};
-    UPROPERTY(meta = (BindWidget))
     UVector2DWidget* turn_input_widget{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UVector2DWidget* move_input_widget{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UVector2DWidget* target_velocity_vector_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UVector2DWidget* local_velocity_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* ship_velocity_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* target_velocity_widget{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UValueWidget* control_mode_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* flight_mode_widget{nullptr};
 

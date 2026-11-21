@@ -145,12 +145,6 @@ void UShipHudWidget::NativePreConstruct() {
     if (IsValid(turn_input_widget)) {
         turn_input_widget->set_label(INVTEXT("Turning"));
     }
-    if (IsValid(move_input_widget)) {
-        move_input_widget->set_label(INVTEXT("Movement"));
-    }
-    if (IsValid(target_velocity_vector_widget)) {
-        target_velocity_vector_widget->set_label(INVTEXT("Target velocity"));
-    }
     if (IsValid(local_velocity_widget)) {
         local_velocity_widget->set_label(INVTEXT("Local velocity"));
     }
@@ -165,14 +159,10 @@ void UShipHudWidget::set_common_widget_properties() {
                              stopwatch_widget,
                              fire_rate_widget,
                              target_speed_widget,
-                             selected_imc_widget,
                              turn_input_widget,
-                             move_input_widget,
-                             target_velocity_vector_widget,
                              local_velocity_widget,
                              ship_velocity_widget,
                              target_velocity_widget,
-                             control_mode_widget,
                              flight_mode_widget);
 }
 
@@ -204,25 +194,18 @@ void UShipHudWidget::apply_ui_style(FGameUiStyle const& style) {
     apply_value_style(stopwatch_widget, hud_style.secondary_text);
     apply_value_style(fire_rate_widget, hud_style.secondary_text);
     apply_value_style(target_speed_widget, hud_style.secondary_text);
-    apply_value_style(selected_imc_widget, hud_style.caption_text);
     apply_value_style(ship_velocity_widget, hud_style.secondary_text);
     apply_value_style(target_velocity_widget, hud_style.secondary_text);
-    apply_value_style(control_mode_widget, hud_style.secondary_text);
     apply_value_style(flight_mode_widget, hud_style.secondary_text);
 
     stopwatch_widget->set_format_spec(TEXT("MISSION TIME // {0}:{1}:{2}"));
     fire_rate_widget->set_format_spec(TEXT("FIRE RATE // {0}"));
     target_speed_widget->set_format_spec(TEXT("TARGET SPEED // {0}"));
-    selected_imc_widget->set_format_spec(TEXT("IMC // {0}"));
     ship_velocity_widget->set_format_spec(TEXT("VELOCITY // {0}"));
     target_velocity_widget->set_format_spec(TEXT("TARGET VELOCITY // {0} ({1})"));
-    control_mode_widget->set_format_spec(TEXT("FLIGHT MODEL // {0}"));
     flight_mode_widget->set_format_spec(TEXT("FLIGHT STATE // THROTTLE {0} // {1}"));
 
-    for (auto* const widget : {turn_input_widget,
-                               move_input_widget,
-                               target_velocity_vector_widget,
-                               local_velocity_widget}) {
+    for (auto* const widget : {turn_input_widget, local_velocity_widget}) {
         if (IsValid(widget)) {
             widget->apply_hud_style(hud_style);
         }
@@ -314,20 +297,11 @@ void UShipHudWidget::set_target_speed(float value) {
     target_speed_widget->update(value);
 }
 
-void UShipHudWidget::set_selected_imc(FStringView value) {
-    check(IsValid(selected_imc_widget));
-    selected_imc_widget->update(value);
-}
-
 void UShipHudWidget::set_flight_vector_debug(presentation::FlightVectorDebugData const& value) {
     check(IsValid(turn_input_widget));
-    check(IsValid(move_input_widget));
-    check(IsValid(target_velocity_vector_widget));
     check(IsValid(local_velocity_widget));
 
     turn_input_widget->update(to_unreal(Vector2d{value.turn_input}));
-    move_input_widget->update(to_unreal(Vector2d{value.move_input}));
-    target_velocity_vector_widget->update(to_unreal(Vector2d{value.target_velocity}));
     local_velocity_widget->update(to_unreal(Vector2d{value.local_velocity}));
 }
 
@@ -339,11 +313,6 @@ void UShipHudWidget::set_ship_velocity(FVector value) {
 void UShipHudWidget::set_target_velocity(FVector value) {
     check(IsValid(target_velocity_widget));
     target_velocity_widget->update(value.ToCompactString(), value.Size());
-}
-
-void UShipHudWidget::set_flight_model(FStringView value) {
-    check(IsValid(control_mode_widget));
-    control_mode_widget->update(value);
 }
 
 void UShipHudWidget::set_flight_action(float const throttle, FStringView const action) {

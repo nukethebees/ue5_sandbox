@@ -103,40 +103,6 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         controller->Destroy();
     }
 
-    TEST_METHOD(UnboundShipCachesFlightModelForSimulationSpawn)
-    {
-        auto const world_result{ioj::get_editor_world()};
-        auto const* const config{ioj::load_default_level_config()};
-        if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value()) ||
-            !TestRunner->TestTrue(TEXT("Level config loads"), IsValid(config))) {
-            return;
-        }
-
-        auto* const ship{ioj::spawn_player_ship(
-            *world_result.value(), config->classes.player_ship_class, &config->player_ship)};
-        auto profile{::ioj::sim::player::make_flight_model_profile(
-            ::ioj::sim::player::FlightModelPreset::Fighter)};
-        profile.config.translation.forward.passive_drag = ioj::NonNegativeFinite<float>{321.f};
-
-        TestRunner->TestFalse(TEXT("New ship is not yet bound to native simulation"),
-                              ship->has_simulation());
-        TestRunner->TestTrue(
-            TEXT("A valid profile can be selected before native simulation binding"),
-            ship->set_flight_model_slot_profile(::ioj::sim::player::FlightModelSlot::Second,
-                                                profile));
-        ship->select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Second);
-
-        auto const spawn{ship->make_spawn_data()};
-        auto const& cached{::ioj::sim::player::flight_model_profile(
-            spawn.flight_models, ::ioj::sim::player::FlightModelSlot::Second)};
-        TestRunner->TestTrue(
-            TEXT("Pre-bind flight-model selection is included in native spawn data"),
-            spawn.flight_models.initial_slot == ::ioj::sim::player::FlightModelSlot::Second &&
-                cached == profile && ship->get_active_flight_model_profile() == profile);
-
-        ship->Destroy();
-    }
-
     TEST_METHOD(PossessionDuringCompletionDoesNotEnableShipInput)
     {
         auto const world_result{ioj::get_editor_world()};

@@ -569,25 +569,16 @@ struct FGeneratedShipInputActions {
     UInputAction* pause{nullptr};
 
     auto is_valid() const -> bool {
-        if (!IsValid(general) || !IsValid(pause) || !IsValid(ship.starfox) ||
-            !IsValid(ship.fighter) || !IsValid(ship.skater) || !IsValid(ship.gunship)) {
+        if (!IsValid(general) || !IsValid(pause) || !IsValid(ship.starfox)) {
             return false;
         }
-        for (auto* const action : {ship.translate_forward,
-                                   ship.translate_right,
-                                   ship.translate_up,
-                                   ship.pitch,
+        for (auto* const action : {ship.pitch,
                                    ship.yaw,
-                                   ship.roll,
                                    ship.accelerate,
                                    ship.brake,
                                    ship.boost,
                                    ship.emergency_brake,
-                                   ship.fire_primary,
-                                   ship.select_starfox,
-                                   ship.select_fighter,
-                                   ship.select_skater,
-                                   ship.select_gunship}) {
+                                   ship.fire_primary}) {
             if (!IsValid(action)) {
                 return false;
             }
@@ -602,12 +593,6 @@ auto scope_name(ioj::EShipControlScope const scope) -> TCHAR const* {
             return TEXT("General");
         case ioj::EShipControlScope::Starfox:
             return TEXT("Starfox");
-        case ioj::EShipControlScope::Fighter:
-            return TEXT("Fighter");
-        case ioj::EShipControlScope::Skater:
-            return TEXT("Skater");
-        case ioj::EShipControlScope::Gunship:
-            return TEXT("Gunship");
     }
     return TEXT("Unknown");
 }
@@ -668,19 +653,12 @@ void add_ship_mapping(UInputMappingContext& context,
         if (key == EKeys::MouseX || key == EKeys::MouseY) {
             response->response = ioj::ESpaceGameInputResponse::TurnPointerDelta;
         } else {
-            response->response = FCString::Strcmp(semantic, TEXT("Pitch")) == 0 ||
-                                         FCString::Strcmp(semantic, TEXT("Yaw")) == 0 ||
-                                         FCString::Strcmp(semantic, TEXT("Roll")) == 0
-                                   ? ioj::ESpaceGameInputResponse::GamepadTurn
-                                   : ioj::ESpaceGameInputResponse::GamepadMove;
+            response->response = ioj::ESpaceGameInputResponse::GamepadTurn;
         }
         response->axis =
-            FCString::Strcmp(semantic, TEXT("Pitch")) == 0  ? ioj::ESpaceGameInputAxis::Pitch
-            : FCString::Strcmp(semantic, TEXT("Yaw")) == 0  ? ioj::ESpaceGameInputAxis::Yaw
-            : FCString::Strcmp(semantic, TEXT("Roll")) == 0 ? ioj::ESpaceGameInputAxis::Roll
-            : FCString::Strcmp(semantic, TEXT("TranslateUp")) == 0
-                ? ioj::ESpaceGameInputAxis::VerticalTranslation
-                : ioj::ESpaceGameInputAxis::None;
+            FCString::Strcmp(semantic, TEXT("Pitch")) == 0 ? ioj::ESpaceGameInputAxis::Pitch
+            : FCString::Strcmp(semantic, TEXT("Yaw")) == 0 ? ioj::ESpaceGameInputAxis::Yaw
+                                                           : ioj::ESpaceGameInputAxis::None;
         mapping.Modifiers.Add(response);
     }
 
@@ -708,7 +686,6 @@ void add_ship_mapping(UInputMappingContext& context,
     settings->DisplayCategory = ioj::control_binding_group_label(group);
     auto* const metadata{mapping_subobject<ioj::UControlBindingMetadata>(
         *settings, FString::Printf(TEXT("Metadata_%s"), *object_suffix))};
-    metadata->scope = scope;
     metadata->group = group;
     metadata->display_order = display_order;
     settings->Metadata = metadata;
@@ -724,27 +701,16 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
     auto make_button = [](TCHAR const* name) {
         return create_input_action(ship_input_package_path, name, EInputActionValueType::Boolean);
     };
-    ship.translate_forward = make_axis(TEXT("IA_Ship_TranslateForward"));
-    ship.translate_right = make_axis(TEXT("IA_Ship_TranslateRight"));
-    ship.translate_up = make_axis(TEXT("IA_Ship_TranslateUp"));
     ship.pitch = make_axis(TEXT("IA_Ship_Pitch"));
     ship.yaw = make_axis(TEXT("IA_Ship_Yaw"));
-    ship.roll = make_axis(TEXT("IA_Ship_Roll"));
     ship.accelerate = make_axis(TEXT("IA_Ship_Accelerate"));
     ship.brake = make_button(TEXT("IA_Ship_Brake"));
     ship.boost = make_button(TEXT("IA_Ship_Boost"));
     ship.emergency_brake = make_button(TEXT("IA_Ship_EmergencyBrake"));
     ship.fire_primary = make_button(TEXT("IA_Ship_FirePrimary"));
-    ship.select_starfox = make_button(TEXT("IA_Ship_SelectStarfox"));
-    ship.select_fighter = make_button(TEXT("IA_Ship_SelectFighter"));
-    ship.select_skater = make_button(TEXT("IA_Ship_SelectSkater"));
-    ship.select_gunship = make_button(TEXT("IA_Ship_SelectGunship"));
     result.pause = make_button(TEXT("IA_pause"));
     result.general = create_ship_mapping_context(ioj::EShipControlScope::General);
     ship.starfox = create_ship_mapping_context(ioj::EShipControlScope::Starfox);
-    ship.fighter = create_ship_mapping_context(ioj::EShipControlScope::Fighter);
-    ship.skater = create_ship_mapping_context(ioj::EShipControlScope::Skater);
-    ship.gunship = create_ship_mapping_context(ioj::EShipControlScope::Gunship);
     if (!result.is_valid()) {
         UE_LOG(LogTemp, Error, TEXT("Could not create canonical ship input assets"));
         return {};
@@ -765,70 +731,6 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
     auto& general{*result.general};
     add(general, Scope::General, result.pause, EKeys::Escape, TEXT("Pause"));
     add(general, Scope::General, result.pause, EKeys::Gamepad_Special_Right, TEXT("Pause"));
-    add(general,
-        Scope::General,
-        ship.select_starfox,
-        EKeys::One,
-        TEXT("SelectStarfox"),
-        TEXT(""),
-        false,
-        20);
-    add(general,
-        Scope::General,
-        ship.select_fighter,
-        EKeys::Two,
-        TEXT("SelectFighter"),
-        TEXT(""),
-        false,
-        30);
-    add(general,
-        Scope::General,
-        ship.select_skater,
-        EKeys::Three,
-        TEXT("SelectSkater"),
-        TEXT(""),
-        false,
-        40);
-    add(general,
-        Scope::General,
-        ship.select_gunship,
-        EKeys::Four,
-        TEXT("SelectGunship"),
-        TEXT(""),
-        false,
-        50);
-    add(general,
-        Scope::General,
-        ship.select_starfox,
-        EKeys::Gamepad_DPad_Up,
-        TEXT("SelectStarfox"),
-        TEXT(""),
-        false,
-        20);
-    add(general,
-        Scope::General,
-        ship.select_fighter,
-        EKeys::Gamepad_DPad_Right,
-        TEXT("SelectFighter"),
-        TEXT(""),
-        false,
-        30);
-    add(general,
-        Scope::General,
-        ship.select_skater,
-        EKeys::Gamepad_DPad_Down,
-        TEXT("SelectSkater"),
-        TEXT(""),
-        false,
-        40);
-    add(general,
-        Scope::General,
-        ship.select_gunship,
-        EKeys::Gamepad_DPad_Left,
-        TEXT("SelectGunship"),
-        TEXT(""),
-        false,
-        50);
 
     auto add_mouse = [&](UInputMappingContext& context, Scope const scope) {
         add(context, scope, ship.pitch, EKeys::MouseY, TEXT("Pitch"), TEXT(""), true, 10);
@@ -913,210 +815,19 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
     add(starfox, Scope::Starfox, ship.yaw, EKeys::Gamepad_LeftX, TEXT("Yaw"), TEXT(""), false, 20);
     add_controller_propulsion(starfox, Scope::Starfox, EKeys::Gamepad_FaceButton_Left);
 
-    auto& fighter{*ship.fighter};
-    add_mouse(fighter, Scope::Fighter);
-    add_keyboard_propulsion(fighter, Scope::Fighter);
-    add(fighter, Scope::Fighter, ship.roll, EKeys::Q, TEXT("Roll"), TEXT("Negative"), true, 30);
-    add(fighter, Scope::Fighter, ship.roll, EKeys::E, TEXT("Roll"), TEXT("Positive"), false, 31);
-    add(fighter,
-        Scope::Fighter,
-        ship.pitch,
-        EKeys::Gamepad_RightY,
-        TEXT("Pitch"),
-        TEXT(""),
-        false,
-        10);
-    add(fighter, Scope::Fighter, ship.yaw, EKeys::Gamepad_RightX, TEXT("Yaw"), TEXT(""), false, 20);
-    add(fighter,
-        Scope::Fighter,
-        ship.roll,
-        EKeys::Gamepad_LeftX,
-        TEXT("Roll"),
-        TEXT(""),
-        false,
-        30);
-    add_controller_propulsion(fighter, Scope::Fighter, EKeys::Gamepad_FaceButton_Right);
-
-    auto& skater{*ship.skater};
-    add_mouse(skater, Scope::Skater);
-    add_keyboard_propulsion(skater, Scope::Skater);
-    add(skater, Scope::Skater, ship.roll, EKeys::A, TEXT("Roll"), TEXT("Negative"), true, 30);
-    add(skater, Scope::Skater, ship.roll, EKeys::D, TEXT("Roll"), TEXT("Positive"), false, 31);
-    add(skater,
-        Scope::Skater,
-        ship.pitch,
-        EKeys::Gamepad_LeftY,
-        TEXT("Pitch"),
-        TEXT(""),
-        false,
-        10);
-    add(skater, Scope::Skater, ship.yaw, EKeys::Gamepad_LeftX, TEXT("Yaw"), TEXT(""), false, 20);
-    add(skater, Scope::Skater, ship.roll, EKeys::Gamepad_RightX, TEXT("Roll"), TEXT(""), false, 30);
-    add_controller_propulsion(skater, Scope::Skater, EKeys::Gamepad_FaceButton_Right);
-
-    auto& gunship{*ship.gunship};
-    add_mouse(gunship, Scope::Gunship);
-    add(gunship,
-        Scope::Gunship,
-        ship.translate_forward,
-        EKeys::W,
-        TEXT("TranslateForward"),
-        TEXT("Positive"),
-        false,
-        30);
-    add(gunship,
-        Scope::Gunship,
-        ship.translate_forward,
-        EKeys::S,
-        TEXT("TranslateForward"),
-        TEXT("Negative"),
-        true,
-        31);
-    add(gunship,
-        Scope::Gunship,
-        ship.translate_right,
-        EKeys::D,
-        TEXT("TranslateRight"),
-        TEXT("Positive"),
-        false,
-        40);
-    add(gunship,
-        Scope::Gunship,
-        ship.translate_right,
-        EKeys::A,
-        TEXT("TranslateRight"),
-        TEXT("Negative"),
-        true,
-        41);
-    add(gunship,
-        Scope::Gunship,
-        ship.translate_up,
-        EKeys::SpaceBar,
-        TEXT("TranslateUp"),
-        TEXT("Positive"),
-        false,
-        50);
-    add(gunship,
-        Scope::Gunship,
-        ship.translate_up,
-        EKeys::C,
-        TEXT("TranslateUp"),
-        TEXT("Negative"),
-        true,
-        51);
-    add(gunship, Scope::Gunship, ship.boost, EKeys::LeftShift, TEXT("Boost"), TEXT(""), false, 60);
-    add(gunship,
-        Scope::Gunship,
-        ship.brake,
-        EKeys::LeftControl,
-        TEXT("Brake"),
-        TEXT(""),
-        false,
-        70);
-    add(gunship,
-        Scope::Gunship,
-        ship.emergency_brake,
-        EKeys::X,
-        TEXT("EmergencyBrake"),
-        TEXT(""),
-        false,
-        80);
-    add(gunship,
-        Scope::Gunship,
-        ship.translate_forward,
-        EKeys::Gamepad_LeftY,
-        TEXT("TranslateForward"),
-        TEXT(""),
-        false,
-        30);
-    add(gunship,
-        Scope::Gunship,
-        ship.translate_right,
-        EKeys::Gamepad_LeftX,
-        TEXT("TranslateRight"),
-        TEXT(""),
-        false,
-        40);
-    add(gunship,
-        Scope::Gunship,
-        ship.pitch,
-        EKeys::Gamepad_RightY,
-        TEXT("Pitch"),
-        TEXT(""),
-        false,
-        10);
-    add(gunship, Scope::Gunship, ship.yaw, EKeys::Gamepad_RightX, TEXT("Yaw"), TEXT(""), false, 20);
-    add(gunship,
-        Scope::Gunship,
-        ship.translate_up,
-        EKeys::Gamepad_FaceButton_Top,
-        TEXT("TranslateUp"),
-        TEXT("Positive"),
-        false,
-        50);
-    add(gunship,
-        Scope::Gunship,
-        ship.translate_up,
-        EKeys::Gamepad_FaceButton_Bottom,
-        TEXT("TranslateUp"),
-        TEXT("Negative"),
-        true,
-        51);
-    add(gunship,
-        Scope::Gunship,
-        ship.boost,
-        EKeys::Gamepad_RightShoulder,
-        TEXT("Boost"),
-        TEXT(""),
-        false,
-        60);
-    add(gunship,
-        Scope::Gunship,
-        ship.brake,
-        EKeys::Gamepad_LeftShoulder,
-        TEXT("Brake"),
-        TEXT(""),
-        false,
-        70);
-    add(gunship,
-        Scope::Gunship,
-        ship.emergency_brake,
-        EKeys::Gamepad_LeftTriggerAxis,
-        TEXT("EmergencyBrake"),
-        TEXT(""),
-        false,
-        80);
-    add(gunship,
-        Scope::Gunship,
-        ship.fire_primary,
-        EKeys::Gamepad_RightTriggerAxis,
-        TEXT("FirePrimary"),
-        TEXT(""),
-        false,
-        100);
-
     for (auto* const action : {result.pause,
-                               ship.translate_forward,
-                               ship.translate_right,
-                               ship.translate_up,
                                ship.pitch,
                                ship.yaw,
-                               ship.roll,
                                ship.accelerate,
                                ship.brake,
                                ship.boost,
                                ship.emergency_brake,
-                               ship.fire_primary,
-                               ship.select_starfox,
-                               ship.select_fighter,
-                               ship.select_skater,
-                               ship.select_gunship}) {
+                               ship.fire_primary}) {
         if (!save_asset(*action)) {
             return {};
         }
     }
-    for (auto* const context :
-         {result.general, ship.starfox, ship.fighter, ship.skater, ship.gunship}) {
+    for (auto* const context : {result.general, ship.starfox}) {
         if (!save_asset(*context)) {
             return {};
         }

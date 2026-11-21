@@ -543,10 +543,8 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
         .position = data.player->transform.location,
         .rotation = data.player->transform.rotator(),
     });
-    auto& active_profile{::ioj::sim::player::flight_model_profile(
-        data.player->flight_models, data.player->flight_models.initial_slot)};
-    active_profile.config.boost.energy_drain_per_second = ioj::NonNegativeFinite<float>{20.f};
-    active_profile.config.energy_recharge_per_second = ioj::NonNegativeFinite<float>{0.f};
+    data.player->config.boost_energy_drain = ioj::NonNegativeFinite<float>{20.f};
+    data.player->config.energy_recharge = ioj::NonNegativeFinite<float>{0.f};
     ::ioj::sim::LevelSim simulation{compile_battle(std::move(battle), std::move(data))};
 
     simulation.start();

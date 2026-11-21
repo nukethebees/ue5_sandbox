@@ -7,9 +7,6 @@ namespace ship_control_context_details {
 inline constexpr FCanonicalShipControlContext contexts[]{
     {EShipControlScope::General, TEXT("IMC_Ship_General"), TEXT("/SpaceGame/Input/SpaceShip/")},
     {EShipControlScope::Starfox, TEXT("IMC_Ship_Starfox"), TEXT("/SpaceGame/Input/SpaceShip/")},
-    {EShipControlScope::Fighter, TEXT("IMC_Ship_Fighter"), TEXT("/SpaceGame/Input/SpaceShip/")},
-    {EShipControlScope::Skater, TEXT("IMC_Ship_Skater"), TEXT("/SpaceGame/Input/SpaceShip/")},
-    {EShipControlScope::Gunship, TEXT("IMC_Ship_Gunship"), TEXT("/SpaceGame/Input/SpaceShip/")},
 };
 } // namespace ship_control_context_details
 
@@ -21,36 +18,6 @@ auto canonical_ship_control_context(EShipControlScope const scope)
     auto const index{static_cast<int32>(scope)};
     check(index >= 0 && index < UE_ARRAY_COUNT(ship_control_context_details::contexts));
     return ship_control_context_details::contexts[index];
-}
-auto flight_control_scope(sim::player::FlightModelSlot const slot) -> EShipControlScope {
-    switch (slot) {
-        case sim::player::FlightModelSlot::First:
-            return EShipControlScope::Starfox;
-        case sim::player::FlightModelSlot::Second:
-            return EShipControlScope::Fighter;
-        case sim::player::FlightModelSlot::Third:
-            return EShipControlScope::Skater;
-        case sim::player::FlightModelSlot::Fourth:
-            return EShipControlScope::Gunship;
-    }
-    checkNoEntry();
-    return EShipControlScope::Starfox;
-}
-auto flight_model_slot(EShipControlScope const scope) -> sim::player::FlightModelSlot {
-    switch (scope) {
-        case EShipControlScope::Starfox:
-            return sim::player::FlightModelSlot::First;
-        case EShipControlScope::Fighter:
-            return sim::player::FlightModelSlot::Second;
-        case EShipControlScope::Skater:
-            return sim::player::FlightModelSlot::Third;
-        case EShipControlScope::Gunship:
-            return sim::player::FlightModelSlot::Fourth;
-        case EShipControlScope::General:
-            break;
-    }
-    checkNoEntry();
-    return sim::player::FlightModelSlot::First;
 }
 auto load_ship_control_context(EShipControlScope const scope) -> UInputMappingContext* {
     auto const& definition{canonical_ship_control_context(scope)};

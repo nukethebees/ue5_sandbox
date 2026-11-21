@@ -92,10 +92,7 @@ bool ASpaceGamePlayerController::InputKey(FInputKeyEventArgs const& event_args) 
             if (auto* const subsystem{
                     ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)}) {
                 UInputMappingContext const* const canonical_contexts[]{global_input.mapping_context,
-                                                                       input.starfox,
-                                                                       input.fighter,
-                                                                       input.skater,
-                                                                       input.gunship};
+                                                                       input.starfox};
                 for (auto const* const context : canonical_contexts) {
                     if (IsValid(context) && subsystem->HasMappingContext(context)) {
                         if (!contexts.IsEmpty()) {
@@ -148,13 +145,6 @@ void ASpaceGamePlayerController::BeginPlay() {
     Super::BeginPlay();
 
     initialise_input_user_settings();
-    if (auto* const game_instance{GetGameInstance()}; IsValid(game_instance)) {
-        if (auto* const settings{game_instance->GetSubsystem<UGameSettingsSubsystem>()};
-            IsValid(settings)) {
-            settings->flight_model_config_changed.AddUObject(
-                this, &ThisClass::apply_player_ship_flight_model_config);
-        }
-    }
     begin_play_finished_ = true;
     if (!is_gameplay_mode()) {
         initialise_main_menu();
@@ -227,12 +217,6 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
     hud_.shutdown();
     hud_.shutdown_benchmark(*this);
     modal_ui_.shutdown(*this);
-    if (auto* const game_instance{GetGameInstance()}; IsValid(game_instance)) {
-        if (auto* const settings{game_instance->GetSubsystem<UGameSettingsSubsystem>()};
-            IsValid(settings)) {
-            settings->flight_model_config_changed.RemoveAll(this);
-        }
-    }
     Super::EndPlay(reason);
 }
 void ASpaceGamePlayerController::OnPossess(APawn* const in_pawn) {
@@ -255,7 +239,6 @@ void ASpaceGamePlayerController::OnPossess(APawn* const in_pawn) {
 }
 void ASpaceGamePlayerController::attach_ship(Pawn& ship) {
     ship.on_player_ship_died.BindUObject(this, &ThisClass::on_player_ship_died);
-    apply_player_ship_flight_model_config(ship);
     control_contexts_.set_ship(&ship);
     modal_ui_.on_ship_changed(true);
 
@@ -269,40 +252,6 @@ void ASpaceGamePlayerController::attach_ship(Pawn& ship) {
                Warning,
                TEXT("ASpaceGamePlayerController::attach_ship: Game subsystem is unavailable; "
                     "player ship ambience will not play."));
-    }
-}
-void ASpaceGamePlayerController::apply_player_ship_flight_model_config() {
-    if (auto* const ship{Cast<Pawn>(GetPawn())}; IsValid(ship)) {
-        apply_player_ship_flight_model_config(*ship);
-    }
-}
-
-void ASpaceGamePlayerController::apply_player_ship_flight_model_config(Pawn& ship) const {
-    auto* const game_instance{GetGameInstance()};
-    auto* const settings{
-        IsValid(game_instance) ? game_instance->GetSubsystem<UGameSettingsSubsystem>() : nullptr};
-    if (!IsValid(settings)) {
-        return;
-    }
-
-    auto const& loadout{settings->flight_model_loadout()};
-    using sim::player::FlightModelSlot;
-    for (auto const slot : EnumTraits<FlightModelSlot>::values) {
-        if (!ship.set_flight_model_slot_profile(slot,
-                                                sim::player::flight_model_profile(loadout, slot))) {
-            UE_LOG(LogSandboxController, Error, TEXT("Could not apply saved flight model slot"));
-        }
-    }
-}
-void ASpaceGamePlayerController::on_player_ship_flight_model_selected() {
-    auto* const ship{Cast<Pawn>(GetPawn())};
-    if (!IsValid(ship)) {
-        return;
-    }
-    if (auto* const orchestrator{orchestrator_.Get()}; IsValid(orchestrator)) {
-        auto const scope{flight_control_scope(ship->get_active_flight_model_slot())};
-        orchestrator->get_hud_manager().set_selected_mapping_context(
-            FString{canonical_ship_control_context(scope).asset_name});
     }
 }
 void ASpaceGamePlayerController::activate_ship_control() {

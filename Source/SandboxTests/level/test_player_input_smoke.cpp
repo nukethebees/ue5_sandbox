@@ -51,12 +51,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
     FKey original_default_key_{};
     int32 test_user_index_{};
     bool restore_remap_{};
-    bool restore_pitch_inversion_{};
     bool original_pitch_inversion_{};
-    bool restore_other_inversions_{};
-    bool original_yaw_inversion_{};
-    bool original_roll_inversion_{};
-    bool original_vertical_inversion_{};
     bool used_slate_input_{};
     int32 original_accept_simulation_{};
     FIntPoint original_viewport_size_{};
@@ -101,23 +96,6 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 settings->ApplySettings();
             }
         }
-        if (restore_pitch_inversion_) {
-            if (auto* const input_settings{
-                    Cast<ioj::USpaceGameInputUserSettings>(settings_.Get())}) {
-                input_settings->set_invert_gamepad_pitch(original_pitch_inversion_);
-                input_settings->ApplySettings();
-            }
-        }
-        if (restore_other_inversions_) {
-            if (auto* const input_settings{
-                    Cast<ioj::USpaceGameInputUserSettings>(settings_.Get())}) {
-                input_settings->set_invert_gamepad_yaw(original_yaw_inversion_);
-                input_settings->set_invert_gamepad_roll(original_roll_inversion_);
-                input_settings->set_invert_gamepad_vertical_translation(
-                    original_vertical_inversion_);
-                input_settings->ApplySettings();
-            }
-        }
         if (!test_save_slot_.IsEmpty()) {
             GetMutableDefault<UEnhancedInputDeveloperSettings>()->InputSettingsSaveSlotName =
                 original_save_slot_;
@@ -144,8 +122,6 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         original_save_slot_.Reset();
         test_save_slot_.Reset();
         restore_remap_ = false;
-        restore_pitch_inversion_ = false;
-        restore_other_inversions_ = false;
         used_slate_input_ = false;
     }
 
@@ -213,16 +189,6 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                    ioj::load_ship_control_context(ioj::EShipControlScope::Starfox));
     }
 
-    auto mode_active(ioj::sim::player::FlightModelSlot const slot) {
-        return [this, slot] {
-            auto const* const ship{IsValid(controller_.Get())
-                                       ? Cast<ioj::ATestSpaceShip>(controller_->GetPawn())
-                                       : nullptr};
-            return !checks.all_passed ||
-                   (IsValid(ship) && ship->get_active_flight_model_slot() == slot);
-        };
-    }
-
     void check_active_contexts(ioj::EShipControlScope const mode) {
         auto const* const controller{controller_.Get()};
         auto const* const input{
@@ -256,10 +222,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         if (!checks.is_true(IsValid(component), TEXT("Enhanced Input component exists"))) {
             return;
         }
-        for (auto const& [name, expected] : {std::pair{TEXT("IA_Ship_Pitch"), 3},
-                                             std::pair{TEXT("IA_Ship_TranslateUp"), 3},
-                                             std::pair{TEXT("IA_Ship_FirePrimary"), 3},
-                                             std::pair{TEXT("IA_Ship_SelectGunship"), 1}}) {
+        for (auto const& [name, expected] :
+             {std::pair{TEXT("IA_Ship_Pitch"), 3}, std::pair{TEXT("IA_Ship_FirePrimary"), 3}}) {
             int32 count{};
             for (auto const& binding : component->GetActionEventBindings()) {
                 if (IsValid(binding->GetAction()) && binding->GetAction()->GetName() == name) {
@@ -280,35 +244,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
 
     auto native_pitch() const -> float {
         auto const* const sim{native_player()};
-        return sim != nullptr ? sim->flight_intent().rotation.x() : 0.0f;
-    }
-
-    auto native_yaw() const -> float {
-        auto const* const sim{native_player()};
-        return sim != nullptr ? sim->flight_intent().rotation.y() : 0.0f;
-    }
-
-    auto native_roll() const -> float {
-        auto const* const sim{native_player()};
-        return sim != nullptr ? sim->flight_intent().rotation.z() : 0.0f;
-    }
-
-    auto native_vertical() const -> float {
-        auto const* const sim{native_player()};
-        return sim != nullptr ? sim->flight_intent().translation.z() : 0.0f;
-    }
-
-    auto native_rotation(ioj::ESpaceGameInputAxis const axis) const -> float {
-        switch (axis) {
-            case ioj::ESpaceGameInputAxis::Pitch:
-                return native_pitch();
-            case ioj::ESpaceGameInputAxis::Yaw:
-                return native_yaw();
-            case ioj::ESpaceGameInputAxis::Roll:
-                return native_roll();
-            default:
-                return 0.0f;
-        }
+        return sim != nullptr ? sim->flight_intent().pitch : 0.0f;
     }
 
     auto prepare_slate_input() -> bool {
@@ -396,29 +332,16 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         return false;
     }
 
-    auto inversion_reloaded() const -> bool {
-        auto* const controller{controller_.Get()};
-        auto const* const loaded{IsValid(controller)
-                                     ? Cast<ioj::USpaceGameInputUserSettings>(
-                                           UEnhancedInputUserSettings::LoadOrCreateSettings(
-                                               controller->GetLocalPlayer()))
-                                     : nullptr};
-        return IsValid(loaded) && loaded->invert_gamepad_pitch() == !original_pitch_inversion_ &&
-               loaded->invert_gamepad_yaw() == !original_yaw_inversion_ &&
-               loaded->invert_gamepad_roll() == !original_roll_inversion_;
-    }
-
     auto pitch_mapping_uses(ioj::UGameSettingsSubsystem const& settings, FKey const key) const
         -> bool {
-        return settings
-            .control_bindings(EHardwareDevicePrimaryType::Gamepad, ioj::EShipControlScope::Starfox)
+        return settings.control_bindings(EHardwareDevicePrimaryType::Gamepad)
             .ContainsByPredicate([key](auto const& binding) {
                 return binding.address.mapping_name == FName{TEXT("Starfox.Pitch.Gamepad")} &&
                        binding.current_key == key;
             });
     }
 
-    TEST_METHOD(DirectGameplayStartupAndModeSwitch)
+    TEST_METHOD(DirectGameplayStartup)
     {
         TestCommandBuilder.Do([this] { setup(); })
             .Until([this] { return !checks.all_passed || ready(); }, timeout)
@@ -428,382 +351,6 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 }
                 check_active_contexts(ioj::EShipControlScope::Starfox);
                 check_single_ship_action_bindings();
-                auto* const subsystem{subsystem_.Get()};
-                for (auto const scope : {ioj::EShipControlScope::Fighter,
-                                         ioj::EShipControlScope::Skater,
-                                         ioj::EShipControlScope::Gunship}) {
-                    checks.is_true(
-                        !subsystem->HasMappingContext(ioj::load_ship_control_context(scope)),
-                        TEXT("Other flight modes remain inactive"));
-                }
-                active_profile_id_ = settings_->GetActiveKeyProfileId();
-                controller_->ConsoleCommand(TEXT("Input.+key Four"), true);
-            })
-            .Until(
-                [this] {
-                    auto const* const subsystem{subsystem_.Get()};
-                    return !checks.all_passed ||
-                           (IsValid(subsystem) &&
-                            subsystem->HasMappingContext(
-                                ioj::load_ship_control_context(ioj::EShipControlScope::Gunship)));
-                },
-                timeout)
-            .Then([this] {
-                auto* const controller{controller_.Get()};
-                auto* const ship{IsValid(controller)
-                                     ? Cast<ioj::ATestSpaceShip>(controller->GetPawn())
-                                     : nullptr};
-                auto* const subsystem{subsystem_.Get()};
-                checks.is_true(IsValid(ship) && ship->get_active_flight_model_slot() ==
-                                                    ioj::sim::player::FlightModelSlot::Fourth,
-                               TEXT("Gunship key selects native Left slot"));
-                checks.is_true(subsystem->HasMappingContext(
-                                   ioj::load_ship_control_context(ioj::EShipControlScope::General)),
-                               TEXT("General remains active"));
-                for (auto const scope : {ioj::EShipControlScope::Starfox,
-                                         ioj::EShipControlScope::Fighter,
-                                         ioj::EShipControlScope::Skater}) {
-                    checks.is_true(
-                        !subsystem->HasMappingContext(ioj::load_ship_control_context(scope)),
-                        TEXT("Other modes are inactive"));
-                }
-                checks.is_true(settings_->GetActiveKeyProfileId() == active_profile_id_,
-                               TEXT("Flight-mode selection does not cycle key profiles"));
-                check_active_contexts(ioj::EShipControlScope::Gunship);
-            });
-    }
-
-    TEST_METHOD(GunshipGamepadADescendsWithoutFiring)
-    {
-        TestCommandBuilder.Do([this] { setup(); })
-            .Until([this] { return !checks.all_passed || ready(); }, timeout)
-            .Then([this] {
-                if (!checks.is_true(ready(), TEXT("Direct gameplay startup is ready"))) {
-                    return;
-                }
-                controller_->ConsoleCommand(TEXT("Input.+key Four"), true);
-            })
-            .Until(mode_active(ioj::sim::player::FlightModelSlot::Fourth), timeout)
-            .Then([this] {
-                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_FaceButton_Bottom"), true);
-            })
-            .Until([this] { return !checks.all_passed || native_vertical() < -0.5f; }, timeout)
-            .Then([this] {
-                auto const* const sim{native_player()};
-                checks.is_true(sim && sim->flight_intent().translation.z() < -0.5f,
-                               TEXT("Gunship gamepad A sends negative vertical intent"));
-                checks.is_true(sim && sim->laser_firing_mode == ioj::sim::LaserFiringState::idle,
-                               TEXT("Gunship gamepad A does not fire"));
-                check_active_contexts(ioj::EShipControlScope::Gunship);
-                check_single_ship_action_bindings();
-            });
-    }
-
-    TEST_METHOD(ControllerRotationHasConsistentPhysicalSignsAcrossFlightModes)
-    {
-        using Axis = ioj::ESpaceGameInputAxis;
-        using Scope = ioj::EShipControlScope;
-        TestCommandBuilder.Do([this] { setup(); })
-            .Until([this] { return !checks.all_passed || ready(); }, timeout)
-            .Then([this] {
-                auto* const settings{Cast<ioj::USpaceGameInputUserSettings>(settings_.Get())};
-                original_pitch_inversion_ = settings->invert_gamepad_pitch();
-                original_yaw_inversion_ = settings->invert_gamepad_yaw();
-                original_roll_inversion_ = settings->invert_gamepad_roll();
-                original_vertical_inversion_ = settings->invert_gamepad_vertical_translation();
-                restore_pitch_inversion_ = true;
-                restore_other_inversions_ = true;
-                prepare_slate_input();
-            });
-
-        struct MappingCase {
-            Scope scope;
-            FKey select;
-            Axis axis;
-            FKey key;
-            bool inverted;
-            float physical_value;
-        };
-        MappingCase const cases[]{
-            {Scope::Starfox, EKeys::One, Axis::Pitch, EKeys::Gamepad_LeftY, false, 1.f},
-            {Scope::Fighter, EKeys::Two, Axis::Pitch, EKeys::Gamepad_RightY, true, -1.f},
-            {Scope::Fighter, EKeys::Two, Axis::Roll, EKeys::Gamepad_LeftX, false, -1.f},
-            {Scope::Skater, EKeys::Three, Axis::Roll, EKeys::Gamepad_RightX, true, 1.f},
-            {Scope::Gunship, EKeys::Four, Axis::Yaw, EKeys::Gamepad_RightX, false, 1.f},
-        };
-        for (auto const mapping : cases) {
-            auto const expected_sign{mapping.physical_value * (mapping.inverted ? -1.f : 1.f)};
-            TestCommandBuilder.Then([this, mapping] { send_slate_key(mapping.select, true); })
-                .Until(
-                    [this, mapping] {
-                        auto const* const ship{Cast<ioj::ATestSpaceShip>(controller_->GetPawn())};
-                        return !checks.all_passed || ship->get_active_flight_model_slot() ==
-                                                         ioj::flight_model_slot(mapping.scope);
-                    },
-                    timeout)
-                .Then([this, mapping] {
-                    send_slate_key(mapping.select, false);
-                    check_active_contexts(mapping.scope);
-                    auto* const settings{Cast<ioj::USpaceGameInputUserSettings>(settings_.Get())};
-                    settings->set_invert_gamepad_pitch(mapping.inverted &&
-                                                       mapping.axis == Axis::Pitch);
-                    settings->set_invert_gamepad_yaw(mapping.inverted && mapping.axis == Axis::Yaw);
-                    settings->set_invert_gamepad_roll(mapping.inverted &&
-                                                      mapping.axis == Axis::Roll);
-                    settings->ApplySettings();
-                    send_slate_axis(mapping.key, mapping.physical_value);
-                })
-                .Until(
-                    [this, mapping, expected_sign] {
-                        return !checks.all_passed ||
-                               native_rotation(mapping.axis) * expected_sign > 0.5f;
-                    },
-                    timeout)
-                .Then([this, mapping, expected_sign] {
-                    checks.is_true(
-                        native_rotation(mapping.axis) * expected_sign > 0.5f,
-                        TEXT("Mapped axis follows the physical direction and inversion"));
-                    send_slate_axis(mapping.key, 0.f);
-                })
-                .Until(
-                    [this, mapping] {
-                        return !checks.all_passed ||
-                               FMath::IsNearlyZero(native_rotation(mapping.axis));
-                    },
-                    timeout);
-        }
-    }
-
-    TEST_METHOD(GunshipSlateADescendsWithoutCommonUIClick)
-    {
-        TestCommandBuilder.Do([this] { setup(); })
-            .Until([this] { return !checks.all_passed || ready(); }, timeout)
-            .Then([this] { controller_->ConsoleCommand(TEXT("Input.+key Four"), true); })
-            .Until(mode_active(ioj::sim::player::FlightModelSlot::Fourth), timeout)
-            .Then([this] {
-                controller_->ConsoleCommand(TEXT("Input.-key Four"), true);
-                check_active_contexts(ioj::EShipControlScope::Gunship);
-                check_single_ship_action_bindings();
-                if (prepare_slate_input()) {
-                    send_slate_key(EKeys::Gamepad_FaceButton_Bottom, true);
-                    checks.is_true(!FSlateApplication::Get().GetPressedMouseButtons().Contains(
-                                       EKeys::LeftMouseButton),
-                                   TEXT("Gameplay Accept does not synthesize mouse down"));
-                }
-            })
-            .Until([this] { return !checks.all_passed || native_vertical() < -0.5f; }, timeout)
-            .Then([this] {
-                auto const* const sim{native_player()};
-                checks.is_true(sim != nullptr && sim->flight_intent().translation.z() < -0.5f,
-                               TEXT("Slate and CommonUI route A to descent"));
-                checks.is_true(sim != nullptr &&
-                                   sim->laser_firing_mode == ioj::sim::LaserFiringState::idle,
-                               TEXT("CommonUI does not turn gameplay A into mouse fire"));
-                send_slate_key(EKeys::Gamepad_FaceButton_Bottom, false);
-            })
-            .Until([this] { return !checks.all_passed || FMath::IsNearlyZero(native_vertical()); },
-                   timeout)
-            .Then([this] {
-                checks.is_true(FMath::IsNearlyZero(native_vertical()),
-                               TEXT("Slate A release clears descent"));
-                FPlayerControllerTestAccess::toggle_pause(*controller_);
-            })
-            .Until(
-                [this] {
-                    auto* const router{
-                        controller_->GetLocalPlayer()->GetSubsystem<UCommonUIActionRouterBase>()};
-                    return !checks.all_passed ||
-                           (FPlayerControllerTestAccess::has_modal(*controller_) &&
-                            router->GetActiveInputMode() == ECommonInputMode::Menu);
-                },
-                timeout)
-            .Then([this] {
-                auto* const local_player{controller_->GetLocalPlayer()};
-                auto* const router{local_player->GetSubsystem<UCommonUIActionRouterBase>()};
-                auto const user{static_cast<uint32>(local_player->GetSlateUser()->GetUserIndex())};
-                auto const viewport{local_player->ViewportClient->GetGameViewportWidget()};
-                FKeyEvent const accept{
-                    EKeys::Gamepad_FaceButton_Bottom, FModifierKeysState{}, user, false, 0, 0};
-                checks.is_true(
-                    router->GetCommonAnalogCursor()->ShouldVirtualAcceptSimulateMouseButton(
-                        accept, IE_Pressed),
-                    TEXT("Menu Accept retains CommonUI mouse-click behavior"));
-                send_slate_key(EKeys::Gamepad_FaceButton_Bottom, true);
-                checks.is_true(FSlateApplication::Get().GetPressedMouseButtons().Contains(
-                                   EKeys::LeftMouseButton),
-                               TEXT("Menu Accept still synthesizes mouse down"));
-                FSlateApplication::Get().SetUserFocus(user, viewport);
-                send_slate_key(EKeys::Gamepad_FaceButton_Bottom, false);
-                checks.is_true(!FSlateApplication::Get().GetPressedMouseButtons().Contains(
-                                   EKeys::LeftMouseButton),
-                               TEXT("Menu Accept releases the synthetic mouse button"));
-                FPlayerControllerTestAccess::toggle_pause(*controller_);
-            })
-            .Until(
-                [this] {
-                    return !checks.all_passed ||
-                           (!FPlayerControllerTestAccess::has_modal(*controller_) &&
-                            controller_->get_active_control_context() ==
-                                ::ioj::levels::ControlContext::Player);
-                },
-                timeout)
-            .Then([this] {
-                checks.is_true(!FPlayerControllerTestAccess::has_modal(*controller_),
-                               TEXT("Pause returns to gameplay"));
-                check_active_contexts(ioj::EShipControlScope::Gunship);
-                send_slate_key(EKeys::Gamepad_FaceButton_Bottom, true);
-            })
-            .Until([this] { return !checks.all_passed || native_vertical() < -0.5f; }, timeout)
-            .Then([this] {
-                checks.is_true(native_vertical() < -0.5f,
-                               TEXT("Gameplay A descends again after Resume"));
-                auto const* const sim{native_player()};
-                checks.is_true(sim && sim->laser_firing_mode == ioj::sim::LaserFiringState::idle,
-                               TEXT("Resume does not leave synthetic mouse fire held"));
-            });
-    }
-
-    TEST_METHOD(ControllerYawRollAndVerticalInversionAreSemantic)
-    {
-        TestCommandBuilder.Do([this] { setup(); })
-            .Until([this] { return !checks.all_passed || ready(); }, timeout)
-            .Then([this] {
-                auto* const settings{Cast<ioj::USpaceGameInputUserSettings>(settings_.Get())};
-                if (!checks.is_true(IsValid(settings), TEXT("Canonical input settings exist"))) {
-                    return;
-                }
-                original_yaw_inversion_ = settings->invert_gamepad_yaw();
-                original_roll_inversion_ = settings->invert_gamepad_roll();
-                original_vertical_inversion_ = settings->invert_gamepad_vertical_translation();
-                restore_other_inversions_ = true;
-                settings->set_invert_gamepad_yaw(true);
-                settings->set_invert_gamepad_roll(true);
-                settings->set_invert_gamepad_vertical_translation(true);
-                settings->ApplySettings();
-                controller_->ConsoleCommand(TEXT("Input.+key Two"), true);
-            })
-            .Until(mode_active(ioj::sim::player::FlightModelSlot::Second), timeout)
-            .Then([this] {
-                controller_->ConsoleCommand(TEXT("Input.-key Two"), true);
-                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_RightX 1.0"), true);
-                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_LeftX 1.0"), true);
-            })
-            .Until(
-                [this] {
-                    return !checks.all_passed || (native_yaw() < -0.5f && native_roll() < -0.5f);
-                },
-                timeout)
-            .Then([this] {
-                checks.is_true(native_yaw() < -0.5f,
-                               TEXT("Controller Yaw inversion reverses Fighter yaw"));
-                checks.is_true(native_roll() < -0.5f,
-                               TEXT("Controller Roll inversion reverses Fighter roll"));
-                controller_->ConsoleCommand(TEXT("Input.-key Gamepad_RightX"), true);
-                controller_->ConsoleCommand(TEXT("Input.-key Gamepad_LeftX"), true);
-                controller_->ConsoleCommand(TEXT("Input.+key Four"), true);
-            })
-            .Until(mode_active(ioj::sim::player::FlightModelSlot::Fourth), timeout)
-            .Then([this] {
-                controller_->ConsoleCommand(TEXT("Input.-key Four"), true);
-                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_FaceButton_Bottom"), true);
-            })
-            .Until([this] { return !checks.all_passed || native_vertical() > 0.5f; }, timeout)
-            .Then([this] {
-                checks.is_true(native_vertical() > 0.5f,
-                               TEXT("Controller vertical inversion follows authored A Negate"));
-                controller_->ConsoleCommand(TEXT("Input.-key Gamepad_FaceButton_Bottom"), true);
-                controller_->ConsoleCommand(TEXT("Input.+key C"), true);
-            })
-            .Until([this] { return !checks.all_passed || native_vertical() < -0.5f; }, timeout)
-            .Then([this] {
-                checks.is_true(native_vertical() < -0.5f,
-                               TEXT("Controller vertical inversion does not affect keyboard C"));
-            });
-    }
-
-    TEST_METHOD(ControlsQueriesStayWithinDeviceAndFlightScope)
-    {
-        TestCommandBuilder.Do([this] { setup(); })
-            .Until([this] { return !checks.all_passed || ready(); }, timeout)
-            .Then([this] {
-                if (!checks.is_true(ready(), TEXT("Gameplay input is ready"))) {
-                    return;
-                }
-                auto* const controller{controller_.Get()};
-                auto* const game_instance{controller->GetGameInstance()};
-                auto* const settings{
-                    IsValid(game_instance)
-                        ? game_instance->GetSubsystem<ioj::UGameSettingsSubsystem>()
-                        : nullptr};
-                if (!checks.is_true(IsValid(settings), TEXT("Game settings exist"))) {
-                    return;
-                }
-                settings->begin_edit(controller->GetLocalPlayer());
-                using ioj::EShipControlScope;
-                auto const starfox{settings->control_bindings(EHardwareDevicePrimaryType::Gamepad,
-                                                              EShipControlScope::Starfox)};
-                auto const gunship{settings->control_bindings(EHardwareDevicePrimaryType::Gamepad,
-                                                              EShipControlScope::Gunship)};
-                auto const general{settings->control_bindings(
-                    EHardwareDevicePrimaryType::KeyboardAndMouse, EShipControlScope::General)};
-                checks.is_true(!starfox.IsEmpty() && !gunship.IsEmpty() && !general.IsEmpty(),
-                               TEXT("Each canonical scope has its own remappable bindings"));
-                for (auto const& binding : starfox) {
-                    checks.is_true(binding.scope == EShipControlScope::Starfox &&
-                                       binding.device_type == EHardwareDevicePrimaryType::Gamepad,
-                                   TEXT("Starfox query has only controller Starfox rows"));
-                }
-                for (auto const& binding : gunship) {
-                    checks.is_true(binding.scope == EShipControlScope::Gunship &&
-                                       binding.device_type == EHardwareDevicePrimaryType::Gamepad,
-                                   TEXT("Gunship query has only controller Gunship rows"));
-                }
-                checks.is_true(starfox.ContainsByPredicate([](auto const& binding) {
-                    return binding.address.mapping_name == FName{TEXT("Starfox.Pitch.Gamepad")};
-                }) && gunship.ContainsByPredicate([](auto const& binding) {
-                    return binding.address.mapping_name == FName{TEXT("Gunship.Pitch.Gamepad")};
-                }),
-                               TEXT("Same semantic action has separate stable mode identities"));
-                checks.is_true(gunship.ContainsByPredicate([](auto const& binding) {
-                    return binding.address.mapping_name ==
-                           FName{TEXT("Gunship.FirePrimary.Gamepad")};
-                }),
-                               TEXT("Gunship fire mapping is exposed to controls settings"));
-
-                auto* const unrelated{NewObject<UInputMappingContext>(GetTransientPackage())};
-                auto* const unrelated_action{NewObject<UInputAction>(unrelated)};
-                auto& mapping{unrelated->MapKey(unrelated_action, EKeys::Gamepad_FaceButton_Left)};
-                auto* const behavior_property{FindFProperty<FEnumProperty>(
-                    FEnhancedActionKeyMapping::StaticStruct(), TEXT("SettingBehavior"))};
-                auto* const settings_property{FindFProperty<FObjectProperty>(
-                    FEnhancedActionKeyMapping::StaticStruct(), TEXT("PlayerMappableKeySettings"))};
-                if (!checks.is_true(behavior_property != nullptr && settings_property != nullptr,
-                                    TEXT("Player-mappable mapping properties exist"))) {
-                    settings->cancel();
-                    return;
-                }
-                behavior_property->GetUnderlyingProperty()->SetIntPropertyValue(
-                    behavior_property->ContainerPtrToValuePtr<void>(&mapping),
-                    static_cast<int64>(EPlayerMappableKeySettingBehaviors::OverrideSettings));
-                auto* const key_settings{NewObject<UPlayerMappableKeySettings>(unrelated)};
-                key_settings->Name = FName{TEXT("Unrelated.Test.Gamepad")};
-                settings_property->SetObjectPropertyValue_InContainer(&mapping, key_settings);
-                checks.is_true(settings_->RegisterInputMappingContext(unrelated),
-                               TEXT("Unrelated player-mappable context registers"));
-                auto const* const profile{settings_->GetDefaultKeyProfile()};
-                checks.is_true(IsValid(profile) && profile->GetPlayerMappingRows().Contains(
-                                                       FName{TEXT("Unrelated.Test.Gamepad")}),
-                               TEXT("Unrelated mapping really entered the key profile"));
-                checks.is_true(!settings
-                                    ->control_bindings(EHardwareDevicePrimaryType::Gamepad,
-                                                       EShipControlScope::Gunship)
-                                    .ContainsByPredicate([](auto const& binding) {
-                                        return binding.address.mapping_name ==
-                                               FName{TEXT("Unrelated.Test.Gamepad")};
-                                    }),
-                               TEXT("Canonical scope query excludes unrelated registered IMC"));
-                settings_->UnregisterInputMappingContext(unrelated);
-                settings->cancel();
             });
     }
 
@@ -825,8 +372,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     return;
                 }
                 settings->begin_edit(controller->GetLocalPlayer());
-                auto const bindings{settings->control_bindings(EHardwareDevicePrimaryType::Gamepad,
-                                                               ioj::EShipControlScope::Starfox)};
+                auto const bindings{
+                    settings->control_bindings(EHardwareDevicePrimaryType::Gamepad)};
                 auto const* const binding{bindings.FindByPredicate([](auto const& candidate) {
                     return candidate.address.mapping_name == FName{TEXT("Starfox.Pitch.Gamepad")};
                 })};
@@ -845,37 +392,18 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                                   *FGuid::NewGuid().ToString(EGuidFormats::Digits));
                 developer_settings->InputSettingsSaveSlotName = test_save_slot_;
                 restore_remap_ = true;
-                auto* const input_settings{Cast<ioj::USpaceGameInputUserSettings>(settings_.Get())};
-                if (!checks.is_true(IsValid(input_settings),
-                                    TEXT("Canonical input settings exist"))) {
-                    return;
-                }
-                original_pitch_inversion_ = input_settings->invert_gamepad_pitch();
-                restore_pitch_inversion_ = true;
-
-                original_yaw_inversion_ = input_settings->invert_gamepad_yaw();
-                original_roll_inversion_ = input_settings->invert_gamepad_roll();
-                original_vertical_inversion_ =
-                    input_settings->invert_gamepad_vertical_translation();
-                restore_other_inversions_ = true;
+                original_pitch_inversion_ = settings->settings_state().invert_gamepad_pitch;
 
                 checks.is_true(
                     settings->set_control_binding(remap_address_, EKeys::Gamepad_RightY, false),
                     TEXT("Canonical remap previews in the edit transaction"));
-                settings->set_setting(ioj::GameSetting::InvertGamepadPitch,
-                                      ioj::GameSettingValue{!original_pitch_inversion_});
-                settings->set_setting(ioj::GameSetting::InvertGamepadYaw,
-                                      ioj::GameSettingValue{!original_yaw_inversion_});
-                settings->set_setting(ioj::GameSetting::InvertGamepadRoll,
-                                      ioj::GameSettingValue{!original_roll_inversion_});
                 settings->apply();
                 checks.is_true(pitch_mapping_uses(*settings, EKeys::Gamepad_RightY),
                                TEXT("Apply retains the remap in the active key profile"));
             })
             .Until(
                 [this] {
-                    return !checks.all_passed || (canonical_remap_reloaded(EKeys::Gamepad_RightY) &&
-                                                  inversion_reloaded());
+                    return !checks.all_passed || canonical_remap_reloaded(EKeys::Gamepad_RightY);
                 },
                 FTimespan::FromSeconds(5))
             .Then([this] {
@@ -886,11 +414,11 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
             .Until(
                 [this] {
                     return !checks.all_passed ||
-                           native_pitch() * (original_pitch_inversion_ ? 1.0f : -1.0f) > 0.5f;
+                           native_pitch() * (original_pitch_inversion_ ? -1.0f : 1.0f) > 0.5f;
                 },
                 timeout)
             .Then([this] {
-                checks.is_true(native_pitch() * (original_pitch_inversion_ ? 1.0f : -1.0f) > 0.5f,
+                checks.is_true(native_pitch() * (original_pitch_inversion_ ? -1.0f : 1.0f) > 0.5f,
                                TEXT("Remapped right-stick Pitch retains its semantic inversion"));
                 send_slate_axis(EKeys::Gamepad_RightY, 0.0f);
             })
@@ -899,30 +427,14 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                     TEXT("Saved semantic gamepad row survives a fresh reload"))) {
                     return;
                 }
-                checks.is_true(inversion_reloaded(),
-                               TEXT("Apply persists controller Pitch, Yaw, and Roll inversion"));
                 auto* const controller{controller_.Get()};
                 auto* const settings{
                     controller->GetGameInstance()->GetSubsystem<ioj::UGameSettingsSubsystem>()};
                 settings->begin_edit(controller->GetLocalPlayer());
-                settings->set_setting(ioj::GameSetting::InvertGamepadPitch,
-                                      ioj::GameSettingValue{original_pitch_inversion_});
-                settings->set_setting(ioj::GameSetting::InvertGamepadYaw,
-                                      ioj::GameSettingValue{original_yaw_inversion_});
-                settings->set_setting(ioj::GameSetting::InvertGamepadRoll,
-                                      ioj::GameSettingValue{original_roll_inversion_});
                 checks.is_true(settings->set_control_binding(
                                    remap_address_, EKeys::Gamepad_FaceButton_Right, false),
                                TEXT("A second remap can be previewed"));
                 settings->cancel();
-                auto const* const input_settings{
-                    Cast<ioj::USpaceGameInputUserSettings>(settings_.Get())};
-                checks.is_true(
-                    input_settings->invert_gamepad_pitch() == !original_pitch_inversion_ &&
-                        input_settings->invert_gamepad_yaw() == !original_yaw_inversion_ &&
-                        input_settings->invert_gamepad_roll() == !original_roll_inversion_ &&
-                        inversion_reloaded(),
-                    TEXT("Cancel restores live rotation inversion without changing its save"));
                 checks.is_true(canonical_remap_reloaded(EKeys::Gamepad_RightY),
                                TEXT("Cancel does not persist the previewed remap"));
                 checks.is_true(pitch_mapping_uses(*settings, EKeys::Gamepad_RightY),
@@ -945,89 +457,12 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
             .Until(
                 [this] {
                     return !checks.all_passed ||
-                           native_pitch() * (original_pitch_inversion_ ? 1.0f : -1.0f) > 0.5f;
+                           native_pitch() * (original_pitch_inversion_ ? -1.0f : 1.0f) > 0.5f;
                 },
                 timeout)
             .Then([this] {
-                checks.is_true(native_pitch() * (original_pitch_inversion_ ? 1.0f : -1.0f) > 0.5f,
+                checks.is_true(native_pitch() * (original_pitch_inversion_ ? -1.0f : 1.0f) > 0.5f,
                                TEXT("Default left-stick Pitch matches the remapped right stick"));
-            });
-    }
-
-    TEST_METHOD(FlightTuningCannotChangeModeTopologyOrActiveSlot)
-    {
-        TestCommandBuilder.Do([this] { setup(); })
-            .Until([this] { return !checks.all_passed || ready(); }, timeout)
-            .Then([this] {
-                if (!checks.is_true(ready(), TEXT("Gameplay input is ready"))) {
-                    return;
-                }
-                auto* const controller{controller_.Get()};
-                auto* const ship{Cast<ioj::ATestSpaceShip>(controller->GetPawn())};
-                auto* const game_instance{controller->GetGameInstance()};
-                auto* const settings{
-                    IsValid(game_instance)
-                        ? game_instance->GetSubsystem<ioj::UGameSettingsSubsystem>()
-                        : nullptr};
-                if (!checks.is_true(IsValid(settings), TEXT("Game settings exist")) ||
-                    !checks.is_valid(ship, TEXT("Player ship exists"))) {
-                    return;
-                }
-                settings->begin_edit(controller->GetLocalPlayer());
-                auto const before{settings->flight_model_loadout()};
-                auto const active_slot{ship->get_active_flight_model_slot()};
-                using ioj::EShipControlScope;
-                using namespace ioj::sim::player;
-                auto tuned{settings->flight_model_profile(EShipControlScope::Gunship)};
-                auto& speed{tuned.config.translation.up.normal.positive_target_speed};
-                speed = ioj::NonNegativeFinite<float>::make(speed + 100.f);
-                tuned.config.translation.up.manual.response.mode = ResponseMode::SecondOrder;
-                checks.is_true(
-                    settings->set_flight_model_profile(EShipControlScope::Gunship, tuned),
-                    TEXT("Numeric and response tuning are accepted"));
-                tuned.config.boost.available = !tuned.config.boost.available;
-                tuned.config.boost.accelerator_activates_boost =
-                    !tuned.config.boost.accelerator_activates_boost;
-                tuned.config.brake.available = !tuned.config.brake.available;
-                tuned.config.emergency_brake.available = !tuned.config.emergency_brake.available;
-                tuned.config.rotation.roll.stabilization.enabled =
-                    !tuned.config.rotation.roll.stabilization.enabled;
-                checks.is_true(
-                    settings->set_flight_model_profile(EShipControlScope::Gunship, tuned),
-                    TEXT("Behavioral boost, brake, and stabilization tuning is accepted"));
-                checks.is_true(
-                    settings->flight_model_loadout().profiles[0] == before.profiles[0] &&
-                        settings->flight_model_loadout().profiles[1] == before.profiles[1] &&
-                        settings->flight_model_loadout().profiles[2] == before.profiles[2],
-                    TEXT("Editing Gunship leaves other slots unchanged"));
-
-                auto changed{tuned};
-                changed.config.translation.up.manual.semantic = TranslationSemantic::Disabled;
-                checks.is_true(
-                    !settings->set_flight_model_profile(EShipControlScope::Gunship, changed),
-                    TEXT("Disabling an authored channel is rejected"));
-                changed = tuned;
-                changed.config.translation.up.manual.input_source =
-                    TranslationInputSource::Accelerator;
-                checks.is_true(
-                    !settings->set_flight_model_profile(EShipControlScope::Gunship, changed),
-                    TEXT("Changing input source is rejected"));
-                changed = tuned;
-                changed.config.translation.up.manual.reference_frame = ReferenceFrame::World;
-                checks.is_true(
-                    !settings->set_flight_model_profile(EShipControlScope::Gunship, changed),
-                    TEXT("Changing authored reference frame is rejected"));
-                changed = settings->flight_model_profile(EShipControlScope::Starfox);
-                changed.config.translation.up.manual.semantic = TranslationSemantic::TargetVelocity;
-                checks.is_true(
-                    !settings->set_flight_model_profile(EShipControlScope::Starfox, changed),
-                    TEXT("Enabling an absent channel is rejected"));
-                checks.is_true(ship->get_active_flight_model_slot() == active_slot,
-                               TEXT("Editing a slot never selects it in gameplay"));
-                settings->cancel();
-                checks.is_true(settings->flight_model_loadout() == before &&
-                                   ship->get_active_flight_model_slot() == active_slot,
-                               TEXT("Cancel restores tuning without changing the runtime slot"));
             });
     }
 };

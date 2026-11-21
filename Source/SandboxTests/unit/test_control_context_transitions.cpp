@@ -24,13 +24,6 @@ struct FPlayerControlContextsTestAccess {
     }
 };
 
-struct FShipControlContextTestAccess {
-    static void select(ioj::FShipControlContext& context,
-                       ::ioj::sim::player::FlightModelSlot const slot) {
-        context.select_flight_model_slot(slot);
-    }
-};
-
 TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
 {
     ioj::ASpaceGamePlayerController* controller_{};
@@ -145,50 +138,12 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
                               1);
     }
 
-    TEST_METHOD(FlightModesSwitchAsOneNativeAndEnhancedInputState)
-    {
-        using Slot = ::ioj::sim::player::FlightModelSlot;
-        contexts_.set_ship(ship_);
-        TestRunner->TestTrue(TEXT("Player context binds"),
-                             contexts_.set_control_context(::ioj::levels::ControlContext::Player));
-        auto assert_mode = [this](Slot const slot, UInputMappingContext* const active) {
-            TestRunner->TestTrue(TEXT("Native flight slot is selected"),
-                                 ship_->get_active_flight_model_slot() == slot);
-            TestRunner->TestTrue(TEXT("General context stays active"),
-                                 subsystem_->HasMappingContext(global_input_.mapping_context));
-            int32 active_count{};
-            for (auto* const mode : {ship_input_.starfox,
-                                     ship_input_.fighter,
-                                     ship_input_.skater,
-                                     ship_input_.gunship}) {
-                active_count += subsystem_->HasMappingContext(mode) ? 1 : 0;
-            }
-            TestRunner->TestEqual(TEXT("Exactly one mode context is active"), active_count, 1);
-            TestRunner->TestTrue(TEXT("Correct mode context is active"),
-                                 subsystem_->HasMappingContext(active));
-        };
-        assert_mode(Slot::First, ship_input_.starfox);
-        auto& bridge{FPlayerControlContextsTestAccess::ship_context(contexts_)};
-        FShipControlContextTestAccess::select(bridge, Slot::Fourth);
-        assert_mode(Slot::Fourth, ship_input_.gunship);
-        FShipControlContextTestAccess::select(bridge, Slot::Second);
-        assert_mode(Slot::Second, ship_input_.fighter);
-        FShipControlContextTestAccess::select(bridge, Slot::Third);
-        assert_mode(Slot::Third, ship_input_.skater);
-        FShipControlContextTestAccess::select(bridge, Slot::First);
-        assert_mode(Slot::First, ship_input_.starfox);
-    }
-
     TEST_METHOD(UnbindNeutralisesAllContinuousAndHeldShipInput)
     {
         contexts_.set_ship(ship_);
         contexts_.set_control_context(::ioj::levels::ControlContext::Player);
-        ship_->set_forward_input(1.f);
-        ship_->set_right_input(1.f);
-        ship_->set_up_input(1.f);
         ship_->set_pitch_input(1.f);
         ship_->set_yaw_input(1.f);
-        ship_->set_roll_input(1.f);
         ship_->set_accelerator(1.f);
         ship_->start_boost();
         ship_->start_brake();
@@ -196,9 +151,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         ship_->start_fire_laser();
         contexts_.set_control_context(::ioj::levels::ControlContext::None);
         auto const& intent{ship_simulation_.flight_intent()};
-        TestRunner->TestTrue(TEXT("Translation and rotation clear"),
-                             intent.translation == ioj::Vector3d{} &&
-                                 intent.rotation == ioj::Vector3d{});
+        TestRunner->TestTrue(TEXT("Pitch and yaw clear"), intent.pitch == 0.f && intent.yaw == 0.f);
         TestRunner->TestTrue(TEXT("Accelerator and held propulsion clear"),
                              intent.accelerator == 0.f && !intent.boost_held &&
                                  !intent.brake_held && !intent.emergency_brake_held);

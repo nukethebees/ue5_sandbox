@@ -46,7 +46,6 @@ void FTestHUDManagerScenario::registration_process_samples() {
     checks.are_equal(level->entity_ledger().count_alive(),
                      count_cached_hud_entities(hud_manager),
                      TEXT("Cache exists before HUD registration"));
-    hud_manager.set_selected_mapping_context(TEXT("late_registration"));
     hud_manager.tick(1);
 
     auto* const ui_data{test_batch_game_ui_data::get_data_asset()};
@@ -78,20 +77,6 @@ void FTestHUDManagerScenario::registration_process_samples() {
                      hud_manager.get_registered_hud_count(),
                      TEXT("Late HUD is registered and synchronised immediately"));
 
-    auto* const imc{Cast<UUserWidget>(hud->GetWidgetFromName(TEXT("selected_imc_widget")))};
-    auto* const text{imc ? Cast<UTextBlock>(imc->GetWidgetFromName(TEXT("value_text"))) : nullptr};
-    if (checks.not_nullptr(text, TEXT("Selected mapping context text exists"))) {
-        checks.is_true(text->GetText().ToString().Contains(TEXT("late_registration")),
-                       TEXT("Late HUD registration immediately synchronises the cached model"));
-    }
-
-    hud_manager.set_selected_mapping_context(TEXT("registered_update"));
-    hud_manager.tick(1);
-    if (IsValid(text)) {
-        checks.is_true(text->GetText().ToString().Contains(TEXT("registered_update")),
-                       TEXT("Registered ship HUD receives flight updates"));
-    }
-
     hud_manager.unregister_hud(*hud);
     checks.are_equal(0, hud_manager.get_registered_hud_count(), TEXT("HUD unregisters cleanly"));
     hud_manager.register_hud(*hud);
@@ -100,12 +85,7 @@ void FTestHUDManagerScenario::registration_process_samples() {
     hud_manager.unregister_hud(*hud);
     hud->RemoveFromParent();
 
-    hud_manager.set_selected_mapping_context(FString{TEXT("after_unregister")});
     hud_manager.tick(1);
-    if (IsValid(text)) {
-        checks.is_true(text->GetText().ToString().Contains(TEXT("registered_update")),
-                       TEXT("Unregistered widget retains its last published model"));
-    }
     checks.are_equal(0,
                      hud_manager.get_registered_hud_count(),
                      TEXT("Updates do not target the unregistered HUD"));
