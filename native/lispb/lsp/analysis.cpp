@@ -497,6 +497,28 @@ auto Analysis::lookup(Document const& doc, std::span<sexpr::FormId const> contex
     return {};
 }
 
+auto Analysis::location(sexpr::SourceSpan span) const -> Json {
+    return {{"uri", file_uri(document(span.file).path)},
+            {"range", range(compiler_.storage().sources, span)}};
+}
+auto Analysis::references(sexpr::SourceSpan declaration, bool include_declaration) const -> Json {
+    Json result = Json::array();
+    if (include_declaration && declaration.end_offset) {
+        result.push_back(location(declaration));
+    }
+    // Bindings are ordered by use; macro expansion can bind one authored token more than once.
+    std::optional<SourcePosition> previous;
+    for (auto const& link : facts_.references) {
+        auto const use{key(link.use)};
+        if (key(link.declaration) == key(declaration) &&
+            link.declaration.end_offset == declaration.end_offset && use != key(declaration) &&
+            use != previous) {
+            result.push_back(location(link.use));
+            previous = use;
+        }
+    }
+    return result;
+}
 auto Analysis::completion(Document const& doc,
                           std::span<sexpr::FormId const> context,
                           std::uint32_t offset,
@@ -746,10 +768,12 @@ auto Analysis::query(fs::path const& path,
     if (!target) {
         return nullptr;
     }
-    auto const& destination{document(target->file)};
-    if (method == Method::definition) {
-        return {{"uri", file_uri(destination.path)}, {"range", range(storage.sources, *target)}};
+    if (method == Method::references) {
+        return references(*target, params.at("context").at("includeDeclaration").get<bool>());
     }
-    return hover(destination, *target, token, capabilities.hover_format);
+    if (method == Method::definition) {
+        return location(*target);
+    }
+    return hover(document(target->file), *target, token, capabilities.hover_format);
 }
 }

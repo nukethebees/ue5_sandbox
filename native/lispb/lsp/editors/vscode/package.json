@@ -3,7 +3,7 @@
   "displayName": "Lispb",
   "description": "Editor support for Lispb source files.",
   "publisher": "nukethebees",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "engines": { "vscode": "^1.85.0" },
   "main": "./extension.js",
   "activationEvents": ["onLanguage:lispb"],

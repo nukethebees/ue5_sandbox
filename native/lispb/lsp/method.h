@@ -15,7 +15,7 @@
 namespace lispb::lsp {
 using MethodUnderlying = std::uint8_t;
 
-// Logical bit width: 4.
+// Logical bit width: 5.
 enum class Method : MethodUnderlying {
     initialize,
     initialized,
@@ -31,6 +31,7 @@ enum class Method : MethodUnderlying {
     completion,
     hover,
     definition,
+    references,
     tokens,
     token_range,
 };
@@ -97,6 +98,9 @@ using ioj::to_serialized_string;
             if (value == "textDocument/definition") {
                 return Method::definition;
             }
+            if (value == "textDocument/references") {
+                return Method::references;
+            }
             return std::nullopt;
         }
         case 25ULL: {
@@ -142,11 +146,12 @@ inline constexpr std::array<Method, 4ULL> method_update_values{
     return value >= Method::open && value <= Method::save;
 }
 
-inline constexpr std::array<Method, 7ULL> method_query_values{Method::folding,
+inline constexpr std::array<Method, 8ULL> method_query_values{Method::folding,
                                                               Method::symbols,
                                                               Method::completion,
                                                               Method::hover,
                                                               Method::definition,
+                                                              Method::references,
                                                               Method::tokens,
                                                               Method::token_range};
 
@@ -167,7 +172,8 @@ inline constexpr auto enum_strings<lispb::lsp::Method, Serialized>{PackedStrings
     "didChangeWatchedFiles\000textDocument/didOpen\000textDocument/didChange\000textDocument/"
     "didClose\000textDocument/didSave\000textDocument/foldingRange\000textDocument/"
     "documentSymbol\000textDocument/completion\000textDocument/hover\000textDocument/"
-    "definition\000textDocument/semanticTokens/full\000textDocument/semanticTokens/range",
-    std::array<std::uint16_t, 17>{
-        0, 11, 23, 32, 37, 69, 90, 113, 135, 156, 182, 210, 234, 253, 277, 310, 344}}};
+    "definition\000textDocument/references\000textDocument/semanticTokens/full\000textDocument/"
+    "semanticTokens/range",
+    std::array<std::uint16_t, 18>{
+        0, 11, 23, 32, 37, 69, 90, 113, 135, 156, 182, 210, 234, 253, 277, 301, 334, 368}}};
 } // namespace ioj

@@ -179,12 +179,17 @@ def exercise(client, root, hover_formats=()):
     assert provider["legend"]["tokenModifiers"] == ["declaration"]
     legend = provider["legend"]["tokenTypes"]
     assert result["capabilities"]["definitionProvider"]
+    assert result["capabilities"]["referencesProvider"]
     client.send("initialized", {})
     for key in ("project", "data", "ops", "ui", "mat"):
         client.open(paths[key], files[key])
 
     markup = hover_formats[0] if hover_formats else "plaintext"
     completion_markup = hover_formats[-1] if hover_formats else "plaintext"
+
+    def references(key, text, token, include=False, skip=0):
+        return client.query("references", paths[key], position(text, token, skip),
+                            context={"includeDeclaration": include})
 
     def expected_location(key, text, token, length, skip=0):
         return {"uri": paths[key].as_uri(), "range": {
@@ -224,6 +229,10 @@ def exercise(client, root, hover_formats=()):
     hover(paths["data"], schema, "@scalar", cpp, header)
     client.open(paths["scalars"], scalar)
     hover(paths["scalars"], scalar, "scalar", cpp, header)
+    use = expected_location("data", schema, "@scalar", len("@scalar"))
+    decl = expected_location("scalars", scalar, "scalar", len("scalar"))
+    assert references("scalars", scalar, "scalar") == [use]
+    assert references("data", schema, "@scalar", include=True) == [decl, use]
     item = completion("data", schema, "@scalar", 3, "@scalar")
     assert item["kind"] == 7 and item["detail"] == scalar, item
     assert "unsigned int" in documentation(item) and "stdint.h" in documentation(item), item
@@ -234,10 +243,18 @@ def exercise(client, root, hover_formats=()):
     fields = (("Parameter type", "scalar"), ("Default", "1"))
     declaration = hover(paths["mat"], mat, "Intensity", *fields)
     assert declaration == hover(paths["mat"], mat, "float3 Intensity", *fields, skip=7)
+    uses = [expected_location("mat", mat, "float3 Intensity", 9, skip) for skip in (7, 17, 27)]
+    assert references("mat", mat, "Intensity") == uses
+    assert references("mat", mat, "float3 Intensity", skip=7) == uses
+    assert references("mat", mat, "Tint") == []
     item = completion("mat", mat, "float3 Intensity", 7, "Tint")
     assert item["kind"] == 6 and item["detail"] == "(parameter color Tint 1.0 0.25 0.5 1.0)", item
     details = documentation(item)
     assert "color" in details and "1, 0.25, 0.5, 1" in details, item
+    ops = files["ops"]
+    assert references("ops", ops, "operand data", skip=8) == [
+        expected_location("ops", ops, "data (constant nan)", len("data"))
+    ]
     hover(
         paths["mat"],
         mat,
@@ -329,6 +346,9 @@ def exercise(client, root, hover_formats=()):
     hover(paths["mat"], edit, "float3 Intensity", ("Default", "2.5"), skip=7)
     item = completion("mat", edit, "float3 Intensity", 9, "Intensity")
     assert "2.5" in documentation(item), item
+    fewer = edit.replace("Intensity Intensity Intensity", "Intensity 0 0")
+    client.edit(paths["mat"], fewer, 5)
+    assert references("mat", fewer, "Intensity") == [expected_location("mat", fewer, "float3 Intensity", 9, 7)]
 
     macro = client.query("definition", paths["ui"], position(files["ui"], "caption"))
     assert macro["uri"] == paths["macros"].as_uri()

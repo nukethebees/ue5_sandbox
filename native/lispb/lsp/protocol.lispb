@@ -17,6 +17,7 @@
     (value completion :serialized-name "textDocument/completion" :groups (query))
     (value hover :serialized-name "textDocument/hover" :groups (query))
     (value definition :serialized-name "textDocument/definition" :groups (query))
+    (value references :serialized-name "textDocument/references" :groups (query))
     (value tokens :serialized-name "textDocument/semanticTokens/full" :groups (query))
     (value token_range :serialized-name "textDocument/semanticTokens/range" :groups (query))))
 

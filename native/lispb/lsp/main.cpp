@@ -258,6 +258,7 @@ static auto initialize(Json const& params, ClientCapabilities& capabilities) -> 
               {"completionProvider", {{"triggerCharacters", {"(", ":", "@", "/"}}}},
               {"hoverProvider", true},
               {"definitionProvider", true},
+              {"referencesProvider", true},
               {"semanticTokensProvider",
                {{"legend", {{"tokenTypes", std::move(types)}, {"tokenModifiers", {"declaration"}}}},
                 {"full", true},

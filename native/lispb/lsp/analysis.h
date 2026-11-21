@@ -87,6 +87,8 @@ class Analysis {
                     std::span<sexpr::FormId const> context,
                     std::uint32_t offset,
                     MarkupKind format) -> Json;
+    auto location(sexpr::SourceSpan span) const -> Json;
+    auto references(sexpr::SourceSpan declaration, bool include_declaration) const -> Json;
     auto signature(Symbol const& symbol) const -> std::string_view;
     auto declaration_details(Document const& doc, Symbol const& symbol, MarkupKind format) const
         -> std::string;
