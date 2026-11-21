@@ -1,6 +1,6 @@
 # coj
 
-Install the CLI using the [worktree setup](../../../../docs/build-and-test.md#setup). Use `coj --help` to list commands and `coj git --help` for supported Git operations.
+Install the CLI using the [worktree setup](../../../../README.md#setup). Use `coj --help` to list commands and `coj git --help` for supported Git operations.
 
 Start an independent change with `coj git switch -c feature/<task> dev`. Continue related changes on their feature branch. `coj git check` previews a supported action. `dev`, `main`, `master`, and branches owned by other worktrees are protected.
 

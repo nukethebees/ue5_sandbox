@@ -10,4 +10,4 @@ flowchart TD
     U --> E[Editor and game]
 ```
 
-Regenerate presets with `coj presets` and verify with `coj presets --check`. Edit Unreal modules in their `.Build.cs` files and targets in `.Target.cs` files. [Build and test](../docs/build-and-test.md) · [CMake style](STYLE.md)
+Regenerate presets with `coj presets` and verify with `coj presets --check`. Edit Unreal modules in their `.Build.cs` files and targets in `.Target.cs` files. [Build and play](../README.md#build-and-play) · [Tests](../README.md#tests) · [CMake style](STYLE.md)

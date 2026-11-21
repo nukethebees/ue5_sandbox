@@ -1,6 +1,6 @@
 # Native C++
 
-Build and test the simulation without Unreal. [Build commands](../docs/build-and-test.md#test)
+Build and test the simulation without Unreal. [Native build](../README.md#other-builds) · [Tests](../README.md#tests)
 
 | Task | Guide |
 | --- | --- |
