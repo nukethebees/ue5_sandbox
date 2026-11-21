@@ -99,7 +99,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     -> std::expected<BenchmarkResult, std::string> {
     using Result = std::expected<BenchmarkResult, std::string>;
 
-    auto level_result{levels::authoring::DefinitionReader{}.read_level_file(options.level_path)};
+    auto level_result{levels::authoring::DefinitionReader::for_level(options.level_path)
+                          .read_level_file(options.level_path)};
     if (!level_result) {
         return Result{std::unexpect, read_error(level_result)};
     }

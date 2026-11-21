@@ -34,7 +34,7 @@ namespace ioj {
 namespace {
 auto read_loader_fixture(TCHAR const* filename) -> levels::authoring::LevelDefinitionReadResult {
     auto const path{FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), filename)};
-    return levels::authoring::DefinitionReader{}.read_level_file(std::filesystem::path{*path});
+    return levels::authoring::DefinitionReader::for_level(*path).read_level_file(*path);
 }
 }
 
@@ -126,7 +126,7 @@ void FLevelLoaderScenario::start_simulation() {
 }
 
 void FLevelLoaderScenario::load_player_fixture() {
-    auto const scripted_definition{read_loader_fixture(TEXT("BorderSkirmish.scm"))};
+    auto const scripted_definition{read_loader_fixture(TEXT("BorderSkirmish/BorderSkirmish.scm"))};
     if (!checks.is_true(static_cast<bool>(scripted_definition),
                         TEXT("Scheme produces a valid native definition"))) {
         return;
@@ -246,7 +246,7 @@ void FLevelLoaderScenario::load_observer_fixture() {
     resources->entity_overlay.soft_target.material = nullptr;
     checks.is_true(!resources->is_valid(), TEXT("Unresolved overlay requires missing resources"));
 
-    auto const scripted_definition{read_loader_fixture(TEXT("FleetOverview.scm"))};
+    auto const scripted_definition{read_loader_fixture(TEXT("FleetOverview/FleetOverview.scm"))};
     if (!checks.is_true(static_cast<bool>(scripted_definition),
                         TEXT("Playerless Scheme level produces a valid native definition"))) {
         return;
@@ -475,7 +475,7 @@ void FLevelLoaderScenario::check_headless_run_controls() {
     orchestrator.reset_for_new_level();
     config->classes.player_ship_class = nullptr;
     orchestrator.set_level_config(*config);
-    auto const definition{read_loader_fixture(TEXT("FleetOverview.scm"))};
+    auto const definition{read_loader_fixture(TEXT("FleetOverview/FleetOverview.scm"))};
     checks.is_true(static_cast<bool>(definition), TEXT("Playerless fixture can be reloaded"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     auto const result{orchestrator.load_level(*definition)};

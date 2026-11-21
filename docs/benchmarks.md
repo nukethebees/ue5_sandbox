@@ -18,7 +18,7 @@ Replace the placeholder with the path printed by preparation. For two commits, p
 | Measure | Command |
 | --- | --- |
 | Fighter tick time at 2,000 and 4,000 fighters | `coj benchmark fighter-simulation` |
-| One scripted level | `coj benchmark native-simulation --level LevelScripts/BenchmarkFleet_10.scm --seconds 20` |
+| One scripted level | `coj benchmark native-simulation --level LevelScripts/BenchmarkFleet_10/BenchmarkFleet_10.scm --seconds 20` |
 | Frame memory | `coj benchmark frame-memory-level --seconds 20` |
 | Unreal instances | `coj benchmark sandbox-ismc --instances 1000 --warmup-seconds 1 --seconds 2` |
 
@@ -31,7 +31,7 @@ Open Tracy Profiler, then run from the repository root:
 ```powershell
 cmake --preset native-benchmark
 cmake --build --preset native-simulation-benchmark
-.\out\build\native-benchmark\bin\native-simulation-benchmark.exe --level LevelScripts/FighterSchedulingBenchmark.scm --seconds 20 --fighter-stress-cap 2000 --warmup-seconds 5 --saturation-timeout-seconds 60 --wait-for-profiler 60
+.\out\build\native-benchmark\bin\native-simulation-benchmark.exe --level LevelScripts/FighterSchedulingBenchmark/FighterSchedulingBenchmark.scm --seconds 20 --fighter-stress-cap 2000 --warmup-seconds 5 --saturation-timeout-seconds 60 --wait-for-profiler 60
 ```
 
 Connect to the waiting local process. After it exits, save the capture from Tracy as `.local/benchmarks/run.tracy`. With a compatible `tracy-csvexport` on PATH, locate the steady-state interval:

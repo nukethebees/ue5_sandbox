@@ -19,6 +19,8 @@ class DefinitionReader {
   public:
     DefinitionReader() = default;
     explicit DefinitionReader(std::filesystem::path script_library_root);
+    // Files in <script root>/<level>/ import from the shared script root.
+    [[nodiscard]] static auto for_level(std::filesystem::path const& file) -> DefinitionReader;
     // Resolve catalog entries relative to the catalog directory.
     [[nodiscard]] auto read_root_file(std::filesystem::path const& path) const -> CatalogReadResult;
     [[nodiscard]] auto read_settings_file(std::filesystem::path const& path,

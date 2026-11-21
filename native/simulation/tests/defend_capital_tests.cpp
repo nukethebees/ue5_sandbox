@@ -48,7 +48,7 @@ auto first_wave_history(EntityLedger const& ledger, std::uint32_t count, Team te
 }
 
 TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) {
-    auto const path{script_root() / "defend_capital.scm"};
+    auto const path{script_root() / "defend_capital/defend_capital.scm"};
     auto const level{levels::authoring::DefinitionReader{script_root()}.read_level_file(path)};
     ASSERT_TRUE(level) << levels::format_diagnostics(level.error());
 
@@ -144,7 +144,7 @@ TEST_P(DefendCapitalOutcome, AwardsVictoryOnTheDecidingTick) {
     // Keep the live mission rules but isolate their inputs from incidental combat.
     auto const level{ioj::levels::authoring::tests::read_test_level(
         levels::authoring::DefinitionReader{script_root()}, R"(
-      (copy-with (module-ref (import-module "defend_capital.scm") 'mission)
+      (copy-with (module-ref (import-module "defend_capital/defend_capital.scm") 'mission)
         :settings (settings :tick (tick :tick-rate 1))
         :entities (list
           (entity :id 'playership :archetype 'player-fighter :team 'blue :position '(0 10000 0))

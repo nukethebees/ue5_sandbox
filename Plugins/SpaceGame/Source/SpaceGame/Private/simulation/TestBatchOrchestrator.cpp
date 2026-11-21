@@ -318,7 +318,7 @@ void ATestBatchOrchestrator::load_authored_level() {
         auto const path{
             FPaths::ConvertRelativePathToFull(FPaths::ProjectDir(), level_script.FilePath)};
         auto definition{
-            levels::authoring::DefinitionReader{}.read_level_file(std::filesystem::path{*path})};
+            levels::authoring::DefinitionReader::for_level(*path).read_level_file(*path)};
         if (!definition) {
             handle_level_start_failure(to_fstring(levels::format_diagnostics(definition.error())));
             return;

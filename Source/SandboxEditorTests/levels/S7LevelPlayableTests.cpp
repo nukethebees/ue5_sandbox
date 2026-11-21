@@ -73,7 +73,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                     true))) {
             return;
         }
-        auto const root{FPaths::Combine(source_directory_, TEXT("Playable.scm"))};
+        auto const root{FPaths::Combine(source_directory_, TEXT("Playable/Playable.scm"))};
         auto& editor_level{*world->GetCurrentLevel()};
         auto created{
             ioj::editor::set_up_s7_mission(editor_level, ioj::editor::MissionSetup::Create, root)};
@@ -320,7 +320,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Map embeds its project-relative mission"),
                                   document && IsValid(*document) &&
                                       (*document)->source_path ==
-                                          TEXT("LevelScripts/defend_capital.scm"))) {
+                                          TEXT("LevelScripts/defend_capital/defend_capital.scm"))) {
             return;
         }
         auto definition{editor::read_s7_authored_level(**document)};

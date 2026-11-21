@@ -12,4 +12,4 @@ Declare expressions and rules inside one `:logic (logic ...)` block. Scheme buil
 - `initially` dispatches setup before the first tick. Timers count simulation time and pause with the level.
 - `on` fires once, on its first true sample. A latch captures once and publishes the value next tick.
 - `spawn` queues a declared spawn group for Preparation. Other effects run at tick end in queue order. The first terminal effect sets the result.
-- Use `win-race` for competing objectives. Success wins a same-tick tie. [Logic helpers](../Libraries/logic.scm) · [Playable example](../BorderSkirmish.scm)
+- Use `win-race` for competing objectives. Success wins a same-tick tie. [Logic helpers](../Libraries/logic.scm) · [Playable example](../BorderSkirmish/BorderSkirmish.scm)

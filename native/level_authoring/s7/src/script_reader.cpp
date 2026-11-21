@@ -96,6 +96,10 @@ auto read_entry(s7::Interpreter& interpreter,
 DefinitionReader::DefinitionReader(std::filesystem::path script_library_root)
     : script_library_root_{std::move(script_library_root)} {}
 
+auto DefinitionReader::for_level(std::filesystem::path const& file) -> DefinitionReader {
+    return DefinitionReader{std::filesystem::absolute(file).parent_path().parent_path()};
+}
+
 auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
     -> CatalogReadResult {
     auto const full_path{std::filesystem::absolute(path)};

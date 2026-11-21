@@ -80,16 +80,14 @@ auto s7_mission_path(AS7LevelAuthoringDocument const& document) -> FString {
 }
 
 auto s7_editor_config_path(AS7LevelAuthoringDocument const& document) -> FString {
-    return FPaths::Combine(FPaths::GetPath(s7_mission_path(document)),
-                           FPaths::GetBaseFilename(document.source_path),
-                           TEXT("editor-config.scm"));
+    return FPaths::Combine(FPaths::GetPath(s7_mission_path(document)), TEXT("editor-config.scm"));
 }
 
 namespace {
 auto read_editor_ast(AS7LevelAuthoringDocument const& document) -> S7AuthoringResult<s7::Ast> {
-    return levels::authoring::DefinitionReader{
-        std::filesystem::path{*FPaths::GetPath(s7_mission_path(document))}}
-        .read_script_file(std::filesystem::path{*s7_editor_config_path(document)}, "scene")
+    std::filesystem::path const path{*s7_editor_config_path(document)};
+    return levels::authoring::DefinitionReader::for_level(path)
+        .read_script_file(path, "scene")
         .transform_error(
             [](auto const& errors) { return to_fstring(levels::format_diagnostics(errors)); });
 }
@@ -302,7 +300,7 @@ auto collect_editor_scene(ULevel const& level,
             auto const* entity{ids.Find(actor)};
             if (!entity) {
                 return Result{std::unexpect,
-                              TEXT("Export the camera target or select a bound mission actor.")};
+                              TEXT("Export the camera target or select a bound level actor.")};
             }
             input.camera->target_entity_ids.push_back(*entity);
         }
@@ -318,8 +316,9 @@ auto s7_scene_needs_export(AS7LevelAuthoringDocument const& document) -> S7Autho
     }
 
     s7::ModuleInput baseline{*s7_editor_config_path(document)};
-    auto mission{levels::authoring::DefinitionReader{}.read_script_file(
-        *s7_mission_path(document), "mission", &baseline)};
+    std::filesystem::path const path{*s7_mission_path(document)};
+    auto mission{levels::authoring::DefinitionReader::for_level(path).read_script_file(
+        path, "mission", &baseline)};
     if (!mission) {
         return Result{std::unexpect, to_fstring(levels::format_diagnostics(mission.error()))};
     }
@@ -335,7 +334,7 @@ auto prepare_export(ULevel const& level,
     auto ast{read_editor_ast(document)};
     if (!ast) {
         return Result{std::unexpect,
-                      TEXT("Cannot read the editor baseline. Check the linked mission and "
+                      TEXT("Cannot read the editor baseline. Check the linked level script and "
                            "editor-config.scm.\n") +
                           ast.error()};
     }
@@ -349,8 +348,9 @@ auto prepare_export(ULevel const& level,
     }
     auto const source{levels::authoring::emit_editor_level_source(*input, &*ast)};
     s7::ModuleInput baseline{*s7_editor_config_path(document), source};
-    auto definition{levels::authoring::DefinitionReader{}.read_level_file(
-        *s7_mission_path(document), &baseline)};
+    std::filesystem::path const path{*s7_mission_path(document)};
+    auto definition{
+        levels::authoring::DefinitionReader::for_level(path).read_level_file(path, &baseline)};
     if (!definition) {
         auto message{to_fstring(levels::format_diagnostics(definition.error()))};
         if (std::ranges::any_of(definition.error(), [](auto const& diagnostic) {
@@ -364,7 +364,8 @@ auto prepare_export(ULevel const& level,
     if (!baseline.imported) {
         return Result{
             std::unexpect,
-            TEXT("Import the editor-config.scm scene in the linked mission before exporting.")};
+            TEXT(
+                "Import the editor-config.scm scene in the linked level script before exporting.")};
     }
     auto compiled{compile_playable_s7_definition(*definition, *document.level_config)};
     if (!compiled) {
@@ -407,8 +408,9 @@ auto export_s7_editor_config(ULevel& level, AS7LevelAuthoringDocument& document)
 
 auto read_s7_authored_level(AS7LevelAuthoringDocument const& document)
     -> S7AuthoringResult<levels::LevelDefinition> {
-    return levels::authoring::DefinitionReader{}
-        .read_level_file(std::filesystem::path{*s7_mission_path(document)})
+    std::filesystem::path const path{*s7_mission_path(document)};
+    return levels::authoring::DefinitionReader::for_level(path)
+        .read_level_file(path)
         .transform_error(
             [](auto const& errors) { return to_fstring(levels::format_diagnostics(errors)); });
 }
@@ -422,29 +424,33 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
         return existing;
     }
     if (operation == MissionSetup::Create && *existing) {
-        return Result{std::unexpect, TEXT("This map already has a linked mission.")};
+        return Result{std::unexpect, TEXT("This map already has a linked level script.")};
     }
     auto const map_name{FPackageName::GetShortName(level.GetOutermost()->GetName())};
     auto const root{FPaths::ConvertRelativePathToFull(
         source_path.IsEmpty()
-            ? FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), map_name + TEXT(".scm"))
+            ? FPaths::Combine(
+                  FPaths::ProjectDir(), TEXT("LevelScripts"), map_name, map_name + TEXT(".scm"))
             : source_path)};
     FString relative{root};
     auto const project{FPaths::ConvertRelativePathToFull(FPaths::ProjectDir())};
     if (!FPaths::IsUnderDirectory(root, project) ||
         !FPaths::MakePathRelativeTo(relative, *project)) {
-        return Result{std::unexpect, TEXT("Select a mission inside this project.")};
+        return Result{std::unexpect, TEXT("Select a level script inside this project.")};
     }
     auto* resources{s7_level_config::load_canonical()};
     if (!IsValid(resources)) {
         return Result{std::unexpect, TEXT("Canonical level resources are unavailable.")};
     }
     auto const human_exists{IFileManager::Get().FileExists(*root)};
-    auto const baseline_path{FPaths::Combine(
-        FPaths::GetPath(root), FPaths::GetBaseFilename(root), TEXT("editor-config.scm"))};
+    auto const directory{FPaths::GetPath(root)};
+    if (FPaths::GetCleanFilename(directory) != FPaths::GetBaseFilename(root)) {
+        return Result{std::unexpect, TEXT("Choose a level script stored as <level>/<level>.scm.")};
+    }
+    auto const baseline_path{FPaths::Combine(directory, TEXT("editor-config.scm"))};
     auto const baseline_existed{IFileManager::Get().FileExists(*baseline_path)};
     if (operation == MissionSetup::Link) {
-        auto mission{levels::authoring::DefinitionReader{}.read_level_file(*root)};
+        auto mission{levels::authoring::DefinitionReader::for_level(*root).read_level_file(*root)};
         if (!mission) {
             return Result{std::unexpect, to_fstring(levels::format_diagnostics(mission.error()))};
         }
@@ -455,8 +461,8 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
     } else {
         if (human_exists || baseline_existed) {
             return Result{std::unexpect,
-                          TEXT("Mission files already exist. Use Link / Change Script to select "
-                               "the mission.")};
+                          TEXT("Level files already exist. Use Link Existing Script to select "
+                               "the level script.")};
         }
         levels::authoring::LevelInput input{
             .id = levels::LevelId{to_string(
@@ -481,12 +487,11 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
                                            &IFileManager::Get(),
                                            FILEWRITE_NoReplaceExisting)) {
             IFileManager::Get().Delete(*baseline_path);
-            return Result{
-                std::unexpect,
-                TEXT("Could not create the human level file; existing files are never replaced.")};
+            return Result{std::unexpect,
+                          TEXT("Could not create the level script. Choose an unused name.")};
         }
     }
-    FScopedTransaction transaction{NSLOCTEXT("S7LevelAuthoring", "Link", "Link S7 Mission")};
+    FScopedTransaction transaction{NSLOCTEXT("S7LevelAuthoring", "Link", "Link Level Script")};
     auto* document{*existing ? *existing
                              : Cast<AS7LevelAuthoringDocument>(
                                    GEditor->AddActor(&level,
@@ -538,8 +543,9 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
 
     using namespace s7_level_authoring_session_detail;
     s7::ModuleInput module{*s7_editor_config_path(document)};
+    std::filesystem::path const path{*s7_mission_path(document)};
     auto definition{
-        levels::authoring::DefinitionReader{}.read_level_file(*s7_mission_path(document), &module)};
+        levels::authoring::DefinitionReader::for_level(path).read_level_file(path, &module)};
     if (!definition) {
         return Result{std::unexpect, to_fstring(levels::format_diagnostics(definition.error()))};
     }

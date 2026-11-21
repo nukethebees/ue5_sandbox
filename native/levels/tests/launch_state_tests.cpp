@@ -21,14 +21,14 @@ TEST(LaunchState, TransfersNativeDefinitionExactlyOnceAndClearsPreviousError) {
     LaunchState state;
     state.set_launch_error("old error");
     state.set_pending_level(std::move(*definition),
-                            "LevelScripts/Example.scm",
+                            "LevelScripts/Example/Example.scm",
                             {.launch_mode = LaunchMode::Paused,
                              .requested_time_scale = launch::TimeScale{4.0},
                              .control_context = ControlContext::Benchmark});
     EXPECT_FALSE(state.has_launch_error());
     auto pending{state.take_pending_level()};
     ASSERT_TRUE(pending);
-    EXPECT_EQ(pending->source_path, "LevelScripts/Example.scm");
+    EXPECT_EQ(pending->source_path, "LevelScripts/Example/Example.scm");
     EXPECT_EQ(pending->definition.metadata().title, "Native Example");
     EXPECT_EQ(pending->options.launch_mode, LaunchMode::Paused);
     EXPECT_EQ(pending->options.requested_time_scale.get(), 4.0);

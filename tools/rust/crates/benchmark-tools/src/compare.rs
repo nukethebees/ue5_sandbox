@@ -68,7 +68,7 @@ impl NativeBenchmarkConfig {
             return Err("Fighter controls apply only to fighter-simulation.".into());
         }
         let level = if fighter {
-            "LevelScripts/FighterSchedulingBenchmark.scm"
+            "LevelScripts/FighterSchedulingBenchmark/FighterSchedulingBenchmark.scm"
         } else {
             args.level
                 .as_deref()

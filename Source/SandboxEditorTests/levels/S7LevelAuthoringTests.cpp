@@ -43,6 +43,7 @@
 namespace s7_level_authoring_tests {
 struct FTemporarySourceDirectory {
     FTemporarySourceDirectory() {
+        IFileManager::Get().MakeDirectory(*FPaths::Combine(path, TEXT("Authoring")), true);
         auto const settings{FPaths::Combine(path, TEXT("Settings"))};
         IFileManager::Get().MakeDirectory(*settings, true);
         IFileManager::Get().Copy(*FPaths::Combine(settings, TEXT("entity-geometry.scm")),
@@ -57,7 +58,7 @@ struct FTemporarySourceDirectory {
     }
     ~FTemporarySourceDirectory() { IFileManager::Get().DeleteDirectory(*path, false, true); }
 
-    auto root() const -> FString { return FPaths::Combine(path, TEXT("Authoring.scm")); }
+    auto root() const -> FString { return FPaths::Combine(path, TEXT("Authoring/Authoring.scm")); }
 
     FString path{FPaths::Combine(FPaths::ProjectSavedDir(),
                                  TEXT("Automation"),

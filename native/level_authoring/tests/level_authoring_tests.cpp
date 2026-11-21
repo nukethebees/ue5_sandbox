@@ -669,7 +669,8 @@ TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
     TemporaryLevelDirectory directory;
     auto source{minimal_source()};
     source.replace(source.find("\"Test\""), 6, "benchmark-title");
-    auto const path{directory.path() / "level.scm"};
+    auto const path{directory.path() / "Level" / "Level.scm"};
+    ASSERT_TRUE(std::filesystem::create_directory(path.parent_path()));
     ASSERT_TRUE(write_files({
         {directory.path() / "Libraries" / "metadata.scm",
          module_source("benchmark-title", "\"Loaded From Library\"")},
@@ -678,7 +679,7 @@ TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
          "'benchmark-title))\n" +
              module_source("mission", source)},
     }));
-    auto const result{DefinitionReader{}.read_level_file(path)};
+    auto const result{DefinitionReader::for_level(path).read_level_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(result->metadata().title, "Loaded From Library");
 
@@ -1122,7 +1123,9 @@ TEST(NativeLevelAuthoringFixtures, ReadsEveryCheckedInLevelAndCampaign) {
     for (auto& entry : catalog->campaigns) {
         ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
     }
-    auto const benchmark{DefinitionReader{}.read_level_file(root / "Batch_benchmark.scm")};
+    auto const benchmark_path{root / "Batch_benchmark/Batch_benchmark.scm"};
+    auto const benchmark{
+        DefinitionReader::for_level(benchmark_path).read_level_file(benchmark_path)};
     ASSERT_TRUE(benchmark) << format_diagnostics(benchmark.error());
     EXPECT_GT(catalog->levels.size(), 30u);
     EXPECT_GT(catalog->campaigns.size(), 5u);

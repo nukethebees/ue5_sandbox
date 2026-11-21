@@ -111,6 +111,7 @@ TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {
                                      std::chrono::steady_clock::now().time_since_epoch().count())};
     std::filesystem::create_directories(directory / "Example");
     std::filesystem::create_directories(directory / "Settings");
+    auto const entry{directory / "Example/Example.scm"};
     auto const config{directory / "Example/editor-config.scm"};
     auto const base{directory / "Settings/level-defaults.scm"};
     ASSERT_TRUE(testing::write_files(
@@ -120,7 +121,7 @@ TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {
          {config,
           R"((export scene) (define scene (level :id 'example :title "Example" :player 'pilot :entities (list)
                    :settings (settings :fighters (fighters :speed 4000) :tick (tick :time-scale 2)))))"},
-         {directory / "Example.scm",
+         {entry,
           R"((export mission) (define base (module-ref (import-module "Example/editor-config.scm") 'scene))
           (define mission (copy-with base :settings (settings-layers (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
                                        (level-ref base :settings) (settings :tick (tick :time-scale 3)))
@@ -137,7 +138,7 @@ TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {
                                        "(export game-settings) (define game-settings (settings "
                                        ":fighters (fighters :speed 5000) :tick (tick "
                                        ":tick-rate 90 :time-scale 1)))"}}));
-    auto const level{DefinitionReader{}.read_level_file(directory / "Example.scm")};
+    auto const level{DefinitionReader::for_level(entry).read_level_file(entry)};
     ASSERT_TRUE(level) << format_diagnostics(level.error());
     EXPECT_EQ(level->settings().fighters.speed, 4000.f);
     EXPECT_EQ(level->settings().tick.tick_rate.hz(), 90.);

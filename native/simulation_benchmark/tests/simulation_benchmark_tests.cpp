@@ -212,7 +212,7 @@ TEST(SimulationBenchmarkRunner, RejectsPlayerBoundsOutsideTheCollisionGrid) {
 
 TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {
     auto const level_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts" /
-                          "DevThreeSecondFailure.scm"};
+                          "DevThreeSecondFailure/DevThreeSecondFailure.scm"};
     auto const result{run_benchmark({.level_path = level_path, .simulated_seconds = 0.01})};
 
     ASSERT_TRUE(result.has_value()) << result.error();
@@ -224,7 +224,7 @@ TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {
 
 TEST(SimulationBenchmarkRunner, AdvancesOneTickPerCallAtAnyRequestedGameSpeed) {
     auto const level_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts" /
-                          "DevThreeSecondFailure.scm"};
+                          "DevThreeSecondFailure/DevThreeSecondFailure.scm"};
     auto const result{
         run_benchmark({.level_path = level_path, .simulated_seconds = 0.05, .game_speed = 2})};
 
@@ -236,7 +236,7 @@ TEST(SimulationBenchmarkRunner, AdvancesOneTickPerCallAtAnyRequestedGameSpeed) {
 
 TEST(SimulationBenchmarkRunner, SaturatesAndMeasuresFighterStressScenario) {
     auto const level_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts" /
-                          "FighterSchedulingBenchmark.scm"};
+                          "FighterSchedulingBenchmark/FighterSchedulingBenchmark.scm"};
     auto const result{run_benchmark({.level_path = level_path,
                                      .simulated_seconds = 0.01,
                                      .fighter_stress_cap = 12,

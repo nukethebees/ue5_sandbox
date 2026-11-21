@@ -154,10 +154,11 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                 return a.Equals(b);
             }));
 
-        ::ioj::levels::authoring::DefinitionReader reader;
-        auto const script_path{
-            FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("TurretTrial_0.scm"))};
-        auto const scripted_definition{reader.read_level_file(std::filesystem::path{*script_path})};
+        auto const script_path{FPaths::Combine(
+            FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("TurretTrial_0/TurretTrial_0.scm"))};
+        auto const scripted_definition{
+            ::ioj::levels::authoring::DefinitionReader::for_level(*script_path)
+                .read_level_file(*script_path)};
         if (!TestRunner->TestTrue(TEXT("Turret Trial 0 produces a valid native definition"),
                                   static_cast<bool>(scripted_definition))) {
             return;

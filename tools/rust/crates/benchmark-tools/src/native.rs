@@ -117,7 +117,7 @@ pub fn run_fighter_benchmark(root: &Path, parsed: &FighterOptions) -> Result<()>
             .unwrap_or(Path::new(&default_output)),
     )?;
     let command = SimulationOptions {
-        level: root.join("LevelScripts/FighterSchedulingBenchmark.scm"),
+        level: root.join("LevelScripts/FighterSchedulingBenchmark/FighterSchedulingBenchmark.scm"),
         seconds,
         game_speed: 1,
         fighter_stress_cap: None,
@@ -237,7 +237,7 @@ pub fn run_frame_memory_benchmark(root: &Path, parsed: &FrameMemoryOptions) -> R
 
 pub fn frame_memory_options(root: &Path, seconds: f64) -> SimulationOptions {
     SimulationOptions {
-        level: root.join("LevelScripts/Batch_benchmark.scm"),
+        level: root.join("LevelScripts/Batch_benchmark/Batch_benchmark.scm"),
         seconds,
         game_speed: 100,
         build_preset: "frame-memory-level-benchmark".into(),
