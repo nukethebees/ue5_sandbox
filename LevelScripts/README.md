@@ -20,3 +20,11 @@ coj benchmark native-simulation --level LevelScripts/BorderSkirmish.scm --second
 - Tune gameplay and Starfox flight in [simulation.scm](Settings/simulation.scm) and visuals in [presentation.scm](Settings/presentation.scm). Use **Tools → Export Entity Geometry** after changing shared meshes, sockets, or fighter wave size.
 - Set factory preferences in [user-defaults.scm](Settings/user-defaults.scm). Edit personal overrides in `Settings/user-settings.scm` or use **Options → Apply**. Packaged games store overrides under the local application settings directory in `IsleOfJebbers/Config/`.
 - Reset a category in **Options**, then **Apply**. Enhanced Input saves key mappings separately.
+
+To update an older personal file, import the defaults and move its existing fields into `copy-with`.
+
+```scheme
+(export preferences)
+(define defaults (module-ref (import-module "Settings/user-defaults.scm") 'preferences))
+(define preferences (copy-with defaults :mouse-turn-sensitivity 2))
+```

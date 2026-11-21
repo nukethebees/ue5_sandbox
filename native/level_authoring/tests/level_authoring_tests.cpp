@@ -154,21 +154,62 @@ TEST(NativeSettings, HandEditedPreferencesSurviveUnrealSavedRemovalAndReportInva
     auto const ini{directory.path() / "Saved/Config/GameUserSettings.ini"};
     std::filesystem::create_directories(path.parent_path());
     std::filesystem::create_directories(ini.parent_path());
-    ASSERT_TRUE(write_files(
-        {{path, module_source("preferences", "(user-settings :mouse-turn-sensitivity 1.25)")},
-         {ini, "[GameUserSettings]\\nMouseTurnSensitivity=0.5"}}));
+    auto const personal_source{[](std::string_view overrides) {
+        return module_source("preferences",
+                             std::format("(copy-with (module-ref (import-module "
+                                         "\"Settings/user-defaults.scm\") 'preferences) {})",
+                                         overrides));
+    }};
+    ASSERT_TRUE(write_files({{path, personal_source(":mouse-turn-sensitivity 2")},
+                             {ini, "[GameUserSettings]\nMouseTurnSensitivity=0.5"}}));
     auto read = [&] { return read_user_settings(IOJ_LEVEL_SCRIPTS, path, {1920, 1080}); };
-    auto loaded{read()};
+    auto const loaded{read()};
     ASSERT_TRUE(loaded) << loaded.error();
-    EXPECT_EQ(loaded->applied.mouse_turn_sensitivity, 1.25f);
+    EXPECT_EQ(loaded->applied.mouse_turn_sensitivity, 2.f);
     std::filesystem::remove_all(directory.path() / "Saved");
-    ASSERT_EQ(read()->applied, loaded->applied);
-    ASSERT_TRUE(write_files(
-        {{path, module_source("preferences", "(user-settings :mouse-turn-sensitivity -1)")}}));
+    auto const reloaded{read()};
+    ASSERT_TRUE(reloaded) << reloaded.error();
+    EXPECT_EQ(reloaded->applied, loaded->applied);
+
+    auto const invalid_source{personal_source(":mouse-turn-sensitivity -1")};
+    ASSERT_TRUE(write_files({{path, invalid_source}}));
     auto const invalid{read()};
     ASSERT_FALSE(invalid);
     EXPECT_NE(invalid.error().find("user-settings.scm"), std::string::npos);
     EXPECT_NE(invalid.error().find("mouse-turn-sensitivity"), std::string::npos);
+    EXPECT_EQ(read_file(path), invalid_source);
+}
+
+TEST(NativeSettings, SavedPreferencesInheritNewDefaultsUntilOverridden) {
+    TemporaryLevelDirectory directory;
+    auto const settings{directory.path() / "Settings"};
+    auto const defaults{settings / "user-defaults.scm"};
+    auto const path{settings / "user-settings.scm"};
+    std::filesystem::create_directories(settings);
+    std::filesystem::copy_file(
+        std::filesystem::path{IOJ_LEVEL_SCRIPTS} / "Settings/user-defaults.scm", defaults);
+    auto const read{[&] { return read_user_settings(directory.path(), path, {1920, 1080}); }};
+    auto const initial{read()};
+    ASSERT_TRUE(initial) << initial.error();
+    auto personal{initial->applied};
+    personal.mouse_turn_sensitivity = 2.f;
+    ASSERT_TRUE(save_user_settings(path, personal, initial->defaults));
+
+    std::filesystem::rename(defaults, settings / "original.scm");
+    ASSERT_TRUE(write_files({{defaults, module_source("preferences", R"(
+        (copy-with (module-ref (import-module "Settings/original.scm") 'preferences)
+                   :music-volume 0.375 :mouse-turn-sensitivity 1))")}}));
+    auto const updated{read()};
+    ASSERT_TRUE(updated) << updated.error();
+    EXPECT_EQ(updated->applied.music_volume, 0.375f);
+    EXPECT_EQ(updated->applied.mouse_turn_sensitivity, 2.f);
+    ASSERT_TRUE(save_user_settings(path, updated->defaults, updated->defaults));
+    auto const reset_source{read_file(path)};
+    ASSERT_TRUE(reset_source);
+    EXPECT_EQ(reset_source->find(":mouse-turn-sensitivity"), std::string::npos);
+    auto const reset{read()};
+    ASSERT_TRUE(reset) << reset.error();
+    EXPECT_EQ(reset->applied, updated->defaults);
 }
 
 TEST(NativeSettings, PreservesExactIntegersAndRejectsOutOfRangeConversions) {

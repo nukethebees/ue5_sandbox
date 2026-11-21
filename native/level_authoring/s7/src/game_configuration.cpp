@@ -14,16 +14,15 @@
 
 namespace ioj::levels::authoring {
 namespace {
-template <class T, class Decode>
-auto decode_config(DefinitionReader const& reader,
-                   std::filesystem::path const& path,
-                   char const* export_name,
-                   Decode decode) -> std::expected<T, std::string> {
+template <class T>
+auto read_config(DefinitionReader const& reader,
+                 std::filesystem::path const& path,
+                 char const* export_name) -> std::expected<T, std::string> {
     auto ast{reader.read_script_file(path, export_name)};
     if (!ast) {
         return std::unexpected{format_diagnostics(ast.error())};
     }
-    auto result{decode(s7::Reader{*ast}, ast->root, export_name)};
+    auto result{s7::read<T>(s7::Reader{*ast}, ast->root, export_name)};
     if (!result) {
         return std::unexpected{
             std::format("{}: {}",
@@ -33,23 +32,17 @@ auto decode_config(DefinitionReader const& reader,
     return *result;
 }
 
-template <class T>
-auto read_config(DefinitionReader const& reader,
-                 std::filesystem::path const& path,
-                 char const* export_name) -> std::expected<T, std::string> {
-    return decode_config<T>(
-        reader, path, export_name, [](auto const& fields, auto root, auto name) {
-            return s7::read<T>(fields, root, name);
-        });
-}
-
-auto read_preferences_override(DefinitionReader const& reader,
-                               std::filesystem::path const& path,
-                               GameSettingsState const& defaults) {
-    return decode_config<GameSettingsState>(
-        reader, path, "preferences", [&](auto const& fields, auto root, auto name) {
-            return s7::read_override(fields, root, name, defaults);
-        });
+auto read_preferences(DefinitionReader const& reader,
+                      std::filesystem::path const& path,
+                      ScreenResolution desktop) {
+    auto state{read_config<GameSettingsState>(reader, path, "preferences")};
+    if (state) {
+        if (state->resolution == ScreenResolution{}) {
+            state->resolution = desktop;
+        }
+        state->overall_quality = graphics_preset(*state);
+    }
+    return state;
 }
 
 auto write_preferences(std::filesystem::path const& path, std::string_view source)
@@ -94,15 +87,10 @@ auto read_user_settings(std::filesystem::path const& script_root,
                         std::filesystem::path const& personal_file,
                         ScreenResolution desktop) -> UserSettingsResult {
     DefinitionReader const reader{script_root};
-    auto defaults{read_config<GameSettingsState>(
-        reader, script_root / "Settings/user-defaults.scm", "preferences")};
+    auto defaults{read_preferences(reader, script_root / "Settings/user-defaults.scm", desktop)};
     if (!defaults) {
         return UserSettingsResult{std::unexpect, std::move(defaults.error())};
     }
-    if (defaults->resolution == ScreenResolution{}) {
-        defaults->resolution = desktop;
-    }
-    defaults->overall_quality = graphics_preset(*defaults);
 
     std::error_code error;
     if (!std::filesystem::exists(personal_file, error)) {
@@ -110,17 +98,16 @@ auto read_user_settings(std::filesystem::path const& script_root,
             return UserSettingsResult{
                 std::unexpect, std::format("{}: {}", path_to_utf8(personal_file), error.message())};
         }
-        auto created{write_preferences(
-            personal_file, "(export preferences)\n(define preferences (user-settings))\n")};
+        auto created{save_user_settings(personal_file, *defaults, *defaults)};
         if (!created) {
             return UserSettingsResult{std::unexpect, std::move(created.error())};
         }
     }
-    auto applied{read_preferences_override(reader, personal_file, *defaults)};
+
+    auto applied{read_preferences(reader, personal_file, desktop)};
     if (!applied) {
         return UserSettingsResult{std::unexpect, std::move(applied.error())};
     }
-    applied->overall_quality = graphics_preset(*applied);
     return UserSettingsResult{std::in_place, *defaults, *applied};
 }
 
@@ -129,10 +116,15 @@ auto save_user_settings(std::filesystem::path const& personal_file,
                         GameSettingsState const& defaults) -> SavePreferencesResult {
     lispb::Strings strings;
     s7::SExprIR ir{strings};
-    auto const form{s7::write(ir, state, &defaults)};
+    auto form{ir.form("copy-with", {ir.atom("defaults")})};
+    s7::PropertyWriter writer{ir, form, state, &defaults};
+    s7::TypeWriter<GameSettingsState>::properties(writer);
     lispb::codegen::sexpr::SExprRenderer renderer{ir, lispb::codegen::sexpr::Dialect::scheme};
     return write_preferences(personal_file,
-                             "(export preferences)\n(define preferences " + renderer.render(form) +
-                                 ")\n");
+                             "(export preferences)\n"
+                             "(define defaults (module-ref (import-module "
+                             "\"Settings/user-defaults.scm\") 'preferences))\n"
+                             "(define preferences " +
+                                 renderer.render(form.build()) + ")\n");
 }
 }
