@@ -3,6 +3,7 @@
 #include <ioj/column_math.h>
 #include <ioj/diagnostics.h>
 #include <ioj/enum_array.h>
+#include <ioj/frame_array.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/line_trace_batch.h>
@@ -15,7 +16,6 @@
 #include <ioj/sim/turrets/sim.h>
 
 #include <algorithm>
-#include <array>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
@@ -27,14 +27,12 @@ enum class QueryMode : std::uint8_t {
     HitEntity,
     ClearLine,
     TargetLineOfSight,
-    ClosestHit,
 };
 
 struct TraceRequest {
     ioj::vectors3f::ConstView start_locations{};
     ioj::vectors3f::ConstView end_locations{};
     ioj::Vector3f scalar_start{};
-    ioj::Vector3f scalar_end{};
     std::span<ioj::sim::EntityId const> targets{};
     std::span<ioj::sim::EntityId const> ignored_entities{};
     std::span<ioj::sim::EntityId> out_entity_ids{};
@@ -42,16 +40,10 @@ struct TraceRequest {
 };
 
 template <QueryMode Mode>
-auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
+void trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
                 ioj::FrameMemoryResource* const scratch_resource,
-                TraceRequest const& request) -> ioj::sim::LineTraceResult {
-    auto const count{[&] {
-        if constexpr (Mode == QueryMode::ClosestHit) {
-            return 1;
-        } else {
-            return request.end_locations.num();
-        }
-    }()};
+                TraceRequest const& request) {
+    auto const count{request.end_locations.num()};
 
     if constexpr (Mode == QueryMode::HitEntity) {
         assert(static_cast<std::size_t>(count) == request.out_entity_ids.size());
@@ -70,16 +62,14 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
     auto const hit_entities{hits.entities()};
 
     auto const trace_view{[&] {
-        if constexpr (Mode == QueryMode::TargetLineOfSight || Mode == QueryMode::ClosestHit) {
+        if constexpr (Mode == QueryMode::TargetLineOfSight) {
             traces.set_num(count);
             auto const trace_columns{traces.view()};
             auto const starts{trace_columns.view_starts().resolve()};
             auto const ends{trace_columns.view_ends().resolve()};
             for (std::uint32_t i{}; i < count; ++i) {
                 ioj::set_vector(starts, i, request.scalar_start);
-                auto const end{Mode == QueryMode::TargetLineOfSight ? request.end_locations[i]
-                                                                    : request.scalar_end};
-                ioj::set_vector(ends, i, end);
+                ioj::set_vector(ends, i, request.end_locations[i]);
             }
             return ioj::sim::LineTraceBatch{traces.const_view()};
         } else {
@@ -93,31 +83,20 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
         uniform_grid.trace_aabbs(trace_view, hits, request.ignored_entities);
     }
 
-    if constexpr (Mode == QueryMode::ClosestHit) {
-        return {
-            .location = hits.view_locations().resolve()[0],
-            .entity = hit_entities[0],
-            .static_geometry_index = hits.static_geometry_indices()[0],
-            .hit = hit_flags[0].value() != 0,
-        };
-    } else {
-        if constexpr (Mode == QueryMode::HitEntity) {
-            for (std::uint32_t i{}; i < count; ++i) {
-                request.out_entity_ids[i] = hit_entities[i];
-            }
-        } else if constexpr (Mode == QueryMode::ClearLine) {
-            for (std::uint32_t i{}; i < count; ++i) {
-                request.out_flags[i] =
-                    static_cast<ioj::sim::LineQueryResult>(hit_flags[i].value() == 0);
-            }
-        } else if constexpr (Mode == QueryMode::TargetLineOfSight) {
-            for (std::uint32_t i{}; i < count; ++i) {
-                request.out_flags[i] = static_cast<ioj::sim::LineQueryResult>(
-                    hit_flags[i].value() == 0 || hit_entities[i] == request.targets[i]);
-            }
+    if constexpr (Mode == QueryMode::HitEntity) {
+        for (std::uint32_t i{}; i < count; ++i) {
+            request.out_entity_ids[i] = hit_entities[i];
         }
-
-        return {};
+    } else if constexpr (Mode == QueryMode::ClearLine) {
+        for (std::uint32_t i{}; i < count; ++i) {
+            request.out_flags[i] =
+                static_cast<ioj::sim::LineQueryResult>(hit_flags[i].value() == 0);
+        }
+    } else if constexpr (Mode == QueryMode::TargetLineOfSight) {
+        for (std::uint32_t i{}; i < count; ++i) {
+            request.out_flags[i] = static_cast<ioj::sim::LineQueryResult>(
+                hit_flags[i].value() == 0 || hit_entities[i] == request.targets[i]);
+        }
     }
 }
 
@@ -317,29 +296,6 @@ void SpatialQueryManager::sweep_closest_aabbs(
 /* **************************************** */
 // Scalar and entity queries
 /* **************************************** */
-void SpatialQueryManager::collect_unique_entities_in_cells(
-    std::span<collision::CellCoord const> const cells, FrameArray<EntityId>& out_entities) const {
-    collision_system_.uniform_grid_.collect_unique_entities_in_cells(cells, out_entities);
-}
-auto SpatialQueryManager::has_clear_line(Vector3f const start_location,
-                                         Vector3f const end_location,
-                                         FrameMemoryResource* const scratch_resource,
-                                         EntityId const ignored_entity) const -> bool {
-    return !trace_closest(start_location, end_location, scratch_resource, ignored_entity).hit;
-}
-
-auto SpatialQueryManager::trace_closest(Vector3f const start_location,
-                                        Vector3f const end_location,
-                                        FrameMemoryResource* const scratch_resource,
-                                        EntityId const ignored_entity) const -> LineTraceResult {
-    std::array<EntityId, 1> ignored_entities{ignored_entity};
-    return trace_impl<QueryMode::ClosestHit>(collision_system_.uniform_grid_,
-                                             scratch_resource,
-                                             {.scalar_start = start_location,
-                                              .scalar_end = end_location,
-                                              .ignored_entities = ignored_entities});
-}
-
 auto SpatialQueryManager::collect_non_team_entities_in_range(
     EntityLookupTables const& lookups,
     Vector3f const& origin,
@@ -397,19 +353,6 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
                                          return id != ignored_entity &&
                                                 id.entity_type() == entity_type;
                                      });
-}
-
-auto SpatialQueryManager::any_non_team_entity(EntityLookupTables const& lookups,
-                                              Team const team,
-                                              EntityType const entity_type) const -> EntityId {
-    auto const handles{lookups.for_type(entity_type).entries()};
-    auto const count{static_cast<std::uint32_t>(handles.size())};
-    for (std::uint32_t index{}; index < count; ++index) {
-        if (handles[index].is_valid() && handles[index].team() != team) {
-            return EntityId{index, entity_type};
-        }
-    }
-    return {};
 }
 
 void SpatialQueryManager::are_spheres_in_bounds(
@@ -494,11 +437,6 @@ void SpatialQueryManager::copy_entity_motion(EntityLookupTables const& lookups,
 /* **************************************** */
 void SpatialQueryManager::set_static_collision(collision::WorldAABBs bounds) {
     collision_system_.set_static_collision(std::move(bounds));
-}
-auto SpatialQueryManager::add_static_collision_aabb(Vector3f const min_point,
-                                                    Vector3f const max_point)
-    -> collision::StaticGeometryIndex {
-    return collision_system_.add_static_collision_aabb(min_point, max_point);
 }
 void SpatialQueryManager::refresh_spatial_index(LevelReadAccess const& level) {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::refresh_spatial_index");

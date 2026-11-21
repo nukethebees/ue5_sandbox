@@ -1128,11 +1128,6 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceInvarianceProperties
     tied.owners.rebuild(tied.grid, tied.aabbs);
     auto const reordered_tied_hits{run_traces(tied, tied_starts, tied_ends)};
     EXPECT_EQ(reordered_tied_hits.const_view().entities()[0], expected_id);
-    SpatialQueryManager const tied_queries{};
-    EXPECT_EQ(tied_queries.any_non_team_entity(
-                  tied.owners.entity_tables.lookups, Team::Green, EntityType::CapitalShip),
-              expected_id);
-
     Vector3f const aabb_half_extents{{18.f, 22.f, 15.f}};
     Vector3f const local_aabb_centre{{4.f, -3.f, 5.f}};
     std::array<Vector3f, 3> const entity_locations{{
@@ -1390,19 +1385,19 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridStaticGeometry) {
     EXPECT_EQ(fixture.handles[0], tied_hits.const_view().entities()[0])
         << "Dynamic geometry wins exact-distance static tie";
 
-    set_static_aabb({{140.f, -10.f, -10.f}}, {{160.f, 10.f, 10.f}});
-    auto const runtime_static_index{
-        fixture.grid.add_static_aabb({{-60.f, -10.f, -10.f}}, {{-40.f, 10.f, 10.f}})};
-    EXPECT_EQ(1, runtime_static_index.value()) << "Runtime static AABB receives stable identity";
-    auto const runtime_static_hits{run_traces(fixture, starts, ends)};
-    EXPECT_EQ(runtime_static_index, runtime_static_hits.const_view().static_geometry_indices()[0])
-        << "Runtime static AABB is immediately traceable";
+    collision::WorldAABBs static_bounds;
+    static_bounds.add({140.f, -10.f, -10.f}, {160.f, 10.f, 10.f});
+    static_bounds.add({-60.f, -10.f, -10.f}, {-40.f, 10.f, 10.f});
+    fixture.grid.set_static_aabbs(std::move(static_bounds));
+    constexpr collision::StaticGeometryIndex second_static{1};
+    auto const hits_after_setup{run_traces(fixture, starts, ends)};
+    EXPECT_EQ(second_static, hits_after_setup.const_view().static_geometry_indices()[0])
+        << "Second static AABB is immediately traceable";
 
     fixture.owners.rebuild(fixture.grid, fixture.aabbs);
-    auto const rebuilt_runtime_static_hits{run_traces(fixture, starts, ends)};
-    EXPECT_EQ(runtime_static_index,
-              rebuilt_runtime_static_hits.const_view().static_geometry_indices()[0])
-        << "Runtime static AABB survives dynamic rebuild";
+    auto const hits_after_rebuild{run_traces(fixture, starts, ends)};
+    EXPECT_EQ(second_static, hits_after_rebuild.const_view().static_geometry_indices()[0])
+        << "Second static AABB survives dynamic rebuild";
 }
 
 }

@@ -36,7 +36,6 @@ set(collision_headers
   entity_world_bounds.h
   line_trace_batch.h
   line_traces.h
-  range_query_results.h
   spatial.h
   spatial_query_manager.h
   trace_hits.h
@@ -179,7 +178,6 @@ target_sources(native-simulation
     player/ship_flight_model.cpp
     sim_time.cpp
     collision/spatial_query_manager.cpp
-    collision/spatial_range_queries.cpp
     collision/spatial.cpp
     step_response.cpp
     tasks/task_manager.cpp

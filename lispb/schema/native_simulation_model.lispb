@@ -472,17 +472,6 @@
 
 
 
-(module native_line_trace_result
-  :header "native/simulation/include/ioj/sim/collision/line_trace_result.h"
-  :header-include "ioj/sim/collision/line_trace_result.h"
-  :namespace ioj::sim
-  (record LineTraceResult
-    (member location @native_vector_3f :initializer "")
-    (member entity @native_unique_id)
-    (member static_geometry_index @native_static_geometry_index :initializer "collision::invalid_static_geometry_index")
-    (member hit bool :initializer "false")
-    (projections (cpp))))
-
 (module native_fighter_navigation_counters
   :header "native/simulation/include/ioj/sim/fighters/navigation_counters.h"
   :header-include "ioj/sim/fighters/navigation_counters.h"

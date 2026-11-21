@@ -34,10 +34,6 @@ void CollisionSystem::initialise(CollisionGridSpec const grid_spec,
 void CollisionSystem::set_static_collision(WorldAABBs bounds) {
     uniform_grid_.set_static_aabbs(std::move(bounds));
 }
-auto CollisionSystem::add_static_collision_aabb(Vector3f const min_point, Vector3f const max_point)
-    -> StaticGeometryIndex {
-    return uniform_grid_.add_static_aabb(min_point, max_point);
-}
 
 /* **************************************** */
 // Spatial-index lifecycle

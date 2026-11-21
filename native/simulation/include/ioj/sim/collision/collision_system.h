@@ -37,7 +37,6 @@ class CollisionSystem {
 
     void initialise(CollisionGridSpec grid_spec, EntityAABBs const& bounds);
     void set_static_collision(WorldAABBs bounds);
-    auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
 
     /* **************************************** */
     // Spatial-index lifecycle

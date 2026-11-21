@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ioj/frame_array.h>
 #include <ioj/sim/collision/collision_grid.h>
 #include <ioj/sim/collision/collision_grid_entity_storage.h>
 #include <ioj/sim/collision/collision_grid_static_storage.h>
@@ -55,7 +54,6 @@ struct CollisionUniformGrid {
     // Static collision
     /* **************************************** */
     void set_static_aabbs(WorldAABBs static_aabbs);
-    auto add_static_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
     auto static_aabbs() const noexcept -> WorldAABBs const& { return static_storage_.aabbs(); }
 
     /* **************************************** */
@@ -90,11 +88,6 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Spatial queries
     /* **************************************** */
-    // Replace output with unique grid members in ascending ID order. Cells must be in bounds;
-    // repeated cells are allowed. Membership reflects the last grid rebuild, not current health.
-    void collect_unique_entities_in_cells(std::span<CellCoord const> cells,
-                                          FrameArray<EntityId>& out_entities) const;
-
     struct OverlapCounts {
         OverlapEntryCount entities{};
         OverlapEntryCount static_geometry{};

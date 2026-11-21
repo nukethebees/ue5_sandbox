@@ -11,7 +11,6 @@
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f.h"
-#include <ioj/sim/collision/line_trace_result.h>
 
 #include <cassert>
 #include <cstddef>

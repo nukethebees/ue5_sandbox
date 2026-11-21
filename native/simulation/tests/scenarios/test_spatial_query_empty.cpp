@@ -33,11 +33,6 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryEmptyBatchesAndWorld) {
                                                                 results,
                                                                 &query_memory)};
     EXPECT_EQ(count, 0) << "Empty range query has no results";
-    EXPECT_TRUE(
-        !queries
-             .any_non_team_entity(owners.entity_tables.lookups, Team::Blue, EntityType::CapitalShip)
-             .is_valid())
-        << "Empty world has no arbitrary enemy";
 }
 
 TEST(WorldlessSpaceGameSimulation, SpatialQueryTeamAndInclusiveRadiusFiltering) {

@@ -46,7 +46,6 @@ class CollisionGridStaticStorage {
     /* **************************************** */
     void reset() noexcept;
     void set_aabbs(WorldAABBs aabbs) noexcept;
-    auto add_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
     [[nodiscard]] auto rebuild(CollisionGridSpec spec) -> std::expected<void, StaticGridBuildError>;
 
     /* **************************************** */

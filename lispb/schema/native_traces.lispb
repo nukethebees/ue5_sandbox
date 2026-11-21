@@ -11,19 +11,9 @@
   :header "native/simulation/include/ioj/sim/collision/trace_hits.h"
   :header-include "ioj/sim/collision/trace_hits.h"
   :namespace ioj::sim
-  :prelude ("#include <ioj/sim/collision/line_trace_result.h>")
   (struct TraceHits
     (member locations nested @native_vectors_3f)
     (member entities array @native_unique_id)
     (member static_geometry_indices array @native_static_geometry_index)
     (member hits array @native_trace_hit)
 ))
-
-(module native_range_query_matches
-  :header "native/simulation/include/ioj/sim/collision/range_query_matches.h"
-  :header-include "ioj/sim/collision/range_query_matches.h"
-  :namespace ioj::sim
-  (struct RangeQueryMatches
-    (member entities array @native_unique_id)
-    (member distances array float)
-    (member directions nested @native_vectors_3f)))

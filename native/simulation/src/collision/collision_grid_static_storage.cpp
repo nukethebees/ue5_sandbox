@@ -21,10 +21,6 @@ void CollisionGridStaticStorage::reset() noexcept {
 void CollisionGridStaticStorage::set_aabbs(WorldAABBs aabbs) noexcept {
     aabbs_ = std::move(aabbs);
 }
-auto CollisionGridStaticStorage::add_aabb(Vector3f const min_point, Vector3f const max_point)
-    -> StaticGeometryIndex {
-    return StaticGeometryIndex{aabbs_.add(min_point, max_point)};
-}
 auto CollisionGridStaticStorage::rebuild(CollisionGridSpec const spec)
     -> std::expected<void, StaticGridBuildError> {
     using Result = std::expected<void, StaticGridBuildError>;

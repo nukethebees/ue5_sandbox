@@ -100,22 +100,6 @@ void CollisionUniformGrid::set_static_aabbs(collision::WorldAABBs static_aabbs) 
     static_storage_.set_aabbs(std::move(static_aabbs));
     rebuild_static_grid();
 }
-auto CollisionUniformGrid::add_static_aabb(Vector3f const min_point, Vector3f const max_point)
-    -> StaticGeometryIndex {
-    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::add_static_aabb");
-
-    assert(is_configured());
-    [[maybe_unused]] auto const [min_coord, max_coord]{to_cell_coord_bounds(min_point, max_point)};
-    assert(is_cell_coord_in_bounds(min_coord, max_coord));
-    assert(std::isfinite(min_point.x()) && std::isfinite(min_point.y()) &&
-           std::isfinite(min_point.z()));
-    assert(std::isfinite(max_point.x()) && std::isfinite(max_point.y()) &&
-           std::isfinite(max_point.z()));
-
-    auto const static_index{static_storage_.add_aabb(min_point, max_point)};
-    rebuild_static_grid();
-    return static_index;
-}
 void CollisionUniformGrid::rebuild_static_grid() {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::rebuild_static_grid");
 
@@ -376,35 +360,6 @@ auto CollisionUniformGrid::entity_world_bounds() const -> EntityCellData::Compac
 /* **************************************** */
 // Spatial queries
 /* **************************************** */
-void CollisionUniformGrid::collect_unique_entities_in_cells(
-    std::span<CellCoord const> const cells, FrameArray<EntityId>& out_entities) const {
-    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::collect_unique_entities_in_cells");
-    out_entities.clear();
-
-    std::uint32_t membership_count{};
-    for (auto const cell : cells) {
-        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each cell has a different membership span.
-        auto const count{cell_entities(cell).size()};
-        assert(count <= std::numeric_limits<std::uint32_t>::max() - membership_count);
-        membership_count += static_cast<std::uint32_t>(count);
-    }
-    if (membership_count == 0) {
-        return;
-    }
-
-    // Reserve once because released frame allocations cannot be reused within the epoch.
-    out_entities.reserve(membership_count);
-    for (auto const cell : cells) {
-        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each cell has a different membership span.
-        for (auto const id : cell_entities(cell)) {
-            out_entities.add(id);
-        }
-    }
-
-    std::ranges::sort(out_entities.view());
-    auto const duplicates{std::ranges::unique(out_entities.view())};
-    out_entities.set_num(out_entities.num() - static_cast<std::uint32_t>(duplicates.size()));
-}
 auto CollisionUniformGrid::count_overlaps(WorldAABB const& query_bounds,
                                           EntityId const ignored_entity) const -> OverlapCounts {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::count_overlaps");

@@ -49,8 +49,9 @@ TEST(WorldlessSpaceGameSimulation, TurretsLineOfSightBlocking) {
     simulation.start();
     simulation.advance(2.0);
     auto const spawn_count_before_blocker{simulation.lasers().get_number_spawned()};
-    LevelSimTestAccess::spatial_queries(simulation)
-        .add_static_collision_aabb({{-500.f, -3000.f, -3000.f}}, {{500.f, 3000.f, 3000.f}});
+    collision::WorldAABBs blockers;
+    blockers.add({{-500.f, -3000.f, -3000.f}}, {{500.f, 3000.f, 3000.f}});
+    LevelSimTestAccess::spatial_queries(simulation).set_static_collision(std::move(blockers));
     simulation.advance(2.0);
     EXPECT_GT(spawn_count_before_blocker, 0) << "Turrets fire before blocking";
     EXPECT_EQ(spawn_count_before_blocker, harness.simulation().lasers().get_number_spawned())
