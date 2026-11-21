@@ -43,7 +43,7 @@ auto select_source_path() -> TOptional<FString> {
     TArray<FString> paths;
     auto const directory{levels::authoring::default_level_script_directory()};
     auto const selected{desktop->OpenFileDialog(parent,
-                                                TEXT("Link Mission Script"),
+                                                TEXT("Link Existing Level Script"),
                                                 directory,
                                                 TEXT(""),
                                                 TEXT("S7 level (*.scm)|*.scm"),
@@ -248,10 +248,10 @@ void US7LevelAuthoringMode::refresh_document() {
         return;
     }
     if (!document_.IsValid()) {
-        set_status(LOCTEXT("NoLinkedScript", "Create a mission or link an existing script."));
+        set_status(LOCTEXT("NoLinkedScript", "Create a level script or link an existing one."));
     } else if (!FPaths::FileExists(s7_mission_path(*document_))) {
         set_status(FText::Format(
-            LOCTEXT("MissingScript", "Missing {0}. Use Link / Change Script to locate it."),
+            LOCTEXT("MissingScript", "Missing {0}. Use Link Existing Script to locate it."),
             FText::FromString(document_->source_path)));
     } else {
         set_status(FText::FromString(document_->source_path));
@@ -334,12 +334,11 @@ void US7LevelAuthoringMode::open_level_config() {
     auto* const assets{GEditor ? GEditor->GetEditorSubsystem<UAssetEditorSubsystem>() : nullptr};
     if (!IsValid(config) || !IsValid(assets) || !assets->OpenEditorForAsset(config)) {
         set_status(
-            LOCTEXT("OpenLevelConfigFailed",
-                    "Could not open Edit Resources. Check the document's shared resource asset."));
+            LOCTEXT("OpenLevelConfigFailed", "Could not open the linked level's shared asset."));
     } else {
-        set_status(LOCTEXT("OpenLevelConfig",
-                           "Edit shared resource assets here. Configure the collision grid in "
-                           "the S7 source. Resources may be shared by other levels."));
+        set_status(LOCTEXT(
+            "OpenLevelConfig",
+            "This asset supplies meshes, effects and team palettes for all linked levels."));
     }
     notify_changed();
 }
@@ -385,16 +384,17 @@ void US7LevelAuthoringMode::rebuild_scene() {
     if (count && FMessageDialog::Open(
                      EAppMsgType::YesNo,
                      FText::Format(LOCTEXT("ConfirmRebuild",
-                                           "Replace {0} bound actors with saved placements? "
-                                           "Unsaved edits to these actors will be lost."),
+                                           "Replace {0} bound actors from the saved level script? "
+                                           "Unexported edits to these actors will be lost."),
                                    count)) != EAppReturnType::Yes) {
         return;
     }
     auto imported{import_s7_level(*level, *document_)};
-    set_status(imported ? LOCTEXT("Imported",
-                                  "Imported editor baseline values for editing and human-owned "
-                                  "entities for reference. Play uses the composed level.")
-                        : FText::FromString(imported.error()));
+    set_status(imported
+                   ? LOCTEXT("Imported",
+                             "Restored editor placements and script-defined actors. "
+                             "Move exported actors and save the map to update their placements.")
+                   : FText::FromString(imported.error()));
     notify_changed();
 }
 

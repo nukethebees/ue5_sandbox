@@ -166,10 +166,10 @@ void FSandboxEditorModule::on_pre_begin_pie(bool) {
             if (!stale) {
                 UE_LOG(LogTemp, Warning, TEXT("%s"), *stale.error());
             } else if (*stale) {
-                UE_LOG(
-                    LogTemp,
-                    Warning,
-                    TEXT("Scene edits need export. Playing the saved mission. Use Export Scene."));
+                UE_LOG(LogTemp,
+                       Warning,
+                       TEXT("Scene edits need export. Playing the saved level script. Use Export "
+                            "Scene."));
             }
         }
     }
