@@ -18,7 +18,7 @@
         (vbox
           (authoring-row
             (authoring-action "CheckScene" "Check Scene"
-              (loc "FS7LevelAuthoringModeToolkit" "CheckSceneTooltip" "Check pending placements, the linked script and shared assets without writing files.") check_scene)
+              (loc "FS7LevelAuthoringModeToolkit" "CheckSceneTooltip" "Check pending placements, the linked script and shared assets. See results in the Output Log.") check_scene)
             (authoring-action "Export" "Export Scene"
               (loc "FS7LevelAuthoringModeToolkit" "ExportTooltip" "Write enabled actors and the viewpoint to editor-config.scm.") export_scene))
           (authoring-row
@@ -39,6 +39,4 @@
                 (fill :padding 2 (assign entity_id_ SEditableTextBox
                   :ToolTipText (loc "FS7LevelAuthoringModeToolkit" "ScriptIdTooltip" "Press Enter to rename this actor's exported ID. Update references in handwritten scripts.")
                   :OnTextCommitted (method commit_script_id))))))))
-      (auto :padding 4
-        (assign status_ SMultiLineEditableTextBox :IsReadOnly true :AutoWrapText true))
       (auto (existing details)))))

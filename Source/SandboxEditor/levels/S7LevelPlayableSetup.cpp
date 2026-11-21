@@ -4,6 +4,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
+#include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include <ioj/levels/launch_options.h>
 #include <Sandbox/environment/effects/ShipPostProcessing.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
@@ -39,7 +40,7 @@ void prepare_s7_scene_for_pie(UWorld& world) {
         auto& level{*it->GetLevel()};
         auto document{find_level_authoring_document(level)};
         if (!document) {
-            UE_LOG(LogTemp, Warning, TEXT("%s"), *document.error());
+            UE_LOG(LogS7LevelAuthoring, Warning, TEXT("%s"), *document.error());
             continue;
         }
         if (!*document) {

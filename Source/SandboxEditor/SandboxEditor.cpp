@@ -6,6 +6,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
+#include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 #include "Editor.h"
@@ -138,7 +139,7 @@ void FSandboxEditorModule::on_pre_save_world(UWorld* world, FObjectPreSaveContex
     auto& level{*world->PersistentLevel};
     auto document{ioj::editor::find_level_authoring_document(level)};
     if (!document) {
-        UE_LOG(LogTemp, Warning, TEXT("%s"), *document.error());
+        UE_LOG(LogS7LevelAuthoring, Warning, TEXT("%s"), *document.error());
         return;
     }
     if (!*document) {
@@ -146,11 +147,12 @@ void FSandboxEditorModule::on_pre_save_world(UWorld* world, FObjectPreSaveContex
     }
     auto stale{ioj::editor::s7_scene_needs_export(**document)};
     if (!stale) {
-        UE_LOG(LogTemp, Warning, TEXT("Scene export failed: %s"), *stale.error());
+        UE_LOG(LogS7LevelAuthoring, Warning, TEXT("Scene export failed: %s"), *stale.error());
     } else if (*stale) {
         auto exported{ioj::editor::export_s7_editor_config(level, **document)};
         if (!exported) {
-            UE_LOG(LogTemp, Warning, TEXT("Scene export failed: %s"), *exported.error());
+            UE_LOG(
+                LogS7LevelAuthoring, Warning, TEXT("Scene export failed: %s"), *exported.error());
         }
     }
 }
@@ -164,9 +166,9 @@ void FSandboxEditorModule::on_pre_begin_pie(bool) {
         if (document && *document) {
             auto stale{ioj::editor::s7_scene_needs_export(**document)};
             if (!stale) {
-                UE_LOG(LogTemp, Warning, TEXT("%s"), *stale.error());
+                UE_LOG(LogS7LevelAuthoring, Warning, TEXT("%s"), *stale.error());
             } else if (*stale) {
-                UE_LOG(LogTemp,
+                UE_LOG(LogS7LevelAuthoring,
                        Warning,
                        TEXT("Scene edits need export. Playing the saved level script. Use Export "
                             "Scene."));

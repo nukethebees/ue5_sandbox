@@ -4,6 +4,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringModeToolkit.h"
 #include "SandboxEditor/levels/S7LevelObserverCamera.h"
+#include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/collision/collision_grid.h>
@@ -232,10 +233,6 @@ auto US7LevelAuthoringMode::document() const -> AS7LevelAuthoringDocument* {
     return document_.Get();
 }
 
-auto US7LevelAuthoringMode::status() const -> FText const& {
-    return status_;
-}
-
 auto US7LevelAuthoringMode::current_level() const -> ULevel* {
     auto* const world{GEditor ? GEditor->GetEditorWorldContext().World() : nullptr};
     return IsValid(world) ? world->GetCurrentLevel() : nullptr;
@@ -245,23 +242,21 @@ void US7LevelAuthoringMode::refresh_document() {
     auto* const level{current_level()};
     displayed_level_ = level;
     actor_count_ = level ? level->Actors.Num() : 0;
-    auto const found{IsValid(level)
-                         ? find_level_authoring_document(*level)
-                         : S7AuthoringResult<AS7LevelAuthoringDocument*>{
-                               std::unexpect, TEXT("The current editor level is unavailable.")}};
-    document_ = found ? *found : nullptr;
-    if (!found) {
-        set_status(FText::FromString(found.error()));
+    if (!IsValid(level)) {
+        document_.Reset();
         return;
     }
-    if (!document_.IsValid()) {
-        set_status(LOCTEXT("NoLinkedScript", "Create a level script or link an existing one."));
-    } else if (!FPaths::FileExists(s7_mission_path(*document_))) {
-        set_status(FText::Format(
-            LOCTEXT("MissingScript", "Missing {0}. Use Link Existing Script to locate it."),
-            FText::FromString(document_->source_path)));
-    } else {
-        set_status(FText::FromString(document_->source_path));
+    auto const previous_document{document_};
+    auto const found{find_level_authoring_document(*level)};
+    document_ = found ? *found : nullptr;
+    if (!found) {
+        UE_LOG(LogS7LevelAuthoring, Warning, TEXT("%s"), *found.error());
+    } else if (document_.IsValid() && document_ != previous_document &&
+               !FPaths::FileExists(s7_mission_path(*document_))) {
+        UE_LOG(LogS7LevelAuthoring,
+               Warning,
+               TEXT("Missing %s. Use Link Existing Script to locate it."),
+               *document_->source_path);
     }
 }
 
@@ -292,7 +287,7 @@ void US7LevelAuthoringMode::refresh_collision_preview() {
 
     auto definition{read_s7_authored_level(*document_)};
     if (!definition) {
-        set_status(FText::FromString(definition.error()));
+        UE_LOG(LogS7LevelAuthoring, Warning, TEXT("Collision preview: %s"), *definition.error());
         return;
     }
     apply_collision_preview(definition->settings());
@@ -301,8 +296,9 @@ void US7LevelAuthoringMode::refresh_collision_preview() {
 void US7LevelAuthoringMode::apply_collision_preview(ioj::settings::Settings const& settings) {
     auto const grid{ioj::sim::make_grid_spec(settings.collision_grid)};
     if (!ioj::sim::collision::is_configured(grid)) {
-        set_status(
-            LOCTEXT("InvalidCollisionGrid", "Invalid S7 collision grid dimensions or cell size."));
+        UE_LOG(LogS7LevelAuthoring,
+               Warning,
+               TEXT("Invalid S7 collision grid dimensions or cell size."));
         return;
     }
     if (collision_overlays_.grid) {
@@ -373,10 +369,6 @@ void US7LevelAuthoringMode::draw_collision_preview(FPrimitiveDrawInterface& pdi,
     }
 }
 
-void US7LevelAuthoringMode::set_status(FText text) {
-    status_ = MoveTemp(text);
-}
-
 void US7LevelAuthoringMode::notify_changed() {
     if (Toolkit.IsValid()) {
         StaticCastSharedPtr<FS7LevelAuthoringModeToolkit>(Toolkit)->refresh();
@@ -389,17 +381,20 @@ void US7LevelAuthoringMode::create_document() {
         return;
     }
     if (document_.IsValid()) {
-        set_status(LOCTEXT("AlreadyLinked", "This map already has a linked script."));
-    } else {
-        auto created{set_up_s7_mission(*level, MissionSetup::Create)};
-        if (created) {
-            document_ = *created;
-        }
-        set_status(FText::FromString(created ? document_->source_path : created.error()));
-        if (created) {
-            refresh_collision_preview();
-        }
+        UE_LOG(LogS7LevelAuthoring,
+               Warning,
+               TEXT("This map already links to %s."),
+               *document_->source_path);
+        return;
     }
+    auto created{set_up_s7_mission(*level, MissionSetup::Create)};
+    if (!created) {
+        UE_LOG(LogS7LevelAuthoring, Error, TEXT("Create Level Script: %s"), *created.error());
+        return;
+    }
+    document_ = *created;
+    UE_LOG(LogS7LevelAuthoring, Display, TEXT("Created %s."), *document_->source_path);
+    refresh_collision_preview();
     notify_changed();
 }
 
@@ -424,27 +419,26 @@ auto US7LevelAuthoringMode::selected_script_id() const -> FString {
 void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
     auto* const binding{selected_binding()};
     if (!binding) {
-        set_status(LOCTEXT("NoBoundActor", "Select one bound actor to edit its Script ID."));
+        UE_LOG(LogS7LevelAuthoring, Warning, TEXT("Select one bound actor to edit its Script ID."));
         notify_changed();
         return;
     }
 
     if (!is_canonical_s7_level_entity_id(FStringView{id})) {
-        set_status(LOCTEXT("InvalidEntityId",
-                           "Entity IDs must be lowercase S7 symbols beginning with a letter."));
+        UE_LOG(LogS7LevelAuthoring,
+               Warning,
+               TEXT("Entity IDs must be lowercase S7 symbols beginning with a letter."));
         notify_changed();
         return;
     }
     if (binding->id == id) {
-        set_status(LOCTEXT("UnchangedEntityId", "The selected entity already has that ID."));
-        notify_changed();
         return;
     }
     if (document_->entities.ContainsByPredicate(
             [binding, &id](FS7LevelEntityBinding const& candidate) {
                 return &candidate != binding && candidate.id == id;
             })) {
-        set_status(LOCTEXT("DuplicateEntityId", "That S7 entity ID is already in use."));
+        UE_LOG(LogS7LevelAuthoring, Warning, TEXT("Script ID '%s' is already in use."), *id);
         notify_changed();
         return;
     }
@@ -453,8 +447,7 @@ void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
     document_->Modify();
     binding->id = id;
     document_->set_needs_export(true);
-    set_status(FText::Format(LOCTEXT("RenamedEntityId", "Renamed selected entity to '{0}'."),
-                             FText::FromString(id)));
+    UE_LOG(LogS7LevelAuthoring, Display, TEXT("Renamed selected entity to '%s'."), *id);
     notify_changed();
 }
 
@@ -465,13 +458,13 @@ void US7LevelAuthoringMode::link_script() {
         return;
     }
     auto linked{set_up_s7_mission(*level, MissionSetup::Link, *path)};
-    if (linked) {
-        document_ = *linked;
+    if (!linked) {
+        UE_LOG(LogS7LevelAuthoring, Error, TEXT("Link Existing Script: %s"), *linked.error());
+        return;
     }
-    set_status(FText::FromString(linked ? document_->source_path : linked.error()));
-    if (linked) {
-        refresh_collision_preview();
-    }
+    document_ = *linked;
+    UE_LOG(LogS7LevelAuthoring, Display, TEXT("Linked %s."), *document_->source_path);
+    refresh_collision_preview();
     notify_changed();
 }
 
@@ -498,32 +491,31 @@ void US7LevelAuthoringMode::rebuild_scene() {
         return;
     }
     auto imported{import_s7_level(*level, *document_)};
-    set_status(imported
-                   ? LOCTEXT("Imported",
-                             "Restored editor placements and script-defined actors. "
-                             "Move exported actors and save the map to update their placements.")
-                   : FText::FromString(imported.error()));
+    if (imported) {
+        UE_LOG(
+            LogS7LevelAuthoring, Display, TEXT("Rebuilt scene from %s."), *document_->source_path);
+    } else {
+        UE_LOG(LogS7LevelAuthoring, Error, TEXT("Rebuild Scene: %s"), *imported.error());
+    }
     notify_changed();
 }
 
 void US7LevelAuthoringMode::check_scene() {
     auto* const level{current_level()};
     if (!IsValid(level) || !document_.IsValid()) {
-        set_status(
-            LOCTEXT("NoScene", "Create a level script or link one before checking the scene."));
+        UE_LOG(LogS7LevelAuthoring,
+               Warning,
+               TEXT("Create or link a level script before checking the scene."));
     } else if (auto checked{check_s7_scene(*level, *document_)}) {
         apply_collision_preview(checked->definition.settings());
-        set_status(checked->warnings.IsEmpty()
-                       ? LOCTEXT("SceneChecked", "Scene passes export checks.")
-                       : FText::Format(
-                             LOCTEXT("SceneWarnings",
-                                     "Scene passes export checks. Check Shared Level Assets:\n{0}"),
-                             FText::FromString(FString::Join(checked->warnings, TEXT("\n")))));
+        UE_LOG(LogS7LevelAuthoring, Display, TEXT("Scene passes export checks."));
+        for (auto const& warning : checked->warnings) {
+            UE_LOG(LogS7LevelAuthoring, Warning, TEXT("Shared Level Assets: %s"), *warning);
+        }
     } else {
         refresh_collision_preview();
-        set_status(FText::FromString(checked.error()));
+        UE_LOG(LogS7LevelAuthoring, Error, TEXT("Check Scene: %s"), *checked.error());
     }
-    notify_changed();
 }
 
 void US7LevelAuthoringMode::export_scene() {
@@ -532,12 +524,14 @@ void US7LevelAuthoringMode::export_scene() {
         return;
     }
     auto exported{export_s7_editor_config(*level, *document_)};
-    set_status(
-        exported
-            ? LOCTEXT(
-                  "Exported",
-                  "Saved editor-config.scm. Edits to entities with Export disabled are not saved.")
-            : FText::FromString(exported.error()));
+    if (exported) {
+        UE_LOG(LogS7LevelAuthoring,
+               Display,
+               TEXT("Exported scene to %s."),
+               *s7_editor_config_path(*document_));
+    } else {
+        UE_LOG(LogS7LevelAuthoring, Error, TEXT("Export Scene: %s"), *exported.error());
+    }
     notify_changed();
 }
 

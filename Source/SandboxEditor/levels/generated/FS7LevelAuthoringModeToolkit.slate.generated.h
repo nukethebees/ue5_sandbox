@@ -26,7 +26,7 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                                       NSLOCTEXT("FS7LevelAuthoringModeToolkit",
                                                 "CheckSceneTooltip",
                                                 "Check pending placements, the linked script and "
-                                                "shared assets without writing files."))
+                                                "shared assets. See results in the Output Log."))
                                   .OnClicked(&self_, &ThisClass::check_scene)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
@@ -105,10 +105,6 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                                            "Press Enter to rename this actor's exported ID. Update "
                                            "references in handwritten scripts."))
                                        .OnTextCommitted(&self_, &ThisClass::commit_script_id)]]]] +
-               SandboxUI::Slate::vbox_auto_slot(
-                   FMargin{4.0f})[SAssignNew(self_.status_, SMultiLineEditableTextBox)
-                                      .IsReadOnly(true)
-                                      .AutoWrapText(true)] +
                SandboxUI::Slate::vbox_auto_slot()[std::forward<decltype(details)>(details)];
     }
 

@@ -11,7 +11,6 @@
 #include <Widgets/Input/SButton.h>
 #include <Widgets/Input/SCheckBox.h>
 #include <Widgets/Input/SEditableTextBox.h>
-#include <Widgets/Input/SMultiLineEditableTextBox.h>
 #include <Widgets/Layout/SBox.h>
 #include <Widgets/Layout/SScrollBox.h>
 #include <Widgets/Text/STextBlock.h>
@@ -77,7 +76,7 @@ auto FS7LevelAuthoringModeToolkit::GetInlineContent() const -> TSharedPtr<SWidge
 }
 
 void FS7LevelAuthoringModeToolkit::refresh() {
-    if (!mode_.IsValid() || !status_.IsValid()) {
+    if (!mode_.IsValid() || !content_.IsValid()) {
         return;
     }
     if (displayed_document_.Get() != mode_->document()) {
@@ -87,7 +86,6 @@ void FS7LevelAuthoringModeToolkit::refresh() {
     auto const id{mode_->selected_script_id()};
     script_id_row_->SetVisibility(id.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible);
     entity_id_->SetText(FText::FromString(id));
-    status_->SetText(mode_->status());
 }
 
 #define FORWARD_ACTION(name)                              \

@@ -5,7 +5,6 @@
 class IDetailsView;
 class SBox;
 class SEditableTextBox;
-class SMultiLineEditableTextBox;
 class UEdMode;
 class US7LevelAuthoringMode;
 class AS7LevelAuthoringDocument;
@@ -37,6 +36,5 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     TSharedPtr<IDetailsView> details_{};
     TSharedPtr<SBox> script_id_row_{};
     TSharedPtr<SEditableTextBox> entity_id_{};
-    TSharedPtr<SMultiLineEditableTextBox> status_{};
     TSharedPtr<SWidget> content_{};
 };
