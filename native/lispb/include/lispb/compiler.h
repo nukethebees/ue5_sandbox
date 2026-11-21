@@ -21,6 +21,7 @@ class Compiler {
     Compiler();
 
     auto storage() -> CompilerStorage& { return storage_; }
+    auto storage() const -> CompilerStorage const& { return storage_; }
     auto cpp() -> codegen::CppIR& { return cpp_; }
     auto manifest() const -> codegen::Manifest const& { return manifest_; }
     auto types() const -> schema::TypeGraph const& { return types_; }

@@ -1,5 +1,6 @@
 #include <lispb/project.h>
 
+#include <codegen/path_utils.h>
 #include <codegen/sexpr/handle_range.h>
 #include <lispb/indices.h>
 #include <lispb/rooted_path.h>
@@ -28,7 +29,7 @@ auto Project::store_paths(std::span<std::filesystem::path const> const paths)
     codegen::sexpr::HandleRange const result{static_cast<std::uint32_t>(paths_.size()),
                                              static_cast<std::uint32_t>(paths.size())};
     for (auto const& path : paths) {
-        paths_.push_back(strings_->intern(path.generic_string()));
+        paths_.push_back(strings_->intern(codegen::generic_path_utf8(path)));
     }
     return result;
 }
@@ -38,7 +39,7 @@ auto Project::paths(codegen::sexpr::HandleRange const range) const
     result.reserve(range.count);
     auto const end{range.offset + range.count};
     for (auto index{range.offset}; index < end; ++index) {
-        result.emplace_back(strings_->view(paths_[index]));
+        result.push_back(codegen::path_from_utf8(strings_->view(paths_[index])));
     }
     return result;
 }
@@ -73,7 +74,7 @@ auto Project::source_files(TargetId const target) const -> std::vector<std::file
 }
 auto Project::types(TargetId const target) const -> std::filesystem::path {
     assert(target.kind() == TargetKind::cpp_schema);
-    return std::filesystem::path{strings_->view(cpp_types_[target.index()])};
+    return codegen::path_from_utf8(strings_->view(cpp_types_[target.index()]));
 }
 auto Project::include_directories(TargetId const target) const
     -> std::vector<std::filesystem::path> {
@@ -83,7 +84,7 @@ auto Project::include_directories(TargetId const target) const
 auto Project::output_path(TargetId const target) const -> RootedPath {
     auto const& data{columns(target)};
     return {data.output_bases[target.index()],
-            std::filesystem::path{strings_->view(data.output_paths[target.index()])}};
+            codegen::path_from_utf8(strings_->view(data.output_paths[target.index()]))};
 }
 auto Project::append(TargetKind const kind, StringId const name) -> TargetId {
     if (names_.contains(name)) {

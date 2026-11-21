@@ -306,6 +306,7 @@ class Parser {
                 auto const index{static_cast<std::uint32_t>(
                     found - document_.operations.operands(owner).begin())};
                 used_operands[index] = true;
+                syntax_.bind(form, document_.operands.span(*found));
                 return expressions.reference(*found, syntax_.token_span(form));
             }
             auto const literal{parse_decimal_literal(value)};
@@ -416,6 +417,7 @@ class Parser {
             if (operand == document_.operations.operands(operation).end()) {
                 fail(syntax_.token_span(form), "unknown in-place target '" + target + "'");
             }
+            syntax_.bind(syntax_.child(form, 1), document_.operands.span(*operand));
             return document_.variants.add(VariantKind::in_place,
                                           syntax_.identifier(syntax_.children(form)[2]),
                                           *operand,
@@ -433,6 +435,7 @@ class Parser {
         if (found == document_.modules.type_sets(module).end()) {
             fail(syntax_.token_span(form), "unknown type-set '" + name + "'");
         }
+        syntax_.bind(form, document_.type_sets.span(*found));
         return *found;
     }
 
@@ -477,7 +480,7 @@ class Parser {
                 }
                 auto const operand{
                     document_.operands.add(syntax_.identifier(syntax_.children(field)[1]),
-                                           syntax_.token_span(field),
+                                           syntax_.token_span(syntax_.child(field, 1)),
                                            field_kind == OperationField::component_operand)};
                 parse_storage(syntax_.children(field)[2], operand);
                 document_.operations.append_operands(result, operand);
@@ -660,7 +663,7 @@ class Parser {
                  "type-set name must be an identifier");
         }
         auto const result{document_.type_sets.add(syntax_.identifier(syntax_.children(form)[1]),
-                                                  syntax_.token_span(form))};
+                                                  syntax_.token_span(syntax_.child(form, 1)))};
         std::set<ScalarType> types;
         for (std::size_t index{2}; index < syntax_.children(form).size(); ++index) {
             auto const type{parse_scalar_type(syntax_.children(form)[index])};

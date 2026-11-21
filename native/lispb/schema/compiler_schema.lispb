@@ -4,7 +4,7 @@
   (enum DeclarationKind std::uint8_t
     (projections (cpp))
     :native-api true
-    :helpers (try-parse-serialized)
+    :helpers (to-serialized-string try-parse-serialized)
     (value enumeration :serialized-name "enum")
     (value integer_scalar :serialized-name "integer-scalar")
     (value linear_quantized :serialized-name "linear-quantized")

@@ -10,7 +10,9 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 namespace lispb {
 class Strings;
@@ -20,12 +22,30 @@ namespace lispb::codegen::sexpr {
 
 class Sources;
 
+struct EditorReference {
+    SourceSpan use;
+    SourceSpan declaration;
+};
+struct EditorFacts {
+    std::vector<EditorReference> references;
+    std::vector<HandleRange> form_vocabulary;
+    std::vector<HandleRange> vocabularies;
+    std::vector<StringId> names;
+};
+
 class Syntax {
   public:
     Syntax(Strings& strings, Sources& sources);
 
     [[nodiscard]] auto strings() const -> Strings& { return *strings_; }
     [[nodiscard]] auto sources() const -> Sources& { return *sources_; }
+    void observe(EditorFacts& facts) { editor_ = &facts; }
+    [[nodiscard]] auto editor() const -> EditorFacts* { return editor_; }
+    void bind(FormId use, SourceSpan declaration) const {
+        if (editor_) {
+            editor_->references.emplace_back(token_span(use), declaration);
+        }
+    }
     [[nodiscard]] auto kind(TokenId id) const -> TokenKind;
     [[nodiscard]] auto text_id(TokenId id) const -> StringId;
     [[nodiscard]] auto identifier(TokenId id) const -> StringId;
@@ -65,6 +85,7 @@ class Syntax {
     void rebind(Strings& strings, Sources& sources);
   private:
     Strings* strings_;
+    EditorFacts* editor_{};
     Sources* sources_;
     std::vector<TokenKind> token_kinds_;
     std::vector<StringId> token_texts_;

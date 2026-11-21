@@ -3,6 +3,7 @@
 #include "lispb/compile_mode.h"
 #include "lispb/rooted_path.h"
 #include <codegen/generator.h>
+#include <codegen/path_utils.h>
 #include <codegen/schema/type_registry.h>
 #include <codegen/sexpr/indices.h>
 #include <kernel_codegen/compiler.h>
@@ -108,7 +109,8 @@ auto Compiler::compile(Project const& project,
             auto const paths{project.sources(target)};
             assert(paths.size() == 1);
             auto const source{project.root / paths.front()};
-            auto const file{storage_.sources.load(source, paths.front().generic_string())};
+            auto const file{
+                storage_.sources.load(source, codegen::generic_path_utf8(paths.front()))};
             compile_material(storage_.syntax,
                              file,
                              material_,

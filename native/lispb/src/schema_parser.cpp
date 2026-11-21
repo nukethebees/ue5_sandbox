@@ -250,6 +250,7 @@ auto SchemaParser::parse_type_ref(Declarations& declarations, sexpr::FormId cons
         auto const record_id{records.append()};
         auto const record_index{records.index(record_id)};
         records.name[record_index] = parser_.identifier(form, "type reference");
+        records.authored_name[record_index] = form;
         records.suffix[record_index] = {};
         records.nested[record_index] = std::nullopt;
         return record_id;
@@ -260,6 +261,7 @@ auto SchemaParser::parse_type_ref(Declarations& declarations, sexpr::FormId cons
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "type reference name");
+    records.authored_name[record_index] = fields.positional(0);
     records.suffix[record_index] = optional_text_id(fields, P::suffix).value_or(lispb::StringId{});
     records.nested[record_index] = optional_text_id(fields, P::nested);
     return record_id;

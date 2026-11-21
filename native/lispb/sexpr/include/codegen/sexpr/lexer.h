@@ -5,7 +5,9 @@
 
 namespace lispb::codegen::sexpr {
 class Syntax;
+enum class LexMode { strict, editor };
 
-[[nodiscard]] auto lex(Syntax& syntax, SourceFileId file) -> TokenRange;
+[[nodiscard]] auto lex(Syntax& syntax, SourceFileId file, LexMode mode = LexMode::strict)
+    -> TokenRange;
 
 }

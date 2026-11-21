@@ -1,5 +1,6 @@
 #include <codegen/sexpr/sources.h>
 
+#include <codegen/path_utils.h>
 #include <codegen/sexpr/indices.h>
 #include <codegen/sexpr/source_location.h>
 #include <codegen/sexpr/source_span.h>
@@ -59,7 +60,7 @@ auto Sources::path(SourceFileId const file) const -> std::string_view {
 }
 
 auto Sources::filesystem_path(SourceFileId const file) const -> std::filesystem::path {
-    auto result{std::filesystem::path{path(file)}};
+    auto result{path_from_utf8(path(file))};
     return result.make_preferred();
 }
 auto Sources::kind(SourceFileId const file) const -> SourceFileKind {
@@ -89,7 +90,7 @@ auto Sources::include_spans(SourceFileId const file) const -> std::span<SourceSp
 auto Sources::load(std::filesystem::path const& path, std::string_view const display_path)
     -> SourceFileId {
     auto const absolute{std::filesystem::absolute(path).lexically_normal()};
-    auto const path_text{absolute.generic_string()};
+    auto const path_text{generic_path_utf8(absolute)};
     std::string const displayed{display_path.empty() ? path_text : display_path};
     auto const key{strings_->intern_retained(path_text)};
     auto const found{loaded_files_.find(key)};
@@ -118,7 +119,7 @@ auto Sources::text(SourceFileId const file) const -> std::string_view {
 
 auto Sources::overlay(std::filesystem::path const& path, std::string_view const text)
     -> SourceFileId {
-    auto const absolute{std::filesystem::absolute(path).lexically_normal().generic_string()};
+    auto const absolute{generic_path_utf8(std::filesystem::absolute(path).lexically_normal())};
     auto const file{add(absolute, text)};
     auto const key{strings_->find(absolute)};
     states_[file.value] = SourceFileState::overlay;
@@ -141,13 +142,16 @@ auto Sources::span(SourceFileId const file,
     return {file, begin, end, {}};
 }
 
+auto Sources::line_offsets(SourceFileId file) const -> std::span<std::uint32_t const> {
+    auto const range{lines_[file.value]};
+    return std::span{line_offsets_}.subspan(range.offset, range.count);
+}
 auto Sources::location(SourceSpan const span) const -> SourceLocation {
     if (span.file.value == 0) {
         return {};
     }
 
-    auto const range{lines_.at(span.file.value)};
-    auto const offsets{std::span{line_offsets_}.subspan(range.offset, range.count)};
+    auto const offsets{line_offsets(span.file)};
     auto const found{std::ranges::upper_bound(offsets, span.offset)};
     auto const line{static_cast<std::uint32_t>(found - offsets.begin())};
     return {line, span.offset - offsets[line - 1] + 1, path(span.file)};

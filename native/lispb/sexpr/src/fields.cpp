@@ -98,6 +98,32 @@ void Fields::validate(std::initializer_list<std::string_view> const properties,
 
 void Fields::validate_names(std::span<std::string_view const> const properties,
                             std::span<std::string_view const> const declarations) const {
+    if (auto* editor{syntax_.editor()}) {
+        auto& names{editor->names};
+        auto const begin{static_cast<std::uint32_t>(names.size())};
+        for (auto property : properties) {
+            names.push_back(syntax_.strings().intern(":" + std::string{property}));
+        }
+        for (auto head : declarations) {
+            names.push_back(syntax_.strings().intern(head));
+        }
+
+        HandleRange vocabulary{begin, static_cast<std::uint32_t>(names.size() - begin)};
+        std::span<StringId const> const all{names};
+        auto const found{std::ranges::find_if(editor->vocabularies, [&](HandleRange range) {
+            return std::ranges::equal(all.subspan(range.offset, range.count), all.subspan(begin));
+        })};
+        if (found != editor->vocabularies.end()) {
+            vocabulary = *found;
+            names.resize(begin);
+        } else {
+            editor->vocabularies.push_back(vocabulary);
+        }
+        if (editor->form_vocabulary.size() <= form_.value) {
+            editor->form_vocabulary.resize(form_.value + 1);
+        }
+        editor->form_vocabulary[form_.value] = vocabulary;
+    }
     auto const count{properties_.size()};
     for (std::size_t index{}; index < count; ++index) {
         auto const name{syntax_.strings().view(properties_[index])};

@@ -22,8 +22,9 @@ namespace {
 
 class Lexer {
   public:
-    Lexer(Syntax& syntax, SourceFileId const file)
+    Lexer(Syntax& syntax, SourceFileId const file, LexMode mode)
         : syntax_{syntax}
+        , mode_{mode}
         , file_{file}
         , source_{syntax.sources().text_id(file)}
         , length_{static_cast<std::uint32_t>(syntax.sources().text(file).size())} {}
@@ -83,8 +84,12 @@ class Lexer {
         static_cast<void>(syntax_.add_token(kind, text, span(begin), tag));
     }
 
-    [[noreturn]] void fail(std::uint32_t const begin, std::string const& message) const {
-        syntax_.sources().diagnostics().fail(syntax_.sources(), span(begin), message);
+    void report(std::uint32_t const begin, std::string const& message) const {
+        auto& diagnostics{syntax_.sources().diagnostics()};
+        if (mode_ == LexMode::strict) {
+            diagnostics.fail(syntax_.sources(), span(begin), message);
+        }
+        diagnostics.add(DiagnosticSeverity::error, span(begin), message);
     }
 
     static auto is_delimiter(char const value) -> bool {
@@ -114,9 +119,12 @@ class Lexer {
         auto const payload_start{index_};
         auto const closing_start{source().find(closing, payload_start)};
         if (closing_start == std::string_view::npos) {
-            fail(begin,
-                 "unterminated raw literal '#" + std::string{syntax_.strings().view(tag)} +
-                     "{'; expected '" + closing + "'");
+            report(begin,
+                   "unterminated raw literal '#" + std::string{syntax_.strings().view(tag)} +
+                       "{'; expected '" + closing + "'");
+            index_ = length_;
+            emit(TokenKind::raw_literal, slice(payload_start, index_), begin, tag);
+            return true;
         }
 
         auto const text{slice(payload_start, static_cast<std::uint32_t>(closing_start))};
@@ -147,7 +155,10 @@ class Lexer {
             ++index_;
         }
         if (index_ == text_begin) {
-            fail(text_begin, "unexpected character '" + std::string{peek()} + "'");
+            report(text_begin, "unexpected character '" + std::string{peek()} + "'");
+        }
+        if (index_ == begin) {
+            ++index_;
         }
         emit(kind, slice(text_begin, index_), begin);
     }
@@ -161,7 +172,9 @@ class Lexer {
         while (!at_end() && peek() != '"') {
             auto value{source()[index_++]};
             if (value == '\n') {
-                fail(begin, "unterminated text literal");
+                report(begin, "unterminated text literal");
+                emit(TokenKind::string, slice(text_begin, index_), begin);
+                return;
             }
             if (value != '\\') {
                 continue;
@@ -170,7 +183,9 @@ class Lexer {
             escaped = true;
             decoded.append(source().substr(chunk_begin, index_ - chunk_begin - 1));
             if (at_end()) {
-                fail(begin, "unterminated text literal");
+                report(begin, "unterminated text literal");
+                emit(TokenKind::string, slice(text_begin, index_), begin);
+                return;
             }
             value = source()[index_++];
             switch (value) {
@@ -188,12 +203,15 @@ class Lexer {
                     decoded.push_back('\t');
                     break;
                 default:
-                    fail(index_, "unsupported text escape");
+                    report(index_ - 1, "unsupported text escape");
+                    decoded.push_back(value);
             }
             chunk_begin = index_;
         }
         if (at_end()) {
-            fail(begin, "unterminated text literal");
+            report(begin, "unterminated text literal");
+            emit(TokenKind::string, slice(text_begin, index_), begin);
+            return;
         }
 
         lispb::StringId text;
@@ -208,6 +226,7 @@ class Lexer {
     }
 
     Syntax& syntax_;
+    LexMode mode_;
     SourceFileId file_;
     lispb::StringId source_;
     std::uint32_t length_{};
@@ -216,8 +235,8 @@ class Lexer {
 
 } // namespace
 
-auto lex(Syntax& syntax, SourceFileId const file) -> TokenRange {
-    return Lexer{syntax, file}.lex();
+auto lex(Syntax& syntax, SourceFileId const file, LexMode mode) -> TokenRange {
+    return Lexer{syntax, file, mode}.lex();
 }
 
 } // namespace lispb::codegen::sexpr

@@ -566,7 +566,17 @@ void compile_schema(CompilerStorage& storage,
                     bool const emit) {
     auto const registry{load_type_registry(storage, types)};
     manifest = load_sources(storage, registry, modules);
-    graph = schema::resolve_type_graph(manifest);
+    auto resolved{schema::try_resolve_type_graph(manifest)};
+    if (!resolved) {
+        auto const& error{resolved.error()};
+        auto const name{storage.declarations.type_refs.authored_name[error.reference]};
+        if (name.value) {
+            storage.diagnostics.fail(
+                storage.sources, storage.syntax.token_span(name), error.message);
+        }
+        throw std::invalid_argument{error.message};
+    }
+    graph = std::move(*resolved);
     for (auto const& source : registry.sources) {
         output.dependencies.emplace_back(storage.sources.path(source));
     }

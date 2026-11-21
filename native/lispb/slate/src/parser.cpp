@@ -167,6 +167,7 @@ class Parser {
   private:
     struct ParameterState {
         ParameterKind kind;
+        FormId declaration;
         std::size_t uses{};
     };
     struct Argument {
@@ -272,7 +273,8 @@ class Parser {
         if (syntax_.text(name) == "self_" || syntax_.text(name) == "ThisClass") {
             fail(syntax_.token_span(name), "reserved generated name cannot be used as a parameter");
         }
-        if (!parameter_states_.emplace(syntax_.identifier(name), ParameterState{*kind}).second) {
+        if (!parameter_states_.emplace(syntax_.identifier(name), ParameterState{*kind, name})
+                 .second) {
             fail(syntax_.token_span(name),
                  std::format("duplicate parameter declaration '{}'", syntax_.text(name)));
         }
@@ -342,6 +344,7 @@ class Parser {
                  std::format("{:s} parameter '{}' may only be used once", expected, spelling));
         }
         ++state.uses;
+        syntax_.bind(name, syntax_.token_span(state.declaration));
     }
 
     auto plain_value(ValueKind const kind, FormId const token) -> ValueId {

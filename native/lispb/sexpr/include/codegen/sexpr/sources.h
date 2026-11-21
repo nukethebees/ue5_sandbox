@@ -47,6 +47,9 @@ class Sources {
     [[nodiscard]] auto span(SourceFileId file, std::uint32_t begin, std::uint32_t end) const
         -> SourceSpan;
     [[nodiscard]] auto location(SourceSpan span) const -> SourceLocation;
+    [[nodiscard]] auto line_offsets(SourceFileId file) const -> std::span<std::uint32_t const>;
+    [[nodiscard]] auto file_count() const -> std::size_t { return paths_.size(); }
+    [[nodiscard]] auto loaded_files() const -> auto const& { return loaded_files_; }
     [[nodiscard]] auto add_expansion(StringId name, SourceSpan invocation, SourceSpan definition)
         -> ExpansionId;
     [[nodiscard]] auto expansion_text(SourceSpan span) const -> std::string;

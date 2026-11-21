@@ -388,7 +388,7 @@ void lispb::compile_material(lispb::codegen::sexpr::Syntax& syntax,
                   diagnostic.column,
                   diagnostic.message);
         }
-        throw std::runtime_error{diagnostics};
+        throw MaterialSourceError{diagnostics};
     }
 
     result.dependencies.push_back(input);

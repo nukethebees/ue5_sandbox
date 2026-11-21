@@ -455,7 +455,8 @@ class Analyzer {
         auto const node{material_.nodes.add_parameter(
             type, material_span(syntax_.token_span(form)), {}, parameter, parameter_sampler)};
         material_.parameters.node[parameter.value] = node;
-        symbols_.emplace(syntax_.identifier(syntax_.children(form)[2]), node);
+        auto const name_form{syntax_.child(form, 2)};
+        symbols_.emplace(syntax_.identifier(name_form), Symbol{node, syntax_.token(name_form)});
     }
 
     void parse_binding(FormId const form) {
@@ -479,10 +480,10 @@ class Analyzer {
         if (!node) {
             return;
         }
-        symbols_.emplace(syntax_.identifier(syntax_.children(form)[1]), *node);
-        material_.bindings.append(syntax_.identifier(syntax_.children(form)[1]),
-                                  *node,
-                                  material_span(syntax_.token_span(form)));
+        auto const name_form{syntax_.child(form, 1)};
+        symbols_.emplace(syntax_.identifier(name_form), Symbol{*node, syntax_.token(name_form)});
+        material_.bindings.append(
+            syntax_.identifier(name_form), *node, material_span(syntax_.token_span(form)));
     }
 
     void parse_output(FormId const form, std::string_view const name) {
@@ -514,7 +515,8 @@ class Analyzer {
             if (syntax_.kind(form) == TokenKind::atom) {
                 auto const found{symbols_.find(syntax_.identifier(form))};
                 if (found != symbols_.end()) {
-                    return found->second;
+                    syntax_.bind(form, syntax_.token_span(found->second.declaration_name));
+                    return found->second.node;
                 }
                 fail(syntax_.token_span(form),
                      "unknown symbol '" + std::string{syntax_.text(form)} + "'");
@@ -1136,7 +1138,11 @@ class Analyzer {
     lispb::codegen::sexpr::SourceFileId source_;
     TextureResolver resolver_;
     MaterialIR& material_;
-    std::unordered_map<lispb::StringId, NodeHandle> symbols_;
+    struct Symbol {
+        NodeHandle node;
+        lispb::codegen::sexpr::TokenId declaration_name;
+    };
+    std::unordered_map<lispb::StringId, Symbol> symbols_;
     std::size_t diagnostic_begin_;
 };
 

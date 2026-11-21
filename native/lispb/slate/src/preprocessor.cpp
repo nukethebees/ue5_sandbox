@@ -159,18 +159,22 @@ class Preprocessor {
             }
             fail(invocation, std::format("include cycle:{}\n  {}", chain, path.generic_string()));
         }
+        auto const file{syntax_.sources().load(
+            path, path.lexically_relative(source_directory_).generic_string())};
+        if (included && syntax_.editor()) {
+            syntax_.editor()->references.emplace_back(invocation, SourceSpan{.file = file});
+        }
         if (!loaded_files_.insert(path).second) {
             return {};
         }
         active_files_.push_back(path);
-        auto const file{syntax_.sources().load(
-            path, path.lexically_relative(source_directory_).generic_string())};
         auto const forms{lispb::codegen::sexpr::read_forms(syntax_, file)};
         std::vector<FormId> result;
         for (std::uint32_t index{}; index < forms.count; ++index) {
             auto const form{syntax_.forms(forms)[index]};
             if (syntax_.head(form) == "include") {
-                static_cast<void>(load(resolve(form, path), true, syntax_.token_span(form)));
+                auto const include{resolve(form, path)};
+                static_cast<void>(load(include, true, syntax_.token_span(syntax_.child(form, 1))));
             } else if (syntax_.head(form) == "defmacro") {
                 define(form);
             } else if (included) {
@@ -220,7 +224,7 @@ class Preprocessor {
             macros_.parameter_names.push_back(placeholder);
         }
         Range const parameter_range{parameters_begin, static_cast<std::uint32_t>(parameter_count)};
-        validate_template(body, parameter_range);
+        validate_template(body, parameter_range, syntax_.children(syntax_.child(form, 2)));
         if (auto const previous{macro_names_.find(name)}; previous != macro_names_.end()) {
             fail(syntax_.token_span(id),
                  std::format("duplicate macro '{}'; first defined at {}",
@@ -228,16 +232,23 @@ class Preprocessor {
                              location(syntax_.token_span(macros_.bodies[previous->second.value]))));
         }
         macros_.parameters.push_back(parameter_range);
+        macros_.names.push_back(syntax_.child(form, 1));
         macros_.bodies.push_back(body);
         macro_names_.emplace(name, macro);
     }
 
-    void validate_template(FormId const form, Range const parameters) const {
+    void validate_template(FormId const form,
+                           Range const parameters,
+                           std::span<FormId const> names) const {
         if (syntax_.kind(form) == TokenKind::atom && syntax_.text(form).starts_with('$')) {
             auto const end{parameters.begin + parameters.count};
             bool found{};
             for (auto index{parameters.begin}; index < end; ++index) {
-                found = found || macros_.parameter_names[index] == syntax_.identifier(form);
+                if (macros_.parameter_names[index] == syntax_.identifier(form)) {
+                    syntax_.bind(form, syntax_.token_span(names[index - parameters.begin]));
+                    found = true;
+                    break;
+                }
             }
             if (!found) {
                 fail(syntax_.token_span(form),
@@ -245,7 +256,7 @@ class Preprocessor {
             }
         }
         for (auto const child : syntax_.children(form)) {
-            validate_template(child, parameters);
+            validate_template(child, parameters, names);
         }
     }
 
@@ -283,6 +294,7 @@ class Preprocessor {
         if (found != macro_names_.end()) {
             auto const name{found->first};
             auto const macro{found->second};
+            syntax_.bind(syntax_.child(form, 0), syntax_.token_span(macros_.names[macro.value]));
             if (std::ranges::find(active_macros_, macro) != active_macros_.end()) {
                 fail(
                     span,

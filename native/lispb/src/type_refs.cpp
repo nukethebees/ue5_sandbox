@@ -12,6 +12,7 @@ auto TypeRefs::index(TypeRefId id) const -> std::uint32_t {
 auto TypeRefs::append() -> TypeRefId {
     auto const index{static_cast<std::uint32_t>(name.size())};
     name.push_back({});
+    authored_name.push_back({});
     suffix.push_back({});
     nested.push_back({});
     return TypeRefId{index + 1};
@@ -21,12 +22,14 @@ auto TypeRefs::clone(TypeRefId id) -> TypeRefId {
     auto const result{append()};
     auto const destination{index(result)};
     name[destination] = name[source_index];
+    authored_name[destination] = authored_name[source_index];
     suffix[destination] = suffix[source_index];
     nested[destination] = nested[source_index];
     return result;
 }
 void TypeRefs::clear() {
     name.clear();
+    authored_name.clear();
     suffix.clear();
     nested.clear();
 }

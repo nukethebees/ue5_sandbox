@@ -15,12 +15,14 @@ class SyntaxParser {
     // Supply a complete lexer-produced range, including its final end token.
     SyntaxParser(Syntax& syntax, TokenRange tokens);
     auto parse() -> HandleRange;
+    auto parse_for_editor() -> HandleRange;
   private:
     auto form() -> FormId;
     Syntax& syntax_;
     TokenRange tokens_;
     std::size_t index_{};
     std::vector<FormId> children_;
+    bool recover_{};
 };
 
 }

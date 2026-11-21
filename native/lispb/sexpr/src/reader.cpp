@@ -16,4 +16,12 @@ auto read_forms(Syntax& syntax, SourceFileId const file) -> HandleRange {
     return forms;
 }
 
+auto read_editor_forms(Syntax& syntax, SourceFileId file) -> HandleRange {
+    if (auto const cached{syntax.cached_forms(file)}) {
+        return *cached;
+    }
+    auto const tokens{lex(syntax, file, LexMode::editor)};
+    return SyntaxParser{syntax, tokens}.parse_for_editor();
+}
+
 }

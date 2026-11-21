@@ -3,9 +3,11 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -30,6 +32,7 @@ enum class DeclarationKind : DeclarationKindUnderlying {
     facade,
 };
 
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_declaration_kind(std::string_view const value) noexcept
     -> std::optional<DeclarationKind> {
@@ -113,4 +116,11 @@ template <>
 inline constexpr MinMax<lispb::codegen::DeclarationKind>
     enum_range<lispb::codegen::DeclarationKind>{lispb::codegen::DeclarationKind::enumeration,
                                                 lispb::codegen::DeclarationKind::facade};
+
+template <>
+inline constexpr auto enum_strings<lispb::codegen::DeclarationKind, Serialized>{PackedStrings{
+    "enum\000integer-scalar\000linear-quantized\000integer-varint\000fixed-point\000mini-"
+    "float\000optional-sentinel\000optional-presence-"
+    "bit\000record\000union\000struct\000table\000facade",
+    std::array<std::uint8_t, 14>{0, 5, 20, 37, 52, 64, 75, 93, 115, 122, 128, 135, 141, 148}}};
 } // namespace ioj

@@ -1,5 +1,6 @@
 #include "project_parser.h"
 
+#include <codegen/path_utils.h>
 #include <codegen/sexpr/fields.h>
 #include <codegen/sexpr/source_error.h>
 #include <codegen/sexpr/sources.h>
@@ -10,6 +11,7 @@
 #include <lispb/strings.h>
 #include <lispb/target_kind.h>
 
+#include <algorithm>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -58,7 +60,7 @@ void ProjectParser::output_path(Project& project,
                      std::string{purpose} + " must be (project-path ...) or (build-path ...)");
     }
     auto const path_id{parser_.text_id(syntax_.child(form, 1), purpose)};
-    auto const value{std::filesystem::path{syntax_.strings().view(path_id)}};
+    auto const value{codegen::path_from_utf8(syntax_.strings().view(path_id))};
     if (value.is_absolute() || value.has_root_path()) {
         parser_.fail(syntax_.child(form, 1), std::string{purpose} + " must be relative");
     }
@@ -84,8 +86,11 @@ auto ProjectParser::parse(codegen::sexpr::SourceFileId file,
 
     Project project{syntax_.strings()};
     project.root = (project_path.parent_path() /
-                    parser_.text(project_fields.required(P::project_root), "project root"))
+                    codegen::path_from_utf8(
+                        parser_.text(project_fields.required(P::project_root), "project root")))
                        .lexically_normal();
+    std::vector<sexpr::TokenId> declaration_names;
+    std::vector<FormId> group_members;
     std::optional<DiagnosticId> first_error;
     for (auto const declaration : project_fields.declarations()) {
         try {
@@ -125,7 +130,14 @@ auto ProjectParser::parse(codegen::sexpr::SourceFileId file,
             } else if (kind == TargetKind::group) {
                 fields.validate({P::targets});
                 auto const name{parser_.identifier(fields.positional(0), "group name")};
-                project.add_group(name, names(fields.required(P::targets), "targets"));
+                auto const targets{fields.required(P::targets)};
+                project.add_group(name, names(targets, "targets"));
+                if (syntax_.editor()) {
+                    group_members.append_range(syntax_.children(targets));
+                }
+            }
+            if (syntax_.editor()) {
+                declaration_names.push_back(syntax_.token(fields.positional(0)));
             }
         } catch (sexpr::SourceError const& error) {
             if (!first_error) {
@@ -141,6 +153,15 @@ auto ProjectParser::parse(codegen::sexpr::SourceFileId file,
         project.resolve_groups();
     } catch (std::invalid_argument const& error) {
         parser_.fail(syntax_.forms(forms).front(), error.what());
+    }
+    if (!group_members.empty()) {
+        auto spelling = [&](sexpr::TokenId id) { return syntax_.identifier(id); };
+        std::ranges::sort(declaration_names, {}, spelling);
+        for (auto use : group_members) {
+            auto const name{syntax_.identifier(use)};
+            auto const declaration{std::ranges::lower_bound(declaration_names, name, {}, spelling)};
+            syntax_.bind(use, syntax_.token_span(*declaration));
+        }
     }
     return project;
 }

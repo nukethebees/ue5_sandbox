@@ -88,6 +88,7 @@ auto parse_type_registry(lispb::CompilerStorage& storage,
                 try {
                     auto const target{resolve_include(
                         file, fields_parser.text(include.positional(0), "include path"))};
+                    syntax.bind(include.positional(0), {.file = target});
                     self(self, target);
                     include_targets.push_back(target);
                     include_spans.push_back(syntax.span(form));

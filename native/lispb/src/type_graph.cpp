@@ -173,17 +173,25 @@ auto uses_cross_module_signature_forward_declaration(ResolvedOccurrenceId const 
 }
 
 class TypeGraphBuilder {
+    struct RelationKey {
+        codegen::ModuleHandle module;
+        codegen::SemanticRelationId relation;
+        auto operator<=>(RelationKey const&) const = default;
+    };
+
   public:
     explicit TypeGraphBuilder(codegen::Manifest const& manifest)
         : manifest_{manifest}
         , store_{manifest.declarations}
         , graph_{store_, manifest.types.cpp_types} {}
 
-    auto build() -> TypeGraph {
+    auto build() -> std::expected<TypeGraph, TypeReferenceError> {
         declare_types();
         graph_.enum_domains_ = analyze_enum_domains(manifest_);
         bind_registered_types();
-        resolve_type_uses();
+        if (auto result{resolve_type_uses()}; !result) {
+            return std::unexpected{std::move(result.error())};
+        }
         codegen::detail::validate_integer_domains(manifest_, graph_);
         resolve_definitions(true);
         validate_nested_soa_types();
@@ -258,11 +266,11 @@ class TypeGraphBuilder {
             module,
             source)};
         declarations_.push_back(id);
-        graph_.declarations_by_module_name_.emplace(std::pair{module, name}, id);
+        graph_.declarations_by_module_name_.emplace(TypeGraph::DeclarationKey{module, name}, id);
         if (physical.value) {
             graph_.declarations_by_spelling_.emplace(physical, id);
             graph_.declarations_by_module_name_.emplace(
-                std::pair{module, physical_name.value_or(name)}, id);
+                TypeGraph::DeclarationKey{module, physical_name.value_or(name)}, id);
         }
         if (physical != logical) {
             graph_.declarations_by_spelling_.emplace(logical, id);
@@ -494,8 +502,8 @@ class TypeGraphBuilder {
     }
 
     auto bind_reference(codegen::TypeRefId const reference_id, codegen::ModuleHandle const module)
-        -> ResolvedOccurrenceId {
-        auto const key{std::pair{module, reference_id}};
+        -> std::expected<ResolvedOccurrenceId, TypeReferenceError> {
+        TypeGraph::ReferenceKey const key{module, reference_id};
         if (graph_.bindings_.contains(key)) {
             return graph_.resolved(module, reference_id);
         }
@@ -537,8 +545,10 @@ class TypeGraphBuilder {
             }
         } else {
             if (store_.strings().view(store_.type_refs.name[reference]).starts_with('@')) {
-                throw std::invalid_argument{"Unknown logical type reference: " +
-                                            str(store_.type_refs.name[reference])};
+                return std::expected<ResolvedOccurrenceId, TypeReferenceError>{
+                    std::unexpect,
+                    reference,
+                    "Unknown logical type reference: " + str(store_.type_refs.name[reference])};
             }
             resolved = codegen::resolve_type_use(reference, manifest_.types);
             semantic_type = raw_external(store_.type_refs.name[reference]);
@@ -563,15 +573,18 @@ class TypeGraphBuilder {
                                 codegen::TypeReferenceRole const& location,
                                 codegen::TypeReferenceKind const kind,
                                 bool const record_signature,
-                                bool const preserve_existing) -> ResolvedOccurrenceId {
+                                bool const preserve_existing)
+        -> std::expected<ResolvedOccurrenceId, TypeReferenceError> {
         auto const node{graph_.occurrences().type[graph_.occurrences().index(target)]};
         if (graph_.origin(node) != TypeOrigin::declaration) {
             return target;
         }
         if (store_.strings().view(graph_.cpp_spelling(node)).empty()) {
-            throw std::invalid_argument{
+            return std::expected<ResolvedOccurrenceId, TypeReferenceError>{
+                std::unexpect,
+                reference_id,
                 "Logical layout schema '" + str(graph_.name(node)) + "' has no C++ owner for " +
-                codegen::type_reference_role_text(store_.strings(), location)};
+                    codegen::type_reference_role_text(store_.strings(), location)};
         }
         auto const authored_name{store_.strings().view(store_.type_refs.name[reference_id])};
         auto const registered_reference{authored_name.starts_with('@') &&
@@ -630,21 +643,29 @@ class TypeGraphBuilder {
         graph_.use_kinds_.push_back(kind);
     }
 
-    void resolve_type_uses() {
+    auto resolve_type_uses() -> std::expected<void, TypeReferenceError> {
         for (auto const module_id : manifest_.modules) {
             if (module_id.kind() == codegen::ModuleKind::normal) {
                 auto const module{module_id};
                 for (auto const declaration :
                      store_.items(store_.normal_modules.declarations[module])) {
+                    std::expected<void, TypeReferenceError> status;
                     codegen::visit_type_references(
                         store_,
                         declaration,
                         [&](codegen::TypeReferenceRole const& role,
                             codegen::TypeRefId const reference,
                             codegen::TypeReferenceKind const kind) {
+                            if (!status) {
+                                return;
+                            }
                             auto const preserve_existing{
                                 graph_.bindings_.contains({module_id, reference})};
-                            auto target{bind_reference(reference, module_id)};
+                            auto bound{bind_reference(reference, module_id)};
+                            if (!bound) {
+                                status = std::unexpected{std::move(bound.error())};
+                                return;
+                            }
                             auto emitted{role.part != codegen::TypeReferencePart::relationship};
                             if (declaration.kind() == codegen::DeclarationKind::record) {
                                 emitted =
@@ -680,18 +701,26 @@ class TypeGraphBuilder {
                                           codegen::SoaMemberKind::nested;
                             }
                             if (emitted) {
-                                target = resolve_cpp_occurrence(
-                                    target,
-                                    reference,
-                                    module_id,
-                                    role,
-                                    kind,
-                                    declaration.kind() == codegen::DeclarationKind::record,
-                                    preserve_existing);
+                                bound = resolve_cpp_occurrence(*bound,
+                                                               reference,
+                                                               module_id,
+                                                               role,
+                                                               kind,
+                                                               declaration.kind() ==
+                                                                   codegen::DeclarationKind::record,
+                                                               preserve_existing);
+                                if (!bound) {
+                                    status = std::unexpected{std::move(bound.error())};
+                                    return;
+                                }
                             }
+                            auto const target{*bound};
                             graph_.bindings_.at({module_id, reference}) = target;
                             add_use(module_id, declaration, role, target, reference, kind);
                         });
+                    if (!status) {
+                        return status;
+                    }
                     auto registration = [&](codegen::TypeReferenceRole const& role,
                                             StringId const name) {
                         auto const registered{manifest_.types.find(store_.strings().view(name))};
@@ -768,16 +797,20 @@ class TypeGraphBuilder {
                     auto const setting{setting_id};
                     auto const target{
                         bind_reference(store_.settings.value_type[setting], module_id)};
+                    if (!target) {
+                        return std::unexpected{target.error()};
+                    }
                     add_use(module_id,
                             {},
                             {.category = codegen::TypeReferenceCategory::setting,
                              .subject = store_.settings.name[setting],
                              .index = index++},
-                            target,
+                            *target,
                             store_.settings.value_type[setting]);
                 }
             }
         }
+        return {};
     }
 
     auto relationship(std::optional<codegen::SemanticRelationId> const source,
@@ -787,7 +820,7 @@ class TypeGraphBuilder {
             return {};
         }
         auto const relation{*source};
-        auto const key{std::pair{module, relation}};
+        RelationKey const key{module, relation};
         if (auto const found{relationships_by_source_.find(key)};
             found != relationships_by_source_.end()) {
             return found->second;
@@ -1274,7 +1307,11 @@ class TypeGraphBuilder {
     }
 
     void build_edges() {
-        std::vector<std::pair<TypeId, TypeId>> edges;
+        struct Edge {
+            TypeId owner;
+            TypeId dependency;
+        };
+        std::vector<Edge> edges;
         auto const count{graph_.types().size()};
         auto const& definitions{graph_.definitions_};
         auto const& occurrences{graph_.occurrences()};
@@ -1397,15 +1434,15 @@ class TypeGraphBuilder {
                 }
             }
         }
-        std::ranges::stable_sort(edges, {}, &std::pair<TypeId, TypeId>::first);
+        std::ranges::stable_sort(edges, {}, &Edge::owner);
         graph_.dependency_ranges_.resize(count);
         graph_.user_ranges_.resize(count);
         auto edge{edges.begin()};
         for (std::uint32_t index{}; index < count; ++index) {
             auto& range{graph_.dependency_ranges_[index]};
             range.begin = static_cast<std::uint32_t>(graph_.dependencies_.size());
-            while (edge != edges.end() && edge->first.value == index) {
-                auto const dependency{edge->second};
+            while (edge != edges.end() && edge->owner.value == index) {
+                auto const dependency{edge->dependency};
                 auto const current{std::span{graph_.dependencies_}.subspan(range.begin)};
                 if (std::ranges::find(current, dependency) == current.end()) {
                     graph_.dependencies_.push_back(dependency);
@@ -1438,8 +1475,7 @@ class TypeGraphBuilder {
     std::map<StringId, codegen::ModuleHandle> modules_by_name_;
     std::multimap<StringId, TypeId> declarations_by_name_;
     std::map<StringId, TypeId> raw_external_types_;
-    std::map<std::pair<codegen::ModuleHandle, codegen::SemanticRelationId>, RelationshipId>
-        relationships_by_source_;
+    std::map<RelationKey, RelationshipId> relationships_by_source_;
 };
 
 auto TypeGraph::index(TypeId const id) const -> std::uint32_t {
@@ -1581,8 +1617,16 @@ auto TypeGraph::types_for_declaration(codegen::DeclarationHandle const declarati
     return result;
 }
 
-auto resolve_type_graph(codegen::Manifest const& manifest) -> TypeGraph {
+auto try_resolve_type_graph(codegen::Manifest const& manifest)
+    -> std::expected<TypeGraph, TypeReferenceError> {
     return TypeGraphBuilder{manifest}.build();
+}
+auto resolve_type_graph(codegen::Manifest const& manifest) -> TypeGraph {
+    auto result{try_resolve_type_graph(manifest)};
+    if (!result) {
+        throw std::invalid_argument{result.error().message};
+    }
+    return std::move(*result);
 }
 
 } // namespace lispb::schema

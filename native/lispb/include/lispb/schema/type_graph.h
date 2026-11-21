@@ -20,11 +20,14 @@
 #include <lispb/schema/type_identity.h>
 #include <lispb/schema/type_origin.h>
 
+#include <compare>
 #include <cstdint>
+#include <expected>
 #include <map>
 #include <optional>
 #include <ranges>
 #include <span>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -94,6 +97,17 @@ class TypeGraph {
   private:
     friend class TypeGraphBuilder;
 
+    struct ReferenceKey {
+        codegen::ModuleHandle module;
+        codegen::TypeRefId reference;
+        auto operator<=>(ReferenceKey const&) const = default;
+    };
+    struct DeclarationKey {
+        codegen::ModuleHandle module;
+        StringId name;
+        auto operator<=>(DeclarationKey const&) const = default;
+    };
+
     auto index(TypeId id) const -> std::uint32_t;
     auto index(TypeUseId id) const -> std::uint32_t;
 
@@ -124,13 +138,19 @@ class TypeGraph {
     std::vector<codegen::TypeReferenceRole> use_roles_;
     std::vector<ResolvedOccurrenceId> use_targets_;
     std::vector<codegen::TypeReferenceKind> use_kinds_;
-    std::map<std::pair<codegen::ModuleHandle, codegen::TypeRefId>, ResolvedOccurrenceId> bindings_;
+    std::map<ReferenceKey, ResolvedOccurrenceId> bindings_;
     std::map<TypeIdentity, TypeId> identities_;
     std::map<StringId, TypeId> registered_types_;
-    std::map<std::pair<codegen::ModuleHandle, StringId>, TypeId> declarations_by_module_name_;
+    std::map<DeclarationKey, TypeId> declarations_by_module_name_;
     std::multimap<StringId, TypeId> declarations_by_spelling_;
 };
 
+struct TypeReferenceError {
+    codegen::TypeRefId reference;
+    std::string message;
+};
+auto try_resolve_type_graph(codegen::Manifest const& manifest)
+    -> std::expected<TypeGraph, TypeReferenceError>;
 auto resolve_type_graph(codegen::Manifest const& manifest) -> TypeGraph;
 auto forward_declaration_kind(TypeId node, TypeGraph const& graph)
     -> std::optional<codegen::RecordKind>;
