@@ -10,12 +10,16 @@
 
 namespace ioj::layout {
 
+using ProbeSource = std::string;
+using ProbeErrorMessage = std::string;
+using ProbeSourceResult = std::expected<ProbeSource, ProbeErrorMessage>;
+
 struct ExternalProbeRequest {
     auto operator==(ExternalProbeRequest const&) const -> bool = default;
 
     std::vector<std::string> spellings{};
     std::vector<std::string> headers{};
-    std::vector<std::string> diagnostics{};
+    std::vector<ProbeErrorMessage> diagnostics{};
 };
 
 // Complete-object probe subjects and known headers from the selected external group.
@@ -25,6 +29,6 @@ auto external_probe_request(lispb::schema::TypeGraph const& types, lispb::schema
 
 // Produces standalone C++17 source. Compile in the target SDK; stdout is an importable profile.
 auto profile_probe_source(std::span<std::string const> types, std::span<std::string const> headers)
-    -> std::expected<std::string, std::string>;
+    -> ProbeSourceResult;
 
 } // namespace ioj::layout

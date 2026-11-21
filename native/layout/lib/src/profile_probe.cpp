@@ -5,6 +5,7 @@
 #include <ioj/layout/external_dependency.hpp>
 
 #include <codegen/ast/indices.h>
+#include <codegen/fixed_width_integer_types.h>
 #include <codegen/schema.h>
 #include <codegen/schema/physical_type_form.h>
 #include <codegen/schema/physical_type_use.h>
@@ -15,7 +16,7 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <expected>
+#include <format>
 #include <iterator>
 #include <limits>
 #include <optional>
@@ -24,6 +25,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace ioj::layout {
 using lispb::codegen::PhysicalTypeForm;
@@ -31,14 +33,14 @@ using lispb::codegen::PhysicalTypeForm;
 namespace {
 
 auto probe_error(lispb::codegen::CppTypes const& types,
-                 std::string const& spelling,
+                 std::string_view const spelling,
                  PhysicalTypeForm const form,
-                 lispb::StringId const object_spelling) -> std::optional<std::string> {
+                 lispb::StringId const object_spelling) -> std::optional<ProbeErrorMessage> {
     if ((form != PhysicalTypeForm::value && form != PhysicalTypeForm::object_pointer) ||
         (form == PhysicalTypeForm::value && types.strings().view(object_spelling) == "void") ||
         types.strings().view(object_spelling) == "auto" ||
         spelling.find_first_of(";{}\r\n\"#") != std::string::npos) {
-        return "Cannot probe unsupported complete-object spelling: " + spelling;
+        return std::format("Cannot probe unsupported complete-object spelling: {}", spelling);
     }
     return std::nullopt;
 }
@@ -120,8 +122,8 @@ auto external_probe_request(lispb::schema::TypeGraph const& types, lispb::schema
 }
 
 auto profile_probe_source(std::span<std::string const> types, std::span<std::string const> headers)
-    -> std::expected<std::string, std::string> {
-    std::string source;
+    -> ProbeSourceResult {
+    ProbeSource source;
     auto write{ioj::FormatWriter{std::back_inserter(source)}};
     source += "// Compile with the target SDK, flags and defines. Run: probe platform architecture "
               "configuration > target.profile\n"
@@ -130,7 +132,8 @@ auto profile_probe_source(std::span<std::string const> types, std::span<std::str
     std::set<std::string> included;
     for (auto const& header : headers) {
         if (header.empty() || header.find_first_of("\"<>\r\n") != std::string::npos) {
-            return std::unexpected{
+            return ProbeSourceResult{
+                std::unexpect,
                 "Probe headers must be plain include paths without quotes or line breaks."};
         }
         if (included.insert(header).second) {
@@ -166,37 +169,37 @@ int main(int argc, char** argv) {
     std::cout << "identity compiler " << std::quoted(__VERSION__) << '\n';
 #endif
 )cpp";
-    std::set<std::string> measured{"bool",
-                                   "char",
-                                   "short",
-                                   "int",
-                                   "long",
-                                   "long long",
-                                   "unsigned char",
-                                   "unsigned short",
-                                   "unsigned int",
-                                   "unsigned long",
-                                   "unsigned long long",
-                                   "float",
-                                   "double",
-                                   "std::int8_t",
-                                   "std::int16_t",
-                                   "std::int32_t",
-                                   "std::int64_t",
-                                   "std::uint8_t",
-                                   "std::uint16_t",
-                                   "std::uint32_t",
-                                   "std::uint64_t",
-                                   "void*"};
-    measured.insert(types.begin(), types.end());
-    lispb::CompilerStorage storage;
-    for (auto const& spelling : measured) {
-        auto const type{storage.cpp_types.intern(spelling)};
-        auto const use{lispb::codegen::classify_physical_type_use(storage.cpp_types, type)};
-        if (auto const error{
-                probe_error(storage.cpp_types, spelling, use.form, use.object_spelling)}) {
-            return std::unexpected{*error};
+    std::set<std::string_view> measured{types.begin(), types.end()};
+    if (!measured.empty()) {
+        lispb::CompilerStorage storage;
+        for (auto const spelling : measured) {
+            auto const type{storage.cpp_types.intern(spelling)};
+            auto const use{lispb::codegen::classify_physical_type_use(storage.cpp_types, type)};
+            if (auto error{
+                    probe_error(storage.cpp_types, spelling, use.form, use.object_spelling)}) {
+                return ProbeSourceResult{std::unexpect, std::move(*error)};
+            }
         }
+    }
+
+    measured.insert({"bool",
+                     "char",
+                     "short",
+                     "int",
+                     "long",
+                     "long long",
+                     "unsigned char",
+                     "unsigned short",
+                     "unsigned int",
+                     "unsigned long",
+                     "unsigned long long",
+                     "float",
+                     "double",
+                     "void*"});
+    for (auto const& integer : lispb::codegen::fixed_width_integer_types) {
+        measured.insert(integer.native_name);
+    }
+    for (auto const spelling : measured) {
         write("    emit_type<{}>(", spelling);
         append_quoted(source, spelling);
         source += ");\n";

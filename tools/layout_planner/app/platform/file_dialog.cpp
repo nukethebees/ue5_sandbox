@@ -37,7 +37,7 @@ auto result_path(nfdresult_t const result, nfdu8char_t* const path) -> FileDialo
         return std::nullopt;
     }
     if (result != NFD_OKAY) {
-        return std::unexpected{std::string{NFD_GetError()}};
+        return FileDialogResult{std::unexpect, NFD_GetError()};
     }
     auto selected{from_utf8(path)};
     NFD_FreePathU8(path);

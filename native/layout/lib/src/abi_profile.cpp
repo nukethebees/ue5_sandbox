@@ -47,7 +47,7 @@ auto value_facts() -> TypeFacts {
 
 auto parse_error(std::size_t const line, std::string message)
     -> std::unexpected<AbiProfileParseError> {
-    return std::unexpected{AbiProfileParseError{.line = line, .message = std::move(message)}};
+    return std::unexpected<AbiProfileParseError>{std::in_place, line, std::move(message)};
 }
 
 auto read_quoted(std::istringstream& input, std::string& value) -> bool {
@@ -595,7 +595,8 @@ auto save_abi_profile(std::filesystem::path const& path, AbiProfile const& profi
     output << contents;
     output.close();
     if (!output) {
-        return std::unexpected{"Unable to export target profile to '" + path.string() + "'."};
+        return std::expected<void, std::string>{
+            std::unexpect, "Unable to export target profile to '" + path.string() + "'."};
     }
     return {};
 }
