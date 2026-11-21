@@ -57,7 +57,7 @@ Interpreter::Interpreter(InterpreterOptions options)
 Interpreter::Impl::Impl(InterpreterOptions options)
     : scheme_{detail::make_scheme(), &s7_free}
     , loader_{options}
-    , bindings_{scheme_.get(), loader_, std::move(options.script_library_root_utf8)}
+    , bindings_{scheme_.get(), loader_, std::move(options)}
     , source_symbol_{s7_make_symbol(scheme_.get(), detail::source_variable_name)}
     , evaluation_body_{scheme_.get(), detail::prepare_evaluation_body(scheme_.get())}
     , error_handler_{scheme_.get(),
@@ -99,15 +99,16 @@ auto Interpreter::import_ast(std::string_view directory,
     }
     auto result{impl_->bindings_.import_value(directory, path, export_name, source)};
     if (!result) {
-        return std::unexpected{AstDiagnostics{std::move(result.error())}};
+        return AstResult{std::unexpect, {std::move(result.error())}};
     }
     return impl_->ast(impl_->unpack(*result), {});
 }
 
 auto Interpreter::Impl::ast(ValueResult value, AstLimits limits) -> AstResult {
     if (!value) {
-        return std::unexpected{
-            AstDiagnostics{{AstErrorCode::EvaluationFailed, "$", std::move(value.error())}}};
+        return AstResult{
+            std::unexpect,
+            {AstDiagnostic{AstErrorCode::EvaluationFailed, "$", std::move(value.error())}}};
     }
     detail::GcProtection const protection{scheme_.get(), *value};
     return detail::materialize_ast(*scheme_, *value, limits);

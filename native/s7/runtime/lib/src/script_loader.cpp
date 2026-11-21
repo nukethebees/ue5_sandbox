@@ -52,14 +52,16 @@ auto ScriptLoader::begin_load(std::string key, std::size_t const file_size) -> L
     reserved_bytes_ += file_size;
     return LoadAdmission{token};
 }
-void ScriptLoader::complete_load(LoadToken const token) {
+auto ScriptLoader::complete_load(LoadToken const token) -> std::string {
     auto const active{std::ranges::find(active_loads_, token, &ActiveLoad::token)};
     assert(active != active_loads_.end());
 
     ++loaded_files_;
     loaded_bytes_ += active->bytes;
     reserved_bytes_ -= active->bytes;
+    auto path{std::move(active->key)};
     active_loads_.erase(active);
+    return path;
 }
 void ScriptLoader::abort_load(LoadToken const token) {
     auto const active{std::ranges::find(active_loads_, token, &ActiveLoad::token)};

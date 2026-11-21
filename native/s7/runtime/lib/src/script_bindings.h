@@ -3,6 +3,7 @@
 #include "s7_ownership.h"
 #include "script_loader.h"
 #include <ioj/s7/ast_diagnostic.h>
+#include <ioj/s7/interpreter_options.h>
 
 #include <s7.h>
 
@@ -20,7 +21,7 @@ class ScriptBindings {
   public:
     using Resolution = std::expected<s7_pointer, AstDiagnostic>;
 
-    ScriptBindings(s7_scheme* scheme, ScriptLoader& loader, std::optional<std::string> root);
+    ScriptBindings(s7_scheme* scheme, ScriptLoader& loader, InterpreterOptions options);
     ScriptBindings(ScriptBindings const&) = delete;
     auto operator=(ScriptBindings const&) -> ScriptBindings& = delete;
 
@@ -39,7 +40,7 @@ class ScriptBindings {
 
     s7_scheme* scheme_;
     ScriptLoader& loader_;
-    std::optional<std::string> root_;
+    InterpreterOptions options_;
     std::optional<GcProtection> import_export_;
 };
 }

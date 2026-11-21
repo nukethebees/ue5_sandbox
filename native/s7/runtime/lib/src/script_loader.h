@@ -23,7 +23,7 @@ class ScriptLoader {
     // Pass a canonical, normalized key and the validated source byte count.
     [[nodiscard]] auto begin_load(std::string key, std::size_t file_size) -> LoadAdmission;
     // Each admitted token must be completed or aborted exactly once.
-    void complete_load(LoadToken token);
+    auto complete_load(LoadToken token) -> std::string;
     void abort_load(LoadToken token);
     // Recover only exceptional leftovers at the outer evaluation boundary.
     void evaluation_ended();

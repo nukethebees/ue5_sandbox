@@ -9,6 +9,14 @@
 #include <utility>
 
 namespace ioj::s7::detail {
+namespace {
+auto matches_module(ModuleInput const& input, std::string const& resolved) -> bool {
+    std::error_code error;
+    return std::filesystem::equivalent(
+        input.path, std::filesystem::path{std::u8string{resolved.begin(), resolved.end()}}, error);
+}
+}
+
 auto prepare_loader_factory(s7_scheme* const scheme) -> s7_pointer {
     // Read and evaluate captured forms inside Scheme so errors and continuation
     // exits reach the wind handler without crossing a resource-owning C++ frame.
@@ -92,10 +100,10 @@ auto load_failure(s7_scheme* const scheme, std::string const& message) -> s7_poi
 
 ScriptBindings::ScriptBindings(s7_scheme* const scheme,
                                ScriptLoader& loader,
-                               std::optional<std::string> root)
+                               InterpreterOptions options)
     : scheme_{scheme}
     , loader_{loader}
-    , root_{std::move(root)} {}
+    , options_{std::move(options)} {}
 
 void ScriptBindings::install(s7_pointer const factory) {
     GcProtection const resolve{
@@ -146,18 +154,22 @@ auto ScriptBindings::resolve_callback(s7_scheme* scheme, s7_pointer const argume
         return load_failure(scheme, "import-module requires a relative .scm path string.");
     }
     auto& bindings{context(arguments)};
-    if (!bindings.root_) {
+    if (!bindings.options_.script_library_root_utf8) {
         return load_failure(scheme, "No script library root is configured for this runtime.");
     }
     auto result{
-        bindings.resolve(*bindings.root_,
+        bindings.resolve(*bindings.options_.script_library_root_utf8,
                          {s7_string(path), static_cast<std::size_t>(s7_string_length(path))},
                          nullptr)};
     return result ? *result : load_failure(scheme, result.error().message);
 }
 auto ScriptBindings::complete_callback(s7_scheme* const scheme, s7_pointer const arguments)
     -> s7_pointer {
-    context(arguments).loader_.complete_load({s7_integer(s7_cadr(arguments))});
+    auto& bindings{context(arguments)};
+    auto const path{bindings.loader_.complete_load({s7_integer(s7_cadr(arguments))})};
+    if (auto* input{bindings.options_.module_input}; input && matches_module(*input, path)) {
+        input->imported = true;
+    }
     return s7_unspecified(scheme);
 }
 auto ScriptBindings::abort_callback(s7_scheme* const scheme, s7_pointer const arguments)
@@ -170,25 +182,33 @@ auto ScriptBindings::resolve(std::string_view directory,
                              std::string* captured_source) -> Resolution {
     auto file{open_script_file(directory, path)};
     if (!file) {
-        return std::unexpected{
-            AstDiagnostic{AstErrorCode::FileOpenFailed, "$", std::move(file.error())}};
+        return Resolution{
+            std::unexpect, AstErrorCode::FileOpenFailed, "$", std::move(file.error())};
     }
-    if (file->file_size > static_cast<std::size_t>(std::numeric_limits<s7_int>::max())) {
-        return std::unexpected{AstDiagnostic{
-            AstErrorCode::LimitExceeded, "$", "The import-module source size limit was exceeded."}};
+    auto const* input{options_.module_input};
+    auto const replacement{input && input->draft && matches_module(*input, file->narrow_path)
+                               ? input->draft
+                               : std::nullopt};
+    auto const size{replacement ? replacement->size() : file->file_size};
+    if (size > static_cast<std::size_t>(std::numeric_limits<s7_int>::max())) {
+        return Resolution{std::unexpect,
+                          AstErrorCode::LimitExceeded,
+                          "$",
+                          "The import-module source size limit was exceeded."};
     }
 
-    auto admission{loader_.begin_load(path_key(file->narrow_path), file->file_size)};
+    auto admission{loader_.begin_load(path_key(file->narrow_path), size)};
     if (!admission) {
-        return std::unexpected{
-            AstDiagnostic{AstErrorCode::EvaluationFailed, "$", std::move(admission.error())}};
+        return Resolution{
+            std::unexpect, AstErrorCode::EvaluationFailed, "$", std::move(admission.error())};
     }
 
-    auto source{read_script_source(*file)};
+    auto source{replacement ? ScriptSourceResult{std::in_place, *replacement}
+                            : read_script_source(*file)};
     if (!source) {
         loader_.abort_load(*admission);
-        return std::unexpected{
-            AstDiagnostic{AstErrorCode::FileReadFailed, "$", std::move(source.error())}};
+        return Resolution{
+            std::unexpect, AstErrorCode::FileReadFailed, "$", std::move(source.error())};
     }
     GcProtection const filename{scheme_,
                                 s7_make_string(scheme_, path_key(file->narrow_path).c_str())};

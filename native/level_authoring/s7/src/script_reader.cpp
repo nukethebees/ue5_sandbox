@@ -24,17 +24,25 @@ auto dsl_source() -> std::string {
 }
 
 template <typename Run>
-auto with_interpreter(std::filesystem::path const& root, Run run)
+auto with_interpreter(std::filesystem::path const& file_directory,
+                      std::filesystem::path const& library_root,
+                      Run run,
+                      s7::ModuleInput* module = nullptr)
     -> decltype(run(std::declval<s7::Interpreter&>())) {
     s7::InterpreterOptions options;
-    if (!root.empty()) {
-        options.script_library_root_utf8 = ioj::path_to_utf8(root);
+    options.script_library_root_utf8 =
+        ioj::path_to_utf8(library_root.empty() ? file_directory : library_root);
+    if (module) {
+        module->imported = false;
     }
+    options.module_input = module;
     s7::Interpreter interpreter{std::move(options)};
     auto initialized{interpreter.evaluate(dsl_source())};
     if (!initialized) {
-        return std::unexpected{Diagnostics{
-            {DiagnosticCode::ScriptEvaluationFailed, "$", std::move(initialized.error())}}};
+        return decltype(run(interpreter)){std::unexpect,
+                                          {Diagnostic{DiagnosticCode::ScriptEvaluationFailed,
+                                                      "$",
+                                                      std::move(initialized.error())}}};
     }
     return run(interpreter);
 }
@@ -58,15 +66,17 @@ auto read_entry(s7::Interpreter& interpreter,
                 char const* export_name,
                 Decode decode) -> DefinitionEntry<Definition> {
     if (!path) {
-        return {.definition = std::unexpected{detail::diagnostics(path.error())}};
+        return {.definition = DefinitionReadResult<Definition>{std::unexpect,
+                                                               detail::diagnostics(path.error())}};
     }
     auto const relative{std::filesystem::path{std::u8string{path->begin(), path->end()}}};
     if (relative.empty() || relative.has_root_path() ||
         std::ranges::any_of(relative, [](auto const& part) { return part == ".."; })) {
-        return {.definition = std::unexpected{
-                    Diagnostics{{DiagnosticCode::InvalidType,
-                                 "path",
-                                 "Definition paths must be relative to the root directory"}}}};
+        return {.definition = DefinitionReadResult<Definition>{
+                    std::unexpect,
+                    {Diagnostic{DiagnosticCode::InvalidType,
+                                "path",
+                                "Definition paths must be relative to the root directory"}}}};
     }
     auto file{root / relative};
     std::string source;
@@ -87,40 +97,42 @@ DefinitionReader::DefinitionReader(std::filesystem::path script_library_root)
     : script_library_root_{std::move(script_library_root)} {}
 
 auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
-    -> std::expected<DefinitionCatalog, Diagnostics> {
+    -> CatalogReadResult {
     auto const full_path{std::filesystem::absolute(path)};
     auto const root{full_path.parent_path()};
     return with_source_path(
-        with_interpreter(
-            root,
-            [&](s7::Interpreter& interpreter) -> std::expected<DefinitionCatalog, Diagnostics> {
-                auto paths{interpreter
-                               .import_ast(ioj::path_to_utf8(root),
-                                           ioj::path_to_utf8(full_path.filename()),
-                                           "catalog")
-                               .and_then([](s7::Ast const& ast) {
-                                   return s7::read<CatalogInput>(
-                                       s7::Reader{ast}, ast.root, "catalog");
-                               })};
-                if (!paths) {
-                    return std::unexpected{detail::diagnostics(std::move(paths.error()))};
-                }
-                std::vector<DefinitionEntry<LevelDefinition>> levels;
-                std::vector<DefinitionEntry<CampaignDefinition>> campaigns;
-                for (auto const& path : paths->levels) {
-                    levels.push_back(read_entry<LevelDefinition>(
-                        interpreter, root, path, "mission", [](s7::Ast const& ast) {
-                            return parse_level(ast, ast.root);
-                        }));
-                }
-                for (auto const& path : paths->campaigns) {
-                    campaigns.push_back(read_entry<CampaignDefinition>(
-                        interpreter, root, path, "campaign", [](s7::Ast const& ast) {
-                            return parse_campaign(ast, ast.root);
-                        }));
-                }
-                return DefinitionCatalog{std::move(levels), std::move(campaigns)};
-            }),
+        with_interpreter(root,
+                         script_library_root_,
+                         [&](s7::Interpreter& interpreter) -> CatalogReadResult {
+                             auto paths{interpreter
+                                            .import_ast(ioj::path_to_utf8(root),
+                                                        ioj::path_to_utf8(full_path.filename()),
+                                                        "catalog")
+                                            .and_then([](s7::Ast const& ast) {
+                                                return s7::read<CatalogInput>(
+                                                    s7::Reader{ast}, ast.root, "catalog");
+                                            })};
+                             if (!paths) {
+                                 return CatalogReadResult{
+                                     std::unexpect, detail::diagnostics(std::move(paths.error()))};
+                             }
+                             std::vector<DefinitionEntry<LevelDefinition>> levels;
+                             std::vector<DefinitionEntry<CampaignDefinition>> campaigns;
+                             for (auto const& path : paths->levels) {
+                                 levels.push_back(read_entry<LevelDefinition>(
+                                     interpreter, root, path, "mission", [](s7::Ast const& ast) {
+                                         return parse_level(ast, ast.root);
+                                     }));
+                             }
+                             for (auto const& path : paths->campaigns) {
+                                 campaigns.push_back(read_entry<CampaignDefinition>(
+                                     interpreter, root, path, "campaign", [](s7::Ast const& ast) {
+                                         return parse_campaign(ast, ast.root);
+                                     }));
+                             }
+                             return CatalogReadResult{
+                                 std::in_place, std::move(levels), std::move(campaigns)};
+                         }),
         full_path);
 }
 
@@ -134,26 +146,30 @@ auto DefinitionReader::read_settings_file(std::filesystem::path const& path,
 }
 
 auto DefinitionReader::read_script_file(std::filesystem::path const& path,
-                                        char const* export_name) const
+                                        char const* export_name,
+                                        s7::ModuleInput* module) const
     -> std::expected<s7::Ast, Diagnostics> {
     auto const file{std::filesystem::absolute(path)};
     auto const directory{file.parent_path()};
-    return with_source_path(
-        with_interpreter(script_library_root_.empty() ? directory : script_library_root_,
-                         [&](s7::Interpreter& interpreter) {
-                             return interpreter
-                                 .import_ast(ioj::path_to_utf8(directory),
-                                             ioj::path_to_utf8(file.filename()),
-                                             export_name)
-                                 .transform_error(detail::diagnostics);
-                         }),
-        path);
-}
-auto DefinitionReader::read_level_file(std::filesystem::path const& path) const
-    -> LevelDefinitionReadResult {
-    return with_source_path(read_script_file(path, "mission").and_then([&](s7::Ast const& ast) {
-        return parse_level(ast, ast.root);
-    }),
+    return with_source_path(with_interpreter(
+                                directory,
+                                script_library_root_,
+                                [&](s7::Interpreter& interpreter) {
+                                    return interpreter
+                                        .import_ast(ioj::path_to_utf8(directory),
+                                                    ioj::path_to_utf8(file.filename()),
+                                                    export_name)
+                                        .transform_error(detail::diagnostics);
+                                },
+                                module),
                             path);
+}
+auto DefinitionReader::read_level_file(std::filesystem::path const& path,
+                                       s7::ModuleInput* module) const -> LevelDefinitionReadResult {
+    return with_source_path(
+        read_script_file(path, "mission", module).and_then([&](s7::Ast const& ast) {
+            return parse_level(ast, ast.root);
+        }),
+        path);
 }
 }

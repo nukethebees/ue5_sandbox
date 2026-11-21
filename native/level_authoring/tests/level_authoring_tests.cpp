@@ -567,6 +567,25 @@ TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
     auto const result{DefinitionReader{}.read_level_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(result->metadata().title, "Loaded From Library");
+
+    auto const nested{directory.path() / "Libraries" / "level.scm"};
+    ASSERT_TRUE(std::filesystem::copy_file(path, nested));
+    DefinitionReader const reader{directory.path()};
+    auto const draft{module_source("benchmark-title", "\"Draft Title\"")};
+    s7::ModuleInput module{directory.path() / "Libraries" / "metadata.scm", draft};
+    auto preview{reader.read_level_file(nested, &module)};
+    ASSERT_TRUE(preview) << format_diagnostics(preview.error());
+    EXPECT_TRUE(module.imported);
+    EXPECT_EQ(preview->metadata().title, "Draft Title");
+    auto saved{reader.read_level_file(nested)};
+    ASSERT_TRUE(saved) << format_diagnostics(saved.error());
+    EXPECT_EQ(saved->metadata().title, "Loaded From Library");
+
+    module.path = path;
+    auto standalone{reader.read_level_file(nested, &module)};
+    ASSERT_TRUE(standalone) << format_diagnostics(standalone.error());
+    EXPECT_FALSE(module.imported);
+    EXPECT_EQ(standalone->metadata().title, "Loaded From Library");
 }
 TEST(NativeLevelAuthoringReader, ReportsMissingFile) {
     auto const result{DefinitionReader{}.read_level_file("missing-level.scm")};
