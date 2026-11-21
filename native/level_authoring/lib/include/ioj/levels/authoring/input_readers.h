@@ -10,7 +10,7 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<RawNode> {
     static auto read(Reader const&, NodeIndex node, std::string_view) -> ReadResult<RawNode> {
-        return RawNode{node};
+        return ReadResult<RawNode>{std::in_place, node};
     }
 };
 

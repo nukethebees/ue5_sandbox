@@ -5,37 +5,38 @@
 
 namespace ioj::sim::player::flight_model_config_detail {
 [[nodiscard]] auto validate_response(ResponseConfig const& config) noexcept
-    -> std::expected<void, FlightModelConfigError> {
+    -> FlightModelValidationResult {
     if (!is_valid(config.mode)) {
-        return std::unexpected{FlightModelConfigError::InvalidEnumValue};
+        return FlightModelValidationResult{std::unexpect, FlightModelConfigError::InvalidEnumValue};
     }
 
     return {};
 }
 
 [[nodiscard]] auto validate_channel(TranslationChannelConfig const& config,
-                                    bool const automatic) noexcept
-    -> std::expected<void, FlightModelConfigError> {
+                                    bool const automatic) noexcept -> FlightModelValidationResult {
     if (!is_valid(config.semantic) || !is_valid(config.reference_frame) ||
         !is_valid(config.input_source)) {
-        return std::unexpected{FlightModelConfigError::InvalidEnumValue};
+        return FlightModelValidationResult{std::unexpect, FlightModelConfigError::InvalidEnumValue};
     }
     if (automatic) {
         if (config.input_source != TranslationInputSource::Axis) {
-            return std::unexpected{FlightModelConfigError::InvalidAutomaticChannel};
+            return FlightModelValidationResult{std::unexpect,
+                                               FlightModelConfigError::InvalidAutomaticChannel};
         }
     } else {
         if (config.automatic_value != 0.f ||
             (config.semantic == TranslationSemantic::TargetSpeed &&
              config.input_source != TranslationInputSource::Axis)) {
-            return std::unexpected{FlightModelConfigError::InvalidManualChannel};
+            return FlightModelValidationResult{std::unexpect,
+                                               FlightModelConfigError::InvalidManualChannel};
         }
     }
     return validate_response(config.response);
 }
 
 [[nodiscard]] auto validate_axis(TranslationAxisConfig const& config) noexcept
-    -> std::expected<void, FlightModelConfigError> {
+    -> FlightModelValidationResult {
     if (auto const result{validate_channel(config.manual, false)}; !result) {
         return result;
     }
@@ -44,19 +45,20 @@ namespace ioj::sim::player::flight_model_config_detail {
     }
     if (is_velocity_target(config.manual.semantic) &&
         is_velocity_target(config.automatic.semantic)) {
-        return std::unexpected{FlightModelConfigError::AmbiguousTargetChannels};
+        return FlightModelValidationResult{std::unexpect,
+                                           FlightModelConfigError::AmbiguousTargetChannels};
     }
     if (!is_valid(config.passive_drag_reference_frame) ||
         !is_valid(config.active_stabilization_reference_frame)) {
-        return std::unexpected{FlightModelConfigError::InvalidEnumValue};
+        return FlightModelValidationResult{std::unexpect, FlightModelConfigError::InvalidEnumValue};
     }
     return {};
 }
 
 [[nodiscard]] auto validate_axis(RotationAxisConfig const& config) noexcept
-    -> std::expected<void, FlightModelConfigError> {
+    -> FlightModelValidationResult {
     if (!is_valid(config.manual_semantic)) {
-        return std::unexpected{FlightModelConfigError::InvalidEnumValue};
+        return FlightModelValidationResult{std::unexpect, FlightModelConfigError::InvalidEnumValue};
     }
     if (auto const result{validate_response(config.response)}; !result) {
         return result;
@@ -199,11 +201,11 @@ void configure_common_actions(FlightModelConfig& config) {
 
 namespace ioj::sim::player {
 auto validate_flight_model_config(FlightModelConfig const& config) noexcept
-    -> std::expected<void, FlightModelConfigError> {
+    -> FlightModelValidationResult {
     using namespace flight_model_config_detail;
 
     if (!is_valid(config.facing_velocity.mode)) {
-        return std::unexpected{FlightModelConfigError::InvalidEnumValue};
+        return FlightModelValidationResult{std::unexpect, FlightModelConfigError::InvalidEnumValue};
     }
 
     for (auto const* const axis : std::array{

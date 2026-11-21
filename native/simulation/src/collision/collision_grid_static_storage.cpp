@@ -27,6 +27,8 @@ auto CollisionGridStaticStorage::add_aabb(Vector3f const min_point, Vector3f con
 }
 auto CollisionGridStaticStorage::rebuild(CollisionGridSpec const spec)
     -> std::expected<void, StaticGridBuildError> {
+    using Result = std::expected<void, StaticGridBuildError>;
+
     SANDBOX_PROFILE_SCOPE("CollisionGridStaticStorage::rebuild");
 
     assert(is_configured(spec));
@@ -53,10 +55,11 @@ auto CollisionGridStaticStorage::rebuild(CollisionGridSpec const spec)
         auto const max_point{max_points[aabb_index]};
         auto const [min_cell, max_cell]{to_cell_coord_bounds(spec, min_point, max_point)};
         if (!is_cell_coord_in_bounds(spec, min_cell) || !is_cell_coord_in_bounds(spec, max_cell)) {
-            return std::unexpected{StaticGridBuildError{
-                .code = StaticGridBuildErrorCode::AabbOutOfBounds,
-                .aabb_index = StaticGeometryIndex{aabb_index},
-            }};
+            return Result{std::unexpect,
+                          StaticGridBuildError{
+                              .code = StaticGridBuildErrorCode::AabbOutOfBounds,
+                              .aabb_index = StaticGeometryIndex{aabb_index},
+                          }};
         }
 
         auto plane_index{min_cell.x() + min_cell.y() * row_stride + min_cell.z() * plane_stride};
@@ -84,17 +87,19 @@ auto CollisionGridStaticStorage::rebuild(CollisionGridSpec const spec)
             continue;
         }
         if (count > std::numeric_limits<RangeCount>::max()) {
-            return std::unexpected{StaticGridBuildError{
-                .code = StaticGridBuildErrorCode::CellCountOverflow,
-                .cell_index = CellIndex{cell_index},
-                .count = count,
-            }};
+            return Result{std::unexpect,
+                          StaticGridBuildError{
+                              .code = StaticGridBuildErrorCode::CellCountOverflow,
+                              .cell_index = CellIndex{cell_index},
+                              .count = count,
+                          }};
         }
         if (membership_count + count > std::numeric_limits<CellRangeIndex>::max()) {
-            return std::unexpected{StaticGridBuildError{
-                .code = StaticGridBuildErrorCode::MembershipCountOverflow,
-                .count = membership_count + count,
-            }};
+            return Result{std::unexpect,
+                          StaticGridBuildError{
+                              .code = StaticGridBuildErrorCode::MembershipCountOverflow,
+                              .count = membership_count + count,
+                          }};
         }
 
         cell_range_indices_[static_cast<std::size_t>(cell_index)] =
@@ -138,10 +143,11 @@ auto CollisionGridStaticStorage::rebuild(CollisionGridSpec const spec)
     for (CellRangeIndex range_index{}; range_index < range_count; ++range_index) {
         auto const element{static_cast<std::size_t>(range_index)};
         if (write_indices[element] != range_offsets_[element] + range_counts_[element]) {
-            return std::unexpected{StaticGridBuildError{
-                .code = StaticGridBuildErrorCode::InconsistentWriteIndex,
-                .cell_index = CellIndex{range_index},
-            }};
+            return Result{std::unexpect,
+                          StaticGridBuildError{
+                              .code = StaticGridBuildErrorCode::InconsistentWriteIndex,
+                              .cell_index = CellIndex{range_index},
+                          }};
         }
     }
     return {};

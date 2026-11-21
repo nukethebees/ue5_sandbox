@@ -59,7 +59,7 @@ auto validate_settings(settings::Settings const& settings)
           "Expected positive grid dimensions with a representable cell count");
 
     if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
+        return std::expected<void, levels::Diagnostics>{std::unexpect, std::move(errors)};
     }
     return {};
 }

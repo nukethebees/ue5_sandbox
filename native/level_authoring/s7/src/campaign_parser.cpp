@@ -10,7 +10,7 @@ auto parse_campaign(s7::Ast const& ast, s7::NodeIndex const root) -> CampaignDef
                         .transform_error(detail::diagnostics)};
     if (definition) {
         if (auto valid{validate_campaign(*definition)}; !valid) {
-            return std::unexpected{std::move(valid.error())};
+            return CampaignDefinitionReadResult{std::unexpect, std::move(valid.error())};
         }
     }
     return definition;

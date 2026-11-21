@@ -80,59 +80,64 @@ auto read_error(levels::authoring::LevelDefinitionReadResult const& result) -> s
 
 auto calculate_tick_count(double const seconds, Frequency const tick_rate_hz)
     -> std::expected<sim::SimTick, std::string> {
+    using Result = std::expected<sim::SimTick, std::string>;
+
     if (!std::isfinite(seconds) || seconds <= 0.0) {
-        return std::unexpected{"seconds must be positive and finite"};
+        return Result{std::unexpect, "seconds must be positive and finite"};
     }
 
     auto const ticks{std::ceil(seconds * tick_rate_hz.hz())};
     auto const maximum{static_cast<double>(std::numeric_limits<sim::SimTick::value_type>::max())};
     if (!std::isfinite(ticks) || ticks >= maximum) {
-        return std::unexpected{"seconds produces a tick count that is too large"};
+        return Result{std::unexpect, "seconds produces a tick count that is too large"};
     }
-    return sim::SimTick{sim::duration_to_tick_period(tick_rate_hz, Duration::make(seconds)).get()};
+    return Result{std::in_place,
+                  sim::duration_to_tick_period(tick_rate_hz, Duration::make(seconds)).get()};
 }
 
 auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const profiler_ready)
     -> std::expected<BenchmarkResult, std::string> {
+    using Result = std::expected<BenchmarkResult, std::string>;
+
     auto level_result{levels::authoring::DefinitionReader{}.read_level_file(options.level_path)};
     if (!level_result) {
-        return std::unexpected{read_error(level_result)};
+        return Result{std::unexpect, read_error(level_result)};
     }
     auto const& level{*level_result};
     auto settings{level.settings()};
     auto const tick_rate_hz{settings.tick.tick_rate};
-    auto const requested_ticks{calculate_tick_count(options.simulated_seconds, tick_rate_hz)};
+    auto requested_ticks{calculate_tick_count(options.simulated_seconds, tick_rate_hz)};
     if (!requested_ticks) {
-        return std::unexpected{requested_ticks.error()};
+        return Result{std::unexpect, std::move(requested_ticks.error())};
     }
 
     sim::SimTick warmup_ticks{};
     sim::SimTick saturation_timeout_ticks{};
     if (options.fighter_stress_cap.has_value()) {
         if (*options.fighter_stress_cap <= 0) {
-            return std::unexpected{"fighter stress cap must be positive"};
+            return Result{std::unexpect, "fighter stress cap must be positive"};
         }
         if (!std::isfinite(options.warmup_seconds) || options.warmup_seconds < 0.0) {
-            return std::unexpected{"warm-up seconds must be finite and non-negative"};
+            return Result{std::unexpect, "warm-up seconds must be finite and non-negative"};
         }
         if (options.warmup_seconds > 0.0) {
             auto const ticks{calculate_tick_count(options.warmup_seconds, tick_rate_hz)};
             if (!ticks) {
-                return std::unexpected{"invalid warm-up duration: " + ticks.error()};
+                return Result{std::unexpect, "invalid warm-up duration: " + ticks.error()};
             }
             warmup_ticks = *ticks;
         }
         auto const timeout_ticks{
             calculate_tick_count(options.saturation_timeout_seconds, tick_rate_hz)};
         if (!timeout_ticks) {
-            return std::unexpected{"invalid saturation timeout: " + timeout_ticks.error()};
+            return Result{std::unexpect, "invalid saturation timeout: " + timeout_ticks.error()};
         }
         saturation_timeout_ticks = *timeout_ticks;
     }
 
     if (options.profiler_connection_timeout_seconds.has_value()) {
         if (!sim::profiling::available) {
-            return std::unexpected{"profiler support is not enabled in this benchmark build"};
+            return Result{std::unexpect, "profiler support is not enabled in this benchmark build"};
         }
 
         if (profiler_ready != nullptr) {
@@ -144,7 +149,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         auto const deadline{std::chrono::steady_clock::now() + timeout};
         while (!sim::profiling::is_connected()) {
             if (std::chrono::steady_clock::now() >= deadline) {
-                return std::unexpected{"timed out waiting for a profiler connection"};
+                return Result{std::unexpect, "timed out waiting for a profiler connection"};
             }
             std::this_thread::sleep_for(std::chrono::milliseconds{10});
         }
@@ -175,7 +180,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         for (auto const& error : compiled.error()) {
             write("{}{}", output.empty() ? "" : "\n", error);
         }
-        return std::unexpected{std::move(output)};
+        return Result{std::unexpect, std::move(output)};
     }
 
     auto& data{*compiled};
@@ -185,8 +190,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
                                       data.player ? std::optional{data.player->team} : std::nullopt)
                                   .num()};
         if (team_count == 0 || *options.fighter_stress_cap % team_count != 0) {
-            return std::unexpected{
-                "fighter stress cap must divide evenly across participating teams"};
+            return Result{std::unexpect,
+                          "fighter stress cap must divide evenly across participating teams"};
         }
     }
 
@@ -203,7 +208,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         simulation.advance(tick_period);
         ++advance_calls;
         if (simulation.clock().get_completed_ticks() == previous_ticks) {
-            return std::unexpected{"simulation advance did not complete a deterministic tick"};
+            return std::expected<void, std::string>{
+                std::unexpect, "simulation advance did not complete a deterministic tick"};
         }
         return {};
     };
@@ -214,15 +220,16 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         auto const cap{static_cast<std::uint32_t>(*options.fighter_stress_cap)};
         while (simulation.fighters().num_instances() < cap &&
                saturation_ticks < saturation_timeout_ticks) {
-            auto const advanced{advance_one_tick()};
+            auto advanced{advance_one_tick()};
             if (!advanced) {
-                return std::unexpected{advanced.error()};
+                return Result{std::unexpect, std::move(advanced.error())};
             }
             saturation_ticks.set_value(saturation_ticks.value() + 1);
         }
         auto const saturated_count{simulation.fighters().num_instances()};
         if (saturated_count != cap) {
-            return std::unexpected{
+            return Result{
+                std::unexpect,
                 std::format("fighter population did not reach configured cap {} within {} "
                             "simulated seconds; reached {}",
                             cap,
@@ -233,17 +240,19 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         auto const spawned_at_saturation{
             simulation.entity_ledger().issued_counts()[sim::EntityType::Fighter]};
         for (sim::SimTick tick{}; tick < warmup_ticks; tick.set_value(tick.value() + 1)) {
-            auto const advanced{advance_one_tick()};
+            auto advanced{advance_one_tick()};
             if (!advanced) {
-                return std::unexpected{advanced.error()};
+                return Result{std::unexpect, std::move(advanced.error())};
             }
             if (simulation.fighters().num_instances() != cap) {
-                return std::unexpected{"fighter population changed during post-saturation warm-up"};
+                return Result{std::unexpect,
+                              "fighter population changed during post-saturation warm-up"};
             }
         }
         if (simulation.entity_ledger().issued_counts()[sim::EntityType::Fighter] !=
             spawned_at_saturation) {
-            return std::unexpected{"replacement fighters spawned during post-saturation warm-up"};
+            return Result{std::unexpect,
+                          "replacement fighters spawned during post-saturation warm-up"};
         }
     }
 
@@ -262,9 +271,9 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         SANDBOX_PROFILE_SCOPE("Benchmark measured ticks");
         for (sim::SimTick tick{}; tick < *requested_ticks; tick.set_value(tick.value() + 1)) {
             auto const tick_started_at{std::chrono::steady_clock::now()};
-            auto const advanced{advance_one_tick()};
+            auto advanced{advance_one_tick()};
             if (!advanced) {
-                return std::unexpected{advanced.error()};
+                return Result{std::unexpect, std::move(advanced.error())};
             }
             auto const tick_finished_at{std::chrono::steady_clock::now()};
             tick_microseconds.push_back(
@@ -277,7 +286,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             maximum_measured_fighters = std::max(maximum_measured_fighters, fighter_count);
             if (options.fighter_stress_cap.has_value() &&
                 fighter_count != static_cast<std::uint32_t>(*options.fighter_stress_cap)) {
-                return std::unexpected{"fighter population changed during measured ticks"};
+                return Result{std::unexpect, "fighter population changed during measured ticks"};
             }
         }
     }
@@ -286,7 +295,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         simulation.entity_ledger().issued_counts()[sim::EntityType::Fighter] -
         fighters_spawned_before_measurement};
     if (options.fighter_stress_cap.has_value() && fighter_spawns_during_measurement != 0) {
-        return std::unexpected{"replacement fighters spawned during measured ticks"};
+        return Result{std::unexpect, "replacement fighters spawned during measured ticks"};
     }
 
     simulation.stop_run(sim::RunEndReason::DurationReached);

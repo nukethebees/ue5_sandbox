@@ -10,14 +10,14 @@ struct TypeReader<Id> {
         -> ReadResult<Id> {
         auto value{reader.symbol(node, path)};
         if (!value) {
-            return std::unexpected{std::move(value.error())};
+            return ReadResult<Id>{std::unexpect, std::move(value.error())};
         }
         if constexpr (!std::same_as<Id, levels::CampaignId>) {
             if (value->empty()) {
                 return read_error(AstErrorCode::InvalidSymbol, path, "Symbol must not be empty");
             }
         }
-        return Id{std::move(*value)};
+        return ReadResult<Id>{std::in_place, std::move(*value)};
     }
 };
 

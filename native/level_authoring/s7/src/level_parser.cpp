@@ -12,7 +12,7 @@ auto parse_level(s7::Ast const& ast, s7::NodeIndex root, std::string_view const 
     s7::AstDiagnostics errors;
     s7::TypeReader<LevelInput>::decode({reader, root, path, s7::ReadMode::Create, errors}, input);
     if (!errors.empty()) {
-        return std::unexpected{detail::diagnostics(std::move(errors))};
+        return LevelDefinitionReadResult{std::unexpect, detail::diagnostics(std::move(errors))};
     }
     return detail::process_level(std::move(input));
 }

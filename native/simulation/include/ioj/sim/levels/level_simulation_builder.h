@@ -11,10 +11,12 @@
 
 namespace ioj::sim {
 using LevelSimulationBuildErrors = std::vector<std::string>;
+using LevelSimulationValidationResult = std::expected<void, LevelSimulationBuildErrors>;
+
 using LevelSimulationBuildResult = std::expected<LevelSimInitData, LevelSimulationBuildErrors>;
 
 [[nodiscard]] auto validate_level_simulation_init_data(LevelSimInitData const& data)
-    -> std::expected<void, LevelSimulationBuildErrors>;
+    -> LevelSimulationValidationResult;
 
 struct LevelRunTiming {
     std::optional<PositiveFinite<double>> time_scale;

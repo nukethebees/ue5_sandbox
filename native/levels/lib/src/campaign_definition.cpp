@@ -31,7 +31,7 @@ auto validate_campaign(CampaignDefinition const& definition) -> std::expected<vo
         }
     }
     if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
+        return std::expected<void, Diagnostics>{std::unexpect, std::move(errors)};
     }
     return {};
 }

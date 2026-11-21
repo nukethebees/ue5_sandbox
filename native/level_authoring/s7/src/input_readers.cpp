@@ -22,7 +22,7 @@ struct TypeReader<Expression> {
         -> ReadResult<Expression> {
         auto values{reader.list(node, path)};
         if (!values) {
-            return std::unexpected{values.error()};
+            return ReadResult<Expression>{std::unexpect, std::move(values.error())};
         }
         auto const& ast{reader.ast()};
         if (values->empty() || ast.node(values->front()).kind != NodeKind::Keyword) {
@@ -38,19 +38,19 @@ struct TypeReader<Expression> {
                 auto index{s7::read<ExprIndex>(
                     reader, child, std::format("{}.children[{}]", path, children.size()))};
                 if (!index) {
-                    return std::unexpected{index.error()};
+                    return ReadResult<Expression>{std::unexpect, std::move(index.error())};
                 }
                 children.push_back(*index);
             }
             switch (*type) {
                 case ExprKind::All:
-                    return Expression{AllExpr{std::move(children)}};
+                    return ReadResult<Expression>{std::in_place, AllExpr{std::move(children)}};
                 case ExprKind::Any:
-                    return Expression{AnyExpr{std::move(children)}};
+                    return ReadResult<Expression>{std::in_place, AnyExpr{std::move(children)}};
                 case ExprKind::Not:
-                    return Expression{NotExpr{std::move(children)}};
+                    return ReadResult<Expression>{std::in_place, NotExpr{std::move(children)}};
                 case ExprKind::Xor:
-                    return Expression{XorExpr{std::move(children)}};
+                    return ReadResult<Expression>{std::in_place, XorExpr{std::move(children)}};
                 default:
                     std::unreachable();
             }
@@ -79,7 +79,7 @@ struct TypeReader<Effect> {
         -> ReadResult<Effect> {
         auto values{reader.list(node, path)};
         if (!values) {
-            return std::unexpected{values.error()};
+            return ReadResult<Effect>{std::unexpect, std::move(values.error())};
         }
         auto const& ast{reader.ast()};
         if (values->empty() || ast.node(values->front()).kind != NodeKind::Keyword) {
@@ -109,18 +109,19 @@ struct TypeReader<SpawnGroupDefinition> {
         -> ReadResult<SpawnGroupDefinition> {
         auto fields{s7::read<std::array<RawNode, 2>>(reader, node, path)};
         if (!fields) {
-            return std::unexpected{fields.error()};
+            return ReadResult<SpawnGroupDefinition>{std::unexpect, std::move(fields.error())};
         }
         auto name{reader.symbol((*fields)[0].index, field_path(path, "name"))};
         auto entities{s7::read<std::vector<EntityId>>(
             reader, (*fields)[1].index, field_path(path, "entities"))};
         if (!name) {
-            return std::unexpected{name.error()};
+            return ReadResult<SpawnGroupDefinition>{std::unexpect, std::move(name.error())};
         }
         if (!entities) {
-            return std::unexpected{entities.error()};
+            return ReadResult<SpawnGroupDefinition>{std::unexpect, std::move(entities.error())};
         }
-        return SpawnGroupDefinition{std::move(*name), std::move(*entities)};
+        return ReadResult<SpawnGroupDefinition>{
+            std::in_place, std::move(*name), std::move(*entities)};
     }
 };
 template <>
@@ -129,18 +130,18 @@ struct TypeReader<EventRule> {
         -> ReadResult<EventRule> {
         auto fields{s7::read<std::array<RawNode, 2>>(reader, node, path)};
         if (!fields) {
-            return std::unexpected{fields.error()};
+            return ReadResult<EventRule>{std::unexpect, std::move(fields.error())};
         }
         auto when{s7::read<ExprIndex>(reader, (*fields)[0].index, field_path(path, "when"))};
         auto effects{
             s7::read<std::vector<Effect>>(reader, (*fields)[1].index, field_path(path, "effects"))};
         if (!when) {
-            return std::unexpected{when.error()};
+            return ReadResult<EventRule>{std::unexpect, std::move(when.error())};
         }
         if (!effects) {
-            return std::unexpected{effects.error()};
+            return ReadResult<EventRule>{std::unexpect, std::move(effects.error())};
         }
-        return EventRule{*when, std::move(*effects)};
+        return ReadResult<EventRule>{std::in_place, *when, std::move(*effects)};
     }
 };
 
@@ -150,17 +151,17 @@ struct TypeReader<LatchDefinition> {
         -> ReadResult<LatchDefinition> {
         auto fields{s7::read<std::array<RawNode, 2>>(reader, node, path)};
         if (!fields) {
-            return std::unexpected{fields.error()};
+            return ReadResult<LatchDefinition>{std::unexpect, std::move(fields.error())};
         }
         auto when{s7::read<ExprIndex>(reader, (*fields)[0].index, field_path(path, "when"))};
         auto value{s7::read<ExprIndex>(reader, (*fields)[1].index, field_path(path, "value"))};
         if (!when) {
-            return std::unexpected{when.error()};
+            return ReadResult<LatchDefinition>{std::unexpect, std::move(when.error())};
         }
         if (!value) {
-            return std::unexpected{value.error()};
+            return ReadResult<LatchDefinition>{std::unexpect, std::move(value.error())};
         }
-        return LatchDefinition{*when, *value};
+        return ReadResult<LatchDefinition>{std::in_place, *when, *value};
     }
 };
 auto TypeReader<levels::LogicDefinition>::read(Reader const& reader,
@@ -170,7 +171,7 @@ auto TypeReader<levels::LogicDefinition>::read(Reader const& reader,
     using namespace levels;
     auto args{positional_arguments(reader, node, "logic", path, 6)};
     if (!args) {
-        return std::unexpected{args.error()};
+        return ReadResult<levels::LogicDefinition>{std::unexpect, std::move(args.error())};
     }
     auto expressions{
         s7::read<std::vector<Expression>>(reader, (*args)[0], field_path(path, "expressions"))};
@@ -183,22 +184,22 @@ auto TypeReader<levels::LogicDefinition>::read(Reader const& reader,
         s7::read<std::vector<Effect>>(reader, (*args)[4], field_path(path, "initial-effects"))};
     auto rules{s7::read<std::vector<EventRule>>(reader, (*args)[5], field_path(path, "rules"))};
     if (!expressions) {
-        return std::unexpected{expressions.error()};
+        return ReadResult<levels::LogicDefinition>{std::unexpect, std::move(expressions.error())};
     }
     if (!latches) {
-        return std::unexpected{latches.error()};
+        return ReadResult<levels::LogicDefinition>{std::unexpect, std::move(latches.error())};
     }
     if (!timers) {
-        return std::unexpected{timers.error()};
+        return ReadResult<levels::LogicDefinition>{std::unexpect, std::move(timers.error())};
     }
     if (!groups) {
-        return std::unexpected{groups.error()};
+        return ReadResult<levels::LogicDefinition>{std::unexpect, std::move(groups.error())};
     }
     if (!initial) {
-        return std::unexpected{initial.error()};
+        return ReadResult<levels::LogicDefinition>{std::unexpect, std::move(initial.error())};
     }
     if (!rules) {
-        return std::unexpected{rules.error()};
+        return ReadResult<levels::LogicDefinition>{std::unexpect, std::move(rules.error())};
     }
     return LogicDefinition{.expressions = std::move(*expressions),
                            .latches = std::move(*latches),

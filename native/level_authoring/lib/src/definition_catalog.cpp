@@ -31,7 +31,8 @@ void invalidate(Entries& entries, std::vector<EntryState>& states) {
             for (auto& error : errors) {
                 error.source_path = entries[i].source_path;
             }
-            entries[i].definition = std::unexpected{std::move(errors)};
+            entries[i].definition =
+                decltype(entries[i].definition){std::unexpect, std::move(errors)};
         }
     }
 }

@@ -73,7 +73,7 @@ auto detail::process_level(LevelInput input) -> LevelDefinitionReadResult {
         });
     }
     if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
+        return LevelDefinitionReadResult{std::unexpect, std::move(errors)};
     }
     assign_generated_entity_ids(result.entities);
     return LevelDefinition::make(std::move(result));

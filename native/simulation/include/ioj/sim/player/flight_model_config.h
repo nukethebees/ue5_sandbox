@@ -7,8 +7,10 @@
 
 namespace ioj::sim::player {
 
+using FlightModelValidationResult = std::expected<void, FlightModelConfigError>;
+
 [[nodiscard]] auto validate_flight_model_config(FlightModelConfig const& config) noexcept
-    -> std::expected<void, FlightModelConfigError>;
+    -> FlightModelValidationResult;
 [[nodiscard]] auto make_flight_model_profile(FlightModelPreset preset) -> FlightModelProfile;
 [[nodiscard]] auto matches_authored_flight_model_topology(FlightModelConfig const& config,
                                                           FlightModelPreset preset) -> bool;

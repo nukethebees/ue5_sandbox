@@ -31,16 +31,19 @@ auto entity_index(LevelDefinition const& definition, EntityId const& id) -> sim:
 } // namespace
 
 auto compile_timer_duration(Duration const duration, Frequency const tick_rate)
-    -> std::expected<sim::TimerTicks, LevelCompilationErrors> {
+    -> LevelCompilationResult<sim::TimerTicks> {
     auto const ticks{sim::try_duration_to_tick_period<sim::TimerTicks>(tick_rate, duration)};
     if (!ticks) {
-        return std::unexpected{LevelCompilationErrors{"Timer duration exceeds tick range"}};
+        return LevelCompilationResult<sim::TimerTicks>{
+            std::unexpect, 1, "Timer duration exceeds tick range"};
     }
     return ticks->get();
 }
 
 auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
-    -> std::expected<void, LevelCompilationErrors> {
+    -> LevelCompilationResult<void> {
+    using Result = LevelCompilationResult<void>;
+
     auto const& definition{level};
 
     auto const tick_rate{output.clock_settings.tick_rate};
@@ -64,10 +67,9 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     for (std::uint32_t index{}; index < entity_count; ++index) {
         auto const& entity{definition.entities()[static_cast<std::size_t>(index)]};
         if (entity.archetype != EntityArchetype::PlayerFighter && !grouped.contains(entity.id)) {
-            auto const tick{
-                compile_timer_duration(Duration::make(entity.spawn_time_seconds), tick_rate)};
+            auto tick{compile_timer_duration(Duration::make(entity.spawn_time_seconds), tick_rate)};
             if (!tick) {
-                return std::unexpected{tick.error()};
+                return Result{std::unexpect, std::move(tick.error())};
             }
             sources.push_back({*tick, index});
         }
@@ -194,12 +196,11 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         output.conditions.add_latch({expressions[latch.when], expressions[latch.value]});
     }
     auto compile_effects{[&](std::span<Effect const> effects)
-                             -> std::expected<std::vector<sim::EventHandle>,
-                                              LevelCompilationErrors> {
+                             -> LevelCompilationResult<std::vector<sim::EventHandle>> {
         std::vector<sim::EventHandle> result;
         for (auto const& value : effects) {
             auto compiled{std::visit(
-                [&](auto const& effect) -> std::expected<sim::EventHandle, LevelCompilationErrors> {
+                [&](auto const& effect) -> LevelCompilationResult<sim::EventHandle> {
                     using T = std::decay_t<decltype(effect)>;
                     if constexpr (std::same_as<T, WinEffect>) {
                         return definitions.add_win_event(effect.team);
@@ -211,14 +212,16 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
                         auto duration{
                             compile_timer_duration(Duration::make(effect.seconds), tick_rate)};
                         if (!duration) {
-                            return std::unexpected{duration.error()};
+                            return LevelCompilationResult<sim::EventHandle>{
+                                std::unexpect, std::move(duration.error())};
                         }
                         return definitions.add_start_timer_event({timers[effect.timer], *duration});
                     }
                 },
                 value)};
             if (!compiled) {
-                return std::unexpected{compiled.error()};
+                return LevelCompilationResult<std::vector<sim::EventHandle>>{
+                    std::unexpect, std::move(compiled.error())};
             }
             result.push_back(*compiled);
         }
@@ -226,7 +229,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     }};
     auto initial{compile_effects(logic.initial_effects)};
     if (!initial) {
-        return std::unexpected{initial.error()};
+        return Result{std::unexpect, std::move(initial.error())};
     }
     for (auto const event : *initial) {
         definitions.enqueue(event);
@@ -234,7 +237,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     for (auto const& rule : logic.rules) {
         auto effects{compile_effects(rule.effects)};
         if (!effects) {
-            return std::unexpected{effects.error()};
+            return Result{std::unexpect, std::move(effects.error())};
         }
         definitions.add_trigger(expressions[rule.when], *effects);
     }

@@ -92,7 +92,7 @@ auto LevelDefinition::make(LevelDefinitionComponents definition)
                   std::make_move_iterator(logic_errors.begin()),
                   std::make_move_iterator(logic_errors.end()));
     if (!result.empty()) {
-        return std::unexpected{std::move(result)};
+        return std::expected<LevelDefinition, Diagnostics>{std::unexpect, std::move(result)};
     }
     return LevelDefinition{std::move(definition)};
 }

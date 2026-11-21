@@ -22,7 +22,7 @@ auto is_finite(Transform3d const& transform) -> bool {
 }
 
 auto validate_level_simulation_init_data(LevelSimInitData const& data)
-    -> std::expected<void, LevelSimulationBuildErrors> {
+    -> LevelSimulationValidationResult {
     LevelSimulationBuildErrors errors;
     if (!collision::is_configured(data.collision.grid_spec)) {
         errors.emplace_back("Collision grid requires positive dimensions and finite cell sizes");
@@ -68,7 +68,7 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
         }
     }
     if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
+        return LevelSimulationValidationResult{std::unexpect, std::move(errors)};
     }
 
     auto check_spawn =
@@ -121,7 +121,7 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
                     to_quaternion(Rotator3f{0.f, spinner_yaws[row], 0.f}));
     }
     if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
+        return LevelSimulationValidationResult{std::unexpect, std::move(errors)};
     }
     return {};
 }
@@ -136,7 +136,7 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
         for (auto const& error : resolved.error()) {
             errors.push_back(std::format("{}: {}", error.node_path, error.message));
         }
-        return std::unexpected{std::move(errors)};
+        return LevelSimulationBuildResult{std::unexpect, std::move(errors)};
     }
     if (!definition.player_entity_id().empty()) {
         auto& player{inputs.player ? *inputs.player : inputs.player.emplace()};
@@ -145,8 +145,8 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
         player.transform.location = entity.position;
         player.transform.rotation = to_quaternion(entity.rotation);
     } else if (inputs.player) {
-        return std::unexpected{LevelSimulationBuildErrors{
-            "Player input was supplied for a level without a player entity"}};
+        return LevelSimulationBuildResult{
+            std::unexpect, 1, "Player input was supplied for a level without a player entity"};
     }
     apply_settings(settings, inputs);
     if (timing.time_scale) {
@@ -161,13 +161,13 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
     }
     auto compiled{levels::compile_level(definition, inputs)};
     if (!compiled) {
-        return std::unexpected{std::move(compiled.error())};
+        return LevelSimulationBuildResult{std::unexpect, std::move(compiled.error())};
     }
     if (timing.duration) {
         auto ticks{
             levels::compile_timer_duration(*timing.duration, inputs.clock_settings.tick_rate)};
         if (!ticks) {
-            return std::unexpected{std::move(ticks.error())};
+            return LevelSimulationBuildResult{std::unexpect, std::move(ticks.error())};
         }
         auto& events{inputs.level_events};
         auto const timer{inputs.timers.add()};
@@ -177,7 +177,7 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
         events.add_trigger(elapsed, effects);
     }
     if (auto valid{validate_level_simulation_init_data(inputs)}; !valid) {
-        return std::unexpected{std::move(valid.error())};
+        return LevelSimulationBuildResult{std::unexpect, std::move(valid.error())};
     }
     return inputs;
 }
