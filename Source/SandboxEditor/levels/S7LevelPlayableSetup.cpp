@@ -43,20 +43,7 @@ void prepare_s7_scene_for_pie(UWorld& world) {
         if (!*document) {
             continue;
         }
-        auto stale{s7_scene_needs_export(level, **document)};
-        if (!stale) {
-            UE_LOG(LogTemp,
-                   Warning,
-                   TEXT("Cannot compare the scene with its export: %s"),
-                   *stale.error());
-        } else if (*stale) {
-            UE_LOG(LogTemp,
-                   Warning,
-                   TEXT("Scene changes haven't been exported. Playing the saved level. Use Export "
-                        "Scene to include them."));
-        }
-
-        it->set_level_script((*document)->source_path);
+        it->set_level_script(s7_mission_path(**document));
         it->clear_player_ship();
         auto const actors{level.Actors};
         for (auto const actor : actors) {
@@ -68,46 +55,44 @@ void prepare_s7_scene_for_pie(UWorld& world) {
 }
 
 auto validate_playable_s7_level(AS7LevelAuthoringDocument const& document)
-    -> std::expected<FString, FString> {
+    -> S7AuthoringResult<FString> {
     auto definition{read_s7_authored_level(document)};
     if (!definition) {
-        return std::unexpected{definition.error()};
+        return S7AuthoringResult<FString>{std::unexpect, std::move(definition.error())};
     }
     auto compiled{compile_playable_s7_definition(*definition, *document.level_config)};
     if (!compiled) {
-        return std::unexpected{compiled.error()};
+        return S7AuthoringResult<FString>{std::unexpect, std::move(compiled.error())};
     }
     return TEXT("The composed Scheme level passed compilation and initialization validation.");
 }
 
 auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
                                     USpaceGameLevelConfig const& resources)
-    -> std::expected<sim::LevelSimInitData, FString> {
+    -> S7AuthoringResult<sim::LevelSimInitData> {
     levels::LaunchOptions const options;
     auto build{prepare_level_simulation(
         {.config = resources, .launch_options = options, .definition = definition})};
     if (!build) {
-        return std::unexpected{build.error().format()};
+        return S7AuthoringResult<sim::LevelSimInitData>{std::unexpect, build.error().format()};
     }
     return std::move(*build);
 }
 
 auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
-    -> std::expected<FString, FString> {
+    -> S7AuthoringResult<FString> {
+    using Result = S7AuthoringResult<FString>;
+
     auto* const world{level.OwningWorld.Get()};
     auto* const world_settings{IsValid(world) ? world->GetWorldSettings() : nullptr};
     if (!GEditor || !IsValid(world) || world->GetCurrentLevel() != &level ||
         !IsValid(world_settings) || document.GetLevel() != &level) {
-        return std::unexpected{TEXT("The current editor level is unavailable.")};
-    }
-    auto const validation{validate_playable_s7_level(document)};
-    if (!validation) {
-        return std::unexpected{validation.error()};
+        return Result{std::unexpect, TEXT("The current editor level is unavailable.")};
     }
     auto* const game_mode_class{
         LoadClass<AGameModeBase>(nullptr, s7_level_playable_setup_detail::game_mode_class_path)};
     if (!IsValid(game_mode_class)) {
-        return std::unexpected{TEXT("The Space Ship game mode asset is unavailable.")};
+        return Result{std::unexpect, TEXT("The Space Ship game mode asset is unavailable.")};
     }
 
     ATestBatchOrchestrator* orchestrator{};
@@ -120,20 +105,21 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
         }
         if (auto* const candidate{Cast<ATestBatchOrchestrator>(actor)}) {
             if (orchestrator) {
-                return std::unexpected{TEXT("The level contains multiple batch orchestrators.")};
+                return Result{std::unexpect,
+                              TEXT("The level contains multiple batch orchestrators.")};
             }
             orchestrator = candidate;
         }
         if (auto* const candidate{Cast<AGpuStarfieldActor>(actor)}) {
             if (starfield) {
-                return std::unexpected{TEXT("The level contains multiple GPU starfields.")};
+                return Result{std::unexpect, TEXT("The level contains multiple GPU starfields.")};
             }
             starfield = candidate;
         }
         if (auto* const candidate{Cast<AShipPostProcessing>(actor)}) {
             if (post_processing) {
-                return std::unexpected{
-                    TEXT("The level contains multiple ship post-processing actors.")};
+                return Result{std::unexpect,
+                              TEXT("The level contains multiple ship post-processing actors.")};
             }
             post_processing = candidate;
         }
@@ -152,7 +138,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
                                                            false));
         if (!IsValid(new_orchestrator)) {
             transaction.Cancel();
-            return std::unexpected{TEXT("Could not create the batch orchestrator.")};
+            return Result{std::unexpect, TEXT("Could not create the batch orchestrator.")};
         }
     }
     auto* new_starfield{starfield};
@@ -170,7 +156,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
             new_orchestrator->Destroy();
         }
         transaction.Cancel();
-        return std::unexpected{TEXT("Could not create the GPU starfield.")};
+        return Result{std::unexpect, TEXT("Could not create the GPU starfield.")};
     }
     if (!post_processing && !IsValid(GEditor->AddActor(&level,
                                                        AShipPostProcessing::StaticClass(),
@@ -185,7 +171,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
             new_orchestrator->Destroy();
         }
         transaction.Cancel();
-        return std::unexpected{TEXT("Could not create ship post-processing.")};
+        return Result{std::unexpect, TEXT("Could not create ship post-processing.")};
     }
 
     world_settings->Modify();
@@ -193,7 +179,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
     new_orchestrator->Modify();
     new_orchestrator->set_start_mode(EOrchestratorStartMode::AuthoredLevel);
     new_orchestrator->set_presentation_enabled(true);
-    new_orchestrator->set_level_script(document.source_path);
+    new_orchestrator->set_level_script(s7_mission_path(document));
     new_orchestrator->clear_player_ship();
     new_orchestrator->set_level_config(*document.level_config);
 

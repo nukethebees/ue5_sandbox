@@ -13,17 +13,23 @@
 
 #include <SandboxCoreEngine/strings.h>
 
+#include <Components/SceneComponent.h>
 #include <CQTest.h>
+#include <Editor.h>
 #include <Engine/Level.h>
 #include <Engine/World.h>
+#include <FileHelpers.h>
 #include <HAL/FileManager.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Guid.h>
+#include <Misc/PackageName.h>
 #include <Misc/Paths.h>
+#include <Misc/ScopeExit.h>
 #include <Serialization/MemoryReader.h>
 #include <Serialization/MemoryWriter.h>
 #include <Serialization/ObjectAndNameAsStringProxyArchive.h>
 #include <Tests/AutomationEditorCommon.h>
+#include <UObject/ObjectSaveContext.h>
 
 #include <algorithm>
 #include <array>
@@ -99,7 +105,8 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
         return std::nullopt;
     }
     auto& level{*world->GetCurrentLevel()};
-    auto created{ioj::editor::create_level_authoring_document(level, directory.root())};
+    auto created{
+        ioj::editor::set_up_s7_mission(level, ioj::editor::MissionSetup::Create, directory.root())};
     if (!assert_success(test, TEXT("Create authoring document"), created)) {
         return std::nullopt;
     }
@@ -154,7 +161,7 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
     if (!assert_success(test, TEXT("Read composed level"), definition) ||
         !assert_success(test,
                         TEXT("Materialize composed level"),
-                        ioj::editor::import_s7_level(level, document, *definition))) {
+                        ioj::editor::import_s7_level(level, document))) {
         return std::nullopt;
     }
     auto* const player_binding{binding(document, TEXT("player"))};
@@ -220,8 +227,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         using namespace s7_level_authoring_tests;
         FTemporarySourceDirectory directory;
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto created{ioj::editor::create_level_authoring_document(*world->GetCurrentLevel(),
-                                                                  directory.root())};
+        auto created{ioj::editor::set_up_s7_mission(
+            *world->GetCurrentLevel(), ioj::editor::MissionSetup::Create, directory.root())};
         if (!assert_success(*TestRunner, TEXT("Create authoring document"), created)) {
             return;
         }
@@ -405,8 +412,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                              saved_human->position.x() == 600000.);
 
         binding(document, TEXT("human"))->actor->SetActorLocation(FVector{800000., 0., 0.});
+        GEditor->BroadcastEndObjectMovement(*binding(document, TEXT("human"))->actor);
         TestRunner->TestTrue(TEXT("Changes to excluded actors leave the export current"),
-                             ioj::editor::s7_scene_needs_export(level, document) == false);
+                             ioj::editor::s7_scene_needs_export(document) == false);
         auto const written_at{IFileManager::Get().GetTimeStamp(*generated_path)};
         if (!assert_success(*TestRunner,
                             TEXT("Repeat unchanged export"),
@@ -418,7 +426,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               written_at);
         binding(document, TEXT("capital"))->actor->Destroy();
         TestRunner->TestTrue(TEXT("Deleting an exported actor requires export"),
-                             ioj::editor::s7_scene_needs_export(level, document) == true);
+                             ioj::editor::s7_scene_needs_export(document) == true);
     }
 
     TEST_METHOD(ImportRestoresExportedProperties)
@@ -432,11 +440,11 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         auto& document{*fixture->document};
         auto& level{*fixture->world->GetCurrentLevel()};
         auto* const player_binding{binding(document, TEXT("player"))};
-        auto* const capital{
+        auto* capital{
             CastChecked<ioj::ATestCapitalShipProxy>(binding(document, TEXT("capital"))->actor)};
-        auto* const turret{
+        auto* turret{
             CastChecked<ioj::ATestStaticTurretsProxy>(binding(document, TEXT("turret"))->actor)};
-        auto* const spinner{
+        auto* spinner{
             CastChecked<ioj::ATestTubeSpinnerProxy>(binding(document, TEXT("spinner"))->actor)};
         capital->health.Reset();
         capital->initial_spawn_delay.Reset();
@@ -448,9 +456,16 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         CastChecked<ioj::ATestSpaceShip>(player_binding->actor)->health_override.Reset();
         if (!assert_success(*TestRunner,
                             TEXT("Refresh composed scene"),
-                            ioj::editor::import_s7_level(level, document, fixture->definition))) {
+                            ioj::editor::import_s7_level(level, document))) {
             return;
         }
+        TestRunner->TestFalse(TEXT("Rebuild removed the old proxy"), IsValid(capital));
+        capital =
+            CastChecked<ioj::ATestCapitalShipProxy>(binding(document, TEXT("capital"))->actor);
+        turret =
+            CastChecked<ioj::ATestStaticTurretsProxy>(binding(document, TEXT("turret"))->actor);
+        spinner =
+            CastChecked<ioj::ATestTubeSpinnerProxy>(binding(document, TEXT("spinner"))->actor);
         TestRunner->TestTrue(TEXT("Import restores capital properties on the proxy"),
                              capital->health == 456 && capital->initial_spawn_delay == 7.25f &&
                                  capital->spawn_cooldown == 9.5f &&
@@ -464,7 +479,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                     ->health_override == 123);
     }
 
-    TEST_METHOD(OwnershipChangesPersistAndDuplicateDeclarationsAreRejected)
+    TEST_METHOD(RebuildRestoresOwnershipAndExportRejectsDuplicateDeclarations)
     {
         using namespace s7_level_authoring_tests;
         FTemporarySourceDirectory directory;
@@ -476,51 +491,36 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         auto& level{*fixture->world->GetCurrentLevel()};
         auto* const human_binding{binding(document, TEXT("human"))};
         auto* const previous_human{CastChecked<ioj::ATestCapitalShipProxy>(human_binding->actor)};
+        auto* const unbound{fixture->world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
+        unbound->export_to_script = false;
         previous_human->export_to_script = true;
         if (!assert_success(*TestRunner,
                             TEXT("Refresh adopted entity"),
-                            ioj::editor::import_s7_level(level, document, fixture->definition))) {
+                            ioj::editor::import_s7_level(level, document))) {
             return;
         }
-        auto* const refreshed_human{binding(document, TEXT("human"))};
-        TestRunner->TestTrue(TEXT("Explicit ownership choice persists by ID"),
-                             refreshed_human && refreshed_human->actor == previous_human &&
+        auto* const replacement{
+            CastChecked<ioj::ATestCapitalShipProxy>(binding(document, TEXT("human"))->actor)};
+        TestRunner->TestTrue(TEXT("Rebuild keeps unbound actors"), IsValid(unbound));
+        TestRunner->TestFalse(TEXT("Rebuild replaces the bound proxy"), IsValid(previous_human));
+        TestRunner->TestFalse(TEXT("Script-owned replacement defaults to excluded"),
+                              replacement->export_to_script);
+        replacement->export_to_script = true;
+        TestRunner->TestFalse(TEXT("Check Export rejects the duplicate ID"),
+                              ioj::editor::check_s7_export(level, document).has_value());
+        TestRunner->TestFalse(TEXT("Export rejects the duplicate ID"),
+                              ioj::editor::export_s7_editor_config(level, document).has_value());
+        TestRunner->TestTrue(TEXT("Saved mission remains playable"),
+                             ioj::editor::read_s7_authored_level(document).has_value());
+        GEditor->UndoTransaction();
+        TestRunner->TestTrue(TEXT("Undoing a rebuild requests export"), document.needs_export);
+        auto const* restored{binding(document, TEXT("human"))};
+        TestRunner->TestTrue(TEXT("Undo restores original proxy and binding"),
+                             restored && IsValid(previous_human) &&
+                                 restored->actor == previous_human &&
                                  previous_human->export_to_script);
-        // A different configured class replaces the actor on the next import.
-        document.level_config = DuplicateObject(document.level_config.Get(), &document);
-        document.level_config->classes.capital_ship_proxy_class =
-            ioj::ATestCapitalShipProxy::StaticClass();
-        if (!assert_success(*TestRunner,
-                            TEXT("Refresh with replacement proxy class"),
-                            ioj::editor::import_s7_level(level, document, fixture->definition))) {
-            return;
-        }
-        auto const* replacement{binding(document, TEXT("human"))};
-        TestRunner->TestTrue(
-            TEXT("Replacement actor inherits Export for the same ID"),
-            replacement && replacement->actor != previous_human &&
-                CastChecked<ioj::ATestCapitalShipProxy>(replacement->actor)->export_to_script);
-        if (!assert_success(
-                *TestRunner,
-                TEXT("Import with new-root ownership"),
-                ioj::editor::import_s7_level(level, document, fixture->definition, true))) {
-            return;
-        }
-        auto* const new_root_human{binding(document, TEXT("human"))};
-        if (!TestRunner->TestNotNull(TEXT("Human binding after root change"), new_root_human)) {
-            return;
-        }
-        auto* const new_root_actor{CastChecked<ioj::ATestCapitalShipProxy>(new_root_human->actor)};
-        TestRunner->TestFalse(TEXT("Root changes discard the previous source's ownership choices"),
-                              new_root_actor->export_to_script);
-        new_root_actor->export_to_script = true;
-        if (!assert_success(*TestRunner,
-                            TEXT("Export explicitly adopted human entity"),
-                            ioj::editor::export_s7_editor_config(level, document))) {
-            return;
-        }
-        TestRunner->TestFalse(TEXT("Duplicate declaration is reported by normal validation"),
-                              ioj::editor::read_s7_authored_level(document).has_value());
+        GEditor->RedoTransaction();
+        TestRunner->TestTrue(TEXT("Redo requests export"), document.needs_export);
     }
 
     TEST_METHOD(ExportedDefinitionSpawnsRuntimeEntities)
@@ -560,7 +560,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         FTemporarySourceDirectory directory;
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
         auto& level{*world->GetCurrentLevel()};
-        auto created{ioj::editor::create_level_authoring_document(level, directory.root())};
+        auto created{ioj::editor::set_up_s7_mission(
+            level, ioj::editor::MissionSetup::Create, directory.root())};
         if (!assert_success(*TestRunner, TEXT("Create authoring document"), created)) {
             return;
         }
@@ -597,7 +598,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             if (!assert_success(*TestRunner, TEXT("Read composed level"), definition) ||
                 !assert_success(*TestRunner,
                                 TEXT("Import baseline for editing"),
-                                ioj::editor::import_s7_level(level, document, *definition))) {
+                                ioj::editor::import_s7_level(level, document))) {
                 return;
             }
             auto const* pilot{binding(document, TEXT("none"))};
@@ -627,13 +628,111 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
     }
 
+    TEST_METHOD(MapSaveExportsEditsAndKeepsFailedEditsForRetry)
+    {
+        using namespace s7_level_authoring_tests;
+        FTemporarySourceDirectory directory;
+        auto fixture{make_composed_fixture(*TestRunner, directory)};
+        if (!fixture) {
+            return;
+        }
+        auto* world{fixture->world};
+        auto& document{*fixture->document};
+        auto* capital{
+            CastChecked<ioj::ATestCapitalShipProxy>(binding(document, TEXT("capital"))->actor)};
+        auto* root{capital->GetRootComponent()};
+        root->SetRelativeLocation(root->GetRelativeLocation() + FVector{20., 0., 0.});
+        FPropertyChangedEvent movement{FindFProperty<FProperty>(
+            root->GetClass(), USceneComponent::GetRelativeLocationPropertyName())};
+        root->PostEditChangeProperty(movement);
+        TestRunner->TestTrue(TEXT("Root transform edits request export"), document.needs_export);
+        if (!assert_success(
+                *TestRunner,
+                TEXT("Export moved capital"),
+                ioj::editor::export_s7_editor_config(*world->PersistentLevel, document))) {
+            return;
+        }
+        auto* turret{
+            CastChecked<ioj::ATestStaticTurretsProxy>(binding(document, TEXT("turret"))->actor)};
+        turret->export_to_script = false;
+        FPropertyChangedEvent toggle{FindFProperty<FProperty>(
+            turret->GetClass(),
+            GET_MEMBER_NAME_CHECKED(ioj::ATestStaticTurretsProxy, export_to_script))};
+        turret->PostEditChangeProperty(toggle);
+        TestRunner->TestTrue(TEXT("Disabling Export requests export"), document.needs_export);
+        auto* extra{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
+        extra->SetActorLabel(TEXT("outpost"));
+        FString previous;
+        FFileHelper::LoadFileToString(previous, *fixture->generated_path);
+        FObjectSaveContextData autosave;
+        autosave.SaveFlags = SAVE_FromAutosave;
+        FEditorDelegates::PreSaveWorldWithContext.Broadcast(world, FObjectPreSaveContext{autosave});
+        FString saved;
+        FFileHelper::LoadFileToString(saved, *fixture->generated_path);
+        TestRunner->TestEqual(TEXT("Autosave preserves the exported scene"), saved, previous);
+        TestRunner->TestTrue(TEXT("Autosave leaves scene pending"), document.needs_export);
+
+        auto const filename{
+            FPaths::Combine(FPaths::ProjectContentDir(),
+                            TEXT("S7SaveTest") + FGuid::NewGuid().ToString() + TEXT(".umap"))};
+        ON_SCOPE_EXIT {
+            FAutomationEditorCommonUtils::CreateNewMap();
+            IFileManager::Get().Delete(*filename);
+        };
+        if (!TestRunner->TestTrue(TEXT("Save editable map"),
+                                  FEditorFileUtils::SaveMap(world, filename))) {
+            return;
+        }
+        TestRunner->TestFalse(TEXT("Map save exports edits"), document.needs_export);
+        FFileHelper::LoadFileToString(saved, *fixture->generated_path);
+        TestRunner->TestTrue(TEXT("Map save publishes the new actor"),
+                             saved.Contains(TEXT("outpost")));
+        FAutomationEditorCommonUtils::CreateNewMap();
+        if (!TestRunner->TestTrue(TEXT("Reopen map"), FEditorFileUtils::LoadMap(filename))) {
+            return;
+        }
+        world = GEditor->GetEditorWorldContext().World();
+        auto reopened{ioj::editor::find_level_authoring_document(*world->PersistentLevel)};
+        if (!reopened || !TestRunner->TestNotNull(TEXT("Saved document"), *reopened)) {
+            return;
+        }
+        auto* bound{binding(**reopened, TEXT("outpost"))};
+        if (!TestRunner->TestTrue(TEXT("Binding survives reopen"),
+                                  bound && IsValid(bound->actor))) {
+            return;
+        }
+        TestRunner->TestFalse(TEXT("Reopening keeps the export current"),
+                              (*reopened)->needs_export);
+        auto* duplicate{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
+        duplicate->SetActorLabel(TEXT("outpost"));
+        TestRunner->AddExpectedMessage(TEXT("Scene export failed: Invalid or duplicate entity ID"),
+                                       ELogVerbosity::Warning,
+                                       EAutomationExpectedMessageFlags::Contains,
+                                       1);
+        TestRunner->TestTrue(TEXT("Failed export still saves map"),
+                             FEditorFileUtils::SaveMap(world, filename));
+        TestRunner->TestTrue(TEXT("Failed export remains pending"), (*reopened)->needs_export);
+        FString after_failure;
+        FFileHelper::LoadFileToString(after_failure, *fixture->generated_path);
+        TestRunner->TestEqual(TEXT("Failed export keeps previous file"), after_failure, saved);
+        FAutomationEditorCommonUtils::CreateNewMap();
+        if (TestRunner->TestTrue(TEXT("Reopen failed export"),
+                                 FEditorFileUtils::LoadMap(filename))) {
+            auto loaded{ioj::editor::find_level_authoring_document(
+                *GEditor->GetEditorWorldContext().World()->PersistentLevel)};
+            TestRunner->TestTrue(TEXT("Reopen retains pending edits"),
+                                 loaded && *loaded && (*loaded)->needs_export);
+        }
+    }
+
     TEST_METHOD(NewProxiesExportThroughTheGeneratedEntryPoint)
     {
         using namespace s7_level_authoring_tests;
         FTemporarySourceDirectory directory;
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
         auto& level{*world->GetCurrentLevel()};
-        auto created{ioj::editor::create_level_authoring_document(level, directory.root())};
+        auto created{ioj::editor::set_up_s7_mission(
+            level, ioj::editor::MissionSetup::Create, directory.root())};
         if (!assert_success(*TestRunner, TEXT("Create authoring files"), created)) {
             return;
         }
@@ -644,13 +743,27 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         TestRunner->TestTrue(TEXT("An unbound player requires export"),
-                             ioj::editor::s7_scene_needs_export(level, document) == true);
+                             ioj::editor::s7_scene_needs_export(document) == true);
         player->export_to_script = false;
-        TestRunner->TestTrue(TEXT("An excluded unbound player matches the empty export"),
-                             ioj::editor::s7_scene_needs_export(level, document) == false);
+        TestRunner->TestTrue(TEXT("Changes remain pending until export"),
+                             ioj::editor::s7_scene_needs_export(document) == true);
         player->export_to_script = true;
+        auto* const ignored{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
+        ignored->export_to_script = false;
+        bool const was_editor_only{ignored->bIsEditorOnlyActor != 0};
+        document.camera.targets.Add(ignored);
         player->SetActorLabel(TEXT("pilot"));
         player->set_team(ioj::ETestTeam::Blue);
+        if (!assert_success(*TestRunner,
+                            TEXT("Check unbound actor"),
+                            ioj::editor::check_s7_export(level, document))) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Checking leaves edits pending"), document.needs_export);
+        TestRunner->TestTrue(TEXT("Checking leaves actors unbound"), document.entities.IsEmpty());
+        auto untouched{ioj::editor::read_s7_editor_input(document)};
+        TestRunner->TestTrue(TEXT("Checking preserves baseline"),
+                             untouched && untouched->entities.empty());
         if (!assert_success(*TestRunner,
                             TEXT("Export adopts newly created proxy"),
                             ioj::editor::export_s7_editor_config(level, document))) {
@@ -659,6 +772,11 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         auto const* adopted{binding(document, TEXT("pilot"))};
         TestRunner->TestTrue(TEXT("New proxy defaults to Export"),
                              adopted && adopted->actor == player && player->export_to_script);
+        TestRunner->TestEqual(
+            TEXT("Inactive camera target stays unbound"), document.entities.Num(), 1);
+        TestRunner->TestEqual(TEXT("Export preserves the target actor flags"),
+                              ignored->bIsEditorOnlyActor != 0,
+                              was_editor_only);
         auto definition{ioj::editor::read_s7_authored_level(document)};
         if (!assert_success(
                 *TestRunner, TEXT("Generated root includes its own configuration"), definition)) {
@@ -669,6 +787,33 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               75.);
         TestRunner->TestTrue(TEXT("Entry point resolves the adopted player"),
                              definition->player_entity_id() == ioj::levels::EntityId{"pilot"});
+
+        FString standalone;
+        if (!TestRunner->TestTrue(TEXT("Read exported scene"),
+                                  FFileHelper::LoadFileToString(
+                                      standalone, *ioj::editor::s7_editor_config_path(document))) ||
+            !TestRunner->TestTrue(
+                TEXT("Make the mission standalone"),
+                write_source(directory.root(),
+                             standalone + TEXT("\n(export mission)\n(define mission scene)\n")))) {
+            return;
+        }
+        player->SetActorLocation(FVector{100, 20, 30});
+        GEditor->BroadcastEndObjectMovement(*player);
+        TestRunner->TestTrue(TEXT("Play ignores orphaned editor config"),
+                             ioj::editor::s7_scene_needs_export(document) == false);
+        TestRunner->TestFalse(TEXT("A standalone mission cannot export its orphaned config"),
+                              ioj::editor::check_s7_export(level, document).has_value());
+        if (!assert_success(*TestRunner,
+                            TEXT("Rebuild standalone mission"),
+                            ioj::editor::import_s7_level(level, document))) {
+            return;
+        }
+        auto const* standalone_pilot{binding(document, TEXT("pilot"))};
+        TestRunner->TestTrue(
+            TEXT("Standalone mission owns its pilot"),
+            standalone_pilot &&
+                !CastChecked<ioj::ATestSpaceShip>(standalone_pilot->actor)->export_to_script);
     }
 
     TEST_METHOD(CreatingAuthoringFilesPreservesExistingHumanSource)
@@ -683,17 +828,16 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto created{ioj::editor::create_level_authoring_document(*world->GetCurrentLevel(),
-                                                                  directory.root())};
-        if (!assert_success(*TestRunner, TEXT("Configure existing entry point"), created)) {
-            return;
-        }
+        auto created{ioj::editor::set_up_s7_mission(
+            *world->GetCurrentLevel(), ioj::editor::MissionSetup::Link, directory.root())};
+        TestRunner->TestFalse(TEXT("Reject invalid mission"), created.has_value());
         FString saved;
         TestRunner->TestTrue(TEXT("Read preserved file"),
                              FFileHelper::LoadFileToString(saved, *directory.root()));
         TestRunner->TestEqual(TEXT("Existing human source is never replaced"), saved, source);
-        TestRunner->TestTrue(TEXT("Incomplete generated baseline is readable"),
-                             ioj::editor::read_s7_editor_input(**created).has_value());
+        TestRunner->TestFalse(TEXT("Invalid links create no baseline"),
+                              FPaths::FileExists(FPaths::Combine(
+                                  directory.path, TEXT("Authoring/editor-config.scm"))));
     }
 
     TEST_METHOD(ValidationReportsMissingAndInvalidSavedEntryPoints)
@@ -701,8 +845,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         using namespace s7_level_authoring_tests;
         FTemporarySourceDirectory directory;
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto created{ioj::editor::create_level_authoring_document(*world->GetCurrentLevel(),
-                                                                  directory.root())};
+        auto created{ioj::editor::set_up_s7_mission(
+            *world->GetCurrentLevel(), ioj::editor::MissionSetup::Create, directory.root())};
         if (!assert_success(*TestRunner, TEXT("Create authoring document"), created)) {
             return;
         }

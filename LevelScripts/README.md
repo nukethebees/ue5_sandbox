@@ -40,9 +40,9 @@ explicit editor overrides and mission overrides in that order.
     (settings-layers defaults (level-ref scene :settings) (settings :fighters (fighters :speed 3000)))))
 ```
 
-Mark actors for export under **Details → Level Authoring → Export**.
-**Export Scene** updates placements and viewpoint in `editor-config.scm` and preserves its
-explicit settings overrides. **Export Entity Geometry** updates the mesh bounds and attachment
+Export actors with **Details → Level Authoring → Export**.
+Saving the map or choosing **Export Scene** updates placements and viewpoint in `editor-config.scm` and preserves its
+explicit settings overrides. **Tools → Export Entity Geometry** updates the mesh bounds and attachment
 points imported by `Settings/base.scm`. **Play** uses the saved files.
 Use record accessors and functional updates to compose levels, for example
 `(copy-with base :entities (append (level-ref base :entities) extras))`.

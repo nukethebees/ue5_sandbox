@@ -1,19 +1,40 @@
 #include "SandboxEditor/SandboxEditor.h"
 
+#include "SandboxEditor/levels/S7EntityGeometryExport.h"
+#include "SandboxEditor/levels/S7LevelAuthoringActors.h"
+#include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
+#include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 #include "Editor.h"
 #include "Editor/EditorEngine.h"
 #include "EditorModeManager.h"
-#include "Misc/CoreDelegates.h"
+#include "Misc/MessageDialog.h"
 #include "Modules/ModuleManager.h"
 #include "ToolMenus.h"
+#include <Components/SceneComponent.h>
+#include <Engine/Level.h>
 #include <Engine/World.h>
+#include <Misc/CoreDelegates.h>
+#include <Misc/TransactionObjectEvent.h>
+#include <UObject/ObjectSaveContext.h>
 #define LOCTEXT_NAMESPACE "FSandboxEditorModule"
 
 void FSandboxEditorModule::StartupModule() {
+    if (GEditor) {
+        register_actor_events();
+    } else {
+        FCoreDelegates::GetOnPostEngineInit().AddRaw(this,
+                                                     &FSandboxEditorModule::register_actor_events);
+    }
+    FCoreUObjectDelegates::OnObjectPropertyChanged.AddRaw(
+        this, &FSandboxEditorModule::on_property_changed);
+    FCoreUObjectDelegates::OnObjectTransacted.AddRaw(this, &FSandboxEditorModule::on_transacted);
+    FEditorDelegates::PreSaveWorldWithContext.AddRaw(this,
+                                                     &FSandboxEditorModule::on_pre_save_world);
+    FEditorDelegates::PreBeginPIE.AddRaw(this, &FSandboxEditorModule::on_pre_begin_pie);
     s7_pie_handle_ = FWorldDelegates::OnWorldInitializedActors.AddLambda(
         [](FActorsInitializedParams const& params) {
             if (params.World->WorldType == EWorldType::PIE) {
@@ -22,22 +43,135 @@ void FSandboxEditorModule::StartupModule() {
         });
     constexpr auto logger{NestedLogger<"StartupModule">()};
     logger.log_verbose(TEXT("Module starting up!"));
-    // Register menu extensions after ToolMenus module is loaded
-    if (UToolMenus::IsToolMenuUIEnabled()) {
-        register_menu_extensions();
-    } else {
-        // Delay registration until ToolMenus is ready
-        FCoreDelegates::GetOnPostEngineInit().AddLambda([this]() {
-            if (UToolMenus::IsToolMenuUIEnabled()) {
-                register_menu_extensions();
-            }
-        });
-    }
+    UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(
+        this, &FSandboxEditorModule::register_menu_extensions));
 }
 void FSandboxEditorModule::ShutdownModule() {
+    FCoreDelegates::GetOnPostEngineInit().RemoveAll(this);
+    if (GEditor) {
+        GEditor->OnLevelActorAdded().RemoveAll(this);
+        GEditor->OnLevelActorDeleted().RemoveAll(this);
+        GEditor->OnEndObjectMovement().RemoveAll(this);
+    }
+    FCoreUObjectDelegates::OnObjectPropertyChanged.RemoveAll(this);
+    FCoreUObjectDelegates::OnObjectTransacted.RemoveAll(this);
+    FEditorDelegates::PreSaveWorldWithContext.RemoveAll(this);
+    FEditorDelegates::PreBeginPIE.RemoveAll(this);
     FWorldDelegates::OnWorldInitializedActors.Remove(s7_pie_handle_);
-    if (IsValid(GEditor) && GEditor->PlayWorld != nullptr) {
-        GEditor->EndPlayMap();
+    UToolMenus::UnRegisterStartupCallback(this);
+    UToolMenus::UnregisterOwner(this);
+}
+
+namespace {
+void mark_s7_edit(UObject* object, FName property = NAME_None) {
+    if (!object || object->IsTemplate() || object->HasAnyFlags(RF_NeedLoad | RF_NeedPostLoad)) {
+        return;
+    }
+    auto* actor{Cast<AActor>(object)};
+    if (auto* component{Cast<USceneComponent>(object)}) {
+        actor = component->GetOwner();
+        if (!actor || component != actor->GetRootComponent()) {
+            return;
+        }
+    }
+    auto* world{actor ? actor->GetWorld() : nullptr};
+    if (!world || world->WorldType != EWorldType::Editor || world->bIsTearingDown) {
+        return;
+    }
+
+    if (auto* document{Cast<AS7LevelAuthoringDocument>(actor)}) {
+        document->set_needs_export(true);
+        return;
+    }
+    auto const resolved{ioj::editor::resolve_s7_level_actor(*actor)};
+    if (!resolved || (!resolved->export_to_script && property != TEXT("export_to_script"))) {
+        return;
+    }
+    auto document{ioj::editor::find_level_authoring_document(*actor->GetLevel())};
+    if (document && *document) {
+        if (property == TEXT("ActorLabel") &&
+            (*document)->entities.ContainsByPredicate(
+                [actor](auto const& binding) { return binding.actor == actor; })) {
+            return;
+        }
+        (*document)->set_needs_export(true);
+    }
+}
+}
+void FSandboxEditorModule::register_actor_events() {
+    if (GEditor) {
+        GEditor->OnLevelActorAdded().AddRaw(this, &FSandboxEditorModule::on_actor_changed);
+        GEditor->OnLevelActorDeleted().AddRaw(this, &FSandboxEditorModule::on_actor_changed);
+        GEditor->OnEndObjectMovement().AddRaw(this, &FSandboxEditorModule::on_movement_finished);
+    }
+}
+void FSandboxEditorModule::on_actor_changed(AActor* actor) {
+    if (!Cast<AS7LevelAuthoringDocument>(actor)) {
+        mark_s7_edit(actor);
+    }
+}
+void FSandboxEditorModule::on_movement_finished(UObject& object) {
+    mark_s7_edit(&object);
+}
+void FSandboxEditorModule::on_property_changed(UObject* object, FPropertyChangedEvent& change) {
+    if (!(change.ChangeType & EPropertyChangeType::Interactive)) {
+        mark_s7_edit(object, change.GetPropertyName());
+    }
+}
+void FSandboxEditorModule::on_transacted(UObject* object, FTransactionObjectEvent const& change) {
+    if (change.GetEventType() == ETransactionObjectEventType::UndoRedo) {
+        auto const& properties{change.GetChangedProperties()};
+        if (properties.IsEmpty()) {
+            mark_s7_edit(object);
+        } else {
+            for (auto const property : properties) {
+                mark_s7_edit(object, property);
+            }
+        }
+    }
+}
+void FSandboxEditorModule::on_pre_save_world(UWorld* world, FObjectPreSaveContext context) {
+    if (!world || world->WorldType != EWorldType::Editor || context.IsCooking() ||
+        context.IsProceduralSave() || context.IsFromAutoSave()) {
+        return;
+    }
+    auto& level{*world->PersistentLevel};
+    auto document{ioj::editor::find_level_authoring_document(level)};
+    if (!document) {
+        UE_LOG(LogTemp, Warning, TEXT("%s"), *document.error());
+        return;
+    }
+    if (!*document) {
+        return;
+    }
+    auto stale{ioj::editor::s7_scene_needs_export(**document)};
+    if (!stale) {
+        UE_LOG(LogTemp, Warning, TEXT("Scene export failed: %s"), *stale.error());
+    } else if (*stale) {
+        auto exported{ioj::editor::export_s7_editor_config(level, **document)};
+        if (!exported) {
+            UE_LOG(LogTemp, Warning, TEXT("Scene export failed: %s"), *exported.error());
+        }
+    }
+}
+void FSandboxEditorModule::on_pre_begin_pie(bool) {
+    auto* world{GEditor->GetEditorWorldContext().World()};
+    if (!world) {
+        return;
+    }
+    for (auto* level : world->GetLevels()) {
+        auto document{ioj::editor::find_level_authoring_document(*level)};
+        if (document && *document) {
+            auto stale{ioj::editor::s7_scene_needs_export(**document)};
+            if (!stale) {
+                UE_LOG(LogTemp, Warning, TEXT("%s"), *stale.error());
+            } else if (*stale) {
+                UE_LOG(
+                    LogTemp,
+                    Warning,
+                    TEXT("Scene edits need export. Playing the saved mission. Use Export Scene."));
+            }
+        }
     }
 }
 
@@ -45,6 +179,7 @@ void FSandboxEditorModule::ShutdownModule() {
 void FSandboxEditorModule::register_menu_extensions() {
     constexpr auto logger{NestedLogger<"register_menu_extensions">()};
 
+    FToolMenuOwnerScoped owner{this};
     TRY_INIT_PTR(tool_menus, UToolMenus::Get());
 
     TRY_INIT_PTR(menu, tool_menus->ExtendMenu("LevelEditor.LevelEditorToolBar.User"));
@@ -58,6 +193,20 @@ void FSandboxEditorModule::register_menu_extensions() {
         FText::FromString("Open the S7 level-authoring mode"),
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Edit")));
 
+    auto& resource_tools{tool_menus->ExtendMenu("LevelEditor.MainMenu.Tools")
+                             ->FindOrAddSection("SandboxTools", LOCTEXT("Tools", "Space Game"))};
+    resource_tools.AddMenuEntry(
+        "ExportEntityGeometry",
+        LOCTEXT("Geometry", "Export Entity Geometry"),
+        LOCTEXT("GeometryTip", "Export shared mesh bounds and attachment points."),
+        FSlateIcon{},
+        FUIAction{FExecuteAction::CreateLambda([] {
+            auto const result{
+                ioj::editor::export_entity_geometry(ioj::editor::entity_geometry_path())};
+            FMessageDialog::Open(EAppMsgType::Ok,
+                                 result ? LOCTEXT("SavedGeometry", "Saved shared entity geometry.")
+                                        : FText::FromString(result.error()));
+        })});
     logger.log_log(TEXT("Registered menu extensions"));
 }
 #undef LOCTEXT_NAMESPACE

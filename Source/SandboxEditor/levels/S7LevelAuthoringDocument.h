@@ -54,6 +54,11 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
 
     bool IsEditorOnly() const override { return true; }
 
+    void set_needs_export(bool value);
+
+    UPROPERTY(NonTransactional)
+    bool needs_export{};
+
     UPROPERTY(VisibleAnywhere, Category = "Document")
     FString source_path{};
 

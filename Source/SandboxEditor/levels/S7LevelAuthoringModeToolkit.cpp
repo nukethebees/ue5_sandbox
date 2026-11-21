@@ -2,11 +2,7 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
-#include "SandboxEditor/levels/S7LevelAuthoringSession.h"
-#include <ioj/sim/collision/collision_grid.h>
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
-#include <SandboxCoreEngine/VectorConversion.h>
 #include <SandboxUI/slate/SlateSlots.h>
 
 #include <IDetailsView.h>
@@ -53,11 +49,7 @@ auto FS7LevelAuthoringModeToolkit::GetInlineContent() const -> TSharedPtr<SWidge
     return content_;
 }
 
-auto FS7LevelAuthoringModeToolkit::grid_summary() const -> FText {
-    return grid_summary_;
-}
-
-void FS7LevelAuthoringModeToolkit::refresh(ioj::settings::Settings const* settings) {
+void FS7LevelAuthoringModeToolkit::refresh() {
     if (!mode_.IsValid()) {
         return;
     }
@@ -66,33 +58,6 @@ void FS7LevelAuthoringModeToolkit::refresh(ioj::settings::Settings const* settin
         details_->SetObject(displayed_document_.Get());
     }
     status_->SetText(mode_->status());
-
-    auto* const document{mode_->document()};
-    auto* const config{IsValid(document) ? document->level_config.Get() : nullptr};
-    if (!IsValid(config)) {
-        grid_summary_ = LOCTEXT("NoActiveConfig", "Level config: none");
-        return;
-    }
-
-    std::expected<ioj::settings::Settings, FString> resolved{std::unexpect};
-    if (!settings) {
-        resolved = ioj::editor::read_s7_authored_level(*document).transform(
-            [](auto const& level) { return level.settings(); });
-        if (!resolved) {
-            grid_summary_ = FText::FromString(resolved.error());
-            return;
-        }
-        settings = &*resolved;
-    }
-    auto const& grid{settings->collision_grid};
-    auto const dimensions{
-        ioj::sim::collision::calculate_grid_dimensions(grid.level_size, grid.cell_size)};
-    auto const half_bounds{
-        ioj::to_unreal(ioj::sim::collision::grid_half_size({dimensions, grid.cell_size}))};
-    grid_summary_ =
-        FText::FromString(FString::Printf(TEXT("Resources: %s | Resolved grid bounds: +/-%s cm"),
-                                          *config->GetName(),
-                                          *half_bounds.ToString()));
 }
 
 #define FORWARD_ACTION(name)                              \
@@ -104,11 +69,9 @@ void FS7LevelAuthoringModeToolkit::refresh(ioj::settings::Settings const* settin
     }
 
 FORWARD_ACTION(create_document)
-FORWARD_ACTION(adopt_entities)
 FORWARD_ACTION(open_level_config)
 FORWARD_ACTION(validate_playable_level)
-FORWARD_ACTION(set_up_playable_level)
-FORWARD_ACTION(load_s7)
+FORWARD_ACTION(link_script)
 auto FS7LevelAuthoringModeToolkit::rename_selected_entity() -> FReply {
     if (mode_.IsValid() && entity_id_.IsValid()) {
         mode_->rename_selected_entity(entity_id_->GetText().ToString());
@@ -116,9 +79,9 @@ auto FS7LevelAuthoringModeToolkit::rename_selected_entity() -> FReply {
     return FReply::Handled();
 }
 FORWARD_ACTION(open_script_editor)
-FORWARD_ACTION(import_source)
+FORWARD_ACTION(rebuild_scene)
 FORWARD_ACTION(export_scene)
-FORWARD_ACTION(export_geometry)
+FORWARD_ACTION(check_export)
 
 #undef FORWARD_ACTION
 #undef LOCTEXT_NAMESPACE

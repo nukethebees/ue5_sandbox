@@ -85,8 +85,8 @@ The exclusions are explicit in `cmake/presets/features.py`; the corresponding no
 MSVC tests remain enabled.
 
 Simulation tests, benchmarks and Unreal Play load tuning and entity geometry through
-`LevelScripts/Settings/base.scm`. After editing mesh collision, launch slots or weapon sockets,
-use **Export Entity Geometry** in the Unreal level authoring panel.
+`LevelScripts/Settings/base.scm`. After editing mesh collision, fighter wave size or weapon sockets,
+use **Tools → Export Entity Geometry** in Unreal.
 
 Application settings descriptors and edit transactions are native. Flight-model settings use the
 versioned `flight-model:2:` text codec; previous Unreal/Base64 development values are intentionally

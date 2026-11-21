@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 namespace ioj::levels::authoring::tests {
-TEST(NativeEditorIdentifiers, UsesAsciiAndAllocatesDeterministicCollisions) {
+TEST(NativeEditorIdentifiers, CanonicalizesAsciiSymbols) {
     struct Case {
         std::string_view input;
         std::string_view expected;
@@ -19,10 +19,6 @@ TEST(NativeEditorIdentifiers, UsesAsciiAndAllocatesDeterministicCollisions) {
     }
     EXPECT_FALSE(is_canonical_symbol("\xc3\xa9"));
     EXPECT_FALSE(is_canonical_symbol("Enemy"));
-
-    std::unordered_set<EntityId> used{EntityId{"enemy"}, EntityId{"enemy-2"}};
-    EXPECT_EQ(allocate_entity_id("Enemy", "entity", used), EntityId{"enemy-3"});
-    EXPECT_EQ(allocate_entity_id("enemy", "entity", used), EntityId{"enemy-4"});
 }
 
 }

@@ -13,39 +13,28 @@
 
 namespace ioj::editor {
 
-auto s7_actor_export_setting(AActor& actor) -> bool* {
-    if (auto* player{Cast<ATestSpaceShip>(&actor)}) {
-        return &player->export_to_script;
-    }
-    if (auto* capital{Cast<ATestCapitalShipProxy>(&actor)}) {
-        return &capital->export_to_script;
-    }
-    if (auto* turret{Cast<ATestStaticTurretsProxy>(&actor)}) {
-        return &turret->export_to_script;
-    }
-    if (auto* spinner{Cast<ATestTubeSpinnerProxy>(&actor)}) {
-        return &spinner->export_to_script;
-    }
-    return nullptr;
-}
-
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor> {
     levels::EntityArchetype archetype{};
     ETestTeam team{};
     double spawn_time_seconds{};
+    bool export_to_script{};
     if (auto const* const player{Cast<ATestSpaceShip>(&actor)}) {
         archetype = levels::EntityArchetype::PlayerFighter;
+        export_to_script = player->export_to_script;
         team = player->get_team();
     } else if (auto const* const capital{Cast<ATestCapitalShipProxy>(&actor)}) {
         archetype = levels::EntityArchetype::CapitalShip;
+        export_to_script = capital->export_to_script;
         team = capital->get_team();
         spawn_time_seconds = capital->spawn_time_seconds;
     } else if (auto const* const turret{Cast<ATestStaticTurretsProxy>(&actor)}) {
         archetype = levels::EntityArchetype::StaticTurret;
+        export_to_script = turret->export_to_script;
         team = turret->get_team();
         spawn_time_seconds = turret->spawn_time_seconds;
     } else if (auto const* const spinner{Cast<ATestTubeSpinnerProxy>(&actor)}) {
         archetype = levels::EntityArchetype::TubeSpinner;
+        export_to_script = spinner->export_to_script;
         team = ETestTeam::White;
         spawn_time_seconds = spinner->spawn_time_seconds;
     } else {
@@ -56,7 +45,7 @@ auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedAc
     if (!std::ranges::contains(EnumTraits<Team>::values, native_team)) {
         return NullOpt;
     }
-    return FS7LevelResolvedActor{archetype, native_team, spawn_time_seconds};
+    return FS7LevelResolvedActor{archetype, native_team, spawn_time_seconds, export_to_script};
 }
 
 auto s7_level_actor_class(levels::EntityArchetype const archetype,

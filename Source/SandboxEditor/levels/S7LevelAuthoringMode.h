@@ -33,23 +33,22 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     [[nodiscard]] auto status() const -> FText const&;
 
     void create_document();
-    void adopt_entities();
     void rename_selected_entity(FString id);
     void open_level_config();
     void validate_playable_level();
-    void set_up_playable_level();
-    void load_s7();
+    void link_script();
     void open_script_editor();
-    void import_source(bool root_changed = false);
+    void rebuild_scene();
     void export_scene();
-    void export_geometry();
+    void check_export();
   private:
     auto current_level() const -> ULevel*;
     void refresh_document();
     void set_status(FText text);
-    void notify_changed(ioj::settings::Settings const* settings = nullptr);
+    void notify_changed();
 
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
     FText status_{};
-    float refresh_elapsed_seconds_{};
+    TWeakObjectPtr<ULevel> displayed_level_{};
+    int32 actor_count_{};
 };

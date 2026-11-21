@@ -1,6 +1,5 @@
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
 
-#include "SandboxEditor/levels/S7EntityGeometryExport.h"
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringModeToolkit.h"
@@ -13,6 +12,7 @@
 
 #include <SandboxCoreEngine/strings.h>
 
+#include <Algo/Count.h>
 #include <CanvasItem.h>
 #include <CanvasTypes.h>
 #include <DesktopPlatformModule.h>
@@ -22,6 +22,7 @@
 #include <Framework/Application/SlateApplication.h>
 #include <HAL/PlatformProcess.h>
 #include <IDesktopPlatform.h>
+#include <Misc/MessageDialog.h>
 #include <Misc/Paths.h>
 #include <SceneManagement.h>
 #include <SceneView.h>
@@ -42,7 +43,7 @@ auto select_source_path() -> TOptional<FString> {
     TArray<FString> paths;
     auto const directory{levels::authoring::default_level_script_directory()};
     auto const selected{desktop->OpenFileDialog(parent,
-                                                TEXT("Load S7 Level"),
+                                                TEXT("Link Mission Script"),
                                                 directory,
                                                 TEXT(""),
                                                 TEXT("S7 level (*.scm)|*.scm"),
@@ -55,9 +56,11 @@ auto select_source_path() -> TOptional<FString> {
 }
 
 auto selected_bound_entity(AS7LevelAuthoringDocument& document)
-    -> std::expected<FS7LevelEntityBinding*, FString> {
+    -> S7AuthoringResult<FS7LevelEntityBinding*> {
+    using Result = S7AuthoringResult<FS7LevelEntityBinding*>;
+
     if (!GEditor) {
-        return std::unexpected{TEXT("The editor selection is unavailable.")};
+        return Result{std::unexpect, TEXT("The editor selection is unavailable.")};
     }
 
     TArray<AActor*> selected;
@@ -68,7 +71,7 @@ auto selected_bound_entity(AS7LevelAuthoringDocument& document)
         }
     }
     if (selected.Num() != 1) {
-        return std::unexpected{TEXT("Select exactly one adopted entity first.")};
+        return Result{std::unexpect, TEXT("Select exactly one bound entity first.")};
     }
 
     auto* const binding{document.entities.FindByPredicate(
@@ -76,7 +79,9 @@ auto selected_bound_entity(AS7LevelAuthoringDocument& document)
             return candidate.actor == actor;
         })};
     if (!binding) {
-        return std::unexpected{TEXT("The selected actor is not an adopted S7 entity.")};
+        return Result{std::unexpect,
+                      TEXT("The selected actor is not an bound S7 entity. Rename an "
+                           "unbound actor in the Outliner before its first export.")};
     }
     return binding;
 }
@@ -100,6 +105,7 @@ US7LevelAuthoringMode::US7LevelAuthoringMode() {
 void US7LevelAuthoringMode::Enter() {
     Super::Enter();
     refresh_document();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::Exit() {
@@ -113,14 +119,9 @@ void US7LevelAuthoringMode::CreateToolkit() {
 
 void US7LevelAuthoringMode::Tick(FEditorViewportClient* viewport_client, float delta_time) {
     Super::Tick(viewport_client, delta_time);
-    refresh_elapsed_seconds_ += delta_time;
-    if (refresh_elapsed_seconds_ < 0.5f) {
-        return;
-    }
-    refresh_elapsed_seconds_ = 0.0f;
-    auto const previous{document_};
-    refresh_document();
-    if (document_ != previous) {
+    if (current_level() != displayed_level_.Get() || document_.IsStale() ||
+        (current_level() && current_level()->Actors.Num() != actor_count_)) {
+        refresh_document();
         notify_changed();
     }
 }
@@ -235,17 +236,25 @@ auto US7LevelAuthoringMode::current_level() const -> ULevel* {
 
 void US7LevelAuthoringMode::refresh_document() {
     auto* const level{current_level()};
+    displayed_level_ = level;
+    actor_count_ = level ? level->Actors.Num() : 0;
     auto const found{IsValid(level)
                          ? find_level_authoring_document(*level)
-                         : std::expected<AS7LevelAuthoringDocument*, FString>{
-                               std::unexpected{TEXT("The current editor level is unavailable.")}}};
+                         : S7AuthoringResult<AS7LevelAuthoringDocument*>{
+                               std::unexpect, TEXT("The current editor level is unavailable.")}};
     document_ = found ? *found : nullptr;
     if (!found) {
         set_status(FText::FromString(found.error()));
         return;
     }
     if (!document_.IsValid()) {
-        create_document();
+        set_status(LOCTEXT("NoLinkedScript", "Create a mission or link an existing script."));
+    } else if (!FPaths::FileExists(s7_mission_path(*document_))) {
+        set_status(FText::Format(
+            LOCTEXT("MissingScript", "Missing {0}. Use Link / Change Script to locate it."),
+            FText::FromString(document_->source_path)));
+    } else {
+        set_status(FText::FromString(document_->source_path));
     }
 }
 
@@ -253,9 +262,9 @@ void US7LevelAuthoringMode::set_status(FText text) {
     status_ = MoveTemp(text);
 }
 
-void US7LevelAuthoringMode::notify_changed(ioj::settings::Settings const* settings) {
+void US7LevelAuthoringMode::notify_changed() {
     if (Toolkit.IsValid()) {
-        StaticCastSharedPtr<FS7LevelAuthoringModeToolkit>(Toolkit)->refresh(settings);
+        StaticCastSharedPtr<FS7LevelAuthoringModeToolkit>(Toolkit)->refresh();
     }
 }
 
@@ -264,38 +273,15 @@ void US7LevelAuthoringMode::create_document() {
     if (!IsValid(level)) {
         return;
     }
-    auto const had_document{document_.IsValid()};
-    auto const created{create_level_authoring_document(*level)};
-    if (!created) {
-        set_status(FText::FromString(created.error()));
+    if (document_.IsValid()) {
+        set_status(LOCTEXT("AlreadyLinked", "This map already has a linked script."));
     } else {
-        document_ = *created;
-        auto const adopted{adopt_unbound_level_entities(*level, *document_)};
-        if (had_document) {
-            set_status(FText::Format(
-                LOCTEXT("ExistingDocumentAdopted", "Adopted {0} existing level entities."),
-                adopted));
-        } else {
-            set_status(FText::Format(
-                LOCTEXT(
-                    "DocumentCreatedAndAdopted",
-                    "Created the S7 authoring document and adopted {0} existing level entities."),
-                adopted));
+        auto created{set_up_s7_mission(*level, MissionSetup::Create)};
+        if (created) {
+            document_ = *created;
         }
+        set_status(FText::FromString(created ? document_->source_path : created.error()));
     }
-    notify_changed();
-}
-
-void US7LevelAuthoringMode::adopt_entities() {
-    if (!document_.IsValid()) {
-        create_document();
-    }
-    auto* const level{current_level()};
-    if (!IsValid(level) || !document_.IsValid()) {
-        return;
-    }
-    auto const adopted{adopt_unbound_level_entities(*level, *document_)};
-    set_status(FText::Format(LOCTEXT("Adopted", "Adopted {0} entities."), adopted));
     notify_changed();
 }
 
@@ -337,6 +323,7 @@ void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
     FScopedTransaction transaction{LOCTEXT("RenameEntityId", "Rename S7 Entity ID")};
     document_->Modify();
     (*binding)->id = new_id;
+    document_->set_needs_export(true);
     set_status(FText::Format(LOCTEXT("RenamedEntityId", "Renamed selected entity to '{0}'."),
                              FText::FromString(new_id)));
     notify_changed();
@@ -367,77 +354,57 @@ void US7LevelAuthoringMode::validate_playable_level() {
     notify_changed();
 }
 
-void US7LevelAuthoringMode::set_up_playable_level() {
-    auto* const level{current_level()};
-    if (!IsValid(level) || !document_.IsValid()) {
-        set_status(LOCTEXT("NoLevelForPlayableSetup", "Open an S7 level before setting up play."));
-        notify_changed();
+void US7LevelAuthoringMode::link_script() {
+    auto* level{current_level()};
+    auto path{select_source_path()};
+    if (!level || !path) {
         return;
     }
-    auto const setup{set_up_playable_s7_level(*level, *document_)};
-    set_status(FText::FromString(setup ? *setup : setup.error()));
+    auto linked{set_up_s7_mission(*level, MissionSetup::Link, *path)};
+    if (linked) {
+        document_ = *linked;
+    }
+    set_status(FText::FromString(linked ? document_->source_path : linked.error()));
     notify_changed();
-}
-
-void US7LevelAuthoringMode::load_s7() {
-    auto const path{select_source_path()};
-    if (!path.IsSet()) {
-        return;
-    }
-    if (!document_.IsValid()) {
-        auto* const level{current_level()};
-        if (!IsValid(level)) {
-            return;
-        }
-        auto created{create_level_authoring_document(*level, *path)};
-        if (!created) {
-            set_status(FText::FromString(created.error()));
-            notify_changed();
-            return;
-        }
-        document_ = *created;
-    }
-    auto const root_changed{!FPaths::IsSamePath(document_->source_path, path.GetValue())};
-    document_->Modify();
-    document_->source_path = path.GetValue();
-    for (auto const actor : document_->GetLevel()->Actors) {
-        if (auto* orchestrator{Cast<ioj::ATestBatchOrchestrator>(actor.Get())};
-            IsValid(orchestrator)) {
-            orchestrator->Modify();
-            orchestrator->set_level_script(document_->source_path);
-        }
-    }
-    import_source(root_changed);
 }
 
 void US7LevelAuthoringMode::open_script_editor() {
     if (document_.IsValid()) {
-        auto const path{FPaths::ConvertRelativePathToFull(document_->source_path)};
+        auto const path{s7_mission_path(*document_)};
         FPlatformProcess::LaunchFileInDefaultExternalApplication(*path);
     }
 }
 
-void US7LevelAuthoringMode::import_source(bool root_changed) {
+void US7LevelAuthoringMode::rebuild_scene() {
     auto* const level{current_level()};
     if (!IsValid(level) || !document_.IsValid()) {
         return;
     }
-    auto definition{read_s7_authored_level(*document_)};
-    if (!definition) {
-        set_status(FText::FromString(definition.error()));
-    } else {
-        auto imported{import_s7_level(*level, *document_, *definition, root_changed)};
-        set_status(imported ? LOCTEXT("Imported",
-                                      "Imported editor baseline values for editing and human-owned "
-                                      "entities for reference. Play uses the composed level.")
-                            : FText::FromString(imported.error()));
+    auto const count{Algo::CountIf(document_->entities,
+                                   [](auto const& binding) { return IsValid(binding.actor); })};
+    if (count && FMessageDialog::Open(
+                     EAppMsgType::YesNo,
+                     FText::Format(LOCTEXT("ConfirmRebuild",
+                                           "Replace {0} bound actors with saved placements? "
+                                           "Unsaved edits to these actors will be lost."),
+                                   count)) != EAppReturnType::Yes) {
+        return;
     }
+    auto imported{import_s7_level(*level, *document_)};
+    set_status(imported ? LOCTEXT("Imported",
+                                  "Imported editor baseline values for editing and human-owned "
+                                  "entities for reference. Play uses the composed level.")
+                        : FText::FromString(imported.error()));
     notify_changed();
 }
 
-void US7LevelAuthoringMode::export_geometry() {
-    auto result{export_entity_geometry(entity_geometry_path())};
-    set_status(result ? LOCTEXT("GeometryExported", "Saved shared entity geometry.")
+void US7LevelAuthoringMode::check_export() {
+    auto* level{current_level()};
+    if (!level || !document_.IsValid()) {
+        return;
+    }
+    auto result{check_s7_export(*level, *document_)};
+    set_status(result ? LOCTEXT("ExportChecked", "Scene passes export checks.")
                       : FText::FromString(result.error()));
     notify_changed();
 }

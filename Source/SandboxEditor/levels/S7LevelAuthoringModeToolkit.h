@@ -1,7 +1,5 @@
 #pragma once
 
-#include <ioj/settings/settings.h>
-
 #include <Toolkits/BaseToolkit.h>
 
 class IDetailsView;
@@ -23,20 +21,17 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     auto GetToolkitFName() const -> FName override;
     auto GetBaseToolkitName() const -> FText override;
     auto GetInlineContent() const -> TSharedPtr<SWidget> override;
-    void refresh(ioj::settings::Settings const* settings = nullptr);
+    void refresh();
   private:
-    auto grid_summary() const -> FText;
     auto create_document() -> FReply;
-    auto adopt_entities() -> FReply;
     auto rename_selected_entity() -> FReply;
     auto open_level_config() -> FReply;
     auto validate_playable_level() -> FReply;
-    auto set_up_playable_level() -> FReply;
-    auto load_s7() -> FReply;
+    auto link_script() -> FReply;
     auto open_script_editor() -> FReply;
-    auto import_source() -> FReply;
+    auto rebuild_scene() -> FReply;
     auto export_scene() -> FReply;
-    auto export_geometry() -> FReply;
+    auto check_export() -> FReply;
 
     TWeakObjectPtr<US7LevelAuthoringMode> mode_{};
     TWeakObjectPtr<AS7LevelAuthoringDocument> displayed_document_{};
@@ -44,5 +39,4 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     TSharedPtr<SEditableTextBox> entity_id_{};
     TSharedPtr<SMultiLineEditableTextBox> status_{};
     TSharedPtr<SWidget> content_{};
-    FText grid_summary_{};
 };

@@ -6,6 +6,12 @@
 #include "Delegates/IDelegateInstance.h"
 #include "Modules/ModuleManager.h"
 
+class AActor;
+class FObjectPreSaveContext;
+struct FPropertyChangedEvent;
+class UWorld;
+class FTransactionObjectEvent;
+
 class SANDBOXEDITOR_API FSandboxEditorModule
     : public IModuleInterface
     , public ioj::LogMsgMixin<"FSandboxEditorModule"> {
@@ -14,6 +20,13 @@ class SANDBOXEDITOR_API FSandboxEditorModule
     virtual void ShutdownModule() override;
   private:
     void register_menu_extensions();
+    void register_actor_events();
+    void on_actor_changed(AActor* actor);
+    void on_movement_finished(UObject& object);
+    void on_property_changed(UObject* object, FPropertyChangedEvent& change);
+    void on_transacted(UObject* object, FTransactionObjectEvent const& change);
+    void on_pre_save_world(UWorld* world, FObjectPreSaveContext context);
+    void on_pre_begin_pie(bool simulating);
 
     FDelegateHandle s7_pie_handle_{};
 };

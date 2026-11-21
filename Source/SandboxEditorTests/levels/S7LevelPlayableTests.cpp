@@ -17,6 +17,7 @@
 #include <Engine/Level.h>
 #include <Engine/World.h>
 #include <EngineUtils.h>
+#include <FileHelpers.h>
 #include <HAL/FileManager.h>
 #include <HAL/PlatformFileManager.h>
 #include <Kismet/GameplayStatics.h>
@@ -74,7 +75,8 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         }
         auto const root{FPaths::Combine(source_directory_, TEXT("Playable.scm"))};
         auto& editor_level{*world->GetCurrentLevel()};
-        auto created{ioj::editor::create_level_authoring_document(editor_level, root)};
+        auto created{
+            ioj::editor::set_up_s7_mission(editor_level, ioj::editor::MissionSetup::Create, root)};
         if (!assert_success(
                 *TestRunner, TEXT("Create generated configuration and human root"), created)) {
             return;
@@ -134,10 +136,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         if (!assert_success(*TestRunner, TEXT("Evaluate human entry point"), definition) ||
             !assert_success(*TestRunner,
                             TEXT("Materialize editor proxies"),
-                            ioj::editor::import_s7_level(editor_level, *document, *definition)) ||
-            !assert_success(*TestRunner,
-                            TEXT("Set up playable map"),
-                            ioj::editor::set_up_playable_s7_level(editor_level, *document))) {
+                            ioj::editor::import_s7_level(editor_level, *document))) {
             return;
         }
         auto const* enemy_binding{document->entities.FindByPredicate(
@@ -147,18 +146,14 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         }
         auto* const editor_enemy{CastChecked<ioj::ATestCapitalShipProxy>(enemy_binding->actor)};
         TestRunner->TestTrue(TEXT("An imported scene matches its saved export"),
-                             ioj::editor::s7_scene_needs_export(editor_level, *document) == false);
+                             ioj::editor::s7_scene_needs_export(*document) == false);
         if (!observer) {
             editor_enemy->SetActorLocation(FVector{90000., 0., 0.});
+            GEditor->BroadcastEndObjectMovement(*editor_enemy);
             TestRunner->TestTrue(TEXT("Moving an exported actor requires export"),
-                                 ioj::editor::s7_scene_needs_export(editor_level, *document) ==
-                                     true);
+                                 ioj::editor::s7_scene_needs_export(*document) == true);
             editor_enemy->spawn_time_seconds = 0.;
             world->SpawnActor<ioj::ATestCapitalShipProxy>();
-            TestRunner->AddExpectedMessage(TEXT("Scene changes haven't been exported"),
-                                           ELogVerbosity::Warning,
-                                           EAutomationExpectedMessageFlags::Contains,
-                                           1);
             if (!assert_success(*TestRunner,
                                 TEXT("Validate the saved scene with pending edits"),
                                 ioj::editor::validate_playable_s7_level(*document))) {
@@ -167,15 +162,21 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         } else {
             auto const targets{document->camera.targets};
             document->camera.targets = {editor_enemy};
+            FPropertyChangedEvent change{FindFProperty<FProperty>(
+                document->GetClass(), GET_MEMBER_NAME_CHECKED(AS7LevelAuthoringDocument, camera))};
+            document->PostEditChangeProperty(change);
             TestRunner->TestTrue(TEXT("Changing the observer target requires export"),
-                                 ioj::editor::s7_scene_needs_export(editor_level, *document) ==
-                                     true);
+                                 ioj::editor::s7_scene_needs_export(*document) == true);
             document->camera.targets = targets;
             for (TActorIterator<ioj::ATestBatchOrchestrator> it{world}; it; ++it) {
                 it->set_start_mode(ioj::EOrchestratorStartMode::Automatic);
             }
         }
 
+        TestRunner->AddExpectedMessage(TEXT("Scene edits need export"),
+                                       ELogVerbosity::Warning,
+                                       EAutomationExpectedMessageFlags::Contains,
+                                       1);
         TActorIterator<ioj::AGpuStarfieldActor> preview{world};
         if (!TestRunner->TestTrue(TEXT("Editor starfield exists"), static_cast<bool>(preview))) {
             return;
@@ -307,26 +308,24 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
     TEST_METHOD(DefendCapitalStartsWithExportedGeometry)
     {
         using namespace ioj;
-        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto& level{*world->GetCurrentLevel()};
-        auto const root{FPaths::ConvertRelativePathToFull(
-            FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts/defend_capital.scm")))};
-        auto document{editor::create_level_authoring_document(level, root)};
-        if (!s7_level_playable_tests::assert_success(
-                *TestRunner, TEXT("Open Defend Capital"), document)) {
+        auto const map{FPaths::Combine(
+            FPaths::ProjectContentDir(),
+            TEXT("Levels/FeatureTests/FT_soa_turrets/test_levels/defend_capital.umap"))};
+        if (!TestRunner->TestTrue(TEXT("Open Defend Capital map"),
+                                  FEditorFileUtils::LoadMap(map, false, false))) {
+            return;
+        }
+        auto* world{GEditor->GetEditorWorldContext().World()};
+        auto document{editor::find_level_authoring_document(*world->GetCurrentLevel())};
+        if (!TestRunner->TestTrue(TEXT("Map embeds its project-relative mission"),
+                                  document && IsValid(*document) &&
+                                      (*document)->source_path ==
+                                          TEXT("LevelScripts/defend_capital.scm"))) {
             return;
         }
         auto definition{editor::read_s7_authored_level(**document)};
         if (!s7_level_playable_tests::assert_success(
-                *TestRunner, TEXT("Load mission"), definition) ||
-            !s7_level_playable_tests::assert_success(
-                *TestRunner,
-                TEXT("Import scene"),
-                editor::import_s7_level(level, **document, *definition)) ||
-            !s7_level_playable_tests::assert_success(
-                *TestRunner,
-                TEXT("Set up Play"),
-                editor::set_up_playable_s7_level(level, **document))) {
+                *TestRunner, TEXT("Load linked mission"), definition)) {
             return;
         }
         auto const bounds{definition->settings().entity_geometry.player_ship.half_extents};

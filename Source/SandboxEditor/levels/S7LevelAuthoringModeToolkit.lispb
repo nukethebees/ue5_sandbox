@@ -16,30 +16,21 @@
       (auto :padding 2
         (vbox
           (authoring-row
-            (authoring-action "New" "New" create_document)
-            (authoring-action "Load" "Load & Apply S7" load_s7))
-          (authoring-row
-            (authoring-action "Preview" "Import Source" import_source)
+            (authoring-action "CheckExport" "Check Export" check_export)
             (authoring-action "Export" "Export Scene" export_scene))
           (authoring-row
-            (authoring-action "Adopt" "Adopt Entities" adopt_entities)
-            (authoring-action "OpenScriptEditor" "Edit Mission Source" open_script_editor))
+            (authoring-action "Create" "Create Mission" create_document)
+            (authoring-action "Link" "Link / Change Script" link_script))
           (authoring-row
-            (authoring-action "SetUpPlayableLevel" "Set Up Playable Level" set_up_playable_level)
-            (authoring-action "ValidatePlayableLevel" "Validate Level" validate_playable_level))
+            (authoring-action "Rebuild" "Rebuild Scene" rebuild_scene)
+            (authoring-action "ValidateSaved" "Validate Saved Mission" validate_playable_level))
           (authoring-row
-            (SButton
-              :Text (loc "FS7LevelAuthoringModeToolkit" "EditLevelConfig" "Edit Resources")
-              :ToolTipText (loc "FS7LevelAuthoringModeToolkit" "EditLevelConfigTooltip"
-                "Edit shared game resources. Author simulation settings in the S7 sources.")
-              :OnClicked (method open_level_config))
-            (authoring-action "ExportGeometry" "Export Entity Geometry" export_geometry))
+            (authoring-action "EditScript" "Edit Mission Source" open_script_editor)
+            (authoring-action "EditResources" "Edit Resources" open_level_config))
           (authoring-row
             (assign entity_id_ SEditableTextBox
               :HintText (loc "FS7LevelAuthoringModeToolkit" "EntityIdHint" "Selected entity ID"))
             (authoring-action "RenameEntity" "Rename Entity ID" rename_selected_entity))))
-      (auto :padding 4
-        (STextBlock :AutoWrapText true :Text (method grid_summary)))
       (auto :padding 4
         (assign status_ SMultiLineEditableTextBox :IsReadOnly true :AutoWrapText true))
       (auto (existing details)))))

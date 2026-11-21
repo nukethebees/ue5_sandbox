@@ -20,20 +20,10 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                         [SNew(SHorizontalBox) +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
-                                  .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit", "New", "New"))
-                                  .OnClicked(&self_, &ThisClass::create_document)] +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                             [SNew(SButton)
-                                  .Text(NSLOCTEXT(
-                                      "FS7LevelAuthoringModeToolkit", "Load", "Load & Apply S7"))
-                                  .OnClicked(&self_, &ThisClass::load_s7)]] +
-                    SandboxUI::Slate::vbox_auto_slot()
-                        [SNew(SHorizontalBox) +
-                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                             [SNew(SButton)
-                                  .Text(NSLOCTEXT(
-                                      "FS7LevelAuthoringModeToolkit", "Preview", "Import Source"))
-                                  .OnClicked(&self_, &ThisClass::import_source)] +
+                                  .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
+                                                  "CheckExport",
+                                                  "Check Export"))
+                                  .OnClicked(&self_, &ThisClass::check_export)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT(
@@ -44,46 +34,41 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT(
-                                      "FS7LevelAuthoringModeToolkit", "Adopt", "Adopt Entities"))
-                                  .OnClicked(&self_, &ThisClass::adopt_entities)] +
+                                      "FS7LevelAuthoringModeToolkit", "Create", "Create Mission"))
+                                  .OnClicked(&self_, &ThisClass::create_document)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                  "OpenScriptEditor",
-                                                  "Edit Mission Source"))
-                                  .OnClicked(&self_, &ThisClass::open_script_editor)]] +
+                                                  "Link",
+                                                  "Link / Change Script"))
+                                  .OnClicked(&self_, &ThisClass::link_script)]] +
                     SandboxUI::Slate::vbox_auto_slot()
                         [SNew(SHorizontalBox) +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
-                                  .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                  "SetUpPlayableLevel",
-                                                  "Set Up Playable Level"))
-                                  .OnClicked(&self_, &ThisClass::set_up_playable_level)] +
+                                  .Text(NSLOCTEXT(
+                                      "FS7LevelAuthoringModeToolkit", "Rebuild", "Rebuild Scene"))
+                                  .OnClicked(&self_, &ThisClass::rebuild_scene)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                  "ValidatePlayableLevel",
-                                                  "Validate Level"))
+                                                  "ValidateSaved",
+                                                  "Validate Saved Mission"))
                                   .OnClicked(&self_, &ThisClass::validate_playable_level)]] +
                     SandboxUI::Slate::vbox_auto_slot()
                         [SNew(SHorizontalBox) +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                  "EditLevelConfig",
-                                                  "Edit Resources"))
-                                  .ToolTipText(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                         "EditLevelConfigTooltip",
-                                                         "Edit shared game resources. Author "
-                                                         "simulation settings in the S7 sources."))
-                                  .OnClicked(&self_, &ThisClass::open_level_config)] +
+                                                  "EditScript",
+                                                  "Edit Mission Source"))
+                                  .OnClicked(&self_, &ThisClass::open_script_editor)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                  "ExportGeometry",
-                                                  "Export Entity Geometry"))
-                                  .OnClicked(&self_, &ThisClass::export_geometry)]] +
+                                                  "EditResources",
+                                                  "Edit Resources"))
+                                  .OnClicked(&self_, &ThisClass::open_level_config)]] +
                     SandboxUI::Slate::vbox_auto_slot()
                         [SNew(SHorizontalBox) +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
@@ -97,8 +82,6 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                                                   "RenameEntity",
                                                   "Rename Entity ID"))
                                   .OnClicked(&self_, &ThisClass::rename_selected_entity)]]] +
-               SandboxUI::Slate::vbox_auto_slot(FMargin{4.0f})
-                   [SNew(STextBlock).AutoWrapText(true).Text(&self_, &ThisClass::grid_summary)] +
                SandboxUI::Slate::vbox_auto_slot(
                    FMargin{4.0f})[SAssignNew(self_.status_, SMultiLineEditableTextBox)
                                       .IsReadOnly(true)
