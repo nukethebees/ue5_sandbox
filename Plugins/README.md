@@ -1,17 +1,5 @@
-# Plugin map
+# Plugins
 
-`Plugins/` contains reusable engine extensions, experiments, shared game layers, and game plugins.
-Use this map to find the owner before following a plugin's own README or source layout.
-
-| Group | Plugins |
-| --- | --- |
-| Core and shared game systems | `SandboxCore`, `SandboxGameShared`, `SandboxISMC`, `SandboxMesh` |
-| Rendering, materials, and UI | `SandboxShaders`, `SandboxMaterialExprs`, `SandboxUI`, `USFLoader` |
-| Game and authoring | `SpaceGame`, `SandboxEditorTools` |
-
-Several plugins already have local documentation: [SpaceGame](SpaceGame/README.md),
-[SandboxShaders](SandboxShaders/README.md), [SandboxUI](SandboxUI/README.md),
-[SandboxISMC](SandboxISMC/README.md).
-
-Plugin descriptors and module rules remain the authoritative record of what is enabled. Regenerate
-project files after changing a plugin, module, `.Build.cs`, or `.Target.cs` definition.
+- [SpaceGame](SpaceGame/ARCHITECTURE.md) connects Unreal to the native simulation.
+- [SandboxShaders](SandboxShaders/README.md), [SandboxUI](SandboxUI/README.md), and [SandboxISMC](SandboxISMC/ARCHITECTURE.md) own runtime rendering.
+- [SandboxExperiments](SandboxExperiments/README.md) supplies optional editor showcases. [SandboxISMCLab](SandboxISMCLab/README.md) supplies instance benchmarks.

@@ -1,28 +1,7 @@
 # coj
 
-The maintainer-installed CLI for worktree preparation, constrained feature Git operations,
-formatting, analysis invocation, Unreal authoring/launch operations, and benchmark delegation.
-CMake retains compilation, generated artifacts, and ordinary tests.
+Install the CLI using the [worktree setup](../../../../docs/build-and-test.md#setup). Use `coj --help` to list commands and `coj git --help` for supported Git operations.
 
-Start a task from anywhere inside its worktree:
+Start an independent change with `coj git switch -c feature/<task> dev`. Continue related changes on their feature branch. `coj git check` previews a supported action. `dev`, `main`, `master`, and branches owned by other worktrees are protected.
 
-```powershell
-coj prepare-worktree
-```
-
-This retains build outputs, updates submodules, regenerates presets and code, and disables Live Coding
-in existing saved settings. Build and test the affected targets afterward.
-
-- [Installation and command guide](docs/usage.md)
-- [Architecture and Git guardrails](ARCHITECTURE.md)
-- [Repository workflow policy](../../../../AGENTS.md)
-
-For local development, run these from `tools/rust`:
-
-```powershell
-cargo build --release --package coj --locked
-cargo test --package coj --locked
-```
-
-Tests use temporary Git repositories and small fixtures; they do not build the game or clear
-this repository's output.
+After validation and explicit maintainer approval, `coj integrate` rebases the clean feature branch, merges it into `dev`, and removes the branch. Pass `--keep-branch` to retain it.

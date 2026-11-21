@@ -1,10 +1,3 @@
-# Sandbox ISMC Lab
+# Instance rendering lab
 
-Optional demos and benchmarks comparing the production SandboxISMC renderer with
-Unreal's standard ISMC. Disabled by default.
-
-Enable `SandboxISMCLab` in `Sandbox.uproject` and rebuild the editor before opening
-the maps under `/SandboxISMCLab/Lab` or running `coj benchmark sandbox-ismc`.
-Keep it enabled in the revisions selected for benchmark comparisons.
-
-The renderer and the material shared with rendering tests remain in `SandboxISMC`.
+Enable `SandboxISMCLab` in `Sandbox.uproject` and rebuild the editor. Open a map under `/SandboxISMCLab/Lab` to compare SandboxISMC with Unreal's standard instanced meshes. [Run or compare benchmarks](../../docs/benchmarks.md#run-one-workload)

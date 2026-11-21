@@ -1,12 +1,15 @@
-# Sandbox Experiments
+# Open a showcase
 
-Optional UI and shader experiments, showcases, benchmarks and shader smoke tests.
-Disabled in normal builds. Enable `SandboxExperiments` in `Sandbox.uproject`, then
-build with `cmake --build --preset debug-game` before opening its showcase assets
-or running `coj unreal generate-slate-dsl-smoke-asset`.
+Enable `SandboxExperiments` in `Sandbox.uproject`, rebuild with `cmake --build --preset debug-game`, and open the editor.
 
-Module names are unchanged. Showcase assets live under
-`/SandboxExperiments/UIExamples` and `/SandboxExperiments/ShaderShowcase`, so they
-are not mounted when the plugin is disabled. Package redirects preserve references
-from existing assets. Shared materials, shader files and production rendering stay
-in `SandboxUI` and `SandboxShaders`.
+**Shaders.** Choose **Window → Sandbox Shaders → Open Shader Showcase**. Select an actor to edit its settings. [Effects catalog](../SandboxShaders/README.md#shader-experiments)
+
+**UI.** In `/SandboxExperiments/UIExamples`, right-click a widget and choose **Run Editor Utility Widget**. For a command-line benchmark, run `cmake --build --preset debug-game --target <target>`.
+
+| Widget | Shows | Benchmark target |
+| --- | --- | --- |
+| `EUW_SandboxUIShowcase` | Live SandboxUI gallery | — |
+| `EUW_HeatmapRDGShowcase` | RDG versus Slate custom vertices | `heatmap-benchmark` |
+| `EUW_Radar3DShowcase` | Production radar with synthetic contacts | `radar-3d-benchmark` |
+| `EUW_Scatter3DShowcase` | Depth-tested point clusters | `scatter-3d-benchmark` |
+| `EUW_VolumeHeatmap3DShowcase` | Dense volume rendered in slices | `volume-heatmap-3d-benchmark` |
