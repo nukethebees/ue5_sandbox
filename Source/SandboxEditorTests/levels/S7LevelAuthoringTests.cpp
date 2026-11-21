@@ -473,6 +473,12 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             CastChecked<ioj::ATestStaticTurretsProxy>(binding(document, TEXT("turret"))->actor);
         spinner =
             CastChecked<ioj::ATestTubeSpinnerProxy>(binding(document, TEXT("spinner"))->actor);
+        TestRunner->TestEqual(TEXT("Rebuilt capital uses the root Red folder"),
+                              capital->GetFolderPath(),
+                              FName{TEXT("Red")});
+        TestRunner->TestEqual(TEXT("Rebuilt turret uses the root Blue folder"),
+                              turret->GetFolderPath(),
+                              FName{TEXT("Blue")});
         TestRunner->TestTrue(TEXT("Import restores capital properties on the proxy"),
                              capital->health == 456 && capital->initial_spawn_delay == 7.25f &&
                                  capital->spawn_cooldown == 9.5f &&

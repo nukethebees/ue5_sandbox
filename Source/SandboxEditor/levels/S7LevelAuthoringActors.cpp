@@ -11,6 +11,7 @@
 #include <SandboxCoreEngine/strings.h>
 
 #include <algorithm>
+#include <utility>
 
 namespace ioj::editor {
 
@@ -98,6 +99,8 @@ void configure_s7_level_actor(AActor& actor,
     actor.RerunConstructionScripts();
     actor.PostEditMove(true);
     actor.SetActorLabel(label.ToString(), true);
+    actor.SetFolderPath(
+        FName{StaticEnum<ETestTeam>()->GetNameStringByValue(std::to_underlying(team))});
 }
 
 auto canonical_s7_level_entity_id(FStringView const text, FStringView const fallback) -> FName {
