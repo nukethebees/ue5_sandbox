@@ -661,27 +661,34 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     ASSERT_TRUE(variation->levels[0].definition);
     EXPECT_EQ(variation->levels[0].definition->metadata().title, "Shared");
 }
-TEST(NativeLevelAuthoringReader, CatalogAndNestedImportsShareOneFileBudget) {
+TEST(NativeLevelAuthoringReader, EachCatalogEntryHasItsOwnNestedImportBudget) {
     TemporaryLevelDirectory directory;
     auto const& root{directory.path()};
     auto const limit{s7::InterpreterOptions{}.max_loaded_files};
-    auto const paths{std::format("(make-list {} \"level.scm\")", limit)};
+    auto const mission{module_source("mission", minimal_source())};
+    auto const with_imports{[&](std::size_t count) {
+        return std::format(R"((do ((i 0 (+ i 1))) ((= i {})) (import-module "helper.scm"))
+{})",
+                           count,
+                           mission);
+    }};
     ASSERT_TRUE(write_files({
-        {root / "catalog.scm", module_source("catalog", "(catalog :levels " + paths + ")")},
-        {root / "level.scm",
-         "(import-module \"helper.scm\")\n" + module_source("mission", minimal_source())},
+        {root / "catalog.scm",
+         module_source("catalog", R"((catalog :levels '("over.scm" "exact.scm")))")},
+        {root / "over.scm", with_imports(limit)},
+        {root / "exact.scm", with_imports(limit - 1)},
         {root / "helper.scm", ""},
     }));
     auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
     ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
-    ASSERT_EQ(catalog->levels.size(), limit);
-    auto const admitted{(limit - 1) / 2};
-    ASSERT_FALSE(catalog->levels[admitted - 1].definition);
-    EXPECT_TRUE(has_code(catalog->levels[admitted - 1].definition.error(),
-                         DiagnosticCode::DuplicateLevelId));
-    ASSERT_FALSE(catalog->levels[admitted].definition);
-    EXPECT_TRUE(
-        catalog->levels[admitted].definition.error().front().message.contains("file count limit"));
+    ASSERT_EQ(catalog->levels.size(), 2u);
+    auto const& over{catalog->levels[0].definition};
+    ASSERT_FALSE(over);
+    ASSERT_FALSE(over.error().empty());
+    EXPECT_TRUE(over.error().front().message.contains("file count limit"))
+        << format_diagnostics(over.error());
+    auto const& exact{catalog->levels[1].definition};
+    ASSERT_TRUE(exact) << format_diagnostics(exact.error());
 }
 
 TEST(NativeLevelAuthoringReader, RootReportsEvaluationAndGrammarErrors) {

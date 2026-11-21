@@ -94,6 +94,7 @@ auto Interpreter::import_ast(std::string_view directory,
                              std::string_view path,
                              char const* export_name,
                              std::string* source) -> AstResult {
+    impl_->loader_.reset_import_budget();
     if (source) {
         source->clear();
     }

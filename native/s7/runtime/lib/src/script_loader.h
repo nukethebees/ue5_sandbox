@@ -20,6 +20,7 @@ class ScriptLoader {
   public:
     explicit ScriptLoader(InterpreterOptions const& options);
 
+    void reset_import_budget();
     // Pass a canonical, normalized key and the validated source byte count.
     [[nodiscard]] auto begin_load(std::string key, std::size_t file_size) -> LoadAdmission;
     // Each admitted token must be completed or aborted exactly once.

@@ -28,8 +28,8 @@ the validated file handle through reading and lives under `runtime/lib/src/platf
 interpreter or simulation. Its parsers accept a valid AST and return `std::expected`
 definitions with structured diagnostics. The standalone parsers operate on owned ASTs and are tested without s7.
 
-A catalog exports ordered lists of relative level and campaign paths. One interpreter loads the
-catalog and imports each entry with a shared file and byte budget. C++ decodes each exported
+A catalog exports ordered lists of relative level and campaign paths. One interpreter loads them all.
+The catalog and each entry get independent import budgets, including nested imports. C++ decodes each exported
 definition individually. Entries retain their source path and diagnostics so a broken file
 does not prevent valid siblings from loading. The level selector displays the bytes captured
 when the level was imported.

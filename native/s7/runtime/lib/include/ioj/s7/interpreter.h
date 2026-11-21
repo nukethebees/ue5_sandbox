@@ -25,6 +25,7 @@ class Interpreter {
     [[nodiscard]] auto evaluate(std::string_view expression) -> EvaluationResult;
     [[nodiscard]] auto evaluate_ast(std::string_view expression, AstLimits limits = {})
         -> AstResult;
+    // Each root and its nested imports share a fresh file and byte budget.
     // A requested source snapshot is available even when evaluation of the captured file fails.
     [[nodiscard]] auto import_ast(std::string_view directory,
                                   std::string_view path,

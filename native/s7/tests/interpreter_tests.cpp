@@ -289,6 +289,8 @@ TEST(SchemeInterpreter, ActiveNestedSourcesCountTowardByteLimit) {
     })};
     auto const accepted{exact.evaluate(R"((module-ref (import-module "outer.scm") 'value))")};
     EXPECT_EQ(accepted, "42");
+    auto const reimported{exact.import_ast(library.path().string(), "outer.scm", "value")};
+    ASSERT_TRUE(reimported.has_value());
 }
 
 TEST(SchemeInterpreter, NonlocalExitAbortsLoad) {

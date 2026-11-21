@@ -14,6 +14,13 @@ ScriptLoader::ScriptLoader(InterpreterOptions const& options)
     , max_files_{options.max_loaded_files}
     , max_depth_{options.max_load_depth} {}
 
+void ScriptLoader::reset_import_budget() {
+    assert(active_loads_.empty());
+    assert(reserved_bytes_ == 0);
+    loaded_files_ = 0;
+    loaded_bytes_ = 0;
+}
+
 auto ScriptLoader::begin_load(std::string key, std::size_t const file_size) -> LoadAdmission {
     auto const active{std::ranges::find(active_loads_, key, &ActiveLoad::key)};
     if (active != active_loads_.end()) {
