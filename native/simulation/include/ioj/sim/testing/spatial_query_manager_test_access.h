@@ -31,9 +31,5 @@ struct SpatialQueryManagerTestAccess {
         -> collision::CollisionUniformGrid const& {
         return manager.collision_system_.uniform_grid_;
     }
-    static auto entity_aabbs(SpatialQueryManager const& manager) noexcept
-        -> collision::EntityAABBs const& {
-        return manager.collision_system_.entity_aabbs_;
-    }
 };
 } // namespace ioj::sim

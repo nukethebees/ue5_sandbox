@@ -332,7 +332,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
     expected_ids[EntityType::TubeSpinner] = simulation.spinners().get_entities().entity_ids()[0];
     auto const& spatial_queries{simulation.spatial_query_manager()};
     auto const& grid{SpatialQueryManagerTestAccess::uniform_grid(spatial_queries)};
-    auto const& entity_aabbs{SpatialQueryManagerTestAccess::entity_aabbs(spatial_queries)};
+    auto const& entity_aabbs{spatial_queries.local_entity_bounds()};
 
     for (auto const entity_type : EnumTraits<EntityType>::values) {
         auto const id{expected_ids[entity_type]};

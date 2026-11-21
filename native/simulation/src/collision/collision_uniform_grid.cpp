@@ -3,19 +3,14 @@
 #include <ioj/column_math.h>
 #include <ioj/diagnostics.h>
 #include <ioj/rotator_math.h>
-#include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/collision_grid.h>
+#include <ioj/sim/collision/collision_grid_entities.h>
 #include <ioj/sim/collision/grid_traversal.h>
 #include <ioj/sim/collision/line_trace_batch.h>
 #include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/entities/health.h>
-#include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/levels/level_read_access.h>
-#include <ioj/sim/player/sim.h>
 #include <ioj/sim/profiling.h>
-#include <ioj/sim/spinners/sim.h>
-#include <ioj/sim/turrets/sim.h>
 
 #include <algorithm>
 #include <cassert>
@@ -140,15 +135,11 @@ void CollisionUniformGrid::rebuild_static_grid() {
 // Entity collision
 /* **************************************** */
 void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
-                                               LevelReadAccess const& level) {
+                                               CollisionGridEntities const& entities) {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::rebuild_entity_grid");
     begin_entity_grid();
     auto& storage{entity_storage_};
-    auto const capitals{level.capitals().get_entities()};
-    auto const fighters{level.fighters().entities()};
-    auto const turrets{level.turrets().get_entities()};
-    auto const spinners{level.spinners().get_entities()};
-    auto const* player{level.player()};
+    auto const& [capitals, fighters, turrets, spinners, health, player]{entities};
     auto const max_entity_count{static_cast<std::uint64_t>(capitals.num()) + fighters.num() +
                                 turrets.num() + spinners.num() + (player ? 1u : 0u)};
     assert(max_entity_count <= EntityCellData::max_capacity);
@@ -187,23 +178,20 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     }};
     auto& player_rows{storage.entity_row_to_aabb_row[EntityType::PlayerShip]};
     player_rows.assign(player ? 1u : 0u, invalid_entity_aabb_row);
-    if (player && player->is_alive()) {
+    if (player && is_alive(player->health)) {
         player_rows[0] = output_row;
         write_entity_bounds(
             output,
             output_row++,
-            player->unique_entity_id,
+            player->id,
             make_entity_world_bounds(
-                entity_aabbs,
-                EntityType::PlayerShip,
-                Vector3f{player->physical_state().transform.location},
-                to_quaternion(Rotator3f{player->physical_state().transform.rotator()})));
+                entity_aabbs, EntityType::PlayerShip, player->location, player->orientation));
     }
     auto const capital_rotations{capitals.view_rotations().resolve()};
     append_batch(EntityType::CapitalShip,
                  capitals.entity_ids(),
                  capitals.view_locations().resolve(),
-                 level.capitals().healths(),
+                 health.const_view<EntityType::CapitalShip>(),
                  [capital_rotations](std::uint32_t row) {
                      return to_quaternion(rotation_at(capital_rotations, row));
                  });
@@ -211,7 +199,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     append_batch(EntityType::Turret,
                  turrets.entity_ids(),
                  turrets.view_locations().resolve(),
-                 level.turrets().healths(),
+                 health.const_view<EntityType::Turret>(),
                  [turret_rotations](std::uint32_t row) {
                      return to_quaternion(rotation_at(turret_rotations, row));
                  });
@@ -219,7 +207,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     append_batch(EntityType::Fighter,
                  fighters.entity_ids(),
                  fighters.view_locations().resolve(),
-                 level.entity_tables().health.const_view<EntityType::Fighter>(),
+                 health.const_view<EntityType::Fighter>(),
                  [fighter_directions](std::uint32_t row) {
                      return to_quaternion(direction_to_rotation(fighter_directions[row]));
                  });

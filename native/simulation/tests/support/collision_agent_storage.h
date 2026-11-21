@@ -1,6 +1,6 @@
 #pragma once
 #include <ioj/column_math.h>
-#include <ioj/sim/collision/entity_cell_data.h>
+#include <ioj/sim/collision/collision_grid_entities.h>
 #include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
@@ -8,29 +8,6 @@
 #include <ioj/sim/testing/spatial_query_manager_test_access.h>
 
 #include <array>
-
-namespace ioj::sim {
-struct CollisionGridTestAccess {
-    static void begin(collision::CollisionUniformGrid& grid) { grid.begin_entity_grid(); }
-    static void finish(collision::CollisionUniformGrid& grid) { grid.finish_entity_grid(); }
-    static void
-        size_rows(collision::CollisionUniformGrid& grid, EntityType type, std::size_t count) {
-        grid.entity_storage_.entity_row_to_aabb_row[type].assign(
-            count, collision::invalid_entity_aabb_row);
-    }
-    static void append(collision::CollisionUniformGrid& grid,
-                       EntityId id,
-                       std::uint32_t row,
-                       collision::WorldAABB bounds) {
-        auto& data{grid.entity_storage_.rebuild_entity_data};
-        collision::EntityAabbRow const output_row{data.num()};
-        data.add_uninitialised(1);
-        auto const output{data.view().resolve()};
-        grid.entity_storage_.entity_row_to_aabb_row[id.entity_type()][row] = output_row;
-        grid.write_entity_bounds(output, output_row, id, bounds);
-    }
-};
-}
 
 namespace ioj::sim::tests {
 struct CollisionAgentStorage {
@@ -232,62 +209,17 @@ struct CollisionAgentStorage {
             queries, EntityType::TubeSpinner, spinners.const_view().view_locations().resolve());
         SpatialQueryManagerTestAccess::set_player(queries, player_spatial());
         rebuild(SpatialQueryManagerTestAccess::uniform_grid(queries),
-                SpatialQueryManagerTestAccess::entity_aabbs(queries));
+                queries.local_entity_bounds());
     }
     void rebuild(collision::CollisionUniformGrid& grid,
                  collision::EntityAABBs const& bounds) const {
-        CollisionGridTestAccess::begin(grid);
-        auto const append{
-            [&](EntityId id, std::uint32_t row, Vector3f location, Quaternion4f orientation) {
-                CollisionGridTestAccess::append(
-                    grid,
-                    id,
-                    row,
-                    collision::make_entity_world_bounds(
-                        bounds, id.entity_type(), location, orientation));
-            }};
-        auto const add_batch{
-            [&](EntityType type, auto entities, HealthConstView healths, auto orientation_at) {
-                auto const count{entities.num()};
-                auto const ids{entities.entity_ids()};
-                auto const locations{entities.view_locations().resolve()};
-                CollisionGridTestAccess::size_rows(grid, type, count);
-                for (std::uint32_t row{}; row < count; ++row) {
-                    if (healths.is_empty() || is_alive(healths.health(ids[row]))) {
-                        append(ids[row], row, locations[row], orientation_at(row));
-                    }
-                }
-            }};
-        CollisionGridTestAccess::size_rows(grid, EntityType::PlayerShip, player_ids.size());
-        if (auto const player{player_spatial()}; player && is_alive(player->health)) {
-            append(player->id, 0, player->location, player->orientation);
-        }
-        auto const capital_rotations{capitals.const_view().view_rotations().resolve()};
-        add_batch(EntityType::CapitalShip,
-                  capitals.const_view(),
-                  health_table.const_view<EntityType::CapitalShip>(),
-                  [capital_rotations](auto row) {
-                      return to_quaternion(rotation_at(capital_rotations, row));
-                  });
-        auto const turret_rotations{turrets.const_view().view_rotations().resolve()};
-        add_batch(EntityType::Turret,
-                  turrets.const_view(),
-                  health_table.const_view<EntityType::Turret>(),
-                  [turret_rotations](auto row) {
-                      return to_quaternion(rotation_at(turret_rotations, row));
-                  });
-        auto const directions{fighters.const_view().view_aim_directions().resolve()};
-        add_batch(EntityType::Fighter,
-                  fighters.const_view(),
-                  health_table.const_view<EntityType::Fighter>(),
-                  [directions](auto row) {
-                      return to_quaternion(direction_to_rotation(directions[row]));
-                  });
-        auto const yaws{spinners.const_view().yaws()};
-        add_batch(EntityType::TubeSpinner, spinners.const_view(), {}, [yaws](auto row) {
-            return to_quaternion(Rotator3f{0.f, yaws[row], 0.f});
-        });
-        CollisionGridTestAccess::finish(grid);
+        grid.rebuild_entity_grid(bounds,
+                                 {capitals.const_view(),
+                                  fighters.const_view(),
+                                  turrets.const_view(),
+                                  spinners.const_view(),
+                                  health_table,
+                                  player_spatial()});
     }
 
     SimClock clock;

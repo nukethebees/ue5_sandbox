@@ -2,8 +2,17 @@
 
 #include <ioj/frame_array.h>
 #include <ioj/frame_memory_resource.h>
+#include <ioj/rotator_math.h>
+#include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/collision/collision_grid_entities.h>
 #include <ioj/sim/entities/entity_lookup_tables.h>
+#include <ioj/sim/entities/entity_tables.h>
+#include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/levels/level_read_access.h>
+#include <ioj/sim/player/sim.h>
 #include <ioj/sim/profiling.h>
+#include <ioj/sim/spinners/sim.h>
+#include <ioj/sim/turrets/sim.h>
 #include <ioj/soa_permutation.h>
 
 #include <oneapi/tbb/blocked_range.h>
@@ -40,7 +49,20 @@ auto CollisionSystem::add_static_collision_aabb(Vector3f const min_point, Vector
 /* **************************************** */
 void CollisionSystem::refresh_spatial_index(LevelReadAccess const& level) {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::refresh_spatial_index");
-    uniform_grid_.rebuild_entity_grid(entity_aabbs_, level);
+    CollisionGridEntities entities{level.capitals().get_entities(),
+                                   level.fighters().entities(),
+                                   level.turrets().get_entities(),
+                                   level.spinners().get_entities(),
+                                   level.entity_tables().health};
+    if (auto const* player{level.player()}) {
+        auto const& transform{player->physical_state().transform};
+        entities.player =
+            PlayerSpatialData{.id = player->unique_entity_id,
+                              .location = Vector3f{transform.location},
+                              .orientation = to_quaternion(Rotator3f{transform.rotator()}),
+                              .health = entities.health.health(player->unique_entity_id)};
+    }
+    uniform_grid_.rebuild_entity_grid(entity_aabbs_, entities);
 }
 
 /* **************************************** */

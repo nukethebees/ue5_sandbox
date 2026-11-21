@@ -131,6 +131,9 @@ struct SpatialQueryManager {
     void are_spheres_in_bounds(vectors3f::ConstView centres,
                                float radius,
                                std::span<collision::SphereInBoundsResult> out_results) const;
+    auto local_entity_bounds() const noexcept -> collision::EntityAABBs const& {
+        return collision_system_.entity_aabbs_;
+    }
     auto entity_type_radius(EntityType entity_type) const noexcept -> float;
     auto entity_type_radii() const noexcept -> EntityTypeRadii const&;
     void copy_entity_locations(EntityLookupTables const& lookups,

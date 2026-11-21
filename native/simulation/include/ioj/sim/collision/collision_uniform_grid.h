@@ -17,12 +17,9 @@
 #include <span>
 #include <string>
 
-namespace ioj::sim {
-class LevelReadAccess;
-struct CollisionGridTestAccess;
-}
-
 namespace ioj::sim::collision {
+struct CollisionGridEntities;
+
 // Index world bounds for spatial queries.
 struct CollisionUniformGrid {
     /* **************************************** */
@@ -64,7 +61,8 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Entity collision
     /* **************************************** */
-    void rebuild_entity_grid(EntityAABBs const& entity_aabbs, LevelReadAccess const& level);
+    void rebuild_entity_grid(EntityAABBs const& entity_aabbs,
+                             CollisionGridEntities const& entities);
     auto entity_world_bounds() const -> EntityCellData::CompactConstView;
     auto entity_row_to_aabb_row(EntityType const type) const -> std::span<EntityAabbRow const> {
         return entity_storage_.entity_row_to_aabb_row[type];
@@ -120,7 +118,6 @@ struct CollisionUniformGrid {
                      std::span<EntityId const> ignored_entities = {},
                      TraceEntityFilter entity_filter = TraceEntityFilter::None) const;
   private:
-    friend struct ::ioj::sim::CollisionGridTestAccess;
     void begin_entity_grid();
     // Allocate output rows before binding the writer; keep storage fixed until writing finishes.
     void write_entity_bounds(entity_cell_data::View const& output,
