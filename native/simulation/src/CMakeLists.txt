@@ -162,7 +162,6 @@ target_sources(native-simulation
     entities/entity_ledger.cpp
     damage_queue.cpp
     batch_operations.cpp
-    collision/collision_events.cpp
     collision/collision_grid_static_storage.cpp
     collision/collision_grid.cpp
     deterministic_bias.cpp

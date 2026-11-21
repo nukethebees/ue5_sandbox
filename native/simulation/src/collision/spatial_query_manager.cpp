@@ -228,9 +228,6 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
 /* **************************************** */
 // Construction and setup
 /* **************************************** */
-SpatialQueryManager::SpatialQueryManager(std::pmr::memory_resource* resource)
-    : collision_system_{resource} {}
-
 void SpatialQueryManager::initialise(collision::CollisionGridSpec const grid_spec,
                                      collision::EntityAABBs const& entity_bounds) {
     collision_system_.initialise(grid_spec, entity_bounds);
@@ -527,19 +524,13 @@ void SpatialQueryManager::refresh_spatial_index(LevelReadAccess const& level) {
     }
     collision_system_.refresh_spatial_index(level);
 }
-auto SpatialQueryManager::detect_overlaps(EntityLookupTables const& lookups,
+void SpatialQueryManager::detect_overlaps(EntityLookupTables const& lookups,
                                           std::span<EntityId const> const overlap_candidates,
-                                          FrameMemoryResource* const scratch_resource)
-    -> collision::DetectedOverlapsView {
-    SANDBOX_PROFILE_SCOPE("SpatialQueryManager::detect_overlaps");
-
-    return collision_system_.detect_overlaps(lookups, overlap_candidates, scratch_resource);
-}
-void SpatialQueryManager::reset_frame_collision_events() {
-    collision_system_.reset_frame_collision_events();
-}
-auto SpatialQueryManager::aabb_overlap_events() const -> collision::AABBOverlapEventsView {
-    return collision_system_.aabb_overlap_events();
+                                          collision::EntityEntityOverlaps& entity_overlaps,
+                                          collision::EntityStaticOverlaps& static_overlaps,
+                                          FrameMemoryResource* const scratch_resource) {
+    collision_system_.detect_overlaps(
+        lookups, overlap_candidates, entity_overlaps, static_overlaps, scratch_resource);
 }
 auto SpatialQueryManager::entity_collision_bounds() const
     -> collision::EntityCellData::CompactConstView {

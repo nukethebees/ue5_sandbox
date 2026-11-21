@@ -148,7 +148,6 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
     capital_ships_simulation_.reset_frame_output();
     turrets_simulation_.reset_frame_output();
     lasers_simulation_.reset_frame_output();
-    collision_pipeline_.reset_frame_output();
     clock_.add_time(dt);
 
     while (clock_.try_tick()) {

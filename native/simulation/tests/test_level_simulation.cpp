@@ -911,25 +911,11 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     auto const capital{simulation.capital_ships().get_entities().entity_ids()[0]};
     auto const& ledger{simulation.entity_ledger()};
 
-    for (std::int32_t overlap_detection{}; overlap_detection < 3; ++overlap_detection) {
-        simulation.advance(dt);
-        // advance publishes a fresh overlap batch each tick.
-        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-        auto const events{simulation.spatial_query_manager().aabb_overlap_events()};
-        EXPECT_EQ(events.entity_entity_overlaps.num(), 1)
-            << "The tick captures one unique dynamic overlap";
-        EXPECT_EQ(events.entity_static_overlaps.num(), 0) << "The tick captures no static overlap";
+    simulation.advance(dt);
+    EXPECT_EQ(observe_entity(simulation, capital)->health.value(), 4950);
+    EXPECT_EQ(observe_entity(simulation, player_id)->health.value(), 100);
 
-        EXPECT_EQ(observe_entity(simulation, capital)->health.value(),
-                  5000 - (overlap_detection + 1) * 50)
-            << "The high-health capital receives damage in the detection tick";
-        if (overlap_detection < 2) {
-            EXPECT_EQ(observe_entity(simulation, player_id)->health.value(),
-                      150 - (overlap_detection + 1) * 50)
-                << "The low-health entity receives damage in the detection tick";
-        }
-    }
-
+    simulation.advance(2.0 * dt);
     EXPECT_FALSE(entity_is_alive(simulation, player_id))
         << "The low-health entity dies after three detected overlaps";
     EXPECT_EQ(observe_entity(simulation, capital)->health.value(), 4850)

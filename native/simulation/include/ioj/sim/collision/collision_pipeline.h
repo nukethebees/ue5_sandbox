@@ -25,7 +25,6 @@ class CollisionPipeline {
     auto operator=(CollisionPipeline const&) -> CollisionPipeline& = delete;
     auto operator=(CollisionPipeline&&) -> CollisionPipeline& = delete;
 
-    void reset_frame_output();
     void refresh_spatial_index(LevelReadAccess const& level);
 
     // Start a tick after spawn commits; copy IDs before owners prepare or reorder their rows.

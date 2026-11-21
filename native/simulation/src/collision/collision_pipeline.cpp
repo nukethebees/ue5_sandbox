@@ -15,15 +15,10 @@ namespace ioj::sim::collision {
 
 CollisionPipeline::CollisionPipeline(CollisionInitData data,
                                      std::pmr::memory_resource* const resource)
-    : queries_{resource}
-    , overlap_handler_{data.overlap_response.damage_per_overlap_detection}
+    : overlap_handler_{data.overlap_response.damage_per_overlap_detection}
     , overlap_candidates_{resource} {
     queries_.initialise(data.grid_spec, data.entity_bounds);
     queries_.set_static_collision(std::move(data.static_bounds));
-}
-
-void CollisionPipeline::reset_frame_output() {
-    queries_.reset_frame_collision_events();
 }
 
 void CollisionPipeline::refresh_spatial_index(LevelReadAccess const& level) {
@@ -73,8 +68,12 @@ void CollisionPipeline::detect_and_handle_overlaps(LevelReadAccess const& level,
 
     refresh_spatial_index(level);
 
-    auto const overlaps{queries_.detect_overlaps(lookups, overlap_candidates_, &scratch)};
-    overlap_handler_.handle(overlaps, damage_queue);
+    EntityEntityOverlaps entity_overlaps{scratch};
+    EntityStaticOverlaps static_overlaps{scratch};
+    queries_.detect_overlaps(
+        lookups, overlap_candidates_, entity_overlaps, static_overlaps, &scratch);
+    overlap_handler_.handle({entity_overlaps.const_view(), static_overlaps.const_view()},
+                            damage_queue);
 }
 
 } // namespace ioj::sim::collision

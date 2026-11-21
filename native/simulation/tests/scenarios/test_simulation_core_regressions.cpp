@@ -103,11 +103,8 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     for (std::int32_t index{}; index < 3; ++index) {
         SCOPED_TRACE(index);
         simulation.advance(dt);
-        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- advance publishes a new overlap batch.
-        auto const events{simulation.spatial_query_manager().aabb_overlap_events()};
         auto const capital{observe_entity(simulation, capital_id)};
         auto const damage{(index + 1) * collision_damage_test::overlap_damage};
-        EXPECT_EQ(events.entity_entity_overlaps.num(), 1);
         EXPECT_EQ(player->health().health.value(), collision_damage_test::player_health - damage);
         EXPECT_EQ(capital ? capital->health.value() : 0,
                   index == 2 ? 0 : collision_damage_test::capital_health - damage);

@@ -131,8 +131,6 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
 
     auto const& ledger{simulation.entity_ledger()};
 
-    auto const& queries{simulation.spatial_query_manager()};
-
     EXPECT_EQ(ledger.count_alive(), 1);
     EXPECT_EQ(simulation.turrets().num_instances(), 0);
 
@@ -152,9 +150,6 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
                   .value(),
               75);
     EXPECT_EQ(simulation.lasers().get_number_spawned(), 0);
-
-    auto const events{queries.aabb_overlap_events()};
-    EXPECT_EQ(events.entity_entity_overlaps.num(), 1);
 
     simulation.advance(clk_period);
 
@@ -254,8 +249,6 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
 
     auto const* const player{simulation.player_ship_simulation()};
     EXPECT_NEAR(player->physical_state().transform.location.y(), 100.0, 0.001);
-    EXPECT_EQ(simulation.spatial_query_manager().aabb_overlap_events().entity_entity_overlaps.num(),
-              1);
     EXPECT_EQ(player->health().health.value(), 75);
 }
 
@@ -331,9 +324,6 @@ TEST(TickPhases, DelayedEntityDeathTriggersAfterResolutionWithoutDuplicateOverla
     EXPECT_EQ(capitals.healths().health(capitals.get_entities().entity_ids()[0]).value(), 900);
     ASSERT_TRUE(simulation.result());
     EXPECT_EQ(simulation.result()->winner, Team::Green);
-
-    auto const& queries{simulation.spatial_query_manager()};
-    EXPECT_EQ(queries.aabb_overlap_events().entity_entity_overlaps.num(), 1);
 
     simulation.advance(clk_period);
     EXPECT_EQ(simulation.turrets().num_instances(), 0);

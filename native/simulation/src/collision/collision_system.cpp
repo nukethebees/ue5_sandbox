@@ -26,15 +26,10 @@ namespace ioj::sim::collision {
 /* **************************************** */
 // Construction and setup
 /* **************************************** */
-CollisionSystem::CollisionSystem(std::pmr::memory_resource* resource) noexcept
-    : entity_entity_overlaps_{*resource}
-    , entity_static_overlaps_{*resource}
-    , overlap_batches_{resource} {}
 void CollisionSystem::initialise(CollisionGridSpec const grid_spec,
                                  collision::EntityAABBs const& bounds) {
     uniform_grid_.set_spec(grid_spec);
     entity_aabbs_ = bounds;
-    reset_frame_collision_events();
 }
 void CollisionSystem::set_static_collision(WorldAABBs bounds) {
     uniform_grid_.set_static_aabbs(std::move(bounds));
@@ -68,32 +63,16 @@ void CollisionSystem::refresh_spatial_index(LevelReadAccess const& level) {
 /* **************************************** */
 // Overlap detection
 /* **************************************** */
-auto CollisionSystem::detect_overlaps(EntityLookupTables const& lookups,
+void CollisionSystem::detect_overlaps(EntityLookupTables const& lookups,
                                       std::span<EntityId const> const overlap_candidates,
-                                      FrameMemoryResource* const scratch_resource)
-    -> DetectedOverlapsView {
+                                      EntityEntityOverlaps& entity_overlaps,
+                                      EntityStaticOverlaps& static_overlaps,
+                                      FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::detect_overlaps");
-    EntityEntityOverlaps entity_overlaps{*scratch_resource};
-    EntityStaticOverlaps static_overlaps{*scratch_resource};
-    collect_overlaps_for_candidates(
-        lookups, overlap_candidates, entity_overlaps, static_overlaps, scratch_resource);
-
-    auto const entity_entity_overlaps{entity_overlaps.const_view()};
-    auto const entity_static_overlaps{static_overlaps.const_view()};
-    append_overlap_batch(entity_entity_overlaps, entity_static_overlaps);
-
-    auto const events{aabb_overlap_events()};
-    return events.get_batch(static_cast<AABBOverlapEventBatchIndex>(events.batches.size() - 1));
-}
-void CollisionSystem::collect_overlaps_for_candidates(
-    EntityLookupTables const& lookups,
-    std::span<EntityId const> const overlap_candidates,
-    EntityEntityOverlaps& entity_overlaps,
-    EntityStaticOverlaps& static_overlaps,
-    FrameMemoryResource* const scratch_resource) {
-    SANDBOX_PROFILE_SCOPE("CollisionSystem::collect_overlaps_for_candidates");
 
     if (overlap_candidates.empty()) {
+        entity_overlaps.reset();
+        static_overlaps.reset();
         return;
     }
 
@@ -280,33 +259,8 @@ void CollisionSystem::finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
 }
 
 /* **************************************** */
-// Events and bounds
+// Bounds
 /* **************************************** */
-void CollisionSystem::append_overlap_batch(
-    collision::EntityEntityOverlaps::CompactConstView const entity_entity_overlaps,
-    collision::EntityStaticOverlaps::CompactConstView const entity_static_overlaps) {
-    auto const entity_entity_offset{entity_entity_overlaps_.num()};
-    auto const entity_static_offset{entity_static_overlaps_.num()};
-    entity_entity_overlaps_.append_from(entity_entity_overlaps);
-    entity_static_overlaps_.append_from(entity_static_overlaps);
-    overlap_batches_.push_back({
-        .entity_entity_overlaps =
-            {
-                .offset = entity_entity_offset,
-                .count = entity_entity_overlaps.num(),
-            },
-        .entity_static_overlaps =
-            {
-                .offset = entity_static_offset,
-                .count = entity_static_overlaps.num(),
-            },
-    });
-}
-void CollisionSystem::reset_frame_collision_events() {
-    entity_entity_overlaps_.reset();
-    entity_static_overlaps_.reset();
-    overlap_batches_.clear();
-}
 auto CollisionSystem::entity_collision_bounds() const -> EntityCellData::CompactConstView {
     return uniform_grid_.entity_world_bounds();
 }

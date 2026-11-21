@@ -36,6 +36,18 @@ void CountingResource::do_deallocate(void* pointer,
     std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
 }
 
+auto trace_capital(SpatialQueryManager const& queries, FrameMemoryResource& memory) -> EntityId {
+    Vectors3f starts{memory};
+    Vectors3f ends{memory};
+    starts.add({-10.f, 0.f, 0.f});
+    ends.add({10.f, 0.f, 0.f});
+    TraceHits hits{memory};
+    hits.set_num(1);
+    queries.trace_closest_lines(
+        starts.const_view().resolve(), ends.const_view().resolve(), hits.view());
+    return hits.entities()[0];
+}
+
 struct FrameBacking {
     FrameMemoryResource resource{256 * 1024};
 };
@@ -61,7 +73,7 @@ TEST(QueryScratch, ExhaustionForwardsToUpstream) {
     {
         FrameMemoryResource frame{64, upstream};
         FrameScratchScope scope{frame};
-        EXPECT_NO_THROW(manager.trace_closest({}, {}, &frame));
+        EXPECT_NO_THROW(query_scratch_detail::trace_capital(manager, frame));
         EXPECT_GT(frame.stats().overflow_count, 0u);
         EXPECT_EQ(frame.stats().outstanding_allocation_count, 0u);
         EXPECT_GT(upstream.allocations.load(), 1u);
@@ -84,9 +96,7 @@ TEST(QueryScratch, ConcurrentQueriesAllocateFromSharedFrameAndReleaseBeforeRecla
         for (auto& worker : workers) {
             worker = std::jthread{[&] {
                 start.arrive_and_wait();
-                auto const hit{manager.trace_closest(
-                    {{-10.f, 0.f, 0.f}}, {{10.f, 0.f, 0.f}}, &frame.resource)};
-                EXPECT_EQ(hit.entity, id);
+                EXPECT_EQ(query_scratch_detail::trace_capital(manager, frame.resource), id);
                 std::array<EntityId, 4> nearby;
                 EXPECT_EQ(manager.collect_non_team_entities_in_range(owners.entity_tables.lookups,
                                                                      {},
@@ -112,17 +122,12 @@ TEST(QueryScratch, ManagerUsesExplicitScratchAndReleasesQueriesWithinEachEpoch) 
     CollisionAgentStorage owners;
     auto const id{owners.spawn(EntityType::CapitalShip)};
     owners.publish();
-    query_scratch_detail::CountingResource persistent;
-    SpatialQueryManager manager{&persistent};
+    SpatialQueryManager manager{};
     query_scratch_detail::initialise_queries(manager, owners);
     query_scratch_detail::FrameBacking frame;
     for (int epoch{}; epoch < 3; ++epoch) {
         {
             FrameScratchScope scratch_scope{frame.resource};
-            auto const persistent_allocations{persistent.allocations.load()};
-            auto const hit{
-                manager.trace_closest({{-10.f, 0.f, 0.f}}, {{10.f, 0.f, 0.f}}, &frame.resource)};
-            EXPECT_EQ(hit.entity, id);
             std::array<EntityId, 4> nearby;
             ASSERT_EQ(
                 manager.collect_non_team_entities_in_range(
@@ -131,44 +136,31 @@ TEST(QueryScratch, ManagerUsesExplicitScratchAndReleasesQueriesWithinEachEpoch) 
             EXPECT_EQ(nearby[0], id);
             EXPECT_GT(frame.resource.stats().current_claimed_bytes, 0u);
             EXPECT_EQ(frame.resource.stats().outstanding_allocation_count, 0u);
-            EXPECT_EQ(persistent.allocations.load(), persistent_allocations);
         }
         expect_frame_reclaimed(frame.resource.stats());
     }
 }
 
-TEST(QueryScratch, PublishedOverlapBatchesSurviveScratchEpochs) {
+TEST(QueryScratch, OverlapOutputsReleaseBeforeScratchReclaim) {
     CollisionAgentStorage owners;
     std::array const ids{owners.spawn(EntityType::CapitalShip), owners.spawn(EntityType::Fighter)};
     owners.publish();
-    query_scratch_detail::CountingResource persistent;
-    SpatialQueryManager manager{&persistent};
+    SpatialQueryManager manager{};
     query_scratch_detail::initialise_queries(manager, owners);
     query_scratch_detail::FrameBacking frame;
-    // Resolve each epoch's outputs and each distinct batch.
-    // NOLINTBEGIN(ioj-loop-view-accessor-call)
     for (int epoch{}; epoch < 3; ++epoch) {
         {
-            FrameScratchScope scratch_scope{frame.resource};
-            auto const overlaps{
-                manager.detect_overlaps(owners.entity_tables.lookups, ids, &frame.resource)};
-            ASSERT_EQ(overlaps.entity_entity_overlaps.num(), 1u);
-            EXPECT_FALSE(
-                frame.resource.owns(overlaps.entity_entity_overlaps.first_entities().data()));
+            FrameScratchScope scope{frame.resource};
+            collision::EntityEntityOverlaps entities{frame.resource};
+            collision::EntityStaticOverlaps statics{frame.resource};
+            manager.detect_overlaps(
+                owners.entity_tables.lookups, ids, entities, statics, &frame.resource);
+            ASSERT_EQ(entities.num(), 1u);
+            EXPECT_TRUE(frame.resource.owns(entities.first_entities().data()));
+            EXPECT_EQ(entities.first_entities()[0], std::min(ids[0], ids[1]));
+            EXPECT_EQ(entities.second_entities()[0], std::max(ids[0], ids[1]));
         }
         expect_frame_reclaimed(frame.resource.stats());
-        auto const events{manager.aabb_overlap_events()};
-        ASSERT_EQ(events.batches.size(), static_cast<std::size_t>(epoch + 1));
-        for (int batch{}; batch <= epoch; ++batch) {
-            auto const overlaps{events.get_batch(batch).entity_entity_overlaps};
-            ASSERT_EQ(overlaps.num(), 1u);
-            EXPECT_EQ(overlaps.first_entities()[0], std::min(ids[0], ids[1]));
-            EXPECT_EQ(overlaps.second_entities()[0], std::max(ids[0], ids[1]));
-        }
     }
-    // NOLINTEND(ioj-loop-view-accessor-call)
-    manager.reset_frame_collision_events();
-    EXPECT_TRUE(manager.aabb_overlap_events().batches.empty());
-    EXPECT_GT(persistent.allocations.load(), 0u);
 }
 }

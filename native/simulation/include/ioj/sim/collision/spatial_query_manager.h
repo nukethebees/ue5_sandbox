@@ -37,8 +37,7 @@ struct SpatialQueryManager {
     /* **************************************** */
     // Construction and setup
     /* **************************************** */
-    explicit SpatialQueryManager(
-        std::pmr::memory_resource* resource = std::pmr::get_default_resource());
+    SpatialQueryManager() = default;
     SpatialQueryManager(SpatialQueryManager const&) = delete;
     SpatialQueryManager(SpatialQueryManager&&) = delete;
     auto operator=(SpatialQueryManager const&) -> SpatialQueryManager& = delete;
@@ -154,12 +153,11 @@ struct SpatialQueryManager {
     auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point)
         -> collision::StaticGeometryIndex;
     void refresh_spatial_index(LevelReadAccess const& level);
-    auto detect_overlaps(EntityLookupTables const& lookups,
+    void detect_overlaps(EntityLookupTables const& lookups,
                          std::span<EntityId const> overlap_candidates,
-                         FrameMemoryResource* const scratch_resource)
-        -> collision::DetectedOverlapsView;
-    void reset_frame_collision_events();
-    auto aabb_overlap_events() const -> collision::AABBOverlapEventsView;
+                         collision::EntityEntityOverlaps& entity_overlaps,
+                         collision::EntityStaticOverlaps& static_overlaps,
+                         FrameMemoryResource* scratch_resource);
     // Debug snapshot of the last rebuild; may include entities removed later in Resolution.
     auto entity_collision_bounds() const -> collision::EntityCellData::CompactConstView;
     auto static_collision_bounds() const -> collision::WorldAABBs::CompactConstView;
