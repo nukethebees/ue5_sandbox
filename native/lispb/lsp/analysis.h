@@ -12,6 +12,7 @@ namespace lispb::lsp {
 struct ClientCapabilities {
     bool hierarchical_symbols{};
     MarkupKind hover_format{MarkupKind::plaintext};
+    MarkupKind completion_format{MarkupKind::plaintext};
 };
 
 struct Buffer {
@@ -84,7 +85,11 @@ class Analysis {
     auto document(sexpr::SourceFileId file) const -> Document const&;
     auto completion(Document const& doc,
                     std::span<sexpr::FormId const> context,
-                    std::uint32_t offset) -> Json;
+                    std::uint32_t offset,
+                    MarkupKind format) -> Json;
+    auto signature(Symbol const& symbol) const -> std::string_view;
+    auto declaration_details(Document const& doc, Symbol const& symbol, MarkupKind format) const
+        -> std::string;
     auto outline(Document const& doc, bool hierarchical) -> Json;
     auto hover(Document const& doc,
                sexpr::SourceSpan declaration,

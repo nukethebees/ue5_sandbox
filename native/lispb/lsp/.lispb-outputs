@@ -1,4 +1,5 @@
 lispb-outputs-v1
+completion_kind.h
 form_head.h
 markup_kind.h
 method.h

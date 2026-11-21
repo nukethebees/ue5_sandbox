@@ -67,8 +67,8 @@ class Client:
             },
         )
 
-    def query(self, method, path, position=None):
-        params = {"textDocument": {"uri": path.as_uri()}}
+    def query(self, method, path, position=None, **options):
+        params = {"textDocument": {"uri": path.as_uri()}, **options}
         if position is not None:
             params["position"] = position
         return self.send("textDocument/" + method, params, True)
@@ -164,6 +164,7 @@ def exercise(client, root, hover_formats=()):
     }
     if hover_formats:
         capabilities["hover"] = {"contentFormat": hover_formats}
+        capabilities["completion"] = {"completionItem": {"documentationFormat": hover_formats[::-1]}}
     result = client.send(
         "initialize",
         {
@@ -183,6 +184,25 @@ def exercise(client, root, hover_formats=()):
         client.open(paths[key], files[key])
 
     markup = hover_formats[0] if hover_formats else "plaintext"
+    completion_markup = hover_formats[-1] if hover_formats else "plaintext"
+
+    def expected_location(key, text, token, length, skip=0):
+        return {"uri": paths[key].as_uri(), "range": {
+            "start": position(text, token, skip), "end": position(text, token, skip + length),
+        }}
+
+    def completion(key, text, token, skip, label):
+        items = client.query("completion", paths[key], position(text, token, skip))
+        match, = (item for item in items if item["label"] == label)
+        return match
+
+    def documentation(item):
+        value = item["documentation"]
+        if completion_markup == "markdown":
+            assert value["kind"] == "markdown", item
+            return value["value"]
+        assert isinstance(value, str), item
+        return value
 
     def hover(path, text, token, *fields, skip=0):
         start = position(text, token, skip)
@@ -204,6 +224,9 @@ def exercise(client, root, hover_formats=()):
     hover(paths["data"], schema, "@scalar", cpp, header)
     client.open(paths["scalars"], scalar)
     hover(paths["scalars"], scalar, "scalar", cpp, header)
+    item = completion("data", schema, "@scalar", 3, "@scalar")
+    assert item["kind"] == 7 and item["detail"] == scalar, item
+    assert "unsigned int" in documentation(item) and "stdint.h" in documentation(item), item
     client.send(
         "textDocument/didClose", {"textDocument": {"uri": paths["scalars"].as_uri()}}
     )
@@ -211,6 +234,10 @@ def exercise(client, root, hover_formats=()):
     fields = (("Parameter type", "scalar"), ("Default", "1"))
     declaration = hover(paths["mat"], mat, "Intensity", *fields)
     assert declaration == hover(paths["mat"], mat, "float3 Intensity", *fields, skip=7)
+    item = completion("mat", mat, "float3 Intensity", 7, "Tint")
+    assert item["kind"] == 6 and item["detail"] == "(parameter color Tint 1.0 0.25 0.5 1.0)", item
+    details = documentation(item)
+    assert "color" in details and "1, 0.25, 0.5, 1" in details, item
     hover(
         paths["mat"],
         mat,
@@ -300,6 +327,8 @@ def exercise(client, root, hover_formats=()):
     edit = mat.replace("Intensity 1.0", "Intensity 2.5")
     client.edit(paths["mat"], edit, 4)
     hover(paths["mat"], edit, "float3 Intensity", ("Default", "2.5"), skip=7)
+    item = completion("mat", edit, "float3 Intensity", 9, "Intensity")
+    assert "2.5" in documentation(item), item
 
     macro = client.query("definition", paths["ui"], position(files["ui"], "caption"))
     assert macro["uri"] == paths["macros"].as_uri()
@@ -340,7 +369,11 @@ def exercise(client, root, hover_formats=()):
     partial = schema[: schema.index("@scalar")] + "@sc"
     client.edit(paths["data"], partial, 4)
     items = client.query("completion", paths["data"], position(partial, "@sc", 3))
-    assert "@scalar" in [item["label"] for item in items], items
+    item, = (item for item in items if item["label"] == "@scalar")
+    assert item["detail"] == scalar and item["kind"] == 7, item
+    assert item["textEdit"] == {
+        "range": expected_location("data", partial, "@sc", 3)["range"], "newText": "@scalar",
+    }, item
     for version in range(5, 12):
         client.edit(paths["data"], schema + "\n" * (version % 3), version)
         assert client.query("definition", paths["data"], use)

@@ -91,6 +91,19 @@
     (value enumerator :value "22")
     (value structure :value "23")))
 
+(module completion_kind :header "completion_kind.h" :namespace lispb::lsp
+  (enum CompletionKind std::uint8_t
+    (projections (cpp))
+    (value method :value "2")
+    (value function :value "3")
+    (value variable :value "6")
+    (value class_type :value "7")
+    (value module_kind :value "9")
+    (value property :value "10")
+    (value value :value "12")
+    (value enumeration :value "13")
+    (value keyword :value "14")))
+
 (module markup_kind :header "markup_kind.h" :namespace lispb::lsp
   (enum MarkupKind std::uint8_t
     (projections (cpp))

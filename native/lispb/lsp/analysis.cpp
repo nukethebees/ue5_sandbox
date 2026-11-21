@@ -1,5 +1,6 @@
 #include "analysis.h"
 
+#include "completion_kind.h"
 #include "outline_kind.h"
 
 #include <codegen/path_utils.h>
@@ -118,6 +119,32 @@ static auto outline_kind(Kind kind) -> OutlineKind {
 }
 static auto key(sexpr::SourceSpan span) -> SourcePosition {
     return {span.file, span.offset};
+}
+static auto completion_kind(Kind kind) -> CompletionKind {
+    switch (kind) {
+        case Kind::name_space:
+            return CompletionKind::module_kind;
+        case Kind::type:
+        case Kind::class_type:
+        case Kind::structure:
+            return CompletionKind::class_type;
+        case Kind::enumeration:
+            return CompletionKind::enumeration;
+        case Kind::enumerator:
+            return CompletionKind::value;
+        case Kind::macro:
+        case Kind::function:
+            return CompletionKind::function;
+        case Kind::method:
+            return CompletionKind::method;
+        case Kind::property:
+            return CompletionKind::property;
+        case Kind::parameter:
+        case Kind::variable:
+            return CompletionKind::variable;
+        default:
+            std::unreachable();
+    }
 }
 void Analysis::overlay(std::span<WorkspaceFile const> files) {
     auto& storage{compiler_.storage()};
@@ -472,25 +499,33 @@ auto Analysis::lookup(Document const& doc, std::span<sexpr::FormId const> contex
 
 auto Analysis::completion(Document const& doc,
                           std::span<sexpr::FormId const> context,
-                          std::uint32_t offset) -> Json {
+                          std::uint32_t offset,
+                          MarkupKind format) -> Json {
     auto& storage{compiler_.storage()};
     auto& syntax{storage.syntax};
     auto const source{storage.sources.text(doc.file)};
     std::string_view prefix;
+    Json replacement;
     if (!context.empty() && !syntax.is_list(context.back())) {
         auto const form{context.back()};
         if (syntax.kind(form) == sexpr::TokenKind::raw_literal ||
             syntax.kind(form) == sexpr::TokenKind::string) {
             return Json::array();
         }
-        auto const begin{syntax.span(form).offset};
-        prefix = source.substr(begin, offset - begin);
+        auto const span{syntax.span(form)};
+        prefix = source.substr(span.offset, offset - span.offset);
+        replacement = range(storage.sources, span);
         context = context.first(context.size() - 1);
     }
-    std::vector<std::string> names;
-    auto add = [&](std::string_view name) {
+    struct Candidate {
+        std::string label;
+        sexpr::SourceFileId file;
+        SymbolId symbol;
+    };
+    std::vector<Candidate> candidates;
+    auto add = [&](std::string_view name, sexpr::SourceFileId file = {}, SymbolId symbol = {}) {
         if (name.starts_with(prefix)) {
-            names.emplace_back(name);
+            candidates.emplace_back(std::string{name}, file, symbol);
         }
     };
     auto enumeration = [&]<typename E>(std::string_view leader = {}) {
@@ -574,7 +609,10 @@ auto Analysis::completion(Document const& doc,
     }
 
     for (auto const& other : documents_) {
-        for (auto const& symbol : other.symbols) {
+        auto const count{other.symbols.size()};
+        for (std::uint32_t i{}; i < count; ++i) {
+            auto const& symbol{other.symbols[i]};
+            SymbolId const id{i + 1};
             auto const parent_form{other.parent_form(symbol)};
             auto const name{syntax.text(symbol.name)};
             auto const name_head{syntax.head(symbol.form)};
@@ -590,12 +628,12 @@ auto Analysis::completion(Document const& doc,
                         label += '/';
                     }
                     label += name;
-                    add(label);
+                    add(label, other.file, id);
                 }
                 continue;
             }
             if (kind == FormHead::defmacro && head_position) {
-                add(name);
+                add(name, other.file, id);
                 continue;
             }
             if (other.file != doc.file || head_position ||
@@ -603,7 +641,7 @@ auto Analysis::completion(Document const& doc,
                 continue;
             }
             if (target_names) {
-                add(name);
+                add(name, other.file, id);
                 continue;
             }
             if (root == FormHead::kernel_module &&
@@ -614,16 +652,43 @@ auto Analysis::completion(Document const& doc,
                                    std::ranges::find(context, parent_form) != context.end()};
             if (local_scope && ((symbol.kind == Kind::parameter || symbol.kind == Kind::variable) ||
                                 kind == FormHead::type_set || root == FormHead::lispb_project)) {
-                add(name);
+                add(name, other.file, id);
             }
         }
     }
     Json result = Json::array();
-    std::ranges::sort(names);
-    auto const distinct{std::ranges::unique(names)};
-    names.erase(distinct.begin(), distinct.end());
-    for (auto const& name : names) {
-        result.push_back({{"label", name}});
+    std::ranges::stable_sort(candidates, [](Candidate const& left, Candidate const& right) {
+        if (left.label != right.label) {
+            return left.label < right.label;
+        }
+        return left.symbol.value && !right.symbol.value;
+    });
+    auto const duplicates{std::ranges::unique(candidates, {}, &Candidate::label)};
+    candidates.erase(duplicates.begin(), duplicates.end());
+    for (auto& candidate : candidates) {
+        Json item;
+        if (!replacement.is_null()) {
+            item["textEdit"] = {{"range", replacement}, {"newText", candidate.label}};
+        }
+        item["label"] = std::move(candidate.label);
+        auto kind{CompletionKind::keyword};
+        if (candidate.symbol.value) {
+            auto const& owner{document(candidate.file)};
+            auto const& symbol{owner.symbols[candidate.symbol.value - 1]};
+            kind = completion_kind(symbol.kind);
+            item["detail"] = signature(symbol);
+            auto details{declaration_details(owner, symbol, format)};
+            if (!details.empty()) {
+                if (format == MarkupKind::markdown) {
+                    item["documentation"] = {{"kind", to_serialized_string(format)},
+                                             {"value", std::move(details)}};
+                } else {
+                    item["documentation"] = std::move(details);
+                }
+            }
+        }
+        item["kind"] = std::to_underlying(kind);
+        result.push_back(std::move(item));
     }
     return result;
 }
@@ -663,7 +728,7 @@ auto Analysis::query(fs::path const& path,
         forms = syntax.children(form);
     }
     if (completing) {
-        return completion(doc, context, offset);
+        return completion(doc, context, offset, capabilities.completion_format);
     }
     if (context.empty()) {
         return nullptr;

@@ -225,19 +225,26 @@ class Workspace {
 
 enum class SessionState { awaiting_initialize, running, shutdown };
 
+static auto preferred_markup(Json const& params, Json::json_pointer const& formats) -> MarkupKind {
+    if (params.contains(formats)) {
+        for (auto const& item : params.at(formats)) {
+            if (auto format{try_parse_serialized_markup_kind(item.get_ref<std::string const&>())}) {
+                return *format;
+            }
+        }
+    }
+    return MarkupKind::plaintext;
+}
 static auto initialize(Json const& params, ClientCapabilities& capabilities) -> Json {
     Json::json_pointer const hierarchy{
         "/capabilities/textDocument/documentSymbol/hierarchicalDocumentSymbolSupport"};
     capabilities.hierarchical_symbols = params.value(hierarchy, false);
-    Json::json_pointer const hover_formats{"/capabilities/textDocument/hover/contentFormat"};
-    if (params.contains(hover_formats)) {
-        for (auto const& item : params.at(hover_formats)) {
-            if (auto format{try_parse_serialized_markup_kind(item.get_ref<std::string const&>())}) {
-                capabilities.hover_format = *format;
-                break;
-            }
-        }
-    }
+    capabilities.hover_format = preferred_markup(
+        params, Json::json_pointer{"/capabilities/textDocument/hover/contentFormat"});
+    capabilities.completion_format = preferred_markup(
+        params,
+        Json::json_pointer{
+            "/capabilities/textDocument/completion/completionItem/documentationFormat"});
 
     Json types = Json::array();
     for (unsigned i{}; i <= static_cast<unsigned>(ioj::enum_max<SemanticKind>); ++i) {
