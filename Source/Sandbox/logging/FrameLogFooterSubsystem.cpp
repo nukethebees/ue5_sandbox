@@ -1,13 +1,19 @@
 #include "Sandbox/logging/FrameLogFooterSubsystem.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
+#include <SpaceGame/settings/GameSettingsSubsystem.h>
 
 #include "Misc/CoreDelegates.h"
+#include <Subsystems/SubsystemCollection.h>
 
 namespace ioj {
 void UFrameLogFooterSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
     Super::Initialize(Collection);
 
+    Collection.InitializeDependency<UGameSettingsSubsystem>();
+    if (!UGameSettingsSubsystem::application_settings(GetGameInstance()).frame_log_footer) {
+        return;
+    }
     frame_log_tracker = MakeUnique<FFrameLogTracker>();
     RETURN_IF_NULLPTR(GLog);
     GLog->AddOutputDevice(frame_log_tracker.Get());
@@ -22,7 +28,9 @@ void UFrameLogFooterSubsystem::Deinitialize() {
 
     FCoreDelegates::OnEndFrame.RemoveAll(this);
 
-    RETURN_IF_INVALID(frame_log_tracker);
+    if (!frame_log_tracker) {
+        return;
+    }
     RETURN_IF_NULLPTR(GLog);
 
     GLog->RemoveOutputDevice(frame_log_tracker.Get());

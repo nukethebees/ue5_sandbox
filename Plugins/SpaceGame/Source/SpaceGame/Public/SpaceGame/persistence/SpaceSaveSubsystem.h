@@ -22,13 +22,9 @@ class SPACEGAME_API USpaceSaveSubsystem : public UGameInstanceSubsystem {
     auto get_level_progress(FLevelId level_id) const -> profiles::LevelProgressSummary;
     auto is_level_completed(FLevelId level_id) const -> bool;
     auto has_active_profile() const -> bool;
-    auto unlock_all_missions() const -> bool;
-    auto start_levels_paused() const -> bool;
     auto create_profile(FString const& display_name) -> profiles::CreateProfileResponse;
     bool activate_profile(std::string const& profile_id);
     bool reset_test_profile();
-    bool set_unlock_all_missions(bool enabled);
-    bool set_start_levels_paused(bool enabled);
     void log_save_data() const;
   private:
     auto make_storage() -> profiles::ProfileStorage;

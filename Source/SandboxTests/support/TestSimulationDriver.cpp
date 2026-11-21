@@ -4,9 +4,9 @@
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/fighters/sim.h>
-#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SandboxTests/SandboxTestLogCategories.h>
 #include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
+#include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
@@ -80,8 +80,8 @@ void TestSimulationDriver::queue_kills(std::span<sim::EntityId const> const targ
 }
 bool TestSimulationDriver::should_export_results() const {
 #if WITH_EDITOR
-    auto const* settings{GetDefault<USandboxDeveloperSettings>()};
-    return settings->export_test_results;
+    return UGameSettingsSubsystem::application_settings(world.GetGameInstance())
+        .export_test_results;
 #else
     return false;
 #endif

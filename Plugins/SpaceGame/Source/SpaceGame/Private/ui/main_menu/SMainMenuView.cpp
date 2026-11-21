@@ -24,8 +24,7 @@ void SMainMenuView::Construct(FArguments const& args) {
     SAssignNew(content_switcher_, SWidgetSwitcher) +
         SWidgetSwitcher::Slot()[mission_content_.ToSharedRef()] +
         SWidgetSwitcher::Slot()[args._ArchiveContent.Widget] +
-        SWidgetSwitcher::Slot()[args._OptionsContent.Widget] +
-        SWidgetSwitcher::Slot()[args._DebugContent.Widget];
+        SWidgetSwitcher::Slot()[args._OptionsContent.Widget];
 
     auto const body{SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[build_navigation()] +
                     SHorizontalBox::Slot().FillWidth(1.0f).Padding(
@@ -209,10 +208,6 @@ auto SMainMenuView::build_navigation() -> TSharedRef<SWidget> {
              EMainMenuPage::System,
              NSLOCTEXT("MainMenu", "System", "System"),
              EGameUiIcon::System);
-    add_page(navigation,
-             EMainMenuPage::Debug,
-             NSLOCTEXT("MainMenu", "Debug", "Debug"),
-             EGameUiIcon::Gameplay);
 
     navigation->AddSlot().FillHeight(1.0f);
     navigation->AddSlot().AutoHeight().Padding(
@@ -295,9 +290,6 @@ auto SMainMenuView::page_content_index(EMainMenuPage const page) const -> int32 
     }
     if (page == EMainMenuPage::DataArchive) {
         return 1;
-    }
-    if (page == EMainMenuPage::Debug) {
-        return 3;
     }
     return 2;
 }

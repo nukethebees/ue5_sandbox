@@ -97,16 +97,6 @@ auto ProfileManager::has_active_profile() const -> bool {
     return active_results_.has_value() && find_profile(index_.active_profile_id) != nullptr;
 }
 
-auto ProfileManager::unlock_all_missions() const -> bool {
-    auto const* const profile{find_profile(index_.active_profile_id)};
-    return has_active_profile() && profile->debug_settings.unlock_all_missions;
-}
-
-auto ProfileManager::start_levels_paused() const -> bool {
-    auto const* const profile{find_profile(index_.active_profile_id)};
-    return has_active_profile() && profile->debug_settings.start_levels_paused;
-}
-
 /* **************************************** */
 // Profile and result mutation
 /* **************************************** */
@@ -235,62 +225,6 @@ auto ProfileManager::append_score_record(ScoreRecord const& record) -> RecordSav
             return true;
         })};
     return {.persisted = persisted, .new_best_time = persisted && new_best_time};
-}
-
-bool ProfileManager::set_unlock_all_missions(bool const enabled) {
-    if (!active_results_.has_value()) {
-        return false;
-    }
-
-    auto const active_profile_id{index_.active_profile_id};
-    return storage_.with_exclusive_access([this, enabled, &active_profile_id] {
-        if (!reload_latest(active_profile_id)) {
-            return false;
-        }
-        auto* const metadata{find_profile(active_profile_id)};
-        if (metadata == nullptr) {
-            return false;
-        }
-        if (metadata->debug_settings.unlock_all_missions == enabled) {
-            return true;
-        }
-
-        auto const previous{metadata->debug_settings.unlock_all_missions};
-        metadata->debug_settings.unlock_all_missions = enabled;
-        if (!storage_.save_index(index_)) {
-            metadata->debug_settings.unlock_all_missions = previous;
-            return false;
-        }
-        return true;
-    });
-}
-
-bool ProfileManager::set_start_levels_paused(bool const enabled) {
-    if (!active_results_.has_value()) {
-        return false;
-    }
-
-    auto const active_profile_id{index_.active_profile_id};
-    return storage_.with_exclusive_access([this, enabled, &active_profile_id] {
-        if (!reload_latest(active_profile_id)) {
-            return false;
-        }
-        auto* const metadata{find_profile(active_profile_id)};
-        if (metadata == nullptr) {
-            return false;
-        }
-        if (metadata->debug_settings.start_levels_paused == enabled) {
-            return true;
-        }
-
-        auto const previous{metadata->debug_settings.start_levels_paused};
-        metadata->debug_settings.start_levels_paused = enabled;
-        if (!storage_.save_index(index_)) {
-            metadata->debug_settings.start_levels_paused = previous;
-            return false;
-        }
-        return true;
-    });
 }
 
 bool ProfileManager::reset_test_profile(std::span<ScoreRecord const> const records) {

@@ -8,7 +8,6 @@
 namespace ioj {
 enum class EOptionsTab : uint8;
 class SMainMenuView;
-class UDebugSettingsWidget;
 class UGameSubsystem;
 class ULevelSelectWidget;
 class UOptionsWidget;
@@ -23,7 +22,6 @@ enum class EMainMenuPage : uint8 {
     Controls,
     Accessibility,
     System,
-    Debug,
 };
 
 UCLASS()
@@ -42,9 +40,6 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
         return level_select_widget_;
     }
     [[nodiscard]] auto get_options_widget() const -> UOptionsWidget* { return options_widget_; }
-    [[nodiscard]] auto get_debug_settings_widget() const -> UDebugSettingsWidget* {
-        return debug_settings_widget_;
-    }
     [[nodiscard]] auto get_save_game_viewer() const -> USaveGameViewerWidget* {
         return save_game_viewer_;
     }
@@ -68,7 +63,6 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     void quit_game();
     void focus_active_content();
     void handle_page_modal_changed(bool visible);
-    void handle_profile_debug_settings_changed();
 
     UPROPERTY(Transient)
     UGameSubsystem* game_{nullptr};
@@ -78,8 +72,6 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     USaveGameViewerWidget* save_game_viewer_{nullptr};
     UPROPERTY(Transient)
     UOptionsWidget* options_widget_{nullptr};
-    UPROPERTY(Transient)
-    UDebugSettingsWidget* debug_settings_widget_{nullptr};
 
     TSubclassOf<ULevelSelectWidget> level_select_class_{};
     TSharedPtr<SMainMenuView> view_{};

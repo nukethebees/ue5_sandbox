@@ -71,12 +71,6 @@ auto make_record(Timestamp date, std::string level, KillCount kills) -> ScoreRec
             .time_seconds = 60.f};
 }
 }
-void check_debug_settings(ProfileManager const& manager,
-                          ProfileDebugSettings expected,
-                          char const* description) {
-    EXPECT_EQ(manager.unlock_all_missions(), expected.unlock_all_missions) << description;
-    EXPECT_EQ(manager.start_levels_paused(), expected.start_levels_paused) << description;
-}
 
 TEST(ProfileManager, CreatesEmptyDefaultProfile) {
     FakeProfileStorage storage;
@@ -246,67 +240,6 @@ TEST(ProfileManager, ConcurrentManagersPreserveNewProfiles) {
     EXPECT_EQ(reloaded.profiles().size(), 3) << "Default and both new profiles remain";
 }
 
-TEST(ProfileManager, DebugSettingsPersistPerProfileAndSurviveReload) {
-
-    FakeProfileStorage storage{};
-    std::string first_profile_id;
-    std::string second_profile_id;
-    {
-        ProfileManager manager{storage.make()};
-        EXPECT_TRUE(manager.initialise()) << "Profile manager initialises";
-        first_profile_id = manager.active_profile_id();
-        check_debug_settings(manager, {}, "New profile defaults");
-        EXPECT_TRUE(manager.set_unlock_all_missions(true)) << "Debug setting saves";
-        EXPECT_TRUE(manager.set_start_levels_paused(true)) << "Paused launch setting saves";
-        auto const record{
-            save_profile_manager_test::make_record(test_date(2026, 9, 6), "asteroid-field", 3)};
-        EXPECT_TRUE(manager.append_score_record(record))
-            << "Score record saves with debug setting enabled";
-        check_debug_settings(manager, {true, true}, "Metadata updates preserve settings");
-
-        auto const created{manager.create_profile("Second")};
-        second_profile_id = created.profile_id;
-        EXPECT_EQ(created.result, CreateProfileResult::succeeded) << "Second profile is created";
-        check_debug_settings(manager, {}, "Second profile has independent defaults");
-        EXPECT_TRUE(manager.activate_profile(first_profile_id)) << "First profile reactivates";
-        check_debug_settings(manager, {true, true}, "First profile settings are restored");
-    }
-
-    ProfileManager reloaded{storage.make()};
-    EXPECT_TRUE(reloaded.initialise()) << "Profile manager reloads";
-    check_debug_settings(reloaded, {true, true}, "Active profile settings survive reload");
-    EXPECT_TRUE(reloaded.activate_profile(second_profile_id)) << "Second profile activates";
-    check_debug_settings(reloaded, {}, "Second profile remains independent");
-}
-
-TEST(ProfileManager, TestProfileResetRestoresDebugDefaults) {
-
-    FakeProfileStorage storage{};
-    ProfileManager manager{storage.make()};
-    EXPECT_TRUE(manager.initialise()) << "Profile manager initialises";
-    EXPECT_TRUE(manager.reset_test_profile({})) << "Test profile is created";
-    EXPECT_TRUE(manager.set_unlock_all_missions(true)) << "Test profile debug setting saves";
-    EXPECT_TRUE(manager.set_start_levels_paused(true)) << "Test profile paused launch saves";
-    check_debug_settings(manager, {true, true}, "Test profile settings are enabled");
-
-    EXPECT_TRUE(manager.reset_test_profile({})) << "Test profile resets again";
-    check_debug_settings(manager, {}, "Reset test profile restores defaults");
-}
-
-TEST(ProfileManager, FailedDebugSettingsSaveRollsBack) {
-
-    FakeProfileStorage storage{};
-    ProfileManager manager{storage.make()};
-    EXPECT_TRUE(manager.initialise()) << "Profile manager initialises";
-
-    storage.index_save_fails = true;
-    EXPECT_FALSE(manager.set_unlock_all_missions(true)) << "Failed settings save is reported";
-    EXPECT_FALSE(manager.unlock_all_missions()) << "Failed settings save is rolled back";
-
-    EXPECT_FALSE(manager.set_start_levels_paused(true)) << "Failed paused launch save is reported";
-    EXPECT_FALSE(manager.start_levels_paused()) << "Failed paused launch save is rolled back";
-}
-
 TEST(ProfileManager, RejectsUnsupportedProfileVersions) {
     for (std::int32_t version{}; version <= current_save_version + 1; ++version) {
         if (version == current_save_version) {
@@ -359,7 +292,6 @@ TEST(ProfileManager, RejectsMissingResultsReferencedByAnExistingIndex) {
     EXPECT_FALSE(manager.has_active_profile());
     EXPECT_TRUE(manager.active_profile_id().empty());
     EXPECT_TRUE(manager.profiles().empty());
-    EXPECT_FALSE(manager.set_unlock_all_missions(true));
     EXPECT_FALSE(storage.results.contains("missing"))
         << "Missing results are not replaced with an empty file";
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ioj/profiles/profile_debug_settings.h>
 #include <ioj/profiles/score_record.h>
 
 #include <span>
@@ -17,7 +16,6 @@ struct ProfileMetadata {
     float total_simulation_duration_seconds{};
     std::uint64_t total_kills{};
     std::int32_t outcome_count{};
-    ProfileDebugSettings debug_settings{};
 };
 
 void update_profile_metadata(ProfileMetadata& metadata, std::span<ScoreRecord const> records);

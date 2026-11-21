@@ -2,7 +2,6 @@
 
 #include "SMainMenuView.h"
 #include "SpaceGame/system/GameSubsystem.h"
-#include "SpaceGame/ui/main_menu/DebugSettingsWidget.h"
 #include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
@@ -67,8 +66,6 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
                                                           : SNullWidget::NullWidget};
     auto const options_content{IsValid(options_widget_) ? options_widget_->TakeWidget()
                                                         : SNullWidget::NullWidget};
-    auto const debug_content{IsValid(debug_settings_widget_) ? debug_settings_widget_->TakeWidget()
-                                                             : SNullWidget::NullWidget};
 
     auto result{
         SAssignNew(view_, SMainMenuView)
@@ -78,7 +75,6 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
             .MissionContent()[mission_content]
             .ArchiveContent()[archive_content]
             .OptionsContent()[options_content]
-            .DebugContent()[debug_content]
             .OnPageSelected(FOnMainMenuPageSelected::CreateUObject(this, &ThisClass::request_page))
             .OnQuit(FSimpleDelegate::CreateUObject(this, &ThisClass::request_quit))
             .OnFocusContent(
@@ -148,7 +144,6 @@ auto UMainMenuWidget::options_tab_for_page(EMainMenuPage const page) -> EOptions
             return EOptionsTab::System;
         case EMainMenuPage::SelectMission:
         case EMainMenuPage::DataArchive:
-        case EMainMenuPage::Debug:
             break;
     }
     checkNoEntry();
@@ -184,20 +179,6 @@ void UMainMenuWidget::create_content_widgets() {
         if (IsValid(options_widget_)) {
             options_widget_->modal_state_changed.AddUObject(this,
                                                             &ThisClass::handle_page_modal_changed);
-        }
-    }
-    if (!IsValid(debug_settings_widget_)) {
-        debug_settings_widget_ =
-            IsValid(owning_player)   ? CreateWidget<UDebugSettingsWidget>(
-                                           owning_player, UDebugSettingsWidget::StaticClass())
-            : IsValid(game_instance) ? CreateWidget<UDebugSettingsWidget>(
-                                           game_instance, UDebugSettingsWidget::StaticClass())
-            : IsValid(world)
-                ? CreateWidget<UDebugSettingsWidget>(world, UDebugSettingsWidget::StaticClass())
-                : nullptr;
-        if (IsValid(debug_settings_widget_)) {
-            debug_settings_widget_->settings_changed.AddUObject(
-                this, &ThisClass::handle_profile_debug_settings_changed);
         }
     }
 
@@ -249,8 +230,6 @@ void UMainMenuWidget::show_page(EMainMenuPage const page) {
         level_select_widget_->refresh();
     } else if (is_options_page(page) && IsValid(options_widget_)) {
         options_widget_->select_tab(options_tab_for_page(page));
-    } else if (page == EMainMenuPage::Debug && IsValid(debug_settings_widget_)) {
-        debug_settings_widget_->refresh();
     }
 }
 
@@ -276,8 +255,6 @@ void UMainMenuWidget::focus_active_content() {
         save_game_viewer_->focus_primary_action();
     } else if (is_options_page(active_page_) && IsValid(options_widget_)) {
         options_widget_->focus_content();
-    } else if (active_page_ == EMainMenuPage::Debug && IsValid(debug_settings_widget_)) {
-        debug_settings_widget_->focus_content();
     }
 }
 
@@ -288,9 +265,4 @@ void UMainMenuWidget::handle_page_modal_changed(bool const visible) {
     }
 }
 
-void UMainMenuWidget::handle_profile_debug_settings_changed() {
-    if (IsValid(level_select_widget_)) {
-        level_select_widget_->refresh();
-    }
-}
 } // namespace ioj

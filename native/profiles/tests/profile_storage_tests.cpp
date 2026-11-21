@@ -25,11 +25,9 @@ TEST(ProfileStorage, RecoversPreviousGenerationIncludingDebugSettings) {
     storage_tests::Directory directory;
     auto const root{directory.path / std::filesystem::path{u8"profiles-\u03bb-\u4fdd\u5b58"}};
     auto storage{make_file_profile_storage(root)};
-    ProfileIndexData first{.active_profile_id = "default_profile",
-                           .profiles = {{.profile_id = "default_profile",
-                                         .display_name = "Default Profile",
-                                         .debug_settings = {.unlock_all_missions = true,
-                                                            .start_levels_paused = true}}}};
+    ProfileIndexData first{
+        .active_profile_id = "default_profile",
+        .profiles = {{.profile_id = "default_profile", .display_name = "Default Profile"}}};
     auto second{first};
     second.profiles[0].display_name = "Updated";
     ASSERT_TRUE(storage.with_exclusive_access([&] { return storage.save_index(first); }));
@@ -100,7 +98,6 @@ TEST(ProfileStorage, MergeDeduplicatesPayloadsAndRebuildsMetadataBeforePublicati
     ProfileManager second_source{make_file_profile_storage(sources[1])};
     ASSERT_TRUE(second_source.initialise());
     ASSERT_TRUE(second_source.append_score_record(second));
-    ASSERT_TRUE(second_source.set_unlock_all_missions(true));
     auto const destination{directory.path / "merged"};
     auto const merged{merge_profile_files(sources, {}, destination)};
     ASSERT_TRUE(merged);
@@ -113,7 +110,6 @@ TEST(ProfileStorage, MergeDeduplicatesPayloadsAndRebuildsMetadataBeforePublicati
     EXPECT_EQ(result.active_records()[1], second);
     EXPECT_EQ(result.profiles()[0].total_kills, std::uint64_t{first.kills} + second.kills);
     EXPECT_EQ(result.profiles()[0].total_simulation_duration_seconds, 8.f);
-    EXPECT_TRUE(result.unlock_all_missions());
     EXPECT_FALSE(merge_profile_files(sources, {}, destination));
 }
 TEST(ProfileStorage, CloneIsPublishedOnceAndRemainsIsolated) {

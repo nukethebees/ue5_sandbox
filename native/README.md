@@ -85,10 +85,7 @@ The exclusions are explicit in `cmake/presets/features.py`; the corresponding no
 MSVC tests remain enabled.
 
 Simulation tests, benchmarks and Unreal Play load tuning and entity geometry through
-`LevelScripts/Settings/base.scm`. After editing mesh collision, fighter wave size or weapon sockets,
+`LevelScripts/Settings/level-defaults.scm`. After editing mesh collision, fighter wave size or weapon sockets,
 use **Tools → Export Entity Geometry** in Unreal.
 
-Application settings descriptors and edit transactions are native. Flight-model settings use the
-versioned `flight-model:2:` text codec; previous Unreal/Base64 development values are intentionally
-unsupported and restore the authored defaults. Display, CVar and Enhanced Input persistence remain
-engine adapters.
+Application flags and user preferences live in [S7 settings](../LevelScripts/README.md). Enhanced Input saves key mappings. Native profiles save progression.

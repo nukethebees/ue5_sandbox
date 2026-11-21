@@ -1,6 +1,6 @@
 #include "SandboxGameMode.h"
 
-#include "SandboxGameShared/core/SandboxDeveloperSettings.h"
+#include "SpaceGame/settings/GameSettingsSubsystem.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Engine/World.h"
@@ -27,7 +27,6 @@ void ASandboxGameMode::InitGame(FString const& MapName,
 void ASandboxGameMode::BeginPlay() {
     Super::BeginPlay();
 
-    auto const* settings{GetDefault<USandboxDeveloperSettings>()};
     auto* const world{GetWorld()};
     auto* pc{UGameplayStatics::GetPlayerController(this, 0)};
 
@@ -41,13 +40,14 @@ void ASandboxGameMode::BeginPlay() {
     }
 
 #if WITH_EDITOR
-    if (settings->show_collision) {
+    auto const& settings{UGameSettingsSubsystem::application_settings(GetGameInstance())};
+    if (settings.show_collision) {
         pc->ConsoleCommand(TEXT("show collision"));
     }
 #endif
 
 #if WITH_EDITOR
-    if (settings->pause_pie_on_start) {
+    if (settings.pause_pie_on_start) {
         if (GUnrealEd->SetPIEWorldsPaused(true)) {
             GUnrealEd->PlaySessionPaused();
         }

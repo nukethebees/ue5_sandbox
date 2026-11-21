@@ -5,6 +5,7 @@
 #include <SpaceGame/levels/LevelUnlock.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
+#include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/SpaceGameUiTheme.h>
@@ -81,14 +82,14 @@ auto find_level_title(TArray<FLevelScriptEntry> const& entries, FLevelId const i
 }
 
 auto make_unlock_evaluator(TArray<FLevelScriptEntry> const& entries,
-                           USpaceSaveSubsystem const* const save_subsystem)
-    -> FLevelUnlockEvaluator {
+                           USpaceSaveSubsystem const* const save_subsystem,
+                           bool unlock_all) -> FLevelUnlockEvaluator {
     return FLevelUnlockEvaluator{
         [save_subsystem](FLevelId const id) {
             return IsValid(save_subsystem) && save_subsystem->is_level_completed(id);
         },
         [&entries](FLevelId const id) { return find_level_title(entries, id); },
-        IsValid(save_subsystem) && save_subsystem->unlock_all_missions(),
+        unlock_all,
     };
 }
 
@@ -421,7 +422,11 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
                                 ? save_subsystem->get_level_progress(
                                       levels::authoring::to_unreal(entry.definition->metadata().id))
                                 : profiles::LevelProgressSummary{}};
-        auto const evaluator{make_unlock_evaluator(entries_, save_subsystem)};
+        auto const evaluator{make_unlock_evaluator(
+            entries_,
+            save_subsystem,
+            game_instance &&
+                UGameSettingsSubsystem::application_settings(game_instance).unlock_all_missions)};
         auto const unlock_status{evaluator.evaluate(entry.definition.GetValue())};
         view_state_.description =
             FText::FromString(description_with_requirements(entry, unlock_status));
@@ -429,7 +434,8 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
 
         if (unlock_status.unlocked) {
             view_state_.can_launch = true;
-            if (IsValid(save_subsystem) && save_subsystem->start_levels_paused()) {
+            if (game_instance &&
+                UGameSettingsSubsystem::application_settings(game_instance).start_levels_paused) {
                 view_state_.launch_mode_status =
                     NSLOCTEXT("LevelSelect", "DebugStartPaused", "DEBUG // START PAUSED");
             }
@@ -455,11 +461,11 @@ void UScriptLevelSelectWidget::handle_launch() {
     }
 
     auto* const game_instance{GetGameInstance()};
-    auto const* const save_subsystem{
-        IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
-    auto const launch_mode{IsValid(save_subsystem) && save_subsystem->start_levels_paused()
-                               ? ::ioj::levels::LaunchMode::Paused
-                               : ::ioj::levels::LaunchMode::Running};
+    auto const launch_mode{
+        game_instance &&
+                UGameSettingsSubsystem::application_settings(game_instance).start_levels_paused
+            ? ::ioj::levels::LaunchMode::Paused
+            : ::ioj::levels::LaunchMode::Running};
     ::ioj::levels::LaunchOptions options{
         .launch_mode = launch_mode,
         .requested_time_scale = levels::launch::TimeScale::make(time_scale.GetValue()),
@@ -505,7 +511,11 @@ void UScriptLevelSelectWidget::launch_selected_level(::ioj::levels::LaunchOption
     auto* const game_instance{GetGameInstance()};
     auto* const save_subsystem{
         IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
-    auto const evaluator{make_unlock_evaluator(entries_, save_subsystem)};
+    auto const evaluator{make_unlock_evaluator(
+        entries_,
+        save_subsystem,
+        game_instance &&
+            UGameSettingsSubsystem::application_settings(game_instance).unlock_all_missions)};
     auto const& selected_entry{entries_[selected_entry_index_]};
     if (!evaluator.evaluate(selected_entry.definition.GetValue()).unlocked) {
         view_state_.can_launch = false;

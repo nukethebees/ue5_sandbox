@@ -20,16 +20,12 @@ class ProfileManager {
     auto active_profile_id() const -> std::string const&;
     auto active_records() const -> std::span<ScoreRecord const>;
     auto has_active_profile() const -> bool;
-    auto unlock_all_missions() const -> bool;
-    auto start_levels_paused() const -> bool;
 
     auto create_profile(std::string display_name) -> CreateProfileResponse;
     bool activate_profile(std::string const& profile_id);
     bool load_profile_records(std::string const& profile_id,
                               std::vector<ScoreRecord>& records) const;
     auto append_score_record(ScoreRecord const& record) -> RecordSaveResult;
-    bool set_unlock_all_missions(bool enabled);
-    bool set_start_levels_paused(bool enabled);
     bool reset_test_profile(std::span<ScoreRecord const> records);
 
     static auto validate_profile_name(std::string display_name,

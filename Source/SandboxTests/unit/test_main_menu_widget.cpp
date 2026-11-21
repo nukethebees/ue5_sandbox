@@ -1,6 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
-#include <SpaceGame/ui/main_menu/DebugSettingsWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
@@ -178,12 +177,10 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         auto* const level_select_widget{
             Cast<ioj::s7::UScriptLevelSelectWidget>(widget->get_level_select_widget())};
         auto* const options_widget{widget->get_options_widget()};
-        auto* const debug_settings_widget{widget->get_debug_settings_widget()};
         auto* const save_game_viewer{widget->get_save_game_viewer()};
         if (!TestRunner->TestTrue(TEXT("All command-deck pages are created"),
                                   IsValid(level_select_widget) && IsValid(options_widget) &&
-                                      IsValid(save_game_viewer) &&
-                                      IsValid(debug_settings_widget))) {
+                                      IsValid(save_game_viewer))) {
             return;
         }
 
@@ -235,12 +232,6 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                              options_widget->get_active_tab() == ioj::EOptionsTab::Accessibility);
         widget->select_page(ioj::EMainMenuPage::System);
         TestRunner->TestTrue(TEXT("System tab is selectable"),
-                             options_widget->get_active_tab() == ioj::EOptionsTab::System);
-
-        widget->select_page(ioj::EMainMenuPage::Debug);
-        TestRunner->TestTrue(TEXT("Debug page is selectable"),
-                             widget->get_active_page() == ioj::EMainMenuPage::Debug);
-        TestRunner->TestTrue(TEXT("Debug remains outside the Options tab model"),
                              options_widget->get_active_tab() == ioj::EOptionsTab::System);
 
         widget->select_page(ioj::EMainMenuPage::SelectMission);

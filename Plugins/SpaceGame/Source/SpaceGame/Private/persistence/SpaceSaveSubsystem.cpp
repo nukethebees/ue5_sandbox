@@ -4,7 +4,7 @@
 #include <ioj/profiles/file_profile_storage.h>
 #include <ioj/profiles/sample_profile_records.h>
 #include <ioj/profiles/save_browser.h>
-#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
+#include <SpaceGame/settings/GameSettingsSubsystem.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -57,6 +57,7 @@ auto USpaceSaveSubsystem::get(UGameInstance const* game_instance) -> USpaceSaveS
 }
 void USpaceSaveSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
+    collection.InitializeDependency<UGameSettingsSubsystem>();
     profile_manager_ = profiles::ProfileManager{make_storage()};
     if (!profile_manager_.initialise()) {
         UE_LOG(LogSandboxSubsystem, Error, TEXT("Failed to initialize native save profiles."));
@@ -82,12 +83,6 @@ auto USpaceSaveSubsystem::is_level_completed(FLevelId level_id) const -> bool {
 auto USpaceSaveSubsystem::has_active_profile() const -> bool {
     return profile_manager_.has_active_profile();
 }
-auto USpaceSaveSubsystem::unlock_all_missions() const -> bool {
-    return profile_manager_.unlock_all_missions();
-}
-auto USpaceSaveSubsystem::start_levels_paused() const -> bool {
-    return profile_manager_.start_levels_paused();
-}
 auto USpaceSaveSubsystem::create_profile(FString const& name) -> profiles::CreateProfileResponse {
     return profile_manager_.create_profile(TCHAR_TO_UTF8(*name));
 }
@@ -101,18 +96,10 @@ bool USpaceSaveSubsystem::reset_test_profile() {
     return profile_manager_.reset_test_profile(profiles::sample_profile_records());
 #endif
 }
-bool USpaceSaveSubsystem::set_unlock_all_missions(bool enabled) {
-    return profile_manager_.set_unlock_all_missions(enabled);
-}
-bool USpaceSaveSubsystem::set_start_levels_paused(bool enabled) {
-    return profile_manager_.set_start_levels_paused(enabled);
-}
 void USpaceSaveSubsystem::log_save_data() const {
-#if WITH_EDITOR
-    if (!GetDefault<USandboxDeveloperSettings>()->print_save_data) {
+    if (!UGameSettingsSubsystem::application_settings(GetGameInstance()).print_save_data) {
         return;
     }
-#endif
     UE_LOG(LogSandboxSubsystem,
            Display,
            TEXT("Native save profile %s: %llu profiles, %llu outcomes"),

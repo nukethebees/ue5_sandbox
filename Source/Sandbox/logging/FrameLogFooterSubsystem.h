@@ -13,7 +13,7 @@
  * Manages a frame log tracker to print a footer at the end of each frame if logs were emitted.
  */
 namespace ioj {
-UCLASS(Config = Game)
+UCLASS()
 class SANDBOX_API UFrameLogFooterSubsystem
     : public UGameInstanceSubsystem
     , public LogMsgMixin<"UFrameLogFooterSubsystem", LogSandboxSubsystem> {
@@ -21,10 +21,6 @@ class SANDBOX_API UFrameLogFooterSubsystem
   public:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
     void Deinitialize() override;
-    virtual bool ShouldCreateSubsystem(UObject* Outer) const { return enable_subsystem; }
-
-    UPROPERTY(Config, EditAnywhere, Category = "Config")
-    bool enable_subsystem{true};
   private:
     void on_end_frame();
 

@@ -81,9 +81,7 @@ auto encode(ProfileIndexData const& value) -> Json {
                         {"last_played", profile.last_played_at},
                         {"duration", profile.total_simulation_duration_seconds},
                         {"kills", profile.total_kills},
-                        {"outcomes", profile.outcome_count},
-                        {"unlock_all", profile.debug_settings.unlock_all_missions},
-                        {"start_paused", profile.debug_settings.start_levels_paused}});
+                        {"outcomes", profile.outcome_count}});
     }
     return {{"version", value.save_version},
             {"active", value.active_profile_id},
@@ -143,16 +141,14 @@ auto decode(Json const& json, ProfileIndexData& value) -> bool {
         if (!row.at("kills").is_number_unsigned()) {
             return false;
         }
-        ProfileMetadata profile{
-            .profile_id = row.at("id").get<std::string>(),
-            .display_name = row.at("name").get<std::string>(),
-            .created_at = row.at("created").get<Timestamp>(),
-            .last_played_at = row.at("last_played").get<Timestamp>(),
-            .total_simulation_duration_seconds = row.at("duration").get<float>(),
-            .total_kills = row.at("kills").get<std::uint64_t>(),
-            .outcome_count = row.at("outcomes").get<std::int32_t>(),
-            .debug_settings = {.unlock_all_missions = row.at("unlock_all").get<bool>(),
-                               .start_levels_paused = row.at("start_paused").get<bool>()}};
+        ProfileMetadata profile{.profile_id = row.at("id").get<std::string>(),
+                                .display_name = row.at("name").get<std::string>(),
+                                .created_at = row.at("created").get<Timestamp>(),
+                                .last_played_at = row.at("last_played").get<Timestamp>(),
+                                .total_simulation_duration_seconds =
+                                    row.at("duration").get<float>(),
+                                .total_kills = row.at("kills").get<std::uint64_t>(),
+                                .outcome_count = row.at("outcomes").get<std::int32_t>()};
         if (!valid_identifier(profile.profile_id) || profile.display_name.empty() ||
             !std::isfinite(profile.total_simulation_duration_seconds) ||
             profile.total_simulation_duration_seconds < 0.f || profile.outcome_count < 0 ||
@@ -575,10 +571,6 @@ auto merge_profile_files(std::span<std::filesystem::path const> sources,
                             merged.metadata.display_name = metadata.display_name;
                             merged.metadata.last_played_at = metadata.last_played_at;
                         }
-                        merged.metadata.debug_settings.unlock_all_missions |=
-                            metadata.debug_settings.unlock_all_missions;
-                        merged.metadata.debug_settings.start_levels_paused |=
-                            metadata.debug_settings.start_levels_paused;
                     }
                     for (auto const& record : results.score_records) {
                         if (!std::ranges::contains(merged.results.score_records, record)) {
