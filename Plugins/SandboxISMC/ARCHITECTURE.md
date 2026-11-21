@@ -1,6 +1,8 @@
 # SandboxISMC
 
-SpaceGame submits unit-scale fighter and laser instances to the renderer. Supply resident, inlined LOD0 buffers and a finite position domain enclosing each submitted instance. Replacing the mesh invalidates the snapshot. The [native packer](../../native/ismc/lib/include/ioj/ismc/transform.h) and [shader decoder](Shaders/Private/PackedTransform.ush) share a 12-byte transform.
+SpaceGame renders unit-scale fighters and lasers. Supply resident, inlined LOD0 buffers. Replacing the mesh invalidates the snapshot.
+
+Each 16-byte transform stores three finite component-space floats and a 32-bit packed rotation. The mission collision grid sets gameplay bounds. [Native layout](../../native/ismc/lib/include/ioj/ismc/transform.h) · [Shader input](Shaders/Private/PackedInstanceInput.ush)
 
 Apply the local vertex factory hook once per engine checkout. After an engine upgrade, check it from the repository root:
 

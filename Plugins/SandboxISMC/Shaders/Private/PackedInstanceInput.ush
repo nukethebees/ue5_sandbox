@@ -1,15 +1,12 @@
 #include "/SandboxISMC/Private/PackedTransform.ush"
 
 #if SANDBOXISMC_INSTANCE_INPUT_IMPLEMENTATION
-FVertexFactoryInstanceInput SandboxISMCInstanceInput(uint3 packed) {
-    float3 position;
-    float3x3 basis;
-    SandboxISMCDecodeTransform(packed, SandboxISMC.PositionRootQuantum, position, basis);
+FVertexFactoryInstanceInput SandboxISMCInstanceInput(float3 position, uint rotation) {
+    float3x3 const basis = SandboxISMCDecodeBasis(rotation);
     return MakeInstanceInput(
         float4(basis[0], 0), float4(basis[1], 0), float4(basis[2], 0), float4(position, 0));
 }
 
 #define LOCALVF_GET_INSTANCE_INPUT(input) \
-    SandboxISMCInstanceInput(             \
-        uint3(input.PackedPositionXY, input.PackedPositionZ, input.PackedRotation))
+    SandboxISMCInstanceInput(input.InstancePosition, input.PackedRotation)
 #endif

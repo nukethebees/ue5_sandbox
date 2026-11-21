@@ -31,11 +31,6 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogSandboxISMC, Log, All);
 
-BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FSandboxISMCUniformParameters, )
-SHADER_PARAMETER(FVector4f, PositionRootQuantum)
-END_GLOBAL_SHADER_PARAMETER_STRUCT()
-IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FSandboxISMCUniformParameters, "SandboxISMC");
-
 DEFINE_STAT(STAT_SandboxISMCBuild);
 DECLARE_CYCLE_STAT(TEXT("Submit instance update"), STAT_SandboxISMCSubmit, STATGROUP_SandboxISMC);
 DECLARE_CYCLE_STAT(TEXT("Upload instance buffer"), STAT_SandboxISMCUpload, STATGROUP_SandboxISMC);
@@ -147,10 +142,6 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
         auto const start_cycles = FPlatformTime::Cycles64();
         auto const instance_count = buffer.instances.Num();
         auto resources_changed{false};
-        if (position_root_quantum_ != buffer.position_root_quantum) {
-            position_root_quantum_ = buffer.position_root_quantum;
-            resources_changed = true;
-        }
 
         if (instance_count > capacity_) {
             allocate(rhi_command_list, instance_count);
@@ -210,7 +201,6 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
     auto get_instance_srv() const -> FRHIShaderResourceView* { return instance_srv_; }
     auto get_custom_data_srv() const -> FRHIShaderResourceView* { return custom_data_srv_; }
     auto get_num_custom_data_floats() const -> int32 { return num_custom_data_floats_; }
-    auto get_position_root_quantum() const -> FVector4f { return position_root_quantum_; }
   private:
     auto release_initial_buffer() -> void {
         if (initial_buffer_ == nullptr) {
@@ -241,7 +231,6 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
             FRHIViewDesc::CreateBufferSRV()
                 .SetType(FRHIViewDesc::EBufferType::Typed)
                 // Compatibility binding only: packed input uses vertex attributes.
-                // A scalar view also supports a single 12-byte instance.
                 .SetFormat(PF_R32_FLOAT));
     }
 
@@ -269,7 +258,6 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
     int32 capacity_{0};
     int32 custom_data_capacity_{0};
     int32 num_custom_data_floats_{0};
-    FVector4f position_root_quantum_{0.0f, 0.0f, 0.0f, ioj::ismc::position_quantum};
     FShaderResourceViewRHIRef instance_srv_;
     FBufferRHIRef custom_data_buffer_;
     FShaderResourceViewRHIRef custom_data_srv_;
@@ -314,16 +302,7 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
         return instance_uniform_buffer_.GetReference();
     }
 
-    auto get_packed_uniform_buffer() const -> FRHIUniformBuffer* {
-        return packed_uniform_buffer_.GetReference();
-    }
-
     void update_instance_uniform_buffer() {
-        FSandboxISMCUniformParameters packed_parameters;
-        packed_parameters.PositionRootQuantum = instance_buffer_->get_position_root_quantum();
-        packed_uniform_buffer_ =
-            TUniformBufferRef<FSandboxISMCUniformParameters>::CreateUniformBufferImmediate(
-                packed_parameters, UniformBuffer_MultiFrame);
         FInstancedStaticMeshVertexFactoryUniformShaderParameters parameters;
         parameters.VertexFetch_InstanceOriginBuffer = instance_buffer_->get_instance_srv();
         parameters.VertexFetch_InstanceTransformBuffer = instance_buffer_->get_instance_srv();
@@ -371,19 +350,19 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
                           ColorStreamIndex);
 
         auto const instance_stride = sizeof(FSandboxISMCRenderInstance);
-        auto const add_instance_element = [&](uint32 const offset, uint8 const attribute_index) {
-            elements.Add(
-                AccessStreamComponent(FVertexStreamComponent{instance_buffer_,
-                                                             offset,
-                                                             instance_stride,
-                                                             VET_UInt,
-                                                             EVertexStreamUsage::Instancing},
-                                      attribute_index,
-                                      Streams));
-        };
-        add_instance_element(0, 8);
-        add_instance_element(4, 9);
-        add_instance_element(8, 10);
+        auto const add_instance_element =
+            [&](uint32 const offset, uint8 const attribute_index, EVertexElementType type) {
+                elements.Add(
+                    AccessStreamComponent(FVertexStreamComponent{instance_buffer_,
+                                                                 offset,
+                                                                 instance_stride,
+                                                                 type,
+                                                                 EVertexStreamUsage::Instancing},
+                                          attribute_index,
+                                          Streams));
+            };
+        add_instance_element(offsetof(FSandboxISMCRenderInstance, position), 8, VET_Float3);
+        add_instance_element(offsetof(FSandboxISMCRenderInstance, rotation), 9, VET_UInt);
 
         FVertexStreamComponent const null_lightmap{
             &GNullVertexBuffer, 0, 0, VET_Float4, EVertexStreamUsage::Instancing};
@@ -414,7 +393,6 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
 
     virtual void ReleaseRHI() override {
         instance_uniform_buffer_.SafeRelease();
-        packed_uniform_buffer_.SafeRelease();
         FLocalVertexFactory::ReleaseRHI();
     }
   private:
@@ -422,7 +400,6 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
     FSandboxISMCInstanceBuffer const* instance_buffer_{nullptr};
     TUniformBufferRef<FInstancedStaticMeshVertexFactoryUniformShaderParameters>
         instance_uniform_buffer_;
-    TUniformBufferRef<FSandboxISMCUniformParameters> packed_uniform_buffer_;
 };
 
 class FSandboxISMCVertexFactoryShaderParameters final
@@ -459,8 +436,6 @@ class FSandboxISMCVertexFactoryShaderParameters final
 
         shader_bindings.Add(instancing_offset_, FVector4f::Zero());
         shader_bindings.Add(instance_offset_, batch_element.UserIndex);
-        shader_bindings.Add(shader->GetUniformBufferParameter<FSandboxISMCUniformParameters>(),
-                            local_vertex_factory->get_packed_uniform_buffer());
         shader_bindings.Add(shader->GetUniformBufferParameter<
                                 FInstancedStaticMeshVertexFactoryUniformShaderParameters>(),
                             local_vertex_factory->get_instance_uniform_buffer());
@@ -729,10 +704,7 @@ auto USandboxISMCComponent::get_num_custom_data_floats() const -> int32 {
 }
 
 auto USandboxISMCComponent::clear_instances() -> void {
-    set_instances(0,
-                  FBox3f{ForceInit},
-                  ESandboxISMCParallelism::Sequential,
-                  [](FSandboxISMCInstanceChunkWriter&) {});
+    set_instances(0, ESandboxISMCParallelism::Sequential, [](FSandboxISMCInstanceChunkWriter&) {});
 }
 
 auto USandboxISMCComponent::get_instance_count() const -> int32 {

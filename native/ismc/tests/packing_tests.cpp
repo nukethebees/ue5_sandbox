@@ -40,7 +40,7 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
     auto const count{inputs.positions.size()};
     std::vector<PackedTransform> scalar(count + 2);
     for (auto& packed : scalar) {
-        packed = {{-1234, 2345, -3456}, 0xbeef, {0xabcdef01}};
+        packed = {{-1234, 2345, -3456}, {0xabcdef01}};
     }
     auto simd{scalar};
     auto separate{scalar};
@@ -59,15 +59,17 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
     EXPECT_EQ(!simd_bounds.empty(), !scalar_bounds.empty());
     EXPECT_EQ(scalar_bounds.minimum, simd_bounds.minimum);
     EXPECT_EQ(scalar_bounds.maximum, simd_bounds.maximum);
-    ismc::TransformPacker{{parameters.position_root, {}, {}}, ismc::BoundsMode::Skip}
-        .pack_positions(inputs.view().positions, separate_output);
+    ismc::TransformPacker{{}, ismc::BoundsMode::Skip}.pack_positions(inputs.view().positions,
+                                                                     separate_output);
+    for (auto const& packed : separate_output) {
+        EXPECT_EQ(packed.rotation.bits, 0xabcdef01U);
+    }
     ismc::TransformPacker{{}, ismc::BoundsMode::Skip}.pack_rotations(inputs.view().rotations,
                                                                      separate_output);
     EXPECT_EQ(std::memcmp(scalar.data(), separate.data(), scalar.size() * sizeof(PackedTransform)),
               0);
-    ismc::TransformPacker{
-        {parameters.position_root, {}, {}}, ismc::BoundsMode::Skip, ismc::PackingBackend::Scalar}
-        .pack_positions(inputs.view().positions, separate_output);
+    ismc::TransformPacker{{}, ismc::BoundsMode::Skip, ismc::PackingBackend::Scalar}.pack_positions(
+        inputs.view().positions, separate_output);
     ismc::TransformPacker{{}, ismc::BoundsMode::Skip, ismc::PackingBackend::Scalar}.pack_rotations(
         inputs.view().rotations, separate_output);
     EXPECT_EQ(std::memcmp(scalar.data(), separate.data(), scalar.size() * sizeof(PackedTransform)),
@@ -80,14 +82,11 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
     EXPECT_EQ(std::memcmp(scalar.data(), separate.data(), scalar.size() * sizeof(PackedTransform)),
               0);
     for (std::size_t index{}; index < count; ++index) {
-        EXPECT_EQ(scalar_output[index].reserved, 0xbeef);
         auto const& q{inputs.rotations[index]};
         EXPECT_EQ(scalar_output[index].rotation.bits,
                   pack_normalized_quat32(q[0], q[1], q[2], q[3]).bits);
         for (auto axis{0U}; axis < 3; ++axis) {
-            EXPECT_EQ(scalar_output[index].position[axis],
-                      quantize_position_unchecked(inputs.positions[index][axis],
-                                                  parameters.position_root[axis]));
+            EXPECT_EQ(scalar_output[index].position[axis], inputs.positions[index][axis]);
         }
     }
 
@@ -107,8 +106,7 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
 }
 
 TEST(SandboxISMCBatchPacking, RandomBatchesAndEveryTailMatchExactly) {
-    PackingParameters const parameters{
-        Vector3f{262144, -262144, 1000000}, Vector3f{31, -57, 123}, Vector3f{100, 17, 300}};
+    PackingParameters const parameters{Vector3f{31, -57, 123}, Vector3f{100, 17, 300}};
     for (std::size_t count{}; count <= 48; ++count) {
         SCOPED_TRACE(count);
         compare(Inputs{count}, parameters);
@@ -119,47 +117,34 @@ TEST(SandboxISMCBatchPacking, RandomBatchesAndEveryTailMatchExactly) {
     }
 }
 
-TEST(SandboxISMCBatchPacking, BoundaryPositionsAndQuaternionTiesAndSigns) {
+TEST(SandboxISMCBatchPacking, WidePositionsAndQuaternionTiesAndSigns) {
     Inputs inputs{0};
-    for (auto const root : {0.0f, -262144.0f, 262144.0f}) {
-        for (auto const boundary : {-524280.0f, -24.0f, -8.0f, 8.0f, 24.0f, 524264.0f}) {
-            for (auto const position :
-                 {std::nextafter(boundary, -std::numeric_limits<float>::infinity()),
-                  boundary,
-                  std::nextafter(boundary, std::numeric_limits<float>::infinity())}) {
-                auto const value{position + root};
-                if (!can_quantize_position(value, root)) {
-                    continue;
-                }
-                for (auto largest{0U}; largest < 4; ++largest) {
-                    for (auto const sign : {-1.0f, 1.0f}) {
-                        inputs.positions.push_back({value, value, value});
-                        std::array<float, 4> rotation{};
-                        rotation[largest] = sign;
-                        inputs.rotations.push_back(rotation);
-                        inputs.positions.push_back({value, value, value});
-                        rotation = {0.5f * sign, -0.5f * sign, 0.5f * sign, -0.5f * sign};
-                        inputs.rotations.push_back(rotation);
-                        inputs.positions.push_back({value, value, value});
-                        rotation = {};
-                        rotation[largest] = quaternion_component_limit * sign;
-                        rotation[(largest + 1) % 4] = -quaternion_component_limit * sign;
-                        inputs.rotations.push_back(rotation);
-                    }
-                }
+    for (float const value : {-250000000.0f, -7.75f, 0.125f, 250000000.0f}) {
+        for (auto largest{0U}; largest < 4; ++largest) {
+            for (auto const sign : {-1.0f, 1.0f}) {
+                inputs.positions.push_back({value, value, value});
+                std::array<float, 4> rotation{};
+                rotation[largest] = sign;
+                inputs.rotations.push_back(rotation);
+                inputs.positions.push_back({value, value, value});
+                rotation = {0.5f * sign, -0.5f * sign, 0.5f * sign, -0.5f * sign};
+                inputs.rotations.push_back(rotation);
+                inputs.positions.push_back({value, value, value});
+                rotation = {};
+                rotation[largest] = quaternion_component_limit * sign;
+                rotation[(largest + 1) % 4] = -quaternion_component_limit * sign;
+                inputs.rotations.push_back(rotation);
             }
         }
-        compare(inputs, {Vector3f{root, root, root}, {}, Vector3f{7, 3, 19}});
-        inputs.positions.clear();
-        inputs.rotations.clear();
     }
+    compare(inputs, {{}, Vector3f{7, 3, 19}});
 }
 
 TEST(SandboxISMCBatchPacking, DirectBasisMatchesIndependentlyRotatedCorners) {
     Inputs inputs{1000};
     for (auto const origin : {Vector3f{0, 0, 0}, Vector3f{-71, 203, 19}}) {
         for (auto const extent : {Vector3f{0, 0, 0}, Vector3f{7, 23, 11}}) {
-            PackingParameters const parameters{Vector3f{262144, -262144, 1000000}, origin, extent};
+            PackingParameters const parameters{origin, extent};
             auto const count{inputs.positions.size()};
             for (std::size_t index{}; index < count; ++index) {
                 auto rotation{inputs.rotations[index]};

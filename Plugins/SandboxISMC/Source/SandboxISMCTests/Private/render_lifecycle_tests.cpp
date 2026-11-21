@@ -49,9 +49,6 @@ TEST_CLASS(SandboxISMCRenderLifecycle, "SandboxISMC.RenderTests")
             auto const submit{[&](int32 const instance_count, float const value) {
                 component->set_instances(
                     instance_count,
-                    FBox3f{
-                        FVector3f{0, value, 0},
-                        FVector3f{static_cast<float>(FMath::Max(instance_count - 1, 0)), value, 0}},
                     ESandboxISMCParallelism::Auto,
                     [=](FSandboxISMCInstanceChunkWriter& chunk) {
                         auto const [first_index, chunk_count]{chunk.range()};

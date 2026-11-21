@@ -100,18 +100,13 @@ void FLaserPresentation::update_ismc() {
     auto const entities{simulation().get_entities()};
     auto const active{entities.active()};
     auto const count{static_cast<int32>(entities.num())};
-    auto const locations{entities.view_locations()};
-    FBox3f position_bounds{ForceInit};
     visible_indices_.Reset();
     for (int32 index{}; index < count; ++index) {
         if (active[index] != 0) {
             visible_indices_.Add(index);
-            position_bounds +=
-                FVector3f{locations.xs()[index], locations.ys()[index], locations.zs()[index]};
         }
     }
     instances->set_instances(visible_indices_.Num(),
-                             position_bounds,
                              ESandboxISMCParallelism::Auto,
                              [this](FSandboxISMCInstanceChunkWriter& chunk) { fill_chunk(chunk); });
 }

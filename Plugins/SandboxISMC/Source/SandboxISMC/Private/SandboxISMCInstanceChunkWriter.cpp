@@ -29,40 +29,20 @@ auto FSandboxISMCInstanceChunkWriter::validate_transforms(TConstArrayView<FVecto
         return true;
     }
 
-    // Valid endpoints plus domain membership guarantee safe unchecked integer conversion.
-    for (int32 axis{0}; axis < 3; ++axis) {
-        if (!position_bounds_.IsValid ||
-            !(position_bounds_.Min[axis] <= position_bounds_.Max[axis]) ||
-            !ioj::ismc::can_quantize_position(position_bounds_.Min[axis], position_root_[axis]) ||
-            !ioj::ismc::can_quantize_position(position_bounds_.Max[axis], position_root_[axis])) {
-            UE_LOG(LogTemp,
-                   Fatal,
-                   TEXT("SandboxISMC chunk at %d has invalid position domain on axis %d: "
-                        "[%g, %g], root=%g (16 UU, +/-32767 offsets)"),
-                   first_index_,
-                   axis,
-                   position_bounds_.Min[axis],
-                   position_bounds_.Max[axis],
-                   position_root_[axis]);
-            return false;
-        }
-    }
-
     auto const* position_data{positions.GetData()};
     auto const* rotation_data{rotations.GetData()};
     for (int32 local_index{0}; local_index < count; ++local_index) {
         auto const position{position_data[local_index]};
         auto const rotation{rotation_data[local_index]};
-        // Ordered comparisons against the finite domain also reject NaN and infinity.
-        if (!position_bounds_.IsInsideOrOn(position)) {
-            UE_LOG(LogTemp,
-                   Fatal,
-                   TEXT("SandboxISMC instance %d requires a finite position inside the snapshot "
-                        "domain; received (%g, %g, %g)"),
-                   first_index_ + local_index,
-                   position.X,
-                   position.Y,
-                   position.Z);
+        if (position.ContainsNaN()) {
+            UE_LOG(
+                LogTemp,
+                Fatal,
+                TEXT("SandboxISMC instance %d requires a finite position; received (%g, %g, %g)"),
+                first_index_ + local_index,
+                position.X,
+                position.Y,
+                position.Z);
             return false;
         }
         if (!ioj::ismc::is_normalized_quaternion(
@@ -92,8 +72,7 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
         [](FVector3f value) { return ioj::Vector3f{value.X, value.Y, value.Z}; }};
     ioj::ismc::TransformInput const input{std::as_bytes(std::span{positions.GetData(), count}),
                                           std::as_bytes(std::span{rotations.GetData(), count})};
-    ioj::ismc::PackingParameters const parameters{native_vector(position_root_),
-                                                  native_vector(mesh_bounds_origin_),
+    ioj::ismc::PackingParameters const parameters{native_vector(mesh_bounds_origin_),
                                                   native_vector(mesh_bounds_extent_)};
     auto const output{std::span{instances_.GetData(), count}};
     if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {

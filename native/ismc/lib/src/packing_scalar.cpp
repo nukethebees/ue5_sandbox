@@ -66,10 +66,7 @@ auto pack(TransformInput input,
         auto& packed{output[index]};
         if constexpr (fields != PackingFields::Rotations) {
             position = load<3>(input.positions, index);
-            for (auto axis{0U}; axis < 3; ++axis) {
-                packed.position[axis] =
-                    quantize_position_unchecked(position[axis], parameters.position_root[axis]);
-            }
+            packed.position = {position[0], position[1], position[2]};
         }
         if constexpr (fields != PackingFields::Positions) {
             rotation = load<4>(input.rotations, index);
@@ -85,10 +82,8 @@ auto pack(TransformInput input,
 }
 
 auto pack_positions(std::span<std::byte const> positions,
-                    Vector3f root,
                     std::span<PackedTransform> output) noexcept -> void {
-    scalar_detail::pack<PackingFields::Positions, BoundsMode::Skip>(
-        {positions, {}}, {root, {}, {}}, output);
+    scalar_detail::pack<PackingFields::Positions, BoundsMode::Skip>({positions, {}}, {}, output);
 }
 auto pack_rotations(std::span<std::byte const> rotations,
                     std::span<PackedTransform> output) noexcept -> void {

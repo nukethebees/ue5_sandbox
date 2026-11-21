@@ -4,4 +4,4 @@
 
 using FSandboxISMCRenderInstance = ioj::ismc::PackedTransform;
 
-static_assert(sizeof(FSandboxISMCRenderInstance) == 12);
+static_assert(sizeof(FSandboxISMCRenderInstance) == 16);
