@@ -112,7 +112,7 @@ TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {
     std::filesystem::create_directories(directory / "Example");
     std::filesystem::create_directories(directory / "Settings");
     auto const config{directory / "Example/editor-config.scm"};
-    auto const base{directory / "Settings/base.scm"};
+    auto const base{directory / "Settings/level-defaults.scm"};
     ASSERT_TRUE(testing::write_files(
         {{base,
           "(export game-settings) (define game-settings (settings :fighters (fighters :speed 4000) "
@@ -122,7 +122,7 @@ TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {
                    :settings (settings :fighters (fighters :speed 4000) :tick (tick :time-scale 2)))))"},
          {directory / "Example.scm",
           R"((export mission) (define base (module-ref (import-module "Example/editor-config.scm") 'scene))
-          (define mission (copy-with base :settings (settings-layers (module-ref (import-module "Settings/base.scm") 'game-settings)
+          (define mission (copy-with base :settings (settings-layers (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
                                        (level-ref base :settings) (settings :tick (tick :time-scale 3)))
             :entities (append (level-ref base :entities)
             (list (entity :id 'pilot :archetype 'player-fighter :team 'blue :position '(0 0 0)))))))"}}));

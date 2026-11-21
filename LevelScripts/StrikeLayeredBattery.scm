@@ -6,7 +6,7 @@
 (define entities-at (module-ref (import-module "Libraries/formations.scm") 'entities-at))
 
 (define mission
-  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+  (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'strike-layered-battery
     :title "Strike 02: Layered Battery"
     :description "Clear two mutually supporting turret clusters distributed across multiple elevations."

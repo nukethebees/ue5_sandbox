@@ -10,7 +10,7 @@
 (define mission
   (let ((reserve-id 'red-capital-3)
         (reserve-time 60))
-    (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
       :id 'counteroffensive-second-echelon
       :title "Counteroffensive 02: Second Echelon"
       :description "Eliminate the forward carrier group and the reserve ship entering behind it."

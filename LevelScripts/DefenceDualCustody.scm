@@ -9,7 +9,7 @@
 (define named-capitals (module-ref formations 'named-capitals))
 
 (define mission
-  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+  (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'defence-dual-custody
     :title "Defence 03: Dual Custody"
     :description "Maintain two capital ships through the initial assault and a reserve carrier arrival."

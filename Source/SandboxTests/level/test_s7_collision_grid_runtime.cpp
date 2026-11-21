@@ -67,7 +67,7 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                         R"((level :id 'grid-runtime :title "Grid runtime" :player 'player
                         :entities (list (entity :id 'player :archetype 'player-fighter
                                                 :team 'blue :position '(0 0 0)))
-                        :settings (settings-layers (module-ref (import-module "Settings/base.scm") 'game-settings)
+                        :settings (settings-layers (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
                           (settings :collision-grid (collision-grid {})))))",
                         grid))};
                 if (!checks.is_true(definition.has_value(), TEXT("Grid definition decodes"))) {

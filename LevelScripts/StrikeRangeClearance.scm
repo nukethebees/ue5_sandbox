@@ -6,7 +6,7 @@
 (define entities-at (module-ref (import-module "Libraries/formations.scm") 'entities-at))
 
 (define mission
-  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+  (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'strike-range-clearance
     :title "Strike 01: Range Clearance"
     :description "Eliminate an isolated three-turret battery and return to operational control."

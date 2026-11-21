@@ -25,6 +25,19 @@ struct PlayerSimConfig {
 
     enum class Field : std::uint8_t {
         thrust_energy_max,
+        cruise_speed,
+        boost_speed,
+        brake_speed,
+        brake_deceleration,
+        emergency_brake_deceleration,
+        turn_rate,
+        roll_level_delay,
+        roll_level_rate,
+        response_settling_time,
+        response_damping_ratio,
+        boost_energy_drain,
+        brake_energy_drain,
+        energy_recharge,
         pitch_angle_max,
         pitch_speed,
         yaw_angle_max,
@@ -44,6 +57,45 @@ struct PlayerSimConfig {
     {
         if constexpr (Selected == Field::thrust_energy_max) {
             return (self.thrust_energy_max);
+        }
+        if constexpr (Selected == Field::cruise_speed) {
+            return (self.cruise_speed);
+        }
+        if constexpr (Selected == Field::boost_speed) {
+            return (self.boost_speed);
+        }
+        if constexpr (Selected == Field::brake_speed) {
+            return (self.brake_speed);
+        }
+        if constexpr (Selected == Field::brake_deceleration) {
+            return (self.brake_deceleration);
+        }
+        if constexpr (Selected == Field::emergency_brake_deceleration) {
+            return (self.emergency_brake_deceleration);
+        }
+        if constexpr (Selected == Field::turn_rate) {
+            return (self.turn_rate);
+        }
+        if constexpr (Selected == Field::roll_level_delay) {
+            return (self.roll_level_delay);
+        }
+        if constexpr (Selected == Field::roll_level_rate) {
+            return (self.roll_level_rate);
+        }
+        if constexpr (Selected == Field::response_settling_time) {
+            return (self.response_settling_time);
+        }
+        if constexpr (Selected == Field::response_damping_ratio) {
+            return (self.response_damping_ratio);
+        }
+        if constexpr (Selected == Field::boost_energy_drain) {
+            return (self.boost_energy_drain);
+        }
+        if constexpr (Selected == Field::brake_energy_drain) {
+            return (self.brake_energy_drain);
+        }
+        if constexpr (Selected == Field::energy_recharge) {
+            return (self.energy_recharge);
         }
         if constexpr (Selected == Field::pitch_angle_max) {
             return (self.pitch_angle_max);
@@ -89,6 +141,38 @@ struct PlayerSimConfig {
         switch (field) {
             case Field::thrust_energy_max:
                 return invoke_field<Field::thrust_energy_max>(self, std::forward<Visitor>(visitor));
+            case Field::cruise_speed:
+                return invoke_field<Field::cruise_speed>(self, std::forward<Visitor>(visitor));
+            case Field::boost_speed:
+                return invoke_field<Field::boost_speed>(self, std::forward<Visitor>(visitor));
+            case Field::brake_speed:
+                return invoke_field<Field::brake_speed>(self, std::forward<Visitor>(visitor));
+            case Field::brake_deceleration:
+                return invoke_field<Field::brake_deceleration>(self,
+                                                               std::forward<Visitor>(visitor));
+            case Field::emergency_brake_deceleration:
+                return invoke_field<Field::emergency_brake_deceleration>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::turn_rate:
+                return invoke_field<Field::turn_rate>(self, std::forward<Visitor>(visitor));
+            case Field::roll_level_delay:
+                return invoke_field<Field::roll_level_delay>(self, std::forward<Visitor>(visitor));
+            case Field::roll_level_rate:
+                return invoke_field<Field::roll_level_rate>(self, std::forward<Visitor>(visitor));
+            case Field::response_settling_time:
+                return invoke_field<Field::response_settling_time>(self,
+                                                                   std::forward<Visitor>(visitor));
+            case Field::response_damping_ratio:
+                return invoke_field<Field::response_damping_ratio>(self,
+                                                                   std::forward<Visitor>(visitor));
+            case Field::boost_energy_drain:
+                return invoke_field<Field::boost_energy_drain>(self,
+                                                               std::forward<Visitor>(visitor));
+            case Field::brake_energy_drain:
+                return invoke_field<Field::brake_energy_drain>(self,
+                                                               std::forward<Visitor>(visitor));
+            case Field::energy_recharge:
+                return invoke_field<Field::energy_recharge>(self, std::forward<Visitor>(visitor));
             case Field::pitch_angle_max:
                 return invoke_field<Field::pitch_angle_max>(self, std::forward<Visitor>(visitor));
             case Field::pitch_speed:
@@ -116,6 +200,19 @@ struct PlayerSimConfig {
     }
 
     ioj::PositiveFinite<float> thrust_energy_max{1.f};
+    ioj::NonNegativeFinite<float> cruise_speed{12000.f};
+    ioj::NonNegativeFinite<float> boost_speed{30000.f};
+    ioj::NonNegativeFinite<float> brake_speed{1000.f};
+    ioj::NonNegativeFinite<float> brake_deceleration{14000.f};
+    ioj::NonNegativeFinite<float> emergency_brake_deceleration{32000.f};
+    ioj::NonNegativeFinite<float> turn_rate{60.f};
+    ioj::NonNegativeFinite<float> roll_level_delay{1.f};
+    ioj::NonNegativeFinite<float> roll_level_rate{10.f};
+    ioj::PositiveFinite<float> response_settling_time{3.f};
+    ioj::OpenInterval<float, 0, 1> response_damping_ratio{0.5f};
+    ioj::NonNegativeFinite<float> boost_energy_drain{0.25f};
+    ioj::NonNegativeFinite<float> brake_energy_drain{1.f / 6.f};
+    ioj::NonNegativeFinite<float> energy_recharge{1.f / 7.f};
     float pitch_angle_max{30.f};
     float pitch_speed{3.f};
     float yaw_angle_max{30.f};
@@ -131,12 +228,17 @@ struct PlayerSimConfig {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::PlayerSimConfig::Field>() noexcept -> std::size_t {
-    return 11ULL;
+    return 24ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<sim::PlayerSimConfig::Field, Name>{PackedStrings{
-    "thrust_energy_max\000pitch_angle_max\000pitch_speed\000yaw_angle_max\000yaw_speed\000turn_"
-    "bank_angle_max\000turn_bank_speed\000laser\000health\000laser_mode\000laser_fire_rate",
-    std::array<std::uint8_t, 12>{0, 18, 34, 46, 60, 70, 90, 106, 112, 119, 130, 146}}};
+    "thrust_energy_max\000cruise_speed\000boost_speed\000brake_speed\000brake_"
+    "deceleration\000emergency_brake_deceleration\000turn_rate\000roll_level_delay\000roll_level_"
+    "rate\000response_settling_time\000response_damping_ratio\000boost_energy_drain\000brake_"
+    "energy_drain\000energy_recharge\000pitch_angle_max\000pitch_speed\000yaw_angle_max\000yaw_"
+    "speed\000turn_bank_angle_max\000turn_bank_speed\000laser\000health\000laser_mode\000laser_"
+    "fire_rate",
+    std::array<std::uint16_t, 25>{0,   18,  31,  43,  55,  74,  103, 113, 130, 146, 169, 192, 211,
+                                  230, 246, 262, 274, 288, 298, 318, 334, 340, 347, 358, 374}}};
 } // namespace ioj

@@ -3,7 +3,7 @@
 (define entities-at (module-ref (import-module "Libraries/formations.scm") 'entities-at))
 
 (define mission
-  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+  (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'spark-renderer-showcase
     :title "Spark Renderer Showcase"
     :description "An autonomous close-range crossfire staged to showcase analytic laser-impact sparks."

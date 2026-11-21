@@ -9,7 +9,7 @@
 (define mission
   (let ((reserve-id 'red-capital-2)
         (reserve-time 60))
-    (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
       :id 'strike-reserve-breakthrough
       :title "Strike 04: Reserve Breakthrough"
       :description "Destroy two enemy capital ships, then neutralise the reserve carrier entering the battlespace."

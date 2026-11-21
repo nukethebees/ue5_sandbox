@@ -5,7 +5,7 @@
 (define level-delay (module-ref logic-library 'level-delay))
 (define win-race (module-ref logic-library 'win-race))
 (define mission
-  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+  (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'space-dust-flight-lab
     :title "Space Dust Flight Lab"
     :description "A quiet player-flight lab for tuning velocity-driven space dust. A friendly capital ship provides an optional depth-occlusion reference."

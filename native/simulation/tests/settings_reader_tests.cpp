@@ -34,13 +34,15 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
 
 TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelLogic) {
     auto const root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
-    auto const base{DefinitionReader{root}.read_settings_file(root / "Settings/base.scm")};
+    auto const base{
+        DefinitionReader{root}.read_settings_file(root / "Settings/level-defaults.scm")};
     ASSERT_TRUE(base);
     EXPECT_EQ(base->fighters.speed, 4500);
     EXPECT_EQ(base->fighters.laser.damage, 10);
     EXPECT_EQ(base->tube_spinners.laser.damage, 2);
 
-    auto const base_values{DefinitionReader{root}.read_settings_file(root / "Settings/base.scm")};
+    auto const base_values{
+        DefinitionReader{root}.read_settings_file(root / "Settings/level-defaults.scm")};
     ASSERT_TRUE(base_values);
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization) -- Independent mutation snapshot.
     auto const original{*base_values};
@@ -48,7 +50,7 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelLogic) {
       (level :id 'settings-logic :title "Settings and logic" :player 'player
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                :position '(0 0 0)))
-        :settings (settings-layers (module-ref (import-module "Settings/base.scm") 'game-settings)
+        :settings (settings-layers (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
                     (settings :fighters (fighters :laser (laser :damage 77))))
         :logic (logic
           (define delay (timer))

@@ -8,7 +8,7 @@
 
   ;; Include the elevated capital ships and their fighter spawn slots.
   :settings (settings-layers
-    (module-ref (import-module "Settings/base.scm") 'game-settings)
+    (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     (settings
       :collision-grid (collision-grid :level-size '(2000000 2000000 500000))))
 

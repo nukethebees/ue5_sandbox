@@ -9,7 +9,7 @@
 (define named-capitals (module-ref formations 'named-capitals))
 
 (define mission
-  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+  (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'defence-last-anchorage
     :title "Defence 04: Last Anchorage"
     :description "Hold the fleet anchorage against three carriers and a delayed reserve formation."

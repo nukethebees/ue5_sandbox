@@ -32,7 +32,20 @@ struct TypeReader<sim::PlayerSimConfig> : RecordReader<sim::PlayerSimConfig> {
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 11> field_names{"thrust-energy-max",
+    static constexpr std::array<std::string_view, 24> field_names{"thrust-energy-max",
+                                                                  "cruise-speed",
+                                                                  "boost-speed",
+                                                                  "brake-speed",
+                                                                  "brake-deceleration",
+                                                                  "emergency-brake-deceleration",
+                                                                  "turn-rate",
+                                                                  "roll-level-delay",
+                                                                  "roll-level-rate",
+                                                                  "response-settling-time",
+                                                                  "response-damping-ratio",
+                                                                  "boost-energy-drain",
+                                                                  "brake-energy-drain",
+                                                                  "energy-recharge",
                                                                   "pitch-angle-max",
                                                                   "pitch-speed",
                                                                   "yaw-angle-max",

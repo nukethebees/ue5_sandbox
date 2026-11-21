@@ -5,7 +5,7 @@
 (define level-delay (module-ref logic-library 'level-delay))
 (define win-race (module-ref logic-library 'win-race))
 (define mission
-  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+  (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'evaluation-lone-screen
     :title "Evaluation 03: Lone Screen"
     :description "Survive alone through repeated enemy fighter launches for two minutes."

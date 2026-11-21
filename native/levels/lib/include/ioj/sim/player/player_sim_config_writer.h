@@ -19,6 +19,19 @@ struct TypeWriter<sim::PlayerSimConfig> : RecordWriter<sim::PlayerSimConfig> {
         using T = ioj::sim::PlayerSimConfig;
 
         visit("thrust-energy-max", &T::thrust_energy_max);
+        visit("cruise-speed", &T::cruise_speed);
+        visit("boost-speed", &T::boost_speed);
+        visit("brake-speed", &T::brake_speed);
+        visit("brake-deceleration", &T::brake_deceleration);
+        visit("emergency-brake-deceleration", &T::emergency_brake_deceleration);
+        visit("turn-rate", &T::turn_rate);
+        visit("roll-level-delay", &T::roll_level_delay);
+        visit("roll-level-rate", &T::roll_level_rate);
+        visit("response-settling-time", &T::response_settling_time);
+        visit("response-damping-ratio", &T::response_damping_ratio);
+        visit("boost-energy-drain", &T::boost_energy_drain);
+        visit("brake-energy-drain", &T::brake_energy_drain);
+        visit("energy-recharge", &T::energy_recharge);
         visit("pitch-angle-max", &T::pitch_angle_max);
         visit("pitch-speed", &T::pitch_speed);
         visit("yaw-angle-max", &T::yaw_angle_max);

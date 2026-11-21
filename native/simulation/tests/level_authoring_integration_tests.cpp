@@ -128,7 +128,7 @@ TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReference
 TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedEntityReferences) {
     auto definition{ioj::levels::authoring::tests::read_test_level(mission_reader(), R"(
       (level :id 'authored-spawns :title "Authored spawns"
-        :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+        :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
         :camera (camera :look-at '(capital) :offset-direction '(-1 0 0) :distance 1000)
         :entities (list
           (entity :id 'capital :archetype 'capital-ship :team 'blue

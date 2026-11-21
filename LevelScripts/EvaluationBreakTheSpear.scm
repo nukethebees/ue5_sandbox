@@ -10,7 +10,7 @@
 (define named-capitals (module-ref formations 'named-capitals))
 
 (define mission
-  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+  (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'evaluation-break-the-spear
     :title "Evaluation 01: Break the Spear"
     :description "Destroy the enemy flagship while keeping the task group alive for 150 seconds."

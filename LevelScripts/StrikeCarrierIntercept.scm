@@ -7,7 +7,7 @@
 (define entities-at (module-ref (import-module "Libraries/formations.scm") 'entities-at))
 
 (define mission
-  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+  (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'strike-carrier-intercept
     :title "Strike 03: Carrier Intercept"
     :description "Support a fleet carrier and destroy an enemy capital ship protected by a forward battery."

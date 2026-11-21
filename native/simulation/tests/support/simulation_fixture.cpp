@@ -11,7 +11,7 @@ auto make_fixture() -> SimulationFixture {
     static auto const settings{[] {
         auto const script_root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
         auto const loaded{levels::authoring::DefinitionReader{script_root}.read_settings_file(
-            script_root / "Settings/base.scm")};
+            script_root / "Settings/level-defaults.scm")};
         if (!loaded) {
             throw std::runtime_error{levels::format_diagnostics(loaded.error())};
         }

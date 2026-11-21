@@ -18,7 +18,7 @@ auto default_test_settings() -> settings::Settings const& {
         auto const root{
             std::filesystem::path{*FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"))}};
         auto result{levels::authoring::DefinitionReader{root}.read_settings_file(
-            root / "Settings/base.scm")};
+            root / "Settings/level-defaults.scm")};
         check(result);
         return std::move(*result);
     }()};

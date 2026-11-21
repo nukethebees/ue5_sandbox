@@ -10,7 +10,7 @@
 (define mission
   (let ((reserve-id 'red-capital-4)
         (reserve-time 75))
-    (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
       :id 'counteroffensive-three-axes
       :title "Counteroffensive 03: Three Axes"
       :description "Destroy a dispersed capital force approaching across three axes and its delayed reserve."

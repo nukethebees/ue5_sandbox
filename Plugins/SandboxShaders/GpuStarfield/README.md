@@ -6,7 +6,7 @@ GPU Starfield is a deterministic, camera-relative background renderer. Gameplay 
 (export game-settings)
 (define game-settings
   (settings-layers
-    (module-ref (import-module "Settings/base.scm") 'game-settings)
+    (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     (settings :starfield (starfield :generation (generation :star-count 100000)))))
 ```
 

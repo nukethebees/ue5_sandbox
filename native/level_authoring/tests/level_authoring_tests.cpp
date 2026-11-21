@@ -323,7 +323,7 @@ TEST(NativeSettings, RetainsStarfieldConversionAndDomainDiagnostics) {
 
 TEST(NativeSettings, ReadsShippedStarfieldSettingsAndValidatesEachNestedLayer) {
     auto const root{std::filesystem::path{IOJ_LEVEL_SCRIPTS}};
-    auto shipped{DefinitionReader{root}.read_settings_file(root / "Settings/base.scm")};
+    auto shipped{DefinitionReader{root}.read_settings_file(root / "Settings/level-defaults.scm")};
     ASSERT_TRUE(shipped) << format_diagnostics(shipped.error());
     EXPECT_EQ(shipped->starfield.generation.star_count, 10000);
 

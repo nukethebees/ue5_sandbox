@@ -52,7 +52,7 @@ struct FTemporarySourceDirectory {
   (settings
     :entity-geometry (module-ref (import-module "Settings/entity-geometry.scm") 'entity-geometry)
     :tick (tick :tick-rate 75))))scm"),
-                                      *FPaths::Combine(settings, TEXT("base.scm")));
+                                      *FPaths::Combine(settings, TEXT("level-defaults.scm")));
     }
     ~FTemporarySourceDirectory() { IFileManager::Get().DeleteDirectory(*path, false, true); }
 
@@ -143,7 +143,7 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
 (define mission
   (copy-with base
     :settings (settings-layers
-      (module-ref (import-module "Settings/base.scm") 'game-settings)
+      (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
       (level-ref base :settings))
     :entities (append (level-ref base :entities)
       (list (entity :id 'human :archetype 'capital-ship :team 'red

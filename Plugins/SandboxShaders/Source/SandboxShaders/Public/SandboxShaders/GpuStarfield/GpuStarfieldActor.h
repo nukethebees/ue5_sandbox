@@ -24,7 +24,7 @@ class SANDBOXSHADERS_API AGpuStarfieldActor : public AActor {
     UPROPERTY(EditAnywhere,
               Category = "GPU Starfield",
               meta = (FilePathFilter = "scm", RelativeToGameDir))
-    FFilePath settings_file{TEXT("LevelScripts/Settings/base.scm")};
+    FFilePath settings_file{TEXT("LevelScripts/Settings/level-defaults.scm")};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GPU Starfield")
     FGpuStarfieldColours colours;

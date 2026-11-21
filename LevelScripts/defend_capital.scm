@@ -9,7 +9,7 @@
 (define mission
   (copy-with scene
     :settings (settings-layers
-      (module-ref (import-module "Settings/base.scm") 'game-settings)
+      (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
       (level-ref scene :settings)
       (settings
         :collision-grid (collision-grid

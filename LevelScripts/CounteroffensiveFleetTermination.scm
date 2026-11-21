@@ -12,7 +12,7 @@
         (first-reserve-time 75)
         (second-reserve-id 'red-capital-5)
         (second-reserve-time 150))
-    (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+    (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
       :id 'counteroffensive-fleet-termination
       :title "Counteroffensive 04: Fleet Termination"
       :description "Destroy the enemy fleet and both reserve carriers before the operation expires."

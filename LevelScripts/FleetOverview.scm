@@ -1,7 +1,7 @@
 (export mission)
 
 (define mission
-  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+  (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'fleet-overview
     :title "Fleet Overview"
     :description "A playerless battle viewed from an authored camera between two flagships."

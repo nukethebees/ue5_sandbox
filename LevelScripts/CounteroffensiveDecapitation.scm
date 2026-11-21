@@ -8,7 +8,7 @@
 (define named-capitals (module-ref (import-module "Libraries/formations.scm") 'named-capitals))
 
 (define mission
-  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+  (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'counteroffensive-decapitation
     :title "Counteroffensive 01: Decapitation"
     :description "Destroy an outnumbering enemy capital formation before its operating window closes."

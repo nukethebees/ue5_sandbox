@@ -168,7 +168,7 @@ void expect_health_mappings(LevelSim const& simulation) {
 TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGeometry) {
     auto const root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
     auto settings{levels::authoring::DefinitionReader{root}
-                      .read_settings_file(root / "Settings/base.scm")
+                      .read_settings_file(root / "Settings/level-defaults.scm")
                       .value()};
     settings.tick.tick_rate = Frequency::make(30.);
     settings.fighters.speed = 1234.f;

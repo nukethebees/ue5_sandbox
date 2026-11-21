@@ -7,7 +7,7 @@
 (define entities-at (module-ref (import-module "Libraries/formations.scm") 'entities-at))
 
 (define mission
-  (level :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+  (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'defence-pincer-watch
     :title "Defence 02: Pincer Watch"
     :description "Protect a capital ship and its forward pickets from a two-axis carrier attack."

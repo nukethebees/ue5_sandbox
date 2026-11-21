@@ -12,7 +12,7 @@
 
   (apply level
     (append
-      (list :settings (module-ref (import-module "Settings/base.scm") 'game-settings)
+      (list :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
             :id (trial-id number)
             :title (format #f "Turret Trial ~A" number)
             :description description
