@@ -20,8 +20,14 @@ def test_package(packages, editor, root, expected, vsix_engine):
         assert target.get("Id") == "Microsoft.VisualStudio.Code"
         extension = root / "extension"
         package = json.loads((extension / "package.json").read_bytes())
-        assert any(language["id"] == "lispb" and ".lispb" in language["extensions"]
-                   for language in package["contributes"]["languages"])
+        language, = (entry for entry in package["contributes"]["languages"] if entry["id"] == "lispb")
+        assert ".lispb" in language["extensions"]
+        icons = (package["icon"], language["icon"]["dark"], language["icon"]["light"])
+        source = Path(__file__).resolve().parents[1] / "editors/vscode"
+        for icon in icons:
+            assert (extension / icon).read_bytes() == (source / icon).read_bytes()
+        asset = manifest.find(".//{*}Asset[@Type='Microsoft.VisualStudio.Services.Icons.Default']")
+        assert root / asset.get("Path") == root / manifest.findtext(".//{*}Icon") == extension / package["icon"]
         assert "onLanguage:lispb" in package["activationEvents"]
         assert "grammars" not in package["contributes"]
         server = extension / "bin/lispb-lsp.exe"

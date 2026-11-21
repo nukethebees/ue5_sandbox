@@ -50,6 +50,8 @@ if(WIN32)
     editors/vscode/package.json
     editors/vscode/package-lock.json
     editors/vscode/extension.js
+    editors/vscode/extension-icon.png
+    editors/vscode/file-icon.png
   )
   set(visualstudio_sources
     editors/visualstudio/Lispb.csproj

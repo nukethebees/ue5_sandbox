@@ -3,12 +3,18 @@
   "displayName": "Lispb",
   "description": "Editor support for Lispb source files.",
   "publisher": "nukethebees",
-  "version": "0.1.5",
+  "version": "0.1.6",
+  "icon": "extension-icon.png",
   "engines": { "vscode": "^1.85.0" },
   "main": "./extension.js",
   "activationEvents": ["onLanguage:lispb"],
   "contributes": {
-    "languages": [{ "id": "lispb", "aliases": ["Lispb"], "extensions": [".lispb"] }],
+    "languages": [{
+      "id": "lispb",
+      "aliases": ["Lispb"],
+      "extensions": [".lispb"],
+      "icon": { "light": "./file-icon.png", "dark": "./file-icon.png" }
+    }],
     "configurationDefaults": { "[lispb]": { "editor.semanticHighlighting.enabled": true } }
   },
   "dependencies": { "vscode-languageclient": "9.0.1" }

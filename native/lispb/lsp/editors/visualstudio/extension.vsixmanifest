@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
   <Metadata>
-    <Identity Id="nukethebees.Lispb.VisualStudio" Version="0.1.5" Language="en-US" Publisher="nukethebees"/>
+    <Identity Id="nukethebees.Lispb.VisualStudio" Version="0.1.6" Language="en-US" Publisher="nukethebees"/>
     <DisplayName>Lispb</DisplayName>
     <Description xml:space="preserve">Language server support for Lispb.</Description>
   </Metadata>

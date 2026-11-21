@@ -33,6 +33,7 @@ def vscode_manifest(metadata):
     <Identity Language="en-US" Id="{metadata["name"]}" Version="{metadata["version"]}"
               Publisher="{metadata["publisher"]}" TargetPlatform="win32-x64"/>
     <DisplayName>{metadata["displayName"]}</DisplayName>
+    <Icon>extension/{metadata["icon"]}</Icon>
     <Description>{metadata["description"]}</Description>
     <Tags>lispb</Tags>
     <Categories>Programming Languages</Categories>
@@ -44,12 +45,13 @@ def vscode_manifest(metadata):
   <Dependencies/>
   <Assets>
     <Asset Type="Microsoft.VisualStudio.Code.Manifest" Path="extension/package.json" Addressable="true"/>
+    <Asset Type="Microsoft.VisualStudio.Services.Icons.Default" Path="extension/{metadata["icon"]}" Addressable="true"/>
   </Assets>
 </PackageManifest>"""
 
 
-def package_vscode(source, work, server, temp):
-    for name in ("extension.js", "package.json", "package-lock.json"):
+def install_vscode_dependencies(source, work):
+    for name in ("package.json", "package-lock.json"):
         shutil.copyfile(source / name, work / name)
     subprocess.run(
         [
@@ -65,16 +67,27 @@ def package_vscode(source, work, server, temp):
         cwd=work,
         check=True,
     )
-    files = [(work / p, "extension/" + p) for p in ("extension.js", "package.json")]
+
+
+def vscode_files(source, work, server, metadata):
+    assets = {Path("package.json"), Path(metadata["main"]), Path(metadata["icon"])}
+    for language in metadata["contributes"]["languages"]:
+        assets.update(Path(icon) for icon in language.get("icon", {}).values())
+    for asset in sorted(assets):
+        yield source / asset, "extension/" + asset.as_posix()
+
     for path in sorted((work / "node_modules").rglob("*")):
         if (
             path.is_file()
             and ".bin" not in path.parts
             and path.name != ".package-lock.json"
         ):
-            files.append((path, "extension/" + path.relative_to(work).as_posix()))
-    files.append((server, "extension/bin/lispb-lsp.exe"))
-    with ZipFile(temp, "w", compression=ZIP_DEFLATED) as archive:
+            yield path, "extension/" + path.relative_to(work).as_posix()
+    yield server, "extension/bin/lispb-lsp.exe"
+
+
+def write_vscode_archive(destination, files, manifest):
+    with ZipFile(destination, "w", compression=ZIP_DEFLATED) as archive:
         types = ET.Element(
             "Types",
             xmlns="http://schemas.openxmlformats.org/package/2006/content-types",
@@ -88,14 +101,22 @@ def package_vscode(source, work, server, temp):
                 types,
                 "Override",
                 PartName="/" + name,
-                ContentType="application/octet-stream",
+                ContentType="image/png"
+                if path.suffix == ".png"
+                else "application/octet-stream",
             )
         archive.writestr(
             "[Content_Types].xml",
             ET.tostring(types, encoding="utf-8", xml_declaration=True),
         )
-        metadata = json.loads((work / "package.json").read_bytes())
-        archive.writestr("extension.vsixmanifest", vscode_manifest(metadata))
+        archive.writestr("extension.vsixmanifest", manifest)
+
+
+def package_vscode(source, work, server, temp):
+    install_vscode_dependencies(source, work)
+    metadata = json.loads((source / "package.json").read_bytes())
+    files = vscode_files(source, work, server, metadata)
+    write_vscode_archive(temp, files, vscode_manifest(metadata))
 
 
 def main():
