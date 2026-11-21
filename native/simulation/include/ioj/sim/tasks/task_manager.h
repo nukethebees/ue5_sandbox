@@ -61,6 +61,7 @@ class TaskManager {
     // Entity registration
     /* **************************************** */
     void register_entities(Team team, std::span<EntityId const> ids);
+    void finish_task(Team team, EntityId entity, TaskId task);
     void remove_entities(Team team, std::span<EntityId const> ids);
 
     /* **************************************** */
@@ -85,8 +86,9 @@ class TaskManager {
     void allocate(TaskAllocationContext ctx);
 
   private:
+    void release_assignment(Team team, EntityId entity, TaskId task);
     void add_kill_tasks(ExprHandle condition, Team team, TaskAllocationContext ctx);
-    void allocate_free_entities(ExecutorTable& executors);
+    void allocate_free_entities(TaskAllocationContext ctx);
     auto is_trigger_checked(std::uint32_t index) const -> bool;
     void add_checked_trigger_run(TriggerRun run);
 

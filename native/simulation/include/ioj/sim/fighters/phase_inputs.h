@@ -45,7 +45,7 @@ struct PreparationInputs {
 struct ThinkingInputs {
     EntityTables& entity_tables;
     SimClock const& clock;
-    tasks::TaskManager const& task_manager;
+    tasks::TaskManager& task_manager;
     float collision_radius;
     SpatialQueryManager const& spatial_query_manager;
     FrameMemoryResource& scratch_resource;

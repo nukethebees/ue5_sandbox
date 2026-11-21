@@ -107,6 +107,15 @@ void TaskManager::register_entities(Team const team, std::span<EntityId const> c
         free_entities_[team, id.entity_type()].push_back(id);
     }
 }
+void TaskManager::release_assignment(Team const team, EntityId const entity, TaskId const task) {
+    auto& count{task_entity_allocations_[team, entity.entity_type()][task.index()]};
+    assert(task != idle_task && count > 0);
+    --count;
+}
+void TaskManager::finish_task(Team const team, EntityId const entity, TaskId const task) {
+    release_assignment(team, entity, task);
+    free_entities_[team, entity.entity_type()].push_back(entity);
+}
 void TaskManager::remove_entities(Team const team, std::span<EntityId const> const ids) {
     for (auto const id : ids) {
         std::erase(free_entities_[team, id.entity_type()], id);
@@ -151,7 +160,7 @@ void TaskManager::allocate(TaskAllocationContext const ctx) {
         add_checked_trigger_run({index, index + 1});
     }
 
-    allocate_free_entities(ctx.executors);
+    allocate_free_entities(ctx);
 }
 void TaskManager::add_kill_tasks(ExprHandle const condition,
                                  Team const team,
@@ -205,9 +214,15 @@ void TaskManager::add_kill_tasks(ExprHandle const condition,
         }
     }
 }
-void TaskManager::allocate_free_entities(ExecutorTable& executors) {
+void TaskManager::allocate_free_entities(TaskAllocationContext const ctx) {
+    auto const& ledger{ctx.level.entity_ledger()};
+    auto const life_states{ledger.history().life_state()};
     for (auto const team : EnumTraits<Team>::values) {
-        auto const& tasks{active_tasks_[team]};
+        auto& tasks{active_tasks_[team]};
+        std::erase_if(tasks, [&](TaskId const task) {
+            auto const target{instruction(first_instruction(task)).data_kill()};
+            return life_states[ledger.history_index(target)] != LifeState::Alive;
+        });
         if (tasks.empty()) {
             continue;
         }
@@ -219,7 +234,7 @@ void TaskManager::allocate_free_entities(ExecutorTable& executors) {
                 continue;
             }
 
-            auto const pending_tasks{executors.view(type).pending_tasks};
+            auto const pending_tasks{ctx.executors.view(type).pending_tasks};
             auto& counts{task_entity_allocations_[team, type]};
 
             // Round-robin assignment

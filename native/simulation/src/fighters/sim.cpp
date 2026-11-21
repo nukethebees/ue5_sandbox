@@ -196,10 +196,11 @@ void Sim::think(ThinkingInputs const inputs) {
     publish_navigation_counters(inputs.navigation_counters);
 }
 void Sim::plan_instructions(ThinkingInputs const inputs) {
-    auto const& manager{inputs.task_manager};
+    auto& manager{inputs.task_manager};
     auto const data{entities_.view()};
     auto const executors{inputs.entity_tables.executors.view<EntityType::Fighter>()};
     auto const entity_ids{data.entity_ids()};
+    auto const teams{data.teams()};
     auto const target_ids{data.target_ids()};
 
     auto const count{data.num()};
@@ -237,6 +238,11 @@ void Sim::plan_instructions(ThinkingInputs const inputs) {
             case Jump:
                 clear_task_intent(row);
                 current_instruction = instruction.data_jump();
+                if (current_instruction == tasks::TaskManager::idle_instruction) {
+                    auto& task{executors.current_tasks[index]};
+                    manager.finish_task(teams[row], entity_ids[row], task);
+                    task = tasks::TaskManager::idle_task;
+                }
                 break;
             default:
                 assert(false && "Invalid instruction kind");
