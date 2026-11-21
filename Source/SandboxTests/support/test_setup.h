@@ -58,6 +58,8 @@ class FTestBatchOrchestratorLevelSetup {
 auto load_player_test_level(ATestBatchOrchestrator& orchestrator, FSoftTestAssertions& checks)
     -> bool;
 
-auto get_editor_world() -> std::expected<UWorld*, FErrorMsg>;
+using EditorWorldResult = std::expected<UWorld*, FErrorMsg>;
+
+auto get_editor_world() -> EditorWorldResult;
 auto spawn_visibility_blocker(UWorld& world, FTransform const& transform, FName name) -> AActor*;
 }

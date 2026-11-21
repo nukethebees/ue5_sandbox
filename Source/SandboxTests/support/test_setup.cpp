@@ -74,14 +74,14 @@ auto load_player_test_level(ATestBatchOrchestrator& orchestrator, FSoftTestAsser
                                  : loaded.error().format(TEXT("player-test")));
 }
 
-auto get_editor_world() -> std::expected<UWorld*, FErrorMsg> {
+auto get_editor_world() -> EditorWorldResult {
     if (!GEditor) {
-        return std::unexpected(FErrorMsg{TEXT("GEditor is nullptr")});
+        return EditorWorldResult{std::unexpect, TEXT("GEditor is nullptr")};
     }
 
     auto* const world{GEditor->GetEditorWorldContext().World()};
     if (!IsValid(world)) {
-        return std::unexpected(FErrorMsg{TEXT("Editor world is invalid")});
+        return EditorWorldResult{std::unexpect, TEXT("Editor world is invalid")};
     }
 
     return world;

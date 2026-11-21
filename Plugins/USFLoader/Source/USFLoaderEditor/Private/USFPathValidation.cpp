@@ -23,7 +23,7 @@ auto combine_virtual_path(FString const& path_prefix, FString const& file_path) 
 
 }
 
-auto resolve_shader_path(FString const& virtual_path) -> std::expected<FString, FString> {
+auto resolve_shader_path(FString const& virtual_path) -> ShaderPathResult {
     TArray<FShaderCompilerError> errors;
     auto resolved_path{GetShaderSourceFilePath(virtual_path, &errors)};
     if (resolved_path.IsEmpty()) {
@@ -31,10 +31,11 @@ auto resolve_shader_path(FString const& virtual_path) -> std::expected<FString, 
                        ? FString::Printf(TEXT("Unable to resolve virtual shader path \"%s\"."),
                                          *virtual_path)
                        : errors[0].StrippedErrorMessage};
-        return std::unexpected{MoveTemp(error)};
+        return ShaderPathResult{std::unexpect, MoveTemp(error)};
     }
     if (!FPaths::FileExists(resolved_path)) {
-        return std::unexpected{
+        return ShaderPathResult{
+            std::unexpect,
             FString::Printf(TEXT("Virtual shader path \"%s\" resolves to missing file \"%s\"."),
                             *virtual_path,
                             *resolved_path)};
@@ -43,7 +44,7 @@ auto resolve_shader_path(FString const& virtual_path) -> std::expected<FString, 
 }
 
 auto resolve_include_paths(FString const& path_prefix, TConstArrayView<FString> const file_paths)
-    -> std::expected<TArray<FString>, FString> {
+    -> IncludePathsResult {
     TArray<FString> include_paths;
     include_paths.Reserve(file_paths.Num());
 
@@ -51,14 +52,16 @@ auto resolve_include_paths(FString const& path_prefix, TConstArrayView<FString> 
     for (int32 path_index{}; path_index < path_count; ++path_index) {
         auto const& file_path{file_paths[path_index]};
         if (file_path.IsEmpty()) {
-            return std::unexpected{
+            return IncludePathsResult{
+                std::unexpect,
                 FString::Printf(TEXT("USF include path at index %d is empty."), path_index)};
         }
 
         auto virtual_path{combine_virtual_path(path_prefix, file_path)};
         auto const resolved_path{resolve_shader_path(virtual_path)};
         if (!resolved_path) {
-            return std::unexpected{
+            return IncludePathsResult{
+                std::unexpect,
                 FString::Printf(TEXT("USF include path at index %d is invalid: %s"),
                                 path_index,
                                 *resolved_path.error())};

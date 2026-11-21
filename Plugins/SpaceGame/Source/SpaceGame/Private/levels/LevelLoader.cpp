@@ -179,9 +179,8 @@ void FLevelLoader::report_failure(UWorld* const world, FString message) {
     }
 }
 
-auto FLevelLoader::load(FLevelActorLoadRequest const& request)
-    -> std::expected<void, FLevelLoadErrors> {
-    std::expected<void, FLevelLoadErrors> result{std::unexpect};
+auto FLevelLoader::load(FLevelActorLoadRequest const& request) -> FLevelLoadResult {
+    FLevelLoadResult result{std::unexpect};
     auto& errors{result.error()};
     auto& world{request.world};
     auto const& definition{request.definition};

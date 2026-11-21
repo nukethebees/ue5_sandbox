@@ -49,11 +49,12 @@ auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,
 
 auto FSbxMeshAssemblyRecipePart::to_part(FName const output_asset_name) const
     -> std::expected<FSbxMeshAssemblyPart, FString> {
+    using Result = std::expected<FSbxMeshAssemblyPart, FString>;
     auto request{SandboxMesh::try_make_mesh_request(*this, output_asset_name)};
     if (!request) {
-        return std::unexpected{request.error()};
+        return Result{std::unexpect, std::move(request.error())};
     }
-    return FSbxMeshAssemblyPart{std::move(*request), to_transform(), visible, locked};
+    return Result{std::in_place, std::move(*request), to_transform(), visible, locked};
 }
 
 auto FSbxMeshAssemblyRecipePart::to_transform() const -> FSbxMeshTransform {

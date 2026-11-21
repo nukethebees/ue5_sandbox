@@ -100,7 +100,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     auto load_level(levels::LevelDefinition const& definition,
                     levels::ControlContext playerless_control_context =
-                        levels::ControlContext::Observer) -> std::expected<void, FLevelLoadErrors>;
+                        levels::ControlContext::Observer) -> FLevelLoadResult;
 
     /* **************************************** */
     // Events, results, and presentation

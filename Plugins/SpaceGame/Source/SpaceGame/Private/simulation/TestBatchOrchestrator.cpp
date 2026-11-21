@@ -193,12 +193,11 @@ void ATestBatchOrchestrator::clear_player_ship() {
 /* **************************************** */
 auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definition,
                                         levels::ControlContext const playerless_control_context)
-    -> std::expected<void, FLevelLoadErrors> {
-    auto const fail{[](ELevelLoadErrorCode const code,
-                       FString message) -> std::expected<void, FLevelLoadErrors> {
+    -> FLevelLoadResult {
+    auto const fail{[](ELevelLoadErrorCode const code, FString message) -> FLevelLoadResult {
         FLevelLoadErrors errors;
         errors.errors.Add({.code = code, .message = MoveTemp(message)});
-        return std::unexpected{MoveTemp(errors)};
+        return FLevelLoadResult{std::unexpect, MoveTemp(errors)};
     }};
     if (get_state() != sim::LevelState::Uninitialised) {
         return fail(ELevelLoadErrorCode::InvalidLevelState,

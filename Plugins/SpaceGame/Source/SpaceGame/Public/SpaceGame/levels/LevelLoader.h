@@ -36,6 +36,8 @@ struct SPACEGAME_API FLevelLoadErrors {
     TArray<FLevelLoadError> errors{};
 };
 
+using FLevelLoadResult = std::expected<void, FLevelLoadErrors>;
+
 struct FLevelVisualLoad {
     ASpaceGamePlayerController& controller;
     levels::ControlContext playerless_control_context;
@@ -51,8 +53,7 @@ struct FLevelActorLoadRequest {
 
 class SPACEGAME_API FLevelLoader {
   public:
-    static auto load(FLevelActorLoadRequest const& request)
-        -> std::expected<void, FLevelLoadErrors>;
+    static auto load(FLevelActorLoadRequest const& request) -> FLevelLoadResult;
     static void report_failure(UWorld* world, FString message);
 };
 }
