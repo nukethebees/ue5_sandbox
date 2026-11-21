@@ -4,6 +4,7 @@ target_sources(lispb-lsp
     main.cpp
     analysis.cpp
     hover.cpp
+    rename.cpp
     highlighting.cpp
     protocol.cpp
 )

@@ -32,6 +32,8 @@ enum class Method : MethodUnderlying {
     hover,
     definition,
     references,
+    prepare_rename,
+    rename,
     tokens,
     token_range,
 };
@@ -67,6 +69,12 @@ using ioj::to_serialized_string;
         case 18ULL: {
             if (value == "textDocument/hover") {
                 return Method::hover;
+            }
+            return std::nullopt;
+        }
+        case 19ULL: {
+            if (value == "textDocument/rename") {
+                return Method::rename;
             }
             return std::nullopt;
         }
@@ -109,6 +117,12 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
+        case 26ULL: {
+            if (value == "textDocument/prepareRename") {
+                return Method::prepare_rename;
+            }
+            return std::nullopt;
+        }
         case 27ULL: {
             if (value == "textDocument/documentSymbol") {
                 return Method::symbols;
@@ -146,14 +160,16 @@ inline constexpr std::array<Method, 4ULL> method_update_values{
     return value >= Method::open && value <= Method::save;
 }
 
-inline constexpr std::array<Method, 8ULL> method_query_values{Method::folding,
-                                                              Method::symbols,
-                                                              Method::completion,
-                                                              Method::hover,
-                                                              Method::definition,
-                                                              Method::references,
-                                                              Method::tokens,
-                                                              Method::token_range};
+inline constexpr std::array<Method, 10ULL> method_query_values{Method::folding,
+                                                               Method::symbols,
+                                                               Method::completion,
+                                                               Method::hover,
+                                                               Method::definition,
+                                                               Method::references,
+                                                               Method::prepare_rename,
+                                                               Method::rename,
+                                                               Method::tokens,
+                                                               Method::token_range};
 
 [[nodiscard]] constexpr auto is_query(Method const value) noexcept -> bool {
     return value >= Method::folding && value <= Method::token_range;
@@ -172,8 +188,8 @@ inline constexpr auto enum_strings<lispb::lsp::Method, Serialized>{PackedStrings
     "didChangeWatchedFiles\000textDocument/didOpen\000textDocument/didChange\000textDocument/"
     "didClose\000textDocument/didSave\000textDocument/foldingRange\000textDocument/"
     "documentSymbol\000textDocument/completion\000textDocument/hover\000textDocument/"
-    "definition\000textDocument/references\000textDocument/semanticTokens/full\000textDocument/"
-    "semanticTokens/range",
-    std::array<std::uint16_t, 18>{
-        0, 11, 23, 32, 37, 69, 90, 113, 135, 156, 182, 210, 234, 253, 277, 301, 334, 368}}};
+    "definition\000textDocument/references\000textDocument/prepareRename\000textDocument/"
+    "rename\000textDocument/semanticTokens/full\000textDocument/semanticTokens/range",
+    std::array<std::uint16_t, 20>{0,   11,  23,  32,  37,  69,  90,  113, 135, 156,
+                                  182, 210, 234, 253, 277, 301, 328, 348, 381, 415}}};
 } // namespace ioj

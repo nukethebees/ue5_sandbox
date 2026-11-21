@@ -44,28 +44,32 @@ struct DeclarationDetails {
     std::string text;
 };
 
+// The frontend appends named parameters and bindings in declaration order.
+static auto material_row(std::span<material_synth::SourceSpan const> rows,
+                         sexpr::Sources const& sources,
+                         sexpr::SourceSpan span) -> std::optional<std::size_t> {
+    auto const location{sources.location(span)};
+    auto const found{std::ranges::partition_point(rows, [&](auto const& origin) {
+        return origin.line < location.line ||
+               (origin.line == location.line && origin.column < location.column);
+    })};
+    if (found == rows.end() || found->path != sources.path_id(span.file) ||
+        found->line != location.line || found->column != location.column) {
+        return {};
+    }
+    return static_cast<std::size_t>(found - rows.begin());
+}
 static void
     describe_parameter(DeclarationDetails& card, Compiler const& compiler, Symbol const& symbol) {
     auto const& storage{compiler.storage()};
     auto const& syntax{storage.syntax};
-    auto const name{syntax.identifier(symbol.name)};
-    auto const span{syntax.token_span(symbol.form)};
-    auto const location{storage.sources.location(span)};
     auto const& material{compiler.material()};
     auto const& params{material.parameters};
-    // The material frontend appends parameters in source order.
-    auto const found{std::ranges::partition_point(params.span, [&](auto const& origin) {
-        return origin.line < location.line ||
-               (origin.line == location.line && origin.column < location.column);
-    })};
-    if (found == params.span.end() || found->path != storage.sources.path_id(span.file) ||
-        found->line != location.line || found->column != location.column) {
+    auto const row{material_row(params.span, storage.sources, syntax.token_span(symbol.form))};
+    if (!row || params.name[*row] != syntax.identifier(symbol.name)) {
         return;
     }
-    auto const i{static_cast<std::size_t>(found - params.span.begin())};
-    if (params.name[i] != name) {
-        return;
-    }
+    auto const i{*row};
     card.field("Parameter type", syntax.text(syntax.child(symbol.form, 1)));
     auto const type{params.type[i]};
     if (type == material_synth::ValueType::texture) {
@@ -144,6 +148,92 @@ static void describe_layout(DeclarationDetails& card,
     }
 }
 
+static void describe_expression(DeclarationDetails& card,
+                                material_synth::MaterialIR const& material,
+                                material_synth::NodeHandle node) {
+    using enum material_synth::NodeKind;
+    auto const& nodes{material.nodes};
+    card.field("Result type", to_serialized_string(nodes.type(node)));
+    if (nodes.kind(node) == component_mask) {
+        card.field("Channels", material.text(nodes.component_mask(node)));
+        node = nodes.inputs(node).front();
+    }
+    if (nodes.kind(node) == sample) {
+        auto const input{nodes.inputs(node).front()};
+        if (nodes.kind(input) == parameter) {
+            auto const id{nodes.parameter(input)};
+            card.field("Texture", material.text(material.parameters.name[id.value]));
+        } else if (nodes.kind(input) == texture_object) {
+            card.field("Texture", material.text(nodes.texture_path(input)));
+        }
+        card.field("Sampler", to_serialized_string(nodes.texture_sampler_type(node)));
+    }
+}
+
+static auto hover_result(std::string text,
+                         sexpr::Sources const& sources,
+                         sexpr::SourceSpan span,
+                         MarkupKind format) -> Json {
+    return {{"contents", {{"kind", to_serialized_string(format)}, {"value", std::move(text)}}},
+            {"range", range(sources, span)}};
+}
+auto Analysis::expression_hover(sexpr::FormId form, sexpr::FormId use, MarkupKind format) const
+    -> Json {
+    auto const& storage{compiler_.storage()};
+    auto const span{storage.syntax.token_span(form)};
+    auto const location{storage.sources.location(span)};
+    auto const path{storage.sources.path_id(span.file)};
+    auto const& material{compiler_.material()};
+    for (auto node : material.nodes.handles()) {
+        auto const origin{material.nodes.span(node)};
+        if (origin.path == path && origin.line == location.line &&
+            origin.column == location.column) {
+            DeclarationDetails card{format, {}};
+            describe_expression(card, material, node);
+            return hover_result(
+                std::move(card.text), storage.sources, storage.syntax.token_span(use), format);
+        }
+    }
+    return nullptr;
+}
+
+static auto leading_comment(Document const& doc,
+                            sexpr::Sources const& sources,
+                            sexpr::SourceSpan span,
+                            MarkupKind format) -> std::string {
+    auto const line{sources.location(span).line - 1};
+    auto const offsets{sources.line_offsets(doc.file)};
+    auto const source{sources.text(doc.file)};
+    auto const indent{source.substr(offsets[line], span.offset - offsets[line])};
+    if (indent.find_first_not_of(" \t") != std::string_view::npos) {
+        return {};
+    }
+    auto it{std::ranges::lower_bound(doc.comment_lines, line)};
+    auto first{line};
+    while (it != doc.comment_lines.begin() && *std::prev(it) + 1 == first) {
+        --it;
+        --first;
+    }
+    std::string result;
+    for (auto n{first}; n < line; ++n) {
+        auto const raw{source.substr(offsets[n], offsets[n + 1] - offsets[n])};
+        auto const start{raw.find_first_not_of(" \t;")};
+        auto const end{raw.find_last_not_of(" \t\r\n")};
+        if (n != first) {
+            result += '\n';
+        }
+        if (start <= end) {
+            for (char c : raw.substr(start, end - start + 1)) {
+                if (format == MarkupKind::markdown &&
+                    std::string_view{R"(\`*_[]<>#!|~&)"}.contains(c)) {
+                    result += '\\';
+                }
+                result += c;
+            }
+        }
+    }
+    return result;
+}
 auto Analysis::signature(Symbol const& symbol) const -> std::string_view {
     auto const& storage{compiler_.storage()};
     auto const span{storage.syntax.span(symbol.form)};
@@ -161,6 +251,12 @@ auto Analysis::declaration_details(Document const& doc,
     auto const name{syntax.identifier(symbol.name)};
     if (head == FormHead::parameter) {
         describe_parameter(card, compiler_, symbol);
+    } else if (head == FormHead::let && symbol.kind == SemanticKind::variable) {
+        auto const& material{compiler_.material()};
+        if (auto row{material_row(
+                material.bindings.span, storage.sources, syntax.token_span(symbol.form))}) {
+            describe_expression(card, material, material.bindings.node[*row]);
+        }
     } else if (head == FormHead::type && !symbol.parent.value) {
         describe_registered_type(card, compiler_, name);
     } else if (head == FormHead::member && symbol.parent.value) {
@@ -199,13 +295,18 @@ auto Analysis::hover(Document const& doc,
             return nullptr;
         }
         text = code_block(format, signature(*symbol), "lispb");
+        auto const comment{
+            leading_comment(doc, storage.sources, syntax.token_span(symbol->form), format)};
+        if (!comment.empty()) {
+            text += "\n\n";
+            text += comment;
+        }
         auto const details{declaration_details(doc, *symbol, format)};
         if (!details.empty()) {
             text += format == MarkupKind::markdown ? "\n\n" : "\n";
             text += details;
         }
     }
-    return {{"contents", {{"kind", to_serialized_string(format)}, {"value", std::move(text)}}},
-            {"range", range(storage.sources, syntax.span(use))}};
+    return hover_result(std::move(text), storage.sources, syntax.span(use), format);
 }
 }

@@ -18,6 +18,8 @@
     (value hover :serialized-name "textDocument/hover" :groups (query))
     (value definition :serialized-name "textDocument/definition" :groups (query))
     (value references :serialized-name "textDocument/references" :groups (query))
+    (value prepare_rename :serialized-name "textDocument/prepareRename" :groups (query))
+    (value rename :serialized-name "textDocument/rename" :groups (query))
     (value tokens :serialized-name "textDocument/semanticTokens/full" :groups (query))
     (value token_range :serialized-name "textDocument/semanticTokens/range" :groups (query))))
 

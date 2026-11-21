@@ -58,6 +58,7 @@ struct Document {
     sexpr::HandleRange roots;
     std::vector<Symbol> symbols;
     std::optional<std::vector<TokenSegment>> highlighting;
+    std::vector<std::uint32_t> comment_lines;
 };
 
 class Analysis {
@@ -71,7 +72,7 @@ class Analysis {
     auto query(fs::path const& path,
                Method method,
                Json const& params,
-               ClientCapabilities capabilities) -> Json;
+               ClientCapabilities capabilities) -> std::expected<Json, std::string>;
     auto root_head(fs::path const& path) -> std::optional<FormHead>;
   private:
     void overlay(std::span<WorkspaceFile const> files);
@@ -88,7 +89,14 @@ class Analysis {
                     std::uint32_t offset,
                     MarkupKind format) -> Json;
     auto location(sexpr::SourceSpan span) const -> Json;
-    auto references(sexpr::SourceSpan declaration, bool include_declaration) const -> Json;
+    auto reference_spans(sexpr::SourceSpan declaration, bool include_declaration) const
+        -> std::vector<sexpr::SourceSpan>;
+    auto rename(Document const& doc,
+                sexpr::SourceSpan declaration,
+                sexpr::FormId use,
+                Method method,
+                Json const& params) const -> std::expected<Json, std::string>;
+    auto expression_hover(sexpr::FormId form, sexpr::FormId use, MarkupKind format) const -> Json;
     auto signature(Symbol const& symbol) const -> std::string_view;
     auto declaration_details(Document const& doc, Symbol const& symbol, MarkupKind format) const
         -> std::string;

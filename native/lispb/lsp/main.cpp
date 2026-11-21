@@ -60,14 +60,16 @@ class Workspace {
     auto query(fs::path const& path,
                Method method,
                Json const& params,
-               ClientCapabilities capabilities) -> Json {
+               ClientCapabilities capabilities) -> std::expected<Json, std::string> {
         auto const found{std::ranges::find(files_, path, &WorkspaceFile::path)};
         if (found == files_.end() || found->active == UnitId{}) {
             return nullptr;
         }
         auto& analysis{*units_[found->active.value].analysis};
-        return analysis.contains(path) ? analysis.query(path, method, params, capabilities)
-                                       : nullptr;
+        if (analysis.contains(path)) {
+            return analysis.query(path, method, params, capabilities);
+        }
+        return nullptr;
     }
   private:
     auto file_id(fs::path const& path) -> WorkspaceFileId {
@@ -259,6 +261,11 @@ static auto initialize(Json const& params, ClientCapabilities& capabilities) -> 
               {"hoverProvider", true},
               {"definitionProvider", true},
               {"referencesProvider", true},
+              {"renameProvider",
+               params.value(Json::json_pointer{"/capabilities/textDocument/rename/prepareSupport"},
+                            false)
+                   ? Json{{"prepareProvider", true}}
+                   : Json(true)},
               {"semanticTokensProvider",
                {{"legend", {{"tokenTypes", std::move(types)}, {"tokenModifiers", {"declaration"}}}},
                 {"full", true},
@@ -313,7 +320,12 @@ static void dispatch(Workspace& workspace,
     } else if (method && (is_update(*method) || is_query(*method))) {
         auto path{file_path(params.at("textDocument").at("uri").get<std::string>())};
         if (is_query(*method)) {
-            reply["result"] = workspace.query(path, *method, params, capabilities);
+            auto result{workspace.query(path, *method, params, capabilities)};
+            if (result) {
+                reply["result"] = std::move(*result);
+            } else {
+                reply["error"] = {{"code", -32803}, {"message", std::move(result.error())}};
+            }
         } else {
             update_document(workspace, *method, path, params);
         }

@@ -25,6 +25,7 @@ class Compiler {
     auto cpp() -> codegen::CppIR& { return cpp_; }
     auto manifest() const -> codegen::Manifest const& { return manifest_; }
     auto material() const -> material_synth::MaterialIR const& { return material_; }
+    auto kernel() const -> kernel_codegen::detail::Document const& { return kernel_; }
     auto types() const -> schema::TypeGraph const& { return types_; }
 
     // Reset semantic, generated and output stores; retain loaded source documents.

@@ -289,12 +289,26 @@ void Analysis::finish(std::vector<fs::path>& inputs, fs::path const& fallback) {
             document_indices_.resize(file.value + 1);
         }
         document_indices_[file.value] = static_cast<std::uint32_t>(documents_.size() + 1);
-        auto& doc{documents_.emplace_back(Document{path, file, roots, {}, {}})};
+        auto& doc{documents_.emplace_back(Document{.path = path, .file = file, .roots = roots})};
         for (auto form : syntax.forms(roots)) {
             index(doc, form, {}, {});
         }
     }
-    for (auto const& doc : documents_) {
+    for (auto span : syntax.comments()) {
+        if (span.file.value >= document_indices_.size() || !document_indices_[span.file.value]) {
+            continue;
+        }
+        auto const line{storage.sources.location(span).line - 1};
+        auto const begin{storage.sources.line_offsets(span.file)[line]};
+        auto const indent{storage.sources.text(span.file).substr(begin, span.offset - begin)};
+        if (indent.find_first_not_of(" \t") == std::string_view::npos) {
+            documents_[document_indices_[span.file.value] - 1].comment_lines.push_back(line);
+        }
+    }
+    for (auto& doc : documents_) {
+        std::ranges::sort(doc.comment_lines);
+        auto const repeated{std::ranges::unique(doc.comment_lines)};
+        doc.comment_lines.erase(repeated.begin(), repeated.end());
         for (auto const& symbol : doc.symbols) {
             declarations_.push_back({key(syntax.token_span(symbol.name)), symbol.kind});
         }
@@ -501,10 +515,11 @@ auto Analysis::location(sexpr::SourceSpan span) const -> Json {
     return {{"uri", file_uri(document(span.file).path)},
             {"range", range(compiler_.storage().sources, span)}};
 }
-auto Analysis::references(sexpr::SourceSpan declaration, bool include_declaration) const -> Json {
-    Json result = Json::array();
+auto Analysis::reference_spans(sexpr::SourceSpan declaration, bool include_declaration) const
+    -> std::vector<sexpr::SourceSpan> {
+    std::vector<sexpr::SourceSpan> result;
     if (include_declaration && declaration.end_offset) {
-        result.push_back(location(declaration));
+        result.push_back(declaration);
     }
     // Bindings are ordered by use; macro expansion can bind one authored token more than once.
     std::optional<SourcePosition> previous;
@@ -513,7 +528,7 @@ auto Analysis::references(sexpr::SourceSpan declaration, bool include_declaratio
         if (key(link.declaration) == key(declaration) &&
             link.declaration.end_offset == declaration.end_offset && use != key(declaration) &&
             use != previous) {
-            result.push_back(location(link.use));
+            result.push_back(link.use);
             previous = use;
         }
     }
@@ -718,7 +733,7 @@ auto Analysis::completion(Document const& doc,
 auto Analysis::query(fs::path const& path,
                      Method method,
                      Json const& params,
-                     ClientCapabilities capabilities) -> Json {
+                     ClientCapabilities capabilities) -> std::expected<Json, std::string> {
     auto& storage{compiler_.storage()};
     auto& syntax{storage.syntax};
     auto& doc{(*std::ranges::find(documents_, path, &Document::path))};
@@ -761,15 +776,32 @@ auto Analysis::query(fs::path const& path,
         auto const input{(root_ / codegen::path_from_utf8(syntax.text(token))).lexically_normal()};
         if (input.extension() == ".lispb" && fs::is_regular_file(input)) {
             Json zero{{"line", 0}, {"character", 0}};
-            return {{"uri", file_uri(input)}, {"range", {{"start", zero}, {"end", zero}}}};
+            return Json{{"uri", file_uri(input)}, {"range", {{"start", zero}, {"end", zero}}}};
         }
     }
     auto const target{lookup(doc, context)};
     if (!target) {
+        if (method == Method::hover && compiler_.material().nodes.size()) {
+            auto form{token};
+            if (context.size() > 1 && syntax.child(context[context.size() - 2], 0) == token) {
+                form = context[context.size() - 2];
+            }
+            if (!syntax.is_list(token) || offset == syntax.span(token).offset) {
+                return expression_hover(form, token, capabilities.hover_format);
+            }
+        }
         return nullptr;
     }
+    if (method == Method::rename || method == Method::prepare_rename) {
+        return rename(document(target->file), *target, token, method, params);
+    }
     if (method == Method::references) {
-        return references(*target, params.at("context").at("includeDeclaration").get<bool>());
+        Json result = Json::array();
+        for (auto span :
+             reference_spans(*target, params.at("context").at("includeDeclaration").get<bool>())) {
+            result.push_back(location(span));
+        }
+        return result;
     }
     if (method == Method::definition) {
         return location(*target);

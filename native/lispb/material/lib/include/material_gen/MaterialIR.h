@@ -32,6 +32,7 @@ struct MaterialIR {
     auto intern(std::string_view value) -> lispb::StringId;
 };
 
+auto valid_identifier(std::string_view value) -> bool;
 auto validate(MaterialIR const& material) -> std::vector<Diagnostic>;
 
 }
