@@ -32,8 +32,7 @@ auto to_local(Vector2f const radar_position, Layout const& layout) noexcept -> V
 }
 
 auto is_valid_extent(Vector2f const extent) noexcept -> bool {
-    return std::isfinite(extent.x()) && std::isfinite(extent.y()) && extent.x() > 0.0f &&
-           extent.y() > 0.0f;
+    return is_positive_finite(extent);
 }
 
 auto Data::set_range(float const range) noexcept -> bool {

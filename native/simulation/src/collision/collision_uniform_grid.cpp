@@ -543,11 +543,7 @@ void CollisionUniformGrid::sweep_aabbs(LineTraceBatch const& centre_paths,
                                        TraceEntityFilter const entity_filter) const {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::sweep_aabbs");
 
-    assert(std::isfinite(moving_half_extent.x()) && std::isfinite(moving_half_extent.y()) &&
-           std::isfinite(moving_half_extent.z()));
-    assert(moving_half_extent.x() >= 0.f);
-    assert(moving_half_extent.y() >= 0.f);
-    assert(moving_half_extent.z() >= 0.f);
+    assert(is_nonnegative_finite(moving_half_extent));
 
     auto const dispatch_filter{[&]<IgnoredEntityMode IgnoredMode>() {
         switch (entity_filter) {
@@ -603,11 +599,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
 
     CellCoord cell_padding{};
     if constexpr (Kind == TraceKind::Sweep) {
-        cell_padding = {
-            static_cast<int>(std::ceil(moving_half_extent.x() / spec.cell_dimensions.x())),
-            static_cast<int>(std::ceil(moving_half_extent.y() / spec.cell_dimensions.y())),
-            static_cast<int>(std::ceil(moving_half_extent.z() / spec.cell_dimensions.z())),
-        };
+        cell_padding = CellCoord{ceil(moving_half_extent / spec.cell_dimensions)};
     }
 
     auto const hit_locations{hits.view_locations().resolve()};

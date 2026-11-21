@@ -97,6 +97,29 @@ constexpr auto operator*=(Vector<T, N>& lhs, std::type_identity_t<T> const rhs) 
     return lhs;
 }
 template <typename T, std::size_t N>
+[[nodiscard]] constexpr auto operator/(Vector<T, N> lhs, Vector<T, N> const rhs) noexcept
+    -> Vector<T, N> {
+    for (std::size_t i{}; i < N; ++i) {
+        lhs[i] /= rhs[i];
+    }
+    return lhs;
+}
+template <std::floating_point T, std::size_t N>
+[[nodiscard]] auto ceil(Vector<T, N> value) noexcept -> Vector<T, N> {
+    for (auto& element : value.elements) {
+        element = std::ceil(element);
+    }
+    return value;
+}
+template <typename T, std::size_t N>
+    requires std::is_signed_v<T>
+[[nodiscard]] auto abs(Vector<T, N> value) noexcept -> Vector<T, N> {
+    for (auto& element : value.elements) {
+        element = std::abs(element);
+    }
+    return value;
+}
+template <typename T, std::size_t N>
 [[nodiscard]] constexpr auto operator/(Vector<T, N> lhs, std::type_identity_t<T> const rhs) noexcept
     -> Vector<T, N> {
     for (std::size_t i{}; i < N; ++i) {
@@ -168,6 +191,12 @@ template <std::floating_point T, std::size_t N>
         }
     }
     return true;
+}
+template <std::floating_point T, std::size_t N>
+[[nodiscard]] constexpr auto is_nonnegative_finite(Vector<T, N> const value) noexcept -> bool {
+    return std::ranges::all_of(value.elements, [](T element) {
+        return element >= T{} && element <= std::numeric_limits<T>::max();
+    });
 }
 // Require a nonzero vector; use safe_normal when zero is a valid input.
 template <std::floating_point T, std::size_t N>

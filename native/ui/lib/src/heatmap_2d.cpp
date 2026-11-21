@@ -7,10 +7,6 @@
 
 namespace ioj::ui::heatmap_2d {
 namespace {
-auto is_finite(Vector2f const value) noexcept -> bool {
-    return std::isfinite(value.x()) && std::isfinite(value.y());
-}
-
 auto is_finite(Color4f const color) noexcept -> bool {
     return std::isfinite(color.r) && std::isfinite(color.g) && std::isfinite(color.b) &&
            std::isfinite(color.a);

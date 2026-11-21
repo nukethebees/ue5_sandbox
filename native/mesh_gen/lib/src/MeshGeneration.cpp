@@ -2,6 +2,7 @@
 
 #include "MeshMath.h"
 #include <ioj/format_writer.h>
+#include <ioj/vector_value_math.h>
 
 #include <cassert>
 #include <cmath>
@@ -336,9 +337,7 @@ void append_transformed_mesh(MeshData& destination,
             transform.translation);
     }
     for (auto const normal : source.normals) {
-        auto const inverse_scaled_normal{Vec3f{normal.x() / transform.scale.x(),
-                                               normal.y() / transform.scale.y(),
-                                               normal.z() / transform.scale.z()}};
+        auto const inverse_scaled_normal{normal / transform.scale};
         destination.normals.push_back(normalize(rotate(inverse_scaled_normal, transform.rotation)));
     }
     destination.uvs.insert(destination.uvs.end(), source.uvs.begin(), source.uvs.end());

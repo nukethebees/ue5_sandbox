@@ -2,6 +2,7 @@
 
 #include "ioj/vectors3f.h"
 #include <ioj/levels/grid_dimensions.h>
+#include <ioj/vector_value_math.h>
 
 #include <algorithm>
 #include <cassert>
@@ -37,9 +38,7 @@ auto to_closed_max_cell(float const value,
 /* **************************************** */
 auto is_configured(CollisionGridSpec const spec) noexcept -> bool {
     if (spec.dimensions.x() <= 0 || spec.dimensions.y() <= 0 || spec.dimensions.z() <= 0 ||
-        !std::isfinite(spec.cell_dimensions.x()) || !std::isfinite(spec.cell_dimensions.y()) ||
-        !std::isfinite(spec.cell_dimensions.z()) || spec.cell_dimensions.x() <= 0.0f ||
-        spec.cell_dimensions.y() <= 0.0f || spec.cell_dimensions.z() <= 0.0f) {
+        !is_positive_finite(spec.cell_dimensions)) {
         return false;
     }
 
