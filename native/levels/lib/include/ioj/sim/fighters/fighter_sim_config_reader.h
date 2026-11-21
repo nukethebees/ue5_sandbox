@@ -21,7 +21,7 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
         decode_record<Field>(
             ctx, "fighters", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
-                    if constexpr (field == Field::max_live_fighters ||
+                    if constexpr (field == Field::max_live_auto_spawned_fighters ||
                                   field == Field::fire_dot_product_threshold ||
                                   field == Field::attack_distance_band ||
                                   field == Field::avoidance_clear_update_frequency ||
@@ -53,7 +53,7 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
     using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 20> field_names{
-        "max-live-fighters",
+        "max-live-auto-spawned-fighters",
         "",
         "fire-dot-product-threshold",
         "attack-distance-band",

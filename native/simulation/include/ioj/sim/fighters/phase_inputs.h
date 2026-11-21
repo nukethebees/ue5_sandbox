@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ioj/frame_array.h>
-#include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/sim_tick.h>
 
@@ -39,7 +38,6 @@ struct PreparationInputs {
     SimClock const& clock;
     EntityLedger& ledger;
     tasks::TaskManager& task_manager;
-    std::span<Team const> participating_teams;
 };
 
 struct ThinkingInputs {

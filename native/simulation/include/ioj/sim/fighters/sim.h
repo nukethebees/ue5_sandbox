@@ -47,8 +47,11 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    // Queue a single-team wave for the next Preparation, subject to the team's live cap.
-    auto queue_spawns(FighterSpawnQueue::CompactConstView new_spawns) -> std::uint32_t;
+    auto spawn(FighterSpawnQueue::CompactConstView spawns, PreparationInputs inputs)
+        -> std::span<EntityId const>;
+    // Fill the accepted rows before reserving another wave.
+    auto reserve_carrier_spawns(Team team, std::uint32_t requested)
+        -> FighterSpawnQueue::CompactView;
 
   private:
     using NavigationScratch = fighters::NavigationScratch;
@@ -62,7 +65,9 @@ struct Sim {
     /* **************************************** */
     // Sim phases
     /* **************************************** */
-    void initialise(FighterSimConfig const& new_config, SimClock const& clock);
+    void initialise(FighterSimConfig const& new_config,
+                    std::int32_t team_count,
+                    SimClock const& clock);
     void update_entity_lookup_table(EntityTables& entity_tables, SimClock const& clock);
     void prepare_tick(PreparationInputs inputs);
     void think(ThinkingInputs const inputs);

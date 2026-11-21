@@ -9,14 +9,17 @@
 #include "ioj/sim/fighters/sim.h"
 #include "ioj/sim/sim_clock.h"
 
+#include <cstdint>
+
 namespace ioj::sim::fighters {
 class InitialisationInterface {
   private:
     InitialisationInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void initialise(FighterSimConfig const& config, SimClock const& clock) {
-        simulation.initialise(config, clock);
+    void
+        initialise(FighterSimConfig const& config, std::int32_t team_count, SimClock const& clock) {
+        simulation.initialise(config, team_count, clock);
     }
 
     void update_entity_lookup_table(EntityTables& entity_tables, SimClock const& clock) {

@@ -67,6 +67,11 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
         }
 
         auto const& overrides{entity.overrides};
+        if (overrides.health && entity.archetype == EntityArchetype::Fighter) {
+            result.emplace_back(DiagnosticCode::UnknownProperty,
+                                "level.entities.health",
+                                "Fighters use the configured fighter health");
+        }
         if (overrides.initial_fire_point && entity.archetype != EntityArchetype::TubeSpinner) {
             result.emplace_back(DiagnosticCode::UnknownProperty,
                                 "level.entities.initial-fire-point",

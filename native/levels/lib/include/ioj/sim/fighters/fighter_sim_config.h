@@ -23,7 +23,7 @@ struct FighterSimConfig {
     bool operator==(FighterSimConfig const&) const = default;
 
     enum class Field : std::uint8_t {
-        max_live_fighters,
+        max_live_auto_spawned_fighters,
         fire_point_distance,
         fire_dot_product_threshold,
         attack_distance_band,
@@ -50,8 +50,8 @@ struct FighterSimConfig {
         requires (std::same_as<std::remove_const_t<Self>, FighterSimConfig> &&
                   std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
-        if constexpr (Selected == Field::max_live_fighters) {
-            return (self.max_live_fighters);
+        if constexpr (Selected == Field::max_live_auto_spawned_fighters) {
+            return (self.max_live_auto_spawned_fighters);
         }
         if constexpr (Selected == Field::fire_point_distance) {
             return (self.fire_point_distance);
@@ -122,8 +122,9 @@ struct FighterSimConfig {
         requires std::same_as<std::remove_const_t<Self>, FighterSimConfig>
     {
         switch (field) {
-            case Field::max_live_fighters:
-                return invoke_field<Field::max_live_fighters>(self, std::forward<Visitor>(visitor));
+            case Field::max_live_auto_spawned_fighters:
+                return invoke_field<Field::max_live_auto_spawned_fighters>(
+                    self, std::forward<Visitor>(visitor));
             case Field::fire_point_distance:
                 return invoke_field<Field::fire_point_distance>(self,
                                                                 std::forward<Visitor>(visitor));
@@ -181,7 +182,7 @@ struct FighterSimConfig {
         std::unreachable();
     }
 
-    ioj::NonNegative<std::int32_t> max_live_fighters{2000};
+    ioj::NonNegative<std::int32_t> max_live_auto_spawned_fighters{2000};
     float fire_point_distance{};
     settings::DotProduct fire_dot_product_threshold{0.95f};
     settings::AttackDistanceBand attack_distance_band{};
@@ -211,12 +212,12 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<sim::FighterSimConfig::Field, Name>{PackedStrings{
-    "max_live_fighters\000fire_point_distance\000fire_dot_product_threshold\000attack_distance_"
-    "band\000speed\000turn_speed_unitless\000avoidance_clear_update_frequency\000avoidance_update_"
-    "frequency\000avoidance_active_update_frequency\000avoidance_immediate_update_"
-    "frequency\000avoidance_lookahead_time\000avoidance_clearance_buffer\000separation_"
-    "radius\000separation_strength\000steering_memory_duration\000dense_traffic_neighbour_"
-    "threshold\000laser\000health\000attack_retry_cooldown\000los_check_buffer",
-    std::array<std::uint16_t, 21>{0,   18,  38,  65,  86,  92,  112, 145, 172, 206, 243,
-                                  268, 295, 313, 333, 358, 392, 398, 405, 427, 444}}};
+    "max_live_auto_spawned_fighters\000fire_point_distance\000fire_dot_product_threshold\000attack_"
+    "distance_band\000speed\000turn_speed_unitless\000avoidance_clear_update_"
+    "frequency\000avoidance_update_frequency\000avoidance_active_update_frequency\000avoidance_"
+    "immediate_update_frequency\000avoidance_lookahead_time\000avoidance_clearance_"
+    "buffer\000separation_radius\000separation_strength\000steering_memory_duration\000dense_"
+    "traffic_neighbour_threshold\000laser\000health\000attack_retry_cooldown\000los_check_buffer",
+    std::array<std::uint16_t, 21>{0,   31,  51,  78,  99,  105, 125, 158, 185, 219, 256,
+                                  281, 308, 326, 346, 371, 405, 411, 418, 440, 457}}};
 } // namespace ioj

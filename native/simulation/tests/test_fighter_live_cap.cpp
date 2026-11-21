@@ -13,7 +13,7 @@ namespace ioj::sim::tests {
 
 namespace {
 auto make_cap_battle(std::span<Team const> const capital_teams,
-                     std::int32_t const max_live_fighters,
+                     std::int32_t const max_live_auto_spawned_fighters,
                      std::int32_t const spawn_slots,
                      float const spawn_cooldown = 60.f) -> SimulationScenario {
     SimulationScenario data;
@@ -22,8 +22,8 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
     data.runtime.collision.overlap_response.damage_per_overlap_detection =
         ioj::Positive<std::int32_t>{1};
     data.runtime.fighters.health = ::ioj::settings::PositiveHealth::make(Health{1000});
-    data.runtime.fighters.max_live_fighters =
-        ::ioj::NonNegative<std::int32_t>::make(max_live_fighters);
+    data.runtime.fighters.max_live_auto_spawned_fighters =
+        ::ioj::NonNegative<std::int32_t>::make(max_live_auto_spawned_fighters);
     data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.resize(spawn_slots);
 
     auto const capital_count{static_cast<std::int32_t>(capital_teams.size())};
@@ -99,6 +99,42 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
     EXPECT_EQ(inferred_simulation.fighters().num_instances(), 14)
         << "Compiled team inference deduplicates team sources";
 
+    auto mixed{make_cap_battle(one_capital, 2, 2, 0.f)};
+    for (int i{}; i < 3; ++i) {
+        mixed.entities.push_back({
+            .id = levels::EntityId{std::to_string(i)},
+            .archetype = levels::EntityArchetype::Fighter,
+            .team = Team::White,
+            .position = {2000., 1000. * i, 0.},
+            .rotation = {0., 90., 0.},
+        });
+    }
+    LevelSim mixed_sim{std::move(mixed).compile()};
+    auto const placed{mixed_sim.fighters().entities()};
+    ASSERT_EQ(placed.num(), 3);
+    EXPECT_EQ(placed.entity_ids()[0], LevelSimTestAccess::level_entity_ids(mixed_sim)[1]);
+    EXPECT_EQ(vector_at(placed.view_locations(), 1), (Vector3f{2000.f, 1000.f, 0.f}));
+    EXPECT_NEAR(vector_at(placed.view_aim_directions(), 0).y(), 1.f, 1e-5f);
+    auto const placed_id{placed.entity_ids()[0]};
+    start_and_tick(mixed_sim);
+    ASSERT_EQ(mixed_sim.fighters().num_instances(), 5);
+    auto const launched_id{mixed_sim.fighters().entities().entity_ids()[3]};
+    auto const kill_and_advance{[&](EntityId id) {
+        DirectDamageEvents damage;
+        damage.add(id, 10000, {});
+        LevelSimTestAccess::queue_direct_damage_events(mixed_sim, damage.const_view());
+        auto const dt{mixed_sim.clock().tick_period()};
+        for (int tick{}; tick < 4; ++tick) {
+            mixed_sim.advance(dt);
+        }
+    }};
+    kill_and_advance(placed_id);
+    EXPECT_EQ(mixed_sim.fighters().num_instances(), 4);
+    EXPECT_EQ(mixed_sim.entity_ledger().issued_counts()[EntityType::Fighter], 5);
+    kill_and_advance(launched_id);
+    EXPECT_EQ(mixed_sim.fighters().num_instances(), 4);
+    EXPECT_EQ(mixed_sim.entity_ledger().issued_counts()[EntityType::Fighter], 6);
+
     LevelSim empty_simulation{make_cap_battle(std::span<Team const>{}, 10, 0).compile()};
 
     auto const empty_clk_period{empty_simulation.clock().tick_period()};
@@ -109,11 +145,11 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
 }
 
 TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
-    std::vector<Team> const capitals{Team::White};
+    std::vector<Team> const capitals{Team::Blue};
     auto initial_only{make_cap_battle(capitals, 7, 8)};
     LevelSim initial_simulation{std::move(initial_only).compile()};
     start_and_tick(initial_simulation);
-    EXPECT_EQ(count_team(initial_simulation, Team::White), 7);
+    EXPECT_EQ(count_team(initial_simulation, Team::Blue), 7);
 
     auto with_reinforcements{make_cap_battle(capitals, 7, 8)};
     auto const turret{add_turret_spawn(with_reinforcements,
@@ -125,10 +161,14 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     with_reinforcements.entities[turret].spawn_time_seconds = NonNegativeFinite<double>::make(
         100.0 / with_reinforcements.runtime.clock_settings.tick_rate.hz());
 
+    auto const spinner{add_spinner_spawn(with_reinforcements, {2000.f, 0.f, 0.f}, 0.f, 0)};
+    with_reinforcements.entities[spinner].spawn_time_seconds =
+        with_reinforcements.entities[turret].spawn_time_seconds;
+
     LevelSim scheduled_simulation{std::move(with_reinforcements).compile()};
     start_and_tick(scheduled_simulation);
-    EXPECT_EQ(count_team(scheduled_simulation, Team::White), 3)
-        << "Reserve the future team's share before its first entity spawns";
+    EXPECT_EQ(count_team(scheduled_simulation, Team::Blue), 2)
+        << "Blue shares the carrier allowance with the scheduled red turret and white spinner";
     EXPECT_EQ(scheduled_simulation.read_access().turrets().get_entities().num(), 0);
 }
 

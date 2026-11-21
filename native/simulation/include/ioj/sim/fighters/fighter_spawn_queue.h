@@ -6,8 +6,7 @@
 #include "ioj/levels/team.h"
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/rotator_types.h"
-#include "ioj/rotators3f.h"
+#include "ioj/sim/levels/level_entity_ref.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f.h"
@@ -30,14 +29,15 @@ struct ConstView;
 /* **************************************** */
 struct Layout
     : single_allocation_layout::
-          ColumnLayouts<float, float, float, float, float, float, ::ioj::Team> {
-    static constexpr std::size_t locations_xs_column{0ULL};
-    static constexpr std::size_t locations_ys_column{1ULL};
-    static constexpr std::size_t locations_zs_column{2ULL};
-    static constexpr std::size_t rotations_pitches_column{3ULL};
-    static constexpr std::size_t rotations_yaws_column{4ULL};
-    static constexpr std::size_t rotations_rolls_column{5ULL};
-    static constexpr std::size_t teams_column{6ULL};
+          ColumnLayouts<LevelEntityRef, float, float, float, float, float, float, ::ioj::Team> {
+    static constexpr std::size_t entity_indices_column{0ULL};
+    static constexpr std::size_t locations_xs_column{1ULL};
+    static constexpr std::size_t locations_ys_column{2ULL};
+    static constexpr std::size_t locations_zs_column{3ULL};
+    static constexpr std::size_t directions_xs_column{4ULL};
+    static constexpr std::size_t directions_ys_column{5ULL};
+    static constexpr std::size_t directions_zs_column{6ULL};
+    static constexpr std::size_t teams_column{7ULL};
 };
 
 /* **************************************** */
@@ -47,21 +47,23 @@ template <typename Byte>
 struct DataPointers {
     template <typename T>
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<LevelEntityRef>* entity_indices{};
     Element<float>* locations_xs{};
     Element<float>* locations_ys{};
     Element<float>* locations_zs{};
-    Element<float>* rotations_pitches{};
-    Element<float>* rotations_yaws{};
-    Element<float>* rotations_rolls{};
+    Element<float>* directions_xs{};
+    Element<float>* directions_ys{};
+    Element<float>* directions_zs{};
     Element<::ioj::Team>* teams{};
     template <typename Self, typename Func>
     static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.locations_xs,
+        return func(self.entity_indices,
+                    self.locations_xs,
                     self.locations_ys,
                     self.locations_zs,
-                    self.rotations_pitches,
-                    self.rotations_yaws,
-                    self.rotations_rolls,
+                    self.directions_xs,
+                    self.directions_ys,
+                    self.directions_zs,
                     self.teams);
     }
 };
@@ -70,13 +72,14 @@ struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
         auto const& locations_view{source.view_locations()};
-        auto const& rotations_view{source.view_rotations()};
-        return func(locations_view.xs(),
+        auto const& directions_view{source.view_directions()};
+        return func(source.entity_indices(),
+                    locations_view.xs(),
                     locations_view.ys(),
                     locations_view.zs(),
-                    rotations_view.pitches(),
-                    rotations_view.yaws(),
-                    rotations_view.rolls(),
+                    directions_view.xs(),
+                    directions_view.ys(),
+                    directions_view.zs(),
                     source.teams());
     }
 };
@@ -96,6 +99,7 @@ struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointer
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
+    auto entity_indices() const { return this->column(this->columns_.entity_indices); }
     auto view_locations() const
         -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->columns_.locations_xs,
@@ -103,11 +107,11 @@ struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointer
                 this->columns_.locations_zs,
                 this->num()};
     }
-    auto view_rotations() const
-        -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
-        return {this->columns_.rotations_pitches,
-                this->columns_.rotations_yaws,
-                this->columns_.rotations_rolls,
+    auto view_directions() const
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
+        return {this->columns_.directions_xs,
+                this->columns_.directions_ys,
+                this->columns_.directions_zs,
                 this->num()};
     }
     auto teams() const { return this->column(this->columns_.teams); }
@@ -124,12 +128,14 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
     using Base::Base;
     using Base::set;
     void set(size_type index,
+             ioj::sim::LevelEntityRef const new_entity_indices,
              Vector3f const new_locations,
-             Rotator3f const new_rotations,
+             Vector3f const new_directions,
              ::ioj::Team const new_teams) const {
         assert((index < num()));
+        this->entity_indices()[index] = new_entity_indices;
         this->view_locations().set(index, new_locations);
-        this->view_rotations().set(index, new_rotations);
+        this->view_directions().set(index, new_directions);
         this->teams()[index] = new_teams;
     }
 };
@@ -150,6 +156,9 @@ struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
     CompactViewImpl(CompactViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
+    auto entity_indices() const {
+        return this->template column<LevelEntityRef>(Layout::entity_indices_column);
+    }
     auto view_locations() const
         -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
         return soa_storage_detail::make_strided_view<
@@ -160,15 +169,15 @@ struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
                     Layout::locations_xs_column,
                     Layout::locations_ys_column);
     }
-    auto view_rotations() const
-        -> std::conditional_t<Const, rotators3f::CompactConstView, rotators3f::CompactView> {
+    auto view_directions() const
+        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
         return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, rotators3f::CompactConstView, rotators3f::CompactView>,
+            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
             Layout>(this->state_,
                     this->offset_,
                     this->num(),
-                    Layout::rotations_pitches_column,
-                    Layout::rotations_yaws_column);
+                    Layout::directions_xs_column,
+                    Layout::directions_ys_column);
     }
     auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
 };
@@ -187,12 +196,14 @@ struct CompactView
     using Base::Base;
     using Base::set;
     void set(size_type index,
+             ioj::sim::LevelEntityRef const new_entity_indices,
              Vector3f const new_locations,
-             Rotator3f const new_rotations,
+             Vector3f const new_directions,
              ::ioj::Team const new_teams) const {
         assert((index < num()));
+        this->entity_indices()[index] = new_entity_indices;
         this->view_locations().set(index, new_locations);
-        this->view_rotations().set(index, new_rotations);
+        this->view_directions().set(index, new_directions);
         this->teams()[index] = new_teams;
     }
 };
@@ -204,12 +215,13 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 // Owner
 /* **************************************** */
 // Columns:
+// entity_indices: ioj::sim::LevelEntityRef
 // locations_xs: float
 // locations_ys: float
 // locations_zs: float
-// rotations_pitches: float
-// rotations_yaws: float
-// rotations_rolls: float
+// directions_xs: float
+// directions_ys: float
+// directions_zs: float
 // teams: ::ioj::Team
 struct FighterSpawnQueue
     : protected native_soa::StorageState
@@ -258,28 +270,32 @@ struct FighterSpawnQueue
     template <typename Byte>
     using DataPointers = fighter_spawn_queue::DataPointers<Byte>;
   public:
+    auto entity_indices(this auto& self) { return self.view().entity_indices(); }
     auto view_locations(this auto& self) { return self.view().view_locations(); }
-    auto view_rotations(this auto& self) { return self.view().view_rotations(); }
+    auto view_directions(this auto& self) { return self.view().view_directions(); }
     auto teams(this auto& self) { return self.view().teams(); }
     using RowOperations = soa_storage_detail::
         OwnerRowOperations<FighterSpawnQueue, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
+             LevelEntityRef const new_entity_indices,
              Vector3f const new_locations,
-             Rotator3f const new_rotations,
+             Vector3f const new_directions,
              ::ioj::Team const new_teams) {
         assert((index < num()));
+        view().entity_indices()[index] = new_entity_indices;
         view().view_locations().set(index, new_locations);
-        view().view_rotations().set(index, new_rotations);
+        view().view_directions().set(index, new_directions);
         view().teams()[index] = new_teams;
     }
-    size_type add(Vector3f const new_locations,
-                  Rotator3f const new_rotations,
+    size_type add(LevelEntityRef const new_entity_indices,
+                  Vector3f const new_locations,
+                  Vector3f const new_directions,
                   ::ioj::Team const new_teams) {
         auto const index{num()};
         add_uninitialised(1);
-        set(index, new_locations, new_rotations, new_teams);
+        set(index, new_entity_indices, new_locations, new_directions, new_teams);
         return index;
     }
   private:

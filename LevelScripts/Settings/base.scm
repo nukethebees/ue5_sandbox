@@ -28,7 +28,7 @@
       :spawn-delay 5
       :max-health 5000)
     :fighters (fighters
-      :max-live-fighters 2000
+      :max-live-auto-spawned-fighters 2000
       :fire-dot-product-threshold 0.95
       :speed 4500
       :turn-speed-unitless 1

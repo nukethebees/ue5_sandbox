@@ -6,7 +6,6 @@
 #include <ioj/sim/collision/cell_coord.h>
 #include <ioj/sim/collision/cell_coord_bounds.h>
 #include <ioj/sim/collision/collision_init_data.h>
-#include <ioj/sim/entities/team_list.h>
 #include <ioj/sim/expressions/condition_manager.h>
 #include <ioj/sim/expressions/timers.h>
 #include <ioj/sim/fighters/fighter_sim_config.h>
@@ -17,6 +16,7 @@
 #include <ioj/sim/turrets/turret_sim_config.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 
 namespace ioj::sim {
@@ -31,6 +31,7 @@ struct LevelSimInitData {
 
     std::optional<player::PlayerSpawnData> player;
     LevelEntityRef player_entity_ref{};
+    std::int32_t participating_team_count{};
     LevelEventManager level_events;
     ConditionManager conditions;
     Timers timers;

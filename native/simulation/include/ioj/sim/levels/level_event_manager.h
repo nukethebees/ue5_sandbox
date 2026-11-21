@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/entities/team_list.h>
+#include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/event_trigger.h>
@@ -23,16 +23,7 @@ class ConditionManager;
 class LevelSpawnManager;
 class Timers;
 struct SimClock;
-struct SpawnContext;
-namespace capital_ships {
-struct Sim;
-}
-namespace turrets {
-struct Sim;
-}
-namespace spinners {
-struct Sim;
-}
+struct LevelSpawnContext;
 
 struct WinEvent {
     Team winner;
@@ -56,12 +47,14 @@ class LevelEventManager {
     auto add_start_timer_event(StartTimerEvent event) -> EventHandle;
     auto add_win_event(Team team) -> EventHandle;
     void add_trigger(ExprHandle condition, std::span<EventHandle const> events);
-    auto collect_participating_teams(std::optional<Team> player_team = {}) const -> TeamList;
     auto spawn_count() const -> std::uint32_t {
-        return capital_spawns_.num() + turret_spawns_.num() + spinner_spawns_.num();
+        return fighter_spawns_.num() + capital_spawns_.num() + turret_spawns_.num() +
+               spinner_spawns_.num();
     }
     auto spawn_groups() -> LevelSpawnGroups& { return spawn_groups_; }
     auto spawn_groups() const -> LevelSpawnGroups const& { return spawn_groups_; }
+    auto fighter_spawns() -> FighterSpawnQueue& { return fighter_spawns_; }
+    auto fighter_spawns() const -> FighterSpawnQueue const& { return fighter_spawns_; }
     auto capital_spawns() -> LevelCapitalSpawnEvents& { return capital_spawns_; }
     auto capital_spawns() const -> LevelCapitalSpawnEvents const& { return capital_spawns_; }
     auto turret_spawns() -> LevelTurretSpawnEvents& { return turret_spawns_; }
@@ -87,11 +80,7 @@ class LevelEventManager {
     auto active_triggers() const -> std::span<TriggerIndex const> { return active_triggers_; }
     void enqueue(EventHandle event);
     void enqueue_stop(RunEndReason reason);
-    void dispatch_preparation(LevelSpawnManager& spawns,
-                              capital_ships::Sim& capitals,
-                              turrets::Sim& turrets,
-                              spinners::Sim& spinners,
-                              SpawnContext context);
+    void dispatch_preparation(LevelSpawnManager& spawns, LevelSpawnContext const& context);
     void dispatch_tick_end(Timers& timers,
                            SimClock const& clock,
                            LevelState& state,
@@ -110,6 +99,7 @@ class LevelEventManager {
 
   private:
     LevelSpawnGroups spawn_groups_;
+    FighterSpawnQueue fighter_spawns_;
     LevelCapitalSpawnEvents capital_spawns_;
     LevelTurretSpawnEvents turret_spawns_;
     LevelSpinnerSpawnEvents spinner_spawns_;

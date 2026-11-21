@@ -30,6 +30,7 @@
     (member target_distance_sq array float)
     (member target_distances array float)
     (member target_radii array float)
+    (member carrier_launched array uint8)
 ))
 
 (module capital_ships_soa
@@ -76,8 +77,9 @@
   :header "native/simulation/include/ioj/sim/fighters/fighter_spawn_queue.h"
   :namespace ioj::sim
   (struct FighterSpawnQueue
+    (member entity_indices array ioj::sim::LevelEntityRef)
     (member locations nested @native_vectors_3f)
-    (member rotations nested @native_rotators_3f)
+    (member directions nested @native_vectors_3f)
     (member teams array @native_team)
 ))
 

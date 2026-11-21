@@ -63,6 +63,7 @@
     (value CapitalShip :serialized-name "capital-ship")
     (value StaticTurret :serialized-name "static-turret")
     (value TubeSpinner :serialized-name "tube-spinner")
+    (value Fighter :serialized-name "fighter")
     (projections (cpp))))
 
 (module native_levels_diagnostic_code

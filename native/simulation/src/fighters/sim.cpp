@@ -83,9 +83,12 @@ static void publish_navigation_counters(NavigationCounters const& counters) {
 // Configuration
 /* **************************************** */
 // Level initialisation
-void Sim::initialise(FighterSimConfig const& new_config, SimClock const& clock) {
+void Sim::initialise(FighterSimConfig const& new_config,
+                     std::int32_t const team_count,
+                     SimClock const& clock) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::initialise");
     config_ = RuntimeConfig{new_config, clock};
+    remaining_team_capacity_.fill(config_.per_team_limit(team_count));
     profiling::plot("Sandbox/FighterCount", 0);
     publish_navigation_counters({});
     attack_cleaner_ = 0;
@@ -97,20 +100,22 @@ void Sim::initialise(FighterSimConfig const& new_config, SimClock const& clock) 
 /* **************************************** */
 // Preparation
 void Sim::commit_spawns(PreparationInputs const inputs) {
+    if (spawn_queue_.num() > 0) {
+        spawn(spawn_queue_.const_view(), inputs);
+        spawn_queue_.reset();
+    }
+}
+auto Sim::spawn(FighterSpawnQueue::CompactConstView const spawns, PreparationInputs const inputs)
+    -> std::span<EntityId const> {
     assert(is_preparation_mutation_allowed(inputs.clock));
-    SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_spawns");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::spawn");
 
     auto const n_cur{num_instances()};
-    auto const n_new{spawn_queue_.num()};
-
-    if (n_new < 1) {
-        return;
-    }
+    auto const n_new{spawns.num()};
 
     entities_.add_defaulted(n_new);
     auto const data{entities_.view()};
     auto const new_data{data.view(n_cur, n_new)};
-    auto const spawns{spawn_queue_.const_view()};
     auto const navigation_period{config_.navigation_tick_periods[NavigationRiskTier::Nearby]};
     copy_vectors(new_data.view_locations().resolve(), spawns.view_locations().resolve());
     copy_vectors(new_data.view_desired_move_locations().resolve(),
@@ -124,16 +129,10 @@ void Sim::commit_spawns(PreparationInputs const inputs) {
                       AvoidanceChoice{AvoidanceChoice::DirectMovement});
     std::ranges::fill(new_data.navigation_update_countdowns_periods(), navigation_period);
 
-    auto const aim_directions{new_data.view_aim_directions().resolve()};
-    auto const rotations{spawns.view_rotations().resolve()};
-    auto const pitches{rotations.pitches()};
-    auto const yaws{rotations.yaws()};
-    auto const rolls{rotations.rolls()};
-    for (std::uint32_t index{}; index < n_new; ++index) {
-        set_vector(aim_directions,
-                   index,
-                   forward_direction(Rotator3f{pitches[index], yaws[index], rolls[index]}));
-    }
+    copy_vectors(new_data.view_aim_directions().resolve(), spawns.view_directions().resolve());
+    std::ranges::transform(spawns.entity_indices(),
+                           new_data.carrier_launched().begin(),
+                           [](LevelEntityRef ref) { return !ref.is_valid(); });
 
     auto const entity_ids{new_data.entity_ids()};
     auto const teams{new_data.teams()};
@@ -158,6 +157,7 @@ void Sim::commit_spawns(PreparationInputs const inputs) {
         std::span<EntityId const>{data.entity_ids()}.subspan(n_cur, n_new),
         std::span<std::uint32_t>{data.integral_biases()}.subspan(n_cur, n_new),
         std::span<float>{data.float_biases()}.subspan(n_cur, n_new));
+    return entity_ids;
 }
 void Sim::update_entity_lookup_table(EntityTables& entity_tables,
                                      [[maybe_unused]] SimClock const& clock) {
@@ -172,13 +172,6 @@ void Sim::prepare_tick(PreparationInputs const inputs) {
 
     auto const data{entities_.view()};
     tick_periodic_countdowns<std::int16_t>(data.navigation_update_countdowns_remaining_ticks());
-    spawn_queue_.reset();
-
-    auto const team_count{static_cast<std::int32_t>(inputs.participating_teams.size())};
-    remaining_team_capacity_.fill(config_.per_team_limit(team_count));
-    for (auto const team : data.teams()) {
-        remaining_team_capacity_[team] = std::max(0, remaining_team_capacity_[team] - 1);
-    }
     tick_countdowns<std::int16_t>(data.attack_cooldowns(), attack_cleaner_, 16384);
     update_entity_lookup_table(inputs.entity_tables, inputs.clock);
 }
@@ -995,20 +988,15 @@ void Sim::refresh_target_data(ThinkingInputs const inputs) {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::queue_spawns(FighterSpawnQueue::CompactConstView const new_spawns) -> std::uint32_t {
-    SANDBOX_PROFILE_SCOPE("fighters::Sim::queue_spawns");
-    auto const teams{new_spawns.teams()};
-    if (teams.empty()) {
-        return 0;
-    }
-    auto const team{teams.front()};
+auto Sim::reserve_carrier_spawns(Team const team, std::uint32_t const requested)
+    -> FighterSpawnQueue::CompactView {
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::reserve_carrier_spawns");
     auto& capacity{remaining_team_capacity_[team]};
     assert(capacity >= 0);
-    auto const accepted_count{
-        std::min(static_cast<std::uint32_t>(teams.size()), static_cast<std::uint32_t>(capacity))};
+    auto const accepted_count{std::min(requested, static_cast<std::uint32_t>(capacity))};
+    spawn_queue_.add_uninitialised(accepted_count);
     capacity -= static_cast<std::int32_t>(accepted_count);
-    spawn_queue_.append_from(new_spawns, 0, accepted_count);
-    return accepted_count;
+    return spawn_queue_.right(accepted_count);
 }
 
 /* **************************************** */
@@ -1020,6 +1008,12 @@ void Sim::remove_dead_entities(std::span<std::uint32_t const> const local_indice
     auto& data{entities_};
     auto const columns{data.const_view()};
     auto const entity_ids{columns.entity_ids()};
+
+    auto const teams{columns.teams()};
+    auto const launched{columns.carrier_launched()};
+    for (auto const row : local_indices_to_remove) {
+        remaining_team_capacity_[teams[row]] += launched[row];
+    }
 
     lookups.for_type(EntityType::Fighter).retire_rows(entity_ids, local_indices_to_remove);
     data.remove_at_swap(local_indices_to_remove);

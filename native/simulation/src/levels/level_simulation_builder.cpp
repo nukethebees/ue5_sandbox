@@ -69,6 +69,15 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
                     Vector3f{data.player->transform.location},
                     Quaternion4f{data.player->transform.rotation});
     }
+    auto const fighters{data.level_events.fighter_spawns().const_view()};
+    auto const fighter_locations{fighters.view_locations().resolve()};
+    auto const fighter_directions{fighters.view_directions().resolve()};
+    auto const fighter_count{fighters.num()};
+    for (std::uint32_t row{}; row < fighter_count; ++row) {
+        check_spawn(EntityType::Fighter,
+                    fighter_locations[row],
+                    to_quaternion(direction_to_rotation(fighter_directions[row])));
+    }
     auto const capitals{data.level_events.capital_spawns().const_view()};
     auto const capital_count{capitals.num()};
     for (std::uint32_t row{}; row < capital_count; ++row) {

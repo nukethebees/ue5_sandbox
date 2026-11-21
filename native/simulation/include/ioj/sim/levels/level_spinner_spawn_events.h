@@ -6,10 +6,10 @@
 #include "ioj/constrained_numbers.h"
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
+#include "ioj/sim/levels/level_entity_ref.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f.h"
-#include "level_entity_ref.h"
 
 #include <cassert>
 #include <cstddef>

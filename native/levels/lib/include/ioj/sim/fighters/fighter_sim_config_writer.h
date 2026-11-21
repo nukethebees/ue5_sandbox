@@ -19,7 +19,7 @@ struct TypeWriter<sim::FighterSimConfig> : RecordWriter<sim::FighterSimConfig> {
     static void properties(Visitor& visit) {
         using T = ioj::sim::FighterSimConfig;
 
-        visit("max-live-fighters", &T::max_live_fighters);
+        visit("max-live-auto-spawned-fighters", &T::max_live_auto_spawned_fighters);
         visit("fire-dot-product-threshold", &T::fire_dot_product_threshold);
         visit("attack-distance-band", &T::attack_distance_band);
         visit("speed", &T::speed);

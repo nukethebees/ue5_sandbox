@@ -163,7 +163,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 #endif
 
     if (options.fighter_stress_cap.has_value()) {
-        settings.fighters.max_live_fighters =
+        settings.fighters.max_live_auto_spawned_fighters =
             NonNegative<std::int32_t>::make(*options.fighter_stress_cap);
         settings.fighters.laser.damage = 0;
         auto const health{settings::PositiveHealth{
@@ -185,10 +185,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 
     auto& data{*compiled};
     if (options.fighter_stress_cap.has_value()) {
-        auto const team_count{data.level_events
-                                  .collect_participating_teams(
-                                      data.player ? std::optional{data.player->team} : std::nullopt)
-                                  .num()};
+        auto const team_count{data.participating_team_count};
         if (team_count == 0 || *options.fighter_stress_cap % team_count != 0) {
             return Result{std::unexpect,
                           "fighter stress cap must divide evenly across participating teams"};

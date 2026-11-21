@@ -2,6 +2,7 @@
 #include <ioj/sim/capital_ships/capital_entity_data.h>
 #include <ioj/sim/collision/entity_aabbs.h>
 #include <ioj/sim/entities/entity_id.h>
+#include <ioj/sim/fighters/phase_inputs.h>
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 #include <ioj/sim/levels/level_entity_ref.h>
@@ -29,13 +30,18 @@ namespace ioj::sim::fighters {
 struct Sim;
 }
 
-namespace ioj {
-class FrameMemoryResource;
-}
-
 namespace ioj::sim {
 class LevelEventManager;
+struct EntityInstanceHandle;
 struct SpawnContext;
+
+struct LevelSpawnContext {
+    capital_ships::Sim& capitals;
+    turrets::Sim& turrets;
+    spinners::Sim& spinners;
+    fighters::Sim& fighters;
+    fighters::PreparationInputs fighter_inputs;
+};
 
 // Spawn authored entities. Schedule carrier fighter waves.
 class LevelSpawnManager {
@@ -59,14 +65,11 @@ class LevelSpawnManager {
     void set_entity_id(LevelEntityRef entity_index, EntityId id);
     void process_event(EventHandle event,
                        LevelEventManager const& events,
-                       capital_ships::Sim& capital_ships,
-                       turrets::Sim& turrets,
-                       spinners::Sim& spinners,
-                       SpawnContext context);
+                       LevelSpawnContext const& context);
     void queue_fighter_spawns(float dt,
                               CapitalEntityData::CompactConstView capitals,
-                              fighters::Sim& fighters,
-                              FrameMemoryResource& scratch_resource);
+                              std::span<EntityInstanceHandle const> capital_handles,
+                              fighters::Sim& fighters);
     auto entity_ids() const noexcept -> std::span<EntityId const> { return entity_ids_; }
 
   private:

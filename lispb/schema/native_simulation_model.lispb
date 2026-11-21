@@ -220,7 +220,7 @@
   (record FighterSimConfig :comparison equality
     :generate-visitor true
     :generate-s7-reader true :generate-s7-writer true :s7-tag "fighters"
-    (member max_live_fighters @settings_nonnegative_int :initializer "2000")
+    (member max_live_auto_spawned_fighters @settings_nonnegative_int :initializer "2000")
     (member fire_point_distance float :initializer "" :s7-exclude true)
     (member fire_dot_product_threshold @settings_dot_product :initializer "0.95f")
     (member attack_distance_band ioj::settings::AttackDistanceBand :initializer "")

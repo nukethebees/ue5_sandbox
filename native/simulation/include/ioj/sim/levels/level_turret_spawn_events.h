@@ -10,10 +10,10 @@
 #include "ioj/rotator_types.h"
 #include "ioj/rotators3f.h"
 #include "ioj/sim/entities/health.h"
+#include "ioj/sim/levels/level_entity_ref.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f.h"
-#include "level_entity_ref.h"
 
 #include <cassert>
 #include <cstddef>

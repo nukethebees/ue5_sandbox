@@ -4,13 +4,10 @@
 #include <ioj/sim/expressions/condition_manager.h>
 #include <ioj/sim/expressions/timers.h>
 #include <ioj/sim/levels/level_spawn_manager.h>
-#include <ioj/sim/levels/spawn_context.h>
 #include <ioj/sim/sim_clock.h>
-#include <ioj/team_array.h>
 
 #include <algorithm>
 #include <cassert>
-#include <format>
 #include <limits>
 #include <utility>
 
@@ -22,6 +19,7 @@ namespace ioj::sim {
 // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
 LevelEventManager::LevelEventManager(LevelEventManager&& other, std::pmr::memory_resource& memory)
     : spawn_groups_{std::move(other.spawn_groups_)}
+    , fighter_spawns_{std::move(other.fighter_spawns_)}
     , capital_spawns_{std::move(other.capital_spawns_)}
     , turret_spawns_{std::move(other.turret_spawns_)}
     , spinner_spawns_{std::move(other.spinner_spawns_)}
@@ -40,38 +38,6 @@ LevelEventManager::LevelEventManager(LevelEventManager&& other, std::pmr::memory
 /* **************************************** */
 // Definitions
 /* **************************************** */
-auto LevelEventManager::collect_participating_teams(std::optional<Team> const player_team) const
-    -> TeamList {
-    TeamArray<std::uint8_t> included{};
-    auto const included_count{included.size()};
-    auto include = [&included](Team const team) {
-        auto const team_index{static_cast<std::int32_t>(team)};
-        if (team_index >= 0 && static_cast<std::size_t>(team_index) < included_count) {
-            included[team] = 1;
-        } else {
-            log_error(std::format("Ignoring invalid participating team {}", team_index));
-        }
-    };
-
-    if (player_team.has_value()) {
-        include(*player_team);
-    }
-    for (auto const team : capital_spawns_.const_view().teams()) {
-        include(team);
-    }
-    for (auto const team : turret_spawns_.const_view().teams()) {
-        include(team);
-    }
-
-    TeamList result;
-    for (auto const team : EnumTraits<Team>::values) {
-        if (included[team] != 0) {
-            result.add(team);
-        }
-    }
-
-    return result;
-}
 void LevelEventManager::add_spawn_group(EntityType const type,
                                         std::int32_t offset,
                                         std::int32_t count) {
@@ -192,14 +158,11 @@ void LevelEventManager::dispatch_tick_end(Timers& timers,
     }
 }
 void LevelEventManager::dispatch_preparation(LevelSpawnManager& spawns,
-                                             capital_ships::Sim& capitals,
-                                             turrets::Sim& turrets,
-                                             spinners::Sim& spinners,
-                                             SpawnContext const context) {
+                                             LevelSpawnContext const& context) {
     while (auto const event = consume_preparation_event()) {
         switch (event->kind()) {
             case EventKind::Spawn:
-                spawns.process_event(*event, *this, capitals, turrets, spinners, context);
+                spawns.process_event(*event, *this, context);
                 break;
             default:
                 fatal_error("Invalid Preparation event kind");

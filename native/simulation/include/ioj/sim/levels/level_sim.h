@@ -7,7 +7,6 @@
 #include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
-#include <ioj/sim/entities/team_list.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/levels/level_event_manager.h>
@@ -113,6 +112,7 @@ struct LevelSim {
     /* **************************************** */
     // Subsystem setup
     /* **************************************** */
+    auto level_spawn_context() -> LevelSpawnContext;
     void initialise_subsystems(LevelSimInitData const& data);
 
     /* **************************************** */
@@ -123,7 +123,6 @@ struct LevelSim {
 
     LevelState state_{LevelState::Uninitialised};
     SimClock clock_;
-    TeamList participating_teams_;
 
     LevelMemoryManager memory_manager_;
     EntityLedger entity_ledger_{memory_manager_.game_memory()};

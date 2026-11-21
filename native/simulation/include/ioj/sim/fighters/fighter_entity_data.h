@@ -77,7 +77,8 @@ struct Layout
                                               float,
                                               float,
                                               float,
-                                              float> {
+                                              float,
+                                              std::uint8_t> {
     static constexpr std::size_t entity_ids_column{0ULL};
     static constexpr std::size_t integral_biases_column{1ULL};
     static constexpr std::size_t float_biases_column{2ULL};
@@ -126,6 +127,7 @@ struct Layout
     static constexpr std::size_t target_distance_sq_column{45ULL};
     static constexpr std::size_t target_distances_column{46ULL};
     static constexpr std::size_t target_radii_column{47ULL};
+    static constexpr std::size_t carrier_launched_column{48ULL};
 };
 
 /* **************************************** */
@@ -183,6 +185,7 @@ struct DataPointers {
     Element<float>* target_distance_sq{};
     Element<float>* target_distances{};
     Element<float>* target_radii{};
+    Element<std::uint8_t>* carrier_launched{};
     template <typename Self, typename Func>
     static decltype(auto) with_columns(Self& self, Func&& func) {
         return func(self.entity_ids,
@@ -232,7 +235,8 @@ struct DataPointers {
                     self.intercept_times,
                     self.target_distance_sq,
                     self.target_distances,
-                    self.target_radii);
+                    self.target_radii,
+                    self.carrier_launched);
     }
 };
 
@@ -296,7 +300,8 @@ struct Schema {
                     source.intercept_times(),
                     source.target_distance_sq(),
                     source.target_distances(),
-                    source.target_radii());
+                    source.target_radii(),
+                    source.carrier_launched());
     }
 };
 
@@ -415,6 +420,7 @@ struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointer
     auto target_distance_sq() const { return this->column(this->columns_.target_distance_sq); }
     auto target_distances() const { return this->column(this->columns_.target_distances); }
     auto target_radii() const { return this->column(this->columns_.target_radii); }
+    auto carrier_launched() const { return this->column(this->columns_.carrier_launched); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -455,7 +461,8 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              float const new_intercept_times,
              float const new_target_distance_sq,
              float const new_target_distances,
-             float const new_target_radii) const {
+             float const new_target_radii,
+             std::uint8_t const new_carrier_launched) const {
         assert((index < num()));
         this->entity_ids()[index] = new_entity_ids;
         this->integral_biases()[index] = new_integral_biases;
@@ -487,6 +494,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
         this->target_distance_sq()[index] = new_target_distance_sq;
         this->target_distances()[index] = new_target_distances;
         this->target_radii()[index] = new_target_radii;
+        this->carrier_launched()[index] = new_carrier_launched;
     }
 };
 
@@ -654,6 +662,9 @@ struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
         return this->template column<float>(Layout::target_distances_column);
     }
     auto target_radii() const { return this->template column<float>(Layout::target_radii_column); }
+    auto carrier_launched() const {
+        return this->template column<std::uint8_t>(Layout::carrier_launched_column);
+    }
 };
 struct CompactConstView : CompactViewImpl<true> {
     using Base = CompactViewImpl<true>;
@@ -697,7 +708,8 @@ struct CompactView
              float const new_intercept_times,
              float const new_target_distance_sq,
              float const new_target_distances,
-             float const new_target_radii) const {
+             float const new_target_radii,
+             std::uint8_t const new_carrier_launched) const {
         assert((index < num()));
         this->entity_ids()[index] = new_entity_ids;
         this->integral_biases()[index] = new_integral_biases;
@@ -729,6 +741,7 @@ struct CompactView
         this->target_distance_sq()[index] = new_target_distance_sq;
         this->target_distances()[index] = new_target_distances;
         this->target_radii()[index] = new_target_radii;
+        this->carrier_launched()[index] = new_carrier_launched;
     }
 };
 static_assert(soa_storage_detail::validate_compact_view<CompactView>());
@@ -787,6 +800,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 // target_distance_sq: float
 // target_distances: float
 // target_radii: float
+// carrier_launched: std::uint8_t
 struct FighterEntityData
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<FighterEntityData,
@@ -882,6 +896,7 @@ struct FighterEntityData
     auto target_distance_sq(this auto& self) { return self.view().target_distance_sq(); }
     auto target_distances(this auto& self) { return self.view().target_distances(); }
     auto target_radii(this auto& self) { return self.view().target_radii(); }
+    auto carrier_launched(this auto& self) { return self.view().carrier_launched(); }
     using RowOperations = soa_storage_detail::
         OwnerRowOperations<FighterEntityData, Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
@@ -914,7 +929,8 @@ struct FighterEntityData
              float const new_intercept_times,
              float const new_target_distance_sq,
              float const new_target_distances,
-             float const new_target_radii) {
+             float const new_target_radii,
+             std::uint8_t const new_carrier_launched) {
         assert((index < num()));
         view().entity_ids()[index] = new_entity_ids;
         view().integral_biases()[index] = new_integral_biases;
@@ -946,6 +962,7 @@ struct FighterEntityData
         view().target_distance_sq()[index] = new_target_distance_sq;
         view().target_distances()[index] = new_target_distances;
         view().target_radii()[index] = new_target_radii;
+        view().carrier_launched()[index] = new_carrier_launched;
     }
     size_type add(EntityId const new_entity_ids,
                   std::uint32_t const new_integral_biases,
@@ -974,7 +991,8 @@ struct FighterEntityData
                   float const new_intercept_times,
                   float const new_target_distance_sq,
                   float const new_target_distances,
-                  float const new_target_radii) {
+                  float const new_target_radii,
+                  std::uint8_t const new_carrier_launched) {
         auto const index{num()};
         add_uninitialised(1);
         set(index,
@@ -1005,7 +1023,8 @@ struct FighterEntityData
             new_intercept_times,
             new_target_distance_sq,
             new_target_distances,
-            new_target_radii);
+            new_target_radii,
+            new_carrier_launched);
         return index;
     }
   private:

@@ -51,6 +51,8 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     auto const& turret_config{output.turrets};
     auto& definitions{output.level_events};
     output.level_metadata = definition.metadata();
+    output.participating_team_count =
+        static_cast<std::int32_t>(participating_teams(definition).size());
     if (!definition.player_entity_id().empty()) {
         output.player_entity_ref = entity_index(definition, definition.player_entity_id());
     }
@@ -80,6 +82,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
                 left.source_index < right.source_index);
     });
 
+    auto& fighter_spawns{definitions.fighter_spawns()};
     std::int32_t capital_count{};
     std::int32_t turret_count{};
     std::int32_t spinner_count{};
@@ -101,7 +104,12 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     auto const append_entity =
         [&, capital_events, turret_events](sim::LevelEntityRef const entity_index_value) {
             auto const& entity{definition.entities()[entity_index_value.index()]};
-            if (entity.archetype == EntityArchetype::CapitalShip) {
+            if (entity.archetype == EntityArchetype::Fighter) {
+                fighter_spawns.add(entity_index_value,
+                                   Vector3f{entity.position},
+                                   forward_direction(Rotator3f{entity.rotation}),
+                                   entity.team);
+            } else if (entity.archetype == EntityArchetype::CapitalShip) {
                 auto const row{capital_end++};
                 capital_events.entity_indices()[row] = entity_index_value;
                 set_vector(capital_events.view_locations(), row, Vector3f{entity.position});
@@ -138,6 +146,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     std::size_t first{};
     while (first < source_count) {
         auto const tick{sources[first].execution_tick};
+        auto const fighter_offset{static_cast<std::int32_t>(fighter_spawns.num())};
         auto const capital_offset{capital_end};
         auto const turret_offset{turret_end};
         auto const spinner_offset{spinner_end};
@@ -148,6 +157,10 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
         }
 
         auto const group_offset{definitions.spawn_groups().num()};
+        definitions.add_spawn_group(sim::EntityType::Fighter,
+                                    fighter_offset,
+                                    static_cast<std::int32_t>(fighter_spawns.num()) -
+                                        fighter_offset);
         definitions.add_spawn_group(
             sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
         definitions.add_spawn_group(
@@ -168,6 +181,7 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
     }
     std::vector<sim::EventHandle> spawn_effects;
     for (auto const& group : logic.spawn_groups) {
+        auto const fighter_offset{static_cast<std::int32_t>(fighter_spawns.num())};
         auto const capital_offset{capital_end};
         auto const turret_offset{turret_end};
         auto const spinner_offset{spinner_end};
@@ -175,6 +189,10 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
             append_entity(entity_index(definition, id));
         }
         auto const first_group{definitions.spawn_groups().num()};
+        definitions.add_spawn_group(sim::EntityType::Fighter,
+                                    fighter_offset,
+                                    static_cast<std::int32_t>(fighter_spawns.num()) -
+                                        fighter_offset);
         definitions.add_spawn_group(
             sim::EntityType::CapitalShip, capital_offset, capital_end - capital_offset);
         definitions.add_spawn_group(

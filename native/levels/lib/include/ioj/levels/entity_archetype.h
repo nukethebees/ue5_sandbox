@@ -7,7 +7,6 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
-#include "ioj/parse_enum.h"
 
 #include <array>
 #include <cstddef>
@@ -18,12 +17,13 @@
 namespace ioj::levels {
 using EntityArchetypeUnderlying = std::uint8_t;
 
-// Logical bit width: 2.
+// Logical bit width: 3.
 enum class EntityArchetype : EntityArchetypeUnderlying {
     PlayerFighter,
     CapitalShip,
     StaticTurret,
     TubeSpinner,
+    Fighter,
 };
 
 using ioj::to_serialized_string;
@@ -31,9 +31,38 @@ using ioj::to_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_entity_archetype(std::string_view const value) noexcept
     -> std::optional<EntityArchetype> {
-    std::array<std::string_view, 4> constexpr names{
-        "player-fighter", "capital-ship", "static-turret", "tube-spinner"};
-    return try_parse_enum<EntityArchetype>(value, names);
+    switch (value.size()) {
+        case 7ULL: {
+            if (value == "fighter") {
+                return EntityArchetype::Fighter;
+            }
+            return std::nullopt;
+        }
+        case 12ULL: {
+            if (value == "capital-ship") {
+                return EntityArchetype::CapitalShip;
+            }
+            if (value == "tube-spinner") {
+                return EntityArchetype::TubeSpinner;
+            }
+            return std::nullopt;
+        }
+        case 13ULL: {
+            if (value == "static-turret") {
+                return EntityArchetype::StaticTurret;
+            }
+            return std::nullopt;
+        }
+        case 14ULL: {
+            if (value == "player-fighter") {
+                return EntityArchetype::PlayerFighter;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
+        }
+    }
 }
 
 } // namespace ioj::levels
@@ -41,30 +70,31 @@ using ioj::to_string;
 namespace ioj {
 template <>
 inline constexpr MinMax<levels::EntityArchetype> enum_range<levels::EntityArchetype>{
-    levels::EntityArchetype::PlayerFighter, levels::EntityArchetype::TubeSpinner};
+    levels::EntityArchetype::PlayerFighter, levels::EntityArchetype::Fighter};
 
 template <>
 struct EnumTraits<levels::EntityArchetype> {
     static constexpr std::array values{levels::EntityArchetype::PlayerFighter,
                                        levels::EntityArchetype::CapitalShip,
                                        levels::EntityArchetype::StaticTurret,
-                                       levels::EntityArchetype::TubeSpinner};
+                                       levels::EntityArchetype::TubeSpinner,
+                                       levels::EntityArchetype::Fighter};
 };
 
 template <>
 [[nodiscard]] constexpr auto enum_count<levels::EntityArchetype>() noexcept -> std::size_t {
-    return 4ULL;
+    return 5ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<levels::EntityArchetype, Name>{
-    PackedStrings{"PlayerFighter\000CapitalShip\000StaticTurret\000TubeSpinner",
-                  std::array<std::uint8_t, 5>{0, 14, 26, 39, 51}}};
+    PackedStrings{"PlayerFighter\000CapitalShip\000StaticTurret\000TubeSpinner\000Fighter",
+                  std::array<std::uint8_t, 6>{0, 14, 26, 39, 51, 59}}};
 
 template <>
 inline constexpr auto enum_strings<levels::EntityArchetype, Serialized>{
-    PackedStrings{"player-fighter\000capital-ship\000static-turret\000tube-spinner",
-                  std::array<std::uint8_t, 5>{0, 15, 28, 42, 55}}};
+    PackedStrings{"player-fighter\000capital-ship\000static-turret\000tube-spinner\000fighter",
+                  std::array<std::uint8_t, 6>{0, 15, 28, 42, 55, 63}}};
 } // namespace ioj
 namespace std {
 template <>

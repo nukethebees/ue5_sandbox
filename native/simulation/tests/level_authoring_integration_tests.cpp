@@ -23,7 +23,7 @@ void expect_fighter_kill_from_objective(std::string_view const win_condition) {
         :settings (settings
           :entity-geometry (module-ref (import-module "Settings/entity-geometry.scm") 'entity-geometry)
           :fighters (fighters
-            :max-live-fighters 2
+            :max-live-auto-spawned-fighters 2
             :laser (laser :damage 100 :projectile-speed 40000 :max-distance 40000)))
         :entities (list
           (entity :id 'blue-capital :archetype 'capital-ship :team 'blue

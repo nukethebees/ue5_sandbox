@@ -5,7 +5,6 @@
 #include <ioj/sim/expressions/expr_evaluation_context.h>
 #include <ioj/sim/fighters/phase_interface.h>
 #include <ioj/sim/lasers/phase_interface.h>
-#include <ioj/sim/levels/spawn_context.h>
 #include <ioj/sim/phase_checks.h>
 #include <ioj/sim/player/phase_interface.h>
 #include <ioj/sim/profiling.h>
@@ -55,11 +54,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
                                      player_ship_simulation_->unique_entity_id);
     }
 
-    event_manager_.dispatch_preparation(spawn_manager_,
-                                        capital_ships_simulation_,
-                                        turrets_simulation_,
-                                        spinners_simulation_,
-                                        {entity_ledger_, clock_});
+    event_manager_.dispatch_preparation(spawn_manager_, level_spawn_context());
 
     if (player_ship_simulation_) {
         player_ship_simulation_->update_entity_lookup_table();
@@ -91,6 +86,13 @@ void LevelSim::pause() {
 /* **************************************** */
 // Subsystem setup
 /* **************************************** */
+auto LevelSim::level_spawn_context() -> LevelSpawnContext {
+    return {capital_ships_simulation_,
+            turrets_simulation_,
+            spinners_simulation_,
+            fighters_simulation_,
+            {entity_tables_, clock_, entity_ledger_, task_manager_}};
+}
 void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
     if (data.player) {
         auto& simulation{player_ship_simulation_.emplace(clock_, entity_ledger_, entity_tables_)};
@@ -99,10 +101,8 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
 
     capital_ships::InitialisationInterface{capital_ships_simulation_}.initialise(
         data.capital_ships.max_health);
-    auto const player_team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
-                                                   : std::nullopt};
-    participating_teams_ = event_manager_.collect_participating_teams(player_team);
-    fighters::InitialisationInterface{fighters_simulation_}.initialise(data.fighters, clock_);
+    fighters::InitialisationInterface{fighters_simulation_}.initialise(
+        data.fighters, data.participating_team_count, clock_);
     turrets::InitialisationInterface{turrets_simulation_}.initialise(data.turrets, clock_);
     spinners::InitialisationInterface{spinners_simulation_}.initialise(data.spinners, clock_);
     lasers::InitialisationInterface{lasers_simulation_}.initialise(data.lasers);
@@ -185,20 +185,9 @@ void LevelSim::advance_tick(float const tick_period,
         clock_.transition_to(SimulationPhase::Preparation);
 
         auto const previous_issued_counts{entity_ledger_.issued_counts()};
-        event_manager_.dispatch_preparation(spawn_manager_,
-                                            capital_ships_simulation_,
-                                            turrets_simulation_,
-                                            spinners_simulation_,
-                                            {entity_ledger_, clock_});
-
-        fighters::PreparationInputs const fighter_inputs{
-            .entity_tables = entity_tables_,
-            .clock = clock_,
-            .ledger = entity_ledger_,
-            .task_manager = task_manager_,
-            .participating_teams = participating_teams_,
-        };
-        fighters_phase.commit_spawns(fighter_inputs);
+        auto const spawn_context{level_spawn_context()};
+        event_manager_.dispatch_preparation(spawn_manager_, spawn_context);
+        fighters_phase.commit_spawns(spawn_context.fighter_inputs);
 
         lasers_phase.commit_spawns({clock_});
 
@@ -215,7 +204,7 @@ void LevelSim::advance_tick(float const tick_period,
             player_ship_simulation_->update_entity_lookup_table();
         }
         capital_ships_phase.prepare_tick(clock_);
-        fighters_phase.prepare_tick(fighter_inputs);
+        fighters_phase.prepare_tick(spawn_context.fighter_inputs);
         turrets_phase.prepare_tick(clock_);
         spinners_phase.prepare_tick(tick_period, clock_);
 
@@ -247,10 +236,11 @@ void LevelSim::advance_tick(float const tick_period,
                     .executors = entity_tables_.executors,
                 });
 
-                spawn_manager_.queue_fighter_spawns(tick_period,
-                                                    capital_ships_simulation_.get_entities(),
-                                                    fighters_simulation_,
-                                                    phase_memory);
+                spawn_manager_.queue_fighter_spawns(
+                    tick_period,
+                    capital_ships_simulation_.get_entities(),
+                    entity_tables_.lookups.for_type(EntityType::CapitalShip).entries(),
+                    fighters_simulation_);
 
                 turrets::ThinkingInputs const turret_inputs{
                     clock_, collision_pipeline_.queries(), lasers_simulation_, phase_memory};
