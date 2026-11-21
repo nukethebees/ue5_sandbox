@@ -20,9 +20,8 @@ Unreal Engine 5.8 project.
   Use branches in place of repository-global stash. The integration branch is `dev`.
   Treat `dev`, `main`, and `master` as read-only through ordinary Git, regardless of ASCII case.
   Never switch an agent worktree onto them through that path.
-* Continue related work on its feature branch. For independent work, use
-  `coj git switch -c feature/<task> <base>`. Base on `dev` unless unintegrated changes are
-  required. The `feature/` prefix is a naming convention.
+* Continue related work on its feature branch. Start every new feature branch from the current
+  `HEAD` with `coj git switch -c feature/<task> HEAD` unless the maintainer names another base.
 * For engineering tasks, inspect and plan, finish implementation, deletions, tests and docs,
   then review and format the complete diff before building and testing. Code generation needed
   for edits is allowed. Collect validation failures, batch fixes, and rerun affected checks.
