@@ -28,6 +28,7 @@ CONFIGURATIONS = (
 )
 
 DEFAULT_NATIVE_CONFIGURATION = "native"
+LISPB_INSTALL_CONFIGURATION = "win-x64-clangcl-release-unity"
 CODEGEN_CONFIGURATION = DEFAULT_NATIVE_CONFIGURATION
 BENCHMARK_CONFIGURATION = "native-benchmark"
 CLANG_TIDY_CONFIGURATION = "win-x64-clangcl-debug-tidy"
@@ -183,7 +184,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
          "targets": ["lispb"]},
         {"name": "lispb-editors", "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
          "targets": ["check-lispb-editors"]},
-        {"name": "install-lispb-editors", "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
+        {"name": "install-lispb-editors", "configurePreset": LISPB_INSTALL_CONFIGURATION,
          "targets": ["install-lispb-editors"]},
         {"name": "native-lean", "configurePreset": "native-lean",
          "targets": ["native-core", "native-simulation"]},
@@ -310,9 +311,9 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
          "steps": [
              {"type": "configure", "name": DEFAULT_NATIVE_CONFIGURATION},
              {"type": "build", "name": "lispb-editors"}]},
-        {"name": "install-lispb-editors", "displayName": "Test and install both Lispb editor extensions",
+        {"name": "install-lispb-editors", "displayName": "Test and install both Lispb editor extensions in Release",
          "steps": [
-             {"type": "configure", "name": DEFAULT_NATIVE_CONFIGURATION},
+             {"type": "configure", "name": LISPB_INSTALL_CONFIGURATION},
              {"type": "build", "name": "install-lispb-editors"}]},
         {"name": "native-lean", "steps": [
             {"type": "configure", "name": "native-lean"},

@@ -46,8 +46,8 @@ Use `:helpers` for identifiers, serialized names, display labels, and formatting
 
 Run either command from a prepared worktree with Node.js, npm and the .NET SDK installed.
 
-- `cmake --workflow --preset lispb-editors` builds and tests both extensions headlessly and prints the absolute VSIX path for each editor.
-- `python native/lispb/lsp/editors/install.py --workflow` runs the `install-lispb-editors` CMake workflow preset and prints any blocked-install hint after Ninja exits. The preset runs the same checks, then installs both packages for the current user using `code.cmd` from PATH and the latest Visual Studio 2026 IDE found by `vswhere`.
+- `cmake --workflow --preset lispb-editors` builds and tests both extensions headlessly with the Debug server and prints the absolute VSIX path for each editor.
+- `python native/lispb/lsp/editors/install.py --workflow` runs the `install-lispb-editors` CMake workflow preset and prints any blocked-install hint after Ninja exits. The preset builds and tests both extensions with the Release server, then installs them for the current user using `code.cmd` from PATH and the latest Visual Studio 2026 IDE found by `vswhere`.
 
 Save your work and close the target Visual Studio IDE before installing. Exit 2004 means a running process blocked the change. The workflow prints the blockers from the installer log and saves a copy beside the VSIX.
 

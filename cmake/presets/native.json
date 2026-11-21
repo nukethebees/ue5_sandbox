@@ -233,7 +233,7 @@
     },
     {
       "name": "install-lispb-editors",
-      "configurePreset": "native",
+      "configurePreset": "win-x64-clangcl-release-unity",
       "targets": [
         "install-lispb-editors"
       ]
@@ -637,11 +637,11 @@
     },
     {
       "name": "install-lispb-editors",
-      "displayName": "Test and install both Lispb editor extensions",
+      "displayName": "Test and install both Lispb editor extensions in Release",
       "steps": [
         {
           "type": "configure",
-          "name": "native"
+          "name": "win-x64-clangcl-release-unity"
         },
         {
           "type": "build",
