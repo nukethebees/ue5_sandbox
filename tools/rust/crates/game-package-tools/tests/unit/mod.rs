@@ -24,6 +24,7 @@ impl Fixture {
         // This file is only validated by verify; the fixture never launches it.
         write(&request.unreal_pak);
         for path in [
+            "Sandbox/LevelScripts/Nested/Scenario.scm",
             "Sandbox.exe",
             "Sandbox/Binaries/Win64/Sandbox.exe",
             "Sandbox/Binaries/Win64/Sandbox-Win64-Shipping.exe",
@@ -44,7 +45,7 @@ impl Fixture {
             write(&request.project_root.join(path));
         }
         let mut inventory = String::from(
-            "LevelScripts/Nested/Scenario.scm\n/SpaceGame/Levels/MainMenu\n/SpaceGame/Levels/GameRuntime\n/Game/UI/DA_ui_data",
+            "/SpaceGame/Levels/MainMenu\n/SpaceGame/Levels/GameRuntime\n/Game/UI/DA_ui_data",
         );
         for directory in ASSET_DIRECTORIES {
             let asset = request.project_root.join(directory).join("Required.uasset");
@@ -147,6 +148,20 @@ fn missing_files_and_containers_are_rejected() {
 }
 
 #[test]
+fn personal_script_is_never_shipped_and_factory_scripts_are_loose() {
+    let fixture = Fixture::new();
+    let personal = "LevelScripts/Settings/user-settings.scm";
+    write(&fixture.request.project_root.join(personal));
+    assert_eq!(fixture.verify().unwrap(), 1);
+    let staged = fixture.request.package_root.join("Sandbox").join(personal);
+    write(&staged);
+    assert!(fixture.verify().unwrap_err().to_string().contains("user-settings.scm"));
+    fs::remove_file(staged).unwrap();
+    fs::remove_file(fixture.request.package_root.join("Sandbox/LevelScripts/Nested/Scenario.scm")).unwrap();
+    assert!(fixture.verify().unwrap_err().to_string().contains("Scenario.scm"));
+}
+
+#[test]
 fn required_scripts_maps_and_assets_are_checked() {
     let fixture = Fixture::new();
     for missing in fixture.inventory.lines() {
@@ -175,10 +190,7 @@ fn staged_paths_case_and_separators_are_accepted() {
         .join("\n")
         .to_uppercase()
         .replace('/', "\\");
-    assert_eq!(
-        verify_inventory(&fixture.request.project_root, &inventory).unwrap(),
-        1
-    );
+    verify_inventory(&fixture.request.project_root, &inventory).unwrap();
 }
 
 #[test]
