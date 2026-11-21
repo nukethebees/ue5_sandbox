@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iterator>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace sandbox::image_lab::tests {
@@ -83,11 +84,13 @@ struct DecodedPng {
 };
 
 [[nodiscard]] auto decode_stored_zlib(std::vector<std::uint8_t> const& compressed)
-    -> std::expected<std::vector<std::uint8_t>, std::string> {
+    -> sandbox::image_lab::WorkflowResult<std::vector<std::uint8_t>> {
+    using Result = sandbox::image_lab::WorkflowResult<std::vector<std::uint8_t>>;
+
     if (compressed.size() < 6u || (compressed[0] & 0x0Fu) != 8u ||
         ((static_cast<std::uint16_t>(compressed[0]) << 8 | compressed[1]) % 31u) != 0u ||
         (compressed[1] & 0x20u) != 0u) {
-        return std::unexpected("Invalid zlib header.");
+        return Result{std::unexpect, "Invalid zlib header."};
     }
 
     std::vector<std::uint8_t> result;
@@ -95,21 +98,21 @@ struct DecodedPng {
     bool final_block{};
     do {
         if (offset + 5u > compressed.size()) {
-            return std::unexpected("Truncated stored DEFLATE block.");
+            return Result{std::unexpect, "Truncated stored DEFLATE block."};
         }
         auto const header{compressed[offset++]};
         if (((header >> 1) & 0x03u) != 0u) {
-            return std::unexpected("Expected a stored DEFLATE block.");
+            return Result{std::unexpect, "Expected a stored DEFLATE block."};
         }
         final_block = (header & 0x01u) != 0u;
         auto const length{read_u16_le(compressed, offset)};
         auto const inverse_length{read_u16_le(compressed, offset + 2u)};
         offset += 4u;
         if (static_cast<std::uint16_t>(~length) != inverse_length) {
-            return std::unexpected("Stored DEFLATE length checksum failed.");
+            return Result{std::unexpect, "Stored DEFLATE length checksum failed."};
         }
         if (offset + length > compressed.size()) {
-            return std::unexpected("Truncated stored DEFLATE payload.");
+            return Result{std::unexpect, "Truncated stored DEFLATE payload."};
         }
         result.insert(result.end(),
                       compressed.begin() + static_cast<std::ptrdiff_t>(offset),
@@ -118,17 +121,19 @@ struct DecodedPng {
     } while (!final_block);
 
     if (offset + 4u != compressed.size() || adler32(result) != read_u32(compressed, offset)) {
-        return std::unexpected("Invalid zlib Adler-32 checksum.");
+        return Result{std::unexpect, "Invalid zlib Adler-32 checksum."};
     }
     return result;
 }
 
 [[nodiscard]] auto decode_png(std::vector<std::uint8_t> const& bytes)
-    -> std::expected<DecodedPng, std::string> {
+    -> sandbox::image_lab::WorkflowResult<DecodedPng> {
+    using Result = sandbox::image_lab::WorkflowResult<DecodedPng>;
+
     constexpr std::array<std::uint8_t, 8> signature{137u, 80u, 78u, 71u, 13u, 10u, 26u, 10u};
     if (bytes.size() < signature.size() ||
         !std::equal(signature.begin(), signature.end(), bytes.begin())) {
-        return std::unexpected("Invalid PNG signature.");
+        return Result{std::unexpect, "Invalid PNG signature."};
     }
 
     DecodedPng decoded;
@@ -138,30 +143,30 @@ struct DecodedPng {
     bool found_iend{};
     while (offset < bytes.size()) {
         if (offset + 12u > bytes.size()) {
-            return std::unexpected("Truncated PNG chunk.");
+            return Result{std::unexpect, "Truncated PNG chunk."};
         }
         auto const length{read_u32(bytes, offset)};
         auto const type_offset{offset + 4u};
         auto const data_offset{type_offset + 4u};
         auto const next_offset{data_offset + static_cast<std::size_t>(length)};
         if (next_offset + 4u > bytes.size()) {
-            return std::unexpected("Invalid PNG chunk length.");
+            return Result{std::unexpect, "Invalid PNG chunk length."};
         }
         if (crc32(bytes.data() + type_offset, 4u + length) != read_u32(bytes, next_offset)) {
-            return std::unexpected("PNG chunk CRC failed.");
+            return Result{std::unexpect, "PNG chunk CRC failed."};
         }
         auto const type{std::string{bytes.begin() + static_cast<std::ptrdiff_t>(type_offset),
                                     bytes.begin() + static_cast<std::ptrdiff_t>(data_offset)}};
         if (type == "IHDR") {
             if (found_ihdr || length != 13u) {
-                return std::unexpected("Invalid IHDR chunk.");
+                return Result{std::unexpect, "Invalid IHDR chunk."};
             }
             decoded.width = read_u32(bytes, data_offset);
             decoded.height = read_u32(bytes, data_offset + 4u);
             if (bytes[data_offset + 8u] != 8u || bytes[data_offset + 9u] != 6u ||
                 bytes[data_offset + 10u] != 0u || bytes[data_offset + 11u] != 0u ||
                 bytes[data_offset + 12u] != 0u) {
-                return std::unexpected("Unsupported PNG format.");
+                return Result{std::unexpect, "Unsupported PNG format."};
             }
             found_ihdr = true;
         } else if (type == "IDAT") {
@@ -170,7 +175,7 @@ struct DecodedPng {
                         bytes.begin() + static_cast<std::ptrdiff_t>(next_offset));
         } else if (type == "IEND") {
             if (length != 0u || found_iend) {
-                return std::unexpected("Invalid IEND chunk.");
+                return Result{std::unexpect, "Invalid IEND chunk."};
             }
             found_iend = true;
             offset = next_offset + 4u;
@@ -180,11 +185,11 @@ struct DecodedPng {
     }
     if (!found_ihdr || !found_iend || offset != bytes.size() || decoded.width == 0u ||
         decoded.height == 0u || idat.empty()) {
-        return std::unexpected("Incomplete PNG stream.");
+        return Result{std::unexpect, "Incomplete PNG stream."};
     }
-    auto const scanlines{decode_stored_zlib(idat)};
+    auto scanlines{decode_stored_zlib(idat)};
     if (!scanlines) {
-        return std::unexpected(scanlines.error());
+        return Result{std::unexpect, std::move(scanlines.error())};
     }
     decoded.scanlines = *scanlines;
     return decoded;

@@ -84,15 +84,17 @@ auto append_chunk(std::vector<std::uint8_t>& png,
 }
 
 [[nodiscard]] auto encode(image::GeneratedImage const& image)
-    -> std::expected<std::vector<std::uint8_t>, std::string> {
+    -> WorkflowResult<std::vector<std::uint8_t>> {
     if (!image.is_valid()) {
-        return std::unexpected(image.error.empty() ? "Image buffer is invalid." : image.error);
+        return WorkflowResult<std::vector<std::uint8_t>>{
+            std::unexpect, image.error.empty() ? "Image buffer is invalid." : image.error};
     }
 
     auto const width{static_cast<std::size_t>(image.width)};
     auto const height{static_cast<std::size_t>(image.height)};
     if (width > (std::numeric_limits<std::size_t>::max() - height) / 4u) {
-        return std::unexpected("Image dimensions are too large to encode as PNG.");
+        return WorkflowResult<std::vector<std::uint8_t>>{
+            std::unexpect, "Image dimensions are too large to encode as PNG."};
     }
 
     std::vector<std::uint8_t> scanlines;
@@ -151,7 +153,7 @@ using Json = nlohmann::json;
 }
 
 [[nodiscard]] auto generator_from_string(std::string const& value)
-    -> std::expected<image::GeneratorType, std::string> {
+    -> WorkflowResult<image::GeneratorType> {
     constexpr std::array values{
         std::pair{"radial_gradient", image::GeneratorType::RadialGradient},
         std::pair{"ring_mask", image::GeneratorType::RingMask},
@@ -168,7 +170,7 @@ using Json = nlohmann::json;
             return generator;
         }
     }
-    return std::unexpected("Unknown generator: " + value);
+    return WorkflowResult<image::GeneratorType>{std::unexpect, "Unknown generator: " + value};
 }
 
 [[nodiscard]] auto cellular_mode_to_string(image::CellularMode const value) -> char const* {
@@ -182,14 +184,14 @@ using Json = nlohmann::json;
 }
 
 [[nodiscard]] auto cellular_mode_from_string(std::string const& value)
-    -> std::expected<image::CellularMode, std::string> {
+    -> WorkflowResult<image::CellularMode> {
     if (value == "distance") {
         return image::CellularMode::Distance;
     }
     if (value == "borders") {
         return image::CellularMode::Borders;
     }
-    return std::unexpected("Unknown cellular mode: " + value);
+    return WorkflowResult<image::CellularMode>{std::unexpect, "Unknown cellular mode: " + value};
 }
 
 [[nodiscard]] auto output_to_string(image::ImagePostProcessParameters::Output const value)
@@ -206,7 +208,7 @@ using Json = nlohmann::json;
 }
 
 [[nodiscard]] auto output_from_string(std::string const& value)
-    -> std::expected<image::ImagePostProcessParameters::Output, std::string> {
+    -> WorkflowResult<image::ImagePostProcessParameters::Output> {
     if (value == "scalar") {
         return image::ImagePostProcessParameters::Output::Scalar;
     }
@@ -216,7 +218,8 @@ using Json = nlohmann::json;
     if (value == "signed_distance") {
         return image::ImagePostProcessParameters::Output::SignedDistance;
     }
-    return std::unexpected("Unknown post-process output: " + value);
+    return WorkflowResult<image::ImagePostProcessParameters::Output>{
+        std::unexpect, "Unknown post-process output: " + value};
 }
 
 [[nodiscard]] auto to_json(image::GenerationRequest const& request) -> Json {
@@ -321,17 +324,18 @@ auto read(Json const& object, char const* const key) -> T {
     return object.at(key).template get<T>();
 }
 
-[[nodiscard]] auto from_json(Json const& document)
-    -> std::expected<image::GenerationRequest, std::string> {
+[[nodiscard]] auto from_json(Json const& document) -> WorkflowResult<image::GenerationRequest> {
+    using Result = WorkflowResult<image::GenerationRequest>;
+
     if (!document.is_object()) {
-        return std::unexpected("Request JSON must contain an object.");
+        return Result{std::unexpect, "Request JSON must contain an object."};
     }
 
     try {
         image::GenerationRequest request{};
-        auto const generator{generator_from_string(read<std::string>(document, "generator"))};
+        auto generator{generator_from_string(read<std::string>(document, "generator"))};
         if (!generator) {
-            return std::unexpected(generator.error());
+            return Result{std::unexpect, std::move(generator.error())};
         }
         request.generator = *generator;
         request.output_name = read<std::string>(document, "output_name");
@@ -399,9 +403,9 @@ auto read(Json const& object, char const* const key) -> T {
                                    read<float>(curl, "strength"),
                                    read<bool>(curl, "tileable")};
         auto const& cellular{document.at("cellular_noise")};
-        auto const mode{cellular_mode_from_string(read<std::string>(cellular, "mode"))};
+        auto mode{cellular_mode_from_string(read<std::string>(cellular, "mode"))};
         if (!mode) {
-            return std::unexpected(mode.error());
+            return Result{std::unexpect, std::move(mode.error())};
         }
         request.cellular_noise = {read<std::int32_t>(cellular, "width"),
                                   read<std::int32_t>(cellular, "height"),
@@ -419,9 +423,9 @@ auto read(Json const& object, char const* const key) -> T {
                             read<float>(hex, "line_thickness"),
                             read<float>(hex, "falloff")};
         auto const& post_process{document.at("post_process")};
-        auto const output{output_from_string(read<std::string>(post_process, "output"))};
+        auto output{output_from_string(read<std::string>(post_process, "output"))};
         if (!output) {
-            return std::unexpected(output.error());
+            return Result{std::unexpect, std::move(output.error())};
         }
         request.post_process = {read<bool>(post_process, "invert"),
                                 read<float>(post_process, "contrast"),
@@ -436,35 +440,39 @@ auto read(Json const& object, char const* const key) -> T {
                                 read<bool>(post_process, "distance_wrap")};
         return request;
     } catch (Json::exception const& error) {
-        return std::unexpected("Invalid request JSON structure: " + std::string{error.what()});
+        return Result{std::unexpect,
+                      "Invalid request JSON structure: " + std::string{error.what()}};
     }
 }
 
 [[nodiscard]] auto output_path_for(image::GenerationRequest const& request,
                                    std::filesystem::path const& output_directory)
-    -> std::expected<std::filesystem::path, std::string> {
+    -> WorkflowResult<std::filesystem::path> {
     if (request.output_name.empty()) {
-        return std::unexpected("Output name must not be empty.");
+        return WorkflowResult<std::filesystem::path>{std::unexpect,
+                                                     "Output name must not be empty."};
     }
 
     auto const filename{std::filesystem::path{request.output_name}};
     if (filename.has_parent_path() || filename.filename() != filename ||
         request.output_name == "." || request.output_name == "..") {
-        return std::unexpected("Output name must be a single file name.");
+        return WorkflowResult<std::filesystem::path>{std::unexpect,
+                                                     "Output name must be a single file name."};
     }
     return output_directory / (request.output_name + ".png");
 }
 
 [[nodiscard]] auto ensure_output_directory(std::filesystem::path const& output_directory)
-    -> std::expected<void, std::string> {
+    -> WorkflowResult<void> {
     if (output_directory.empty()) {
-        return std::unexpected("Output directory must not be empty.");
+        return WorkflowResult<void>{std::unexpect, "Output directory must not be empty."};
     }
 
     std::error_code error;
     std::filesystem::create_directories(output_directory, error);
     if (error || !std::filesystem::is_directory(output_directory, error)) {
-        return std::unexpected("Could not create output directory: " + output_directory.string());
+        return WorkflowResult<void>{
+            std::unexpect, "Could not create output directory: " + output_directory.string()};
     }
     return {};
 }
@@ -491,11 +499,11 @@ auto find_default_request(std::string_view const output_name)
     return std::nullopt;
 }
 
-auto describe_default_preset(std::string_view const output_name)
-    -> std::expected<std::string, std::string> {
+auto describe_default_preset(std::string_view const output_name) -> WorkflowResult<std::string> {
     auto const request{find_default_request(output_name)};
     if (!request) {
-        return std::unexpected("Unknown Image Lab preset: " + std::string{output_name});
+        return WorkflowResult<std::string>{std::unexpect,
+                                           "Unknown Image Lab preset: " + std::string{output_name}};
     }
     return image::describe_request(*request);
 }
@@ -505,94 +513,102 @@ auto serialize_request_json(image::GenerationRequest const& request) -> std::str
 }
 
 auto deserialize_request_json(std::string_view const json_text)
-    -> std::expected<image::GenerationRequest, std::string> {
+    -> WorkflowResult<image::GenerationRequest> {
     try {
         return from_json(Json::parse(json_text.begin(), json_text.end()));
     } catch (Json::exception const& error) {
-        return std::unexpected("Malformed request JSON: " + std::string{error.what()});
+        return WorkflowResult<image::GenerationRequest>{
+            std::unexpect, "Malformed request JSON: " + std::string{error.what()}};
     }
 }
 
 auto write_request_json(image::GenerationRequest const& request, std::filesystem::path const& path)
-    -> std::expected<void, std::string> {
+    -> WorkflowResult<void> {
+    using Result = WorkflowResult<void>;
+
     if (path.empty()) {
-        return std::unexpected("Request JSON path must not be empty.");
+        return Result{std::unexpect, "Request JSON path must not be empty."};
     }
     std::error_code error;
     if (auto const parent{path.parent_path()}; !parent.empty()) {
         std::filesystem::create_directories(parent, error);
         if (error) {
-            return std::unexpected("Could not create request directory: " + parent.string());
+            return Result{std::unexpect, "Could not create request directory: " + parent.string()};
         }
     }
     std::ofstream stream{path, std::ios::binary | std::ios::trunc};
     if (!stream) {
-        return std::unexpected("Could not open request JSON: " + path.string());
+        return Result{std::unexpect, "Could not open request JSON: " + path.string()};
     }
     stream << serialize_request_json(request);
     if (!stream) {
-        return std::unexpected("Could not write request JSON: " + path.string());
+        return Result{std::unexpect, "Could not write request JSON: " + path.string()};
     }
     return {};
 }
 
 auto load_request_json(std::filesystem::path const& path)
-    -> std::expected<image::GenerationRequest, std::string> {
+    -> WorkflowResult<image::GenerationRequest> {
     std::ifstream stream{path, std::ios::binary};
     if (!stream) {
-        return std::unexpected("Could not open request JSON: " + path.string());
+        return WorkflowResult<image::GenerationRequest>{
+            std::unexpect, "Could not open request JSON: " + path.string()};
     }
     std::ostringstream contents;
     contents << stream.rdbuf();
     if (!stream.good() && !stream.eof()) {
-        return std::unexpected("Could not read request JSON: " + path.string());
+        return WorkflowResult<image::GenerationRequest>{
+            std::unexpect, "Could not read request JSON: " + path.string()};
     }
     return deserialize_request_json(contents.str());
 }
 
 auto generate_to_png(image::GenerationRequest const& request,
                      std::filesystem::path const& output_directory)
-    -> std::expected<std::filesystem::path, std::string> {
-    auto const output_path{output_path_for(request, output_directory)};
+    -> WorkflowResult<std::filesystem::path> {
+    using Result = WorkflowResult<std::filesystem::path>;
+
+    auto output_path{output_path_for(request, output_directory)};
     if (!output_path) {
-        return std::unexpected(output_path.error());
+        return Result{std::unexpect, std::move(output_path.error())};
     }
-    auto const ensured{ensure_output_directory(output_directory)};
+    auto ensured{ensure_output_directory(output_directory)};
     if (!ensured) {
-        return std::unexpected(ensured.error());
+        return Result{std::unexpect, std::move(ensured.error())};
     }
 
     auto const valid{image::Validated<image::GenerationRequest>::try_make(request)};
     if (!valid) {
-        return std::unexpected("Invalid image generation parameters");
+        return Result{std::unexpect, "Invalid image generation parameters"};
     }
     auto const encoded{png::encode(image::generate_image(*valid))};
     if (!encoded) {
-        return std::unexpected("Could not generate " + request.output_name + ": " +
-                               encoded.error());
+        return Result{std::unexpect,
+                      "Could not generate " + request.output_name + ": " + encoded.error()};
     }
 
     std::ofstream stream{*output_path, std::ios::binary | std::ios::trunc};
     if (!stream) {
-        return std::unexpected("Could not open output file: " + output_path->string());
+        return Result{std::unexpect, "Could not open output file: " + output_path->string()};
     }
     stream.write(reinterpret_cast<char const*>(encoded->data()),
                  static_cast<std::streamsize>(encoded->size()));
     if (!stream) {
-        return std::unexpected("Could not write PNG: " + output_path->string());
+        return Result{std::unexpect, "Could not write PNG: " + output_path->string()};
     }
     return *output_path;
 }
 
 auto generate_all_defaults_to_png(std::filesystem::path const& output_directory)
-    -> std::expected<std::vector<std::filesystem::path>, std::string> {
+    -> WorkflowResult<std::vector<std::filesystem::path>> {
     std::vector<std::filesystem::path> paths;
     auto const requests{image::default_generation_requests()};
     paths.reserve(requests.size());
     for (auto const& request : requests) {
-        auto const path{generate_to_png(request, output_directory)};
+        auto path{generate_to_png(request, output_directory)};
         if (!path) {
-            return std::unexpected(path.error());
+            return WorkflowResult<std::vector<std::filesystem::path>>{std::unexpect,
+                                                                      std::move(path.error())};
         }
         paths.push_back(*path);
     }
