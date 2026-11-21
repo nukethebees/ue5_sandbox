@@ -1,3 +1,15 @@
+(module value_type :header "MaterialValueType.h" :namespace material_synth
+  (enum ValueType std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value invalid :serialized-name "invalid")
+    (value float1 :serialized-name "float")
+    (value float2 :serialized-name "float2")
+    (value float3 :serialized-name "float3")
+    (value float4 :serialized-name "float4")
+    (value texture :serialized-name "texture")
+    (projections (cpp))))
+
 (module material_domain
   :header "MaterialDomain.h"
   :namespace material_synth

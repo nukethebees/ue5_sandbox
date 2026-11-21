@@ -76,22 +76,7 @@ auto parse_number(lispb::codegen::sexpr::Syntax const& syntax, FormId const form
 }
 
 auto parse_type(std::string_view const name) -> ValueType {
-    if (name == "float") {
-        return ValueType::float1;
-    }
-    if (name == "float2") {
-        return ValueType::float2;
-    }
-    if (name == "float3") {
-        return ValueType::float3;
-    }
-    if (name == "float4") {
-        return ValueType::float4;
-    }
-    if (name == "texture") {
-        return ValueType::texture;
-    }
-    return ValueType::invalid;
+    return try_parse_serialized_value_type(name).value_or(ValueType::invalid);
 }
 
 class Analyzer {

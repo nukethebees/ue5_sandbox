@@ -3,6 +3,7 @@ BlendMode.h
 MaterialClause.h
 MaterialDomain.h
 MaterialOperator.h
+MaterialValueType.h
 PositionSpace.h
 SceneTexture.h
 ShadingModel.h

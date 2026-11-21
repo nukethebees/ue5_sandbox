@@ -135,25 +135,6 @@ auto analyze_material(lispb::codegen::sexpr::Syntax& syntax,
     return diagnostics;
 }
 
-auto type_name(material_synth::ValueType const type) -> std::string_view {
-    using enum material_synth::ValueType;
-    switch (type) {
-        case invalid:
-            return "invalid";
-        case float1:
-            return "float";
-        case float2:
-            return "float2";
-        case float3:
-            return "float3";
-        case float4:
-            return "float4";
-        case texture:
-            return "texture";
-    }
-    return "invalid";
-}
-
 auto kind_name(material_synth::NodeKind const kind) -> std::string_view {
     using enum material_synth::NodeKind;
     switch (kind) {
@@ -272,7 +253,7 @@ auto dump_ir(material_synth::MaterialIR const& material) -> std::string {
         write("  [{}] {} {} node={}",
               index,
               material.text(parameters.name[index]),
-              type_name(type),
+              to_serialized_string(type),
               parameters.node[index].value);
         if (type == material_synth::ValueType::texture) {
             auto const sampler{parameters.texture_sampler_type[index] ==
@@ -299,7 +280,8 @@ auto dump_ir(material_synth::MaterialIR const& material) -> std::string {
         auto const kind{nodes.kind(node)};
         auto const inputs{nodes.inputs(node)};
         auto const input_count{inputs.size()};
-        write("  [{}] {} {} inputs=", index, kind_name(kind), type_name(nodes.type(node)));
+        write(
+            "  [{}] {} {} inputs=", index, kind_name(kind), to_serialized_string(nodes.type(node)));
         for (std::size_t input{}; input < input_count; ++input) {
             write("{}{}", input == 0 ? "[" : ",", inputs[input].value);
         }
@@ -342,7 +324,7 @@ auto dump_ir(material_synth::MaterialIR const& material) -> std::string {
                 auto const custom_input{custom_inputs[input]};
                 write("    custom-input {} {} node={}\n",
                       material.text(nodes.input_declarations.name[custom_input.value]),
-                      type_name(nodes.input_declarations.type[custom_input.value]),
+                      to_serialized_string(nodes.input_declarations.type[custom_input.value]),
                       inputs[input].value);
             }
         }
