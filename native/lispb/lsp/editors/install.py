@@ -14,9 +14,15 @@ WORKFLOW_CLI = "python native/lispb/lsp/editors/install.py --workflow"
 
 
 def print_busy_hint(retry_command):
-    hint = ("Save your work and close the Visual Studio windows for this instance, "
-            f"then rerun {retry_command}.")
-    if sys.stderr.isatty() and not os.getenv("NO_COLOR") and os.getenv("TERM") != "dumb":
+    hint = (
+        "Save your work and close the Visual Studio windows for this instance, "
+        f"then rerun {retry_command}."
+    )
+    if (
+        sys.stderr.isatty()
+        and not os.getenv("NO_COLOR")
+        and os.getenv("TERM") != "dumb"
+    ):
         hint = f"\x1b[33m{hint}\x1b[0m"
     print(f"\n{hint}", file=sys.stderr)
 
@@ -37,14 +43,20 @@ def report_vsix_log(path, package_log):
     try:
         data = path.read_bytes()
     except OSError as error:
-        print(f"VSIXInstaller log unavailable at {path}: {error.strerror}", file=sys.stderr)
+        print(
+            f"VSIXInstaller log unavailable at {path}: {error.strerror}",
+            file=sys.stderr,
+        )
         return
 
     try:
         package_log.write_bytes(data)
         path = package_log
     except OSError as error:
-        print(f"Could not copy the installer log to {package_log}: {error.strerror}", file=sys.stderr)
+        print(
+            f"Could not copy the installer log to {package_log}: {error.strerror}",
+            file=sys.stderr,
+        )
 
     encoding = "utf-16" if data.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
     detail = ""
@@ -70,61 +82,108 @@ def report_vsix_log(path, package_log):
     print(f"VSIXInstaller log: {path}", file=sys.stderr)
 
 
-def install(vswhere, vscode_package, visualstudio_package, *, busy_marker=None):
-    code = shutil.which("code.cmd")
-    if not code:
-        raise RuntimeError("VS Code CLI (code.cmd) was not found on PATH.")
-
+def discover_visual_studio(vswhere):
     try:
         discovery = subprocess.run(
-            [vswhere, "-latest", "-version", "[18.0,19.0)", "-products", "*",
-             "-requires", "Microsoft.VisualStudio.Component.CoreEditor", "-format", "json", "-utf8"],
-            stdout=subprocess.PIPE, check=True,
+            [
+                vswhere,
+                "-latest",
+                "-version",
+                "[18.0,19.0)",
+                "-products",
+                "*",
+                "-requires",
+                "Microsoft.VisualStudio.Component.CoreEditor",
+                "-format",
+                "json",
+                "-utf8",
+            ],
+            stdout=subprocess.PIPE,
+            check=True,
         )
     except subprocess.CalledProcessError as error:
-        raise RuntimeError(f"vswhere failed to locate Visual Studio (exit {error.returncode}).") from error
+        raise RuntimeError(
+            f"vswhere failed to locate Visual Studio (exit {error.returncode})."
+        ) from error
     instances = json.loads(discovery.stdout)
     if not instances:
         raise RuntimeError("vswhere did not find a Visual Studio 2026 IDE.")
     instance = instances[0]
     installer = Path(instance["installationPath"]) / "Common7/IDE/VSIXInstaller.exe"
     if not installer.is_file():
-        raise RuntimeError(f"Visual Studio extension installer was not found at {installer}.")
+        raise RuntimeError(
+            f"Visual Studio extension installer was not found at {installer}."
+        )
 
-    visualstudio_package = Path(visualstudio_package).resolve()
+    return instance, installer
+
+
+def run_installer(editor, command):
+    print(f"Installing Lispb for {editor}...", flush=True)
+    try:
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as error:
+        status = error.returncode
+        print(
+            f"{editor} installation failed (exit {status}, 0x{status & 0xFFFFFFFF:08X}).",
+            file=sys.stderr,
+        )
+        return status
+    except OSError as error:
+        print(
+            f"Could not start {editor} installer at {command[0]}: {error}",
+            file=sys.stderr,
+        )
+        return None
+
+    print(f"{editor}: installation succeeded.", flush=True)
+    return 0
+
+
+def install_visual_studio(instance, installer, package, busy_marker):
+    package = Path(package).resolve()
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-    package_log = visualstudio_package.with_suffix(f".{stamp}.log")
+    package_log = package.with_suffix(f".{stamp}.log")
     # VSIXInstaller resolves /logFile against the Windows temp directory (TMP first).
     temp_dir = os.environ.get("TMP") or os.environ.get("TEMP") or tempfile.gettempdir()
     log = Path(temp_dir) / package_log.name
-    commands = (
-        ("VS Code", [code, "--install-extension", vscode_package, "--force"]),
-        (instance["displayName"], [installer, "/quiet", f"/instanceIds:{instance['instanceId']}",
-                                   f"/logFile:{log.name}", visualstudio_package]),
+    status = run_installer(
+        instance["displayName"],
+        [
+            installer,
+            "/quiet",
+            f"/instanceIds:{instance['instanceId']}",
+            f"/logFile:{log.name}",
+            package,
+        ],
     )
-    success = True
-    for editor, command in commands:
-        print(f"Installing Lispb for {editor}...", flush=True)
-        try:
-            subprocess.run(command, check=True)
-        except subprocess.CalledProcessError as error:
-            status = error.returncode
-            print(f"{editor} installation failed (exit {status}, 0x{status & 0xffffffff:08X}).",
-                  file=sys.stderr)
-            if command[0] == installer:
-                report_vsix_log(log, package_log)
-                if status == 2004:
-                    if busy_marker:
-                        Path(busy_marker).touch()
-                    else:
-                        print_busy_hint(f"cmake --workflow --preset {INSTALL_PRESET}")
-            success = False
-        except OSError as error:
-            print(f"Could not start {editor} installer at {command[0]}: {error}", file=sys.stderr)
-            success = False
+    if status is None:
+        return False
+    if status == 0:
+        return True
+
+    report_vsix_log(log, package_log)
+    if status == 2004:
+        if busy_marker:
+            Path(busy_marker).touch()
         else:
-            print(f"{editor}: installation succeeded.", flush=True)
-    return success
+            print_busy_hint(f"cmake --workflow --preset {INSTALL_PRESET}")
+    return False
+
+
+def install(vswhere, vscode_package, visualstudio_package, *, busy_marker=None):
+    code = shutil.which("code.cmd")
+    if not code:
+        raise RuntimeError("VS Code CLI (code.cmd) was not found on PATH.")
+    instance, installer = discover_visual_studio(vswhere)
+
+    vscode = run_installer(
+        "VS Code", [code, "--install-extension", vscode_package, "--force"]
+    )
+    visual_studio_ok = install_visual_studio(
+        instance, installer, visualstudio_package, busy_marker
+    )
+    return vscode == 0 and visual_studio_ok
 
 
 if __name__ == "__main__":
