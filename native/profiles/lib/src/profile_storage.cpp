@@ -409,13 +409,15 @@ auto resolve_profile_storage(StorageOptions options,
                              std::filesystem::path const& development_root,
                              std::filesystem::path const& local_root)
     -> std::expected<StorageSelection, std::string> {
+    using Result = std::expected<StorageSelection, std::string>;
+
     if (!options.editor) {
         return StorageSelection{.root = local_root};
     }
     if (static_cast<int>(options.local) + static_cast<int>(options.shared) +
             static_cast<int>(options.experiment.has_value()) >
         1) {
-        return std::unexpected{"Conflicting SpaceSave storage selectors."};
+        return Result{std::unexpect, "Conflicting SpaceSave storage selectors."};
     }
     StorageSelection selection{.mode =
                                    options.unattended ? StorageMode::local : StorageMode::shared,
@@ -430,13 +432,13 @@ auto resolve_profile_storage(StorageOptions options,
                                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (options.experiment->size() > 48 ||
             !profile_files::valid_identifier(*options.experiment)) {
-            return std::unexpected{
-                "SpaceSaveExperiment must contain only letters, digits, '_' or '-'."};
+            return Result{std::unexpect,
+                          "SpaceSaveExperiment must contain only letters, digits, '_' or '-'."};
         }
         selection.mode = StorageMode::experimental;
     }
     if (options.clone_shared && selection.mode != StorageMode::experimental) {
-        return std::unexpected{"SpaceSaveCloneShared requires SpaceSaveExperiment."};
+        return Result{std::unexpect, "SpaceSaveCloneShared requires SpaceSaveExperiment."};
     }
     selection.root = selection.mode == StorageMode::shared ? development_root / "Shared"
                    : selection.mode == StorageMode::experimental
@@ -529,8 +531,10 @@ auto merge_profile_files(std::span<std::filesystem::path const> sources,
                          std::span<std::string const> excluded_profiles,
                          std::filesystem::path const& destination)
     -> std::expected<MergeSummary, std::string> {
+    using Result = std::expected<MergeSummary, std::string>;
+
     if (sources.empty()) {
-        return std::unexpected{"No source roots were supplied."};
+        return Result{std::unexpect, "No source roots were supplied."};
     }
     struct MergedProfile {
         ProfileMetadata metadata;
@@ -584,12 +588,12 @@ auto merge_profile_files(std::span<std::filesystem::path const> sources,
                 }
                 return true;
             })) {
-            return std::unexpected{"Unsupported or incomplete source profile set: " +
-                                   path_to_utf8(source)};
+            return Result{std::unexpect,
+                          "Unsupported or incomplete source profile set: " + path_to_utf8(source)};
         }
     }
     if (profiles.empty()) {
-        return std::unexpected{"No profiles remained after exclusions."};
+        return Result{std::unexpect, "No profiles remained after exclusions."};
     }
     auto const staging{profile_files::with_suffix(destination, ".merging." + make_profile_id())};
     auto destination_storage{make_file_profile_storage(destination)};
@@ -622,7 +626,8 @@ auto merge_profile_files(std::span<std::filesystem::path const> sources,
     if (!published) {
         std::error_code ignored;
         std::filesystem::remove_all(staging, ignored);
-        return std::unexpected{"Destination exists or merged profiles could not be published."};
+        return Result{std::unexpect,
+                      "Destination exists or merged profiles could not be published."};
     }
     summary.profile_count = profiles.size();
     return summary;

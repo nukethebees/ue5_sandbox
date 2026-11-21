@@ -13,9 +13,10 @@ struct FileReadError {
     std::error_code system_error{};
 };
 
+using FileReadResult = std::expected<std::string, FileReadError>;
+
 // Read all bytes without newline or encoding conversion. An empty file succeeds.
-[[nodiscard]] auto read_file(std::filesystem::path const& path)
-    -> std::expected<std::string, FileReadError>;
+[[nodiscard]] auto read_file(std::filesystem::path const& path) -> FileReadResult;
 // Convert the native filesystem encoding explicitly; never use the Windows ANSI code page.
 [[nodiscard]] auto path_to_utf8(std::filesystem::path const& path) -> std::string;
 }

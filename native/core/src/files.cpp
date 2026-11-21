@@ -5,12 +5,14 @@
 #include <fstream>
 
 namespace ioj {
-auto read_file(std::filesystem::path const& path) -> std::expected<std::string, FileReadError> {
+auto read_file(std::filesystem::path const& path) -> FileReadResult {
     errno = 0;
     std::ifstream input{path, std::ios::binary};
     if (!input) {
-        return std::unexpected{
-            FileReadError{FileReadErrorCode::OpenFailed, path, {errno, std::generic_category()}}};
+        return FileReadResult{std::unexpect,
+                              FileReadErrorCode::OpenFailed,
+                              path,
+                              std::error_code{errno, std::generic_category()}};
     }
 
     std::string result;
@@ -20,10 +22,11 @@ auto read_file(std::filesystem::path const& path) -> std::expected<std::string, 
     }
     result.append(buffer.data(), static_cast<std::size_t>(input.gcount()));
     if (!input.eof() || input.bad()) {
-        return std::unexpected{FileReadError{FileReadErrorCode::ReadFailed,
-                                             path,
-                                             errno ? std::error_code{errno, std::generic_category()}
-                                                   : std::make_error_code(std::errc::io_error)}};
+        return FileReadResult{std::unexpect,
+                              FileReadErrorCode::ReadFailed,
+                              path,
+                              errno ? std::error_code{errno, std::generic_category()}
+                                    : std::make_error_code(std::errc::io_error)};
     }
 
     return result;

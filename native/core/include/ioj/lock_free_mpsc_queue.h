@@ -146,6 +146,8 @@ class LockFreeMPSCQueue {
         return std::forward<Callable>(callable)(swap_and_consume());
     }
   private:
+    using WriteAddressResult = std::expected<pointer, ELockFreeMPSCQueueEnqueueResult>;
+
     [[nodiscard]] auto address(std::size_t buffer_index, std::size_t item_index) const noexcept
         -> pointer {
         auto const buffer_start_offset{buffer_index * buffer_capacity()};
@@ -158,17 +160,17 @@ class LockFreeMPSCQueue {
             std::destroy_n(ptr, n);
         }
     }
-    [[nodiscard]] auto get_next_write_address() noexcept
-        -> std::expected<pointer, ELockFreeMPSCQueueEnqueueResult> {
+    [[nodiscard]] auto get_next_write_address() noexcept -> WriteAddressResult {
         if (!is_initialised()) {
-            return std::unexpected(ELockFreeMPSCQueueEnqueueResult::Uninitialised);
+            return WriteAddressResult{std::unexpect,
+                                      ELockFreeMPSCQueueEnqueueResult::Uninitialised};
         }
 
         // Perform a compare and swap until a valid index is found
         auto i{write_index_.load(std::memory_order_relaxed)};
         for (;;) {
             if (i >= buffer_capacity()) {
-                return std::unexpected(ELockFreeMPSCQueueEnqueueResult::Full);
+                return WriteAddressResult{std::unexpect, ELockFreeMPSCQueueEnqueueResult::Full};
             }
 
             if (write_index_.compare_exchange_weak(

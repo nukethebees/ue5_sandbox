@@ -142,6 +142,8 @@ class LockFreeMPSCQueueSoA {
         return std::forward<Callable>(callable)(swap_and_consume());
     }
   private:
+    using WriteIndexResult = std::expected<size_type, ELockFreeMPSCQueueEnqueueResult>;
+
     struct BufferLayout {
         size_type total_bytes{0};
         std::array<size_type, sizeof...(Ts)> offsets{};
@@ -196,17 +198,16 @@ class LockFreeMPSCQueueSoA {
         for_each_index([&]<std::size_t I>() { destroy_buffer<I>(buffer_idx, count); });
     }
 
-    [[nodiscard]] auto get_next_write_index() noexcept
-        -> std::expected<size_type, ELockFreeMPSCQueueEnqueueResult> {
+    [[nodiscard]] auto get_next_write_index() noexcept -> WriteIndexResult {
         if (!is_initialised()) {
-            return std::unexpected(ELockFreeMPSCQueueEnqueueResult::Uninitialised);
+            return WriteIndexResult{std::unexpect, ELockFreeMPSCQueueEnqueueResult::Uninitialised};
         }
 
         // Compare-and-swap loop to reserve an index
         auto i{write_index_.load(std::memory_order_relaxed)};
         for (;;) {
             if (i >= buffer_capacity()) {
-                return std::unexpected(ELockFreeMPSCQueueEnqueueResult::Full);
+                return WriteIndexResult{std::unexpect, ELockFreeMPSCQueueEnqueueResult::Full};
             }
 
             if (write_index_.compare_exchange_weak(
