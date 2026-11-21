@@ -18,8 +18,6 @@ class ATestCapitalShipProxy : public AActor {
   public:
     ATestCapitalShipProxy();
 
-    SPACEGAME_API void set_level_config_asset(USpaceGameLevelConfig* new_config) noexcept;
-
     auto get_team() const noexcept { return team; }
 
     void set_team(ETestTeam const new_team) noexcept { team = new_team; }
@@ -47,8 +45,7 @@ class ATestCapitalShipProxy : public AActor {
   protected:
     void OnConstruction(FTransform const& transform) override;
 
-    UPROPERTY(VisibleInstanceOnly, Category = "Ship|Configuration")
-    TObjectPtr<USpaceGameLevelConfig> level_config_asset{nullptr};
+    void refresh_mesh();
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};

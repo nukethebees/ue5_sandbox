@@ -87,7 +87,6 @@ void configure_s7_level_actor(AActor& actor,
         CastChecked<ATestFighterProxy>(&actor)->set_team(team);
     } else if (archetype == levels::EntityArchetype::CapitalShip) {
         auto& capital{*CastChecked<ATestCapitalShipProxy>(&actor)};
-        capital.set_level_config_asset(&config);
         capital.set_team(team);
     } else if (archetype == levels::EntityArchetype::StaticTurret) {
         auto& turret{*CastChecked<ATestStaticTurretsProxy>(&actor)};

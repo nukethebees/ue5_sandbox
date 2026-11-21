@@ -11,6 +11,7 @@
 #include <SpaceGame/ships/fighter/TestFighterProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -663,7 +664,25 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             GET_MEMBER_NAME_CHECKED(ioj::ATestStaticTurretsProxy, export_to_script))};
         turret->PostEditChangeProperty(toggle);
         TestRunner->TestTrue(TEXT("Disabling Export requests export"), document.needs_export);
-        auto* extra{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
+        auto* extra{world->SpawnActor<ioj::ATestCapitalShipProxy>(
+            document.level_config->classes.capital_ship_proxy_class)};
+        auto const check_colour{[this, config = document.level_config](
+                                    ioj::ATestCapitalShipProxy& actor, ioj::ETestTeam expected) {
+            auto const* mesh{actor.FindComponentByClass<UStaticMeshComponent>()};
+            auto const& values{mesh->GetCustomPrimitiveData().Data};
+            auto const colour{config->capital_ships.team_visual_data->get_colour(expected)};
+            TestRunner->TestTrue(
+                TEXT("Capital preview uses the shared mesh and team colour"),
+                mesh->GetStaticMesh() == config->capital_ships.mesh && values.Num() >= 3 &&
+                    FVector3f{values[0], values[1], values[2]}.Equals(FVector3f{colour}));
+        }};
+        for (auto team : {ioj::ETestTeam::Green, ioj::ETestTeam::Red}) {
+            extra->set_team(team);
+            FPropertyChangedEvent team_changed{
+                FindFProperty<FProperty>(extra->GetClass(), TEXT("team"))};
+            extra->PostEditChangeProperty(team_changed);
+            check_colour(*extra, team);
+        }
         extra->SetActorLabel(TEXT("outpost"));
         FString previous;
         FFileHelper::LoadFileToString(previous, *fixture->generated_path);
@@ -704,6 +723,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                   bound && IsValid(bound->actor))) {
             return;
         }
+        check_colour(*CastChecked<ioj::ATestCapitalShipProxy>(bound->actor), ioj::ETestTeam::Red);
         TestRunner->TestFalse(TEXT("Reopening keeps the export current"),
                               (*reopened)->needs_export);
         auto* duplicate{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};

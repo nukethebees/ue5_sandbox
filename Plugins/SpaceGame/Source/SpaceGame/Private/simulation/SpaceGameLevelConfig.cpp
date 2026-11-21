@@ -16,7 +16,9 @@
 
 namespace ioj {
 auto s7_level_config::load_canonical() -> USpaceGameLevelConfig* {
-    return LoadObject<USpaceGameLevelConfig>(nullptr, canonical_object_path);
+    static TSoftObjectPtr<USpaceGameLevelConfig> const asset{
+        FSoftObjectPath{canonical_object_path}};
+    return asset.LoadSynchronous();
 }
 
 namespace {

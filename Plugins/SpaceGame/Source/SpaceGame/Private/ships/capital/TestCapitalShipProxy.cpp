@@ -39,19 +39,20 @@ ATestCapitalShipProxy::ATestCapitalShipProxy()
     PrimaryActorTick.bStartWithTickEnabled = false;
 }
 
-void ATestCapitalShipProxy::set_level_config_asset(
-    USpaceGameLevelConfig* const new_config) noexcept {
-    level_config_asset = new_config;
-}
-
 void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
     set_proxy_actor_name(*this, TEXT("CapitalShip"), team);
 
-    if (!IsValid(level_config_asset)) {
+    refresh_mesh();
+}
+
+void ATestCapitalShipProxy::refresh_mesh() {
+    auto const* config{s7_level_config::load_canonical()};
+    if (!IsValid(config)) {
+        UE_LOG(LogSandbox, Warning, TEXT("Capital preview requires the shared level asset."));
         return;
     }
-    auto const* actor_config{&level_config_asset->capital_ships};
+    auto const* actor_config{&config->capital_ships};
 
     if (auto const msg{report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(mesh),
@@ -80,11 +81,7 @@ void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
 
     mesh->SetStaticMesh(actor_config->mesh);
 
-    actor_config->team_visual_data->ensure_all_team_colours_exist();
-    auto const colour_cache{
-        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
-
-    auto const colour{colour_cache[team]};
+    auto const colour{actor_config->team_visual_data->get_colour(team)};
     mesh->SetCustomPrimitiveDataVector3f(0, FVector3f{colour});
 }
 
@@ -92,7 +89,11 @@ void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
 void ATestCapitalShipProxy::PostRegisterAllComponents() {
     Super::PostRegisterAllComponents();
     auto const* const world{GetWorld()};
-    SetActorTickEnabled(IsValid(world) && world->WorldType == EWorldType::Editor);
+    bool const editor_world{IsValid(world) && world->WorldType == EWorldType::Editor};
+    SetActorTickEnabled(editor_world);
+    if (editor_world && HasAnyFlags(RF_WasLoaded)) {
+        refresh_mesh();
+    }
     for (auto const slot : fighter_spawn_slots) {
         if (IsValid(slot)) {
             slot->SetVisibility(false);
@@ -112,9 +113,9 @@ void ATestCapitalShipProxy::Tick(float const delta_seconds) {
 }
 
 void ATestCapitalShipProxy::update_spawn_configuration_status() {
-    auto* const config{level_config_asset.Get()};
+    auto* const config{s7_level_config::load_canonical()};
     if (!IsValid(config)) {
-        spawn_configuration_status = TEXT("No authoring resource asset is assigned.");
+        spawn_configuration_status = TEXT("Shared level asset unavailable.");
         return;
     }
     spawn_configuration_status =
@@ -124,7 +125,7 @@ void ATestCapitalShipProxy::update_spawn_configuration_status() {
 
 void ATestCapitalShipProxy::draw_fighter_spawn_preview(float lifetime) {
     auto* const world{GetWorld()};
-    auto const* const config{level_config_asset.Get()};
+    auto const* const config{s7_level_config::load_canonical()};
     auto const report_error{[this](FString const& message) {
         if (spawn_preview_error != message) {
             UE_LOG(LogSandbox,
@@ -181,7 +182,8 @@ void ATestCapitalShipProxy::diagnose_fighter_spawn_points() {
 }
 
 void ATestCapitalShipProxy::save_configuration_to_asset() {
-    if (!IsValid(level_config_asset)) {
+    auto* const config{s7_level_config::load_canonical()};
+    if (!IsValid(config)) {
         UE_LOG(LogSandboxLearning,
                Warning,
                TEXT("ATestCapitalShipProxy::save_configuration_to_asset: no writable level "
@@ -190,7 +192,7 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
     }
 
     auto const slot_count{fighter_spawn_slots.Num()};
-    auto const* actor_config{&level_config_asset->capital_ships};
+    auto const* actor_config{&config->capital_ships};
     if (slot_count != actor_config->fighter_spawn_slots_relative_transforms.Num()) {
         UE_LOG(LogSandboxLearning,
                Warning,
@@ -213,25 +215,24 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
 
     FScopedTransaction const transaction{
         NSLOCTEXT("CapitalShipProxy", "SaveSpawnSlots", "Save capital spawn layout")};
-    level_config_asset->Modify();
-    auto& capital_config{level_config_asset->capital_ships};
+    config->Modify();
+    auto& capital_config{config->capital_ships};
     capital_config.fighter_spawn_slots_relative_transforms.Reset(slot_count);
     FTransform const spawn_frame{GetActorRotation(), GetActorLocation(), FVector::OneVector};
     for (auto const slot : fighter_spawn_slots) {
         capital_config.fighter_spawn_slots_relative_transforms.Add(
             slot->GetComponentTransform().GetRelativeTransform(spawn_frame));
     }
-    level_config_asset->MarkPackageDirty();
+    config->MarkPackageDirty();
     update_spawn_configuration_status();
 }
 
 void ATestCapitalShipProxy::apply_asset_configuration() {
-    auto* const config{level_config_asset.Get()};
+    auto* const config{s7_level_config::load_canonical()};
     if (!IsValid(config)) {
-        UE_LOG(
-            LogSandboxLearning,
-            Warning,
-            TEXT("Cannot apply capital configuration: no authoring resource asset is assigned."));
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("Cannot apply capital configuration: shared level asset unavailable."));
         return;
     }
     FScopedTransaction const transaction{
@@ -242,7 +243,6 @@ void ATestCapitalShipProxy::apply_asset_configuration() {
 void ATestCapitalShipProxy::apply_spawn_configuration(USpaceGameLevelConfig& config) {
     auto const& capital_config{config.capital_ships};
     Modify();
-    set_level_config_asset(&config);
     auto const slot_count{capital_config.fighter_spawn_slots_relative_transforms.Num()};
     auto const old_count{fighter_spawn_slots.Num()};
     for (int32 i{slot_count}; i < old_count; ++i) {
@@ -280,12 +280,11 @@ void ATestCapitalShipProxy::apply_spawn_configuration(USpaceGameLevelConfig& con
     update_spawn_configuration_status();
 }
 void ATestCapitalShipProxy::apply_asset_configuration_to_all_instances() {
-    auto* const config{level_config_asset.Get()};
+    auto* const config{s7_level_config::load_canonical()};
     if (!IsValid(config)) {
-        UE_LOG(
-            LogSandboxLearning,
-            Warning,
-            TEXT("Cannot apply capital configuration: no authoring resource asset is assigned."));
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("Cannot apply capital configuration: shared level asset unavailable."));
         return;
     }
     FScopedTransaction const transaction{

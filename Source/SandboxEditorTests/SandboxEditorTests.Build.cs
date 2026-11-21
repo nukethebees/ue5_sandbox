@@ -18,6 +18,7 @@ public class SandboxEditorTests : ModuleRules
             "NativeLevelAuthoring",
             "NativePresentation",
             "SpaceGame",
+            "SpaceGamePresentation",
             "SpaceGameSimulation",
             "Core",
             "CoreUObject",

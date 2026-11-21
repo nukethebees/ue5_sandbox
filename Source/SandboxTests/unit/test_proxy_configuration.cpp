@@ -8,6 +8,8 @@
 #include <CQTest.h>
 #include <Editor.h>
 #include <Engine/World.h>
+#include <Misc/ScopeExit.h>
+#include <UObject/Package.h>
 #include <UObject/UnrealType.h>
 
 TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
@@ -78,19 +80,25 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
         auto* const second{world->SpawnActor<ioj::ATestCapitalShipProxy>()};
         first->SetActorLocationAndRotation(FVector{1200., -500., 300.}, FRotator{15., 125., 5.});
         second->SetActorLocationAndRotation(FVector{-3400., 1500., 200.}, FRotator{0., -45., 0.});
-        first->set_level_config_asset(config);
-        config->capital_ships.fighter_spawn_slots_relative_transforms = {
-            FTransform{FVector{10000., -3000., 0.}}, FTransform{FVector{10000., 3000., 0.}}};
+        auto* const shared{ioj::s7_level_config::load_canonical()};
+        auto& slots{shared->capital_ships.fighter_spawn_slots_relative_transforms};
+        auto const original{slots};
+        auto* const package{shared->GetPackage()};
+        bool const was_dirty{package->IsDirty()};
+        ON_SCOPE_EXIT {
+            slots = original;
+            package->SetDirtyFlag(was_dirty);
+        };
         invoke(*first, TEXT("apply_asset_configuration_to_all_instances"));
         for (auto* const proxy : {first, second}) {
             auto const points{arrows(*proxy, TEXT("fighter_spawn_slots"))};
-            if (!TestRunner->TestEqual(TEXT("Two capital slots"), points.Num(), 2)) {
+            if (!TestRunner->TestEqual(TEXT("Shared capital slots"), points.Num(), slots.Num()) ||
+                !TestRunner->TestTrue(TEXT("At least one shared capital slot"),
+                                      !points.IsEmpty())) {
                 return;
             }
-            check_arrow_layout(points,
-                               config->capital_ships.fighter_spawn_slots_relative_transforms,
-                               TEXT("Every capital uses current saved actor-space slots"),
-                               proxy);
+            check_arrow_layout(
+                points, slots, TEXT("Every capital uses current saved actor-space slots"), proxy);
         }
         auto const points{arrows(*first, TEXT("fighter_spawn_slots"))};
         auto const moved{points[0]->GetComponentLocation() + FVector{500., -750., 200.}};
@@ -111,36 +119,32 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
             return;
         }
         proxy->SetActorLocationAndRotation(FVector{1000., 2000., 3000.}, FRotator{0., 75., 0.});
-        proxy->set_level_config_asset(config);
         invoke(*proxy, TEXT("apply_asset_configuration"));
         proxy->RerunConstructionScripts();
         auto const points{arrows(*proxy, TEXT("fighter_spawn_slots"))};
+        auto const& slots{ioj::s7_level_config::load_canonical()
+                              ->capital_ships.fighter_spawn_slots_relative_transforms};
         if (!TestRunner->TestEqual(
-                TEXT("Construction preserves slot count"),
-                points.Num(),
-                config->capital_ships.fighter_spawn_slots_relative_transforms.Num())) {
+                TEXT("Construction preserves slot count"), points.Num(), slots.Num())) {
             return;
         }
-        check_arrow_layout(points,
-                           config->capital_ships.fighter_spawn_slots_relative_transforms,
-                           TEXT("Construction preserves applied actor-space layout"),
-                           proxy);
+        check_arrow_layout(
+            points, slots, TEXT("Construction preserves applied actor-space layout"), proxy);
     }
 
     TEST_METHOD(CapitalApplyAllSupportsUndoRedo)
     {
         auto* const first{world->SpawnActor<ioj::ATestCapitalShipProxy>()};
         auto* const second{world->SpawnActor<ioj::ATestCapitalShipProxy>()};
-        first->set_level_config_asset(config);
         invoke(*first, TEXT("apply_asset_configuration_to_all_instances"));
         auto const first_points{arrows(*first, TEXT("fighter_spawn_slots"))};
         auto const second_points{arrows(*second, TEXT("fighter_spawn_slots"))};
         if (!TestRunner->TestTrue(TEXT("Capital has slots"), !first_points.IsEmpty())) {
             return;
         }
+        first_points[0]->AddWorldOffset(FVector{900., 0., 0.});
+        second_points[0]->AddWorldOffset(FVector{900., 0., 0.});
         auto const before{first_points[0]->GetComponentTransform()};
-        config->capital_ships.fighter_spawn_slots_relative_transforms[0].AddToTranslation(
-            FVector{900., 0., 0.});
         invoke(*first, TEXT("apply_asset_configuration_to_all_instances"));
         auto const after{first_points[0]->GetComponentTransform()};
         GEditor->UndoTransaction();
