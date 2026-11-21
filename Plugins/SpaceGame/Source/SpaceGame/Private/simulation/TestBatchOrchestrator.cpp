@@ -271,8 +271,9 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
                     TEXT("Cannot create level simulation without game memory"));
     }
 
+    AActor const* const excluded_actors[]{this};
     auto const static_bounds{FLevelCollisionHost::extract_static_geometry(
-        *world, level_config->collision_grid, build->collision.grid_spec)};
+        *world, level_config->collision_grid, build->collision.grid_spec, excluded_actors)};
     build->collision.static_bounds.reset();
     for (auto const& bounds : static_bounds) {
         build->collision.static_bounds.add(bounds.min, bounds.max);

@@ -8,6 +8,7 @@
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/strings.h>
 
+#include <ActorEditorUtils.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/PrimitiveComponent.h>
 #include <Engine/EngineTypes.h>
@@ -228,7 +229,8 @@ auto FLevelCollisionHost::extract_static_geometry(
 
     for (TActorIterator<AActor> actor_it{&world}; actor_it; ++actor_it) {
         auto* const actor{*actor_it};
-        if (!IsValid(actor) || excluded_actors.Contains(actor)) {
+        if (!IsValid(actor) || excluded_actors.Contains(actor) ||
+            FActorEditorUtils::IsABuilderBrush(actor)) {
             continue;
         }
 
