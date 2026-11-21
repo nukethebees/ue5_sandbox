@@ -90,3 +90,11 @@
     (value variable :value "13")
     (value enumerator :value "22")
     (value structure :value "23")))
+
+(module markup_kind :header "markup_kind.h" :namespace lispb::lsp
+  (enum MarkupKind std::uint8_t
+    (projections (cpp))
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value plaintext :serialized-name "plaintext")
+    (value markdown :serialized-name "markdown")))

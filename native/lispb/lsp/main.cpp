@@ -57,13 +57,16 @@ class Workspace {
         std::erase_if(files_,
                       [](WorkspaceFile const& row) { return !row.buffer && !row.published; });
     }
-    auto query(fs::path const& path, Method method, Json const& params, bool hierarchical) -> Json {
+    auto query(fs::path const& path,
+               Method method,
+               Json const& params,
+               ClientCapabilities capabilities) -> Json {
         auto const found{std::ranges::find(files_, path, &WorkspaceFile::path)};
         if (found == files_.end() || found->active == UnitId{}) {
             return nullptr;
         }
         auto& analysis{*units_[found->active.value].analysis};
-        return analysis.contains(path) ? analysis.query(path, method, params, hierarchical)
+        return analysis.contains(path) ? analysis.query(path, method, params, capabilities)
                                        : nullptr;
     }
   private:
@@ -222,10 +225,20 @@ class Workspace {
 
 enum class SessionState { awaiting_initialize, running, shutdown };
 
-static auto initialize(Json const& params, bool& hierarchical) -> Json {
+static auto initialize(Json const& params, ClientCapabilities& capabilities) -> Json {
     Json::json_pointer const hierarchy{
         "/capabilities/textDocument/documentSymbol/hierarchicalDocumentSymbolSupport"};
-    hierarchical = params.value(hierarchy, false);
+    capabilities.hierarchical_symbols = params.value(hierarchy, false);
+    Json::json_pointer const hover_formats{"/capabilities/textDocument/hover/contentFormat"};
+    if (params.contains(hover_formats)) {
+        for (auto const& item : params.at(hover_formats)) {
+            if (auto format{try_parse_serialized_markup_kind(item.get_ref<std::string const&>())}) {
+                capabilities.hover_format = *format;
+                break;
+            }
+        }
+    }
+
     Json types = Json::array();
     for (unsigned i{}; i <= static_cast<unsigned>(ioj::enum_max<SemanticKind>); ++i) {
         types.push_back(to_serialized_string(static_cast<SemanticKind>(i)));
@@ -273,10 +286,10 @@ static void dispatch(Workspace& workspace,
                      std::optional<Method> method,
                      Json const& params,
                      SessionState& state,
-                     bool& hierarchical,
+                     ClientCapabilities& capabilities,
                      Json& reply) {
     if (method == Method::initialize && state == SessionState::awaiting_initialize) {
-        reply["result"] = initialize(params, hierarchical);
+        reply["result"] = initialize(params, capabilities);
         state = SessionState::running;
     } else if (state != SessionState::running) {
         reply["error"] = {{"code", state == SessionState::shutdown ? -32600 : -32002},
@@ -292,7 +305,7 @@ static void dispatch(Workspace& workspace,
     } else if (method && (is_update(*method) || is_query(*method))) {
         auto path{file_path(params.at("textDocument").at("uri").get<std::string>())};
         if (is_query(*method)) {
-            reply["result"] = workspace.query(path, *method, params, hierarchical);
+            reply["result"] = workspace.query(path, *method, params, capabilities);
         } else {
             update_document(workspace, *method, path, params);
         }
@@ -303,7 +316,7 @@ static void dispatch(Workspace& workspace,
 auto run() -> int {
     Workspace workspace;
     SessionState state{SessionState::awaiting_initialize};
-    bool hierarchical{};
+    ClientCapabilities capabilities;
     while (auto message = read_message(std::cin)) {
         auto const& rpc{*message};
         if (!rpc.is_object() || !rpc.contains("method") || !rpc.at("method").is_string()) {
@@ -323,7 +336,7 @@ auto run() -> int {
         try {
             auto const empty = Json::object();
             auto const& params{rpc.contains("params") ? rpc.at("params") : empty};
-            dispatch(workspace, method, params, state, hierarchical, reply);
+            dispatch(workspace, method, params, state, capabilities, reply);
         } catch (Json::exception const& error) {
             reply["error"] = {{"code", -32602}, {"message", error.what()}};
         } catch (std::invalid_argument const& error) {

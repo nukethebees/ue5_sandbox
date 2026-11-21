@@ -1,5 +1,6 @@
 lispb-outputs-v1
 form_head.h
+markup_kind.h
 method.h
 outline_kind.h
 semantic_kind.h

@@ -88,15 +88,25 @@ def create_project(root):
     schema = '(module sample :header "data.h"\n  (record Item (member count @scalar)))'
     registry = '(include "scalars.lispb")'
     scalar = '(type scalar :spelling "unsigned int" :header "stdint.h")'
+    packed = """(module wire :header "wire.h" :namespace wire
+ (enum Tag std::uint8_t :bit-width 2 (value Left) (value Right) (projections (cpp)))
+ (integer-scalar Small :bit-width 3)
+ (union Payload (case Left @Small) (case Right @Small))
+ (record Packet :layout packed :bits 8
+   (member kind @Tag)
+   (member body @Payload :tag kind)
+   (projections (cpp :storage std::uint8_t))))"""
     material = """(material M_Test (asset "/Game/Generated/Materials/M_Test")
  (domain surface) (blend opaque) (shading default-lit)
  (parameter scalar Intensity 1.0)
+ (parameter color Tint 1.0 0.25 0.5 1.0)
+ (parameter texture Mask "/Engine/EngineResources/WhiteSquareTexture" :sampler linear-grayscale)
  (emissive (float3 Intensity Intensity Intensity)))"""
     slate = """(include "macros.lispb")
 (widget-class STest (function Build (params (value title)) (caption title)))"""
     macros = "(defmacro caption (text) (STextBlock :Text $text))"
     project = """(lispb-project :language-version 1 :project-root "."
- (cpp-schema data :types "types.lispb" :sources ("data.lispb") :output-root (project-path "out"))
+ (cpp-schema data :types "types.lispb" :sources ("data.lispb" "packed.lispb") :output-root (project-path "out"))
  (kernel ops :sources ("ops.lispb") :output-root (project-path "out"))
  (slate ui :sources ("ui.lispb") :output-root (project-path "out"))
  (material mat :source "mat.lispb" :artifact (build-path "test.bin"))
@@ -105,6 +115,7 @@ def create_project(root):
         "project": project,
         "types": registry,
         "scalars": scalar,
+        "packed": packed,
         "data": schema,
         "ops": kernel_text,
         "ui": slate,
@@ -138,7 +149,7 @@ def semantic_tokens(client, path, legend, bounds=None):
     return tokens
 
 
-def exercise(client, root):
+def exercise(client, root, hover_formats=()):
     files, paths = create_project(root)
     schema = files["data"]
     scalar = files["scalars"]
@@ -151,6 +162,8 @@ def exercise(client, root):
             "tokenModifiers": ["declaration"],
         },
     }
+    if hover_formats:
+        capabilities["hover"] = {"contentFormat": hover_formats}
     result = client.send(
         "initialize",
         {
@@ -169,6 +182,72 @@ def exercise(client, root):
     for key in ("project", "data", "ops", "ui", "mat"):
         client.open(paths[key], files[key])
 
+    markup = hover_formats[0] if hover_formats else "plaintext"
+
+    def hover(path, text, token, *fields, skip=0):
+        start = position(text, token, skip)
+        response = client.query("hover", path, start)
+        assert response and response["contents"]["kind"] == markup, response
+        assert response["range"]["start"] == start, response
+        value = response["contents"]["value"]
+        for label, expected in fields:
+            field = (
+                f"**{label}:** ` {expected} `"
+                if markup == "markdown"
+                else f"{label}: {expected}"
+            )
+            assert field in value, (field, value)
+        return value
+
+    cpp = ("C++ type", "unsigned int")
+    header = ("Header", "stdint.h")
+    hover(paths["data"], schema, "@scalar", cpp, header)
+    client.open(paths["scalars"], scalar)
+    hover(paths["scalars"], scalar, "scalar", cpp, header)
+    client.send(
+        "textDocument/didClose", {"textDocument": {"uri": paths["scalars"].as_uri()}}
+    )
+    mat = files["mat"]
+    fields = (("Parameter type", "scalar"), ("Default", "1"))
+    declaration = hover(paths["mat"], mat, "Intensity", *fields)
+    assert declaration == hover(paths["mat"], mat, "float3 Intensity", *fields, skip=7)
+    hover(
+        paths["mat"],
+        mat,
+        "Tint",
+        ("Parameter type", "color"),
+        ("Default", "1, 0.25, 0.5, 1"),
+    )
+    hover(
+        paths["mat"],
+        mat,
+        "Mask",
+        ("Parameter type", "texture"),
+        (
+            "Default texture",
+            "/Engine/EngineResources/WhiteSquareTexture.WhiteSquareTexture",
+        ),
+        ("Sampler", "linear-grayscale"),
+    )
+
+    packed = files["packed"]
+    client.open(paths["packed"], packed)
+    layout_fields = (
+        ("Bit offset", "2"),
+        ("Bit width", "3"),
+        ("Owner storage", "8 bits"),
+        ("Discriminator", "kind"),
+        ("Active case", "body.Left when kind = 0"),
+        ("Active case", "body.Right when kind = 1"),
+    )
+    hover(paths["packed"], packed, "body", *layout_fields)
+    hover(
+        paths["packed"], packed, "@Tag", ("C++ type", "wire::Tag"), ("Header", "wire.h")
+    )
+    loose = root / "loose.lispb"
+    client.open(loose, packed)
+    hover(loose, packed, "body", *layout_fields)
+    client.send("textDocument/didClose", {"textDocument": {"uri": loose.as_uri()}})
     symbols = client.query("documentSymbol", paths["data"])
     assert symbols[0]["children"][0]["name"] == "Item", symbols
     assert client.query("foldingRange", paths["data"])[0]["endLine"] == 1
@@ -218,6 +297,9 @@ def exercise(client, root):
     client.edit(paths["mat"], files["mat"], 3)
     client.query("documentSymbol", paths["mat"])
     assert not client.problems[paths["mat"].as_uri()]
+    edit = mat.replace("Intensity 1.0", "Intensity 2.5")
+    client.edit(paths["mat"], edit, 4)
+    hover(paths["mat"], edit, "float3 Intensity", ("Default", "2.5"), skip=7)
 
     macro = client.query("definition", paths["ui"], position(files["ui"], "caption"))
     assert macro["uri"] == paths["macros"].as_uri()
@@ -231,16 +313,21 @@ def exercise(client, root):
     )
     assert parameter["range"]["start"] == position(files["macros"], "text")
 
-    client.open(paths["scalars"], "; edited 😀\n" + scalar)
+    client.open(
+        paths["scalars"], "; edited 😀\n" + scalar.replace("stdint.h", "edited.h")
+    )
     use = position(schema, "@scalar", 2)
+    hover(paths["data"], schema, "@scalar", ("Header", "edited.h"))
     assert client.query("definition", paths["data"], use)["range"]["start"]["line"] == 1
     client.send(
         "textDocument/didClose", {"textDocument": {"uri": paths["scalars"].as_uri()}}
     )
     assert client.query("definition", paths["data"], use)["range"]["start"]["line"] == 0
+    hover(paths["data"], schema, "@scalar", header)
 
     broken = schema.replace("@scalar", "@missing")
     client.edit(paths["data"], broken, 2)
+    assert client.query("hover", paths["data"], position(broken, "@missing")) is None
     client.query("documentSymbol", paths["data"])
     issues = client.problems[paths["data"].as_uri()]
     assert issues and issues[0]["range"]["start"] == position(broken, "@missing"), (

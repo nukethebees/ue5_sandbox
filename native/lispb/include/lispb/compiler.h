@@ -24,10 +24,14 @@ class Compiler {
     auto storage() const -> CompilerStorage const& { return storage_; }
     auto cpp() -> codegen::CppIR& { return cpp_; }
     auto manifest() const -> codegen::Manifest const& { return manifest_; }
+    auto material() const -> material_synth::MaterialIR const& { return material_; }
     auto types() const -> schema::TypeGraph const& { return types_; }
 
     // Reset semantic, generated and output stores; retain loaded source documents.
     void reset_compilation();
+    // The parsed manifest uses this compiler's declaration and type stores.
+    auto analyze_schema(codegen::Manifest source)
+        -> std::expected<void, schema::TypeReferenceError>;
     auto compile(Project const& project,
                  TargetId target,
                  std::filesystem::path const& build_root,

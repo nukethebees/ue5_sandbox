@@ -153,14 +153,13 @@ Analysis::Analysis(std::span<WorkspaceFile const> files, Project const& project,
     } catch (std::invalid_argument const& error) {
         source_error(fallback, error.what());
     }
-    finish(inputs, fallback, compiler_.types());
+    finish(inputs, fallback);
 }
 Analysis::Analysis(std::span<WorkspaceFile const> files, fs::path const& entry) {
     overlay(files);
     auto& storage{compiler_.storage()};
     auto& syntax{storage.syntax};
     std::vector<fs::path> inputs;
-    std::optional<schema::TypeGraph> local_types;
     bool const manifest{entry.filename() == "project.lispb"};
     try {
         inputs.push_back(entry);
@@ -174,23 +173,22 @@ Analysis::Analysis(std::span<WorkspaceFile const> files, fs::path const& entry) 
         } else if (roots.count) {
             auto const head{
                 try_parse_serialized_form_head(syntax.head(syntax.forms(roots).front()))};
-            if (module_head(head)) {
-                auto source{codegen::parse_module_source(storage, file)};
+            if (module_head(head) || head == FormHead::type) {
                 codegen::Manifest local{codegen::manifest_schema_version,
                                         codegen::TypeRegistry{storage.registered_types},
                                         storage.declarations,
-                                        std::move(source.modules)};
-                auto result{schema::try_resolve_type_graph(local)};
-                if (result) {
-                    local_types.emplace(std::move(*result));
+                                        {}};
+                if (head == FormHead::type) {
+                    local.types = codegen::parse_type_registry(storage, file).types;
                 } else {
+                    local.modules = codegen::parse_module_source(storage, file).modules;
+                }
+                if (auto result{compiler_.analyze_schema(std::move(local))}; !result) {
                     auto const& error{result.error()};
                     auto const name{storage.declarations.type_refs.authored_name[error.reference]};
                     storage.diagnostics.add(
                         DiagnosticSeverity::error, syntax.token_span(name), error.message);
                 }
-            } else if (head == FormHead::type) {
-                static_cast<void>(codegen::parse_type_registry(storage, file));
             } else {
                 auto kind{TargetKind::none};
                 if (head == FormHead::kernel_module) {
@@ -221,11 +219,9 @@ Analysis::Analysis(std::span<WorkspaceFile const> files, fs::path const& entry) 
     } catch (std::invalid_argument const& error) {
         source_error(entry, error.what());
     }
-    finish(inputs, entry, local_types ? *local_types : compiler_.types());
+    finish(inputs, entry);
 }
-void Analysis::finish(std::vector<fs::path>& inputs,
-                      fs::path const& fallback,
-                      schema::TypeGraph const& graph) {
+void Analysis::finish(std::vector<fs::path>& inputs, fs::path const& fallback) {
     auto& storage{compiler_.storage()};
     auto& syntax{storage.syntax};
     std::vector<fs::path> paths(storage.sources.file_count());
@@ -277,7 +273,7 @@ void Analysis::finish(std::vector<fs::path>& inputs,
         }
     }
     std::ranges::sort(declarations_, {}, &DeclarationLocation::start);
-    link_types(graph);
+    link_types(compiler_.types());
     std::ranges::sort(
         facts_.references, {}, [](auto const& reference) { return key(reference.use); });
 
@@ -361,33 +357,39 @@ void Analysis::link_types(schema::TypeGraph const& graph) {
     };
     struct Definition {
         QualifiedName key;
-        sexpr::FormId name;
+        Symbol* symbol;
     };
     std::vector<Definition> definitions;
-    for (auto const& doc : documents_) {
-        for (auto const& symbol : doc.symbols) {
+    for (auto& doc : documents_) {
+        for (auto& symbol : doc.symbols) {
             auto const parent{doc.parent_form(symbol)};
             auto const head{try_parse_serialized_form_head(syntax.head(symbol.form))};
             auto const name{syntax.identifier(symbol.name)};
             if (head == FormHead::type && !parent.value) {
-                definitions.push_back({{{}, name}, symbol.name});
+                definitions.push_back({{{}, name}, &symbol});
             } else if (parent.value &&
                        module_head(try_parse_serialized_form_head(syntax.head(parent)))) {
                 definitions.push_back(
-                    {{syntax.identifier(syntax.child(parent, 1)), name}, symbol.name});
+                    {{syntax.identifier(syntax.child(parent, 1)), name}, &symbol});
             }
         }
     }
     std::ranges::stable_sort(definitions, {}, &Definition::key);
+    std::vector<sexpr::FormId> names(graph.types().size());
+    for (auto type : graph.types()) {
+        QualifiedName const wanted{graph.module_name(type), graph.name(type)};
+        auto const found{std::ranges::lower_bound(definitions, wanted, {}, &Definition::key)};
+        if (found != definitions.end() && found->key == wanted) {
+            found->symbol->type = type;
+            names[type.value] = found->symbol->name;
+        }
+    }
+
     for (auto const use : graph.type_uses()) {
         auto const form{storage.declarations.type_refs.authored_name[graph.reference(use)]};
         auto const type{graph.occurrences().type[graph.target(use)]};
-        if (form.value && schema::is_valid(type)) {
-            QualifiedName const wanted{graph.module_name(type), graph.name(type)};
-            auto const found{std::ranges::lower_bound(definitions, wanted, {}, &Definition::key)};
-            if (found != definitions.end() && found->key == wanted) {
-                syntax.bind(form, syntax.token_span(found->name));
-            }
+        if (form.value && schema::is_valid(type) && names[type.value].value) {
+            syntax.bind(form, syntax.token_span(names[type.value]));
         }
     }
 }
@@ -626,8 +628,10 @@ auto Analysis::completion(Document const& doc,
     return result;
 }
 
-auto Analysis::query(fs::path const& path, Method method, Json const& params, bool hierarchical)
-    -> Json {
+auto Analysis::query(fs::path const& path,
+                     Method method,
+                     Json const& params,
+                     ClientCapabilities capabilities) -> Json {
     auto& storage{compiler_.storage()};
     auto& syntax{storage.syntax};
     auto& doc{(*std::ranges::find(documents_, path, &Document::path))};
@@ -635,7 +639,7 @@ auto Analysis::query(fs::path const& path, Method method, Json const& params, bo
         return highlighting(doc, params);
     }
     if (method == Method::symbols) {
-        return outline(doc, hierarchical);
+        return outline(doc, capabilities.hierarchical_symbols);
     }
     if (method == Method::folding) {
         return folds(doc);
@@ -681,22 +685,6 @@ auto Analysis::query(fs::path const& path, Method method, Json const& params, bo
     if (method == Method::definition) {
         return {{"uri", file_uri(destination.path)}, {"range", range(storage.sources, *target)}};
     }
-    if (target->end_offset == 0 && syntax.kind(token) == sexpr::TokenKind::string) {
-        return {{"contents",
-                 {{"kind", "plaintext"}, {"value", codegen::generic_path_utf8(destination.path)}}},
-                {"range", range(storage.sources, syntax.span(token))}};
-    }
-    for (auto const& symbol : destination.symbols) {
-        if (syntax.span(symbol.name).offset == target->offset) {
-            auto const text{storage.sources.text(target->file)};
-            auto const begin{syntax.span(symbol.form).offset};
-            auto const end{text.find_first_of("\r\n", begin)};
-            auto const length{
-                std::min<std::size_t>(syntax.span(symbol.form).end_offset - begin, end - begin)};
-            return {{"contents", {{"kind", "plaintext"}, {"value", text.substr(begin, length)}}},
-                    {"range", range(storage.sources, syntax.span(token))}};
-        }
-    }
-    return nullptr;
+    return hover(destination, *target, token, capabilities.hover_format);
 }
 }

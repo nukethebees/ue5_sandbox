@@ -4,6 +4,7 @@
 #include "lispb/rooted_path.h"
 #include <codegen/generator.h>
 #include <codegen/path_utils.h>
+#include <codegen/schema/schema_version.h>
 #include <codegen/schema/type_registry.h>
 #include <codegen/sexpr/indices.h>
 #include <kernel_codegen/compiler.h>
@@ -27,8 +28,10 @@
 namespace lispb {
 
 Compiler::Compiler()
-    : manifest_{
-          1, lispb::codegen::TypeRegistry{storage_.registered_types}, storage_.declarations, {}}
+    : manifest_{codegen::manifest_schema_version,
+                codegen::TypeRegistry{storage_.registered_types},
+                storage_.declarations,
+                {}}
     , types_{storage_.declarations, storage_.cpp_types}
     , cpp_{storage_.strings, storage_.cpp_types}
     , kernel_{storage_.strings}
@@ -51,6 +54,20 @@ void Compiler::reset_compilation() {
     storage_.strings.reset_temporary();
     storage_.cpp_types.clear();
     storage_.sources.refresh();
+}
+
+auto Compiler::analyze_schema(codegen::Manifest source)
+    -> std::expected<void, schema::TypeReferenceError> {
+    manifest_ = std::move(source);
+    types_ = schema::TypeGraph{storage_.declarations, storage_.cpp_types};
+    if (!manifest_.modules.empty()) {
+        auto graph{schema::try_resolve_type_graph(manifest_)};
+        if (!graph) {
+            return std::unexpected{std::move(graph.error())};
+        }
+        types_ = std::move(*graph);
+    }
+    return {};
 }
 
 auto Compiler::compile(Project const& project,

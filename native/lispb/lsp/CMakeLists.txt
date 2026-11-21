@@ -3,6 +3,7 @@ target_sources(lispb-lsp
   PRIVATE
     main.cpp
     analysis.cpp
+    hover.cpp
     highlighting.cpp
     protocol.cpp
 )

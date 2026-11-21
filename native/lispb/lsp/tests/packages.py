@@ -45,7 +45,8 @@ def test_package(packages, editor, root, expected, vsix_engine):
     try:
         fixture = root / "fixture"
         fixture.mkdir()
-        exercise(client, fixture)
+        formats = ["markdown", "plaintext"] if editor == "vscode" else ["plaintext", "markdown"]
+        exercise(client, fixture, formats)
     finally:
         client.process.kill()
         client.process.wait()
