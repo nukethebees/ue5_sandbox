@@ -38,7 +38,9 @@ struct SPACEGAME_API FShipControlContext {
     void neutralise_ship_input();
     auto get_ship() const -> ATestSpaceShip*;
 
-    void set_pitch_input(FInputActionValue const& value);
+    void update_gamepad_turn();
+    void update_mouse_steering();
+    void release_mouse_steering();
     void start_fire_primary();
 
     TWeakObjectPtr<ASpaceGamePlayerController> owner_;
@@ -48,6 +50,7 @@ struct SPACEGAME_API FShipControlContext {
     IEnhancedInputSubsystemInterface* input_subsystem_{nullptr};
     FSpaceShipControllerInputs const* input_{nullptr};
     TArray<uint32> binding_handles_;
+    TOptional<FVector2D> mouse_displacement_;
     bool initialised_{false};
     bool bound_{false};
 };

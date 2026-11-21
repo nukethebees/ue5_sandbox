@@ -62,6 +62,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void set_fire_rate(FStringView const fire_rate);
     void set_fire_rate_visibility(ESlateVisibility const new_visibility);
 
+    void set_mouse_steering(TOptional<FVector2D> displacement);
     void set_crosshair_positions(FVector2d near, FVector2d far);
     void set_crosshair_widget_visibility(ESlateVisibility const new_visibility);
     void set_crosshair_distances(FHudCrosshairDistances const& value) {
@@ -87,6 +88,13 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void update_sampled_speed(std::span<Vector2d const> samples, std::uint32_t oldest_index);
 #endif
   protected:
+    int32 NativePaint(FPaintArgs const& args,
+                      FGeometry const& geometry,
+                      FSlateRect const& culling_rect,
+                      FSlateWindowElementList& elements,
+                      int32 layer,
+                      FWidgetStyle const& style,
+                      bool parent_enabled) const override;
     void NativePreConstruct() override;
     void NativeConstruct() override;
     void NativeTick(FGeometry const& geometry, float delta_time) override;
@@ -139,6 +147,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
     UMaterialInstanceDynamic* far_crosshair_material_instance{nullptr};
 
+    TOptional<FVector2D> mouse_steering_;
     FHudCrosshairDistances crosshair_distances{};
     FRadarFrameStoreConstPtr radar_frame_store_;
     FRadarStyle radar_style_;

@@ -35,7 +35,7 @@ cmake --workflow --preset debug-game
 coj editor
 ```
 
-Press **Play** in the editor to start the game.
+Press **Play** in the editor to start the game. Hold the right mouse button and drag to steer. The ring marks full turn. Release to recentre.
 
 ## Other builds
 

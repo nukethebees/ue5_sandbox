@@ -117,11 +117,15 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                 TestRunner->TestTrue(name, action->ValueType == expected);
             }
         };
-        for (auto const* const name :
-             {TEXT("IA_Ship_Pitch"), TEXT("IA_Ship_Yaw"), TEXT("IA_Ship_Accelerate")}) {
+        for (auto const* const name : {TEXT("IA_Ship_Pitch"),
+                                       TEXT("IA_Ship_Yaw"),
+                                       TEXT("IA_Ship_MouseX"),
+                                       TEXT("IA_Ship_MouseY"),
+                                       TEXT("IA_Ship_Accelerate")}) {
             check_action(name, EInputActionValueType::Axis1D);
         }
-        for (auto const* const name : {TEXT("IA_Ship_Brake"),
+        for (auto const* const name : {TEXT("IA_Ship_HoldMouseSteering"),
+                                       TEXT("IA_Ship_Brake"),
                                        TEXT("IA_Ship_Boost"),
                                        TEXT("IA_Ship_EmergencyBrake"),
                                        TEXT("IA_Ship_FirePrimary")}) {
@@ -152,8 +156,9 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
             EShipControlScope::General,
             {{EKeys::Escape, TEXT("IA_pause")}, {EKeys::Gamepad_Special_Right, TEXT("IA_pause")}});
         check_scope(EShipControlScope::Starfox,
-                    {{EKeys::MouseY, TEXT("IA_Ship_Pitch")},
-                     {EKeys::MouseX, TEXT("IA_Ship_Yaw")},
+                    {{EKeys::MouseY, TEXT("IA_Ship_MouseY")},
+                     {EKeys::MouseX, TEXT("IA_Ship_MouseX")},
+                     {EKeys::RightMouseButton, TEXT("IA_Ship_HoldMouseSteering")},
                      {EKeys::LeftMouseButton, TEXT("IA_Ship_FirePrimary")},
                      {EKeys::W, TEXT("IA_Ship_Accelerate")},
                      {EKeys::S, TEXT("IA_Ship_Brake")},

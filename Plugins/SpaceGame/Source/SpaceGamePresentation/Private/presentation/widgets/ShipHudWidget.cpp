@@ -19,6 +19,7 @@
 #include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Blueprint/WidgetTree.h>
+#include <Brushes/SlateRoundedBoxBrush.h>
 #include <Components/Border.h>
 #include <Components/CanvasPanelSlot.h>
 #include <Components/Image.h>
@@ -28,6 +29,7 @@
 #include <Components/Widget.h>
 #include <Materials/MaterialInstanceDynamic.h>
 #include <Materials/MaterialInterface.h>
+#include <Rendering/DrawElements.h>
 
 namespace {
 template <typename... WidgetTypes>
@@ -91,6 +93,45 @@ auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
 void UShipHudWidget::ReleaseSlateResources(bool const release_children) {
     Super::ReleaseSlateResources(release_children);
     radar_widget_.Reset();
+}
+
+void UShipHudWidget::set_mouse_steering(TOptional<FVector2D> const displacement) {
+    mouse_steering_ = displacement;
+    if (auto const widget{GetCachedWidget()}) {
+        widget->Invalidate(EInvalidateWidgetReason::Paint);
+    }
+}
+
+int32 UShipHudWidget::NativePaint(FPaintArgs const& args,
+                                  FGeometry const& geometry,
+                                  FSlateRect const& culling_rect,
+                                  FSlateWindowElementList& elements,
+                                  int32 layer,
+                                  FWidgetStyle const& style,
+                                  bool parent_enabled) const {
+    layer =
+        Super::NativePaint(args, geometry, culling_rect, elements, layer, style, parent_enabled);
+    if (!mouse_steering_) {
+        return layer;
+    }
+    FVector2f const centre{FVector2f{geometry.GetLocalSize()} * 0.5f};
+    float const radius{0.25f * FMath::Min(centre.X, centre.Y)};
+    static FSlateRoundedBoxBrush const ring{
+        FLinearColor::Transparent, FLinearColor{1.f, 1.f, 1.f, 0.6f}, 1.5f};
+    static FSlateRoundedBoxBrush const pointer{FLinearColor::White};
+    auto const draw_disc{[&](FVector2f position, float r, FSlateBrush const& brush) {
+        FSlateDrawElement::MakeBox(
+            elements,
+            ++layer,
+            geometry.ToPaintGeometry(FVector2f{2.f * r},
+                                     FSlateLayoutTransform{position - FVector2f{r}}),
+            &brush,
+            ESlateDrawEffect::None,
+            brush.GetTint(style));
+    }};
+    draw_disc(centre, radius, ring);
+    draw_disc(centre + FVector2f{*mouse_steering_} * radius, 3.f, pointer);
+    return layer;
 }
 
 void UShipHudWidget::NativeTick(FGeometry const& geometry, float const delta_time) {

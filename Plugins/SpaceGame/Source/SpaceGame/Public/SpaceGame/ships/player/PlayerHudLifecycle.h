@@ -33,6 +33,7 @@ struct SPACEGAME_API FPlayerHudLifecycle {
     void restore_after_modal();
     void cancel_restore();
     void set_observer_speed(float speed);
+    void set_mouse_steering(TOptional<FVector2D> displacement);
     auto get_hud() const -> USimulationHudWidget const* { return hud_widget_; }
     auto get_benchmark_hud() const -> UBenchmarkHudWidget const* { return benchmark_hud_widget_; }
   private:

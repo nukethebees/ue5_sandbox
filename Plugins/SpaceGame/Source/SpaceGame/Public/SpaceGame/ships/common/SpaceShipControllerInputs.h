@@ -19,6 +19,12 @@ struct SPACEGAME_API FSpaceShipControllerInputs {
     UInputAction* pitch{nullptr};
     UPROPERTY(EditDefaultsOnly, Category = "Input|Rotation")
     UInputAction* yaw{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Rotation")
+    UInputAction* hold_mouse_steering{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Rotation")
+    UInputAction* mouse_x{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Rotation")
+    UInputAction* mouse_y{nullptr};
     UPROPERTY(EditDefaultsOnly, Category = "Input|Propulsion")
     UInputAction* accelerate{nullptr};
     UPROPERTY(EditDefaultsOnly, Category = "Input|Propulsion")

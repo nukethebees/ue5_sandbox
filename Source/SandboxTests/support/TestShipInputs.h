@@ -11,6 +11,9 @@ inline void
     input.starfox = NewObject<UInputMappingContext>(&owner);
     input.pitch = &action;
     input.yaw = &action;
+    input.hold_mouse_steering = &action;
+    input.mouse_x = &action;
+    input.mouse_y = &action;
     input.accelerate = &action;
     input.brake = &action;
     input.boost = &action;

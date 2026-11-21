@@ -221,6 +221,11 @@ void FPlayerHudLifecycle::restore_after_modal() {
     }
     restore_pending_ = false;
 }
+void FPlayerHudLifecycle::set_mouse_steering(TOptional<FVector2D> const displacement) {
+    if (auto* const hud{Cast<UShipHudWidget>(hud_widget_)}) {
+        hud->set_mouse_steering(displacement);
+    }
+}
 void FPlayerHudLifecycle::set_observer_speed(float const speed) {
     if (auto* const viewer_hud{Cast<UBattleViewerHudWidget>(hud_widget_)}; IsValid(viewer_hud)) {
         viewer_hud->set_movement_speed(speed);

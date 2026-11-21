@@ -574,6 +574,9 @@ struct FGeneratedShipInputActions {
         }
         for (auto* const action : {ship.pitch,
                                    ship.yaw,
+                                   ship.hold_mouse_steering,
+                                   ship.mouse_x,
+                                   ship.mouse_y,
                                    ship.accelerate,
                                    ship.brake,
                                    ship.boost,
@@ -652,13 +655,14 @@ void add_ship_mapping(UInputMappingContext& context,
             context, FString::Printf(TEXT("Response_%s"), *object_suffix))};
         if (key == EKeys::MouseX || key == EKeys::MouseY) {
             response->response = ioj::ESpaceGameInputResponse::TurnPointerDelta;
+            response->axis = ioj::ESpaceGameInputAxis::None;
         } else {
             response->response = ioj::ESpaceGameInputResponse::GamepadTurn;
+            response->axis =
+                FCString::Strcmp(semantic, TEXT("Pitch")) == 0 ? ioj::ESpaceGameInputAxis::Pitch
+                : FCString::Strcmp(semantic, TEXT("Yaw")) == 0 ? ioj::ESpaceGameInputAxis::Yaw
+                                                               : ioj::ESpaceGameInputAxis::None;
         }
-        response->axis =
-            FCString::Strcmp(semantic, TEXT("Pitch")) == 0 ? ioj::ESpaceGameInputAxis::Pitch
-            : FCString::Strcmp(semantic, TEXT("Yaw")) == 0 ? ioj::ESpaceGameInputAxis::Yaw
-                                                           : ioj::ESpaceGameInputAxis::None;
         mapping.Modifiers.Add(response);
     }
 
@@ -674,9 +678,10 @@ void add_ship_mapping(UInputMappingContext& context,
     auto* const settings{mapping_subobject<UPlayerMappableKeySettings>(
         context, FString::Printf(TEXT("Settings_%s"), *object_suffix))};
     settings->Name = FName{mapping_name};
-    auto const display_name{role != nullptr && role[0] != TCHAR{}
-                                ? FString::Printf(TEXT("%s %s"), semantic, role)
-                                : FString{semantic}};
+    auto const display_name{
+        role != nullptr && role[0] != TCHAR{} ? FString::Printf(TEXT("%s %s"), semantic, role)
+        : FCString::Strcmp(semantic, TEXT("Steer")) == 0 ? FString{TEXT("Hold to steer")}
+                                                         : FString{semantic}};
     settings->DisplayName = FText::ChangeKey(
         FTextKey{TEXT("ShipControls")}, FTextKey{mapping_name}, FText::FromString(display_name));
     auto const group{
@@ -703,6 +708,9 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
     };
     ship.pitch = make_axis(TEXT("IA_Ship_Pitch"));
     ship.yaw = make_axis(TEXT("IA_Ship_Yaw"));
+    ship.mouse_x = make_axis(TEXT("IA_Ship_MouseX"));
+    ship.mouse_y = make_axis(TEXT("IA_Ship_MouseY"));
+    ship.hold_mouse_steering = make_button(TEXT("IA_Ship_HoldMouseSteering"));
     ship.accelerate = make_axis(TEXT("IA_Ship_Accelerate"));
     ship.brake = make_button(TEXT("IA_Ship_Brake"));
     ship.boost = make_button(TEXT("IA_Ship_Boost"));
@@ -733,8 +741,16 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
     add(general, Scope::General, result.pause, EKeys::Gamepad_Special_Right, TEXT("Pause"));
 
     auto add_mouse = [&](UInputMappingContext& context, Scope const scope) {
-        add(context, scope, ship.pitch, EKeys::MouseY, TEXT("Pitch"), TEXT(""), true, 10);
-        add(context, scope, ship.yaw, EKeys::MouseX, TEXT("Yaw"), TEXT(""), false, 20);
+        add(context,
+            scope,
+            ship.hold_mouse_steering,
+            EKeys::RightMouseButton,
+            TEXT("Steer"),
+            TEXT(""),
+            false,
+            30);
+        add(context, scope, ship.mouse_y, EKeys::MouseY, TEXT("Pitch"), TEXT(""), true, 10);
+        add(context, scope, ship.mouse_x, EKeys::MouseX, TEXT("Yaw"), TEXT(""), false, 20);
         add(context,
             scope,
             ship.fire_primary,
@@ -818,6 +834,9 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
     for (auto* const action : {result.pause,
                                ship.pitch,
                                ship.yaw,
+                               ship.hold_mouse_steering,
+                               ship.mouse_x,
+                               ship.mouse_y,
                                ship.accelerate,
                                ship.brake,
                                ship.boost,

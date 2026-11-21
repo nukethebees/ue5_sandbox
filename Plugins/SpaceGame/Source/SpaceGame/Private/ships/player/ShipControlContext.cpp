@@ -1,11 +1,14 @@
 #include <SpaceGame/ships/player/ShipControlContext.h>
 
+#include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
+#include <Engine/GameInstance.h>
 #include <EnhancedInputComponent.h>
 #include <EnhancedInputSubsystemInterface.h>
+#include <EnhancedPlayerInput.h>
 #include <HAL/IConsoleManager.h>
 #include <InputAction.h>
 #include <InputActionValue.h>
@@ -135,13 +138,14 @@ void FShipControlContext::bind_actions() {
             }
         });
     };
-    bind_value(input_->pitch, Triggered, [this](FInputActionValue const& value) {
-        set_pitch_input(value);
-    });
-    bind_value(input_->yaw, Triggered, ship_value(&ATestSpaceShip::set_yaw_input));
+    for (auto* const axis : {input_->pitch, input_->yaw}) {
+        auto const turn{[this] { update_gamepad_turn(); }};
+        bind_event(axis, Triggered, turn);
+        bind_release(axis, turn);
+    }
+    bind_event(input_->hold_mouse_steering, Triggered, [this] { update_mouse_steering(); });
+    bind_release(input_->hold_mouse_steering, [this] { release_mouse_steering(); });
     bind_value(input_->accelerate, Triggered, ship_value(&ATestSpaceShip::set_accelerator));
-    clear_axis(input_->pitch, &ATestSpaceShip::set_pitch_input);
-    clear_axis(input_->yaw, &ATestSpaceShip::set_yaw_input);
     clear_axis(input_->accelerate, &ATestSpaceShip::set_accelerator);
     bind_event(input_->boost, Started, ship_event(&ATestSpaceShip::start_boost));
     bind_release(input_->boost, ship_event(&ATestSpaceShip::stop_boost));
@@ -162,6 +166,10 @@ void FShipControlContext::remove_action_bindings() {
     binding_handles_.Reset();
 }
 void FShipControlContext::neutralise_ship_input() {
+    if (mouse_displacement_) {
+        mouse_displacement_.Reset();
+        owner_->hud_.set_mouse_steering(mouse_displacement_);
+    }
     auto* const ship{ship_.Get()};
     if (!IsValid(ship) || !ship->has_simulation()) {
         return;
@@ -182,15 +190,47 @@ auto FShipControlContext::get_ship() const -> ATestSpaceShip* {
     }
     return ship;
 }
-void FShipControlContext::set_pitch_input(FInputActionValue const& value) {
+void FShipControlContext::update_gamepad_turn() {
+    if (mouse_displacement_) {
+        return;
+    }
+    auto const* const input{CastChecked<UEnhancedPlayerInput>(owner_->PlayerInput)};
     if (auto* const ship{get_ship()}) {
+        auto const pitch{input->GetActionValue(input_->pitch).Get<float>()};
         if (spacegame::input_trace::is_enabled()) {
             UE_LOG(LogSandboxController,
                    Warning,
                    TEXT("[InputTrace] IA_Ship_Pitch -> native pitch intent %.3f"),
-                   value.Get<float>());
+                   pitch);
         }
-        ship->set_pitch_input(value.Get<float>());
+        ship->set_pitch_input(pitch);
+        ship->set_yaw_input(input->GetActionValue(input_->yaw).Get<float>());
+    }
+}
+void FShipControlContext::update_mouse_steering() {
+    auto const* const input{CastChecked<UEnhancedPlayerInput>(owner_->PlayerInput)};
+    FVector2D const delta{input->GetActionValue(input_->mouse_x).Get<float>(),
+                          input->GetActionValue(input_->mouse_y).Get<float>()};
+    if (mouse_displacement_ && delta.IsZero()) {
+        return;
+    }
+    mouse_displacement_ = mouse_displacement_.Get(FVector2D::ZeroVector) + delta;
+    owner_->hud_.set_mouse_steering(mouse_displacement_);
+
+    auto const command{mouse_displacement_->GetClampedToMaxSize(1.0)};
+    auto const* const settings{owner_->GetGameInstance()->GetSubsystem<UGameSettingsSubsystem>()};
+    check(settings);
+    auto const& preferences{settings->settings_state()};
+    if (auto* const ship{get_ship()}) {
+        ship->set_pitch_input(preferences.invert_mouse_pitch ? -command.Y : command.Y);
+        ship->set_yaw_input(preferences.invert_mouse_yaw ? -command.X : command.X);
+    }
+}
+void FShipControlContext::release_mouse_steering() {
+    if (mouse_displacement_) {
+        mouse_displacement_.Reset();
+        owner_->hud_.set_mouse_steering(mouse_displacement_);
+        update_gamepad_turn();
     }
 }
 void FShipControlContext::start_fire_primary() {

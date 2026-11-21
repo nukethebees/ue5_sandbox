@@ -10,6 +10,7 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/ui/common/InputActionRouter.h>
+#include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
 
 #include <CommonInputSubsystem.h>
 #include <CQTest.h>
@@ -23,16 +24,21 @@
 #include <Framework/Application/SlateUser.h>
 #include <HAL/IConsoleManager.h>
 #include <Input/CommonAnalogCursor.h>
+#include <Input/HittestGrid.h>
 #include <InputAction.h>
 #include <InputKeyEventArgs.h>
 #include <InputMappingContext.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Guid.h>
 #include <PlayerMappableKeySettings.h>
+#include <Rendering/DrawElements.h>
 #include <Slate/SceneViewport.h>
+#include <Slate/SObjectWidget.h>
+#include <Types/PaintArgs.h>
 #include <UObject/UnrealType.h>
 #include <UserSettings/EnhancedInputUserSettings.h>
 #include <Widgets/SViewport.h>
+#include <Widgets/SWindow.h>
 
 TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
 {
@@ -351,6 +357,135 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 }
                 check_active_contexts(ioj::EShipControlScope::Starfox);
                 check_single_ship_action_bindings();
+            });
+    }
+
+    void check_mouse_overlay(FVector2f const displacement) {
+        auto const* hud{Cast<ioj::UShipHudWidget>(controller_->get_active_hud())};
+        if (!TestRunner->TestNotNull(TEXT("Ship HUD receives the gesture"), hud)) {
+            return;
+        }
+        auto const widget{StaticCastSharedPtr<SObjectWidget>(hud->GetCachedWidget())};
+        auto const window{FSlateApplication::Get().FindWidgetWindow(widget.ToSharedRef())};
+        FSlateWindowElementList elements{window};
+        FHittestGrid grid;
+        FPaintArgs const args{nullptr, grid, FVector2f::ZeroVector, 0., 0.f};
+        auto const geometry{FGeometry::MakeRoot(FVector2f{800.f, 600.f}, FSlateLayoutTransform{})};
+        auto const layer{widget->OnPaint(
+            args, geometry, FSlateRect{0.f, 0.f, 800.f, 600.f}, elements, 0, FWidgetStyle{}, true)};
+        auto const& circles{elements.GetUncachedDrawElements()
+                                .Get<static_cast<uint8>(EElementType::ET_RoundedBox)>()};
+        if (!TestRunner->TestTrue(TEXT("HUD paints both steering indicators"),
+                                  circles.Num() >= 2)) {
+            return;
+        }
+        auto const& ring{circles.Last(1)};
+        auto const& pointer{circles.Last()};
+        FVector2f const size{ring.GetLocalSize()};
+        FVector2f const centre{FVector2f{ring.GetPosition()} + size * 0.5f};
+        FVector2f const tip{FVector2f{pointer.GetPosition()} +
+                            FVector2f{pointer.GetLocalSize()} * 0.5f};
+        TestRunner->TestTrue(TEXT("Ring is centred and pointer follows the physical drag"),
+                             pointer.GetLayer() == layer &&
+                                 centre.Equals(FVector2f{400.f, 300.f}) && size.X == size.Y &&
+                                 tip.Equals(centre + displacement * (size.X * 0.5f), 0.01f));
+    }
+
+    TEST_METHOD(MouseSteeringUsesFixedPressOrigin)
+    {
+        TestCommandBuilder.Do([this] { setup(); })
+            .Until([this] { return !checks.all_passed || ready(); }, timeout)
+            .Then([this] {
+                if (!checks.all_passed) {
+                    return;
+                }
+                auto* const controller{controller_.Get()};
+                auto* const settings{
+                    controller->GetGameInstance()->GetSubsystem<ioj::UGameSettingsSubsystem>()};
+                settings->begin_edit(controller->GetLocalPlayer());
+                settings->set_mouse_turn_sensitivity(2.f);
+                settings->set_invert_mouse_yaw(true);
+                settings->set_invert_mouse_pitch(false);
+                settings->set_invert_gamepad_pitch(false);
+                settings->set_gamepad_turn_sensitivity(1.f);
+
+                auto const key{[controller](FKey k, EInputEvent event, float amount) {
+                    controller->InputKey(FInputKeyEventArgs::CreateSimulated(k, event, amount, 1));
+                }};
+                auto const frame{[controller] {
+                    TArray<UInputComponent*> const stack{controller->InputComponent.Get()};
+                    controller->PlayerInput->ProcessInputStack(stack, 1.f / 60.f, false);
+                }};
+                auto const turn{[this](float yaw, float pitch, TCHAR const* description) {
+                    auto const& intent{native_player()->flight_intent()};
+                    TestRunner->TestEqual(
+                        FString{description} + TEXT(" yaw"), intent.yaw, yaw, 0.001f);
+                    TestRunner->TestEqual(
+                        FString{description} + TEXT(" pitch"), intent.pitch, pitch, 0.001f);
+                }};
+                key(EKeys::MouseX, IE_Axis, 100.f);
+                frame();
+                turn(0.f, 0.f, TEXT("Mouse is idle before press"));
+                key(EKeys::RightMouseButton, IE_Pressed, 1.f);
+                frame();
+                key(EKeys::MouseX, IE_Axis, 400.f);
+                frame();
+                turn(-1.f, 0.f, TEXT("Two radii gives full inverted yaw"));
+                check_mouse_overlay(FVector2f{2.f, 0.f});
+                key(EKeys::MouseX, IE_Axis, -100.f);
+                frame();
+                turn(-1.f, 0.f, TEXT("Still outside after reversal"));
+                key(EKeys::MouseY, IE_Axis, -300.f);
+                frame();
+                turn(-UE_INV_SQRT_2,
+                     UE_INV_SQRT_2,
+                     TEXT("Direction follows the pointer beyond the rim"));
+                key(EKeys::MouseX, IE_Axis, -200.f);
+                key(EKeys::MouseY, IE_Axis, 300.f);
+                frame();
+                turn(-0.5f, 0.f, TEXT("Inside the rim at half radius"));
+                key(EKeys::Gamepad_LeftY, IE_Axis, 1.f);
+                frame();
+                turn(-0.5f, 0.f, TEXT("Stationary mouse retains control"));
+                key(EKeys::RightMouseButton, IE_Released, 0.f);
+                frame();
+                turn(0.f, 1.f, TEXT("Release restores the held gamepad axis"));
+                key(EKeys::RightMouseButton, IE_Pressed, 1.f);
+                frame();
+                turn(0.f, 0.f, TEXT("Next press establishes a fresh origin"));
+                check_mouse_overlay(FVector2f::ZeroVector);
+                key(EKeys::MouseX, IE_Axis, 100.f);
+                frame();
+                controller->FlushPressedKeys();
+                frame();
+                key(EKeys::MouseX, IE_Axis, 100.f);
+                frame();
+                TestRunner->TestEqual(TEXT("Viewport focus flush releases mouse steering"),
+                                      native_player()->flight_intent().yaw,
+                                      0.f);
+                key(EKeys::RightMouseButton, IE_Released, 0.f);
+                frame();
+                auto const bindings{
+                    settings->control_bindings(EHardwareDevicePrimaryType::KeyboardAndMouse)};
+                auto const* binding{bindings.FindByPredicate([](auto const& row) {
+                    return row.address.mapping_name == TEXT("Starfox.Steer.KeyboardMouse");
+                })};
+                if (TestRunner->TestNotNull(TEXT("Steering is remappable"), binding) &&
+                    TestRunner->TestTrue(
+                        TEXT("Rebind the hold button"),
+                        settings->set_control_binding(binding->address, EKeys::J, false))) {
+                    FModifyContextOptions options;
+                    options.bForceImmediately = true;
+                    subsystem_->RequestRebuildControlMappings(options);
+                    key(EKeys::J, IE_Pressed, 1.f);
+                    key(EKeys::MouseX, IE_Axis, 100.f);
+                    frame();
+                    turn(-0.5f, 0.f, TEXT("Remapped button engages steering"));
+                    FPlayerControllerTestAccess::toggle_pause(*controller);
+                    turn(0.f, 0.f, TEXT("Opening pause clears the held turn"));
+                    key(EKeys::J, IE_Released, 0.f);
+                }
+                settings->cancel();
             });
     }
 
