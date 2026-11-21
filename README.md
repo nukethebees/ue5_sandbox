@@ -1,12 +1,8 @@
 # Sandbox Unreal Engine Project
 
-Personal Unreal Engine 5.8 space-combat sandbox. This repository contains the game, standalone
-native simulation libraries, code generation, custom plugins, and the tooling used to build,
-test, and measure them.
+Unreal Engine 5.8 space-combat game with a standalone C++ simulation.
 
-## Start here
-
-### Prerequisites
+## Prerequisites
 
 - Windows with Developer Mode enabled
 - Rust via rustup (the repository pins the toolchain)
@@ -18,43 +14,27 @@ test, and measure them.
 Set `UE_ROOT` to the engine directory and `IOJ_ROOT` to a shared tools directory
 (for example, `C:\dev\ioj`). Add `%IOJ_ROOT%\tools\bin` and the command-line tools to PATH.
 
-### Building tools
+## Set up
 
-Build and install the core tools from the repository root:
+Install the repository tools and prepare the worktree from the repository root.
 
 ```powershell
 pwsh -NoProfile -File PowerShell/InstallCoj.ps1
 coj prepare-worktree
 ```
 
-`coj` is a general purpose tool for repo management.
+## Build and run
 
-### Building the game
+| Task | Command |
+| --- | --- |
+| Build native code | `cmake --workflow --preset native-lean` |
+| Build the Unreal editor target | `cmake --workflow --preset debug-game` |
+| Build and launch the editor | `coj editor` |
+| Generate IDE project files | `coj unreal project-files` |
+| Run native simulation tests | `cmake --workflow --preset native-simulation-tests` |
+| Build and run Unreal unit tests | `cmake --workflow --preset debug-game-unit-tests` |
 
-#### Build only
-
-```powershell
-cmake --workflow --preset native-lean
-cmake --workflow --preset debug-game
-```
-
-#### Build and test
-
-Building and running the editor:
-
-```powershell
-cmake --workflow --preset debug-game
-coj unreal project-files
-```
-
-Normal test flow:
-
-```powershell
-# Native simulation and tests
-cmake --workflow --preset native-simulation-tests
-# Unreal Editor and unit tests
-cmake --workflow --preset debug-game-unit-tests
-```
+[Debug and package the game](docs/build-and-test.md) · [Run benchmarks](docs/benchmarks.md) · [Capture a Tracy profile](docs/profiling.md)
 
 ## Repository map
 
@@ -69,11 +49,3 @@ cmake --workflow --preset debug-game-unit-tests
 | `LevelScripts/` | S7-authored campaign, showcase, and benchmark scenarios | [Level scripts guide](LevelScripts/README.md) |
 | `tools/` | Developer tools | [Tools guide](tools/README.md) |
 | `docs/` | Build, test, benchmarking, and profiling guides | [Documentation hub](docs/README.md) |
-
-## Common destinations
-
-- [Build, test, debug, and package](docs/build-and-test.md)
-- [Run benchmarks correctly](docs/benchmarks.md)
-- [Profile native level benchmarks with Tracy](docs/profiling.md)
-- [Regenerate committed code](native/lispb/README.md)
-- [Author or find a level scenario](LevelScripts/README.md)

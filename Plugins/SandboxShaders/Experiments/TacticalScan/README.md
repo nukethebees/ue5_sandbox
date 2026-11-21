@@ -1,21 +1,10 @@
 # Tactical Scan
 
-This experiment demonstrates a bounded post-process material that reveals a diagnostic grid as a
-scan plane moves across scene geometry. Unlike the mesh-only experiments, it reads
-`PostProcessInput0`, SceneDepth, and Unreal's reconstructed absolute world position.
+Sweep a diagnostic grid across opaque geometry inside a box. Select **TACTICAL SCAN** in the
+[shader showcase](../../README.md). Move or rotate `ATacticalScanExperimentActor` to aim the scan.
+Call `restart_scan`, pause playback, or tune speed, width, intensity, falloff, colour, and grid
+scale.
 
-`ATacticalScanExperimentActor` owns a box and a local `UPostProcessComponent`. It passes its world
-origin and local X/Y/Z axes, an explicit animation clock, scan range, width, falloff, and colour to
-`M_TacticalScan`. The Custom expression includes
-`Shaders/Private/TacticalScan/TacticalScan.ush`. The shader projects each reconstructed world
-position onto the actor's world-space scan direction. The sweep travels from `-ScanRange` to
-`+ScanRange`; only pixels with valid scene depth receive the emissive band and world-aligned grid.
-
-Move or rotate the actor to reposition the scanning coordinate frame. Gameplay could later call
-`restart_scan`, change the actor transform, or drive the exposed material values from an ability or
-sensor system. The showcase actor exposes pause, speed, width, intensity, falloff, colour, and grid
-scale. The effect is deliberately local: geometry outside the box is not post-processed.
-
-Open `/SandboxExperiments/ShaderShowcase/SandboxShaders_Showcase` and select **TACTICAL SCAN**. This is an
-opaque-screen composite rather than a volumetric light, and it does not use CustomDepth or identify
-individual gameplay objects.
+`M_TacticalScan` calls `Shaders/Private/TacticalScan/TacticalScan.ush`. The post-process shader
+reads `PostProcessInput0`, scene depth, and reconstructed world position. It projects valid surface
+pixels onto the scan axis and draws a band from `-ScanRange` to `+ScanRange`.

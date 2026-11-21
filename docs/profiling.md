@@ -2,21 +2,14 @@
 
 ## Native level benchmarks with Tracy
 
-The native level benchmark presets use the Development configuration, which compiles Tracy support
-into the benchmark executable. Tracy is configured on demand and for localhost only: a benchmark
-does not collect a trace or write a `.tracy` file unless a Tracy client connects while it is
-running. The JSON result reports `environment.tracy_enabled`; confirm that it is `true` before
-profiling.
-
-Build the benchmark before measuring:
+Build the Development benchmark with localhost, on-demand Tracy support.
 
 ```powershell
 cmake --preset native-benchmark
 cmake --build --preset native-simulation-benchmark
 ```
 
-Open the Tracy Profiler desktop application before running the benchmark. The profiler connection
-wait keeps the timed workload from starting until the profiler connects (or the timeout expires).
+Open Tracy Profiler, then run the executable directly for the profiler connection wait.
 
 ```powershell
 $repo = (Get-Location).Path
@@ -31,25 +24,15 @@ $benchmark = Join-Path $repo 'out\build\native-benchmark\bin\native-simulation-b
   --wait-for-profiler 60
 ```
 
-While the executable is waiting, connect the Tracy Profiler to the local benchmark process. After
-the benchmark exits, save the capture from the Tracy Profiler to a `.tracy` file; the client does
-not save one automatically. Store local captures beneath `.local/benchmarks/` and do not commit
-them.
-
-`coj benchmark native-simulation` do not currently expose
-`--wait-for-profiler`. They are appropriate for unprofiled measurements; use the
-executable above when a reliable Tracy capture is required.
+Connect Tracy to the local benchmark during the 60-second wait. After exit, check
+`environment.tracy_enabled` in the JSON result and save the capture from Tracy as
+`.local/benchmarks/<name>.tracy`.
 
 ## SandboxISMC Insights captures
 
-Use `coj benchmark sandbox-ismc` or `sandbox-ismc-revision-ab` for owned Insights captures.
-Each process writes `capture.utrace` alongside `metrics.csv`, `result.json`, and `unreal.log` in
-its allocated run directory. Trace capture defaults on; `--trace 0` disables it consistently for
-both revisions. A requested but absent trace fails the run. The manifest records its exact path,
-source identity, workload controls, and requested/observed viewport. See the
-[SandboxISMC experiment options](benchmarks.md#sandboxismc-experiments).
+Run `coj benchmark sandbox-ismc` or `coj benchmark sandbox-ismc-revision-ab`.
+Each run writes `capture.utrace`, `metrics.csv`, `result.json`, and `unreal.log` to its run directory.
+Use the manifest to check the trace path, source revision, workload, and requested and observed viewport.
+Pass `--trace 0` to disable capture for the run or both revisions. A missing requested trace fails the run.
 
-## Related documentation
-
-- [Benchmarks](benchmarks.md): supported benchmark workloads and runners.
-- [Level scripts](../LevelScripts/README.md): find S7 benchmark scenarios.
+[SandboxISMC options](benchmarks.md#sandboxismc-experiments) · [Benchmark workloads](benchmarks.md) · [Level scripts](../LevelScripts/README.md)
