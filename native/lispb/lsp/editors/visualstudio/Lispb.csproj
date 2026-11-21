@@ -1,0 +1,20 @@
+<Project>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>Lispb.Client</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <GeneratePkgDefFile>false</GeneratePkgDefFile>
+    <DeployExtension>false</DeployExtension>
+    <IncludeCopyLocalReferencesInVSIXContainer>false</IncludeCopyLocalReferencesInVSIXContainer>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.ComponentModel.Composition" />
+    <PackageReference Include="Microsoft.VisualStudio.LanguageServer.Client" Version="17.0.5165" />
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.14.2120" PrivateAssets="all" />
+    <SourceVsixManifest Include="extension.vsixmanifest" />
+    <Content Include="$(LispbServer)" Link="lispb-lsp.exe" IncludeInVSIX="true" />
+  </ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+  <Import Project="$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets" Condition="Exists('$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets')" />
+</Project>

@@ -181,6 +181,10 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
     document["buildPresets"] = [
         {"name": "lispb-host", "configurePreset": "lispb-host",
          "targets": ["lispb"]},
+        {"name": "lispb-editors", "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
+         "targets": ["check-lispb-editors"]},
+        {"name": "install-lispb-editors", "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
+         "targets": ["install-lispb-editors"]},
         {"name": "native-lean", "configurePreset": "native-lean",
          "targets": ["native-core", "native-simulation"]},
         {"name": "task-start", "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
@@ -302,6 +306,14 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         {"name": "lispb-host", "steps": [
             {"type": "configure", "name": "lispb-host"},
             {"type": "build", "name": "lispb-host"}]},
+        {"name": "lispb-editors", "displayName": "Build and test both Lispb editor extensions",
+         "steps": [
+             {"type": "configure", "name": DEFAULT_NATIVE_CONFIGURATION},
+             {"type": "build", "name": "lispb-editors"}]},
+        {"name": "install-lispb-editors", "displayName": "Test and install both Lispb editor extensions",
+         "steps": [
+             {"type": "configure", "name": DEFAULT_NATIVE_CONFIGURATION},
+             {"type": "build", "name": "install-lispb-editors"}]},
         {"name": "native-lean", "steps": [
             {"type": "configure", "name": "native-lean"},
             {"type": "build", "name": "native-lean"}]},

@@ -225,6 +225,20 @@
       ]
     },
     {
+      "name": "lispb-editors",
+      "configurePreset": "native",
+      "targets": [
+        "check-lispb-editors"
+      ]
+    },
+    {
+      "name": "install-lispb-editors",
+      "configurePreset": "native",
+      "targets": [
+        "install-lispb-editors"
+      ]
+    },
+    {
       "name": "native-lean",
       "configurePreset": "native-lean",
       "targets": [
@@ -604,6 +618,34 @@
         {
           "type": "build",
           "name": "lispb-host"
+        }
+      ]
+    },
+    {
+      "name": "lispb-editors",
+      "displayName": "Build and test both Lispb editor extensions",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "native"
+        },
+        {
+          "type": "build",
+          "name": "lispb-editors"
+        }
+      ]
+    },
+    {
+      "name": "install-lispb-editors",
+      "displayName": "Test and install both Lispb editor extensions",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "native"
+        },
+        {
+          "type": "build",
+          "name": "install-lispb-editors"
         }
       ]
     },
