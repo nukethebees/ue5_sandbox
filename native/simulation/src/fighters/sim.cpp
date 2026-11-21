@@ -447,22 +447,11 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                inputs.entity_death_info);
 }
 void Sim::publish_deaths(ResolutionInputs const inputs) {
-    inputs.ledger.record_deaths(inputs.entity_death_info.const_view(), inputs.tick);
+    auto const deaths{inputs.entity_death_info.const_view()};
+    inputs.ledger.record_deaths(deaths, inputs.tick);
 
-    auto const victims{inputs.entity_death_info.const_view().victims()};
-    auto const teams{inputs.ledger.history().teams()};
-    auto const count{victims.size()};
-    for (std::size_t first{}; first < count;) {
-        auto const team{teams[inputs.ledger.history_index(victims[first])]};
-        auto end{first + 1};
-        while (end < count && teams[inputs.ledger.history_index(victims[end])] == team) {
-            ++end;
-        }
-
-        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- remove this run of same-team victims.
-        inputs.task_manager.remove_entities(team, victims.subspan(first, end - first));
-        first = end;
-    }
+    auto const executors{inputs.entity_tables.executors.const_view<EntityType::Fighter>()};
+    inputs.task_manager.unregister_dead_entities(deaths.victims(), executors, inputs.ledger);
 }
 
 // ResolutionCommit

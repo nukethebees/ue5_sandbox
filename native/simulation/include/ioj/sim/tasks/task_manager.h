@@ -18,8 +18,12 @@
 #include <span>
 #include <vector>
 
+namespace ioj::sim {
+class EntityLedger;
+}
+
 namespace ioj::sim::tasks {
-struct ExecutorTable;
+struct ExecutorConstView;
 struct TaskAllocationContext;
 
 // Store task programs. Allocate them to entities.
@@ -62,7 +66,10 @@ class TaskManager {
     /* **************************************** */
     void register_entities(Team team, std::span<EntityId const> ids);
     void finish_task(Team team, EntityId entity, TaskId task);
-    void remove_entities(Team team, std::span<EntityId const> ids);
+    // Publish the whole death batch to the ledger before unregistering its executors.
+    void unregister_dead_entities(std::span<EntityId const> victims,
+                                  ExecutorConstView executors,
+                                  EntityLedger const& ledger);
 
     /* **************************************** */
     // Accessors
