@@ -80,9 +80,11 @@ Unreal Engine 5.8 project.
 
 * Inspect relevant code to establish facts. Ask when unclear and implement once context is
   sufficient. When granted autonomy, resolve reasonable ambiguities and keep scope controlled.
-* For a risk, design gap or suspected mistake, explain it, suggest options and ask the
-  maintainer to decide. Avoid unrequested guards, fallbacks or fixes. Suggest out-of-scope
-  improvements for approval.
+* Never change architecture autonomously. When a serious issue, conflicting requirement or
+  proposed workaround calls the design into question, stop and explain the concrete problem.
+  Ask as many questions as needed and agree on the approach with the maintainer before
+  continuing. Suggest out-of-scope improvements for approval. Avoid unrequested guards,
+  fallbacks and workarounds.
 * Use progress updates for status and answer maintainer questions in the final response.
   Report changes, checks and unresolved issues. Mention static analysis, sanitizers or Unreal
   validation only when requested or relevant.
