@@ -109,7 +109,8 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
     void get_validation_errors(TArray<FString>& errors,
                                bool require_presentation = true,
                                settings::Presentation const& presentation = {}) const;
-    void get_validation_warnings(TArray<FString>& warnings) const;
+    void get_validation_warnings(TArray<FString>& warnings,
+                                 settings::Presentation const& presentation = {}) const;
 
 #if WITH_EDITOR
     EDataValidationResult IsDataValid(FDataValidationContext& context) const override;

@@ -102,12 +102,19 @@ void
 #undef REQUIRE_CONFIG
 }
 
-void USpaceGameLevelConfig::get_validation_warnings(TArray<FString>& warnings) const {
+void USpaceGameLevelConfig::get_validation_warnings(
+    TArray<FString>& warnings, settings::Presentation const& presentation) const {
 #define WARN_CONFIG(condition, message)  \
     if (!(condition)) {                  \
         warnings.Emplace(TEXT(message)); \
     }
 
+    WARN_CONFIG(presentation.capital_ships.n_small_explosions == 0 ||
+                    capital_ships.small_death_explosion,
+                "capital_ships.small_death_explosion is unassigned");
+    WARN_CONFIG(capital_ships.main_death_explosion,
+                "capital_ships.main_death_explosion is unassigned");
+    WARN_CONFIG(turrets.death_effect, "turrets.death_effect is unassigned");
     WARN_CONFIG(player_ship.team_visual_data, "player_ship.team_visual_data is null");
 
 #undef WARN_CONFIG

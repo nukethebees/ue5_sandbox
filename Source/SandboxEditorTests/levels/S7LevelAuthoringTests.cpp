@@ -900,27 +900,42 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                   directory.path, TEXT("Authoring/editor-config.scm"))));
     }
 
-    TEST_METHOD(ValidationReportsMissingAndInvalidSavedEntryPoints)
+    TEST_METHOD(ValidateSavedLevelReportsScriptAndAssetIssues)
     {
         using namespace s7_level_authoring_tests;
         FTemporarySourceDirectory directory;
-        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto created{ioj::editor::set_up_s7_mission(
-            *world->GetCurrentLevel(), ioj::editor::MissionSetup::Create, directory.root())};
-        if (!assert_success(*TestRunner, TEXT("Create authoring document"), created)) {
+        auto fixture{make_composed_fixture(*TestRunner, directory)};
+        if (!fixture) {
             return;
         }
+        auto& document{*fixture->document};
+        auto* const assets{DuplicateObject(document.level_config.Get(), &document)};
+        document.level_config = assets;
+        assets->capital_ships.main_death_explosion = nullptr;
+        auto const warnings{ioj::editor::validate_playable_s7_level(document)};
+        TestRunner->TestTrue(TEXT("Missing optional effect gives an actionable warning"),
+                             warnings &&
+                                 warnings->Contains(TEXT("capital_ships.main_death_explosion")));
+        assets->capital_ships.mesh = nullptr;
+        auto const errors{ioj::editor::validate_playable_s7_level(document)};
+        TestRunner->TestTrue(TEXT("Missing required mesh fails validation"),
+                             !errors && errors.error().Contains(TEXT("capital_ships.mesh")));
+        document.level_config = nullptr;
+        auto const missing{ioj::editor::validate_playable_s7_level(document)};
+        TestRunner->TestTrue(TEXT("Missing shared resource asset is diagnosed"),
+                             !missing && missing.error().Contains(TEXT("Shared level asset")));
+
         if (!TestRunner->TestTrue(TEXT("Remove entry point"),
                                   IFileManager::Get().Delete(*directory.root()))) {
             return;
         }
         TestRunner->TestTrue(TEXT("Validate reports the missing root"),
-                             !ioj::editor::validate_playable_s7_level(**created).has_value());
+                             !ioj::editor::validate_playable_s7_level(document).has_value());
         if (!TestRunner->TestTrue(TEXT("Write malformed root"),
                                   write_source(directory.root(), TEXT("(level")))) {
             return;
         }
         TestRunner->TestTrue(TEXT("Validate reports the malformed root"),
-                             !ioj::editor::validate_playable_s7_level(**created).has_value());
+                             !ioj::editor::validate_playable_s7_level(document).has_value());
     }
 };

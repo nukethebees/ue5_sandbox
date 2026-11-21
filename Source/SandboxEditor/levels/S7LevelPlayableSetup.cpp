@@ -60,11 +60,22 @@ auto validate_playable_s7_level(AS7LevelAuthoringDocument const& document)
     if (!definition) {
         return S7AuthoringResult<FString>{std::unexpect, std::move(definition.error())};
     }
+    if (!IsValid(document.level_config)) {
+        return S7AuthoringResult<FString>{std::unexpect,
+                                          TEXT("Shared level asset unavailable. Link the level "
+                                               "script to restore its asset reference.")};
+    }
     auto compiled{compile_playable_s7_definition(*definition, *document.level_config)};
     if (!compiled) {
         return S7AuthoringResult<FString>{std::unexpect, std::move(compiled.error())};
     }
-    return TEXT("The composed Scheme level passed compilation and initialization validation.");
+    TArray<FString> warnings;
+    document.level_config->get_validation_warnings(warnings, definition->settings().presentation);
+    if (!warnings.IsEmpty()) {
+        return FString::Printf(TEXT("Level passed with warnings. Check Edit Shared Assets.\n%s"),
+                               *FString::Join(warnings, TEXT("\n")));
+    }
+    return TEXT("Saved level and shared assets passed validation.");
 }
 
 auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
@@ -185,7 +196,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
 
     return FString::Printf(
         TEXT("Playable level ready: game mode, orchestrator, GPU starfield, post-processing, "
-             "player control, and mission configured (%d entities) using %s. Save the map."),
+             "player control, and level script configured (%d entities) using %s. Save the map."),
         document.entities.Num(),
         *document.level_config->GetName());
 }
