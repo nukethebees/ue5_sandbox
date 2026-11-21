@@ -132,6 +132,7 @@ void TaskManager::allocate(TaskAllocationContext const ctx) {
         }
 
         auto const trigger{triggers[index]};
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each trigger owns a different event range.
         for (auto const event : ctx.events.trigger_events(index)) {
             auto const kind{event.kind()};
             switch (kind) {
@@ -164,14 +165,17 @@ void TaskManager::add_kill_tasks(ExprHandle const condition,
     while (!pending.empty()) {
         auto const expression{pending.back()};
         pending.pop_back();
-        if (!visited.insert(expression).second) {
+        if (visited.contains(expression)) {
             continue;
         }
 
+        visited.insert(expression);
         auto const kind{expression.kind()};
         switch (kind) {
             case ExprKind::All:
             case ExprKind::Any: {
+                // Each popped expression selects its own children.
+                // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 auto const children{ctx.conditions.children(expression)};
                 pending.insert(pending.end(), children.rbegin(), children.rend());
                 break;
@@ -182,7 +186,7 @@ void TaskManager::add_kill_tasks(ExprHandle const condition,
             case ExprKind::EntityDestroyed: {
                 auto const entity{ctx.conditions.destroyed_entity(expression)};
                 auto const target{ctx.entities[entity.index()]};
-                if (!target.is_valid() || !targets.insert(target).second) {
+                if (!target.is_valid() || targets.contains(target)) {
                     break;
                 }
 
@@ -191,6 +195,7 @@ void TaskManager::add_kill_tasks(ExprHandle const condition,
                     break;
                 }
 
+                targets.insert(target);
                 auto const task{add_task({Instruction::make_data_kill(target), jump_to_idle})};
                 active_tasks_[team].push_back(task);
                 break;

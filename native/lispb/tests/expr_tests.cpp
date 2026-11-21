@@ -503,7 +503,8 @@ TEST_F(ExprTest, RendersStringLiteralsWithoutChangingContents) {
     expect_rendered(ir.raw_string_literal(""), "R\"cpp()cpp\"");
     expect_rendered(ir.raw_string_literal("(define name \"a\\b\")\n"),
                     "R\"cpp((define name \"a\\b\")\n)cpp\"");
-    expect_rendered(ir.raw_string_literal(")cpp\" )cpp0\""), "R\"cpp1()cpp\" )cpp0\")cpp1\"");
+    expect_rendered(ir.raw_string_literal(")cpp\" )cpp0\""),
+                    R"expected(R"cpp1()cpp" )cpp0")cpp1")expected");
     EXPECT_EQ(escape_cpp_string(std::string_view{"\0"
                                                  "7\001"
                                                  "f\177",

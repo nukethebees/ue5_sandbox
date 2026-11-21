@@ -936,13 +936,8 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     EXPECT_TRUE(ledger.history().life_state()[ledger.history_index(player_id)] ==
                 LifeState::Unknown)
         << "Overlap death uses the environmental death path";
-    auto const kills{ledger.history().kills()};
-    auto const& counts{ledger.issued_counts()};
-    for (auto const type : EnumTraits<EntityType>::values) {
-        auto const issued_kills{kills.subspan(entity_identity_offsets[type], counts[type])};
-        EXPECT_EQ(std::ranges::fold_left(issued_kills, std::uint32_t{}, std::plus{}), 0)
-            << "Environmental overlap death gives no combat kill";
-    }
+    EXPECT_FALSE(tests::has_recorded_kills(ledger))
+        << "Environmental overlap death gives no combat kill";
 }
 
 TEST(NativeSimulation, SimulationsKeepClocksAndEntitiesIndependent) {

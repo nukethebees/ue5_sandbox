@@ -149,6 +149,7 @@ void Sim::commit_spawns(PreparationInputs const inputs) {
             ++end;
         }
 
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- register this run of same-team fighters.
         inputs.task_manager.register_entities(team, entity_ids.subspan(first, end - first));
         first = end;
     }
@@ -452,6 +453,7 @@ void Sim::publish_deaths(ResolutionInputs const inputs) {
             ++end;
         }
 
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- remove this run of same-team victims.
         inputs.task_manager.remove_entities(team, victims.subspan(first, end - first));
         first = end;
     }

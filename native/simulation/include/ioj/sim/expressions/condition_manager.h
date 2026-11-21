@@ -28,7 +28,7 @@ class ConditionManager {
     // Require one output handle per input expression, in input order.
     void append(std::span<levels::Expression const> expressions,
                 ExprCompilationContext const& ctx,
-                std::span<ExprHandle> output);
+                std::span<ExprHandle> references);
     auto add_timer_elapsed(TimerHandle timer) -> ExprHandle;
     auto add_latch(LatchInput input) -> LatchHandle;
 

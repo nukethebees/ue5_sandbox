@@ -219,13 +219,13 @@ void ConditionManager::evaluate_composites() {
     for (std::size_t index{}; index < count; ++index) {
         auto const kind{composites_.kinds[index]};
         auto const range{composites_.child_ranges[index]};
-        auto const children{std::span{composites_.children}.subspan(range.offset, range.count)};
         bool value{kind == ExprKind::All};
         if (kind == ExprKind::Not) {
-            value = !result(children.front());
+            value = !result(composites_.children[range.offset]);
         } else {
-            for (auto const child : children) {
-                auto const operand{result(child)};
+            auto const end{range.end()};
+            for (auto child{range.offset}; child < end; ++child) {
+                auto const operand{result(composites_.children[child])};
                 switch (kind) {
                     case ExprKind::All:
                         value &= operand;

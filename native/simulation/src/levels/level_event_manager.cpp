@@ -18,6 +18,8 @@ namespace ioj::sim {
 /* **************************************** */
 // Construction
 /* **************************************** */
+// Moving each member lets the event queues use the level's memory resource.
+// NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
 LevelEventManager::LevelEventManager(LevelEventManager&& other, std::pmr::memory_resource& memory)
     : spawn_groups_{std::move(other.spawn_groups_)}
     , capital_spawns_{std::move(other.capital_spawns_)}

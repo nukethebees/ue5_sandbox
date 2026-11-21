@@ -16,6 +16,15 @@
 #include <vector>
 
 namespace ioj::sim::tests {
+inline auto has_recorded_kills(EntityLedger const& ledger) -> bool {
+    auto const kills{ledger.history().kills()};
+    auto const& counts{ledger.issued_counts()};
+    return std::ranges::any_of(EnumTraits<EntityType>::values, [&](EntityType type) {
+        auto const issued{kills.subspan(entity_identity_offsets[type], counts[type])};
+        return std::ranges::any_of(issued, [](KillCount count) { return count != 0; });
+    });
+}
+
 inline void add_timed_events(LevelSimInitData& data,
                              Duration const duration,
                              std::span<EventHandle const> const effects) {

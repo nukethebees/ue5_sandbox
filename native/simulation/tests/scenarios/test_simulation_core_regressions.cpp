@@ -3,9 +3,6 @@
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/testing/entity_observations.h>
 
-#include <algorithm>
-#include <functional>
-
 namespace ioj::sim {
 namespace collision_damage_test {
 inline constexpr std::int32_t player_health{1000};
@@ -106,6 +103,7 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     for (std::int32_t index{}; index < 3; ++index) {
         SCOPED_TRACE(index);
         simulation.advance(dt);
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- advance publishes a new overlap batch.
         auto const events{simulation.spatial_query_manager().aabb_overlap_events()};
         auto const capital{observe_entity(simulation, capital_id)};
         auto const damage{(index + 1) * collision_damage_test::overlap_damage};
@@ -117,14 +115,8 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     EXPECT_TRUE(entity_is_alive(simulation, player_id)) << "Player survives the third overlap tick";
     EXPECT_FALSE(entity_is_alive(simulation, capital_id))
         << "Capital death commits in the third overlap tick";
-    auto const kills{harness.ledger().history().kills()};
-    auto const& counts{harness.ledger().issued_counts()};
-    KillCount kill_count{};
-    for (auto const type : EnumTraits<EntityType>::values) {
-        auto const issued_kills{kills.subspan(entity_identity_offsets[type], counts[type])};
-        kill_count = std::ranges::fold_left(issued_kills, kill_count, std::plus{});
-    }
-    EXPECT_EQ(0, kill_count) << "Collision death grants no combat kill";
+    EXPECT_FALSE(tests::has_recorded_kills(harness.ledger()))
+        << "Collision death grants no combat kill";
     EXPECT_TRUE(
         harness.ledger().history().life_state()[harness.ledger().history_index(capital_id)] ==
         LifeState::Unknown)

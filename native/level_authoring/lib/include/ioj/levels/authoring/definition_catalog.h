@@ -7,8 +7,8 @@
 
 namespace ioj::levels::authoring {
 struct DefinitionCatalog {
-    DefinitionCatalog(std::vector<DefinitionEntry<LevelDefinition>> levels,
-                      std::vector<DefinitionEntry<CampaignDefinition>> campaigns);
+    DefinitionCatalog(std::vector<DefinitionEntry<LevelDefinition>> level_entries,
+                      std::vector<DefinitionEntry<CampaignDefinition>> campaign_entries);
 
     std::vector<DefinitionEntry<LevelDefinition>> levels;
     std::vector<DefinitionEntry<CampaignDefinition>> campaigns;

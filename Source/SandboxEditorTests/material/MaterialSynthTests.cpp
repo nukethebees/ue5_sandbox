@@ -1,3 +1,4 @@
+#include "PackageTools.h"
 #include "SandboxEditor/material/MaterialEmitter.h"
 
 #include <lispb/indices.h>
@@ -6,10 +7,12 @@
 #include <material_gen/MaterialDomain.h>
 #include <material_gen/MaterialIR.h>
 #include <material_gen/SourceHash.h>
+#include <SandboxCoreEngine/strings.h>
 
 #include "Algo/Count.h"
 #include "CQTest.h"
 #include "Engine/Texture.h"
+#include "HAL/FileManager.h"
 #include "MaterialDomain.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialExpressionAppendVector.h"
@@ -26,8 +29,10 @@
 #include "Materials/MaterialExpressionTextureSample.h"
 #include "Materials/MaterialExpressionVectorParameter.h"
 #include "Misc/FileHelper.h"
+#include "Misc/Guid.h"
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
+#include "UObject/Linker.h"
 #include "UObject/Package.h"
 
 #include <cstddef>
@@ -44,7 +49,7 @@ auto material_text(material_synth::MaterialIR const& material, lispb::StringId c
     return FString{converted.Length(), converted.Get()};
 }
 
-auto load_compiled(TCHAR const* const filename)
+auto load_compiled(TCHAR const* const filename, FString const& package_directory)
     -> std::expected<material_synth::CompiledMaterial, std::string> {
     auto const path{FPaths::ConvertRelativePathToFull(FPaths::ProjectIntermediateDir(),
                                                       FString{TEXT("MaterialGen/")} + filename)};
@@ -52,8 +57,19 @@ auto load_compiled(TCHAR const* const filename)
     if (!FFileHelper::LoadFileToArray(bytes, *path)) {
         return std::unexpected{"unable to load compiled golden material"};
     }
-    return material_synth::deserialize(
-        std::span{bytes.GetData(), static_cast<std::size_t>(bytes.Num())});
+    auto compiled{material_synth::deserialize(
+        std::span{bytes.GetData(), static_cast<std::size_t>(bytes.Num())})};
+    if (compiled) {
+        auto& ir{compiled->material};
+        auto const name{material_text(ir, ir.settings.name)};
+        auto const package_path{FPaths::Combine(package_directory, name)};
+        ir.settings.package_path = ir.intern(ioj::to_string(package_path));
+        if (ir.settings.adopt_existing) {
+            NewObject<UMaterial>(
+                CreatePackage(*package_path), FName{*name}, RF_Public | RF_Standalone);
+        }
+    }
+    return compiled;
 }
 
 auto topology(UMaterial const& material) -> TArray<FString> {
@@ -76,9 +92,19 @@ auto package_bytes(UMaterial const& material) -> TArray<uint8> {
 
 TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
 {
+    FString package_directory{
+        FPaths::Combine(TEXT("/Game/Generated/Materials/Automation"), FGuid::NewGuid().ToString())};
+
+    AFTER_EACH()
+    {
+        auto const directory{FPackageName::LongPackageNameToFilename(package_directory)};
+        TestRunner->TestTrue(TEXT("Temporary material packages are removed"),
+                             IFileManager::Get().DeleteDirectory(*directory, false, true));
+    }
+
     TEST_METHOD(GeneratesCompilesSavesReloadsAndIsIdempotent)
     {
-        auto const compiled{load_compiled(TEXT("UiGlowComposite.smat"))};
+        auto const compiled{load_compiled(TEXT("UiGlowComposite.smat"), package_directory)};
         if (!TestRunner->TestTrue(TEXT("Compiled golden material loads"), compiled.has_value())) {
             return;
         }
@@ -152,6 +178,8 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
             FString{material_synth::generator_version});
 
         auto const first_bytes{package_bytes(*first.material)};
+        TestRunner->TestTrue(TEXT("First generation writes the package"),
+                             first.changed && !first_bytes.IsEmpty());
         auto const second{material_synth::emit(compiled->material, source_path, source_hash)};
         if (TestRunner->TestTrue(TEXT("Second generation succeeds"),
                                  second.material != nullptr && second.errors.IsEmpty())) {
@@ -163,18 +191,27 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
                                  package_bytes(*second.material) == first_bytes);
         }
 
-        auto* const loaded_package{LoadPackage(
-            nullptr, TEXT("/SandboxUI/Generated/Materials/M_UiGlowComposite"), LOAD_None)};
+        auto const package_path{
+            material_text(compiled->material, compiled->material.settings.package_path)};
+        FText unload_error;
+        if (!UPackageTools::UnloadPackages({first.material->GetOutermost()}, unload_error)) {
+            TestRunner->AddError(unload_error.ToString());
+            return;
+        }
+        auto* const loaded_package{LoadPackage(nullptr, *package_path, LOAD_None)};
         auto* const reloaded{loaded_package != nullptr
                                  ? FindObject<UMaterial>(loaded_package, TEXT("M_UiGlowComposite"))
                                  : nullptr};
         TestRunner->TestNotNull(TEXT("Saved material reloads from its package"), reloaded);
+        if (loaded_package) {
+            ResetLoaders(loaded_package);
+        }
     }
 
     TEST_METHOD(GeneratesAdoptedNativeAndHybridMaterials)
     {
-        auto const glowing_cross{load_compiled(TEXT("GlowingCross.smat"))};
-        auto const energy_shield{load_compiled(TEXT("EnergyShield.smat"))};
+        auto const glowing_cross{load_compiled(TEXT("GlowingCross.smat"), package_directory)};
+        auto const energy_shield{load_compiled(TEXT("EnergyShield.smat"), package_directory)};
         if (!TestRunner->TestTrue(TEXT("Migrated artifacts load"),
                                   glowing_cross.has_value() && energy_shield.has_value())) {
             return;
@@ -240,7 +277,7 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
 
     TEST_METHOD(GeneratesWorldSurfaceMaterialWithPerInstanceRangeData)
     {
-        auto const compiled{load_compiled(TEXT("SoftTargetWorld.smat"))};
+        auto const compiled{load_compiled(TEXT("SoftTargetWorld.smat"), package_directory)};
         if (!TestRunner->TestTrue(TEXT("Compiled world material loads"), compiled.has_value())) {
             return;
         }

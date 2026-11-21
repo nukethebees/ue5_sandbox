@@ -25,20 +25,23 @@ auto capital_id(LevelSim const& simulation, levels::LevelDefinition const& level
 
 auto first_wave_history(EntityLedger const& ledger, std::uint32_t count, Team team) -> std::string {
     auto const history{ledger.history()};
+    auto const teams{history.teams()};
+    auto const states{history.life_state()};
+    auto const death_ticks{history.death_ticks()};
     std::string report;
     for (std::uint32_t i{}; i < count; ++i) {
         auto const row{ledger.history_index(EntityId{i, EntityType::Fighter})};
-        if (history.teams()[row] != team) {
+        if (teams[row] != team) {
             continue;
         }
-        auto const state{history.life_state()[row]};
+        auto const state{states[row]};
         if (state == LifeState::Alive) {
             report += std::format(" #{} alive;", i);
         } else {
             report += std::format(" #{} {} death at tick {};",
                                   i,
                                   state == LifeState::Combat ? "combat" : "unattributed",
-                                  history.death_ticks()[row].value());
+                                  death_ticks[row].value());
         }
     }
     return report;
@@ -68,24 +71,18 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
     std::uint32_t first_wave_issued{};
     bool blue_departed{};
     bool red_departed{};
-    simulation.start();
-    for (int tick{}; tick < tick_limit && !simulation.result(); ++tick) {
-        simulation.advance(dt);
+    auto observe_first_wave = [&](std::uint32_t issued) {
         auto const fighters{simulation.fighters().entities()};
         auto const count{fighters.num()};
         auto const ids{fighters.entity_ids()};
         auto const positions{fighters.view_locations().resolve()};
 
-        auto const issued{simulation.entity_ledger().issued_counts()[EntityType::Fighter]};
         if (first_wave_issued == 0) {
             first_wave_issued = issued;
             for (std::uint32_t row{}; row < count; ++row) {
                 first_wave.push_back({ids[row], vector_at(positions, row)});
             }
-            continue;
-        }
-        if (issued > first_wave_issued) {
-            break;
+            return;
         }
 
         auto const teams{fighters.teams()};
@@ -98,8 +95,18 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
                 red_departed |= teams[row] == Team::Red && targets[row] == blue_capital;
             }
         }
-        if (blue_departed && red_departed) {
+    };
+
+    simulation.start();
+    for (int tick{}; tick < tick_limit; ++tick) {
+        if (simulation.result()) {
             break;
+        }
+        simulation.advance(dt);
+        auto const issued{simulation.entity_ledger().issued_counts()[EntityType::Fighter]};
+        if ((!blue_departed || !red_departed) &&
+            (first_wave_issued == 0 || issued == first_wave_issued)) {
+            ASSERT_NO_FATAL_FAILURE(observe_first_wave(issued));
         }
     }
 
@@ -110,11 +117,6 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
     EXPECT_TRUE(red_departed) << "A Red fighter clears its launch slot targeting capitalship-blue."
                               << first_wave_history(
                                      simulation.entity_ledger(), first_wave_issued, Team::Red);
-    for (auto tick{static_cast<int>(simulation.clock().get_completed_ticks().value())};
-         tick < tick_limit && !simulation.result();
-         ++tick) {
-        simulation.advance(dt);
-    }
     EXPECT_TRUE(simulation.result()) << "The mission finishes within 80 simulated seconds";
 }
 

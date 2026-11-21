@@ -32,6 +32,7 @@ TEST(Expressions, BooleanOperatorsEvaluateSharedLeavesInDependencyOrder) {
         Expression{AnyExpr{}},
         Expression{XorExpr{}},
     };
+    std::span<EntityId const> const no_entities{};
     for (auto const a : {false, true}) {
         for (auto const b : {false, true}) {
             Timers timers;
@@ -47,7 +48,7 @@ TEST(Expressions, BooleanOperatorsEvaluateSharedLeavesInDependencyOrder) {
             ConditionManager expressions;
             std::array<ExprHandle, nodes.size()> handles;
             expressions.append(nodes, {{}, timer_handles}, handles);
-            expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
+            expressions.evaluate({ledger, timers, no_entities, spatial, lookups, scratch});
             EXPECT_FALSE(expressions.result(handles[0]));
             EXPECT_EQ(expressions.result(handles[1]), !a);
             EXPECT_EQ(expressions.result(handles[2]), a);
@@ -78,9 +79,10 @@ TEST(Expressions, LatchObservationsAndCompositesUseTheSameCycleSample) {
 
     expressions.add_latch({handles[0], handles[0]});
     expressions.add_latch({handles[2], handles[0]});
+    ExprEvaluationContext const inputs{ledger, timers, {}, spatial, lookups, scratch};
     for (int cycle{}; cycle < 3; ++cycle) {
         expressions.commit_latches();
-        expressions.evaluate({ledger, timers, {}, spatial, lookups, scratch});
+        expressions.evaluate(inputs);
         EXPECT_EQ(expressions.result(handles[1]), cycle >= 1);
         EXPECT_EQ(expressions.result(handles[2]), cycle >= 1);
         EXPECT_EQ(expressions.result(handles[3]), cycle >= 2);
