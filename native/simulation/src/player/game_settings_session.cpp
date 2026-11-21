@@ -5,12 +5,8 @@
 #include <cmath>
 
 namespace ioj {
-void GameSettingsSession::initialise(GameSettingsState applied,
-                                     GameSettingsState defaults,
-                                     sim::player::FlightModelLoadout loadout) {
+void GameSettingsSession::initialise(GameSettingsState applied, GameSettingsState defaults) {
     values_.begin(applied, defaults);
-    applied_loadout_ = loadout;
-    pending_loadout_ = applied_loadout_;
     phase_ = GameSettingsSessionPhase::Inactive;
 }
 auto GameSettingsSession::begin_edit(GameSettingsState applied, GameSettingsState defaults)
@@ -19,7 +15,6 @@ auto GameSettingsSession::begin_edit(GameSettingsState applied, GameSettingsStat
         return false;
     }
     values_.begin(applied, defaults);
-    pending_loadout_ = applied_loadout_;
     phase_ = GameSettingsSessionPhase::Editing;
     return true;
 }
@@ -28,7 +23,6 @@ auto GameSettingsSession::cancel() -> bool {
         return false;
     }
     values_.cancel();
-    pending_loadout_ = applied_loadout_;
     phase_ = GameSettingsSessionPhase::Inactive;
     return true;
 }
@@ -43,7 +37,6 @@ auto GameSettingsSession::apply(double const now, bool const external_changes)
     auto const& applied{values_.applied()};
     auto const display_changed{pending.resolution != applied.resolution ||
                                pending.window_mode != applied.window_mode};
-    applied_loadout_ = pending_loadout_;
     if (!display_changed) {
         values_.commit_all();
         return GameSettingsApplyResult::Applied;
@@ -93,40 +86,15 @@ auto GameSettingsSession::reset_category(GameSettingCategory const category) -> 
         return false;
     }
     values_.reset_category(category);
-    if (category == GameSettingCategory::Controls) {
-        pending_loadout_ = sim::player::make_default_flight_model_loadout();
-    }
     return true;
 }
 auto GameSettingsSession::is_dirty() const -> bool {
-    return values_.is_dirty() || pending_loadout_ != applied_loadout_;
+    return values_.is_dirty();
 }
 auto GameSettingsSession::is_dirty(GameSettingCategory const category) const -> bool {
-    return values_.is_dirty(category) ||
-           (category == GameSettingCategory::Controls && pending_loadout_ != applied_loadout_);
+    return values_.is_dirty(category);
 }
 auto GameSettingsSession::is_at_defaults(GameSettingCategory const category) const -> bool {
-    return values_.is_at_defaults(category) &&
-           (category != GameSettingCategory::Controls ||
-            pending_loadout_ == sim::player::make_default_flight_model_loadout());
-}
-auto GameSettingsSession::flight_model_profile(sim::player::FlightModelSlot const slot) const
-    -> sim::player::FlightModelProfile const& {
-    return sim::player::flight_model_profile(pending_loadout_, slot);
-}
-auto GameSettingsSession::set_flight_model_profile(sim::player::FlightModelSlot const slot,
-                                                   sim::player::FlightModelProfile profile)
-    -> bool {
-    if (phase_ != GameSettingsSessionPhase::Editing) {
-        return false;
-    }
-    auto& target{sim::player::flight_model_profile(pending_loadout_, slot)};
-    auto const preset{target.base_preset};
-    if (profile.base_preset != preset ||
-        !sim::player::matches_authored_flight_model_topology(profile.config, preset)) {
-        return false;
-    }
-    profile.customized = true;
-    return sim::player::try_set_flight_model_profile(pending_loadout_, slot, profile);
+    return values_.is_at_defaults(category);
 }
 }

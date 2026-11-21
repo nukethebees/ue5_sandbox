@@ -9,9 +9,7 @@
 namespace ioj {
 
 auto graphics_preset(GameSettingsState const& state) -> GameGraphicsPreset;
-auto game_anti_aliasing_method(std::int32_t stored_value) -> GameAntiAliasingMethod;
 auto game_audio_volume(float value) -> float;
-auto game_bees_count(std::int32_t value) -> std::int32_t;
 auto game_setting_is_available(GameSettingAvailabilityProvider provider,
                                GameSettingsState const& state) -> bool;
 auto normalize_game_setting_value(GameSettingDescriptor const& descriptor,

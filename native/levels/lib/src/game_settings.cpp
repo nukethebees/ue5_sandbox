@@ -12,7 +12,6 @@
 #include <array>
 #include <cassert>
 #include <cstddef>
-#include <cstdint>
 #include <span>
 #include <utility>
 #include <variant>
@@ -26,7 +25,7 @@ std::array<GameSettingCategoryDescriptor, 5> const category_descriptors{
      {GameSettingCategory::Controls, "Controls"},
      {GameSettingCategory::Accessibility, "Accessibility"}}};
 
-std::array<GameSettingDescriptor, 33> const descriptors{
+std::array<GameSettingDescriptor, 29> const descriptors{
     {{GameSetting::Resolution,
       GameSettingCategory::Video,
       GameSettingValueType::IntPoint,
@@ -380,26 +379,10 @@ std::array<GameSettingDescriptor, 33> const descriptors{
       1.0,
       0.01,
       ""},
-     {GameSetting::Bees,
-      GameSettingCategory::Gameplay,
-      GameSettingValueType::Int32,
-      GameSettingBackend::Custom,
-      SettingApplyMode::Immediate,
-      GameSettingDevice::Shared,
-      SettingControlKind::IntegerRange,
-      GameSettingOptionProvider::None,
-      GameSettingAvailabilityProvider::Always,
-      "bees",
-      "Bees",
-      "Number of bees.",
-      0.0,
-      5.0,
-      1.0,
-      ""},
      {GameSetting::MouseTurnSensitivity,
       GameSettingCategory::Controls,
       GameSettingValueType::Float,
-      GameSettingBackend::EnhancedInputUserSettings,
+      GameSettingBackend::Input,
       SettingApplyMode::Immediate,
       GameSettingDevice::KeyboardMouse,
       SettingControlKind::FloatRange,
@@ -416,7 +399,7 @@ std::array<GameSettingDescriptor, 33> const descriptors{
      {GameSetting::GamepadTurnSensitivity,
       GameSettingCategory::Controls,
       GameSettingValueType::Float,
-      GameSettingBackend::EnhancedInputUserSettings,
+      GameSettingBackend::Input,
       SettingApplyMode::Immediate,
       GameSettingDevice::Controller,
       SettingControlKind::FloatRange,
@@ -432,7 +415,7 @@ std::array<GameSettingDescriptor, 33> const descriptors{
      {GameSetting::GamepadTurnDeadZone,
       GameSettingCategory::Controls,
       GameSettingValueType::Float,
-      GameSettingBackend::EnhancedInputUserSettings,
+      GameSettingBackend::Input,
       SettingApplyMode::Immediate,
       GameSettingDevice::Controller,
       SettingControlKind::FloatRange,
@@ -445,26 +428,10 @@ std::array<GameSettingDescriptor, 33> const descriptors{
       0.5,
       0.01,
       ""},
-     {GameSetting::GamepadMoveDeadZone,
-      GameSettingCategory::Controls,
-      GameSettingValueType::Float,
-      GameSettingBackend::EnhancedInputUserSettings,
-      SettingApplyMode::Immediate,
-      GameSettingDevice::Controller,
-      SettingControlKind::FloatRange,
-      GameSettingOptionProvider::None,
-      GameSettingAvailabilityProvider::Always,
-      "gamepad_move_dead_zone",
-      "Movement Stick Dead Zone",
-      "Inner dead zone for sticks controlling movement.",
-      0.0,
-      0.5,
-      0.01,
-      ""},
      {GameSetting::InvertMousePitch,
       GameSettingCategory::Controls,
       GameSettingValueType::Bool,
-      GameSettingBackend::EnhancedInputUserSettings,
+      GameSettingBackend::Input,
       SettingApplyMode::Immediate,
       GameSettingDevice::KeyboardMouse,
       SettingControlKind::Toggle,
@@ -472,7 +439,7 @@ std::array<GameSettingDescriptor, 33> const descriptors{
       GameSettingAvailabilityProvider::Always,
       "invert_mouse_pitch",
       "Invert Mouse Pitch",
-      "Reverse mouse pitch in every flight style. Independent of controller inversion.",
+      "Reverse mouse pitch. Independent of controller inversion.",
       0.0,
       0.0,
       0.0,
@@ -480,7 +447,7 @@ std::array<GameSettingDescriptor, 33> const descriptors{
      {GameSetting::InvertMouseYaw,
       GameSettingCategory::Controls,
       GameSettingValueType::Bool,
-      GameSettingBackend::EnhancedInputUserSettings,
+      GameSettingBackend::Input,
       SettingApplyMode::Immediate,
       GameSettingDevice::KeyboardMouse,
       SettingControlKind::Toggle,
@@ -488,7 +455,7 @@ std::array<GameSettingDescriptor, 33> const descriptors{
       GameSettingAvailabilityProvider::Always,
       "invert_mouse_yaw",
       "Invert Mouse Yaw",
-      "Reverse mouse yaw in every flight style. Independent of controller inversion.",
+      "Reverse mouse yaw. Independent of controller inversion.",
       0.0,
       0.0,
       0.0,
@@ -496,7 +463,7 @@ std::array<GameSettingDescriptor, 33> const descriptors{
      {GameSetting::InvertGamepadPitch,
       GameSettingCategory::Controls,
       GameSettingValueType::Bool,
-      GameSettingBackend::EnhancedInputUserSettings,
+      GameSettingBackend::Input,
       SettingApplyMode::Immediate,
       GameSettingDevice::Controller,
       SettingControlKind::Toggle,
@@ -504,8 +471,7 @@ std::array<GameSettingDescriptor, 33> const descriptors{
       GameSettingAvailabilityProvider::Always,
       "invert_gamepad_pitch",
       "Invert Controller Pitch",
-      "Reverse controller pitch in every flight style. Off: stick up pitches up. On: stick up "
-      "pitches down.",
+      "Reverse controller pitch. Off: stick up pitches up. On: stick up pitches down.",
       0.0,
       0.0,
       0.0,
@@ -513,7 +479,7 @@ std::array<GameSettingDescriptor, 33> const descriptors{
      {GameSetting::InvertGamepadYaw,
       GameSettingCategory::Controls,
       GameSettingValueType::Bool,
-      GameSettingBackend::EnhancedInputUserSettings,
+      GameSettingBackend::Input,
       SettingApplyMode::Immediate,
       GameSettingDevice::Controller,
       SettingControlKind::Toggle,
@@ -521,40 +487,7 @@ std::array<GameSettingDescriptor, 33> const descriptors{
       GameSettingAvailabilityProvider::Always,
       "invert_gamepad_yaw",
       "Invert Controller Yaw",
-      "Reverse controller yaw in every flight style, regardless of which stick is bound.",
-      0.0,
-      0.0,
-      0.0,
-      ""},
-     {GameSetting::InvertGamepadRoll,
-      GameSettingCategory::Controls,
-      GameSettingValueType::Bool,
-      GameSettingBackend::EnhancedInputUserSettings,
-      SettingApplyMode::Immediate,
-      GameSettingDevice::Controller,
-      SettingControlKind::Toggle,
-      GameSettingOptionProvider::None,
-      GameSettingAvailabilityProvider::Always,
-      "invert_gamepad_roll",
-      "Invert Controller Roll",
-      "Reverse controller roll in every flight style with a roll binding. Keyboard roll bindings "
-      "are unchanged.",
-      0.0,
-      0.0,
-      0.0,
-      ""},
-     {GameSetting::InvertGamepadVerticalTranslation,
-      GameSettingCategory::Controls,
-      GameSettingValueType::Bool,
-      GameSettingBackend::EnhancedInputUserSettings,
-      SettingApplyMode::Immediate,
-      GameSettingDevice::Controller,
-      SettingControlKind::Toggle,
-      GameSettingOptionProvider::None,
-      GameSettingAvailabilityProvider::Always,
-      "invert_gamepad_vertical_translation",
-      "Invert Controller Vertical Translation",
-      "Invert controller up/down translation in flight styles that use it.",
+      "Reverse controller yaw, regardless of which stick is bound.",
       0.0,
       0.0,
       0.0,
@@ -641,9 +574,6 @@ auto game_setting_value(GameSettingsState const& state, GameSetting const id) ->
         case GameSetting::UIVolume: {
             return GameSettingValue{state.ui_volume};
         }
-        case GameSetting::Bees: {
-            return GameSettingValue{state.bees};
-        }
         case GameSetting::MouseTurnSensitivity: {
             return GameSettingValue{state.mouse_turn_sensitivity};
         }
@@ -652,9 +582,6 @@ auto game_setting_value(GameSettingsState const& state, GameSetting const id) ->
         }
         case GameSetting::GamepadTurnDeadZone: {
             return GameSettingValue{state.gamepad_turn_dead_zone};
-        }
-        case GameSetting::GamepadMoveDeadZone: {
-            return GameSettingValue{state.gamepad_move_dead_zone};
         }
         case GameSetting::InvertMousePitch: {
             return GameSettingValue{state.invert_mouse_pitch};
@@ -667,12 +594,6 @@ auto game_setting_value(GameSettingsState const& state, GameSetting const id) ->
         }
         case GameSetting::InvertGamepadYaw: {
             return GameSettingValue{state.invert_gamepad_yaw};
-        }
-        case GameSetting::InvertGamepadRoll: {
-            return GameSettingValue{state.invert_gamepad_roll};
-        }
-        case GameSetting::InvertGamepadVerticalTranslation: {
-            return GameSettingValue{state.invert_gamepad_vertical_translation};
         }
     }
     assert((false));
@@ -859,14 +780,6 @@ auto set_game_setting_value(GameSettingsState& state,
             state.ui_volume = *typed_value;
             return true;
         }
-        case GameSetting::Bees: {
-            auto const* typed_value{std::get_if<std::int32_t>(&value)};
-            if (typed_value == nullptr) {
-                return false;
-            }
-            state.bees = *typed_value;
-            return true;
-        }
         case GameSetting::MouseTurnSensitivity: {
             auto const* typed_value{std::get_if<float>(&value)};
             if (typed_value == nullptr) {
@@ -889,14 +802,6 @@ auto set_game_setting_value(GameSettingsState& state,
                 return false;
             }
             state.gamepad_turn_dead_zone = *typed_value;
-            return true;
-        }
-        case GameSetting::GamepadMoveDeadZone: {
-            auto const* typed_value{std::get_if<float>(&value)};
-            if (typed_value == nullptr) {
-                return false;
-            }
-            state.gamepad_move_dead_zone = *typed_value;
             return true;
         }
         case GameSetting::InvertMousePitch: {
@@ -929,22 +834,6 @@ auto set_game_setting_value(GameSettingsState& state,
                 return false;
             }
             state.invert_gamepad_yaw = *typed_value;
-            return true;
-        }
-        case GameSetting::InvertGamepadRoll: {
-            auto const* typed_value{std::get_if<bool>(&value)};
-            if (typed_value == nullptr) {
-                return false;
-            }
-            state.invert_gamepad_roll = *typed_value;
-            return true;
-        }
-        case GameSetting::InvertGamepadVerticalTranslation: {
-            auto const* typed_value{std::get_if<bool>(&value)};
-            if (typed_value == nullptr) {
-                return false;
-            }
-            state.invert_gamepad_vertical_translation = *typed_value;
             return true;
         }
     }

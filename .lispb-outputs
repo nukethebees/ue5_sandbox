@@ -35,6 +35,8 @@ native/levels/lib/include/ioj/levels/level_outcome.h
 native/levels/lib/include/ioj/levels/logic_payloads.h
 native/levels/lib/include/ioj/levels/logic_payloads_reader.h
 native/levels/lib/include/ioj/levels/team.h
+native/levels/lib/include/ioj/settings/application_settings.h
+native/levels/lib/include/ioj/settings/application_settings_reader.h
 native/levels/lib/include/ioj/settings/attack_distance_band.h
 native/levels/lib/include/ioj/settings/attack_distance_band_reader.h
 native/levels/lib/include/ioj/settings/attack_distance_band_writer.h
@@ -47,6 +49,8 @@ native/levels/lib/include/ioj/settings/entity_geometry_writer.h
 native/levels/lib/include/ioj/settings/entity_overlay.h
 native/levels/lib/include/ioj/settings/entity_overlay_reader.h
 native/levels/lib/include/ioj/settings/entity_overlay_writer.h
+native/levels/lib/include/ioj/settings/game_anti_aliasing_method.h
+native/levels/lib/include/ioj/settings/game_quality_level.h
 native/levels/lib/include/ioj/settings/game_setting.h
 native/levels/lib/include/ioj/settings/game_setting_availability_provider.h
 native/levels/lib/include/ioj/settings/game_setting_backend.h
@@ -60,6 +64,9 @@ native/levels/lib/include/ioj/settings/game_setting_value_type.h
 native/levels/lib/include/ioj/settings/game_settings.h
 native/levels/lib/include/ioj/settings/game_settings_access.h
 native/levels/lib/include/ioj/settings/game_settings_state.h
+native/levels/lib/include/ioj/settings/game_settings_state_reader.h
+native/levels/lib/include/ioj/settings/game_settings_state_writer.h
+native/levels/lib/include/ioj/settings/game_window_mode.h
 native/levels/lib/include/ioj/settings/geometry_shapes.h
 native/levels/lib/include/ioj/settings/geometry_shapes_reader.h
 native/levels/lib/include/ioj/settings/geometry_shapes_writer.h
@@ -75,6 +82,9 @@ native/levels/lib/include/ioj/settings/presentation_writer.h
 native/levels/lib/include/ioj/settings/radar.h
 native/levels/lib/include/ioj/settings/radar_reader.h
 native/levels/lib/include/ioj/settings/radar_writer.h
+native/levels/lib/include/ioj/settings/screen_resolution.h
+native/levels/lib/include/ioj/settings/screen_resolution_reader.h
+native/levels/lib/include/ioj/settings/screen_resolution_writer.h
 native/levels/lib/include/ioj/settings/setting_apply_mode.h
 native/levels/lib/include/ioj/settings/setting_control_kind.h
 native/levels/lib/include/ioj/settings/settings_values.h

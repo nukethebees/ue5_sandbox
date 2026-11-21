@@ -4,8 +4,8 @@
 #include <ioj/settings/game_settings_state.h>
 
 namespace ioj::input {
-enum class Response { TurnPointerDelta, GamepadTurn, GamepadMove };
-enum class Axis { None, Pitch, Yaw, Roll, VerticalTranslation };
+enum class Response { TurnPointerDelta, GamepadTurn };
+enum class Axis { None, Pitch, Yaw };
 
 auto clamp_sensitivity(float value) noexcept -> float;
 auto clamp_dead_zone(float value) noexcept -> float;

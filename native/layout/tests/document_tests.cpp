@@ -615,10 +615,12 @@ TEST(DocumentEdit, WholeSourceReplacementSupportsAllModuleKindsAndRejectsInvalid
         (module game :header "Game.h"
             (record ShipState :layout packed (member health @LayoutEditValue :bits 12)
     (projections (cpp :storage std::uint16_t))) (integer-scalar LayoutEditValue :bit-width 1))
+        (module preferences :header "Preferences.h"
+            (record SettingsState (member vsync bool) (projections (cpp))))
         (settings-module settings :header "Settings.h" :source "Settings.cpp"
-            :api-name SettingsAccess :state-name SettingsState
+            :api-name SettingsAccess :storage SettingsState
             (category video "Video")
-            (setting vsync "VSync" :category video :value-type bool :backend engine :apply deferred
+            (setting vsync "VSync" :category video :backend engine :apply deferred
                 (control toggle)))
         (umbrella-module all :header "All.h" :headers ("Game.h" "Settings.h")))");
     ASSERT_TRUE(doc.commit(tx)) << diagnostic_messages(editor);

@@ -110,10 +110,12 @@ char const* text = "; not a LispB comment";
                           }},
         SerializationCase{"SettingsAndUmbrella",
                           R"(
+(module preferences :header "Preferences.h"
+    (record SettingsState (member vsync bool) (projections (cpp))))
 (settings-module settings :header "Settings.h" :source "Settings.cpp"
-    :api-name SettingsAccess :state-name SettingsState
+    :api-name SettingsAccess :storage SettingsState
     (category video "Video")
-    (setting vsync "VSync" :category video :value-type bool :backend engine :apply deferred
+    (setting vsync "VSync" :category video :backend engine :apply deferred
         (control toggle)))
 (umbrella-module all :header "All.h" :headers ("Settings.h"))
 )",

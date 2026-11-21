@@ -31,23 +31,10 @@ auto graphics_preset(GameSettingsState const& state) -> GameGraphicsPreset {
     return static_cast<GameGraphicsPreset>(static_cast<std::uint8_t>(quality) + 1);
 }
 
-auto game_anti_aliasing_method(std::int32_t const stored_value) -> GameAntiAliasingMethod {
-    return static_cast<GameAntiAliasingMethod>(
-        std::clamp(stored_value,
-                   static_cast<std::int32_t>(GameAntiAliasingMethod::Off),
-                   static_cast<std::int32_t>(GameAntiAliasingMethod::SMAA)));
-}
-
 auto game_audio_volume(float const value) -> float {
     auto const normalized{
         normalize_game_setting_value(game_setting_descriptor(GameSetting::MasterVolume), value)};
     return normalized ? std::get<float>(*normalized) : 1.f;
-}
-
-auto game_bees_count(std::int32_t const value) -> std::int32_t {
-    auto const normalized{
-        normalize_game_setting_value(game_setting_descriptor(GameSetting::Bees), value)};
-    return std::get<std::int32_t>(*normalized);
 }
 
 auto game_setting_is_available(GameSettingAvailabilityProvider const provider,
@@ -72,11 +59,6 @@ auto normalize_game_setting_value(GameSettingDescriptor const& descriptor,
         return std::clamp(std::get<float>(value),
                           static_cast<float>(descriptor.minimum),
                           static_cast<float>(descriptor.maximum));
-    }
-    if (descriptor.control_kind == SettingControlKind::IntegerRange) {
-        return std::clamp(std::get<std::int32_t>(value),
-                          static_cast<std::int32_t>(descriptor.minimum),
-                          static_cast<std::int32_t>(descriptor.maximum));
     }
     if (descriptor.control_kind == SettingControlKind::Choice && restrict_choices &&
         std::ranges::find(choices, value) == choices.end()) {

@@ -22,6 +22,7 @@ struct SettingsModuleSchemas {
     Column<ModuleSettingsId> settings;
     Column<StringId> api_name;
     Column<StringId> state_name;
+    Column<ModuleSettingsId> storage_module;
     Column<StringId> export_specifier;
     Column<SchemaRange<SettingCategoryId>> categories;
     Column<SchemaRange<SettingId>> settings_list;

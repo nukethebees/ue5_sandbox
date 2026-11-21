@@ -8,8 +8,7 @@
 namespace ioj {
 enum class GameSettingBackend : std::uint8_t {
     Audio,
-    Custom,
-    EnhancedInputUserSettings,
     GameUserSettings,
+    Input,
 };
 } // namespace ioj

@@ -119,7 +119,6 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     significand_bits,
     source,
     spelling,
-    state_name,
     static_,
     step,
     storage,
@@ -137,7 +136,6 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     validation,
     validation_dependencies,
     value,
-    value_type,
     pack,
     groups,
     contiguous_groups,
@@ -174,19 +172,19 @@ inline constexpr auto enum_strings<lispb::codegen::SchemaProperty, Serialized>{P
     "provider\000pass-by\000positive\000prelude\000reflection\000required\000requires\000reserved-"
     "codes\000rounding\000s7-constructor\000s7-constructors\000s7-exclude\000s7-name\000s7-"
     "positional\000s7-reader-includes\000s7-tag\000sentinel\000serialized-name\000sign-"
-    "bits\000signed\000significand-bits\000source\000spelling\000state-"
-    "name\000static\000step\000storage\000suffix\000tag\000target-name\000target-storage\000target-"
-    "access\000template-parameters\000tooltip\000total-bits\000trailing-return-"
-    "type\000unit\000using-declarations\000validation\000validation-dependencies\000value\000value-"
-    "type\000pack\000groups\000contiguous-groups\000ordering",
-    std::array<std::uint16_t, 128>{
-        0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,  132,
-        141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  261,  269,  290,  312,  325,
-        332,  345,  354,  365,  385,  408,  426,  442,  456,  473,  489,  505,  512,  525,  530,
-        537,  553,  565,  573,  592,  611,  630,  647,  654,  669,  677,  694,  702,  709,  723,
-        735,  742,  756,  761,  768,  780,  796,  807,  811,  819,  833,  837,  845,  855,  866,
-        888,  895,  905,  914,  923,  935,  943,  960,  968,  977,  985,  996,  1005, 1014, 1029,
-        1038, 1053, 1069, 1080, 1088, 1102, 1121, 1128, 1137, 1153, 1163, 1170, 1187, 1194, 1203,
-        1214, 1221, 1226, 1234, 1241, 1245, 1257, 1272, 1286, 1306, 1314, 1325, 1346, 1351, 1370,
-        1381, 1405, 1411, 1422, 1427, 1434, 1452, 1461}}};
+    "bits\000signed\000significand-"
+    "bits\000source\000spelling\000static\000step\000storage\000suffix\000tag\000target-"
+    "name\000target-storage\000target-access\000template-parameters\000tooltip\000total-"
+    "bits\000trailing-return-type\000unit\000using-declarations\000validation\000validation-"
+    "dependencies\000value\000pack\000groups\000contiguous-groups\000ordering",
+    std::array<std::uint16_t, 126>{
+        0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,
+        132,  141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  261,  269,  290,
+        312,  325,  332,  345,  354,  365,  385,  408,  426,  442,  456,  473,  489,  505,
+        512,  525,  530,  537,  553,  565,  573,  592,  611,  630,  647,  654,  669,  677,
+        694,  702,  709,  723,  735,  742,  756,  761,  768,  780,  796,  807,  811,  819,
+        833,  837,  845,  855,  866,  888,  895,  905,  914,  923,  935,  943,  960,  968,
+        977,  985,  996,  1005, 1014, 1029, 1038, 1053, 1069, 1080, 1088, 1102, 1121, 1128,
+        1137, 1153, 1163, 1170, 1187, 1194, 1203, 1210, 1215, 1223, 1230, 1234, 1246, 1261,
+        1275, 1295, 1303, 1314, 1335, 1340, 1359, 1370, 1394, 1400, 1405, 1412, 1430, 1439}}};
 } // namespace ioj

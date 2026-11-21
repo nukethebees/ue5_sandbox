@@ -23,10 +23,6 @@ auto inverted(Response const response, Axis const axis, GameSettingsState const&
             return settings.invert_gamepad_pitch;
         case Axis::Yaw:
             return settings.invert_gamepad_yaw;
-        case Axis::Roll:
-            return settings.invert_gamepad_roll;
-        case Axis::VerticalTranslation:
-            return settings.invert_gamepad_vertical_translation;
         case Axis::None:
             return false;
     }
@@ -39,15 +35,8 @@ auto scale(Response const response, GameSettingsState const& settings) noexcept 
             return clamp_sensitivity(settings.mouse_turn_sensitivity) / 400.0;
         case Response::GamepadTurn:
             return clamp_sensitivity(settings.gamepad_turn_sensitivity);
-        case Response::GamepadMove:
-            return 1.0;
     }
     return 1.0;
-}
-
-auto dead_zone(Response const response, GameSettingsState const& settings) noexcept -> double {
-    return clamp_dead_zone(response == Response::GamepadTurn ? settings.gamepad_turn_dead_zone
-                                                             : settings.gamepad_move_dead_zone);
 }
 
 template <std::size_t N>
@@ -56,7 +45,7 @@ auto apply_vector_response(Vector<double, N> value,
                            Axis const axis,
                            GameSettingsState const& settings) noexcept -> Vector<double, N> {
     if (response != Response::TurnPointerDelta) {
-        auto const threshold{dead_zone(response, settings)};
+        auto const threshold{clamp_dead_zone(settings.gamepad_turn_dead_zone)};
         auto const magnitude{size(value)};
         if (magnitude <= threshold) {
             return {};
@@ -84,7 +73,7 @@ auto apply_response(float value,
                     Axis const axis,
                     GameSettingsState const& settings) noexcept -> float {
     if (response != Response::TurnPointerDelta) {
-        auto const threshold{dead_zone(response, settings)};
+        auto const threshold{clamp_dead_zone(settings.gamepad_turn_dead_zone)};
         auto const magnitude{std::abs(value)};
         value = magnitude <= threshold ? 0.0f
                                        : static_cast<float>(std::copysign(

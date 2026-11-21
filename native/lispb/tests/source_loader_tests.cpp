@@ -2126,14 +2126,14 @@ TEST_F(SourceLoaderTest, LoadsSettingsControls) {
     auto& settings{store.settings};
     auto& settings_modules{store.settings_modules};
     files.write_root(R"(
+(module data :header "Preferences.h" (record Preferences (member resolution_scale float) (projections (cpp))))
 (settings-module settings
   :header "Settings.h"
   :api-name TSettingsAccess
-  :state-name FSettingsState
+  :storage Preferences
   (category video "Video")
-  (setting resolution-scale "Resolution Scale"
+  (setting resolution_scale "Resolution Scale"
     :category video
-    :value-type float
     :backend engine
     :apply deferred
     :device keyboard-mouse
@@ -2141,7 +2141,7 @@ TEST_F(SourceLoaderTest, LoadsSettingsControls) {
 )");
 
     auto manifest{files.load()};
-    auto const& module{manifest.modules.front()};
+    auto const module{manifest.modules.back()};
     auto const module_row{settings_modules.index(module)};
     ASSERT_EQ(settings_modules.settings_list[module_row].size(), 1);
     EXPECT_EQ(settings.apply_mode[store.items(settings_modules.settings_list[module_row])[0]],
@@ -2158,24 +2158,44 @@ TEST_F(SourceLoaderTest, LoadsSettingsControls) {
         0.5);
 }
 
+TEST_F(SourceLoaderTest, SettingsCanUseAPreviouslyDeclaredRecord) {
+    files.write_root(R"(
+(module preferences :header "Preferences.h" :namespace game
+  (record Preferences (member vsync bool) (projections (cpp))))
+(settings-module settings :header "Settings.h" :namespace game
+  :api-name SettingsAccess :storage Preferences
+  (category video "Video")
+  (setting vsync "VSync" :category video :backend engine :apply deferred (control toggle)))
+)");
+    auto const manifest{files.load()};
+    auto const module{manifest.modules.back()};
+    auto const& store{files.store()};
+    EXPECT_EQ(store.settings_modules.storage_module[module],
+              store.normal_modules.settings[manifest.modules.front()]);
+    auto const setting{store.items(store.settings_modules.settings_list[module])[0]};
+    auto const record{store.items(store.normal_modules.declarations[manifest.modules.front()])[0]};
+    auto const member{store.items(store.records.members[record])[0]};
+    EXPECT_EQ(store.settings.value_type[setting], store.child_occurrences.type[member]);
+}
+
 TEST_F(SourceLoaderTest, SettingsDeviceDefaultsToShared) {
     auto& store{files.store()};
     files.write_root(R"(
+(module data :header "Preferences.h" (record Preferences (member vsync bool) (projections (cpp))))
 (settings-module settings
   :header "Settings.h"
   :api-name TSettingsAccess
-  :state-name FSettingsState
+  :storage Preferences
   (category video "Video")
   (setting vsync "VSync"
     :category video
-    :value-type bool
     :backend engine
     :apply deferred
     (control toggle)))
 )");
 
     auto manifest{files.load()};
-    auto const& module{manifest.modules.front()};
+    auto const module{manifest.modules.back()};
     EXPECT_EQ(store.settings.device[store.items(store.settings_modules.settings_list[module])[0]],
               SettingDevice::shared);
 }

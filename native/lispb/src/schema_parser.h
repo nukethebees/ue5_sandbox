@@ -101,7 +101,14 @@ class SchemaParser {
     auto parse_facade(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_setting_device(sexpr::FormId const form) -> SettingDevice;
     auto parse_control(Declarations& declarations, sexpr::FormId const form) -> SettingControlId;
-    auto parse_setting(Declarations& declarations, sexpr::FormId const form) -> SettingId;
+    auto resolve_settings_storage(Declarations const& declarations,
+                                  sexpr::FormId form,
+                                  StringId storage,
+                                  std::optional<StringId> scope)
+        -> std::pair<DeclarationHandle, ModuleSettingsId>;
+    auto parse_setting(Declarations& declarations,
+                       sexpr::FormId const form,
+                       DeclarationHandle storage) -> SettingId;
     auto parse_record_member(Declarations& declarations, sexpr::FormId const form)
         -> ChildOccurrenceId;
     auto parse_record(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;

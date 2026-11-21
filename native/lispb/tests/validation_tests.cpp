@@ -2783,60 +2783,24 @@ TEST(Validation, RejectsUnsupportedUmbrellaSourceAndNamespaceSettings) {
 TEST(Validation, RejectsInvalidSettingsDefinitions) {
     CompilerTestContext ctx;
     auto& declarations{ctx.storage.declarations};
-    auto& settings_modules{declarations.settings_modules};
-    auto& module_settings_store{declarations.module_settings_store};
-    auto& setting_categories{declarations.setting_categories};
+    auto const manifest{parse_test_manifest(ctx, R"(
+(module preferences :header "Preferences.h"
+  (record Preferences (member vsync bool) (projections (cpp))))
+(settings-module settings :header "Settings.h" :source "Settings.cpp"
+  :api-name TSettingsAccess :storage Preferences
+  (category video "Video")
+  (setting vsync "VSync" :category missing :backend engine :apply deferred (control toggle)))
+)")};
+    auto const module{manifest.modules.back()};
+    auto const setting{
+        declarations.items(declarations.settings_modules.settings_list[module]).front()};
     auto& settings_schemas{declarations.settings};
-    auto& setting_controls{declarations.setting_controls};
-    auto& strings{ctx.storage.strings};
-    auto module = append_test_row(settings_modules, [&](auto const new_settings_modules) {
-        settings_modules.settings[new_settings_modules] =
-            append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
-                module_settings_store.name[new_module_settings_store] = strings.intern("settings");
-                module_settings_store.header[new_module_settings_store] =
-                    strings.intern("Settings.h");
-                module_settings_store.source[new_module_settings_store] =
-                    strings.intern("Settings.cpp");
-            });
-        settings_modules.api_name[new_settings_modules] = strings.intern("TSettingsAccess");
-        settings_modules.state_name[new_settings_modules] = strings.intern("FSettingsState");
-        settings_modules.categories[new_settings_modules] =
-            declarations.range<lispb::codegen::SettingCategoryId>(
-                {append_test_row(setting_categories, [&](auto const new_setting_categories) {
-                    setting_categories.name[new_setting_categories] = strings.intern("video");
-                    setting_categories.label[new_setting_categories] = strings.intern("Video");
-                })});
-        settings_modules.settings_list[new_settings_modules] =
-            declarations.range<lispb::codegen::SettingId>(
-                {append_test_row(settings_schemas, [&](auto const new_settings) {
-                    settings_schemas.name[new_settings] = strings.intern("vsync");
-                    settings_schemas.label[new_settings] = strings.intern("VSync");
-                    settings_schemas.category[new_settings] = strings.intern("missing");
-                    settings_schemas.value_type[new_settings] = make_test_type_ref(ctx, "bool");
-                    settings_schemas.backend[new_settings] = strings.intern("engine");
-                    settings_schemas.apply_mode[new_settings] = SettingApplyMode::deferred;
-                    settings_schemas.control[new_settings] =
-                        append_test_row(setting_controls, [&](auto const new_setting_controls) {
-                            setting_controls.kind[new_setting_controls] =
-                                SettingControlKind::toggle;
-                        });
-                })});
-    });
+    auto& kind{declarations.setting_controls.kind[settings_schemas.control[setting]]};
     expect_invalid_module(ctx, module);
-    settings_schemas.category[settings_schemas.index(first_item(
-        declarations, settings_modules.settings_list[module]))] = strings.intern("video");
-
-    {
-        setting_controls.kind[settings_schemas.control[first_item(
-            declarations, settings_modules.settings_list[module])]] = SettingControlKind::choice;
-    }
-
+    settings_schemas.category[setting] = ctx.storage.strings.intern("video");
+    kind = SettingControlKind::choice;
     expect_invalid_module(ctx, module);
-    {
-        setting_controls.kind[settings_schemas.control[first_item(
-            declarations, settings_modules.settings_list[module])]] = SettingControlKind::custom;
-    }
-
+    kind = SettingControlKind::custom;
     expect_invalid_module(ctx, module);
 }
 

@@ -12,8 +12,6 @@
 #include "ioj/settings/game_window_mode.h"
 #include "ioj/settings/screen_resolution.h"
 
-#include <cstdint>
-
 namespace ioj {
 template <typename Derived>
 class GameSettingsAccess {
@@ -170,12 +168,6 @@ class GameSettingsAccess {
         derived().set_setting(GameSetting::UIVolume, GameSettingValue{value});
     }
 
-    auto bees() const -> std::int32_t { return derived().settings_state().bees; }
-
-    void set_bees(std::int32_t const value) {
-        derived().set_setting(GameSetting::Bees, GameSettingValue{value});
-    }
-
     auto mouse_turn_sensitivity() const -> float {
         return derived().settings_state().mouse_turn_sensitivity;
     }
@@ -198,14 +190,6 @@ class GameSettingsAccess {
 
     void set_gamepad_turn_dead_zone(float const value) {
         derived().set_setting(GameSetting::GamepadTurnDeadZone, GameSettingValue{value});
-    }
-
-    auto gamepad_move_dead_zone() const -> float {
-        return derived().settings_state().gamepad_move_dead_zone;
-    }
-
-    void set_gamepad_move_dead_zone(float const value) {
-        derived().set_setting(GameSetting::GamepadMoveDeadZone, GameSettingValue{value});
     }
 
     auto invert_mouse_pitch() const -> bool {
@@ -236,23 +220,6 @@ class GameSettingsAccess {
 
     void set_invert_gamepad_yaw(bool const value) {
         derived().set_setting(GameSetting::InvertGamepadYaw, GameSettingValue{value});
-    }
-
-    auto invert_gamepad_roll() const -> bool {
-        return derived().settings_state().invert_gamepad_roll;
-    }
-
-    void set_invert_gamepad_roll(bool const value) {
-        derived().set_setting(GameSetting::InvertGamepadRoll, GameSettingValue{value});
-    }
-
-    auto invert_gamepad_vertical_translation() const -> bool {
-        return derived().settings_state().invert_gamepad_vertical_translation;
-    }
-
-    void set_invert_gamepad_vertical_translation(bool const value) {
-        derived().set_setting(GameSetting::InvertGamepadVerticalTranslation,
-                              GameSettingValue{value});
     }
 
   private:

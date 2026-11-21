@@ -1,16 +1,13 @@
 #pragma once
 
 #include <ioj/settings/game_settings_edit_state.h>
-#include <ioj/sim/player/flight_model_config.h>
 #include <ioj/sim/player/game_settings_apply_result.h>
 #include <ioj/sim/player/game_settings_session_phase.h>
 
 namespace ioj {
 class GameSettingsSession {
   public:
-    void initialise(GameSettingsState applied,
-                    GameSettingsState defaults,
-                    sim::player::FlightModelLoadout loadout);
+    void initialise(GameSettingsState applied, GameSettingsState defaults);
     auto begin_edit(GameSettingsState applied, GameSettingsState defaults) -> bool;
     auto cancel() -> bool;
     auto apply(double now, bool external_changes = false) -> GameSettingsApplyResult;
@@ -32,18 +29,9 @@ class GameSettingsSession {
     auto is_dirty() const -> bool;
     auto is_dirty(GameSettingCategory category) const -> bool;
     auto is_at_defaults(GameSettingCategory category) const -> bool;
-    auto flight_model_loadout() const -> sim::player::FlightModelLoadout const& {
-        return pending_loadout_;
-    }
-    auto flight_model_profile(sim::player::FlightModelSlot slot) const
-        -> sim::player::FlightModelProfile const&;
-    auto set_flight_model_profile(sim::player::FlightModelSlot slot,
-                                  sim::player::FlightModelProfile profile) -> bool;
 
   private:
     GameSettingsEditState values_;
-    sim::player::FlightModelLoadout applied_loadout_{};
-    sim::player::FlightModelLoadout pending_loadout_{};
     double confirmation_deadline_{};
     GameSettingsSessionPhase phase_{GameSettingsSessionPhase::Inactive};
 };

@@ -29,16 +29,12 @@ enum class GameSetting : std::uint8_t {
     MusicVolume,
     SfxVolume,
     UIVolume,
-    Bees,
     MouseTurnSensitivity,
     GamepadTurnSensitivity,
     GamepadTurnDeadZone,
-    GamepadMoveDeadZone,
     InvertMousePitch,
     InvertMouseYaw,
     InvertGamepadPitch,
     InvertGamepadYaw,
-    InvertGamepadRoll,
-    InvertGamepadVerticalTranslation,
 };
 } // namespace ioj

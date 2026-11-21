@@ -9,7 +9,6 @@
 #include "ioj/settings/game_window_mode.h"
 #include "ioj/settings/screen_resolution.h"
 
-#include <cstdint>
 #include <variant>
 
 namespace ioj {
@@ -19,6 +18,5 @@ using GameSettingValue = std::variant<ScreenResolution,
                                       float,
                                       GameGraphicsPreset,
                                       GameQualityLevel,
-                                      GameAntiAliasingMethod,
-                                      std::int32_t>;
+                                      GameAntiAliasingMethod>;
 } // namespace ioj

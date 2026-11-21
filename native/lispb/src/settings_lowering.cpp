@@ -85,10 +85,8 @@ class SettingsLowering : public CppIRBuilder {
                 (include_directory / (snake_case_type_name(type) + ".h")).generic_string()};
             header_nodes.add(include(store_text(include_value), IncludeStyle::quoted), 1);
         }
-        auto const state_include{
-            (include_directory /
-             (snake_case_type_name(ctx.text(modules.state_name[module_row])) + ".h"))
-                .generic_string()};
+        auto const storage_module{modules.storage_module[module_row]};
+        auto const state_include{source_include(ctx, storage_module)};
         header_nodes.add(include(store_text(state_include), IncludeStyle::quoted), 1)
             .add(include_dependencies(), 2);
         auto const prelude{settings_store.prelude_lines[settings_row]};
@@ -419,8 +417,12 @@ class SettingsLowering : public CppIRBuilder {
             auto header{node_list()};
             header.add(include_dependencies(), 1);
             for (auto const type : type_headers) {
+                auto const storage{modules.storage_module[module_row]};
                 auto const include_value{
-                    (include_directory / (snake_case_type_name(type) + ".h")).generic_string()};
+                    type == ctx.text(modules.state_name[module_row])
+                        ? source_include(ctx, storage)
+                        : (include_directory / (snake_case_type_name(type) + ".h"))
+                              .generic_string()};
                 header.add(include(store_text(include_value), IncludeStyle::quoted), 1);
             }
             header.new_lines(2);
@@ -515,27 +517,7 @@ class SettingsLowering : public CppIRBuilder {
              "GameSettingOptionProvider",
              "GameSettingAvailabilityProvider"});
 
-        auto state_members{node_list()};
-        for (std::size_t index{}; index < setting_count; ++index) {
-            state_members.add(
-                instance_member(setting_types[index],
-                                setting_schemas.name[setting_schemas.index(setting_list[index])],
-                                init_list({})),
-                1);
-        }
         auto const state_name{modules.state_name[module_row]};
-        FunctionDefinition const equality{
-            .name = this->name("operator=="),
-            .return_type = std_types().bool_,
-            .return_syntax = ReturnSyntax::trailing,
-            .parameters = {parameter(intern_type(ctx.text(state_name) + " const&"))},
-            .implementation = {.kind = FunctionImplementationKind::defaulted},
-            .receiver = FunctionReceiver::const_};
-        state_members.new_lines(2).add(header_function(add_function(equality)), 1);
-        auto const state{add_record({.name = this->name(state_name),
-                                     .children = state_members.build(),
-                                     .export_specifier = modules.export_specifier[module_row]})};
-        emit_header(ctx.text(state_name), state, {});
         emit_header("GameSettingValue",
                     using_declaration(store_text("GameSettingValue"),
                                       template_type(std_types().variant, value_types)),

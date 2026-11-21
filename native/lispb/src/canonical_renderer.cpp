@@ -663,7 +663,7 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
     auto const& modules{store_.settings_modules};
     auto const index{modules.index(module)};
     result.field("api-name", ir_.atom(modules.api_name[index]))
-        .field("state-name", ir_.atom(modules.state_name[index]));
+        .field("storage", ir_.atom(modules.state_name[index]));
     add_export_specifier(result, modules.export_specifier[index]);
     for (auto const category : items(modules.categories[index])) {
         result.add(
@@ -683,9 +683,8 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
                               : "controller"};
         auto child{
             ir_.form("setting", {ir_.atom(settings.name[row]), ir_.string(settings.label[row])})};
-        child.field("category", ir_.atom(settings.category[row]))
-            .field("value-type", build_type_ref(settings.value_type[row]))
-            .field("backend", ir_.atom(settings.backend[row]))
+        child.field("category", ir_.atom(settings.category[row]));
+        child.field("backend", ir_.atom(settings.backend[row]))
             .field("apply", ir_.atom(apply))
             .field("device", ir_.atom(device));
         child.optional_field("tooltip", settings.tooltip[row], string);

@@ -29,6 +29,7 @@ set_target_properties(native-level-authoring PROPERTIES OUTPUT_NAME SandboxNativ
 add_library(native-level-authoring-s7 STATIC)
 target_sources(native-level-authoring-s7
   PRIVATE
+    ../s7/src/game_configuration.cpp
     ../s7/src/level_definition_writer.cpp
     ../s7/src/script_reader.cpp
 )

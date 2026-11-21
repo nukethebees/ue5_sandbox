@@ -3,12 +3,14 @@
 #include <ioj/files.h>
 #include <ioj/levels/authoring/campaign_parser.h>
 #include <ioj/levels/authoring/definition_reader.h>
+#include <ioj/levels/authoring/game_configuration.h>
 #include <ioj/levels/authoring/level_catalog_category.h>
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/levels/authoring/level_inputs_reader.h>
 #include <ioj/levels/authoring/level_parser.h>
 #include <ioj/s7/interpreter.h>
 #include <ioj/s7/source_format.h>
+#include <ioj/settings/game_settings_edit_state.h>
 #include <ioj/settings/settings_values_writer.h>
 #include <ioj/testing/files.h>
 #include <ioj/testing/structural_diff.h>
@@ -97,6 +99,77 @@ static_assert(!std::is_convertible_v<std::string, LevelId>);
 static_assert(!std::is_default_constructible_v<LevelDefinition>);
 static_assert(std::is_same_v<decltype(std::declval<LevelDefinition&>().entities()),
                              std::vector<EntitySpawnDefinition> const&>);
+
+TEST(NativeSettings, PersonalPreferencesRoundTripEveryEditableScalar) {
+    TemporaryLevelDirectory directory;
+    std::filesystem::path const scripts{IOJ_LEVEL_SCRIPTS};
+    auto const path{directory.path() / "Settings/user-settings.scm"};
+    ScreenResolution const desktop{2560, 1440};
+    auto const config{read_user_settings(scripts, path, desktop)};
+    ASSERT_TRUE(config) << config.error();
+    ASSERT_EQ(config->applied, config->defaults);
+    EXPECT_EQ(config->defaults.resolution, desktop);
+    auto const app{read_application_settings(scripts)};
+    ASSERT_TRUE(app) << app.error();
+
+    auto changed{config->defaults};
+    for (auto const& descriptor : game_setting_descriptors()) {
+        if (descriptor.id == GameSetting::OverallQuality) {
+            continue;
+        }
+        SCOPED_TRACE(descriptor.name);
+        auto const original{game_setting_value(changed, descriptor.id)};
+        auto replacement{original};
+        if (auto* toggle{std::get_if<bool>(&replacement)}) {
+            *toggle = !*toggle;
+        } else if (descriptor.id == GameSetting::Resolution) {
+            replacement = ScreenResolution{1280, 720};
+        } else if (descriptor.control_kind == SettingControlKind::FloatRange) {
+            auto& number{std::get<float>(replacement)};
+            number = static_cast<float>(number == descriptor.minimum ? descriptor.maximum
+                                                                     : descriptor.minimum);
+        } else {
+            auto const choices{game_setting_choices(descriptor.options_provider)};
+            auto const alternative{std::ranges::find_if(
+                choices, [&](auto const& option) { return option.value != original; })};
+            ASSERT_NE(alternative, choices.end());
+            replacement = alternative->value;
+        }
+        ASSERT_NE(original, replacement);
+        ASSERT_TRUE(set_game_setting_value(changed, descriptor.id, replacement));
+    }
+    changed.overall_quality = graphics_preset(changed);
+    auto const saved{save_user_settings(path, changed, config->defaults)};
+    ASSERT_TRUE(saved) << saved.error();
+    auto const loaded{read_user_settings(scripts, path, desktop)};
+    ASSERT_TRUE(loaded) << loaded.error();
+    EXPECT_EQ(loaded->applied, changed);
+    ASSERT_TRUE(save_user_settings(path, config->defaults, config->defaults));
+    EXPECT_EQ(read_user_settings(scripts, path, desktop)->applied, config->defaults);
+}
+
+TEST(NativeSettings, HandEditedPreferencesSurviveUnrealSavedRemovalAndReportInvalidValues) {
+    TemporaryLevelDirectory directory;
+    auto const path{directory.path() / "Settings/user-settings.scm"};
+    auto const ini{directory.path() / "Saved/Config/GameUserSettings.ini"};
+    std::filesystem::create_directories(path.parent_path());
+    std::filesystem::create_directories(ini.parent_path());
+    ASSERT_TRUE(write_files(
+        {{path, module_source("preferences", "(user-settings :mouse-turn-sensitivity 1.25)")},
+         {ini, "[GameUserSettings]\\nMouseTurnSensitivity=0.5"}}));
+    auto read = [&] { return read_user_settings(IOJ_LEVEL_SCRIPTS, path, {1920, 1080}); };
+    auto loaded{read()};
+    ASSERT_TRUE(loaded) << loaded.error();
+    EXPECT_EQ(loaded->applied.mouse_turn_sensitivity, 1.25f);
+    std::filesystem::remove_all(directory.path() / "Saved");
+    ASSERT_EQ(read()->applied, loaded->applied);
+    ASSERT_TRUE(write_files(
+        {{path, module_source("preferences", "(user-settings :mouse-turn-sensitivity -1)")}}));
+    auto const invalid{read()};
+    ASSERT_FALSE(invalid);
+    EXPECT_NE(invalid.error().find("user-settings.scm"), std::string::npos);
+    EXPECT_NE(invalid.error().find("mouse-turn-sensitivity"), std::string::npos);
+}
 
 TEST(NativeSettings, PreservesExactIntegersAndRejectsOutOfRangeConversions) {
     OverrideReader reader;

@@ -977,11 +977,32 @@ auto SchemaParser::parse_control(Declarations& declarations, sexpr::FormId const
     return record_id;
 }
 
-auto SchemaParser::parse_setting(Declarations& declarations, sexpr::FormId const form)
-    -> SettingId {
+auto SchemaParser::resolve_settings_storage(Declarations const& declarations,
+                                            sexpr::FormId form,
+                                            StringId storage,
+                                            std::optional<StringId> scope)
+    -> std::pair<DeclarationHandle, ModuleSettingsId> {
+    auto const& modules{declarations.normal_modules};
+    auto const count{modules.settings.size()};
+    for (std::size_t i{}; i < count; ++i) {
+        auto const owner{modules.settings[i]};
+        if (declarations.module_settings_store.namespace_name[owner] != scope) {
+            continue;
+        }
+        for (auto id : declarations.items(modules.declarations[i])) {
+            if (id.kind() == DeclarationKind::record && declarations.records.name[id] == storage) {
+                return {id, owner};
+            }
+        }
+    }
+    parser_.fail(form, "Declare the settings storage record before the settings module");
+}
+
+auto SchemaParser::parse_setting(Declarations& declarations,
+                                 sexpr::FormId const form,
+                                 DeclarationHandle storage) -> SettingId {
     Fields const fields{parser_, form, "setting", 2};
-    fields.validate({P::tooltip, P::category, P::value_type, P::backend, P::apply, P::device},
-                    {"control"});
+    fields.validate({P::tooltip, P::category, P::backend, P::apply, P::device}, {"control"});
     if (fields.declarations().size() != 1) {
         parser_.fail(form, "setting requires exactly one control declaration");
     }
@@ -993,7 +1014,15 @@ auto SchemaParser::parse_setting(Declarations& declarations, sexpr::FormId const
     records.tooltip[record_index] = optional_text_id(fields, P::tooltip);
     records.category[record_index] =
         parser_.identifier(fields.required(P::category), "setting category");
-    records.value_type[record_index] = parse_type_ref(declarations, fields.required(P::value_type));
+    auto const members{declarations.items(declarations.records.members[storage])};
+    auto const& children{declarations.child_occurrences};
+    auto const member{std::ranges::find(members,
+                                        records.name[record_index],
+                                        [&](ChildOccurrenceId id) { return children.name[id]; })};
+    if (member == members.end()) {
+        parser_.fail(form, "Setting has no matching state record member");
+    }
+    records.value_type[record_index] = children.type[*member];
     records.backend[record_index] =
         parser_.identifier(fields.required(P::backend), "setting backend");
     records.apply_mode[record_index] = parse_keyword(parser_,
@@ -1584,9 +1613,13 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
                          P::include_order,
                          P::prelude,
                          P::api_name,
-                         P::state_name,
+                         P::storage,
                          P::export_specifier},
                         {"category", "setting"});
+        auto const storage{
+            parser_.identifier(fields.required(P::storage), "settings storage record")};
+        auto const [state, owner]{resolve_settings_storage(
+            declarations, form, storage, optional_identifier(fields, P::namespace_))};
         std::vector<SettingCategoryId> categories;
         std::vector<SettingId> settings;
         std::optional<DiagnosticId> first_error;
@@ -1607,7 +1640,7 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
                         categories.push_back(record_id);
                     }
                 } else {
-                    settings.push_back(parse_setting(declarations, declaration));
+                    settings.push_back(parse_setting(declarations, declaration, state));
                 }
             } catch (sexpr::SourceError const& error) {
                 if (!first_error) {
@@ -1626,8 +1659,8 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
         records.settings[record_index] = parse_module_settings(declarations, fields);
         records.api_name[record_index] =
             parser_.identifier(fields.required(P::api_name), "settings API name");
-        records.state_name[record_index] =
-            parser_.identifier(fields.required(P::state_name), "settings state name");
+        records.storage_module[record_index] = owner;
+        records.state_name[record_index] = storage;
         records.export_specifier[record_index] = parse_export_specifier(fields);
         records.categories[record_index] = declarations.range(categories);
         records.settings_list[record_index] = declarations.range(settings);

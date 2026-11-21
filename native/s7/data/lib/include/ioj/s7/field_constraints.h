@@ -81,6 +81,9 @@ auto minimum(Bound const bound) {
     return FieldConstraint{[bound]<typename U>(U const& number) {
                                static_assert(std::is_arithmetic_v<U> && !std::same_as<U, bool>,
                                              "minimum requires a number");
+                               if constexpr (std::floating_point<U> && std::floating_point<Bound>) {
+                                   return static_cast<U>(bound) <= number;
+                               }
                                return less_equal(bound, number);
                            },
                            "Value is below the minimum"};
@@ -90,6 +93,9 @@ auto maximum(Bound const bound) {
     return FieldConstraint{[bound]<typename U>(U const& number) {
                                static_assert(std::is_arithmetic_v<U> && !std::same_as<U, bool>,
                                              "maximum requires a number");
+                               if constexpr (std::floating_point<U> && std::floating_point<Bound>) {
+                                   return number <= static_cast<U>(bound);
+                               }
                                return less_equal(number, bound);
                            },
                            "Value is above the maximum"};

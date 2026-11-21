@@ -14,6 +14,5 @@ enum class GameSettingValueType : std::uint8_t {
     GameGraphicsPreset,
     GameQualityLevel,
     GameAntiAliasingMethod,
-    Int32,
 };
 } // namespace ioj

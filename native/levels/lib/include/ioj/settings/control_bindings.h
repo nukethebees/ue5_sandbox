@@ -48,9 +48,7 @@ inline auto control_binding_conflicts(std::span<ControlBindingSnapshot const> co
     auto const count{bindings.size()};
     for (std::size_t index{}; index < count; ++index) {
         auto const& binding{bindings[index]};
-        auto const same_scope{!target->scope || !binding.scope || target->scope == binding.scope};
-        if (same_scope && target->chord == binding.chord &&
-            binding.address.profile_id == address.profile_id &&
+        if (target->chord == binding.chord && binding.address.profile_id == address.profile_id &&
             binding.address.hardware_device_id == address.hardware_device_id &&
             binding.address != address && binding.current_key == key) {
             result.push_back(index);

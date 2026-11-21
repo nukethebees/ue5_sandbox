@@ -17,18 +17,31 @@ auto SettingsModuleSchemas::append() -> ModuleHandle {
     settings.push_back({});
     api_name.push_back({});
     state_name.push_back({});
+    storage_module.push_back({});
     export_specifier.push_back({});
     categories.push_back({});
     settings_list.push_back({});
     return ModuleHandle{(static_cast<std::uint32_t>(ModuleKind::settings) << 24) | (index + 1)};
 }
 auto SettingsModuleSchemas::clone(ModuleHandle id) -> ModuleHandle {
-    return detail::clone_schema_row(
-        *this, id, settings, api_name, state_name, export_specifier, categories, settings_list);
+    return detail::clone_schema_row(*this,
+                                    id,
+                                    settings,
+                                    api_name,
+                                    state_name,
+                                    storage_module,
+                                    export_specifier,
+                                    categories,
+                                    settings_list);
 }
 void SettingsModuleSchemas::clear() {
-    detail::clear_schema_columns(
-        settings, api_name, state_name, export_specifier, categories, settings_list);
+    detail::clear_schema_columns(settings,
+                                 api_name,
+                                 state_name,
+                                 storage_module,
+                                 export_specifier,
+                                 categories,
+                                 settings_list);
 }
 
 }
