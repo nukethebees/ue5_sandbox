@@ -101,84 +101,87 @@ class Reader {
         : bytes_{bytes}
         , material_{material} {}
 
-    auto read_u8() -> std::expected<std::uint8_t, std::string> {
+    auto read_u8() -> MaterialResult<std::uint8_t> {
         if (offset_ == bytes_.size()) {
-            return std::unexpected{"unexpected end of artifact"};
+            return MaterialResult<std::uint8_t>{std::unexpect, "unexpected end of artifact"};
         }
         return bytes_[offset_++];
     }
-    auto read_u32() -> std::expected<std::uint32_t, std::string> {
+    auto read_u32() -> MaterialResult<std::uint32_t> {
         std::uint32_t value{};
         for (unsigned shift{}; shift < 32; shift += 8) {
-            auto const byte{read_u8()};
+            auto byte{read_u8()};
             if (!byte) {
-                return std::unexpected{byte.error()};
+                return MaterialResult<std::uint32_t>{std::unexpect, std::move(byte.error())};
             }
             value |= static_cast<std::uint32_t>(*byte) << shift;
         }
         return value;
     }
-    auto read_u64() -> std::expected<std::uint64_t, std::string> {
+    auto read_u64() -> MaterialResult<std::uint64_t> {
         std::uint64_t value{};
         for (unsigned shift{}; shift < 64; shift += 8) {
-            auto const byte{read_u8()};
+            auto byte{read_u8()};
             if (!byte) {
-                return std::unexpected{byte.error()};
+                return MaterialResult<std::uint64_t>{std::unexpect, std::move(byte.error())};
             }
             value |= static_cast<std::uint64_t>(*byte) << shift;
         }
         return value;
     }
     auto read_size(std::size_t const maximum = std::numeric_limits<std::size_t>::max())
-        -> std::expected<std::size_t, std::string> {
-        auto const value{read_u64()};
+        -> MaterialResult<std::size_t> {
+        auto value{read_u64()};
         if (!value) {
-            return std::unexpected{value.error()};
+            return MaterialResult<std::size_t>{std::unexpect, std::move(value.error())};
         }
         if (*value > maximum || *value > std::numeric_limits<std::size_t>::max()) {
-            return std::unexpected{"artifact value exceeds its supported size"};
+            return MaterialResult<std::size_t>{std::unexpect,
+                                               "artifact value exceeds its supported size"};
         }
         return static_cast<std::size_t>(*value);
     }
-    auto read_double() -> std::expected<double, std::string> {
-        auto const value{read_u64()};
+    auto read_double() -> MaterialResult<double> {
+        auto value{read_u64()};
         if (!value) {
-            return std::unexpected{value.error()};
+            return MaterialResult<double>{std::unexpect, std::move(value.error())};
         }
         return std::bit_cast<double>(*value);
     }
-    auto read_string() -> std::expected<lispb::StringId, std::string> {
-        auto const size{read_size(maximum_string_size)};
+    auto read_string() -> MaterialResult<lispb::StringId> {
+        auto size{read_size(maximum_string_size)};
         if (!size) {
-            return std::unexpected{size.error()};
+            return MaterialResult<lispb::StringId>{std::unexpect, std::move(size.error())};
         }
         if (*size > bytes_.size() - offset_) {
-            return std::unexpected{"unexpected end of artifact string"};
+            return MaterialResult<lispb::StringId>{std::unexpect,
+                                                   "unexpected end of artifact string"};
         }
         auto const* const begin{reinterpret_cast<char const*>(bytes_.data() + offset_)};
         offset_ += *size;
         auto const value{std::string_view{begin, *size}};
         return material_.intern(value);
     }
-    auto read_span() -> std::expected<SourceSpan, std::string> {
+    auto read_span() -> MaterialResult<SourceSpan> {
         auto const line{read_size(std::numeric_limits<std::uint32_t>::max())};
         auto const column{read_size(std::numeric_limits<std::uint32_t>::max())};
         auto path{read_string()};
         auto expansion{read_string()};
         if (!line || !column || !path || !expansion) {
-            return std::unexpected{"malformed source span"};
+            return MaterialResult<SourceSpan>{std::unexpect, "malformed source span"};
         }
-        return SourceSpan{static_cast<std::uint32_t>(*line),
-                          static_cast<std::uint32_t>(*column),
-                          *path,
-                          *expansion};
+        return MaterialResult<SourceSpan>{std::in_place,
+                                          static_cast<std::uint32_t>(*line),
+                                          static_cast<std::uint32_t>(*column),
+                                          *path,
+                                          *expansion};
     }
-    auto read_handle() -> std::expected<NodeHandle, std::string> {
-        auto const index{read_size(invalid_node_index)};
+    auto read_handle() -> MaterialResult<NodeHandle> {
+        auto index{read_size(invalid_node_index)};
         if (!index) {
-            return std::unexpected{index.error()};
+            return MaterialResult<NodeHandle>{std::unexpect, std::move(index.error())};
         }
-        return NodeHandle{static_cast<std::uint32_t>(*index)};
+        return MaterialResult<NodeHandle>{std::in_place, static_cast<std::uint32_t>(*index)};
     }
     auto remaining() const -> std::size_t { return bytes_.size() - offset_; }
   private:
@@ -244,50 +247,52 @@ void write_node(Writer& writer, Nodes const& nodes, NodeHandle node) {
         (kind == NodeKind::shader_call ? nodes.shader_function(node) : lispb::StringId{}));
 }
 
-auto read_value_type(Reader& reader) -> std::expected<ValueType, std::string> {
+auto read_value_type(Reader& reader) -> MaterialResult<ValueType> {
     auto const value{reader.read_u8()};
     if (!value || *value == static_cast<std::uint8_t>(ValueType::invalid) ||
         *value > static_cast<std::uint8_t>(ValueType::texture)) {
-        return std::unexpected{"invalid material value type"};
+        return MaterialResult<ValueType>{std::unexpect, "invalid material value type"};
     }
     return static_cast<ValueType>(*value);
 }
 
-auto read_texture_sampler_type(Reader& reader) -> std::expected<TextureSamplerType, std::string> {
+auto read_texture_sampler_type(Reader& reader) -> MaterialResult<TextureSamplerType> {
     auto const value{reader.read_u8()};
     if (!value || *value > static_cast<std::uint8_t>(TextureSamplerType::linear_grayscale)) {
-        return std::unexpected{"invalid texture sampler type"};
+        return MaterialResult<TextureSamplerType>{std::unexpect, "invalid texture sampler type"};
     }
     return static_cast<TextureSamplerType>(*value);
 }
 
-auto read_node(Reader& reader, Nodes& nodes) -> std::expected<void, std::string> {
+auto read_node(Reader& reader, Nodes& nodes) -> MaterialResult<void> {
+    using Result = MaterialResult<void>;
+
     auto const kind{reader.read_u8()};
     auto const type{read_value_type(reader)};
     auto const input_count{reader.read_size(maximum_collection_size)};
     if (!kind || *kind > static_cast<std::uint8_t>(NodeKind::vertex_color) || !type ||
         !input_count) {
-        return std::unexpected{"invalid material node header"};
+        return Result{std::unexpect, "invalid material node header"};
     }
 
     std::vector<NodeHandle> inputs;
     inputs.reserve(*input_count);
     for (std::size_t index{}; index < *input_count; ++index) {
-        auto const input{reader.read_handle()};
+        auto input{reader.read_handle()};
         if (!input) {
-            return std::unexpected{input.error()};
+            return Result{std::unexpect, std::move(input.error())};
         }
         inputs.push_back(*input);
     }
     auto span{reader.read_span()};
     if (!span) {
-        return std::unexpected{span.error()};
+        return Result{std::unexpect, std::move(span.error())};
     }
     std::array<double, 4> values{};
     for (double& value : values) {
-        auto const stored{reader.read_double()};
+        auto stored{reader.read_double()};
         if (!stored) {
-            return std::unexpected{stored.error()};
+            return Result{std::unexpect, std::move(stored.error())};
         }
         value = *stored;
     }
@@ -301,7 +306,7 @@ auto read_node(Reader& reader, Nodes& nodes) -> std::expected<void, std::string>
     auto const custom_input_count{reader.read_size(maximum_collection_size)};
     if (!components || !parameter || !coordinate || !instance_data || !texture_sampler ||
         !description || !code || !custom_input_count) {
-        return std::unexpected{"malformed material node payload"};
+        return Result{std::unexpect, "malformed material node payload"};
     }
     std::vector<CustomInputId> custom_inputs;
     custom_inputs.reserve(*custom_input_count);
@@ -311,7 +316,7 @@ auto read_node(Reader& reader, Nodes& nodes) -> std::expected<void, std::string>
         auto const input_node{reader.read_handle()};
         if (!name || !input_type || !input_node || index >= inputs.size() ||
             *input_node != inputs[index]) {
-            return std::unexpected{"malformed custom input"};
+            return Result{std::unexpect, "malformed custom input"};
         }
         custom_inputs.push_back(nodes.input_declarations.append(*name, *input_type));
     }
@@ -327,7 +332,7 @@ auto read_node(Reader& reader, Nodes& nodes) -> std::expected<void, std::string>
         *source_space > static_cast<std::uint8_t>(PositionSpace::local) ||
         *destination_space > static_cast<std::uint8_t>(PositionSpace::local) ||
         *scene_texture > static_cast<std::uint8_t>(SceneTexture::scene_depth)) {
-        return std::unexpected{"malformed extended material node payload"};
+        return Result{std::unexpect, "malformed extended material node payload"};
     }
     // Consume the fixed wire payload, then retain only the active kind's columns.
     switch (static_cast<NodeKind>(*kind)) {
@@ -387,12 +392,12 @@ void write_named_node(Writer& writer, NamedNodes const& nodes, NamedNodeId named
     writer.write_span(nodes.span[named.value]);
 }
 
-auto read_named_node(Reader& reader, NamedNodes& nodes) -> std::expected<void, std::string> {
+auto read_named_node(Reader& reader, NamedNodes& nodes) -> MaterialResult<void> {
     auto name{reader.read_string()};
     auto const node{reader.read_handle()};
     auto span{reader.read_span()};
     if (!name || !node || !span) {
-        return std::unexpected{"malformed named node"};
+        return MaterialResult<void>{std::unexpect, "malformed named node"};
     }
     nodes.append(*name, *node, *span);
     return {};
@@ -402,13 +407,14 @@ auto read_named_node(Reader& reader, NamedNodes& nodes) -> std::expected<void, s
 
 auto serialize(MaterialIR const& material,
                std::string_view const source_path,
-               std::string_view const source_hash)
-    -> std::expected<std::vector<std::uint8_t>, std::string> {
+               std::string_view const source_hash) -> MaterialResult<std::vector<std::uint8_t>> {
     if (source_path.empty()) {
-        return std::unexpected{"compiled material source path is empty"};
+        return MaterialResult<std::vector<std::uint8_t>>{std::unexpect,
+                                                         "compiled material source path is empty"};
     }
     if (!valid_source_hash(source_hash)) {
-        return std::unexpected{"compiled material source hash must be a 64-digit SHA-256 hash"};
+        return MaterialResult<std::vector<std::uint8_t>>{
+            std::unexpect, "compiled material source hash must be a 64-digit SHA-256 hash"};
     }
     Writer writer{*material.strings};
     for (auto const byte : artifact_magic) {
@@ -461,19 +467,20 @@ auto serialize(MaterialIR const& material,
     return std::move(writer).finish();
 }
 
-auto deserialize(std::span<std::uint8_t const> const bytes)
-    -> std::expected<CompiledMaterial, std::string> {
+auto deserialize(std::span<std::uint8_t const> const bytes) -> MaterialResult<CompiledMaterial> {
+    using Result = MaterialResult<CompiledMaterial>;
+
     CompiledMaterial compiled;
     Reader reader{bytes, compiled.material};
     for (auto const expected : artifact_magic) {
         auto const actual{reader.read_u8()};
         if (!actual || *actual != expected) {
-            return std::unexpected{"not a MaterialGen compiled artifact"};
+            return Result{std::unexpect, "not a MaterialGen compiled artifact"};
         }
     }
     auto const version{reader.read_u32()};
     if (!version || *version != compiled_material_version) {
-        return std::unexpected{"unsupported MaterialGen artifact version"};
+        return Result{std::unexpect, "unsupported MaterialGen artifact version"};
     }
 
     auto source_path{reader.read_string()};
@@ -497,7 +504,7 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
         *shading_model > static_cast<std::uint8_t>(ShadingModel::unlit) || *two_sided > 1 ||
         *disable_depth_test > 1 || *used_with_instances > 1 || *used_with_particle_sprites > 1 ||
         *adopt_existing > 1) {
-        return std::unexpected{"malformed compiled material settings"};
+        return Result{std::unexpect, "malformed compiled material settings"};
     }
     compiled.source_path = *source_path;
     compiled.source_hash = *source_hash;
@@ -514,25 +521,25 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
                                   .opacity_mask_clip_value = *opacity_mask_clip_value};
     if (compiled.material.text(compiled.source_path).empty() ||
         !valid_source_hash(compiled.material.text(compiled.source_hash))) {
-        return std::unexpected{"invalid compiled material source metadata"};
+        return Result{std::unexpect, "invalid compiled material source metadata"};
     }
 
-    auto const parameter_count{reader.read_size(maximum_collection_size)};
+    auto parameter_count{reader.read_size(maximum_collection_size)};
     if (!parameter_count) {
-        return std::unexpected{parameter_count.error()};
+        return Result{std::unexpect, std::move(parameter_count.error())};
     }
     for (std::size_t index{}; index < *parameter_count; ++index) {
         auto parameter_name{reader.read_string()};
         auto const type{read_value_type(reader)};
         auto const texture_sampler{read_texture_sampler_type(reader)};
         if (!parameter_name || !type || !texture_sampler) {
-            return std::unexpected{"malformed material parameter"};
+            return Result{std::unexpect, "malformed material parameter"};
         }
         std::array<double, 4> parameter_defaults{};
         for (double& value : parameter_defaults) {
-            auto const stored{reader.read_double()};
+            auto stored{reader.read_double()};
             if (!stored) {
-                return std::unexpected{stored.error()};
+                return Result{std::unexpect, std::move(stored.error())};
             }
             value = *stored;
         }
@@ -540,7 +547,7 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
         auto const node{reader.read_handle()};
         auto span{reader.read_span()};
         if (!texture_path || !node || !span) {
-            return std::unexpected{"malformed material parameter payload"};
+            return Result{std::unexpect, "malformed material parameter payload"};
         }
         compiled.material.parameters.append(*parameter_name,
                                             *type,
@@ -551,56 +558,56 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
                                             parameter_defaults);
     }
 
-    auto const node_count{reader.read_size(maximum_collection_size)};
+    auto node_count{reader.read_size(maximum_collection_size)};
     if (!node_count) {
-        return std::unexpected{node_count.error()};
+        return Result{std::unexpect, std::move(node_count.error())};
     }
     for (std::size_t index{}; index < *node_count; ++index) {
         auto node{read_node(reader, compiled.material.nodes)};
         if (!node) {
-            return std::unexpected{node.error()};
+            return Result{std::unexpect, std::move(node.error())};
         }
     }
 
-    auto read_named_nodes{[&](NamedNodes& nodes) -> std::expected<void, std::string> {
-        auto const count{reader.read_size(maximum_collection_size)};
+    auto read_named_nodes{[&](NamedNodes& nodes) -> MaterialResult<void> {
+        auto count{reader.read_size(maximum_collection_size)};
         if (!count) {
-            return std::unexpected{count.error()};
+            return MaterialResult<void>{std::unexpect, std::move(count.error())};
         }
         for (std::size_t index{}; index < *count; ++index) {
             auto node{read_named_node(reader, nodes)};
             if (!node) {
-                return std::unexpected{node.error()};
+                return MaterialResult<void>{std::unexpect, std::move(node.error())};
             }
         }
         return {};
     }};
     if (auto result{read_named_nodes(compiled.material.bindings)}; !result) {
-        return std::unexpected{result.error()};
+        return Result{std::unexpect, std::move(result.error())};
     }
     if (auto result{read_named_nodes(compiled.material.outputs)}; !result) {
-        return std::unexpected{result.error()};
+        return Result{std::unexpect, std::move(result.error())};
     }
 
-    auto const dependency_count{reader.read_size(maximum_collection_size)};
+    auto dependency_count{reader.read_size(maximum_collection_size)};
     if (!dependency_count) {
-        return std::unexpected{dependency_count.error()};
+        return Result{std::unexpect, std::move(dependency_count.error())};
     }
     compiled.material.texture_dependencies.reserve(*dependency_count);
     for (std::size_t index{}; index < *dependency_count; ++index) {
         auto dependency{reader.read_string()};
         if (!dependency) {
-            return std::unexpected{dependency.error()};
+            return Result{std::unexpect, std::move(dependency.error())};
         }
         compiled.material.texture_dependencies.push_back(*dependency);
     }
     if (reader.remaining() != 0) {
-        return std::unexpected{"compiled material artifact has trailing data"};
+        return Result{std::unexpect, "compiled material artifact has trailing data"};
     }
     auto const diagnostics{validate(compiled.material)};
     if (!diagnostics.empty()) {
-        return std::unexpected{"compiled material contains invalid IR: " +
-                               diagnostics.front().message};
+        return Result{std::unexpect,
+                      "compiled material contains invalid IR: " + diagnostics.front().message};
     }
     return compiled;
 }

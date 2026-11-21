@@ -50,12 +50,13 @@ auto material_text(material_synth::MaterialIR const& material, lispb::StringId c
 }
 
 auto load_compiled(TCHAR const* const filename, FString const& package_directory)
-    -> std::expected<material_synth::CompiledMaterial, std::string> {
+    -> material_synth::MaterialResult<material_synth::CompiledMaterial> {
     auto const path{FPaths::ConvertRelativePathToFull(FPaths::ProjectIntermediateDir(),
                                                       FString{TEXT("MaterialGen/")} + filename)};
     TArray<uint8> bytes;
     if (!FFileHelper::LoadFileToArray(bytes, *path)) {
-        return std::unexpected{"unable to load compiled golden material"};
+        return material_synth::MaterialResult<material_synth::CompiledMaterial>{
+            std::unexpect, "unable to load compiled golden material"};
     }
     auto compiled{material_synth::deserialize(
         std::span{bytes.GetData(), static_cast<std::size_t>(bytes.Num())})};

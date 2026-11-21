@@ -13,6 +13,9 @@
 
 namespace material_synth {
 
+template <typename T>
+using MaterialResult = std::expected<T, std::string>;
+
 inline constexpr std::uint32_t compiled_material_version{6};
 
 struct CompiledMaterial {
@@ -29,9 +32,7 @@ struct CompiledMaterial {
 // The material must have passed semantic validation.
 auto serialize(MaterialIR const& material,
                std::string_view source_path,
-               std::string_view source_hash)
-    -> std::expected<std::vector<std::uint8_t>, std::string>;
-auto deserialize(std::span<std::uint8_t const> bytes)
-    -> std::expected<CompiledMaterial, std::string>;
+               std::string_view source_hash) -> MaterialResult<std::vector<std::uint8_t>>;
+auto deserialize(std::span<std::uint8_t const> bytes) -> MaterialResult<CompiledMaterial>;
 
 }
