@@ -163,7 +163,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     EXPECT_EQ(simulation.turrets().num_instances(), 1);
 }
 
-TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
+TEST(TickPhases, CarrierSpawnIsDeferredAndClearsTheCarrier) {
     auto data{make_world()};
 
     add_capital_spawn(data,
@@ -197,14 +197,10 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     ASSERT_EQ(fighters.num(), 1);
     auto const fighter{fighters.entity_ids()[0]};
     EXPECT_TRUE(entity_is_alive(simulation, fighter));
-    EXPECT_EQ(observe_entity(simulation, fighter)->health.value(), 75);
+    EXPECT_EQ(observe_entity(simulation, fighter)->health.value(), 100);
 
     auto const parent{simulation.capital_ships().get_entities().entity_ids()[0]};
-    EXPECT_EQ(observe_entity(simulation, parent)->health.value(), 75);
-
-    auto const& queries{simulation.spatial_query_manager()};
-
-    EXPECT_EQ(queries.aabb_overlap_events().entity_entity_overlaps.num(), 1);
+    EXPECT_EQ(observe_entity(simulation, parent)->health.value(), 100);
 }
 
 TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {

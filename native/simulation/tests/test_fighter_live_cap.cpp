@@ -24,10 +24,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
     data.runtime.fighters.health = ::ioj::settings::PositiveHealth::make(Health{1000});
     data.runtime.fighters.max_live_fighters =
         ::ioj::NonNegative<std::int32_t>::make(max_live_fighters);
-    for (std::int32_t slot_index{}; slot_index < spawn_slots; ++slot_index) {
-        data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.push_back(
-            {.location = {100.0 + slot_index * 10.0, 0.0, 0.0}});
-    }
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.resize(spawn_slots);
 
     auto const capital_count{static_cast<std::int32_t>(capital_teams.size())};
     for (std::int32_t capital_index{}; capital_index < capital_count; ++capital_index) {
@@ -85,6 +82,10 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
     }
 
     std::vector<Team> const one_capital{Team::White};
+    LevelSim zero_wave{make_cap_battle(one_capital, 7, 0).compile()};
+    start_and_tick(zero_wave);
+    EXPECT_EQ(zero_wave.fighters().num_instances(), 0);
+
     auto data{make_cap_battle(one_capital, 7, 8)};
     LevelSim simulation{std::move(data).compile()};
     start_and_tick(simulation);

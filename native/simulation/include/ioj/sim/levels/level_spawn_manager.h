@@ -1,12 +1,12 @@
 #pragma once
 #include <ioj/sim/capital_ships/capital_entity_data.h>
+#include <ioj/sim/collision/entity_aabbs.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 #include <ioj/sim/levels/level_entity_ref.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
-#include <ioj/transform3d.h>
 
 #include <cstdint>
 #include <memory_resource>
@@ -46,7 +46,9 @@ class LevelSpawnManager {
     };
 
   public:
-    LevelSpawnManager(std::span<Transform3d const> fighter_spawn_transforms,
+    LevelSpawnManager(std::size_t wave_size,
+                      collision::EntityAABBs const& bounds,
+                      float clearance_buffer,
                       std::pmr::memory_resource& memory);
     LevelSpawnManager(LevelSpawnManager const&) = delete;
     LevelSpawnManager(LevelSpawnManager&&) = delete;
@@ -79,7 +81,9 @@ class LevelSpawnManager {
                         SpawnContext context);
 
     std::pmr::vector<EntityId> entity_ids_;
-    std::pmr::vector<Transform3d> fighter_spawn_transforms_;
+    std::uint32_t wave_size_;
+    collision::EntityAABBs const& bounds_;
+    float clearance_buffer_;
     std::pmr::vector<FighterSpawnSource> fighter_spawn_sources_;
 };
 }

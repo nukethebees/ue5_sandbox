@@ -2,9 +2,9 @@
 
 #include <ioj/column_math.h>
 #include <ioj/diagnostics.h>
-#include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/spawn_interface.h>
 #include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/levels/fighter_launch_column.h>
 #include <ioj/sim/levels/level_entity_ref.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/spawn_context.h>
@@ -19,13 +19,17 @@
 #include <vector>
 
 namespace ioj::sim {
-LevelSpawnManager::LevelSpawnManager(std::span<Transform3d const> const fighter_spawn_transforms,
+LevelSpawnManager::LevelSpawnManager(std::size_t wave_size,
+                                     collision::EntityAABBs const& bounds,
+                                     float clearance_buffer,
                                      std::pmr::memory_resource& memory)
     : entity_ids_{&memory}
-    , fighter_spawn_transforms_{fighter_spawn_transforms.begin(),
-                                fighter_spawn_transforms.end(),
-                                &memory}
-    , fighter_spawn_sources_{&memory} {}
+    , wave_size_{static_cast<std::uint32_t>(wave_size)}
+    , bounds_{bounds}
+    , clearance_buffer_{clearance_buffer}
+    , fighter_spawn_sources_{&memory} {
+    assert(std::in_range<std::uint32_t>(wave_size));
+}
 
 void LevelSpawnManager::initialise(std::uint32_t const entity_count) {
     entity_ids_.resize(static_cast<std::size_t>(entity_count));
@@ -103,8 +107,7 @@ void LevelSpawnManager::queue_fighter_spawns(float const dt,
     auto const rotations{capitals.view_rotations().resolve()};
     auto const teams{capitals.teams()};
     FighterSpawnQueue wave{scratch_resource};
-    assert(std::in_range<std::uint32_t>(fighter_spawn_transforms_.size()));
-    wave.reserve(static_cast<std::uint32_t>(fighter_spawn_transforms_.size()));
+    wave.reserve(wave_size_);
     for (auto& source : fighter_spawn_sources_) {
         source.remaining_delay -= dt;
         if (source.remaining_delay > 0.f) {
@@ -115,22 +118,17 @@ void LevelSpawnManager::queue_fighter_spawns(float const dt,
         auto const index{static_cast<std::uint32_t>(found - ids.begin())};
         auto const location{vector_at(locations, index)};
         auto const rotation{rotation_at(rotations, index)};
-        Transform3d const transform{
-            to_quaternion(Rotator3d{rotation.pitch, rotation.yaw, rotation.roll}),
-            {location.x(), location.y(), location.z()},
-            {1.0, 1.0, 1.0}};
+        auto const column{fighter_launch_column(bounds_, location, rotation, clearance_buffer_)};
 
         wave.reset();
-        for (auto const& relative_transform : fighter_spawn_transforms_) {
-            auto const spawn_transform{relative_transform * transform};
-            auto const spawn_location{Vector3f{spawn_transform.location}};
-            auto const spawn_rotation{Rotator3f{spawn_transform.rotator()}};
+        for (std::uint32_t slot{}; slot < wave_size_; ++slot) {
+            auto const spawn_location{column.position(slot)};
             wave.add(spawn_location.x(),
                      spawn_location.y(),
                      spawn_location.z(),
-                     spawn_rotation.pitch,
-                     spawn_rotation.yaw,
-                     spawn_rotation.roll,
+                     column.heading.pitch,
+                     column.heading.yaw,
+                     column.heading.roll,
                      teams[index]);
         }
         fighters.queue_spawns(wave.const_view());

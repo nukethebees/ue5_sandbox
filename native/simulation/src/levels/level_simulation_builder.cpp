@@ -4,7 +4,6 @@
 #include <ioj/rotator_math.h>
 #include <ioj/sim/collision/collision_grid.h>
 #include <ioj/sim/collision/entity_world_bounds.h>
-#include <ioj/sim/levels/fighter_spawn_slot_validation.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/simulation_settings.h>
 
@@ -32,15 +31,8 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
     for (auto const type : EnumTraits<EntityType>::values) {
         auto const centre{data.collision.entity_bounds.centre(type)};
         auto const extent{data.collision.entity_bounds.half_extents(type)};
-        if (!is_finite(centre) || !is_finite(extent) || extent.x() < 0.f || extent.y() < 0.f ||
-            extent.z() < 0.f) {
+        if (!is_finite(centre) || !is_nonnegative_finite(extent)) {
             errors.emplace_back("Entity collision bounds must be finite with nonnegative extents");
-        }
-    }
-    auto const& capital{data.capital_ships};
-    for (auto const& slot : capital.fighter_spawn_slots_relative_transforms) {
-        if (!is_finite(slot)) {
-            errors.emplace_back("Fighter spawn transforms must be finite");
         }
     }
     if (data.player) {
@@ -49,22 +41,6 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
             !is_finite(player.left_socket) || !is_finite(player.right_socket) ||
             !is_finite(player.middle_socket)) {
             errors.emplace_back("Player geometry and socket transforms must be finite");
-        }
-    }
-    if (errors.empty()) {
-        for (auto const& error : levels::validate_fighter_spawn_slots(
-                 capital, data.fighters, data.collision.entity_bounds)) {
-            if (error.kind == levels::FighterSpawnSlotValidationErrorKind::IntersectsCapital) {
-                errors.push_back(std::format("fighter spawn slot {} intersects the capital "
-                                             "collision bounds plus fighter clearance",
-                                             error.first_slot));
-            } else {
-                errors.push_back(std::format("fighter spawn slots {} and {} have overlapping "
-                                             "collision bounds plus {} cm clearance",
-                                             error.first_slot,
-                                             error.second_slot,
-                                             error.clearance));
-            }
         }
     }
     if (!errors.empty()) {

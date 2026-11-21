@@ -40,7 +40,9 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     , level_metadata_{std::move(data.level_metadata)}
     , event_manager_{std::move(data.level_events), memory_manager_.level_memory()}
     , spawn_manager_{
-          data.capital_ships.fighter_spawn_slots_relative_transforms,
+          data.capital_ships.fighter_spawn_slots_relative_transforms.size(),
+          collision_pipeline_.queries().local_entity_bounds(),
+          data.fighters.avoidance_clearance_buffer,
           memory_manager_.game_memory(),
       }
     {

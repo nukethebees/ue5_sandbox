@@ -48,8 +48,7 @@ auto first_wave_history(EntityLedger const& ledger, std::uint32_t count, Team te
 }
 
 TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) {
-    auto const path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} /
-                    "native/simulation/tests/fixtures/defend_capital.scm"};
+    auto const path{script_root() / "defend_capital.scm"};
     auto const level{levels::authoring::DefinitionReader{script_root()}.read_level_file(path)};
     ASSERT_TRUE(level) << levels::format_diagnostics(level.error());
 
@@ -66,10 +65,12 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
     struct Launch {
         EntityId id;
         Vector3f position;
+        bool departed{};
     };
     std::vector<Launch> first_wave;
     std::uint32_t first_wave_issued{};
-    bool blue_departed{};
+    int blue_departures{};
+    bool blue_attacking{};
     bool red_departed{};
     auto observe_first_wave = [&](std::uint32_t issued) {
         auto const fighters{simulation.fighters().entities()};
@@ -79,6 +80,10 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
 
         if (first_wave_issued == 0) {
             first_wave_issued = issued;
+            if (issued != 0) {
+                EXPECT_EQ(std::ranges::count(fighters.teams(), Team::Blue), 6);
+                EXPECT_EQ(count, issued);
+            }
             for (std::uint32_t row{}; row < count; ++row) {
                 first_wave.push_back({ids[row], vector_at(positions, row)});
             }
@@ -91,7 +96,11 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
             auto const launch{std::ranges::find(first_wave, ids[row], &Launch::id)};
             ASSERT_NE(launch, first_wave.end());
             if (size(vector_at(positions, row) - launch->position) > clearance) {
-                blue_departed |= teams[row] == Team::Blue && targets[row] == red_objective;
+                if (teams[row] == Team::Blue && !launch->departed) {
+                    launch->departed = true;
+                    ++blue_departures;
+                }
+                blue_attacking |= teams[row] == Team::Blue && targets[row] == red_objective;
                 red_departed |= teams[row] == Team::Red && targets[row] == blue_capital;
             }
         }
@@ -104,14 +113,15 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
         }
         simulation.advance(dt);
         auto const issued{simulation.entity_ledger().issued_counts()[EntityType::Fighter]};
-        if ((!blue_departed || !red_departed) &&
+        if ((blue_departures < 6 || !blue_attacking || !red_departed) &&
             (first_wave_issued == 0 || issued == first_wave_issued)) {
             ASSERT_NO_FATAL_FAILURE(observe_first_wave(issued));
         }
     }
 
     ASSERT_GT(first_wave_issued, 0u) << "Capitals launch fighters";
-    EXPECT_TRUE(blue_departed)
+    EXPECT_EQ(blue_departures, 6);
+    EXPECT_TRUE(blue_attacking)
         << "A Blue fighter clears its launch slot targeting capitalship-red2."
         << first_wave_history(simulation.entity_ledger(), first_wave_issued, Team::Blue);
     EXPECT_TRUE(red_departed) << "A Red fighter clears its launch slot targeting capitalship-blue."

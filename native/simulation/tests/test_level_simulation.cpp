@@ -4,6 +4,7 @@
 #include <ioj/column_math.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/sim/collision/world_aabbs.h>
+#include <ioj/sim/levels/fighter_launch_column.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/sim/testing/entity_observations.h>
@@ -211,24 +212,26 @@ TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGe
     EXPECT_EQ(simulation.entity_ledger().count_alive(), 1);
 }
 
-TEST(NativeSimulation, NativeStartupRejectsInvalidSpawnGeometryBeforeConstructingWorld) {
-    LevelSimInitData data{make_simulation_data(make_fixture())};
-    data.capital_ships.fighter_spawn_slots_relative_transforms[0].location =
-        Vector3d{data.collision.entity_bounds.centre(EntityType::CapitalShip)};
-    auto invalid{validate_level_simulation_init_data(data)};
-    ASSERT_FALSE(invalid);
-    EXPECT_TRUE(std::ranges::any_of(invalid.error(), [](auto const& error) {
-        return error.contains("intersects the capital collision");
-    }));
-
-    data = make_simulation_data(make_fixture());
-    data.capital_ships.fighter_spawn_slots_relative_transforms[1] =
-        data.capital_ships.fighter_spawn_slots_relative_transforms[0];
-    invalid = validate_level_simulation_init_data(data);
-    ASSERT_FALSE(invalid);
-    EXPECT_TRUE(std::ranges::any_of(invalid.error(), [](auto const& error) {
-        return error.contains("fighter spawn slots 0 and 1");
-    }));
+TEST(NativeSimulation, TiltedCarrierLaunchesInWorldZAboveItsCollisionBounds) {
+    auto data{make_simulation_data(make_fixture())};
+    auto& bounds{data.collision.entity_bounds};
+    bounds.set_centre(EntityType::CapitalShip, {110.f, -30.f, 55.f});
+    Vector3f const pivot{100.f, -900.f, 800.f};
+    Rotator3f const rotation{25.f, 41.f, 15.f};
+    auto const top{collision::make_entity_world_bounds(
+                       bounds, EntityType::CapitalShip, pivot, to_quaternion(rotation))
+                       .max.z()};
+    auto const clearance{collision::get_entity_radius(bounds, EntityType::Fighter) +
+                         data.fighters.avoidance_clearance_buffer};
+    auto const column{
+        fighter_launch_column(bounds, pivot, rotation, data.fighters.avoidance_clearance_buffer)};
+    EXPECT_EQ(column.first.x(), pivot.x());
+    EXPECT_EQ(column.first.y(), pivot.y());
+    EXPECT_GT(column.first.z() - clearance, top);
+    EXPECT_GT(column.position(1).z() - column.first.z(), 2.f * clearance);
+    EXPECT_EQ(column.heading.yaw, 131.f);
+    EXPECT_EQ(column.heading.pitch, 0.f);
+    EXPECT_EQ(column.heading.roll, 0.f);
 }
 
 TEST(NativeSimulation, NativeStartupRejectsFutureSpawnsOutsideGrid) {
@@ -780,8 +783,6 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
                      ioj::NonNegative<std::int32_t>::make(0));
 
     data.runtime.capital_ships.fighter_spawn_slots_relative_transforms.resize(2);
-    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms[0].location.y() = -100.0;
-    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms[1].location.y() = 100.0;
     data.runtime.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.runtime.fighters.speed = 0.f;
     for (auto& entity : data.entities) {

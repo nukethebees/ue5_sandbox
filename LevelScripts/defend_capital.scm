@@ -6,15 +6,8 @@
 
 (define scene (module-ref (import-module "defend_capital/editor-config.scm") 'scene))
 
-;; Keep the first wave clear of the carrier's world-aligned collision bounds.
-(define (orient-launch-carrier ship)
-  (if (eq? (entity-ref ship :id) 'capitalship-blue)
-      (copy-with ship :rotation '(0 90 0))
-      ship))
-
 (define mission
   (copy-with scene
-    :entities (map orient-launch-carrier (level-ref scene :entities))
     :settings (settings-layers
       (module-ref (import-module "Settings/base.scm") 'game-settings)
       (level-ref scene :settings)

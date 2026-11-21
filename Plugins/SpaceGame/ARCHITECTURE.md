@@ -84,9 +84,6 @@ same closest-hit path as dynamic collision. Harvested components must remain sta
 requires rebuilding the data. The editor preview is separate presentation tooling and is not proof
 of level-wide runtime clearance.
 
-Capital fighter spawn slots are shared level-configuration data. Save captures live actor-space
-arrows; Apply reconstructs them. Runtime validation checks saved slots against parent-capital bounds,
-while diagnostics compare authored positions with predicted runtime positions without changing
-simulation state.
+Carriers launch a vertical fighter column above their world collision bounds. Slot count sets wave size. Fighters face broadside and clear each other's navigation probes.
 
 See [README.md](README.md) for authoring entry points.

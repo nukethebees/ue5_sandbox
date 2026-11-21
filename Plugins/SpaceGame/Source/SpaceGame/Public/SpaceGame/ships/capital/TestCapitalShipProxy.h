@@ -71,7 +71,7 @@ class ATestCapitalShipProxy : public AActor {
 #if WITH_EDITOR
     void apply_spawn_configuration(USpaceGameLevelConfig& config);
     void update_spawn_configuration_status();
-    void draw_fighter_spawn_preview();
+    void draw_fighter_spawn_preview(float lifetime = 0.f);
     FString spawn_preview_error;
     float preview_clearance_{sim::FighterSimConfig{}.avoidance_clearance_buffer};
     float preview_arrow_size_{settings::CapitalPresentation{}.proxy_arrow_size};

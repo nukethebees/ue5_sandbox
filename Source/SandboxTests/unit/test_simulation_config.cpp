@@ -118,35 +118,18 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                              copy->tube_spinners.mesh == source->tube_spinners.mesh);
     }
 
-    TEST_METHOD(FighterSpawnSlotsHaveClearance)
+    TEST_METHOD(DefaultCarrierWaveSizeMatchesExportedGeometry)
     {
-        auto const* const config{ioj::load_default_level_config()};
-        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), config) ||
-            !TestRunner->TestNotNull(TEXT("Fighter mesh loads"), config->fighters.mesh.Get())) {
-            return;
+        auto const* config{ioj::load_default_level_config()};
+        if (TestRunner->TestNotNull(TEXT("Default level config loads"), config)) {
+            auto const slots{config->capital_ships.fighter_spawn_slots_relative_transforms.Num()};
+            TestRunner->TestEqual(TEXT("Carrier wave size"), slots, 6);
+            TestRunner->TestEqual(
+                TEXT("Exported wave size"),
+                static_cast<int32>(
+                    ioj::default_test_settings().entity_geometry.fighter_launch_slots.size()),
+                slots);
         }
-
-        auto const& transforms{config->capital_ships.fighter_spawn_slots_relative_transforms};
-        auto const clearance_radius{
-            config->fighters.mesh->GetBounds().SphereRadius +
-            ioj::default_test_settings().fighters.avoidance_clearance_buffer};
-        auto minimum_distance{TNumericLimits<float>::Max()};
-        for (int32 i{}; i < transforms.Num(); ++i) {
-            for (int32 j{i + 1}; j < transforms.Num(); ++j) {
-                minimum_distance = FMath::Min(
-                    minimum_distance,
-                    FVector::Dist(transforms[i].GetLocation(), transforms[j].GetLocation()));
-            }
-        }
-
-        TestRunner->TestTrue(TEXT("Authored fighter spawn slots have collision clearance"),
-                             minimum_distance >= clearance_radius * 2.f);
-
-        ioj::sim::LevelSimInitData geometry;
-        ioj::sim::apply_settings(ioj::default_test_settings(), geometry);
-        auto const result{ioj::sim::validate_level_simulation_init_data(geometry)};
-        TestRunner->TestTrue(TEXT("Authored fighter spawn slots pass level-start validation"),
-                             result.has_value());
     }
 
     TEST_METHOD(RuntimeConfigStartsTurretTrialZero)

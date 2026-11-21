@@ -19,7 +19,7 @@
 #include <EngineUtils.h>
 
 #if WITH_EDITOR
-#include <ioj/sim/collision/entity_world_bounds.h>
+#include <ioj/sim/levels/fighter_launch_column.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 
 #include <ScopedTransaction.h>
@@ -93,6 +93,11 @@ void ATestCapitalShipProxy::PostRegisterAllComponents() {
     Super::PostRegisterAllComponents();
     auto const* const world{GetWorld()};
     SetActorTickEnabled(IsValid(world) && world->WorldType == EWorldType::Editor);
+    for (auto const slot : fighter_spawn_slots) {
+        if (IsValid(slot)) {
+            slot->SetVisibility(false);
+        }
+    }
 }
 
 void ATestCapitalShipProxy::Tick(float const delta_seconds) {
@@ -112,22 +117,12 @@ void ATestCapitalShipProxy::update_spawn_configuration_status() {
         spawn_configuration_status = TEXT("No authoring resource asset is assigned.");
         return;
     }
-    auto const& slots{config->capital_ships.fighter_spawn_slots_relative_transforms};
-    bool matches{slots.Num() == fighter_spawn_slots.Num()};
-    FTransform const frame{GetActorRotation(), GetActorLocation(), FVector::OneVector};
-    auto const count{fighter_spawn_slots.Num()};
-    for (int32 i{}; matches && i < count; ++i) {
-        auto const* const arrow{fighter_spawn_slots[i].Get()};
-        matches = IsValid(arrow) &&
-                  arrow->GetComponentTransform().GetRelativeTransform(frame).Equals(slots[i], 0.01);
-    }
     spawn_configuration_status =
-        matches ? TEXT("Launch arrows match the shared asset.")
-                : TEXT("Launch arrows differ from the shared asset. Apply to reload them, or save "
-                       "the arrows and use Export Entity Geometry for Play.");
+        FString::Printf(TEXT("Launches %d fighters above the carrier."),
+                        config->capital_ships.fighter_spawn_slots_relative_transforms.Num());
 }
 
-void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
+void ATestCapitalShipProxy::draw_fighter_spawn_preview(float lifetime) {
     auto* const world{GetWorld()};
     auto const* const config{level_config_asset.Get()};
     auto const report_error{[this](FString const& message) {
@@ -154,123 +149,35 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
         report_error(local_bounds.error().format());
         return;
     }
-    auto const slot_count{fighter_spawn_slots.Num()};
-    for (int32 i{}; i < slot_count; ++i) {
-        if (!IsValid(fighter_spawn_slots[i])) {
-            report_error(FString::Printf(TEXT("Spawn arrow %d is missing."), i));
-            return;
-        }
-    }
     spawn_preview_error.Reset();
-    // Runtime uses the actor pivot/rotation, not the preview mesh component's relative transform.
-    auto const make_world_bounds{[&local_bounds](sim::EntityType const type,
-                                                 FVector3f const position,
-                                                 FRotator3f const rotation) {
-        auto const orientation{rotation.Quaternion()};
-        auto const native_bounds{sim::collision::make_entity_world_bounds(
-            *local_bounds,
-            type,
-            Vector3f{position.X, position.Y, position.Z},
-            Quaternion4f{orientation.X, orientation.Y, orientation.Z, orientation.W})};
-        return FBox3f{to_unreal(native_bounds.min), to_unreal(native_bounds.max)};
-    }};
-    auto const bounds{make_world_bounds(sim::EntityType::CapitalShip,
-                                        FVector3f{GetActorLocation()},
-                                        FRotator3f{GetActorRotation()})};
-    auto const clearance{preview_clearance_};
-    TArray<FBox3f> fighter_bounds;
-    fighter_bounds.SetNum(slot_count);
-    for (int32 i{}; i < slot_count; ++i) {
-        auto const* const arrow{fighter_spawn_slots[i].Get()};
-        fighter_bounds[i] = make_world_bounds(sim::EntityType::Fighter,
-                                              FVector3f{arrow->GetComponentLocation()},
-                                              FRotator3f{arrow->GetComponentRotation()});
-    }
-
-    DrawDebugBox(
-        world, FVector{bounds.GetCenter()}, FVector{bounds.GetExtent()}, FColor::Green, false, 0.f);
-
-    for (int32 i{}; i < slot_count; ++i) {
-        auto const* const arrow{fighter_spawn_slots[i].Get()};
-        auto const position{arrow->GetComponentLocation()};
-        auto const expanded_bounds{fighter_bounds[i].ExpandBy(clearance)};
-        auto const blocked{bounds.Intersect(expanded_bounds)};
-        bool too_close{};
-        for (int32 j{}; j < slot_count; ++j) {
-            if (i != j && expanded_bounds.Intersect(fighter_bounds[j].ExpandBy(clearance))) {
-                too_close = true;
-                break;
-            }
-        }
-        auto const colour{blocked || too_close ? FColor::Red : FColor::Cyan};
+    auto const pivot{GetActorLocation()};
+    auto const rotation{GetActorRotation()};
+    auto const column{sim::fighter_launch_column(*local_bounds,
+                                                 Vector3f{pivot},
+                                                 Rotator3f{static_cast<float>(rotation.Pitch),
+                                                           static_cast<float>(rotation.Yaw),
+                                                           static_cast<float>(rotation.Roll)},
+                                                 preview_clearance_)};
+    auto const direction{FRotator{0., column.heading.yaw, 0.}.Vector()};
+    auto const count{config->capital_ships.fighter_spawn_slots_relative_transforms.Num()};
+    for (int32 i{}; i < count; ++i) {
+        auto const location{column.position(i)};
+        auto const bounds{sim::collision::make_entity_world_bounds(
+            *local_bounds, sim::EntityType::Fighter, location, to_quaternion(column.heading))};
+        auto const position{FVector{to_unreal(location)}};
         DrawDebugBox(world,
-                     FVector{fighter_bounds[i].GetCenter()},
-                     FVector{fighter_bounds[i].GetExtent()},
-                     colour,
+                     FVector{to_unreal((bounds.min + bounds.max) * 0.5f)},
+                     FVector{to_unreal((bounds.max - bounds.min) * 0.5f)},
+                     FColor::Cyan,
                      false,
-                     0.f);
-        DrawDebugSphere(world, position, 150.f, 12, colour, false, 0.f);
-        DrawDebugDirectionalArrow(world,
-                                  position,
-                                  position + arrow->GetForwardVector() * 600.f,
-                                  120.f,
-                                  colour,
-                                  false,
-                                  0.f);
+                     lifetime);
+        DrawDebugDirectionalArrow(
+            world, position, position + direction * 600.f, 120.f, FColor::Cyan, false, lifetime);
     }
 }
 
 void ATestCapitalShipProxy::diagnose_fighter_spawn_points() {
-    auto* const world{GetWorld()};
-    auto const* const runtime_config{level_config_asset.Get()};
-    if (!IsValid(runtime_config)) {
-        UE_LOG(LogSandbox,
-               Warning,
-               TEXT("[FighterSpawn] No authoring resource asset for %s"),
-               *GetPathName());
-        return;
-    }
-    FTransform const spawn_frame{GetActorRotation(), GetActorLocation(), FVector::OneVector};
-    UE_LOG(LogSandbox,
-           Display,
-           TEXT("[FighterSpawn] Proxy=%s runtimeConfig=%s savedOwner=%s actor=%s meshRelative=%s "
-                "mesh=%s runtimeMesh=%s arrows=%d (cyan=arrow, green=predicted spawn)"),
-           *GetPathName(),
-           *runtime_config->GetPathName(),
-           *GetPathNameSafe(level_config_asset),
-           *GetActorTransform().ToHumanReadableString(),
-           IsValid(mesh) ? *mesh->GetRelativeTransform().ToHumanReadableString() : TEXT("missing"),
-           IsValid(mesh) ? *GetPathNameSafe(mesh->GetStaticMesh()) : TEXT("missing"),
-           *GetPathNameSafe(runtime_config->capital_ships.mesh),
-           fighter_spawn_slots.Num());
-    auto const& slots{runtime_config->capital_ships.fighter_spawn_slots_relative_transforms};
-    auto const count{slots.Num()};
-    for (int32 i{}; i < count; ++i) {
-        auto const predicted{(slots[i] * spawn_frame).GetLocation()};
-        DrawDebugSphere(world, predicted, 150.f, 12, FColor::Green, false, 30.f);
-        auto const* const arrow{fighter_spawn_slots.IsValidIndex(i) ? fighter_spawn_slots[i].Get()
-                                                                    : nullptr};
-        if (!IsValid(arrow)) {
-            UE_LOG(LogSandbox,
-                   Display,
-                   TEXT("[FighterSpawn] Slot=%d predicted=%s arrow=missing"),
-                   i,
-                   *predicted.ToString());
-            continue;
-        }
-        auto const actual{arrow->GetComponentLocation()};
-        DrawDebugSphere(world, actual, 100.f, 12, FColor::Cyan, false, 30.f);
-        DrawDebugLine(world, actual, predicted, FColor::Red, false, 30.f);
-        UE_LOG(LogSandbox,
-               Display,
-               TEXT("[FighterSpawn] Slot=%d saved=%s predicted=%s arrow=%s deltaCm=%.2f parent=%s"),
-               i,
-               *slots[i].ToHumanReadableString(),
-               *predicted.ToString(),
-               *actual.ToString(),
-               FVector::Dist(actual, predicted),
-               *GetPathNameSafe(arrow->GetAttachParent()));
-    }
+    draw_fighter_spawn_preview(30.f);
 }
 
 void ATestCapitalShipProxy::save_configuration_to_asset() {
@@ -309,7 +216,6 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
     level_config_asset->Modify();
     auto& capital_config{level_config_asset->capital_ships};
     capital_config.fighter_spawn_slots_relative_transforms.Reset(slot_count);
-    // Simulation spawns from the actor's position and rotation, without actor or mesh scale.
     FTransform const spawn_frame{GetActorRotation(), GetActorLocation(), FVector::OneVector};
     for (auto const slot : fighter_spawn_slots) {
         capital_config.fighter_spawn_slots_relative_transforms.Add(
@@ -365,6 +271,7 @@ void ATestCapitalShipProxy::apply_spawn_configuration(USpaceGameLevelConfig& con
         spawn_point->SetFlags(RF_Transactional);
         spawn_point->Modify();
 
+        spawn_point->SetVisibility(false);
         spawn_point->SetWorldTransform(capital_config.fighter_spawn_slots_relative_transforms[i] *
                                        spawn_frame);
         spawn_point->SetArrowSize(preview_arrow_size_);
