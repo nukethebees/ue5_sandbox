@@ -1,162 +1,43 @@
-# Lispb code generation
+# Generate code and assets
 
-Lispb generates native C++ schemas and SoA containers, SandboxCore kernels, Slate layouts, and
-Unreal material assets. Use the repository CMake generation targets. Generated headers and sources
-are checked in beside handwritten code in their normal public include and source directories.
+Edit the inputs named in the [project manifest](../../lispb/project.lispb). From a prepared worktree, regenerate committed C++ and check for stale output:
 
-After configuring the native preset, regenerate committed C++ with
-`cmake --build --preset native --target generate-code`. To check for stale output, run
-`cmake --build --preset native --target check-generated-code`.
+```powershell
+cmake --build --preset native --target generate-code
+cmake --build --preset native --target check-generated-code
+```
 
-Records, unions, enums and scalar encodings are logical declarations. Add `(projections (cpp))`
-to request an owning C++ type. Native records use ordinary C++ members; packed records and unions
-use one unsigned integer and compile-time bit offsets:
+```mermaid
+flowchart LR
+    S[Schema] --> G[Resolved type graph]
+    G --> P[Layout Planner]
+    G --> I[Typed C++ IR]
+    K[Kernel operations] --> I
+    W[Slate widget trees] --> I
+    I --> C[C++ source]
+    M[Material graphs] --> U[Unreal material assets]
+```
+
+| Input | What to edit |
+| --- | --- |
+| Schema | Define a logical type. Add `(projections (cpp))` for an owning C++ type. [Entity IDs](../../lispb/schema/native_entity_id.lispb) · [External scalar registry](../../lispb/schema/types.lispb) |
+| Kernel | Declare operation, operand storage, type sets, and aliasing in a [kernel module](../core/Kernels/vector_lerp.lispb). |
+| Slate | Declare the static widget tree and slots. Keep dynamic state and event handling in the host. |
+| Material | Edit the [source graph](../../Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.lispb). For UI glow, run `coj unreal generate-ui-glow-material`. See `coj unreal --help` for other assets. |
+
+SoA views borrow their owner's columns. Resolve a view once before a hot loop and reacquire it after storage moves. Inspect physical layout with [Layout Planner](../../tools/layout_planner/README.md).
+
+## S7 records and settings
 
 ```lisp
-(integer-scalar EntityIndex :bit-width 24)
-(integer-scalar EntityType :bit-width 8)
-(record EntityId :layout packed
-  (member index @EntityIndex)
-  (member entity_type @EntityType)
+(record Weapon :generate-s7-reader true :s7-tag "weapon"
+  (member damage float :initializer 5.f :nonnegative true)
+  (member count int :required true)
   (projections (cpp)))
 ```
 
-`EntityId` occupies four bytes. Its C++ API has `storage_type`, `raw_value()`, `from_raw()`,
-`index()`, `set_index()`, and corresponding accessors for `entity_type`. Nested packed accessors
-use the full path, such as `payload_kill_entity_target_index()`. There are no packed view proxies.
-`(cpp :storage std::uint64_t)` requests wider owning storage without changing the encoded width
-used when the type is embedded. Logical records without a projection can also compose into packed
-records. `:bits` reserves a larger enclosing extent; it cannot truncate a child's encoding.
+Reading `(:weapon :count 2)` keeps the default damage of 5. A fresh read requires `count`. `read_override` starts from an existing record. Required fields may be omitted in an override. Omitted fields retain their values, nested records merge, and collections replace the whole field. Unknown and duplicate names fail validation. Use `:s7-exclude true` for C++-only fields and `:generate-s7-writer true` for serialization. [Level inputs](../../lispb/schema/level_inputs.lispb) · [Settings](../../lispb/schema/settings.lispb)
 
-An unsigned `integer-scalar` infers its full domain from `:bit-width`; `:signed true` selects a
-signed domain. Optional `:minimum` and `:maximum` narrow the domain. A projected integer scalar is
-an explicit C++ wrapper with `value_type`, `value()`, `set_value()` and checked typed construction.
-Scalar `from_raw()` clears padding bits; `from_canonical_raw()` requires zero padding and asserts
-that precondition in debug builds. Neither checks the logical domain; use `is_valid()` for that.
-Packed records and unions retain their raw storage bits.
+## Enum helpers
 
-Projected scalars and packed owners support `std::format` and `std::hash` automatically. Scalars
-format their decoded value; packed records and unions format their raw integer. All hash their
-raw integer, matching equality on canonical scalar encodings. Standard integer format
-specifications, including hexadecimal, apply.
-
-Unions contain references, for example `(union Target @EntityIndex @LocationIndex)`. A record
-member binds a discriminator with `(member payload @Payload :tag opcode)`, where `opcode` is a
-sibling enum member. Union alternatives infer enum names from their type names, or use
-`(case KillEntity @AttackPayload)` for explicit mapping. Packed factories such as
-`Instruction::make_payload_kill_entity(target)` set the tag and payload together. Alternative
-getters and setters assert the active tag in debug builds; setters do not change it.
-
-An ordinary `struct` declares ordered SoA columns. Each dynamic owner uses one allocation, one row
-count, and one capacity. Nested members reference another declared SoA through their type:
-
-```lisp
-(struct Points :equivalent-type Point
-  (member xs array float :equivalent-member x)
-  (member ys array float :equivalent-member y))
-(struct Rows
-  (member ids array std::uint32_t)
-  (member points nested Points))
-```
-
-Owners use the default PMR resource, or accept a `std::pmr::memory_resource&` at construction.
-The resource must outlive the owner. Use `view()` or `const_view()` for compact borrows,
-and call `.resolve()` on a view to materialize its column pointers once before a hot loop.
-Both view representations expose typed spans; neither owns or resizes columns. `:layout-only true`
-declares a reusable nested column group without a standalone owner.
-
-External C++ types can carry scalar information without generating a new C++ type. For example,
-put these definitions in a shared registry file:
-
-```lisp
-(type signed_byte :spelling "std::int8_t" :header "cstdint" (integer :signed true :bit-width 8))
-(type real :spelling "double" (floating-point :format ieee754-binary64))
-```
-
-Include it from the project's `:types` file with `(include "common/scalars.lispb")`. Include paths
-are relative to the containing file. The planner still lists these types as external, but shows
-their scalar properties. Integer definitions can also supply domains for packed fields,
-quantization, varints, and optionals. Size and alignment come from the selected ABI profile.
-The project's [common scalars](../../lispb/schema/common_scalars.lispb) provide standard examples.
-
-Native enums select optional helpers with `:helpers`:
-
-```lisp
-(enum State std::uint8_t
-  :native-api true
-  :helpers (to-string traits)
-  (value Idle :value "0")
-  (value Active :value "1")
-  (projections (cpp)))
-```
-
-Available helpers are `to-string`, `try-parse`, `to-display-string`, `to-serialized-string`,
-`try-parse-serialized`, `traits` (`ioj::EnumTraits<Enum>::values`), `cycle-next`, and `formatter`.
-`cycle-next` emits `cycle_next(Enum)`, following the emitted enum order and wrapping to the first
-value. It excludes a declared count sentinel and requires known, unique codes. Invalid input
-asserts; sparse codes are supported.
-The [formatter helper](docs/enum-formatting.md) requires `to-string` and supports selecting
-serialized/display representations when those helpers are present. Omit the list
-or use `:helpers ()` to omit optional helpers. Display formatting falls back
-to the enumerator name. Serialized helpers require `:serialized-name` on every non-count value.
-Unknown or duplicate helpers are errors. Existing native schemas must explicitly select the
-helpers they need; `:native-api true` no longer selects them automatically. Unreal enums use
-the existing `:conversions` list instead.
-
-Tag enumerators with `:groups (actionable)` to generate `is_actionable(value)`.
-Optional `:ordering (group-priority ...)` or `:ordering auto` arranges values to reduce
-membership ranges; omitted ordering preserves existing values. See [enum groups](docs/enum-groups.md).
-
-Generated enums with known numeric values also expose `ioj::enum_range<Enum>`,
-and `ioj::enum_min<Enum>` / `ioj::enum_max<Enum>`. Bounds exclude the count enumerator and include
-sentinels. Sparse enums expose bounds too; these do not imply that every intervening value is
-valid. Packed enum fields use these bounds by default, so their layout declarations need no
-explicit range initializer. Empty enums and enums with unresolved C++ expressions omit bounds.
-
-Compiler keyword enums live in `schema/`, with dialect-specific enums in `slate/schema/`,
-`kernel/schema/`, and `material/schema/`. Use their generated serialized-name lookups for closed
-keyword sets. Grammar restrictions, such as accepting only class/struct facade friends, remain
-in the parser. `generate-code` and `check-generated-code` include the `compiler-models` project
-group, which covers all these enums. Regenerate with the existing compiler before rebuilding
-consumers of new generated declarations.
-
-`SchemaProperty` owns the property spellings used by the handwritten schema parser. Property
-lookups and per-form allowlists use its generated enum values; `Fields` shares the same validation
-and diagnostics with string-based DSL consumers. Allowed nested declarations remain grammar rules.
-
-Facades forward typed methods to a stored target. Group methods with `(public ...)`,
-`(protected ...)`, or `(private ...)` to select their C++ access. Groups do not nest;
-ungrouped methods use `:method-access` (public by default). Set `:bind-access` for the
-binding function or reference constructor, and `:target-access` for the stored target
-(public and private by default, respectively). For example:
-
-```lisp
-(facade Builder @target target_
-  :target-storage reference
-  :bind-access protected
-  :target-access protected
-  (protected
-    (method reset void)))
-```
-
-Facade methods may use a dotted `:target-name`, such as `"types.named"`, to forward through
-nested members. Each component is validated as a C++ identifier and emitted as structured
-member access.
-
-Use `:enum-array true` independently on native or Unreal enums to generate `ioj::enum_count<Enum>()` for
-`ioj::EnumArray<T, Enums...>` and `ioj::FixedEnumArray<Enum>`. LispB requires known codes in declaration
-order from zero through count minus one; gaps, aliases, negative codes, hidden values, and count
-sentinels are rejected. Explicit numeric initializers are allowed. Other enums can remain sparse
-and do not expose the array count API. Unreal projections select their count helper separately
-with `:enum-array true` inside `unreal-projection`; it is not inherited from the native enum.
-Set `:namespace` on `unreal-projection` to place the reflected enum in a C++ namespace;
-the generated conversions and enum helpers use that namespace too.
-
-See [Semantic type graph](SEMANTIC_TYPE_GRAPH.md) for the shared resolved model consumed by code
-generation and layout tooling. See [ARCHITECTURE.md](ARCHITECTURE.md) for the shared generation
-pipeline and the sibling DSL documents for their language-specific contracts.
-
-Ordinary records can also supply settings field metadata and opt-in typed member visitors. See
-[Record settings](docs/record-settings.md) for section bindings, exclusions and patch semantics.
-
-Records can also opt into [typed S7 readers](docs/s7-readers.md) for AST deserialization.
+Use `:helpers` for identifiers, serialized names, display labels, and formatting. String tables require unique dense values starting at zero. Mark enum members with groups to generate membership predicates and ordered value arrays. [Simulation enums](../../lispb/schema/native_simulation_enums.lispb)

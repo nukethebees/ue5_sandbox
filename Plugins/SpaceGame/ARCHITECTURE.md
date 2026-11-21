@@ -1,89 +1,16 @@
-# SpaceGame runtime architecture
+# SpaceGame runtime
 
-`ATestBatchOrchestrator` connects the Unreal actor lifecycle to the native level. It retains
-reflected configuration, player and component references, and orders startup, frame publication
-and teardown. Simulation policy and presentation work belong to the owners below.
+```mermaid
+flowchart TD
+    M[Saved mission] --> O[ATestBatchOrchestrator]
+    O -->|build native world| S[LevelSim]
+    O -->|bind actor resources| H[FLevelPresentationHost]
+    S -->|publish after fixed ticks| H
+    H --> V[Player view and HUD]
+```
 
-| Owner | Responsibility |
-|---|---|
-| `prepare_level_simulation` | Validate effective configuration and compile an authored definition with Unreal mesh and collision resources into native initialization data |
-| `configure_level_run` | Apply optional duration-limit events to initialization data |
-| `FLevelLoader` | Validate launch options and create authored player/camera actors using an optional visual context with a controller reference |
-| `ioj::sim::LevelSim` | Own the worldless simulation and execute its fixed-tick phases |
-| `FLevelPresentationHost` | Bind actor-owned components, maintain HUD and presentation, and display collision snapshots |
-| `reset_level_world` | Remove gameplay actors while retaining framework actors; the level loader constructs the next authored level |
+Loading creates the player or observer, harvests static collision, and constructs a paused simulation. Automatic launches start it when requested. Presentation reads the final tick of each Unreal frame. Editor proxies supply placements through export.
 
-The presentation host belongs to `SpaceGamePresentation` and receives native read access and
-explicit resources. It does not depend on the orchestrator or SpaceGame actor classes. Component
-ownership stays in actor `UPROPERTY` fields; the host's component bundle only borrows them.
-Rebind that bundle after loading serialized actor properties.
-The actor validates its presentation resources before loading; the load request carries no cached
-validity flags. An absent visual context selects headless loading.
+Carriers launch fighters in a vertical column above their collision bounds. Preview the column on the capital proxy.
 
-## Startup and lifetime
-
-Every playable level uses a Scheme entry point or a definition already decoded from that entry
-point. Editor export writes the generated configuration included by the human-owned root. PIE and
-packaged launches load the saved definition through the same runtime builder. Native launches
-use the same definition and native compiler.
-Editor proxies are authoring objects and never initialize simulation entities.
-
-`ATestBatchOrchestrator::load_level` resolves Unreal resources, creates player/camera actors,
-compiles the definition, constructs `LevelSim` and binds presentation in one call. The definition,
-tick settings and native initialization data are local to loading; the actor retains no prepared
-definition. Loading leaves the simulation paused unless an initial terminal event stops it.
-`start_simulation` only starts an already constructed level. Automatic launches call it after
-loading when the launch options request a running simulation.
-
-Harvest static geometry after the editor proxies have been removed from the PIE world, and put
-the bounds in `LevelSimInitData::collision.static_bounds` before construction. Native construction
-dispatches initial events, publishes entity lookup rows and the spatial index,
-and resets its clock to tick zero and `BetweenTicks`. The simulation returns paused, or stopped if
-an initial terminal event ends the run. Bind player commands and initialize presentation and HUD
-afterward, then activate controls and apply the requested start
-mode. Presentation derives initial entity transforms from the initialized native state.
-`LaunchOptions::presentation_mode` controls presentation throughout the run.
-
-Use `get_level_simulation()` for native timing, entity simulations, queries and logic results.
-It returns null before construction and after release. Actor accessors cover configuration,
-presentation, player actors and launch behavior; `get_state()` also covers the absence of a level.
-
-A running Unreal frame advances the native fixed ticks before presenting the completed frame.
-Presentation observes the final tick of a catch-up frame. After loading and on each ready-level
-frame, the orchestrator checks `LevelSim::result()`. `end_level()` captures the completion data and
-optional player score, clears controller and presentation bindings, and releases the simulation.
-It then saves the profile score and opens the completion screen. The screen owns its scalar data;
-it does not retain the simulation. Failed saving is logged but does not prevent displaying results.
-There is no completion broadcast or per-run publication flag. Later frames have no level to end.
-
-Profile records retain the level ID, player team, outcome, stop reason, kills, elapsed time and date.
-The mission selector uses them for best times and the profile archive displays previous results.
-The completion screen displays outcome, winner/reason, elapsed time and profile team kills, with par-time and best-time information. The pause menu contains resume, options and exit actions.
-HUD counts and ship instruments remain; there is no historical telemetry recording or dashboard.
-
-The actor keeps ticking while the level is paused. Every ready-level frame calls `advance()` to
-consume between-tick requests, while paused calls leave simulation time and presentation unchanged.
-Pause requests take effect on the next advance; the orchestrator then notifies the controller to
-open a pending pause menu and refresh run controls. Resume remains direct. Paused launches enter
-that state during initialization without queueing a pause request.
-
-Reset and world teardown use the same ending sequence without opening a completion screen.
-An already completed result is saved before its simulation is released; reset-only and world-end
-stops do not create scores. World reset then removes gameplay actors. The next authored load
-constructs its player, camera and simulation through the usual loader.
-
-## Collision and spawning
-
-Simulation collision uses conservative world-axis-aligned boxes in a bounded grid. Broad-phase
-insertion may duplicate internal-boundary boxes; narrow-phase treats AABBs and line segments as
-closed, supports zero-length traces, and returns the nearest hit. Dynamic entities win exact-distance
-ties over harvested static geometry. Inputs must be finite and fit the configured grid.
-
-Configured query-enabled simple static geometry is harvested once at level initialization into the
-same closest-hit path as dynamic collision. Harvested components must remain static; moving one
-requires rebuilding the data. The editor preview is separate presentation tooling and is not proof
-of level-wide runtime clearance.
-
-Carriers launch a vertical fighter column above their world collision bounds. Slot count sets wave size. Fighters face broadside and clear each other's navigation probes.
-
-See [README.md](README.md) for authoring entry points.
+[Author a level](../../LevelScripts/README.md) · [Simulation phases](../../native/simulation/ARCHITECTURE.md) · [Property categories](Categories.md)

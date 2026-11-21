@@ -1,91 +1,13 @@
-# Native libraries and tools
+# Native C++
 
-`native/` contains standalone C++ libraries, simulation code, code-generation tools, and their
-tests. Prefer working here when Unreal Engine integration is unnecessary; Unreal-facing modules
-link the resulting artifacts through thin adapters.
+Build and test the simulation without Unreal. [Native build](../README.md#other-builds) · [Tests](../README.md#tests)
 
-## Layout
-
-- `core/`, `memory/`, `image/`, `mesh_gen/`, and `profiling/`: reusable native systems.
-- `simulation/` and `simulation_benchmark/`: worldless combat simulation, tests, and runners.
-- `levels/`: shared declarative definitions, typed IDs, semantic and catalog validation.
-- `profiles/`: profiles, progression, result publication, and atomic filesystem storage.
-- `presentation/` and `ui/`: HUD snapshots, radar/overlay collectors, camera math, and CPU effects.
-- `level_authoring/`: AST parsers, Scheme loading, and editor serialization; see its [architecture](level_authoring/ARCHITECTURE.md).
-- `s7/`: sandboxed Scheme evaluation and an owned flat data AST.
-- `common/`: small ASCII, file, and grid-dimension utilities.
-- `lispb/`: schema, Slate, kernel, and material generation; see its [local guide](lispb/README.md).
-- `sbx_mimalloc/`: project allocator integration.
-- `third_party/`: pinned dependencies; do not treat their documentation as project guidance.
-
-## Standalone workflow
-
-Standalone presets set `IOJ_WITH_UNREAL=OFF`, so they do not require `UE_ROOT`. The default
-native configuration uses Windows clang-cl Debug + unity:
-
-```powershell
-cmake --preset native
-cmake --build --preset native --target native-simulation-tests
-ctest --preset native-simulation-tests
-
-# Full first-party native validation.
-cmake --workflow --preset native-tests
-```
-
-Mimalloc validation builds its small Rust `native-binary-tools` host dependency into the native build
-tree when needed. Revision-local tools are built privately by CMake; stable tools are invoked from PATH.
-
-Use `native-core-tests` for the core-focused workflow. The detailed matrix presets remain available
-for ASan, non-unity, release, and MSVC selection; `native` is the ordinary fast default.
-Native tests and tools use static Tracy; Unreal-enabled builds additionally publish the shared-Tracy
-simulation artifacts below `Binaries/Native/`.
-
-See [Native clang-tidy](../docs/clang-tidy.md) for the opt-in clang-cl tidy workflow.
-
-Native dependencies are pinned submodules under `native/third_party` and are initialized by
-`coj prepare-worktree`. For a manual clone setup, initialize the required submodules with Git before configuring.
-
-```powershell
-git submodule update --init native/third_party/googletest native/third_party/cpu_features `
-  native/third_party/benchmark native/third_party/cli11 native/third_party/nlohmann_json `
-  native/third_party/tracy native/third_party/sdl native/third_party/imgui `
-  native/third_party/nativefiledialog-extended
-```
-
-The optional memory layout planner uses SDL3, Dear ImGui, and Native File Dialog:
-
-```powershell
-cmake --workflow --preset layout-planner
-```
-
-The executable remains local to the worktree at
-`%REPOSITORY_ROOT%\out\build\win-x64-clangcl-debug\tools\layout_planner\app\layout-planner.exe`; it is not
-installed system-wide or added to `PATH`. Run it from the repository root to load
-`lispb/project.lispb`, or pass `--project` and `--target` explicitly. See the
-[memory layout planner guide](../tools/layout_planner/README.md) for usage, supported analysis, and
-V1 limitations.
-
-Image Lab is the standalone GUI and CLI for the deterministic image generators. Its interface uses
-SDL3, SDL_GPU, and Dear ImGui for presentation; image generation remains CPU-native. Run
-`cmake --workflow --preset image-lab`; see the
-[Image Lab guide](../tools/image_lab/README.md).
-
-Simulation tests live in `simulation/tests/`. Asset geometry and presentation remain
-covered by Unreal tests. See [Build and test](../docs/build-and-test.md) for the full test workflows
-and [Lispb](lispb/README.md) for generated outputs.
-
-To run a deterministic S7 level as a native benchmark, use
-`out/build/native/rust-tools/release/benchmark-tools.exe native-simulation`; the fighter and frame-memory report runners build
-on the same tool. See [Benchmarks](../docs/benchmarks.md) for supported workloads and
-[Profiling](../docs/profiling.md) for Tracy capture.
-
-The Windows clang-cl ASAN workflows exclude the code-generation error-path tests that inspect
-caught C++ exceptions because the LLVM 21 Windows ASAN runtime terminates while accessing them.
-The exclusions are explicit in `cmake/presets/features.py`; the corresponding non-ASAN clang-cl and
-MSVC tests remain enabled.
-
-Simulation tests, benchmarks and Unreal Play load tuning and entity geometry through
-`LevelScripts/Settings/level-defaults.scm`. After editing mesh collision, fighter wave size or weapon sockets,
-use **Tools → Export Entity Geometry** in Unreal.
-
-Application flags and user preferences live in [S7 settings](../LevelScripts/README.md). Enhanced Input saves key mappings. Native profiles save progression.
+| Task | Guide |
+| --- | --- |
+| Change the simulation tick | [Phase order and data lifetime](simulation/ARCHITECTURE.md) |
+| Load a mission | [Level loading](level_authoring/ARCHITECTURE.md) |
+| Generate schemas or SoA types | [Lispb](lispb/README.md) |
+| Read or write a save | [Profiles](profiles/README.md) |
+| Configure the game or user preferences | [S7 settings](../LevelScripts/README.md#settings) |
+| Compare typed values | [Structural diff](core/docs/structural-diff.md) |
+| Update the allocator | [mimalloc provenance](third_party/mimalloc-sandbox.md) |

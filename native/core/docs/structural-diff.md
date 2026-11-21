@@ -1,68 +1,9 @@
-# Structural comparisons
+# Compare structured values
 
-Include `<ioj/structural_diff.h>` to compare values with diagnostic paths:
+Use `ioj::DiffReport` from `<ioj/structural_diff.h>` for field paths and mismatched values. Floats compare exactly. Pointers compare by identity.
 
-```cpp
-ioj::DiffReport differences;
-differences.diff("fighters", expected, actual);
-EXPECT_TRUE(differences.empty()) << differences.message();
-```
-
-For example:
-
-```text
-fighters.laser.damage
-  Expected: 5
-  Actual:   10
-```
-
-Lispb records opt in with `:generate-visitor true`. Every member participates, including
-S7-excluded fields. The diff visits the expected member once and selects the actual member
-with `get_field<F>()`. It uses `ioj::enum_count<Record::Field>()` for traversal bounds and
-`ioj::to_string(field)` for member paths, sharing the ordinary enum metadata. It supports
-nested records, sized random-access ranges (including
-vectors, arrays, spans and deques), optionals and constrained-value wrappers exposing
-`ref()`, `valid()` and `try_make()`. Narrow strings remain whole-value leaves.
-Sequence length differences appear at `.size`;
-elements in the common prefix use `[index]`. Optional presence is reported as present/absent.
-
-Other equality-comparable types are opaque leaves: their `operator==` determines equality,
-and the path stops at that object. Enable visitation or provide an ADL `diff_members` function
-when member diagnostics or specialized semantics are required:
-
-```cpp
-void diff_members(Position const& expected, Position const& actual, ioj::DiffContext& context) {
-    context.diff("x", expected.x(), actual.x());
-    context.diff("y", expected.y(), actual.y());
-}
-```
-
-ADL customization takes precedence over generated visitation. Unsupported noncomparable types
-produce a compile-time diagnostic. This utility does not discover arbitrary aggregates or
-Unreal-reflected properties. It does not follow pointers: pointer leaves compare identities.
-There is no tolerance policy; exact floating-point equality makes NaNs unequal and signed
-zeros equal. Specialized scene equivalence and ownership assertions should remain explicit.
-
-Each `DiffReport::diff()` call appends differences and starts with a fresh path.
-`DiffContext` remains the recursive interface passed to custom comparisons.
-
-Path components borrow names only for the duration of `diff()`. The context restores its path
-after exceptions, and retained differences own their strings. Successful comparisons format
-no diagnostic strings; the per-call path stack can allocate as nesting depth grows. Values
-use `std::format` when supported, enum underlying values otherwise, and an explicit
-`<unformattable value>` fallback for other unequal leaves. `DiffReport::limit` defaults to 64
-stored differences; traversal continues and counts additional mismatches in `omitted`.
-
-Boolean equality remains separate. Use Lispb `:comparison equality` on suitable value records
-to generate defaulted `operator==`; no diagnostic machinery is involved in that operation.
-
-Native GoogleTest targets can link `native-test-support` and include
-`<ioj/testing/structural_diff.h>` for a single assertion with the same diagnostics:
+In a GoogleTest target linked to `native-test-support`, include `<ioj/testing/structural_diff.h>`:
 
 ```cpp
 EXPECT_PRED_FORMAT2(ioj::testing::structurally_equal, expected, actual);
 ```
-
-Use `ASSERT_PRED_FORMAT2` when subsequent steps depend on equality. Both forms report at the
-call site and include the operand expressions. Prefer an existing original/default object or
-a concise expected aggregate; keep tolerance, ownership and lifecycle assertions explicit.
