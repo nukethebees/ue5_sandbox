@@ -103,6 +103,23 @@ auto parse_document(std::string_view const path, std::string_view const source) 
     return ParsedDocument{path, source};
 }
 
+TEST(KernelParser, ValidatesOutputIdentifiersInKernelContext) {
+    auto source_with_output = [](std::string_view name) {
+        std::string source{valid_source};
+        source.replace(source.find("(output out)"),
+                       std::string_view{"(output out)"}.size(),
+                       "(output " + std::string{name} + ")");
+        return source;
+    };
+    for (auto name : {"GlowColor", "import", "module"}) {
+        EXPECT_NO_THROW(parse_document("test.lispb", source_with_output(name))) << name;
+    }
+    for (auto name : {"class", "9lives"}) {
+        EXPECT_THROW(parse_document("test.lispb", source_with_output(name)), std::runtime_error)
+            << name;
+    }
+}
+
 auto render_document(ParsedDocument& document) -> std::vector<lispb::TextArtifact> {
     auto const analysis{analyze(document.syntax, document.data, ModuleId{0})};
     return render(document.cpp, document.data, analysis);

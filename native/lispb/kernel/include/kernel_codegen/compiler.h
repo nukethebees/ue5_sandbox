@@ -3,6 +3,7 @@
 #include <codegen/sexpr/indices.h>
 
 #include <span>
+#include <string_view>
 
 namespace lispb {
 struct Compilation;
@@ -12,6 +13,7 @@ class Syntax;
 }
 namespace kernel_codegen::detail {
 struct Document;
+auto is_identifier(std::string_view value) -> bool;
 }
 
 namespace lispb::codegen {

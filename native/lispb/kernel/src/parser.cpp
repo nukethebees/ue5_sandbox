@@ -1,5 +1,6 @@
 #include "parser.h"
 
+#include <codegen/schema/cpp_keyword.h>
 #include <codegen/sexpr/indices.h>
 #include <codegen/sexpr/source_span.h>
 #include <codegen/sexpr/sources.h>
@@ -7,6 +8,7 @@
 #include <codegen/sexpr/token_kind.h>
 #include <kernel_codegen/aliasing.h>
 #include <kernel_codegen/binary_operator.h>
+#include <kernel_codegen/compiler.h>
 #include <kernel_codegen/constant_kind.h>
 #include <kernel_codegen/document.h>
 #include <kernel_codegen/emission_field.h>
@@ -41,6 +43,20 @@
 #include <vector>
 
 namespace kernel_codegen::detail {
+auto is_identifier(std::string_view const value) -> bool {
+    if (value.empty() ||
+        (std::isalpha(static_cast<unsigned char>(value.front())) == 0 && value.front() != '_')) {
+        return false;
+    }
+    auto const keyword{lispb::codegen::try_parse_serialized_cpp_keyword(value)};
+    if (keyword && is_kernel_keyword(*keyword)) {
+        return false;
+    }
+    return std::ranges::all_of(value.substr(1), [](unsigned char const character) {
+        return std::isalnum(character) != 0 || character == '_';
+    });
+}
+
 namespace {
 
 using lispb::codegen::sexpr::FormId;
@@ -227,50 +243,6 @@ class Parser {
         if (syntax_.children(form).size() != size) {
             fail(syntax_.token_span(form), "expected " + std::string{usage});
         }
-    }
-
-    static auto is_identifier(std::string_view const value) -> bool {
-        static constexpr std::string_view cpp_keywords[]{
-            "alignas",       "alignof",     "and",
-            "and_eq",        "asm",         "auto",
-            "bitand",        "bitor",       "bool",
-            "break",         "case",        "catch",
-            "char",          "char8_t",     "char16_t",
-            "char32_t",      "class",       "compl",
-            "concept",       "const",       "const_cast",
-            "consteval",     "constexpr",   "constinit",
-            "continue",      "co_await",    "co_return",
-            "co_yield",      "decltype",    "default",
-            "delete",        "do",          "double",
-            "dynamic_cast",  "else",        "enum",
-            "explicit",      "export",      "extern",
-            "false",         "float",       "for",
-            "friend",        "goto",        "if",
-            "inline",        "int",         "long",
-            "mutable",       "namespace",   "new",
-            "noexcept",      "not",         "not_eq",
-            "nullptr",       "operator",    "or",
-            "or_eq",         "private",     "protected",
-            "public",        "register",    "reinterpret_cast",
-            "requires",      "return",      "short",
-            "signed",        "sizeof",      "static",
-            "static_assert", "static_cast", "struct",
-            "switch",        "template",    "this",
-            "thread_local",  "throw",       "true",
-            "try",           "typedef",     "typeid",
-            "typename",      "union",       "unsigned",
-            "using",         "virtual",     "void",
-            "volatile",      "wchar_t",     "while",
-            "xor",           "xor_eq",
-        };
-        if (value.empty() || (std::isalpha(static_cast<unsigned char>(value.front())) == 0 &&
-                              value.front() != '_')) {
-            return false;
-        }
-        return std::ranges::find(cpp_keywords, value) == std::end(cpp_keywords) &&
-               std::ranges::all_of(value, [](unsigned char const character) {
-                   return std::isalnum(character) != 0 || character == '_';
-               });
     }
 
     static auto is_qualified_identifier(std::string_view const value) -> bool {

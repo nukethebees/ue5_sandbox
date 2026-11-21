@@ -8,6 +8,7 @@
 #include <codegen/ast/indices.h>
 #include <codegen/ast/type_operation.h>
 #include <codegen/path_utils.h>
+#include <codegen/schema/cpp_keyword.h>
 #include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/enum_conversion.h>
@@ -157,106 +158,6 @@ class Validator {
         return std::isalnum(character) != 0 || character == '_';
     }
 
-    auto is_cpp_keyword(std::string_view const value) -> bool {
-        static std::set<std::string_view> const keywords{
-            "alignas",
-            "alignof",
-            "and",
-            "and_eq",
-            "asm",
-            "auto",
-            "bitand",
-            "bitor",
-            "bool",
-            "break",
-            "case",
-            "catch",
-            "char",
-            "char8_t",
-            "char16_t",
-            "char32_t",
-            "class",
-            "compl",
-            "concept",
-            "const",
-            "consteval",
-            "constexpr",
-            "constinit",
-            "const_cast",
-            "continue",
-            "co_await",
-            "co_return",
-            "co_yield",
-            "decltype",
-            "default",
-            "delete",
-            "do",
-            "double",
-            "dynamic_cast",
-            "else",
-            "enum",
-            "explicit",
-            "export",
-            "extern",
-            "false",
-            "float",
-            "for",
-            "friend",
-            "goto",
-            "if",
-            "import",
-            "inline",
-            "int",
-            "long",
-            "module",
-            "mutable",
-            "namespace",
-            "new",
-            "noexcept",
-            "not",
-            "not_eq",
-            "nullptr",
-            "operator",
-            "or",
-            "or_eq",
-            "private",
-            "protected",
-            "public",
-            "register",
-            "reinterpret_cast",
-            "requires",
-            "return",
-            "short",
-            "signed",
-            "sizeof",
-            "static",
-            "static_assert",
-            "static_cast",
-            "struct",
-            "switch",
-            "template",
-            "this",
-            "thread_local",
-            "throw",
-            "true",
-            "try",
-            "typedef",
-            "typeid",
-            "typename",
-            "union",
-            "unsigned",
-            "using",
-            "virtual",
-            "void",
-            "volatile",
-            "wchar_t",
-            "while",
-            "xor",
-            "xor_eq",
-        };
-        return keywords.contains(value);
-    }
-
     auto is_reserved_identifier(std::string_view const value) -> bool {
         return value.starts_with("__") || (value.size() > 1 && value.front() == '_' &&
                                            std::isupper(static_cast<unsigned char>(value[1])) != 0);
@@ -324,7 +225,7 @@ class Validator {
             })) {
             throw std::invalid_argument{ctx + " must be a C++ identifier: " + std::string{value}};
         }
-        if (is_cpp_keyword(value) || is_reserved_identifier(value)) {
+        if (try_parse_serialized_cpp_keyword(value).has_value() || is_reserved_identifier(value)) {
             throw std::invalid_argument{
                 ctx + " must not be a reserved C++ identifier: " + std::string{value}};
         }
