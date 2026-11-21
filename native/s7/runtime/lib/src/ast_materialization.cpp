@@ -11,6 +11,8 @@ namespace {
 // Copy evaluated Scheme data into owned flat storage. Track active pairs to reject
 // cycles, and enforce limits before growing the AST; retain no interpreter handles.
 class Materializer {
+    using NodeResult = std::expected<NodeIndex, AstErrorCode>;
+
   public:
     Materializer(s7_scheme& scheme, AstLimits const limits)
         : scheme_{scheme}
@@ -25,14 +27,13 @@ class Materializer {
         return AstResult{std::in_place, std::move(ast_)};
     }
   private:
-    auto fail(AstErrorCode const code, std::string const& path, std::string message)
-        -> std::expected<NodeIndex, AstErrorCode> {
+    auto fail(AstErrorCode const code, std::string const& path, std::string message) -> NodeResult {
         errors_.push_back({code, path, std::move(message)});
-        return std::unexpected{code};
+        return NodeResult{std::unexpect, code};
     }
 
     auto copy(s7_pointer const value, std::uint32_t const depth, std::string const& path)
-        -> std::expected<NodeIndex, AstErrorCode> {
+        -> NodeResult {
         if (depth > limits_.max_depth || ast_.nodes.size() >= limits_.max_nodes) {
             return fail(AstErrorCode::LimitExceeded, path, "AST nesting or node limit exceeded");
         }
@@ -57,7 +58,7 @@ class Materializer {
                 auto const child{
                     copy(s7_car(tail), depth + 1, std::format("{}[{}]", path, children.size()))};
                 if (!child) {
-                    return std::unexpected{child.error()};
+                    return child;
                 }
                 children.push_back(*child);
                 tail = s7_cdr(tail);

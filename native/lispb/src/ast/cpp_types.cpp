@@ -104,7 +104,7 @@ void CppTypes::initialise_standard_types() {
         .span = library("std::span", "span"),
         .vector = library("std::vector", "vector"),
         .optional = library("std::optional", "optional"),
-        .unexpected = library("std::unexpected", "expected"),
+        .unexpect = library("std::unexpect", "expected"),
         .variant = library("std::variant", "variant"),
         .tuple = library("std::tuple", "tuple"),
         .numeric_limits = library("std::numeric_limits", "limits"),

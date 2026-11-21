@@ -17,7 +17,7 @@ auto read_source(std::string_view const source) -> ReadResult<T> {
     Interpreter interpreter;
     auto ast{interpreter.evaluate_ast(source)};
     if (!ast) {
-        return std::unexpected{std::move(ast.error())};
+        return ReadResult<T>{std::unexpect, std::move(ast.error())};
     }
     return read<T>(Reader{*ast}, ast->root, "record");
 }
@@ -27,7 +27,7 @@ auto override_source(std::string_view source, T initial = {}) -> ReadResult<T> {
     Interpreter interpreter;
     auto ast{interpreter.evaluate_ast(source)};
     if (!ast) {
-        return std::unexpected{std::move(ast.error())};
+        return ReadResult<T>{std::unexpect, std::move(ast.error())};
     }
     return read_override(Reader{*ast}, ast->root, "record", std::move(initial));
 }

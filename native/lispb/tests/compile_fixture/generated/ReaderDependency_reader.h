@@ -34,7 +34,7 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency>
             },
             required);
         if (!ctx.errors.empty()) {
-            return std::unexpected{std::move(ctx.errors)};
+            return ReadResult<value_type>{std::unexpect, std::move(ctx.errors)};
         }
 
         value_type result{.child = std::move(*value_child)};

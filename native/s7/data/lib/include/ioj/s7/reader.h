@@ -28,7 +28,9 @@ inline auto field_path(std::string_view path, std::string_view name) -> std::str
 [[nodiscard]] inline auto read_error(AstErrorCode const code,
                                      std::string_view const path,
                                      std::string message) -> std::unexpected<AstDiagnostics> {
-    return std::unexpected{AstDiagnostics{{code, std::string{path}, std::move(message)}}};
+    return std::unexpected<AstDiagnostics>{
+        std::in_place,
+        std::initializer_list<AstDiagnostic>{{code, std::string{path}, std::move(message)}}};
 }
 
 inline void append_errors(AstDiagnostics& destination, AstDiagnostics source) {
@@ -108,9 +110,9 @@ template <std::floating_point T>
 struct TypeReader<T> {
     static auto read(Reader const& reader, NodeIndex const node, std::string_view const path)
         -> ReadResult<T> {
-        auto const value{reader.number(node, path)};
+        auto value{reader.number(node, path)};
         if (!value) {
-            return std::unexpected{value.error()};
+            return ReadResult<T>{std::unexpect, std::move(value.error())};
         }
         if (auto const converted{try_numeric_cast<T>(*value)}) {
             return *converted;
@@ -132,13 +134,13 @@ struct TypeReader<T> {
         -> ReadResult<T> {
         auto value{s7::read<typename T::value_type>(reader, node, path)};
         if (!value) {
-            return std::unexpected{std::move(value.error())};
+            return ReadResult<T>{std::unexpect, std::move(value.error())};
         }
         if (!T::is_valid_value(*value)) {
             return read_error(
                 AstErrorCode::InvalidNumber, path, "Integer is outside the scalar domain");
         }
-        return T{*value};
+        return ReadResult<T>{std::in_place, *value};
     }
 };
 
@@ -160,7 +162,7 @@ struct TypeReader<std::string> {
         if (reader.ast().node(node).kind != NodeKind::String) {
             return read_error(AstErrorCode::InvalidType, path, "Expected a string");
         }
-        return std::string{reader.ast().text(node)};
+        return ReadResult<std::string>{std::in_place, reader.ast().text(node)};
     }
 };
 
@@ -174,9 +176,9 @@ template <SerializedEnum T>
 struct TypeReader<T> {
     static auto read(Reader const& reader, NodeIndex const node, std::string_view const path)
         -> ReadResult<T> {
-        auto const name{reader.symbol(node, path)};
+        auto name{reader.symbol(node, path)};
         if (!name) {
-            return std::unexpected{name.error()};
+            return ReadResult<T>{std::unexpect, std::move(name.error())};
         }
         for (auto const value : EnumTraits<T>::values) {
             if (equals_ignore_case(to_serialized_string(value), *name)) {
@@ -194,7 +196,7 @@ struct TypeReader<ConstrainedValue<T, Policy>> {
         -> ReadResult<ConstrainedValue<T, Policy>> {
         auto value{s7::read<T>(reader, node, path)};
         if (!value) {
-            return std::unexpected{std::move(value.error())};
+            return ReadResult<ConstrainedValue<T, Policy>>{std::unexpect, std::move(value.error())};
         }
         auto constrained{ConstrainedValue<T, Policy>::try_make(std::move(*value))};
         if (!constrained) {
@@ -211,9 +213,9 @@ template <typename T>
 struct TypeReader<std::vector<T>> {
     static auto read(Reader const& reader, NodeIndex const node, std::string_view const path)
         -> ReadResult<std::vector<T>> {
-        auto const children{reader.list(node, path)};
+        auto children{reader.list(node, path)};
         if (!children) {
-            return std::unexpected{children.error()};
+            return ReadResult<std::vector<T>>{std::unexpect, std::move(children.error())};
         }
         std::vector<T> result;
         AstDiagnostics errors;
@@ -228,7 +230,7 @@ struct TypeReader<std::vector<T>> {
             }
         }
         if (!errors.empty()) {
-            return std::unexpected{std::move(errors)};
+            return ReadResult<std::vector<T>>{std::unexpect, std::move(errors)};
         }
         return result;
     }
@@ -238,9 +240,9 @@ template <typename T, std::size_t N>
 struct TypeReader<std::array<T, N>> {
     static auto read(Reader const& reader, NodeIndex const node, std::string_view const path)
         -> ReadResult<std::array<T, N>> {
-        auto const children{reader.list(node, path)};
+        auto children{reader.list(node, path)};
         if (!children) {
-            return std::unexpected{children.error()};
+            return ReadResult<std::array<T, N>>{std::unexpect, std::move(children.error())};
         }
         if (children->size() != N) {
             return read_error(
@@ -257,7 +259,7 @@ struct TypeReader<std::array<T, N>> {
             }
         }
         if (!errors.empty()) {
-            return std::unexpected{std::move(errors)};
+            return ReadResult<std::array<T, N>>{std::unexpect, std::move(errors)};
         }
         return [&]<std::size_t... I>(std::index_sequence<I...>) {
             return std::array<T, N>{std::move(*values[I])...};
@@ -286,13 +288,13 @@ struct TypeReader<std::optional<T>> {
         -> ReadResult<std::optional<T>> {
         if (reader.ast().node(node).kind == NodeKind::Keyword &&
             reader.ast().text(node) == "none") {
-            return std::optional<T>{};
+            return ReadResult<std::optional<T>>{std::in_place};
         }
         auto value{s7::read<T>(reader, node, path)};
         if (!value) {
-            return std::unexpected{std::move(value.error())};
+            return ReadResult<std::optional<T>>{std::unexpect, std::move(value.error())};
         }
-        return std::optional<T>{std::move(*value)};
+        return ReadResult<std::optional<T>>{std::in_place, std::move(*value)};
     }
 };
 
@@ -344,7 +346,7 @@ template <typename T>
         decode_field({override.reader, override.node, override.path, ReadMode::Override, errors},
                      value);
         if (!errors.empty()) {
-            return std::unexpected{std::move(errors)};
+            return ReadResult<T>{std::unexpect, std::move(errors)};
         }
     }
     return value;

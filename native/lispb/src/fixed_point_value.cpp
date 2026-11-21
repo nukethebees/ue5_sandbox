@@ -13,7 +13,8 @@ auto parse_fixed_point_endpoint(std::string_view text) -> std::expected<double, 
     double value{};
     auto const [end, error]{std::from_chars(text.data(), text.data() + text.size(), value)};
     if (error != std::errc{} || end != text.data() + text.size() || !std::isfinite(value)) {
-        return std::unexpected{"Expected a finite fixed-point range endpoint."};
+        return std::expected<double, std::string>{std::unexpect,
+                                                  "Expected a finite fixed-point range endpoint."};
     }
     return value;
 }

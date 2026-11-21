@@ -311,7 +311,10 @@ class RecordReaderLowering : public CppIRBuilder {
         auto const decode_ctx{named("ctx")};
         auto const errors{member_access(decode_ctx, "errors")};
         auto move = [&](Expr value) { return call(std_types().move, {value}); };
-        auto const unexpected{init_list({move(errors)}, std_types().unexpected)};
+        auto const result_type{template_type(named_type("ioj::s7::ReadResult", NameOrigin::global),
+                                             {named_type("value_type")})};
+        auto const failure{
+            init_list({type_reference(std_types().unexpect), move(errors)}, result_type)};
         auto body{node_list()};
         if (constructing) {
             for (auto const field : fields) {
@@ -338,7 +341,7 @@ class RecordReaderLowering : public CppIRBuilder {
                 unary(UnaryOperator::logical_not, named("arguments")),
                 block({expr_stmt(call(named_type("ioj::s7::append_errors", NameOrigin::global),
                                       {errors, member_call(named("arguments"), "error")})),
-                       constructing ? return_stmt(unexpected) : return_stmt()})));
+                       constructing ? return_stmt(failure) : return_stmt()})));
             std::size_t index{};
             for (auto const field : fields) {
                 auto const name{ctx.text(members.name[members.index(field)])};
@@ -417,7 +420,7 @@ class RecordReaderLowering : public CppIRBuilder {
         }
         auto const return_errors{
             if_stmt(unary(UnaryOperator::logical_not, member_call(errors, "empty")),
-                    block({return_stmt(unexpected)}))};
+                    block({return_stmt(failure)}))};
         body.add(return_errors, 2);
         std::vector<Syntax> initializers;
         for (auto const field : fields) {

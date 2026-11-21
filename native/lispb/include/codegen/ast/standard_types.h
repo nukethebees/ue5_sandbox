@@ -57,7 +57,7 @@ struct StandardTypes {
     CppTypeId span;
     CppTypeId vector;
     CppTypeId optional;
-    CppTypeId unexpected;
+    CppTypeId unexpect;
     CppTypeId variant;
     CppTypeId tuple;
     CppTypeId numeric_limits;

@@ -57,7 +57,7 @@ struct TypeReader<codegen_compile_fixture::PositionalChild>
 
         if (!arguments) {
             append_errors(ctx.errors, arguments.error());
-            return std::unexpected{std::move(ctx.errors)};
+            return ReadResult<value_type>{std::unexpect, std::move(ctx.errors)};
         }
         FieldReader{
             {ctx.reader, (*arguments)[0ULL], std::string{ctx.path} + ".name", ctx.mode, ctx.errors}}
@@ -69,7 +69,7 @@ struct TypeReader<codegen_compile_fixture::PositionalChild>
                      ctx.errors}}
             .construct(value_count, constraints::nonnegative);
         if (!ctx.errors.empty()) {
-            return std::unexpected{std::move(ctx.errors)};
+            return ReadResult<value_type>{std::unexpect, std::move(ctx.errors)};
         }
 
         value_type result{.name = std::move(*value_name), .count = std::move(*value_count)};
@@ -157,7 +157,7 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
             },
             required);
         if (!ctx.errors.empty()) {
-            return std::unexpected{std::move(ctx.errors)};
+            return ReadResult<value_type>{std::unexpect, std::move(ctx.errors)};
         }
 
         value_type result{.value = std::move(*value_value)};
@@ -215,7 +215,7 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
             },
             required);
         if (!ctx.errors.empty()) {
-            return std::unexpected{std::move(ctx.errors)};
+            return ReadResult<value_type>{std::unexpect, std::move(ctx.errors)};
         }
 
         value_type result{.name = std::move(*value_name)};
@@ -315,7 +315,7 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
             },
             required);
         if (!ctx.errors.empty()) {
-            return std::unexpected{std::move(ctx.errors)};
+            return ReadResult<value_type>{std::unexpect, std::move(ctx.errors)};
         }
 
         value_type result{.child = std::move(*value_child)};

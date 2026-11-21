@@ -37,7 +37,7 @@ auto open_script_file(std::string_view const root_utf8, std::string_view const r
     -> ScriptFileResult {
     if (requested_path.empty() || requested_path.front() == '/' || requested_path.front() == '\\' ||
         requested_path.contains(':') || requested_path.contains('\0')) {
-        return std::unexpected("import-module requires a relative .scm path.");
+        return ScriptFileResult{std::unexpect, "import-module requires a relative .scm path."};
     }
     std::size_t component_start{};
     auto const path_size{requested_path.size()};
@@ -48,35 +48,38 @@ auto open_script_file(std::string_view const root_utf8, std::string_view const r
 
         auto const component{requested_path.substr(component_start, index - component_start)};
         if (component.empty() || component == "." || component == "..") {
-            return std::unexpected("import-module paths cannot contain '.' or '..'.");
+            return ScriptFileResult{std::unexpect,
+                                    "import-module paths cannot contain '.' or '..'."};
         }
         component_start = index + 1;
     }
     if (path_size < 4 ||
         !std::ranges::equal(
             requested_path.substr(path_size - 4), std::string_view{".scm"}, {}, ioj::tolower)) {
-        return std::unexpected("import-module only accepts .scm files.");
+        return ScriptFileResult{std::unexpect, "import-module only accepts .scm files."};
     }
 
     auto const root_source{utf8_to_wide(root_utf8)};
     if (!root_source.has_value()) {
-        return std::unexpected("The configured script library root is unavailable.");
+        return ScriptFileResult{std::unexpect,
+                                "The configured script library root is unavailable."};
     }
     auto const root_handle{open_script_handle(*root_source, true)};
     auto const root{canonical_path(root_handle, true)};
     if (!root.has_value()) {
-        return std::unexpected("The configured script library root is unavailable.");
+        return ScriptFileResult{std::unexpect,
+                                "The configured script library root is unavailable."};
     }
 
     auto requested_path_wide{utf8_to_wide(requested_path)};
     if (!requested_path_wide.has_value()) {
-        return std::unexpected("The requested script library file is unavailable.");
+        return ScriptFileResult{std::unexpect, "The requested script library file is unavailable."};
     }
     std::ranges::replace(*requested_path_wide, L'/', L'\\');
     auto handle{open_script_handle(root->wide_path + L'\\' + *requested_path_wide, false)};
     auto candidate{canonical_path(handle, false)};
     if (!candidate.has_value() || !is_within_root(candidate->wide_path, root->wide_path)) {
-        return std::unexpected("The requested script library file is unavailable.");
+        return ScriptFileResult{std::unexpect, "The requested script library file is unavailable."};
     }
 
     return ScriptFileResult{

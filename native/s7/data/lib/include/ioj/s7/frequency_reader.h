@@ -10,7 +10,7 @@ struct TypeReader<Frequency> {
         -> ReadResult<Frequency> {
         auto value{s7::read<double>(reader, node, path)};
         if (!value) {
-            return std::unexpected{std::move(value.error())};
+            return ReadResult<Frequency>{std::unexpect, std::move(value.error())};
         }
         if (auto frequency{Frequency::try_make(*value)}) {
             return *frequency;

@@ -108,7 +108,7 @@ struct RecordReader {
             T value{};
             decode_field(context, value);
             if (!errors.empty()) {
-                return std::unexpected{std::move(errors)};
+                return ReadResult<T>{std::unexpect, std::move(errors)};
             }
             return value;
         } else {
