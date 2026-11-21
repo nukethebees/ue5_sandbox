@@ -8,6 +8,25 @@
 #include <utility>
 
 namespace ioj::sim {
+auto make_grid_spec(OverlapResponseConfig const& settings) -> collision::CollisionGridSpec {
+    return {collision::calculate_grid_dimensions(settings.level_size, settings.cell_size),
+            settings.cell_size};
+}
+
+auto make_entity_bounds(settings::EntityGeometry const& geometry) -> collision::EntityAABBs {
+    collision::EntityAABBs result;
+    auto set_bounds = [&](EntityType type, settings::MeshBounds const& bounds) {
+        result.set_centre(type, bounds.centre);
+        result.set_half_extents(type, bounds.half_extents);
+    };
+    set_bounds(EntityType::PlayerShip, geometry.player_ship);
+    set_bounds(EntityType::CapitalShip, geometry.capital_ship);
+    set_bounds(EntityType::Fighter, geometry.fighter);
+    set_bounds(EntityType::Turret, geometry.turret);
+    set_bounds(EntityType::TubeSpinner, geometry.tube_spinner);
+    return result;
+}
+
 auto validate_settings(settings::Settings const& settings)
     -> std::expected<void, levels::Diagnostics> {
     levels::Diagnostics errors;
@@ -52,9 +71,7 @@ auto validate_settings(settings::Settings const& settings)
     cooldown(settings.turrets.laser.fire_cooldown, "turrets.laser.fire-cooldown");
     cooldown(settings.tube_spinners.laser.fire_cooldown, "tube-spinners.laser.fire-cooldown");
 
-    auto const dimensions{collision::calculate_grid_dimensions(settings.collision_grid.level_size,
-                                                               settings.collision_grid.cell_size)};
-    check(collision::is_configured({dimensions, settings.collision_grid.cell_size}),
+    check(collision::is_configured(make_grid_spec(settings.collision_grid)),
           "collision-grid",
           "Expected positive grid dimensions with a representable cell count");
 
@@ -81,15 +98,7 @@ void apply_settings(settings::Settings const& settings, LevelSimInitData& target
     target.spinners = settings.tube_spinners;
 
     auto const& geometry{settings.entity_geometry};
-    auto set_bounds = [&](EntityType type, settings::MeshBounds const& bounds) {
-        target.collision.entity_bounds.set_centre(type, bounds.centre);
-        target.collision.entity_bounds.set_half_extents(type, bounds.half_extents);
-    };
-    set_bounds(EntityType::PlayerShip, geometry.player_ship);
-    set_bounds(EntityType::CapitalShip, geometry.capital_ship);
-    set_bounds(EntityType::Fighter, geometry.fighter);
-    set_bounds(EntityType::Turret, geometry.turret);
-    set_bounds(EntityType::TubeSpinner, geometry.tube_spinner);
+    target.collision.entity_bounds = make_entity_bounds(geometry);
     target.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     for (auto const& slot : geometry.fighter_launch_slots) {
         target.capital_ships.fighter_spawn_slots_relative_transforms.push_back(transform(slot));
@@ -102,10 +111,7 @@ void apply_settings(settings::Settings const& settings, LevelSimInitData& target
             {Vector3f{point.location}, Rotator3f{transform(point).rotator()}});
     }
 
-    target.collision.grid_spec = {
-        collision::calculate_grid_dimensions(settings.collision_grid.level_size,
-                                             settings.collision_grid.cell_size),
-        settings.collision_grid.cell_size};
+    target.collision.grid_spec = make_grid_spec(settings.collision_grid);
     if (target.player) {
         apply_settings(settings, *target.player);
     }
