@@ -1,6 +1,7 @@
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <SandboxEditor/levels/S7EntityGeometryExport.h>
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
+#include <SandboxEditor/levels/S7LevelAuthoringMode.h>
 #include <SandboxEditor/levels/S7LevelAuthoringSession.h>
 #include <SandboxEditor/levels/S7LevelPlayableSetup.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
@@ -14,6 +15,7 @@
 #include <Camera/CameraActor.h>
 #include <CQTest.h>
 #include <Editor.h>
+#include <EditorModeManager.h>
 #include <Engine/Level.h>
 #include <Engine/World.h>
 #include <EngineUtils.h>
@@ -24,11 +26,55 @@
 #include <Misc/FileHelper.h>
 #include <Misc/Guid.h>
 #include <Misc/Paths.h>
+#include <SceneManagement.h>
+#include <SceneView.h>
+#include <ScopedTransaction.h>
 #include <Tests/AutomationEditorCommon.h>
+#include <UObject/Package.h>
 
 #include <expected>
 
 namespace s7_level_playable_tests {
+struct FOverlayLines final : FSimpleElementCollector {
+    bool IsHitTesting() override { return false; }
+    void DrawLine(FVector const& start,
+                  FVector const& end,
+                  FLinearColor const&,
+                  uint8 depth,
+                  float,
+                  float,
+                  bool) override {
+        if (depth == SDPG_World) {
+            points.Add(start);
+            points.Add(end);
+        }
+    }
+    void DrawTranslucentLine(FVector const& start,
+                             FVector const& end,
+                             FLinearColor const& colour,
+                             uint8 depth,
+                             float thickness,
+                             float bias,
+                             bool screen) override {
+        DrawLine(start, end, colour, depth, thickness, bias, screen);
+    }
+    TArray<FVector> points;
+};
+
+auto capture_overlay(US7LevelAuthoringMode& mode, UWorld& world) -> TArray<FVector> {
+    FSceneViewFamilyContext family{FSceneViewFamily::ConstructionValues{
+        nullptr,
+        world.Scene,
+        FEngineShowFlags{ESFIM_Editor}}.SetTime(FGameTime{})};
+    FSceneViewInitOptions options;
+    options.ViewFamily = &family;
+    options.SetViewRectangle(FIntRect{0, 0, 640, 480});
+    FSceneView view{options};
+    FOverlayLines lines;
+    mode.Render(&view, nullptr, &lines);
+    return MoveTemp(lines.points);
+}
+
 template <typename Value>
 auto assert_success(FAutomationTestBase& test,
                     TCHAR const* description,
@@ -47,6 +93,16 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
     {
         if (GEditor && GEditor->PlayWorld) {
             GEditor->EndPlayMap();
+        }
+        if (previous_overlays_) {
+            auto& modes{GLevelEditorModeTools()};
+            modes.ActivateMode(US7LevelAuthoringMode::mode_id);
+            auto* mode{CastChecked<US7LevelAuthoringMode>(
+                modes.GetActiveScriptableMode(US7LevelAuthoringMode::mode_id))};
+            mode->set_collision_overlays(*previous_overlays_);
+            if (!authoring_was_active_) {
+                modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
+            }
         }
         if (!source_directory_.IsEmpty()) {
             IFileManager::Get().DeleteDirectory(*source_directory_, false, true);
@@ -332,6 +388,50 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                 *TestRunner, TEXT("Load linked mission"), definition)) {
             return;
         }
+        auto& modes{GLevelEditorModeTools()};
+        authoring_was_active_ = modes.IsModeActive(US7LevelAuthoringMode::mode_id);
+        modes.ActivateMode(US7LevelAuthoringMode::mode_id);
+        auto& mode{*CastChecked<US7LevelAuthoringMode>(
+            modes.GetActiveScriptableMode(US7LevelAuthoringMode::mode_id))};
+        previous_overlays_ = mode.collision_overlays();
+        auto const was_dirty{world->GetPackage()->IsDirty()};
+        auto capture{[&] { return s7_level_playable_tests::capture_overlay(mode, *world); }};
+        mode.set_collision_overlays({});
+        TestRunner->TestTrue(TEXT("Hidden overlays draw no lines"), capture().IsEmpty());
+        mode.set_collision_overlays({.grid = true});
+        auto const grid{capture()};
+        FBox grid_box{grid};
+        TestRunner->TestTrue(TEXT("Grid uses the mission's 500000 cm height"),
+                             grid_box.IsValid && grid_box.Min.Z == -250000. &&
+                                 grid_box.Max.Z == 250000.);
+        mode.set_collision_overlays({.bounds = true});
+        auto const boxes{capture()};
+        TestRunner->TestFalse(TEXT("Editor draws placed collision boxes"), boxes.IsEmpty());
+        mode.set_collision_overlays({.grid = true, .bounds = true});
+        TestRunner->TestEqual(
+            TEXT("Both overlays draw independently"), capture().Num(), boxes.Num() + grid.Num());
+        TestRunner->TestEqual(TEXT("Overlay controls preserve map dirty state"),
+                              world->GetPackage()->IsDirty(),
+                              was_dirty);
+
+        mode.set_collision_overlays({.bounds = true});
+        TActorIterator<ATestCapitalShipProxy> capital{world};
+        if (!TestRunner->TestTrue(TEXT("Placed capital"), static_cast<bool>(capital))) {
+            return;
+        }
+        {
+            FScopedTransaction move{
+                NSLOCTEXT("S7PlayableLevel", "MoveCapital", "Move test capital")};
+            capital->Modify();
+            capital->GetRootComponent()->Modify();
+            capital->SetActorLocationAndRotation(FVector{1234., 5678., 9012.},
+                                                 FRotator{15., 32., 8.});
+        }
+        TestRunner->TestTrue(TEXT("Live preview follows the capital placement"),
+                             capture() != boxes);
+        GEditor->UndoTransaction();
+        TestRunner->TestTrue(TEXT("Undo restores the preview before export"), capture() == boxes);
+        mode.set_collision_overlays({.grid = true, .bounds = true});
         auto const bounds{definition->settings().entity_geometry.player_ship.half_extents};
         TestCommandBuilder.Do([] { FStartPIECommand{false}.Update(); })
             .Until([] { return GEditor->PlayWorld && GEditor->PlayWorld->HasBegunPlay(); },
@@ -349,13 +449,33 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                                       simulation->spatial_query_manager().entity_type_radius(
                                           sim::EntityType::PlayerShip),
                                       std::max({bounds.x(), bounds.y(), bounds.z()}));
+                auto* overlay{it->FindComponentByClass<UCollisionGridVisualizationComponent>()};
+                TestRunner->TestTrue(TEXT("Live grid uses the editor preview height"),
+                                     overlay && overlay->Bounds.BoxExtent.Z == 250000.);
                 it->SetActorTickEnabled(false);
                 it->tick(8.0);
                 simulation = it->get_level_simulation();
                 TestRunner->TestTrue(TEXT("Fighters launch and survive in Play"),
                                      simulation && simulation->fighters().num_instances() > 0);
+                GEditor->RequestEndPlayMap();
+            })
+            .Until([] { return !GEditor->PlayWorld; }, FTimespan::FromSeconds(30))
+            .Then([this, expected_points = boxes.Num() + grid.Num()] {
+                auto* authoring{
+                    Cast<US7LevelAuthoringMode>(GLevelEditorModeTools().GetActiveScriptableMode(
+                        US7LevelAuthoringMode::mode_id))};
+                if (TestRunner->TestNotNull(TEXT("Authoring mode restored after Play"),
+                                            authoring)) {
+                    auto& editor_world{*GEditor->GetEditorWorldContext().World()};
+                    TestRunner->TestEqual(
+                        TEXT("Both editor overlays return after Play"),
+                        s7_level_playable_tests::capture_overlay(*authoring, editor_world).Num(),
+                        expected_points);
+                }
             });
     }
 
+    bool authoring_was_active_{};
+    TOptional<ioj::FCollisionOverlayVisibility> previous_overlays_;
     FString source_directory_;
 };

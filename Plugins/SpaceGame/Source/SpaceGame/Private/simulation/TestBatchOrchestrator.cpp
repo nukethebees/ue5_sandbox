@@ -373,19 +373,26 @@ void ATestBatchOrchestrator::bind_presentation_components() {
                                         .soft_targets = soft_target_instances_,
                                         .collision_grid = collision_grid_visualization});
 }
+void ATestBatchOrchestrator::set_collision_overlays(FCollisionOverlayVisibility const visibility) {
+    collision_overlays_ = visibility;
+    refresh_collision_grid_visualization();
+    if (is_presentation_enabled() && level_simulation_) {
+        auto const& queries{level_simulation_->spatial_query_manager()};
+        collision_grid_visualization->update_collision_bounds(queries.entity_collision_bounds(),
+                                                              queries.static_collision_bounds());
+    }
+}
 void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
     TOptional<FCollisionGridVisualizationSettings> settings;
-    if (is_presentation_enabled() && IsValid(level_config) && level_simulation_.IsSet()) {
+    if ((collision_overlays_.grid || collision_overlays_.bounds) && is_presentation_enabled() &&
+        IsValid(level_config) && level_simulation_.IsSet()) {
         auto const grid{level_simulation_->spatial_query_manager().grid_spec()};
         auto const& collision_grid{level_config->collision_grid};
         settings.Emplace(FCollisionGridVisualizationSettings{
-            .dimensions = {grid.dimensions.x(), grid.dimensions.y(), grid.dimensions.z()},
-            .cell_size = {grid.cell_dimensions.x(),
-                          grid.cell_dimensions.y(),
-                          grid.cell_dimensions.z()},
+            .grid = grid,
             .line_colour = collision_grid.line_colour,
             .line_thickness = collision_grid.line_thickness,
-            .show_grid = collision_grid.show_grid,
+            .visibility = collision_overlays_,
         });
     }
     presentation_host_.configure_collision_grid(MoveTemp(settings));

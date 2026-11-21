@@ -5,11 +5,16 @@
 #include "SandboxEditor/levels/S7LevelAuthoringModeToolkit.h"
 #include "SandboxEditor/levels/S7LevelObserverCamera.h"
 #include <ioj/levels/authoring/level_definition_writer.h>
+#include <ioj/rotator_math.h>
+#include <ioj/sim/collision/collision_grid.h>
+#include <ioj/sim/collision/entity_world_bounds.h>
+#include <ioj/sim/levels/simulation_settings.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/level_script_catalog.h>
 
 #include <SandboxCoreEngine/strings.h>
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Algo/Count.h>
 #include <CanvasItem.h>
@@ -18,11 +23,14 @@
 #include <Editor.h>
 #include <Engine/Level.h>
 #include <Engine/Selection.h>
+#include <EngineUtils.h>
 #include <Framework/Application/SlateApplication.h>
 #include <HAL/PlatformProcess.h>
 #include <IDesktopPlatform.h>
 #include <Misc/MessageDialog.h>
 #include <Misc/Paths.h>
+#include <PrimitiveDrawingUtils.h>
+#include <SceneInterface.h>
 #include <SceneManagement.h>
 #include <SceneView.h>
 #include <ScopedTransaction.h>
@@ -61,6 +69,8 @@ namespace levels = ioj::levels;
 using namespace ioj::editor;
 using namespace ioj::editor::s7_level_authoring_mode_detail;
 
+ioj::FCollisionOverlayVisibility US7LevelAuthoringMode::collision_overlays_{};
+
 FEditorModeID const US7LevelAuthoringMode::mode_id{TEXT("EM_SpaceGameLevelAuthoring")};
 
 US7LevelAuthoringMode::US7LevelAuthoringMode() {
@@ -80,12 +90,15 @@ void US7LevelAuthoringMode::Enter() {
             }
         });
     refresh_document();
+    refresh_collision_preview();
     notify_changed();
 }
 
 void US7LevelAuthoringMode::Exit() {
     FEditorDelegates::PostSaveWorldWithContext.RemoveAll(this);
     document_.Reset();
+    grid_lines_.Reset();
+    entity_bounds_.Reset();
     Super::Exit();
 }
 
@@ -107,7 +120,12 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* viewport_client, float d
     Super::Tick(viewport_client, delta_time);
     if (current_level() != displayed_level_.Get() || document_.IsStale() ||
         (current_level() && current_level()->Actors.Num() != actor_count_)) {
+        auto const previous_document{document_};
+        auto const previous_level{displayed_level_};
         refresh_document();
+        if (previous_document != document_ || previous_level != displayed_level_) {
+            refresh_collision_preview();
+        }
         notify_changed();
     }
 }
@@ -122,6 +140,9 @@ void US7LevelAuthoringMode::Render(FSceneView const* const view,
     auto* const level{current_level()};
     if (!IsValid(level)) {
         return;
+    }
+    if (view && view->Family->Scene == level->GetWorld()->Scene) {
+        draw_collision_preview(*pdi, *level);
     }
     auto const observer_camera{make_s7_observer_camera_transform(*level, *document_)};
     if (!observer_camera || !observer_camera->IsSet()) {
@@ -244,6 +265,114 @@ void US7LevelAuthoringMode::refresh_document() {
     }
 }
 
+auto US7LevelAuthoringMode::collision_overlays() -> ioj::FCollisionOverlayVisibility {
+    return collision_overlays_;
+}
+void US7LevelAuthoringMode::set_collision_overlays(
+    ioj::FCollisionOverlayVisibility const visibility) {
+    collision_overlays_ = visibility;
+    refresh_collision_preview();
+    for (auto const& context : GEditor->GetWorldContexts()) {
+        if (context.WorldType == EWorldType::PIE && IsValid(context.World())) {
+            for (TActorIterator<ioj::ATestBatchOrchestrator> it{context.World()}; it; ++it) {
+                it->set_collision_overlays(visibility);
+            }
+        }
+    }
+    GEditor->RedrawLevelEditingViewports();
+    notify_changed();
+}
+
+void US7LevelAuthoringMode::refresh_collision_preview() {
+    grid_lines_.Reset();
+    entity_bounds_.Reset();
+    if ((!collision_overlays_.grid && !collision_overlays_.bounds) || !document_.IsValid()) {
+        return;
+    }
+
+    auto definition{read_s7_authored_level(*document_)};
+    if (!definition) {
+        set_status(FText::FromString(definition.error()));
+        return;
+    }
+    apply_collision_preview(definition->settings());
+}
+
+void US7LevelAuthoringMode::apply_collision_preview(ioj::settings::Settings const& settings) {
+    auto const grid{ioj::sim::make_grid_spec(settings.collision_grid)};
+    if (!ioj::sim::collision::is_configured(grid)) {
+        set_status(
+            LOCTEXT("InvalidCollisionGrid", "Invalid S7 collision grid dimensions or cell size."));
+        return;
+    }
+    if (collision_overlays_.grid) {
+        grid_lines_ = ioj::make_collision_grid_lines(grid);
+    }
+    if (collision_overlays_.bounds) {
+        entity_bounds_.Emplace(ioj::sim::make_entity_bounds(settings.entity_geometry));
+    }
+}
+
+void US7LevelAuthoringMode::draw_collision_preview(FPrimitiveDrawInterface& pdi,
+                                                   ULevel const& level) const {
+    auto const* config{document_->level_config.Get()};
+    if (!IsValid(config)) {
+        return;
+    }
+    auto const& style{config->collision_grid};
+    ioj::draw_collision_grid_lines(
+        pdi, grid_lines_, style.line_colour, style.line_thickness, SDPG_World);
+
+    if (!entity_bounds_) {
+        return;
+    }
+    for (auto const& actor : level.Actors) {
+        if (!IsValid(actor)) {
+            continue;
+        }
+        auto const resolved{resolve_s7_level_actor(*actor)};
+        if (!resolved) {
+            continue;
+        }
+        using enum ioj::levels::EntityArchetype;
+        using ioj::sim::EntityType;
+        EntityType type{};
+        ioj::Rotator3f rotation{actor->GetActorRotation()};
+        switch (resolved->archetype) {
+            case PlayerFighter:
+                type = EntityType::PlayerShip;
+                break;
+            case CapitalShip:
+                type = EntityType::CapitalShip;
+                break;
+            case StaticTurret:
+                type = EntityType::Turret;
+                break;
+            case Fighter:
+                type = EntityType::Fighter;
+                rotation.roll = 0.f;
+                break;
+            case TubeSpinner:
+                type = EntityType::TubeSpinner;
+                rotation.pitch = 0.f;
+                rotation.roll = 0.f;
+                break;
+        }
+        auto const box{
+            ioj::sim::collision::make_entity_world_bounds(*entity_bounds_,
+                                                          type,
+                                                          ioj::Vector3f{actor->GetActorLocation()},
+                                                          ioj::to_quaternion(rotation))};
+        DrawWireBox(&pdi,
+                    FBox{FVector{ioj::to_unreal(box.min)}, FVector{ioj::to_unreal(box.max)}},
+                    FLinearColor::Green,
+                    SDPG_World,
+                    style.line_thickness,
+                    0.f,
+                    true);
+    }
+}
+
 void US7LevelAuthoringMode::set_status(FText text) {
     status_ = MoveTemp(text);
 }
@@ -267,6 +396,9 @@ void US7LevelAuthoringMode::create_document() {
             document_ = *created;
         }
         set_status(FText::FromString(created ? document_->source_path : created.error()));
+        if (created) {
+            refresh_collision_preview();
+        }
     }
     notify_changed();
 }
@@ -337,6 +469,9 @@ void US7LevelAuthoringMode::link_script() {
         document_ = *linked;
     }
     set_status(FText::FromString(linked ? document_->source_path : linked.error()));
+    if (linked) {
+        refresh_collision_preview();
+    }
     notify_changed();
 }
 
@@ -377,6 +512,7 @@ void US7LevelAuthoringMode::check_scene() {
         set_status(
             LOCTEXT("NoScene", "Create a level script or link one before checking the scene."));
     } else if (auto checked{check_s7_scene(*level, *document_)}) {
+        apply_collision_preview(checked->definition.settings());
         set_status(checked->warnings.IsEmpty()
                        ? LOCTEXT("SceneChecked", "Scene passes export checks.")
                        : FText::Format(
@@ -384,6 +520,7 @@ void US7LevelAuthoringMode::check_scene() {
                                      "Scene passes export checks. Check Shared Level Assets:\n{0}"),
                              FText::FromString(FString::Join(checked->warnings, TEXT("\n")))));
     } else {
+        refresh_collision_preview();
         set_status(FText::FromString(checked.error()));
     }
     notify_changed();

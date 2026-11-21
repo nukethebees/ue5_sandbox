@@ -11,7 +11,7 @@ struct FS7LevelAuthoringModeToolkitBuilder {
     explicit FS7LevelAuthoringModeToolkitBuilder(ThisClass& self)
         : self_{self} {}
 
-    auto BuildRoot(auto&& details) {
+    auto BuildRoot(auto&& details, auto&& grid, auto&& bounds) {
 #line 16 "S7LevelAuthoringModeToolkit.lispb"
         return SNew(SVerticalBox) +
                SandboxUI::Slate::vbox_auto_slot(FMargin{2.0f})
@@ -83,6 +83,12 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                                       "EditScriptTooltip",
                                       "Open the linked .scm file in your external editor."))
                                   .OnClicked(&self_, &ThisClass::open_script_editor)]] +
+                    SandboxUI::Slate::vbox_auto_slot()
+                        [SNew(SHorizontalBox) +
+                         SandboxUI::Slate::hbox_fill_slot(
+                             1.0f, FMargin{2.0f})[std::forward<decltype(grid)>(grid)] +
+                         SandboxUI::Slate::hbox_fill_slot(
+                             1.0f, FMargin{2.0f})[std::forward<decltype(bounds)>(bounds)]] +
                     SandboxUI::Slate::vbox_auto_slot(FMargin{2.0f})[SAssignNew(
                         self_.script_id_row_,
                         SBox)[SNew(SHorizontalBox) +

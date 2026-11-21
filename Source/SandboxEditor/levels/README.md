@@ -1,7 +1,7 @@
 # S7 level authoring
 
 - Save the map. Open **Space Game Level** and choose **Create Level Script** or **Link Existing Script**. Save the map again to keep its project-relative link and Play setup.
-- Place a player ship, or enable **Use Observer Camera** and select its targets. Keep placements inside the collision grid.
+- Place a player ship, or enable **Use Observer Camera** and select its targets. Use **Show Collision Grid** and **Show Collision Bounds** to check placements before export and during Play.
 - Export actors with **Details → Level Authoring → Export**. Name new actors in the Outliner. To rename a bound actor’s **Script ID**, select it, edit the field and press Enter. Update handwritten script references.
 - Run **Check Scene** to validate pending placements, script logic and shared assets. Save the map or use **Export Scene** to write placements, overrides and viewpoint to `<level>/editor-config.scm`. Autosave skips export. If export fails, the map still saves.
 - Write logic and transformations in **Edit Level Script**. **Play** uses the saved script and logs a reminder for pending scene edits.

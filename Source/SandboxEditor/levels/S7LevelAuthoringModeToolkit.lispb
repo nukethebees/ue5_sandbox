@@ -12,7 +12,7 @@
 
 (widget-class FS7LevelAuthoringModeToolkit
   (function BuildRoot
-    (params (existing details))
+    (params (existing details) (existing grid) (existing bounds))
     (vbox
       (auto :padding 2
         (vbox
@@ -31,6 +31,7 @@
               (loc "FS7LevelAuthoringModeToolkit" "RebuildTooltip" "Replace bound actors from the saved script. Unexported edits to those actors will be lost.") rebuild_scene)
             (authoring-action "EditScript" "Edit Level Script"
               (loc "FS7LevelAuthoringModeToolkit" "EditScriptTooltip" "Open the linked .scm file in your external editor.") open_script_editor))
+          (authoring-row (existing grid) (existing bounds))
           (auto :padding 2
             (assign script_id_row_ SBox
               (hbox

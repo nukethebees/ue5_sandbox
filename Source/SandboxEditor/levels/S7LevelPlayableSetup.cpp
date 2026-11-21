@@ -2,6 +2,7 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
+#include "SandboxEditor/levels/S7LevelAuthoringMode.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include <ioj/levels/launch_options.h>
 #include <Sandbox/environment/effects/ShipPostProcessing.h>
@@ -29,6 +30,7 @@ inline constexpr TCHAR game_mode_class_path[]{
 
 void prepare_s7_scene_for_pie(UWorld& world) {
     for (TActorIterator<ATestBatchOrchestrator> it{&world}; it; ++it) {
+        it->set_collision_overlays(US7LevelAuthoringMode::collision_overlays());
         auto const mode{it->get_start_mode()};
         if (mode != EOrchestratorStartMode::AuthoredLevel &&
             mode != EOrchestratorStartMode::Automatic) {

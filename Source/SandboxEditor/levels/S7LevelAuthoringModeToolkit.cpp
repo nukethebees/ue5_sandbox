@@ -9,6 +9,7 @@
 #include <Modules/ModuleManager.h>
 #include <PropertyEditorModule.h>
 #include <Widgets/Input/SButton.h>
+#include <Widgets/Input/SCheckBox.h>
 #include <Widgets/Input/SEditableTextBox.h>
 #include <Widgets/Input/SMultiLineEditableTextBox.h>
 #include <Widgets/Layout/SBox.h>
@@ -29,10 +30,36 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
     args.NameAreaSettings = FDetailsViewArgs::HideNameArea;
     details_ = properties.CreateDetailView(args);
 
+    auto const overlay_checkbox{
+        [this](FText label, FText tooltip, bool ioj::FCollisionOverlayVisibility::* member) {
+            return SNew(SCheckBox)
+                .ToolTipText(tooltip)
+                .IsChecked_Lambda([member] {
+                    return US7LevelAuthoringMode::collision_overlays().*member
+                             ? ECheckBoxState::Checked
+                             : ECheckBoxState::Unchecked;
+                })
+                .OnCheckStateChanged_Lambda([mode = mode_, member](ECheckBoxState state) {
+                    if (mode.IsValid()) {
+                        auto visibility{mode->collision_overlays()};
+                        visibility.*member = state == ECheckBoxState::Checked;
+                        mode->set_collision_overlays(visibility);
+                    }
+                })[SNew(STextBlock).Text(label)];
+        }};
+    auto grid{overlay_checkbox(
+        LOCTEXT("ShowGrid", "Show Collision Grid"),
+        LOCTEXT("ShowGridTip", "Draw the level grid in the editor and during Play."),
+        &ioj::FCollisionOverlayVisibility::grid)};
+    auto bounds{overlay_checkbox(
+        LOCTEXT("ShowBounds", "Show Collision Bounds"),
+        LOCTEXT("ShowBoundsTip",
+                "Draw placed entity boxes in the editor and live collision boxes during Play."),
+        &ioj::FCollisionOverlayVisibility::bounds)};
     content_ =
         SNew(SScrollBox) +
         SScrollBox::Slot()[SlateGenerated::FS7LevelAuthoringModeToolkitBuilder{*this}.BuildRoot(
-            details_.ToSharedRef())];
+            details_.ToSharedRef(), grid, bounds)];
 
     refresh();
 }

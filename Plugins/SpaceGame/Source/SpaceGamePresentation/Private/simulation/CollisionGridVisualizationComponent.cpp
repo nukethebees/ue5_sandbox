@@ -8,6 +8,7 @@
 
 #include <Engine/EngineTypes.h>
 #include <MeshElementCollector.h>
+#include <PrimitiveDrawingUtils.h>
 #include <PrimitiveDrawInterface.h>
 #include <PrimitiveSceneProxy.h>
 #include <PrimitiveViewRelevance.h>
@@ -20,16 +21,10 @@ namespace {
 constexpr FLinearColor entity_bounds_colour{0.f, 1.f, 0.f, 1.f};
 constexpr FLinearColor static_bounds_colour{1.f, 0.4f, 0.f, 1.f};
 
-struct FGridLine {
-    FVector start{FVector::ZeroVector};
-    FVector end{FVector::ZeroVector};
-};
-
 class FCollisionGridSceneProxy final : public FPrimitiveSceneProxy {
   public:
     explicit FCollisionGridSceneProxy(ioj::UCollisionGridVisualizationComponent const& component,
-                                      FIntVector3 const grid_dimensions,
-                                      FVector3f const cell_size,
+                                      ioj::sim::collision::CollisionGridSpec const grid,
                                       FLinearColor const line_colour,
                                       float const line_thickness,
                                       TConstArrayView<FBox3f> const entity_bounds,
@@ -45,7 +40,7 @@ class FCollisionGridSceneProxy final : public FPrimitiveSceneProxy {
         , collision_bounds_max_draw_distance_{collision_bounds_max_draw_distance}
         , show_collision_bounds_{show_collision_bounds} {
         if (show_grid) {
-            build_grid_lines(grid_dimensions, cell_size);
+            grid_lines_ = ioj::make_collision_grid_lines(grid);
         }
         bWillEverBeLit = false;
     }
@@ -74,13 +69,11 @@ class FCollisionGridSceneProxy final : public FPrimitiveSceneProxy {
             primitive_draw_interface->AddReserveLines(
                 depth_priority_group, maximum_line_count, false, line_thickness_ > 0.f);
 
-            for (auto const& line : grid_lines_) {
-                draw_line(*primitive_draw_interface,
-                          line.start,
-                          line.end,
-                          line_colour_,
-                          depth_priority_group);
-            }
+            ioj::draw_collision_grid_lines(*primitive_draw_interface,
+                                           grid_lines_,
+                                           line_colour_,
+                                           line_thickness_,
+                                           depth_priority_group);
 
             if (show_collision_bounds_) {
                 draw_bounds(*primitive_draw_interface,
@@ -122,20 +115,6 @@ class FCollisionGridSceneProxy final : public FPrimitiveSceneProxy {
         static_bounds_ = MoveTemp(static_bounds);
     }
   private:
-    void draw_line(FPrimitiveDrawInterface& primitive_draw_interface,
-                   FVector const& start,
-                   FVector const& end,
-                   FLinearColor const colour,
-                   uint8 const depth_priority_group) const {
-        if (colour.A < 1.f) {
-            primitive_draw_interface.DrawTranslucentLine(
-                start, end, colour, depth_priority_group, line_thickness_, 0.f, true);
-        } else {
-            primitive_draw_interface.DrawLine(
-                start, end, colour, depth_priority_group, line_thickness_, 0.f, true);
-        }
-    }
-
     auto is_visible(FBox3f const& bounds, FSceneView const& view) const -> bool {
         FVector const centre{bounds.GetCenter()};
         FVector const extent{bounds.GetExtent()};
@@ -169,107 +148,20 @@ class FCollisionGridSceneProxy final : public FPrimitiveSceneProxy {
                      TConstArrayView<FBox3f> const bounds,
                      FLinearColor const colour,
                      uint8 const depth_priority_group) const {
-        static constexpr uint8 edges[12][2]{
-            {0, 1},
-            {1, 3},
-            {3, 2},
-            {2, 0},
-            {4, 5},
-            {5, 7},
-            {7, 6},
-            {6, 4},
-            {0, 4},
-            {1, 5},
-            {2, 6},
-            {3, 7},
-        };
-
         for (auto const& box : bounds) {
-            if (!is_visible(box, view)) {
-                continue;
-            }
-
-            auto const& min{box.Min};
-            auto const& max{box.Max};
-            FVector const corners[8]{
-                {min.X, min.Y, min.Z},
-                {max.X, min.Y, min.Z},
-                {min.X, max.Y, min.Z},
-                {max.X, max.Y, min.Z},
-                {min.X, min.Y, max.Z},
-                {max.X, min.Y, max.Z},
-                {min.X, max.Y, max.Z},
-                {max.X, max.Y, max.Z},
-            };
-            for (auto const& edge : edges) {
-                draw_line(primitive_draw_interface,
-                          corners[edge[0]],
-                          corners[edge[1]],
-                          colour,
-                          depth_priority_group);
+            if (is_visible(box, view)) {
+                DrawWireBox(&primitive_draw_interface,
+                            FBox{box},
+                            colour,
+                            depth_priority_group,
+                            line_thickness_,
+                            0.f,
+                            true);
             }
         }
     }
 
-    void build_grid_lines(FIntVector3 const grid_dimensions, FVector3f const cell_size) {
-        auto const max{ioj::to_unreal(ioj::sim::collision::grid_half_size(
-            {{grid_dimensions.X, grid_dimensions.Y, grid_dimensions.Z},
-             ioj::Vector3f{cell_size}}))};
-        auto const min{-max};
-
-        for (int32 y{0}; y <= grid_dimensions.Y; ++y) {
-            for (int32 z{0}; z <= grid_dimensions.Z; ++z) {
-                auto const on_surface{y == 0 || y == grid_dimensions.Y || z == 0 ||
-                                      z == grid_dimensions.Z};
-                if (!on_surface) {
-                    continue;
-                }
-
-                auto const y_position{min.Y + static_cast<float>(y) * cell_size.Y};
-                auto const z_position{min.Z + static_cast<float>(z) * cell_size.Z};
-                grid_lines_.Emplace(FGridLine{
-                    .start = FVector{min.X, y_position, z_position},
-                    .end = FVector{max.X, y_position, z_position},
-                });
-            }
-        }
-
-        for (int32 x{0}; x <= grid_dimensions.X; ++x) {
-            for (int32 z{0}; z <= grid_dimensions.Z; ++z) {
-                auto const on_surface{x == 0 || x == grid_dimensions.X || z == 0 ||
-                                      z == grid_dimensions.Z};
-                if (!on_surface) {
-                    continue;
-                }
-
-                auto const x_position{min.X + static_cast<float>(x) * cell_size.X};
-                auto const z_position{min.Z + static_cast<float>(z) * cell_size.Z};
-                grid_lines_.Emplace(FGridLine{
-                    .start = FVector{x_position, min.Y, z_position},
-                    .end = FVector{x_position, max.Y, z_position},
-                });
-            }
-        }
-
-        for (int32 x{0}; x <= grid_dimensions.X; ++x) {
-            for (int32 y{0}; y <= grid_dimensions.Y; ++y) {
-                auto const on_surface{x == 0 || x == grid_dimensions.X || y == 0 ||
-                                      y == grid_dimensions.Y};
-                if (!on_surface) {
-                    continue;
-                }
-
-                auto const x_position{min.X + static_cast<float>(x) * cell_size.X};
-                auto const y_position{min.Y + static_cast<float>(y) * cell_size.Y};
-                grid_lines_.Emplace(FGridLine{
-                    .start = FVector{x_position, y_position, min.Z},
-                    .end = FVector{x_position, y_position, max.Z},
-                });
-            }
-        }
-    }
-
-    TArray<FGridLine> grid_lines_;
+    TArray<ioj::FCollisionGridLine> grid_lines_;
     TArray<FBox3f> entity_bounds_;
     TArray<FBox3f> static_bounds_;
     FLinearColor line_colour_{0.f, 1.f, 1.f, 1.f};
@@ -280,6 +172,48 @@ class FCollisionGridSceneProxy final : public FPrimitiveSceneProxy {
 }
 
 namespace ioj {
+auto make_collision_grid_lines(sim::collision::CollisionGridSpec const grid)
+    -> TArray<FCollisionGridLine> {
+    TArray<FCollisionGridLine> lines;
+    auto const min{-FVector{to_unreal(sim::collision::grid_half_size(grid))}};
+    for (int axis{}; axis < 3; ++axis) {
+        auto const u{(axis + 1) % 3};
+        auto const v{(axis + 2) % 3};
+        auto const width{grid.dimensions[u]};
+        auto const height{grid.dimensions[v]};
+        auto const add_line{[&](int column, int row) {
+            auto start{min};
+            start[u] += static_cast<double>(column) * grid.cell_dimensions[u];
+            start[v] += static_cast<double>(row) * grid.cell_dimensions[v];
+            auto end{start};
+            end[axis] = -min[axis];
+            lines.Add({start, end});
+        }};
+        for (int column{}; column <= width; ++column) {
+            add_line(column, 0);
+            add_line(column, height);
+        }
+        for (int row{1}; row < height; ++row) {
+            add_line(0, row);
+            add_line(width, row);
+        }
+    }
+    return lines;
+}
+void draw_collision_grid_lines(FPrimitiveDrawInterface& pdi,
+                               TConstArrayView<FCollisionGridLine> const lines,
+                               FLinearColor const colour,
+                               float const thickness,
+                               uint8 const depth_priority) {
+    for (auto const& line : lines) {
+        if (colour.A < 1.f) {
+            pdi.DrawTranslucentLine(
+                line.start, line.end, colour, depth_priority, thickness, 0.f, true);
+        } else {
+            pdi.DrawLine(line.start, line.end, colour, depth_priority, thickness, 0.f, true);
+        }
+    }
+}
 UCollisionGridVisualizationComponent::UCollisionGridVisualizationComponent() {
     PrimaryComponentTick.bCanEverTick = false;
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -294,11 +228,16 @@ void UCollisionGridVisualizationComponent::configure(
         return;
     }
 
-    grid_dimensions_ = settings->dimensions;
-    cell_size_ = settings->cell_size;
+    grid_ = settings->grid;
     line_colour_ = settings->line_colour;
     line_thickness_ = settings->line_thickness;
-    show_grid_ = settings->show_grid;
+    show_grid_ = settings->visibility.grid;
+    show_collision_bounds_ = settings->visibility.bounds;
+    if (!show_collision_bounds_) {
+        entity_bounds_.Reset();
+        static_bounds_.Reset();
+    }
+    UpdateBounds();
 
     MarkRenderStateDirty();
 }
@@ -306,18 +245,7 @@ void UCollisionGridVisualizationComponent::configure(
 void UCollisionGridVisualizationComponent::update_collision_bounds(
     sim::collision::EntityCellData::CompactConstView const entity_aabbs,
     sim::collision::WorldAABBs::CompactConstView const static_aabbs) {
-    auto const max_draw_distance{FMath::Max(collision_bounds_max_draw_distance_, 0.f)};
-    auto const visible{show_collision_bounds_};
-    auto const settings_changed{collision_bounds_visible_ != visible ||
-                                applied_collision_bounds_max_draw_distance_ != max_draw_distance};
-    collision_bounds_visible_ = visible;
-    applied_collision_bounds_max_draw_distance_ = max_draw_distance;
-
-    if (!visible) {
-        clear_collision_bounds();
-        if (settings_changed) {
-            MarkRenderStateDirty();
-        }
+    if (!show_collision_bounds_) {
         return;
     }
 
@@ -339,69 +267,39 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
             FBox3f{to_unreal(static_min_points[i]), to_unreal(static_max_points[i])};
     }
 
-    if (settings_changed) {
-        MarkRenderStateDirty();
-    } else if (SceneProxy != nullptr) {
-        MarkRenderDynamicDataDirty();
-    } else if (IsRegistered() && (!entity_bounds_.IsEmpty() || !static_bounds_.IsEmpty())) {
-        MarkRenderStateDirty();
-    }
-}
-
-void UCollisionGridVisualizationComponent::clear_collision_bounds() {
-    auto const was_visible{collision_bounds_visible_};
-    collision_bounds_visible_ = false;
-    if (!was_visible && entity_bounds_.IsEmpty() && static_bounds_.IsEmpty()) {
-        return;
-    }
-
-    entity_bounds_.Reset();
-    static_bounds_.Reset();
-    if (SceneProxy != nullptr) {
-        if (show_grid_) {
-            MarkRenderDynamicDataDirty();
-        } else {
-            MarkRenderStateDirty();
-        }
-    } else if (was_visible) {
-        MarkRenderStateDirty();
-    }
+    MarkRenderDynamicDataDirty();
 }
 
 void UCollisionGridVisualizationComponent::clear() {
     entity_bounds_.Reset();
     static_bounds_.Reset();
-    grid_dimensions_ = FIntVector3::ZeroValue;
+    grid_ = {};
     show_grid_ = false;
-    collision_bounds_visible_ = false;
+    show_collision_bounds_ = false;
+    UpdateBounds();
 
     MarkRenderStateDirty();
 }
 
 auto UCollisionGridVisualizationComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
-    auto const has_valid_grid{sim::collision::is_configured(
-        {{grid_dimensions_.X, grid_dimensions_.Y, grid_dimensions_.Z}, Vector3f{cell_size_}})};
-    auto const has_collision_bounds{collision_bounds_visible_ &&
-                                    (!entity_bounds_.IsEmpty() || !static_bounds_.IsEmpty())};
-    if (!has_valid_grid || (!show_grid_ && !has_collision_bounds)) {
+    auto const has_valid_grid{sim::collision::is_configured(grid_)};
+    if (!has_valid_grid || (!show_grid_ && !show_collision_bounds_)) {
         return nullptr;
     }
 
     return new FCollisionGridSceneProxy{*this,
-                                        grid_dimensions_,
-                                        cell_size_,
+                                        grid_,
                                         line_colour_,
                                         line_thickness_,
                                         entity_bounds_,
                                         static_bounds_,
-                                        applied_collision_bounds_max_draw_distance_,
+                                        collision_bounds_max_draw_distance_,
                                         show_grid_,
-                                        collision_bounds_visible_};
+                                        show_collision_bounds_};
 }
 
 auto UCollisionGridVisualizationComponent::CalcBounds(FTransform const&) const -> FBoxSphereBounds {
-    FVector const half_extent{to_unreal(sim::collision::grid_half_size(
-        {{grid_dimensions_.X, grid_dimensions_.Y, grid_dimensions_.Z}, Vector3f{cell_size_}}))};
+    FVector const half_extent{to_unreal(sim::collision::grid_half_size(grid_))};
     return FBoxSphereBounds{FVector::ZeroVector, half_extent, half_extent.Size()};
 }
 

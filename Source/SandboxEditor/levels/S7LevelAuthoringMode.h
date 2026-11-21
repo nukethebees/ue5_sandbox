@@ -1,6 +1,8 @@
 #pragma once
 
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
+#include <ioj/sim/collision/entity_aabbs.h>
+#include <SpaceGamePresentation/simulation/CollisionOverlay.h>
 
 #include <Tools/LegacyEdModeWidgetHelpers.h>
 
@@ -35,6 +37,8 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     [[nodiscard]] auto document() const -> AS7LevelAuthoringDocument*;
     [[nodiscard]] auto status() const -> FText const&;
 
+    static auto collision_overlays() -> ioj::FCollisionOverlayVisibility;
+    void set_collision_overlays(ioj::FCollisionOverlayVisibility visibility);
     void create_document();
     void rename_selected_entity(FString id);
     auto selected_script_id() const -> FString;
@@ -47,9 +51,15 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     auto current_level() const -> ULevel*;
     auto selected_binding() const -> FS7LevelEntityBinding*;
     void refresh_document();
+    void refresh_collision_preview();
+    void apply_collision_preview(ioj::settings::Settings const& settings);
+    void draw_collision_preview(FPrimitiveDrawInterface& pdi, ULevel const& level) const;
     void set_status(FText text);
     void notify_changed();
 
+    static ioj::FCollisionOverlayVisibility collision_overlays_;
+    TArray<ioj::FCollisionGridLine> grid_lines_;
+    TOptional<ioj::sim::collision::EntityAABBs> entity_bounds_;
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
     FText status_{};
     TWeakObjectPtr<ULevel> displayed_level_{};

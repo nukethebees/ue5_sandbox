@@ -70,9 +70,6 @@ struct SPACEGAME_API FCollisionGridConfig {
     UPROPERTY(EditAnywhere, Category = "Collision|Static Geometry")
     TArray<TSubclassOf<AActor>> omitted_collision_actor_classes;
 
-    UPROPERTY(EditAnywhere, Category = "Collision|Visualization")
-    bool show_grid{false};
-
     UPROPERTY(EditAnywhere, Category = "Collision|Visualization", meta = (ClampMin = "0.1"))
     float line_thickness{1.f};
 

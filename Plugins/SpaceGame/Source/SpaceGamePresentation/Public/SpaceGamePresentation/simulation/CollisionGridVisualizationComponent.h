@@ -2,17 +2,17 @@
 
 #include <ioj/sim/collision/entity_cell_data.h>
 #include <ioj/sim/collision/world_aabbs.h>
+#include <SpaceGamePresentation/simulation/CollisionOverlay.h>
 
 #include <Components/PrimitiveComponent.h>
 
 #include "CollisionGridVisualizationComponent.generated.h"
 
 struct FCollisionGridVisualizationSettings {
-    FIntVector3 dimensions{FIntVector3::ZeroValue};
-    FVector3f cell_size{FVector3f::ZeroVector};
+    ioj::sim::collision::CollisionGridSpec grid{};
     FLinearColor line_colour{0.f, 1.f, 1.f, 1.f};
     float line_thickness{1.f};
-    bool show_grid{false};
+    ioj::FCollisionOverlayVisibility visibility;
 };
 
 namespace ioj {
@@ -26,7 +26,6 @@ class SPACEGAMEPRESENTATION_API UCollisionGridVisualizationComponent final
     void configure(TOptional<FCollisionGridVisualizationSettings> settings);
     void update_collision_bounds(sim::collision::EntityCellData::CompactConstView entity_aabbs,
                                  sim::collision::WorldAABBs::CompactConstView static_aabbs);
-    void clear_collision_bounds();
     void clear();
 
     auto CreateSceneProxy() -> FPrimitiveSceneProxy* override;
@@ -35,22 +34,18 @@ class SPACEGAMEPRESENTATION_API UCollisionGridVisualizationComponent final
   private:
     TArray<FBox3f> entity_bounds_;
     TArray<FBox3f> static_bounds_;
-    FIntVector3 grid_dimensions_{FIntVector3::ZeroValue};
-    FVector3f cell_size_{FVector3f::ZeroVector};
+    sim::collision::CollisionGridSpec grid_{};
     FLinearColor line_colour_{0.f, 1.f, 1.f, 1.f};
     float line_thickness_{1.f};
 
-    UPROPERTY(EditAnywhere, Category = "Collision|Visualization")
     bool show_collision_bounds_{false};
 
     UPROPERTY(EditAnywhere,
               Category = "Collision|Visualization",
-              meta = (ClampMin = "0.0", Units = "cm", EditCondition = "show_collision_bounds_"))
+              meta = (ClampMin = "0.0", Units = "cm"))
     float collision_bounds_max_draw_distance_{200000.f};
 
-    float applied_collision_bounds_max_draw_distance_{200000.f};
     bool show_grid_{false};
-    bool collision_bounds_visible_{false};
 };
 
 } // namespace ioj

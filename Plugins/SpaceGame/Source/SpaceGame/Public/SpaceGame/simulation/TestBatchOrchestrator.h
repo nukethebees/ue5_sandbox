@@ -56,6 +56,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void set_start_mode(EOrchestratorStartMode mode);
     void set_level_script(FString path);
     auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
+    void set_collision_overlays(FCollisionOverlayVisibility visibility);
     void set_presentation_enabled(bool enabled);
     auto is_presentation_enabled() const noexcept -> bool {
         return launch_options_.presentation_mode == levels::PresentationMode::Visual;
@@ -174,6 +175,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 
+    FCollisionOverlayVisibility collision_overlays_{};
     FLevelPresentationHost presentation_host_;
     TOptional<sim::LevelSim> level_simulation_;
     levels::LaunchOptions launch_options_{};

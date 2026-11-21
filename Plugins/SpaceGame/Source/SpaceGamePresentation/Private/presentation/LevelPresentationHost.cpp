@@ -48,7 +48,7 @@ void FLevelPresentationHost::reset() {
     presentation_.Reset();
 
     check(components_.is_valid());
-    components_.collision_grid->clear_collision_bounds();
+    components_.collision_grid->clear();
     components_.lasers->clear_instances();
     components_.fighters->clear_instances();
     components_.sparks->clear_sparks();
