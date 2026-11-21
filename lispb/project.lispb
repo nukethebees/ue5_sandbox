@@ -33,8 +33,13 @@
     :sources ("native/lispb/material/schema/model.lispb")
     :output-root (project-path "native/lispb/material/lib/include/material_gen"))
 
+  (cpp-schema lsp-schema
+    :types "native/lispb/schema/compiler_types.lispb"
+    :sources ("native/lispb/lsp/protocol.lispb")
+    :output-root (project-path "native/lispb/lsp"))
+
   (group compiler-models
-    :targets (compiler-ir compiler-schema project-schema slate-schema kernel-schema material-schema))
+    :targets (compiler-ir compiler-schema project-schema slate-schema kernel-schema material-schema lsp-schema))
 
   (cpp-schema layout-analysis
     :types "native/layout/schema/types.lispb"
