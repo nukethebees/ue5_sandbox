@@ -19,20 +19,11 @@ struct TypeReader<settings::EntityOverlay> : RecordReader<settings::EntityOverla
         decode_record<Field>(
             ctx, "entity-overlay", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
-                    if constexpr (field == Field::enabled || field == Field::soft_target) {
-                        read(member);
-                    }
-                    if constexpr (field == Field::maximum_range ||
-                                  field == Field::bar_size_pixels ||
-                                  field == Field::screen_offset_pixels ||
-                                  field == Field::minimum_bar_scale ||
-                                  field == Field::maximum_bar_scale ||
-                                  field == Field::inset_pixels ||
-                                  field == Field::maximum_inset_height_ratio ||
-                                  field == Field::objective_frame_pixels ||
-                                  field == Field::objective_bar_height_scale ||
-                                  field == Field::screen_edge_padding_pixels) {
+                    if constexpr (field >= Field::maximum_range &&
+                                  field <= Field::screen_edge_padding_pixels) {
                         read(member, constraints::finite);
+                    } else {
+                        read(member);
                     }
                 });
             });

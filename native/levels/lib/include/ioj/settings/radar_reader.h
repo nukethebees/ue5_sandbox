@@ -18,22 +18,11 @@ struct TypeReader<settings::Radar> : RecordReader<settings::Radar> {
         decode_record<Field>(
             ctx, "radar", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
-                    if constexpr (field == Field::enabled) {
-                        read(member);
-                    }
-                    if constexpr (field == Field::combat_range || field == Field::tactical_range ||
-                                  field == Field::maximum_range ||
-                                  field == Field::combat_display_radius ||
-                                  field == Field::grid_opacity ||
-                                  field == Field::core_cell_radius ||
-                                  field == Field::combat_cell_radius ||
-                                  field == Field::tactical_cell_radius ||
-                                  field == Field::strategic_cell_radius ||
-                                  field == Field::glyph_size_scale ||
-                                  field == Field::objective_size_multiplier ||
-                                  field == Field::objective_ring_padding_pixels ||
-                                  field == Field::objective_ring_thickness_pixels) {
+                    if constexpr (field >= Field::combat_range &&
+                                  field <= Field::objective_ring_thickness_pixels) {
                         read(member, constraints::finite);
+                    } else {
+                        read(member);
                     }
                 });
             });

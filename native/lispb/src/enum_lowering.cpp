@@ -1,4 +1,5 @@
 #include "declaration_emission.h"
+#include "enum_group_predicates.h"
 #include "lowering.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
@@ -738,30 +739,13 @@ class EnumLowering : public CppIRBuilder {
                 auto const duplicates{std::ranges::unique(
                     members, [&](auto left, auto right) { return code(left) == code(right); })};
                 members.erase(duplicates.begin(), duplicates.end());
-                auto const member_count{members.size()};
-                for (std::size_t first{}; first < member_count;) {
-                    auto last{first};
-                    while (last + 1 < member_count &&
-                           consecutive(code(members[last]), code(members[last + 1]))) {
-                        ++last;
-                    }
-                    auto const lower{member(members[first])};
-                    auto const upper{member(members[last])};
-                    if (first == last) {
-                        predicates.push_back(binary(BinaryOperator::equal, named("value"), lower));
-                    } else {
-                        auto const maximum{
-                            binary(BinaryOperator::less_equal, named("value"), upper)};
-                        predicates.push_back(
-                            unsigned_storage && code(members[first]).magnitude == 0
-                                ? maximum
-                                : binary(
-                                      BinaryOperator::logical_and,
-                                      binary(BinaryOperator::greater_equal, named("value"), lower),
-                                      maximum));
-                    }
-                    first = last + 1;
-                }
+                predicates = enum_group_predicates(
+                    ctx.ir,
+                    named("value"),
+                    members,
+                    member,
+                    [&](auto left, auto right) { return consecutive(code(left), code(right)); },
+                    [&](auto ordinal) { return unsigned_storage && code(ordinal).magnitude == 0; });
                 if (predicates.size() > 4) {
                     std::vector<SwitchCaseId> cases;
                     for (auto const ordinal : members) {

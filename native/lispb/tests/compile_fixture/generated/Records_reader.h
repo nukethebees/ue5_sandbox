@@ -134,12 +134,10 @@ struct TypeReader<codegen_compile_fixture::WeaponSettings>
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::damage) {
                         read(member, constraints::nonnegative);
-                    }
-                    if constexpr (field == Field::turn_rate) {
-                        read(member);
-                    }
-                    if constexpr (field == Field::asset_distance) {
+                    } else if constexpr (field == Field::asset_distance) {
                         std::unreachable();
+                    } else {
+                        read(member);
                     }
                 });
             },

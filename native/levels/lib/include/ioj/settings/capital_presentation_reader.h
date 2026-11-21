@@ -21,15 +21,11 @@ struct TypeReader<settings::CapitalPresentation> : RecordReader<settings::Capita
                              [&result](Field selected, auto const& read) {
                                  value_type::visit_field(
                                      result, selected, [&read]<Field field>(auto& member) {
-                                         if constexpr (field == Field::n_small_explosions) {
-                                             read(member);
-                                         }
-                                         if constexpr (field == Field::time_between_explosions ||
-                                                       field == Field::min_small_explosion_range ||
-                                                       field == Field::max_small_explosion_range ||
-                                                       field == Field::large_explosion_delay ||
-                                                       field == Field::proxy_arrow_size) {
+                                         if constexpr (field >= Field::time_between_explosions &&
+                                                       field <= Field::proxy_arrow_size) {
                                              read(member, constraints::finite);
+                                         } else {
+                                             read(member);
                                          }
                                      });
                              });

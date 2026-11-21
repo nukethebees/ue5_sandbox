@@ -22,13 +22,10 @@ struct TypeReader<sim::TurretSimConfig> : RecordReader<sim::TurretSimConfig> {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::detection_radius) {
                         read(member, constraints::finite);
-                    }
-                    if constexpr (field == Field::target_refresh_frequency ||
-                                  field == Field::laser || field == Field::max_health) {
-                        read(member);
-                    }
-                    if constexpr (field == Field::fire_point_offset) {
+                    } else if constexpr (field == Field::fire_point_offset) {
                         std::unreachable();
+                    } else {
+                        read(member);
                     }
                 });
             });

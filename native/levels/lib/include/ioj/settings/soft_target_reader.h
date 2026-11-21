@@ -18,20 +18,9 @@ struct TypeReader<settings::SoftTarget> : RecordReader<settings::SoftTarget> {
         decode_record<Field>(
             ctx, "soft-target", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
-                    if constexpr (field == Field::acquisition_radius_pixels ||
-                                  field == Field::retention_radius_pixels ||
-                                  field == Field::centre_tie_radius_pixels ||
-                                  field == Field::switch_improvement_ratio ||
-                                  field == Field::range_transition_start_multiplier ||
-                                  field == Field::minimum_radius_pixels ||
-                                  field == Field::maximum_radius_pixels ||
-                                  field == Field::bounds_padding_pixels ||
-                                  field == Field::bracket_start_radius_multiplier ||
-                                  field == Field::opacity || field == Field::pulse_opacity_boost) {
+                    if constexpr (field <= Field::pulse_opacity_boost) {
                         read(member, constraints::finite);
-                    }
-                    if constexpr (field == Field::pulse_duration ||
-                                  field == Field::fade_out_duration) {
+                    } else {
                         read(member);
                     }
                 });

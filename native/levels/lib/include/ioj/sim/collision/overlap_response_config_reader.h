@@ -18,11 +18,10 @@ struct TypeReader<sim::OverlapResponseConfig> : RecordReader<sim::OverlapRespons
         decode_record<Field>(
             ctx, "collision-grid", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
-                    if constexpr (field == Field::damage_per_overlap_detection) {
-                        read(member);
-                    }
-                    if constexpr (field == Field::level_size || field == Field::cell_size) {
+                    if constexpr (field >= Field::level_size && field <= Field::cell_size) {
                         read(member, constraints::finite);
+                    } else {
+                        read(member);
                     }
                 });
             });

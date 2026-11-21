@@ -20,8 +20,7 @@ struct TypeReader<starfield::GenerationSettings> : RecordReader<starfield::Gener
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::star_count) {
                         read(member, constraints::minimum(1ULL), constraints::maximum(1000000ULL));
-                    }
-                    if constexpr (field == Field::random_seed) {
+                    } else {
                         read(member);
                     }
                 });
@@ -41,13 +40,9 @@ struct TypeReader<starfield::StarSettings> : RecordReader<starfield::StarSetting
             value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                 if constexpr (field == Field::scale) {
                     read(member, constraints::positive, constraints::finite);
-                }
-                if constexpr (field == Field::size_multiplier) {
+                } else if constexpr (field == Field::size_multiplier) {
                     read(member, constraints::nonnegative, constraints::finite);
-                }
-                if constexpr (field == Field::global_brightness ||
-                              field == Field::colour_variation_strength ||
-                              field == Field::parallax_strength) {
+                } else {
                     read(member, constraints::finite);
                 }
             });
@@ -72,8 +67,7 @@ struct TypeReader<starfield::GalacticBandSettings> : RecordReader<starfield::Gal
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::strength) {
                         read(member, constraints::finite);
-                    }
-                    if constexpr (field == Field::width_degrees) {
+                    } else {
                         read(member,
                              constraints::positive,
                              constraints::finite,
@@ -98,8 +92,7 @@ struct TypeReader<starfield::StellarClusterSettings>
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::strength) {
                         read(member, constraints::finite);
-                    }
-                    if constexpr (field == Field::width_degrees) {
+                    } else {
                         read(member, constraints::positive, constraints::finite);
                     }
                 });
@@ -120,8 +113,7 @@ struct TypeReader<starfield::DustLaneSettings> : RecordReader<starfield::DustLan
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::strength || field == Field::irregularity) {
                         read(member, constraints::finite);
-                    }
-                    if constexpr (field == Field::width_degrees) {
+                    } else {
                         read(member, constraints::positive, constraints::finite);
                     }
                 });
@@ -142,11 +134,10 @@ struct TypeReader<starfield::BrightStarSettings> : RecordReader<starfield::Brigh
             ctx, "bright-star", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::fraction ||
-                                  field == Field::brightness_multiplier ||
-                                  field == Field::shape_strength) {
+                                  (field >= Field::brightness_multiplier &&
+                                   field <= Field::shape_strength)) {
                         read(member, constraints::finite);
-                    }
-                    if constexpr (field == Field::size_multiplier) {
+                    } else {
                         read(member, constraints::nonnegative, constraints::finite);
                     }
                 });
@@ -185,8 +176,7 @@ struct TypeReader<starfield::GalacticHazeSettings> : RecordReader<starfield::Gal
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::strength) {
                         read(member, constraints::finite);
-                    }
-                    if constexpr (field == Field::width_degrees) {
+                    } else {
                         read(member, constraints::positive, constraints::finite);
                     }
                 });
@@ -207,8 +197,7 @@ struct TypeReader<starfield::GalacticCoreSettings> : RecordReader<starfield::Gal
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::strength) {
                         read(member, constraints::finite);
-                    }
-                    if constexpr (field == Field::width_degrees) {
+                    } else {
                         read(member, constraints::positive, constraints::finite);
                     }
                 });
@@ -229,8 +218,7 @@ struct TypeReader<starfield::NebularKnotSettings> : RecordReader<starfield::Nebu
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::strength) {
                         read(member, constraints::finite);
-                    }
-                    if constexpr (field == Field::size_degrees) {
+                    } else {
                         read(member, constraints::positive, constraints::finite);
                     }
                 });

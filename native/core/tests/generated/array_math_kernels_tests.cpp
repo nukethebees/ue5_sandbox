@@ -21,16 +21,12 @@ void expect_value(T const actual, T const expected) {
     if constexpr (std::is_floating_point_v<T>) {
         if (std::isnan(expected)) {
             EXPECT_TRUE(std::isnan(actual));
+        } else if (std::isinf(expected)) {
+            EXPECT_EQ(actual, expected);
+        } else if constexpr (std::is_same_v<T, float>) {
+            EXPECT_FLOAT_EQ(actual, expected);
         } else {
-            if (std::isinf(expected)) {
-                EXPECT_EQ(actual, expected);
-            } else {
-                if constexpr (std::is_same_v<T, float>) {
-                    EXPECT_FLOAT_EQ(actual, expected);
-                } else {
-                    EXPECT_DOUBLE_EQ(actual, expected);
-                }
-            }
+            EXPECT_DOUBLE_EQ(actual, expected);
         }
     } else {
         EXPECT_EQ(actual, expected);

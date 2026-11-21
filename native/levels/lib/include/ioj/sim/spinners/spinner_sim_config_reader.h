@@ -22,11 +22,9 @@ struct TypeReader<sim::SpinnerSimConfig> : RecordReader<sim::SpinnerSimConfig> {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::fire_point_offsets) {
                         std::unreachable();
-                    }
-                    if constexpr (field == Field::yaw_rotation_speed_degrees) {
+                    } else if constexpr (field == Field::yaw_rotation_speed_degrees) {
                         read(member, constraints::finite);
-                    }
-                    if constexpr (field == Field::laser) {
+                    } else {
                         read(member);
                     }
                 });

@@ -21,29 +21,13 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
         decode_record<Field>(
             ctx, "fighters", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
-                    if constexpr (field == Field::max_live_auto_spawned_fighters ||
-                                  field == Field::fire_dot_product_threshold ||
-                                  field == Field::attack_distance_band ||
-                                  field == Field::avoidance_clear_update_frequency ||
-                                  field == Field::avoidance_update_frequency ||
-                                  field == Field::avoidance_active_update_frequency ||
-                                  field == Field::avoidance_immediate_update_frequency ||
-                                  field == Field::avoidance_lookahead_time ||
-                                  field == Field::avoidance_clearance_buffer ||
-                                  field == Field::separation_radius ||
-                                  field == Field::separation_strength ||
-                                  field == Field::steering_memory_duration ||
-                                  field == Field::dense_traffic_neighbour_threshold ||
-                                  field == Field::laser || field == Field::health ||
-                                  field == Field::attack_retry_cooldown) {
-                        read(member);
-                    }
-                    if constexpr (field == Field::fire_point_distance) {
-                        std::unreachable();
-                    }
-                    if constexpr (field == Field::speed || field == Field::turn_speed_unitless ||
+                    if constexpr ((field >= Field::speed && field <= Field::turn_speed_unitless) ||
                                   field == Field::los_check_buffer) {
                         read(member, constraints::finite);
+                    } else if constexpr (field == Field::fire_point_distance) {
+                        std::unreachable();
+                    } else {
+                        read(member);
                     }
                 });
             });

@@ -233,11 +233,10 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
             field_names,
             [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
-                    if constexpr (field == Field::name) {
-                        read(member);
-                    }
                     if constexpr (field == Field::count) {
                         read(member, constraints::nonnegative);
+                    } else {
+                        read(member);
                     }
                 });
             },
@@ -354,23 +353,18 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
             field_names,
             [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
-                    if constexpr (field == Field::child || field == Field::values ||
-                                  field == Field::points || field == Field::enabled ||
-                                  field == Field::maybe || field == Field::mode) {
-                        read(member);
-                    }
-                    if constexpr (field == Field::scale) {
+                    if constexpr (field == Field::title) {
+                        read(member, constraints::nonempty);
+                    } else if constexpr (field == Field::scale) {
                         read(member,
                              constraints::positive,
                              constraints::finite,
                              constraints::minimum(5.00000000000000000e-01),
                              constraints::maximum(5ULL));
-                    }
-                    if constexpr (field == Field::offset) {
+                    } else if constexpr (field == Field::offset) {
                         read(member, constraints::nonzero);
-                    }
-                    if constexpr (field == Field::title) {
-                        read(member, constraints::nonempty);
+                    } else {
+                        read(member);
                     }
                 });
             },

@@ -1,6 +1,7 @@
 #include "record_reader_lowering.h"
 
 #include "declaration_emission.h"
+#include "enum_group_predicates.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
 #include <ioj/ascii.h>
@@ -18,6 +19,7 @@
 #include <filesystem>
 #include <format>
 #include <iterator>
+#include <ranges>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -261,42 +263,60 @@ class RecordReaderLowering : public CppIRBuilder {
         auto const& members{ctx.declarations.child_occurrences};
         struct Group {
             S7FieldOptions options;
-            Expr condition;
+            std::vector<std::size_t> ordinals;
             NodeId action;
         };
         std::vector<Group> groups;
-        for (auto const field : ctx.declarations.items(records.members[record_id])) {
+        auto const fields{ctx.declarations.items(records.members[record_id])};
+        auto const count{fields.size()};
+        auto const same_read_rule{[](S7FieldOptions const& left, S7FieldOptions const& right) {
+            return left.exclude == right.exclude &&
+                   (left.exclude ||
+                    (left.minimum == right.minimum && left.maximum == right.maximum &&
+                     left.nonzero == right.nonzero && left.positive == right.positive &&
+                     left.nonnegative == right.nonnegative && left.finite == right.finite &&
+                     left.nonempty == right.nonempty));
+        }};
+        for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
+            auto const field{fields[ordinal]};
             auto const& options{members.s7[field]};
             auto const group{std::ranges::find_if(groups, [&](Group const& candidate) {
-                auto const& other{candidate.options};
-                return options.exclude == other.exclude &&
-                       (options.exclude ||
-                        (options.minimum == other.minimum && options.maximum == other.maximum &&
-                         options.nonzero == other.nonzero && options.positive == other.positive &&
-                         options.nonnegative == other.nonnegative &&
-                         options.finite == other.finite && options.nonempty == other.nonempty));
+                return same_read_rule(options, candidate.options);
             })};
-            auto const condition{
-                binary(BinaryOperator::equal, named("field"), field_value(members.name[field]))};
             if (group != groups.end()) {
-                group->condition = binary(BinaryOperator::logical_or, group->condition, condition);
+                group->ordinals.push_back(ordinal);
             } else {
                 auto const action{options.exclude ? expr_stmt(call(std_types().unreachable))
                                                   : read_field(ctx, field, named("member"))};
-                groups.push_back({options, condition, action});
+                groups.push_back({options, {ordinal}, action});
             }
         }
-        Nodes body;
-        if (groups.size() == 1) {
-            body.push_back(groups.front().action);
-        } else {
-            for (auto const& group : groups) {
-                body.push_back(if_stmt(group.condition, block({group.action}), {}, true));
+
+        auto const ordinary{std::ranges::find_if(groups, [&](Group const& group) {
+            return same_read_rule(group.options, S7FieldOptions{});
+        })};
+        if (ordinary != groups.end()) {
+            std::iter_swap(ordinary, groups.end() - 1);
+        }
+        auto body{block({groups.back().action})};
+        groups.pop_back();
+        for (auto const& group : std::views::reverse(groups)) {
+            auto const predicates{enum_group_predicates(
+                ctx.ir,
+                named("field"),
+                group.ordinals,
+                [&](auto ordinal) { return field_value(members.name[fields[ordinal]]); },
+                [](auto left, auto right) { return right == left + 1; },
+                [](auto ordinal) { return ordinal == 0; })};
+            auto condition{predicates.front()};
+            for (auto predicate : std::span{predicates}.subspan(1)) {
+                condition = binary(BinaryOperator::logical_or, condition, predicate);
             }
+            body = block({if_stmt(condition, block({group.action}), body, true)});
         }
         return lambda({capture("read", true)},
                       {parameter("auto&", "member")},
-                      block(body),
+                      body,
                       template_declaration(
                           {value_template_parameter(named_type("Field"), store_text("field"))}));
     }

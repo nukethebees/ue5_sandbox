@@ -1680,18 +1680,32 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             append_nodes(output, ir_.nodes(ir_.block_nodes_.children[i]), ctx.indent(), 1);
             close("}");
             break;
-        case NodeKind::if_stmt:
-            write_prefix(ir_.if_stmt_nodes_.is_constexpr[i] ? "if constexpr (" : "if (");
-            expr(ir_.if_stmt_nodes_.condition[i]);
-            output += ") {\n";
-            scoped_nodes(ir_.if_stmt_nodes_.then_children[i]);
-            close("}");
-            if (auto const otherwise{ir_.if_stmt_nodes_.else_children[i]}) {
+        case NodeKind::if_stmt: {
+            auto branch{i};
+            indent();
+            for (;;) {
+                output += ir_.if_stmt_nodes_.is_constexpr[branch] ? "if constexpr (" : "if (";
+                expr(ir_.if_stmt_nodes_.condition[branch]);
+                output += ") {\n";
+                scoped_nodes(ir_.if_stmt_nodes_.then_children[branch]);
+                close("}");
+                auto const otherwise{ir_.if_stmt_nodes_.else_children[branch]};
+                if (!otherwise) {
+                    break;
+                }
+                auto const children{ir_.nodes(*otherwise)};
+                if (children.size() == 1 && children.front().kind() == NodeKind::if_stmt) {
+                    output += " else ";
+                    branch = children.front().index();
+                    continue;
+                }
                 output += " else {\n";
                 scoped_nodes(*otherwise);
                 close("}");
+                break;
             }
             break;
+        }
         case NodeKind::for_stmt: {
             auto const initializer{ir_.for_stmt_nodes_.initializer[i]};
             state.current = block_environment(std::span{&initializer, 1});
