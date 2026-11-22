@@ -28,6 +28,11 @@ class Project {
     Project(Project&&) noexcept = default;
     auto operator=(Project&&) noexcept -> Project& = default;
 
+    struct Documentation {
+        std::filesystem::path path;
+        std::vector<StringId> roots;
+    };
+    std::map<TargetId, Documentation> documentation;
     std::filesystem::path root;
     [[nodiscard]] auto strings() const -> Strings& { return *strings_; }
     [[nodiscard]] auto find_target(std::string_view name) const -> std::optional<TargetId>;

@@ -17,8 +17,10 @@
 #include <codegen/schema/schema_version.h>
 #include <codegen/schema/soa_schemas.h>
 #include <codegen/source_loader.h>
+#include <lispb/compiler.h>
 #include <lispb/compiler_storage.h>
 #include <lispb/indices.h>
+#include <lispb/output.h>
 #include <lispb/project.h>
 #include <lispb/project_loader.h>
 #include <lispb/strings.h>
@@ -341,20 +343,14 @@ TEST(Generator, AppliesUmbrellaPreludeSettings) {
 }
 
 TEST(Generator, CommittedProductionFilesAreCurrent) {
-    CompilerTestContext ctx;
+    Compiler compiler;
     auto const project_root{
         std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
     auto const project{
-        lispb::load_project(ctx.storage.syntax, project_root / "lispb/project.lispb")};
-    auto const target{*project.find_target("sandbox-code")};
-    std::vector<std::filesystem::path> sources;
-    for (auto const& source : project.sources(target)) {
-        sources.push_back(project.root / source);
-    }
-    auto manifest{load_sources(ctx.storage, project.root / project.types(target), sources)};
-    auto const files{render_test_manifest(ctx, manifest)};
-
-    EXPECT_EQ(generate_files(files, project.root, project.root, true), 0);
+        load_project(compiler.storage().syntax, project_root / "lispb/project.lispb")};
+    auto& compiled{compiler.compile(project, *project.find_target("sandbox-code"), project_root)};
+    compiled.publication.check_only = true;
+    EXPECT_EQ(publish(compiled.compilation, compiled.publication), 0);
 }
 
 TEST(Generator, AcceptsCrLfOutputInventory) {

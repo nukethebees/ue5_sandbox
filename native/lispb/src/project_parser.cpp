@@ -93,10 +93,23 @@ auto ProjectParser::parse(codegen::sexpr::SourceFileId file,
             Fields const fields{parser_, declaration, head, 1};
             auto const kind{try_parse_serialized_target_kind(head)};
             if (kind == TargetKind::cpp_schema) {
-                fields.validate({P::types, P::sources, P::output_root});
+                fields.validate({P::types, P::sources, P::output_root, P::artifact});
                 auto const target{
                     project.append(TargetKind::cpp_schema,
                                    parser_.identifier(fields.positional(0), "target name"))};
+                if (auto const artifact{fields.optional(P::artifact)}) {
+
+                    if (!syntax_.is_list(*artifact) || syntax_.children(*artifact).size() != 2) {
+                        parser_.fail(
+                            *artifact,
+                            "Expected a documentation path and a list of root record tags");
+                    }
+                    auto const parts{syntax_.children(*artifact)};
+                    project.documentation.emplace(
+                        target,
+                        Project::Documentation{parser_.text(parts[0], "documentation path"),
+                                               names(parts[1], "root record tags")});
+                }
                 project.set_types(target, parser_.text_id(fields.required(P::types), "types path"));
                 project.set_sources(target, paths(project, fields.required(P::sources), "sources"));
                 output_path(project, target, fields.required(P::output_root), "output root");

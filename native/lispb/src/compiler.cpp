@@ -17,6 +17,7 @@
 #include <slate_codegen/compiler.h>
 #include <slate_codegen/source_options.h>
 
+#include <algorithm>
 #include <cassert>
 #include <filesystem>
 #include <stdexcept>
@@ -24,6 +25,69 @@
 #include <vector>
 
 namespace lispb {
+
+static auto scheme_reference(schema::TypeGraph const& graph, std::span<StringId const> roots)
+    -> std::string {
+    auto& store{graph.declarations()};
+    auto& strings{graph.strings()};
+    auto const& fields{store.child_occurrences};
+    std::string result{"# Scheme settings reference\n"};
+    std::vector<schema::TypeId> records;
+    for (auto const root : roots) {
+        auto const before{records.size()};
+        for (auto const type : graph.types()) {
+            auto const record{graph.source_declaration(type)};
+            if (record.value && record.kind() == codegen::DeclarationKind::record &&
+                store.records.s7_tag[record] == root) {
+                records.push_back(type);
+            }
+        }
+        if (before == records.size()) {
+            throw std::invalid_argument{"Unknown documentation root: " +
+                                        std::string{strings.view(root)}};
+        }
+    }
+    for (std::size_t index{}; index < records.size(); ++index) {
+        auto const type{records[index]};
+        auto const record{graph.source_declaration(type)};
+
+        result += "\n## `";
+        result += strings.view(*store.records.s7_tag[record]);
+        result += "`\n\n| Member | Type | Enum values |\n| --- | --- | --- |\n";
+        for (auto const member : store.items(store.records.members[record])) {
+            auto const& options{fields.s7[member]};
+            if (options.exclude) {
+                continue;
+            }
+            std::string key{strings.view(options.name.value_or(fields.name[member]))};
+            if (!options.name) {
+                std::replace(key.begin(), key.end(), '_', '-');
+            }
+            auto const occurrence{graph.resolved(graph.module(type), fields.type[member])};
+            auto const member_type{graph.occurrences().type[occurrence]};
+            result += store.records.s7_positional[record] ? "| `" : "| `:";
+            result += key + "` | `";
+            result += strings.view(graph.name(member_type));
+            result += "` |";
+            auto const enumeration{graph.source_declaration(member_type)};
+            if (enumeration.value && enumeration.kind() == codegen::DeclarationKind::record &&
+                store.records.s7_tag[enumeration] &&
+                std::find(records.begin(), records.end(), member_type) == records.end()) {
+                records.push_back(member_type);
+            }
+            if (enumeration.value && enumeration.kind() == codegen::DeclarationKind::enumeration) {
+                for (auto const value : store.items(store.enums.values[enumeration])) {
+                    result += " `'";
+                    result += strings.view(store.enumerators.serialized_name[value].value_or(
+                        store.enumerators.name[value]));
+                    result += "`";
+                }
+            }
+            result += " |\n";
+        }
+    }
+    return result;
+}
 
 Compiler::Compiler()
     : manifest_{
@@ -75,6 +139,12 @@ auto Compiler::compile(Project const& project,
                                            project.root / project.types(target),
                                            sources,
                                            emit);
+            auto const documentation{project.documentation.find(target)};
+            if (emit && documentation != project.documentation.end()) {
+                compilation.add_text(documentation->second.path,
+                                     scheme_reference(types_, documentation->second.roots),
+                                     false);
+            }
             output_.publication = {.path_base = project.root, .output_root = output};
             break;
         }

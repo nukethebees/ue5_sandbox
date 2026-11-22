@@ -55,6 +55,7 @@
     :output-root (project-path "native/layout/lib"))
 
   (cpp-schema sandbox-code
+    :artifact ("LevelScripts/Settings/REFERENCE.md" (settings application user-settings))
     :types "lispb/schema/types.lispb"
     :sources (
       "lispb/schema/native_simulation_model.lispb"
