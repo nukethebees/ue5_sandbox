@@ -10,7 +10,7 @@
       :laser-mode 'single
       :laser-trigger-mode 'full-auto
       :thrust-energy-max 1
-      :cruise-speed 12000
+      :cruise-speed 15000
       :boost-speed 30000
       :brake-speed 1000
       :brake-deceleration 14000
@@ -32,7 +32,7 @@
       :laser (laser
         :damage 50
         :projectile-speed 40000
-        :max-distance 30000
+        :max-distance 100000
         :fire-cooldown 0.15))
     :laser-projectiles (laser-projectiles
       :n-preallocated-instances 50000)
