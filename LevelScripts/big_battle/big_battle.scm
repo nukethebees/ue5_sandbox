@@ -22,10 +22,10 @@
 
     :logic (logic
       (define blue-flagship-destroyed 
-        (entity-destroyed 'capitalship-blue))
+        (entity-destroyed 'capitalship-blue-0))
       (define orange-flagship-destroyed 
-        (entity-destroyed 'capitalship-blue3))
+        (entity-destroyed 'capitalship-orange-0))
       (define green-flagship-destroyed 
-        (entity-destroyed 'capitalship-green))
+        (entity-destroyed 'capitalship-green-0))
       (define red-flagship-destroyed 
-        (entity-destroyed 'capitalship-red)))))
+        (entity-destroyed 'capitalship-red-0)))))
