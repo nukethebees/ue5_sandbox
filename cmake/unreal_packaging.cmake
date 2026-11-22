@@ -3,9 +3,12 @@ include("${CMAKE_CURRENT_LIST_DIR}/validate_arguments.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/unreal_arguments.cmake")
 
 function(add_unreal_build_cook_run_target target_name)
-  cmake_parse_arguments(PARSE_ARGV 1 uat "" "COMMENT" "ARGUMENTS")
+  cmake_parse_arguments(PARSE_ARGV 1 uat "" "COMMENT;GAME_TARGET" "ARGUMENTS")
 
   ioj_validate_arguments(uat "add_unreal_build_cook_run_target(${target_name})" COMMENT)
+  if(NOT uat_GAME_TARGET)
+    set(uat_GAME_TARGET Sandbox)
+  endif()
 
   add_custom_target(${target_name}
     COMMAND
@@ -13,7 +16,7 @@ function(add_unreal_build_cook_run_target target_name)
       "IOJ_NATIVE_TOOLCHAIN=${IOJ_NATIVE_TOOLCHAIN}"
       cmd.exe /d /c call "${UE_RUN_UAT_SCRIPT}" BuildCookRun
       "-project=${IOJ_UPROJECT}"
-      -target=Sandbox
+      "-target=${uat_GAME_TARGET}"
       "-targetplatform=${UE_PLATFORM}"
       "-clientconfig=${UE_CONFIGURATION}"
       -skipbuild

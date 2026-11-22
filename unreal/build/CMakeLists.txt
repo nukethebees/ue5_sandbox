@@ -41,6 +41,13 @@ set_property(TARGET editor PROPERTY FOLDER "Sandbox/Unreal/Build")
 set_property(TARGET game PROPERTY FOLDER "Sandbox/Unreal/Build")
 
 add_unreal_packaging_targets()
+option(IOJ_BUILD_EMBEDDED_GAME "Build the experimental Win64 Development game host" OFF)
+if(IOJ_BUILD_EMBEDDED_GAME)
+  if(NOT UE_PLATFORM STREQUAL "Win64" OR NOT UE_CONFIGURATION STREQUAL "Development")
+    message(FATAL_ERROR "The embedded game requires Win64 Development")
+  endif()
+  add_subdirectory(embedded)
+endif()
 foreach(sandbox_unreal_packaging_target IN ITEMS
     cook
     cook-incremental
