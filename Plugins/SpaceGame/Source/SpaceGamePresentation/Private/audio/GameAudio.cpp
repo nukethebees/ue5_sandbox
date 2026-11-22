@@ -48,6 +48,27 @@ void FGameAudio::play_player_laser() {
     }
 }
 
+void FGameAudioFacade::play_entity_death(FVector const location) const {
+    if (audio_) {
+        audio_->play_entity_death(location);
+    }
+}
+
+void FGameAudio::play_entity_death(FVector const location) {
+    if (death_impact_sounds_.IsEmpty() || !game_instance_.IsValid()) {
+        return;
+    }
+    auto* const sound{death_impact_sounds_[death_impact_indices_[next_impact_]].Get()};
+    next_impact_ = (next_impact_ + 1) % death_impact_indices_.size();
+    UGameplayStatics::PlaySoundAtLocation(game_instance_.Get(),
+                                          sound,
+                                          location,
+                                          master_volume_ * sfx_volume_,
+                                          1.f,
+                                          0.f,
+                                          death_attenuation_.Get());
+}
+
 void FGameAudio::initialize(UGameInstance& game_instance) {
     game_instance_ = &game_instance;
     external_audio_ = resolve_audio_source_library(get_configured_audio_root());
@@ -106,6 +127,39 @@ void FGameAudio::initialize(UGameInstance& game_instance) {
                    *ioj::to_fstring(ioj::path_to_utf8(
                        external_audio_.player_ship_ambience_source.relative_path)));
         }
+    }
+
+    death_impact_sounds_.Reset();
+    auto const impact_count{static_cast<int32>(external_audio_.death_impact_sources.size())};
+    for (int32 index{}; index < impact_count; ++index) {
+        auto const path{FString::Printf(
+            TEXT("/SpaceGame/Audio/Generated/A_EntityDeathImpact_%d.A_EntityDeathImpact_%d"),
+            index,
+            index)};
+        if (auto* const sound{LoadObject<USoundWave>(nullptr, *path, {}, LOAD_NoWarn)}) {
+            death_impact_sounds_.Emplace(sound);
+        } else {
+            UE_LOG(LogSandboxAudio, Warning, TEXT("Optional impact sound is missing: %s"), *path);
+        }
+    }
+
+    next_impact_ = 0;
+    if (!death_impact_sounds_.IsEmpty()) {
+        FRandomStream random;
+        random.GenerateNewSeed();
+        for (auto& index : death_impact_indices_) {
+            index = static_cast<std::uint8_t>(random.RandHelper(death_impact_sounds_.Num()));
+        }
+
+        death_attenuation_.Reset(NewObject<USoundAttenuation>());
+        auto& settings{death_attenuation_->Attenuation};
+        settings.bAttenuate = true;
+        settings.bSpatialize = true;
+        settings.DistanceAlgorithm = EAttenuationDistanceModel::Linear;
+        settings.AttenuationShape = EAttenuationShape::Sphere;
+        settings.AttenuationShapeExtents = FVector{20000.f};
+        settings.FalloffDistance = 480000.f;
+        settings.StereoSpread = 0.f;
     }
 
     player_laser_sound_.Reset(LoadObject<USoundWave>(
@@ -337,6 +391,11 @@ auto FGameAudio::external_audio_available() const noexcept -> bool {
         return false;
     }
 
+    for (auto const& source : external_audio_.death_impact_sources) {
+        if (!source.valid) {
+            return false;
+        }
+    }
     for (auto const& directory : external_audio_.directories) {
         if (!directory.valid) {
             return false;

@@ -5,6 +5,8 @@
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 
+#include <SandboxCoreEngine/VectorConversion.h>
+
 #include <SandboxISMCComponent.h>
 
 namespace ioj {
@@ -90,6 +92,9 @@ void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) 
         if (event == sim::player::PlayerEventKind::ShotFired) {
             audio_.play_player_laser();
         }
+    }
+    for (auto const location : view.frame_events().deaths.const_view().locations()) {
+        audio_.play_entity_death(FVector{to_unreal(location)});
     }
     if (player_.IsSet()) {
         player_->tick(view);
