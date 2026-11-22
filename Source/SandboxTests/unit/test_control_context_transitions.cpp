@@ -148,7 +148,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         ship_->commands().start_boost();
         ship_->commands().start_brake();
         ship_->commands().start_emergency_brake();
-        ship_->commands().set_laser_fire_rate(ioj::sim::ShipFireRate::Burst3);
+        ship_->commands().set_laser_trigger_mode(ioj::sim::ShipTriggerMode::Burst3);
         ship_->commands().start_fire_laser();
         simulation_->advance(tick_period);
         auto const& intent{simulation_->player_ship_simulation()->flight_intent()};

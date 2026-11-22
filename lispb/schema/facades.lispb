@@ -19,10 +19,10 @@
     (method start_fire_laser void)
     (method stop_fire_laser void)
     (method upgrade_laser void :noexcept true)
-    (method select_next_laser_fire_rate void :noexcept true)
-    (method select_previous_laser_fire_rate void :noexcept true)
-    (method set_laser_fire_rate void :noexcept true
-      (parameter rate "ShipFireRate"))
+    (method select_next_laser_trigger_mode void :noexcept true)
+    (method select_previous_laser_trigger_mode void :noexcept true)
+    (method set_laser_trigger_mode void :noexcept true
+      (parameter rate "ShipTriggerMode"))
 ))
 
 (module player_phase_interface

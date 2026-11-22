@@ -56,7 +56,7 @@ void Sim::initialise(PlayerSpawnData const& spawn,
     right_socket = spawn.right_socket;
     middle_socket = spawn.middle_socket;
     laser_mode = spawn.laser_mode;
-    laser_fire_rate = spawn.laser_fire_rate;
+    laser_trigger_mode = spawn.laser_trigger_mode;
     max_health_ = spawn.health.max_health;
     ledger.record_spawns(EntityType::PlayerShip, team, spawn.health.health, {&unique_entity_id, 1});
     auto const initial_health{spawn.health.health};
@@ -72,7 +72,7 @@ void Sim::initialise(PlayerSpawnData const& spawn,
     reset_speed_responses(state_);
 
     set_laser_mode(LaserFiringState::idle);
-    set_laser_fire_rate(laser_fire_rate);
+    set_laser_trigger_mode(laser_trigger_mode);
 
     configure_speed_sampling(clock);
     planned_state_ = state_;
@@ -507,32 +507,32 @@ void Sim::upgrade_laser() noexcept {
     }
 }
 
-void Sim::select_next_laser_fire_rate() noexcept {
-    set_laser_fire_rate(static_cast<ShipFireRate>((static_cast<unsigned>(laser_fire_rate) + 1) %
-                                                  enum_count<ShipFireRate>()));
+void Sim::select_next_laser_trigger_mode() noexcept {
+    set_laser_trigger_mode(static_cast<ShipTriggerMode>(
+        (static_cast<unsigned>(laser_trigger_mode) + 1) % enum_count<ShipTriggerMode>()));
 }
 
-void Sim::select_previous_laser_fire_rate() noexcept {
-    set_laser_fire_rate(static_cast<ShipFireRate>(
-        (static_cast<unsigned>(laser_fire_rate) + enum_count<ShipFireRate>() - 1) %
-        enum_count<ShipFireRate>()));
+void Sim::select_previous_laser_trigger_mode() noexcept {
+    set_laser_trigger_mode(static_cast<ShipTriggerMode>(
+        (static_cast<unsigned>(laser_trigger_mode) + enum_count<ShipTriggerMode>() - 1) %
+        enum_count<ShipTriggerMode>()));
 }
 
-void Sim::set_laser_fire_rate(ShipFireRate const value) noexcept {
-    laser_fire_rate = value;
-    switch (laser_fire_rate) {
+void Sim::set_laser_trigger_mode(ShipTriggerMode const value) noexcept {
+    laser_trigger_mode = value;
+    switch (laser_trigger_mode) {
         default: {
-            fatal_error("Invalid player laser fire rate.");
+            fatal_error("Invalid player laser trigger mode.");
         }
-        case ShipFireRate::Single: {
+        case ShipTriggerMode::Single: {
             lasers_per_burst = 1;
             break;
         }
-        case ShipFireRate::Burst3: {
+        case ShipTriggerMode::Burst3: {
             lasers_per_burst = 3;
             break;
         }
-        case ShipFireRate::FullAuto: {
+        case ShipTriggerMode::FullAuto: {
             lasers_per_burst = std::numeric_limits<decltype(lasers_per_burst)>::max();
             break;
         }

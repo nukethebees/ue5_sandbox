@@ -126,6 +126,6 @@ void apply_settings(settings::Settings const& settings, player::PlayerSpawnData&
     target.config = settings.player_ship;
     target.health = ShipHealth{settings.player_ship.health};
     target.laser_mode = settings.player_ship.laser_mode;
-    target.laser_fire_rate = settings.player_ship.laser_fire_rate;
+    target.laser_trigger_mode = settings.player_ship.laser_trigger_mode;
 }
 }

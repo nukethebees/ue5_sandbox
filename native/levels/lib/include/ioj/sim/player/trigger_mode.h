@@ -15,10 +15,10 @@
 #include <string_view>
 
 namespace ioj::sim {
-using ShipFireRateUnderlying = std::uint8_t;
+using ShipTriggerModeUnderlying = std::uint8_t;
 
 // Logical bit width: 2.
-enum class ShipFireRate : ShipFireRateUnderlying {
+enum class ShipTriggerMode : ShipTriggerModeUnderlying {
     Single = 0,
     Burst3 = 1,
     FullAuto = 2,
@@ -27,35 +27,35 @@ enum class ShipFireRate : ShipFireRateUnderlying {
 using ioj::to_serialized_string;
 using ioj::to_string;
 [[nodiscard]] constexpr auto
-    try_parse_serialized_ship_fire_rate(std::string_view const value) noexcept
-    -> std::optional<ShipFireRate> {
+    try_parse_serialized_ship_trigger_mode(std::string_view const value) noexcept
+    -> std::optional<ShipTriggerMode> {
     std::array<std::string_view, 3> constexpr names{"single", "burst3", "full-auto"};
-    return try_parse_enum<ShipFireRate>(value, names);
+    return try_parse_enum<ShipTriggerMode>(value, names);
 }
 
 } // namespace ioj::sim
 
 namespace ioj {
 template <>
-inline constexpr MinMax<sim::ShipFireRate> enum_range<sim::ShipFireRate>{
-    sim::ShipFireRate::Single, sim::ShipFireRate::FullAuto};
+inline constexpr MinMax<sim::ShipTriggerMode> enum_range<sim::ShipTriggerMode>{
+    sim::ShipTriggerMode::Single, sim::ShipTriggerMode::FullAuto};
 
 template <>
-struct EnumTraits<sim::ShipFireRate> {
+struct EnumTraits<sim::ShipTriggerMode> {
     static constexpr std::array values{
-        sim::ShipFireRate::Single, sim::ShipFireRate::Burst3, sim::ShipFireRate::FullAuto};
+        sim::ShipTriggerMode::Single, sim::ShipTriggerMode::Burst3, sim::ShipTriggerMode::FullAuto};
 };
 
 template <>
-[[nodiscard]] constexpr auto enum_count<sim::ShipFireRate>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<sim::ShipTriggerMode>() noexcept -> std::size_t {
     return 3ULL;
 }
 
 template <>
-inline constexpr auto enum_strings<sim::ShipFireRate, Name>{
+inline constexpr auto enum_strings<sim::ShipTriggerMode, Name>{
     PackedStrings{"Single\000Burst3\000FullAuto", std::array<std::uint8_t, 4>{0, 7, 14, 23}}};
 
 template <>
-inline constexpr auto enum_strings<sim::ShipFireRate, Serialized>{
+inline constexpr auto enum_strings<sim::ShipTriggerMode, Serialized>{
     PackedStrings{"single\000burst3\000full-auto", std::array<std::uint8_t, 4>{0, 7, 14, 24}}};
 } // namespace ioj

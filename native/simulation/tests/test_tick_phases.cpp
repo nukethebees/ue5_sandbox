@@ -69,10 +69,10 @@ void queue_capital_laser(LevelSim& simulation) {
 }
 
 TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
-    for (auto const rate : {ShipFireRate::Single, ShipFireRate::Burst3}) {
+    for (auto const rate : {ShipTriggerMode::Single, ShipTriggerMode::Burst3}) {
         auto data{make_world()};
         add_moving_player(data);
-        data.runtime.player->laser_fire_rate = rate;
+        data.runtime.player->laser_trigger_mode = rate;
         data.runtime.player->config.laser.fire_cooldown =
             ::ioj::NonNegativeFinite<float>::make(0.05f);
 
@@ -83,7 +83,7 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
         commands->start_fire_laser();
         simulation.advance(1.0);
 
-        auto const shots{rate == ShipFireRate::Single ? 1u : 3u};
+        auto const shots{rate == ShipTriggerMode::Single ? 1u : 3u};
         EXPECT_EQ(simulation.read_access().frame_events().player.size(), shots);
         EXPECT_EQ(simulation.lasers().get_number_spawned(), shots);
         EXPECT_EQ(simulation.player_ship_simulation()->laser_firing_mode, LaserFiringState::idle);
@@ -99,7 +99,7 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
 TEST(TickPhases, AutomaticFireContinuesUntilReleased) {
     auto data{make_world()};
     add_moving_player(data);
-    data.runtime.player->laser_fire_rate = ShipFireRate::FullAuto;
+    data.runtime.player->laser_trigger_mode = ShipTriggerMode::FullAuto;
     data.runtime.player->config.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(0.05f);
 
     LevelSim simulation{std::move(data).compile()};

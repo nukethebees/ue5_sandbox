@@ -41,7 +41,7 @@ struct TypeWriter<sim::PlayerSimConfig> : RecordWriter<sim::PlayerSimConfig> {
         visit("laser", &T::laser);
         visit("health", &T::health);
         visit("laser-mode", &T::laser_mode);
-        visit("laser-fire-rate", &T::laser_fire_rate);
+        visit("laser-trigger-mode", &T::laser_trigger_mode);
     }
 };
 

@@ -7,19 +7,19 @@
 
 #include "CoreMinimal.h"
 
-#include "TestShipFireRate.generated.h"
+#include "TestShipTriggerMode.generated.h"
 namespace ioj {
 // Logical bit width: 2.
 UENUM()
-enum class ETestShipFireRate : uint8 {
+enum class ETestShipTriggerMode : uint8 {
     Single = 0 UMETA(DisplayName = "Single"),
     Burst3 = 1 UMETA(DisplayName = "Burst 3"),
     FullAuto = 2 UMETA(DisplayName = "Full Auto"),
 };
 
-using ETestShipFireRateUnderlying = uint8;
+using ETestShipTriggerModeUnderlying = uint8;
 
 template <>
-inline constexpr MinMax<ETestShipFireRate> enum_range<ETestShipFireRate>{
-    ETestShipFireRate::Single, ETestShipFireRate::FullAuto};
+inline constexpr MinMax<ETestShipTriggerMode> enum_range<ETestShipTriggerMode>{
+    ETestShipTriggerMode::Single, ETestShipTriggerMode::FullAuto};
 } // namespace ioj

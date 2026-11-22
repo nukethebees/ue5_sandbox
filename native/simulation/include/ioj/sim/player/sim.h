@@ -6,7 +6,6 @@
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/health_table.h>
 #include <ioj/sim/entities/ship_health.h>
-#include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/flight_controller_state.h>
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/phase_inputs.h>
@@ -19,6 +18,7 @@
 #include <ioj/sim/player/player_simulation_state.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/space_ship_common.h>
+#include <ioj/sim/player/trigger_mode.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/transform3d.h>
 #include <ioj/vector_value_math.h>
@@ -51,7 +51,7 @@ struct PlayerSpawnData {
     Transform3d middle_socket{Transform3d{}};
 
     ShipLaserMode laser_mode{ShipLaserMode::Single};
-    ShipFireRate laser_fire_rate{ShipFireRate::Burst3};
+    ShipTriggerMode laser_trigger_mode{ShipTriggerMode::Burst3};
 
     ShipHealth health{Health{1000}};
 };
@@ -100,9 +100,9 @@ struct Sim {
     void start_fire_laser();
     void stop_fire_laser();
     void upgrade_laser() noexcept;
-    void select_next_laser_fire_rate() noexcept;
-    void select_previous_laser_fire_rate() noexcept;
-    void set_laser_fire_rate(ShipFireRate value) noexcept;
+    void select_next_laser_trigger_mode() noexcept;
+    void select_previous_laser_trigger_mode() noexcept;
+    void set_laser_trigger_mode(ShipTriggerMode value) noexcept;
 
     /* **************************************** */
     // Health and status
@@ -132,7 +132,7 @@ struct Sim {
     std::int32_t lasers_fired_this_burst{0};
     std::int32_t lasers_per_burst{3};
     LaserFiringState laser_firing_mode{LaserFiringState::idle};
-    ShipFireRate laser_fire_rate{ShipFireRate::Burst3};
+    ShipTriggerMode laser_trigger_mode{ShipTriggerMode::Burst3};
 
     bool speed_sampling_enabled{};
 

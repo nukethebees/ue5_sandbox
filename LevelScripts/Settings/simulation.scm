@@ -8,7 +8,7 @@
     :player-ship (player-ship
       :health 1000
       :laser-mode 'single
-      :laser-fire-rate 'full-auto
+      :laser-trigger-mode 'full-auto
       :thrust-energy-max 1
       :cruise-speed 12000
       :boost-speed 30000

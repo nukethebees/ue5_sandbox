@@ -41,13 +41,15 @@ class CommandInterface {
 
     void upgrade_laser() noexcept { simulation.upgrade_laser(); }
 
-    void select_next_laser_fire_rate() noexcept { simulation.select_next_laser_fire_rate(); }
+    void select_next_laser_trigger_mode() noexcept { simulation.select_next_laser_trigger_mode(); }
 
-    void select_previous_laser_fire_rate() noexcept {
-        simulation.select_previous_laser_fire_rate();
+    void select_previous_laser_trigger_mode() noexcept {
+        simulation.select_previous_laser_trigger_mode();
     }
 
-    void set_laser_fire_rate(ShipFireRate rate) noexcept { simulation.set_laser_fire_rate(rate); }
+    void set_laser_trigger_mode(ShipTriggerMode rate) noexcept {
+        simulation.set_laser_trigger_mode(rate);
+    }
 
   private:
     Sim& simulation;

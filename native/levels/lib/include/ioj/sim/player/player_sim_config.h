@@ -3,13 +3,13 @@
 
 #pragma once
 
-#include "fire_rate.h"
 #include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/settings/simulation_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 #include "ship_laser_mode.h"
+#include "trigger_mode.h"
 
 #include <array>
 #include <cassert>
@@ -47,7 +47,7 @@ struct PlayerSimConfig {
         laser,
         health,
         laser_mode,
-        laser_fire_rate,
+        laser_trigger_mode,
     };
 
     template <Field Selected, typename Self>
@@ -124,8 +124,8 @@ struct PlayerSimConfig {
         if constexpr (Selected == Field::laser_mode) {
             return (self.laser_mode);
         }
-        if constexpr (Selected == Field::laser_fire_rate) {
-            return (self.laser_fire_rate);
+        if constexpr (Selected == Field::laser_trigger_mode) {
+            return (self.laser_trigger_mode);
         }
     }
 
@@ -192,8 +192,9 @@ struct PlayerSimConfig {
                 return invoke_field<Field::health>(self, std::forward<Visitor>(visitor));
             case Field::laser_mode:
                 return invoke_field<Field::laser_mode>(self, std::forward<Visitor>(visitor));
-            case Field::laser_fire_rate:
-                return invoke_field<Field::laser_fire_rate>(self, std::forward<Visitor>(visitor));
+            case Field::laser_trigger_mode:
+                return invoke_field<Field::laser_trigger_mode>(self,
+                                                               std::forward<Visitor>(visitor));
         }
         assert((false && "Invalid record field"));
         std::unreachable();
@@ -222,7 +223,7 @@ struct PlayerSimConfig {
     LaserWeaponSimConfig laser{};
     settings::PositiveHealth health{Health{1000}};
     ShipLaserMode laser_mode{ShipLaserMode::Single};
-    ShipFireRate laser_fire_rate{ShipFireRate::FullAuto};
+    ShipTriggerMode laser_trigger_mode{ShipTriggerMode::FullAuto};
 };
 } // namespace ioj::sim
 namespace ioj {
@@ -238,7 +239,7 @@ inline constexpr auto enum_strings<sim::PlayerSimConfig::Field, Name>{PackedStri
     "rate\000response_settling_time\000response_damping_ratio\000boost_energy_drain\000brake_"
     "energy_drain\000energy_recharge\000pitch_angle_max\000pitch_speed\000yaw_angle_max\000yaw_"
     "speed\000turn_bank_angle_max\000turn_bank_speed\000laser\000health\000laser_mode\000laser_"
-    "fire_rate",
+    "trigger_mode",
     std::array<std::uint16_t, 25>{0,   18,  31,  43,  55,  74,  103, 113, 130, 146, 169, 192, 211,
-                                  230, 246, 262, 274, 288, 298, 318, 334, 340, 347, 358, 374}}};
+                                  230, 246, 262, 274, 288, 298, 318, 334, 340, 347, 358, 377}}};
 } // namespace ioj

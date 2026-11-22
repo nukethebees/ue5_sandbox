@@ -31,10 +31,10 @@
     (value burst :value "1")
     (projections (cpp))))
 
-(module native_ship_fire_rate
-  :header "native/levels/lib/include/ioj/sim/player/fire_rate.h"
+(module native_ship_trigger_mode
+  :header "native/levels/lib/include/ioj/sim/player/trigger_mode.h"
   :namespace ioj::sim
-  (enum ShipFireRate @native_uint8
+  (enum ShipTriggerMode @native_uint8
     :native-api true
     :helpers (traits to-string to-serialized-string try-parse-serialized)
     :enum-array true
@@ -43,12 +43,12 @@
     (value FullAuto :value "2" :display-name "Full Auto" :serialized-name "full-auto")
     (projections
       (cpp)
-      (unreal-projection ETestShipFireRate
+      (unreal-projection ETestShipTriggerMode
         :namespace ioj
-        :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h"
-        :header-include "SpaceGame/ships/player/TestShipFireRate.h"
-        :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRateConversion.h"
-        :native-header-include "ioj/sim/player/fire_rate.h"
+        :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipTriggerMode.h"
+        :header-include "SpaceGame/ships/player/TestShipTriggerMode.h"
+        :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipTriggerModeConversion.h"
+        :native-header-include "ioj/sim/player/trigger_mode.h"
         :reflection uenum))))
 
 (module native_run_end_reason

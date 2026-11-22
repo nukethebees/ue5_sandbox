@@ -1,7 +1,7 @@
 #pragma once
 #include <ioj/kill_count.h>
 #include <ioj/sim/entities/ship_health.h>
-#include <ioj/sim/player/fire_rate.h>
+#include <ioj/sim/player/trigger_mode.h>
 
 #include <cstdint>
 
@@ -14,6 +14,6 @@ struct PlayerStatusHudData {
     float target_speed{};
     float energy{1.f};
     KillCount points{};
-    sim::ShipFireRate fire_rate{sim::ShipFireRate::Single};
+    sim::ShipTriggerMode trigger_mode{sim::ShipTriggerMode::Single};
 };
 }

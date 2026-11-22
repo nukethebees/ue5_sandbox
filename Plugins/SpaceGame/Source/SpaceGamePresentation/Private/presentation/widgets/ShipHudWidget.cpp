@@ -240,7 +240,7 @@ void UShipHudWidget::apply_ui_style(FGameUiStyle const& style) {
     apply_value_style(flight_mode_widget, hud_style.secondary_text);
 
     stopwatch_widget->set_format_spec(TEXT("MISSION TIME // {0}:{1}:{2}"));
-    fire_rate_widget->set_format_spec(TEXT("FIRE RATE // {0}"));
+    fire_rate_widget->set_format_spec(TEXT("TRIGGER MODE // {0}"));
     target_speed_widget->set_format_spec(TEXT("TARGET SPEED // {0}"));
     ship_velocity_widget->set_format_spec(TEXT("VELOCITY // {0}"));
     target_velocity_widget->set_format_spec(TEXT("TARGET VELOCITY // {0} ({1})"));
@@ -325,11 +325,11 @@ void UShipHudWidget::set_stopwatch_widget_visibility(ESlateVisibility const new_
     set_widget_visibility_checked(stopwatch_widget, new_visibility);
 }
 
-void UShipHudWidget::set_fire_rate(FStringView const value) {
+void UShipHudWidget::set_trigger_mode(FStringView const value) {
     check(IsValid(fire_rate_widget));
     fire_rate_widget->update(value);
 }
-void UShipHudWidget::set_fire_rate_visibility(ESlateVisibility const new_visibility) {
+void UShipHudWidget::set_trigger_mode_visibility(ESlateVisibility const new_visibility) {
     set_widget_visibility_checked(fire_rate_widget, new_visibility);
 }
 

@@ -5,8 +5,8 @@
 #include <ioj/sim/expressions/expr_handle.h>
 #include <ioj/sim/expressions/leaf_data_handle.h>
 #include <ioj/sim/levels/run_end_reason.h>
-#include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/space_ship_common.h>
+#include <ioj/sim/player/trigger_mode.h>
 
 #include <gtest/gtest.h>
 
@@ -127,10 +127,10 @@ TEST(NativeEnums, LevelOutcomeAndEndReasonSerializedNamesRoundTrip) {
 }
 
 TEST(NativeEnums, PlayerEnumsPreserveHudNamesAndFireRateCount) {
-    EXPECT_EQ(enum_count<ShipFireRate>(), 3U);
-    EXPECT_EQ(to_string(ShipFireRate::Single), "Single");
-    EXPECT_EQ(to_string(ShipFireRate::Burst3), "Burst3");
-    EXPECT_EQ(to_string(ShipFireRate::FullAuto), "FullAuto");
+    EXPECT_EQ(enum_count<ShipTriggerMode>(), 3U);
+    EXPECT_EQ(to_string(ShipTriggerMode::Single), "Single");
+    EXPECT_EQ(to_string(ShipTriggerMode::Burst3), "Burst3");
+    EXPECT_EQ(to_string(ShipTriggerMode::FullAuto), "FullAuto");
     EXPECT_EQ(to_string(player::BoostBrakeState::None), "None");
     EXPECT_EQ(to_string(player::BoostBrakeState::Boost), "Boost");
     EXPECT_EQ(to_string(player::BoostBrakeState::Brake), "Brake");

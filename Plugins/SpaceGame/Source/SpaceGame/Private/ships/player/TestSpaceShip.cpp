@@ -74,7 +74,7 @@ auto ATestSpaceShip::make_spawn_data() const -> sim::player::PlayerSpawnData {
     result.team = to_native(team);
     result.transform = to_native(GetActorTransform());
     result.laser_mode = initial_.laser_mode;
-    result.laser_fire_rate = initial_.laser_fire_rate;
+    result.laser_trigger_mode = initial_.laser_trigger_mode;
     result.health = {initial_.health, initial_.health};
 
     result.config = initial_;
@@ -148,26 +148,26 @@ void ATestSpaceShip::upgrade_laser() {
     commands().upgrade_laser();
 }
 
-auto ATestSpaceShip::get_laser_fire_rate() const noexcept -> ETestShipFireRate {
-    return to_unreal(simulation().laser_fire_rate);
+auto ATestSpaceShip::get_laser_trigger_mode() const noexcept -> ETestShipTriggerMode {
+    return to_unreal(simulation().laser_trigger_mode);
 }
 
 auto ATestSpaceShip::get_laser_firing_mode() const noexcept -> sim::LaserFiringState {
     return simulation().laser_firing_mode;
 }
 
-void ATestSpaceShip::select_next_laser_fire_rate() noexcept {
-    commands().select_next_laser_fire_rate();
+void ATestSpaceShip::select_next_laser_trigger_mode() noexcept {
+    commands().select_next_laser_trigger_mode();
 }
 
-void ATestSpaceShip::select_previous_laser_fire_rate() noexcept {
-    commands().select_previous_laser_fire_rate();
+void ATestSpaceShip::select_previous_laser_trigger_mode() noexcept {
+    commands().select_previous_laser_trigger_mode();
 }
 
-void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept {
-    initial_.laser_fire_rate = to_native(value);
+void ATestSpaceShip::set_laser_trigger_mode(ETestShipTriggerMode const value) noexcept {
+    initial_.laser_trigger_mode = to_native(value);
     if (bound_level_) {
-        commands().set_laser_fire_rate(to_native(value));
+        commands().set_laser_trigger_mode(to_native(value));
     }
 }
 

@@ -602,7 +602,7 @@ void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
     hud.set_target_speed(data->target_speed);
     hud.set_energy(data->energy);
     hud.set_points(data->points);
-    hud.set_fire_rate(to_fstring(sim::to_string(data->fire_rate)));
+    hud.set_trigger_mode(to_fstring(sim::to_string(data->trigger_mode)));
 }
 void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_player_flight_hud);

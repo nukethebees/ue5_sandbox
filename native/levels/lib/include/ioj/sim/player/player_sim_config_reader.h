@@ -55,7 +55,7 @@ struct TypeReader<sim::PlayerSimConfig> : RecordReader<sim::PlayerSimConfig> {
                                                                   "laser",
                                                                   "health",
                                                                   "laser-mode",
-                                                                  "laser-fire-rate"};
+                                                                  "laser-trigger-mode"};
 };
 
 } // namespace ioj::s7

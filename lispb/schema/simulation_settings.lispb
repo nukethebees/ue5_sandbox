@@ -38,7 +38,7 @@
     (member laser ioj::sim::LaserWeaponSimConfig :initializer "")
     (member health @settings_positive_health :initializer "Health{1000}")
     (member laser_mode ioj::sim::ShipLaserMode :initializer "ShipLaserMode::Single")
-    (member laser_fire_rate ioj::sim::ShipFireRate :initializer "ShipFireRate::FullAuto")
+    (member laser_trigger_mode ioj::sim::ShipTriggerMode :initializer "ShipTriggerMode::FullAuto")
     (projections (cpp))))
 
 (module capital_ship_sim_config

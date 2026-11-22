@@ -2,12 +2,12 @@
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/player/command_interface.h>
-#include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/player/space_ship_common.h>
-#include <SpaceGame/ships/player/TestShipFireRateConversion.h>
+#include <ioj/sim/player/trigger_mode.h>
+#include <SpaceGame/ships/player/TestShipTriggerModeConversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGamePresentation/entities/ShipHealth.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
@@ -68,11 +68,11 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     /* **************************************** */
 
     void upgrade_laser();
-    auto get_laser_fire_rate() const noexcept -> ETestShipFireRate;
+    auto get_laser_trigger_mode() const noexcept -> ETestShipTriggerMode;
     auto get_laser_firing_mode() const noexcept -> sim::LaserFiringState;
-    void select_next_laser_fire_rate() noexcept;
-    void select_previous_laser_fire_rate() noexcept;
-    void set_laser_fire_rate(ETestShipFireRate value) noexcept;
+    void select_next_laser_trigger_mode() noexcept;
+    void select_previous_laser_trigger_mode() noexcept;
+    void set_laser_trigger_mode(ETestShipTriggerMode value) noexcept;
 
     /* **************************************** */
     // Health and collision

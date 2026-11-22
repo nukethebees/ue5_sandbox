@@ -143,7 +143,7 @@ auto HudModel::collect_player_status_data() -> bool {
             .target_speed = player->target_speed(),
             .energy = player->energy(),
             .points = simulation_->entity_ledger().kills(player->unique_entity_id),
-            .fire_rate = player->laser_fire_rate});
+            .trigger_mode = player->laser_trigger_mode});
     }
     return hud_detail::replace(player_status_data_, next);
 }
