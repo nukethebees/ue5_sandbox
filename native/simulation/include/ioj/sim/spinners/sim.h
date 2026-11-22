@@ -30,7 +30,7 @@ class SpawnInterface;
 struct Sim {
     using EntityStorage = SpinnerEntityData;
 
-    explicit Sim(EntityTables& entity_tables) noexcept;
+    Sim() = default;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -51,8 +51,8 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void initialise(SpinnerSimConfig const& new_config, SimClock const& clock);
-    void update_entity_lookup_table(SimClock const& clock);
-    void prepare_tick(float dt, SimClock const& clock);
+    void update_entity_lookup_table(EntityTables& tables, SimClock const& clock);
+    void prepare_tick(float dt, EntityTables& tables, SimClock const& clock);
     void think(float dt);
     void apply_movement(ActionInputs const inputs);
     void generate_fire_commands(ThinkingInputs const inputs);
@@ -82,7 +82,7 @@ struct Sim {
     SpinnerSimConfig config_{};
     NonNegative<std::int16_t> cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};
-    EntityTables& entity_tables_;
+
     EntityStorage entities_{};
 };
 } // namespace ioj::sim::spinners

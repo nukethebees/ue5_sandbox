@@ -331,6 +331,7 @@
       (parameter config (type-ref ioj::sim::SpinnerSimConfig :suffix " const&"))
       (parameter clock (type-ref @sim_clock :suffix " const&")))
     (method update_entity_lookup_table void
+      (parameter tables (type-ref @entity_tables :suffix "&"))
       (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade PreparationInterface @spinners_sim simulation
@@ -341,6 +342,7 @@
     :target-storage reference
     (method prepare_tick void
       (parameter dt "float const")
+      (parameter tables (type-ref @entity_tables :suffix "&"))
       (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade ThinkingInterface @spinners_sim simulation

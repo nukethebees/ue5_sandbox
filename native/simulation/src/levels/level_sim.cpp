@@ -34,7 +34,6 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     , overlap_candidates_{&memory_manager_.game_memory()}
     , capital_ships_simulation_{entity_tables_}
     , turrets_simulation_{entity_tables_}
-    , spinners_simulation_{entity_tables_}
     , task_manager_{memory_manager_.game_memory()}
     , conditions_{std::move(data.conditions)}
     , timers_{std::move(data.timers)}
@@ -69,7 +68,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     fighters::InitialisationInterface{fighters_simulation_}.update_entity_lookup_table(
         entity_tables_, clock_);
     turrets::InitialisationInterface{turrets_simulation_}.update_entity_lookup_table(clock_);
-    spinners::InitialisationInterface{spinners_simulation_}.update_entity_lookup_table(clock_);
+    spinners::InitialisationInterface{spinners_simulation_}.update_entity_lookup_table(entity_tables_, clock_);
     refresh_spatial_index();
 
     state_ = LevelState::StableSetup;
@@ -212,7 +211,7 @@ void LevelSim::advance_tick(float const tick_period,
         capital_ships_phase.prepare_tick(clock_);
         fighters_phase.prepare_tick(spawn_context.fighter_inputs);
         turrets_phase.prepare_tick(clock_);
-        spinners_phase.prepare_tick(tick_period, clock_);
+        spinners_phase.prepare_tick(tick_period, entity_tables_, clock_);
 
         refresh_spatial_index();
     }

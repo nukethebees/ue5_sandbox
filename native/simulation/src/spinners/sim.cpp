@@ -36,24 +36,21 @@ void Sim::initialise(SpinnerSimConfig const& new_config, SimClock const& clock) 
         clock.duration_to_tick_period<std::int16_t>(Duration::make(config_.laser.fire_cooldown));
     cooldown_cleaner_ = 0;
 }
-Sim::Sim(EntityTables& entity_tables) noexcept
-    : entity_tables_{entity_tables} {}
 
 /* **************************************** */
 // Sim phases
 /* **************************************** */
 // Preparation
-void Sim::update_entity_lookup_table([[maybe_unused]] SimClock const& clock) {
+void Sim::update_entity_lookup_table(EntityTables& tables, [[maybe_unused]] SimClock const& clock) {
     assert(is_preparation_mutation_allowed(clock));
 
-    entity_tables_.publish<EntityType::TubeSpinner>(
-        entities_.const_view().entity_ids(), {}, Health{1});
+    tables.publish<EntityType::TubeSpinner>(entities_.const_view().entity_ids(), {}, Health{1});
 }
-void Sim::prepare_tick(float const, SimClock const& clock) {
+void Sim::prepare_tick(float const, EntityTables& tables, SimClock const& clock) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::prepare_tick");
 
     tick_countdowns<std::int16_t>(entities_.view().laser_cooldowns(), cooldown_cleaner_, 16384);
-    update_entity_lookup_table(clock);
+    update_entity_lookup_table(tables, clock);
 }
 
 // Thinking

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/entities/entity_tables.h"
 #include "ioj/sim/sim_clock.h"
 #include "ioj/sim/spinners/phase_inputs.h"
 #include "ioj/sim/spinners/sim.h"
@@ -18,8 +19,8 @@ class InitialisationInterface {
         simulation.initialise(config, clock);
     }
 
-    void update_entity_lookup_table(SimClock const& clock) {
-        simulation.update_entity_lookup_table(clock);
+    void update_entity_lookup_table(EntityTables& tables, SimClock const& clock) {
+        simulation.update_entity_lookup_table(tables, clock);
     }
 
     friend struct sim::LevelSim;
@@ -31,7 +32,9 @@ class PreparationInterface {
     PreparationInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void prepare_tick(float const dt, SimClock const& clock) { simulation.prepare_tick(dt, clock); }
+    void prepare_tick(float const dt, EntityTables& tables, SimClock const& clock) {
+        simulation.prepare_tick(dt, tables, clock);
+    }
 
     friend struct sim::LevelSim;
     Sim& simulation;

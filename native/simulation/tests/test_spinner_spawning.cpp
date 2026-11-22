@@ -20,8 +20,8 @@ struct SpinnerSpawnTestAccess {
         simulation.spawn_instances(locations, yaws, fire_points, context);
     }
     static auto entities(Sim& simulation) -> Sim::EntityStorage& { return simulation.entities_; }
-    static void tick_cooldowns(Sim& simulation, SimClock const& clock) {
-        simulation.prepare_tick(0.f, clock);
+    static void tick_cooldowns(Sim& simulation, EntityTables& tables, SimClock const& clock) {
+        simulation.prepare_tick(0.f, tables, clock);
     }
     static void set_cooldown(Sim& simulation, std::int16_t const ticks) {
         simulation.cooldown_restart_ticks_ = NonNegative<std::int16_t>::make(ticks);
@@ -46,7 +46,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     EntityLedger ledger;
     EntityTables tables{};
     lasers::Sim lasers;
-    spinners::Sim simulation{tables};
+    spinners::Sim simulation{};
     SpawnContext const spawn_context{ledger, clock};
     auto& entity_storage{Access::entities(simulation)};
     Access::set_cooldown(simulation, 23);
@@ -66,7 +66,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
                   spawn_context);
     auto const first_id{entity_storage.const_view().entity_ids()[0]};
     Access::cooldowns(simulation).restart_counter(0);
-    Access::tick_cooldowns(simulation, clock);
+    Access::tick_cooldowns(simulation, tables, clock);
     auto const first_cooldown{entity_storage.const_view().laser_cooldowns()[0]};
 
     Access::spawn(simulation,
