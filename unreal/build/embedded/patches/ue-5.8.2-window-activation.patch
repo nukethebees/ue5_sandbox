@@ -1,0 +1,21 @@
+--- a/Engine/Source/Runtime/Slate/Private/Framework/Application/SlateApplication.cpp
++++ b/Engine/Source/Runtime/Slate/Private/Framework/Application/SlateApplication.cpp
+@@ -919,7 +919,7 @@
+ 	FModuleManager::Get().LoadModule(TEXT("Settings"));
+ #endif
+ 
+-	// If we are embedded inside another app then we never need to be "active"
++	// Embedded hosts start inactive. A host using -UELibraryWindowActivation supplies its initial activation.
+ 	bAppIsActive = !GUELibraryOverrideSettings.bIsEmbedded;
+ 
+ 	SetupPhysicalSensitivities();
+@@ -7256,7 +7256,8 @@
+ 
+ void FSlateApplication::ProcessApplicationActivationEvent(bool InAppActivated)
+ {
+-	if (GUELibraryOverrideSettings.bIsEmbedded)
++	if (GUELibraryOverrideSettings.bIsEmbedded
++		&& !FParse::Param(FCommandLine::Get(), TEXT("UELibraryWindowActivation")))
+ 	{
+ 		return;
+ 	}

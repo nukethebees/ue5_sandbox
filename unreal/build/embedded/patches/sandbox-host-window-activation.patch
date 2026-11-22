@@ -1,0 +1,26 @@
+--- a/native/sandbox_host/main.cpp
++++ b/native/sandbox_host/main.cpp
+@@ -173,6 +173,8 @@
+     auto arguments{L"\"" + project.wstring() + L"\" /SpaceGame/Levels/MainMenu -game -windowed"};
+     if (launch_display == LaunchDisplay::Headless) {
+         arguments += L" -RenderOffScreen -nullrhi -nosound -nosplash -unattended";
++    } else {
++        arguments += L" -UELibraryWindowActivation";
+     }
+     if (init(instance, window, arguments.c_str()) != 0 || !is_ready()) {
+         throw std::runtime_error{"Sandbox did not initialize a playable world. See the game log."};
+--- a/Plugins/SpaceGame/Source/SpaceGame/Private/settings/EmbeddedHost.cpp
++++ b/Plugins/SpaceGame/Source/SpaceGame/Private/settings/EmbeddedHost.cpp
+@@ -65,11 +65,7 @@
+         slate.OnSizeChanged(native_window, width, height);
+     }
+ 
+-    slate.SetHandleDeviceInputWhenApplicationNotActive(native_window->IsForegroundWindow());
+-    window->GetOnWindowActivatedEvent().AddLambda(
+-        [] { FSlateApplication::Get().SetHandleDeviceInputWhenApplicationNotActive(true); });
+-    window->GetOnWindowDeactivatedEvent().AddLambda(
+-        [] { FSlateApplication::Get().SetHandleDeviceInputWhenApplicationNotActive(false); });
++    slate.ProcessApplicationActivationEvent(native_window->IsForegroundWindow());
+ }
+ 
+ extern "C" __declspec(dllexport) bool SandboxHost_LaunchMission(wchar_t const* path) {
