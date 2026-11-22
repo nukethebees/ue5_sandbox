@@ -13,7 +13,10 @@
 #include "Editor/EditorEngine.h"
 #include "Editor/UnrealEdEngine.h"
 #include "EditorModeManager.h"
+#include "HAL/PlatformProcess.h"
+#include "Misc/FileHelper.h"
 #include "Misc/MessageDialog.h"
+#include "Misc/Paths.h"
 #include "Modules/ModuleManager.h"
 #include "ToolMenus.h"
 #include "UnrealEdGlobals.h"
@@ -24,6 +27,62 @@
 #include <Misc/TransactionObjectEvent.h>
 #include <UObject/ObjectSaveContext.h>
 #define LOCTEXT_NAMESPACE "FSandboxEditorModule"
+
+namespace ioj::editor {
+static auto current_mission_document() -> AS7LevelAuthoringDocument* {
+    auto* const world{GEditor ? GEditor->GetEditorWorldContext().World() : nullptr};
+    auto* const level{world ? world->GetCurrentLevel() : nullptr};
+    if (!level) {
+        return nullptr;
+    }
+    auto const document{find_level_authoring_document(*level)};
+    return document ? *document : nullptr;
+}
+
+static void play_external_mission() {
+    auto* const document{current_mission_document()};
+    if (!document) {
+        UE_LOG(LogS7LevelAuthoring, Warning, TEXT("No mission document in the current level."));
+        return;
+    }
+    FString executable;
+    auto const marker{FPaths::ProjectSavedDir() / TEXT("SandboxHost.path")};
+    FFileHelper::LoadFileToString(executable, *marker);
+    executable.TrimStartAndEndInline();
+    if (!FPaths::FileExists(executable)) {
+        FMessageDialog::Open(
+            EAppMsgType::Ok,
+            FText::Format(LOCTEXT("MissingHost",
+                                  "Build the stage-embedded CMake target to launch SandboxHost. "
+                                  "Host location: {0}"),
+                          FText::FromString(executable.IsEmpty() ? marker : executable)));
+        return;
+    }
+    auto const stale{s7_scene_needs_export(*document)};
+    if (!stale) {
+        UE_LOG(LogS7LevelAuthoring, Warning, TEXT("%s"), *stale.error());
+    } else if (*stale) {
+        UE_LOG(LogS7LevelAuthoring,
+               Warning,
+               TEXT("Scene edits need export. Playing the saved level script. Use Export Scene."));
+    }
+    auto const scripts{
+        FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("LevelScripts"))};
+    auto const args{FString::Printf(TEXT("--windowed --editor-scripts \"%s\" --mission \"%s\""),
+                                    *scripts,
+                                    *s7_mission_path(*document))};
+    auto const directory{FPaths::GetPath(executable)};
+    auto process{FPlatformProcess::CreateProc(
+        *executable, *args, true, false, false, nullptr, 0, *directory, nullptr)};
+    if (!process.IsValid()) {
+        FMessageDialog::Open(EAppMsgType::Ok,
+                             FText::Format(LOCTEXT("HostLaunchFailed", "Could not launch {0}"),
+                                           FText::FromString(executable)));
+        return;
+    }
+    FPlatformProcess::CloseProc(process);
+}
+}
 
 void FSandboxEditorModule::StartupModule() {
     if (GEditor) {
@@ -236,6 +295,16 @@ void FSandboxEditorModule::register_menu_extensions() {
 
     FToolMenuOwnerScoped owner{this};
     TRY_INIT_PTR(tool_menus, UToolMenus::Get());
+
+    auto* const play_menu{tool_menus->ExtendMenu("LevelEditor.LevelEditorToolBar.PlayToolBar")};
+    play_menu->FindOrAddSection("Play").AddEntry(FToolMenuEntry::InitToolBarButton(
+        "SandboxPlayExternalMission",
+        FUIAction{FExecuteAction::CreateStatic(&ioj::editor::play_external_mission),
+                  FCanExecuteAction::CreateLambda(
+                      [] { return ioj::editor::current_mission_document() != nullptr; })},
+        LOCTEXT("PlayMission", "Play Mission"),
+        LOCTEXT("PlayMissionTip", "Run the saved mission with the staged Sandbox host"),
+        FSlateIcon(FAppStyle::GetAppStyleSetName(), "PlayWorld.PlayInViewport")));
 
     TRY_INIT_PTR(menu, tool_menus->ExtendMenu("LevelEditor.LevelEditorToolBar.User"));
     FToolMenuSection& section{menu->AddSection("SandboxTools", FText::FromString("Sandbox Tools"))};
