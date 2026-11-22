@@ -1,6 +1,7 @@
 #pragma once
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/sim_tick.h>
+#include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/presentation/CapitalPresentation.h>
 #include <SpaceGamePresentation/presentation/DelayedNiagaraSpawns.h>
 #include <SpaceGamePresentation/presentation/FighterPresentation.h>
@@ -26,7 +27,8 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentationResources {
 
 struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     FLevelPresentation(FLevelPresentationResources const& resources,
-                       sim::LevelReadAccess const& view);
+                       sim::LevelReadAccess const& view,
+                       FGameAudioFacade audio);
     FLevelPresentation(FLevelPresentation const&) = delete;
     FLevelPresentation(FLevelPresentation&&) = delete;
     auto operator=(FLevelPresentation const&) -> FLevelPresentation& = delete;
@@ -38,6 +40,7 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     }
   private:
     FLevelVisualConfig config_;
+    FGameAudioFacade audio_;
   public:
     FSparkEffects sparks;
     FLaserPresentation lasers;

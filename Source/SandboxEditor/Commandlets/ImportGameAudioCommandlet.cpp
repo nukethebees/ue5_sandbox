@@ -1,7 +1,7 @@
 #include "SandboxEditor/Commandlets/ImportGameAudioCommandlet.h"
 
 #include <ioj/files.h>
-#include <SpaceGamePresentation/audio/BoomAudioLibrary.h>
+#include <SpaceGamePresentation/audio/AudioSourceLibrary.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -122,7 +122,7 @@ UImportGameAudioCommandlet::UImportGameAudioCommandlet() {
 }
 
 int32 UImportGameAudioCommandlet::Main(FString const&) {
-    auto const resolution{ioj::resolve_boom_audio_library(ioj::get_configured_boom_audio_root())};
+    auto const resolution{ioj::resolve_audio_source_library(ioj::get_configured_audio_root())};
 
     auto const ambience_imported{
         import_game_audio::import_optional_sound(resolution.menu_ambience_source,
@@ -142,5 +142,9 @@ int32 UImportGameAudioCommandlet::Main(FString const&) {
                                                  import_game_audio::player_ship_ambience_asset_name,
                                                  true,
                                                  import_game_audio::player_ship_ambience_volume)};
-    return ambience_imported && button_imported && player_ship_ambience_imported ? 0 : 1;
+    auto const laser_imported{import_game_audio::import_optional_sound(
+        resolution.player_laser_source, TEXT("player laser"), TEXT("A_PlayerLaser"), false, 0.25f)};
+    return laser_imported && ambience_imported && button_imported && player_ship_ambience_imported
+             ? 0
+             : 1;
 }

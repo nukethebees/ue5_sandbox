@@ -32,6 +32,7 @@ class SPACEGAMEPRESENTATION_API FLevelPresentationHost {
     void configure_collision_grid(TOptional<FCollisionGridVisualizationSettings> settings);
     void initialise(FLevelVisualConfig const& config,
                     TOptional<FPlayerPresentationResources> player,
+                    FGameAudioFacade audio,
                     sim::LevelReadAccess const& view,
                     sim::SpatialQueryManager const& spatial_queries);
     void reset();

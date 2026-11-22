@@ -1,7 +1,7 @@
 add_library(native-presentation STATIC)
 target_sources(native-presentation
   PRIVATE
-    src/boom_audio_library.cpp
+    src/audio_source_library.cpp
     src/radar.cpp
     src/soft_target.cpp
     src/entity_overlay.cpp

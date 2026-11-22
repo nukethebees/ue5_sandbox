@@ -13,8 +13,10 @@ auto FLevelPresentationResources::is_valid() const -> bool {
            IsValid(spinners) && IsValid(sparks);
 }
 FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resources,
-                                       sim::LevelReadAccess const& view)
+                                       sim::LevelReadAccess const& view,
+                                       FGameAudioFacade audio)
     : config_{resources.config}
+    , audio_{audio}
     , sparks{*resources.sparks}
     , lasers{*resources.lasers}
     , capital_ships{*resources.capital_ships}
@@ -84,6 +86,11 @@ void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) 
     }
 
     last_completed_tick_ = completed_tick;
+    for (auto const event : view.frame_events().player) {
+        if (event == sim::player::PlayerEventKind::ShotFired) {
+            audio_.play_player_laser();
+        }
+    }
     if (player_.IsSet()) {
         player_->tick(view);
     }

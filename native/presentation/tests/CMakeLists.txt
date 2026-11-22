@@ -1,7 +1,7 @@
 add_executable(native-presentation-tests)
 target_sources(native-presentation-tests
   PRIVATE
-    boom_audio_library_tests.cpp
+    audio_source_library_tests.cpp
     capital_explosion_timing_tests.cpp
     radar_tests.cpp
     soft_target_tests.cpp

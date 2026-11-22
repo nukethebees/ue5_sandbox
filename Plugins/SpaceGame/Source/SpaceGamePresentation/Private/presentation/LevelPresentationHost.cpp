@@ -32,13 +32,14 @@ void FLevelPresentationHost::configure_collision_grid(
 
 void FLevelPresentationHost::initialise(FLevelVisualConfig const& config,
                                         TOptional<FPlayerPresentationResources> player,
+                                        FGameAudioFacade audio,
                                         sim::LevelReadAccess const& view,
                                         sim::SpatialQueryManager const& spatial_queries) {
     check(!presentation_.IsSet());
     check(components_.is_valid());
 
     auto const resources{make_resources(config, MoveTemp(player))};
-    presentation_.Emplace(resources, view);
+    presentation_.Emplace(resources, view, audio);
     update_collision_bounds(spatial_queries);
     hud_manager_.initialise(view, spatial_queries, config, components_.soft_targets);
 }

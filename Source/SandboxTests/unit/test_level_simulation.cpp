@@ -179,7 +179,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     ioj::sim::LevelSim headless{compile_battle(battle)};
     ioj::sim::LevelSim visible{compile_battle(std::move(battle))};
 
-    ioj::FLevelPresentation presentation{resources, visible.read_access()};
+    ioj::FLevelPresentation presentation{resources, visible.read_access(), {}};
     headless.start();
     visible.start();
     auto const dt{headless.clock().tick_period()};
@@ -279,7 +279,7 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     host.bind_components(components);
     auto const initialise{[&]() {
         host.initialise(
-            resources.config, {}, simulation.read_access(), simulation.spatial_query_manager());
+            resources.config, {}, {}, simulation.read_access(), simulation.spatial_query_manager());
     }};
     auto const check_transforms{[&] {
         TestEqual(TEXT("Initial native turret count is presented"),
@@ -336,7 +336,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
 
     ioj::sim::LevelSim simulation{make_reconciliation_battle()};
 
-    ioj::FLevelPresentation presentation{resources, simulation.read_access()};
+    ioj::FLevelPresentation presentation{resources, simulation.read_access(), {}};
     TestEqual(TEXT("Delayed spinner has no initial visual instance"),
               resources.spinners->GetNumInstances(),
               0);
@@ -417,7 +417,7 @@ auto FLevelPresentationLateAttachmentTest::RunTest(FString const&) -> bool {
     simulation.advance(dt * 4.25);
     simulation.advance(0.0);
 
-    ioj::FLevelPresentation attached{resources, simulation.read_access()};
+    ioj::FLevelPresentation attached{resources, simulation.read_access(), {}};
     TestEqual(TEXT("Late attachment starts from live state"),
               resources.capital_ships->GetNumInstances(),
               1);
@@ -457,7 +457,7 @@ auto FLevelPresentationDeathBatchesTest::RunTest(FString const&) -> bool {
     resources.config.capital_ships.main_death_explosion = explosion;
     resources.config.presentation.capital_ships.time_between_explosions = 10.f;
     resources.config.presentation.capital_ships.large_explosion_delay = 100.f;
-    ioj::FLevelPresentation death_effects{resources, deaths.read_access()};
+    ioj::FLevelPresentation death_effects{resources, deaths.read_access(), {}};
     ::ioj::sim::DirectDamageEvents damage;
     damage.add(deaths.capital_ships().get_entities().entity_ids()[0],
                MAX_int32,

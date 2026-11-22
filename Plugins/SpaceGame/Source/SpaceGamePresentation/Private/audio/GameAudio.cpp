@@ -1,7 +1,7 @@
 #include <SpaceGamePresentation/audio/GameAudio.h>
 
 #include <ioj/files.h>
-#include <SpaceGamePresentation/audio/BoomAudioLibrary.h>
+#include <SpaceGamePresentation/audio/AudioSourceLibrary.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -35,9 +35,22 @@ void FGameAudioFacade::play_button_pressed() const {
     audio_->play_button_pressed();
 }
 
+void FGameAudioFacade::play_player_laser() const {
+    if (audio_) {
+        audio_->play_player_laser();
+    }
+}
+
+void FGameAudio::play_player_laser() {
+    if (game_instance_.IsValid()) {
+        UGameplayStatics::PlaySound2D(
+            game_instance_.Get(), player_laser_sound_.Get(), master_volume_ * sfx_volume_);
+    }
+}
+
 void FGameAudio::initialize(UGameInstance& game_instance) {
     game_instance_ = &game_instance;
-    external_audio_ = resolve_boom_audio_library(get_configured_boom_audio_root());
+    external_audio_ = resolve_audio_source_library(get_configured_audio_root());
     if (external_audio_.root.path.empty()) {
         UE_LOG(LogSandboxAudio,
                Warning,
@@ -93,6 +106,14 @@ void FGameAudio::initialize(UGameInstance& game_instance) {
                    *ioj::to_fstring(ioj::path_to_utf8(
                        external_audio_.player_ship_ambience_source.relative_path)));
         }
+    }
+
+    player_laser_sound_.Reset(LoadObject<USoundWave>(
+        nullptr, TEXT("/SpaceGame/Audio/Generated/A_PlayerLaser.A_PlayerLaser"), {}, LOAD_NoWarn));
+    if (!player_laser_sound_.IsValid()) {
+        UE_LOG(LogSandboxAudio,
+               Warning,
+               TEXT("Optional player laser sound is missing. Run the import-game-audio workflow."));
     }
 
     auto* const menu_ambience{
@@ -311,7 +332,8 @@ auto FGameAudio::facade() -> FGameAudioFacade {
 auto FGameAudio::external_audio_available() const noexcept -> bool {
     if (!external_audio_.root.valid || !external_audio_.menu_ambience_source.valid ||
         !external_audio_.menu_button_pressed_source.valid ||
-        !external_audio_.player_ship_ambience_source.valid) {
+        !external_audio_.player_ship_ambience_source.valid ||
+        !external_audio_.player_laser_source.valid) {
         return false;
     }
 

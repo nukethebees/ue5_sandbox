@@ -285,6 +285,7 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
     if (is_presentation_enabled()) {
         presentation_host_.initialise(resources.config,
                                       resources.player,
+                                      game_subsystem->get_audio(),
                                       level_simulation_->read_access(),
                                       level_simulation_->spatial_query_manager());
         if (IsValid(player_ship)) {

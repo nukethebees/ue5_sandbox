@@ -21,8 +21,9 @@ struct AudioLibraryResolution {
     AudioSource menu_ambience_source;
     AudioSource menu_button_pressed_source;
     AudioSource player_ship_ambience_source;
+    AudioSource player_laser_source;
 };
 
-auto resolve_boom_audio_library(std::filesystem::path const& configured_root)
+auto resolve_audio_source_library(std::filesystem::path const& configured_root)
     -> AudioLibraryResolution;
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/presentation/boom_audio_library.h>
+#include <ioj/presentation/audio_source_library.h>
 
 #include <Components/AudioComponent.h>
 #include <CoreMinimal.h>
@@ -20,6 +20,7 @@ class SPACEGAMEPRESENTATION_API FGameAudioFacade {
     explicit FGameAudioFacade(FGameAudio& audio);
 
     void play_button_pressed() const;
+    void play_player_laser() const;
   private:
     FGameAudio* audio_{};
 };
@@ -42,9 +43,11 @@ struct SPACEGAMEPRESENTATION_API FGameAudio {
     friend FGameAudioFacade;
 
     void play_button_pressed();
+    void play_player_laser();
 
     TWeakObjectPtr<UGameInstance> game_instance_{};
     presentation::AudioLibraryResolution external_audio_;
+    TStrongObjectPtr<USoundWave> player_laser_sound_;
     TStrongObjectPtr<USoundWave> menu_ambience_sound_;
     TWeakObjectPtr<UAudioComponent> menu_ambience_component_;
     TStrongObjectPtr<USoundWave> menu_button_pressed_sound_;
