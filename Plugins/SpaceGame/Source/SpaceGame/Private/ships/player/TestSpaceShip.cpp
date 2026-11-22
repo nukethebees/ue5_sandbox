@@ -134,13 +134,7 @@ void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
     }
 }
 
-void ATestSpaceShip::set_actor_config(FPlayerShipConfig const* const new_config) noexcept {
-    actor_config = new_config;
-}
 
-auto ATestSpaceShip::get_kills() const -> KillCount {
-    return simulation().kills();
-}
 
 /* **************************************** */
 // Flight controls
@@ -178,29 +172,17 @@ void ATestSpaceShip::stop_brake() {
     commands().stop_brake();
 }
 
-auto ATestSpaceShip::get_velocity() const -> FVector {
+auto ATestSpaceShip::GetVelocity() const -> FVector {
     return bound_simulation ? to_unreal(bound_simulation->physical_state().velocity)
                             : FVector::ZeroVector;
 }
 
-auto ATestSpaceShip::GetVelocity() const -> FVector {
-    return get_velocity();
-}
 
-auto ATestSpaceShip::get_speed() const -> float {
-    return simulation().speed();
-}
 
 /* **************************************** */
 // Energy and weapons
 /* **************************************** */
-auto ATestSpaceShip::energy_is_full() const -> bool {
-    return simulation().energy_is_full();
-}
 
-auto ATestSpaceShip::get_energy() const -> float {
-    return simulation().energy();
-}
 
 void ATestSpaceShip::start_fire_laser() {
     commands().start_fire_laser();
@@ -267,18 +249,6 @@ auto ATestSpaceShip::get_middle_socket() const -> FTransform {
     return to_unreal(simulation().get_middle_socket());
 }
 
-#if WITH_EDITOR
-/* **************************************** */
-// Diagnostics
-/* **************************************** */
-auto ATestSpaceShip::get_speed_samples() const noexcept -> std::span<Vector2d const> {
-    return simulation().speed_samples;
-}
-
-auto ATestSpaceShip::get_speed_sample_index() const noexcept -> int32 {
-    return simulation().speed_sample_index;
-}
-#endif
 
 /* **************************************** */
 // Presentation

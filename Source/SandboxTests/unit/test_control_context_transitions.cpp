@@ -53,7 +53,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         auto& world{*world_result.value()};
         controller_ = world.SpawnActor<ioj::ASpaceGamePlayerController>();
         ship_ =
-            ioj::spawn_player_ship(world, config->classes.player_ship_class, &config->player_ship);
+            ioj::spawn_player_ship(world, config->classes.player_ship_class);
         if (IsValid(ship_)) {
             ship_->bind_simulation(ship_commands_, ship_simulation_);
         }

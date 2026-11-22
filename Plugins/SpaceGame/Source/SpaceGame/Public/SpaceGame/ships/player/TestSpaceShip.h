@@ -1,5 +1,4 @@
 #pragma once
-#include <ioj/kill_count.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/player/command_interface.h>
@@ -64,8 +63,6 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
         initial_.health = settings::PositiveHealth::make(sim::Health{value});
     }
 
-    void set_actor_config(FPlayerShipConfig const* new_config) noexcept;
-    auto get_kills() const -> KillCount;
 
     /* **************************************** */
     // Flight controls
@@ -79,14 +76,10 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     void start_emergency_brake();
     void stop_emergency_brake();
     void stop_brake();
-    auto get_velocity() const -> FVector;
-    auto get_speed() const -> float;
 
     /* **************************************** */
     // Energy and weapons
     /* **************************************** */
-    auto energy_is_full() const -> bool;
-    auto get_energy() const -> float;
 
     void start_fire_laser();
     void stop_fire_laser();
@@ -109,13 +102,6 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
 
     FOnPlayerShipDied on_player_ship_died;
 
-#if WITH_EDITOR
-    /* **************************************** */
-    // Diagnostics
-    /* **************************************** */
-    auto get_speed_samples() const noexcept -> std::span<Vector2d const>;
-    auto get_speed_sample_index() const noexcept -> int32;
-#endif
 
     /* **************************************** */
     // Presentation
@@ -141,7 +127,6 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     /* **************************************** */
     // State
     /* **************************************** */
-    FPlayerShipConfig const* actor_config{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Level Authoring")
     ETestTeam team{ETestTeam::White};

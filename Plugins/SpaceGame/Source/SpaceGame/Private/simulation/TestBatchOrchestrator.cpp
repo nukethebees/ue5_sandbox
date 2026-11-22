@@ -148,9 +148,6 @@ auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> 
 
     level_config = &config;
     refresh_collision_grid_visualization();
-    if (IsValid(player_ship)) {
-        player_ship->set_actor_config(&config.player_ship);
-    }
     return true;
 }
 void ATestBatchOrchestrator::set_level_script(FString path) {

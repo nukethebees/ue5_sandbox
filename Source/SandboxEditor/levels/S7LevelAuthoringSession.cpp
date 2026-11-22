@@ -639,7 +639,6 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
                 proxy.spawn_time_seconds = entity.spawn_at.get();
             }
             if constexpr (std::is_same_v<Actor, ATestSpaceShip>) {
-                proxy.set_actor_config(&config.player_ship);
                 proxy.health_override = optional(entity.health);
             } else if constexpr (std::is_same_v<Actor, ATestCapitalShipProxy>) {
                 proxy.set_preview_settings(definition->settings());

@@ -91,8 +91,8 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
             controller->Destroy();
             return;
         }
-        auto* const ship{ioj::spawn_player_ship(
-            *world_result.value(), config->classes.player_ship_class, &config->player_ship)};
+        auto* const ship{
+            ioj::spawn_player_ship(*world_result.value(), config->classes.player_ship_class)};
         controller->Possess(ship);
         FPlayerControllerTestAccess::prepare_completion(*controller);
         controller->UnPossess();
@@ -113,8 +113,7 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         }
         auto& world{*world_result.value()};
         auto* const controller{world.SpawnActor<ioj::ASpaceGamePlayerController>()};
-        auto* const ship{
-            ioj::spawn_player_ship(world, config->classes.player_ship_class, &config->player_ship)};
+        auto* const ship{ioj::spawn_player_ship(world, config->classes.player_ship_class)};
         auto* const component{NewObject<UEnhancedInputComponent>(controller)};
         auto* const subsystem{NewObject<USandboxTestEnhancedInputSubsystem>(controller)};
         subsystem->initialise();

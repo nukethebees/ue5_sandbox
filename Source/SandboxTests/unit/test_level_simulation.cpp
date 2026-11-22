@@ -523,7 +523,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
         return false;
     }
     auto* actor{ioj::spawn_player_ship(
-        *world.value(), config->classes.player_ship_class, &config->player_ship)};
+        *world.value(), config->classes.player_ship_class)};
     if (!TestTrue(TEXT("Player actor is available"), IsValid(actor))) {
         return false;
     }

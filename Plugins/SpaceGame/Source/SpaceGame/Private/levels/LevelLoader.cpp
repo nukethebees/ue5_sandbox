@@ -81,7 +81,6 @@ auto spawn_player(UWorld& world,
     }
 
     transaction.add(*player);
-    player->set_actor_config(&config.player_ship);
     player->set_team(team);
     if (entity.overrides.health) {
         player->set_initial_health(entity.overrides.health->get().value());
