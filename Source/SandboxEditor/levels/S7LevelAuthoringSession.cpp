@@ -34,6 +34,7 @@
 
 namespace ioj::editor {
 namespace s7_level_authoring_session_detail {
+static ULevel const* rebuilding_level{};
 auto id(FString const& name) -> levels::EntityId {
     return levels::EntityId{to_string(name)};
 }
@@ -533,6 +534,10 @@ auto s7_rebuild_targets(ULevel const& level, AS7LevelAuthoringDocument const& do
     return targets;
 }
 
+bool is_rebuilding_s7_level(ULevel const& level) {
+    return s7_level_authoring_session_detail::rebuilding_level == &level;
+}
+
 auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, RebuildPolicy policy)
     -> S7AuthoringResult<void> {
     using Result = S7AuthoringResult<void>;
@@ -600,6 +605,7 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
     }
 
     FScopedTransaction transaction{NSLOCTEXT("S7LevelAuthoring", "Rebuild", "Rebuild S7 Scene")};
+    TGuardValue<ULevel const*> const rebuilding{rebuilding_level, &level};
     level.Modify();
     TArray<FS7LevelEntityBinding> bindings;
     for (auto const& entity : entities) {
@@ -657,6 +663,14 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
         actor->RerunConstructionScripts();
         actor->PostEditMove(true);
         auto const* previous{previous_actors.FindRef(name)};
+        if (previous && previous->IsA(type)) {
+            SceneActors::visit_scene_actor(*actor, [&](auto& proxy, auto) {
+                if constexpr (requires { proxy.custom_name; }) {
+                    using Proxy = std::remove_cvref_t<decltype(proxy)>;
+                    proxy.custom_name = CastChecked<Proxy>(previous)->custom_name;
+                }
+            });
+        }
         actor->SetActorLabel(previous && previous->IsA(type) ? previous->GetActorLabel() : name,
                              true);
         actor->SetFolderPath(
@@ -669,10 +683,8 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
         actor->Modify();
         level.OwningWorld->EditorDestroyActor(actor, true);
     }
-    for (auto const& binding : bindings) {
-        update_s7_proxy_label(*binding.actor);
-    }
     document.entities = MoveTemp(bindings);
+    refresh_s7_proxy_labels(level);
     document.use_observer_camera = viewpoint.has_value();
     document.camera.targets.Reset();
     if (viewpoint) {

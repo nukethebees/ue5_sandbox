@@ -71,12 +71,17 @@ void FSandboxEditorModule::ShutdownModule() {
 }
 
 namespace {
-void update_editor_proxy_label(AActor* actor,
-                               ioj::ProxyLabelUpdate update = ioj::ProxyLabelUpdate::Refresh) {
-    if (IsValid(actor) && !actor->IsTemplate() && actor->GetWorld() &&
-        actor->GetWorld()->WorldType == EWorldType::Editor) {
-        ioj::editor::update_s7_proxy_label(*actor, update);
+auto editor_proxy_levels(TArray<AActor*> const& actors) {
+    TMap<ULevel*, TSet<AActor*>> levels;
+    for (auto* actor : actors) {
+        if (IsValid(actor) && !actor->IsTemplate() && actor->GetWorld() &&
+            actor->GetWorld()->WorldType == EWorldType::Editor &&
+            !ioj::editor::is_rebuilding_s7_level(*actor->GetLevel()) &&
+            ioj::editor::resolve_s7_level_actor(*actor)) {
+            levels.FindOrAdd(actor->GetLevel()).Add(actor);
+        }
     }
+    return levels;
 }
 void mark_s7_edit(UObject* object, FName property = NAME_None) {
     if (!object || object->IsTemplate() || object->HasAnyFlags(RF_NeedLoad | RF_NeedPostLoad)) {
@@ -94,8 +99,9 @@ void mark_s7_edit(UObject* object, FName property = NAME_None) {
         return;
     }
 
-    if (property == TEXT("team")) {
-        update_editor_proxy_label(actor);
+    if ((property == TEXT("team") || property == TEXT("custom_name")) &&
+        !ioj::editor::is_rebuilding_s7_level(*actor->GetLevel())) {
+        ioj::editor::name_placed_s7_proxies(*actor->GetLevel(), {actor});
     }
 
     if (auto* document{Cast<AS7LevelAuthoringDocument>(actor)}) {
@@ -131,18 +137,18 @@ void FSandboxEditorModule::register_actor_events() {
 }
 void FSandboxEditorModule::on_actor_added(AActor* actor) {
     if (IsValid(actor) && !actor->HasAnyFlags(RF_WasLoaded)) {
-        update_editor_proxy_label(actor, ioj::ProxyLabelUpdate::Placement);
+        on_actors_placed(nullptr, {actor});
     }
     on_actor_changed(actor);
 }
 void FSandboxEditorModule::on_actors_placed(UObject*, TArray<AActor*> const& actors) {
-    for (auto* actor : actors) {
-        update_editor_proxy_label(actor, ioj::ProxyLabelUpdate::Placement);
+    for (auto const& group : editor_proxy_levels(actors)) {
+        ioj::editor::name_placed_s7_proxies(*group.Key, group.Value);
     }
 }
 void FSandboxEditorModule::on_actors_pasted(TArray<AActor*> const& actors) {
-    for (auto* actor : actors) {
-        update_editor_proxy_label(actor);
+    for (auto const& group : editor_proxy_levels(actors)) {
+        ioj::editor::name_placed_s7_proxies(*group.Key, group.Value);
     }
 }
 void FSandboxEditorModule::on_map_opened(FString const&, bool) {

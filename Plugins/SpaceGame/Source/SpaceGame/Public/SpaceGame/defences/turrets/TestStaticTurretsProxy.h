@@ -63,10 +63,16 @@ class ATestStaticTurretsProxy : public AActor {
 
   public:
 #if WITH_EDITORONLY_DATA
+    UPROPERTY(EditInstanceOnly, Category = "Level Authoring", meta = (DisplayName = "Custom Name"))
+    FName custom_name{NAME_None};
+
     UPROPERTY(EditInstanceOnly,
               Category = "Level Authoring",
               meta = (DisplayName = "Export", ToolTip = "Save this entity to editor-config.scm."))
     bool export_to_script{true};
+#endif
+#if WITH_EDITOR
+    bool IsActorLabelEditable() const override { return false; }
 #endif
 
     UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.0", Units = "s"))

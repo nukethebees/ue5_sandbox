@@ -40,6 +40,7 @@ struct FS7RebuildTargets {
 };
 auto s7_rebuild_targets(ULevel const& level, AS7LevelAuthoringDocument const& document)
     -> FS7RebuildTargets;
+bool is_rebuilding_s7_level(ULevel const& level);
 SANDBOXEDITOR_API auto import_s7_level(ULevel& level,
                                        AS7LevelAuthoringDocument& document,
                                        RebuildPolicy policy = RebuildPolicy::PreserveEdits)

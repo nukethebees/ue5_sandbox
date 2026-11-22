@@ -1,10 +1,11 @@
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 
+#include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
+#include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7SceneActors.h"
 #include <ioj/levels/authoring/identifiers.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/entities/TestProxyActorFunctions.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/fighter/TestFighterProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -12,32 +13,94 @@
 
 #include <SandboxCoreEngine/strings.h>
 
+#include <Engine/Level.h>
+
 #include <algorithm>
 #include <utility>
 
 namespace ioj::editor {
 
 namespace {
-void rename_proxy(ATestFighterProxy& actor, ProxyLabelUpdate update) {
-    set_proxy_actor_name(actor, TEXT("Fighter"), actor.get_team(), update);
-}
-void rename_proxy(ATestCapitalShipProxy& actor, ProxyLabelUpdate update) {
-    set_proxy_actor_name(actor, TEXT("CapitalShip"), actor.get_team(), update);
-}
-void rename_proxy(ATestStaticTurretsProxy& actor, ProxyLabelUpdate update) {
-    set_proxy_actor_name(actor, TEXT("StaticTurret"), actor.get_team(), update);
-}
-void rename_proxy(ATestSpaceShip&, ProxyLabelUpdate) {}
-void rename_proxy(ATestTubeSpinnerProxy&, ProxyLabelUpdate) {}
+bool has_indexed_label(FString const& label, FString const& prefix) {
+    if (!label.StartsWith(prefix, ESearchCase::CaseSensitive)) {
+        return false;
+    }
+
+    auto const suffix{label.Mid(prefix.Len())};
+    return !suffix.IsEmpty() && FChar::IsDigit(suffix[0]) &&
+           suffix == FString::FromInt(FCString::Atoi(*suffix));
 }
 
-void update_s7_proxy_label(AActor& actor, ProxyLabelUpdate update) {
-    SceneActors::visit_scene_actor(actor,
-                                   [update](auto& proxy, auto) { rename_proxy(proxy, update); });
+void assign_proxy_labels(ULevel const& level, TSet<AActor*> const* selected) {
+    SceneActors const scene{level};
+    TMap<FString, AActor*> bound_ids;
+    auto const document{find_level_authoring_document(level)};
+    if (document && *document) {
+        for (auto const& binding : (*document)->entities) {
+            if (IsValid(binding.actor)) {
+                bound_ids.Add(binding.id, binding.actor.Get());
+            }
+        }
+    }
+
+    TSet<FString> occupied;
+    struct Candidate {
+        AActor* actor;
+        FString prefix;
+    };
+    TArray<Candidate> pending;
+    scene.for_each_scene_actor([&](auto& actor, levels::EntityArchetype archetype) {
+        if constexpr (requires { actor.custom_name; }) {
+            if (!selected || selected->Contains(&actor)) {
+                if (actor.custom_name.IsNone()) {
+                    auto const team{StaticEnum<ETestTeam>()->GetNameStringByValue(
+                        static_cast<int64>(actor.get_team()))};
+                    auto prefix{to_fstring(levels::to_string(archetype)) + TEXT("-") + team +
+                                TEXT("-")};
+                    pending.Add(Candidate{&actor, prefix.ToLower()});
+                    return;
+                }
+                actor.SetActorLabel(actor.custom_name.ToString());
+            }
+        }
+        occupied.Add(
+            canonical_s7_level_entity_id(actor.GetActorLabel(), TEXTVIEW("entity")).ToString());
+    });
+
+    auto const available{[&](FString const& label, AActor* actor) {
+        auto const* owner{bound_ids.Find(label)};
+        return !occupied.Contains(label) && (!owner || *owner == actor);
+    }};
+    for (auto& candidate : pending) {
+        auto const& current{candidate.actor->GetActorLabel()};
+        if (has_indexed_label(current, candidate.prefix) && available(current, candidate.actor)) {
+            occupied.Add(current);
+            candidate.actor = nullptr;
+        }
+    }
+
+    TMap<FString, int32> next_indices;
+    for (auto const& candidate : pending) {
+        if (!candidate.actor) {
+            continue;
+        }
+        auto& index{next_indices.FindOrAdd(candidate.prefix)};
+        FString label;
+        do {
+            label = candidate.prefix + FString::FromInt(index++);
+        } while (!available(label, candidate.actor));
+
+        candidate.actor->SetActorLabel(label);
+        occupied.Add(label);
+    }
+}
+}
+
+void name_placed_s7_proxies(ULevel const& level, TSet<AActor*> const& placed) {
+    assign_proxy_labels(level, &placed);
 }
 void refresh_s7_proxy_labels(ULevel const& level) {
-    SceneActors{level}.for_each_scene_actor(
-        [](auto& proxy, auto) { rename_proxy(proxy, ProxyLabelUpdate::Refresh); });
+    assign_proxy_labels(level, nullptr);
 }
 
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor> {

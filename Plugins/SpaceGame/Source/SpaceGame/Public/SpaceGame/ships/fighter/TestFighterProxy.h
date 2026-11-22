@@ -20,8 +20,14 @@ class SPACEGAME_API ATestFighterProxy : public AActor {
     void set_team(ETestTeam const value) noexcept { team = value; }
 
 #if WITH_EDITORONLY_DATA
+    UPROPERTY(EditInstanceOnly, Category = "Level Authoring", meta = (DisplayName = "Custom Name"))
+    FName custom_name{NAME_None};
+
     UPROPERTY(EditInstanceOnly, Category = "Level Authoring", meta = (DisplayName = "Export"))
     bool export_to_script{true};
+#endif
+#if WITH_EDITOR
+    bool IsActorLabelEditable() const override { return false; }
 #endif
     UPROPERTY(EditInstanceOnly,
               Category = "Level Authoring",

@@ -51,6 +51,13 @@
 #include <optional>
 
 namespace s7_level_authoring_tests {
+template <typename Proxy>
+void set_custom_name(Proxy& proxy, FName name) {
+    proxy.custom_name = name;
+    FPropertyChangedEvent change{FindFProperty<FProperty>(proxy.GetClass(), TEXT("custom_name"))};
+    proxy.PostEditChangeProperty(change);
+}
+
 struct FTemporarySourceDirectory {
     FTemporarySourceDirectory() {
         IFileManager::Get().MakeDirectory(*FPaths::Combine(path, TEXT("Authoring")), true);
@@ -529,6 +536,14 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         auto* fighter{fixture->world->SpawnActor<ioj::ATestFighterProxy>()};
         fighter->set_team(ioj::ETestTeam::Green);
+        set_custom_name(*fighter, TEXT("fighter10"));
+        TestRunner->TestEqual(TEXT("An explicit generated-looking name is preserved"),
+                              fighter->GetActorLabel(),
+                              FString{TEXT("fighter10")});
+        set_custom_name(*fighter, NAME_None);
+        TestRunner->TestEqual(TEXT("Clearing the override restores automatic naming"),
+                              fighter->GetActorLabel(),
+                              FString{TEXT("fighter-green-0")});
         fighter->SetActorLabel(TEXT("fighter10"));
         if (!assert_success(*TestRunner,
                             TEXT("Bind copies before their team changes"),
@@ -547,9 +562,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         for (auto* copy : copies) {
             TestRunner->TestTrue(TEXT("Each selected capital immediately displays orange"),
-                                 copy->GetActorLabel().StartsWith(TEXT("CapitalShip_Orange")));
+                                 copy->GetActorLabel().StartsWith(TEXT("capitalship-orange-")));
         }
-        capital->SetActorLabel(TEXT("escort"));
+        set_custom_name(*capital, TEXT("escort"));
         if (!TestRunner->TestTrue(TEXT("Changing the named capital's team preserves its label"),
                                   edit_team_in_details({capital}, TEXT("Blue")) &&
                                       capital->GetActorLabel() == TEXT("escort"))) {
@@ -567,7 +582,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             auto* entry{binding(document, id)};
             TestRunner->TestTrue(
                 TEXT("Rebuilt copy retains its script ID and displays orange"),
-                entry && entry->actor->GetActorLabel().StartsWith(TEXT("CapitalShip_Orange")));
+                entry && entry->actor->GetActorLabel().StartsWith(TEXT("capitalship-orange-")));
         }
         auto const* named{binding(document, TEXT("capital"))};
         TestRunner->TestTrue(
@@ -575,7 +590,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             named && named->actor->GetActorLabel() == TEXT("escort"));
         auto* entry{binding(document, TEXT("fighter10"))};
         TestRunner->TestTrue(TEXT("Legacy fighter ID gets the current team label"),
-                             entry && entry->actor->GetActorLabel() == TEXT("Fighter_Green10"));
+                             entry && entry->actor->GetActorLabel() == TEXT("fighter-green-0"));
     }
 
     TEST_METHOD(RebuildRestoresOwnershipAndExportRejectsDuplicateDeclarations)
@@ -812,8 +827,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         FPropertyChangedEvent fighter_team{
             FindFProperty<FProperty>(fighter->GetClass(), TEXT("team"))};
         fighter->PostEditChangeProperty(fighter_team);
-        fighter->SetActorLabel(TEXT("escort"));
-        extra->SetActorLabel(TEXT("outpost"));
+        set_custom_name(*fighter, TEXT("escort"));
+        set_custom_name(*extra, TEXT("outpost"));
         FString previous;
         FFileHelper::LoadFileToString(previous, *fixture->generated_path);
         FObjectSaveContextData autosave;
@@ -872,7 +887,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Reopening keeps the export current"),
                               (*reopened)->needs_export);
         auto* duplicate{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
-        duplicate->SetActorLabel(TEXT("outpost"));
+        set_custom_name(*duplicate, TEXT("outpost"));
         TestRunner->AddExpectedMessage(TEXT("Scene export failed: Invalid or duplicate entity ID"),
                                        ELogVerbosity::Warning,
                                        EAutomationExpectedMessageFlags::Contains,
@@ -924,7 +939,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         FRotator const wing_rotation{25, 70, 30};
         auto* wing{world->SpawnActor<ioj::ATestFighterProxy>(wing_position, wing_rotation)};
         TestRunner->TestTrue(TEXT("Placed fighter has its team label"),
-                             wing->GetActorLabel().StartsWith(TEXT("Fighter_White")));
+                             wing->GetActorLabel().StartsWith(TEXT("fighter-white-")));
         {
             FScopedTransaction transaction{FText::FromString(TEXT("Edit fighter team"))};
             wing->Modify();
@@ -936,20 +951,20 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         GEditor->UndoTransaction();
         TestRunner->TestTrue(TEXT("Undo restores the fighter team and label"),
                              wing->get_team() == ioj::ETestTeam::White &&
-                                 wing->GetActorLabel().StartsWith(TEXT("Fighter_White")));
+                                 wing->GetActorLabel().StartsWith(TEXT("fighter-white-")));
         GEditor->RedoTransaction();
         TestRunner->TestTrue(TEXT("Changing the team refreshes the fighter label"),
-                             wing->GetActorLabel().StartsWith(TEXT("Fighter_Red")));
+                             wing->GetActorLabel().StartsWith(TEXT("fighter-red-")));
         TArray<AActor*> copies;
         GUnrealEd->DuplicateActors({wing}, copies, &level, FVector::ZeroVector);
         if (!TestRunner->TestEqual(TEXT("Duplicate the red fighter"), copies.Num(), 1)) {
             return;
         }
         TestRunner->TestTrue(TEXT("Duplicate fighter gets a unique team label"),
-                             copies[0]->GetActorLabel().StartsWith(TEXT("Fighter_Red")) &&
+                             copies[0]->GetActorLabel().StartsWith(TEXT("fighter-red-")) &&
                                  copies[0]->GetActorLabel() != wing->GetActorLabel());
         world->EditorDestroyActor(copies[0], true);
-        wing->SetActorLabel(TEXT("wing"));
+        set_custom_name(*wing, TEXT("wing"));
         wing->PostEditMove(true);
         TestRunner->TestEqual(TEXT("Moving a fighter keeps its authored label"),
                               wing->GetActorLabel(),
