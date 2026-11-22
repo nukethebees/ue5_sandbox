@@ -21,6 +21,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     , capital_ship_fighters{*resources.fighters}
     , turrets{*resources.turrets}
     , spinners{*resources.spinners} {
+    last_completed_tick_ = view.clock().get_completed_ticks();
     auto const& config{config_};
     resources.sparks->initialise(config.sparks);
     sparks.clear();
@@ -86,8 +87,8 @@ void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) 
     if (player_.IsSet()) {
         player_->tick(view);
     }
-    capital_ships.update_visual_data(view.entity_ledger());
-    turrets.update_visual_data();
+    capital_ships.update_visual_data(view.frame_events());
+    turrets.update_visual_data(view.frame_events());
     capital_ship_fighters.update_visual_data(
         view.entity_tables().health.const_view<sim::EntityType::Fighter>());
     spinners.update_visual_data();
@@ -98,7 +99,7 @@ void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) 
     lasers.end_tick_presentation();
     capital_ships.commit_visual_data();
     capital_ship_fighters.commit_visual_data();
-    turrets.commit_visual_data();
+    turrets.commit_visual_data(view.entity_tables().health.const_view<sim::EntityType::Turret>());
     spinners.commit_visual_data();
     sparks.commit(dt);
     effects.update_spawns(dt, *lasers.instances->GetWorld());

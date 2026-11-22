@@ -32,8 +32,6 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
       }
     , overlap_handler_{data.collision.overlap_response.damage_per_overlap_detection}
     , overlap_candidates_{&memory_manager_.game_memory()}
-    , capital_ships_simulation_{entity_tables_}
-    , turrets_simulation_{entity_tables_}
     , task_manager_{memory_manager_.game_memory()}
     , conditions_{std::move(data.conditions)}
     , timers_{std::move(data.timers)}
@@ -64,13 +62,16 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
         player_ship_simulation_->update_entity_lookup_table(entity_tables_, clock_);
     }
     capital_ships::InitialisationInterface{capital_ships_simulation_}.update_entity_lookup_table(
-        clock_);
+        entity_tables_, clock_);
     fighters::InitialisationInterface{fighters_simulation_}.update_entity_lookup_table(
         entity_tables_, clock_);
-    turrets::InitialisationInterface{turrets_simulation_}.update_entity_lookup_table(clock_);
-    spinners::InitialisationInterface{spinners_simulation_}.update_entity_lookup_table(entity_tables_, clock_);
+    turrets::InitialisationInterface{turrets_simulation_}.update_entity_lookup_table(entity_tables_,
+                                                                                     clock_);
+    spinners::InitialisationInterface{spinners_simulation_}.update_entity_lookup_table(
+        entity_tables_, clock_);
     refresh_spatial_index();
 
+    frame_events_.clear(clock_.get_completed_ticks());
     state_ = LevelState::StableSetup;
     clock_.advance_to(SimulationPhase::Thinking);
 
@@ -91,7 +92,9 @@ void LevelSim::pause() {
 // Subsystem setup
 /* **************************************** */
 auto LevelSim::level_spawn_context() -> LevelSpawnContext {
-    return {capital_ships_simulation_,
+    return {frame_events_.capital_changes,
+            frame_events_.turret_changes,
+            capital_ships_simulation_,
             turrets_simulation_,
             spinners_simulation_,
             fighters_simulation_,
@@ -149,9 +152,6 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
         return;
     }
 
-    entity_ledger_.reset_frame_output();
-    capital_ships_simulation_.reset_frame_output();
-    turrets_simulation_.reset_frame_output();
     clock_.add_time(dt);
 
     while (clock_.try_tick()) {
@@ -208,9 +208,9 @@ void LevelSim::advance_tick(float const tick_period,
         } else if constexpr (PlayerState == TickPlayerShipState::PresentDead) {
             player_ship_simulation_->update_entity_lookup_table(entity_tables_, clock_);
         }
-        capital_ships_phase.prepare_tick(clock_);
+        capital_ships_phase.prepare_tick(entity_tables_, clock_);
         fighters_phase.prepare_tick(spawn_context.fighter_inputs);
-        turrets_phase.prepare_tick(clock_);
+        turrets_phase.prepare_tick(entity_tables_, clock_);
         spinners_phase.prepare_tick(tick_period, entity_tables_, clock_);
 
         refresh_spatial_index();
@@ -249,7 +249,7 @@ void LevelSim::advance_tick(float const tick_period,
                     spatial_queries_.local_entity_bounds());
 
                 turrets::ThinkingInputs const turret_inputs{
-                    clock_, spatial_queries_, lasers_simulation_, phase_memory};
+                    entity_tables_, clock_, spatial_queries_, lasers_simulation_, phase_memory};
                 fighters::NavigationCounters navigation_counters{};
                 fighters::ThinkingInputs const fighter_inputs{
                     .entity_tables = entity_tables_,
@@ -345,55 +345,41 @@ void LevelSim::advance_tick(float const tick_period,
 
             {
                 FrameScratchScope scratch_scope{phase_memory};
-                EntityDeathInfo fighter_deaths{phase_memory};
-                EntityDeathInfo capital_deaths{phase_memory};
-                EntityDeathInfo turret_deaths{phase_memory};
+                auto& deaths{frame_events_.deaths};
+                auto const first_death{deaths.num()};
 
                 damage_queue_.prepare(entity_tables_.lookups, &phase_memory);
                 assert(std::ranges::all_of(damage_queue_.all_events().const_view().damage_amounts(),
                                            [](auto amount) { return amount >= 0; }));
 
                 capital_ships::ResolutionInputs const capital_inputs{
-                    damage_queue_,
-                    entity_ledger_,
-                    clock_.get_completed_ticks(),
-                    capital_removal_indices,
-                    capital_deaths,
-                };
+                    entity_tables_, damage_queue_, capital_removal_indices, deaths};
                 fighters::ResolutionInputs const fighter_inputs{
-                    .entity_tables = entity_tables_,
-                    .damage_queue = damage_queue_,
-                    .ledger = entity_ledger_,
-                    .task_manager = task_manager_,
-                    .tick = clock_.get_completed_ticks(),
-                    .local_indices_to_remove = fighter_removal_indices,
-                    .entity_death_info = fighter_deaths,
-                };
+                    entity_tables_, damage_queue_, fighter_removal_indices, deaths};
                 turrets::ResolutionInputs const turret_inputs{
-                    damage_queue_,
-                    entity_ledger_,
-                    clock_.get_completed_ticks(),
-                    turret_removal_indices,
-                    turret_deaths,
-                };
+                    entity_tables_, damage_queue_, turret_removal_indices, deaths};
 
                 if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-                    auto& deaths{frame_events_.deaths};
-                    auto const first{deaths.num()};
-                    player::ResolutionInputs const inputs{entity_tables_.health, damage_queue_, deaths};
+                    player::ResolutionInputs const inputs{
+                        entity_tables_.health, damage_queue_, deaths};
                     player::ResolutionInterface{*player_ship_simulation_}.resolve_damage_events(
                         inputs);
-                    entity_ledger_.record_deaths(deaths.const_view(first, deaths.num() - first), clock_.get_completed_ticks());
                 }
                 capital_ships_phase.resolve_damage_events(capital_inputs);
+                auto const first_fighter{deaths.num()};
                 fighters_phase.resolve_damage_events(fighter_inputs);
+                auto const fighter_count{deaths.num() - first_fighter};
                 turrets_phase.resolve_damage_events(turret_inputs);
 
                 {
                     SANDBOX_PROFILE_SCOPE("LevelSim::advance::publish_entity_deaths");
-                    capital_ships_phase.publish_deaths(capital_inputs);
-                    fighters_phase.publish_deaths(fighter_inputs);
-                    turrets_phase.publish_deaths(turret_inputs);
+                    auto const count{deaths.num() - first_death};
+                    auto const tick{clock_.get_completed_ticks()};
+                    entity_ledger_.record_deaths(deaths.const_view(first_death, count), tick);
+                    task_manager_.unregister_dead_entities(
+                        deaths.victims().subspan(first_fighter, fighter_count),
+                        entity_tables_.executors.const_view<EntityType::Fighter>(),
+                        entity_ledger_);
                 }
 
                 // Evaluate final health and deaths before invalidating row mappings.
@@ -422,9 +408,10 @@ void LevelSim::advance_tick(float const tick_period,
                 clock_.transition_to(SimulationPhase::ResolutionCommit);
                 fighters::ResolutionCommitInputs const fighter_inputs{
                     entity_tables_, clock_, fighter_removal_indices};
-                capital_ships::ResolutionCommitInputs const capital_inputs{clock_,
-                                                                           capital_removal_indices};
-                turrets::ResolutionCommitInputs const turret_inputs{clock_, turret_removal_indices};
+                capital_ships::ResolutionCommitInputs const capital_inputs{
+                    entity_tables_, frame_events_.capital_changes, clock_, capital_removal_indices};
+                turrets::ResolutionCommitInputs const turret_inputs{
+                    entity_tables_, frame_events_.turret_changes, clock_, turret_removal_indices};
 
                 capital_ships_commit.remove_entities(capital_inputs);
                 fighters_commit.remove_entities(fighter_inputs);

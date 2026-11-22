@@ -433,13 +433,6 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                inputs.local_indices_to_remove,
                                inputs.entity_death_info);
 }
-void Sim::publish_deaths(ResolutionInputs const inputs) {
-    auto const deaths{inputs.entity_death_info.const_view()};
-    inputs.ledger.record_deaths(deaths, inputs.tick);
-
-    auto const executors{inputs.entity_tables.executors.const_view<EntityType::Fighter>()};
-    inputs.task_manager.unregister_dead_entities(deaths.victims(), executors, inputs.ledger);
-}
 
 // ResolutionCommit
 void Sim::remove_entities(ResolutionCommitInputs const inputs) {

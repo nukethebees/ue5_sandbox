@@ -17,8 +17,9 @@ class SpawnInterface {
 
     std::vector<ioj::sim::EntityId>
         register_turrets(LevelTurretSpawnEvents::CompactConstView const spawns,
-                         SpawnContext const context) {
-        return simulation.register_turrets(spawns, context);
+                         SpawnContext const context,
+                         EntityFrameChanges& changes) {
+        return simulation.register_turrets(spawns, context, changes);
     }
 
     friend class sim::LevelSpawnManager;

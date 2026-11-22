@@ -22,9 +22,8 @@ namespace ioj {
 FTurretPresentation::FTurretPresentation(UInstancedStaticMeshComponent& component)
     : instances{&component} {}
 
-void FTurretPresentation::set_actor_config(
-    FTurretConfig const* const new_config,
-    settings::TurretPresentation const& settings) noexcept {
+void FTurretPresentation::set_actor_config(FTurretConfig const* const new_config,
+                                           settings::TurretPresentation const& settings) noexcept {
     actor_config = new_config;
     settings_ = &settings;
 }
@@ -67,41 +66,42 @@ void FTurretPresentation::begin_play_presentation() {
     auto const yaws{rotations.yaws()};
     auto const rolls{rotations.rolls()};
     for (int32 i{}; i < count; ++i) {
-        ismc_transforms.Emplace(
-            FRotator{to_unreal(Rotator3f{pitches[i], yaws[i], rolls[i]})},
-            FVector{to_unreal(vector_at(locations, i))});
+        ismc_transforms.Emplace(FRotator{to_unreal(Rotator3f{pitches[i], yaws[i], rolls[i]})},
+                                FVector{to_unreal(vector_at(locations, i))});
     }
     add_initial_visual_instances();
     validate_array_sizes();
 }
 
-void FTurretPresentation::update_visual_data() {
+void FTurretPresentation::update_visual_data(sim::SimulationFrameEvents const& events) {
     auto const colours{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
-    for (auto const& change : simulation().frame_changes()) {
-        if (change.kind == sim::EntityFrameChangeKind::RemoveSwap) {
-            ismc_transforms.RemoveAtSwap(change.index, EAllowShrinking::No);
-            instances->RemoveInstance(change.index);
+    auto const changes{events.turret_changes.const_view()};
+    auto const count{changes.num()};
+    for (std::uint32_t row{}; row < count; ++row) {
+        if (changes.kinds()[row] == sim::EntityFrameChangeKind::RemoveSwap) {
+            ismc_transforms.RemoveAtSwap(changes.indices()[row], EAllowShrinking::No);
+            instances->RemoveInstance(changes.indices()[row]);
         } else {
-            FTransform const transform{FRotator{to_unreal(change.rotation)},
-                                       FVector{to_unreal(change.location)}};
+            FTransform const transform{FRotator{to_unreal(changes.rotations()[row])},
+                                       FVector{to_unreal(changes.locations()[row])}};
             auto const index{instances->AddInstance(transform, is_world_space)};
-            check(index == static_cast<int32>(change.index));
+            check(index == static_cast<int32>(changes.indices()[row]));
             ismc_transforms.Add(transform);
-            auto const colour{colours[to_unreal(change.team)]};
+            auto const colour{colours[to_unreal(changes.teams()[row])]};
             float const rgb[]{colour.R, colour.G, colour.B};
             instances->SetCustomData(index, rgb, false);
         }
     }
-    trigger_death_effects();
+    trigger_death_effects(events);
 }
 
-void FTurretPresentation::commit_visual_data() {
+void FTurretPresentation::commit_visual_data(sim::HealthConstView healths) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::commit_visual_data);
 
     instances->MarkRenderStateDirty();
     if (draw_target_arrows_enabled || draw_debug_entity_info_enabled) {
-        draw_debugging_shapes();
+        draw_debugging_shapes(healths);
     }
 }
 
@@ -113,10 +113,10 @@ void FTurretPresentation::end_tick_presentation() {
 void FTurretPresentation::configure_ismc() {
     instances->SetMobility(EComponentMobility::Static);
     batch::configure_ismc(*instances,
-                               {
-                                   .mesh = actor_config->mesh.Get(),
-                                   .num_custom_data_floats = n_custom_ismc_floats,
-                               });
+                          {
+                              .mesh = actor_config->mesh.Get(),
+                              .num_custom_data_floats = n_custom_ismc_floats,
+                          });
 }
 
 void FTurretPresentation::add_initial_visual_instances() {
@@ -151,8 +151,9 @@ void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transfo
         first_entity_index, first_entity_index + n_to_add - 1, custom_data, false);
 }
 
-void FTurretPresentation::trigger_death_effects() {
-    auto const& death_locations{simulation().death_locations()};
+void FTurretPresentation::trigger_death_effects(sim::SimulationFrameEvents const& events) {
+    auto const deaths{events.deaths.const_view()};
+    auto const death_locations{deaths.locations()};
     auto const n{static_cast<int32>(death_locations.size())};
     auto* world{instances->GetWorld()};
     auto* explosion_system{actor_config->death_effect.Get()};
@@ -166,6 +167,9 @@ void FTurretPresentation::trigger_death_effects() {
 
     for (int32 i{0}; i < n; ++i) {
 
+        if (deaths.victims()[i].entity_type() != sim::EntityType::Turret) {
+            continue;
+        }
         constexpr bool auto_destroy{true};
         constexpr bool auto_activate{true};
 
@@ -189,12 +193,11 @@ void FTurretPresentation::validate_array_sizes() const {
     });
 }
 
-void FTurretPresentation::draw_debugging_shapes() const {
+void FTurretPresentation::draw_debugging_shapes(sim::HealthConstView healths) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::draw_debugging_shapes);
 
     auto const& turret_simulation{simulation()};
     auto const entities{turret_simulation.get_entities()};
-    auto const healths{turret_simulation.healths()};
     auto const n{static_cast<int32>(turret_simulation.num_instances())};
     auto const text_offset{actor_config->debug_status_text_offset};
 
@@ -211,8 +214,7 @@ void FTurretPresentation::draw_debugging_shapes() const {
             auto const target_id{targets[i]};
 
             if (target_id.is_valid()) {
-                auto const target_location{
-                    FVector{to_unreal(vector_at(target_locations, i))}};
+                auto const target_location{FVector{to_unreal(vector_at(target_locations, i))}};
                 drawer.draw_line(turret_location, target_location);
             }
         }

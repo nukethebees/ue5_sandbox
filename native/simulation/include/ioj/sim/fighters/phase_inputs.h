@@ -62,9 +62,6 @@ struct ActionInputs {
 struct ResolutionInputs {
     EntityTables& entity_tables;
     DamageQueue const& damage_queue;
-    EntityLedger& ledger;
-    tasks::TaskManager& task_manager;
-    SimTick tick;
     std::pmr::vector<std::uint32_t>& local_indices_to_remove;
     EntityDeathInfo& entity_death_info;
 };

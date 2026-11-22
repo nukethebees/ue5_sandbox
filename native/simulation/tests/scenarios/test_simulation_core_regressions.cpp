@@ -50,23 +50,32 @@ TEST(WorldlessSpaceGameSimulation, EntitiesNonLethalThenLethalDamageCleansUpAtom
     auto const& capitals{simulation.capital_ships()};
     ASSERT_EQ(capitals.num_instances(), 1);
     auto const victim{capitals.get_entities().entity_ids()[0]};
-    EXPECT_EQ(capitals.healths().health(victim), Health{100});
+    EXPECT_EQ(
+        simulation.entity_tables().health.const_view<EntityType::CapitalShip>().health(victim),
+        Health{100});
 
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
     harness.queue_damage(std::array{victim}, 25);
     simulation.advance(dt);
     ASSERT_EQ(capitals.num_instances(), 1);
-    EXPECT_EQ(capitals.healths().health(victim), Health{75});
+    EXPECT_EQ(
+        simulation.entity_tables().health.const_view<EntityType::CapitalShip>().health(victim),
+        Health{75});
     simulation.advance(dt);
-    EXPECT_EQ(capitals.healths().health(victim), Health{75}) << "Damage is applied once";
+    EXPECT_EQ(
+        simulation.entity_tables().health.const_view<EntityType::CapitalShip>().health(victim),
+        Health{75})
+        << "Damage is applied once";
 
     harness.queue_damage(std::array{victim}, 75);
     simulation.advance(dt);
     EXPECT_EQ(capitals.num_instances(), 0);
     EXPECT_EQ(harness.ledger().count_alive(), 0);
     EXPECT_FALSE(entity_is_alive(simulation, victim));
-    EXPECT_EQ(capitals.healths().health(victim), Health{0});
+    EXPECT_EQ(
+        simulation.entity_tables().health.const_view<EntityType::CapitalShip>().health(victim),
+        Health{0});
     EXPECT_EQ(harness.ledger().kills(victim), 0u) << "Unattributed death does not create a kill";
 }
 
@@ -104,7 +113,8 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
         simulation.advance(dt);
         auto const capital{observe_entity(simulation, capital_id)};
         auto const damage{(index + 1) * collision_damage_test::overlap_damage};
-        EXPECT_EQ(player->health(simulation.entity_tables().health).health.value(), collision_damage_test::player_health - damage);
+        EXPECT_EQ(player->health(simulation.entity_tables().health).health.value(),
+                  collision_damage_test::player_health - damage);
         EXPECT_EQ(capital ? capital->health.value() : 0,
                   index == 2 ? 0 : collision_damage_test::capital_health - damage);
     }

@@ -8,20 +8,10 @@
 
 namespace ioj::sim {
 EntityLedger::EntityLedger(std::pmr::memory_resource& memory)
-    : history_{memory}
-    , frame_deaths_{{std::pmr::vector<HistoryIndex>{&memory},
-                     std::pmr::vector<HistoryIndex>{&memory},
-                     std::pmr::vector<HistoryIndex>{&memory},
-                     std::pmr::vector<HistoryIndex>{&memory},
-                     std::pmr::vector<HistoryIndex>{&memory}}} {
+    : history_{memory} {
     history_.set_num(entity_identity_capacity);
 }
 
-void EntityLedger::reset_frame_output() {
-    for (auto& deaths : frame_deaths_) {
-        deaths.clear();
-    }
-}
 auto EntityLedger::require_history_index(EntityId const id) const -> HistoryIndex {
     auto const index{history_index(id)};
     if (index == invalid_history_index) {
@@ -128,7 +118,6 @@ void EntityLedger::record_deaths(EntityDeathInfo::CompactConstView const deaths,
         life_states[row] = static_cast<LifeState>(reasons[index]);
         death_ticks[row] = tick;
         death_locations[row] = locations[index];
-        frame_deaths_[victim.entity_type()].push_back(row);
         auto const killer{killers[index]};
         if (!killer.is_valid()) {
             continue;

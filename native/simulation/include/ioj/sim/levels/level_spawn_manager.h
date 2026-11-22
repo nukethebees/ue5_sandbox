@@ -39,7 +39,10 @@ class LevelEventManager;
 struct EntityInstanceHandle;
 struct SpawnContext;
 
+struct EntityFrameChanges;
 struct LevelSpawnContext {
+    EntityFrameChanges& capital_changes;
+    EntityFrameChanges& turret_changes;
     capital_ships::Sim& capitals;
     turrets::Sim& turrets;
     spinners::Sim& spinners;
@@ -93,10 +96,12 @@ class LevelSpawnManager {
                                 LevelSpawnContext const& level);
     void spawn_capitals(LevelCapitalSpawnEvents::CompactConstView events,
                         capital_ships::Sim& capital_ships,
-                        SpawnContext context);
+                        SpawnContext context,
+                        EntityFrameChanges& changes);
     void spawn_turrets(LevelTurretSpawnEvents::CompactConstView events,
                        turrets::Sim& turrets,
-                       SpawnContext context);
+                       SpawnContext context,
+                       EntityFrameChanges& changes);
     void spawn_spinners(LevelSpinnerSpawnEvents::CompactConstView events,
                         spinners::Sim& spinners,
                         SpawnContext context);

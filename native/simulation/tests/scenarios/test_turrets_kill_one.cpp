@@ -112,14 +112,18 @@ TEST(WorldlessSpaceGameSimulation, TurretsZeroDamage) {
     auto const ids{turrets.get_entities().entity_ids()};
     auto const blue{ids[0]};
     auto const red{ids[1]};
-    auto const blue_health{turrets.healths().health(blue)};
-    auto const red_health{turrets.healths().health(red)};
+    auto const blue_health{
+        simulation.entity_tables().health.const_view<EntityType::Turret>().health(blue)};
+    auto const red_health{
+        simulation.entity_tables().health.const_view<EntityType::Turret>().health(red)};
     simulation.start();
     simulation.advance(3.0);
 
     ASSERT_EQ(turrets.num_instances(), 2);
-    EXPECT_EQ(turrets.healths().health(blue), blue_health);
-    EXPECT_EQ(turrets.healths().health(red), red_health);
+    EXPECT_EQ(simulation.entity_tables().health.const_view<EntityType::Turret>().health(blue),
+              blue_health);
+    EXPECT_EQ(simulation.entity_tables().health.const_view<EntityType::Turret>().health(red),
+              red_health);
 }
 
 }

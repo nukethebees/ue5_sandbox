@@ -135,6 +135,7 @@
     (method initialise void
       (parameter max_health @settings_positive_health))
     (method update_entity_lookup_table void
+      (parameter tables (type-ref @entity_tables :suffix "&"))
       (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade PreparationInterface @capital_ships_sim simulation
@@ -144,6 +145,7 @@
     :friend-kind struct
     :target-storage reference
     (method prepare_tick void
+      (parameter tables (type-ref @entity_tables :suffix "&"))
       (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade ResolutionInterface @capital_ships_sim simulation
@@ -153,8 +155,6 @@
     :friend-kind struct
     :target-storage reference
     (method resolve_damage_events void
-      (parameter inputs (type-ref @capital_ships_resolution_inputs :suffix " const")))
-    (method publish_deaths void
       (parameter inputs (type-ref @capital_ships_resolution_inputs :suffix " const"))))
 
   (facade ResolutionCommitInterface @capital_ships_sim simulation
@@ -178,7 +178,8 @@
     :target-storage reference
     (method register_ships @spawned_entity_ids
       (parameter spawns (type-ref @capital_spawn_view :suffix " const"))
-      (parameter context (type-ref @spawn_context :suffix " const")))))
+      (parameter context (type-ref @spawn_context :suffix " const"))
+      (parameter changes "EntityFrameChanges&"))))
 
 (module fighters_phase_interface
   :header "native/simulation/include/ioj/sim/fighters/phase_interface.h"
@@ -233,8 +234,6 @@
     :friend-kind struct
     :target-storage reference
     (method resolve_damage_events void
-      (parameter inputs (type-ref @fighters_resolution_inputs :suffix " const")))
-    (method publish_deaths void
       (parameter inputs (type-ref @fighters_resolution_inputs :suffix " const"))))
 
   (facade ResolutionCommitInterface @fighters_sim simulation
@@ -261,6 +260,7 @@
       (parameter config (type-ref ioj::sim::TurretSimConfig :suffix " const&"))
       (parameter clock (type-ref @sim_clock :suffix " const&")))
     (method update_entity_lookup_table void
+      (parameter tables (type-ref @entity_tables :suffix "&"))
       (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade PreparationInterface @turrets_sim simulation
@@ -270,6 +270,7 @@
     :friend-kind struct
     :target-storage reference
     (method prepare_tick void
+      (parameter tables (type-ref @entity_tables :suffix "&"))
       (parameter clock (type-ref @sim_clock :suffix " const&"))))
 
   (facade ThinkingInterface @turrets_sim simulation
@@ -290,8 +291,6 @@
     :friend-kind struct
     :target-storage reference
     (method resolve_damage_events void
-      (parameter inputs (type-ref @turrets_resolution_inputs :suffix " const")))
-    (method publish_deaths void
       (parameter inputs (type-ref @turrets_resolution_inputs :suffix " const"))))
 
   (facade ResolutionCommitInterface @turrets_sim simulation
@@ -315,7 +314,8 @@
     :target-storage reference
     (method register_turrets @spawned_entity_ids
       (parameter spawns (type-ref @turret_spawn_view :suffix " const"))
-      (parameter context (type-ref @spawn_context :suffix " const")))))
+      (parameter context (type-ref @spawn_context :suffix " const"))
+      (parameter changes "EntityFrameChanges&"))))
 
 (module spinners_phase_interface
   :header "native/simulation/include/ioj/sim/spinners/phase_interface.h"

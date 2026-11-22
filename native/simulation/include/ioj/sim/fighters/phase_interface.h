@@ -73,8 +73,6 @@ class ResolutionInterface {
         simulation.resolve_damage_events(inputs);
     }
 
-    void publish_deaths(ResolutionInputs const inputs) { simulation.publish_deaths(inputs); }
-
     friend struct sim::LevelSim;
     Sim& simulation;
 };

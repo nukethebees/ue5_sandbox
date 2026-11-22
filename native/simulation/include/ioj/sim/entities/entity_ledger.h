@@ -20,7 +20,6 @@ class EntityLedger {
 
     explicit EntityLedger(std::pmr::memory_resource& memory = *std::pmr::get_default_resource());
 
-    void reset_frame_output();
     // Require equally sized columns and output IDs. Do not borrow inputs from this ledger.
     void record_spawns(EntityType type,
                        std::span<Team const> teams,
@@ -36,14 +35,10 @@ class EntityLedger {
                        std::span<Health const> healths);
     void record_deaths(EntityDeathInfo::CompactConstView deaths, SimTick tick);
 
-    // Index issued identities with history_index() or frame_deaths(). Unissued slots are unused.
+    // Index issued identities with history_index(). Unissued slots are unused.
     // Death metadata describes the latest death recorded for that identity.
     auto history() const noexcept -> EntityHistory::CompactConstView {
         return history_.const_view();
-    }
-    // Borrow history rows in publication order until the next frame or ledger mutation.
-    auto frame_deaths(EntityType type) const -> std::span<HistoryIndex const> {
-        return frame_deaths_[type];
     }
     auto history_index(EntityId id) const noexcept -> HistoryIndex {
         return is_valid_unique_id(id) ? entity_identity_offsets[id.entity_type()] + id.index()
@@ -71,6 +66,5 @@ class EntityLedger {
     EntityHistory history_;
     EntityTypeSizes issued_counts_{};
     CombatStatistics statistics_;
-    EnumArray<std::pmr::vector<HistoryIndex>, EntityType> frame_deaths_;
 };
 }

@@ -1,6 +1,6 @@
 #pragma once
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/entities/entity_frame_change.h>
+#include <ioj/sim/entities/entity_frame_changes.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 #include <ioj/sim/levels/level_spawn_groups.h>
@@ -32,7 +32,7 @@ class SpawnInterface;
 struct Sim {
     using EntityStorage = TurretEntityData;
 
-    explicit Sim(EntityTables& entity_tables) noexcept;
+    Sim() = default;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -42,15 +42,6 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_entities() const -> EntityStorage::CompactConstView { return entities_.const_view(); }
-    auto healths() const -> HealthConstView {
-        return entity_tables_.health.const_view<EntityType::Turret>();
-    }
-    auto frame_changes() const -> std::span<EntityFrameChange const> { return frame_changes_; }
-    auto death_locations() const -> std::span<Vector3f const> { return death_locations_; }
-    void reset_frame_output() {
-        frame_changes_.clear();
-        death_locations_.clear();
-    }
 
     /* **************************************** */
     // Accessors
@@ -62,12 +53,11 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void initialise(TurretSimConfig const& new_config, SimClock const& clock);
-    void update_entity_lookup_table(SimClock const& clock);
-    void prepare_tick(SimClock const& clock);
+    void update_entity_lookup_table(EntityTables& tables, SimClock const& clock);
+    void prepare_tick(EntityTables& tables, SimClock const& clock);
     void think(ThinkingInputs const inputs);
     void generate_fire_commands(ThinkingInputs const inputs);
     void resolve_damage_events(ResolutionInputs const inputs);
-    void publish_deaths(ResolutionInputs const inputs);
     void remove_entities(ResolutionCommitInputs const inputs);
     void finish_action();
 
@@ -75,7 +65,8 @@ struct Sim {
     // Spawning
     /* **************************************** */
     auto register_turrets(LevelTurretSpawnEvents::CompactConstView const spawn_data,
-                          SpawnContext context) -> std::vector<EntityId>;
+                          SpawnContext context,
+                          EntityFrameChanges& changes) -> std::vector<EntityId>;
 
     /* **************************************** */
     // Searching
@@ -106,10 +97,8 @@ struct Sim {
     friend class SpawnInterface;
 
     TurretSimConfig config_{};
-    EntityTables& entity_tables_;
+
     EntityStorage entities_{};
-    std::vector<EntityFrameChange> frame_changes_;
-    std::vector<Vector3f> death_locations_;
     std::int32_t target_refresh_next_offset_{0};
     NonNegative<std::int16_t> cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};

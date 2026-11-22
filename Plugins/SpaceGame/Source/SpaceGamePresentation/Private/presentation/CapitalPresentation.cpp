@@ -1,7 +1,7 @@
 #include "SpaceGamePresentation/presentation/CapitalPresentation.h"
-#include <ioj/presentation/capital_explosion_timing.h>
 
 #include <ioj/column_math.h>
+#include <ioj/presentation/capital_explosion_timing.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
@@ -24,9 +24,9 @@ namespace ioj {
 FCapitalPresentation::FCapitalPresentation(UInstancedStaticMeshComponent& component)
     : instances{&component} {}
 
-void FCapitalPresentation::set_actor_config(
-    FCapitalShipConfig const* const new_config,
-    settings::CapitalPresentation const& settings) noexcept {
+void
+    FCapitalPresentation::set_actor_config(FCapitalShipConfig const* const new_config,
+                                           settings::CapitalPresentation const& settings) noexcept {
     actor_config = new_config;
     settings_ = &settings;
 }
@@ -72,23 +72,25 @@ void FCapitalPresentation::begin_play_presentation() {
     validate_array_sizes();
 }
 
-void FCapitalPresentation::update_visual_data(sim::EntityLedger const& ledger) {
+void FCapitalPresentation::update_visual_data(sim::SimulationFrameEvents const& events) {
     auto const colours{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
-    for (auto const& change : simulation().frame_changes()) {
-        if (change.kind == sim::EntityFrameChangeKind::RemoveSwap) {
-            instances->RemoveInstance(change.index);
+    auto const changes{events.capital_changes.const_view()};
+    auto const count{changes.num()};
+    for (std::uint32_t row{}; row < count; ++row) {
+        if (changes.kinds()[row] == sim::EntityFrameChangeKind::RemoveSwap) {
+            instances->RemoveInstance(changes.indices()[row]);
         } else {
-            FTransform const transform{FRotator{to_unreal(change.rotation)},
-                                       FVector{to_unreal(change.location)}};
+            FTransform const transform{FRotator{to_unreal(changes.rotations()[row])},
+                                       FVector{to_unreal(changes.locations()[row])}};
             auto const index{instances->AddInstance(transform, is_world_space)};
-            check(index == static_cast<int32>(change.index));
-            auto const colour{colours[to_unreal(change.team)]};
+            check(index == static_cast<int32>(changes.indices()[row]));
+            auto const colour{colours[to_unreal(changes.teams()[row])]};
             float const rgb[]{colour.R, colour.G, colour.B};
             instances->SetCustomData(index, rgb, false);
         }
     }
-    trigger_death_effects(ledger);
+    trigger_death_effects(events);
 }
 
 void FCapitalPresentation::commit_visual_data() {
@@ -104,11 +106,11 @@ void FCapitalPresentation::end_tick_presentation() {
 
 void FCapitalPresentation::configure_ismc() {
     batch::configure_ismc(*instances,
-                               {
-                                   .mesh = actor_config->mesh.Get(),
-                                   .material = actor_config->material.Get(),
-                                   .num_custom_data_floats = n_custom_ismc_floats,
-                               });
+                          {
+                              .mesh = actor_config->mesh.Get(),
+                              .material = actor_config->material.Get(),
+                              .num_custom_data_floats = n_custom_ismc_floats,
+                          });
 }
 
 void FCapitalPresentation::add_initial_visual_instances() {
@@ -157,11 +159,9 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
         first_index, first_index + n_to_add - 1, custom_data, mark_render_state_dirty);
 }
 
-void FCapitalPresentation::trigger_death_effects(sim::EntityLedger const& ledger) {
-    auto const deaths{ledger.frame_deaths(sim::EntityType::CapitalShip)};
-    auto const history{ledger.history()};
-    auto const death_ticks{history.death_ticks()};
-    auto const death_locations{history.death_locations()};
+void FCapitalPresentation::trigger_death_effects(sim::SimulationFrameEvents const& events) {
+    auto const deaths{events.deaths.const_view()};
+    auto const death_locations{deaths.locations()};
     auto* const small_death_explosion{actor_config->small_death_explosion.Get()};
     auto* const main_death_explosion{actor_config->main_death_explosion.Get()};
     auto const has_small_death_explosion{IsValid(small_death_explosion)};
@@ -176,35 +176,50 @@ void FCapitalPresentation::trigger_death_effects(sim::EntityLedger const& ledger
     auto const time_between_explosions{settings_->time_between_explosions};
     auto const min_range{settings_->min_small_explosion_range};
     auto const max_range{settings_->max_small_explosion_range};
-    auto const after_small_explosions{actor_config->main_explosion_delay_mode == ECapitalShipMainExplosionDelayMode::AfterSmallExplosions};
+    auto const after_small_explosions{actor_config->main_explosion_delay_mode ==
+                                      ECapitalShipMainExplosionDelayMode::AfterSmallExplosions};
 
-    float current_delay{0.f};
-    std::optional<sim::SimTick> previous_tick;
-    for (auto const row : deaths) {
-        if (previous_tick != death_ticks[row]) {
-            current_delay = 0.f;
-            previous_tick = death_ticks[row];
-        }
-        presentation::CapitalExplosionTiming const timing{current_delay, time_between_explosions, has_small_death_explosion ? n_small_explosions : 0};
-        FVector const base_location{to_unreal(death_locations[row])};
-        if (has_small_death_explosion) {
-            for (int32 explosion_index{0}; explosion_index < n_small_explosions;
-                 ++explosion_index) {
-                auto const offset{FVector{
-                    FMath::FRandRange(min_range.x(), max_range.x()),
-                    FMath::FRandRange(min_range.y(), max_range.y()),
-                    FMath::FRandRange(min_range.z(), max_range.z()),
-                }};
-                niagara_spawner->add_spawn(small_death_explosion, base_location + offset, FRotator::ZeroRotator, FVector::OneVector, timing.small_delay(explosion_index));
+    std::uint32_t first{};
+    for (auto const counts : events.ticks) {
+        float current_delay{};
+        for (auto row{first}; row < counts.deaths; ++row) {
+            if (deaths.victims()[row].entity_type() != sim::EntityType::CapitalShip) {
+                continue;
+            }
+            presentation::CapitalExplosionTiming const timing{
+                current_delay,
+                time_between_explosions,
+                has_small_death_explosion ? n_small_explosions : 0};
+            FVector const base_location{to_unreal(death_locations[row])};
+            if (has_small_death_explosion) {
+                for (int32 explosion_index{0}; explosion_index < n_small_explosions;
+                     ++explosion_index) {
+                    auto const offset{FVector{
+                        FMath::FRandRange(min_range.x(), max_range.x()),
+                        FMath::FRandRange(min_range.y(), max_range.y()),
+                        FMath::FRandRange(min_range.z(), max_range.z()),
+                    }};
+                    niagara_spawner->add_spawn(small_death_explosion,
+                                               base_location + offset,
+                                               FRotator::ZeroRotator,
+                                               FVector::OneVector,
+                                               timing.small_delay(explosion_index));
+                }
+            }
+
+            current_delay = timing.last_small_delay();
+            if (has_main_death_explosion) {
+                niagara_spawner->add_spawn(
+                    main_death_explosion,
+                    base_location,
+                    FRotator::ZeroRotator,
+                    FVector::OneVector,
+                    timing.main_delay(settings_->large_explosion_delay, after_small_explosions));
             }
         }
 
-        current_delay = timing.last_small_delay();
-        if (has_main_death_explosion) {
-            niagara_spawner->add_spawn(main_death_explosion, base_location, FRotator::ZeroRotator, FVector::OneVector, timing.main_delay(settings_->large_explosion_delay, after_small_explosions));
-        }
+        first = counts.deaths;
     }
-
 }
 
 void FCapitalPresentation::validate_array_sizes() const {

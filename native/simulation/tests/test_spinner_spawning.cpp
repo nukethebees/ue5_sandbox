@@ -47,7 +47,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     EntityTables tables{};
     lasers::Sim lasers;
     spinners::Sim simulation{};
-    SpawnContext const spawn_context{ledger, clock};
+    SpawnContext const spawn_context{tables, ledger, clock};
     auto& entity_storage{Access::entities(simulation)};
     Access::set_cooldown(simulation, 23);
 

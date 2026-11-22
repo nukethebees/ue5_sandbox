@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/entities/entity_tables.h"
 #include "ioj/sim/sim_clock.h"
 #include "ioj/sim/turrets/phase_inputs.h"
 #include "ioj/sim/turrets/sim.h"
@@ -18,8 +19,8 @@ class InitialisationInterface {
         simulation.initialise(config, clock);
     }
 
-    void update_entity_lookup_table(SimClock const& clock) {
-        simulation.update_entity_lookup_table(clock);
+    void update_entity_lookup_table(EntityTables& tables, SimClock const& clock) {
+        simulation.update_entity_lookup_table(tables, clock);
     }
 
     friend struct sim::LevelSim;
@@ -31,7 +32,9 @@ class PreparationInterface {
     PreparationInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void prepare_tick(SimClock const& clock) { simulation.prepare_tick(clock); }
+    void prepare_tick(EntityTables& tables, SimClock const& clock) {
+        simulation.prepare_tick(tables, clock);
+    }
 
     friend struct sim::LevelSim;
     Sim& simulation;
@@ -60,8 +63,6 @@ class ResolutionInterface {
     void resolve_damage_events(ResolutionInputs const inputs) {
         simulation.resolve_damage_events(inputs);
     }
-
-    void publish_deaths(ResolutionInputs const inputs) { simulation.publish_deaths(inputs); }
 
     friend struct sim::LevelSim;
     Sim& simulation;

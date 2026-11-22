@@ -111,7 +111,7 @@ auto HudModel::display_batches() const -> std::array<AgentDisplayBatch, 4> {
           capitals.entity_ids(),
           capitals.view_locations(),
           {},
-          capitals_sim.healths(),
+          view.entity_tables().health.const_view<EntityType::CapitalShip>(),
           capitals.teams()},
          {EntityType::Fighter,
           fighters.entity_ids(),
@@ -123,7 +123,7 @@ auto HudModel::display_batches() const -> std::array<AgentDisplayBatch, 4> {
           turrets.entity_ids(),
           turrets.view_locations(),
           {},
-          turrets_sim.healths(),
+          view.entity_tables().health.const_view<EntityType::Turret>(),
           turrets.teams()},
          {EntityType::TubeSpinner, spinners.entity_ids(), spinners.view_locations(), {}, {}, {}}}};
 }

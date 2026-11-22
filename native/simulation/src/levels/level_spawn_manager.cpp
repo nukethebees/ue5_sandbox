@@ -51,7 +51,9 @@ void LevelSpawnManager::set_entity_id(LevelEntityRef const entity_index, EntityI
 void LevelSpawnManager::process_event(EventHandle const event,
                                       LevelEventManager const& events,
                                       LevelSpawnContext const& level) {
-    SpawnContext const context{level.fighter_inputs.ledger, level.fighter_inputs.clock};
+    SpawnContext const context{level.fighter_inputs.entity_tables,
+                               level.fighter_inputs.ledger,
+                               level.fighter_inputs.clock};
     auto const range{events.spawn_event(event)};
     auto const groups{events.spawn_groups().const_view(range.offset, range.count)};
     auto const types{groups.types()};
@@ -67,12 +69,16 @@ void LevelSpawnManager::process_event(EventHandle const event,
                 spawn_fighters(events.fighter_spawns().const_view(offset, count), level);
                 break;
             case EntityType::CapitalShip:
-                spawn_capitals(
-                    events.capital_spawns().const_view(offset, count), level.capitals, context);
+                spawn_capitals(events.capital_spawns().const_view(offset, count),
+                               level.capitals,
+                               context,
+                               level.capital_changes);
                 break;
             case EntityType::Turret:
-                spawn_turrets(
-                    events.turret_spawns().const_view(offset, count), level.turrets, context);
+                spawn_turrets(events.turret_spawns().const_view(offset, count),
+                              level.turrets,
+                              context,
+                              level.turret_changes);
                 break;
             case EntityType::TubeSpinner:
                 spawn_spinners(
@@ -100,12 +106,14 @@ void LevelSpawnManager::spawn_fighters(FighterSpawnQueue::CompactConstView const
 
 void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEvents::CompactConstView const events,
                                        capital_ships::Sim& capital_ships,
-                                       SpawnContext const context) {
+                                       SpawnContext const context,
+                                       EntityFrameChanges& changes) {
     if (entity_ids_[events.entity_indices()[0].index()].is_valid()) {
         return;
     }
     auto const count{events.num()};
-    auto const ids{capital_ships::SpawnInterface{capital_ships}.register_ships(events, context)};
+    auto const ids{
+        capital_ships::SpawnInterface{capital_ships}.register_ships(events, context, changes)};
     auto const entity_indices{events.entity_indices()};
     auto const initial_delays{events.initial_fighter_spawn_delays()};
     auto const cooldowns{events.fighter_spawn_cooldowns()};
@@ -181,11 +189,12 @@ void LevelSpawnManager::spawn_carrier_fighters(CarrierLaunch const& launch,
 
 void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEvents::CompactConstView const events,
                                       turrets::Sim& turrets,
-                                      SpawnContext const context) {
+                                      SpawnContext const context,
+                                      EntityFrameChanges& changes) {
     if (entity_ids_[events.entity_indices()[0].index()].is_valid()) {
         return;
     }
-    auto const ids{turrets::SpawnInterface{turrets}.register_turrets(events, context)};
+    auto const ids{turrets::SpawnInterface{turrets}.register_turrets(events, context, changes)};
     auto const count{events.num()};
     auto const entity_indices{events.entity_indices()};
 

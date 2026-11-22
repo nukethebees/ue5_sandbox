@@ -69,7 +69,6 @@ struct Sim {
     void apply_movement(ActionInputs const inputs);
     void generate_fire_commands(ThinkingInputs const inputs);
     void resolve_damage_events(ResolutionInputs const inputs);
-    void publish_deaths(ResolutionInputs inputs);
     void remove_entities(ResolutionCommitInputs inputs);
     void finish_action();
 

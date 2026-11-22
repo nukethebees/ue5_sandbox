@@ -1,5 +1,5 @@
 #pragma once
-
+#include <ioj/sim/levels/simulation_frame_events.h>
 #include <ioj/sim/turrets/sim.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
@@ -28,15 +28,15 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     void ValidateOptionalAssets() const;
     void clear_runtime_state_presentation();
     void begin_play_presentation();
-    void update_visual_data();
-    void commit_visual_data();
+    void update_visual_data(sim::SimulationFrameEvents const& events);
+    void commit_visual_data(sim::HealthConstView healths);
     void end_tick_presentation();
 
     void add_initial_visual_instances();
     void add_visual_instances(TArray<FTransform> const& transforms, int32 first_entity_index);
     void configure_ismc();
-    void trigger_death_effects();
-    void draw_debugging_shapes() const;
+    void trigger_death_effects(sim::SimulationFrameEvents const& events);
+    void draw_debugging_shapes(sim::HealthConstView healths) const;
     void validate_array_sizes() const;
 
     FTurretConfig const* actor_config{nullptr};

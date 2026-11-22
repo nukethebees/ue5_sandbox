@@ -147,8 +147,8 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     ASSERT_EQ(turrets.num(), 1);
     auto const turret{turrets.entity_ids()[0]};
     EXPECT_EQ(observe_entity(simulation, turret)->health.value(), 75);
-    EXPECT_EQ(simulation.capital_ships()
-                  .healths()
+    EXPECT_EQ(simulation.entity_tables()
+                  .health.const_view<EntityType::CapitalShip>()
                   .health(simulation.capital_ships().get_entities().entity_ids()[0])
                   .value(),
               75);
@@ -308,21 +308,25 @@ TEST(TickPhases, DelayedEntityDeathTriggersAfterResolutionWithoutDuplicateOverla
 
     simulation.start();
     simulation.advance(clk_period);
-    EXPECT_TRUE(simulation.turrets().frame_changes().empty());
+    EXPECT_EQ(simulation.read_access().frame_events().turret_changes.num(), 0u);
     simulation.advance(clk_period);
 
     EXPECT_EQ(simulation.turrets().num_instances(), 0);
-    auto const& turret_view{simulation.read_access().turrets()};
-    auto const changes{turret_view.frame_changes()};
-    ASSERT_EQ(changes.size(), 2);
-    EXPECT_EQ(changes[0].kind, EntityFrameChangeKind::Spawn);
-    EXPECT_EQ(changes[1].kind, EntityFrameChangeKind::RemoveSwap);
-    EXPECT_EQ(changes[0].id, changes[1].id);
-    EXPECT_EQ(turret_view.death_locations().size(), 1);
-    auto const dead_id{changes[1].id};
+    auto const& events{simulation.read_access().frame_events()};
+    auto const changes{events.turret_changes.const_view()};
+    ASSERT_EQ(changes.num(), 2);
+    EXPECT_EQ(changes.kinds()[0], EntityFrameChangeKind::Spawn);
+    EXPECT_EQ(changes.kinds()[1], EntityFrameChangeKind::RemoveSwap);
+    EXPECT_EQ(changes.ids()[0], changes.ids()[1]);
+    EXPECT_EQ(events.deaths.num(), 1);
+    auto const dead_id{changes.ids()[1]};
     expect_entity_unregistered(simulation, dead_id);
     EXPECT_EQ(ledger.count_alive(), 1);
-    EXPECT_EQ(capitals.healths().health(capitals.get_entities().entity_ids()[0]).value(), 900);
+    EXPECT_EQ(simulation.entity_tables()
+                  .health.const_view<EntityType::CapitalShip>()
+                  .health(capitals.get_entities().entity_ids()[0])
+                  .value(),
+              900);
     ASSERT_TRUE(simulation.result());
     EXPECT_EQ(simulation.result()->winner, Team::Green);
 
@@ -419,8 +423,8 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     simulation.start();
     simulation.advance(clk_period);
     EXPECT_EQ(simulation.read_access()
-                  .capitals()
-                  .healths()
+                  .entity_tables()
+                  .health.const_view<EntityType::CapitalShip>()
                   .health(simulation.read_access().capitals().get_entities().entity_ids()[0])
                   .value(),
               75);
@@ -499,12 +503,11 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeLogicEvaluation) {
         EXPECT_FALSE(entity_is_alive(simulation, victim));
         EXPECT_EQ(fighter_sim.num_instances(), kill_tick == 1 ? 0 : 2);
         EXPECT_EQ(capitals.num_instances(), 1);
-        auto const& capital_view{simulation.read_access().capitals()};
-        auto const changes{capital_view.frame_changes()};
-        ASSERT_FALSE(changes.empty());
-        EXPECT_EQ(changes.back().kind, EntityFrameChangeKind::RemoveSwap);
-        EXPECT_EQ(changes.back().id, victim);
-        ASSERT_EQ(ledger.frame_deaths(EntityType::CapitalShip).size(), 1);
+        auto const changes{simulation.read_access().frame_events().capital_changes.const_view()};
+        ASSERT_GT(changes.num(), 0u);
+        EXPECT_EQ(changes.kinds().back(), EntityFrameChangeKind::RemoveSwap);
+        EXPECT_EQ(changes.ids().back(), victim);
+        ASSERT_EQ(simulation.read_access().frame_events().deaths.num(), 1);
         EXPECT_EQ(observe_entity_row(simulation, victim), EntityInstanceHandle::invalid_value);
         EXPECT_EQ(observe_entity_row(simulation, killer), 0);
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
@@ -546,13 +549,14 @@ TEST(TickPhases, RemovalEventsReplaySwapRemovalAcrossTheCompleteFrame) {
     simulation.start();
     simulation.advance(clk_period * 2.0);
     auto const& final{simulation.read_access().capitals()};
-    ASSERT_EQ(final.frame_changes().size(), 2);
-    EXPECT_EQ(simulation.entity_ledger().frame_deaths(EntityType::CapitalShip).size(), 2);
-    for (auto const& change : final.frame_changes()) {
-        EXPECT_EQ(change.kind, EntityFrameChangeKind::RemoveSwap);
-        ASSERT_LT(static_cast<std::size_t>(change.index), visual_ids.size());
-        EXPECT_EQ(visual_ids[change.index], change.id);
-        visual_ids[change.index] = visual_ids.back();
+    auto const changes{simulation.read_access().frame_events().capital_changes.const_view()};
+    ASSERT_EQ(changes.num(), 2);
+    EXPECT_EQ(simulation.read_access().frame_events().deaths.num(), 2);
+    for (std::uint32_t row{}; row < changes.num(); ++row) {
+        EXPECT_EQ(changes.kinds()[row], EntityFrameChangeKind::RemoveSwap);
+        ASSERT_LT(static_cast<std::size_t>(changes.indices()[row]), visual_ids.size());
+        EXPECT_EQ(visual_ids[changes.indices()[row]], changes.ids()[row]);
+        visual_ids[changes.indices()[row]] = visual_ids.back();
         visual_ids.pop_back();
     }
     ASSERT_EQ(visual_ids.size(), 1);

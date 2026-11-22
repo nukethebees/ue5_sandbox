@@ -132,7 +132,6 @@ TEST(EntityLedger, PreservesKillCountsAfterDeath) {
     EXPECT_EQ(ledger.count_alive(), 0);
     for (auto const type : EnumTraits<EntityType>::values) {
         EXPECT_EQ(ledger.issued_counts()[type], 0);
-        EXPECT_TRUE(ledger.frame_deaths(type).empty());
     }
 
     EntityId killer;

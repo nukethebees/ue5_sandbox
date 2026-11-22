@@ -44,7 +44,8 @@ inline auto observe_entity(LevelSim const& simulation, EntityId const id)
     auto const access{simulation.read_access()};
     if (id.entity_type() == EntityType::PlayerShip) {
         auto const* player{simulation.player_ship_simulation()};
-        if (!player || player->unique_entity_id != id || !player->is_alive(simulation.entity_tables().health)) {
+        if (!player || player->unique_entity_id != id ||
+            !player->is_alive(simulation.entity_tables().health)) {
             return {};
         }
         auto const& state{player->physical_state()};
@@ -58,12 +59,13 @@ inline auto observe_entity(LevelSim const& simulation, EntityId const id)
         case EntityType::CapitalShip: {
             auto const& view{access.capitals()};
             auto const entities{view.get_entities()};
-            return observe_entity_columns(id,
-                                          entities.entity_ids(),
-                                          entities.view_locations().resolve(),
-                                          {},
-                                          view.healths(),
-                                          entities.teams());
+            return observe_entity_columns(
+                id,
+                entities.entity_ids(),
+                entities.view_locations().resolve(),
+                {},
+                access.entity_tables().health.const_view<EntityType::CapitalShip>(),
+                entities.teams());
         }
         case EntityType::Fighter: {
             auto const& view{access.fighters()};
@@ -79,12 +81,13 @@ inline auto observe_entity(LevelSim const& simulation, EntityId const id)
         case EntityType::Turret: {
             auto const& view{access.turrets()};
             auto const entities{view.get_entities()};
-            return observe_entity_columns(id,
-                                          entities.entity_ids(),
-                                          entities.view_locations().resolve(),
-                                          {},
-                                          view.healths(),
-                                          entities.teams());
+            return observe_entity_columns(
+                id,
+                entities.entity_ids(),
+                entities.view_locations().resolve(),
+                {},
+                access.entity_tables().health.const_view<EntityType::Turret>(),
+                entities.teams());
         }
         case EntityType::TubeSpinner: {
             auto const& view{access.spinners()};
