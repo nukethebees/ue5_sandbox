@@ -515,11 +515,40 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
     return Result{std::unexpect, MoveTemp(failure)};
 }
 
-auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
+auto s7_rebuild_targets(ULevel const& level, AS7LevelAuthoringDocument const& document)
+    -> FS7RebuildTargets {
+    FS7RebuildTargets targets;
+    TSet<AActor*> bound;
+    for (auto const& entry : document.entities) {
+        if (IsValid(entry.actor) && entry.actor->GetLevel() == &level) {
+            bound.Add(entry.actor.Get());
+            targets.bound.Add(entry.actor.Get());
+        }
+    }
+    SceneActors{level}.for_each_scene_actor([&](auto& proxy, auto) {
+        if (proxy.export_to_script && !bound.Contains(&proxy)) {
+            targets.unexported.Add(&proxy);
+        }
+    });
+    return targets;
+}
+
+auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, RebuildPolicy policy)
     -> S7AuthoringResult<void> {
     using Result = S7AuthoringResult<void>;
 
     using namespace s7_level_authoring_session_detail;
+    auto targets{s7_rebuild_targets(level, document)};
+    bool const was_pending{document.needs_export};
+    if (policy == RebuildPolicy::PreserveEdits && (was_pending || !targets.unexported.IsEmpty())) {
+        return Result{std::unexpect,
+                      TEXT("There are unexported scene changes. Use Export Scene to keep them or "
+                           "Force Rebuild from Script to discard them.")};
+    }
+    if (!IsValid(document.level_config)) {
+        return Result{std::unexpect, TEXT("Cannot rebuild without the shared level asset.")};
+    }
+
     s7::ModuleInput module{*s7_editor_config_path(document)};
     std::filesystem::path const path{*s7_mission_path(document)};
     auto definition{
@@ -585,6 +614,7 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
             for (auto const& spawned : bindings) {
                 spawned.actor->Destroy();
             }
+            document.set_needs_export(was_pending);
             transaction.Cancel();
             return Result{std::unexpect,
                           FString::Printf(TEXT("Could not materialize '%s'."), *name)};
@@ -634,11 +664,10 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
         bindings.Add({.id = name, .actor = actor});
     }
     document.Modify();
-    for (auto const& entry : document.entities) {
-        if (IsValid(entry.actor) && entry.actor->GetLevel() == &level) {
-            entry.actor->Modify();
-            level.OwningWorld->EditorDestroyActor(entry.actor, true);
-        }
+    targets.bound.Append(targets.unexported);
+    for (auto* actor : targets.bound) {
+        actor->Modify();
+        level.OwningWorld->EditorDestroyActor(actor, true);
     }
     for (auto const& binding : bindings) {
         update_s7_proxy_label(*binding.actor);

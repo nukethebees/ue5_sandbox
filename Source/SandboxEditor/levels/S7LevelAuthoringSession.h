@@ -33,6 +33,15 @@ SANDBOXEDITOR_API auto export_s7_editor_config(ULevel& level, AS7LevelAuthoringD
     -> S7AuthoringResult<void>;
 SANDBOXEDITOR_API auto read_s7_authored_level(AS7LevelAuthoringDocument const& document)
     -> S7AuthoringResult<levels::LevelDefinition>;
-SANDBOXEDITOR_API auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
+enum class RebuildPolicy { PreserveEdits, DiscardEdits };
+struct FS7RebuildTargets {
+    TArray<AActor*> bound;
+    TArray<AActor*> unexported;
+};
+auto s7_rebuild_targets(ULevel const& level, AS7LevelAuthoringDocument const& document)
+    -> FS7RebuildTargets;
+SANDBOXEDITOR_API auto import_s7_level(ULevel& level,
+                                       AS7LevelAuthoringDocument& document,
+                                       RebuildPolicy policy = RebuildPolicy::PreserveEdits)
     -> S7AuthoringResult<void>;
 }

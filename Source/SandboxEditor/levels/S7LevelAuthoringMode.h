@@ -44,9 +44,11 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void link_script();
     void open_script_editor();
     void rebuild_scene();
+    void force_rebuild_scene();
     void export_scene();
     void check_scene();
   private:
+    void rebuild_scene(ioj::editor::RebuildPolicy policy);
     auto current_level() const -> ULevel*;
     auto selected_binding() const -> FS7LevelEntityBinding*;
     void refresh_document();

@@ -28,6 +28,7 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     auto link_script() -> FReply;
     auto open_script_editor() -> FReply;
     auto rebuild_scene() -> FReply;
+    auto force_rebuild_scene() -> FReply;
     auto export_scene() -> FReply;
     auto check_scene() -> FReply;
 

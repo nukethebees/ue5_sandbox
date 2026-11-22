@@ -108,6 +108,7 @@ void FS7LevelAuthoringModeToolkit::commit_script_id(FText const& text,
 }
 FORWARD_ACTION(open_script_editor)
 FORWARD_ACTION(rebuild_scene)
+FORWARD_ACTION(force_rebuild_scene)
 FORWARD_ACTION(export_scene)
 FORWARD_ACTION(check_scene)
 

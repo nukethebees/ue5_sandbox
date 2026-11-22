@@ -70,19 +70,29 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                                   .ToolTipText(
                                       NSLOCTEXT("FS7LevelAuthoringModeToolkit",
                                                 "RebuildTooltip",
-                                                "Replace bound actors from the saved script. "
-                                                "Unexported edits to those actors will be lost."))
+                                                "Reload saved placements and viewpoint. Pending "
+                                                "scene edits block rebuild. See the Output Log."))
                                   .OnClicked(&self_, &ThisClass::rebuild_scene)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
-                                                  "EditScript",
-                                                  "Edit Level Script"))
-                                  .ToolTipText(NSLOCTEXT(
-                                      "FS7LevelAuthoringModeToolkit",
-                                      "EditScriptTooltip",
-                                      "Open the linked .scm file in your external editor."))
-                                  .OnClicked(&self_, &ThisClass::open_script_editor)]] +
+                                                  "ForceRebuild",
+                                                  "Force Rebuild from Script"))
+                                  .ToolTipText(
+                                      NSLOCTEXT("FS7LevelAuthoringModeToolkit",
+                                                "ForceRebuildTooltip",
+                                                "Discard pending scene edits and restore "
+                                                "placements and viewpoint from the saved script."))
+                                  .OnClicked(&self_, &ThisClass::force_rebuild_scene)]] +
+                    SandboxUI::Slate::vbox_auto_slot(FMargin{2.0f})
+                        [SNew(SButton)
+                             .Text(NSLOCTEXT(
+                                 "FS7LevelAuthoringModeToolkit", "EditScript", "Edit Level Script"))
+                             .ToolTipText(
+                                 NSLOCTEXT("FS7LevelAuthoringModeToolkit",
+                                           "EditScriptTooltip",
+                                           "Open the linked .scm file in your external editor."))
+                             .OnClicked(&self_, &ThisClass::open_script_editor)] +
                     SandboxUI::Slate::vbox_auto_slot()
                         [SNew(SHorizontalBox) +
                          SandboxUI::Slate::hbox_fill_slot(

@@ -489,7 +489,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         CastChecked<ioj::ATestSpaceShip>(player_binding->actor)->health_override.Reset();
         if (!assert_success(*TestRunner,
                             TEXT("Refresh composed scene"),
-                            ioj::editor::import_s7_level(level, document))) {
+                            ioj::editor::import_s7_level(
+                                level, document, ioj::editor::RebuildPolicy::DiscardEdits))) {
             return;
         }
         TestRunner->TestFalse(TEXT("Rebuild removed the old proxy"), IsValid(capital));
@@ -592,17 +593,45 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         auto* const unbound{fixture->world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
         unbound->export_to_script = false;
         previous_human->export_to_script = true;
+        auto* const pending{fixture->world->SpawnActor<ioj::ATestFighterProxy>()};
+        document.set_needs_export(false);
+        auto const blocked{ioj::editor::import_s7_level(level, document)};
+        TestRunner->TestTrue(
+            TEXT("An unbound exportable fighter blocks rebuild even with a clear pending flag"),
+            !blocked && blocked.error().Contains(TEXT("unexported scene changes")) &&
+                IsValid(pending) && IsValid(previous_human));
+        FString baseline;
+        FFileHelper::LoadFileToString(baseline, *fixture->generated_path);
+        if (!TestRunner->TestTrue(TEXT("Write malformed script"),
+                                  write_source(directory.root(), TEXT("(")))) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Failed force rebuild preserves the scene"),
+                             !ioj::editor::import_s7_level(
+                                 level, document, ioj::editor::RebuildPolicy::DiscardEdits) &&
+                                 IsValid(pending) && IsValid(previous_human));
+        if (!TestRunner->TestTrue(TEXT("Restore saved mission"),
+                                  write_source(directory.root(), fixture->human_source))) {
+            return;
+        }
         if (!assert_success(*TestRunner,
                             TEXT("Refresh adopted entity"),
-                            ioj::editor::import_s7_level(level, document))) {
+                            ioj::editor::import_s7_level(
+                                level, document, ioj::editor::RebuildPolicy::DiscardEdits))) {
             return;
         }
         auto* const replacement{
             CastChecked<ioj::ATestCapitalShipProxy>(binding(document, TEXT("human"))->actor)};
-        TestRunner->TestTrue(TEXT("Rebuild keeps unbound actors"), IsValid(unbound));
+        TestRunner->TestTrue(TEXT("Rebuild keeps unbound actors excluded from export"),
+                             IsValid(unbound));
+        TestRunner->TestFalse(TEXT("Force rebuild discards pending placements"), IsValid(pending));
         TestRunner->TestFalse(TEXT("Rebuild replaces the bound proxy"), IsValid(previous_human));
         TestRunner->TestFalse(TEXT("Script-owned replacement defaults to excluded"),
                               replacement->export_to_script);
+        FString after_rebuild;
+        FFileHelper::LoadFileToString(after_rebuild, *fixture->generated_path);
+        TestRunner->TestEqual(
+            TEXT("Rebuilding preserves the exported file"), after_rebuild, baseline);
         replacement->export_to_script = true;
         TestRunner->TestFalse(TEXT("Check Scene rejects the duplicate ID"),
                               ioj::editor::check_s7_scene(level, document).has_value());
@@ -612,6 +641,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                              ioj::editor::read_s7_authored_level(document).has_value());
         GEditor->UndoTransaction();
         TestRunner->TestTrue(TEXT("Undoing a rebuild requests export"), document.needs_export);
+        TestRunner->TestTrue(TEXT("Undo restores the discarded placement"), IsValid(pending));
         auto const* restored{binding(document, TEXT("human"))};
         TestRunner->TestTrue(TEXT("Undo restores original proxy and binding"),
                              restored && IsValid(previous_human) &&
@@ -971,6 +1001,12 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Duplicate ID keeps the binding"),
                               mode.selected_script_id(),
                               FString{TEXT("pilot")});
+        {
+            TGuardValue<bool> unattended{GIsRunningUnattendedScript, true};
+            mode.force_rebuild_scene();
+        }
+        TestRunner->TestTrue(TEXT("Declining force rebuild keeps the selected actor and bindings"),
+                             IsValid(player) && mode.selected_script_id() == TEXT("pilot"));
         mode.rename_selected_entity(TEXT("lead"));
         TestRunner->TestEqual(
             TEXT("Renaming updates the binding"), mode.selected_script_id(), FString{TEXT("lead")});
@@ -1039,7 +1075,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               ioj::editor::check_s7_scene(level, document).has_value());
         if (!assert_success(*TestRunner,
                             TEXT("Rebuild standalone mission"),
-                            ioj::editor::import_s7_level(level, document))) {
+                            ioj::editor::import_s7_level(
+                                level, document, ioj::editor::RebuildPolicy::DiscardEdits))) {
             return;
         }
         auto const* wing_binding{binding(document, TEXT("wing"))};

@@ -17,7 +17,6 @@
 #include <SandboxCoreEngine/strings.h>
 #include <SandboxCoreEngine/VectorConversion.h>
 
-#include <Algo/Count.h>
 #include <CanvasItem.h>
 #include <CanvasTypes.h>
 #include <DesktopPlatformModule.h>
@@ -476,26 +475,36 @@ void US7LevelAuthoringMode::open_script_editor() {
 }
 
 void US7LevelAuthoringMode::rebuild_scene() {
+    rebuild_scene(RebuildPolicy::PreserveEdits);
+}
+void US7LevelAuthoringMode::force_rebuild_scene() {
+    rebuild_scene(RebuildPolicy::DiscardEdits);
+}
+void US7LevelAuthoringMode::rebuild_scene(RebuildPolicy policy) {
     auto* const level{current_level()};
     if (!IsValid(level) || !document_.IsValid()) {
         return;
     }
-    auto const count{Algo::CountIf(document_->entities,
-                                   [](auto const& binding) { return IsValid(binding.actor); })};
-    if (count && FMessageDialog::Open(
-                     EAppMsgType::YesNo,
-                     FText::Format(LOCTEXT("ConfirmRebuild",
-                                           "Replace {0} bound actors from the saved level script? "
-                                           "Unexported edits to these actors will be lost."),
-                                   count)) != EAppReturnType::Yes) {
-        return;
+    if (policy == RebuildPolicy::DiscardEdits) {
+        auto const targets{s7_rebuild_targets(*level, *document_)};
+        auto const message{FText::Format(
+            LOCTEXT("ConfirmForceRebuild",
+                    "Discard scene edits and rebuild from the saved script? This replaces {0} "
+                    "bound actors, removes {1} unexported placements and restores the viewpoint."),
+            targets.bound.Num(),
+            targets.unexported.Num())};
+        if (FMessageDialog::Open(EAppMsgType::YesNo, EAppReturnType::No, message) !=
+            EAppReturnType::Yes) {
+            return;
+        }
     }
-    auto imported{import_s7_level(*level, *document_)};
+
+    auto imported{import_s7_level(*level, *document_, policy)};
     if (imported) {
         UE_LOG(
             LogS7LevelAuthoring, Display, TEXT("Rebuilt scene from %s."), *document_->source_path);
     } else {
-        UE_LOG(LogS7LevelAuthoring, Error, TEXT("Rebuild Scene: %s"), *imported.error());
+        UE_LOG(LogS7LevelAuthoring, Warning, TEXT("Rebuild Scene: %s"), *imported.error());
     }
     notify_changed();
 }

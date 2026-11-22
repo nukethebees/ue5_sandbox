@@ -28,7 +28,10 @@
               (loc "FS7LevelAuthoringModeToolkit" "LinkTooltip" "Use an existing level script for this map and configure Play.") link_script))
           (authoring-row
             (authoring-action "Rebuild" "Rebuild Scene from Script"
-              (loc "FS7LevelAuthoringModeToolkit" "RebuildTooltip" "Replace bound actors from the saved script. Unexported edits to those actors will be lost.") rebuild_scene)
+              (loc "FS7LevelAuthoringModeToolkit" "RebuildTooltip" "Reload saved placements and viewpoint. Pending scene edits block rebuild. See the Output Log.") rebuild_scene)
+            (authoring-action "ForceRebuild" "Force Rebuild from Script"
+              (loc "FS7LevelAuthoringModeToolkit" "ForceRebuildTooltip" "Discard pending scene edits and restore placements and viewpoint from the saved script.") force_rebuild_scene))
+          (auto :padding 2
             (authoring-action "EditScript" "Edit Level Script"
               (loc "FS7LevelAuthoringModeToolkit" "EditScriptTooltip" "Open the linked .scm file in your external editor.") open_script_editor))
           (authoring-row (existing grid) (existing bounds))
