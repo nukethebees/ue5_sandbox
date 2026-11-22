@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <unordered_set>
 #include <utility>
 
 namespace ioj::sim::tasks {
@@ -44,13 +43,14 @@ TaskManager::TaskManager(std::pmr::memory_resource& resource)
     : instructions_{&resource}
     , instruction_data_{resource}
     , task_entries_{&resource}
+    , task_values_{&resource}
     , active_tasks_{task_manager_detail::make_array<Team>(
           [&resource] { return std::pmr::vector<TaskId>{&resource}; })}
     , task_entity_allocations_{task_manager_detail::make_array<Team, EntityType>(
           [&resource] { return Counts{&resource}; })}
     , free_entities_{task_manager_detail::make_array<Team, EntityType>(
           [&resource] { return std::pmr::vector<EntityId>{&resource}; })}
-    , checked_trigger_runs_{&resource} {
+    , checked_trigger_ranges_{&resource} {
     reset();
 }
 void TaskManager::reset() {
@@ -58,6 +58,7 @@ void TaskManager::reset() {
     instructions_.clear();
     instruction_data_.locations.clear();
     task_entries_.clear();
+    task_values_.clear();
     for (auto& tasks : active_tasks_) {
         tasks.clear();
     }
@@ -67,7 +68,7 @@ void TaskManager::reset() {
     for (auto& entities : free_entities_) {
         entities.clear();
     }
-    checked_trigger_runs_.clear();
+    checked_trigger_ranges_.clear();
 
     static_cast<void>(add_task({Instruction::make_data_idle(), jump_to_idle}));
 }
@@ -90,6 +91,7 @@ auto TaskManager::add_task(std::span<Instruction const> const instructions) -> T
 
     instructions_.insert(instructions_.end(), instructions.begin(), instructions.end());
     task_entries_.push_back(InstructionHandle{static_cast<InstructionHandle::storage_type>(first)});
+    task_values_.push_back(0);
     for (auto& counts : task_entity_allocations_) {
         counts.push_back(0);
     }
@@ -151,92 +153,53 @@ void TaskManager::unregister_dead_entities(std::span<EntityId const> const victi
 /* **************************************** */
 // Planning and allocation
 /* **************************************** */
-void TaskManager::allocate(TaskAllocationContext const ctx) {
-    --allocation_countdown_;
-    if (allocation_countdown_ != 0) {
-        return;
-    }
-
-    allocation_countdown_ = allocation_period_ticks;
-
-    auto const active_triggers{ctx.events.active_triggers()};
-    auto const triggers{ctx.events.triggers()};
-    for (auto const index : active_triggers) {
-        if (is_trigger_checked(index)) {
-            continue;
-        }
-
-        auto const trigger{triggers[index]};
-        TeamArray<bool> teams_with_tasks{};
-        auto const discover{[&](Team team) {
-            if (!teams_with_tasks[team]) {
-                add_kill_tasks(trigger.condition, team, ctx);
-                teams_with_tasks[team] = true;
-            }
-        }};
-
-        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each trigger owns a different event range.
-        for (auto const event : ctx.events.trigger_events(index)) {
-            auto const kind{event.kind()};
-            switch (kind) {
-                case EventKind::Win:
-                    discover(ctx.events.win_event(event).winner);
-                    goto trigger_checked;
-                case EventKind::StopRun:
-                    goto trigger_checked;
-                case EventKind::ChangePoints: {
-                    auto const change{ctx.events.change_points_event(event)};
-                    if (change.delta > 0) {
-                        discover(change.team);
-                    }
-                    break;
-                }
-                default:
-                    break;
-            }
-        }
-
-    trigger_checked:
-        // Discovery is one-shot, including targets that have not spawned yet.
-        add_checked_trigger_run({index, index + 1});
-    }
-
-    allocate_free_entities(ctx);
-}
-void TaskManager::add_kill_tasks(ExprHandle const condition,
-                                 Team const team,
-                                 TaskAllocationContext const ctx) {
+namespace task_manager_detail {
+void collect_live_targets(ExprHandle const condition,
+                          TaskAllocationContext const ctx,
+                          std::pmr::vector<ExprHandle>& pending_exprs,
+                          std::pmr::vector<ExprHandle>& visited_exprs,
+                          std::pmr::vector<EntityId>& targets) {
     auto const& ledger{ctx.level.entity_ledger()};
     auto const life_states{ledger.history().life_state()};
-    std::vector<ExprHandle> pending{condition};
-    std::unordered_set<ExprHandle> visited;
-    std::unordered_set<EntityId> targets;
+    pending_exprs.clear();
+    visited_exprs.clear();
+    targets.clear();
+    pending_exprs.push_back(condition);
 
-    while (!pending.empty()) {
-        auto const expression{pending.back()};
-        pending.pop_back();
-        if (visited.contains(expression)) {
+    auto const already_visited{[&visited_exprs](ExprHandle const expression) {
+        for (auto const visited : visited_exprs) {
+            if (visited == expression) {
+                return true;
+            }
+        }
+        return false;
+    }};
+
+    while (!pending_exprs.empty()) {
+        auto const expression{pending_exprs.back()};
+        pending_exprs.pop_back();
+        if (already_visited(expression)) {
             continue;
         }
 
-        visited.insert(expression);
-        auto const kind{expression.kind()};
-        switch (kind) {
+        visited_exprs.push_back(expression);
+        auto const expr_kind{expression.kind()};
+        switch (expr_kind) {
             case ExprKind::All:
             case ExprKind::Any: {
                 // Each popped expression selects its own children.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 auto const children{ctx.conditions.children(expression)};
-                pending.insert(pending.end(), children.rbegin(), children.rend());
+                pending_exprs.insert(pending_exprs.end(), children.rbegin(), children.rend());
                 break;
             }
             case ExprKind::LatchedTrue:
-                pending.push_back(ctx.conditions.latched_true_value(expression));
+                pending_exprs.push_back(ctx.conditions.latched_true_value(expression));
                 break;
             case ExprKind::EntityDestroyed: {
                 auto const entity{ctx.conditions.destroyed_entity(expression)};
                 auto const target{ctx.entities[entity.index()]};
-                if (!target.is_valid() || targets.contains(target)) {
+                if (!target.is_valid()) {
                     break;
                 }
 
@@ -245,9 +208,16 @@ void TaskManager::add_kill_tasks(ExprHandle const condition,
                     break;
                 }
 
-                targets.insert(target);
-                auto const task{add_task({Instruction::make_data_kill(target), jump_to_idle})};
-                active_tasks_[team].push_back(task);
+                bool already_collected{};
+                for (auto const collected : targets) {
+                    if (collected == target) {
+                        already_collected = true;
+                        break;
+                    }
+                }
+                if (!already_collected) {
+                    targets.push_back(target);
+                }
                 break;
             }
             default:
@@ -255,78 +225,197 @@ void TaskManager::add_kill_tasks(ExprHandle const condition,
         }
     }
 }
-void TaskManager::allocate_free_entities(TaskAllocationContext const ctx) {
-    auto const& ledger{ctx.level.entity_ledger()};
-    auto const life_states{ledger.history().life_state()};
-    for (auto const team : EnumTraits<Team>::values) {
-        auto& tasks{active_tasks_[team]};
-        std::erase_if(tasks, [&](TaskId const task) {
-            auto const target{instruction(first_instruction(task)).data_kill()};
-            return life_states[ledger.history_index(target)] != LifeState::Alive;
-        });
-        if (tasks.empty()) {
+}
+
+void TaskManager::allocate(TaskAllocationContext const ctx) {
+    --allocation_countdown_;
+    if (allocation_countdown_ != 0) {
+        return;
+    }
+
+    allocation_countdown_ = allocation_period_ticks;
+
+    auto* const scratch{&ctx.scratch_resource};
+
+    // Sum team contributions by condition.
+    struct RootTaskValues {
+        ExprHandle condition;
+        TeamArray<TaskValue> task_values{};
+    };
+
+    std::pmr::vector<RootTaskValues> roots{scratch};
+
+    auto const active_triggers{ctx.events.active_triggers()};
+    auto const triggers{ctx.events.triggers()};
+    for (auto const index : active_triggers) {
+        if (is_trigger_checked(index)) {
             continue;
         }
 
-        auto const task_count{tasks.size()};
-        for (auto const type : EnumTraits<EntityType>::values) {
-            auto& entities{free_entities_[team, type]};
-            if (entities.empty()) {
-                continue;
-            }
+        auto const trigger_events{ctx.events.trigger_events(index)};
+        auto const trigger{triggers[index]};
 
-            auto const pending_tasks{ctx.executors.view(type).pending_tasks};
-            auto& counts{task_entity_allocations_[team, type]};
+        for (auto const trigger_event : trigger_events) {
+            auto const event_kind{trigger_event.kind()};
 
-            // Round-robin assignment
-            std::size_t task_index{};
-            for (auto const entity : entities) {
-                auto const task{tasks[task_index]};
-                pending_tasks[entity.index()] = task;
-                ++counts[task.index()];
+            if (is_task_value_event(event_kind)) {
+                RootTaskValues* root{};
+                for (auto& candidate : roots) {
+                    if (candidate.condition == trigger.condition) {
+                        root = &candidate;
+                        break;
+                    }
+                }
+                if (root == nullptr) {
+                    root = &roots.emplace_back(trigger.condition);
+                }
 
-                ++task_index;
-                if (task_index == task_count) {
-                    task_index = 0;
+                if (event_kind == EventKind::Win) {
+                    constexpr TaskValue win_value{1000};
+                    root->task_values[ctx.events.win_event(trigger_event).winner] += win_value;
+                } else {
+                    auto const change{ctx.events.change_points_event(trigger_event)};
+                    root->task_values[change.team] += change.delta;
                 }
             }
 
-            entities.clear();
+            if (is_terminal(event_kind)) {
+                break;
+            }
+        }
+
+        // Discovery is one-shot, including targets that have not spawned yet.
+        mark_trigger_checked(index);
+    }
+
+    // Merge contributions by team and target.
+    std::pmr::vector<ExprHandle> pending_exprs{scratch};
+    std::pmr::vector<ExprHandle> visited_exprs{scratch};
+    std::pmr::vector<EntityId> targets{scratch};
+    if (!roots.empty()) {
+        constexpr std::size_t initial_capacity{8};
+        pending_exprs.reserve(initial_capacity);
+        visited_exprs.reserve(initial_capacity);
+        targets.reserve(initial_capacity);
+    }
+
+    for (auto const& root : roots) {
+        task_manager_detail::collect_live_targets(
+            root.condition, ctx, pending_exprs, visited_exprs, targets);
+        // Apply each team's nonzero contribution once per target.
+        for (auto const target : targets) {
+            for (auto const team : EnumTraits<Team>::values) {
+                auto const contribution{root.task_values[team]};
+                if (contribution == 0) {
+                    continue;
+                }
+
+                auto& team_tasks{active_tasks_[team]};
+                TaskId matching_task{};
+                for (auto const candidate_task : team_tasks) {
+                    if (instruction(first_instruction(candidate_task)).data_kill() == target) {
+                        matching_task = candidate_task;
+                        break;
+                    }
+                }
+
+                if (!matching_task.is_valid()) {
+                    matching_task = add_task({Instruction::make_data_kill(target), jump_to_idle});
+                    team_tasks.push_back(matching_task);
+                }
+                task_values_[matching_task.index()] += contribution;
+            }
+        }
+    }
+
+    // Assign free entities by team.
+    auto const& ledger{ctx.level.entity_ledger()};
+    auto const life_states{ledger.history().life_state()};
+    for (auto const team : EnumTraits<Team>::values) {
+        auto& team_tasks{active_tasks_[team]};
+
+        // Retire tasks whose targets died since discovery.
+        std::erase_if(team_tasks, [&](TaskId const task) {
+            auto const target{instruction(first_instruction(task)).data_kill()};
+            return life_states[ledger.history_index(target)] != LifeState::Alive;
+        });
+
+        if (team_tasks.empty()) {
+            continue;
+        }
+
+        // Assign each entity type independently in round-robin order.
+        for (auto const entity_type : EnumTraits<EntityType>::values) {
+            auto& free_entities{free_entities_[team, entity_type]};
+            if (free_entities.empty()) {
+                continue;
+            }
+
+            auto const pending_tasks{ctx.executors.view(entity_type).pending_tasks};
+            auto& assigned_entities_per_task{task_entity_allocations_[team, entity_type]};
+
+            auto const free_entity_count{free_entities.size()};
+            std::size_t entities_assigned{};
+            while (entities_assigned < free_entity_count) {
+                auto const entities_assigned_before_lap{entities_assigned};
+                for (auto const task : team_tasks) {
+                    if (task_value(task) <= 0) {
+                        continue;
+                    }
+
+                    auto const entity{free_entities[entities_assigned]};
+                    pending_tasks[entity.index()] = task;
+                    ++assigned_entities_per_task[task.index()];
+                    ++entities_assigned;
+                    if (entities_assigned == free_entity_count) {
+                        break;
+                    }
+                }
+
+                if (entities_assigned == entities_assigned_before_lap) {
+                    break;
+                }
+            }
+
+            if (entities_assigned == free_entity_count) {
+                free_entities.clear();
+            }
         }
     }
 }
 auto TaskManager::is_trigger_checked(std::uint32_t const index) const -> bool {
-    for (auto const run : checked_trigger_runs_) {
-        if (index < run.start) {
+    for (auto const range : checked_trigger_ranges_) {
+        if (index < range.start) {
             return false;
         }
-        if (index < run.end) {
+        if (index < range.end) {
             return true;
         }
     }
     return false;
 }
-void TaskManager::add_checked_trigger_run(TriggerRun run) {
-    assert(run.start < run.end);
+void TaskManager::mark_trigger_checked(std::uint32_t const index) {
+    TriggerIndexRange range{index, index + 1};
+    assert(range.start < range.end);
 
-    auto const end{checked_trigger_runs_.end()};
-    auto first{checked_trigger_runs_.begin()};
-    while (first != end && first->end < run.start) {
+    auto const end{checked_trigger_ranges_.end()};
+    auto first{checked_trigger_ranges_.begin()};
+    while (first != end && first->end < range.start) {
         ++first;
     }
 
     auto last{first};
-    while (last != end && last->start <= run.end) {
-        run.start = std::min(run.start, last->start);
-        run.end = std::max(run.end, last->end);
+    while (last != end && last->start <= range.end) {
+        range.start = std::min(range.start, last->start);
+        range.end = std::max(range.end, last->end);
         ++last;
     }
 
     if (first == last) {
-        checked_trigger_runs_.insert(first, run);
+        checked_trigger_ranges_.insert(first, range);
     } else {
-        *first = run;
-        checked_trigger_runs_.erase(first + 1, last);
+        *first = range;
+        checked_trigger_ranges_.erase(first + 1, last);
     }
 }
 }

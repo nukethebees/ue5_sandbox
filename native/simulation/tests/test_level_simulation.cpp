@@ -575,6 +575,62 @@ TEST(NativeSimulation, RuntimeDefinitionsAndTriggersExecuteInTheirExistingPhases
     EXPECT_TRUE(std::ranges::equal(events.tick_end_events(), std::array{start, pause, win}));
 }
 
+TEST(NativeSimulation, KillTaskValuesMergeByTeamAndTargetAcrossDiscoveryPasses) {
+    auto data{make_battle()};
+    data.entities[0].overrides.initial_spawn_delay = NonNegativeFinite<float>{0.f};
+    data.runtime.capital_ships.fighter_spawn_slots_relative_transforms = {
+        {.location = {0.0, 500.0, 0.0}}};
+    data.runtime.fighters.speed = 0.f;
+    data.logic.expressions = {{levels::EntityDestroyedExpr{data.entities[1].id}},
+                              {levels::AllExpr{{0, 0}}}};
+    data.logic.rules = {{0, {levels::ChangePointsEffect{Team::Green, -10}}},
+                        {1, {levels::ChangePointsEffect{Team::Blue, 5}}}};
+
+    LevelSim simulation{std::move(data).compile()};
+    auto& events{simulation.events()};
+    auto const root{events.triggers().back().condition};
+    auto const win{events.add_win_event(Team::Blue)};
+    auto const bonus{events.add_change_points_event({Team::Green, 15})};
+    auto const stop{events.add_stop_event(RunEndReason::WorldEnd)};
+    events.add_trigger(root, std::array{win, bonus});
+    events.add_trigger(root, std::array{win, win});
+    events.add_trigger(root, std::array{stop, bonus});
+    events.add_trigger(events.triggers().front().condition, std::array{win});
+
+    simulation.start();
+    auto const period{simulation.clock().tick_period()};
+    simulation.advance(period);
+
+    auto const& manager{simulation.task_manager()};
+    constexpr tasks::TaskId green{1};
+    constexpr tasks::TaskId blue{2};
+    EXPECT_EQ(manager.task_value(green), -10);
+    EXPECT_EQ(manager.task_value(blue), 3005);
+    auto const target{simulation.capital_ships().get_entities().entity_ids()[1]};
+    for (auto const task : {green, blue}) {
+        EXPECT_EQ(manager.instruction(manager.first_instruction(task)).data_kill(), target);
+    }
+
+    auto const advance_to_next_allocation{[&] {
+        for (std::uint32_t tick{}; tick < tasks::TaskManager::allocation_period_ticks; ++tick) {
+            simulation.advance(period);
+        }
+    }};
+    advance_to_next_allocation();
+    auto const fighters{simulation.fighters().entities()};
+    ASSERT_EQ(fighters.num(), 1);
+    auto const index{fighters.entity_ids()[0].index()};
+    auto const executors{simulation.entity_tables().executors.const_view<EntityType::Fighter>()};
+    EXPECT_EQ(executors.current_tasks[index], tasks::TaskManager::idle_task);
+    EXPECT_FALSE(executors.pending_tasks[index].is_valid());
+
+    events.add_trigger(root, std::array{bonus, bonus});
+    advance_to_next_allocation();
+    EXPECT_EQ(manager.task_value(green), 20);
+    EXPECT_EQ(manager.task_value(blue), 3005);
+    EXPECT_EQ(executors.current_tasks[index], green);
+}
+
 TEST(NativeSimulation, RunsWithoutACompletionOrDurationEvent) {
     auto data{make_battle_config()};
     data.runtime.clock_settings.tick_rate = Frequency::make(10);

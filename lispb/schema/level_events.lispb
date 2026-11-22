@@ -22,12 +22,12 @@
     :bit-width 3
     :native-api true
     :helpers (traits)
-    :ordering (tick_end preparation)
-    (value Win :groups (tick_end))
-    (value StopRun :groups (tick_end))
+    :ordering manual
+    (value Win :groups (tick_end task_value_event terminal))
+    (value StopRun :groups (tick_end terminal))
     (value Pause :groups (tick_end))
     (value StartTimer :groups (tick_end))
-    (value ChangePoints :groups (tick_end))
+    (value ChangePoints :groups (tick_end task_value_event))
     (value Spawn :groups (preparation))
     (projections (cpp))))
 

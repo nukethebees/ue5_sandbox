@@ -28,7 +28,7 @@ struct TaskAllocationContext;
 
 // Store task programs. Allocate them to entities.
 class TaskManager {
-    struct TriggerRun {
+    struct TriggerIndexRange {
         std::uint32_t start;
         std::uint32_t end;
     };
@@ -36,6 +36,7 @@ class TaskManager {
   public:
     using Counts = std::pmr::vector<TaskEntityCount>;
     using AllocationCountdown = std::uint32_t;
+    using TaskValue = std::int64_t;
 
     static constexpr TaskId idle_task{0};
     static constexpr InstructionHandle idle_instruction{0};
@@ -85,6 +86,10 @@ class TaskManager {
         assert(task.index() < task_entries_.size());
         return task_entries_[task.index()];
     }
+    [[nodiscard]] auto task_value(TaskId const task) const -> TaskValue {
+        assert(task.index() < task_values_.size());
+        return task_values_[task.index()];
+    }
 
     /* **************************************** */
     // Planning and allocation
@@ -94,24 +99,21 @@ class TaskManager {
 
   private:
     void release_assignment(Team team, EntityId entity, TaskId task);
-    void add_kill_tasks(ExprHandle condition, Team team, TaskAllocationContext ctx);
-    void allocate_free_entities(TaskAllocationContext ctx);
     auto is_trigger_checked(std::uint32_t index) const -> bool;
-    void add_checked_trigger_run(TriggerRun run);
+    void mark_trigger_checked(std::uint32_t index);
 
-    // Immutable
     std::pmr::vector<Instruction> instructions_;
     InstructionData instruction_data_;
 
     std::pmr::vector<InstructionHandle> task_entries_;
+    std::pmr::vector<TaskValue> task_values_;
 
-    // Mutable
     AllocationCountdown allocation_countdown_{initial_allocation_countdown};
     TeamArray<std::pmr::vector<TaskId>> active_tasks_;
     TeamEntityArray<Counts> task_entity_allocations_;
     TeamEntityArray<std::pmr::vector<EntityId>> free_entities_;
 
-    // Sorted half-open runs of trigger definition indices, with overlap and adjacency merged.
-    std::pmr::vector<TriggerRun> checked_trigger_runs_;
+    // Sorted half-open ranges of trigger definition indices, with overlap and adjacency merged.
+    std::pmr::vector<TriggerIndexRange> checked_trigger_ranges_;
 };
 }

@@ -32,6 +32,20 @@ inline constexpr std::array<EventKind, 5ULL> event_kind_tick_end_values{EventKin
     return value <= EventKind::ChangePoints;
 }
 
+inline constexpr std::array<EventKind, 2ULL> event_kind_task_value_event_values{
+    EventKind::Win, EventKind::ChangePoints};
+
+[[nodiscard]] constexpr auto is_task_value_event(EventKind const value) noexcept -> bool {
+    return value == EventKind::Win || value == EventKind::ChangePoints;
+}
+
+inline constexpr std::array<EventKind, 2ULL> event_kind_terminal_values{EventKind::Win,
+                                                                        EventKind::StopRun};
+
+[[nodiscard]] constexpr auto is_terminal(EventKind const value) noexcept -> bool {
+    return value <= EventKind::StopRun;
+}
+
 inline constexpr std::array<EventKind, 1ULL> event_kind_preparation_values{EventKind::Spawn};
 
 [[nodiscard]] constexpr auto is_preparation(EventKind const value) noexcept -> bool {

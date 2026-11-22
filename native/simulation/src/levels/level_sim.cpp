@@ -234,6 +234,7 @@ void LevelSim::advance_tick(float const tick_period,
                     .conditions = conditions_,
                     .entities = spawn_manager_.entity_ids(),
                     .executors = entity_tables_.executors,
+                    .scratch_resource = phase_memory,
                 });
 
                 spawn_manager_.queue_fighter_spawns(
