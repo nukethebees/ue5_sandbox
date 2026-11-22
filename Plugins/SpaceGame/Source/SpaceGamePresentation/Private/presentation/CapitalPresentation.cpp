@@ -82,8 +82,8 @@ void FCapitalPresentation::update_visual_data(ioj::sim::EntityLedger const& ledg
             auto const index{instances->AddInstance(transform, is_world_space)};
             check(index == static_cast<int32>(change.index));
             auto const colour{colours[ioj::to_unreal(change.team)]};
-            TArray<float> data{colour.R, colour.G, colour.B};
-            instances->SetCustomData(index, data, false);
+            float const rgb[]{colour.R, colour.G, colour.B};
+            instances->SetCustomData(index, rgb, false);
         }
     }
     trigger_death_effects(ledger);

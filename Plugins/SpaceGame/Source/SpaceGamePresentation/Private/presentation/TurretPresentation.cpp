@@ -88,8 +88,8 @@ void FTurretPresentation::update_visual_data() {
             check(index == static_cast<int32>(change.index));
             ismc_transforms.Add(transform);
             auto const colour{colours[ioj::to_unreal(change.team)]};
-            TArray<float> data{colour.R, colour.G, colour.B};
-            instances->SetCustomData(index, data, false);
+            float const rgb[]{colour.R, colour.G, colour.B};
+            instances->SetCustomData(index, rgb, false);
         }
     }
     trigger_death_effects();
