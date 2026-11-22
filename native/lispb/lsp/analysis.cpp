@@ -438,21 +438,20 @@ void Analysis::link_types(schema::TypeGraph const& graph) {
         }
     }
     std::ranges::stable_sort(definitions, {}, &Definition::key);
-    std::vector<sexpr::FormId> names(graph.types().size());
-    for (auto type : graph.types()) {
-        QualifiedName const wanted{graph.module_name(type), graph.name(type)};
+    auto definition = [&](QualifiedName wanted) -> Symbol* {
         auto const found{std::ranges::lower_bound(definitions, wanted, {}, &Definition::key)};
-        if (found != definitions.end() && found->key == wanted) {
-            found->symbol->type = type;
-            names[type.value] = found->symbol->name;
+        return found != definitions.end() && found->key == wanted ? found->symbol : nullptr;
+    };
+    for (auto type : graph.types()) {
+        if (auto* symbol{definition({graph.module_name(type), graph.name(type)})}) {
+            symbol->type = type;
         }
     }
 
-    for (auto const use : graph.type_uses()) {
-        auto const form{storage.declarations.type_refs.authored_name[graph.reference(use)]};
-        auto const type{graph.occurrences().type[graph.target(use)]};
-        if (form.value && schema::is_valid(type) && names[type.value].value) {
-            syntax.bind(form, syntax.token_span(names[type.value]));
+    auto const type_uses{std::move(facts_.type_uses)};
+    for (auto const& use : type_uses) {
+        if (auto* symbol{definition({use.module, use.name})}) {
+            syntax.bind(use.use, syntax.token_span(symbol->name));
         }
     }
 }

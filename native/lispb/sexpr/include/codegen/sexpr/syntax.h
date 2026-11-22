@@ -26,7 +26,13 @@ struct EditorReference {
     SourceSpan use;
     SourceSpan declaration;
 };
+struct EditorTypeUse {
+    FormId use;
+    StringId module;
+    StringId name;
+};
 struct EditorFacts {
+    std::vector<EditorTypeUse> type_uses;
     std::vector<StringId> missing_includes;
     std::vector<EditorReference> references;
     std::vector<HandleRange> form_vocabulary;

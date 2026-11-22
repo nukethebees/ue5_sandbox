@@ -61,7 +61,7 @@ auto Compiler::analyze_schema(codegen::Manifest source)
     manifest_ = std::move(source);
     types_ = schema::TypeGraph{storage_.declarations, storage_.cpp_types};
     if (!manifest_.modules.empty()) {
-        auto graph{schema::try_resolve_type_graph(manifest_)};
+        auto graph{schema::try_resolve_type_graph(manifest_, storage_.syntax.editor())};
         if (!graph) {
             return std::unexpected{std::move(graph.error())};
         }

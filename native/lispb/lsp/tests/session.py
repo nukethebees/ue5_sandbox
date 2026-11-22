@@ -592,6 +592,39 @@ def check_scratch_document(client, root, schema, legend):
     assert not client.problems[scratch.as_uri()]
 
 
+def check_partial_bindings(client, paths):
+    path = paths["data"]
+    source = """(module sample :header "data.h"
+ (record Local)
+ (record Item (member count @scalar) (member bad @missing)
+              (member local @Local) (member packet @wire/Packet))
+ (facade View @scalar target :validation #cpp{check(target);}cpp#
+   :validation-dependencies (scalar) (method get int)))"""
+    client.edit(path, source, 12)
+    for ref, owner, text, token in (
+        ("@scalar", paths["scalars"], paths["scalars"].read_text(), "scalar"),
+        ("@Local", path, source, "Local"),
+        ("@wire/Packet", paths["packed"], paths["packed"].read_text(), "Packet"),
+    ):
+        location = expected_location(owner, text, token, len(token))
+        assert client.query("definition", path, position(source, ref)) == location
+        assert token in client.hover(path, source, ref)
+    assert client.query("definition", path, position(source, "@missing")) is None
+    assert client.query("hover", path, position(source, "@missing")) is None
+    assert any(
+        "@missing" in issue["message"] for issue in client.problems[path.as_uri()]
+    )
+
+    packed = paths["packed"].read_text().replace("record Packet", "record Message")
+    client.edit(paths["packed"], packed, 2)
+    assert client.query("definition", path, position(source, "@wire/Packet")) is None
+    updated = source.replace("@wire/Packet", "@wire/Message")
+    client.edit(path, updated, 13)
+    assert client.query(
+        "definition", path, position(updated, "@wire/Message")
+    ) == expected_location(paths["packed"], packed, "Message", len("Message"))
+
+
 def check_macro_completion(client, paths, files):
     path = paths["macros"]
     for version, (template, argument) in enumerate(
@@ -747,6 +780,7 @@ def exercise(client, root):
     annotated = check_material_updates(client, files["mat"], paths["mat"])
     check_renames(client, paths, annotated, files["ops"])
     check_document_updates(client, files, paths)
+    check_partial_bindings(client, paths)
     check_macro_completion(client, paths, files)
     check_scratch_document(client, root, files["data"], legend)
 

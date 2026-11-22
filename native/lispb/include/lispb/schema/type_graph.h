@@ -37,6 +37,9 @@ namespace codegen {
 class Declarations;
 class CppTypes;
 struct Manifest;
+namespace sexpr {
+struct EditorFacts;
+}
 }
 }
 
@@ -149,7 +152,8 @@ struct TypeReferenceError {
     codegen::TypeRefId reference;
     std::string message;
 };
-auto try_resolve_type_graph(codegen::Manifest const& manifest)
+auto try_resolve_type_graph(codegen::Manifest const& manifest,
+                            codegen::sexpr::EditorFacts* editor = nullptr)
     -> std::expected<TypeGraph, TypeReferenceError>;
 auto resolve_type_graph(codegen::Manifest const& manifest) -> TypeGraph;
 auto forward_declaration_kind(TypeId node, TypeGraph const& graph)

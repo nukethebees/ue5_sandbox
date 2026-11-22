@@ -159,6 +159,9 @@ auto Syntax::comments() const -> std::span<SourceSpan const> {
 }
 
 void Syntax::clear() {
+    if (editor_) {
+        *editor_ = {};
+    }
     token_kinds_.assign(1, TokenKind::end);
     token_texts_.assign(1, {});
     token_spans_.assign(1, {});

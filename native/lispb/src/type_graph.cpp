@@ -61,6 +61,7 @@
 #include <codegen/schema/type_registry.h>
 #include <codegen/schema/umbrella_module_schemas.h>
 #include <codegen/schema/union_schemas.h>
+#include <codegen/sexpr/syntax.h>
 #include <lispb/indices.h>
 #include <lispb/schema/child_occurrences.h>
 #include <lispb/schema/enum_types.h>
@@ -185,11 +186,27 @@ class TypeGraphBuilder {
         , store_{manifest.declarations}
         , graph_{store_, manifest.types.cpp_types} {}
 
-    auto build() -> std::expected<TypeGraph, TypeReferenceError> {
+    auto build(codegen::sexpr::EditorFacts* editor)
+        -> std::expected<TypeGraph, TypeReferenceError> {
         declare_types();
         graph_.enum_domains_ = analyze_enum_domains(manifest_);
         bind_registered_types();
-        if (auto result{resolve_type_uses()}; !result) {
+        auto result{resolve_type_uses(editor != nullptr)};
+        if (editor) {
+            for (auto use : graph_.type_uses()) {
+                auto const reference{graph_.reference(use)};
+                if (!reference.value) {
+                    continue;
+                }
+                auto const form{store_.type_refs.authored_name[reference]};
+                auto const type{graph_.occurrences().type[graph_.target(use)]};
+                if (form.value && is_valid(type)) {
+                    editor->type_uses.push_back(
+                        {form, graph_.module_name(type), graph_.name(type)});
+                }
+            }
+        }
+        if (!result) {
             return std::unexpected{std::move(result.error())};
         }
         codegen::detail::validate_integer_domains(manifest_, graph_);
@@ -643,27 +660,29 @@ class TypeGraphBuilder {
         graph_.use_kinds_.push_back(kind);
     }
 
-    auto resolve_type_uses() -> std::expected<void, TypeReferenceError> {
+    auto resolve_type_uses(bool collect_bindings) -> std::expected<void, TypeReferenceError> {
+        std::expected<void, TypeReferenceError> status;
         for (auto const module_id : manifest_.modules) {
             if (module_id.kind() == codegen::ModuleKind::normal) {
                 auto const module{module_id};
                 for (auto const declaration :
                      store_.items(store_.normal_modules.declarations[module])) {
-                    std::expected<void, TypeReferenceError> status;
                     codegen::visit_type_references(
                         store_,
                         declaration,
                         [&](codegen::TypeReferenceRole const& role,
                             codegen::TypeRefId const reference,
                             codegen::TypeReferenceKind const kind) {
-                            if (!status) {
+                            if (!status && !collect_bindings) {
                                 return;
                             }
                             auto const preserve_existing{
                                 graph_.bindings_.contains({module_id, reference})};
                             auto bound{bind_reference(reference, module_id)};
                             if (!bound) {
-                                status = std::unexpected{std::move(bound.error())};
+                                if (status) {
+                                    status = std::unexpected{std::move(bound.error())};
+                                }
                                 return;
                             }
                             auto emitted{role.part != codegen::TypeReferencePart::relationship};
@@ -710,7 +729,9 @@ class TypeGraphBuilder {
                                                                    codegen::DeclarationKind::record,
                                                                preserve_existing);
                                 if (!bound) {
-                                    status = std::unexpected{std::move(bound.error())};
+                                    if (status) {
+                                        status = std::unexpected{std::move(bound.error())};
+                                    }
                                     return;
                                 }
                             }
@@ -718,7 +739,7 @@ class TypeGraphBuilder {
                             graph_.bindings_.at({module_id, reference}) = target;
                             add_use(module_id, declaration, role, target, reference, kind);
                         });
-                    if (!status) {
+                    if (!status && !collect_bindings) {
                         return status;
                     }
                     auto registration = [&](codegen::TypeReferenceRole const& role,
@@ -798,7 +819,14 @@ class TypeGraphBuilder {
                     auto const target{
                         bind_reference(store_.settings.value_type[setting], module_id)};
                     if (!target) {
-                        return std::unexpected{target.error()};
+                        if (!collect_bindings) {
+                            return std::unexpected{target.error()};
+                        }
+                        if (status) {
+                            status = std::unexpected{target.error()};
+                        }
+                        ++index;
+                        continue;
                     }
                     add_use(module_id,
                             {},
@@ -810,7 +838,7 @@ class TypeGraphBuilder {
                 }
             }
         }
-        return {};
+        return status;
     }
 
     auto relationship(std::optional<codegen::SemanticRelationId> const source,
@@ -1617,9 +1645,9 @@ auto TypeGraph::types_for_declaration(codegen::DeclarationHandle const declarati
     return result;
 }
 
-auto try_resolve_type_graph(codegen::Manifest const& manifest)
+auto try_resolve_type_graph(codegen::Manifest const& manifest, codegen::sexpr::EditorFacts* editor)
     -> std::expected<TypeGraph, TypeReferenceError> {
-    return TypeGraphBuilder{manifest}.build();
+    return TypeGraphBuilder{manifest}.build(editor);
 }
 auto resolve_type_graph(codegen::Manifest const& manifest) -> TypeGraph {
     auto result{try_resolve_type_graph(manifest)};

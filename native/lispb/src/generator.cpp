@@ -566,7 +566,7 @@ void compile_schema(CompilerStorage& storage,
                     bool const emit) {
     auto const registry{load_type_registry(storage, types)};
     manifest = load_sources(storage, registry, modules);
-    auto resolved{schema::try_resolve_type_graph(manifest)};
+    auto resolved{schema::try_resolve_type_graph(manifest, storage.syntax.editor())};
     if (!resolved) {
         auto const& error{resolved.error()};
         auto const name{storage.declarations.type_refs.authored_name[error.reference]};
