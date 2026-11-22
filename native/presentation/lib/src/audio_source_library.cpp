@@ -1,5 +1,7 @@
 #include <ioj/presentation/audio_source_library.h>
 
+#include <format>
+
 namespace ioj::presentation {
 auto resolve_audio_source_library(std::filesystem::path const& configured_root)
     -> AudioLibraryResolution {
@@ -31,6 +33,10 @@ auto resolve_audio_source_library(std::filesystem::path const& configured_root)
         source(pack / "AMBDsgn_Ambience Spaceship High 02_B00M_SFDS.wav");
     result.player_laser_source =
         source("weapons/SCIWeap_SHOT Small Blaster Anti Matter_B00M_CWDS_0.wav");
+    for (std::size_t index{}; index < result.death_impact_sources.size(); ++index) {
+        result.death_impact_sources[index] = source(std::format(
+            "impacts/DSGNMisc_IMPACT-Bubbling Filter Modulation 01_B00M_PI.wav_{}.wav", index));
+    }
     return result;
 }
 }

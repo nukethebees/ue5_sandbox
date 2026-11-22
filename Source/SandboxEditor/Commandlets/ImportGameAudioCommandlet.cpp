@@ -142,9 +142,23 @@ int32 UImportGameAudioCommandlet::Main(FString const&) {
                                                  import_game_audio::player_ship_ambience_asset_name,
                                                  true,
                                                  import_game_audio::player_ship_ambience_volume)};
-    auto const laser_imported{import_game_audio::import_optional_sound(
-        resolution.player_laser_source, TEXT("player laser"), TEXT("A_PlayerLaser"), false, 0.25f)};
-    return laser_imported && ambience_imported && button_imported && player_ship_ambience_imported
+    auto const laser_imported{
+        import_game_audio::import_optional_sound(resolution.player_laser_source,
+                                                 TEXT("player laser"),
+                                                 TEXT("A_PlayerLaser"),
+                                                 false,
+                                                 0.125f)};
+    bool impacts_imported{true};
+    int32 impact_index{};
+    for (auto const& source : resolution.death_impact_sources) {
+        auto const name{FString::Printf(TEXT("A_EntityDeathImpact_%d"), impact_index++)};
+        if (!import_game_audio::import_optional_sound(
+                source, TEXT("entity death impact"), *name, false, 0.5f)) {
+            impacts_imported = false;
+        }
+    }
+    return impacts_imported && laser_imported && ambience_imported && button_imported &&
+                   player_ship_ambience_imported
              ? 0
              : 1;
 }

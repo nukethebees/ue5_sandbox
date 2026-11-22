@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <filesystem>
 #include <vector>
 
@@ -22,6 +23,7 @@ struct AudioLibraryResolution {
     AudioSource menu_button_pressed_source;
     AudioSource player_ship_ambience_source;
     AudioSource player_laser_source;
+    std::array<AudioSource, 6> death_impact_sources;
 };
 
 auto resolve_audio_source_library(std::filesystem::path const& configured_root)
