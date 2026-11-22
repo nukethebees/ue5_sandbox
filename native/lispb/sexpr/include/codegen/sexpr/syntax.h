@@ -27,6 +27,7 @@ struct EditorReference {
     SourceSpan declaration;
 };
 struct EditorFacts {
+    std::vector<StringId> missing_includes;
     std::vector<EditorReference> references;
     std::vector<HandleRange> form_vocabulary;
     std::vector<HandleRange> vocabularies;

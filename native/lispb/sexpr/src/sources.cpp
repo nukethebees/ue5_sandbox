@@ -127,6 +127,11 @@ auto Sources::overlay(std::filesystem::path const& path, std::string_view const 
     return file;
 }
 
+auto Sources::has_overlay(std::filesystem::path const& absolute) const -> bool {
+    auto const found{
+        loaded_files_.find(strings_->find(generic_path_utf8(absolute.lexically_normal())))};
+    return found != loaded_files_.end() && states_[found->second.value] == SourceFileState::overlay;
+}
 auto Sources::path_id(SourceFileId const file) const -> lispb::StringId {
     return paths_.at(file.value);
 }

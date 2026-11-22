@@ -61,11 +61,17 @@ struct Document {
     std::vector<std::uint32_t> comment_lines;
 };
 
+struct AnalysisInputs {
+    std::vector<fs::path> owned;
+    std::vector<fs::path> watched;
+};
+
 class Analysis {
   public:
     Analysis(std::span<WorkspaceFile const> files, fs::path const& entry);
     Analysis(std::span<WorkspaceFile const> files, Project const& project, TargetId target);
     auto contains(fs::path const& path) const -> bool;
+    auto inputs() const -> AnalysisInputs;
     auto project() const -> Project const* { return project_ ? &*project_ : nullptr; }
     auto diagnostic(DiagnosticId id) const -> Json;
     auto diagnostics() const -> auto const& { return diagnostics_; }
@@ -73,9 +79,9 @@ class Analysis {
                Method method,
                Json const& params,
                ClientCapabilities capabilities) -> std::expected<Json, std::string>;
-    auto root_head(fs::path const& path) -> std::optional<FormHead>;
+    auto root_head(fs::path const& path) const -> std::optional<FormHead>;
   private:
-    void overlay(std::span<WorkspaceFile const> files);
+    void overlay(std::span<WorkspaceFile const> files, fs::path const& except = {});
     void finish(std::vector<fs::path>& inputs, fs::path const& fallback);
     auto classify(Document const& doc) const -> std::vector<TokenSegment>;
     auto highlighting(Document& doc, Json const& params) -> Json;

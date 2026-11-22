@@ -8,12 +8,15 @@
 #endif
 
 namespace lispb::lsp {
+enum class Retain : std::uint8_t { none, inputs, analysis };
+
 struct Unit {
     fs::path path;
     TargetId target;
     std::unique_ptr<Analysis> analysis;
-    bool dirty{};
-    bool needed{};
+    AnalysisInputs inputs;
+    bool dirty{true};
+    Retain retain{};
 };
 
 class Workspace {
@@ -30,17 +33,18 @@ class Workspace {
     }
     void invalidate(fs::path const& path) {
         for (auto& unit : units_) {
-            if (unit.analysis &&
-                (unit.path == path || unit.analysis->contains(path) ||
-                 std::ranges::any_of(unit.analysis->diagnostics(),
-                                     [&](auto const& issue) { return issue.path == path; }))) {
+            if (unit.path == path || std::ranges::contains(unit.inputs.owned, path) ||
+                std::ranges::contains(unit.inputs.watched, path)) {
                 unit.dirty = true;
+                if (unit.path == path && unit.target != TargetId{}) {
+                    unit.inputs = {};
+                }
             }
         }
     }
     void refresh() {
         for (auto& unit : units_) {
-            unit.needed = false;
+            unit.retain = Retain::none;
         }
         for (auto& row : files_) {
             row.active = {};
@@ -49,8 +53,10 @@ class Workspace {
             }
         }
         for (auto& unit : units_) {
-            if (!unit.needed) {
+            if (unit.retain == Retain::none) {
                 unit = {};
+            } else if (unit.retain == Retain::inputs) {
+                unit.analysis.reset();
             }
         }
         publish();
@@ -101,6 +107,7 @@ class Workspace {
         auto& unit{units_[id.value]};
         if (!unit.analysis || unit.dirty) {
             unit.analysis = std::make_unique<Analysis>(files_, path);
+            unit.inputs = unit.analysis->inputs();
             unit.dirty = false;
         }
         return id;
@@ -127,12 +134,16 @@ class Workspace {
     }
     void select_target(WorkspaceFile& row, UnitId id, Project const& project, TargetId target) {
         auto& unit{units_[id.value]};
+        if (!unit.dirty && !std::ranges::contains(unit.inputs.owned, row.path)) {
+            return;
+        }
         if (!unit.analysis || unit.dirty) {
             unit.analysis = std::make_unique<Analysis>(files_, project, target);
+            unit.inputs = unit.analysis->inputs();
             unit.dirty = false;
         }
         if (unit.analysis->contains(row.path)) {
-            unit.needed = true;
+            unit.retain = Retain::analysis;
             if (row.active == UnitId{}) {
                 row.active = id;
             }
@@ -141,49 +152,51 @@ class Workspace {
     void select_analysis(WorkspaceFile& row) {
         auto const manifest{discover(row.path)};
         if (manifest != UnitId{}) {
-            units_[manifest.value].needed = true;
+            units_[manifest.value].retain = Retain::analysis;
             auto const manifest_path{units_[manifest.value].path};
             if (manifest_path == row.path) {
                 row.active = manifest;
                 return;
             }
             auto const& project{*units_[manifest.value].analysis->project()};
+            bool listed{};
             for (auto target : project.target_ids()) {
                 if (target.kind() == TargetKind::group) {
                     continue;
                 }
                 auto const id{unit_id(manifest_path, target)};
-                auto const& existing{units_[id.value].analysis};
+                auto& unit{units_[id.value]};
+                if (unit.retain == Retain::none) {
+                    unit.retain = Retain::inputs;
+                }
                 auto const inputs{project.source_files(target)};
-                bool owns{std::ranges::any_of(
-                              inputs,
-                              [&](auto const& input) {
-                                  return (project.root / input).lexically_normal() == row.path;
-                              }) ||
-                          (existing && existing->contains(row.path))};
-                if (owns) {
+                auto const direct{std::ranges::any_of(inputs, [&](auto const& input) {
+                    return (project.root / input).lexically_normal() == row.path;
+                })};
+                listed |= direct;
+                if (direct || std::ranges::contains(unit.inputs.owned, row.path)) {
                     select_target(row, id, project, target);
                 }
             }
-            if (row.active == UnitId{}) {
-                // An included registry or macro library can open before its consumer.
-                auto const loose{standalone(row.path)};
-                auto& analysis{*units_[loose.value].analysis};
-                auto const head{analysis.contains(row.path) ? analysis.root_head(row.path)
-                                                            : std::nullopt};
-                for (auto target : project.target_ids()) {
-                    if ((target.kind() == TargetKind::cpp_schema &&
-                         (head == FormHead::type || head == FormHead::include)) ||
-                        (target.kind() == TargetKind::slate &&
-                         (head == FormHead::defmacro || head == FormHead::include))) {
-                        select_target(row, unit_id(manifest_path, target), project, target);
-                    }
+            if (listed && row.active != UnitId{}) {
+                return;
+            }
+
+            // An included registry or macro library can open before its consumer.
+            auto const owner{row.active == UnitId{} ? standalone(row.path) : row.active};
+            auto const head{units_[owner.value].analysis->root_head(row.path)};
+            for (auto target : project.target_ids()) {
+                if ((target.kind() == TargetKind::cpp_schema &&
+                     (head == FormHead::type || head == FormHead::include)) ||
+                    (target.kind() == TargetKind::slate &&
+                     (head == FormHead::defmacro || head == FormHead::include))) {
+                    select_target(row, unit_id(manifest_path, target), project, target);
                 }
             }
         }
         if (row.active == UnitId{}) {
             row.active = standalone(row.path);
-            units_[row.active.value].needed = true;
+            units_[row.active.value].retain = Retain::analysis;
         }
     }
     void publish() {

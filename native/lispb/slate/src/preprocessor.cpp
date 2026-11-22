@@ -1,6 +1,7 @@
 #include "preprocessor.h"
 
 #include <codegen/cpp_string.h>
+#include <codegen/path_utils.h>
 #include <codegen/sexpr/indices.h>
 #include <codegen/sexpr/reader.h>
 #include <codegen/sexpr/source_span.h>
@@ -99,7 +100,7 @@ class Preprocessor {
         , include_directories_{include_directories} {}
 
     auto run(std::filesystem::path const& input) -> PreprocessedSource {
-        source_directory_ = std::filesystem::canonical(input).parent_path();
+        source_directory_ = std::filesystem::weakly_canonical(input).parent_path();
         auto const forms{load(input, false, {})};
         std::vector<FormId> expanded;
         expanded.reserve(forms.size());
@@ -137,8 +138,13 @@ class Preprocessor {
         }
         std::string searched;
         for (auto const& candidate : candidates) {
-            if (std::filesystem::is_regular_file(candidate)) {
+            if (std::filesystem::is_regular_file(candidate) ||
+                (syntax_.editor() && syntax_.sources().has_overlay(candidate))) {
                 return candidate;
+            }
+            if (auto* editor{syntax_.editor()}) {
+                editor->missing_includes.push_back(syntax_.strings().intern(
+                    lispb::codegen::generic_path_utf8(candidate.lexically_normal())));
             }
             std::format_to(std::back_inserter(searched),
                            "\n  {}",
@@ -151,7 +157,7 @@ class Preprocessor {
 
     auto load(std::filesystem::path const& input, bool const included, SourceSpan const invocation)
         -> std::vector<FormId> {
-        auto const path{std::filesystem::canonical(input)};
+        auto const path{std::filesystem::weakly_canonical(input)};
         if (std::ranges::find(active_files_, path) != active_files_.end()) {
             std::string chain;
             for (auto const& active : active_files_) {

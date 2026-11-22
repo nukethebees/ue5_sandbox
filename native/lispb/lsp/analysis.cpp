@@ -146,11 +146,11 @@ static auto completion_kind(Kind kind) -> CompletionKind {
             std::unreachable();
     }
 }
-void Analysis::overlay(std::span<WorkspaceFile const> files) {
+void Analysis::overlay(std::span<WorkspaceFile const> files, fs::path const& except) {
     auto& storage{compiler_.storage()};
     storage.syntax.observe(facts_);
     for (auto const& file : files) {
-        if (file.buffer) {
+        if (file.buffer && file.path != except) {
             static_cast<void>(storage.sources.overlay(file.path, file.buffer->text));
         }
     }
@@ -183,11 +183,12 @@ Analysis::Analysis(std::span<WorkspaceFile const> files, Project const& project,
     finish(inputs, fallback);
 }
 Analysis::Analysis(std::span<WorkspaceFile const> files, fs::path const& entry) {
-    overlay(files);
+    bool const manifest{entry.filename() == "project.lispb"};
+    auto const row{std::ranges::find(files, entry, &WorkspaceFile::path)};
+    overlay(row == files.end() ? std::span<WorkspaceFile const>{} : std::span{row, 1});
     auto& storage{compiler_.storage()};
     auto& syntax{storage.syntax};
     std::vector<fs::path> inputs;
-    bool const manifest{entry.filename() == "project.lispb"};
     try {
         inputs.push_back(entry);
         auto const file{storage.sources.load(entry)};
@@ -198,6 +199,7 @@ Analysis::Analysis(std::span<WorkspaceFile const> files, fs::path const& entry) 
             project_.emplace(parse_project(syntax, file, entry));
             root_ = project_->root;
         } else if (roots.count) {
+            overlay(files, entry);
             auto const head{
                 try_parse_serialized_form_head(syntax.head(syntax.forms(roots).front()))};
             if (module_head(head) || head == FormHead::type) {
@@ -348,12 +350,32 @@ auto Analysis::diagnostic(DiagnosticId id) const -> Json {
 auto Analysis::document(sexpr::SourceFileId file) const -> Document const& {
     return documents_[document_indices_[file.value] - 1];
 }
+auto Analysis::inputs() const -> AnalysisInputs {
+    AnalysisInputs result;
+    result.owned.reserve(documents_.size());
+    for (auto const& doc : documents_) {
+        result.owned.push_back(doc.path);
+    }
+    for (auto name : facts_.missing_includes) {
+        result.watched.push_back(codegen::path_from_utf8(compiler_.storage().strings.view(name)));
+    }
+    for (auto const& issue : diagnostics_) {
+        if (!contains(issue.path)) {
+            result.watched.push_back(issue.path);
+        }
+    }
+    return result;
+}
 auto Analysis::contains(fs::path const& path) const -> bool {
     return std::ranges::find(documents_, path, &Document::path) != documents_.end();
 }
-auto Analysis::root_head(fs::path const& path) -> std::optional<FormHead> {
-    auto& syntax{compiler_.storage().syntax};
-    auto const roots{syntax.forms((*std::ranges::find(documents_, path, &Document::path)).roots)};
+auto Analysis::root_head(fs::path const& path) const -> std::optional<FormHead> {
+    auto const doc{std::ranges::find(documents_, path, &Document::path)};
+    if (doc == documents_.end()) {
+        return std::nullopt;
+    }
+    auto const& syntax{compiler_.storage().syntax};
+    auto const roots{syntax.forms(doc->roots)};
     return roots.empty() ? std::nullopt
                          : try_parse_serialized_form_head(syntax.head(roots.front()));
 }

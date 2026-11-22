@@ -32,6 +32,7 @@ class Sources {
         -> SourceFileId;
     [[nodiscard]] auto overlay(std::filesystem::path const& path, std::string_view text)
         -> SourceFileId;
+    [[nodiscard]] auto has_overlay(std::filesystem::path const& absolute) const -> bool;
     [[nodiscard]] auto path(SourceFileId file) const -> std::string_view;
     [[nodiscard]] auto text(SourceFileId file) const -> std::string_view;
     [[nodiscard]] auto path_id(SourceFileId file) const -> StringId;

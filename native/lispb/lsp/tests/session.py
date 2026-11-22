@@ -75,6 +75,12 @@ class Client:
         self.send("exit", {})
         assert self.process.wait(timeout=5) == 0
 
+    def watched(self, path, kind):
+        self.send(
+            "workspace/didChangeWatchedFiles",
+            {"changes": [{"uri": path.as_uri(), "type": kind}]},
+        )
+
     def query(self, method, path, position=None, *, expect_error=False, **options):
         params = {"textDocument": {"uri": path.as_uri()}, **options}
         if position is not None:
@@ -626,6 +632,107 @@ def check_macro_completion(client, paths, files):
         )
 
 
+def check_ownership_discovery(client, root):
+    root.mkdir()
+    files, paths = create_project(root)
+    loose = root / "loose.lispb"
+    registry = files["scalars"].replace("scalar", "new_scalar")
+    loose.write_text(registry)
+    data = files["data"].replace("@scalar", "@new_scalar")
+    paths["data"].write_text(data)
+    client.open(loose, registry)
+
+    def uses():
+        return client.references(loose, registry, "new_scalar")
+
+    assert uses() == []
+    # A new probe would now discover the use. Only the watched notification invalidates the miss.
+    paths["types"].write_text(files["types"] + '\n(include "loose.lispb")')
+    for version in range(2, 6):
+        client.edit(loose, registry + "\n" * version, version)
+        assert uses() == []
+    client.watched(paths["types"], 2)
+    assert uses() == [
+        expected_location(paths["data"], data, "@new_scalar", len("@new_scalar"))
+    ]
+    paths["types"].write_text(files["types"])
+    client.watched(paths["types"], 2)
+    assert uses() == []
+    # Change the compatible target kind and then change the manifest while its target IDs are cached.
+    paths["ui"].write_text(files["ui"].replace("macros.lispb", "loose.lispb"))
+    client.watched(paths["ui"], 2)
+    macro = files["macros"]
+    client.edit(loose, macro, 6)
+    refs = client.references(loose, macro, "caption")
+    assert [ref["uri"] for ref in refs] == [paths["ui"].as_uri()]
+    paths["project"].write_text(files["project"].replace('"ui.lispb"', '"other.lispb"'))
+    client.watched(paths["project"], 2)
+    assert client.references(loose, macro, "caption") == []
+    other = root / "other.lispb"
+    other.write_text(paths["ui"].read_text())
+    client.watched(other, 1)
+    assert [ref["uri"] for ref in client.references(loose, macro, "caption")] == [
+        other.as_uri()
+    ]
+    client.send("textDocument/didClose", {"textDocument": {"uri": loose.as_uri()}})
+
+
+def check_watched_includes(client, root):
+    root.mkdir()
+    project = """(lispb-project :language-version 1 :project-root "."
+ (slate first :sources ("a.lispb") :include-directories ("lib") :output-root (project-path "out"))
+ (slate second :sources ("b.lispb") :include-directories ("lib") :output-root (project-path "out")))"""
+    (root / "project.lispb").write_text(project)
+    consumers = [root / "a.lispb", root / "b.lispb"]
+    source = '(include "widgets.lispb")\n(widget-class STest (function Build (params) (caption)))'
+    for path in consumers:
+        path.write_text(source)
+        client.open(path, source)
+    near = root / "widgets.lispb"
+    fallback = root / "lib" / near.name
+    fallback.parent.mkdir()
+    macro = '(defmacro caption () (STextBlock :Text "hello"))'
+
+    def check(target):
+        for path in consumers:
+            definition = client.query("definition", path, position(source, "caption"))
+            if target:
+                assert definition == expected_location(target, macro, "caption", 7)
+                assert not client.problems[path.as_uri()], client.problems
+            else:
+                assert definition is None
+                assert any(
+                    "include not found" in d["message"]
+                    for d in client.problems[path.as_uri()]
+                )
+
+    check(None)
+    client.open(near, macro)
+    check(near)
+    client.send("textDocument/didClose", {"textDocument": {"uri": near.as_uri()}})
+    check(None)
+    for path, kind, target in (
+        (fallback, 1, fallback),
+        (near, 1, near),
+        (near, 3, fallback),
+        (fallback, 3, None),
+        (near, 1, near),
+    ):
+        if kind == 1:
+            path.write_text(macro)
+        else:
+            path.unlink()
+        client.watched(path, kind)
+        check(target)
+    assert not (root / "out").exists()
+
+
+def exercise_discovery(client, root):
+    client.initialize(root, ())
+    check_ownership_discovery(client, root / "ownership")
+    check_watched_includes(client, root / "includes")
+
+
 def exercise(client, root):
     files, paths = create_project(root)
     legend = client.initialize(root, ["markdown", "plaintext"])
@@ -647,11 +754,12 @@ def exercise(client, root):
 
 
 if __name__ == "__main__":
-    client = Client(sys.argv[1])
-    try:
-        with tempfile.TemporaryDirectory(prefix="Lispb editor ") as temp:
-            exercise(client, Path(temp))
-        client.shutdown()
-    finally:
-        client.process.kill()
-        client.process.wait()
+    for scenario in (exercise_discovery, exercise):
+        client = Client(sys.argv[1])
+        try:
+            with tempfile.TemporaryDirectory(prefix="Lispb editor ") as temp:
+                scenario(client, Path(temp))
+            client.shutdown()
+        finally:
+            client.process.kill()
+            client.process.wait()
