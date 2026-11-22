@@ -82,6 +82,11 @@
   :pass-by value
   (integer :signed false :bit-width 64))
 
+(type native_frame_change_kind
+  :spelling "EntityFrameChangeKind"
+  :header "ioj/sim/entities/entity_frame_change.h"
+  :pass-by value)
+
 (type native_death_reason
   :spelling "DeathReason"
   :header "ioj/sim/entities/entity_life_state.h"

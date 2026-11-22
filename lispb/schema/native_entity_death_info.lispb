@@ -7,3 +7,13 @@
     (member killers array @native_unique_id)
     (member locations array @native_vector_3f)
 ))
+(module native_entity_frame_changes
+  :header "native/simulation/include/ioj/sim/entities/entity_frame_changes.h"
+  :namespace ioj::sim
+  (struct EntityFrameChanges
+    (member kinds array @native_frame_change_kind)
+    (member indices array uint32)
+    (member locations array @native_vector_3f)
+    (member rotations array @native_rotator_3f)
+    (member teams array @native_team)
+    (member ids array @native_unique_id)))

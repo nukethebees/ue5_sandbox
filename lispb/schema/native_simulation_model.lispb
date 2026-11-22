@@ -294,3 +294,28 @@
     (member steering_memory_fighter_count std::int32_t :initializer "")
     (member hard_trace_count std::int32_t :initializer "")
     (projections (cpp))))
+
+(module native_player_input_kind
+  :header "native/simulation/include/ioj/sim/player/player_input_kind.h"
+  :header-include "ioj/sim/player/player_input_kind.h"
+  :namespace ioj::sim::player
+  (enum PlayerInputKind std::uint8_t
+    (value BoostPressed)
+    (value BoostReleased)
+    (value BrakePressed)
+    (value BrakeReleased)
+    (value EmergencyBrakePressed)
+    (value EmergencyBrakeReleased)
+    (value FirePressed)
+    (value FireReleased)
+    (projections (cpp))))
+
+(module native_player_event_kind
+  :header "native/simulation/include/ioj/sim/player/player_event_kind.h"
+  :header-include "ioj/sim/player/player_event_kind.h"
+  :namespace ioj::sim::player
+  (enum PlayerEventKind std::uint8_t
+    (value BoostStarted)
+    (value BoostStopped)
+    (value ShotFired)
+    (projections (cpp))))
