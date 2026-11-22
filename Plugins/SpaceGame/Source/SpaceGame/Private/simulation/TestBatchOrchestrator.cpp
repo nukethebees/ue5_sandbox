@@ -1,4 +1,7 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+#include "settings/EmbeddedHost.h"
+#endif
 
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/launch_options.h>
@@ -304,6 +307,9 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
     return {};
 }
 void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    embedded_game_host().mission_startup = MissionStartup::Failed;
+#endif
     SetActorTickEnabled(false);
     FLevelLoader::report_failure(GetWorld(), MoveTemp(message));
 }
@@ -351,6 +357,10 @@ void ATestBatchOrchestrator::load_authored_level() {
     if (launch_options_.launch_mode == levels::LaunchMode::Running) {
         start_simulation();
     }
+    UE_LOG(LogSandbox, Display, TEXT("Mission ready: %s"), *to_fstring(pending->source_path));
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    embedded_game_host().mission_startup = MissionStartup::Ready;
+#endif
 }
 auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {
     return start_mode == EOrchestratorStartMode::Automatic ||

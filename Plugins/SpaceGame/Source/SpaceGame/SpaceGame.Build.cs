@@ -41,6 +41,7 @@ public class SpaceGame : ModuleRules
 
         PrivateDependencyModuleNames.AddRange(new string[]
         {
+            "ApplicationCore",
             "NativeLevelAuthoring",
             "CpuFeatures",
             "Niagara",
