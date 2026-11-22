@@ -8,4 +8,4 @@
       (level-ref scene :settings)
       (settings
         :collision-grid (collision-grid
-          :level-size '(2000000 2000000 500000))))))
+          :level-size '(5000000 5000000 500000))))))
