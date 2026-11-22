@@ -11,10 +11,12 @@
 
 #include "Editor.h"
 #include "Editor/EditorEngine.h"
+#include "Editor/UnrealEdEngine.h"
 #include "EditorModeManager.h"
 #include "Misc/MessageDialog.h"
 #include "Modules/ModuleManager.h"
 #include "ToolMenus.h"
+#include "UnrealEdGlobals.h"
 #include <Components/SceneComponent.h>
 #include <Engine/Level.h>
 #include <Engine/World.h>
@@ -49,6 +51,11 @@ void FSandboxEditorModule::StartupModule() {
 }
 void FSandboxEditorModule::ShutdownModule() {
     FCoreDelegates::GetOnPostEngineInit().RemoveAll(this);
+    FEditorDelegates::OnNewActorsPlaced.RemoveAll(this);
+    FEditorDelegates::OnMapOpened.RemoveAll(this);
+    if (GUnrealEd) {
+        GUnrealEd->OnPasteActorsEnd().RemoveAll(this);
+    }
     if (GEditor) {
         GEditor->OnLevelActorAdded().RemoveAll(this);
         GEditor->OnLevelActorDeleted().RemoveAll(this);
@@ -64,6 +71,13 @@ void FSandboxEditorModule::ShutdownModule() {
 }
 
 namespace {
+void update_editor_proxy_label(AActor* actor,
+                               ioj::ProxyLabelUpdate update = ioj::ProxyLabelUpdate::Refresh) {
+    if (IsValid(actor) && !actor->IsTemplate() && actor->GetWorld() &&
+        actor->GetWorld()->WorldType == EWorldType::Editor) {
+        ioj::editor::update_s7_proxy_label(*actor, update);
+    }
+}
 void mark_s7_edit(UObject* object, FName property = NAME_None) {
     if (!object || object->IsTemplate() || object->HasAnyFlags(RF_NeedLoad | RF_NeedPostLoad)) {
         return;
@@ -78,6 +92,10 @@ void mark_s7_edit(UObject* object, FName property = NAME_None) {
     auto* world{actor ? actor->GetWorld() : nullptr};
     if (!world || world->WorldType != EWorldType::Editor || world->bIsTearingDown) {
         return;
+    }
+
+    if (property == TEXT("team")) {
+        update_editor_proxy_label(actor);
     }
 
     if (auto* document{Cast<AS7LevelAuthoringDocument>(actor)}) {
@@ -101,9 +119,38 @@ void mark_s7_edit(UObject* object, FName property = NAME_None) {
 }
 void FSandboxEditorModule::register_actor_events() {
     if (GEditor) {
-        GEditor->OnLevelActorAdded().AddRaw(this, &FSandboxEditorModule::on_actor_changed);
+        GEditor->OnLevelActorAdded().AddRaw(this, &FSandboxEditorModule::on_actor_added);
+        FEditorDelegates::OnNewActorsPlaced.AddRaw(this, &FSandboxEditorModule::on_actors_placed);
+        FEditorDelegates::OnMapOpened.AddRaw(this, &FSandboxEditorModule::on_map_opened);
+        if (GUnrealEd) {
+            GUnrealEd->OnPasteActorsEnd().AddRaw(this, &FSandboxEditorModule::on_actors_pasted);
+        }
         GEditor->OnLevelActorDeleted().AddRaw(this, &FSandboxEditorModule::on_actor_changed);
         GEditor->OnEndObjectMovement().AddRaw(this, &FSandboxEditorModule::on_movement_finished);
+    }
+}
+void FSandboxEditorModule::on_actor_added(AActor* actor) {
+    if (IsValid(actor) && !actor->HasAnyFlags(RF_WasLoaded)) {
+        update_editor_proxy_label(actor, ioj::ProxyLabelUpdate::Placement);
+    }
+    on_actor_changed(actor);
+}
+void FSandboxEditorModule::on_actors_placed(UObject*, TArray<AActor*> const& actors) {
+    for (auto* actor : actors) {
+        update_editor_proxy_label(actor, ioj::ProxyLabelUpdate::Placement);
+    }
+}
+void FSandboxEditorModule::on_actors_pasted(TArray<AActor*> const& actors) {
+    for (auto* actor : actors) {
+        update_editor_proxy_label(actor);
+    }
+}
+void FSandboxEditorModule::on_map_opened(FString const&, bool) {
+    auto* world{GEditor->GetEditorWorldContext().World()};
+    if (IsValid(world)) {
+        for (auto* level : world->GetLevels()) {
+            ioj::editor::refresh_s7_proxy_labels(*level);
+        }
     }
 }
 void FSandboxEditorModule::on_actor_changed(AActor* actor) {

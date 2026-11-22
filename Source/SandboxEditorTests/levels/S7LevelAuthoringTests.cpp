@@ -16,25 +16,33 @@
 
 #include <SandboxCoreEngine/strings.h>
 
+#include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <Components/StaticMeshComponent.h>
 #include <CQTest.h>
 #include <Editor.h>
+#include <Editor/UnrealEdEngine.h>
 #include <EditorModeManager.h>
 #include <Engine/Level.h>
 #include <Engine/StaticMesh.h>
 #include <Engine/World.h>
 #include <FileHelpers.h>
 #include <HAL/FileManager.h>
+#include <IDetailTreeNode.h>
+#include <IPropertyRowGenerator.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Guid.h>
 #include <Misc/PackageName.h>
 #include <Misc/Paths.h>
 #include <Misc/ScopeExit.h>
+#include <PropertyEditorModule.h>
+#include <PropertyHandle.h>
+#include <ScopedTransaction.h>
 #include <Serialization/MemoryReader.h>
 #include <Serialization/MemoryWriter.h>
 #include <Serialization/ObjectAndNameAsStringProxyArchive.h>
 #include <Tests/AutomationEditorCommon.h>
+#include <UnrealEdGlobals.h>
 #include <UObject/ObjectSaveContext.h>
 
 #include <algorithm>
@@ -82,6 +90,24 @@ auto assert_success(FAutomationTestBase& test,
 auto write_source(FString const& path, FString const& source) -> bool {
     return FFileHelper::SaveStringToFile(
         source, *path, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+}
+
+bool edit_team_in_details(TArray<UObject*> const& selection, FString const& team) {
+    auto& module{FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor")};
+    auto rows{module.CreatePropertyRowGenerator({})};
+    rows->SetObjects(selection);
+    auto nodes{rows->GetRootTreeNodes()};
+    while (!nodes.IsEmpty()) {
+        auto node{nodes.Pop()};
+        if (node->GetNodeName() == TEXT("team")) {
+            auto handle{node->CreatePropertyHandle()};
+            return handle && handle->SetValueFromFormattedString(team) == FPropertyAccess::Success;
+        }
+        TArray<TSharedRef<IDetailTreeNode>> children;
+        node->GetChildren(children);
+        nodes.Append(children);
+    }
+    return false;
 }
 
 auto binding(AS7LevelAuthoringDocument& document, FString const& id) -> FS7LevelEntityBinding* {
@@ -490,6 +516,65 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             TEXT("Import restores the player authoring override"),
             CastChecked<ioj::ATestSpaceShip>(binding(document, TEXT("player"))->actor)
                     ->health_override == 123);
+
+        capital->SetActorLabel(TEXT("CapitalShip_Red"));
+        TArray<AActor*> copies;
+        GUnrealEd->DuplicateActors({capital}, copies, &level, FVector::ZeroVector);
+        TArray<AActor*> second_copy;
+        GUnrealEd->DuplicateActors({capital}, second_copy, &level, FVector::ZeroVector);
+        copies.Append(second_copy);
+        if (!TestRunner->TestEqual(TEXT("Copy two capitals"), copies.Num(), 2)) {
+            return;
+        }
+        auto* fighter{fixture->world->SpawnActor<ioj::ATestFighterProxy>()};
+        fighter->set_team(ioj::ETestTeam::Green);
+        fighter->SetActorLabel(TEXT("fighter10"));
+        if (!assert_success(*TestRunner,
+                            TEXT("Bind copies before their team changes"),
+                            ioj::editor::export_s7_editor_config(level, document))) {
+            return;
+        }
+        TArray<FString> ids;
+        for (auto* copy : copies) {
+            ids.Add(document.entities
+                        .FindByPredicate([copy](auto const& entry) { return entry.actor == copy; })
+                        ->id);
+        }
+        if (!TestRunner->TestTrue(TEXT("Change both copied capitals to orange through Details"),
+                                  edit_team_in_details({copies[0], copies[1]}, TEXT("Orange")))) {
+            return;
+        }
+        for (auto* copy : copies) {
+            TestRunner->TestTrue(TEXT("Each selected capital immediately displays orange"),
+                                 copy->GetActorLabel().StartsWith(TEXT("CapitalShip_Orange")));
+        }
+        capital->SetActorLabel(TEXT("escort"));
+        if (!TestRunner->TestTrue(TEXT("Changing the named capital's team preserves its label"),
+                                  edit_team_in_details({capital}, TEXT("Blue")) &&
+                                      capital->GetActorLabel() == TEXT("escort"))) {
+            return;
+        }
+        if (!assert_success(*TestRunner,
+                            TEXT("Export changed teams"),
+                            ioj::editor::export_s7_editor_config(level, document)) ||
+            !assert_success(*TestRunner,
+                            TEXT("Rebuild copied capitals and legacy fighter"),
+                            ioj::editor::import_s7_level(level, document))) {
+            return;
+        }
+        for (auto const& id : ids) {
+            auto* entry{binding(document, id)};
+            TestRunner->TestTrue(
+                TEXT("Rebuilt copy retains its script ID and displays orange"),
+                entry && entry->actor->GetActorLabel().StartsWith(TEXT("CapitalShip_Orange")));
+        }
+        auto const* named{binding(document, TEXT("capital"))};
+        TestRunner->TestTrue(
+            TEXT("A custom display label survives rebuild with its original script ID"),
+            named && named->actor->GetActorLabel() == TEXT("escort"));
+        auto* entry{binding(document, TEXT("fighter10"))};
+        TestRunner->TestTrue(TEXT("Legacy fighter ID gets the current team label"),
+                             entry && entry->actor->GetActorLabel() == TEXT("Fighter_Green10"));
     }
 
     TEST_METHOD(RebuildRestoresOwnershipAndExportRejectsDuplicateDeclarations)
@@ -692,6 +777,12 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             extra->PostEditChangeProperty(team_changed);
             check_colour(*extra, team);
         }
+        auto* fighter{world->SpawnActor<ioj::ATestFighterProxy>()};
+        fighter->set_team(ioj::ETestTeam::Green);
+        FPropertyChangedEvent fighter_team{
+            FindFProperty<FProperty>(fighter->GetClass(), TEXT("team"))};
+        fighter->PostEditChangeProperty(fighter_team);
+        fighter->SetActorLabel(TEXT("escort"));
         extra->SetActorLabel(TEXT("outpost"));
         FString previous;
         FFileHelper::LoadFileToString(previous, *fixture->generated_path);
@@ -733,6 +824,21 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         check_colour(*CastChecked<ioj::ATestCapitalShipProxy>(bound->actor), ioj::ETestTeam::Red);
+        auto const* escort{binding(**reopened, TEXT("escort"))};
+        if (!TestRunner->TestTrue(TEXT("Saved fighter binding survives reopen"),
+                                  escort && IsValid(escort->actor))) {
+            return;
+        }
+        auto const* preview{
+            CastChecked<UInstancedStaticMeshComponent>(escort->actor->GetRootComponent())};
+        auto const& rgb{preview->PerInstanceSMCustomData};
+        auto const green{(*reopened)->level_config->fighters.team_visual_data->get_colour(
+            ioj::ETestTeam::Green)};
+        TestRunner->TestTrue(
+            TEXT("Reopening restores one fighter instance with its saved colour and label"),
+            preview->GetInstanceCount() == 1 && rgb.Num() == 3 &&
+                FVector3f{rgb[0], rgb[1], rgb[2]}.Equals(FVector3f{green}) &&
+                escort->actor->GetActorLabel() == TEXT("escort"));
         TestRunner->TestFalse(TEXT("Reopening keeps the export current"),
                               (*reopened)->needs_export);
         auto* duplicate{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
@@ -787,9 +893,44 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         FVector const wing_position{5000, 1500, 1000};
         FRotator const wing_rotation{25, 70, 30};
         auto* wing{world->SpawnActor<ioj::ATestFighterProxy>(wing_position, wing_rotation)};
+        TestRunner->TestTrue(TEXT("Placed fighter has its team label"),
+                             wing->GetActorLabel().StartsWith(TEXT("Fighter_White")));
+        {
+            FScopedTransaction transaction{FText::FromString(TEXT("Edit fighter team"))};
+            wing->Modify();
+            wing->set_team(ioj::ETestTeam::Red);
+            FPropertyChangedEvent team_change{
+                FindFProperty<FProperty>(wing->GetClass(), TEXT("team"))};
+            wing->PostEditChangeProperty(team_change);
+        }
+        GEditor->UndoTransaction();
+        TestRunner->TestTrue(TEXT("Undo restores the fighter team and label"),
+                             wing->get_team() == ioj::ETestTeam::White &&
+                                 wing->GetActorLabel().StartsWith(TEXT("Fighter_White")));
+        GEditor->RedoTransaction();
+        TestRunner->TestTrue(TEXT("Changing the team refreshes the fighter label"),
+                             wing->GetActorLabel().StartsWith(TEXT("Fighter_Red")));
+        TArray<AActor*> copies;
+        GUnrealEd->DuplicateActors({wing}, copies, &level, FVector::ZeroVector);
+        if (!TestRunner->TestEqual(TEXT("Duplicate the red fighter"), copies.Num(), 1)) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Duplicate fighter gets a unique team label"),
+                             copies[0]->GetActorLabel().StartsWith(TEXT("Fighter_Red")) &&
+                                 copies[0]->GetActorLabel() != wing->GetActorLabel());
+        world->EditorDestroyActor(copies[0], true);
         wing->SetActorLabel(TEXT("wing"));
-        wing->set_team(ioj::ETestTeam::Red);
-        auto* mesh{CastChecked<UStaticMeshComponent>(wing->GetRootComponent())};
+        wing->PostEditMove(true);
+        TestRunner->TestEqual(TEXT("Moving a fighter keeps its authored label"),
+                              wing->GetActorLabel(),
+                              FString{TEXT("wing")});
+        auto* mesh{CastChecked<UInstancedStaticMeshComponent>(wing->GetRootComponent())};
+        auto const colour{
+            document.level_config->fighters.team_visual_data->get_colour(ioj::ETestTeam::Red)};
+        auto const& rgb{mesh->PerInstanceSMCustomData};
+        TestRunner->TestTrue(TEXT("Fighter preview supplies the runtime material its team RGB"),
+                             mesh->GetInstanceCount() == 1 && rgb.Num() == 3 &&
+                                 FVector3f{rgb[0], rgb[1], rgb[2]}.Equals(FVector3f{colour}));
         TestRunner->TestTrue(TEXT("Placed fighter previews the runtime mesh"),
                              mesh->GetStaticMesh() &&
                                  mesh->GetStaticMesh() ==
@@ -906,6 +1047,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         auto* restored{CastChecked<ioj::ATestFighterProxy>(wing_binding->actor)};
+        TestRunner->TestEqual(TEXT("Imported fighter uses the script ID as its label"),
+                              restored->GetActorLabel(),
+                              FString{TEXT("wing")});
         TestRunner->TestTrue(TEXT("Rebuilt fighter retains its placement and team"),
                              restored->GetActorLocation().Equals(wing_position) &&
                                  restored->GetActorForwardVector().Equals(wing_rotation.Vector()) &&

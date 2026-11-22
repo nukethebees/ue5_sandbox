@@ -1,6 +1,5 @@
 #include "SpaceGame/defences/turrets/TestStaticTurretsProxy.h"
 
-#include "SpaceGame/entities/TestProxyActorFunctions.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
@@ -39,7 +38,6 @@ ATestStaticTurretsProxy::ATestStaticTurretsProxy()
 
 void ATestStaticTurretsProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
-    set_proxy_actor_name(*this, TEXT("StaticTurret"), team);
     apply_actor_configuration();
 }
 

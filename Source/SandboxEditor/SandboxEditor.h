@@ -21,6 +21,10 @@ class SANDBOXEDITOR_API FSandboxEditorModule
   private:
     void register_menu_extensions();
     void register_actor_events();
+    void on_actor_added(AActor* actor);
+    void on_actors_placed(UObject* asset, TArray<AActor*> const& actors);
+    void on_actors_pasted(TArray<AActor*> const& actors);
+    void on_map_opened(FString const& filename, bool as_template);
     void on_actor_changed(AActor* actor);
     void on_movement_finished(UObject& object);
     void on_property_changed(UObject* object, FPropertyChangedEvent& change);

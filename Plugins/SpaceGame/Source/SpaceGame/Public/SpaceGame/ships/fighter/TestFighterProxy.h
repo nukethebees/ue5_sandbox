@@ -6,7 +6,7 @@
 
 #include "TestFighterProxy.generated.h"
 
-class UStaticMeshComponent;
+class UInstancedStaticMeshComponent;
 
 namespace ioj {
 UCLASS(meta = (DisplayName = "Fighter Proxy"))
@@ -30,9 +30,13 @@ class SPACEGAME_API ATestFighterProxy : public AActor {
 
   private:
     void OnConstruction(FTransform const& transform) override;
+#if WITH_EDITOR
+    void PostRegisterAllComponents() override;
+#endif
+    void refresh_preview();
 
     UPROPERTY()
-    TObjectPtr<UStaticMeshComponent> mesh;
+    TObjectPtr<UInstancedStaticMeshComponent> mesh;
 
     UPROPERTY(EditInstanceOnly, Category = "Level Authoring")
     ETestTeam team{ETestTeam::White};

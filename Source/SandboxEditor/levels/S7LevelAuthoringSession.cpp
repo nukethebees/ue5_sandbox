@@ -3,6 +3,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
+#include "SandboxEditor/levels/S7SceneActors.h"
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/identifiers.h>
 #include <ioj/levels/authoring/level_definition_writer.h>
@@ -126,33 +127,6 @@ auto find_level_authoring_document(ULevel const& level)
 }
 
 namespace {
-struct SceneActors {
-    TArray<ATestSpaceShip*> players;
-    TArray<ATestFighterProxy*> fighters;
-    TArray<ATestCapitalShipProxy*> capitals;
-    TArray<ATestStaticTurretsProxy*> turrets;
-    TArray<ATestTubeSpinnerProxy*> spinners;
-};
-auto gather_actors(ULevel const& level) -> SceneActors {
-    SceneActors result;
-    for (auto const actor : level.Actors) {
-        if (!IsValid(actor)) {
-            continue;
-        }
-        if (auto* player{Cast<ATestSpaceShip>(actor)}) {
-            result.players.Add(player);
-        } else if (auto* fighter{Cast<ATestFighterProxy>(actor)}) {
-            result.fighters.Add(fighter);
-        } else if (auto* capital{Cast<ATestCapitalShipProxy>(actor)}) {
-            result.capitals.Add(capital);
-        } else if (auto* turret{Cast<ATestStaticTurretsProxy>(actor)}) {
-            result.turrets.Add(turret);
-        } else if (auto* spinner{Cast<ATestTubeSpinnerProxy>(actor)}) {
-            result.spinners.Add(spinner);
-        }
-    }
-    return result;
-}
 auto collect_editor_scene(ULevel const& level,
                           AS7LevelAuthoringDocument const& document,
                           levels::authoring::LevelInput& input,
@@ -171,18 +145,16 @@ auto collect_editor_scene(ULevel const& level,
     }
     TMap<AActor const*, levels::EntityId> ids;
     TSet<FString> names;
-    auto const collect{[&](auto const& actors,
-                           levels::EntityArchetype archetype) -> S7AuthoringResult<void> {
-        for (auto* actor : actors) {
-            using ActorPtr = decltype(actor);
-
-            auto const* known{bound.Find(actor)};
-            if (!actor->export_to_script && !known) {
-                continue;
+    auto const collected{SceneActors{level}.for_each_scene_actor(
+        [&](auto& actor, levels::EntityArchetype archetype) -> Result {
+            using Actor = std::remove_reference_t<decltype(actor)>;
+            auto const* known{bound.Find(&actor)};
+            if (!actor.export_to_script && !known) {
+                return {};
             }
             auto const name{
                 known ? *known
-                      : canonical_s7_level_entity_id(actor->GetActorLabel(), TEXTVIEW("entity"))
+                      : canonical_s7_level_entity_id(actor.GetActorLabel(), TEXTVIEW("entity"))
                             .ToString()};
             if (!is_canonical_s7_level_entity_id(name) || names.Contains(name)) {
                 return Result{
@@ -193,20 +165,20 @@ auto collect_editor_scene(ULevel const& level,
             }
             names.Add(name);
             auto const entity_id{id(name)};
-            ids.Add(actor, entity_id);
+            ids.Add(&actor, entity_id);
             if (!known) {
-                new_bindings.Add({.id = name, .actor = actor});
+                new_bindings.Add({.id = name, .actor = &actor});
             }
-            if (!actor->export_to_script) {
-                continue;
+            if (!actor.export_to_script) {
+                return {};
             }
-            auto rotation{actor->GetActorRotation()};
-            if constexpr (std::is_same_v<ActorPtr, ATestFighterProxy*>) {
+            auto rotation{actor.GetActorRotation()};
+            if constexpr (std::is_same_v<Actor, ATestFighterProxy>) {
                 rotation.Roll = 0.;
             }
             double time{};
-            if constexpr (!std::is_same_v<ActorPtr, ATestSpaceShip*>) {
-                time = actor->spawn_time_seconds;
+            if constexpr (!std::is_same_v<Actor, ATestSpaceShip>) {
+                time = actor.spawn_time_seconds;
             }
             auto const spawn_at{NonNegativeFinite<double>::try_make(time)};
             if (!spawn_at) {
@@ -216,14 +188,14 @@ auto collect_editor_scene(ULevel const& level,
                                     *name)};
             }
             Team team{Team::White};
-            if constexpr (!std::is_same_v<ActorPtr, ATestTubeSpinnerProxy*>) {
-                team = to_native(actor->get_team());
+            if constexpr (!std::is_same_v<Actor, ATestTubeSpinnerProxy>) {
+                team = to_native(actor.get_team());
             }
             levels::authoring::EntityInput entity{
                 .id = entity_id,
                 .archetype = archetype,
                 .team = team,
-                .position = Vector3d{actor->GetActorLocation()},
+                .position = Vector3d{actor.GetActorLocation()},
                 .rotation = {rotation.Pitch, rotation.Yaw, rotation.Roll},
                 .spawn_at = *spawn_at};
             TCHAR const* invalid_field{};
@@ -240,28 +212,31 @@ auto collect_editor_scene(ULevel const& level,
                 return output.has_value();
             }};
             bool valid{true};
-            if constexpr (std::is_same_v<ActorPtr, ATestSpaceShip*>) {
+            if constexpr (std::is_same_v<Actor, ATestSpaceShip>) {
                 if (!document.use_observer_camera && !input.player.value.empty()) {
                     return Result{std::unexpect,
                                   TEXT("Multiple exported players. Export one player or "
                                        "select an observer camera.")};
                 }
                 input.player = entity_id;
-                valid = convert(entity.health, actor->health_override, TEXT("health"));
-            } else if constexpr (std::is_same_v<ActorPtr, ATestCapitalShipProxy*>) {
+                valid = convert(entity.health, actor.health_override, TEXT("health"));
+            } else if constexpr (std::is_same_v<Actor, ATestCapitalShipProxy>) {
                 valid =
-                    convert(entity.health, actor->health, TEXT("health")) &&
+                    convert(entity.health, actor.health, TEXT("health")) &&
                     convert(entity.initial_spawn_delay,
-                            actor->initial_spawn_delay,
+                            actor.initial_spawn_delay,
                             TEXT("initial spawn delay")) &&
-                    convert(entity.spawn_cooldown, actor->spawn_cooldown, TEXT("spawn cooldown"));
-            } else if constexpr (std::is_same_v<ActorPtr, ATestStaticTurretsProxy*>) {
-                valid = convert(entity.health, actor->health, TEXT("health")) &&
-                        convert(entity.laser_damage, actor->laser_damage, TEXT("laser damage"));
-            } else if constexpr (std::is_same_v<ActorPtr, ATestTubeSpinnerProxy*>) {
+                    convert(entity.spawn_cooldown, actor.spawn_cooldown, TEXT("spawn cooldown"));
+            } else if constexpr (std::is_same_v<Actor, ATestStaticTurretsProxy>) {
+                valid = convert(entity.health, actor.health, TEXT("health")) &&
+                        convert(entity.laser_damage, actor.laser_damage, TEXT("laser damage"));
+            } else if constexpr (std::is_same_v<Actor, ATestTubeSpinnerProxy>) {
                 valid = convert(entity.initial_fire_point,
-                                actor->initial_fire_point,
+                                actor.initial_fire_point,
                                 TEXT("initial fire point"));
+            } else {
+                static_assert(std::is_same_v<Actor, ATestFighterProxy>,
+                              "Handle this actor's export overrides.");
             }
             if (!valid) {
                 return Result{std::unexpect,
@@ -270,25 +245,10 @@ auto collect_editor_scene(ULevel const& level,
                                               invalid_field)};
             }
             input.entities.push_back(std::move(entity));
-        }
-        return {};
-    }};
-    auto const actors{gather_actors(level)};
-    using enum levels::EntityArchetype;
-    if (auto r{collect(actors.players, PlayerFighter)}; !r) {
-        return r;
-    }
-    if (auto r{collect(actors.fighters, Fighter)}; !r) {
-        return r;
-    }
-    if (auto r{collect(actors.capitals, CapitalShip)}; !r) {
-        return r;
-    }
-    if (auto r{collect(actors.turrets, StaticTurret)}; !r) {
-        return r;
-    }
-    if (auto r{collect(actors.spinners, TubeSpinner)}; !r) {
-        return r;
+            return {};
+        })};
+    if (!collected) {
+        return collected;
     }
     std::ranges::sort(input.entities, {}, &levels::authoring::EntityInput::id);
     if (document.use_observer_camera) {
@@ -603,6 +563,13 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
                 FString::Printf(TEXT("No editor class for '%s'."), *to_fstring(entity.id.value))};
         }
     }
+    TMap<FString, AActor*> previous_actors;
+    for (auto const& binding : document.entities) {
+        if (IsValid(binding.actor) && binding.actor->GetLevel() == &level) {
+            previous_actors.Add(binding.id, binding.actor.Get());
+        }
+    }
+
     FScopedTransaction transaction{NSLOCTEXT("S7LevelAuthoring", "Rebuild", "Rebuild S7 Scene")};
     level.Modify();
     TArray<FS7LevelEntityBinding> bindings;
@@ -624,37 +591,46 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
         }
         actor->Modify();
         actor->bIsEditorOnlyActor = true;
-        if (auto* player{Cast<ATestSpaceShip>(actor)}) {
-            player->export_to_script = export_entity;
-            player->health_override = optional(entity.health);
-        } else if (auto* fighter{Cast<ATestFighterProxy>(actor)}) {
-            fighter->export_to_script = export_entity;
-            fighter->spawn_time_seconds = entity.spawn_at.get();
-        } else if (auto* capital{Cast<ATestCapitalShipProxy>(actor)}) {
-            capital->export_to_script = export_entity;
-            capital->set_preview_settings(definition->settings());
-            capital->spawn_time_seconds = entity.spawn_at.get();
-            capital->health = optional(entity.health);
-            capital->initial_spawn_delay = optional(entity.initial_spawn_delay);
-            capital->spawn_cooldown = optional(entity.spawn_cooldown);
-        } else if (auto* turret{Cast<ATestStaticTurretsProxy>(actor)}) {
-            turret->export_to_script = export_entity;
-            turret->set_preview_radius(definition->settings().turrets.detection_radius);
-            turret->spawn_time_seconds = entity.spawn_at.get();
-            turret->health = optional(entity.health);
-            turret->laser_damage = optional(entity.laser_damage);
-        } else {
-            auto& spinner{*CastChecked<ATestTubeSpinnerProxy>(actor)};
-            spinner.export_to_script = export_entity;
-            spinner.spawn_time_seconds = entity.spawn_at.get();
-            spinner.initial_fire_point = optional(entity.initial_fire_point);
-        }
-        configure_s7_level_actor(*actor,
-                                 entity.archetype,
-                                 to_unreal(entity.team),
-                                 *document.level_config,
-                                 transform,
-                                 FName{name});
+        auto const team{to_unreal(entity.team)};
+        auto& config{*document.level_config};
+        SceneActors::visit_archetype(entity.archetype, [&]<typename Actor>() {
+            auto& proxy{*CastChecked<Actor>(actor)};
+            proxy.export_to_script = export_entity;
+            if constexpr (!std::is_same_v<Actor, ATestTubeSpinnerProxy>) {
+                proxy.set_team(team);
+            }
+            if constexpr (!std::is_same_v<Actor, ATestSpaceShip>) {
+                proxy.spawn_time_seconds = entity.spawn_at.get();
+            }
+            if constexpr (std::is_same_v<Actor, ATestSpaceShip>) {
+                proxy.set_actor_config(&config.player_ship);
+                proxy.health_override = optional(entity.health);
+            } else if constexpr (std::is_same_v<Actor, ATestCapitalShipProxy>) {
+                proxy.set_preview_settings(definition->settings());
+                proxy.health = optional(entity.health);
+                proxy.initial_spawn_delay = optional(entity.initial_spawn_delay);
+                proxy.spawn_cooldown = optional(entity.spawn_cooldown);
+            } else if constexpr (std::is_same_v<Actor, ATestStaticTurretsProxy>) {
+                proxy.set_level_config_asset(&config);
+                proxy.set_preview_radius(definition->settings().turrets.detection_radius);
+                proxy.health = optional(entity.health);
+                proxy.laser_damage = optional(entity.laser_damage);
+            } else if constexpr (std::is_same_v<Actor, ATestTubeSpinnerProxy>) {
+                proxy.set_level_config_asset(&config);
+                proxy.initial_fire_point = optional(entity.initial_fire_point);
+            } else {
+                static_assert(std::is_same_v<Actor, ATestFighterProxy>,
+                              "Handle this actor's import overrides.");
+            }
+        });
+        actor->SetActorTransform(transform);
+        actor->RerunConstructionScripts();
+        actor->PostEditMove(true);
+        auto const* previous{previous_actors.FindRef(name)};
+        actor->SetActorLabel(previous && previous->IsA(type) ? previous->GetActorLabel() : name,
+                             true);
+        actor->SetFolderPath(
+            FName{StaticEnum<ETestTeam>()->GetNameStringByValue(std::to_underlying(team))});
         bindings.Add({.id = name, .actor = actor});
     }
     document.Modify();
@@ -663,6 +639,9 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
             entry.actor->Modify();
             level.OwningWorld->EditorDestroyActor(entry.actor, true);
         }
+    }
+    for (auto const& binding : bindings) {
+        update_s7_proxy_label(*binding.actor);
     }
     document.entities = MoveTemp(bindings);
     document.use_observer_camera = viewpoint.has_value();

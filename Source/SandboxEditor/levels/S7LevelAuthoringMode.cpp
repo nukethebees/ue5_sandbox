@@ -189,7 +189,7 @@ void US7LevelAuthoringMode::DrawHUD(FEditorViewportClient* const viewport_client
             continue;
         }
         auto color{FLinearColor::White};
-        auto label_text{FText::FromString(binding.id)};
+        auto label_text{FText::FromString(binding.actor->GetActorLabel())};
         auto const resolved{ioj::editor::resolve_s7_level_actor(*binding.actor)};
         if (resolved && resolved->spawn_time_seconds > 0.0) {
             label_text = FText::Format(LOCTEXT("DelayedEntityLabel", "{0} [T+{1}s]"),

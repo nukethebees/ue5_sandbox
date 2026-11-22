@@ -29,6 +29,7 @@ public class SandboxEditorTests : ModuleRules
             "AssetRegistry",
             "CQTest",
             "MaterialEditor",
+            "PropertyEditor",
             "RenderCore",
             "RHI",
             "Slate",
