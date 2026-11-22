@@ -160,7 +160,6 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
     auto const history{ledger.history()};
     auto const death_ticks{history.death_ticks()};
     auto const death_locations{history.death_locations()};
-    auto const n{static_cast<int32>(deaths.size())};
     auto* const small_death_explosion{actor_config->small_death_explosion.Get()};
     auto* const main_death_explosion{actor_config->main_death_explosion.Get()};
     auto const has_small_death_explosion{IsValid(small_death_explosion)};
@@ -182,11 +181,6 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
         main_explosion_delay += n_small_explosions * (n_small_explosions - 1);
     }
 
-    TArray<UNiagaraSystem*> spawn_systems;
-    TArray<FVector> spawn_locations;
-    TArray<float> spawn_delays;
-    ioj::reserve(n * (n_small_explosions + 1), spawn_systems, spawn_locations, spawn_delays);
-
     float current_delay{0.f};
     std::optional<ioj::sim::SimTick> previous_tick;
     for (auto const row : deaths) {
@@ -206,20 +200,15 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
                     FMath::FRandRange(min_range.y(), max_range.y()),
                     FMath::FRandRange(min_range.z(), max_range.z()),
                 }};
-                spawn_systems.Add(small_death_explosion);
-                spawn_locations.Add(base_location + offset);
-                spawn_delays.Add(current_delay);
+                niagara_spawner->add_spawn(small_death_explosion, base_location + offset, FRotator::ZeroRotator, FVector::OneVector, current_delay);
             }
         }
 
         if (has_main_death_explosion) {
-            spawn_systems.Add(main_death_explosion);
-            spawn_locations.Add(base_location);
-            spawn_delays.Add(main_explosion_delay);
+            niagara_spawner->add_spawn(main_death_explosion, base_location, FRotator::ZeroRotator, FVector::OneVector, main_explosion_delay);
         }
     }
 
-    niagara_spawner->add_spawns(spawn_systems, spawn_locations, spawn_delays);
 }
 
 void FCapitalPresentation::validate_array_sizes() const {

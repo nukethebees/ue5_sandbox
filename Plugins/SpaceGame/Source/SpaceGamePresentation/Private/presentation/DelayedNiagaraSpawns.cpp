@@ -50,28 +50,6 @@ void FDelayedNiagaraSpawns::add_spawn(UNiagaraSystem* system,
     scales.Add(scale);
     times_remaining.Add(delay);
 }
-void FDelayedNiagaraSpawns::add_spawns(TArrayView<UNiagaraSystem*> new_systems,
-                                       TConstArrayView<FVector> new_locations,
-                                       TConstArrayView<FRotator> new_rotations,
-                                       TConstArrayView<FVector> new_scales,
-                                       TConstArrayView<float> new_delays) {
-    systems.Append(new_systems);
-    locations.Append(new_locations);
-    rotations.Append(new_rotations);
-    scales.Append(new_scales);
-    times_remaining.Append(new_delays);
-}
-void FDelayedNiagaraSpawns::add_spawns(TArrayView<UNiagaraSystem*> new_systems,
-                                       TConstArrayView<FVector> new_locations,
-                                       TConstArrayView<float> new_delays) {
-    auto const n{new_systems.Num()};
-
-    systems.Append(new_systems);
-    locations.Append(new_locations);
-    ioj::append_n(rotations, FRotator::ZeroRotator, n);
-    ioj::append_n(scales, FVector::OneVector, n);
-    times_remaining.Append(new_delays);
-}
 
 auto FDelayedNiagaraSpawns::num() const -> int32 {
     return systems.Num();
