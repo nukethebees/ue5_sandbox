@@ -70,6 +70,11 @@ class Client:
             },
         )
 
+    def shutdown(self):
+        self.send("shutdown", {}, True)
+        self.send("exit", {})
+        assert self.process.wait(timeout=5) == 0
+
     def query(self, method, path, position=None, *, expect_error=False, **options):
         params = {"textDocument": {"uri": path.as_uri()}, **options}
         if position is not None:
@@ -581,9 +586,9 @@ def check_scratch_document(client, root, schema, legend):
     assert not client.problems[scratch.as_uri()]
 
 
-def exercise(client, root, hover_formats=()):
+def exercise(client, root):
     files, paths = create_project(root)
-    legend = client.initialize(root, hover_formats)
+    legend = client.initialize(root, ["markdown", "plaintext"])
     for key in ("project", "data", "ops", "ui", "mat"):
         client.open(paths[key], files[key])
 
@@ -598,9 +603,6 @@ def exercise(client, root, hover_formats=()):
     check_scratch_document(client, root, files["data"], legend)
 
     assert not (root / "out").exists()
-    client.send("shutdown", {}, True)
-    client.send("exit", {})
-    assert client.process.wait(timeout=5) == 0
 
 
 if __name__ == "__main__":
@@ -608,6 +610,7 @@ if __name__ == "__main__":
     try:
         with tempfile.TemporaryDirectory(prefix="Lispb editor ") as temp:
             exercise(client, Path(temp))
+        client.shutdown()
     finally:
         client.process.kill()
         client.process.wait()

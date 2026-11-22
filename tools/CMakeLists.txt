@@ -8,7 +8,13 @@ add_subdirectory(layout_planner)
 add_subdirectory(image_lab)
 
 add_custom_target(developer-tools-build
-  DEPENDS rust-tool-tests-build native-layout-tests layout-planner-ui-tests image-lab-tests
+  DEPENDS
+    rust-tool-tests-build
+    native-layout-tests
+    layout-planner-ui-tests
+    image-lab-tests
+    lispb-lsp
+    lispb-protocol-tests
 )
 add_custom_target(task-start-build
   DEPENDS native-tests developer-tools-build

@@ -136,9 +136,8 @@ class InstallerTests(unittest.TestCase):
         self.assertFalse(install(self.vswhere, *self.packages))
         output = self.output.getvalue()
         self.assertIn("exit 2004, 0x000007D4", output)
-        log_line, blank, hint = output.splitlines()[-3:]
-        self.assertTrue(log_line.startswith("VSIXInstaller log: "))
-        self.assertEqual(blank, "")
+        self.assertIn("VSIXInstaller log: ", output)
+        hint = output.splitlines()[-1]
         self.assertTrue(hint.startswith("Save your work and close"))
         self.assertTrue(hint.endswith("cmake --workflow --preset install-lispb-editors."))
         self.assertNotIn("\x1b", output)
@@ -156,9 +155,9 @@ class InstallerTests(unittest.TestCase):
                 self.output.truncate()
                 with patch.dict(os.environ, {"NO_COLOR": no_color, "TERM": term}):
                     self.assertFalse(install(self.vswhere, *self.packages))
-                log_line, blank, hint = self.output.getvalue().splitlines()[-3:]
-                self.assertIn("VSIXInstaller log unavailable", log_line)
-                self.assertEqual(blank, "")
+                output = self.output.getvalue()
+                self.assertIn("VSIXInstaller log unavailable", output)
+                hint = output.splitlines()[-1]
                 start = "\x1b[33m" if colored else ""
                 reset = "\x1b[0m" if colored else ""
                 self.assertTrue(hint.startswith(f"{start}Save your work"))

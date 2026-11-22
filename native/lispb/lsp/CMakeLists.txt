@@ -30,13 +30,13 @@ target_link_libraries(lispb-protocol-tests
     sandbox::native_defaults
 )
 add_test(NAME LispbFileUris COMMAND lispb-protocol-tests)
-set_tests_properties(LispbFileUris PROPERTIES LABELS "tool;lispb-lsp")
+set_tests_properties(LispbFileUris PROPERTIES LABELS "tool;lispb-lsp;developer-tool")
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(NAME LispbLanguageServer
   COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/session.py" "$<TARGET_FILE:lispb-lsp>"
 )
-set_tests_properties(LispbLanguageServer PROPERTIES LABELS "tool;lispb-lsp" TIMEOUT 90)
+set_tests_properties(LispbLanguageServer PROPERTIES LABELS "tool;lispb-lsp;developer-tool" TIMEOUT 90)
 
 if(WIN32)
   set(editor_dir "${CMAKE_CURRENT_SOURCE_DIR}/editors")

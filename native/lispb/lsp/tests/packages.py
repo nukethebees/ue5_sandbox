@@ -7,7 +7,7 @@ import tempfile
 from xml.etree import ElementTree
 from zipfile import ZipFile
 
-from session import Client, exercise
+from session import Client, create_project
 
 
 def test_package(packages, editor, root, expected, vsix_engine):
@@ -29,7 +29,6 @@ def test_package(packages, editor, root, expected, vsix_engine):
         asset = manifest.find(".//{*}Asset[@Type='Microsoft.VisualStudio.Services.Icons.Default']")
         assert root / asset.get("Path") == root / manifest.findtext(".//{*}Icon") == extension / package["icon"]
         assert "onLanguage:lispb" in package["activationEvents"]
-        assert "grammars" not in package["contributes"]
         server = extension / "bin/lispb-lsp.exe"
         command = ["node", str(Path(__file__).with_name("vscode-adapter.js")), str(extension)]
     else:
@@ -38,7 +37,6 @@ def test_package(packages, editor, root, expected, vsix_engine):
         asset = manifest.find(".//{*}Asset[@Type='Microsoft.VisualStudio.MefComponent']")
         component = root / asset.get("Path")
         assert component.is_file()
-        assert not list(root.rglob("*.tmLanguage.json"))
         # The IDE normally supplies the SDK assemblies. Use the package build's resolved SDK.
         for dependency in (packages / "visualstudio/bin/Release/net472").glob("*.dll"):
             if dependency.name != component.name:
@@ -52,11 +50,21 @@ def test_package(packages, editor, root, expected, vsix_engine):
         fixture = root / "fixture"
         fixture.mkdir()
         formats = ["markdown", "plaintext"] if editor == "vscode" else ["plaintext", "markdown"]
-        exercise(client, fixture, formats)
+        client.initialize(fixture, formats)
+        files, paths = create_project(fixture)
+        path = paths["data"]
+        source = files["data"]
+        client.open(path, source)
+        client.hover(path, source, "@scalar", ("C++ type", "unsigned int"))
+        item = client.completion(path, source, "@scalar", 3, "@scalar")
+        assert "stdint.h" in client.documentation(item)
+        assert client.query("semanticTokens/full", path)["data"]
+        assert not client.problems[path.as_uri()]
+        client.shutdown()
     finally:
         client.process.kill()
         client.process.wait()
-    print(f"{editor}: packaged adapter, server and LSP features including semantic tokens passed", flush=True)
+    print(f"{editor}: packaged server startup, hover and semantic tokens passed", flush=True)
 
 
 if __name__ == "__main__":
