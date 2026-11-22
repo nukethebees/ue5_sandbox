@@ -494,10 +494,14 @@ auto FLevelPresentationDeathBatchesTest::RunTest(FString const&) -> bool {
         TEXT("Each death retains its two delayed small effects and main effect"), delays.Num(), 6);
     int32 first_small_count{};
     int32 second_small_count{};
+    int32 main_count{};
     for (auto const delay : delays) {
         first_small_count += FMath::IsNearlyEqual(delay, 10.f) ? 1 : 0;
+        main_count += FMath::IsNearlyEqual(delay, 120.f) ? 1 : 0;
         second_small_count += FMath::IsNearlyEqual(delay, 20.f) ? 1 : 0;
     }
+    TestEqual(
+        TEXT("Both main effects follow the final small effect by 100 seconds"), main_count, 2);
     TestEqual(TEXT("Both tick batches start their small-effect sequence independently"),
               first_small_count,
               2);

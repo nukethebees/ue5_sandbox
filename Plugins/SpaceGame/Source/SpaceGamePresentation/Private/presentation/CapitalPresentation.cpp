@@ -1,4 +1,5 @@
 #include "SpaceGamePresentation/presentation/CapitalPresentation.h"
+#include <ioj/presentation/capital_explosion_timing.h>
 
 #include <ioj/column_math.h>
 #include <ioj/sim/entities/entity_ledger.h>
@@ -174,12 +175,7 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
     auto const time_between_explosions{settings_->time_between_explosions};
     auto const min_range{settings_->min_small_explosion_range};
     auto const max_range{settings_->max_small_explosion_range};
-    auto main_explosion_delay{settings_->large_explosion_delay};
-    if (actor_config->main_explosion_delay_mode ==
-            ioj::ECapitalShipMainExplosionDelayMode::AfterSmallExplosions &&
-        has_small_death_explosion && n_small_explosions > 1) {
-        main_explosion_delay += n_small_explosions * (n_small_explosions - 1);
-    }
+    auto const after_small_explosions{actor_config->main_explosion_delay_mode == ioj::ECapitalShipMainExplosionDelayMode::AfterSmallExplosions};
 
     float current_delay{0.f};
     std::optional<ioj::sim::SimTick> previous_tick;
@@ -188,24 +184,23 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
             current_delay = 0.f;
             previous_tick = death_ticks[row];
         }
+        ioj::presentation::CapitalExplosionTiming const timing{current_delay, time_between_explosions, has_small_death_explosion ? n_small_explosions : 0};
         FVector const base_location{ioj::to_unreal(death_locations[row])};
         if (has_small_death_explosion) {
             for (int32 explosion_index{0}; explosion_index < n_small_explosions;
                  ++explosion_index) {
-                if (explosion_index > 0) {
-                    current_delay += time_between_explosions;
-                }
                 auto const offset{FVector{
                     FMath::FRandRange(min_range.x(), max_range.x()),
                     FMath::FRandRange(min_range.y(), max_range.y()),
                     FMath::FRandRange(min_range.z(), max_range.z()),
                 }};
-                niagara_spawner->add_spawn(small_death_explosion, base_location + offset, FRotator::ZeroRotator, FVector::OneVector, current_delay);
+                niagara_spawner->add_spawn(small_death_explosion, base_location + offset, FRotator::ZeroRotator, FVector::OneVector, timing.small_delay(explosion_index));
             }
         }
 
+        current_delay = timing.last_small_delay();
         if (has_main_death_explosion) {
-            niagara_spawner->add_spawn(main_death_explosion, base_location, FRotator::ZeroRotator, FVector::OneVector, main_explosion_delay);
+            niagara_spawner->add_spawn(main_death_explosion, base_location, FRotator::ZeroRotator, FVector::OneVector, timing.main_delay(settings_->large_explosion_delay, after_small_explosions));
         }
     }
 
