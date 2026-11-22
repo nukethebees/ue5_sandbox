@@ -13,17 +13,18 @@ namespace ioj {
 struct FLevelPresentation;
 } // namespace ioj
 
+namespace ioj {
 struct SPACEGAMEPRESENTATION_API FTurretPresentation {
-    friend struct ioj::FLevelPresentation;
+    friend struct FLevelPresentation;
   public:
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3};
 
     explicit FTurretPresentation(UInstancedStaticMeshComponent& component);
-    void set_actor_config(ioj::FTurretConfig const* new_config,
-                          ioj::settings::TurretPresentation const& settings) noexcept;
+    void set_actor_config(FTurretConfig const* new_config,
+                          settings::TurretPresentation const& settings) noexcept;
   private:
-    auto simulation() const -> ::ioj::sim::turrets::Sim const& { return *simulation_; }
+    auto simulation() const -> sim::turrets::Sim const& { return *simulation_; }
     void ValidateOptionalAssets() const;
     void clear_runtime_state_presentation();
     void begin_play_presentation();
@@ -38,14 +39,16 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     void draw_debugging_shapes() const;
     void validate_array_sizes() const;
 
-    ioj::FTurretConfig const* actor_config{nullptr};
-    ioj::settings::TurretPresentation const* settings_{};
-    ::ioj::sim::turrets::Sim const* simulation_{};
+    FTurretConfig const* actor_config{nullptr};
+    settings::TurretPresentation const* settings_{};
+    sim::turrets::Sim const* simulation_{};
 
     UInstancedStaticMeshComponent* instances{nullptr};
     TArray<FTransform> ismc_transforms;
 
-    ioj::FDrawDebugConfig debug_drawer;
+    FDrawDebugConfig debug_drawer;
     bool draw_target_arrows_enabled{false};
     bool draw_debug_entity_info_enabled{false};
 };
+
+} // namespace ioj

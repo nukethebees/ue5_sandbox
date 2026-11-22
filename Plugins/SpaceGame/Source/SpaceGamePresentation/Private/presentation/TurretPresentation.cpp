@@ -18,12 +18,13 @@
 #include <NiagaraFunctionLibrary.h>
 #include <NiagaraSystem.h>
 
+namespace ioj {
 FTurretPresentation::FTurretPresentation(UInstancedStaticMeshComponent& component)
     : instances{&component} {}
 
 void FTurretPresentation::set_actor_config(
-    ioj::FTurretConfig const* const new_config,
-    ioj::settings::TurretPresentation const& settings) noexcept {
+    FTurretConfig const* const new_config,
+    settings::TurretPresentation const& settings) noexcept {
     actor_config = new_config;
     settings_ = &settings;
 }
@@ -48,7 +49,7 @@ void FTurretPresentation::begin_play_presentation() {
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FTurretPresentation actor_config is nullptr."));
     }
-    ioj::fatal_if_uobject_ptrs_invalid({
+    fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(instances),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh.Get()),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data.Get()),
@@ -67,8 +68,8 @@ void FTurretPresentation::begin_play_presentation() {
     auto const rolls{rotations.rolls()};
     for (int32 i{}; i < count; ++i) {
         ismc_transforms.Emplace(
-            FRotator{ioj::to_unreal(::ioj::Rotator3f{pitches[i], yaws[i], rolls[i]})},
-            FVector{ioj::to_unreal(::ioj::vector_at(locations, i))});
+            FRotator{to_unreal(Rotator3f{pitches[i], yaws[i], rolls[i]})},
+            FVector{to_unreal(vector_at(locations, i))});
     }
     add_initial_visual_instances();
     validate_array_sizes();
@@ -76,18 +77,18 @@ void FTurretPresentation::begin_play_presentation() {
 
 void FTurretPresentation::update_visual_data() {
     auto const colours{
-        ioj::UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     for (auto const& change : simulation().frame_changes()) {
-        if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
+        if (change.kind == sim::EntityFrameChangeKind::RemoveSwap) {
             ismc_transforms.RemoveAtSwap(change.index, EAllowShrinking::No);
             instances->RemoveInstance(change.index);
         } else {
-            FTransform const transform{FRotator{ioj::to_unreal(change.rotation)},
-                                       FVector{ioj::to_unreal(change.location)}};
+            FTransform const transform{FRotator{to_unreal(change.rotation)},
+                                       FVector{to_unreal(change.location)}};
             auto const index{instances->AddInstance(transform, is_world_space)};
             check(index == static_cast<int32>(change.index));
             ismc_transforms.Add(transform);
-            auto const colour{colours[ioj::to_unreal(change.team)]};
+            auto const colour{colours[to_unreal(change.team)]};
             float const rgb[]{colour.R, colour.G, colour.B};
             instances->SetCustomData(index, rgb, false);
         }
@@ -111,7 +112,7 @@ void FTurretPresentation::end_tick_presentation() {
 
 void FTurretPresentation::configure_ismc() {
     instances->SetMobility(EComponentMobility::Static);
-    ioj::batch::configure_ismc(*instances,
+    batch::configure_ismc(*instances,
                                {
                                    .mesh = actor_config->mesh.Get(),
                                    .num_custom_data_floats = n_custom_ismc_floats,
@@ -132,14 +133,14 @@ void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transfo
     }
 
     auto const colour_cache{
-        ioj::UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     TArray<float> custom_data;
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
     auto const teams{entities.teams()};
 
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[ioj::to_unreal(teams[first_entity_index + i])]};
+        auto const& colour{colour_cache[to_unreal(teams[first_entity_index + i])]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
@@ -170,7 +171,7 @@ void FTurretPresentation::trigger_death_effects() {
 
         UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
                                                        explosion_system,
-                                                       FVector{ioj::to_unreal(death_locations[i])} +
+                                                       FVector{to_unreal(death_locations[i])} +
                                                            location_offset,
                                                        FRotator::ZeroRotator,
                                                        scale,
@@ -181,7 +182,7 @@ void FTurretPresentation::trigger_death_effects() {
 }
 
 void FTurretPresentation::validate_array_sizes() const {
-    ioj::fatal_if_nums_not_equal({
+    fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(static_cast<int32>(simulation().num_instances())),
         SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
@@ -204,14 +205,14 @@ void FTurretPresentation::draw_debugging_shapes() const {
     auto const ids{entities.entity_ids()};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const turret_location{FVector{ioj::to_unreal(::ioj::vector_at(locations, i))}};
+        auto const turret_location{FVector{to_unreal(vector_at(locations, i))}};
 
         if (draw_target_arrows_enabled) {
             auto const target_id{targets[i]};
 
             if (target_id.is_valid()) {
                 auto const target_location{
-                    FVector{ioj::to_unreal(::ioj::vector_at(target_locations, i))}};
+                    FVector{to_unreal(vector_at(target_locations, i))}};
                 drawer.draw_line(turret_location, target_location);
             }
         }
@@ -226,3 +227,5 @@ void FTurretPresentation::draw_debugging_shapes() const {
         }
     }
 }
+
+} // namespace ioj

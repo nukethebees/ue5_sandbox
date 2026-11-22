@@ -20,12 +20,13 @@
 #include <Engine/StaticMesh.h>
 #include <NiagaraSystem.h>
 
+namespace ioj {
 FCapitalPresentation::FCapitalPresentation(UInstancedStaticMeshComponent& component)
     : instances{&component} {}
 
 void FCapitalPresentation::set_actor_config(
-    ioj::FCapitalShipConfig const* const new_config,
-    ioj::settings::CapitalPresentation const& settings) noexcept {
+    FCapitalShipConfig const* const new_config,
+    settings::CapitalPresentation const& settings) noexcept {
     actor_config = new_config;
     settings_ = &settings;
 }
@@ -60,7 +61,7 @@ void FCapitalPresentation::begin_play_presentation() {
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FCapitalPresentation actor_config is nullptr."));
     }
-    ioj::fatal_if_uobject_ptrs_invalid({
+    fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(world),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh.Get()),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data.Get()),
@@ -71,18 +72,18 @@ void FCapitalPresentation::begin_play_presentation() {
     validate_array_sizes();
 }
 
-void FCapitalPresentation::update_visual_data(ioj::sim::EntityLedger const& ledger) {
+void FCapitalPresentation::update_visual_data(sim::EntityLedger const& ledger) {
     auto const colours{
-        ioj::UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     for (auto const& change : simulation().frame_changes()) {
-        if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
+        if (change.kind == sim::EntityFrameChangeKind::RemoveSwap) {
             instances->RemoveInstance(change.index);
         } else {
-            FTransform const transform{FRotator{ioj::to_unreal(change.rotation)},
-                                       FVector{ioj::to_unreal(change.location)}};
+            FTransform const transform{FRotator{to_unreal(change.rotation)},
+                                       FVector{to_unreal(change.location)}};
             auto const index{instances->AddInstance(transform, is_world_space)};
             check(index == static_cast<int32>(change.index));
-            auto const colour{colours[ioj::to_unreal(change.team)]};
+            auto const colour{colours[to_unreal(change.team)]};
             float const rgb[]{colour.R, colour.G, colour.B};
             instances->SetCustomData(index, rgb, false);
         }
@@ -102,7 +103,7 @@ void FCapitalPresentation::end_tick_presentation() {
 }
 
 void FCapitalPresentation::configure_ismc() {
-    ioj::batch::configure_ismc(*instances,
+    batch::configure_ismc(*instances,
                                {
                                    .mesh = actor_config->mesh.Get(),
                                    .material = actor_config->material.Get(),
@@ -123,14 +124,14 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
     }
 
     auto const colour_cache{
-        ioj::UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     TArray<float> custom_data;
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
     auto const teams{entities.teams()};
 
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[ioj::to_unreal(teams[first_index + i])]};
+        auto const& colour{colour_cache[to_unreal(teams[first_index + i])]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
@@ -145,8 +146,8 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
     auto const rolls{rotations.rolls()};
     for (int32 index{first_index}; index < first_index + n_to_add; ++index) {
         transforms.Emplace(
-            FRotator{ioj::to_unreal(::ioj::Rotator3f{pitches[index], yaws[index], rolls[index]})},
-            FVector{ioj::to_unreal(::ioj::vector_at(locations, index))});
+            FRotator{to_unreal(Rotator3f{pitches[index], yaws[index], rolls[index]})},
+            FVector{to_unreal(vector_at(locations, index))});
     }
     constexpr bool return_indices{false};
     constexpr bool update_navigation{false};
@@ -156,8 +157,8 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
         first_index, first_index + n_to_add - 1, custom_data, mark_render_state_dirty);
 }
 
-void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& ledger) {
-    auto const deaths{ledger.frame_deaths(ioj::sim::EntityType::CapitalShip)};
+void FCapitalPresentation::trigger_death_effects(sim::EntityLedger const& ledger) {
+    auto const deaths{ledger.frame_deaths(sim::EntityType::CapitalShip)};
     auto const history{ledger.history()};
     auto const death_ticks{history.death_ticks()};
     auto const death_locations{history.death_locations()};
@@ -175,17 +176,17 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
     auto const time_between_explosions{settings_->time_between_explosions};
     auto const min_range{settings_->min_small_explosion_range};
     auto const max_range{settings_->max_small_explosion_range};
-    auto const after_small_explosions{actor_config->main_explosion_delay_mode == ioj::ECapitalShipMainExplosionDelayMode::AfterSmallExplosions};
+    auto const after_small_explosions{actor_config->main_explosion_delay_mode == ECapitalShipMainExplosionDelayMode::AfterSmallExplosions};
 
     float current_delay{0.f};
-    std::optional<ioj::sim::SimTick> previous_tick;
+    std::optional<sim::SimTick> previous_tick;
     for (auto const row : deaths) {
         if (previous_tick != death_ticks[row]) {
             current_delay = 0.f;
             previous_tick = death_ticks[row];
         }
-        ioj::presentation::CapitalExplosionTiming const timing{current_delay, time_between_explosions, has_small_death_explosion ? n_small_explosions : 0};
-        FVector const base_location{ioj::to_unreal(death_locations[row])};
+        presentation::CapitalExplosionTiming const timing{current_delay, time_between_explosions, has_small_death_explosion ? n_small_explosions : 0};
+        FVector const base_location{to_unreal(death_locations[row])};
         if (has_small_death_explosion) {
             for (int32 explosion_index{0}; explosion_index < n_small_explosions;
                  ++explosion_index) {
@@ -207,8 +208,10 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
 }
 
 void FCapitalPresentation::validate_array_sizes() const {
-    ioj::fatal_if_nums_not_equal({
+    fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(static_cast<int32>(simulation().num_instances())),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }
+
+} // namespace ioj

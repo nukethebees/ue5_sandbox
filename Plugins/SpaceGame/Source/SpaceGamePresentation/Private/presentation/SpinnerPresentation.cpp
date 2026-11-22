@@ -13,11 +13,12 @@
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
 
+namespace ioj {
 FSpinnerPresentation::FSpinnerPresentation(UInstancedStaticMeshComponent& component)
     : instances{&component} {}
 
 void FSpinnerPresentation::set_actor_config(
-    ioj::FTubeSpinnerConfig const* const new_config) noexcept {
+    FTubeSpinnerConfig const* const new_config) noexcept {
     actor_config = new_config;
 }
 
@@ -31,7 +32,7 @@ void FSpinnerPresentation::begin_play_presentation() {
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FSpinnerPresentation actor_config is nullptr."));
     }
-    ioj::fatal_if_uobject_ptrs_invalid({
+    fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(instances),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh.Get()),
     });
@@ -60,7 +61,7 @@ void FSpinnerPresentation::end_tick_presentation() {
 }
 
 void FSpinnerPresentation::configure_ismc() {
-    ioj::batch::configure_ismc(*instances, {.mesh = actor_config->mesh.Get()});
+    batch::configure_ismc(*instances, {.mesh = actor_config->mesh.Get()});
 }
 
 void FSpinnerPresentation::update_ismc_transforms() {
@@ -78,7 +79,7 @@ void FSpinnerPresentation::update_ismc_transforms() {
     for (int32 i{0}; i < n; ++i) {
         ismc_transforms[i] = FTransform{
             FRotator{0.0, static_cast<double>(yaws[i]), 0.0},
-            FVector{ioj::to_unreal(::ioj::vector_at(locations, i))},
+            FVector{to_unreal(vector_at(locations, i))},
         };
     }
 }
@@ -101,9 +102,11 @@ void FSpinnerPresentation::update_ismc() {
 }
 
 void FSpinnerPresentation::validate_array_sizes() const {
-    ioj::fatal_if_nums_not_equal({
+    fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(static_cast<int32>(simulation().num_instances())),
         SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }
+
+} // namespace ioj

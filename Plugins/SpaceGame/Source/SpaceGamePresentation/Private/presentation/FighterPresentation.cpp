@@ -13,10 +13,11 @@
 #include <Engine/World.h>
 #include <SandboxISMCComponent.h>
 
-FFighterPresentation::FFighterPresentation(ioj::USandboxISMCComponent& component)
+namespace ioj {
+FFighterPresentation::FFighterPresentation(USandboxISMCComponent& component)
     : instances{&component} {}
 
-void FFighterPresentation::set_actor_config(ioj::FFighterConfig const* const new_config) noexcept {
+void FFighterPresentation::set_actor_config(FFighterConfig const* const new_config) noexcept {
     actor_config = new_config;
 }
 
@@ -24,13 +25,13 @@ void FFighterPresentation::clear_runtime_state_presentation() {
     instances->clear_instances();
 }
 
-void FFighterPresentation::begin_play_presentation(ioj::sim::HealthConstView const healths) {
+void FFighterPresentation::begin_play_presentation(sim::HealthConstView const healths) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::begin_play_presentation);
 
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FFighterPresentation actor_config is nullptr."));
     }
-    ioj::fatal_if_uobject_ptrs_invalid({
+    fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh.Get()),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data.Get()),
     });
@@ -44,7 +45,7 @@ void FFighterPresentation::begin_play_presentation(ioj::sim::HealthConstView con
     commit_visual_data();
 }
 
-void FFighterPresentation::update_visual_data(ioj::sim::HealthConstView const healths) {
+void FFighterPresentation::update_visual_data(sim::HealthConstView const healths) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_visual_data);
     update_ismc(healths);
 }
@@ -69,7 +70,7 @@ void FFighterPresentation::configure_ismc() {
     instances->set_num_custom_data_floats(n_custom_ismc_floats);
 }
 
-void FFighterPresentation::update_ismc(ioj::sim::HealthConstView const healths) {
+void FFighterPresentation::update_ismc(sim::HealthConstView const healths) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_ismc);
 
     auto const data{simulation().entities()};
@@ -77,7 +78,7 @@ void FFighterPresentation::update_ismc(ioj::sim::HealthConstView const healths) 
     auto const ids{data.entity_ids()};
     visible_indices_.Reset();
     for (int32 index{}; index < count; ++index) {
-        if (::ioj::sim::is_alive(healths.health(ids[index]))) {
+        if (sim::is_alive(healths.health(ids[index]))) {
             visible_indices_.Add(index);
         }
     }
@@ -97,15 +98,15 @@ void FFighterPresentation::update_ismc(ioj::sim::HealthConstView const healths) 
             transform_rotations.SetNumUninitialized(chunk.num());
             for (int32 local_index{0}; local_index < chunk_count; ++local_index) {
                 auto const index{visible_indices_[first_index + local_index]};
-                auto const position{ioj::to_unreal(::ioj::vector_at(locations, index))};
-                FVector const direction{ioj::to_unreal(::ioj::vector_at(aim_directions, index))};
+                auto const position{to_unreal(vector_at(locations, index))};
+                FVector const direction{to_unreal(vector_at(aim_directions, index))};
                 auto const rotation{
                     FQuat4f{FQuat::FindBetweenNormals(FVector::ForwardVector, direction)}};
                 transform_positions[local_index] = position;
                 transform_rotations[local_index] = rotation;
 
                 auto custom_data{chunk.custom_data(local_index)};
-                auto const& colour{team_colours_[ioj::to_unreal(teams[index])]};
+                auto const& colour{team_colours_[to_unreal(teams[index])]};
                 custom_data[0] = colour.R;
                 custom_data[1] = colour.G;
                 custom_data[2] = colour.B;
@@ -125,13 +126,15 @@ void FFighterPresentation::draw_debug_shapes() {
     auto const target_locations{data.view_target_locations()};
 
     for (int32 i{0}; i < n; ++i) {
-        FVector const ship_location{ioj::to_unreal(::ioj::vector_at(locations, i))};
+        FVector const ship_location{to_unreal(vector_at(locations, i))};
         if (enable_ship_location_debug_drawing) {
             debug_drawer.draw_sphere(ship_location);
         }
         if (enable_target_debug_drawing && targets[i].is_valid()) {
             debug_drawer.draw_line(ship_location,
-                                   FVector{ioj::to_unreal(::ioj::vector_at(target_locations, i))});
+                                   FVector{to_unreal(vector_at(target_locations, i))});
         }
     }
 }
+
+} // namespace ioj

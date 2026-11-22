@@ -12,15 +12,16 @@ namespace ioj {
 struct FLevelPresentation;
 } // namespace ioj
 
+namespace ioj {
 struct SPACEGAMEPRESENTATION_API FSpinnerPresentation {
-    friend struct ioj::FLevelPresentation;
+    friend struct FLevelPresentation;
   public:
     static constexpr bool is_world_space{false};
 
     explicit FSpinnerPresentation(UInstancedStaticMeshComponent& component);
-    void set_actor_config(ioj::FTubeSpinnerConfig const* new_config) noexcept;
+    void set_actor_config(FTubeSpinnerConfig const* new_config) noexcept;
   private:
-    auto simulation() const -> ::ioj::sim::spinners::Sim const& { return *simulation_; }
+    auto simulation() const -> sim::spinners::Sim const& { return *simulation_; }
 
     void clear_runtime_state_presentation();
     void begin_play_presentation();
@@ -33,9 +34,11 @@ struct SPACEGAMEPRESENTATION_API FSpinnerPresentation {
     void update_ismc();
     void validate_array_sizes() const;
 
-    ioj::FTubeSpinnerConfig const* actor_config{nullptr};
-    ::ioj::sim::spinners::Sim const* simulation_{};
+    FTubeSpinnerConfig const* actor_config{nullptr};
+    sim::spinners::Sim const* simulation_{};
 
     UInstancedStaticMeshComponent* instances{nullptr};
     TArray<FTransform> ismc_transforms;
 };
+
+} // namespace ioj

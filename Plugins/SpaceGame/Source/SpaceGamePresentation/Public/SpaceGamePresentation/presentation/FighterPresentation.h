@@ -13,35 +13,38 @@ class USandboxISMCComponent;
 struct FLevelPresentation;
 } // namespace ioj
 
+namespace ioj {
 struct SPACEGAMEPRESENTATION_API FFighterPresentation {
-    friend struct ioj::FLevelPresentation;
+    friend struct FLevelPresentation;
   public:
     static constexpr int32 n_custom_ismc_floats{3};
 
-    explicit FFighterPresentation(ioj::USandboxISMCComponent& component);
+    explicit FFighterPresentation(USandboxISMCComponent& component);
 
-    void set_actor_config(ioj::FFighterConfig const* new_config) noexcept;
+    void set_actor_config(FFighterConfig const* new_config) noexcept;
   private:
-    auto simulation() const -> ::ioj::sim::fighters::Sim const& { return *simulation_; }
+    auto simulation() const -> sim::fighters::Sim const& { return *simulation_; }
 
     void clear_runtime_state_presentation();
-    void begin_play_presentation(ioj::sim::HealthConstView healths);
-    void update_visual_data(ioj::sim::HealthConstView healths);
+    void begin_play_presentation(sim::HealthConstView healths);
+    void update_visual_data(sim::HealthConstView healths);
     void commit_visual_data();
 
     void configure_ismc();
-    void update_ismc(ioj::sim::HealthConstView healths);
+    void update_ismc(sim::HealthConstView healths);
     void draw_debug_shapes();
 
-    ioj::USandboxISMCComponent* instances{nullptr};
+    USandboxISMCComponent* instances{nullptr};
 
-    ioj::FFighterConfig const* actor_config{nullptr};
+    FFighterConfig const* actor_config{nullptr};
     FTeamColours team_colours_;
     TArray<int32> visible_indices_;
 
-    ioj::FDrawDebugConfig debug_drawer;
+    FDrawDebugConfig debug_drawer;
     bool enable_target_debug_drawing{false};
     bool enable_ship_location_debug_drawing{false};
 
-    ::ioj::sim::fighters::Sim const* simulation_{};
+    sim::fighters::Sim const* simulation_{};
 };
+
+} // namespace ioj
