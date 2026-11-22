@@ -13,7 +13,7 @@
 
 (define mission
   (copy-with scene
-    :settings (settings-layers
+    :settings (merge-settings
       game-settings
       (level-ref scene :settings)
       (settings

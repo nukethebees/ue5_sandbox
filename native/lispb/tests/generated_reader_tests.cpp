@@ -121,7 +121,7 @@ TEST(GeneratedS7Reader, ReadsSparseTypedOverridesWithNestedLayersAndExplicitEmpt
                         *partial);
 
     Interpreter interpreter;
-    auto ast{interpreter.evaluate_ast(R"('(:settings-layers
+    auto ast{interpreter.evaluate_ast(R"('(:merge-settings
       (:actor :max-health 200 :weapon (:weapon :damage 17 :turn-speed 9))
       (:actor :max-health 100 :weapon (:weapon :damage 5) :optional-limit :none)))")};
     ASSERT_TRUE(ast);
@@ -270,10 +270,10 @@ TEST(GeneratedS7Reader, DecodesFixedPositionalRecordsAndChecksArityAndConstraint
 
 TEST(GeneratedS7Reader, RequiresFieldsEvenWhenTheRecordHasValidDefaults) {
     EXPECT_FALSE(read_source<DefaultReadable>("'(:default)"));
-    EXPECT_FALSE(read_source<DefaultReadable>("'(:settings-layers)"));
-    EXPECT_FALSE(read_source<DefaultReadable>("'(:settings-layers (:default :maybe 2))"));
-    auto const layered{read_source<DefaultReadable>(
-        "'(:settings-layers (:default :count 2) (:default :maybe 3))")};
+    EXPECT_FALSE(read_source<DefaultReadable>("'(:merge-settings)"));
+    EXPECT_FALSE(read_source<DefaultReadable>("'(:merge-settings (:default :maybe 2))"));
+    auto const layered{
+        read_source<DefaultReadable>("'(:merge-settings (:default :count 2) (:default :maybe 3))")};
     ASSERT_TRUE(layered);
     EXPECT_PRED_FORMAT2(structurally_equal, (DefaultReadable{2, 3}), *layered);
     auto result{read_source<DefaultReadable>("'(:default :count 2)")};

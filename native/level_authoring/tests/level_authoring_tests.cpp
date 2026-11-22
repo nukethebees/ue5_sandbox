@@ -263,7 +263,7 @@ TEST(NativeSettings, AssignsWholeVectorsOnlyAfterEveryComponentConverts) {
 TEST(NativeSettings, DerivesStarfieldBindingsAndPreservesSparseLayers) {
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "settings.scm"};
-    ASSERT_TRUE(write_files({{path, module_source("game-settings", R"((settings-layers
+    ASSERT_TRUE(write_files({{path, module_source("game-settings", R"((merge-settings
       (settings :starfield (starfield
         :generation (generation :star-count 42 :random-seed -7)
         :star (star :scale 2 :size-multiplier 3 :global-brightness 4
@@ -298,7 +298,7 @@ TEST(NativeSettings, DecodesPresentationLayersIntoExistingNativeValues) {
     initial.presentation.entity_overlay.maximum_range = 4000;
     auto const source{read_test_settings(DefinitionReader{},
                                          R"(
-      (settings-layers
+      (merge-settings
         (settings :presentation (presentation
           :player-ship (player-ship-presentation :boost-effect-colour-intensity 80)
           :entity-overlay (entity-overlay :enabled #f :bar-size-pixels '(32 6)
@@ -445,7 +445,7 @@ TEST(NativeSettings, ReadsShippedStarfieldSettingsAndValidatesEachNestedLayer) {
     auto const path{directory.path() / "settings.scm"};
     ASSERT_TRUE(
         write_files({{path, module_source("game-settings", R"((settings :starfield (starfield
-      :star (settings-layers
+      :star (merge-settings
         (star :scale 2 :size-multiplier 3)
         (star :scale 1)))))")}}));
     auto result{DefinitionReader{}.read_settings_file(path)};
@@ -456,7 +456,7 @@ TEST(NativeSettings, ReadsShippedStarfieldSettingsAndValidatesEachNestedLayer) {
 
     ASSERT_TRUE(
         write_files({{path, module_source("game-settings", R"((settings :starfield (starfield
-      :star (settings-layers (star :scale 0) (star :scale 1)))))")}}));
+      :star (merge-settings (star :scale 0) (star :scale 1)))))")}}));
     result = DefinitionReader{}.read_settings_file(path);
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().front().node_path, "starfield.star.scale");
@@ -538,7 +538,7 @@ TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithLogicAndSparseSettin
         (level :id 'generated-records :title "Generated records"
           :camera (camera :look-at '(capital) :distance distance :offset-direction '(-1 0 1))
           :entities (list (entity :id 'capital :archetype 'capital-ship :team 'blue :position '(0 0 0)))
-          :settings (settings-layers
+          :settings (merge-settings
             (settings :fighters (fighters :speed 9000)
                       :collision-grid (collision-grid :cell-size '(5000 5000 5000)))
             (settings :fighters (fighters :speed 2000)))
@@ -1037,7 +1037,7 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverrides) {
         }
         auto authored{minimal_source()};
         authored.insert(authored.size() - 1,
-                        std::format(R"( :settings (settings-layers
+                        std::format(R"( :settings (merge-settings
                 (settings :fighters (fighters :speed 7000)
                   :collision-grid (collision-grid :cell-size '(2500 2500 10000)))
                 (settings :collision-grid (collision-grid{}))))",

@@ -172,7 +172,7 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
 (define base (module-ref (import-module "Authoring/editor-config.scm") 'scene))
 (define mission
   (copy-with base
-    :settings (settings-layers
+    :settings (merge-settings
       (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
       (level-ref base :settings))
     :entities (append (level-ref base :entities)

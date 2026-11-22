@@ -8,7 +8,7 @@
 
 (define mission
   (copy-with scene
-    :settings (settings-layers
+    :settings (merge-settings
       (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
       (level-ref scene :settings)
       (settings

@@ -73,7 +73,7 @@ void decode_record(DecodeContext context,
         if (ast.node(node).kind == NodeKind::List) {
             auto const children{ast.children(node)};
             if (!children.empty() && ast.node(children.front()).kind == NodeKind::Keyword &&
-                ast.text(children.front()) == "settings-layers") {
+                ast.text(children.front()) == "merge-settings") {
                 for (auto const layer : children.subspan(1)) {
                     self(self, layer);
                 }

@@ -179,7 +179,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(
                 TEXT("Set the mission star scale"),
                 FFileHelper::SaveStringToFile(
-                    TEXT("\n(set! mission (copy-with mission :settings (settings-layers (level-ref "
+                    TEXT("\n(set! mission (copy-with mission :settings (merge-settings (level-ref "
                          "mission :settings) "
                          "(settings :starfield (starfield :star (star :scale 2))))))\n"),
                     *root,

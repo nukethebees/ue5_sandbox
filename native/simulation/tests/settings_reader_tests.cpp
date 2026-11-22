@@ -18,7 +18,7 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
     auto const source{
         ioj::levels::authoring::tests::read_test_settings(DefinitionReader{},
                                                           std::format(R"(
-      (settings-layers
+      (merge-settings
         (settings :fighters (fighters :speed 9000 :laser (laser :damage 17 :max-distance 50000))
                   :turrets (turrets :laser (laser :damage 23)))
         (settings :fighters (fighters :speed {} :laser (laser :damage 31)))))",
@@ -50,7 +50,7 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelLogic) {
       (level :id 'settings-logic :title "Settings and logic" :player 'player
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                :position '(0 0 0)))
-        :settings (settings-layers (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
+        :settings (merge-settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
                     (settings :fighters (fighters :laser (laser :damage 77))))
         :logic (logic
           (define delay (timer))
@@ -64,7 +64,7 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelLogic) {
     EXPECT_PRED_FORMAT2(structurally_equal, expected, level->settings());
     EXPECT_EQ(level->logic(), logic);
 
-    for (auto const field : {"", ":settings (settings)", ":settings (settings-layers)"}) {
+    for (auto const field : {"", ":settings (settings)", ":settings (merge-settings)"}) {
         SCOPED_TRACE(field);
         auto const inherited{ioj::levels::authoring::tests::read_test_level(DefinitionReader{},
                                                                             std::format(R"(
@@ -94,7 +94,7 @@ TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings
       (level :id 'grid :title "Grid" :player 'player
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
                                :position '(0 0 0)))
-        :settings (settings-layers
+        :settings (merge-settings
           (settings :fighters (fighters :speed 7300)
             :collision-grid (collision-grid :level-size '(80000 60000 40000)
                                            :damage-per-overlap-detection 75))

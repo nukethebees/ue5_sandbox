@@ -455,7 +455,7 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
             TEXT("(export mission)\n"
                  "(define scene (module-ref (import-module \"%s/editor-config.scm\") 'scene))\n"
                  "(define mission\n"
-                 "  (copy-with scene :settings (settings-layers\n"
+                 "  (copy-with scene :settings (merge-settings\n"
                  "    (module-ref (import-module \"Settings/level-defaults.scm\") 'game-settings)\n"
                  "    (level-ref scene :settings))))\n"),
             *FPaths::GetBaseFilename(root))};

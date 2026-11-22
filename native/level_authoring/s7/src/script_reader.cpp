@@ -18,7 +18,7 @@ auto dsl_source() -> std::string {
     std::string source{"(begin\n"};
     source.append(s7_record_constructors());
     source.append(logic_dsl_source);
-    source.append("(define (settings-layers . layers) (cons :settings-layers layers))\n");
+    source.append("(define (merge-settings . layers) (cons :merge-settings layers))\n");
     source.append("\n)");
     return source;
 }
