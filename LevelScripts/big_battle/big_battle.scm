@@ -28,4 +28,21 @@
       (define green-flagship-destroyed 
         (entity-destroyed 'capitalship-green-0))
       (define red-flagship-destroyed 
-        (entity-destroyed 'capitalship-red-0)))))
+        (entity-destroyed 'capitalship-red-0))
+
+      (on :when blue-flagship-destroyed
+          :do (list (change-points 'orange 100)
+                    (change-points 'green 100)
+                    (change-points 'red 100)))
+      (on :when orange-flagship-destroyed
+          :do (list (change-points 'blue 100)
+                    (change-points 'green 100)
+                    (change-points 'red 100)))
+      (on :when green-flagship-destroyed
+          :do (list (change-points 'blue 100)
+                    (change-points 'orange 100)
+                    (change-points 'red 100)))
+      (on :when red-flagship-destroyed
+          :do (list (change-points 'blue 100)
+                    (change-points 'orange 100)
+                    (change-points 'green 100))))))
