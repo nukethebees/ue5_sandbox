@@ -44,14 +44,14 @@ inline auto observe_entity(LevelSim const& simulation, EntityId const id)
     auto const access{simulation.read_access()};
     if (id.entity_type() == EntityType::PlayerShip) {
         auto const* player{simulation.player_ship_simulation()};
-        if (!player || player->unique_entity_id != id || !player->is_alive()) {
+        if (!player || player->unique_entity_id != id || !player->is_alive(simulation.entity_tables().health)) {
             return {};
         }
         auto const& state{player->physical_state()};
         return EntityObservation{Vector3f{state.transform.location},
                                  Vector3f{state.velocity},
                                  player->team,
-                                 player->health().health,
+                                 player->health(simulation.entity_tables().health).health,
                                  0};
     }
     switch (id.entity_type()) {

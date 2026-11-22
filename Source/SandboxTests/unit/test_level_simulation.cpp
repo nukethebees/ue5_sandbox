@@ -526,8 +526,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
         !TestTrue(TEXT("Player assets load"), IsValid(config))) {
         return false;
     }
-    auto* actor{ioj::spawn_player_ship(
-        *world.value(), config->classes.player_ship_class)};
+    auto* actor{ioj::spawn_player_ship(*world.value(), config->classes.player_ship_class)};
     if (!TestTrue(TEXT("Player actor is available"), IsValid(actor))) {
         return false;
     }
@@ -561,7 +560,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     ioj::FPlayerPresentation presentation{resources,
                                           config->player_ship,
                                           ioj::default_test_settings().presentation.player_ship,
-                                          *player};
+                                          simulation.read_access()};
     simulation.player_ship_commands()->start_boost();
     simulation.advance(0.325);
     auto const& frame{*player};
@@ -569,27 +568,27 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
               frame.controller_state().effective_action,
               ::ioj::sim::player::BoostBrakeState::None);
     TestEqual(TEXT("Boost start remains observable without a consumer"),
-              frame.presentation_state().boost_start_sequence,
-              uint64{1});
-    presentation.tick(frame);
+              simulation.read_access().frame_events().player.front(),
+              ::ioj::sim::player::PlayerEventKind::BoostStarted);
+    presentation.tick(simulation.read_access());
     TestEqual(TEXT("Completed boost still triggers its pulse"), pulse->activation_count, uint64{1});
     TestFalse(TEXT("Engine effect follows final nonboosting state"), engine->active);
     pulse->Deactivate();
-    presentation.tick(frame);
+    presentation.tick(simulation.read_access());
     TestEqual(
         TEXT("Repeated observation does not replay the pulse"), pulse->activation_count, uint64{1});
     ioj::FPlayerPresentation attached{resources,
                                       config->player_ship,
                                       ioj::default_test_settings().presentation.player_ship,
-                                      frame};
-    attached.tick(frame);
+                                      simulation.read_access()};
+    attached.tick(simulation.read_access());
     TestEqual(TEXT("Late attachment does not replay historical boost starts"),
               pulse->activation_count,
               uint64{1});
     simulation.advance(0.0);
-    TestEqual(TEXT("Zero-step frame preserves the boost sequence"),
-              player->presentation_state().boost_start_sequence,
-              uint64{1});
+    TestEqual(TEXT("Zero-step frame clears player events"),
+              simulation.read_access().frame_events().player.size(),
+              std::size_t{0});
     return true;
 }
 

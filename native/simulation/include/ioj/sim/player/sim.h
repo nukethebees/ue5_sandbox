@@ -11,6 +11,7 @@
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/phase_inputs.h>
 #include <ioj/sim/player/physical_movement_state.h>
+#include <ioj/sim/player/player_events.h>
 #include <ioj/sim/player/player_flight_intent.h>
 #include <ioj/sim/player/player_presentation_state.h>
 #include <ioj/sim/player/player_resource_state.h>
@@ -60,7 +61,7 @@ struct Sim {
     /* **************************************** */
     // Construction and configuration
     /* **************************************** */
-    Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables);
+    Sim(std::pmr::memory_resource& memory);
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -77,7 +78,7 @@ struct Sim {
     auto flight_intent() const noexcept -> PlayerFlightIntent const& { return flight_intent_; }
     auto target_speed() const noexcept -> float;
     void set_config(PlayerSimConfig const& new_config) noexcept;
-    void set_team(Team new_team) noexcept;
+    void set_team(Team new_team, HealthTable const& health_table, EntityLedger& ledger) noexcept;
     void set_speed_sampling_enabled(bool enabled) noexcept { speed_sampling_enabled = enabled; }
 
     /* **************************************** */
@@ -107,11 +108,9 @@ struct Sim {
     // Health and status
     /* **************************************** */
     void add_health(Health added_health);
-    [[nodiscard]] auto health() const -> ShipHealth;
-    [[nodiscard]] auto is_alive() const -> bool;
-    auto consume_death_notification() noexcept -> bool;
+    [[nodiscard]] auto health(HealthTable const& health_table) const -> ShipHealth;
+    [[nodiscard]] auto is_alive(HealthTable const& health_table) const -> bool;
 
-    auto kills() const -> KillCount;
     auto speed() const noexcept -> float;
     auto energy() const -> float;
     auto energy_is_full() const -> bool;
@@ -146,10 +145,13 @@ struct Sim {
     /* **************************************** */
     // Tick phases
     /* **************************************** */
-    void initialise(PlayerSpawnData const& spawn);
-    void update_entity_lookup_table();
-    void prepare_tick(float dt);
-    void think(float dt);
+    void initialise(PlayerSpawnData const& spawn,
+                    EntityTables& tables,
+                    EntityLedger& ledger,
+                    SimClock const& clock);
+    void update_entity_lookup_table(EntityTables& tables, [[maybe_unused]] SimClock const& clock);
+    void prepare_tick(float dt, EntityTables& tables, SimClock const& clock);
+    void think(float dt, PlayerEvents& events);
     void apply_movement(ActionInputs const inputs);
     void generate_fire_commands();
     void resolve_damage_events(ResolutionInputs const inputs);
@@ -160,8 +162,8 @@ struct Sim {
     void reset_speed_responses(PlayerSimulationState& state) const noexcept;
     void update_movement(float dt, PlayerSimulationState& state) const noexcept;
     void update_body_orientation(float dt, PlayerSimulationState& state);
-    void update_boost_brake(float dt, PlayerSimulationState& state);
-    void refresh_effective_action(PlayerSimulationState& state) noexcept;
+    void update_boost_brake(float dt, PlayerSimulationState& state, PlayerEvents& events);
+    void update_propulsion_action(PlayerSimulationState& state, PlayerEvents& events);
 
     /* **************************************** */
     // Weapons
@@ -175,14 +177,13 @@ struct Sim {
     /* **************************************** */
     // Health
     /* **************************************** */
-    void set_health(Health new_health, EntityId killer = {});
-    void die(EntityId killer);
+    void apply_inputs(PlayerSimulationState& state, PlayerEvents& events);
 
     /* **************************************** */
     // Diagnostics
     /* **************************************** */
-    void sample_speed();
-    void configure_speed_sampling();
+    void sample_speed(SimClock const& clock);
+    void configure_speed_sampling(SimClock const& clock);
 
     /* **************************************** */
     // Dependencies and internal state
@@ -200,11 +201,8 @@ struct Sim {
     PlayerFlightIntent flight_intent_{};
     bool fire_requested_{};
     PlayerSimConfig config_{};
-    EntityLedger& ledger_;
-    EntityTables& entity_tables_;
-    HealthTable& health_table_;
-    SimClock const& simulation_clock_;
     Health max_health_{1000};
-    bool death_notification_pending_{false};
+    PlayerInputEvents input_queue_;
+    std::pmr::vector<Health> health_changes_;
 };
 } // namespace ioj::sim::player

@@ -26,10 +26,8 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     sparks.clear();
     auto const* player{view.player()};
     if (resources.player.IsSet() && player != nullptr) {
-        player_.Emplace(resources.player.GetValue(),
-                        config.player_ship,
-                        config.presentation.player_ship,
-                        *player);
+        player_.Emplace(
+            resources.player.GetValue(), config.player_ship, config.presentation.player_ship, view);
     }
 #if WITH_EDITORONLY_DATA
     lasers.debug_drawer = config.laser_debug_drawer;
@@ -85,9 +83,8 @@ void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) 
     }
 
     last_completed_tick_ = completed_tick;
-    auto const* player{view.player()};
     if (player_.IsSet()) {
-        player_->tick(*player);
+        player_->tick(view);
     }
     capital_ships.update_visual_data(view.entity_ledger());
     turrets.update_visual_data();

@@ -43,7 +43,10 @@ namespace ioj::sim::player {
 // Construction and configuration
 /* **************************************** */
 // Level initialisation
-void Sim::initialise(PlayerSpawnData const& spawn) {
+void Sim::initialise(PlayerSpawnData const& spawn,
+                     EntityTables& tables,
+                     EntityLedger& ledger,
+                     SimClock const& clock) {
     config_ = spawn.config;
     team = spawn.team;
 
@@ -55,10 +58,9 @@ void Sim::initialise(PlayerSpawnData const& spawn) {
     laser_mode = spawn.laser_mode;
     laser_fire_rate = spawn.laser_fire_rate;
     max_health_ = spawn.health.max_health;
-    ledger_.record_spawns(
-        EntityType::PlayerShip, team, spawn.health.health, {&unique_entity_id, 1});
+    ledger.record_spawns(EntityType::PlayerShip, team, spawn.health.health, {&unique_entity_id, 1});
     auto const initial_health{spawn.health.health};
-    health_table_.initialise_entities<EntityType::PlayerShip>({&unique_entity_id, 1},
+    tables.health.initialise_entities<EntityType::PlayerShip>({&unique_entity_id, 1},
                                                               initial_health);
 
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::initialise");
@@ -72,8 +74,7 @@ void Sim::initialise(PlayerSpawnData const& spawn) {
     set_laser_mode(LaserFiringState::idle);
     set_laser_fire_rate(laser_fire_rate);
 
-    configure_speed_sampling();
-    refresh_effective_action(state_);
+    configure_speed_sampling(clock);
     planned_state_ = state_;
 }
 void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
@@ -81,22 +82,20 @@ void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
     reset_speed_responses(state_);
 }
 
-Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables)
-    : ledger_{ledger}
-    , entity_tables_{entity_tables}
-    , health_table_{entity_tables.health}
-    , simulation_clock_{clock} {}
+Sim::Sim(std::pmr::memory_resource& memory)
+    : input_queue_{std::pmr::vector<PlayerInputKind>{&memory}}
+    , health_changes_{&memory} {}
 
 /* **************************************** */
 // Tick phases
 /* **************************************** */
 // Preparation
-void Sim::update_entity_lookup_table() {
-    assert(is_preparation_mutation_allowed(simulation_clock_));
+void Sim::update_entity_lookup_table(EntityTables& tables, [[maybe_unused]] SimClock const& clock) {
+    assert(is_preparation_mutation_allowed(clock));
 
-    entity_tables_.publish<EntityType::PlayerShip>({&unique_entity_id, 1}, {&team, 1}, max_health_);
+    tables.publish<EntityType::PlayerShip>({&unique_entity_id, 1}, {&team, 1}, max_health_);
 }
-void Sim::prepare_tick(float const dt) {
+void Sim::prepare_tick(float const dt, EntityTables& tables, SimClock const& clock) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::prepare_tick");
 
     laser_shot_cooldown -= dt;
@@ -105,22 +104,57 @@ void Sim::prepare_tick(float const dt) {
     if (speed_sampling_enabled) {
         --speed_sample_ticks_remaining;
         if (speed_sample_ticks_remaining <= 0) {
-            sample_speed();
+            sample_speed(clock);
             speed_sample_ticks_remaining = speed_sample_tick_period;
         }
     }
-    update_entity_lookup_table();
+    update_entity_lookup_table(tables, clock);
 }
 
 // Thinking
-void Sim::think(float const dt) {
+void Sim::think(float const dt, PlayerEvents& events) {
     planned_state_ = state_;
     auto& state{planned_state_};
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::think");
 
-    update_boost_brake(dt, state);
+    apply_inputs(state, events);
+    update_boost_brake(dt, state, events);
     update_body_orientation(dt, state);
     update_movement(dt, state);
+}
+void Sim::apply_inputs(PlayerSimulationState& state, PlayerEvents& events) {
+    for (auto const input : input_queue_.inputs) {
+        switch (input) {
+            case PlayerInputKind::BoostPressed:
+                flight_intent_.boost_held = true;
+                break;
+            case PlayerInputKind::BoostReleased:
+                flight_intent_.boost_held = false;
+                break;
+            case PlayerInputKind::BrakePressed:
+                flight_intent_.brake_held = true;
+                break;
+            case PlayerInputKind::BrakeReleased:
+                flight_intent_.brake_held = false;
+                break;
+            case PlayerInputKind::EmergencyBrakePressed:
+                flight_intent_.emergency_brake_held = true;
+                break;
+            case PlayerInputKind::EmergencyBrakeReleased:
+                flight_intent_.emergency_brake_held = false;
+                break;
+            case PlayerInputKind::FirePressed:
+                set_laser_mode(LaserFiringState::burst);
+                lasers_fired_this_burst = 0;
+                laser_shot_cooldown = 0.f;
+                continue;
+            case PlayerInputKind::FireReleased:
+                set_laser_mode(LaserFiringState::idle);
+                continue;
+        }
+        update_propulsion_action(state, events);
+    }
+    input_queue_.inputs.clear();
 }
 void Sim::generate_fire_commands() {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::generate_fire_commands");
@@ -133,6 +167,7 @@ void Sim::apply_movement(ActionInputs const inputs) {
     state_ = planned_state_;
     if (std::exchange(fire_requested_, false)) {
         materialize_fire_command(inputs);
+        inputs.events.push_back(PlayerEventKind::ShotFired);
     }
 }
 
@@ -142,8 +177,16 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::resolve_damage_events");
 
     auto const damage_events{inputs.damage_queue.events_for(EntityType::PlayerShip)};
-    auto const original_health{health_table_.health(unique_entity_id)};
-    auto health{health_table_.health(unique_entity_id)};
+    auto& health_table{inputs.health_table};
+    auto const original_health{health_table.health(unique_entity_id)};
+    auto health{original_health};
+    for (auto const delta : health_changes_) {
+        if (is_dead(health)) {
+            break;
+        }
+        health = std::min(Health{health.value() + delta.value()}, max_health_);
+    }
+    health_changes_.clear();
     EntityId killer{};
     auto const damage_count{damage_events.num()};
     auto const damage_amounts{damage_events.damage_amounts()};
@@ -164,21 +207,26 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
         }
     }
 
-    health_table_.set_health(unique_entity_id, health);
+    health_table.set_health(unique_entity_id, health);
 
     if (sim::is_alive(original_health) && is_dead(health)) {
-        die(killer);
+        inputs.deaths.add(killer.is_valid() ? DeathReason::Combat : DeathReason::Unknown,
+                          unique_entity_id,
+                          killer,
+                          Vector3f{state_.physical.transform.location});
     }
 }
 
 /* **************************************** */
 // Identity and accounting
 /* **************************************** */
-void Sim::set_team(Team const new_team) noexcept {
+void Sim::set_team(Team const new_team,
+                   HealthTable const& health_table,
+                   EntityLedger& ledger) noexcept {
     team = new_team;
     if (unique_entity_id.is_valid()) {
-        auto const health{health_table_.health(unique_entity_id)};
-        ledger_.record_status({&unique_entity_id, 1}, {&team, 1}, {&health, 1});
+        auto const health{health_table.health(unique_entity_id)};
+        ledger.record_status({&unique_entity_id, 1}, {&team, 1}, {&health, 1});
     }
 }
 
@@ -272,10 +320,10 @@ void Sim::update_body_orientation(float const dt, PlayerSimulationState& state) 
     presentation.body_transform.rotation = to_quaternion(Rotator3d{new_pitch, new_yaw, new_roll});
 }
 
-void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
+void Sim::update_boost_brake(float const dt, PlayerSimulationState& state, PlayerEvents& events) {
     auto& controller{state.controller};
     auto& resources{state.resources};
-    refresh_effective_action(state);
+    update_propulsion_action(state, events);
 
     auto energy_change{config_.energy_recharge.get()};
     switch (controller.effective_action) {
@@ -296,11 +344,11 @@ void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
     resources.thrust_energy =
         std::clamp<float>(resources.thrust_energy, 0.f, config_.thrust_energy_max);
     if (resources.thrust_energy <= 0.f) {
-        refresh_effective_action(state);
+        update_propulsion_action(state, events);
     }
 }
 
-void Sim::refresh_effective_action(PlayerSimulationState& state) noexcept {
+void Sim::update_propulsion_action(PlayerSimulationState& state, PlayerEvents& events) {
     auto const has_energy = [&state](float const drain) {
         return drain == 0.f || state.resources.thrust_energy > 0.f;
     };
@@ -316,7 +364,10 @@ void Sim::refresh_effective_action(PlayerSimulationState& state) noexcept {
 
     if (action == BoostBrakeState::Boost &&
         state.controller.effective_action != BoostBrakeState::Boost) {
-        ++state.presentation.boost_start_sequence;
+        events.push_back(PlayerEventKind::BoostStarted);
+    } else if (action != BoostBrakeState::Boost &&
+               state.controller.effective_action == BoostBrakeState::Boost) {
+        events.push_back(PlayerEventKind::BoostStopped);
     }
     if (action != state.controller.effective_action) {
         state.controller.effective_action = action;
@@ -340,39 +391,27 @@ void Sim::set_yaw_input(float const input) noexcept {
 }
 
 void Sim::start_boost() {
-    flight_intent_.boost_held = true;
-    refresh_effective_action(state_);
-    planned_state_ = state_;
+    input_queue_.add(PlayerInputKind::BoostPressed);
 }
 
 void Sim::stop_boost() {
-    flight_intent_.boost_held = false;
-    refresh_effective_action(state_);
-    planned_state_ = state_;
+    input_queue_.add(PlayerInputKind::BoostReleased);
 }
 
 void Sim::start_brake() {
-    flight_intent_.brake_held = true;
-    refresh_effective_action(state_);
-    planned_state_ = state_;
+    input_queue_.add(PlayerInputKind::BrakePressed);
 }
 
 void Sim::start_emergency_brake() {
-    flight_intent_.emergency_brake_held = true;
-    refresh_effective_action(state_);
-    planned_state_ = state_;
+    input_queue_.add(PlayerInputKind::EmergencyBrakePressed);
 }
 
 void Sim::stop_emergency_brake() {
-    flight_intent_.emergency_brake_held = false;
-    refresh_effective_action(state_);
-    planned_state_ = state_;
+    input_queue_.add(PlayerInputKind::EmergencyBrakeReleased);
 }
 
 void Sim::stop_brake() {
-    flight_intent_.brake_held = false;
-    refresh_effective_action(state_);
-    planned_state_ = state_;
+    input_queue_.add(PlayerInputKind::BrakeReleased);
 }
 
 /* **************************************** */
@@ -404,13 +443,11 @@ void Sim::update_laser_firing() {
 }
 
 void Sim::start_fire_laser() {
-    set_laser_mode(LaserFiringState::burst);
-    lasers_fired_this_burst = 0;
-    laser_shot_cooldown = 0.f;
+    input_queue_.add(PlayerInputKind::FirePressed);
 }
 
 void Sim::stop_fire_laser() {
-    set_laser_mode(LaserFiringState::idle);
+    input_queue_.add(PlayerInputKind::FireReleased);
 }
 
 void Sim::fire_laser() {
@@ -505,54 +542,16 @@ void Sim::set_laser_fire_rate(ShipFireRate const value) noexcept {
 /* **************************************** */
 // Health and status
 /* **************************************** */
-void Sim::add_health(Health const added_health) {
-    if (!is_alive()) {
-        return;
-    }
-    set_health(Health{health_table_.health(unique_entity_id).value() + added_health.value()});
+void Sim::add_health(Health const delta) {
+    health_changes_.push_back(delta);
 }
 
-void Sim::set_health(Health const new_health, EntityId const killer) {
-    auto health{health_table_.health(unique_entity_id)};
-    if (new_health == health || !sim::is_alive(health)) {
-        return;
-    }
-
-    health = std::min(new_health, max_health_);
-    health_table_.set_health(unique_entity_id, health);
-
-    if (!sim::is_alive(health)) {
-        die(killer);
-    }
+auto Sim::health(HealthTable const& health_table) const -> ShipHealth {
+    return {health_table.health(unique_entity_id), max_health_};
 }
 
-auto Sim::health() const -> ShipHealth {
-    return {health_table_.health(unique_entity_id), max_health_};
-}
-
-auto Sim::is_alive() const -> bool {
-    return unique_entity_id.is_valid() && sim::is_alive(health_table_.health(unique_entity_id));
-}
-
-void Sim::die(EntityId const killer) {
-    auto const reason{killer.is_valid() ? DeathReason::Combat : DeathReason::Unknown};
-    EntityDeathInfo deaths;
-    deaths.add_uninitialised(1);
-    auto const row{deaths.view()};
-    row.victims()[0] = unique_entity_id;
-    row.killers()[0] = killer;
-    row.reasons()[0] = reason;
-    row.locations()[0] = Vector3f{state_.physical.transform.location};
-    ledger_.record_deaths(deaths.const_view(), simulation_clock_.get_completed_ticks());
-    death_notification_pending_ = true;
-}
-
-auto Sim::consume_death_notification() noexcept -> bool {
-    return std::exchange(death_notification_pending_, false);
-}
-
-auto Sim::kills() const -> KillCount {
-    return ledger_.kills(unique_entity_id);
+auto Sim::is_alive(HealthTable const& health_table) const -> bool {
+    return unique_entity_id.is_valid() && sim::is_alive(health_table.health(unique_entity_id));
 }
 
 auto Sim::speed() const noexcept -> float {
@@ -578,8 +577,8 @@ auto Sim::laser_effective_range() const noexcept -> float {
 /* **************************************** */
 // Diagnostics
 /* **************************************** */
-void Sim::sample_speed() {
-    speed_samples[speed_sample_index] = {std::clamp(simulation_clock_.simulation_time(), 0.0, 1e9),
+void Sim::sample_speed(SimClock const& clock) {
+    speed_samples[speed_sample_index] = {std::clamp(clock.simulation_time(), 0.0, 1e9),
                                          std::clamp(size(state_.physical.velocity), 0.0, 100e3)};
     ++speed_sample_index;
     if (speed_sample_index >= speed_sample_max) {
@@ -587,13 +586,13 @@ void Sim::sample_speed() {
     }
 }
 
-void Sim::configure_speed_sampling() {
+void Sim::configure_speed_sampling(SimClock const& clock) {
     static constexpr double sample_rate_hz{60.0};
     static constexpr double sample_window_seconds{5.0};
     std::int32_t const sample_tick_period{
-        simulation_clock_.frequency_to_tick_period<std::int32_t>(Frequency::make(sample_rate_hz))};
+        clock.frequency_to_tick_period<std::int32_t>(Frequency::make(sample_rate_hz))};
     SimTick const sample_window_ticks{
-        simulation_clock_.duration_to_tick_period(Duration::make(sample_window_seconds))};
+        clock.duration_to_tick_period(Duration::make(sample_window_seconds))};
 
     auto const sample_count{(sample_window_ticks.value() + sample_tick_period - 1) /
                             sample_tick_period};

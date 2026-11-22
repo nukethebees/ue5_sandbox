@@ -156,7 +156,7 @@ void expect_health_mappings(LevelSim const& simulation) {
     validate.operator()<EntityType::Turret>(world.turrets().get_entities(),
                                             world.turrets().healths());
     if (auto const* const player{simulation.player_ship_simulation()}) {
-        EXPECT_EQ(table.health(player->unique_entity_id), player->health().health);
+        EXPECT_EQ(table.health(player->unique_entity_id), player->health(simulation.entity_tables().health).health);
     }
 }
 }
@@ -781,7 +781,7 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     EXPECT_EQ(simulation.entity_ledger().count_alive(), 5)
         << "Every compiled initial entity is registered";
     auto const& health_table{simulation.entity_tables().health};
-    EXPECT_EQ(health_table.health(player->unique_entity_id), player->health().health)
+    EXPECT_EQ(health_table.health(player->unique_entity_id), player->health(simulation.entity_tables().health).health)
         << "Player health is stored in the world health table";
     auto const& turret_view{simulation.turrets()};
     auto const turrets{turret_view.get_entities()};
@@ -810,8 +810,8 @@ TEST(NativeSimulation, PlayerPreservesPartialSpawnHealth) {
 
     auto const* const player{simulation.player_ship_simulation()};
     ASSERT_NE(player, nullptr);
-    EXPECT_EQ(player->health().health.value(), 50);
-    EXPECT_EQ(player->health().max_health.value(), 100);
+    EXPECT_EQ(player->health(simulation.entity_tables().health).health.value(), 50);
+    EXPECT_EQ(player->health(simulation.entity_tables().health).max_health.value(), 100);
 }
 
 TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings) {
@@ -895,7 +895,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
     EXPECT_EQ(simulation.fighters().num_instances(), fighter_count_before - 2);
     EXPECT_EQ(simulation.turrets().num_instances(), 1);
-    EXPECT_TRUE(is_dead(player->health().health));
+    EXPECT_TRUE(is_dead(player->health(simulation.entity_tables().health).health));
     expect_entity_unregistered(simulation, player->unique_entity_id);
 
     simulation.advance(tick_period);

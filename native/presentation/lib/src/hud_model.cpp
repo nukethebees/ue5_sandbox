@@ -137,12 +137,13 @@ auto HudModel::collect_entity_count_data() -> bool {
 auto HudModel::collect_player_status_data() -> bool {
     std::optional<PlayerStatusHudData> next;
     if (auto const* player{player_for_collection()}) {
-        next.emplace(PlayerStatusHudData{.health = player->health(),
-                                         .speed = player->speed(),
-                                         .target_speed = player->target_speed(),
-                                         .energy = player->energy(),
-                                         .points = player->kills(),
-                                         .fire_rate = player->laser_fire_rate});
+        next.emplace(PlayerStatusHudData{
+            .health = player->health(simulation_->entity_tables().health),
+            .speed = player->speed(),
+            .target_speed = player->target_speed(),
+            .energy = player->energy(),
+            .points = simulation_->entity_ledger().kills(player->unique_entity_id),
+            .fire_rate = player->laser_fire_rate});
     }
     return hud_detail::replace(player_status_data_, next);
 }

@@ -104,7 +104,7 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
         simulation.advance(dt);
         auto const capital{observe_entity(simulation, capital_id)};
         auto const damage{(index + 1) * collision_damage_test::overlap_damage};
-        EXPECT_EQ(player->health().health.value(), collision_damage_test::player_health - damage);
+        EXPECT_EQ(player->health(simulation.entity_tables().health).health.value(), collision_damage_test::player_health - damage);
         EXPECT_EQ(capital ? capital->health.value() : 0,
                   index == 2 ? 0 : collision_damage_test::capital_health - damage);
     }

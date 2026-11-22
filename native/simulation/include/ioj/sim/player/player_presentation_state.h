@@ -19,7 +19,6 @@ namespace ioj::sim::player {
 struct PlayerPresentationState {
     enum class Field : std::uint8_t {
         body_transform,
-        boost_start_sequence,
     };
 
     template <Field Selected, typename Self>
@@ -29,9 +28,6 @@ struct PlayerPresentationState {
     {
         if constexpr (Selected == Field::body_transform) {
             return (self.body_transform);
-        }
-        if constexpr (Selected == Field::boost_start_sequence) {
-            return (self.boost_start_sequence);
         }
     }
 
@@ -47,26 +43,22 @@ struct PlayerPresentationState {
         switch (field) {
             case Field::body_transform:
                 return invoke_field<Field::body_transform>(self, std::forward<Visitor>(visitor));
-            case Field::boost_start_sequence:
-                return invoke_field<Field::boost_start_sequence>(self,
-                                                                 std::forward<Visitor>(visitor));
         }
         assert((false && "Invalid record field"));
         std::unreachable();
     }
 
     Transform3d body_transform{};
-    std::uint64_t boost_start_sequence{};
 };
 } // namespace ioj::sim::player
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::player::PlayerPresentationState::Field>() noexcept
     -> std::size_t {
-    return 2ULL;
+    return 1ULL;
 }
 
 template <>
-inline constexpr auto enum_strings<sim::player::PlayerPresentationState::Field, Name>{PackedStrings{
-    "body_transform\000boost_start_sequence", std::array<std::uint8_t, 3>{0, 15, 36}}};
+inline constexpr auto enum_strings<sim::player::PlayerPresentationState::Field, Name>{
+    PackedStrings{"body_transform", std::array<std::uint8_t, 2>{0, 15}}};
 } // namespace ioj

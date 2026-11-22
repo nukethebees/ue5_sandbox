@@ -48,10 +48,10 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     /* **************************************** */
     ATestSpaceShip();
     auto make_spawn_data() const -> sim::player::PlayerSpawnData;
-    void bind_simulation(sim::player::CommandInterface new_commands,
-                         sim::player::Sim const& new_simulation);
+    void bind_simulation(sim::LevelSim& level);
     void unbind_simulation();
-    auto has_simulation() const noexcept -> bool { return bound_simulation != nullptr; }
+    auto commands() -> sim::player::CommandInterface;
+    auto has_simulation() const noexcept -> bool { return bound_level_ != nullptr; }
 
     /* **************************************** */
     // Entity identity and configuration
@@ -63,26 +63,10 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
         initial_.health = settings::PositiveHealth::make(sim::Health{value});
     }
 
-
     /* **************************************** */
-    // Flight controls
-    /* **************************************** */
-    void set_pitch_input(float input);
-    void set_yaw_input(float input);
-    void set_accelerator(float input);
-    void start_boost();
-    void stop_boost();
-    void start_brake();
-    void start_emergency_brake();
-    void stop_emergency_brake();
-    void stop_brake();
-
-    /* **************************************** */
-    // Energy and weapons
+    // Weapons
     /* **************************************** */
 
-    void start_fire_laser();
-    void stop_fire_laser();
     void upgrade_laser();
     auto get_laser_fire_rate() const noexcept -> ETestShipFireRate;
     auto get_laser_firing_mode() const noexcept -> sim::LaserFiringState;
@@ -93,7 +77,6 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     /* **************************************** */
     // Health and collision
     /* **************************************** */
-    void add_health(int32 added_health);
     auto get_health_info() const -> FShipHealth;
     auto is_alive() const noexcept -> bool;
 
@@ -101,7 +84,6 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     auto get_middle_socket() const -> FTransform;
 
     FOnPlayerShipDied on_player_ship_died;
-
 
     /* **************************************** */
     // Presentation
@@ -118,7 +100,6 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     /* **************************************** */
     auto GetVelocity() const -> FVector override;
 
-    auto commands() -> sim::player::CommandInterface&;
     auto simulation() const -> sim::player::Sim const&;
 
     void handle_simulation_death();
@@ -154,8 +135,7 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     bool debug_forward_direction{false};
 #endif
 
-    std::optional<sim::player::CommandInterface> bound_commands_;
-    sim::player::Sim const* bound_simulation{nullptr};
+    sim::LevelSim* bound_level_{};
 
   public:
 #if WITH_EDITORONLY_DATA

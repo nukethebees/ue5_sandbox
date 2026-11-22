@@ -511,7 +511,7 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
 
     auto& frame{registration.radar_frame_store->next()};
     auto const* player_ship{model_.player_for_collection()};
-    if (!player_ship || !player_ship->is_alive()) {
+    if (!player_ship || !player_ship->is_alive(model_.level().entity_tables().health)) {
         frame.instances.Reset();
         registration.radar_frame_store->publish();
         return;

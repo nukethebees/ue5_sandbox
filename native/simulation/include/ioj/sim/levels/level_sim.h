@@ -66,6 +66,15 @@ struct LevelSim {
     /* **************************************** */
     // Configuration and commands
     /* **************************************** */
+    void set_player_team(Team team) {
+        player_ship_simulation_.value().set_team(team, entity_tables_.health, entity_ledger_);
+    }
+    void add_player_health(Health delta) {
+        auto& player{player_ship_simulation_.value()};
+        if (player.is_alive(entity_tables_.health)) {
+            player.add_health(delta);
+        }
+    }
     auto player_ship_commands() noexcept -> std::optional<player::CommandInterface> {
         if (!player_ship_simulation_) {
             return std::nullopt;

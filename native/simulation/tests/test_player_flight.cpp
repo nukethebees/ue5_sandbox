@@ -62,6 +62,96 @@ auto velocity(LevelSim& simulation) -> Vector3d {
 
 using namespace player_flight_tests;
 
+TEST(PlayerFlight, QueuedTapProducesOrderedTransitionsOnOneTick) {
+    LevelSim simulation{make_data().compile()};
+    start(simulation);
+    auto commands{simulation.player_ship_commands().value()};
+    commands.start_boost();
+    commands.start_boost();
+    commands.stop_boost();
+    commands.start_fire_laser();
+    commands.stop_fire_laser();
+    simulation.advance(0.0);
+    auto const& events{simulation.read_access().frame_events().player};
+    EXPECT_TRUE(events.empty());
+    advance_ticks(simulation, 1);
+    ASSERT_EQ(events.size(), 2u);
+    EXPECT_EQ(events[0], player::PlayerEventKind::BoostStarted);
+    EXPECT_EQ(events[1], player::PlayerEventKind::BoostStopped);
+    EXPECT_EQ(player_sim(simulation).controller_state().effective_action,
+              player::BoostBrakeState::None);
+    simulation.advance(0.0);
+    EXPECT_TRUE(events.empty());
+}
+
+TEST(PlayerFlight, FullInputQueueAcceptsNewEdgesAfterTheNextTick) {
+    LevelSim simulation{make_data().compile()};
+    start(simulation);
+    auto commands{simulation.player_ship_commands().value()};
+    for (int index{}; index < 255; ++index) {
+        commands.start_boost();
+    }
+    commands.stop_boost();
+    advance_ticks(simulation, 1);
+    auto const& events{simulation.read_access().frame_events().player};
+    ASSERT_EQ(events.size(), 1u);
+    EXPECT_EQ(events.front(), player::PlayerEventKind::BoostStarted);
+
+    commands.stop_boost();
+    advance_ticks(simulation, 1);
+    ASSERT_EQ(events.size(), 1u);
+    EXPECT_EQ(events.front(), player::PlayerEventKind::BoostStopped);
+}
+
+TEST(PlayerFlight, LethalCommandPublishesAtResolutionAndStoppedAdvanceClearsDeaths) {
+    LevelSim simulation{make_data().compile()};
+    auto const& ship{player_sim(simulation)};
+    auto const id{ship.unique_entity_id};
+    simulation.add_player_health(
+        Health{-ship.health(simulation.entity_tables().health).health.value()});
+    simulation.add_player_health(Health{10});
+
+    auto const& events{simulation.read_access().frame_events()};
+    simulation.advance(simulation.clock().tick_period());
+    EXPECT_TRUE(ship.is_alive(simulation.entity_tables().health));
+    EXPECT_EQ(events.deaths.num(), 0u);
+
+    start(simulation);
+    simulation.advance(0.0);
+    EXPECT_TRUE(ship.is_alive(simulation.entity_tables().health));
+    advance_ticks(simulation, 1);
+    EXPECT_FALSE(ship.is_alive(simulation.entity_tables().health));
+    ASSERT_EQ(events.deaths.num(), 1u);
+    EXPECT_EQ(events.deaths.victims()[0], id);
+    auto const& ledger{simulation.entity_ledger()};
+    EXPECT_EQ(ledger.history().death_ticks()[ledger.history_index(id)], events.base_tick);
+
+    simulation.stop_run(RunEndReason::WorldEnd);
+    EXPECT_EQ(events.deaths.num(), 1u);
+    simulation.advance(0.0);
+    EXPECT_EQ(events.deaths.num(), 0u);
+}
+
+TEST(PlayerFlight, HeldBoostStartsOnlyWhenBrakeReleases) {
+    LevelSim simulation{make_data().compile()};
+    start(simulation);
+    auto commands{simulation.player_ship_commands().value()};
+    auto const& events{simulation.read_access().frame_events().player};
+    commands.start_brake();
+    commands.start_boost();
+    advance_ticks(simulation, 1);
+    EXPECT_TRUE(events.empty());
+
+    commands.stop_brake();
+    advance_ticks(simulation, 1);
+    ASSERT_EQ(events.size(), 1u);
+    EXPECT_EQ(events.front(), player::PlayerEventKind::BoostStarted);
+    advance_ticks(simulation, 1);
+    EXPECT_TRUE(events.empty());
+    EXPECT_EQ(player_sim(simulation).controller_state().effective_action,
+              player::BoostBrakeState::Boost);
+}
+
 TEST(PlayerFlight, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
     LevelSim simulation{make_data().compile()};
     start(simulation);

@@ -1,6 +1,6 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
-#include <ioj/sim/sim_clock.h>
+#include <ioj/sim/levels/level_sim.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
@@ -36,11 +36,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     ioj::FBenchmarkControlInputs benchmark_input_;
     ioj::FGlobalControlInputs global_input_;
     ioj::FPlayerControlContexts contexts_;
-    ::ioj::sim::SimClock clock_;
-    ::ioj::sim::EntityLedger ledger_;
-    ::ioj::sim::EntityTables tables_{};
-    ::ioj::sim::player::Sim ship_simulation_{clock_, ledger_, tables_};
-    ::ioj::sim::player::CommandInterface ship_commands_{ship_simulation_};
+    std::optional<ioj::sim::LevelSim> simulation_;
 
     BEFORE_EACH()
     {
@@ -52,10 +48,12 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         }
         auto& world{*world_result.value()};
         controller_ = world.SpawnActor<ioj::ASpaceGamePlayerController>();
-        ship_ =
-            ioj::spawn_player_ship(world, config->classes.player_ship_class);
+        ship_ = ioj::spawn_player_ship(world, config->classes.player_ship_class);
         if (IsValid(ship_)) {
-            ship_->bind_simulation(ship_commands_, ship_simulation_);
+            ioj::sim::LevelSimInitData data;
+            data.player = ship_->make_spawn_data();
+            simulation_.emplace(std::move(data));
+            ship_->bind_simulation(*simulation_);
         }
         camera_ = world.SpawnActor<ACameraActor>();
         component_ = NewObject<UEnhancedInputComponent>(controller_);
@@ -140,23 +138,35 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
 
     TEST_METHOD(UnbindNeutralisesAllContinuousAndHeldShipInput)
     {
+        simulation_->start();
+        auto const tick_period{simulation_->clock().tick_period()};
         contexts_.set_ship(ship_);
         contexts_.set_control_context(::ioj::levels::ControlContext::Player);
-        ship_->set_pitch_input(1.f);
-        ship_->set_yaw_input(1.f);
-        ship_->set_accelerator(1.f);
-        ship_->start_boost();
-        ship_->start_brake();
-        ship_->start_emergency_brake();
-        ship_->start_fire_laser();
+        ship_->commands().set_pitch_input(1.f);
+        ship_->commands().set_yaw_input(1.f);
+        ship_->commands().set_accelerator(1.f);
+        ship_->commands().start_boost();
+        ship_->commands().start_brake();
+        ship_->commands().start_emergency_brake();
+        ship_->commands().set_laser_fire_rate(ioj::sim::ShipFireRate::Burst3);
+        ship_->commands().start_fire_laser();
+        simulation_->advance(tick_period);
+        auto const& intent{simulation_->player_ship_simulation()->flight_intent()};
+        TestRunner->TestTrue(TEXT("Propulsion buttons are held before unbind"),
+                             intent.boost_held && intent.brake_held && intent.emergency_brake_held);
+        TestRunner->TestTrue(TEXT("Burst is active before unbind"),
+                             ship_->get_laser_firing_mode() == ioj::sim::LaserFiringState::burst);
+
         contexts_.set_control_context(::ioj::levels::ControlContext::None);
-        auto const& intent{ship_simulation_.flight_intent()};
         TestRunner->TestTrue(TEXT("Pitch and yaw clear"), intent.pitch == 0.f && intent.yaw == 0.f);
-        TestRunner->TestTrue(TEXT("Accelerator and held propulsion clear"),
-                             intent.accelerator == 0.f && !intent.boost_held &&
-                                 !intent.brake_held && !intent.emergency_brake_held);
-        TestRunner->TestFalse(TEXT("Primary fire clears"),
-                              ship_->get_laser_firing_mode() != ::ioj::sim::LaserFiringState::idle);
+        TestRunner->TestTrue(TEXT("Accelerator clears"), intent.accelerator == 0.f);
+
+        simulation_->advance(tick_period);
+        TestRunner->TestTrue(TEXT("Held propulsion clears on the next tick"),
+                             !intent.boost_held && !intent.brake_held &&
+                                 !intent.emergency_brake_held);
+        TestRunner->TestTrue(TEXT("Primary fire clears on the next tick"),
+                             ship_->get_laser_firing_mode() == ioj::sim::LaserFiringState::idle);
     }
 
     TEST_METHOD(BenchmarkRepeatAndShutdownRemoveEveryOwnedBinding)

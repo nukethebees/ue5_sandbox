@@ -27,6 +27,7 @@ class HudModel {
     auto tick(PeriodicTickCountdown8::counter_type num_ticks) -> HudChanges;
     auto force_sample() -> HudChanges;
 
+    auto level() const -> sim::LevelReadAccess const& { return simulation_.value(); }
     auto active() const -> bool { return simulation_.has_value(); }
     auto entity_count_data() const -> EntityCountHudData const& { return entity_count_data_; }
     auto player_status_data() const -> std::optional<PlayerStatusHudData> const& {

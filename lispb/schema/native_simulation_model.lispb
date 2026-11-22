@@ -236,7 +236,6 @@
   (record PlayerPresentationState
     :generate-visitor true
     (member body_transform @native_transform3d :initializer "")
-    (member boost_start_sequence std::uint64_t :initializer "")
     (projections (cpp))))
 
 (module native_player_player_simulation_state

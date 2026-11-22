@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/player/sim.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 
@@ -23,12 +24,12 @@ struct SPACEGAMEPRESENTATION_API FPlayerPresentation {
     FPlayerPresentation(FPlayerPresentationResources resources,
                         FPlayerShipConfig const& config,
                         settings::PlayerPresentation const& settings,
-                        sim::player::Sim const& initial_state);
-    void tick(sim::player::Sim const& state);
+                        sim::LevelReadAccess const& view);
+    void tick(sim::LevelReadAccess const& view);
   private:
     FPlayerPresentationResources resources_;
     sim::player::BoostBrakeState boost_brake_state_{sim::player::BoostBrakeState::None};
-    uint64 boost_start_sequence_{};
+    sim::SimTick last_tick_{};
 };
 
 } // namespace ioj

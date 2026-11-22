@@ -84,6 +84,7 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
         simulation.advance(1.0);
 
         auto const shots{rate == ShipFireRate::Single ? 1u : 3u};
+        EXPECT_EQ(simulation.read_access().frame_events().player.size(), shots);
         EXPECT_EQ(simulation.lasers().get_number_spawned(), shots);
         EXPECT_EQ(simulation.player_ship_simulation()->laser_firing_mode, LaserFiringState::idle);
         simulation.advance(1.0);
@@ -249,7 +250,7 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
 
     auto const* const player{simulation.player_ship_simulation()};
     EXPECT_NEAR(player->physical_state().transform.location.y(), 100.0, 0.001);
-    EXPECT_EQ(player->health().health.value(), 75);
+    EXPECT_EQ(player->health(simulation.entity_tables().health).health.value(), 75);
 }
 
 TEST(TickPhases, AuthoredSpawnCanBeHitOnItsDispatchTick) {
@@ -354,12 +355,12 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterwa
     simulation.advance(period);
 
     auto const* player{simulation.player_ship_simulation()};
-    EXPECT_EQ(player->health().health.value(), 100);
+    EXPECT_EQ(player->health(simulation.entity_tables().health).health.value(), 100);
     EXPECT_EQ(laser_sim.num_instances(), 1);
 
     simulation.advance(period);
 
-    EXPECT_EQ(player->health().health.value(), 75);
+    EXPECT_EQ(player->health(simulation.entity_tables().health).health.value(), 75);
     EXPECT_EQ(laser_sim.num_instances(), 0);
     EXPECT_NEAR(player->physical_state().transform.location.y(), 200.0, 0.001);
 
@@ -387,10 +388,10 @@ TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
     simulation.start();
     simulation.advance(clk_period);
-    EXPECT_TRUE(is_dead(player->health().health));
+    EXPECT_TRUE(is_dead(player->health(simulation.entity_tables().health).health));
     EXPECT_EQ(simulation.lasers().get_number_spawned(), 0);
-    simulation.player_ship_commands()->add_health(Health{100});
-    EXPECT_TRUE(is_dead(player->health().health));
+    simulation.add_player_health(Health{100});
+    EXPECT_TRUE(is_dead(player->health(simulation.entity_tables().health).health));
     simulation.advance(clk_period);
     EXPECT_EQ(simulation.lasers().get_number_spawned(), 1);
     EXPECT_EQ(simulation.lasers().num_instances(), 1);

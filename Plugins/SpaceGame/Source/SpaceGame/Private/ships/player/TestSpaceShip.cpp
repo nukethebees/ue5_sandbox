@@ -1,5 +1,6 @@
 #include "SpaceGame/ships/player/TestSpaceShip.h"
 
+#include <ioj/sim/levels/level_sim.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -80,28 +81,25 @@ auto ATestSpaceShip::make_spawn_data() const -> sim::player::PlayerSpawnData {
     return result;
 }
 
-void ATestSpaceShip::bind_simulation(sim::player::CommandInterface new_commands,
-                                     sim::player::Sim const& new_simulation) {
-    bound_commands_.emplace(new_commands);
-    bound_simulation = &new_simulation;
+void ATestSpaceShip::bind_simulation(sim::LevelSim& level) {
+    bound_level_ = &level;
 #if WITH_EDITOR
-    new_commands.set_speed_sampling_enabled(true);
+    commands().set_speed_sampling_enabled(true);
 #endif
 }
 
 void ATestSpaceShip::unbind_simulation() {
-    bound_commands_.reset();
-    bound_simulation = nullptr;
+    bound_level_ = nullptr;
 }
 
-auto ATestSpaceShip::commands() -> sim::player::CommandInterface& {
-    checkf(bound_commands_.has_value(), TEXT("Player input requires bound simulation commands"));
-    return *bound_commands_;
+auto ATestSpaceShip::commands() -> sim::player::CommandInterface {
+    checkf(bound_level_, TEXT("Player input requires bound simulation commands"));
+    return bound_level_->player_ship_commands().value();
 }
 
 auto ATestSpaceShip::simulation() const -> sim::player::Sim const& {
-    checkf(bound_simulation, TEXT("Player status requires a bound level simulation"));
-    return *bound_simulation;
+    checkf(bound_level_, TEXT("Player status requires a bound level simulation"));
+    return *bound_level_->player_ship_simulation();
 }
 
 void ATestSpaceShip::handle_simulation_death() {
@@ -120,77 +118,31 @@ void ATestSpaceShip::configure_ship_mesh() {
 // Entity identity and configuration
 /* **************************************** */
 auto ATestSpaceShip::get_unique_id() const noexcept -> sim::EntityId {
-    return bound_simulation ? bound_simulation->unique_entity_id : sim::EntityId{};
+    return bound_level_ ? simulation().unique_entity_id : sim::EntityId{};
 }
 
 auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
-    return bound_simulation ? to_unreal(bound_simulation->team) : team;
+    return bound_level_ ? to_unreal(simulation().team) : team;
 }
 
 void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
     team = new_team;
-    if (bound_simulation) {
-        commands().set_team(to_native(new_team));
+    if (bound_level_) {
+        bound_level_->set_player_team(to_native(new_team));
     }
 }
-
-
 
 /* **************************************** */
 // Flight controls
 /* **************************************** */
-void ATestSpaceShip::set_pitch_input(float const input) {
-    commands().set_pitch_input(input);
-}
-void ATestSpaceShip::set_yaw_input(float const input) {
-    commands().set_yaw_input(input);
-}
-void ATestSpaceShip::set_accelerator(float const input) {
-    commands().set_accelerator(input);
-}
-
-void ATestSpaceShip::start_boost() {
-    commands().start_boost();
-}
-
-void ATestSpaceShip::stop_boost() {
-    commands().stop_boost();
-}
-
-void ATestSpaceShip::start_brake() {
-    commands().start_brake();
-}
-
-void ATestSpaceShip::start_emergency_brake() {
-    commands().start_emergency_brake();
-}
-void ATestSpaceShip::stop_emergency_brake() {
-    commands().stop_emergency_brake();
-}
-
-void ATestSpaceShip::stop_brake() {
-    commands().stop_brake();
-}
 
 auto ATestSpaceShip::GetVelocity() const -> FVector {
-    return bound_simulation ? to_unreal(bound_simulation->physical_state().velocity)
-                            : FVector::ZeroVector;
+    return bound_level_ ? to_unreal(simulation().physical_state().velocity) : FVector::ZeroVector;
 }
-
-
 
 /* **************************************** */
-// Energy and weapons
+// Weapons
 /* **************************************** */
-
-
-void ATestSpaceShip::start_fire_laser() {
-    commands().start_fire_laser();
-}
-
-void ATestSpaceShip::stop_fire_laser() {
-    commands().stop_fire_laser();
-}
 
 void ATestSpaceShip::upgrade_laser() {
     commands().upgrade_laser();
@@ -214,7 +166,7 @@ void ATestSpaceShip::select_previous_laser_fire_rate() noexcept {
 
 void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept {
     initial_.laser_fire_rate = to_native(value);
-    if (bound_simulation) {
+    if (bound_level_) {
         commands().set_laser_fire_rate(to_native(value));
     }
 }
@@ -222,18 +174,11 @@ void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept
 /* **************************************** */
 // Health and collision
 /* **************************************** */
-void ATestSpaceShip::add_health(int32 const added_health) {
-    commands().add_health(sim::Health{added_health});
-    if (commands().consume_death_notification()) {
-        handle_simulation_death();
-    }
-}
-
 auto ATestSpaceShip::get_health_info() const -> FShipHealth {
-    if (!bound_simulation) {
+    if (!bound_level_) {
         return FShipHealth{initial_.health.get().value()};
     }
-    auto const native_health{bound_simulation->health()};
+    auto const native_health{simulation().health(bound_level_->entity_tables().health)};
     return {native_health.health.value(), native_health.max_health.value()};
 }
 
@@ -248,7 +193,6 @@ auto ATestSpaceShip::get_collision_mesh() const -> UStaticMesh const* {
 auto ATestSpaceShip::get_middle_socket() const -> FTransform {
     return to_unreal(simulation().get_middle_socket());
 }
-
 
 /* **************************************** */
 // Presentation

@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include "ioj/levels/team.h"
-#include "ioj/sim/entities/health.h"
 #include "ioj/sim/player/sim.h"
 
 namespace ioj::sim::player {
@@ -14,8 +12,6 @@ class CommandInterface {
         : simulation{new_target} {}
 
     void set_config(PlayerSimConfig const& config) noexcept { simulation.set_config(config); }
-
-    void set_team(::ioj::Team team) noexcept { simulation.set_team(team); }
 
     void set_speed_sampling_enabled(bool enabled) noexcept {
         simulation.set_speed_sampling_enabled(enabled);
@@ -52,10 +48,6 @@ class CommandInterface {
     }
 
     void set_laser_fire_rate(ShipFireRate rate) noexcept { simulation.set_laser_fire_rate(rate); }
-
-    void add_health(Health added_health) { simulation.add_health(added_health); }
-
-    bool consume_death_notification() noexcept { return simulation.consume_death_notification(); }
 
   private:
     Sim& simulation;

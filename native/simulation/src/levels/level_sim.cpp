@@ -62,7 +62,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     event_manager_.dispatch_preparation(spawn_manager_, level_spawn_context());
 
     if (player_ship_simulation_) {
-        player_ship_simulation_->update_entity_lookup_table();
+        player_ship_simulation_->update_entity_lookup_table(entity_tables_, clock_);
     }
     capital_ships::InitialisationInterface{capital_ships_simulation_}.update_entity_lookup_table(
         clock_);
@@ -100,8 +100,9 @@ auto LevelSim::level_spawn_context() -> LevelSpawnContext {
 }
 void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
     if (data.player) {
-        auto& simulation{player_ship_simulation_.emplace(clock_, entity_ledger_, entity_tables_)};
-        player::InitialisationInterface{simulation}.initialise(*data.player);
+        auto& simulation{player_ship_simulation_.emplace(memory_manager_.game_memory())};
+        player::InitialisationInterface{simulation}.initialise(
+            *data.player, entity_tables_, entity_ledger_, clock_);
     }
 
     capital_ships::InitialisationInterface{capital_ships_simulation_}.initialise(
@@ -158,7 +159,7 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
         auto const tick_period{static_cast<float>(clock_.tick_period())};
         if (!player_ship_simulation_) {
             advance_tick<TickPlayerShipState::NotPresent>(tick_period, navigation_output);
-        } else if (player_ship_simulation_->is_alive()) {
+        } else if (player_ship_simulation_->is_alive(entity_tables_.health)) {
             advance_tick<TickPlayerShipState::PresentAlive>(tick_period, navigation_output);
         } else {
             advance_tick<TickPlayerShipState::PresentDead>(tick_period, navigation_output);
@@ -203,9 +204,10 @@ void LevelSim::advance_tick(float const tick_period,
         collect_spawn_candidates(previous_issued_counts);
 
         if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-            player::PreparationInterface{*player_ship_simulation_}.prepare_tick(tick_period);
+            player::PreparationInterface{*player_ship_simulation_}.prepare_tick(
+                tick_period, entity_tables_, clock_);
         } else if constexpr (PlayerState == TickPlayerShipState::PresentDead) {
-            player_ship_simulation_->update_entity_lookup_table();
+            player_ship_simulation_->update_entity_lookup_table(entity_tables_, clock_);
         }
         capital_ships_phase.prepare_tick(clock_);
         fighters_phase.prepare_tick(spawn_context.fighter_inputs);
@@ -267,7 +269,8 @@ void LevelSim::advance_tick(float const tick_period,
                     *navigation_output = navigation_counters;
                 }
                 if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-                    player::ThinkingInterface{*player_ship_simulation_}.think(tick_period);
+                    player::ThinkingInterface{*player_ship_simulation_}.think(tick_period,
+                                                                              frame_events_.player);
                 }
                 spinners_phase.think(tick_period);
 
@@ -304,7 +307,7 @@ void LevelSim::advance_tick(float const tick_period,
 
                 if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
                     auto const before{player_ship_simulation_->physical_state().transform};
-                    player::ActionInputs const inputs{lasers_simulation_};
+                    player::ActionInputs const inputs{lasers_simulation_, frame_events_.player};
                     player::ActionInterface{*player_ship_simulation_}.apply_movement(inputs);
                     track_player_movement(player_ship_simulation_->unique_entity_id,
                                           before,
@@ -376,9 +379,12 @@ void LevelSim::advance_tick(float const tick_period,
                 };
 
                 if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-                    player::ResolutionInputs const inputs{damage_queue_};
+                    auto& deaths{frame_events_.deaths};
+                    auto const first{deaths.num()};
+                    player::ResolutionInputs const inputs{entity_tables_.health, damage_queue_, deaths};
                     player::ResolutionInterface{*player_ship_simulation_}.resolve_damage_events(
                         inputs);
+                    entity_ledger_.record_deaths(deaths.const_view(first, deaths.num() - first), clock_.get_completed_ticks());
                 }
                 capital_ships_phase.resolve_damage_events(capital_inputs);
                 fighters_phase.resolve_damage_events(fighter_inputs);

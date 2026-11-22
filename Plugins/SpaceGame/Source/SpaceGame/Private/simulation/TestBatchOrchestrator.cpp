@@ -279,8 +279,7 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
     refresh_collision_grid_visualization();
     auto const* const player_simulation{level_simulation_->player_ship_simulation()};
     if (IsValid(player_ship) && player_simulation) {
-        player_ship->bind_simulation(*level_simulation_->player_ship_commands(),
-                                     *player_simulation);
+        player_ship->bind_simulation(*level_simulation_);
     }
 
     if (is_presentation_enabled()) {
@@ -427,10 +426,10 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         presentation_host_.tick(
             dt, level_simulation_->read_access(), level_simulation_->spatial_query_manager());
 
-        if (auto player{level_simulation_->player_ship_commands()};
-            player && player->consume_death_notification()) {
-            if (IsValid(player_ship)) {
+        for (auto const victim : level_simulation_->read_access().frame_events().deaths.victims()) {
+            if (victim.entity_type() == sim::EntityType::PlayerShip && IsValid(player_ship)) {
                 player_ship->handle_simulation_death();
+                break;
             }
         }
     }

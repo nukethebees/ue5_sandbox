@@ -3,8 +3,10 @@
 
 #pragma once
 
+#include "ioj/sim/entities/entity_tables.h"
 #include "ioj/sim/player/phase_inputs.h"
 #include "ioj/sim/player/sim.h"
+#include "ioj/sim/sim_clock.h"
 
 namespace ioj::sim::player {
 class InitialisationInterface {
@@ -12,7 +14,12 @@ class InitialisationInterface {
     InitialisationInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void initialise(PlayerSpawnData const& spawn) { simulation.initialise(spawn); }
+    void initialise(PlayerSpawnData const& spawn,
+                    EntityTables& tables,
+                    EntityLedger& ledger,
+                    SimClock const& clock) {
+        simulation.initialise(spawn, tables, ledger, clock);
+    }
 
     friend struct sim::LevelSim;
     Sim& simulation;
@@ -23,7 +30,9 @@ class PreparationInterface {
     PreparationInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
+    void prepare_tick(float const dt, EntityTables& tables, SimClock const& clock) {
+        simulation.prepare_tick(dt, tables, clock);
+    }
 
     friend struct sim::LevelSim;
     Sim& simulation;
@@ -34,7 +43,7 @@ class ThinkingInterface {
     ThinkingInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void think(float const dt) { simulation.think(dt); }
+    void think(float const dt, PlayerEvents& events) { simulation.think(dt, events); }
 
     void generate_fire_commands() { simulation.generate_fire_commands(); }
 
