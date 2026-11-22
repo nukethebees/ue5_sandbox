@@ -645,6 +645,12 @@ auto Analysis::completion(Document const& doc,
         }
     }
 
+    // Macro placeholders are expressions, including the operator in a template list.
+    auto const macro{context.empty() ? sexpr::FormId{} : context.front()};
+    bool const in_template{root == FormHead::defmacro && macro.value &&
+                           syntax.children(macro).size() >= 4 &&
+                           offset >= syntax.span(syntax.child(macro, 3)).offset &&
+                           offset <= syntax.span(syntax.child(macro, 3)).end_offset};
     for (auto const& other : documents_) {
         auto const count{other.symbols.size()};
         for (std::uint32_t i{}; i < count; ++i) {
@@ -671,6 +677,13 @@ auto Analysis::completion(Document const& doc,
             }
             if (kind == FormHead::defmacro && head_position) {
                 add(name, other.file, id);
+                continue;
+            }
+            if (symbol.kind == Kind::parameter && parent_form.value &&
+                try_parse_serialized_form_head(syntax.head(parent_form)) == FormHead::defmacro) {
+                if (in_template && parent_form == macro) {
+                    add("$" + std::string{name}, other.file, id);
+                }
                 continue;
             }
             if (other.file != doc.file || head_position ||

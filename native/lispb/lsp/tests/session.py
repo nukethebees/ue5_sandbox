@@ -586,6 +586,46 @@ def check_scratch_document(client, root, schema, legend):
     assert not client.problems[scratch.as_uri()]
 
 
+def check_macro_completion(client, paths, files):
+    path = paths["macros"]
+    for version, (template, argument) in enumerate(
+        (
+            ("(STextBlock :Text $te)", "title"),
+            ("($te :Text title)", "STextBlock"),
+        )
+    ):
+        ui = files["ui"].replace("caption title", "caption " + argument)
+        client.edit(paths["ui"], ui, 2 + version)
+        source = (
+            "(defmacro other (temp) $temp)\n(defmacro caption (text) " + template + ")"
+        )
+        client.edit(path, source, 2 + 2 * version)
+        start = source.rindex("$te")
+        cursor = {"line": 1, "character": start - source.index("\n") - 1}
+        end = {**cursor, "character": cursor["character"] + 3}
+        items = client.query("completion", path, end)
+        assert [item["label"] for item in items] == ["$text"], items
+        edit = items[0]["textEdit"]
+        assert edit["range"] == {"start": cursor, "end": end}
+        fixed = source[:start] + edit["newText"] + source[start + 3 :]
+        client.edit(path, fixed, 3 + 2 * version)
+        assert client.query("definition", path, cursor) == expected_location(
+            path, fixed, "text", 4
+        )
+        assert (
+            client.query("definition", paths["ui"], position(ui, "caption"))["uri"]
+            == path.as_uri()
+        )
+        assert (
+            not client.problems[path.as_uri()]
+            and not client.problems[paths["ui"].as_uri()]
+        ), (
+            template,
+            client.problems[path.as_uri()],
+            client.problems[paths["ui"].as_uri()],
+        )
+
+
 def exercise(client, root):
     files, paths = create_project(root)
     legend = client.initialize(root, ["markdown", "plaintext"])
@@ -600,6 +640,7 @@ def exercise(client, root):
     annotated = check_material_updates(client, files["mat"], paths["mat"])
     check_renames(client, paths, annotated, files["ops"])
     check_document_updates(client, files, paths)
+    check_macro_completion(client, paths, files)
     check_scratch_document(client, root, files["data"], legend)
 
     assert not (root / "out").exists()
