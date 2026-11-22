@@ -1,4 +1,7 @@
 #include "SpaceGame/settings/GameSettingsSubsystem.h"
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+#include "EmbeddedHost.h"
+#endif
 
 #include "SpaceGame/input/CanonicalShipControls.h"
 #include "SpaceGame/input/SpaceGameInputUserSettings.h"
@@ -18,12 +21,16 @@
 
 namespace ioj {
 namespace {
+#if !defined(UE_LIBRARY_ENABLED) || !UE_LIBRARY_ENABLED
 auto script_root() -> std::filesystem::path {
     return std::filesystem::path{*FPaths::ConvertRelativePathToFull(FPaths::ProjectDir())} /
            "LevelScripts";
 }
+#endif
 auto personal_settings_path() -> std::filesystem::path {
-#if WITH_EDITOR
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    return embedded_game_host().preferences_path;
+#elif WITH_EDITOR
     return script_root() / "Settings/user-settings.scm";
 #else
     auto const local{FPlatformProcess::GetApplicationSettingsDir(
@@ -32,11 +39,16 @@ auto personal_settings_path() -> std::filesystem::path {
 #endif
 }
 auto load_preferences() -> levels::authoring::UserSettingsResult {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    auto const& session{embedded_game_host().session};
+    return levels::authoring::UserSettings{session.default_state(), session.applied_state()};
+#else
     auto const desktop{GEngine->GetGameUserSettings()->GetDesktopResolution()};
     return levels::authoring::read_user_settings(
         script_root(),
         personal_settings_path(),
         {desktop.X > 0 ? desktop.X : 1920, desktop.Y > 0 ? desktop.Y : 1080});
+#endif
 }
 void report_settings_error(std::string const& error, bool interactive) {
     auto const message{FText::FromString(UTF8_TO_TCHAR(error.c_str()))};
@@ -59,6 +71,10 @@ auto persist(GameSettingsState const& state, GameSettingsState const& defaults) 
 /* **************************************** */
 void UGameSettingsSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    application_ = embedded_game_host().application;
+    backend_.apply_non_display(session().applied_state());
+#else
     auto app{levels::authoring::read_application_settings(script_root())};
     if (!app) {
         UE_LOG(LogTemp, Fatal, TEXT("%s"), UTF8_TO_TCHAR(app.error().c_str()));
@@ -70,14 +86,30 @@ void UGameSettingsSubsystem::Initialize(FSubsystemCollectionBase& collection) {
         report_settings_error(config.error(), false);
         return;
     }
-    session_.initialise(config->applied, config->defaults);
+    session().initialise(config->applied, config->defaults);
     backend_.apply_non_display(config->applied);
     backend_.apply_display(config->applied);
     backend_.confirm_display();
+#endif
+}
+
+auto UGameSettingsSubsystem::session() -> GameSettingsSession& {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    return embedded_game_host().session;
+#else
+    return session_;
+#endif
+}
+auto UGameSettingsSubsystem::session() const -> GameSettingsSession const& {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    return embedded_game_host().session;
+#else
+    return session_;
+#endif
 }
 
 void UGameSettingsSubsystem::Deinitialize() {
-    if (session_.is_awaiting_display_confirmation()) {
+    if (session().is_awaiting_display_confirmation()) {
         revert_display_changes();
     }
     Super::Deinitialize();
@@ -87,7 +119,7 @@ void UGameSettingsSubsystem::Deinitialize() {
 // Edit sessions and display confirmation
 /* **************************************** */
 void UGameSettingsSubsystem::begin_edit(ULocalPlayer* const local_player) {
-    if (session_.is_awaiting_display_confirmation()) {
+    if (session().is_awaiting_display_confirmation()) {
         return;
     }
     editing_local_player_ = local_player;
@@ -97,7 +129,7 @@ void UGameSettingsSubsystem::begin_edit(ULocalPlayer* const local_player) {
         report_settings_error(config.error(), true);
         return;
     }
-    if (!session_.begin_edit(config->applied, config->defaults)) {
+    if (!session().begin_edit(config->applied, config->defaults)) {
         return;
     }
     backend_.apply_non_display(config->applied);
@@ -108,14 +140,14 @@ void UGameSettingsSubsystem::begin_edit(ULocalPlayer* const local_player) {
 }
 
 void UGameSettingsSubsystem::cancel() {
-    if (!session_.is_editing() || session_.is_awaiting_display_confirmation()) {
+    if (!session().is_editing() || session_.is_awaiting_display_confirmation()) {
         return;
     }
-    auto const before{session_.settings_state()};
+    auto const before{session().settings_state()};
     restore_input_edit_state();
-    session_.cancel();
+    session().cancel();
     for (auto const& descriptor : game_setting_descriptors()) {
-        if (game_setting_value(before, descriptor.id) != session_.value(descriptor.id)) {
+        if (game_setting_value(before, descriptor.id) != session().value(descriptor.id)) {
             setting_changed.Broadcast(descriptor.id);
         }
     }
@@ -123,14 +155,14 @@ void UGameSettingsSubsystem::cancel() {
 }
 
 void UGameSettingsSubsystem::apply() {
-    if (!session_.is_editing() || session_.is_awaiting_display_confirmation() || !is_dirty()) {
+    if (!session().is_editing() || session_.is_awaiting_display_confirmation() || !is_dirty()) {
         return;
     }
-    auto const& pending{session_.settings_state()};
+    auto const& pending{session().settings_state()};
     auto const bindings_changed{input_is_dirty()};
-    auto next{session_};
+    auto next{session()};
     auto const result{next.apply(FPlatformTime::Seconds(), bindings_changed)};
-    if (next.applied_state() != session_.applied_state() &&
+    if (next.applied_state() != session().applied_state() &&
         !persist(next.applied_state(), next.default_state())) {
         return;
     }
@@ -141,13 +173,13 @@ void UGameSettingsSubsystem::apply() {
             input_settings->AsyncSaveSettings();
         }
     }
-    session_ = std::move(next);
+    session() = std::move(next);
     capture_input_edit_state();
     if (result == GameSettingsApplyResult::Applied) {
         settings_changed.Broadcast();
         return;
     }
-    backend_.apply_display(session_.settings_state());
+    backend_.apply_display(session().settings_state());
     display_confirmation_ticker_ = FTSTicker::GetCoreTicker().AddTicker(
         FTickerDelegate::CreateUObject(this, &ThisClass::tick_display_confirmation), 0.25f);
     display_confirmation_changed.Broadcast(true);
@@ -155,8 +187,8 @@ void UGameSettingsSubsystem::apply() {
 }
 
 void UGameSettingsSubsystem::reset_category(GameSettingCategory const category) {
-    auto const before{session_.settings_state()};
-    if (!session_.reset_category(category)) {
+    auto const before{session().settings_state()};
+    if (!session().reset_category(category)) {
         return;
     }
     if (category == GameSettingCategory::Controls) {
@@ -165,7 +197,7 @@ void UGameSettingsSubsystem::reset_category(GameSettingCategory const category) 
     for (auto const& descriptor : game_setting_descriptors()) {
         if (descriptor.category == category &&
             descriptor.apply_mode == SettingApplyMode::Immediate &&
-            game_setting_value(before, descriptor.id) != session_.value(descriptor.id)) {
+            game_setting_value(before, descriptor.id) != session().value(descriptor.id)) {
             setting_changed.Broadcast(descriptor.id);
         }
     }
@@ -173,9 +205,9 @@ void UGameSettingsSubsystem::reset_category(GameSettingCategory const category) 
 }
 
 void UGameSettingsSubsystem::confirm_display_changes() {
-    if (!session_.is_awaiting_display_confirmation() ||
-        !persist(session_.settings_state(), session_.default_state()) ||
-        !session_.confirm_display()) {
+    if (!session().is_awaiting_display_confirmation() ||
+        !persist(session().settings_state(), session_.default_state()) ||
+        !session().confirm_display()) {
         return;
     }
     backend_.confirm_display();
@@ -188,7 +220,7 @@ void UGameSettingsSubsystem::confirm_display_changes() {
 }
 
 void UGameSettingsSubsystem::revert_display_changes() {
-    if (!session_.revert_display()) {
+    if (!session().revert_display()) {
         return;
     }
     backend_.revert_display();
@@ -211,28 +243,28 @@ auto UGameSettingsSubsystem::application_settings(UGameInstance const* instance)
 }
 
 auto UGameSettingsSubsystem::settings_state() const -> GameSettingsState const& {
-    return session_.settings_state();
+    return session().settings_state();
 }
 
 auto UGameSettingsSubsystem::applied_state() const -> GameSettingsState const& {
-    return session_.applied_state();
+    return session().applied_state();
 }
 
 auto UGameSettingsSubsystem::default_state() const -> GameSettingsState const& {
-    return session_.default_state();
+    return session().default_state();
 }
 
 auto UGameSettingsSubsystem::value(GameSetting const setting) const -> GameSettingValue {
-    return session_.value(setting);
+    return session().value(setting);
 }
 
 void UGameSettingsSubsystem::set_setting(GameSetting const setting, GameSettingValue const& value) {
-    if (!session_.is_editing() || session_.is_awaiting_display_confirmation()) {
+    if (!session().is_editing() || session_.is_awaiting_display_confirmation()) {
         return;
     }
     auto const& descriptor{game_setting_descriptor(setting)};
     auto normalized{normalize_value(descriptor, value)};
-    if (!normalized || !session_.set_setting(setting, *normalized)) {
+    if (!normalized || !session().set_setting(setting, *normalized)) {
         UE_LOG(LogTemp,
                Warning,
                TEXT("Rejected invalid value for game setting %s"),
@@ -261,15 +293,15 @@ auto UGameSettingsSubsystem::options(GameSetting const setting) const
 
 auto UGameSettingsSubsystem::is_available(GameSetting const setting) const -> bool {
     return game_setting_is_available(game_setting_descriptor(setting).availability_provider,
-                                     session_.settings_state());
+                                     session().settings_state());
 }
 
 auto UGameSettingsSubsystem::is_dirty() const -> bool {
-    return session_.is_dirty() || input_is_dirty();
+    return session().is_dirty() || input_is_dirty();
 }
 
 auto UGameSettingsSubsystem::is_dirty(GameSettingCategory const category) const -> bool {
-    return session_.is_dirty(category) ||
+    return session().is_dirty(category) ||
            (category == GameSettingCategory::Controls && input_is_dirty());
 }
 
@@ -281,15 +313,15 @@ auto UGameSettingsSubsystem::is_at_defaults(GameSettingCategory const category) 
             return false;
         }
     }
-    return session_.is_at_defaults(category);
+    return session().is_at_defaults(category);
 }
 
 auto UGameSettingsSubsystem::is_awaiting_display_confirmation() const -> bool {
-    return session_.is_awaiting_display_confirmation();
+    return session().is_awaiting_display_confirmation();
 }
 
 auto UGameSettingsSubsystem::display_confirmation_seconds_remaining() const -> int32 {
-    return session_.display_confirmation_seconds_remaining(FPlatformTime::Seconds());
+    return session().display_confirmation_seconds_remaining(FPlatformTime::Seconds());
 }
 
 /* **************************************** */
@@ -297,10 +329,10 @@ auto UGameSettingsSubsystem::display_confirmation_seconds_remaining() const -> i
 /* **************************************** */
 auto UGameSettingsSubsystem::tick_display_confirmation(float const delta_seconds) -> bool {
     static_cast<void>(delta_seconds);
-    if (!session_.is_awaiting_display_confirmation()) {
+    if (!session().is_awaiting_display_confirmation()) {
         return false;
     }
-    if (session_.display_confirmation_expired(FPlatformTime::Seconds())) {
+    if (session().display_confirmation_expired(FPlatformTime::Seconds())) {
         revert_display_changes();
         return false;
     }
@@ -520,7 +552,7 @@ auto UGameSettingsSubsystem::set_control_binding(FControlBindingAddress const& a
                                                  FKey const key,
                                                  bool const replace_conflicts) -> bool {
     auto* const settings{input_user_settings()};
-    if (!session_.is_editing() || settings == nullptr || !key.IsValid() ||
+    if (!session().is_editing() || settings == nullptr || !key.IsValid() ||
         address.profile_id != settings->GetActiveKeyProfileId()) {
         return false;
     }
@@ -568,7 +600,7 @@ auto UGameSettingsSubsystem::set_control_chord(FControlBindingAddress const& add
                                                FKey const action_key,
                                                bool const replace_conflicts) -> bool {
     auto* const settings{input_user_settings()};
-    if (!session_.is_editing() || settings == nullptr || !can_hold_chord_key(activator_key) ||
+    if (!session().is_editing() || settings == nullptr || !can_hold_chord_key(activator_key) ||
         !action_key.IsValid() || activator_key == action_key ||
         address.profile_id != settings->GetActiveKeyProfileId()) {
         return false;
@@ -630,7 +662,7 @@ auto UGameSettingsSubsystem::set_control_chord(FControlBindingAddress const& add
 
 auto UGameSettingsSubsystem::clear_control_binding(FControlBindingAddress const& address) -> bool {
     auto* const settings{input_user_settings()};
-    if (!session_.is_editing() || settings == nullptr ||
+    if (!session().is_editing() || settings == nullptr ||
         address.profile_id != settings->GetActiveKeyProfileId()) {
         return false;
     }
@@ -663,7 +695,7 @@ auto UGameSettingsSubsystem::clear_control_binding(FControlBindingAddress const&
 
 auto UGameSettingsSubsystem::reset_control_binding(FControlBindingAddress const& address) -> bool {
     auto* const settings{input_user_settings()};
-    if (!session_.is_editing() || settings == nullptr) {
+    if (!session().is_editing() || settings == nullptr) {
         return false;
     }
     if (!unmap_control_binding(*settings, address)) {
@@ -675,7 +707,7 @@ auto UGameSettingsSubsystem::reset_control_binding(FControlBindingAddress const&
 
 auto UGameSettingsSubsystem::reset_all_control_bindings() -> bool {
     auto* const settings{input_user_settings()};
-    if (!session_.is_editing() || settings == nullptr) {
+    if (!session().is_editing() || settings == nullptr) {
         return false;
     }
     auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};

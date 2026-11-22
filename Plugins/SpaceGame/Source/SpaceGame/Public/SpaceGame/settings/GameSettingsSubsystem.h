@@ -89,6 +89,8 @@ class SPACEGAME_API UGameSettingsSubsystem final
     // Settings and display helpers
     /* **************************************** */
     auto tick_display_confirmation(float delta_seconds) -> bool;
+    auto session() -> GameSettingsSession&;
+    auto session() const -> GameSettingsSession const&;
     auto normalize_value(GameSettingDescriptor const& descriptor,
                          GameSettingValue const& value) const -> std::optional<GameSettingValue>;
     auto input_user_settings() const -> USpaceGameInputUserSettings*;

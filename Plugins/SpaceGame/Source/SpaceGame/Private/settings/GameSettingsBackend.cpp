@@ -1,4 +1,7 @@
 #include "SpaceGame/settings/GameSettingsBackend.h"
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+#include "EmbeddedHost.h"
+#endif
 
 #include "SpaceGame/settings/SpaceGameUserSettings.h"
 #include <ioj/settings/game_settings_edit_state.h>
@@ -39,6 +42,9 @@ void FGameSettingsBackend::apply_non_display(GameSettingsState const& state) con
 }
 
 void FGameSettingsBackend::apply_display(GameSettingsState const& state) const {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    embedded_game_host().apply_display(state);
+#else
     auto* settings{user_settings()};
     if (settings == nullptr) {
         return;
@@ -46,19 +52,26 @@ void FGameSettingsBackend::apply_display(GameSettingsState const& state) const {
     settings->SetScreenResolution({state.resolution.width, state.resolution.height});
     settings->SetFullscreenMode(to_engine_window_mode(state.window_mode));
     settings->ApplyResolutionSettings(false);
+#endif
 }
 
 void FGameSettingsBackend::confirm_display() const {
+#if !defined(UE_LIBRARY_ENABLED) || !UE_LIBRARY_ENABLED
     if (auto* settings{user_settings()}) {
         settings->ConfirmVideoMode();
     }
+#endif
 }
 
 void FGameSettingsBackend::revert_display() const {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    embedded_game_host().apply_display(embedded_game_host().session.applied_state());
+#else
     if (auto* settings{user_settings()}) {
         settings->RevertVideoMode();
         settings->ApplyResolutionSettings(false);
     }
+#endif
 }
 
 auto FGameSettingsBackend::options(GameSettingOptionProvider const provider) const
