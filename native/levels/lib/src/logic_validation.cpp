@@ -42,10 +42,11 @@ auto validate_logic(LogicDefinition const& logic, std::span<EntitySpawnDefinitio
                         if (effect.timer >= logic.timer_count) {
                             error(path + ".timer", "Invalid timer reference");
                         }
-                    } else if constexpr (std::same_as<T, WinEffect>) {
+                    } else if constexpr (std::same_as<T, WinEffect> ||
+                                         std::same_as<T, ChangePointsEffect>) {
                         if (std::ranges::find(EnumTraits<Team>::values, effect.team) ==
                             EnumTraits<Team>::values.end()) {
-                            error(path + ".team", "Invalid winning team");
+                            error(path + ".team", "Invalid team");
                         }
                     }
                 },

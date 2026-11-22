@@ -222,6 +222,8 @@ auto compile_level(LevelDefinition const& level, sim::LevelSimInitData& output)
                     using T = std::decay_t<decltype(effect)>;
                     if constexpr (std::same_as<T, WinEffect>) {
                         return definitions.add_win_event(effect.team);
+                    } else if constexpr (std::same_as<T, ChangePointsEffect>) {
+                        return definitions.add_change_points_event(effect);
                     } else if constexpr (std::same_as<T, StopEffect>) {
                         return definitions.add_stop_event(sim::RunEndReason::LevelCompleted);
                     } else if constexpr (std::same_as<T, SpawnEffect>) {

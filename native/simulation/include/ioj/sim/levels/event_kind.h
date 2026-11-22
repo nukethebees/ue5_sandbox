@@ -18,14 +18,18 @@ enum class EventKind : EventKindUnderlying {
     StopRun,
     Pause,
     StartTimer,
+    ChangePoints,
     Spawn,
 };
 
-inline constexpr std::array<EventKind, 4ULL> event_kind_tick_end_values{
-    EventKind::Win, EventKind::StopRun, EventKind::Pause, EventKind::StartTimer};
+inline constexpr std::array<EventKind, 5ULL> event_kind_tick_end_values{EventKind::Win,
+                                                                        EventKind::StopRun,
+                                                                        EventKind::Pause,
+                                                                        EventKind::StartTimer,
+                                                                        EventKind::ChangePoints};
 
 [[nodiscard]] constexpr auto is_tick_end(EventKind const value) noexcept -> bool {
-    return value <= EventKind::StartTimer;
+    return value <= EventKind::ChangePoints;
 }
 
 inline constexpr std::array<EventKind, 1ULL> event_kind_preparation_values{EventKind::Spawn};
@@ -47,6 +51,7 @@ struct EnumTraits<sim::EventKind> {
                                        sim::EventKind::StopRun,
                                        sim::EventKind::Pause,
                                        sim::EventKind::StartTimer,
+                                       sim::EventKind::ChangePoints,
                                        sim::EventKind::Spawn};
 };
 

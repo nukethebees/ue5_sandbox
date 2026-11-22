@@ -1,7 +1,9 @@
 #pragma once
 
+#include <ioj/levels/logic_payloads.h>
 #include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/index_span.h>
+#include <ioj/sim/levels/change_points_events.h>
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/event_trigger.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
@@ -12,6 +14,7 @@
 #include <ioj/sim/levels/run_end_reason.h>
 #include <ioj/sim/levels/start_timer_event.h>
 #include <ioj/sim/levels/terminal_event.h>
+#include <ioj/team_array.h>
 
 #include <memory_resource>
 #include <optional>
@@ -46,6 +49,12 @@ class LevelEventManager {
     auto add_stop_event(RunEndReason reason) -> EventHandle;
     auto add_start_timer_event(StartTimerEvent event) -> EventHandle;
     auto add_win_event(Team team) -> EventHandle;
+    auto add_change_points_event(levels::ChangePointsEffect effect) -> EventHandle;
+    auto change_points_event(EventHandle event) const -> levels::ChangePointsEffect {
+        auto const index{event.index()};
+        return {.team = change_points_events_.teams()[index],
+                .delta = change_points_events_.deltas()[index]};
+    }
     void add_trigger(ExprHandle condition, std::span<EventHandle const> events);
     auto spawn_count() const -> std::uint32_t {
         return fighter_spawns_.num() + capital_spawns_.num() + turret_spawns_.num() +
@@ -84,7 +93,8 @@ class LevelEventManager {
     void dispatch_tick_end(Timers& timers,
                            SimClock const& clock,
                            LevelState& state,
-                           std::optional<TerminalEvent>& terminal);
+                           std::optional<TerminalEvent>& terminal,
+                           TeamArray<TeamPoints>& points);
 
     auto consume_preparation_event() -> std::optional<EventHandle>;
     auto preparation_events() const -> std::span<EventHandle const> { return preparation_events_; }
@@ -107,6 +117,7 @@ class LevelEventManager {
     std::vector<RunEndReason> stop_events_;
     std::vector<StartTimerEvent> start_timer_events_;
     std::vector<WinEvent> win_events_;
+    ChangePointsEvents change_points_events_;
 
     std::vector<EventTrigger> triggers_;
     std::vector<EventHandle> trigger_events_;

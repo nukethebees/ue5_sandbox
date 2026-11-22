@@ -93,6 +93,8 @@ struct TypeReader<Effect> {
         switch (*type) {
             case EffectSyntax::Win:
                 return read_payload<Effect, WinEffect>(reader, node, path);
+            case EffectSyntax::ChangePoints:
+                return read_payload<Effect, ChangePointsEffect>(reader, node, path);
             case EffectSyntax::Stop:
                 return read_payload<Effect, StopEffect>(reader, node, path);
             case EffectSyntax::Spawn:

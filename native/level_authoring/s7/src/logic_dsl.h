@@ -48,6 +48,7 @@ inline constexpr std::string_view logic_dsl_source{R"SCM(
 (define (spawn-group name entities) (logic-add 3 'spawn-group (list name entities)))
 (define (logic-effect tag arguments) (vector 'effect (logic-context) (cons tag arguments)))
 (define (win team) (logic-effect :win (list team)))
+(define (change-points team delta) (logic-effect :change-points (list team delta)))
 (define (stop) (logic-effect :stop '()))
 (define (spawn group) (logic-effect :spawn (list (logic-index group 'spawn-group))))
 (define (start-timer value seconds) (logic-effect :start-timer (list (logic-index value 'timer) seconds)))

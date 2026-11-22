@@ -1,5 +1,6 @@
 target_sources(native-simulation
   PRIVATE
+    ../../include/ioj/sim/levels/change_points_events.h
     ../../include/ioj/sim/levels/event_handle.h
     ../../include/ioj/sim/levels/event_kind.h
     ../../include/ioj/sim/levels/event_trigger.h

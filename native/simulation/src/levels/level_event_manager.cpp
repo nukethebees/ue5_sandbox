@@ -27,6 +27,7 @@ LevelEventManager::LevelEventManager(LevelEventManager&& other, std::pmr::memory
     , stop_events_{std::move(other.stop_events_)}
     , start_timer_events_{std::move(other.start_timer_events_)}
     , win_events_{std::move(other.win_events_)}
+    , change_points_events_{std::move(other.change_points_events_)}
     , triggers_{std::move(other.triggers_)}
     , trigger_events_{std::move(other.trigger_events_)}
     , active_triggers_{std::move(other.active_triggers_)}
@@ -71,6 +72,12 @@ auto LevelEventManager::add_win_event(Team const team) -> EventHandle {
     auto const index{static_cast<std::uint32_t>(win_events_.size())};
     win_events_.push_back({team});
     return EventHandle{index, EventKind::Win};
+}
+auto LevelEventManager::add_change_points_event(levels::ChangePointsEffect const effect)
+    -> EventHandle {
+    auto const index{change_points_events_.num()};
+    change_points_events_.add(effect.delta, effect.team);
+    return EventHandle{index, EventKind::ChangePoints};
 }
 void LevelEventManager::add_trigger(ExprHandle const condition,
                                     std::span<EventHandle const> const events) {
@@ -133,7 +140,8 @@ auto LevelEventManager::consume_tick_end_event() -> std::optional<EventHandle> {
 void LevelEventManager::dispatch_tick_end(Timers& timers,
                                           SimClock const& clock,
                                           LevelState& state,
-                                          std::optional<TerminalEvent>& terminal) {
+                                          std::optional<TerminalEvent>& terminal,
+                                          TeamArray<TeamPoints>& points) {
     if (state == LevelState::Stopped) {
         return;
     }
@@ -149,6 +157,11 @@ void LevelEventManager::dispatch_tick_end(Timers& timers,
                 terminal = TerminalEvent{*event, clock.get_completed_ticks()};
                 state = LevelState::Stopped;
                 return;
+            case EventKind::ChangePoints: {
+                auto const change{change_points_event(*event)};
+                points[change.team] += change.delta;
+                break;
+            }
             case EventKind::Pause:
                 state = LevelState::Paused;
                 break;

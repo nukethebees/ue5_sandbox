@@ -451,6 +451,7 @@
 (type geometry_transforms :spelling "std::vector<ioj::settings::AttachmentTransform>" :header "ioj/settings/geometry_shapes.h")
 (type finite_position :spelling "ioj::FiniteVector<double, 3>" :header "ioj/constrained_vectors.h")
 (type kill_count :spelling "ioj::KillCount" :header "ioj/kill_count.h")
+(type points_change :spelling "ioj::PointsChange" :header "ioj/points.h")
 (type timer_index :spelling "ioj::levels::TimerIndex" :header "ioj/levels/logic_indices.h")
 (type latch_index :spelling "ioj::levels::LatchIndex" :header "ioj/levels/logic_indices.h")
 (type spawn_group_index :spelling "ioj::levels::SpawnGroupIndex" :header "ioj/levels/logic_indices.h")

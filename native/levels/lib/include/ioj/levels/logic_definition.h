@@ -18,7 +18,8 @@ struct SpawnGroupDefinition {
     std::string name;
     std::vector<EntityId> entities;
 };
-using Effect = std::variant<WinEffect, StopEffect, SpawnEffect, StartTimerEffect>;
+using Effect =
+    std::variant<WinEffect, StopEffect, SpawnEffect, StartTimerEffect, ChangePointsEffect>;
 struct EventRule {
     auto operator==(EventRule const&) const -> bool = default;
     ExprIndex when{};

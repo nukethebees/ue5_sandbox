@@ -1,3 +1,11 @@
+(module level_runtime_events_change_points_events
+  :header "native/simulation/include/ioj/sim/levels/change_points_events.h"
+  :namespace ioj::sim
+  (struct ChangePointsEvents
+    (member deltas array @points_change)
+    (member teams array @native_team)
+))
+
 (module level_runtime_events_level_spawn_groups
   :header "native/simulation/include/ioj/sim/levels/level_spawn_groups.h"
   :namespace ioj::sim

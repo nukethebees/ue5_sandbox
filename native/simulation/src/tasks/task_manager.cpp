@@ -167,15 +167,30 @@ void TaskManager::allocate(TaskAllocationContext const ctx) {
         }
 
         auto const trigger{triggers[index]};
+        TeamArray<bool> teams_with_tasks{};
+        auto const discover{[&](Team team) {
+            if (!teams_with_tasks[team]) {
+                add_kill_tasks(trigger.condition, team, ctx);
+                teams_with_tasks[team] = true;
+            }
+        }};
+
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each trigger owns a different event range.
         for (auto const event : ctx.events.trigger_events(index)) {
             auto const kind{event.kind()};
             switch (kind) {
                 case EventKind::Win:
-                    add_kill_tasks(trigger.condition, ctx.events.win_event(event).winner, ctx);
+                    discover(ctx.events.win_event(event).winner);
                     goto trigger_checked;
                 case EventKind::StopRun:
                     goto trigger_checked;
+                case EventKind::ChangePoints: {
+                    auto const change{ctx.events.change_points_event(event)};
+                    if (change.delta > 0) {
+                        discover(change.team);
+                    }
+                    break;
+                }
                 default:
                     break;
             }

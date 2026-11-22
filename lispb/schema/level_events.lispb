@@ -27,6 +27,7 @@
     (value StopRun :groups (tick_end))
     (value Pause :groups (tick_end))
     (value StartTimer :groups (tick_end))
+    (value ChangePoints :groups (tick_end))
     (value Spawn :groups (preparation))
     (projections (cpp))))
 

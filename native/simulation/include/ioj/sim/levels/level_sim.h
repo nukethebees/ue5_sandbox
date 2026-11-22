@@ -84,6 +84,7 @@ struct LevelSim {
     // Accessors
     /* **************************************** */
     auto state() const noexcept -> LevelState { return state_; }
+    auto points(Team team) const noexcept -> TeamPoints { return points_[team]; }
     auto clock() const noexcept -> SimClock const& { return clock_; }
     auto player_ship_simulation() const -> player::Sim const* {
         return player_ship_simulation_.has_value() ? &player_ship_simulation_.value() : nullptr;
@@ -127,6 +128,7 @@ struct LevelSim {
                                     FrameMemoryResource& scratch);
 
     LevelState state_{LevelState::Uninitialised};
+    TeamArray<TeamPoints> points_{};
     SimClock clock_;
 
     LevelMemoryManager memory_manager_;

@@ -39,6 +39,11 @@
     (member latch @latch_index :initializer "")
     (function type ioj::ExprKind :static true :constexpr true :body ("return ExprKind::LatchedFalse;"))
     (projections (cpp)))
+  (record ChangePointsEffect :comparison equality
+    :generate-s7-reader true :s7-tag "change-points" :s7-positional true :s7-constructor false
+    (member team ioj::Team :initializer "")
+    (member delta @points_change :initializer "")
+    (projections (cpp)))
   (record WinEffect :comparison equality
     :generate-s7-reader true :s7-tag "win" :s7-positional true :s7-constructor false
     (member team ioj::Team :initializer "")

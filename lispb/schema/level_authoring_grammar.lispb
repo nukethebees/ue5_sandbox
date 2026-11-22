@@ -4,6 +4,7 @@
   (enum EffectSyntax @native_uint8
     :native-api true :helpers (traits to-serialized-string try-parse-serialized)
     (value Win :serialized-name "win")
+    (value ChangePoints :serialized-name "change-points")
     (value Stop :serialized-name "stop")
     (value Spawn :serialized-name "spawn")
     (value StartTimer :serialized-name "start-timer")

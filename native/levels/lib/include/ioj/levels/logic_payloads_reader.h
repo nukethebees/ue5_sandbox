@@ -136,6 +136,29 @@ struct TypeReader<levels::LatchedFalseExpr> : RecordReader<levels::LatchedFalseE
 };
 
 template <>
+struct TypeReader<levels::ChangePointsEffect> : RecordReader<levels::ChangePointsEffect> {
+    static void decode(DecodeContext ctx, value_type& result) {
+        auto const arguments{
+            positional_arguments(ctx.reader, ctx.node, "change-points", ctx.path, 2ULL)};
+
+        if (!arguments) {
+            append_errors(ctx.errors, arguments.error());
+            return;
+        }
+        FieldReader{{ctx.reader,
+                     (*arguments)[0ULL],
+                     std::string{ctx.path} + ".team",
+                     ctx.mode,
+                     ctx.errors}}(result.team);
+        FieldReader{{ctx.reader,
+                     (*arguments)[1ULL],
+                     std::string{ctx.path} + ".delta",
+                     ctx.mode,
+                     ctx.errors}}(result.delta);
+    }
+};
+
+template <>
 struct TypeReader<levels::WinEffect> : RecordReader<levels::WinEffect> {
     static void decode(DecodeContext ctx, value_type& result) {
         auto const arguments{positional_arguments(ctx.reader, ctx.node, "win", ctx.path, 1ULL)};

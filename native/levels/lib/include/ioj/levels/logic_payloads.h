@@ -10,6 +10,7 @@
 #include "ioj/levels/identifiers.h"
 #include "ioj/levels/logic_indices.h"
 #include "ioj/levels/team.h"
+#include "ioj/points.h"
 
 #include <vector>
 
@@ -63,6 +64,13 @@ struct LatchedFalseExpr {
     static constexpr ExprKind type() { return ExprKind::LatchedFalse; }
 
     LatchIndex latch{};
+};
+
+struct ChangePointsEffect {
+    bool operator==(ChangePointsEffect const&) const = default;
+
+    Team team{};
+    PointsChange delta{};
 };
 
 struct WinEffect {

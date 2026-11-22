@@ -545,14 +545,17 @@ TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithLogicAndSparseSettin
           :logic (logic
             (define delay (timer))
             (initially (start-timer delay 1))
-            (on :when (timer-elapsed delay) :do (win 'blue))))))")};
+            (on :when (timer-elapsed delay) :do (list (change-points 'red -3) (win 'blue)))))))")};
     ASSERT_TRUE(level) << format_diagnostics(level.error());
     std::optional<LevelCameraDefinition> const camera{{{EntityId{"capital"}}, {-1, 0, 1}, 1000}};
     settings::Settings const expected{.collision_grid = {.cell_size = {5000, 5000, 5000}}};
     EXPECT_PRED_FORMAT2(structurally_equal, camera, level->camera());
     EXPECT_PRED_FORMAT2(structurally_equal, expected, level->settings());
     ASSERT_EQ(level->logic().rules.size(), 1u);
-    EXPECT_EQ(std::get<WinEffect>(level->logic().rules[0].effects[0]).team, Team::Blue);
+    auto const& effects{level->logic().rules[0].effects};
+    ASSERT_EQ(effects.size(), 2u);
+    EXPECT_EQ(std::get<ChangePointsEffect>(effects[0]), (ChangePointsEffect{Team::Red, -3}));
+    EXPECT_EQ(std::get<WinEffect>(effects[1]).team, Team::Blue);
 }
 
 TEST(NativeLevelAuthoringReader, DecodesGraphInputsBeforeResolvingReferences) {

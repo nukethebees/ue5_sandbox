@@ -77,7 +77,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
 
     clock_.reset();
     state_ = LevelState::Paused;
-    event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_);
+    event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_, points_);
 }
 void LevelSim::start() {
     assert(state_ == LevelState::Paused);
@@ -120,7 +120,7 @@ void LevelSim::stop_run(RunEndReason const reason) {
         return;
     }
     event_manager_.enqueue_stop(reason);
-    event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_);
+    event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_, points_);
 }
 auto LevelSim::result() const -> std::optional<LevelResult> {
     if (!terminal_) {
@@ -143,7 +143,7 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
         return;
     }
 
-    event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_);
+    event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_, points_);
     if (state_ != LevelState::Running) {
         return;
     }
@@ -165,7 +165,7 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
         }
 
         profiling::mark_frame("Simulation");
-        event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_);
+        event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_, points_);
         if (state_ != LevelState::Running) {
             break;
         }

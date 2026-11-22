@@ -456,6 +456,11 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeLogicEvaluation) {
                                   {levels::EntityKillsReachedExpr{{data.entities[second].id}, 1}},
                                   {levels::AllExpr{{0, 1}}}};
         data.logic.rules = {{2, {levels::WinEffect{Team::White}}}};
+        if (kill_tick == 2) {
+            data.logic.rules = {{2,
+                                 {levels::ChangePointsEffect{Team::White, 10},
+                                  levels::ChangePointsEffect{Team::Green, -3}}}};
+        }
 
         LevelSim simulation{std::move(data).compile()};
 
@@ -470,6 +475,11 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeLogicEvaluation) {
             simulation.advance(period);
 
             ASSERT_EQ(fighter_sim.num_instances(), 0);
+            EXPECT_EQ(simulation.points(Team::White), 0);
+            auto const& tasks{simulation.task_manager()};
+            auto const instruction{tasks.first_instruction(tasks::TaskId{1})};
+            EXPECT_EQ(tasks.instruction(instruction).data_kill(),
+                      capitals.get_entities().entity_ids()[0]);
         }
 
         auto const victim{capitals.get_entities().entity_ids()[0]};
@@ -497,8 +507,16 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeLogicEvaluation) {
         EXPECT_EQ(observe_entity_row(simulation, victim), EntityInstanceHandle::invalid_value);
         EXPECT_EQ(observe_entity_row(simulation, killer), 0);
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
-        ASSERT_TRUE(simulation.result());
-        EXPECT_EQ(simulation.result()->winner, Team::White);
+        if (kill_tick == 1) {
+            ASSERT_TRUE(simulation.result());
+            EXPECT_EQ(simulation.result()->winner, Team::White);
+        } else {
+            EXPECT_FALSE(simulation.result());
+            EXPECT_EQ(simulation.points(Team::White), 10);
+            EXPECT_EQ(simulation.points(Team::Green), -3);
+            simulation.advance(period);
+            EXPECT_EQ(simulation.points(Team::White), 10);
+        }
     }
 
     // NOLINTEND(ioj-loop-view-accessor-call)
