@@ -1,7 +1,7 @@
 #pragma once
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/lasers/laser_entities.h>
-#include <ioj/sim/lasers/laser_frame_output.h>
+#include <ioj/sim/lasers/laser_hit_details.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/lasers/laser_spawn_requests.h>
 #include <ioj/sim/lasers/phase_inputs.h>
@@ -37,14 +37,6 @@ struct Sim {
     auto operator=(Sim&&) -> Sim& = delete;
 
     auto get_entities() const -> EntityStorage::CompactConstView { return entities_.const_view(); }
-    auto hits() const -> LaserHitDetails::CompactConstView {
-        return frame_output_.hits.const_view();
-    }
-    auto hit_ticks() const -> std::span<SimTick const> { return frame_output_.hit_ticks; }
-    auto hit_ordinals() const -> std::span<std::int32_t const> {
-        return frame_output_.hit_ordinals;
-    }
-    void reset_frame_output() { frame_output_.reset(); }
     auto num_instances() const noexcept -> std::uint32_t;
     auto get_number_spawned() const noexcept -> std::uint32_t { return number_spawned_; }
 
@@ -91,7 +83,6 @@ struct Sim {
     LaserSimConfig config_{};
     EntityStorage entities_;
     SpawnRequestStorage pending_spawns_;
-    FrameOutput frame_output_;
     std::uint32_t number_spawned_{0};
 };
 } // namespace ioj::sim::lasers

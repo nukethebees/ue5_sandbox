@@ -12,11 +12,13 @@ class FrameMemoryResource;
 
 namespace ioj::sim {
 class DamageQueue;
+struct LaserHitDetails;
 struct SimClock;
 struct SpatialQueryManager;
 }
 
 namespace ioj::sim::lasers {
+
 using LaserIndex = std::uint32_t;
 
 struct PreparationInputs {
@@ -24,9 +26,9 @@ struct PreparationInputs {
 };
 
 struct ActionInputs {
+    LaserHitDetails& impacts;
     float dt;
     DamageQueue& damage_queue;
-    SimTick tick;
     SpatialQueryManager const& spatial_query_manager;
     FrameMemoryResource& scratch_resource;
     std::pmr::vector<LaserIndex>& pending_removals;

@@ -22,6 +22,9 @@ auto LevelReadAccess::lasers() const -> lasers::Sim const& {
 auto LevelReadAccess::player() const -> player::Sim const* {
     return level_.player_ship_simulation();
 }
+auto LevelReadAccess::frame_events() const -> SimulationFrameEvents const& {
+    return level_.frame_events_;
+}
 auto LevelReadAccess::clock() const -> SimClock const& {
     return level_.clock();
 }

@@ -46,6 +46,7 @@ list(TRANSFORM collision_headers PREPEND "../include/ioj/sim/collision/")
 
 set(entities_headers
   entity_death_info.h
+  entity_frame_changes.h
   entity_frame_change.h
   entity_history.h
   entity_id.h
@@ -97,7 +98,6 @@ list(TRANSFORM fighters_headers PREPEND "../include/ioj/sim/fighters/")
 
 set(lasers_headers
   laser_entities.h
-  laser_frame_output.h
   laser_hit_details.h
   laser_source.h
   laser_spawn_requests.h
@@ -106,6 +106,7 @@ set(lasers_headers
 list(TRANSFORM lasers_headers PREPEND "../include/ioj/sim/lasers/")
 
 set(levels_headers
+  simulation_frame_events.h
   level_memory_manager.h
   level_read_access.h
   level_sim.h
@@ -117,6 +118,7 @@ set(levels_headers
 list(TRANSFORM levels_headers PREPEND "../include/ioj/sim/levels/")
 
 set(player_headers
+  player_events.h
   player_spatial_data.h
   flight_response.h
 )
@@ -168,7 +170,6 @@ target_sources(native-simulation
     collision/entity_world_bounds.cpp
     fighters/fighter_navigation.cpp
     fixed_tick.cpp
-    lasers/laser_frame_output.cpp
     levels/level_memory_manager.cpp
     levels/level_read_access.cpp
     levels/level_sim.cpp

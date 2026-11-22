@@ -232,7 +232,6 @@ void Sim::handle_collisions(ActionInputs const inputs) {
             trace_locations, ends.const_view(), hits, ignored_entities);
     });
 
-    LaserHitDetails hit_details{*scratch_resource};
     DirectDamageEvents collision_damage_events{*scratch_resource};
     auto const trace_hits{hit_storage.const_view()};
     auto const hit_flags{trace_hits.hits()};
@@ -242,7 +241,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
         std::ranges::count_if(hit_flags, [](auto const hit) { return hit.value() != 0; }))};
     inputs.pending_removals.reserve(inputs.pending_removals.size() + hit_count);
     collision_damage_events.reserve(hit_count);
-    hit_details.reserve(hit_count);
+    inputs.impacts.reserve(inputs.impacts.num() + hit_count);
     auto const damages{entities.damages()};
     auto const sources{entities.sources()};
 
@@ -269,17 +268,15 @@ void Sim::handle_collisions(ActionInputs const inputs) {
                                           ? Vector3f{0.f, 0.f, -1.f}
                                           : velocity * (-1.f / std::sqrt(length_squared))};
         auto const hit_location{hit_locations[entity_index]};
-        hit_details.add(hit_location.x(),
-                        hit_location.y(),
-                        hit_location.z(),
-                        emission_direction.x(),
-                        emission_direction.y(),
-                        emission_direction.z(),
-                        sources[element]);
+        inputs.impacts.add(hit_location.x(),
+                           hit_location.y(),
+                           hit_location.z(),
+                           emission_direction.x(),
+                           emission_direction.y(),
+                           emission_direction.z(),
+                           sources[element]);
     }
     inputs.damage_queue.append(collision_damage_events.const_view());
-
-    frame_output_.append_hits(hit_details.const_view(), inputs.tick);
 }
 void Sim::remove_instances(std::span<LaserIndex const> const indices) {
     for (auto const index : indices) {

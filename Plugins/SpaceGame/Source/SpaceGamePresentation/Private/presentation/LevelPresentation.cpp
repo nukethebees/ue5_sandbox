@@ -94,7 +94,7 @@ void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) 
     capital_ship_fighters.update_visual_data(
         view.entity_tables().health.const_view<sim::EntityType::Fighter>());
     spinners.update_visual_data();
-    lasers.update_visual_data();
+    lasers.update_visual_data(&view.frame_events());
     capital_ships.end_tick_presentation();
     turrets.end_tick_presentation();
     spinners.end_tick_presentation();

@@ -1,6 +1,6 @@
 #include <ioj/sim/fighters/fighter_entity_data.h>
 #include <ioj/sim/lasers/laser_entities.h>
-#include <ioj/sim/lasers/laser_frame_output.h>
+#include <ioj/sim/lasers/laser_hit_details.h>
 #include <ioj/sim/spinners/spinner_entity_data.h>
 
 #include <benchmark/benchmark.h>
@@ -29,11 +29,11 @@ void laser_hit_accumulation(benchmark::State& state) {
     sim::LaserHitDetails source;
     source.set_num(batch);
     auto const hits{source.const_view()};
-    sim::lasers::FrameOutput output;
+    sim::LaserHitDetails output;
     for (auto _ : state) {
         output.reset();
         for (std::uint32_t first{}; first < count; first += batch) {
-            output.append_hits(hits, static_cast<sim::SimTick>(first));
+            output.append_from(hits);
         }
         benchmark::DoNotOptimize(output);
         benchmark::ClobberMemory();

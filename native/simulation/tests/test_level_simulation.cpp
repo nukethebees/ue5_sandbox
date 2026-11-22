@@ -708,20 +708,22 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     simulation.advance(0.425);
     auto const frame{simulation.read_access()};
     auto const& lasers{frame.lasers()};
-    auto const hit_ticks{lasers.hit_ticks()};
+    auto const& impacts{frame.frame_events().laser_impacts};
+    auto const& ticks{frame.frame_events().ticks};
     EXPECT_EQ(lasers.num_instances(), 0) << "Impacted lasers leave authoritative storage";
-    EXPECT_EQ(lasers.hits().num(), 2) << "Both impacts survive the final empty fixed tick";
-    EXPECT_EQ(hit_ticks.size(), std::size_t{2}) << "Impact tick indices remain aligned";
-    if (hit_ticks.size() == 2) {
-        EXPECT_EQ(hit_ticks[0].value(), std::uint64_t{1})
-            << "First impact keeps its deterministic tick";
-        EXPECT_EQ(hit_ticks[1].value(), std::uint64_t{2})
-            << "Second impact keeps its deterministic tick";
-        EXPECT_TRUE((lasers.hits().sources()[0] == LaserSource{Team::Green, EntityType::Fighter}))
+    EXPECT_EQ(impacts.num(), 2) << "Both impacts survive the final empty fixed tick";
+    ASSERT_EQ(ticks.size(), 4u);
+    EXPECT_EQ(frame.frame_events().base_tick.value(), 0u);
+    EXPECT_EQ(ticks[0].impacts, 0u);
+    EXPECT_EQ(ticks[1].impacts, 1u);
+    EXPECT_EQ(ticks[2].impacts, 2u);
+    EXPECT_EQ(ticks[3].impacts, 2u);
+    if (impacts.num() == 2) {
+        EXPECT_TRUE((impacts.sources()[0] == LaserSource{Team::Green, EntityType::Fighter}))
             << "Neutral source is retained after removal";
     }
     simulation.advance(0.0);
-    EXPECT_EQ(simulation.read_access().lasers().hits().num(), 0)
+    EXPECT_EQ(simulation.read_access().frame_events().laser_impacts.num(), 0)
         << "Next frame does not repeat consumed impacts";
 }
 

@@ -132,6 +132,7 @@ struct LevelSim {
     SimClock clock_;
 
     LevelMemoryManager memory_manager_;
+    SimulationFrameEvents frame_events_{memory_manager_.game_memory()};
     EntityLedger entity_ledger_{memory_manager_.game_memory()};
     DamageQueue damage_queue_;
     EntityTables entity_tables_{memory_manager_.game_memory()};

@@ -2,6 +2,7 @@
 
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/levels/simulation_frame_events.h>
 #include <SpaceGamePresentation/entities/TeamColours.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
@@ -16,48 +17,51 @@ class FSandboxISMCInstanceChunkWriter;
 class FLaserPresentationIndexingTest;
 class FSparkEffects;
 
+namespace ioj {
 struct SPACEGAMEPRESENTATION_API FLaserPresentation {
-    friend struct ioj::FLevelPresentation;
-    friend class FLaserPresentationIndexingTest;
+    friend struct FLevelPresentation;
+    friend class ::FLaserPresentationIndexingTest;
   public:
     static constexpr int32 n_custom_ismc_floats{5};
 
-    explicit FLaserPresentation(ioj::USandboxISMCComponent& component);
+    explicit FLaserPresentation(USandboxISMCComponent& component);
 
-    auto get_config() const noexcept -> ioj::FLaserProjectileConfig const* { return actor_config; }
-    void set_actor_config(ioj::FLaserProjectileConfig const* new_config) noexcept {
+    auto get_config() const noexcept -> FLaserProjectileConfig const* { return actor_config; }
+    void set_actor_config(FLaserProjectileConfig const* new_config) noexcept {
         actor_config = new_config;
     }
     void set_spark_effects(FSparkEffects& effects) noexcept { spark_effects_ = &effects; }
   private:
-    auto simulation() const -> ::ioj::sim::lasers::Sim const& { return *simulation_; }
+    auto simulation() const -> sim::lasers::Sim const& { return *simulation_; }
 
     void clear_runtime_state_presentation();
     void begin_play_presentation(int32 reserve);
-    void update_visual_data(bool consume_hits = true);
+    void update_visual_data(sim::SimulationFrameEvents const* impacts);
     void end_tick_presentation();
 
     void configure_ismc();
     void fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) const;
     void update_ismc();
-    void queue_hit_sparks();
+    void queue_hit_sparks(sim::SimulationFrameEvents const& impacts);
 
-    ioj::FLaserProjectileConfig const* actor_config{nullptr};
+    FLaserProjectileConfig const* actor_config{nullptr};
 
-    ioj::USandboxISMCComponent* instances{nullptr};
+    USandboxISMCComponent* instances{nullptr};
     TArray<int32> visible_indices_;
 
     FSparkEffects* spark_effects_{nullptr};
 
 #if WITH_EDITORONLY_DATA
-    ioj::FDrawDebugConfig debug_drawer;
+    FDrawDebugConfig debug_drawer;
 
     bool debugging_shapes_enabled{false};
 #endif
 
-    ::ioj::sim::lasers::Sim const* simulation_{};
+    sim::lasers::Sim const* simulation_{};
     FTeamColours player_colours_;
     FTeamColours fighter_colours_;
     FTeamColours turret_colours_;
-    auto source_colour(::ioj::sim::LaserSource source) const -> FLinearColor;
+    auto source_colour(sim::LaserSource source) const -> FLinearColor;
 };
+
+} // namespace ioj

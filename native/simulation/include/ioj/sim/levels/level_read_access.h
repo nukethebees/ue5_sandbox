@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/sim/levels/simulation_frame_events.h>
 
 namespace ioj::sim {
 class EntityLedger;
@@ -38,6 +39,7 @@ class LevelReadAccess {
     auto spinners() const -> spinners::Sim const&;
     auto lasers() const -> lasers::Sim const&;
     auto player() const -> player::Sim const*;
+    auto frame_events() const -> SimulationFrameEvents const&;
     auto clock() const -> SimClock const&;
     auto entity_ledger() const -> EntityLedger const&;
     auto entity_tables() const -> EntityTables const&;

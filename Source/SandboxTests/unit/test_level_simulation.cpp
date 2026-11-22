@@ -612,13 +612,13 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
 
     auto* const component{NewObject<ioj::USandboxISMCComponent>()};
     component->set_static_mesh(*mesh);
-    component->set_num_custom_data_floats(FLaserPresentation::n_custom_ismc_floats);
+    component->set_num_custom_data_floats(ioj::FLaserPresentation::n_custom_ismc_floats);
 
     ::ioj::sim::LevelSim simulation{compile_battle(make_battle())};
 
     auto const& clk{simulation.clock()};
     auto const& lasers{simulation.lasers()};
-    FLaserPresentation presentation{*component};
+    ioj::FLaserPresentation presentation{*component};
 
     simulation.start();
     auto const dt{clk.tick_period()};
@@ -660,7 +660,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             continue;
         }
         presentation.simulation_ = &lasers;
-        presentation.update_visual_data(false);
+        presentation.update_visual_data(nullptr);
 
         auto const live_count{lasers.num_instances()};
         auto const active{lasers.get_entities().active()};
@@ -674,10 +674,11 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
         TArray<FSandboxISMCRenderInstance> packed;
         TArray<float> custom_data;
         packed.SetNumUninitialized(active_count);
-        custom_data.SetNumUninitialized(active_count * FLaserPresentation::n_custom_ismc_floats);
+        custom_data.SetNumUninitialized(active_count *
+                                        ioj::FLaserPresentation::n_custom_ismc_floats);
         FSandboxISMCInstanceChunkWriter writer{packed,
                                                custom_data,
-                                               FLaserPresentation::n_custom_ismc_floats,
+                                               ioj::FLaserPresentation::n_custom_ismc_floats,
                                                0,
                                                FVector3f::ZeroVector,
                                                FVector3f::ZeroVector};

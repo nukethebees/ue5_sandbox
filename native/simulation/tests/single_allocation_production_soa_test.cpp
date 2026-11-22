@@ -1,7 +1,6 @@
 #include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/fighters/fighter_entity_data.h>
-#include <ioj/sim/lasers/laser_frame_output.h>
 #include <ioj/sim/lasers/laser_hit_details.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/spinners/spinner_entity_data.h>
@@ -87,29 +86,22 @@ TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
     second_batch.add(100.f, 3.f, 4.f, 1.f, 0.f, 0.f, {Team::Red, EntityType::CapitalShip});
     second_batch.add(101.f, 3.f, 4.f, 1.f, 0.f, 0.f, {Team::Red, EntityType::CapitalShip});
 
-    lasers::FrameOutput output;
-    output.append_hits(first_batch.const_view(), SimTick{7});
-    output.append_hits(second_batch.const_view(), SimTick{9});
+    LaserHitDetails output;
+    output.append_from(first_batch.const_view());
+    output.append_from(second_batch.const_view());
 
-    auto const accumulated{output.hits.const_view()};
+    auto const accumulated{output.const_view()};
     EXPECT_EQ(accumulated.num(), 67) << "All laser-hit batches accumulate";
     EXPECT_EQ(accumulated.view_locations().xs()[64], 64.f) << "Growth preserves earlier hits";
     EXPECT_EQ(accumulated.view_locations().xs()[66], 101.f) << "Later hits append in order";
-    EXPECT_EQ(output.hit_ticks[64], SimTick{7}) << "First batch tick remains aligned";
-    EXPECT_EQ(output.hit_ticks[65], SimTick{9}) << "Second batch tick remains aligned";
-    EXPECT_EQ(output.hit_ordinals[64], 64) << "First batch ordinal remains aligned";
-    EXPECT_EQ(output.hit_ordinals[65], 0) << "Each batch restarts hit ordinals";
 
     output.reset();
-    EXPECT_EQ(output.hits.num(), 0) << "Reset clears accumulated hit rows";
-    EXPECT_TRUE(output.hit_ticks.empty()) << "Reset clears hit ticks";
-    EXPECT_TRUE(output.hit_ordinals.empty()) << "Reset clears hit ordinals";
+    EXPECT_EQ(output.num(), 0) << "Reset clears accumulated hit rows";
 
-    output.append_hits(second_batch.const_view(), SimTick{11});
-    auto const reused{output.hits.const_view()};
+    output.append_from(second_batch.const_view());
+    auto const reused{output.const_view()};
     EXPECT_EQ(reused.num(), 2) << "Reset storage can be reused";
     EXPECT_EQ(reused.view_locations().xs()[0], 100.f) << "Reused storage receives new contents";
-    EXPECT_EQ(output.hit_ticks[0], SimTick{11}) << "Reused tick side array stays aligned";
 }
 
 TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMoves) {

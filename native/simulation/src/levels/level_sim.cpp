@@ -139,6 +139,7 @@ auto LevelSim::result() const -> std::optional<LevelResult> {
 /* **************************************** */
 void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const navigation_output) {
     SANDBOX_PROFILE_SCOPE("LevelSim::advance");
+    frame_events_.clear(clock_.get_completed_ticks());
     if (state_ == LevelState::Stopped) {
         return;
     }
@@ -151,7 +152,6 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
     entity_ledger_.reset_frame_output();
     capital_ships_simulation_.reset_frame_output();
     turrets_simulation_.reset_frame_output();
-    lasers_simulation_.reset_frame_output();
     clock_.add_time(dt);
 
     while (clock_.try_tick()) {
@@ -164,6 +164,10 @@ void LevelSim::advance(time_type const dt, fighters::NavigationCounters* const n
             advance_tick<TickPlayerShipState::PresentDead>(tick_period, navigation_output);
         }
 
+        frame_events_.ticks.push_back({frame_events_.deaths.num(),
+                                       frame_events_.laser_impacts.num(),
+                                       frame_events_.capital_changes.num(),
+                                       frame_events_.turret_changes.num()});
         profiling::mark_frame("Simulation");
         event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_, points_);
         if (state_ != LevelState::Running) {
@@ -288,9 +292,9 @@ void LevelSim::advance_tick(float const tick_period,
 
                 {
                     lasers::ActionInputs const inputs{
+                        frame_events_.laser_impacts,
                         tick_period,
                         damage_queue_,
-                        clock_.get_completed_ticks(),
                         spatial_queries_,
                         phase_memory,
                         laser_removal_indices,

@@ -26,7 +26,8 @@ auto make_seed(::ioj::sim::SimTick const tick, FVector3f const location, int32 c
 }
 } // namespace SpaceGame::LaserPresentation::Private
 
-FLaserPresentation::FLaserPresentation(ioj::USandboxISMCComponent& component)
+namespace ioj {
+FLaserPresentation::FLaserPresentation(USandboxISMCComponent& component)
     : instances{&component} {}
 
 void FLaserPresentation::clear_runtime_state_presentation() {
@@ -53,14 +54,14 @@ void FLaserPresentation::begin_play_presentation(int32 reserve) {
     debug_drawer.world = instances->GetWorld();
 #endif
 
-    update_visual_data(false);
+    update_visual_data(nullptr);
 }
 
-void FLaserPresentation::update_visual_data(bool const consume_hits) {
+void FLaserPresentation::update_visual_data(sim::SimulationFrameEvents const* impacts) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_visual_data);
     update_ismc();
-    if (consume_hits) {
-        queue_hit_sparks();
+    if (impacts) {
+        queue_hit_sparks(*impacts);
     }
 }
 
@@ -83,14 +84,14 @@ void FLaserPresentation::configure_ismc() {
     instances->set_num_custom_data_floats(n_custom_ismc_floats);
 }
 
-auto FLaserPresentation::source_colour(::ioj::sim::LaserSource const source) const -> FLinearColor {
+auto FLaserPresentation::source_colour(sim::LaserSource const source) const -> FLinearColor {
     switch (source.type) {
-        case ::ioj::sim::EntityType::PlayerShip:
-            return player_colours_[ioj::to_unreal(source.team)];
-        case ::ioj::sim::EntityType::Fighter:
-            return fighter_colours_[ioj::to_unreal(source.team)];
-        case ::ioj::sim::EntityType::Turret:
-            return turret_colours_[ioj::to_unreal(source.team)];
+        case sim::EntityType::PlayerShip:
+            return player_colours_[to_unreal(source.team)];
+        case sim::EntityType::Fighter:
+            return fighter_colours_[to_unreal(source.team)];
+        case sim::EntityType::Turret:
+            return turret_colours_[to_unreal(source.team)];
         default:
             return FLinearColor::White;
     }
@@ -147,33 +148,39 @@ void FLaserPresentation::fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) cons
                                                             transform_rotations);
 }
 
-void FLaserPresentation::queue_hit_sparks() {
+void FLaserPresentation::queue_hit_sparks(sim::SimulationFrameEvents const& impacts) {
     if (actor_config->impact_sparks.count <= 0) {
         return;
     }
 
-    auto const hit_details{simulation().hits()};
-    auto const hit_ticks{simulation().hit_ticks()};
-    auto const hit_ordinals{simulation().hit_ordinals()};
-    auto const count{ioj::num(hit_details)};
+    auto const hit_details{impacts.laser_impacts.const_view()};
+
     auto const& style{actor_config->impact_sparks};
     auto const locations{hit_details.view_locations()};
     auto const sources{hit_details.sources()};
     auto const directions{hit_details.view_emission_directions()};
 
-    for (int32 index{0}; index < count; ++index) {
-        auto const location{ioj::to_unreal(::ioj::vector_at(locations, index))};
-        auto const colour{source_colour(sources[index])};
-        spark_effects_->queue_burst({
-            .emission =
-                {
-                    .location = ::ioj::Vector3f{location},
-                    .direction = ::ioj::vector_at(directions, index),
-                    .colour = {colour.R, colour.G, colour.B},
-                    .seed = SpaceGame::LaserPresentation::Private::make_seed(
-                        hit_ticks[index], location, hit_ordinals[index]),
-                },
-            .style = style.to_native(),
-        });
+    std::uint32_t first{};
+    auto tick{impacts.base_tick};
+    for (auto const counts : impacts.ticks) {
+        for (auto index{first}; index < counts.impacts; ++index) {
+            auto const location{to_unreal(vector_at(locations, index))};
+            auto const colour{source_colour(sources[index])};
+            spark_effects_->queue_burst({
+                .emission =
+                    {
+                        .location = Vector3f{location},
+                        .direction = vector_at(directions, index),
+                        .colour = {colour.R, colour.G, colour.B},
+                        .seed = SpaceGame::LaserPresentation::Private::make_seed(
+                            tick, location, static_cast<int32>(index - first)),
+                    },
+                .style = style.to_native(),
+            });
+        }
+        first = counts.impacts;
+        tick.set_value(tick.value() + 1);
     }
 }
+
+} // namespace ioj
