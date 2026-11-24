@@ -25,9 +25,13 @@ impl Fixture {
         write(&request.unreal_pak);
         for path in [
             "Sandbox/LevelScripts/Nested/Scenario.scm",
-            "Sandbox.exe",
-            "Sandbox/Binaries/Win64/Sandbox.exe",
-            "Sandbox/Binaries/Win64/Sandbox-Win64-Shipping.exe",
+            "Sandbox/Binaries/Win64/SandboxHost.exe",
+            "Sandbox/Binaries/Win64/Sandbox.dll",
+            "Sandbox/Binaries/Win64/Sandbox-Win64-DebugGame.dll",
+            "Sandbox/Binaries/Win64/Sandbox-Win64-Shipping.dll",
+            "Sandbox/Binaries/Win64/SandboxTBB12.dll",
+            "Sandbox/Binaries/Win64/SandboxTBB12_debug.dll",
+            "Sandbox/Binaries/Win64/SandboxTracyClient.dll",
             "Engine/Extras/Redist/en-us/vc_redist.x64.exe",
             "Sandbox/Content/Paks/game.pak",
             "Sandbox/Content/Paks/game.utoc",
@@ -76,7 +80,7 @@ impl Fixture {
 #[test]
 fn complete_packages_and_inventory_artifacts() {
     let mut fixture = Fixture::new();
-    for configuration in [Configuration::Development, Configuration::Shipping] {
+    for configuration in [Configuration::Development, Configuration::DebugGame, Configuration::Shipping] {
         fixture.request.configuration = configuration;
         let mut calls = Vec::new();
         let scripts = verify(&fixture.request, |args| {
@@ -135,9 +139,17 @@ fn complete_packages_and_inventory_artifacts() {
 }
 
 #[test]
+fn archive_rejects_a_leftover_stock_launcher() {
+    let fixture = Fixture::new();
+    write(&fixture.request.package_root.join("Sandbox.exe"));
+    assert!(fixture.verify().unwrap_err().to_string().contains("Obsolete player launcher"));
+}
+
+#[test]
 fn missing_files_and_containers_are_rejected() {
     for (path, message) in [
-        ("Sandbox.exe", "Required package file"),
+        ("Sandbox/Binaries/Win64/SandboxHost.exe", "Required package file"),
+        ("Sandbox/Binaries/Win64/Sandbox.dll", "Required package file"),
         ("Sandbox/Content/Paks/game.pak", "No pak files"),
         ("Sandbox/Content/Paks/game.utoc", "No IoStore containers"),
     ] {
@@ -295,6 +307,8 @@ fn cli_requires_all_paths_and_known_configuration() {
         "Shipping",
     ];
     assert!(Request::try_parse_from(args).is_ok());
+    let debug_game = args[..args.len() - 1].iter().copied().chain(["DebugGame"]);
+    assert!(Request::try_parse_from(debug_game).is_ok());
     assert!(Request::try_parse_from(&args[..9]).is_err());
     assert!(Request::try_parse_from(args.into_iter().chain(["--configuration", "Debug"])).is_err());
 }
