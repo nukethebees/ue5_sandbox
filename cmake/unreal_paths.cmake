@@ -22,8 +22,6 @@ endfunction()
 function(sandbox_configure_unreal_engine_paths prefix engine_root editor_name editor_cmd_name)
   cmake_path(APPEND engine_root Engine Build BatchFiles RunUBT.bat
     OUTPUT_VARIABLE run_ubt_script)
-  cmake_path(APPEND engine_root Engine Build BatchFiles Build.bat
-    OUTPUT_VARIABLE build_bat_script)
   cmake_path(APPEND engine_root Engine Build BatchFiles RunUAT.bat
     OUTPUT_VARIABLE run_uat_script)
   cmake_path(APPEND engine_root Engine Binaries Win64 "${editor_name}"
@@ -35,15 +33,7 @@ function(sandbox_configure_unreal_engine_paths prefix engine_root editor_name ed
   cmake_path(APPEND engine_root Engine Binaries Win64 UnrealPak.exe
     OUTPUT_VARIABLE unreal_pak_executable)
 
-  if(EXISTS "${run_ubt_script}")
-    set(build_script "${run_ubt_script}")
-  elseif(EXISTS "${build_bat_script}")
-    set(build_script "${build_bat_script}")
-  else()
-    set(build_script "${run_ubt_script}")
-  endif()
-
-  set(${prefix}_BUILD_SCRIPT "${build_script}" PARENT_SCOPE)
+  set(${prefix}_BUILD_SCRIPT "${run_ubt_script}" PARENT_SCOPE)
   set(${prefix}_RUN_UAT_SCRIPT "${run_uat_script}" PARENT_SCOPE)
   set(${prefix}_EDITOR_EXE "${editor_executable}" PARENT_SCOPE)
   set(${prefix}_EDITOR_CMD_EXE "${editor_cmd_executable}" PARENT_SCOPE)
@@ -63,6 +53,6 @@ function(sandbox_configure_game_artifact_paths prefix artifact_root base_directo
   set(${prefix}_ARCHIVE_ROOT "${configuration_root}/archive" PARENT_SCOPE)
   set(${prefix}_STAGE_DIRECTORY "${configuration_root}/stage/Windows" PARENT_SCOPE)
   set(${prefix}_ARCHIVE_DIRECTORY "${configuration_root}/archive" PARENT_SCOPE)
-  set(${prefix}_STAGE_EXECUTABLE "${configuration_root}/stage/Windows/Sandbox.exe" PARENT_SCOPE)
+  set(${prefix}_STAGE_EXECUTABLE "${configuration_root}/stage/Windows/Sandbox/Binaries/Win64/SandboxHost.exe" PARENT_SCOPE)
   set(${prefix}_VERIFICATION_ROOT "${configuration_root}/verification" PARENT_SCOPE)
 endfunction()

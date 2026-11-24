@@ -2,12 +2,15 @@
 
 #include <ioj/settings/application_settings.h>
 #include <ioj/settings/game_settings_state.h>
+#include <ioj/settings/screen_resolution.h>
 
 #include <expected>
 #include <filesystem>
 #include <string>
 
 namespace ioj::levels::authoring {
+enum class MissingPreferences { CreateFile, UseDefaults };
+
 struct UserSettings {
     GameSettingsState defaults;
     GameSettingsState applied;
@@ -20,7 +23,8 @@ auto read_application_settings(std::filesystem::path const& script_root)
     -> ApplicationSettingsResult;
 auto read_user_settings(std::filesystem::path const& script_root,
                         std::filesystem::path const& personal_file,
-                        ScreenResolution desktop) -> UserSettingsResult;
+                        ScreenResolution desktop,
+                        MissingPreferences missing) -> UserSettingsResult;
 auto save_user_settings(std::filesystem::path const& personal_file,
                         GameSettingsState const& state,
                         GameSettingsState const& defaults) -> SavePreferencesResult;

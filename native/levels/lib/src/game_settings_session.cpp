@@ -1,8 +1,18 @@
-#include <ioj/sim/player/game_settings_session.h>
+#include <ioj/settings/game_settings_session.h>
+
+#include <ioj/settings/game_setting.h>
+#include <ioj/settings/game_setting_category.h>
+#include <ioj/settings/game_setting_value.h>
+#include <ioj/settings/game_settings.h>
+#include <ioj/settings/game_settings_apply_result.h>
+#include <ioj/settings/game_settings_session_phase.h>
+#include <ioj/settings/game_settings_state.h>
+#include <ioj/settings/setting_apply_mode.h>
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cstdint>
 
 namespace ioj {
 void GameSettingsSession::initialise(GameSettingsState applied, GameSettingsState defaults) {

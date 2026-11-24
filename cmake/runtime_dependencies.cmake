@@ -1,4 +1,4 @@
-function(ioj_stage_runtime_dependencies target)
+function(ioj_copy_runtime_dependencies target)
   if(WIN32)
     add_custom_command(TARGET ${target} POST_BUILD
       COMMAND "${CMAKE_COMMAND}"
@@ -9,6 +9,10 @@ function(ioj_stage_runtime_dependencies target)
     )
   endif()
 
+endfunction()
+
+function(ioj_stage_runtime_dependencies target)
+  ioj_copy_runtime_dependencies(${target})
   if(IOJ_WITH_UNREAL AND IOJ_WITH_TRACY)
     target_sources(${target}
       PRIVATE

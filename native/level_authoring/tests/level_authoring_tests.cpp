@@ -1,28 +1,64 @@
 #include "module_fixture.h"
-#include "settings_diff.h"
+#include "settings_diff.h" // IWYU pragma: keep
+#include <ioj/constrained_numbers.h>
 #include <ioj/files.h>
-#include <ioj/levels/authoring/campaign_parser.h>
+#include <ioj/gfx/starfield_settings.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/game_configuration.h>
 #include <ioj/levels/authoring/level_catalog_category.h>
 #include <ioj/levels/authoring/level_definition_writer.h>
-#include <ioj/levels/authoring/level_inputs_reader.h>
+#include <ioj/levels/authoring/level_inputs.h>
+#include <ioj/levels/authoring/level_inputs_reader.h> // IWYU pragma: keep
 #include <ioj/levels/authoring/level_parser.h>
+#include <ioj/levels/campaign_definition.h>
+#include <ioj/levels/diagnostic_code.h>
+#include <ioj/levels/diagnostics.h>
+#include <ioj/levels/entity_archetype.h>
+#include <ioj/levels/entity_spawn_definition.h>
+#include <ioj/levels/identifiers.h>
+#include <ioj/levels/level_camera_definition.h>
+#include <ioj/levels/level_definition.h>
+#include <ioj/levels/level_definition_components.h>
+#include <ioj/levels/logic_payloads.h>
+#include <ioj/levels/team.h>
 #include <ioj/s7/interpreter.h>
+#include <ioj/s7/reader.h>
 #include <ioj/s7/source_format.h>
+#include <ioj/s7/writer.h>
+#include <ioj/settings/game_setting.h>
+#include <ioj/settings/game_settings.h>
+#include <ioj/settings/game_settings_apply_result.h>
 #include <ioj/settings/game_settings_edit_state.h>
-#include <ioj/settings/settings_values_writer.h>
+#include <ioj/settings/game_settings_state.h>
+#include <ioj/settings/game_window_mode.h>
+#include <ioj/settings/launch_display.h>
+#include <ioj/settings/player_settings.h>
+#include <ioj/settings/screen_resolution.h>
+#include <ioj/settings/setting_control_kind.h>
+#include <ioj/settings/settings.h>
+#include <ioj/settings/settings_values_writer.h> // IWYU pragma: keep
 #include <ioj/testing/files.h>
 #include <ioj/testing/structural_diff.h>
+#include <ioj/vector.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <expected>
+#include <filesystem>
 #include <format>
 #include <limits>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <system_error>
 #include <type_traits>
-#include <unordered_set>
+#include <utility>
+#include <variant>
+#include <vector>
 
 namespace ioj::levels::authoring::tests {
 using ioj::testing::structurally_equal;
@@ -100,12 +136,67 @@ static_assert(!std::is_default_constructible_v<LevelDefinition>);
 static_assert(std::is_same_v<decltype(std::declval<LevelDefinition&>().entities()),
                              std::vector<EntitySpawnDefinition> const&>);
 
+TEST(NativeSettings, BorderlessInstancePersistsOnlyTheEditedPreference) {
+    struct Backend final : SettingsBackend {
+        auto inspect_display() const -> std::expected<HostDisplay, std::string> override {
+            return HostDisplay{GameWindowMode::Borderless, {2560, 1440}};
+        }
+        auto apply_display(GameSettingsState const&) const -> SettingsResult override {
+            ADD_FAILURE() << "An unrelated edit must not preview the display";
+            return {};
+        }
+        auto verify_display() const -> SettingsResult override { return {}; }
+        void confirm_display() const override {}
+        auto revert_display() const -> SettingsResult override { return {}; }
+        void apply_non_display(GameSettingsState const&) const override {}
+    };
+    Backend backend;
+    TemporaryLevelDirectory directory;
+    auto const path{directory.path() / "Config/user-settings.scm"};
+    ScreenResolution const desktop{2560, 1440};
+    auto config{
+        read_user_settings(IOJ_LEVEL_SCRIPTS, path, desktop, MissingPreferences::UseDefaults)};
+    ASSERT_TRUE(config) << config.error();
+
+    auto saved{config->applied};
+    saved.window_mode = GameWindowMode::Windowed;
+    saved.resolution = {960, 540};
+    ASSERT_TRUE(save_user_settings(path, saved, config->defaults));
+
+    PlayerSettings first;
+    PlayerSettings second;
+    ASSERT_TRUE(first.load(IOJ_LEVEL_SCRIPTS, path, desktop, LaunchDisplay::Borderless));
+    ASSERT_TRUE(second.load(IOJ_LEVEL_SCRIPTS, path, desktop, LaunchDisplay::Borderless));
+    ASSERT_TRUE(first.activate(backend));
+    ASSERT_TRUE(second.activate(backend));
+    ASSERT_TRUE(first.begin_edit(backend));
+    EXPECT_EQ(first.session().applied_state().resolution, desktop);
+    EXPECT_FALSE(first.is_available(GameSetting::WindowMode));
+    EXPECT_FALSE(first.is_available(GameSetting::Resolution));
+
+    ASSERT_TRUE(first.set_setting(GameSetting::VSync, !saved.vsync, {}));
+    ASSERT_EQ(first.apply(backend, 0.0, false), GameSettingsApplyResult::Applied);
+    EXPECT_EQ(second.session().applied_state().vsync, saved.vsync);
+
+    saved.vsync = !saved.vsync;
+    auto persisted{
+        read_user_settings(IOJ_LEVEL_SCRIPTS, path, desktop, MissingPreferences::UseDefaults)};
+    ASSERT_TRUE(persisted) << persisted.error();
+    EXPECT_EQ(persisted->applied, saved);
+}
+
 TEST(NativeSettings, PersonalPreferencesRoundTripEveryEditableScalar) {
     TemporaryLevelDirectory directory;
     std::filesystem::path const scripts{IOJ_LEVEL_SCRIPTS};
     auto const path{directory.path() / "Settings/user-settings.scm"};
     ScreenResolution const desktop{2560, 1440};
-    auto const config{read_user_settings(scripts, path, desktop)};
+    auto const in_memory{
+        read_user_settings(scripts, path, desktop, MissingPreferences::UseDefaults)};
+    ASSERT_TRUE(in_memory) << in_memory.error();
+    EXPECT_EQ(in_memory->applied, in_memory->defaults);
+    EXPECT_FALSE(std::filesystem::exists(path));
+
+    auto const config{read_user_settings(scripts, path, desktop, MissingPreferences::CreateFile)};
     ASSERT_TRUE(config) << config.error();
     ASSERT_EQ(config->applied, config->defaults);
     EXPECT_EQ(config->defaults.resolution, desktop);
@@ -141,11 +232,12 @@ TEST(NativeSettings, PersonalPreferencesRoundTripEveryEditableScalar) {
     changed.overall_quality = graphics_preset(changed);
     auto const saved{save_user_settings(path, changed, config->defaults)};
     ASSERT_TRUE(saved) << saved.error();
-    auto const loaded{read_user_settings(scripts, path, desktop)};
+    auto const loaded{read_user_settings(scripts, path, desktop, MissingPreferences::CreateFile)};
     ASSERT_TRUE(loaded) << loaded.error();
     EXPECT_EQ(loaded->applied, changed);
     ASSERT_TRUE(save_user_settings(path, config->defaults, config->defaults));
-    EXPECT_EQ(read_user_settings(scripts, path, desktop)->applied, config->defaults);
+    EXPECT_EQ(read_user_settings(scripts, path, desktop, MissingPreferences::CreateFile)->applied,
+              config->defaults);
 }
 
 TEST(NativeSettings, HandEditedPreferencesSurviveUnrealSavedRemovalAndReportInvalidValues) {
@@ -162,7 +254,10 @@ TEST(NativeSettings, HandEditedPreferencesSurviveUnrealSavedRemovalAndReportInva
     }};
     ASSERT_TRUE(write_files({{path, personal_source(":mouse-turn-sensitivity 2")},
                              {ini, "[GameUserSettings]\nMouseTurnSensitivity=0.5"}}));
-    auto read = [&] { return read_user_settings(IOJ_LEVEL_SCRIPTS, path, {1920, 1080}); };
+    auto read = [&] {
+        return read_user_settings(
+            IOJ_LEVEL_SCRIPTS, path, {1920, 1080}, MissingPreferences::CreateFile);
+    };
     auto const loaded{read()};
     ASSERT_TRUE(loaded) << loaded.error();
     EXPECT_EQ(loaded->applied.mouse_turn_sensitivity, 2.f);
@@ -188,7 +283,10 @@ TEST(NativeSettings, SavedPreferencesInheritNewDefaultsUntilOverridden) {
     std::filesystem::create_directories(settings);
     std::filesystem::copy_file(
         std::filesystem::path{IOJ_LEVEL_SCRIPTS} / "Settings/user-defaults.scm", defaults);
-    auto const read{[&] { return read_user_settings(directory.path(), path, {1920, 1080}); }};
+    auto const read{[&] {
+        return read_user_settings(
+            directory.path(), path, {1920, 1080}, MissingPreferences::CreateFile);
+    }};
     auto const initial{read()};
     ASSERT_TRUE(initial) << initial.error();
     auto personal{initial->applied};

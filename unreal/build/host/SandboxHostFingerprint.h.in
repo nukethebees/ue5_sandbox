@@ -1,0 +1,2 @@
+#pragma once
+#define SANDBOX_HOST_FINGERPRINT "@fingerprint@"

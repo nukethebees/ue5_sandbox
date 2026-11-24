@@ -1,15 +1,31 @@
 #include "SpaceGame/settings/GameSettingsBackend.h"
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-#include "EmbeddedHost.h"
+#include "GameHost.h"
+#include <ioj/host/game_host.h>
 #endif
 
+#include "GenericPlatform/GenericWindow.h"
 #include "SpaceGame/settings/SpaceGameUserSettings.h"
-#include <ioj/settings/game_settings_edit_state.h>
+#include <ioj/settings/game_setting_option_provider.h>
+#include <ioj/settings/game_settings_state.h>
+#include <ioj/settings/game_window_mode.h>
+#include <ioj/settings/launch_display.h>
+#include <ioj/settings/player_settings.h>
+#include <ioj/settings/screen_resolution.h>
 
+#include "Containers/Array.h"
+#include "CoreGlobals.h"
 #include "Engine/Engine.h"
-#include "Engine/LocalPlayer.h"
-#include "EnhancedInputSubsystems.h"
+#include "HAL/Platform.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Logging/LogMacros.h"
+#include "Logging/LogVerbosity.h"
+#include "Math/MathFwd.h"
+#include "Templates/Casts.h"
+
+#include <expected>
+#include <string>
+#include <vector>
 
 namespace ioj {
 namespace {
@@ -35,24 +51,56 @@ void FGameSettingsBackend::apply_non_display(GameSettingsState const& state) con
     if (settings == nullptr) {
         return;
     }
+
     // Unreal can reload its bootstrap INI while validating an uninitialised settings object.
     settings->ValidateSettings();
     write_non_display(*settings, state);
     settings->ApplyNonResolutionSettings();
 }
 
-void FGameSettingsBackend::apply_display(GameSettingsState const& state) const {
+auto FGameSettingsBackend::inspect_display() const -> std::expected<HostDisplay, std::string> {
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-    embedded_game_host().apply_display(state);
+    auto& host{game_host()};
+    HostDisplay display{};
+    if (auto error{host.apply_display(host.window, DisplayOperation::Inspect, display)}) {
+        return std::expected<HostDisplay, std::string>{std::unexpect, error};
+    }
+    return display;
+#else
+    return std::expected<HostDisplay, std::string>{std::unexpect, "PIE does not own a host window"};
+#endif
+}
+
+auto FGameSettingsBackend::verify_display() const -> SettingsResult {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    auto& host{game_host()};
+    HostDisplay display{};
+    if (auto error{host.apply_display(host.window, DisplayOperation::Verify, display)}) {
+        return SettingsResult{std::unexpect, error};
+    }
+#endif
+    return {};
+}
+
+auto FGameSettingsBackend::apply_display(GameSettingsState const& state) const -> SettingsResult {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    auto& host{game_host()};
+    HostDisplay display{state.window_mode, state.resolution};
+
+    if (auto error{host.apply_display(host.window, DisplayOperation::Preview, display)}) {
+        return SettingsResult{std::unexpect, error};
+    }
 #else
     auto* settings{user_settings()};
     if (settings == nullptr) {
-        return;
+        return SettingsResult{std::unexpect, "Game user settings are unavailable"};
     }
+
     settings->SetScreenResolution({state.resolution.width, state.resolution.height});
     settings->SetFullscreenMode(to_engine_window_mode(state.window_mode));
     settings->ApplyResolutionSettings(false);
 #endif
+    return {};
 }
 
 void FGameSettingsBackend::confirm_display() const {
@@ -63,38 +111,33 @@ void FGameSettingsBackend::confirm_display() const {
 #endif
 }
 
-void FGameSettingsBackend::revert_display() const {
+auto FGameSettingsBackend::revert_display() const -> SettingsResult {
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-    embedded_game_host().apply_display(embedded_game_host().session.applied_state());
+    auto& host{game_host()};
+    HostDisplay display{};
+
+    if (auto error{host.apply_display(host.window, DisplayOperation::Revert, display)}) {
+        return SettingsResult{std::unexpect, error};
+    }
 #else
     if (auto* settings{user_settings()}) {
         settings->RevertVideoMode();
         settings->ApplyResolutionSettings(false);
     }
 #endif
+    return {};
 }
 
-auto FGameSettingsBackend::options(GameSettingOptionProvider const provider) const
-    -> TArray<FGameSettingOption> {
-    std::vector<ScreenResolution> resolutions;
+auto FGameSettingsBackend::supported_resolutions(GameSettingOptionProvider provider) const
+    -> std::vector<ScreenResolution> {
+    std::vector<ScreenResolution> result;
     if (provider == GameSettingOptionProvider::SupportedResolutions) {
         TArray<FIntPoint> available;
         UKismetSystemLibrary::GetSupportedFullscreenResolutions(available);
-        resolutions.reserve(available.Num());
-        for (auto const value : available) {
-            resolutions.push_back({value.X, value.Y});
+        result.reserve(available.Num());
+        for (auto value : available) {
+            result.push_back({value.X, value.Y});
         }
-    }
-    auto const choices{game_setting_choices(provider, resolutions)};
-    TArray<FGameSettingOption> result;
-    result.Reserve(static_cast<int32>(choices.size()));
-    for (auto const& choice : choices) {
-        auto const* number{std::get_if<float>(&choice.value)};
-        auto label{provider == GameSettingOptionProvider::FrameRateLimits && number != nullptr &&
-                           *number > 0.f
-                       ? FText::AsNumber(static_cast<int32>(*number))
-                       : FText::FromString(UTF8_TO_TCHAR(choice.label.c_str()))};
-        result.Add({choice.value, MoveTemp(label)});
     }
     return result;
 }

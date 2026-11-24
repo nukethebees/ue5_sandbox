@@ -1,11 +1,28 @@
+#include <ioj/settings/control_binding_address.h>
+#include <ioj/settings/control_binding_snapshot.h>
 #include <ioj/settings/control_bindings.h>
+#include <ioj/settings/game_anti_aliasing_method.h>
+#include <ioj/settings/game_graphics_preset.h>
+#include <ioj/settings/game_quality_level.h>
+#include <ioj/settings/game_setting.h>
+#include <ioj/settings/game_setting_availability_provider.h>
+#include <ioj/settings/game_setting_category.h>
+#include <ioj/settings/game_setting_device.h>
+#include <ioj/settings/game_setting_option_provider.h>
+#include <ioj/settings/game_settings.h>
+#include <ioj/settings/game_settings_apply_result.h>
 #include <ioj/settings/game_settings_edit_state.h>
-#include <ioj/sim/player/game_settings_session.h>
+#include <ioj/settings/game_settings_session.h>
+#include <ioj/settings/game_settings_state.h>
+#include <ioj/settings/screen_resolution.h>
 
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cstddef>
 #include <limits>
+#include <utility>
+#include <vector>
 
 namespace ioj::tests {
 TEST(GameSettings, TracksCategoryResetCommitAndCancellation) {

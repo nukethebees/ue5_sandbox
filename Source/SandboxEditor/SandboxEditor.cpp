@@ -1,5 +1,6 @@
 #include "SandboxEditor/SandboxEditor.h"
 
+#include "GenericPlatform/GenericPlatformMisc.h"
 #include "SandboxEditor/levels/S7EntityGeometryExport.h"
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
@@ -9,11 +10,16 @@
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
+#include "Containers/UnrealString.h"
 #include "Editor.h"
 #include "Editor/EditorEngine.h"
 #include "Editor/UnrealEdEngine.h"
 #include "EditorModeManager.h"
+#include "HAL/Platform.h"
 #include "HAL/PlatformProcess.h"
+#include "Internationalization/Internationalization.h"
+#include "Logging/LogMacros.h"
+#include "Logging/LogVerbosity.h"
 #include "Misc/FileHelper.h"
 #include "Misc/MessageDialog.h"
 #include "Misc/Paths.h"
@@ -45,6 +51,7 @@ static void play_external_mission() {
         UE_LOG(LogS7LevelAuthoring, Warning, TEXT("No mission document in the current level."));
         return;
     }
+
     FString executable;
     auto const marker{FPaths::ProjectSavedDir() / TEXT("SandboxHost.path")};
     FFileHelper::LoadFileToString(executable, *marker);
@@ -53,11 +60,12 @@ static void play_external_mission() {
         FMessageDialog::Open(
             EAppMsgType::Ok,
             FText::Format(LOCTEXT("MissingHost",
-                                  "Build the stage-embedded CMake target to launch SandboxHost. "
+                                  "Build the stage CMake target to launch SandboxHost. "
                                   "Host location: {0}"),
                           FText::FromString(executable.IsEmpty() ? marker : executable)));
         return;
     }
+
     auto const stale{s7_scene_needs_export(*document)};
     if (!stale) {
         UE_LOG(LogS7LevelAuthoring, Warning, TEXT("%s"), *stale.error());
@@ -66,12 +74,15 @@ static void play_external_mission() {
                Warning,
                TEXT("Scene edits need export. Playing the saved level script. Use Export Scene."));
     }
+
     auto const scripts{
         FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("LevelScripts"))};
-    auto const args{FString::Printf(TEXT("--windowed --editor-scripts \"%s\" --mission \"%s\""),
-                                    *scripts,
-                                    *s7_mission_path(*document))};
+    auto const args{
+        FString::Printf(TEXT("--display-mode windowed --editor-scripts \"%s\" --mission \"%s\""),
+                        *scripts,
+                        *s7_mission_path(*document))};
     auto const directory{FPaths::GetPath(executable)};
+
     auto process{FPlatformProcess::CreateProc(
         *executable, *args, true, false, false, nullptr, 0, *directory, nullptr)};
     if (!process.IsValid()) {

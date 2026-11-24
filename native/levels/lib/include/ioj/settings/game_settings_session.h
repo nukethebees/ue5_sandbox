@@ -1,8 +1,14 @@
 #pragma once
 
+#include <ioj/settings/game_setting.h>
+#include <ioj/settings/game_setting_category.h>
+#include <ioj/settings/game_setting_value.h>
+#include <ioj/settings/game_settings_apply_result.h>
 #include <ioj/settings/game_settings_edit_state.h>
-#include <ioj/sim/player/game_settings_apply_result.h>
-#include <ioj/sim/player/game_settings_session_phase.h>
+#include <ioj/settings/game_settings_session_phase.h>
+#include <ioj/settings/game_settings_state.h>
+
+#include <cstdint>
 
 namespace ioj {
 class GameSettingsSession {

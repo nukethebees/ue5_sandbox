@@ -1,8 +1,8 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-#include "settings/EmbeddedHost.h"
+#include "settings/GameHost.h"
+#include <ioj/host/game_host.h>
 #endif
-
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/launch_options.h>
 #include <ioj/profiles/level_score.h>
@@ -19,6 +19,7 @@
 #include <SandboxCoreEngine/strings.h>
 #include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 
+#include "Logging/LogVerbosity.h"
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CoreGlobals.h>
 #include <Engine/World.h>
@@ -308,7 +309,7 @@ auto ATestBatchOrchestrator::load_level(levels::LevelDefinition const& definitio
 }
 void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-    embedded_game_host().mission_startup = MissionStartup::Failed;
+    game_host().mission_startup = MissionStartup::Failed;
 #endif
     SetActorTickEnabled(false);
     FLevelLoader::report_failure(GetWorld(), MoveTemp(message));
@@ -359,7 +360,7 @@ void ATestBatchOrchestrator::load_authored_level() {
     }
     UE_LOG(LogSandbox, Display, TEXT("Mission ready: %s"), *to_fstring(pending->source_path));
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-    embedded_game_host().mission_startup = MissionStartup::Ready;
+    game_host().mission_startup = MissionStartup::Ready;
 #endif
 }
 auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {

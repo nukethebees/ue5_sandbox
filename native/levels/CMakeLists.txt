@@ -9,6 +9,7 @@ target_sources(native-levels
     lib/src/collision_grid_validation.cpp
     lib/src/campaign_definition.cpp
     lib/src/diagnostics.cpp
+    lib/src/game_settings_session.cpp
     lib/src/game_settings.cpp
     lib/src/game_settings_edit_state.cpp
     lib/src/input_response.cpp

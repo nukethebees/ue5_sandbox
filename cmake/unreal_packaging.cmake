@@ -3,12 +3,9 @@ include("${CMAKE_CURRENT_LIST_DIR}/validate_arguments.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/unreal_arguments.cmake")
 
 function(add_unreal_build_cook_run_target target_name)
-  cmake_parse_arguments(PARSE_ARGV 1 uat "" "COMMENT;GAME_TARGET" "ARGUMENTS")
+  cmake_parse_arguments(PARSE_ARGV 1 uat "" "COMMENT" "ARGUMENTS")
 
   ioj_validate_arguments(uat "add_unreal_build_cook_run_target(${target_name})" COMMENT)
-  if(NOT uat_GAME_TARGET)
-    set(uat_GAME_TARGET Sandbox)
-  endif()
 
   add_custom_target(${target_name}
     COMMAND
@@ -16,7 +13,7 @@ function(add_unreal_build_cook_run_target target_name)
       "IOJ_NATIVE_TOOLCHAIN=${IOJ_NATIVE_TOOLCHAIN}"
       cmd.exe /d /c call "${UE_RUN_UAT_SCRIPT}" BuildCookRun
       "-project=${IOJ_UPROJECT}"
-      "-target=${uat_GAME_TARGET}"
+      -target=Sandbox
       "-targetplatform=${UE_PLATFORM}"
       "-clientconfig=${UE_CONFIGURATION}"
       -skipbuild
@@ -63,7 +60,27 @@ function(add_unreal_packaging_targets)
     ARGUMENTS
       -skipcook
       -stage
+      -NoBootstrapExe
       ${container_arguments}
+  )
+
+  add_dependencies(stage game)
+  cmake_path(GET IOJ_GAME_STAGE_EXECUTABLE PARENT_PATH staged_host_directory)
+  file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/SandboxHost.path"
+    CONTENT "${IOJ_GAME_STAGE_EXECUTABLE}\n")
+  add_custom_command(TARGET stage POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+      "$<TARGET_FILE:SandboxHost>" "${staged_host_directory}/"
+    COMMAND "${CMAKE_COMMAND}"
+      "-Druntime_dlls=$<TARGET_RUNTIME_DLLS:SandboxHost>"
+      "-Ddestination=${staged_host_directory}"
+      -P "${PROJECT_SOURCE_DIR}/cmake/stage_runtime_dependencies.cmake"
+    COMMAND "${CMAKE_COMMAND}" -E compare_files
+      "${PROJECT_SOURCE_DIR}/Binaries/Win64/${IOJ_GAME_DLL_NAME}" "${staged_host_directory}/${IOJ_GAME_DLL_NAME}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/Saved"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+      "${CMAKE_CURRENT_BINARY_DIR}/SandboxHost.path" "${PROJECT_SOURCE_DIR}/Saved/SandboxHost.path"
+    VERBATIM
   )
 
   add_unreal_build_cook_run_target(archive
@@ -71,9 +88,18 @@ function(add_unreal_packaging_targets)
     ARGUMENTS
       -skipcook
       -skipstage
+      -NoBootstrapExe
       -archive
       ${container_arguments}
       "-archivedirectory=${IOJ_GAME_ARCHIVE_ROOT}"
+  )
+
+  # UAT updates archives in place. Retire the two executables from an older stock package.
+  cmake_path(REPLACE_EXTENSION IOJ_GAME_DLL_NAME ".exe" OUTPUT_VARIABLE stock_game_executable)
+  add_custom_command(TARGET archive POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E rm -f "${IOJ_GAME_ARCHIVE_DIRECTORY}/Sandbox.exe"
+      "${IOJ_GAME_ARCHIVE_DIRECTORY}/Sandbox/Binaries/Win64/${stock_game_executable}"
+    VERBATIM
   )
 
   add_custom_target(verify-package

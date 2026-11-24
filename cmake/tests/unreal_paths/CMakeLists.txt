@@ -23,7 +23,7 @@ sandbox_assert_equal("artifact cook path"
   "${game_artifact_COOK_DIRECTORY}" [=[C:/Artifacts Root/Sandbox/Win64/cook/Windows]=])
 sandbox_assert_equal("artifact stage executable path"
   "${game_artifact_STAGE_EXECUTABLE}"
-  [=[C:/Artifacts Root/Sandbox/Win64/DebugGame/stage/Windows/Sandbox.exe]=])
+  [=[C:/Artifacts Root/Sandbox/Win64/DebugGame/stage/Windows/Sandbox/Binaries/Win64/SandboxHost.exe]=])
 sandbox_assert_equal("artifact verification path"
   "${game_artifact_VERIFICATION_ROOT}"
   [=[C:/Artifacts Root/Sandbox/Win64/DebugGame/verification]=])
@@ -49,13 +49,3 @@ sandbox_configure_unreal_engine_paths(source_engine "${source_engine_root}"
   UnrealEditor.exe UnrealEditor-Cmd.exe)
 sandbox_assert_equal("Source Unreal build script path" "${source_engine_BUILD_SCRIPT}"
   "${source_engine_batch_files}/RunUBT.bat")
-
-set(installed_engine_root "${CMAKE_CURRENT_BINARY_DIR}/installed engine")
-set(installed_engine_batch_files
-  "${installed_engine_root}/Engine/Build/BatchFiles")
-file(MAKE_DIRECTORY "${installed_engine_batch_files}")
-file(TOUCH "${installed_engine_batch_files}/Build.bat")
-sandbox_configure_unreal_engine_paths(installed_engine "${installed_engine_root}"
-  UnrealEditor.exe UnrealEditor-Cmd.exe)
-sandbox_assert_equal("Installed Unreal build script path" "${installed_engine_BUILD_SCRIPT}"
-  "${installed_engine_batch_files}/Build.bat")

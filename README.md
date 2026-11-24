@@ -6,7 +6,7 @@ An Unreal Engine 5.8 space combat game with a C++ simulation that also runs outs
 
 Prerequisites:
 
-- Windows with Developer Mode enabled and Unreal Engine 5.8 installed
+- Windows with Developer Mode enabled. Win64 game builds require a source build of Unreal Engine 5.8.2 with the [UELibrary activation patch](unreal/build/host/patches/ue-5.8.2-window-activation.patch).
 - Visual Studio C++ tools with MSVC 14.50.35717 and Windows SDK 10.0.22621.0 ([project pins](Config/DefaultEngine.ini))
 - Clang 24 with `clang-cl` and `clang-format`, plus DirectX Shader Compiler (`dxc`)
 - CMake 4.4.2+, Ninja, ccache, Git, Python 3, and PowerShell 7
@@ -14,7 +14,7 @@ Prerequisites:
 
 Set these before running commands from the repository root:
 
-- `UE_ROOT` points to the Unreal Engine installation.
+- `UE_ROOT` points to the Unreal source tree used for the game. Set the CMake cache variable of the same name when switching an existing build directory.
 - `IOJ_ROOT` points to an absolute directory for shared tools and temporary files, such as `C:\dev\ioj`.
 - Add the command-line tools and `%IOJ_ROOT%\tools\bin` to `PATH`.
 - Optionally set `LLVM_ROOT` to select a specific LLVM installation.
@@ -41,7 +41,7 @@ Press **Play** in the editor to start the game. Hold the right mouse button and 
 
 - **Standalone native libraries** — `cmake --workflow --preset native-lean`
 - **Visual Studio project files** — `coj unreal project-files --build-dir out/build/debug-game`. Select `DebugGame Editor` and `Win64`.
-- **Stage and launch the game** — `cmake --workflow --preset development-staged-game`, then `coj run-staged`
+- **Stage and launch the game** - `cmake --workflow --preset development-staged-game`, then `coj run-staged`. See the [Win64 host options](native/sandbox_host/README.md)
 - **Package the game** — `cmake --workflow --preset development-package`
 
 Editor builds, cooking, and automation share Unreal's local Zen derived data cache. Keep it between builds.
