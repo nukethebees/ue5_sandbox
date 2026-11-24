@@ -1,13 +1,19 @@
 #pragma once
 
+#include <concepts>
 #include <type_traits>
 #include <utility>
 
-#include "CoreMinimal.h"
+#include "Containers/UnrealString.h"
+#include "CoreGlobals.h"
+#include "HAL/Platform.h"
+#include "Logging/LogMacros.h"
+#include "Logging/LogVerbosity.h"
+#include "Misc/Build.h"
+#include "String/FormatStringSan.h"
 
 #include "SandboxGameShared/utilities/string_literal_wrapper.h"
 
-#define GLOBAL_CATEGORY log_category
 #define LOCAL_CATEGORY log_cat
 
 #define LOG_MSG_TO(VERBOSITY)                                                      \
@@ -15,7 +21,7 @@
                                                                    std::forward<Args>(args)...);
 
 #define LOG_MSG(VERBOSITY)                                                          \
-    self.template log_to<ELogVerbosity::VERBOSITY, GLOBAL_CATEGORY>(std::move(fmt), \
+    self.template log_to<ELogVerbosity::VERBOSITY, log_category_>(std::move(fmt), \
                                                                     std::forward<Args>(args)...);
 
 template <typename T>
@@ -27,7 +33,7 @@ namespace ioj {
 template <StaticTCharString tag, auto& log_category_ = LogTemp>
 struct LogMsgMixin {
     template <typename Self>
-    constexpr TCHAR const* get_tag(this Self&& self) {
+    constexpr TCHAR const* get_tag(this Self&&) {
         using T = std::remove_cvref_t<Self>;
 
         if constexpr (HasTagMember<T>) {
@@ -36,7 +42,6 @@ struct LogMsgMixin {
             return tag.data();
         }
     }
-    static constexpr auto& GLOBAL_CATEGORY{log_category_};
 
     template <StaticTCharString inner_tag>
     static consteval auto NestedLogger() {
@@ -49,7 +54,7 @@ struct LogMsgMixin {
     template <typename... Args>
     using DecayedFormatString =
         UE::Core::TCheckedFormatString<typename FString::FmtCharType,
-                                       std::remove_cv_t<std::remove_reference_t<Args>>...>;
+                                       std::remove_cvref_t<Args>...>;
 
     template <ELogVerbosity::Type verbosity, auto& LOCAL_CATEGORY, typename... Args, typename Self>
         requires (verbosity < ELogVerbosity::NumVerbosity)
@@ -92,7 +97,7 @@ struct LogMsgMixin {
     template <ELogVerbosity::Type verbosity, typename... Args>
         requires (verbosity < ELogVerbosity::NumVerbosity)
     void log(this auto const& self, DecayedFormatString<Args...>&& fmt, Args&&... args) {
-        log_to<verbosity, GLOBAL_CATEGORY>(std::move(fmt), std::forward<Args>(args)...);
+        self.template log_to<verbosity, log_category_>(std::move(fmt), std::forward<Args>(args)...);
     }
 
     // Helper macro for development-only code
@@ -161,7 +166,6 @@ struct LogMsgMixin {
 #undef LOG_X_TO_FN_DEV
 #undef LOG_DEV_CODE
 #undef LOG_MSG
-#undef GLOBAL_CATEGORY
 #undef LOCAL_CATEGORY
 };
 }
