@@ -177,6 +177,7 @@ Unreal Engine 5.8 project.
 
 # Testing
 
+* Do not use image-based validation, including screenshots or screen recordings.
 * Run static analysis only when explicitly requested or modifying its tooling. Run AddressSanitizer (ASAN)
   builds/tests only when explicitly requested.
 * Do not add data members to production classes solely to support tests or benchmarks without
