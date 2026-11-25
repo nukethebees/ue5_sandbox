@@ -1,6 +1,6 @@
 #include "SandboxGameMode.h"
 
-#include "SpaceGame/settings/GameSettingsSubsystem.h"
+#include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Engine/World.h"
@@ -40,7 +40,7 @@ void ASandboxGameMode::BeginPlay() {
     }
 
 #if WITH_EDITOR
-    auto const& settings{UGameSettingsSubsystem::application_settings(GetGameInstance())};
+    auto const& settings{UGameSubsystem::application_settings(GetGameInstance())};
     if (settings.show_collision) {
         pc->ConsoleCommand(TEXT("show collision"));
     }

@@ -4,7 +4,7 @@
 #include <ioj/profiles/file_profile_storage.h>
 #include <ioj/profiles/sample_profile_records.h>
 #include <ioj/profiles/save_browser.h>
-#include <SpaceGame/settings/GameSettingsSubsystem.h>
+#include <SpaceGame/system/GameSubsystem.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -57,15 +57,12 @@ auto USpaceSaveSubsystem::get(UGameInstance const* game_instance) -> USpaceSaveS
 }
 void USpaceSaveSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
-    collection.InitializeDependency<UGameSettingsSubsystem>();
     profile_manager_ = profiles::ProfileManager{make_storage()};
     if (!profile_manager_.initialise()) {
         UE_LOG(LogSandboxSubsystem, Error, TEXT("Failed to initialize native save profiles."));
     }
-    log_save_data();
 }
 void USpaceSaveSubsystem::Deinitialize() {
-    log_save_data();
     Super::Deinitialize();
 }
 auto USpaceSaveSubsystem::get_active_profile_id() const -> std::string const& {
@@ -97,7 +94,7 @@ bool USpaceSaveSubsystem::reset_test_profile() {
 #endif
 }
 void USpaceSaveSubsystem::log_save_data() const {
-    if (!UGameSettingsSubsystem::application_settings(GetGameInstance()).print_save_data) {
+    if (!UGameSubsystem::application_settings(GetGameInstance()).print_save_data) {
         return;
     }
     UE_LOG(LogSandboxSubsystem,

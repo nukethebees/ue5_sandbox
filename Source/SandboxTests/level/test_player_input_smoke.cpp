@@ -5,10 +5,11 @@
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/SpaceGameInputModifier.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
-#include <SpaceGame/settings/GameSettingsSubsystem.h>
+#include <SpaceGame/settings/OptionsDraft.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/ui/common/InputActionRouter.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
 
@@ -338,8 +339,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         return false;
     }
 
-    auto pitch_mapping_uses(ioj::UGameSettingsSubsystem const& settings, FKey const key) const
-        -> bool {
+    auto pitch_mapping_uses(ioj::UOptionsDraft const& settings, FKey const key) const -> bool {
         return settings.control_bindings(EHardwareDevicePrimaryType::Gamepad)
             .ContainsByPredicate([key](auto const& binding) {
                 return binding.address.mapping_name == FName{TEXT("Starfox.Pitch.Gamepad")} &&
@@ -400,14 +400,22 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     return;
                 }
                 auto* const controller{controller_.Get()};
-                auto* const settings{
-                    controller->GetGameInstance()->GetSubsystem<ioj::UGameSettingsSubsystem>()};
-                settings->begin_edit(controller->GetLocalPlayer());
+                auto* const settings{NewObject<ioj::UOptionsDraft>(controller)};
+                settings->begin_edit(*ioj::UGameSubsystem::get(controller->GetGameInstance()),
+                                     controller->GetLocalPlayer(),
+                                     ioj::GameSettingCategory::Controls);
                 settings->set_mouse_turn_sensitivity(2.f);
                 settings->set_invert_mouse_yaw(true);
                 settings->set_invert_mouse_pitch(false);
                 settings->set_invert_gamepad_pitch(false);
                 settings->set_gamepad_turn_sensitivity(1.f);
+                auto* game{ioj::UGameSubsystem::get(controller->GetGameInstance())};
+                if (!checks.is_true(game->apply_settings(ioj::GameSettingCategory::Controls,
+                                                         settings->settings_state())
+                                        .has_value(),
+                                    TEXT("Controls applied"))) {
+                    return;
+                }
 
                 auto const key{[controller](FKey k, EInputEvent event, float amount) {
                     controller->InputKey(FInputKeyEventArgs::CreateSimulated(k, event, amount, 1));
@@ -474,6 +482,15 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     TestRunner->TestTrue(
                         TEXT("Rebind the hold button"),
                         settings->set_control_binding(binding->address, EKeys::J, false))) {
+                    auto* input{settings_.Get()};
+                    FMapPlayerKeyArgs args{};
+                    args.MappingName = binding->address.mapping_name;
+                    args.ProfileIdString = binding->address.profile_id;
+                    args.Slot = binding->address.slot;
+                    args.HardwareDeviceId = binding->address.hardware_device_id;
+                    args.NewKey = EKeys::J;
+                    FGameplayTagContainer failure;
+                    input->MapPlayerKey(args, failure);
                     FModifyContextOptions options;
                     options.bForceImmediately = true;
                     subsystem_->RequestRebuildControlMappings(options);
@@ -484,6 +501,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     FPlayerControllerTestAccess::toggle_pause(*controller);
                     turn(0.f, 0.f, TEXT("Opening pause clears the held turn"));
                     key(EKeys::J, IE_Released, 0.f);
+                    args.NewKey = binding->current_key;
+                    input->MapPlayerKey(args, failure);
                 }
                 settings->cancel();
             });
@@ -499,14 +518,15 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 }
                 auto* const controller{controller_.Get()};
                 auto* const game_instance{controller->GetGameInstance()};
-                auto* const settings{
-                    IsValid(game_instance)
-                        ? game_instance->GetSubsystem<ioj::UGameSettingsSubsystem>()
-                        : nullptr};
+                auto* const settings{IsValid(game_instance)
+                                         ? NewObject<ioj::UOptionsDraft>(game_instance)
+                                         : nullptr};
                 if (!checks.is_true(IsValid(settings), TEXT("Game settings exist"))) {
                     return;
                 }
-                settings->begin_edit(controller->GetLocalPlayer());
+                settings->begin_edit(*ioj::UGameSubsystem::get(controller->GetGameInstance()),
+                                     controller->GetLocalPlayer(),
+                                     ioj::GameSettingCategory::Controls);
                 auto const bindings{
                     settings->control_bindings(EHardwareDevicePrimaryType::Gamepad)};
                 auto const* const binding{bindings.FindByPredicate([](auto const& candidate) {
@@ -563,9 +583,10 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     return;
                 }
                 auto* const controller{controller_.Get()};
-                auto* const settings{
-                    controller->GetGameInstance()->GetSubsystem<ioj::UGameSettingsSubsystem>()};
-                settings->begin_edit(controller->GetLocalPlayer());
+                auto* const settings{NewObject<ioj::UOptionsDraft>(controller)};
+                settings->begin_edit(*ioj::UGameSubsystem::get(controller->GetGameInstance()),
+                                     controller->GetLocalPlayer(),
+                                     ioj::GameSettingCategory::Controls);
                 checks.is_true(settings->set_control_binding(
                                    remap_address_, EKeys::Gamepad_FaceButton_Right, false),
                                TEXT("A second remap can be previewed"));
@@ -574,7 +595,9 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                TEXT("Cancel does not persist the previewed remap"));
                 checks.is_true(pitch_mapping_uses(*settings, EKeys::Gamepad_RightY),
                                TEXT("Cancel restores the previously applied live mapping"));
-                settings->begin_edit(controller->GetLocalPlayer());
+                settings->begin_edit(*ioj::UGameSubsystem::get(controller->GetGameInstance()),
+                                     controller->GetLocalPlayer(),
+                                     ioj::GameSettingCategory::Controls);
                 checks.is_true(settings->reset_control_binding(remap_address_),
                                TEXT("Reset previews the canonical default"));
                 settings->apply();

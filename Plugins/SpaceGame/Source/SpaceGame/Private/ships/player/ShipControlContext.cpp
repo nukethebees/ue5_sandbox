@@ -1,8 +1,8 @@
 #include <SpaceGame/ships/player/ShipControlContext.h>
 
-#include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <Engine/GameInstance.h>
@@ -221,9 +221,9 @@ void FShipControlContext::update_mouse_steering() {
     owner_->hud_.set_mouse_steering(mouse_displacement_);
 
     auto const command{mouse_displacement_->GetClampedToMaxSize(1.0)};
-    auto const* const settings{owner_->GetGameInstance()->GetSubsystem<UGameSettingsSubsystem>()};
+    auto const* const settings{owner_->GetGameInstance()->GetSubsystem<UGameSubsystem>()};
     check(settings);
-    auto const& preferences{settings->settings_state()};
+    auto const& preferences{settings->player_settings().applied()};
     if (auto* const ship{get_ship()}) {
         ship->commands().set_pitch_input(preferences.invert_mouse_pitch ? -command.Y : command.Y);
         ship->commands().set_yaw_input(preferences.invert_mouse_yaw ? -command.X : command.X);

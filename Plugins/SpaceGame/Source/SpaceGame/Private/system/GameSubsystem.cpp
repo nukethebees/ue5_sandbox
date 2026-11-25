@@ -1,7 +1,14 @@
 #include "SpaceGame/system/GameSubsystem.h"
 
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
-#include "SpaceGame/settings/GameSettingsSubsystem.h"
+#include "SpaceGame/settings/GameVideoSettings.h"
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+#include "settings/GameHost.h"
+#else
+#include "Engine/Engine.h"
+#include "GameFramework/GameUserSettings.h"
+#include "Misc/Paths.h"
+#endif
 #include "SpaceGamePresentation/ui/style/SpaceGameUiSettings.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/memory/GameMemoryBootstrap.h"
@@ -28,6 +35,22 @@
 namespace ioj {
 
 namespace {
+auto load_instance_settings(PlayerSettings& settings) -> SettingsResult {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    settings = take_prepared_settings();
+    return {};
+#else
+    auto const scripts{
+        std::filesystem::path{*FPaths::ConvertRelativePathToFull(FPaths::ProjectDir())} /
+        "LevelScripts"};
+    auto const desktop{GEngine->GetGameUserSettings()->GetDesktopResolution()};
+    return settings.load(scripts,
+                         scripts / "Settings/user-settings.scm",
+                         {desktop.X > 0 ? desktop.X : 1920, desktop.Y > 0 ? desktop.Y : 1080},
+                         std::nullopt);
+#endif
+}
+
 auto query_platform_capabilities() -> FGameCapabilities {
     FGameCapabilities capabilities;
     capabilities.platform_name = ANSI_TO_TCHAR(FPlatformProperties::PlatformName());
@@ -75,17 +98,22 @@ void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
 
     audio_.initialize(*GetGameInstance());
 
-    collection.InitializeDependency(UGameSettingsSubsystem::StaticClass());
-    auto* const settings_subsystem{GetGameInstance()->GetSubsystem<UGameSettingsSubsystem>()};
-    if (IsValid(settings_subsystem)) {
-        settings_subsystem->settings_changed.AddUObject(this, &ThisClass::update_audio_settings);
-        update_audio_settings();
-    } else {
+    if (auto result{load_instance_settings(player_settings_)}; !result) {
         UE_LOG(LogSandboxSubsystem,
-               Warning,
-               TEXT("UGameSubsystem::Initialize: Game settings subsystem is invalid; audio "
-                    "will use its default volume."));
+               Error,
+               TEXT("Loading settings failed: %s"),
+               *to_fstring(result.error()));
+    } else {
+        if (auto applied{apply_settings(GameSettingCategory::Video, player_settings_.applied())};
+            !applied) {
+            UE_LOG(LogSandboxSubsystem,
+                   Error,
+                   TEXT("Applying Video failed: %s"),
+                   *to_fstring(applied.error()));
+        }
+        update_audio_settings();
     }
+
     collection.InitializeDependency(UGameUiStyleSubsystem::StaticClass());
 
     collection.InitializeDependency(USpaceSaveSubsystem::StaticClass());
@@ -103,17 +131,15 @@ void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
             return profiles::load_report(save_subsystem->profiles(), profile_id);
         }};
 
+    save_subsystem->log_save_data();
     platform_capabilities_ = query_platform_capabilities();
 
     save_game_browser_.refresh();
 }
 
 void UGameSubsystem::Deinitialize() {
-    auto* const game_instance{GetGameInstance()};
-    auto* const settings_subsystem{
-        IsValid(game_instance) ? game_instance->GetSubsystem<UGameSettingsSubsystem>() : nullptr};
-    if (IsValid(settings_subsystem)) {
-        settings_subsystem->settings_changed.RemoveAll(this);
+    if (auto* saves{USpaceSaveSubsystem::get(GetGameInstance())}) {
+        saves->log_save_data();
     }
     audio_.stop_menu_ambience();
     audio_.stop_player_ship_ambience();
@@ -161,14 +187,32 @@ void UGameSubsystem::stop_player_ship_ambience() {
     audio_.stop_player_ship_ambience();
 }
 
-void UGameSubsystem::update_audio_settings() {
-    auto* const game_instance{GetGameInstance()};
-    auto* const settings_subsystem{
-        IsValid(game_instance) ? game_instance->GetSubsystem<UGameSettingsSubsystem>() : nullptr};
-    if (!IsValid(settings_subsystem)) {
-        return;
+auto UGameSubsystem::application_settings(UGameInstance const* instance)
+    -> ApplicationSettings const& {
+    auto* game{get(instance)};
+    check(game);
+    return game->player_settings_.application();
+}
+
+auto UGameSubsystem::apply_settings(GameSettingCategory category, GameSettingsState const& values)
+    -> SettingsResult {
+    if (category == GameSettingCategory::Video) {
+        auto const video{video_settings(values)};
+        if (auto result{FGameVideoSettings{}.apply_quality(video)}; !result) {
+            return result;
+        }
+        player_settings_.apply(video);
+    } else if (category == GameSettingCategory::Audio) {
+        player_settings_.apply(audio_settings(values));
+        update_audio_settings();
+    } else if (category == GameSettingCategory::Controls) {
+        player_settings_.apply(controls_settings(values));
     }
-    auto const& settings{settings_subsystem->settings_state()};
+    return {};
+}
+
+void UGameSubsystem::update_audio_settings() {
+    auto const& settings{player_settings_.applied()};
     audio_.set_master_volume(settings.master_volume);
     audio_.set_music_volume(settings.music_volume);
     audio_.set_sfx_volume(settings.sfx_volume);

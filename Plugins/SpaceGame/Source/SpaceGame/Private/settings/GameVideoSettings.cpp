@@ -1,12 +1,31 @@
-#include "SpaceGame/settings/GameSettingsBackend.h"
+#include "SpaceGame/settings/GameVideoSettings.h"
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+#include "GameHost.h"
+#endif
 
+#include "GenericPlatform/GenericWindow.h"
 #include "SpaceGame/settings/SpaceGameUserSettings.h"
-#include <ioj/settings/game_settings_edit_state.h>
+#include <ioj/settings/game_setting_option_provider.h>
+#include <ioj/settings/game_settings_state.h>
+#include <ioj/settings/game_window_mode.h>
+#include <ioj/settings/player_settings.h>
+#include <ioj/settings/screen_resolution.h>
+#include <ioj/settings/video_settings.h>
+#include <ioj/settings/window_display_settings.h>
 
+#include "Containers/Array.h"
+#include "CoreGlobals.h"
 #include "Engine/Engine.h"
-#include "Engine/LocalPlayer.h"
-#include "EnhancedInputSubsystems.h"
+#include "HAL/Platform.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Logging/LogMacros.h"
+#include "Logging/LogVerbosity.h"
+#include "Math/MathFwd.h"
+#include "Templates/Casts.h"
+
+#include <expected>
+#include <string>
+#include <vector>
 
 namespace ioj {
 namespace {
@@ -27,66 +46,95 @@ auto to_engine_window_mode(GameWindowMode const value) -> EWindowMode::Type {
 
 } // namespace
 
-void FGameSettingsBackend::apply_non_display(GameSettingsState const& state) const {
+auto FGameVideoSettings::apply_quality(VideoSettings const& state) const -> SettingsResult {
     auto* settings{user_settings()};
     if (settings == nullptr) {
-        return;
+        return std::unexpected{"Game user settings are unavailable"};
     }
+
     // Unreal can reload its bootstrap INI while validating an uninitialised settings object.
     settings->ValidateSettings();
     write_non_display(*settings, state);
     settings->ApplyNonResolutionSettings();
+    return {};
 }
 
-void FGameSettingsBackend::apply_display(GameSettingsState const& state) const {
+auto FGameVideoSettings::inspect_display() const
+    -> std::expected<WindowDisplaySettings, std::string> {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    return inspect_game_window();
+#else
+    return std::expected<WindowDisplaySettings, std::string>{std::unexpect,
+                                                             "PIE does not own a host window"};
+#endif
+}
+
+auto FGameVideoSettings::verify_display() const -> SettingsResult {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    return verify_game_window();
+#endif
+    return {};
+}
+
+auto FGameVideoSettings::apply_display(GameSettingsState const& state) const -> SettingsResult {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    return preview_game_window({state.window_mode, state.resolution});
+#else
     auto* settings{user_settings()};
     if (settings == nullptr) {
-        return;
+        return SettingsResult{std::unexpect, "Game user settings are unavailable"};
     }
+
     settings->SetScreenResolution({state.resolution.width, state.resolution.height});
     settings->SetFullscreenMode(to_engine_window_mode(state.window_mode));
     settings->ApplyResolutionSettings(false);
+#endif
+    return {};
 }
 
-void FGameSettingsBackend::confirm_display() const {
+void FGameVideoSettings::confirm_display() const {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    keep_game_window();
+#else
     if (auto* settings{user_settings()}) {
         settings->ConfirmVideoMode();
     }
+#endif
 }
 
-void FGameSettingsBackend::revert_display() const {
+auto FGameVideoSettings::revert_display() const -> SettingsResult {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    return revert_game_window();
+#else
     if (auto* settings{user_settings()}) {
         settings->RevertVideoMode();
         settings->ApplyResolutionSettings(false);
     }
+#endif
+    return {};
 }
 
-auto FGameSettingsBackend::options(GameSettingOptionProvider const provider) const
-    -> TArray<FGameSettingOption> {
-    std::vector<ScreenResolution> resolutions;
+auto FGameVideoSettings::supported_resolutions(GameSettingOptionProvider provider,
+                                               GameWindowMode mode) const
+    -> std::vector<ScreenResolution> {
+    std::vector<ScreenResolution> result;
     if (provider == GameSettingOptionProvider::SupportedResolutions) {
         TArray<FIntPoint> available;
         UKismetSystemLibrary::GetSupportedFullscreenResolutions(available);
-        resolutions.reserve(available.Num());
-        for (auto const value : available) {
-            resolutions.push_back({value.X, value.Y});
+        if (mode == GameWindowMode::Windowed) {
+            TArray<FIntPoint> windowed;
+            UKismetSystemLibrary::GetConvenientWindowedResolutions(windowed);
+            available.Append(windowed);
         }
-    }
-    auto const choices{game_setting_choices(provider, resolutions)};
-    TArray<FGameSettingOption> result;
-    result.Reserve(static_cast<int32>(choices.size()));
-    for (auto const& choice : choices) {
-        auto const* number{std::get_if<float>(&choice.value)};
-        auto label{provider == GameSettingOptionProvider::FrameRateLimits && number != nullptr &&
-                           *number > 0.f
-                       ? FText::AsNumber(static_cast<int32>(*number))
-                       : FText::FromString(UTF8_TO_TCHAR(choice.label.c_str()))};
-        result.Add({choice.value, MoveTemp(label)});
+        result.reserve(available.Num());
+        for (auto value : available) {
+            result.push_back({value.X, value.Y});
+        }
     }
     return result;
 }
 
-auto FGameSettingsBackend::user_settings() const -> USpaceGameUserSettings* {
+auto FGameVideoSettings::user_settings() const -> USpaceGameUserSettings* {
     if (GEngine == nullptr) {
         UE_LOG(LogTemp, Error, TEXT("Game settings are unavailable because the engine is null"));
         return nullptr;
@@ -100,8 +148,8 @@ auto FGameSettingsBackend::user_settings() const -> USpaceGameUserSettings* {
     return result;
 }
 
-void FGameSettingsBackend::write_non_display(USpaceGameUserSettings& settings,
-                                             GameSettingsState const& state) const {
+void FGameVideoSettings::write_non_display(USpaceGameUserSettings& settings,
+                                           VideoSettings const& state) const {
     settings.SetVSyncEnabled(state.vsync);
     settings.SetFrameRateLimit(state.frame_rate_limit);
     settings.SetResolutionScaleValueEx(state.resolution_scale);

@@ -7,7 +7,7 @@
 namespace ioj {
 enum class GameSettingCategory : uint8;
 class SGameOptionsView;
-class UGameSettingsSubsystem;
+class UOptionsDraft;
 class UGameSubsystem;
 
 enum class EOptionsTab : uint8 {
@@ -39,6 +39,7 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
   protected:
     void NativeOnInitialized() override;
     void NativeConstruct() override;
+    void NativeDestruct() override;
     auto RebuildWidget() -> TSharedRef<SWidget> override;
     void ReleaseSlateResources(bool release_children) override;
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
@@ -60,7 +61,7 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     void cancel_leave();
 
     UPROPERTY(Transient)
-    UGameSettingsSubsystem* settings_{nullptr};
+    UOptionsDraft* settings_{nullptr};
 
     UPROPERTY(Transient)
     UGameSubsystem* game_{nullptr};

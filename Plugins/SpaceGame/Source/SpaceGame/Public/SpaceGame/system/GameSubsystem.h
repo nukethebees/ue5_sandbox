@@ -5,6 +5,7 @@
 #include <ioj/levels/level_definition.h>
 #include <ioj/profiles/save_browser.h>
 #include <ioj/session/launch_state.h>
+#include <ioj/settings/player_settings.h>
 
 #include "Subsystems/GameInstanceSubsystem.h"
 
@@ -66,6 +67,12 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     virtual void Deinitialize() override;
 
     static auto get(UGameInstance const* game_instance) -> UGameSubsystem*;
+    auto player_settings() -> PlayerSettings& { return player_settings_; }
+    auto player_settings() const -> PlayerSettings const& { return player_settings_; }
+    static auto application_settings(UGameInstance const* instance) -> ApplicationSettings const&;
+    auto apply_settings(GameSettingCategory category, GameSettingsState const& values)
+        -> SettingsResult;
+
     auto get_memory_resource() noexcept -> std::pmr::memory_resource&;
     void reset_level_memory();
     auto get_platform_capabilities() const -> FGameCapabilities const&;
@@ -106,6 +113,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     // State
     /* **************************************** */
+    PlayerSettings player_settings_;
     FGameAudio audio_;
     FGameCapabilities platform_capabilities_;
     TUniquePtr<memory::BumpResource> local_memory_;

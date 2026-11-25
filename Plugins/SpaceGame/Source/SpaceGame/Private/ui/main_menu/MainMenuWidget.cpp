@@ -203,7 +203,7 @@ void UMainMenuWidget::request_page(EMainMenuPage const page) {
     if (page == active_page_ || page_modal_visible_) {
         return;
     }
-    if (is_options_page(active_page_) && !is_options_page(page) && IsValid(options_widget_)) {
+    if (is_options_page(active_page_) && IsValid(options_widget_)) {
         options_widget_->request_leave(
             FSimpleDelegate::CreateUObject(this, &ThisClass::show_page, page));
         return;
@@ -212,16 +212,6 @@ void UMainMenuWidget::request_page(EMainMenuPage const page) {
 }
 
 void UMainMenuWidget::show_page(EMainMenuPage const page) {
-    auto const entering_options{!options_open_ && is_options_page(page)};
-    if (!is_options_page(page)) {
-        options_open_ = false;
-    } else if (entering_options) {
-        options_open_ = true;
-        if (IsValid(options_widget_)) {
-            options_widget_->prepare_for_open();
-        }
-    }
-
     active_page_ = page;
     if (view_.IsValid()) {
         view_->set_active_page(page);
@@ -230,6 +220,7 @@ void UMainMenuWidget::show_page(EMainMenuPage const page) {
         level_select_widget_->refresh();
     } else if (is_options_page(page) && IsValid(options_widget_)) {
         options_widget_->select_tab(options_tab_for_page(page));
+        options_widget_->prepare_for_open();
     }
 }
 

@@ -19,7 +19,7 @@ struct SGameOptionsViewBuilder;
 
 namespace ioj {
 class SGameButton;
-class UGameSettingsSubsystem;
+class UOptionsDraft;
 struct FGameCapabilities;
 
 enum class EControlsFocusKind : uint8 { Device, Binding };
@@ -52,7 +52,7 @@ class SGameOptionsView final : public SCompoundWidget {
         , _Style(nullptr)
         , _InitialTab(EOptionsTab::Video)
         , _Audio() {}
-    SLATE_ARGUMENT(UGameSettingsSubsystem*, Settings)
+    SLATE_ARGUMENT(UOptionsDraft*, Settings)
     SLATE_ARGUMENT(FGameCapabilities const*, Capabilities)
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
     SLATE_ARGUMENT(EOptionsTab, InitialTab)
@@ -164,7 +164,7 @@ class SGameOptionsView final : public SCompoundWidget {
     /* **************************************** */
     // State
     /* **************************************** */
-    TWeakObjectPtr<UGameSettingsSubsystem> settings_{};
+    TWeakObjectPtr<UOptionsDraft> settings_{};
     FGameCapabilities const* capabilities_{};
     FGameUiStyle const* style_{};
     FGameAudioFacade audio_{};

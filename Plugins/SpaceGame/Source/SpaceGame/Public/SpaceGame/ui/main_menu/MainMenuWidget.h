@@ -79,7 +79,6 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     EMainMenuPage active_page_{EMainMenuPage::SelectMission};
     FName preferred_level_id_{NAME_None};
     bool focus_mission_content_{};
-    bool options_open_{};
     bool page_modal_visible_{};
 };
 } // namespace ioj

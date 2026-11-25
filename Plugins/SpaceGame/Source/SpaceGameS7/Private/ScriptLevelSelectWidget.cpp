@@ -5,7 +5,6 @@
 #include <SpaceGame/levels/LevelUnlock.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
-#include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/SpaceGameUiTheme.h>
@@ -426,7 +425,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
             entries_,
             save_subsystem,
             game_instance &&
-                UGameSettingsSubsystem::application_settings(game_instance).unlock_all_missions)};
+                UGameSubsystem::application_settings(game_instance).unlock_all_missions)};
         auto const unlock_status{evaluator.evaluate(entry.definition.GetValue())};
         view_state_.description =
             FText::FromString(description_with_requirements(entry, unlock_status));
@@ -435,7 +434,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
         if (unlock_status.unlocked) {
             view_state_.can_launch = true;
             if (game_instance &&
-                UGameSettingsSubsystem::application_settings(game_instance).start_levels_paused) {
+                UGameSubsystem::application_settings(game_instance).start_levels_paused) {
                 view_state_.launch_mode_status =
                     NSLOCTEXT("LevelSelect", "DebugStartPaused", "DEBUG // START PAUSED");
             }
@@ -462,8 +461,7 @@ void UScriptLevelSelectWidget::handle_launch() {
 
     auto* const game_instance{GetGameInstance()};
     auto const launch_mode{
-        game_instance &&
-                UGameSettingsSubsystem::application_settings(game_instance).start_levels_paused
+        game_instance && UGameSubsystem::application_settings(game_instance).start_levels_paused
             ? ::ioj::levels::LaunchMode::Paused
             : ::ioj::levels::LaunchMode::Running};
     ::ioj::levels::LaunchOptions options{
@@ -514,8 +512,7 @@ void UScriptLevelSelectWidget::launch_selected_level(::ioj::levels::LaunchOption
     auto const evaluator{make_unlock_evaluator(
         entries_,
         save_subsystem,
-        game_instance &&
-            UGameSettingsSubsystem::application_settings(game_instance).unlock_all_missions)};
+        game_instance && UGameSubsystem::application_settings(game_instance).unlock_all_missions)};
     auto const& selected_entry{entries_[selected_entry_index_]};
     if (!evaluator.evaluate(selected_entry.definition.GetValue()).unlocked) {
         view_state_.can_launch = false;

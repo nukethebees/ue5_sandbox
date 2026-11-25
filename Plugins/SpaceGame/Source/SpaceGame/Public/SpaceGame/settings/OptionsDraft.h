@@ -1,43 +1,56 @@
 #pragma once
 
-#include "ioj/settings/game_settings_edit_state.h"
-#include "SpaceGame/settings/GameSettingsBackend.h"
+#include "SpaceGame/settings/GameVideoSettings.h"
 #include <ioj/settings/application_settings.h>
-#include <ioj/settings/game_settings.h>
+#include <ioj/settings/control_binding_snapshot.h>
+#include <ioj/settings/game_setting.h>
+#include <ioj/settings/game_setting_category.h>
+#include <ioj/settings/game_setting_descriptor.h>
+#include <ioj/settings/game_setting_value.h>
 #include <ioj/settings/game_settings_access.h>
-#include <ioj/sim/player/game_settings_session.h>
-#include <SpaceGame/settings/ControlBindings.h>
+#include <ioj/settings/game_settings_state.h>
+#include <ioj/settings/player_settings.h>
+#include <SpaceGame/settings/ControlBindingAddress.h>
+#include <SpaceGame/settings/ControlBindingView.h>
+#include <SpaceGame/settings/GameSettingOption.h>
 
 #include "Containers/Ticker.h"
-#include "Subsystems/GameInstanceSubsystem.h"
+#include "Delegates/DelegateCombinations.h"
+#include "HAL/Platform.h"
+#include "UObject/Object.h"
+#include "UObject/ObjectMacros.h"
+#include "UObject/WeakObjectPtrTemplates.h"
+#include <Containers/Array.h>
+#include <GameFramework/InputSettings.h>
+#include <InputCoreTypes.h>
 
-#include "GameSettingsSubsystem.generated.h"
+#include <vector>
+
+#include "OptionsDraft.generated.h"
 
 class ULocalPlayer;
 
 namespace ioj {
 
 class USpaceGameInputUserSettings;
+class UGameSubsystem;
 
 DECLARE_MULTICAST_DELEGATE(FGameSettingsChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FGameSettingChanged, GameSetting);
 DECLARE_MULTICAST_DELEGATE_OneParam(FDisplayConfirmationChanged, bool);
 
 UCLASS()
-class SPACEGAME_API UGameSettingsSubsystem final
-    : public UGameInstanceSubsystem
-    , public GameSettingsAccess<UGameSettingsSubsystem> {
+class SPACEGAME_API UOptionsDraft final
+    : public UObject
+    , public GameSettingsAccess<UOptionsDraft> {
     GENERATED_BODY()
   public:
     /* **************************************** */
     // Lifecycle and edit sessions
     /* **************************************** */
-    virtual void Initialize(FSubsystemCollectionBase& collection) override;
-    virtual void Deinitialize() override;
-
-    void begin_edit(ULocalPlayer* local_player);
+    void begin_edit(UGameSubsystem& game, ULocalPlayer* local_player, GameSettingCategory category);
     void cancel();
-    void apply();
+    auto apply() -> bool;
     void reset_category(GameSettingCategory category);
     void confirm_display_changes();
     void revert_display_changes();
@@ -45,7 +58,6 @@ class SPACEGAME_API UGameSettingsSubsystem final
     /* **************************************** */
     // Settings state
     /* **************************************** */
-    static auto application_settings(UGameInstance const* instance) -> ApplicationSettings const&;
     auto settings_state() const -> GameSettingsState const&;
     auto applied_state() const -> GameSettingsState const&;
     auto default_state() const -> GameSettingsState const&;
@@ -65,17 +77,17 @@ class SPACEGAME_API UGameSettingsSubsystem final
     /* **************************************** */
     auto control_bindings(EHardwareDevicePrimaryType device_type) const
         -> TArray<FControlBindingView>;
-    auto binding_conflicts(FControlBindingAddress const& address, FKey key) const
+    auto binding_conflicts(FControlBindingAddress const& address, FKey const& key) const
         -> TArray<FControlBindingView>;
     auto chord_binding_conflicts(FControlBindingAddress const& address,
-                                 FKey activator_key,
-                                 FKey action_key) const -> TArray<FControlBindingView>;
+                                 FKey const& activator_key,
+                                 FKey const& action_key) const -> TArray<FControlBindingView>;
     auto set_control_binding(FControlBindingAddress const& address,
-                             FKey key,
+                             FKey const& key,
                              bool replace_conflicts) -> bool;
     auto set_control_chord(FControlBindingAddress const& address,
-                           FKey activator_key,
-                           FKey action_key,
+                           FKey const& activator_key,
+                           FKey const& action_key,
                            bool replace_conflicts) -> bool;
     auto clear_control_binding(FControlBindingAddress const& address) -> bool;
     auto reset_control_binding(FControlBindingAddress const& address) -> bool;
@@ -88,9 +100,8 @@ class SPACEGAME_API UGameSettingsSubsystem final
     /* **************************************** */
     // Settings and display helpers
     /* **************************************** */
+    void finish_display_confirmation();
     auto tick_display_confirmation(float delta_seconds) -> bool;
-    auto normalize_value(GameSettingDescriptor const& descriptor,
-                         GameSettingValue const& value) const -> std::optional<GameSettingValue>;
     auto input_user_settings() const -> USpaceGameInputUserSettings*;
 
     /* **************************************** */
@@ -99,22 +110,27 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto all_control_bindings() const -> TArray<FControlBindingView>;
     auto map_control_binding(USpaceGameInputUserSettings& settings,
                              FControlBindingAddress const& address,
-                             FKey key,
-                             bool defer_change_broadcast) const -> bool;
+                             FKey const& key) const -> bool;
     auto unmap_control_binding(USpaceGameInputUserSettings& settings,
                                FControlBindingAddress const& address) const -> bool;
     void capture_input_edit_state();
-    void restore_input_edit_state();
+    void set_draft_key(FControlBindingAddress const& address, FKey key);
+    auto apply_input_bindings(TArray<FControlBindingView> const& bindings,
+                              TArray<FControlBindingView> const& previous) -> bool;
+    auto save() -> bool;
     auto input_is_dirty() const -> bool;
 
     /* **************************************** */
     // State
     /* **************************************** */
-    ApplicationSettings application_;
-    FGameSettingsBackend backend_;
+    FGameVideoSettings video_;
     TWeakObjectPtr<ULocalPlayer> editing_local_player_{};
-    GameSettingsSession session_;
-    std::vector<ControlBindingSnapshot> applied_control_bindings_{};
+    TWeakObjectPtr<UGameSubsystem> game_;
+    GameSettingsEditState draft_;
+    GameSettingCategory category_{};
+    double confirmation_deadline_{};
+    TArray<FControlBindingView> bindings_;
+    TArray<FControlBindingView> original_bindings_;
     FTSTicker::FDelegateHandle display_confirmation_ticker_;
 };
 

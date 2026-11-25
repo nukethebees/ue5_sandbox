@@ -1,7 +1,7 @@
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 
 #include "SGameOptionsView.h"
-#include "SpaceGame/settings/GameSettingsSubsystem.h"
+#include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
@@ -26,7 +26,7 @@ void UOptionsWidget::NativeOnInitialized() {
                TEXT("UOptionsWidget: Game instance is invalid; Options is unavailable."));
         return;
     }
-    settings_ = game_instance->GetSubsystem<UGameSettingsSubsystem>();
+    settings_ = NewObject<UOptionsDraft>(this);
     game_ = UGameSubsystem::get(game_instance);
     if (!IsValid(settings_) || !IsValid(game_)) {
         UE_LOG(LogSandboxUI,
@@ -35,6 +35,7 @@ void UOptionsWidget::NativeOnInitialized() {
         return;
     }
 
+    settings_->begin_edit(*game_, GetOwningLocalPlayer(), GameSettingCategory::Video);
     settings_->settings_changed.AddUObject(this, &ThisClass::refresh_view);
     settings_->display_confirmation_changed.AddUObject(
         this, &ThisClass::handle_display_confirmation_changed);
@@ -43,6 +44,14 @@ void UOptionsWidget::NativeOnInitialized() {
 void UOptionsWidget::NativeConstruct() {
     Super::NativeConstruct();
     refresh_view();
+}
+
+void UOptionsWidget::NativeDestruct() {
+    cancel_leave();
+    if (IsValid(settings_)) {
+        settings_->cancel();
+    }
+    Super::NativeDestruct();
 }
 
 auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
@@ -93,7 +102,9 @@ void UOptionsWidget::prepare_for_open() {
     exit_after_confirmation_ = false;
     leave_continuation_.Unbind();
     if (IsValid(settings_)) {
-        settings_->begin_edit(GetOwningLocalPlayer());
+        if (auto category{active_category()}) {
+            settings_->begin_edit(*game_, GetOwningLocalPlayer(), *category);
+        }
     }
     if (options_view_.IsValid()) {
         options_view_->hide_dirty_prompt();
@@ -186,7 +197,10 @@ void UOptionsWidget::handle_dirty_apply() {
     if (options_view_.IsValid()) {
         options_view_->hide_dirty_prompt();
     }
-    settings_->apply();
+    if (!settings_->apply()) {
+        cancel_leave();
+        return;
+    }
     if (!settings_->is_awaiting_display_confirmation()) {
         complete_leave();
     }
@@ -223,12 +237,15 @@ void UOptionsWidget::handle_revert_display() {
 
 void UOptionsWidget::handle_display_confirmation_changed(bool const visible) {
     refresh_view();
-    if (!visible && exit_after_confirmation_) {
+    if (!visible && exit_after_confirmation_ && !settings_->is_dirty()) {
         if (IsValid(settings_)) {
             settings_->cancel();
         }
         complete_leave();
         return;
+    }
+    if (!visible) {
+        cancel_leave();
     }
     modal_state_changed.Broadcast(visible);
 }

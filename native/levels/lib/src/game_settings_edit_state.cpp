@@ -185,11 +185,6 @@ void GameSettingsEditState::commit_all() {
     applied_ = pending_;
 }
 
-void GameSettingsEditState::commit_setting(GameSetting const setting) {
-    auto const pending_value{game_setting_value(pending_, setting)};
-    static_cast<void>(set_game_setting_value(applied_, setting, pending_value));
-}
-
 auto GameSettingsEditState::set_setting(GameSetting const setting, GameSettingValue const& value)
     -> bool {
     auto const normalized{normalize_game_setting_value(game_setting_descriptor(setting), value)};

@@ -4,7 +4,6 @@
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
-#include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/system/GameSubsystem.h>

@@ -1,7 +1,7 @@
 #include "SGameOptionsView.h"
 
-#include "SpaceGame/settings/GameSettingsBackend.h"
-#include "SpaceGame/settings/GameSettingsSubsystem.h"
+#include "SpaceGame/settings/GameVideoSettings.h"
+#include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
 #include "SpaceGame/ui/common/SGameButton.h"
@@ -467,7 +467,7 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
                  .AutoWidth()[SAssignNew(apply_button_, SGameButton)
                                   .Style(&style_->button(EGameButtonStyle::Primary))
                                   .Audio(audio_)
-                                  .Text(NSLOCTEXT("OptionsMenu", "Apply", "Apply"))
+                                  .Text(NSLOCTEXT("OptionsMenu", "Save", "Save"))
                                   .OnClicked_Lambda([delegate = on_apply_]() {
                                       delegate.ExecuteIfBound();
                                       return FReply::Handled();
@@ -1227,7 +1227,7 @@ auto SGameOptionsView::build_dirty_prompt() -> TSharedRef<SWidget> {
     auto dirty_apply{SAssignNew(dirty_apply_button_, SGameButton)
                          .Style(&primary)
                          .Audio(audio_)
-                         .Text(NSLOCTEXT("OptionsMenu", "PromptApply", "Apply"))
+                         .Text(NSLOCTEXT("OptionsMenu", "PromptSave", "Save"))
                          .OnClicked_Lambda([delegate = on_dirty_apply_]() {
                              delegate.ExecuteIfBound();
                              return FReply::Handled();
@@ -1249,7 +1249,7 @@ auto SGameOptionsView::build_dirty_prompt() -> TSharedRef<SWidget> {
                             return FReply::Handled();
                         })};
     return build_modal(
-        NSLOCTEXT("OptionsMenu", "UnsavedPrompt", "Apply your changes before leaving?"),
+        NSLOCTEXT("OptionsMenu", "UnsavedPrompt", "Save your changes before leaving?"),
         {dirty_apply, dirty_discard, dirty_stay});
 }
 
