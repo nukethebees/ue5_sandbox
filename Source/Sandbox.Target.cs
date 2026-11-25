@@ -1,8 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
-using System.Collections.Generic;
 
+[SupportedPlatforms("Win64")]
 public class SandboxTarget : TargetRules
 {
     public SandboxTarget(TargetInfo Target) : base(Target)
@@ -11,7 +11,10 @@ public class SandboxTarget : TargetRules
         DefaultBuildSettings = BuildSettingsVersion.Latest;
         IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
         CppStandard = CppStandardVersion.Latest;
-        ExtraModuleNames.Add("Sandbox");
-
+        BuildEnvironment = TargetBuildEnvironment.Unique;
+        LinkType = TargetLinkType.Monolithic;
+        bShouldCompileAsDLL = true;
+        GlobalDefinitions.Add("UE_LIBRARY_ENABLED=1");
+        ExtraModuleNames.AddRange(new[] { "Sandbox", "UELibrary" });
     }
 }
