@@ -423,7 +423,7 @@ auto SGameOptionsView::build_header() -> TSharedRef<SWidget> {
                                              ? category_label(*category)
                                              : NSLOCTEXT("OptionsMenu", "SystemTab", "System");
                                 })
-                                        .TextStyle(&style_->text(EGameTextStyle::Heading1))];
+                                .TextStyle(&style_->text(EGameTextStyle::Heading1))];
 }
 
 auto SGameOptionsView::build_body() -> TSharedRef<SWidget> {
@@ -1156,16 +1156,15 @@ auto SGameOptionsView::build_system_page() -> TSharedRef<SWidget> {
                   capability_text(to_fstring(capabilities_->host_architecture))},
                  {NSLOCTEXT("OptionsMenu", "OperatingSystemLabel", "Operating System"),
                   capability_text(operating_system)}});
-    add_section(
-        NSLOCTEXT("OptionsMenu", "ProcessorSection", "Processor"),
-        {{NSLOCTEXT("OptionsMenu", "CpuVendorLabel", "CPU Vendor"),
+    add_section(NSLOCTEXT("OptionsMenu", "ProcessorSection", "Processor"),
+                {{NSLOCTEXT("OptionsMenu", "CpuVendorLabel", "CPU Vendor"),
                   capability_text(to_fstring(capabilities_->cpu_vendor))},
                  {NSLOCTEXT("OptionsMenu", "CpuLabel", "CPU"),
                   capability_text(to_fstring(capabilities_->cpu_brand))},
-         {NSLOCTEXT("OptionsMenu", "PhysicalCoresLabel", "Physical Cores"),
-          FText::AsNumber(capabilities_->physical_core_count)},
-         {NSLOCTEXT("OptionsMenu", "LogicalCoresLabel", "Logical Cores"),
-          FText::AsNumber(capabilities_->logical_core_count)}});
+                 {NSLOCTEXT("OptionsMenu", "PhysicalCoresLabel", "Physical Cores"),
+                  FText::AsNumber(capabilities_->physical_core_count)},
+                 {NSLOCTEXT("OptionsMenu", "LogicalCoresLabel", "Logical Cores"),
+                  FText::AsNumber(capabilities_->logical_core_count)}});
 
     auto const& simd{capabilities_->cpu_simd};
     if (simd.available) {

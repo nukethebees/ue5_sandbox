@@ -117,6 +117,7 @@ void USaveGameViewerWidget::begin_create_profile() {
     if (view_.IsValid()) {
         view_->show_create_profile();
     }
+
     modal_state_changed.Broadcast(true);
 }
 
@@ -125,6 +126,7 @@ void USaveGameViewerWidget::cancel_create_profile() {
     if (view_.IsValid()) {
         view_->hide_create_profile();
     }
+
     modal_state_changed.Broadcast(false);
 }
 
@@ -146,7 +148,7 @@ void USaveGameViewerWidget::profile_action_finished(host::ProfileActionKind kind
     switch (kind) {
         case Create:
             show_create_result(result);
-        return;
+            return;
         case Activate:
         case ResetTestProfile:
             if (result == profiles::CreateProfileResult::succeeded) {
@@ -254,6 +256,7 @@ void USaveGameViewerWidget::rebuild_profiles() {
             .active = active,
         });
     }
+
     view_state_.archive_status =
         FText::Format(NSLOCTEXT("SaveGameViewer", "ArchiveStatus", "{0} SERVICE RECORDS AVAILABLE"),
                       FText::AsNumber(profile_count));
@@ -265,6 +268,7 @@ void USaveGameViewerWidget::rebuild_profiles() {
     if (selected_profile_id_.IsEmpty()) {
         apply_profile_selection(to_fstring(profiles[0].profile_id));
     }
+
     publish_all();
 }
 

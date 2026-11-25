@@ -70,6 +70,7 @@ class EnumLowering : public CppIRBuilder {
             .template_declaration = template_specialization()};
         return header_function(add_function(function));
     }
+
     auto enum_strings_specialization(std::string_view qualified,
                                      std::string_view category,
                                      std::span<std::string const> names,
@@ -100,17 +101,21 @@ class EnumLowering : public CppIRBuilder {
                 next += text.size() + 1;
                 wide_next = next;
             }
+
             offsets.push_back(next);
             wide_offsets.push_back(wide_next);
         }
+
         auto const maximum{wide_offsets.back()};
         if (maximum > std::numeric_limits<std::uint32_t>::max()) {
             throw std::length_error{"Enum string table exceeds uint32_t offsets"};
         }
+
         auto const bits{maximum <= 255 ? 8 : maximum <= 65535 ? 16 : 32};
         if (!blob.empty()) {
             blob.pop_back();
         }
+
         auto const literal_value{wide ? text_literal(blob) : string_literal(blob)};
         std::vector<Syntax> offset_values;
         auto const count{offsets.size()};
@@ -124,6 +129,7 @@ class EnumLowering : public CppIRBuilder {
                 offset_values.push_back(literal(offsets[i]));
             }
         }
+
         auto const offset_type{std_types().integer(bits)};
         auto const offsets_type{
             template_type(std_types().array, {offset_type, intern_type(std::to_string(count))})};
@@ -144,6 +150,7 @@ class EnumLowering : public CppIRBuilder {
              .is_constexpr = true})};
         return namespace_node(store_text("ioj"), {variable_id});
     }
+
     auto lower_enum(LoweringContext& ctx,
                     DeclarationHandle schema,
                     ModuleSettingsId settings,
@@ -154,6 +161,7 @@ class EnumLowering : public CppIRBuilder {
         if (!enums.cpp_projection[schema]) {
             return emission;
         }
+
         auto const qualified{qualified_enum_name(ctx, settings, schema)};
         auto const enum_type{named_type(qualified.contains("::") ? qualified : "::" + qualified,
                                         NameOrigin::global)};
@@ -171,6 +179,7 @@ class EnumLowering : public CppIRBuilder {
                                       NativeEnumHelper::cycle_next)) {
                 decls.add(native_enum_cycle_next(ctx, schema, enum_type), 2);
             }
+
             decls.append(group_declarations(ctx, schema, enum_type, enums.name[schema]));
             emission.header = decls.build();
             emission.header_immediate_global = enum_range_declaration(ctx, schema, enum_type);
@@ -178,6 +187,7 @@ class EnumLowering : public CppIRBuilder {
                 emission.header_global = {
                     namespace_node(store_text("ioj"), native_enum_traits(ctx, schema, enum_type))};
             }
+
             auto const helpers{ctx.declarations.items(enums.helpers[schema])};
             for (auto const helper : native_enum_helper_string_conversion_values) {
                 if (std::ranges::contains(helpers, helper)) {
@@ -189,10 +199,12 @@ class EnumLowering : public CppIRBuilder {
                         packed_enum_strings(ctx, settings, schema, category, false));
                 }
             }
+
             if (std::ranges::contains(ctx.declarations.items(enums.helpers[schema]),
                                       NativeEnumHelper::formatter)) {
                 emission.header_global.push_back(native_enum_formatter(ctx, settings, schema));
             }
+
             if (auto const projection_id{enums.unreal_projection[schema]}) {
                 auto const projection{*projection_id};
                 auto const& projections{ctx.declarations.enum_unreal_projections};
@@ -225,6 +237,7 @@ class EnumLowering : public CppIRBuilder {
                 emission.additional_modules.push_back(
                     append_module(store_text(module_name + "_conversion"), conversion_file));
             }
+
             return emission;
         }
 
@@ -235,10 +248,12 @@ class EnumLowering : public CppIRBuilder {
         if (!reflected) {
             decls.add(using_declaration(store_text(underlying_alias), underlying), 2);
         }
+
         decls.add(enum_bit_width_comment(ctx, schema), 1);
         if (auto const description{ctx.declarations.enums.description[schema]}) {
             decls.add(line_comment(ctx.text(*description)), 1);
         }
+
         if (reflected) {
             decls.add(reflection_annotation(enums.reflection[schema]), 1);
             emission.header_generated_include = {
@@ -248,6 +263,7 @@ class EnumLowering : public CppIRBuilder {
                                    ".generated.h"),
                         IncludeStyle::quoted)};
         }
+
         decls.add(enumeration(enums.name[schema],
                               reflected
                                   ? intern_type(unreal_underlying_type(type_spelling(underlying)))
@@ -258,6 +274,7 @@ class EnumLowering : public CppIRBuilder {
             // Preserve the built-in spelling required by UnrealHeaderTool for reflected enums.
             decls.add(using_declaration(store_text(underlying_alias), underlying), 2);
         }
+
         emission.header_immediate_global = enum_range_declaration(ctx, schema, enum_type);
         emission.header_prefix.push_back(
             include(store_text("ioj/enum_traits.h"), IncludeStyle::quoted));
@@ -279,6 +296,7 @@ class EnumLowering : public CppIRBuilder {
             auto const lexical{is_lexical(conversion)};
             (lexical ? lex_declarations : helper_declarations).add(declaration(spec), 2);
         }
+
         decls.append(group_declarations(ctx, schema, enum_type, enums.name[schema]));
         emission.header = decls.build();
         emission.header_after = lex_declarations.build();
@@ -302,12 +320,14 @@ class EnumLowering : public CppIRBuilder {
                     packed_enum_strings(ctx, settings, schema, "Name", true));
                 internal.add(definition(string_lookup(ctx, settings, schema, "Name", "name")), 2);
             }
+
             if (has_display) {
                 emission.header_global.push_back(
                     packed_enum_strings(ctx, settings, schema, "Display", true));
                 internal.add(
                     definition(string_lookup(ctx, settings, schema, "Display", "display_name")), 2);
             }
+
             if (std::ranges::contains(conversion_kinds, EnumConversion::lex_to_serialized_string)) {
                 emission.header_global.push_back(
                     packed_enum_strings(ctx, settings, schema, "Serialized", true));
@@ -315,18 +335,22 @@ class EnumLowering : public CppIRBuilder {
                                  ctx, settings, schema, "Serialized", "serialized_name")),
                              2);
             }
+
             auto const conversion_count{conversion_kinds.size()};
             for (std::size_t index{}; index < conversion_count; ++index) {
                 auto const conversion{conversion_kinds[index]};
                 (is_lexical(conversion) ? lexical : helpers).add(definition(conversions[index]), 2);
             }
+
             emission.source = lexical.build();
             emission.source_global = internal.build();
             emission.source_tail = helpers.build();
             emission.tail_namespace = tail_namespace;
         }
+
         return emission;
     }
+
   private:
     /* **************************************** */
     // Construction helpers
@@ -335,12 +359,14 @@ class EnumLowering : public CppIRBuilder {
         return call(this->name("TEXT", {dependency("TEXT", "CoreMinimal.h")}),
                     {string_literal(value)});
     }
+
     auto reflection_annotation(EnumReflection const reflection) -> NodeId {
         auto const macro{named("UENUM", {dependency("UENUM", "CoreMinimal.h")})};
         return declaration_macro(reflection == EnumReflection::blueprint
                                      ? macro_invocation(macro, {this->name("BlueprintType")})
                                      : macro_invocation(macro));
     }
+
     auto qualified_enum_name(LoweringContext& ctx,
                              ModuleSettingsId settings,
                              DeclarationHandle schema) -> std::string {
@@ -351,14 +377,17 @@ class EnumLowering : public CppIRBuilder {
         if (namespace_name) {
             return ctx.text(*namespace_name) + "::" + name;
         }
+
         return name;
     }
+
     auto internal_name(LoweringContext& ctx,
                        DeclarationHandle schema,
                        std::string_view const suffix) -> std::string {
         return "get_" + snake_case_type_name(ctx.text(ctx.declarations.enums.name[schema])) + "_" +
                std::string{suffix};
     }
+
     auto lookup_function(LoweringContext& ctx,
                          DeclarationHandle schema,
                          std::string const& enum_name,
@@ -373,6 +402,7 @@ class EnumLowering : public CppIRBuilder {
             .implementation = {.kind = FunctionImplementationKind::body, .body = std::move(body)}};
         return add_function(function);
     }
+
     auto packed_enum_strings(LoweringContext& ctx,
                              ModuleSettingsId settings,
                              DeclarationHandle schema,
@@ -388,6 +418,7 @@ class EnumLowering : public CppIRBuilder {
         for (std::size_t ordinal{}; ordinal < value_count; ++ordinal) {
             values[domains.code(domain, ordinal)->magnitude] = declared_values[ordinal];
         }
+
         auto const name{ctx.text(enums.name[schema])};
         auto const qualified{qualified_enum_name(ctx, settings, schema)};
         std::vector<std::string> names;
@@ -401,8 +432,10 @@ class EnumLowering : public CppIRBuilder {
                     ? ctx.optional_text(enumerators.display_name[value]).value_or(value_name)
                     : value_name);
         }
+
         return enum_strings_specialization(qualified, category, names, wide);
     }
+
     auto string_lookup(LoweringContext& ctx,
                        ModuleSettingsId settings,
                        DeclarationHandle schema,
@@ -416,6 +449,7 @@ class EnumLowering : public CppIRBuilder {
         return lookup_function(
             ctx, schema, qualified, suffix, {return_stmt(member_call(lookup, "data"))});
     }
+
     auto serialized_parser(LoweringContext& ctx,
                            ModuleSettingsId settings,
                            DeclarationHandle schema) -> FunctionId {
@@ -428,6 +462,7 @@ class EnumLowering : public CppIRBuilder {
             if (!serialized_name) {
                 continue;
             }
+
             body.add(if_stmt(binary(BinaryOperator::equal,
                                     named("value"),
                                     text_literal(ctx.text(*serialized_name))),
@@ -437,6 +472,7 @@ class EnumLowering : public CppIRBuilder {
                                     return_stmt(literal(true))})),
                      1);
         }
+
         body.add(return_stmt(literal(false)));
         FunctionDefinition const created_function{
             .name = this->name("try_parse_serialized"),
@@ -453,6 +489,7 @@ class EnumLowering : public CppIRBuilder {
             .export_specifier = enums.export_specifier[schema]};
         return add_function(created_function);
     }
+
     auto conversion_function(LoweringContext& ctx,
                              ModuleSettingsId settings,
                              DeclarationHandle schema,
@@ -463,6 +500,7 @@ class EnumLowering : public CppIRBuilder {
         if (conversion == EnumConversion::try_parse_serialized) {
             return serialized_parser(ctx, settings, schema);
         }
+
         auto const enum_name{qualified_enum_name(ctx, settings, schema)};
         auto const display{is_display(conversion)};
         auto const serialized{conversion == EnumConversion::lex_to_serialized_string};
@@ -511,25 +549,31 @@ class EnumLowering : public CppIRBuilder {
             case EnumConversion::try_parse_serialized:
                 std::unreachable();
         }
+
         std::unreachable();
     }
+
     auto annotation(LoweringContext& ctx, EnumeratorId value, bool const reflected)
         -> std::optional<std::string> {
         auto const& enumerators{ctx.declarations.enumerators};
         if (!reflected || (!enumerators.display_name[value] && !enumerators.hidden[value])) {
             return std::nullopt;
         }
+
         std::vector<std::string> metadata;
         if (enumerators.display_name[value]) {
             metadata.push_back("DisplayName = \"" +
                                escape_cpp_string(ctx.text(*enumerators.display_name[value])) +
                                "\"");
         }
+
         if (enumerators.hidden[value]) {
             metadata.emplace_back("Hidden");
         }
+
         return "UMETA(" + join(metadata, ", ") + ")";
     }
+
     auto enum_values(LoweringContext& ctx, DeclarationHandle schema, bool reflected)
         -> std::vector<EnumValueId> {
         auto const& decls{ctx.declarations};
@@ -544,18 +588,22 @@ class EnumLowering : public CppIRBuilder {
                                : std::nullopt,
                            store_optional_text(annotation(ctx, value, reflected))));
         }
+
         return values;
     }
+
     auto native_enum_name(LoweringContext& ctx, ModuleSettingsId settings, DeclarationHandle schema)
         -> std::string {
         return "::" + qualified_enum_name(ctx, settings, schema);
     }
+
     auto enum_underlying_type(LoweringContext& ctx, DeclarationHandle schema) -> CppTypeId {
         auto const& enums{ctx.declarations.enums};
         if (auto const& projection{enums.cpp_projection[schema]};
             projection && projection->storage) {
             return ctx.resolve(*projection->storage);
         }
+
         if (enums.underlying_type[schema].has_value()) {
             return ctx.resolve(*enums.underlying_type[schema]);
         }
@@ -571,6 +619,7 @@ class EnumLowering : public CppIRBuilder {
 
         return std_types().integer(requirement->bit_width, requirement->signedness);
     }
+
     auto enum_bit_width_comment(LoweringContext& ctx, DeclarationHandle const schema) -> NodeId {
         auto const& enums{ctx.declarations.enums};
         auto const& domains{ctx.semantic.enum_domains()};
@@ -580,6 +629,7 @@ class EnumLowering : public CppIRBuilder {
         return line_comment(width ? std::format("Logical bit width: {}.", *width)
                                   : "Logical bit width depends on the enumerator expressions.");
     }
+
     auto enum_range_declaration(LoweringContext& ctx,
                                 DeclarationHandle const schema,
                                 CppTypeId const enum_type) -> Nodes {
@@ -596,20 +646,24 @@ class EnumLowering : public CppIRBuilder {
             if (value == domains.count_value[domain]) {
                 continue;
             }
+
             auto const code{domains.code(domain, ordinal)};
             if (!code) {
                 return {};
             }
+
             auto const number{PackedIntegerValue::from_parts(code->negative, code->magnitude)};
             if (!minimum || packed_integer_less(number, *minimum)) {
                 minimum = number;
                 first = value;
             }
+
             if (!maximum || packed_integer_less(*maximum, number)) {
                 maximum = number;
                 last = value;
             }
         }
+
         if (!minimum) {
             return {};
         }
@@ -630,6 +684,7 @@ class EnumLowering : public CppIRBuilder {
                       .is_constexpr = true})};
         return {namespace_node(store_text("ioj"), {variable_id})};
     }
+
     auto group_declarations(LoweringContext& ctx,
                             DeclarationHandle const schema,
                             CppTypeId const enum_type,
@@ -647,6 +702,7 @@ class EnumLowering : public CppIRBuilder {
                 }
             }
         }
+
         auto result{node_list()};
         if (groups.empty()) {
             return result.build();
@@ -671,6 +727,7 @@ class EnumLowering : public CppIRBuilder {
                          ? right.magnitude == 0
                          : right.negative && right.magnitude == left.magnitude - 1;
             }
+
             return !right.negative &&
                    left.magnitude != (std::numeric_limits<std::uint64_t>::max)() &&
                    right.magnitude == left.magnitude + 1;
@@ -692,6 +749,7 @@ class EnumLowering : public CppIRBuilder {
                     known = known && domains.code(domain, ordinal).has_value();
                 }
             }
+
             auto const array_name{snake_case_type_name(ctx.text(enum_name), false) + "_" +
                                   ctx.text(group) + "_values"};
             auto const array_type{template_type(
@@ -711,6 +769,7 @@ class EnumLowering : public CppIRBuilder {
                         range_members.push_back(ordinal);
                     }
                 }
+
                 std::stable_sort(
                     range_members.begin(), range_members.end(), [&](auto left, auto right) {
                         return packed_integer_less(code(left), code(right));
@@ -734,6 +793,7 @@ class EnumLowering : public CppIRBuilder {
                                     {.is_inline = true, .is_constexpr = true}),
                            2);
             }
+
             Nodes body;
             if (known) {
                 std::ranges::sort(members, [&](auto left, auto right) {
@@ -755,6 +815,7 @@ class EnumLowering : public CppIRBuilder {
                         cases.push_back(
                             switch_case(member(ordinal), block({return_stmt(literal(true))})));
                     }
+
                     cases.push_back(
                         switch_case(std::nullopt, block({return_stmt(literal(false))}), false));
                     body = {switch_stmt(named("value"), cases)};
@@ -765,14 +826,17 @@ class EnumLowering : public CppIRBuilder {
                         binary(BinaryOperator::equal, named("value"), member(ordinal)));
                 }
             }
+
             if (body.empty()) {
                 auto predicate{predicates.front()};
                 auto const count{predicates.size()};
                 for (std::size_t index{1}; index < count; ++index) {
                     predicate = binary(BinaryOperator::logical_or, predicate, predicates[index]);
                 }
+
                 body.push_back(return_stmt(predicate));
             }
+
             result.add(
                 header_function(add_function(
                     {.name = this->name("is_" + ctx.text(group)),
@@ -786,8 +850,10 @@ class EnumLowering : public CppIRBuilder {
                                .define_in_header = true}})),
                 2);
         }
+
         return result.build();
     }
+
     auto native_enum_declaration(LoweringContext& ctx, DeclarationHandle const schema) -> Nodes {
         auto const& enums{ctx.declarations.enums};
         auto const alias{ctx.text(enums.name[schema]) + "Underlying"};
@@ -797,6 +863,7 @@ class EnumLowering : public CppIRBuilder {
         if (auto const description{ctx.declarations.enums.description[schema]}) {
             decls.add(line_comment(ctx.text(*description)), 1);
         }
+
         decls.add(
             enumeration(enums.name[schema], intern_type(alias), enum_values(ctx, schema, false)),
             2);
@@ -813,8 +880,10 @@ class EnumLowering : public CppIRBuilder {
                           1);
             }
         }
+
         return decls.build();
     }
+
     auto native_enum_parsers(LoweringContext& ctx, DeclarationHandle const schema) -> Nodes {
         auto const& enums{ctx.declarations.enums};
         auto const& enumerators{ctx.declarations.enumerators};
@@ -855,8 +924,10 @@ class EnumLowering : public CppIRBuilder {
                 lower_string_enum_parser(ctx, prefix + snake_name, name, "value", entries, indexed),
                 2);
         }
+
         return parsers.build();
     }
+
     auto native_enum_cycle_next(LoweringContext& ctx,
                                 DeclarationHandle const schema,
                                 CppTypeId const enum_type) -> NodeId {
@@ -868,6 +939,7 @@ class EnumLowering : public CppIRBuilder {
                 values.push_back(name);
             }
         }
+
         std::vector<SwitchCaseId> cases;
         auto const count{values.size()};
         for (std::size_t index{}; index < count; ++index) {
@@ -875,6 +947,7 @@ class EnumLowering : public CppIRBuilder {
                 scope_member(enum_type, values[index]),
                 block({return_stmt(scope_member(enum_type, values[(index + 1) % count]))})));
         }
+
         cases.push_back(switch_case(
             std::nullopt, block({assertion(literal(false)), return_stmt(named("value"))})));
         FunctionDefinition const function{
@@ -888,6 +961,7 @@ class EnumLowering : public CppIRBuilder {
             .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true}};
         return header_function(add_function(function));
     }
+
     auto native_enum_traits(LoweringContext& ctx,
                             DeclarationHandle schema,
                             CppTypeId const enum_type) -> Nodes {
@@ -903,8 +977,10 @@ class EnumLowering : public CppIRBuilder {
                 if (enums.count[schema] && name == *enums.count[schema]) {
                     continue;
                 }
+
                 values.push_back(scope_member(enum_type, name));
             }
+
             auto const traits{add_record(
                 {.name = template_id(this->name("EnumTraits"), {type_reference(enum_type)}),
                  .children = {constexpr_member(
@@ -916,8 +992,10 @@ class EnumLowering : public CppIRBuilder {
         if (enums.enum_array[schema]) {
             result.add(enum_count_specialization(enum_type, value_count));
         }
+
         return result.build();
     }
+
     auto native_enum_formatter(LoweringContext& ctx,
                                ModuleSettingsId settings,
                                DeclarationHandle schema) -> NodeId {
@@ -934,14 +1012,17 @@ class EnumLowering : public CppIRBuilder {
                         .template_declaration = template_specialization()})};
         return namespace_node(store_text("std"), {formatter});
     }
+
     auto unreal_underlying_type(std::string_view const spelling) -> std::string {
         for (auto const& type : fixed_width_integer_types) {
             if (spelling == type.native_name) {
                 return std::string{type.name};
             }
         }
+
         return std::string{spelling};
     }
+
     auto unreal_projection_header(LoweringContext& ctx,
                                   DeclarationHandle const schema,
                                   EnumUnrealProjectionId const projection) -> Nodes {
@@ -960,6 +1041,7 @@ class EnumLowering : public CppIRBuilder {
         if (auto const description{ctx.declarations.enums.description[schema]}) {
             decls.add(line_comment(ctx.text(*description)), 1);
         }
+
         decls.add(reflection_annotation(projections.reflection[projection]), 1);
         decls.add(
             enumeration(projections.name[projection], underlying, enum_values(ctx, schema, true)),
@@ -972,6 +1054,7 @@ class EnumLowering : public CppIRBuilder {
         } else {
             result.append(decls.build());
         }
+
         result.append(enum_range_declaration(ctx, schema, enum_type));
         result.new_lines(2);
         if (projections.enum_array[projection]) {
@@ -979,8 +1062,10 @@ class EnumLowering : public CppIRBuilder {
                 store_text("ioj"),
                 {enum_count_specialization(enum_type, enums.values[schema].size())}));
         }
+
         return result.build();
     }
+
     auto native_conversion_function(LoweringContext& ctx,
                                     std::string_view const function_name,
                                     CppTypeId const source,
@@ -1008,6 +1093,7 @@ class EnumLowering : public CppIRBuilder {
             .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true}};
         return header_function(add_function(function));
     }
+
     auto unreal_conversion_header(LoweringContext& ctx,
                                   ModuleSettingsId const settings,
                                   DeclarationHandle const schema,
@@ -1037,6 +1123,7 @@ class EnumLowering : public CppIRBuilder {
                           static_cast_expr(std_types().int_, scope_member(native_type, name)))),
                       1);
         }
+
         return namespace_node(store_text("ioj"), decls.build());
     }
 };

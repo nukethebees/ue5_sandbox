@@ -74,6 +74,7 @@ void UPauseMenuWidget::NativeOnActivated() {
             FSimpleDelegate::CreateUObject(this, &ThisClass::handle_toggle_action)};
         toggle_action_binding_ = RegisterUIActionBinding(args);
     }
+
     Super::NativeOnActivated();
 }
 
@@ -82,6 +83,7 @@ void UPauseMenuWidget::NativeOnDeactivated() {
         toggle_action_binding_.Unregister();
         toggle_action_binding_ = {};
     }
+
     Super::NativeOnDeactivated();
 }
 
@@ -139,16 +141,20 @@ void UPauseMenuWidget::request_close(FSimpleDelegate continuation) {
     if (terminal_action_requested_) {
         return;
     }
+
     if (options_modal_visible_) {
         if (IsValid(options_widget)) {
             options_widget->request_back();
         }
+
         return;
     }
+
     if (IsValid(options_widget)) {
         options_widget->request_leave(MoveTemp(continuation));
         return;
     }
+
     continuation.ExecuteIfBound();
 }
 

@@ -54,6 +54,7 @@ TEST_CLASS(ProxyConfiguration, "SandboxEditor.Authoring")
             result.Add(
                 CastChecked<UArrowComponent>(inner->GetObjectPropertyValue(values.GetRawPtr(i))));
         }
+
         return result;
     }
 
@@ -97,9 +98,11 @@ TEST_CLASS(ProxyConfiguration, "SandboxEditor.Authoring")
                                       !points.IsEmpty())) {
                 return;
             }
+
             check_arrow_layout(
                 points, slots, TEXT("Every capital uses current saved actor-space slots"), proxy);
         }
+
         auto const points{arrows(*first, TEXT("fighter_spawn_slots"))};
         auto const moved{points[0]->GetComponentLocation() + FVector{500., -750., 200.}};
         points[0]->SetWorldLocation(moved);
@@ -128,6 +131,7 @@ TEST_CLASS(ProxyConfiguration, "SandboxEditor.Authoring")
                 TEXT("Construction preserves slot count"), points.Num(), slots.Num())) {
             return;
         }
+
         check_arrow_layout(
             points, slots, TEXT("Construction preserves applied actor-space layout"), proxy);
     }
@@ -142,6 +146,7 @@ TEST_CLASS(ProxyConfiguration, "SandboxEditor.Authoring")
         if (!TestRunner->TestTrue(TEXT("Capital has slots"), !first_points.IsEmpty())) {
             return;
         }
+
         first_points[0]->AddWorldOffset(FVector{900., 0., 0.});
         second_points[0]->AddWorldOffset(FVector{900., 0., 0.});
         auto const before{first_points[0]->GetComponentTransform()};

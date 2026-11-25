@@ -23,6 +23,7 @@ auto FPlayerModalUi::initialise_root(ASpaceGamePlayerController& owner,
     if (IsValid(root_)) {
         return true;
     }
+
     if (!IsValid(ui_data)) {
         UE_LOG(LogSandboxController,
                Error,
@@ -34,6 +35,7 @@ auto FPlayerModalUi::initialise_root(ASpaceGamePlayerController& owner,
     if (!root_class) {
         return false;
     }
+
     auto* const root{CreateWidget<UGameUiRootLayout>(&owner, root_class, TEXT("game_ui_root"))};
     if (!IsValid(root) || !root->initialise(*ui_data)) {
         UE_LOG(LogSandboxController,
@@ -53,6 +55,7 @@ void FPlayerModalUi::shutdown(ASpaceGamePlayerController& owner) {
         root_->DeactivateWidget();
         root_->RemoveFromParent();
     }
+
     root_ = nullptr;
 }
 auto FPlayerModalUi::has_root() const -> bool {
@@ -76,6 +79,7 @@ auto FPlayerModalUi::show_main_menu(ASpaceGamePlayerController& owner) -> bool {
                                        : NAME_None)) {
         return false;
     }
+
     return true;
 }
 void FPlayerModalUi::apply_main_menu_input_mode(ASpaceGamePlayerController& owner) {
@@ -97,6 +101,7 @@ auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner, UInputAction&
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));
         return false;
     }
+
     pause_menu_ = root_->show_pause_menu(action);
     if (!IsValid(pause_menu_)) {
         return false;
@@ -118,10 +123,12 @@ auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));
         return false;
     }
+
     completion_menu_ = root_->show_level_completion(completion);
     if (!IsValid(completion_menu_)) {
         return false;
     }
+
     completion_menu_->return_to_level_select_requested.RemoveAll(&owner);
     completion_menu_->return_to_level_select_requested.AddUObject(
         &owner, &ASpaceGamePlayerController::return_to_level_select);
@@ -136,6 +143,7 @@ void FPlayerModalUi::detach_callbacks(ASpaceGamePlayerController& owner) {
         pause_menu_->return_to_level_select_requested.RemoveAll(&owner);
         pause_menu_->quit_requested.RemoveAll(&owner);
     }
+
     if (IsValid(completion_menu_)) {
         completion_menu_->OnDeactivated().RemoveAll(&owner);
         completion_menu_->return_to_level_select_requested.RemoveAll(&owner);
@@ -146,9 +154,11 @@ void FPlayerModalUi::clear_modals(ASpaceGamePlayerController& owner) {
     if (IsValid(pause_menu_)) {
         pause_menu_->DeactivateWidget();
     }
+
     if (IsValid(completion_menu_)) {
         completion_menu_->DeactivateWidget();
     }
+
     pause_menu_ = nullptr;
     completion_menu_ = nullptr;
     clear_resume();
@@ -165,6 +175,7 @@ void FPlayerModalUi::close_pause(ASpaceGamePlayerController& owner) {
         pause_menu_->return_to_level_select_requested.RemoveAll(&owner);
         pause_menu_->quit_requested.RemoveAll(&owner);
     }
+
     pause_menu_ = nullptr;
 }
 void FPlayerModalUi::close_completion(ASpaceGamePlayerController& owner) {
@@ -172,6 +183,7 @@ void FPlayerModalUi::close_completion(ASpaceGamePlayerController& owner) {
         completion_menu_->OnDeactivated().RemoveAll(&owner);
         completion_menu_->return_to_level_select_requested.RemoveAll(&owner);
     }
+
     completion_menu_ = nullptr;
 }
 void FPlayerModalUi::deactivate_pause() {

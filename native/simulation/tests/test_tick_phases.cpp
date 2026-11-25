@@ -35,6 +35,7 @@ void add_moving_player(SimulationScenario& data,
         spawn.transform.rotation = to_quaternion(Rotator3d{0.0, 90.0, 0.0});
         spawn.middle_socket.rotation = to_quaternion(Rotator3d{0.0, -90.0, 0.0});
     }
+
     spawn.health = {Health{100}, Health{100}};
     spawn.team = Team::Green;
 
@@ -574,6 +575,7 @@ TEST(TickPhases, RemovalEventsReplaySwapRemovalAcrossTheCompleteFrame) {
         visual_ids[index] = visual_ids.back();
         visual_ids.pop_back();
     }
+
     ASSERT_EQ(visual_ids.size(), 1);
     ASSERT_EQ(final.get_entities().num(), 1);
     EXPECT_EQ(visual_ids[0], final.get_entities().entity_ids()[0]);

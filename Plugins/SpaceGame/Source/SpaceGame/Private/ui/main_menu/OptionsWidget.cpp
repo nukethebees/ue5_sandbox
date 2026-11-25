@@ -125,6 +125,7 @@ void UOptionsWidget::request_leave(FSimpleDelegate continuation) {
     if (settings_->save_pending() || settings_->is_awaiting_display_confirmation()) {
         return;
     }
+
     if (!settings_->is_dirty()) {
         continuation.ExecuteIfBound();
         return;
@@ -134,6 +135,7 @@ void UOptionsWidget::request_leave(FSimpleDelegate continuation) {
     if (options_view_.IsValid()) {
         options_view_->show_dirty_prompt();
     }
+
     modal_state_changed.Broadcast(true);
 }
 
@@ -145,22 +147,27 @@ void UOptionsWidget::request_back() {
     if (options_view_.IsValid() && options_view_->dismiss_interaction_modal()) {
         return;
     }
+
     if (options_view_.IsValid() && options_view_->is_dirty_prompt_visible()) {
         options_view_->hide_dirty_prompt();
         cancel_leave();
         return;
     }
+
     if (IsValid(settings_) && settings_->is_awaiting_display_confirmation()) {
         settings_->revert_display_changes();
         return;
     }
+
     if (IsValid(settings_) && settings_->is_dirty()) {
         if (options_view_.IsValid()) {
             options_view_->show_dirty_prompt();
         }
+
         modal_state_changed.Broadcast(true);
         return;
     }
+
     if (IsValid(settings_)) {
         settings_->cancel();
     }
@@ -215,7 +222,7 @@ void UOptionsWidget::handle_dirty_discard() {
     if (options_view_.IsValid()) {
         options_view_->hide_dirty_prompt();
     }
-        settings_->cancel();
+    settings_->cancel();
     complete_leave();
 }
 
@@ -223,6 +230,7 @@ void UOptionsWidget::handle_dirty_stay() {
     if (options_view_.IsValid()) {
         options_view_->hide_dirty_prompt();
     }
+
     cancel_leave();
 }
 

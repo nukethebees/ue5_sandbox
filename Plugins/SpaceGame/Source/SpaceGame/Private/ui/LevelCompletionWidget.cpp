@@ -70,6 +70,7 @@ auto ULevelCompletionWidget::NativeOnFocusReceived(FGeometry const& geometry,
     if (view_.IsValid()) {
         view_->focus_primary_action();
     }
+
     return FReply::Handled();
 }
 
@@ -82,6 +83,7 @@ void ULevelCompletionWidget::request_return_to_mission_control() {
     if (action_requested_) {
         return;
     }
+
     action_requested_ = true;
     return_to_level_select_requested.Broadcast();
 }

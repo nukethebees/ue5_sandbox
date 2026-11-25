@@ -35,6 +35,7 @@ auto first_wave_history(EntityLedger const& ledger, std::uint32_t count, Team te
         if (teams[row] != team) {
             continue;
         }
+
         auto const state{states[row]};
         if (state == LifeState::Alive) {
             report += std::format(" #{} alive;", i);
@@ -45,6 +46,7 @@ auto first_wave_history(EntityLedger const& ledger, std::uint32_t count, Team te
                                   death_ticks[row].value());
         }
     }
+
     return report;
 }
 
@@ -85,9 +87,11 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
                 EXPECT_EQ(std::ranges::count(fighters.teams(), Team::Blue), 6);
                 EXPECT_EQ(count, issued);
             }
+
             for (std::uint32_t row{}; row < count; ++row) {
                 first_wave.push_back({ids[row], vector_at(positions, row)});
             }
+
             return;
         }
 
@@ -101,6 +105,7 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
                     launch->departed = true;
                     ++blue_departures;
                 }
+
                 blue_attacking |= teams[row] == Team::Blue && targets[row] == red_objective;
                 red_departed |= teams[row] == Team::Red && targets[row] == blue_capital;
             }
@@ -112,6 +117,7 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
         if (simulation.result()) {
             break;
         }
+
         simulation.advance(dt);
         auto const issued{simulation.entity_ledger().issued_counts()[EntityType::Fighter]};
         if ((blue_departures < 6 || !blue_attacking || !red_departed) &&
@@ -167,6 +173,7 @@ TEST_P(DefendCapitalOutcome, AwardsVictoryOnTheDecidingTick) {
         victims.push_back(capital_id(
             simulation, *level, team == Team::Blue ? "capitalship-blue" : "capitalship-red2"));
     }
+
     harness.queue_kills(victims, {});
     simulation.advance(simulation.clock().tick_period());
     ASSERT_TRUE(simulation.result());

@@ -129,6 +129,7 @@ void FSandboxEditorModule::StartupModule() {
         FCoreDelegates::GetOnPostEngineInit().AddRaw(this,
                                                      &FSandboxEditorModule::register_actor_events);
     }
+
     FCoreUObjectDelegates::OnObjectPropertyChanged.AddRaw(
         this, &FSandboxEditorModule::on_property_changed);
     FCoreUObjectDelegates::OnObjectTransacted.AddRaw(this, &FSandboxEditorModule::on_transacted);
@@ -147,11 +148,13 @@ void FSandboxEditorModule::ShutdownModule() {
     if (GUnrealEd) {
         GUnrealEd->OnPasteActorsEnd().RemoveAll(this);
     }
+
     if (GEditor) {
         GEditor->OnLevelActorAdded().RemoveAll(this);
         GEditor->OnLevelActorDeleted().RemoveAll(this);
         GEditor->OnEndObjectMovement().RemoveAll(this);
     }
+
     FCoreUObjectDelegates::OnObjectPropertyChanged.RemoveAll(this);
     FCoreUObjectDelegates::OnObjectTransacted.RemoveAll(this);
     FEditorDelegates::PreSaveWorldWithContext.RemoveAll(this);
@@ -175,12 +178,14 @@ auto editor_proxy_levels(TArray<AActor*> const& actors) {
             levels.FindOrAdd(actor->GetLevel()).Add(actor);
         }
     }
+
     return levels;
 }
 void mark_s7_edit(UObject* object, FName property = NAME_None) {
     if (!object || object->IsTemplate() || object->HasAnyFlags(RF_NeedLoad | RF_NeedPostLoad)) {
         return;
     }
+
     auto* actor{Cast<AActor>(object)};
     if (auto* component{Cast<USceneComponent>(object)}) {
         actor = component->GetOwner();
@@ -188,6 +193,7 @@ void mark_s7_edit(UObject* object, FName property = NAME_None) {
             return;
         }
     }
+
     auto* world{actor ? actor->GetWorld() : nullptr};
     if (!world || world->WorldType != EWorldType::Editor || world->bIsTearingDown) {
         return;
@@ -202,10 +208,12 @@ void mark_s7_edit(UObject* object, FName property = NAME_None) {
         document->set_needs_export(true);
         return;
     }
+
     auto const resolved{ioj::editor::resolve_s7_level_actor(*actor)};
     if (!resolved || (!resolved->export_to_script && property != TEXT("export_to_script"))) {
         return;
     }
+
     auto document{ioj::editor::find_level_authoring_document(*actor->GetLevel())};
     if (document && *document) {
         if (property == TEXT("ActorLabel") &&
@@ -233,6 +241,7 @@ void FSandboxEditorModule::on_actor_added(AActor* actor) {
     if (IsValid(actor) && !actor->HasAnyFlags(RF_WasLoaded)) {
         on_actors_placed(nullptr, {actor});
     }
+
     on_actor_changed(actor);
 }
 void FSandboxEditorModule::on_actors_placed(UObject*, TArray<AActor*> const& actors) {
@@ -283,15 +292,18 @@ void FSandboxEditorModule::on_pre_save_world(UWorld* world, FObjectPreSaveContex
         context.IsProceduralSave() || context.IsFromAutoSave()) {
         return;
     }
+
     auto& level{*world->PersistentLevel};
     auto document{ioj::editor::find_level_authoring_document(level)};
     if (!document) {
         UE_LOG(LogS7LevelAuthoring, Warning, TEXT("%s"), *document.error());
         return;
     }
+
     if (!*document) {
         return;
     }
+
     auto stale{ioj::editor::s7_scene_needs_export(**document)};
     if (!stale) {
         UE_LOG(LogS7LevelAuthoring, Warning, TEXT("Scene export failed: %s"), *stale.error());

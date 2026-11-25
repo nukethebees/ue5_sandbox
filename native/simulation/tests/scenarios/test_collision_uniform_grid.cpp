@@ -65,6 +65,7 @@ struct TraceFixture {
         for (std::int32_t i{}; i < count; ++i) {
             owners.set(handles[i], locations[i], {}, alive[i] != 0 ? 1 : 0);
         }
+
         owners.publish();
         owners.rebuild(grid, aabbs);
     }
@@ -131,6 +132,7 @@ auto make_line_traces(std::span<Vector3f const> const starts, std::span<Vector3f
         set_vector(trace_starts, i, starts[i]);
         set_vector(trace_ends, i, ends[i]);
     }
+
     return traces;
 }
 
@@ -151,6 +153,7 @@ auto run_traces(TraceFixture const& fixture,
             {ignored_entities.data(),
              static_cast<std::size_t>(static_cast<std::int32_t>(ignored_entities.size()))});
     }
+
     return hits;
 }
 
@@ -208,6 +211,7 @@ auto axis_traces(float const start, float const end, float const contact)
             cases.push_back(std::move(trace));
         }
     }
+
     return cases;
 }
 
@@ -261,9 +265,11 @@ void expect_same_trace_results(TraceHits const& baseline,
         if (expected_hits[source].value() == 0 || actual_hits[i].value() == 0) {
             continue;
         }
+
         if (compare_entities) {
             EXPECT_EQ(expected.entities()[source], actual.entities()[i]);
         }
+
         EXPECT_LE(
             size(expected.view_locations()[source] + translation - actual.view_locations()[i]),
             hit_location_tolerance);
@@ -277,6 +283,7 @@ auto count_id(std::span<EntityId const> const handles, EntityId const expected) 
             ++count;
         }
     }
+
     return count;
 }
 
@@ -296,6 +303,7 @@ auto count_memberships(collision::CollisionUniformGrid const& grid,
             }
         }
     }
+
     return count;
 }
 }
@@ -465,6 +473,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceAppliesAABBCentre) {
     for (std::int32_t i{}; i < entity_type_count; ++i) {
         mixed_fixture.set_entity_aabb(entity_types[i], local_centres[i], half_extents[i]);
     }
+
     mixed_fixture.owners.rebuild(mixed_fixture.grid, mixed_fixture.aabbs);
 
     std::vector<Vector3f> mixed_starts{};
@@ -507,6 +516,7 @@ TEST_P(UniformGridTraceGeometry, ReturnsExpectedContacts) {
         EXPECT_EQ(fixture.grid.num_cells().value(), 1);
         EXPECT_EQ(fixture.grid.cell_entities({}).size(), 1);
     }
+
     check_traces(fixture, scenario.traces);
 }
 
@@ -1059,6 +1069,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceDeterministicReferen
             starts.push_back(world_centre + start_offset);
             ends.push_back(world_centre - start_offset);
         }
+
         for (std::int32_t i{entity_count}; i < trace_count; ++i) {
             starts.push_back({{random_range(trace_extent),
                                random_range(trace_extent),
@@ -1173,6 +1184,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceInvarianceProperties
         permuted_starts.push_back(starts[source_index]);
         permuted_ends.push_back(ends[source_index]);
     }
+
     auto const permuted_hits{run_traces(baseline_fixture, permuted_starts, permuted_ends)};
     auto const trace_count{static_cast<std::int32_t>(permutation.size())};
     expect_same_trace_results(baseline_hits, permuted_hits, "Trace permutation", permutation);
@@ -1195,10 +1207,12 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceInvarianceProperties
     for (auto const location : entity_locations) {
         translated_entity_locations.push_back(location + translation);
     }
+
     for (std::int32_t i{}; i < trace_count; ++i) {
         translated_starts.push_back(starts[i] + translation);
         translated_ends.push_back(ends[i] + translation);
     }
+
     TraceFixture const translated_fixture{
         translated_entity_locations, aabb_half_extents, local_aabb_centre};
     auto const translated_hits{run_traces(translated_fixture, translated_starts, translated_ends)};

@@ -32,6 +32,7 @@ auto world_contains(UWorld& world) -> bool {
     for (TActorIterator<T> it{&world}; it; ++it) {
         return true;
     }
+
     return false;
 }
 
@@ -85,12 +86,14 @@ auto spawn_player(UWorld& world,
     if (entity.overrides.health) {
         player->set_initial_health(entity.overrides.health->get().value());
     }
+
     if (!finish_spawn(*player, transform)) {
         add_error(result,
                   ELevelLoadErrorCode::ActorSpawnFailed,
                   TEXT("Failed to finish spawning the player"));
         return nullptr;
     }
+
     return player;
 }
 
@@ -102,6 +105,7 @@ auto initial_camera_transform(levels::LevelDefinition const& definition) -> FTra
         auto const position{definition.entity(target_id).position};
         target_positions.push_back(position);
     }
+
     auto const transform{presentation::make_observer_camera_transform(
         target_positions, camera.offset_direction, camera.distance)};
     check(transform.has_value());
@@ -138,6 +142,7 @@ auto spawn_initial_camera(UWorld& world,
                   TEXT("Failed to activate the playerless control context"));
         return false;
     }
+
     return true;
 }
 
@@ -149,6 +154,7 @@ auto FLevelLoadErrors::format(FStringView const source_path) const -> FString {
     for (auto const& error : errors) {
         messages.Add(error.message);
     }
+
     return FString::Printf(TEXT("Failed to load '%s':\n%s"),
                            *FString{source_path},
                            *FString::Join(messages, TEXT("\n")));
@@ -175,6 +181,7 @@ auto FLevelLoader::load(FLevelActorLoadRequest const& request) -> FLevelLoadResu
                   TEXT("Playerless level requires Observer or Benchmark control context"));
         return result;
     }
+
     if (has_player && visual && !IsValid(config.classes.player_ship_class)) {
         add_error(errors,
                   ELevelLoadErrorCode::InvalidLevelConfig,

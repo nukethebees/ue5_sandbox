@@ -41,6 +41,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
     for (auto const type : EnumTraits<EntityType>::values) {
         data.runtime.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
+
     return data;
 }
 
@@ -57,6 +58,7 @@ auto count_team(LevelSim const& simulation, Team const team) -> std::int32_t {
     for (auto const fighter_team : simulation.fighters().entities().teams()) {
         count += fighter_team == team ? 1 : 0;
     }
+
     return count;
 }
 

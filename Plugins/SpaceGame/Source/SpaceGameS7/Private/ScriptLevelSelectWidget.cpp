@@ -33,6 +33,7 @@ auto progress_label(profiles::LevelProgressSummary const& progress) -> FString {
         case profiles::LevelProgressState::NotAttempted:
             return TEXT("Not attempted");
     }
+
     checkNoEntry();
     return {};
 }
@@ -57,6 +58,7 @@ auto level_details(FLevelScriptEntry const& entry, profiles::LevelProgressSummar
                                    *par_time,
                                    par_achieved ? TEXT("ACHIEVED") : TEXT("NOT ACHIEVED"));
     }
+
     if (progress.attempt_count == 0) {
         return details;
     }
@@ -70,6 +72,7 @@ auto level_details(FLevelScriptEntry const& entry, profiles::LevelProgressSummar
         details += FString::Printf(TEXT("    BEST TIME  //  %.1f S"),
                                    progress.best_completion_time_seconds);
     }
+
     return details;
 }
 
@@ -79,6 +82,7 @@ auto find_level_title(TArray<FLevelScriptEntry> const& entries, FLevelId const i
             return FText::FromString(entry.display_title);
         }
     }
+
     return FText::FromName(id.value);
 }
 
@@ -112,6 +116,7 @@ auto description_with_requirements(FLevelScriptEntry const& entry,
                                        criterion.satisfied ? TEXT("\u2713") : TEXT("\u2610"),
                                        *criterion.description.ToString());
     }
+
     return description;
 }
 
@@ -120,6 +125,7 @@ auto entry_matches_category(FLevelScriptEntry const& entry, LevelCatalogCategory
     if (!entry) {
         return category == LevelCatalogCategory::Mission;
     }
+
     auto const content_category{catalog_category(entry.definition.GetValue())};
     return category == LevelCatalogCategory::Mission
              ? content_category == LevelCatalogCategory::Mission
@@ -188,6 +194,7 @@ auto UScriptLevelSelectWidget::NativeOnFocusReceived(FGeometry const& geometry,
     if (view_.IsValid()) {
         view_->focus_selected_level();
     }
+
     return FReply::Handled();
 }
 
@@ -224,6 +231,7 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
     if (active_category_ != LevelCatalogCategory::Mission) {
         view_state_.playerless_time_scale = get_active_playerless_time_scale();
     }
+
     if (active_category_ == LevelCatalogCategory::Mission) {
         view_state_.title = NSLOCTEXT("LevelSelect", "SelectLevel", "SELECT AN OPERATION");
         view_state_.description = NSLOCTEXT(
@@ -248,6 +256,7 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
                            index);
             }
         }
+
         return result;
     }()};
 
@@ -258,26 +267,26 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
         view_state_.rows.Add(FLevelSelectViewRow{FText::FromString(label.ToUpper()), true});
     };
     auto add_level = [this, focus_level_id, &preferred_button_index, &visible_entry_count](
-            int32 const entry_index) {
-            auto const& entry{entries_[entry_index]};
-            auto indicator_state{profiles::CompletionIndicatorState::Incomplete};
-            if (entry) {
+                         int32 const entry_index) {
+        auto const& entry{entries_[entry_index]};
+        auto indicator_state{profiles::CompletionIndicatorState::Incomplete};
+        if (entry) {
             auto const progress{profiles::summarize_level_progress(
                 entry.definition->metadata().id, player_profiles().active_records())};
-                indicator_state = profiles::level_completion_indicator_state(
-                    progress, entry.definition->metadata().par_time_seconds);
-                if (preferred_button_index == INDEX_NONE && !focus_level_id.IsNone() &&
+            indicator_state = profiles::level_completion_indicator_state(
+                progress, entry.definition->metadata().par_time_seconds);
+            if (preferred_button_index == INDEX_NONE && !focus_level_id.IsNone() &&
                 levels::authoring::to_unreal(entry.definition->metadata().id).value ==
                     focus_level_id) {
-                    preferred_button_index = level_entry_indices_.Num();
+                preferred_button_index = level_entry_indices_.Num();
             }
         }
 
-            view_state_.rows.Add(FLevelSelectViewRow{
-                FText::FromString(entry.display_title), false, indicator_state});
-            level_entry_indices_.Add(entry_index);
-            ++visible_entry_count;
-        };
+        view_state_.rows.Add(
+            FLevelSelectViewRow{FText::FromString(entry.display_title), false, indicator_state});
+        level_entry_indices_.Add(entry_index);
+        ++visible_entry_count;
+    };
 
     TSet<FLevelId> grouped_levels;
     for (auto const& campaign : campaigns_) {
@@ -292,11 +301,14 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
             if (!entry_matches_category(entries_[*entry_index], active_category_)) {
                 continue;
             }
+
             visible_indices.Add(*entry_index);
         }
+
         if (visible_indices.IsEmpty()) {
             continue;
         }
+
         add_header(to_fstring(campaign.definition->title));
         ++visible_campaign_count;
         for (auto const entry_index : visible_indices) {
@@ -315,11 +327,13 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
                 levels::authoring::to_unreal(entries_[index].definition->metadata().id))) {
             continue;
         }
+
         if (!has_other_levels) {
             add_header(active_category_ == LevelCatalogCategory::Mission ? TEXT("Other Operations")
                                                                          : TEXT("Other Scenarios"));
             has_other_levels = true;
         }
+
         add_level(index);
     }
 
@@ -329,10 +343,12 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
             if (entries_[index]) {
                 continue;
             }
+
             if (!has_invalid_levels) {
                 add_header(TEXT("Invalid Mission Records"));
                 has_invalid_levels = true;
             }
+
             add_level(index);
         }
     }
@@ -364,11 +380,13 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
                                      visible_campaign_count);
         }
     }
+
     view_state_.status = FText::FromString(status);
 
     if (!level_entry_indices_.IsEmpty()) {
         apply_level_selection(preferred_button_index != INDEX_NONE ? preferred_button_index : 0);
     }
+
     publish_catalog();
 }
 
@@ -376,6 +394,7 @@ void UScriptLevelSelectWidget::select_category(LevelCatalogCategory const catego
     if (active_category_ == category) {
         return;
     }
+
     active_category_ = category;
     rebuild_catalog(NAME_None);
 }
@@ -402,6 +421,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
     if (!entries_.IsValidIndex(entry_index)) {
         return;
     }
+
     selected_entry_index_ = entry_index;
     selected_level_id_ =
         entries_[entry_index]
@@ -435,6 +455,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
                 view_state_.launch_mode_status =
                     NSLOCTEXT("LevelSelect", "DebugStartPaused", "DEBUG // START PAUSED");
             }
+
             view_state_.status = FText::FromString(progress_label(progress).ToUpper() +
                                                    TEXT("  //  CLEARED FOR DEPLOYMENT"));
         } else {
@@ -468,6 +489,7 @@ void UScriptLevelSelectWidget::handle_launch() {
                 PositiveFinite<double>::make(battle_duration_.GetValue());
         }
     }
+
     launch_selected_level(MoveTemp(options));
 }
 
@@ -532,6 +554,7 @@ void UScriptLevelSelectWidget::launch_selected_level(::ioj::levels::LaunchOption
     } else {
         view_state_.status = NSLOCTEXT("LevelSelect", "Deploying", "DEPLOYING MISSION...");
     }
+
     publish_view();
 }
 } // namespace ioj::s7

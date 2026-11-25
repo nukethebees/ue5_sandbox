@@ -106,6 +106,7 @@ class OverrideReader {
         target = *result;
         return true;
     }
+
   private:
     s7::Interpreter interpreter_;
 };
@@ -123,6 +124,7 @@ class TemporaryLevelDirectory {
         std::error_code ignored;
         std::filesystem::remove_all(path_, ignored);
     }
+
     auto path() const -> std::filesystem::path const& { return path_; }
   private:
     std::filesystem::path path_{};
@@ -190,6 +192,7 @@ TEST(NativeSettings, PersonalPreferencesRoundTripEveryEditableScalar) {
         if (descriptor.id == GameSetting::OverallQuality) {
             continue;
         }
+
         SCOPED_TRACE(descriptor.name);
         auto const original{game_setting_value(changed, descriptor.id)};
         auto replacement{original};
@@ -208,9 +211,11 @@ TEST(NativeSettings, PersonalPreferencesRoundTripEveryEditableScalar) {
             ASSERT_NE(alternative, choices.end());
             replacement = alternative->value;
         }
+
         ASSERT_NE(original, replacement);
         ASSERT_TRUE(set_game_setting_value(changed, descriptor.id, replacement));
     }
+
     changed.overall_quality = graphics_preset(changed);
     auto const saved{save_user_settings(path, changed, config->defaults)};
     ASSERT_TRUE(saved) << saved.error();
@@ -304,6 +309,7 @@ TEST(NativeSettings, PreservesExactIntegersAndRejectsOutOfRangeConversions) {
         EXPECT_FALSE(reader.assign(invalid, integer));
         EXPECT_EQ(integer, 9007199254740993);
     }
+
     ASSERT_TRUE(reader.assign("-9223372036854775808", integer));
     EXPECT_EQ(integer, std::numeric_limits<std::int64_t>::min());
 
@@ -589,6 +595,7 @@ TEST(NativeLevelAuthoringReader, IntegerFieldsRequireExactInt32Values) {
         EXPECT_EQ(result->entities()[0].overrides.health->get().value(),
                   std::numeric_limits<std::int32_t>::max());
     }
+
     constexpr std::string_view invalid_sources[]{"2147483648",
                                                  "2147483648.0",
                                                  "-2147483649",
@@ -654,6 +661,7 @@ TEST(NativeLevelAuthoringReader, RejectsForeignHandlesAndRestoresLogicScope) {
           "(entity-destroyed 'player)"}) {
         EXPECT_FALSE(read_test_level(reader, body));
     }
+
     EXPECT_TRUE(read_test_level(reader, minimal_source()));
 }
 
@@ -993,6 +1001,7 @@ TEST(NativeLevelAuthoringReader, RestartsGeneratedIdsForEachDefinitionInOneRoot)
               (entity :archetype 'static-turret :team 'red :position '(1 2 3)))))",
                                                             name))}}));
     }
+
     ASSERT_TRUE(write_files(
         {{root / "catalog.scm",
           module_source("catalog", R"((catalog :levels '("first.scm" "second.scm")))")}}));
@@ -1081,6 +1090,7 @@ TEST(NativeLevelAuthoringReader, RejectsMissingPropertiesOddListsAndWrongTags) {
                               "(campaign :id 'x :title \"X\")"}) {
         EXPECT_FALSE(read_test_level(DefinitionReader{}, source)) << source;
     }
+
     auto const missing{read_test_campaign(DefinitionReader{}, "(campaign :id 'x)")};
     ASSERT_FALSE(missing);
     EXPECT_TRUE(has_code(missing.error(), DiagnosticCode::MissingProperty));
@@ -1107,10 +1117,12 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverrides) {
             fields += " :level-size '(20000 20000 20000)";
             expected.collision_grid.level_size = {20000.f, 20000.f, 20000.f};
         }
+
         if ((mask & 2) != 0) {
             fields += " :cell-size '(5000 5000 20000)";
             expected.collision_grid.cell_size = sim::OverlapResponseConfig{}.cell_size;
         }
+
         auto authored{minimal_source()};
         authored.insert(authored.size() - 1,
                         std::format(R"( :settings (merge-settings
@@ -1148,6 +1160,7 @@ TEST(NativeLevelAuthoringCatalog, RejectsDuplicatesCyclesAndUnavailableDependenc
     for (auto const& entry : catalog.levels) {
         ASSERT_FALSE(entry.definition);
     }
+
     EXPECT_TRUE(has_code(catalog.levels[0].definition.error(), DiagnosticCode::UnlockCycle));
     EXPECT_TRUE(has_code(catalog.levels[1].definition.error(), DiagnosticCode::UnlockCycle));
     EXPECT_TRUE(has_code(catalog.levels[2].definition.error(), DiagnosticCode::UnavailableLevel));
@@ -1196,9 +1209,11 @@ TEST(NativeLevelAuthoringFixtures, ReadsEveryCheckedInLevelAndCampaign) {
     for (auto& entry : catalog->levels) {
         ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
     }
+
     for (auto& entry : catalog->campaigns) {
         ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
     }
+
     auto const benchmark_path{root / "Batch_benchmark/Batch_benchmark.scm"};
     auto const benchmark{
         DefinitionReader::for_level(benchmark_path).read_level_file(benchmark_path)};

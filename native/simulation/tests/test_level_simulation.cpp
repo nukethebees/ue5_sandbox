@@ -51,6 +51,7 @@ auto make_battle_config() -> SimulationScenario {
     for (auto const type : EnumTraits<EntityType>::values) {
         data.runtime.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
+
     return data;
 }
 
@@ -120,6 +121,7 @@ auto make_overlap_response_battle() -> SimulationScenario {
     for (auto& entity : data.entities) {
         entity.overrides.health = settings::PositiveHealth{Health{5000}};
     }
+
     add_player_spawn(data, {});
     data.runtime.player->transform.location = {-1000.0, 0.0, 0.0};
     data.runtime.player->health = {Health{150}, Health{150}};
@@ -723,6 +725,7 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
         EXPECT_TRUE((impacts.sources()[0] == LaserSource{Team::Green, EntityType::Fighter}))
             << "Neutral source is retained after removal";
     }
+
     simulation.advance(0.0);
     EXPECT_EQ(simulation.read_access().frame_events().laser_impacts.num(), 0)
         << "Next frame does not repeat consumed impacts";
@@ -799,6 +802,7 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
         EXPECT_EQ(turrets.view_rotations().yaws()[i], rotated ? 90.f : 0.f)
             << "Compiled turret rotation is retained";
     }
+
     EXPECT_EQ(turrets.num(), 2) << "Both compiled turrets are registered";
 }
 
@@ -848,6 +852,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
             entity.overrides.initial_spawn_delay = NonNegativeFinite<float>{0.f};
         }
     }
+
     auto const scheduled{add_turret_spawn(data,
                                           {0.f, 6000.f, 0.f},
                                           {},
@@ -885,10 +890,12 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
             player->unique_entity_id,
         };
     }
+
     DirectDamageEvents damage;
     for (auto const victim : victims) {
         damage.add(victim, 10000, surviving_capital);
     }
+
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
 
     simulation.advance(tick_period);

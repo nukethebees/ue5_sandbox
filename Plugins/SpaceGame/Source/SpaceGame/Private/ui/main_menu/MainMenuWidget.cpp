@@ -50,6 +50,7 @@ void UMainMenuWidget::prepare_for_open(TSubclassOf<ULevelSelectWidget> level_sel
             view_->set_mission_content(level_select_widget_->TakeWidget());
         }
     }
+
     if (focus_mission_content_ && view_.IsValid()) {
         view_->focus_content_on_next_focus();
     }
@@ -81,6 +82,7 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
     if (focus_mission_content_) {
         view_->focus_content_on_next_focus();
     }
+
     return result;
 }
 
@@ -105,6 +107,7 @@ auto UMainMenuWidget::NativeOnFocusReceived(FGeometry const& geometry,
             view_->focus_navigation();
         }
     }
+
     return FReply::Handled();
 }
 
@@ -116,11 +119,14 @@ auto UMainMenuWidget::NativeOnHandleBackAction() -> bool {
         } else if (IsValid(options_widget_) && options_widget_->page() >= EMenuPage::Video) {
             options_widget_->request_back();
         }
+
         return true;
     }
+
     if (view_.IsValid()) {
         view_->focus_navigation();
     }
+
     return true;
 }
 
@@ -142,6 +148,7 @@ void UMainMenuWidget::create_content_widgets() {
                 this, &ThisClass::handle_page_modal_changed);
         }
     }
+
     if (!IsValid(options_widget_)) {
         options_widget_ =
             IsValid(owning_player)
@@ -178,7 +185,7 @@ void UMainMenuWidget::request_page(EMenuPage const page) {
         return;
     }
     options_widget_->select_page(page,
-            FSimpleDelegate::CreateUObject(this, &ThisClass::show_page, page));
+                                 FSimpleDelegate::CreateUObject(this, &ThisClass::show_page, page));
 }
 
 void UMainMenuWidget::show_page(EMenuPage const page) {
@@ -200,6 +207,7 @@ void UMainMenuWidget::request_quit() {
         options_widget_->request_leave(FSimpleDelegate::CreateUObject(this, &ThisClass::quit_game));
         return;
     }
+
     quit_game();
 }
 

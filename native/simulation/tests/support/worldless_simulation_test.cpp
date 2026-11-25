@@ -29,6 +29,7 @@ void WorldlessSimulationTest::queue_damage(std::span<EntityId const> const targe
     for (auto const target : targets) {
         events.add(target, damage, instigator);
     }
+
     LevelSimTestAccess::queue_direct_damage_events(simulation_, events.const_view());
 }
 void WorldlessSimulationTest::queue_kills(std::span<EntityId const> const targets,
@@ -40,6 +41,7 @@ void WorldlessSimulationTest::queue_kills(std::span<EntityId const> const target
         assert(state);
         events.add(target, std::max(1, state->health.value()), instigator);
     }
+
     LevelSimTestAccess::queue_direct_damage_events(simulation_, events.const_view());
 }
 
@@ -91,6 +93,7 @@ auto SimulationScenario::compile() && -> LevelSimInitData {
             .distance = 1000.,
         };
     }
+
     auto definition{levels::LevelDefinition::make(std::move(authored))};
     assert(definition);
     auto compiled{levels::compile_level(*definition, runtime)};

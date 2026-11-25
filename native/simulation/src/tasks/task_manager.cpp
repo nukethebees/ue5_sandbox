@@ -62,12 +62,15 @@ void TaskManager::reset() {
     for (auto& tasks : active_tasks_) {
         tasks.clear();
     }
+
     for (auto& counts : task_entity_allocations_) {
         counts.clear();
     }
+
     for (auto& entities : free_entities_) {
         entities.clear();
     }
+
     checked_trigger_ranges_.clear();
 
     static_cast<void>(add_task({Instruction::make_data_idle(), jump_to_idle}));
@@ -95,6 +98,7 @@ auto TaskManager::add_task(std::span<Instruction const> const instructions) -> T
     for (auto& counts : task_entity_allocations_) {
         counts.push_back(0);
     }
+
     return TaskId{static_cast<TaskId::storage_type>(index)};
 }
 auto TaskManager::add_task(std::initializer_list<Instruction> const instructions) -> TaskId {
@@ -172,6 +176,7 @@ void collect_live_targets(ExprHandle const condition,
                 return true;
             }
         }
+
         return false;
     }};
 
@@ -215,6 +220,7 @@ void collect_live_targets(ExprHandle const condition,
                         break;
                     }
                 }
+
                 if (!already_collected) {
                     targets.push_back(target);
                 }
@@ -268,6 +274,7 @@ void TaskManager::allocate(TaskAllocationContext const ctx) {
                         break;
                     }
                 }
+
                 if (root == nullptr) {
                     root = &roots.emplace_back(trigger.condition);
                 }
@@ -325,6 +332,7 @@ void TaskManager::allocate(TaskAllocationContext const ctx) {
                     matching_task = add_task({Instruction::make_data_kill(target), jump_to_idle});
                     team_tasks.push_back(matching_task);
                 }
+
                 task_values_[matching_task.index()] += contribution;
             }
         }
@@ -390,10 +398,12 @@ auto TaskManager::is_trigger_checked(std::uint32_t const index) const -> bool {
         if (index < range.start) {
             return false;
         }
+
         if (index < range.end) {
             return true;
         }
     }
+
     return false;
 }
 void TaskManager::mark_trigger_checked(std::uint32_t const index) {

@@ -72,6 +72,7 @@ TEST(HudModel, PlayerStatusAndFlightRetainPayloads) {
         add_capital_spawn(
             data, {20000.f + 10000.f * static_cast<float>(index), 0.f, 0.f}, Team::Red, 60.f);
     }
+
     WorldlessSimulationTest harness{std::move(data).compile()};
 
     auto& simulation{harness.simulation()};

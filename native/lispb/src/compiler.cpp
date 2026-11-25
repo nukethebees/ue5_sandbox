@@ -42,11 +42,13 @@ static auto scheme_reference(schema::TypeGraph const& graph, std::span<StringId 
                 records.push_back(type);
             }
         }
+
         if (before == records.size()) {
             throw std::invalid_argument{"Unknown documentation root: " +
                                         std::string{strings.view(root)}};
         }
     }
+
     for (std::size_t index{}; index < records.size(); ++index) {
         auto const type{records[index]};
         auto const record{graph.source_declaration(type)};
@@ -59,10 +61,12 @@ static auto scheme_reference(schema::TypeGraph const& graph, std::span<StringId 
             if (options.exclude) {
                 continue;
             }
+
             std::string key{strings.view(options.name.value_or(fields.name[member]))};
             if (!options.name) {
                 std::replace(key.begin(), key.end(), '_', '-');
             }
+
             auto const occurrence{graph.resolved(graph.module(type), fields.type[member])};
             auto const member_type{graph.occurrences().type[occurrence]};
             result += store.records.s7_positional[record] ? "| `" : "| `:";
@@ -75,6 +79,7 @@ static auto scheme_reference(schema::TypeGraph const& graph, std::span<StringId 
                 std::find(records.begin(), records.end(), member_type) == records.end()) {
                 records.push_back(member_type);
             }
+
             if (enumeration.value && enumeration.kind() == codegen::DeclarationKind::enumeration) {
                 for (auto const value : store.items(store.enums.values[enumeration])) {
                     result += " `'";
@@ -86,6 +91,7 @@ static auto scheme_reference(schema::TypeGraph const& graph, std::span<StringId 
             result += " |\n";
         }
     }
+
     return result;
 }
 
@@ -131,6 +137,7 @@ auto Compiler::compile(Project const& project,
             for (auto& source : sources) {
                 source = project.root / source;
             }
+
             lispb::codegen::compile_schema(storage_,
                                            cpp_,
                                            manifest_,
@@ -145,6 +152,7 @@ auto Compiler::compile(Project const& project,
                                      scheme_reference(types_, documentation->second.roots),
                                      false);
             }
+
             output_.publication = {.path_base = project.root, .output_root = output};
             break;
         }
@@ -170,6 +178,7 @@ auto Compiler::compile(Project const& project,
                 sources.push_back(storage_.sources.load(path));
                 compilation.dependencies.push_back(path);
             }
+
             kernel_codegen::compile(storage_.syntax, kernel_, cpp_, compilation, sources, emit);
             output_.publication = {.path_base = output, .output_root = output};
             break;
@@ -197,6 +206,7 @@ auto Compiler::compile(Project const& project,
             assert(false && "Compile an expanded concrete target");
             break;
     }
+
     return output_;
 }
 
@@ -206,6 +216,7 @@ auto Compiler::expand(Project const& project, TargetId const target) -> std::str
     if (target.kind() != TargetKind::slate) {
         throw std::invalid_argument{"expand is only supported for Slate targets"};
     }
+
     return slate_codegen::expand_sources(
         storage_.syntax,
         {.source_root = project.root,

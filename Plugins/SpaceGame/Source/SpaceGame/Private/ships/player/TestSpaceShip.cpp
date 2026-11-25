@@ -176,6 +176,7 @@ auto ATestSpaceShip::get_health_info() const -> FShipHealth {
     if (!bound_level_) {
         return FShipHealth{initial_.health.get().value()};
     }
+
     auto const native_health{simulation().health(bound_level_->entity_tables().health)};
     return {native_health.health.value(), native_health.max_health.value()};
 }

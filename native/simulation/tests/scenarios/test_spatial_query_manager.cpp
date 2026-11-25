@@ -47,6 +47,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
             targets.push_back(expected[i]);
         }
     }
+
     std::vector<EntityId> results{};
     results.resize(static_cast<std::size_t>(ends.num()));
     simulation.spatial_query_manager().trace_line_of_sight(
@@ -71,6 +72,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
         targets[i + count] = other;
         targets[i + 2 * count] = other;
     }
+
     simulation.spatial_query_manager().has_line_of_sight_to_targets(
         Vector3f{0.f, 0.f, 0.f}, ends.const_view().resolve(), targets, has_los, &query_memory);
     std::fill(expected_visibility.begin() + count, expected_visibility.end(), LineQueryResult{0});

@@ -53,6 +53,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
         return get_active_control_context() == levels::ControlContext::Observer &&
                control_contexts_.is_observer_bound();
     }
+
   protected:
     void BeginPlay() override;
     void OnPossess(APawn* in_pawn) override;
@@ -67,10 +68,12 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     auto is_gameplay_mode() const -> bool {
         return mode_ == EPlayerControllerMode::Gameplay && !ending_play_;
     }
+
     auto can_activate_gameplay_control() const -> bool {
         return is_gameplay_mode() && !return_to_level_select_pending_ && !modal_ui_.has_modal() &&
                !modal_ui_.is_resume_pending();
     }
+
     void initialise_gameplay();
     void initialise_main_menu();
     void apply_main_menu_input_mode();

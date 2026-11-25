@@ -23,6 +23,7 @@ TEST(NativeSimulation, GameMemoryTest) {
         memory.deallocate(overflow, 1024, 256);
         memory.deallocate(local, 128, 64);
     }
+
     EXPECT_EQ(memory.stats().live_bytes, 0u);
     EXPECT_EQ(memory.stats().live_allocation_count, 0u);
     EXPECT_EQ(memory.stats().peak_live_bytes, 1152u);
@@ -43,6 +44,7 @@ TEST(NativeSimulation, GameMemoryTest) {
             auto* const temporary{phase.allocate(32, 1)};
             phase.deallocate(temporary, 32, 1);
         }
+
         EXPECT_EQ(phase.stats().current_claimed_bytes, 0u);
         EXPECT_EQ(tick.stats().current_claimed_bytes, 32u);
         EXPECT_EQ(retained[0], std::byte{42});
@@ -58,9 +60,11 @@ TEST(NativeSimulation, GameMemoryTest) {
                 }
             }};
         }
+
         for (auto& worker : workers) {
             worker.join();
         }
+
         EXPECT_EQ(manager.game_memory().stats().live_allocation_count, 3u);
         EXPECT_EQ(tick.stats().overflow_count, 128u);
         EXPECT_EQ(phase.stats().overflow_count, 128u);
@@ -70,6 +74,7 @@ TEST(NativeSimulation, GameMemoryTest) {
         phase.reset();
         EXPECT_EQ(tick.stats().current_claimed_bytes, 0u);
     }
+
     EXPECT_EQ(memory.stats().live_allocation_count, 0u);
 
     GameMemory failing{*std::pmr::null_memory_resource()};

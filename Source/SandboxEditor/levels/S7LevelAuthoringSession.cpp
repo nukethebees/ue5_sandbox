@@ -57,6 +57,7 @@ auto save_generated(FString const& path, FString const& source) -> S7AuthoringRe
     if (FFileHelper::LoadFileToString(existing, *path) && existing == source) {
         return {};
     }
+
     IFileManager::Get().MakeDirectory(*FPaths::GetPath(path), true);
     auto const temporary{path + TEXT(".") + FGuid::NewGuid().ToString()};
     if (!FFileHelper::SaveStringToFile(
@@ -65,6 +66,7 @@ auto save_generated(FString const& path, FString const& source) -> S7AuthoringRe
         return S7AuthoringResult<void>{
             std::unexpect, FString::Printf(TEXT("Cannot write generated level file '%s'."), *path)};
     }
+
     std::error_code error;
     std::filesystem::rename(*temporary, *path, error);
     if (error) {
@@ -72,6 +74,7 @@ auto save_generated(FString const& path, FString const& source) -> S7AuthoringRe
         return S7AuthoringResult<void>{std::unexpect,
                                        FString::Printf(TEXT("Cannot replace '%s'."), *path)};
     }
+
     return {};
 }
 }
@@ -101,8 +104,10 @@ auto decode_editor_input(s7::Ast const& ast) -> S7AuthoringResult<levels::author
         for (auto const& error : input.error()) {
             errors += to_fstring(error.node_path + ": " + error.message + "\n");
         }
+
         return S7AuthoringResult<levels::authoring::LevelInput>{std::unexpect, MoveTemp(errors)};
     }
+
     return std::move(*input);
 }
 }
@@ -124,6 +129,7 @@ auto find_level_authoring_document(ULevel const& level)
             result = document;
         }
     }
+
     return result;
 }
 
@@ -153,6 +159,7 @@ auto collect_editor_scene(ULevel const& level,
             if (!actor.export_to_script && !known) {
                 return {};
             }
+
             auto const name{
                 known ? *known
                       : canonical_s7_level_entity_id(actor.GetActorLabel(), TEXTVIEW("entity"))
@@ -164,23 +171,28 @@ auto collect_editor_scene(ULevel const& level,
                                          "or its unbound actor label."),
                                     *name)};
             }
+
             names.Add(name);
             auto const entity_id{id(name)};
             ids.Add(&actor, entity_id);
             if (!known) {
                 new_bindings.Add({.id = name, .actor = &actor});
             }
+
             if (!actor.export_to_script) {
                 return {};
             }
+
             auto rotation{actor.GetActorRotation()};
             if constexpr (std::is_same_v<Actor, ATestFighterProxy>) {
                 rotation.Roll = 0.;
             }
+
             double time{};
             if constexpr (!std::is_same_v<Actor, ATestSpaceShip>) {
                 time = actor.spawn_time_seconds;
             }
+
             auto const spawn_at{NonNegativeFinite<double>::try_make(time)};
             if (!spawn_at) {
                 return Result{
@@ -188,10 +200,12 @@ auto collect_editor_scene(ULevel const& level,
                     FString::Printf(TEXT("Entity '%s' requires a finite nonnegative spawn time."),
                                     *name)};
             }
+
             Team team{Team::White};
             if constexpr (!std::is_same_v<Actor, ATestTubeSpinnerProxy>) {
                 team = to_native(actor.get_team());
             }
+
             levels::authoring::EntityInput entity{
                 .id = entity_id,
                 .archetype = archetype,
@@ -210,6 +224,7 @@ auto collect_editor_scene(ULevel const& level,
                 if (!output) {
                     invalid_field = field;
                 }
+
                 return output.has_value();
             }};
             bool valid{true};
@@ -219,6 +234,7 @@ auto collect_editor_scene(ULevel const& level,
                                   TEXT("Multiple exported players. Export one player or "
                                        "select an observer camera.")};
                 }
+
                 input.player = entity_id;
                 valid = convert(entity.health, actor.health_override, TEXT("health"));
             } else if constexpr (std::is_same_v<Actor, ATestCapitalShipProxy>) {
@@ -239,18 +255,21 @@ auto collect_editor_scene(ULevel const& level,
                 static_assert(std::is_same_v<Actor, ATestFighterProxy>,
                               "Handle this actor's export overrides.");
             }
+
             if (!valid) {
                 return Result{std::unexpect,
                               FString::Printf(TEXT("Entity '%s' has an invalid %s override."),
                                               *name,
                                               invalid_field)};
             }
+
             input.entities.push_back(std::move(entity));
             return {};
         })};
     if (!collected) {
         return collected;
     }
+
     std::ranges::sort(input.entities, {}, &levels::authoring::EntityInput::id);
     if (document.use_observer_camera) {
         input.player = {};
@@ -263,9 +282,11 @@ auto collect_editor_scene(ULevel const& level,
                 return Result{std::unexpect,
                               TEXT("Export the camera target or select a bound level actor.")};
             }
+
             input.camera->target_entity_ids.push_back(*entity);
         }
     }
+
     return {};
 }
 }
@@ -283,6 +304,7 @@ auto s7_scene_needs_export(AS7LevelAuthoringDocument const& document) -> S7Autho
     if (!mission) {
         return Result{std::unexpect, to_fstring(levels::format_diagnostics(mission.error()))};
     }
+
     return baseline.imported;
 }
 
@@ -309,6 +331,7 @@ auto prepare_export(ULevel const& level, AS7LevelAuthoringDocument const& docume
                            "editor-config.scm.\n") +
                           ast.error()};
     }
+
     auto input{decode_editor_input(*ast)};
     if (!input) {
         return Result{std::unexpect, std::move(input.error())};
@@ -318,6 +341,7 @@ auto prepare_export(ULevel const& level, AS7LevelAuthoringDocument const& docume
     if (!collected) {
         return Result{std::unexpect, std::move(collected.error())};
     }
+
     auto const source{levels::authoring::emit_editor_level_source(*input, &*ast)};
     s7::ModuleInput baseline{*s7_editor_config_path(document), source};
     std::filesystem::path const path{*s7_mission_path(document)};
@@ -331,18 +355,22 @@ auto prepare_export(ULevel const& level, AS7LevelAuthoringDocument const& docume
             message += TEXT(
                 "\nRename the duplicate entity ID or disable Export on the script-owned actor.");
         }
+
         return Result{std::unexpect, MoveTemp(message)};
     }
+
     if (!baseline.imported) {
         return Result{
             std::unexpect,
             TEXT(
                 "Import the editor-config.scm scene in the linked level script before exporting.")};
     }
+
     auto compiled{compile_playable_s7_definition(*definition, *document.level_config)};
     if (!compiled) {
         return Result{std::unexpect, std::move(compiled.error())};
     }
+
     return Result{std::in_place, to_fstring(source), std::move(*definition), MoveTemp(bindings)};
 }
 }
@@ -365,11 +393,13 @@ auto export_s7_editor_config(ULevel& level, AS7LevelAuthoringDocument& document)
                                        TEXT("The editor-config source changed. Import the source "
                                             "before exporting scene edits.")};
     }
+
     auto prepared{prepare_export(level, document)};
     if (!prepared) {
         document.set_needs_export(true);
         return S7AuthoringResult<void>{std::unexpect, std::move(prepared.error())};
     }
+
     auto saved{s7_level_authoring_session_detail::save_generated(s7_editor_config_path(document),
                                                                  prepared->source)};
     auto const& bindings{prepared->bindings};
@@ -384,11 +414,14 @@ auto export_s7_editor_config(ULevel& level, AS7LevelAuthoringDocument& document)
             binding.actor->Modify();
             binding.actor->bIsEditorOnlyActor = true;
         }
+
         document.entities.Append(bindings);
     }
+
     if (saved) {
         document.remember_editor_source();
     }
+
     document.set_needs_export(!saved);
     return saved;
 }
@@ -410,9 +443,11 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
     if (!existing) {
         return existing;
     }
+
     if (operation == MissionSetup::Create && *existing) {
         return Result{std::unexpect, TEXT("This map already has a linked level script.")};
     }
+
     auto const map_name{FPackageName::GetShortName(level.GetOutermost()->GetName())};
     auto const root{FPaths::ConvertRelativePathToFull(
         source_path.IsEmpty()
@@ -425,15 +460,18 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
         !FPaths::MakePathRelativeTo(relative, *project)) {
         return Result{std::unexpect, TEXT("Select a level script inside this project.")};
     }
+
     auto* resources{s7_level_config::load_canonical()};
     if (!IsValid(resources)) {
         return Result{std::unexpect, TEXT("Canonical level resources are unavailable.")};
     }
+
     auto const human_exists{IFileManager::Get().FileExists(*root)};
     auto const directory{FPaths::GetPath(root)};
     if (FPaths::GetCleanFilename(directory) != FPaths::GetBaseFilename(root)) {
         return Result{std::unexpect, TEXT("Choose a level script stored as <level>/<level>.scm.")};
     }
+
     auto const baseline_path{FPaths::Combine(directory, TEXT("editor-config.scm"))};
     auto const baseline_existed{IFileManager::Get().FileExists(*baseline_path)};
     if (operation == MissionSetup::Link) {
@@ -441,6 +479,7 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
         if (!mission) {
             return Result{std::unexpect, to_fstring(levels::format_diagnostics(mission.error()))};
         }
+
         auto valid{compile_playable_s7_definition(*mission, *resources)};
         if (!valid) {
             return Result{std::unexpect, std::move(valid.error())};
@@ -451,6 +490,7 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
                           TEXT("Level files already exist. Use Link Existing Script to select "
                                "the level script.")};
         }
+
         levels::authoring::LevelInput input{
             .id = levels::LevelId{to_string(
                 canonical_s7_level_entity_id(map_name, TEXTVIEW("level")).ToString())},
@@ -460,6 +500,7 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
         if (!saved) {
             return Result{std::unexpect, std::move(saved.error())};
         }
+
         auto const source{FString::Printf(
             TEXT("(export mission)\n"
                  "(define scene (module-ref (import-module \"%s/editor-config.scm\") 'scene))\n"
@@ -478,6 +519,7 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
                           TEXT("Could not create the level script. Choose an unused name.")};
         }
     }
+
     FScopedTransaction transaction{NSLOCTEXT("S7LevelAuthoring", "Link", "Link Level Script")};
     auto* document{*existing ? *existing
                              : Cast<AS7LevelAuthoringDocument>(
@@ -501,6 +543,7 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
                     if (!IsValid(actor)) {
                         return false;
                     }
+
                     auto const resolved{resolve_s7_level_actor(*actor)};
                     return resolved && resolved->export_to_script;
                 }));
@@ -517,11 +560,13 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
             document->Destroy();
         }
     }
+
     transaction.Cancel();
     if (operation == MissionSetup::Create) {
         IFileManager::Get().Delete(*root);
         IFileManager::Get().Delete(*baseline_path);
     }
+
     return Result{std::unexpect, MoveTemp(failure)};
 }
 
@@ -559,6 +604,7 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
                       TEXT("There are unexported scene changes. Use Export Scene to keep them or "
                            "Force Rebuild from Script to discard them.")};
     }
+
     if (!IsValid(document.level_config)) {
         return Result{std::unexpect, TEXT("Cannot rebuild without the shared level asset.")};
     }
@@ -570,12 +616,14 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
     if (!definition) {
         return Result{std::unexpect, to_fstring(levels::format_diagnostics(definition.error()))};
     }
+
     auto baseline{module.imported
                       ? read_s7_editor_input(document)
                       : S7AuthoringResult<levels::authoring::LevelInput>{std::in_place}};
     if (!baseline) {
         return Result{std::unexpect, std::move(baseline.error())};
     }
+
     auto const& viewpoint{module.imported ? baseline->camera : definition->camera()};
     auto entities{baseline->entities};
     std::unordered_set<levels::EntityId> ids;
@@ -584,12 +632,14 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
             return Result{std::unexpect, TEXT("Duplicate entity ID in the editor baseline.")};
         }
     }
+
     auto const baseline_count{entities.size()};
     for (auto const& entity : definition->entities()) {
         if (ids.insert(entity.id).second) {
             entities.push_back(levels::authoring::make_entity_input(entity));
         }
     }
+
     if (viewpoint) {
         for (auto const& target : viewpoint->target_entity_ids) {
             if (!ids.contains(target)) {
@@ -599,6 +649,7 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
             }
         }
     }
+
     for (auto const& entity : entities) {
         if (!IsValid(s7_level_actor_class(entity.archetype, *document.level_config))) {
             return Result{
@@ -629,6 +680,7 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
             for (auto const& spawned : bindings) {
                 spawned.actor->Destroy();
             }
+
             document.set_needs_export(was_pending);
             transaction.Cancel();
             return Result{std::unexpect,
@@ -644,9 +696,11 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
             if constexpr (!std::is_same_v<Actor, ATestTubeSpinnerProxy>) {
                 proxy.set_team(team);
             }
+
             if constexpr (!std::is_same_v<Actor, ATestSpaceShip>) {
                 proxy.spawn_time_seconds = entity.spawn_at.get();
             }
+
             if constexpr (std::is_same_v<Actor, ATestSpaceShip>) {
                 proxy.health_override = optional(entity.health);
             } else if constexpr (std::is_same_v<Actor, ATestCapitalShipProxy>) {
@@ -685,12 +739,14 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
             FName{StaticEnum<ETestTeam>()->GetNameStringByValue(std::to_underlying(team))});
         bindings.Add({.id = name, .actor = actor});
     }
+
     document.Modify();
     targets.bound.Append(targets.unexported);
     for (auto* actor : targets.bound) {
         actor->Modify();
         level.OwningWorld->EditorDestroyActor(actor, true);
     }
+
     document.entities = MoveTemp(bindings);
     refresh_s7_proxy_labels(level);
     document.use_observer_camera = viewpoint.has_value();
@@ -707,6 +763,7 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
             document.camera.targets.Add(binding->actor);
         }
     }
+
     document.remember_editor_source();
     document.set_needs_export(false);
     return {};

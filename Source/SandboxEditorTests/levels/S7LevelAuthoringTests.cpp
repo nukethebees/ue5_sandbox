@@ -91,6 +91,7 @@ auto assert_success(FAutomationTestBase& test,
     if (test.TestTrue(description, result.has_value())) {
         return true;
     }
+
     test.AddError(result.error());
     return false;
 }
@@ -115,6 +116,7 @@ bool edit_team_in_details(TArray<UObject*> const& selection, FString const& team
         node->GetChildren(children);
         nodes.Append(children);
     }
+
     return false;
 }
 
@@ -145,12 +147,14 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
     if (!test.TestNotNull(TEXT("Editor world"), world)) {
         return std::nullopt;
     }
+
     auto& level{*world->GetCurrentLevel()};
     auto created{
         ioj::editor::set_up_s7_mission(level, ioj::editor::MissionSetup::Create, directory.root())};
     if (!assert_success(test, TEXT("Create authoring document"), created)) {
         return std::nullopt;
     }
+
     auto& document{**created};
     auto baseline{ioj::editor::read_s7_editor_input(document)};
     if (!assert_success(test, TEXT("Read generated baseline"), baseline)) {
@@ -198,6 +202,7 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
                        write_source(directory.root(), human_source))) {
         return std::nullopt;
     }
+
     auto definition{ioj::editor::read_s7_authored_level(document)};
     if (!assert_success(test, TEXT("Read composed level"), definition) ||
         !assert_success(test,
@@ -205,6 +210,7 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
                         ioj::editor::import_s7_level(level, document))) {
         return std::nullopt;
     }
+
     auto* const player_binding{binding(document, TEXT("player"))};
     auto* const capital_binding{binding(document, TEXT("capital"))};
     auto* const turret_binding{binding(document, TEXT("turret"))};
@@ -217,6 +223,7 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
         !test.TestNotNull(TEXT("Human binding"), human_binding)) {
         return std::nullopt;
     }
+
     auto* const player{CastChecked<ioj::ATestSpaceShip>(player_binding->actor)};
     auto* const capital{Cast<ioj::ATestCapitalShipProxy>(capital_binding->actor)};
     auto* const turret{Cast<ioj::ATestStaticTurretsProxy>(turret_binding->actor)};
@@ -228,6 +235,7 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
                        document.level_config->tube_spinners.fire_point_offsets.Num() > 1)) {
         return std::nullopt;
     }
+
     test.TestTrue(TEXT("Generated entities are exported"),
                   player->export_to_script && capital->export_to_script &&
                       turret->export_to_script && spinner->export_to_script);
@@ -251,10 +259,12 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
                         ioj::editor::export_s7_editor_config(level, document))) {
         return std::nullopt;
     }
+
     auto exported_definition{ioj::editor::read_s7_authored_level(document)};
     if (!assert_success(test, TEXT("Recompose exported level"), exported_definition)) {
         return std::nullopt;
     }
+
     return FComposedLevelFixture{
         world, &document, generated_path, human_source, std::move(*exported_definition)};
 }
@@ -273,6 +283,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!assert_success(*TestRunner, TEXT("Create authoring document"), created)) {
             return;
         }
+
         auto* const document{*created};
         auto* const capital_actor{world->SpawnActor<ioj::ATestCapitalShipProxy>()};
         auto* const turret_actor{world->SpawnActor<ioj::ATestStaticTurretsProxy>()};
@@ -330,6 +341,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 actor->Serialize(archive);
             }
         }
+
         if (!TestRunner->TestEqual(
                 TEXT("Persistent bindings restored"), document->entities.Num(), 4)) {
             return;
@@ -357,12 +369,14 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 ioj::editor::export_s7_editor_config(*world->GetCurrentLevel(), *document))) {
             return;
         }
+
         auto exported{ioj::editor::read_s7_editor_input(*document)};
         if (!assert_success(*TestRunner, TEXT("Read reloaded export"), exported) ||
             !TestRunner->TestEqual(
                 TEXT("Reload preserves output ownership"), exported->entities.size(), size_t{3})) {
             return;
         }
+
         auto const& exported_capital{exported->entities[0]};
         auto const& exported_player{exported->entities[1]};
         auto const& exported_spinner{exported->entities[2]};
@@ -394,6 +408,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!fixture) {
             return;
         }
+
         auto& document{*fixture->document};
         auto& level{*fixture->world->GetCurrentLevel()};
         auto const& definition{fixture->definition};
@@ -478,6 +493,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!fixture) {
             return;
         }
+
         auto& document{*fixture->document};
         auto& level{*fixture->world->GetCurrentLevel()};
         auto* const player_binding{binding(document, TEXT("player"))};
@@ -535,6 +551,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestEqual(TEXT("Copy two capitals"), copies.Num(), 2)) {
             return;
         }
+
         auto* fighter{fixture->world->SpawnActor<ioj::ATestFighterProxy>()};
         fighter->set_team(ioj::ETestTeam::Green);
         set_custom_name(*fighter, TEXT("fighter10"));
@@ -557,20 +574,24 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                         .FindByPredicate([copy](auto const& entry) { return entry.actor == copy; })
                         ->id);
         }
+
         if (!TestRunner->TestTrue(TEXT("Change both copied capitals to orange through Details"),
                                   edit_team_in_details({copies[0], copies[1]}, TEXT("Orange")))) {
             return;
         }
+
         for (auto* copy : copies) {
             TestRunner->TestTrue(TEXT("Each selected capital immediately displays orange"),
                                  copy->GetActorLabel().StartsWith(TEXT("capitalship-orange-")));
         }
+
         set_custom_name(*capital, TEXT("escort"));
         if (!TestRunner->TestTrue(TEXT("Changing the named capital's team preserves its label"),
                                   edit_team_in_details({capital}, TEXT("Blue")) &&
                                       capital->GetActorLabel() == TEXT("escort"))) {
             return;
         }
+
         if (!assert_success(*TestRunner,
                             TEXT("Export changed teams"),
                             ioj::editor::export_s7_editor_config(level, document)) ||
@@ -579,12 +600,14 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                             ioj::editor::import_s7_level(level, document))) {
             return;
         }
+
         for (auto const& id : ids) {
             auto* entry{binding(document, id)};
             TestRunner->TestTrue(
                 TEXT("Rebuilt copy retains its script ID and displays orange"),
                 entry && entry->actor->GetActorLabel().StartsWith(TEXT("capitalship-orange-")));
         }
+
         auto const* named{binding(document, TEXT("capital"))};
         TestRunner->TestTrue(
             TEXT("A custom display label survives rebuild with its original script ID"),
@@ -602,6 +625,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!fixture) {
             return;
         }
+
         auto& document{*fixture->document};
         auto& level{*fixture->world->GetCurrentLevel()};
         auto* const human_binding{binding(document, TEXT("human"))};
@@ -630,12 +654,14 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                   write_source(directory.root(), fixture->human_source))) {
             return;
         }
+
         if (!assert_success(*TestRunner,
                             TEXT("Refresh adopted entity"),
                             ioj::editor::import_s7_level(
                                 level, document, ioj::editor::RebuildPolicy::DiscardEdits))) {
             return;
         }
+
         auto* const replacement{
             CastChecked<ioj::ATestCapitalShipProxy>(binding(document, TEXT("human"))->actor)};
         TestRunner->TestTrue(TEXT("Rebuild keeps unbound actors excluded from export"),
@@ -675,6 +701,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!fixture) {
             return;
         }
+
         auto& document{*fixture->document};
         auto compiled{ioj::editor::compile_playable_s7_definition(fixture->definition,
                                                                   *document.level_config)};
@@ -710,6 +737,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!assert_success(*TestRunner, TEXT("Create authoring document"), created)) {
             return;
         }
+
         auto& document{**created};
         auto baseline{ioj::editor::read_s7_editor_input(document)};
         if (!assert_success(*TestRunner, TEXT("Read baseline"), baseline)) {
@@ -738,6 +766,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 )scm")))) {
             return;
         }
+
         for (auto iteration{0}; iteration < 2; ++iteration) {
             auto definition{ioj::editor::read_s7_authored_level(document)};
             if (!assert_success(*TestRunner, TEXT("Read composed level"), definition) ||
@@ -746,6 +775,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                 ioj::editor::import_s7_level(level, document))) {
                 return;
             }
+
             auto const* pilot{binding(document, TEXT("none"))};
             if (!TestRunner->TestNotNull(TEXT("The authored symbol none remains a valid binding"),
                                          pilot)) {
@@ -763,6 +793,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                 ioj::editor::export_s7_editor_config(level, document))) {
                 return;
             }
+
             auto saved{ioj::editor::read_s7_editor_input(document)};
             if (!assert_success(*TestRunner, TEXT("Read exported baseline"), saved)) {
                 return;
@@ -781,6 +812,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!fixture) {
             return;
         }
+
         auto* world{fixture->world};
         auto& document{*fixture->document};
         auto* capital{
@@ -797,6 +829,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 ioj::editor::export_s7_editor_config(*world->PersistentLevel, document))) {
             return;
         }
+
         auto* turret{
             CastChecked<ioj::ATestStaticTurretsProxy>(binding(document, TEXT("turret"))->actor)};
         turret->export_to_script = false;
@@ -824,6 +857,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             extra->PostEditChangeProperty(team_changed);
             check_colour(*extra, team);
         }
+
         auto* fighter{world->SpawnActor<ioj::ATestFighterProxy>()};
         fighter->set_team(ioj::ETestTeam::Green);
         FPropertyChangedEvent fighter_team{
@@ -865,17 +899,20 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!reopened || !TestRunner->TestNotNull(TEXT("Saved document"), *reopened)) {
             return;
         }
+
         auto* bound{binding(**reopened, TEXT("outpost"))};
         if (!TestRunner->TestTrue(TEXT("Binding survives reopen"),
                                   bound && IsValid(bound->actor))) {
             return;
         }
+
         check_colour(*CastChecked<ioj::ATestCapitalShipProxy>(bound->actor), ioj::ETestTeam::Red);
         auto const* escort{binding(**reopened, TEXT("escort"))};
         if (!TestRunner->TestTrue(TEXT("Saved fighter binding survives reopen"),
                                   escort && IsValid(escort->actor))) {
             return;
         }
+
         auto const* preview{
             CastChecked<UInstancedStaticMeshComponent>(escort->actor->GetRootComponent())};
         auto const& rgb{preview->PerInstanceSMCustomData};
@@ -921,6 +958,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!assert_success(*TestRunner, TEXT("Create authoring files"), created)) {
             return;
         }
+
         auto& document{**created};
         auto* const player{world->SpawnActor<ioj::ATestSpaceShip>(
             document.level_config->classes.player_ship_class.Get(), FTransform::Identity)};
@@ -999,6 +1037,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                             ioj::editor::export_s7_editor_config(level, document))) {
             return;
         }
+
         auto& modes{GLevelEditorModeTools()};
         auto const had_mode{modes.IsModeActive(US7LevelAuthoringMode::mode_id)};
         modes.ActivateMode(US7LevelAuthoringMode::mode_id);
@@ -1099,10 +1138,12 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                 level, document, ioj::editor::RebuildPolicy::DiscardEdits))) {
             return;
         }
+
         auto const* wing_binding{binding(document, TEXT("wing"))};
         if (!TestRunner->TestNotNull(TEXT("Authored fighter ID survives rebuild"), wing_binding)) {
             return;
         }
+
         auto* restored{CastChecked<ioj::ATestFighterProxy>(wing_binding->actor)};
         TestRunner->TestEqual(TEXT("Imported fighter uses the script ID as its label"),
                               restored->GetActorLabel(),
@@ -1129,6 +1170,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                   write_source(directory.root(), source))) {
             return;
         }
+
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
         auto created{ioj::editor::set_up_s7_mission(
             *world->GetCurrentLevel(), ioj::editor::MissionSetup::Link, directory.root())};
@@ -1150,6 +1192,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!fixture) {
             return;
         }
+
         auto& document{*fixture->document};
         auto& level{*fixture->world->GetCurrentLevel()};
         auto* const shared{document.level_config.Get()};

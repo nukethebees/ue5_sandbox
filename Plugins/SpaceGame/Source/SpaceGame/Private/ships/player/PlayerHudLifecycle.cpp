@@ -26,6 +26,7 @@ auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
         if (correct_type) {
             return true;
         }
+
         shutdown();
     }
 
@@ -36,6 +37,7 @@ auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
                TEXT("FPlayerHudLifecycle::initialise: World is not available yet."));
         return false;
     }
+
     if (!IsValid(owner.GetLocalPlayer())) {
         UE_LOG(LogSandboxController,
                Warning,
@@ -51,6 +53,7 @@ auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
                     "yet."));
         return false;
     }
+
     if (!IsValid(ui_data)) {
         UE_LOG(LogSandboxController,
                Error,
@@ -77,6 +80,7 @@ auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
     } else {
         return false;
     }
+
     if (!hud_widget_class) {
         return false;
     }
@@ -100,11 +104,13 @@ auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
                Error,
                TEXT("FPlayerHudLifecycle::initialise: Game subsystem is invalid."));
     }
+
     created_widget->AddToViewport();
     created_widget->set_entity_colours(team_visual_data->build_team_colour_cache());
     if (auto* const ship_hud{Cast<UShipHudWidget>(created_widget)}; IsValid(ship_hud)) {
         ship_hud->set_crosshair_distances(ui_data->crosshair_distances);
     }
+
     if (auto* const viewer_hud{Cast<UBattleViewerHudWidget>(created_widget)}; IsValid(viewer_hud)) {
         viewer_hud->set_movement_speed(observer_speed);
     }
@@ -119,10 +125,12 @@ void FPlayerHudLifecycle::shutdown() {
         restore_pending_ = false;
         return;
     }
+
     if (auto* const orchestrator{registered_orchestrator_.Get()};
         IsValid(orchestrator) && orchestrator->get_hud_manager().get_registered_hud_count() > 0) {
         orchestrator->get_hud_manager().unregister_hud(*hud_widget_);
     }
+
     hud_widget_->RemoveFromParent();
     hud_widget_ = nullptr;
     registered_orchestrator_.Reset();
@@ -134,6 +142,7 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
     if (IsValid(benchmark_hud_widget_)) {
         return true;
     }
+
     auto* const world{owner.GetWorld()};
     if (!IsValid(world)) {
         UE_LOG(LogSandboxController,
@@ -142,6 +151,7 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
                     "available yet."));
         return false;
     }
+
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,
                Warning,
@@ -149,6 +159,7 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
                     "available yet."));
         return false;
     }
+
     if (!IsValid(ui_data)) {
         UE_LOG(LogSandboxController,
                Error,
@@ -160,6 +171,7 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
     if (!widget_class) {
         return false;
     }
+
     auto* const created_widget{
         CreateWidget<UBenchmarkHudWidget>(&owner, widget_class, TEXT("benchmark_hud"))};
     if (!IsValid(created_widget)) {
@@ -176,6 +188,7 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
         IsValid(game_subsystem)) {
         created_widget->apply_ui_style(game_subsystem->get_ui_style());
     }
+
     created_widget->set_state_source([weak = TWeakObjectPtr<ATestBatchOrchestrator>{orchestrator}] {
         return weak.IsValid() ? FRunHudState{.ticks_remaining = weak->get_run_ticks_remaining(),
                                              .state = weak->get_state()}
@@ -193,6 +206,7 @@ void FPlayerHudLifecycle::shutdown_benchmark(ASpaceGamePlayerController& owner) 
     if (!IsValid(benchmark_hud_widget_)) {
         return;
     }
+
     benchmark_hud_widget_->end_requested.RemoveAll(&owner);
     benchmark_hud_widget_->pause_requested.RemoveAll(&owner);
     benchmark_hud_widget_->DeactivateWidget();
@@ -221,6 +235,7 @@ void FPlayerHudLifecycle::restore_after_modal() {
     if (IsValid(hud_widget_)) {
         hud_widget_->SetVisibility(visibility_before_modal_);
     }
+
     restore_pending_ = false;
 }
 void FPlayerHudLifecycle::set_mouse_steering(TOptional<FVector2D> const displacement) {

@@ -30,6 +30,7 @@ auto FShipControlContext::initialise(ASpaceGamePlayerController& owner,
     if (initialised_) {
         return false;
     }
+
     auto* const subsystem_object{Cast<UObject>(&subsystem)};
     if (!IsValid(subsystem_object)) {
         UE_LOG(LogSandboxController, Error, TEXT("Ship input subsystem is invalid."));
@@ -51,12 +52,14 @@ auto FShipControlContext::can_bind() const -> bool {
         !ship->has_simulation() || !input_) {
         return false;
     }
+
     return IsValid(input_->starfox);
 }
 void FShipControlContext::bind() {
     if (bound_) {
         return;
     }
+
     check(can_bind());
 
     auto* const mapping{input_->starfox};
@@ -72,11 +75,13 @@ void FShipControlContext::unbind() {
     if (!bound_) {
         return;
     }
+
     bound_ = false;
     neutralise_ship_input();
     if (input_subsystem_object_.IsValid() && input_subsystem_) {
         input_subsystem_->RemoveMappingContext(input_->starfox);
     }
+
     remove_action_bindings();
 }
 void FShipControlContext::shutdown() {
@@ -93,6 +98,7 @@ void FShipControlContext::set_ship(ATestSpaceShip* const ship) {
     if (bound_ && ship_.Get() != ship) {
         unbind();
     }
+
     ship_ = ship;
 }
 void FShipControlContext::bind_actions() {
@@ -143,6 +149,7 @@ void FShipControlContext::bind_actions() {
         bind_event(axis, Triggered, turn);
         bind_release(axis, turn);
     }
+
     bind_event(input_->hold_mouse_steering, Triggered, [this] { update_mouse_steering(); });
     bind_release(input_->hold_mouse_steering, [this] { release_mouse_steering(); });
     bind_value(input_->accelerate,
@@ -168,6 +175,7 @@ void FShipControlContext::remove_action_bindings() {
             component->RemoveBindingByHandle(handle);
         }
     }
+
     binding_handles_.Reset();
 }
 void FShipControlContext::neutralise_ship_input() {
@@ -175,6 +183,7 @@ void FShipControlContext::neutralise_ship_input() {
         mouse_displacement_.Reset();
         owner_->hud_.set_mouse_steering(mouse_displacement_);
     }
+
     auto* const ship{ship_.Get()};
     if (!IsValid(ship) || !ship->has_simulation()) {
         return;
@@ -193,12 +202,14 @@ auto FShipControlContext::get_ship() const -> ATestSpaceShip* {
         UE_LOG(LogSandboxController, Warning, TEXT("Player ship simulation is unavailable."));
         return nullptr;
     }
+
     return ship;
 }
 void FShipControlContext::update_gamepad_turn() {
     if (mouse_displacement_) {
         return;
     }
+
     auto const* const input{CastChecked<UEnhancedPlayerInput>(owner_->PlayerInput)};
     if (auto* const ship{get_ship()}) {
         auto const pitch{input->GetActionValue(input_->pitch).Get<float>()};
@@ -219,6 +230,7 @@ void FShipControlContext::update_mouse_steering() {
     if (mouse_displacement_ && delta.IsZero()) {
         return;
     }
+
     mouse_displacement_ = mouse_displacement_.Get(FVector2D::ZeroVector) + delta;
     owner_->hud_.set_mouse_steering(mouse_displacement_);
 

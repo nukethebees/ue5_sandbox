@@ -47,6 +47,7 @@ struct FOverlayLines final : FSimpleElementCollector {
             points.Add(end);
         }
     }
+
     void DrawTranslucentLine(FVector const& start,
                              FVector const& end,
                              FLinearColor const& colour,
@@ -80,6 +81,7 @@ auto assert_success(FAutomationTestBase& test,
     if (test.TestTrue(description, result.has_value())) {
         return true;
     }
+
     test.AddError(result.error());
     return false;
 }
@@ -99,6 +101,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                 modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
             }
         }
+
         if (!source_directory_.IsEmpty()) {
             IFileManager::Get().DeleteDirectory(*source_directory_, false, true);
         }
@@ -118,11 +121,13 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                     ioj::editor::export_entity_geometry(path))) {
                 return;
             }
+
             FString source;
             if (!TestRunner->TestTrue(TEXT("Read exported module"),
                                       FFileHelper::LoadFileToString(source, *path))) {
                 return;
             }
+
             if (!previous.IsEmpty()) {
                 TestRunner->TestEqual(
                     TEXT("Identical assets give identical output"), source, previous);
@@ -141,6 +146,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                                   FEditorFileUtils::LoadMap(map, false, false))) {
             return;
         }
+
         auto* world{GEditor->GetEditorWorldContext().World()};
         auto document{editor::find_level_authoring_document(*world->GetCurrentLevel())};
         if (!TestRunner->TestTrue(TEXT("Map embeds its project-relative mission"),
@@ -149,11 +155,13 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                                           TEXT("LevelScripts/defend_capital/defend_capital.scm"))) {
             return;
         }
+
         auto definition{editor::read_s7_authored_level(**document)};
         if (!s7_level_playable_tests::assert_success(
                 *TestRunner, TEXT("Load linked mission"), definition)) {
             return;
         }
+
         auto& modes{GLevelEditorModeTools()};
         authoring_was_active_ = modes.IsModeActive(US7LevelAuthoringMode::mode_id);
         modes.ActivateMode(US7LevelAuthoringMode::mode_id);

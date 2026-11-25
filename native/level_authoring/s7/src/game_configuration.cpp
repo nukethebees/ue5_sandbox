@@ -40,6 +40,7 @@ auto read_config(DefinitionReader const& reader,
     if (!ast) {
         return ConfigResult{std::unexpect, format_diagnostics(ast.error())};
     }
+
     auto result{s7::read<T>(s7::Reader{*ast}, ast->root, export_name)};
     if (!result) {
         return ConfigResult{
@@ -62,6 +63,7 @@ auto read_preferences(DefinitionReader const& reader,
         }
         state->overall_quality = graphics_preset(*state);
     }
+
     return state;
 }
 
@@ -73,6 +75,7 @@ auto write_preferences(std::filesystem::path const& path, std::string_view sourc
         return SavePreferencesResult{std::unexpect,
                                      std::format("{}: {}", path_to_utf8(path), error.message())};
     }
+
     auto temporary{path};
     temporary += std::format(".{:x}.tmp", std::random_device{}());
     std::ofstream output{temporary, std::ios::binary | std::ios::noreplace};
@@ -80,11 +83,13 @@ auto write_preferences(std::filesystem::path const& path, std::string_view sourc
         return SavePreferencesResult{std::unexpect,
                                      std::format("Cannot create {}", path_to_utf8(temporary))};
     }
+
     output << source;
     output.close();
     if (output) {
         std::filesystem::rename(temporary, path, error);
     }
+
     std::error_code ignored;
     std::filesystem::remove(temporary, ignored);
     if (!output || error) {
@@ -93,6 +98,7 @@ auto write_preferences(std::filesystem::path const& path, std::string_view sourc
                                                  path_to_utf8(path),
                                                  error ? error.message() : "write failed")};
     }
+
     return {};
 }
 }
@@ -118,6 +124,7 @@ auto read_user_settings(std::filesystem::path const& script_root,
             return UserSettingsResult{
                 std::unexpect, std::format("{}: {}", path_to_utf8(personal_file), error.message())};
         }
+
         auto created{save_user_settings(personal_file, *defaults, *defaults)};
         if (!created) {
             return UserSettingsResult{std::unexpect, std::move(created.error())};
@@ -128,6 +135,7 @@ auto read_user_settings(std::filesystem::path const& script_root,
     if (!applied) {
         return UserSettingsResult{std::unexpect, std::move(applied.error())};
     }
+
     return UserSettingsResult{std::in_place, *defaults, *applied};
 }
 

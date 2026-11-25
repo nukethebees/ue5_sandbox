@@ -16,6 +16,7 @@ void UFrameLogFooterSubsystem::Initialize(FSubsystemCollectionBase& Collection) 
     if (!player_settings().application().frame_log_footer) {
         return;
     }
+
     frame_log_tracker = MakeUnique<FFrameLogTracker>();
     RETURN_IF_NULLPTR(GLog);
     GLog->AddOutputDevice(frame_log_tracker.Get());
@@ -34,6 +35,7 @@ void UFrameLogFooterSubsystem::Deinitialize() {
     if (!frame_log_tracker) {
         return;
     }
+
     RETURN_IF_NULLPTR(GLog);
 
     GLog->RemoveOutputDevice(frame_log_tracker.Get());

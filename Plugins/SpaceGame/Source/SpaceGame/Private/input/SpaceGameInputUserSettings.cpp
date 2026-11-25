@@ -27,6 +27,7 @@ void USpaceGameInputUserSettings::finalize_canonical_registration() {
             obsolete_ids.Add(pair.Key);
         }
     }
+
     for (auto const& id : obsolete_ids) {
         SavedKeyProfilesMap.Remove(id);
     }
@@ -60,15 +61,18 @@ auto USpaceGameInputUserSettings::control_binding_metadata(FString const& profil
         if (!IsValid(context) || !IsMappingContextRegistered(context)) {
             continue;
         }
+
         for (auto const& source : context->GetMappingsForProfile(profile->GetProfileIdString())) {
             if (source.GetMappingName() != mapping.GetMappingName() ||
                 source.Key.IsGamepadKey() != gamepad) {
                 continue;
             }
+
             auto const* const settings{source.GetPlayerMappableKeySettings()};
             return IsValid(settings) ? Cast<UControlBindingMetadata>(settings->Metadata) : nullptr;
         }
     }
+
     return nullptr;
 }
 

@@ -90,6 +90,7 @@ bool ASpaceGamePlayerController::InputKey(FInputKeyEventArgs const& event_args) 
             if (auto* const common_input{local_player->GetSubsystem<UCommonInputSubsystem>()}) {
                 common_ui_click = common_input->GetIsGamepadSimulatedClick();
             }
+
             if (auto* const subsystem{
                     ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)}) {
                 UInputMappingContext const* const canonical_contexts[]{global_input.mapping_context,
@@ -102,10 +103,12 @@ bool ASpaceGamePlayerController::InputKey(FInputKeyEventArgs const& event_args) 
                         contexts += context->GetName();
                     }
                 }
+
                 for (auto const& mapping : subsystem->GetAllPlayerMappableActionKeyMappings()) {
                     if (mapping.Key != event_args.Key) {
                         continue;
                     }
+
                     if (!actions.IsEmpty()) {
                         actions += TEXT(", ");
                     }
@@ -113,6 +116,7 @@ bool ASpaceGamePlayerController::InputKey(FInputKeyEventArgs const& event_args) 
                 }
             }
         }
+
         UE_LOG(LogSandboxController,
                Warning,
                TEXT("[InputTrace] viewport key=%s event=%d value=%.3f gamepad=%d simulated=%d "
@@ -128,6 +132,7 @@ bool ASpaceGamePlayerController::InputKey(FInputKeyEventArgs const& event_args) 
                *contexts,
                *actions);
     }
+
     if (event_args.Viewport != nullptr && !event_args.IsSimulatedInput() &&
         event_args.Event == IE_Axis && event_args.Key == EKeys::Gamepad_RightY) {
         // FSceneViewport::OnAnalogValueChanged negates RightY, but not LeftY.
@@ -136,6 +141,7 @@ bool ASpaceGamePlayerController::InputKey(FInputKeyEventArgs const& event_args) 
         normalized_args.AmountDepressed = -normalized_args.AmountDepressed;
         return Super::InputKey(normalized_args);
     }
+
     return Super::InputKey(event_args);
 }
 
@@ -170,6 +176,7 @@ void ASpaceGamePlayerController::show_main_menu() {
     if (ending_play_) {
         return;
     }
+
     mode_ = EPlayerControllerMode::MainMenu;
     if (begin_play_finished_) {
         initialise_main_menu();
@@ -185,6 +192,7 @@ void ASpaceGamePlayerController::initialise_main_menu() {
     if (!modal_ui_.initialise_root(*this, ui_data) || !modal_ui_.show_main_menu(*this)) {
         return;
     }
+
     apply_main_menu_input_mode();
     main_menu_input_timer_ =
         GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::apply_main_menu_input_mode);
@@ -205,6 +213,7 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
                 this, &ThisClass::on_input_user_settings_initialized);
         }
     }
+
     registered_input_settings_.Reset();
     GetWorldTimerManager().ClearTimer(main_menu_input_timer_);
     modal_ui_.detach_callbacks(*this);
@@ -226,9 +235,11 @@ void ASpaceGamePlayerController::OnPossess(APawn* const in_pawn) {
         SetActorTickEnabled(false);
         return;
     }
+
     if (!is_gameplay_mode()) {
         return;
     }
+
     attach_ship(*ship);
     activate_ship_control();
     SetActorTickEnabled(true);
@@ -255,6 +266,7 @@ void ASpaceGamePlayerController::activate_ship_control() {
         !control_contexts_.can_bind_context(levels::ControlContext::Player)) {
         return;
     }
+
     bind_orchestrator_events();
     modal_ui_.initialise_root(*this, ui_data);
     control_contexts_.set_control_context(levels::ControlContext::Player);
@@ -280,6 +292,7 @@ void ASpaceGamePlayerController::detach_ship() {
     if (auto* const ship{Cast<Pawn>(GetPawn())}; IsValid(ship)) {
         ship->on_player_ship_died.Unbind();
     }
+
     control_contexts_.set_ship(nullptr);
     modal_ui_.on_ship_changed(false);
 }
@@ -307,6 +320,7 @@ void ASpaceGamePlayerController::bind_orchestrator_events() {
     if (orchestrator_.Get() == orchestrator) {
         return;
     }
+
     unbind_orchestrator_events();
     orchestrator_ = orchestrator;
     orchestrator->on_simulation_paused.AddUObject(this, &ThisClass::on_simulation_paused);
@@ -315,6 +329,7 @@ void ASpaceGamePlayerController::unbind_orchestrator_events() {
     if (auto* const orchestrator{orchestrator_.Get()}; IsValid(orchestrator)) {
         orchestrator->on_simulation_paused.RemoveAll(this);
     }
+
     orchestrator_.Reset();
 }
 
@@ -350,6 +365,7 @@ void ASpaceGamePlayerController::initialise_input_user_settings() {
     if (!IsValid(local_player)) {
         return;
     }
+
     auto* const subsystem{
         ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)};
     if (!IsValid(subsystem)) {
@@ -365,9 +381,11 @@ void ASpaceGamePlayerController::initialise_input_user_settings() {
     if (!IsValid(settings)) {
         return;
     }
+
     if (registered_input_settings_.Get() == settings) {
         return;
     }
+
     for (auto const& definition : canonical_ship_control_contexts()) {
         auto* const mapping{load_ship_control_context(definition.scope)};
         if (!IsValid(mapping)) {
@@ -377,10 +395,12 @@ void ASpaceGamePlayerController::initialise_input_user_settings() {
                    definition.asset_name);
             return;
         }
+
         if (!settings->IsMappingContextRegistered(mapping)) {
             settings->RegisterInputMappingContext(mapping);
         }
     }
+
     if (auto* const ship_settings{Cast<USpaceGameInputUserSettings>(settings)}) {
         ship_settings->finalize_canonical_registration();
     } else {
@@ -407,6 +427,7 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
     if (!can_activate_gameplay_control()) {
         return false;
     }
+
     if (context != levels::ControlContext::Observer &&
         context != levels::ControlContext::Benchmark) {
         UE_LOG(LogSandboxController,
@@ -415,6 +436,7 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
                     "Observer or Benchmark."));
         return false;
     }
+
     if (IsValid(GetPawn())) {
         UE_LOG(LogSandboxController,
                Error,
@@ -429,6 +451,7 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
     if (context == levels::ControlContext::Benchmark) {
         return activate_run_controls();
     }
+
     if (!control_contexts_.set_control_context(context)) {
         return false;
     }
@@ -443,6 +466,7 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
         control_contexts_.set_control_context(levels::ControlContext::None);
         return false;
     }
+
     FInputModeGameAndUI input_mode{};
     input_mode.SetHideCursorDuringCapture(false);
     input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -467,6 +491,7 @@ auto ASpaceGamePlayerController::activate_run_controls() -> bool {
         control_contexts_.set_control_context(levels::ControlContext::None);
         return false;
     }
+
     SetActorTickEnabled(true);
     return true;
 }
@@ -497,6 +522,7 @@ void ASpaceGamePlayerController::toggle_pause_game() {
     if (!is_gameplay_mode()) {
         return;
     }
+
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,
@@ -513,6 +539,7 @@ void ASpaceGamePlayerController::toggle_pause_game() {
                 modal_ui_.is_resume_pending()) {
                 return;
             }
+
             if (!suspend_gameplay_for_modal()) {
                 return;
             }
@@ -605,6 +632,7 @@ auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {
         modal_ui_.clear_resume();
         return false;
     }
+
     hud_.hide_for_modal();
     return true;
 }
@@ -612,6 +640,7 @@ void ASpaceGamePlayerController::resume_game() {
     if (!is_gameplay_mode() || return_to_level_select_pending_) {
         return;
     }
+
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,
@@ -619,6 +648,7 @@ void ASpaceGamePlayerController::resume_game() {
                TEXT("ASpaceGamePlayerController::resume_game: Orchestrator is invalid."));
         return;
     }
+
     if (orchestrator->get_state() == sim::LevelState::Stopped) {
         UE_LOG(LogSandboxController,
                Error,
@@ -632,6 +662,7 @@ void ASpaceGamePlayerController::resume_game() {
     if (!control_contexts_.set_control_context(target_context)) {
         return;
     }
+
     hud_.restore_after_modal();
     modal_ui_.clear_resume();
     if (target_context == levels::ControlContext::Player) {
@@ -686,6 +717,7 @@ void ASpaceGamePlayerController::show_level_completion(FLevelCompletion const& c
     if (!is_gameplay_mode() || return_to_level_select_pending_) {
         return;
     }
+
     if (modal_ui_.initialise_root(*this, ui_data)) {
         modal_ui_.show_completion(*this, completion);
     }
@@ -694,6 +726,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
     if (!is_gameplay_mode()) {
         return;
     }
+
     if (return_to_level_select_pending_) {
         return;
     }
@@ -728,9 +761,11 @@ void ASpaceGamePlayerController::quit_game() {
     if (!is_gameplay_mode()) {
         return;
     }
+
     if (return_to_level_select_pending_) {
         return;
     }
+
     return_to_level_select_pending_ = true;
     modal_ui_.detach_callbacks(*this);
     UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, false);

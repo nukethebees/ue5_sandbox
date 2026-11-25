@@ -30,10 +30,12 @@ auto interpolate_to(double const current, double const target, float const dt, d
     if (speed <= 0.f) {
         return target;
     }
+
     auto const distance{target - current};
     if (distance * distance < 1.e-8) {
         return target;
     }
+
     return current + distance * std::clamp(static_cast<double>(dt) * speed, 0.0, 1.0);
 }
 
@@ -75,7 +77,7 @@ void Sim::initialise(PlayerSpawnData const& spawn,
     set_laser_trigger_mode(laser_trigger_mode);
 
     if (spawn.sample_speed) {
-    configure_speed_sampling(clock);
+        configure_speed_sampling(clock);
     }
     planned_state_ = state_;
 }
@@ -110,6 +112,7 @@ void Sim::prepare_tick(float const dt, EntityTables& tables, SimClock const& clo
             speed_sample_ticks_remaining = speed_sample_tick_period;
         }
     }
+
     update_entity_lookup_table(tables, clock);
 }
 
@@ -176,6 +179,7 @@ void Sim::apply_inputs(PlayerSimulationState& state, PlayerEvents& events) {
                 set_laser_mode(LaserFiringState::idle);
                 continue;
         }
+
         update_propulsion_action(state, events);
     }
 
@@ -211,6 +215,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
         }
         health = std::min(Health{health.value() + delta.value()}, max_health_);
     }
+
     health_changes_.clear();
     EntityId killer{};
     auto const damage_count{damage_events.num()};
@@ -226,6 +231,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
         if (requested_damage == 0) {
             continue;
         }
+
         health.set_value(health.value() - requested_damage);
         if (is_dead(health)) {
             killer = instigators[element];
@@ -299,6 +305,7 @@ void Sim::update_movement(float const dt, PlayerSimulationState& state) const no
             std::clamp(0.f, controller.roll_angle - step, controller.roll_angle + step);
         rotation.roll = controller.roll_angle;
     }
+
     physical.transform.rotation = to_quaternion(rotation);
 
     auto const action{controller.effective_action};
@@ -322,6 +329,7 @@ void Sim::update_movement(float const dt, PlayerSimulationState& state) const no
         physical.velocity +=
             forward * (speed - static_cast<float>(dot(physical.velocity, forward)));
     }
+
     physical.velocity = forward * std::min(size(physical.velocity), static_cast<double>(limit));
     physical.transform.location += physical.velocity * dt;
 }
@@ -364,6 +372,7 @@ void Sim::update_boost_brake(float const dt, PlayerSimulationState& state, Playe
             energy_change = -config_.brake_energy_drain;
             break;
     }
+
     resources.thrust_change_rate = energy_change * config_.thrust_energy_max;
     resources.thrust_energy += dt * resources.thrust_change_rate;
     resources.thrust_energy =
@@ -394,6 +403,7 @@ void Sim::update_propulsion_action(PlayerSimulationState& state, PlayerEvents& e
                state.controller.effective_action == BoostBrakeState::Boost) {
         events.push_back(PlayerEventKind::BoostStopped);
     }
+
     if (action != state.controller.effective_action) {
         state.controller.effective_action = action;
         reset_speed_responses(state);

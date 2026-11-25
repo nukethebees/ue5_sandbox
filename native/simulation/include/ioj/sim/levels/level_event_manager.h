@@ -55,11 +55,13 @@ class LevelEventManager {
         return {.team = change_points_events_.teams()[index],
                 .delta = change_points_events_.deltas()[index]};
     }
+
     void add_trigger(ExprHandle condition, std::span<EventHandle const> events);
     auto spawn_count() const -> std::uint32_t {
         return fighter_spawns_.num() + capital_spawns_.num() + turret_spawns_.num() +
                spinner_spawns_.num();
     }
+
     auto spawn_groups() -> LevelSpawnGroups& { return spawn_groups_; }
     auto spawn_groups() const -> LevelSpawnGroups const& { return spawn_groups_; }
     auto fighter_spawns() -> FighterSpawnQueue& { return fighter_spawns_; }
@@ -77,6 +79,7 @@ class LevelEventManager {
     auto start_timer_event(EventHandle event) const -> StartTimerEvent {
         return start_timer_events_[event.index()];
     }
+
     auto win_event(EventHandle event) const -> WinEvent { return win_events_[event.index()]; }
 
     /* **************************************** */
@@ -98,6 +101,7 @@ class LevelEventManager {
     auto pending_preparation_events() const -> std::span<EventHandle const> {
         return preparation_events().subspan(preparation_read_cursor_);
     }
+
     auto consume_tick_end_event() -> std::optional<EventHandle>;
     auto tick_end_events() const -> std::span<EventHandle const> { return tick_end_events_; }
     auto pending_tick_end_events() const -> std::span<EventHandle const> {

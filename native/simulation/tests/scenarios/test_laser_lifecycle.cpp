@@ -46,6 +46,7 @@ void queue_projectiles(LevelSim& simulation,
                                shooter,
                                LaserSource{Team::White, EntityType::TubeSpinner});
     }
+
     LevelSimTestAccess::queue_laser_spawns(simulation, requests.const_view());
 }
 

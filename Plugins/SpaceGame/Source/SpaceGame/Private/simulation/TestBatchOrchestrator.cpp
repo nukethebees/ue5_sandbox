@@ -89,6 +89,7 @@ void ATestBatchOrchestrator::release_level() {
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
     }
+
     presentation_host_.reset();
     level_simulation_ = nullptr;
     frame_delta_seconds_.reset();
@@ -119,6 +120,7 @@ auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> 
                TEXT("Reset the level simulation before replacing its configuration"));
         return false;
     }
+
     if (!ensureAlwaysMsgf(config.is_valid(is_presentation_enabled()),
                           TEXT("Level config is invalid"))) {
         return false;
@@ -148,6 +150,7 @@ void ATestBatchOrchestrator::clear_player_ship() {
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
     }
+
     player_ship = nullptr;
 }
 
@@ -169,10 +172,12 @@ auto ATestBatchOrchestrator::prepare_level(session::PendingLevel const& pending,
         return fail(ELevelLoadErrorCode::InvalidLevelState,
                     TEXT("Level loader requires an uninitialised orchestrator"));
     }
+
     auto* const world{GetWorld()};
     if (!IsValid(world)) {
         return fail(ELevelLoadErrorCode::InvalidWorld, TEXT("Orchestrator world is invalid"));
     }
+
     if (!IsValid(level_config)) {
         return fail(ELevelLoadErrorCode::InvalidLevelConfig,
                     TEXT("Level configuration is invalid"));
@@ -188,10 +193,12 @@ auto ATestBatchOrchestrator::prepare_level(session::PendingLevel const& pending,
             return fail(ELevelLoadErrorCode::MissingInfrastructure,
                         TEXT("Authored level requires a space-game player controller"));
         }
+
         if (!get_presentation_resources(definition.settings()).is_valid()) {
             return fail(ELevelLoadErrorCode::MissingInfrastructure,
                         TEXT("Orchestrator simulation infrastructure is incomplete"));
         }
+
         visual.emplace(*controller, playerless_control_context);
     }
 
@@ -224,6 +231,7 @@ auto ATestBatchOrchestrator::prepare_level(session::PendingLevel const& pending,
             actor->set_starfield_settings(definition.settings().starfield);
         }
     }
+
     auto const resources{get_presentation_resources(definition.settings())};
     if (is_presentation_enabled() && !resources.is_valid()) {
         return fail(ELevelLoadErrorCode::MissingInfrastructure,
@@ -239,7 +247,7 @@ auto ATestBatchOrchestrator::static_geometry(sim::collision::CollisionGridSpec g
     static_geometry_ = FLevelCollisionHost::extract_static_geometry(
         *GetWorld(), level_config->collision_grid, grid, excluded_actors);
     return static_geometry_;
-    }
+}
 
 auto ATestBatchOrchestrator::bind_level(session::PendingLevel const& pending,
                                         sim::LevelSim const& level) -> bool {
@@ -263,8 +271,8 @@ auto ATestBatchOrchestrator::bind_level(session::PendingLevel const& pending,
         auto* controller{
             CastChecked<ASpaceGamePlayerController>(GetWorld()->GetFirstPlayerController())};
         if (IsValid(player_ship)) {
-                controller->activate_ship_control();
-            }
+            controller->activate_ship_control();
+        }
         if (pending.options.launch_mode == levels::LaunchMode::Paused) {
             controller->show_initial_pause_menu();
         }
@@ -329,6 +337,7 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
             .visibility = collision_overlays_,
         });
     }
+
     presentation_host_.configure_collision_grid(MoveTemp(settings));
 }
 auto ATestBatchOrchestrator::get_presentation_resources(settings::Settings const& settings) const
@@ -380,6 +389,7 @@ void ATestBatchOrchestrator::finish_level(profiles::CompletedLevel const& comple
     if (IsValid(controller)) {
         controller->finish_level();
     }
+
     release_level();
 
     if (show_results && IsValid(controller)) {
@@ -395,6 +405,7 @@ void ATestBatchOrchestrator::apply_level_config() {
         UE_LOG(LogSandbox, Error, TEXT("Cannot apply a null level config."));
         return;
     }
+
     set_level_config(*level_config);
 }
 #endif

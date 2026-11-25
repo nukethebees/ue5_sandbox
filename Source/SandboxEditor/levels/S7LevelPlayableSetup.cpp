@@ -38,6 +38,7 @@ auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
     if (!build) {
         return S7AuthoringResult<sim::LevelSimInitData>{std::unexpect, build.error().format()};
     }
+
     return std::move(*build);
 }
 
@@ -51,6 +52,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
         !IsValid(world_settings) || document.GetLevel() != &level) {
         return Result{std::unexpect, TEXT("The current editor level is unavailable.")};
     }
+
     auto* const game_mode_class{
         LoadClass<AGameModeBase>(nullptr, s7_level_playable_setup_detail::game_mode_class_path)};
     if (!IsValid(game_mode_class)) {
@@ -65,6 +67,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
         if (!IsValid(actor)) {
             continue;
         }
+
         if (auto* const candidate{Cast<ATestBatchOrchestrator>(actor)}) {
             if (orchestrator) {
                 return Result{std::unexpect,
@@ -72,17 +75,20 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
             }
             orchestrator = candidate;
         }
+
         if (auto* const candidate{Cast<AGpuStarfieldActor>(actor)}) {
             if (starfield) {
                 return Result{std::unexpect, TEXT("The level contains multiple GPU starfields.")};
             }
             starfield = candidate;
         }
+
         if (auto* const candidate{Cast<AShipPostProcessing>(actor)}) {
             if (post_processing) {
                 return Result{std::unexpect,
                               TEXT("The level contains multiple ship post-processing actors.")};
             }
+
             post_processing = candidate;
         }
     }
@@ -103,6 +109,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
             return Result{std::unexpect, TEXT("Could not create the batch orchestrator.")};
         }
     }
+
     auto* new_starfield{starfield};
     if (!new_starfield) {
         new_starfield =
@@ -113,13 +120,16 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
                                                        RF_Transactional,
                                                        false));
     }
+
     if (!IsValid(new_starfield)) {
         if (!orchestrator) {
             new_orchestrator->Destroy();
         }
+
         transaction.Cancel();
         return Result{std::unexpect, TEXT("Could not create the GPU starfield.")};
     }
+
     if (!post_processing && !IsValid(GEditor->AddActor(&level,
                                                        AShipPostProcessing::StaticClass(),
                                                        FTransform::Identity,
@@ -129,9 +139,11 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
         if (!starfield) {
             new_starfield->Destroy();
         }
+
         if (!orchestrator) {
             new_orchestrator->Destroy();
         }
+
         transaction.Cancel();
         return Result{std::unexpect, TEXT("Could not create ship post-processing.")};
     }

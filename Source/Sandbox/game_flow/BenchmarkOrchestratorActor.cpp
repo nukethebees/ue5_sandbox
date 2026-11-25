@@ -36,6 +36,7 @@ auto ABenchmarkOrchestratorActor::BeginPlay() -> void {
         UE_LOG(LogSandbox, Fatal, TEXT("player_controller is nullptr"));
         return;
     }
+
     player_controller->SetViewTarget(benchmark_camera);
 
     if (!run_benchmark) {
@@ -117,6 +118,7 @@ auto ABenchmarkOrchestratorActor::stop_trace() -> void {
     if (!benchmark_running_) {
         return;
     }
+
     benchmark_running_ = false;
 
     auto& timer_manager{GetWorldTimerManager()};

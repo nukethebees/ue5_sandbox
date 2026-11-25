@@ -176,6 +176,7 @@ auto load_or_create_widget_blueprint(TCHAR const* const object_path,
             UE_LOG(LogTemp, Error, TEXT("Could not create %s"), object_path);
             return nullptr;
         }
+
         FAssetRegistryModule::AssetCreated(blueprint);
     }
 
@@ -200,6 +201,7 @@ auto compile_and_save(UWidgetBlueprint& blueprint) -> bool {
         UE_LOG(LogTemp, Error, TEXT("%s failed to compile"), *blueprint.GetName());
         return false;
     }
+
     return save_asset(blueprint);
 }
 
@@ -224,6 +226,7 @@ auto generate_menu_button_widget() -> UClass* {
     if (!IsValid(blueprint)) {
         return nullptr;
     }
+
     auto* const background{make_widget<UBorder>(*blueprint->WidgetTree, TEXT("background"))};
     background->SetVisibility(ESlateVisibility::HitTestInvisible);
     auto* const label{make_widget<UCommonTextBlock>(*blueprint->WidgetTree, TEXT("label_text"))};
@@ -242,6 +245,7 @@ auto generate_root_layout_widget() -> UClass* {
     if (!IsValid(blueprint)) {
         return nullptr;
     }
+
     auto& tree{*blueprint->WidgetTree};
     auto* const root{tree.ConstructWidget<UOverlay>()};
     auto* const screen_stack{
@@ -253,6 +257,7 @@ auto generate_root_layout_widget() -> UClass* {
         slot->SetHorizontalAlignment(HAlign_Fill);
         slot->SetVerticalAlignment(VAlign_Fill);
     }
+
     tree.RootWidget = root;
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
@@ -265,6 +270,7 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     if (!IsValid(blueprint)) {
         return nullptr;
     }
+
     auto& tree{*blueprint->WidgetTree};
     auto* const root{make_widget<UOverlay>(tree, TEXT("root_widget"))};
     auto* const panel{tree.ConstructWidget<UHorizontalBox>()};
@@ -342,6 +348,7 @@ auto load_or_create_asset(TCHAR const* const object_path,
             FAssetRegistryModule::AssetCreated(asset);
         }
     }
+
     return asset;
 }
 
@@ -378,6 +385,7 @@ auto create_input_action(TCHAR const* const package_path,
         action->Triggers.Reset();
         action->Modifiers.Reset();
     }
+
     return action;
 }
 
@@ -462,6 +470,7 @@ auto generate_control_context_input_assets(ioj::FObserverControlInputs& observer
             return false;
         }
     }
+
     return true;
 }
 
@@ -470,6 +479,7 @@ auto generate_battle_viewer_widget() -> UClass* {
     if (!IsValid(ui_data)) {
         return nullptr;
     }
+
     auto const value_class{ui_data->get_widget_class<ioj::UValueWidget>()};
     if (!IsValid(value_class)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load Battle Viewer child widget classes"));
@@ -517,6 +527,7 @@ auto generate_benchmark_widget(UClass& button_class) -> UClass* {
     if (!IsValid(ui_data)) {
         return nullptr;
     }
+
     auto const value_class{ui_data->get_widget_class<ioj::UValueWidget>()};
     if (!IsValid(value_class)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load Benchmark HUD value widget class"));
@@ -572,6 +583,7 @@ struct FGeneratedShipInputActions {
         if (!IsValid(general) || !IsValid(pause) || !IsValid(ship.starfox)) {
             return false;
         }
+
         for (auto* const action : {ship.pitch,
                                    ship.yaw,
                                    ship.hold_mouse_steering,
@@ -586,6 +598,7 @@ struct FGeneratedShipInputActions {
                 return false;
             }
         }
+
         return true;
     }
 };
@@ -597,6 +610,7 @@ auto scope_name(ioj::EShipControlScope const scope) -> TCHAR const* {
         case ioj::EShipControlScope::Starfox:
             return TEXT("Starfox");
     }
+
     return TEXT("Unknown");
 }
 
@@ -617,6 +631,7 @@ auto create_ship_mapping_context(ioj::EShipControlScope const scope) -> UInputMa
                                                           TEXT("MappingProfileOverrides"))}) {
         overrides->ClearValue_InContainer(context);
     }
+
     return context;
 }
 
@@ -625,6 +640,7 @@ auto mapping_subobject(UObject& outer, FString const& name) -> TObject* {
     if (auto* const existing{FindObject<TObject>(&outer, *name)}) {
         return existing;
     }
+
     return NewObject<TObject>(&outer, FName{name});
 }
 
@@ -640,6 +656,7 @@ void add_ship_mapping(UInputMappingContext& context,
     if (role != nullptr && role[0] != TCHAR{}) {
         mapping_name += FString::Printf(TEXT(".%s"), role);
     }
+
     mapping_name += key.IsGamepadKey() ? TEXT(".Gamepad") : TEXT(".KeyboardMouse");
     auto object_suffix{mapping_name.Replace(TEXT("."), TEXT("_"))};
 
@@ -648,6 +665,7 @@ void add_ship_mapping(UInputMappingContext& context,
         mapping.Modifiers.Add(mapping_subobject<UInputModifierNegate>(
             context, FString::Printf(TEXT("Negate_%s"), *object_suffix)));
     }
+
     if (action.ValueType == EInputActionValueType::Axis1D &&
         (key == EKeys::MouseX || key == EKeys::MouseY ||
          (key.IsGamepadKey() && key != EKeys::Gamepad_LeftTriggerAxis))) {
@@ -663,6 +681,7 @@ void add_ship_mapping(UInputMappingContext& context,
                 : FCString::Strcmp(semantic, TEXT("Yaw")) == 0 ? ioj::ESpaceGameInputAxis::Yaw
                                                                : ioj::ESpaceGameInputAxis::None;
         }
+
         mapping.Modifiers.Add(response);
     }
 
@@ -846,11 +865,13 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
             return {};
         }
     }
+
     for (auto* const context : {result.general, ship.starfox}) {
         if (!save_asset(*context)) {
             return {};
         }
     }
+
     return result;
 }
 auto configure_ui_data(UClass& root_class,
@@ -865,6 +886,7 @@ auto configure_ui_data(UClass& root_class,
     if (!IsValid(ui_data)) {
         return false;
     }
+
     ui_data->Modify();
     auto const native_classes{ioj::UTestBatchGameUiData::get_native_widget_classes()};
     for (auto entry{ui_data->widget_classes.classes.CreateIterator()}; entry; ++entry) {
@@ -872,6 +894,7 @@ auto configure_ui_data(UClass& root_class,
             entry.RemoveCurrent();
         }
     }
+
     ui_data->widget_classes.classes.Add(ioj::UGameUiRootLayout::StaticClass(), &root_class);
     ui_data->widget_classes.classes.Add(ioj::UMenuButtonWidget::StaticClass(), &button_class);
     ui_data->widget_classes.classes.Add(ioj::UMainMenuWidget::StaticClass(), &main_class);
@@ -976,6 +999,7 @@ auto controller_blueprint_is_input_free(UBlueprint& blueprint) -> bool {
                 node->GetClass()->GetFName() == TEXT("K2Node_FunctionEntry")) {
                 continue;
             }
+
             UE_LOG(LogTemp,
                    Error,
                    TEXT("Production controller contains graph node: %s/%s"),
@@ -984,15 +1008,18 @@ auto controller_blueprint_is_input_free(UBlueprint& blueprint) -> bool {
             return false;
         }
     }
+
     if (blueprint.SimpleConstructionScript != nullptr &&
         !blueprint.SimpleConstructionScript->GetAllNodes().IsEmpty()) {
         UE_LOG(LogTemp, Error, TEXT("Production controller contains Blueprint components"));
         return false;
     }
+
     auto const* const generated{Cast<UBlueprintGeneratedClass>(blueprint.GeneratedClass)};
     if (generated == nullptr) {
         return false;
     }
+
     for (auto const& binding_ptr : generated->DynamicBindingObjects) {
         auto const* const binding{binding_ptr.Get()};
         if (binding != nullptr && binding->IsA<UInputDelegateBinding>()) {
@@ -1000,6 +1027,7 @@ auto controller_blueprint_is_input_free(UBlueprint& blueprint) -> bool {
             return false;
         }
     }
+
     return true;
 }
 auto load_or_create_player_controller(ioj::FObserverControlInputs const& observer,
@@ -1019,6 +1047,7 @@ auto load_or_create_player_controller(ioj::FObserverControlInputs const& observe
             UE_LOG(LogTemp, Error, TEXT("Could not create player controller Blueprint"));
             return nullptr;
         }
+
         FAssetRegistryModule::AssetCreated(blueprint);
     }
 
@@ -1035,23 +1064,28 @@ auto load_or_create_player_controller(ioj::FObserverControlInputs const& observe
                 node->GetClass()->GetFName() == TEXT("K2Node_FunctionEntry")) {
                 continue;
             }
+
             FBlueprintEditorUtils::RemoveNode(blueprint, node, true);
         }
     }
+
     if (auto* const construction_script{blueprint->SimpleConstructionScript.Get()}) {
         auto const components{construction_script->GetAllNodes()};
         for (auto const& component : components) {
             construction_script->RemoveNode(component);
         }
     }
+
     FKismetEditorUtilities::CompileBlueprint(blueprint);
     if (blueprint->Status == BS_Error || !IsValid(blueprint->GeneratedClass)) {
         UE_LOG(LogTemp, Error, TEXT("BP_SpaceGamePlayerController failed to compile"));
         return nullptr;
     }
+
     if (!controller_blueprint_is_input_free(*blueprint)) {
         return nullptr;
     }
+
     if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
         !configure_gameplay_inputs(*blueprint, actions)) {
         return nullptr;
@@ -1064,6 +1098,7 @@ auto load_or_create_player_controller(ioj::FObserverControlInputs const& observe
                TEXT("BP_SpaceGamePlayerController failed to compile after input configuration"));
         return nullptr;
     }
+
     if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
         !configure_gameplay_inputs(*blueprint, actions)) {
         return nullptr;
@@ -1091,6 +1126,7 @@ auto load_or_create_player_controller(ioj::FObserverControlInputs const& observe
         UE_LOG(LogTemp, Error, TEXT("Player controller context inputs did not compile"));
         return nullptr;
     }
+
     return save_asset(*blueprint) ? blueprint : nullptr;
 }
 
@@ -1106,6 +1142,7 @@ auto configure_runtime_game_mode(UClass& player_controller_class) -> bool {
         UE_LOG(LogTemp, Error, TEXT("Runtime game mode has an invalid default object"));
         return false;
     }
+
     game_mode->Modify();
     game_mode->PlayerControllerClass = &player_controller_class;
     game_mode->DefaultPawnClass = nullptr;
@@ -1131,6 +1168,7 @@ auto load_or_create_runtime_config(UClass& player_controller_class) -> ioj::USpa
             UE_LOG(LogTemp, Error, TEXT("Could not duplicate runtime level config"));
             return nullptr;
         }
+
         FAssetRegistryModule::AssetCreated(config);
     }
 
@@ -1173,6 +1211,7 @@ auto generate_runtime_map(ioj::FObserverControlInputs const& observer,
         UE_LOG(LogTemp, Error, TEXT("Could not configure the runtime game mode"));
         return false;
     }
+
     world_settings->DefaultGameMode = game_mode_class;
 
     auto* const orchestrator{world->SpawnActor<ioj::ATestBatchOrchestrator>()};
@@ -1205,6 +1244,7 @@ auto generate_main_menu_map() -> bool {
         UE_LOG(LogTemp, Error, TEXT("Could not configure the main-menu game mode"));
         return false;
     }
+
     world_settings->DefaultGameMode = ioj::AMainMenuGameMode::StaticClass();
 
     auto const filename{FPackageName::LongPackageNameToFilename(

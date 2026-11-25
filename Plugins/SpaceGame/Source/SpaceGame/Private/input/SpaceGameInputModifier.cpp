@@ -18,6 +18,7 @@ auto native_response(ESpaceGameInputResponse const response) -> input::Response 
         case ESpaceGameInputResponse::GamepadTurn:
             return input::Response::GamepadTurn;
     }
+
     checkNoEntry();
     return input::Response::GamepadTurn;
 }
@@ -30,6 +31,7 @@ auto native_axis(ESpaceGameInputAxis const axis) -> input::Axis {
         case ESpaceGameInputAxis::Yaw:
             return input::Axis::Yaw;
     }
+
     checkNoEntry();
     return input::Axis::None;
 }
@@ -62,6 +64,7 @@ auto USpaceGameInputModifier::ModifyRaw_Implementation(
         case EInputActionValueType::Boolean:
             return current_value;
     }
+
     return current_value;
 }
 }

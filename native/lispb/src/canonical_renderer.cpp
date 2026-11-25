@@ -104,6 +104,7 @@ auto CanonicalRenderer::build_type_ref(codegen::TypeRefId const id) -> Expr {
     if (!text(types.suffix[id]).empty()) {
         result.field("suffix", ir_.string(types.suffix[id]));
     }
+
     result.optional_field(
         "nested", types.nested[id], [this](auto value) { return ir_.string(value); });
     return result.build();
@@ -137,6 +138,7 @@ auto CanonicalRenderer::build_enum_unreal_projection(
         result.field("reflection",
                      ir_.atom(codegen::to_serialized_string(projections.reflection[projection])));
     }
+
     return result.build();
 }
 auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> Expr {
@@ -153,10 +155,12 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
                      enums.signedness[schema] == EnumSignedness::signed_ ? ir_.atoms.true_value
                                                                          : ir_.atoms.false_value);
     }
+
     if (enums.reflection[schema] != codegen::EnumReflection::none) {
         result.field("reflection",
                      ir_.atom(codegen::to_serialized_string(enums.reflection[schema])));
     }
+
     result.flag("enum-array", enums.enum_array[schema]);
     if (enums.ordering[schema] == codegen::EnumOrdering::priority) {
         result.field("ordering", ir_.list(items(enums.group_order[schema]), [this](auto group) {
@@ -165,6 +169,7 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
     } else if (enums.ordering[schema] == codegen::EnumOrdering::auto_) {
         result.field("ordering", ir_.atom("auto"));
     }
+
     result.optional_field(
         "count", enums.count[schema], [this](auto value) { return ir_.atom(value); });
     result.list_field("contiguous-groups",
@@ -183,6 +188,7 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
     for (auto const value : items(values)) {
         result.add(build_enum_value(value));
     }
+
     add_projections(result, enums.cpp_projection[schema], enums.unreal_projection[schema]);
     return result.build();
 }
@@ -225,6 +231,7 @@ auto CanonicalRenderer::build_function(codegen::FunctionSchemaId const function,
     for (auto const parameter : items(functions.parameters[function])) {
         result.add(build_parameter(parameter));
     }
+
     return result.build();
 }
 auto CanonicalRenderer::build_semantic_relation(codegen::SemanticRelationId const relationship)
@@ -236,6 +243,7 @@ auto CanonicalRenderer::build_semantic_relation(codegen::SemanticRelationId cons
     if (relations.unit[relationship].has_value()) {
         result.field("unit", ir_.atom(to_serialized_string(*relations.unit[relationship])));
     }
+
     return result.build();
 }
 void CanonicalRenderer::add_projections(
@@ -245,17 +253,21 @@ void CanonicalRenderer::add_projections(
     if (!cpp && !unreal) {
         return;
     }
+
     auto projections{ir_.form("projections", {})};
     if (cpp) {
         auto projection{ir_.form("cpp", {})};
         if (cpp->storage) {
             projection.field("storage", build_type_ref(*cpp->storage));
         }
+
         projections.add(projection.build());
     }
+
     if (unreal) {
         projections.add(build_enum_unreal_projection(*unreal));
     }
+
     owner.add(projections.build());
 }
 auto CanonicalRenderer::build_child(codegen::ChildOccurrenceId const child) -> Expr {
@@ -265,6 +277,7 @@ auto CanonicalRenderer::build_child(codegen::ChildOccurrenceId const child) -> E
             .field("bits", *columns.bits[child])
             .build();
     }
+
     auto result{
         ir_.form("member", {ir_.atom(columns.name[child]), build_type_ref(columns.type[child])})};
     auto const atom{[this](auto value) { return ir_.atom(value); }};
@@ -286,15 +299,19 @@ auto CanonicalRenderer::build_child(codegen::ChildOccurrenceId const child) -> E
     if (s7.minimum) {
         result.field("minimum", ir_.atom(*s7.minimum));
     }
+
     if (s7.maximum) {
         result.field("maximum", ir_.atom(*s7.maximum));
     }
+
     if (columns.initializer[child]) {
         result.field("initializer", ir_.string(*columns.initializer[child]));
     }
+
     if (columns.relationship[child]) {
         result.add(build_semantic_relation(*columns.relationship[child]));
     }
+
     return result.build();
 }
 auto CanonicalRenderer::build_named_code(codegen::PackedNamedCodeId const code) -> Expr {
@@ -317,9 +334,11 @@ auto CanonicalRenderer::build_integer_scalar(codegen::DeclarationHandle const sc
     for (auto const code : items(scalars.named_codes[schema])) {
         result.add(build_named_code(code));
     }
+
     if (scalars.relationship[schema].has_value()) {
         result.add(build_semantic_relation(*scalars.relationship[schema]));
     }
+
     add_projections(result, scalars.cpp_projection[schema]);
     return result.build();
 }
@@ -353,6 +372,7 @@ auto CanonicalRenderer::build_fixed_point(codegen::DeclarationHandle const schem
         form.field("minimum", ir_.atom(*values.minimum_value[schema]))
             .field("maximum", ir_.atom(*values.maximum_value[schema]));
     }
+
     result.field("total-bits", values.total_bits[schema])
         .field("form", form.build())
         .field("rounding", ir_.atom(to_serialized_string(values.rounding[schema])));
@@ -391,14 +411,17 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
     if (records.layout[schema] == codegen::LayoutKind::packed) {
         result.field("layout", ir_.atom("packed"));
     }
+
     result.optional_field("bits", records.bits[schema]);
     result.optional_field("invalid-value", records.invalid_value[schema]);
     if (records.bit_order[schema]) {
         result.field("bit-order", ir_.atom(to_serialized_string(*records.bit_order[schema])));
     }
+
     if (records.byte_order[schema]) {
         result.field("byte-order", ir_.atom(to_serialized_string(*records.byte_order[schema])));
     }
+
     add_export_specifier(result, records.export_specifier[schema]);
     if (records.comparison[schema] != codegen::RecordComparison::none) {
         result.field("comparison",
@@ -406,6 +429,7 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
                                   ? "equality"
                                   : "three-way"));
     }
+
     result.flag("comparison-noexcept", records.comparison_noexcept[schema]);
     result.optional_field("constraint-policy",
                           records.constraint_policy[schema],
@@ -420,6 +444,7 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
     if (!records.s7_constructor[schema]) {
         result.field("s7-constructor", ir_.atom("false"));
     }
+
     result.optional_field(
         "s7-tag", records.s7_tag[schema], [this](auto value) { return ir_.string(value); });
     result.list_field("s7-reader-includes",
@@ -428,9 +453,11 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
     for (auto const member : items(records.members[schema])) {
         result.add(build_child(member));
     }
+
     for (auto const function : items(records.functions[schema])) {
         result.add(build_function(function));
     }
+
     add_projections(result, records.cpp_projection[schema]);
     return result.build();
 }
@@ -440,11 +467,13 @@ auto CanonicalRenderer::build_union(codegen::DeclarationHandle const schema) -> 
     if (unions.layout[schema] == codegen::LayoutKind::packed) {
         result.field("layout", ir_.atom("packed"));
     }
+
     result.optional_field("bits", unions.bits[schema]);
     add_export_specifier(result, unions.export_specifier[schema]);
     for (auto const alternative : items(unions.alternatives[schema])) {
         result.add(build_child(alternative));
     }
+
     add_projections(result, unions.cpp_projection[schema]);
     return result.build();
 }
@@ -468,6 +497,7 @@ auto CanonicalRenderer::build_soa_member(codegen::SoaMemberId const member) -> E
     if (members.relationship[index].has_value()) {
         result.add(build_semantic_relation(*members.relationship[index]));
     }
+
     return result.build();
 }
 auto CanonicalRenderer::build_soa(codegen::DeclarationHandle const schema) -> Expr {
@@ -486,15 +516,19 @@ auto CanonicalRenderer::build_soa(codegen::DeclarationHandle const schema) -> Ex
     for (auto const member : items(soas.members[schema])) {
         result.add(build_soa_member(member));
     }
+
     for (auto const function : items(soas.functions[schema])) {
         result.add(build_function(function));
     }
+
     for (auto const function : items(soas.const_view_functions[schema])) {
         result.add(build_function(function, "view-function"));
     }
+
     for (auto const function : items(soas.mutable_view_functions[schema])) {
         result.add(build_function(function, "mutable-view-function"));
     }
+
     return result.build();
 }
 auto CanonicalRenderer::build_static_table(codegen::DeclarationHandle const schema) -> Expr {
@@ -507,17 +541,20 @@ auto CanonicalRenderer::build_static_table(codegen::DeclarationHandle const sche
     for (auto const row : items(tables.rows[index])) {
         result.add(ir_.form("row", {ir_.atom(store_.static_table_rows.name[row])}).build());
     }
+
     for (auto const column : items(tables.columns[index])) {
         result.add(ir_.form("column",
                             {ir_.atom(columns.name[column]), build_type_ref(columns.type[column])})
                        .build());
     }
+
     for (auto const group : items(tables.groups[index])) {
         result.add(
             ir_.form("group", {ir_.atom(groups.name[group]), build_type_ref(groups.type[group])})
                 .field("columns", string_list(items(groups.columns[group])))
                 .build());
     }
+
     return result.build();
 }
 auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) -> Expr {
@@ -537,23 +574,28 @@ auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) ->
         result.field("bind-access",
                      ir_.atom(codegen::to_serialized_string(facades.bind_access[index])));
     }
+
     if (facades.method_access[index] != codegen::Access::public_) {
         result.field("method-access",
                      ir_.atom(codegen::to_serialized_string(facades.method_access[index])));
     }
+
     if (facades.target_access[index] != codegen::Access::private_) {
         result.field("target-access",
                      ir_.atom(codegen::to_serialized_string(facades.target_access[index])));
     }
+
     result.list_field("friends", items(facades.friends[index]), string);
     if (facades.friend_kind[index] != codegen::RecordKind::class_) {
         result.field("friend-kind",
                      ir_.atom(codegen::to_serialized_string(facades.friend_kind[index])));
     }
+
     result.flag("definitions-in-source", facades.definitions_in_source[index]);
     if (facades.reference_target[index]) {
         result.field("target-storage", ir_.atom("reference"));
     }
+
     auto build_method = [&](codegen::FacadeMethodId method) {
         auto child{ir_.form(
             "method",
@@ -566,6 +608,7 @@ auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) ->
         for (auto const parameter : items(methods.parameters[method])) {
             child.add(build_parameter(parameter));
         }
+
         return child.build();
     };
     auto const method_ids{items(facades.methods[index])};
@@ -583,6 +626,7 @@ auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) ->
         } while (i < count && methods.access[method_ids[i]] == access);
         result.add(group.build());
     }
+
     return result.build();
 }
 auto CanonicalRenderer::build_declaration_schema(codegen::DeclarationHandle const declaration)
@@ -631,6 +675,7 @@ auto CanonicalRenderer::build_module(codegen::ModuleHandle const module) -> Expr
     if (settings_store.header[index].value != 0) {
         result.field("header", ir_.string(settings_store.header[index]));
     }
+
     result.optional_field("source", settings_store.source[index], string);
     result.optional_field("header-include", settings_store.header_include[index], string);
     result.optional_field("namespace", settings_store.namespace_name[index], atom);
@@ -642,6 +687,7 @@ auto CanonicalRenderer::build_module(codegen::ModuleHandle const module) -> Expr
         result.field("headers", string_list(items(modules.headers[modules.index(module)])));
         return result.build();
     }
+
     if (module.kind() == codegen::ModuleKind::settings) {
         build_settings_module(result, module);
         return result.build();
@@ -653,6 +699,7 @@ auto CanonicalRenderer::build_module(codegen::ModuleHandle const module) -> Expr
     for (auto const declaration : items(modules.declarations[module])) {
         result.add(build_declaration_schema(declaration));
     }
+
     return result.build();
 }
 void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& result,
@@ -673,6 +720,7 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
                      {ir_.atom(categories.name[category]), ir_.string(categories.label[category])})
                 .build());
     }
+
     for (auto const setting : items(modules.settings_list[index])) {
         auto const row{settings.index(setting)};
         auto const apply{
@@ -710,6 +758,7 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
                 kind = "custom";
                 break;
         }
+
         auto control_form{ir_.form("control", {ir_.atom(kind)})};
         control_form.optional_field("options-provider", controls.options_provider[control], string);
         control_form.optional_field(

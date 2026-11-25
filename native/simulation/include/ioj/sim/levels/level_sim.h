@@ -68,6 +68,7 @@ struct LevelSim {
     void set_player_team(Team team) {
         player_ship_simulation_.value().set_team(team, entity_tables_.health, entity_ledger_);
     }
+
     void add_player_health(Health delta) {
         auto& player{player_ship_simulation_.value()};
         if (player.is_alive(entity_tables_.health)) {
@@ -96,6 +97,7 @@ struct LevelSim {
     auto player_ship_simulation() const -> player::Sim const* {
         return player_ship_simulation_.has_value() ? &player_ship_simulation_.value() : nullptr;
     }
+
     auto lasers() const -> lasers::Sim const& { return lasers_simulation_; }
     auto capital_ships() const -> capital_ships::Sim const& { return capital_ships_simulation_; }
     auto fighters() const -> fighters::Sim const& { return fighters_simulation_; }

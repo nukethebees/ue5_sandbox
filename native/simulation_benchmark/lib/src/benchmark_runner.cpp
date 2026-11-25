@@ -92,6 +92,7 @@ auto calculate_tick_count(double const seconds, Frequency const tick_rate_hz)
     if (!std::isfinite(ticks) || ticks >= maximum) {
         return Result{std::unexpect, "seconds produces a tick count that is too large"};
     }
+
     return Result{std::in_place,
                   sim::duration_to_tick_period(tick_rate_hz, Duration::make(seconds)).get()};
 }
@@ -105,6 +106,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     if (!level_result) {
         return Result{std::unexpect, read_error(level_result)};
     }
+
     auto const& level{*level_result};
     auto settings{level.settings()};
     auto const tick_rate_hz{settings.tick.tick_rate};
@@ -119,21 +121,26 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         if (*options.fighter_stress_cap <= 0) {
             return Result{std::unexpect, "fighter stress cap must be positive"};
         }
+
         if (!std::isfinite(options.warmup_seconds) || options.warmup_seconds < 0.0) {
             return Result{std::unexpect, "warm-up seconds must be finite and non-negative"};
         }
+
         if (options.warmup_seconds > 0.0) {
             auto const ticks{calculate_tick_count(options.warmup_seconds, tick_rate_hz)};
             if (!ticks) {
                 return Result{std::unexpect, "invalid warm-up duration: " + ticks.error()};
             }
+
             warmup_ticks = *ticks;
         }
+
         auto const timeout_ticks{
             calculate_tick_count(options.saturation_timeout_seconds, tick_rate_hz)};
         if (!timeout_ticks) {
             return Result{std::unexpect, "invalid saturation timeout: " + timeout_ticks.error()};
         }
+
         saturation_timeout_ticks = *timeout_ticks;
     }
 
@@ -153,6 +160,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             if (std::chrono::steady_clock::now() >= deadline) {
                 return Result{std::unexpect, "timed out waiting for a profiler connection"};
             }
+
             std::this_thread::sleep_for(std::chrono::milliseconds{10});
         }
     }
@@ -182,6 +190,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         for (auto const& error : compiled.error()) {
             write("{}{}", output.empty() ? "" : "\n", error);
         }
+
         return Result{std::unexpect, std::move(output)};
     }
 
@@ -210,6 +219,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             return std::expected<void, std::string>{
                 std::unexpect, "simulation advance did not complete a deterministic tick"};
         }
+
         return {};
     };
 
@@ -223,8 +233,10 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             if (!advanced) {
                 return Result{std::unexpect, std::move(advanced.error())};
             }
+
             saturation_ticks.set_value(saturation_ticks.value() + 1);
         }
+
         auto const saturated_count{simulation.fighters().num_instances()};
         if (saturated_count != cap) {
             return Result{
@@ -243,11 +255,13 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             if (!advanced) {
                 return Result{std::unexpect, std::move(advanced.error())};
             }
+
             if (simulation.fighters().num_instances() != cap) {
                 return Result{std::unexpect,
                               "fighter population changed during post-saturation warm-up"};
             }
         }
+
         if (simulation.entity_ledger().issued_counts()[sim::EntityType::Fighter] !=
             spawned_at_saturation) {
             return Result{std::unexpect,
@@ -274,6 +288,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             if (!advanced) {
                 return Result{std::unexpect, std::move(advanced.error())};
             }
+
             auto const tick_finished_at{std::chrono::steady_clock::now()};
             tick_microseconds.push_back(
                 std::chrono::duration<double, std::micro>{tick_finished_at - tick_started_at}
@@ -289,6 +304,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             }
         }
     }
+
     auto const finished_at{std::chrono::steady_clock::now()};
     auto const fighter_spawns_during_measurement{
         simulation.entity_ledger().issued_counts()[sim::EntityType::Fighter] -

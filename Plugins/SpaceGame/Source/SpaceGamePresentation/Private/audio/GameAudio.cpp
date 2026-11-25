@@ -32,6 +32,7 @@ void FGameAudioFacade::play_button_pressed() const {
     if (audio_ == nullptr) {
         return;
     }
+
     audio_->play_button_pressed();
 }
 
@@ -58,6 +59,7 @@ void UGameAudio::play_entity_death(FVector const location) {
     if (death_impact_sounds_.IsEmpty() || !IsValid(GetGameInstance())) {
         return;
     }
+
     auto* const sound{death_impact_sounds_[death_impact_indices_[next_impact_]].Get()};
     next_impact_ = (next_impact_ + 1) % death_impact_indices_.size();
     UGameplayStatics::PlaySoundAtLocation(GetGameInstance(),
@@ -113,6 +115,7 @@ void UGameAudio::Initialize(FSubsystemCollectionBase& collection) {
                    *ioj::to_fstring(
                        ioj::path_to_utf8(external_audio_.menu_ambience_source.relative_path)));
         }
+
         if (all_directories_valid && !external_audio_.menu_button_pressed_source.valid) {
             UE_LOG(LogSandboxAudio,
                    Warning,
@@ -123,6 +126,7 @@ void UGameAudio::Initialize(FSubsystemCollectionBase& collection) {
                    *ioj::to_fstring(ioj::path_to_utf8(
                        external_audio_.menu_button_pressed_source.relative_path)));
         }
+
         if (all_directories_valid && !external_audio_.player_ship_ambience_source.valid) {
             UE_LOG(LogSandboxAudio,
                    Warning,
@@ -242,6 +246,7 @@ void UGameAudio::start_menu_ambience() {
             UE_LOG(LogSandboxAudio, Warning, TEXT("Could not start optional menu ambience audio."));
             ambience_playback_warning_logged_ = true;
         }
+
         return;
     }
 
@@ -276,6 +281,7 @@ void UGameAudio::play_button_pressed() {
             UE_LOG(LogSandboxAudio, Warning, TEXT("Could not start optional menu button audio."));
             button_playback_warning_logged_ = true;
         }
+
         return;
     }
 
@@ -318,6 +324,7 @@ void UGameAudio::start_player_ship_ambience() {
                    TEXT("Could not start optional player ship ambience audio."));
             player_ship_ambience_playback_warning_logged_ = true;
         }
+
         return;
     }
 
@@ -330,6 +337,7 @@ void UGameAudio::stop_menu_ambience() {
         component->Stop();
         component->DestroyComponent();
     }
+
     menu_ambience_component_.Reset();
 }
 
@@ -339,6 +347,7 @@ void UGameAudio::stop_player_ship_ambience() {
         component->Stop();
         component->DestroyComponent();
     }
+
     player_ship_ambience_component_.Reset();
 }
 
@@ -348,6 +357,7 @@ void UGameAudio::stop_button_audio() {
         component->Stop();
         component->DestroyComponent();
     }
+
     menu_button_pressed_component_.Reset();
 }
 
@@ -358,10 +368,12 @@ void UGameAudio::set_master_volume(float const volume) {
     if (IsValid(menu_ambience_component)) {
         menu_ambience_component->SetVolumeMultiplier(master_volume_ * music_volume_);
     }
+
     auto* const menu_button_pressed_component{menu_button_pressed_component_.Get()};
     if (IsValid(menu_button_pressed_component)) {
         menu_button_pressed_component->SetVolumeMultiplier(master_volume_ * ui_volume_);
     }
+
     auto* const player_ship_ambience_component{player_ship_ambience_component_.Get()};
     if (IsValid(player_ship_ambience_component)) {
         player_ship_ambience_component->SetVolumeMultiplier(master_volume_ * sfx_volume_);
@@ -409,6 +421,7 @@ auto UGameAudio::external_audio_available() const noexcept -> bool {
             return false;
         }
     }
+
     for (auto const& directory : external_audio_.directories) {
         if (!directory.valid) {
             return false;

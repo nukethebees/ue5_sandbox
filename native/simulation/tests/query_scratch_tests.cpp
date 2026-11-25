@@ -61,6 +61,7 @@ void initialise_queries(SpatialQueryManager& manager, CollisionAgentStorage cons
         bounds.set_centre(type, {});
         bounds.set_half_extents(type, Vector3f{{2.f, 2.f, 2.f}});
     }
+
     manager.initialise({{10, 10, 10}, {{10.f, 10.f, 10.f}}}, bounds);
     owners.refresh(manager);
 }
@@ -110,6 +111,7 @@ TEST(QueryScratch, ExhaustionForwardsToUpstream) {
         EXPECT_GT(upstream.allocations.load(), 1u);
         EXPECT_EQ(upstream.outstanding.load(), 1u);
     }
+
     EXPECT_EQ(upstream.outstanding.load(), 0u);
 }
 
@@ -139,12 +141,15 @@ TEST(QueryScratch, ConcurrentQueriesAllocateFromSharedFrameAndReleaseBeforeRecla
                 EXPECT_EQ(nearby[0], id);
             }};
         }
+
         for (auto& worker : workers) {
             worker.join();
         }
+
         EXPECT_GT(frame.resource.stats().current_claimed_bytes, 0u);
         EXPECT_EQ(frame.resource.stats().outstanding_allocation_count, 0u);
     }
+
     EXPECT_EQ(frame.resource.stats().current_claimed_bytes, 0u);
     EXPECT_EQ(frame.resource.stats().overflow_count, 0u);
 }
@@ -168,6 +173,7 @@ TEST(QueryScratch, ManagerUsesExplicitScratchAndReleasesQueriesWithinEachEpoch) 
             EXPECT_GT(frame.resource.stats().current_claimed_bytes, 0u);
             EXPECT_EQ(frame.resource.stats().outstanding_allocation_count, 0u);
         }
+
         expect_frame_reclaimed(frame.resource.stats());
     }
 }
@@ -191,6 +197,7 @@ TEST(QueryScratch, OverlapOutputsReleaseBeforeScratchReclaim) {
             EXPECT_EQ(entities.first_entities()[0], std::min(ids[0], ids[1]));
             EXPECT_EQ(entities.second_entities()[0], std::max(ids[0], ids[1]));
         }
+
         expect_frame_reclaimed(frame.resource.stats());
     }
 }

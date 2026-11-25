@@ -66,8 +66,10 @@ void SScriptLevelSelectView::update_state(FLevelSelectViewState const& state) {
         if (!battle_speed_input_->GetText().EqualTo(speed_text)) {
             battle_speed_input_->SetText(speed_text);
         }
+
         handle_battle_duration_changed(battle_duration_input_->GetText());
     }
+
     battle_options_->SetVisibility(playerless ? EVisibility::Visible : EVisibility::Collapsed);
     battle_speed_error_->SetVisibility(playerless && !battle_speed_valid_
                                            ? EVisibility::HitTestInvisible
@@ -84,6 +86,7 @@ void SScriptLevelSelectView::focus_selected_level() {
         focus_active_category();
         return;
     }
+
     auto const button_index{
         level_buttons_.IsValidIndex(selected_button_index_) ? selected_button_index_ : 0};
     focus_level(button_index);
@@ -126,6 +129,7 @@ auto SScriptLevelSelectView::OnKeyDown(FGeometry const& geometry, FKeyEvent cons
             focus_selected_level();
             return FReply::Handled();
         }
+
         return SCompoundWidget::OnKeyDown(geometry, key_event);
     }
 
@@ -137,9 +141,11 @@ auto SScriptLevelSelectView::OnKeyDown(FGeometry const& geometry, FKeyEvent cons
             break;
         }
     }
+
     if (current_index == INDEX_NONE) {
         return SCompoundWidget::OnKeyDown(geometry, key_event);
     }
+
     if ((key == EKeys::Up || key == EKeys::Gamepad_DPad_Up) && current_index == 0) {
         focus_active_category();
         return FReply::Handled();
@@ -151,6 +157,7 @@ auto SScriptLevelSelectView::OnKeyDown(FGeometry const& geometry, FKeyEvent cons
     } else if (key == EKeys::Down || key == EKeys::Gamepad_DPad_Down) {
         direction = 1;
     }
+
     if (direction == 0 || level_buttons_.IsEmpty()) {
         return SCompoundWidget::OnKeyDown(geometry, key_event);
     }
@@ -348,6 +355,7 @@ auto SScriptLevelSelectView::catalog_caption() const -> FText {
         case LevelCatalogCategory::Benchmark:
             return NSLOCTEXT("LevelSelect", "BenchmarkCatalogCaption", "BENCHMARK ARCHIVE");
     }
+
     return FText::GetEmpty();
 }
 
@@ -372,6 +380,7 @@ auto SScriptLevelSelectView::launch_text() const -> FText {
         case LevelCatalogCategory::Benchmark:
             return NSLOCTEXT("LevelSelect", "RunBenchmark", "Run Benchmark");
     }
+
     return FText::GetEmpty();
 }
 
@@ -482,10 +491,12 @@ void SScriptLevelSelectView::update_category_selection() {
     if (mission_category_button_.IsValid()) {
         mission_category_button_->set_selected(category_ == LevelCatalogCategory::Mission);
     }
+
     if (battle_viewer_category_button_.IsValid()) {
         battle_viewer_category_button_->set_selected(category_ ==
                                                      LevelCatalogCategory::BattleViewer);
     }
+
     if (benchmark_category_button_.IsValid()) {
         benchmark_category_button_->set_selected(category_ == LevelCatalogCategory::Benchmark);
     }

@@ -23,17 +23,20 @@ TEST(LinkedVector, IteratesMultipleSegmentsAndPreservesAddresses) {
     for (int i{}; i < 100; ++i) {
         addresses.push_back(&values.emplace_back(i));
     }
+
     int expected{};
     for (auto& value : values) {
         EXPECT_EQ(value, expected);
         EXPECT_EQ(&value, addresses[expected]);
         ++expected;
     }
+
     EXPECT_EQ(expected, 100);
     auto it{values.end()};
     for (int i{99}; i >= 0; --i) {
         EXPECT_EQ(*--it, i);
     }
+
     EXPECT_EQ(it, values.begin());
     LinkedVector<int>::const_iterator const_it{values.begin()};
     EXPECT_EQ(const_it, values.begin());
@@ -50,6 +53,7 @@ TEST(LinkedVector, ReserveClearAndRepeatedGrowthReuseEverySegment) {
         for (int i{}; i < 20; ++i) {
             values.emplace_back(i);
         }
+
         EXPECT_EQ(std::ranges::distance(values.begin(), values.end()), 20);
         EXPECT_EQ(values.back(), 19);
         auto const capacity{values.capacity()};
@@ -65,6 +69,7 @@ TEST(LinkedVector, PopsAcrossEmptyAndReservedSegmentsAndAppendsAgain) {
     for (int i{}; i < 17; ++i) {
         values.emplace_back(i);
     }
+
     values.reserve(100);
     values.reserve(200);
     for (int i{16}; i >= 0; --i) {
@@ -72,10 +77,12 @@ TEST(LinkedVector, PopsAcrossEmptyAndReservedSegmentsAndAppendsAgain) {
         values.pop_back();
         EXPECT_EQ(std::ranges::distance(values.begin(), values.end()), i);
     }
+
     EXPECT_EQ(values.begin(), values.end());
     for (int i{}; i < 200; ++i) {
         values.emplace_back(i);
     }
+
     EXPECT_EQ(values.back(), 199);
     EXPECT_EQ(values.capacity(), 200);
 }
@@ -121,6 +128,7 @@ TEST(LinkedVector, DestroysExactlyOnceAndTransfersResourceOnMove) {
         target.emplace_back(live, 4);
         source.emplace_back(live, 5);
     }
+
     EXPECT_EQ(live, 0);
 }
 
@@ -137,12 +145,14 @@ TEST(LinkedVector, AlignsElementsAndReusesSegmentsAfterClear) {
         EXPECT_EQ(reinterpret_cast<std::uintptr_t>(&value) % alignof(AlignedLinkedValue), 0);
         addresses.push_back(&value);
     }
+
     EXPECT_EQ(values.size(), 100);
     EXPECT_EQ(std::ranges::distance(values.begin(), values.end()), 100);
     values.clear();
     for (int i{}; i < 100; ++i) {
         EXPECT_EQ(&values.emplace_back(i), addresses[i]);
     }
+
     values.release();
     resource.reset();
     EXPECT_EQ(values.emplace_back(7).value, 7);
@@ -169,6 +179,7 @@ TEST(LinkedVector, RejectsUnrepresentableReserveAndPreservesValuesOnAllocationFa
             break;
         }
     }
+
     ASSERT_TRUE(exhausted);
     auto const count{values.size()};
     ASSERT_GT(count, 0);
@@ -178,6 +189,7 @@ TEST(LinkedVector, RejectsUnrepresentableReserveAndPreservesValuesOnAllocationFa
     for (std::size_t i{}; i < count; ++i) {
         values.emplace_back(static_cast<int>(i));
     }
+
     EXPECT_EQ(values.size(), count);
 }
 }

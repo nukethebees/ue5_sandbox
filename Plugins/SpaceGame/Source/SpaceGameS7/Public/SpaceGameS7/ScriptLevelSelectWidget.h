@@ -58,6 +58,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     [[nodiscard]] auto get_active_category() const noexcept -> LevelCatalogCategory {
         return active_category_;
     }
+
     void refresh() override;
     void focus_primary_action() override;
   protected:

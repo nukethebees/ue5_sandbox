@@ -60,6 +60,7 @@ void append_summary(FString& csv,
     if (samples.IsEmpty()) {
         return;
     }
+
     auto const summary{summarize(samples)};
     csv += FString::Printf(TEXT("%d,%d,%d,%d,%d,%d,%s,%s,%d,%.6f,%.6f,%.6f,%.6f\n"),
                            capacity,
@@ -157,6 +158,7 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
         if (GShaderCompilingManager != nullptr) {
             GShaderCompilingManager->FinishAllCompilation();
         }
+
         renderer_->RegisterComponent();
         effects_ = MakeUnique<FSparkEffects>(*renderer_);
 
@@ -235,6 +237,7 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
                                               : ioj::Vector<float, 4>{2.0f, 8.0f, 40.0f, 20.0f};
             particle.streak_time_reserved = ioj::Vector<float, 4>{0.025f, 0.0f, 0.0f, 0.0f};
         }
+
         renderer_->submit_particles(
             {particles.GetData(), static_cast<std::size_t>(particles.Num())}, 0.0f);
     }
@@ -270,11 +273,13 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
             for (int32 impact_index{0}; impact_index < impacts_per_frame_; ++impact_index) {
                 effects_->queue_burst(make_burst(impact_index));
             }
+
             constexpr float fixed_dt{1.0f / 60.0f};
             effects_->commit(fixed_dt);
         } else {
             renderer_->submit_particles({}, 0.0f);
         }
+
         auto const submit_ms{
             FPlatformTime::ToMilliseconds64(FPlatformTime::Cycles64() - start_cycles)};
         spawner_->GetWorld().SendAllEndOfFrameUpdates();
@@ -285,14 +290,17 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
             if (previous_frame_seconds_ > 0.0) {
                 frame_ms_.Add((now - previous_frame_seconds_) * 1000.0);
             }
+
             game_thread_ms_.Add(FPlatformTime::ToMilliseconds(GGameThreadTime));
             render_thread_ms_.Add(FPlatformTime::ToMilliseconds(GRenderThreadTime));
             auto const gpu_ms{FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles())};
             if (gpu_ms > 0.0) {
                 gpu_ms_.Add(gpu_ms);
             }
+
             submit_ms_.Add(submit_ms);
         }
+
         previous_frame_seconds_ = now;
         ++frame_index_;
         if (frame_index_ == warmup_frames_) {
@@ -307,6 +315,7 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
         if (frame_index_ <= warmup_frames_ || measurement_start_seconds_ <= 0.0) {
             return false;
         }
+
         return FPlatformTime::Seconds() - measurement_start_seconds_ >= duration_seconds_;
     }
 
@@ -315,6 +324,7 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
         if (FTraceAuxiliary::IsConnected()) {
             return;
         }
+
         FTraceAuxiliary::FOptions options;
         options.bExcludeTail = true;
         constexpr auto* channels{
@@ -340,6 +350,7 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
         if (vsync == nullptr || editor_vsync == nullptr || max_fps == nullptr) {
             return;
         }
+
         previous_vsync_ = vsync->GetInt();
         previous_editor_vsync_ = editor_vsync->GetInt();
         previous_max_fps_ = max_fps->GetFloat();
@@ -353,16 +364,20 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
         if (!frame_rate_limits_disabled_) {
             return;
         }
+
         if (auto* const vsync{IConsoleManager::Get().FindConsoleVariable(TEXT("r.VSync"))}) {
             vsync->Set(previous_vsync_, ECVF_SetByCode);
         }
+
         if (auto* const editor_vsync{
                 IConsoleManager::Get().FindConsoleVariable(TEXT("r.VSyncEditor"))}) {
             editor_vsync->Set(previous_editor_vsync_, ECVF_SetByCode);
         }
+
         if (auto* const max_fps{IConsoleManager::Get().FindConsoleVariable(TEXT("t.MaxFPS"))}) {
             max_fps->Set(previous_max_fps_, ECVF_SetByCode);
         }
+
         frame_rate_limits_disabled_ = false;
     }
 
@@ -406,6 +421,7 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
             TestRunner->AddError(
                 FString::Printf(TEXT("Could not save spark benchmark CSV to %s"), *path));
         }
+
         stop_insights_trace();
         TestRunner->TestTrue(TEXT("The benchmark recorded measured frames"), !submit_ms_.IsEmpty());
     }

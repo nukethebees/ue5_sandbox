@@ -72,10 +72,12 @@ struct Sim {
     auto controller_state() const noexcept -> FlightControllerState const& {
         return state_.controller;
     }
+
     auto resource_state() const noexcept -> PlayerResourceState const& { return state_.resources; }
     auto presentation_state() const noexcept -> PlayerPresentationState const& {
         return state_.presentation;
     }
+
     auto flight_intent() const noexcept -> PlayerFlightIntent const& { return flight_intent_; }
     auto target_speed() const noexcept -> float;
     void set_config(PlayerSimConfig const& new_config) noexcept;
@@ -118,7 +120,6 @@ struct Sim {
     std::int32_t lasers_per_burst{3};
     LaserFiringState laser_firing_mode{LaserFiringState::idle};
     ShipTriggerMode laser_trigger_mode{ShipTriggerMode::Burst3};
-
 
     std::uint32_t speed_sample_index{0};
     std::uint32_t speed_sample_max{0};

@@ -77,6 +77,7 @@ TEST(WorldlessSpaceGameSimulation, TurretsSearchRequiresLineOfSight) {
     if (static_cast<std::int32_t>(targets.size()) != 3) {
         return;
     }
+
     EXPECT_TRUE(targets[0].is_valid()) << "Blue turret selects a visible target";
     if (targets[0].is_valid()) {
         EXPECT_LE(ioj::size(Vector3f{{1000.f, 1000.f, 0.f}} -

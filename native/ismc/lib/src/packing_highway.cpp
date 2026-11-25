@@ -242,6 +242,7 @@ auto pack(TransformInput input,
         reduce_axis(batch.min.y, batch.max.y, bounds.minimum.y(), bounds.maximum.y());
         reduce_axis(batch.min.z, batch.max.z, bounds.minimum.z(), bounds.maximum.z());
     }
+
     return bounds;
 }
 }
@@ -262,6 +263,7 @@ auto pack_transforms(TransformInput input,
         return highway_detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
             input, parameters, output);
     }
+
     return highway_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
         input, parameters, output);
 }

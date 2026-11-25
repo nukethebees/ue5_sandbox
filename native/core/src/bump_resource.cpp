@@ -30,6 +30,7 @@ auto BumpResource::do_allocate(std::size_t const bytes, std::size_t const alignm
             return cursor;
         }
     }
+
     return upstream_.allocate(bytes, alignment);
 }
 void BumpResource::do_deallocate(void* const allocation,

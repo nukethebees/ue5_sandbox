@@ -14,6 +14,7 @@ auto setting_values_equal(GameSettingValue const& left, GameSettingValue const& 
         return right_float != nullptr && (*left_float == *right_float ||
                                           (std::isnan(*left_float) && std::isnan(*right_float)));
     }
+
     return left == right;
 }
 
@@ -51,19 +52,23 @@ auto normalize_game_setting_value(GameSettingDescriptor const& descriptor,
     if (!set_game_setting_value(state, descriptor.id, value)) {
         return {};
     }
+
     if (auto const* number{std::get_if<float>(&value)};
         number != nullptr && !std::isfinite(*number)) {
         return {};
     }
+
     if (descriptor.control_kind == SettingControlKind::FloatRange) {
         return std::clamp(std::get<float>(value),
                           static_cast<float>(descriptor.minimum),
                           static_cast<float>(descriptor.maximum));
     }
+
     if (descriptor.control_kind == SettingControlKind::Choice && restrict_choices &&
         std::ranges::find(choices, value) == choices.end()) {
         return {};
     }
+
     if (descriptor.control_kind == SettingControlKind::Choice && !restrict_choices &&
         descriptor.options_provider != GameSettingOptionProvider::SupportedResolutions &&
         descriptor.options_provider != GameSettingOptionProvider::None) {
@@ -72,6 +77,7 @@ auto normalize_game_setting_value(GameSettingDescriptor const& descriptor,
             return {};
         }
     }
+
     return value;
 }
 
@@ -95,6 +101,7 @@ auto game_setting_choices(GameSettingOptionProvider const provider,
                 result.push_back(
                     {resolution, std::format("{} x {}", resolution.width, resolution.height)});
             }
+
             return result;
         }
         case GameSettingOptionProvider::WindowModes:
@@ -106,6 +113,7 @@ auto game_setting_choices(GameSettingOptionProvider const provider,
             for (auto const limit : {30, 60, 90, 120, 144, 165, 240}) {
                 result.push_back({static_cast<float>(limit), std::format("{}", limit)});
             }
+
             return result;
         }
         case GameSettingOptionProvider::AAMethods:
@@ -128,6 +136,7 @@ auto game_setting_choices(GameSettingOptionProvider const provider,
         case GameSettingOptionProvider::None:
             return {};
     }
+
     assert(false && "Invalid settings option provider");
     std::unreachable();
 }
@@ -191,6 +200,7 @@ auto GameSettingsEditState::set_setting(GameSetting const setting, GameSettingVa
     if (!normalized) {
         return false;
     }
+
     if (setting == GameSetting::OverallQuality) {
         apply_graphics_preset(pending_, std::get<GameGraphicsPreset>(*normalized));
         return true;
@@ -200,6 +210,7 @@ auto GameSettingsEditState::set_setting(GameSetting const setting, GameSettingVa
     if (is_graphics_quality_setting(setting)) {
         pending_.overall_quality = graphics_preset(pending_);
     }
+
     return true;
 }
 
@@ -235,6 +246,7 @@ auto GameSettingsEditState::is_dirty() const -> bool {
             return true;
         }
     }
+
     return false;
 }
 
@@ -246,6 +258,7 @@ auto GameSettingsEditState::is_dirty(GameSettingCategory const category) const -
             return true;
         }
     }
+
     return false;
 }
 
@@ -257,6 +270,7 @@ auto GameSettingsEditState::is_at_defaults(GameSettingCategory const category) c
             return false;
         }
     }
+
     return true;
 }
 

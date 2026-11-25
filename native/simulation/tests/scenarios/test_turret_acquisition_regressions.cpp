@@ -40,6 +40,7 @@ void run_worldless_turret_acquisition_regression(
     for (auto const target : turrets.get_entities().target_ids()) {
         EXPECT_TRUE(!target.is_valid()) << "Invalid candidate does not become a target";
     }
+
     EXPECT_EQ(0, simulation.lasers().get_number_spawned())
         << "Turrets without valid targets do not fire";
 }
