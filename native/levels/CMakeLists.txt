@@ -35,3 +35,8 @@ if(IOJ_WITH_UNREAL)
 endif()
 
 add_subdirectory(tests)
+
+if(WIN32)
+  target_sources(native-levels PRIVATE lib/src/windows_display.cpp)
+  target_link_libraries(native-levels PRIVATE user32)
+endif()
