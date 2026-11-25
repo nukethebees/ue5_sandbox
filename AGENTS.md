@@ -128,6 +128,7 @@ Unreal Engine 5.8 project.
 * Separate related code blocks with whitespace. Make long-function control flow easy to scan
   while keeping coupled statements together. In non-trivial functions, separate distinct guards,
   validation, setup, state transitions, loops, and final publication/returns with blank lines.
+* Use a switch for repeated comparisons against the same enum.
 * Order includes by matching header, internal project, external project, third-party/platform,
   then standard library. Preserve required Unreal generated-header and platform include ordering.
 * Group large classes' member declarations and definitions by category using:
