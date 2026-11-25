@@ -74,6 +74,7 @@ native/levels/lib/include/ioj/settings/geometry_shapes_writer.h
 native/levels/lib/include/ioj/settings/laser_presentation.h
 native/levels/lib/include/ioj/settings/laser_presentation_reader.h
 native/levels/lib/include/ioj/settings/laser_presentation_writer.h
+native/levels/lib/include/ioj/settings/launch_display_mode.h
 native/levels/lib/include/ioj/settings/player_presentation.h
 native/levels/lib/include/ioj/settings/player_presentation_reader.h
 native/levels/lib/include/ioj/settings/player_presentation_writer.h

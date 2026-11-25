@@ -1,3 +1,16 @@
+(module launch_display_mode
+  :header "native/levels/lib/include/ioj/settings/launch_display_mode.h"
+  :header-include "ioj/settings/launch_display_mode.h"
+  :namespace ioj
+  (enum LaunchDisplayMode @native_uint8
+    :description "Selects the display policy for this launch."
+    :native-api true
+    (value Preferences)
+    (value Windowed)
+    (value Borderless)
+    (value Headless)
+    (projections (cpp))))
+
 (module game_window_mode
   :header "native/levels/lib/include/ioj/settings/game_window_mode.h"
   :header-include "ioj/settings/game_window_mode.h"
