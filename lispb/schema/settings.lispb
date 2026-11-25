@@ -1,3 +1,28 @@
+(module launch_display_mode
+  :header "native/levels/lib/include/ioj/settings/launch_display_mode.h"
+  :header-include "ioj/settings/launch_display_mode.h"
+  :namespace ioj
+  (enum LaunchDisplayMode @native_uint8
+    :description "Selects the display policy for this launch."
+    :native-api true
+    (value Preferences)
+    (value Windowed)
+    (value Borderless)
+    (value Headless)
+    (projections (cpp))))
+
+(module mission_startup
+  :header "native/sandbox_host/include/ioj/host/mission_startup.h"
+  :header-include "ioj/host/mission_startup.h"
+  :namespace ioj
+  (enum MissionStartup @native_uint8
+    :description "Reports whether the requested mission has reached simulation readiness."
+    :native-api true
+    (value Pending)
+    (value Ready)
+    (value Failed)
+    (projections (cpp))))
+
 (module game_window_mode
   :header "native/levels/lib/include/ioj/settings/game_window_mode.h"
   :header-include "ioj/settings/game_window_mode.h"
@@ -60,6 +85,56 @@
     (member export_test_results bool :initializer "" :required true)
     (member frame_log_footer bool :initializer "" :required true)
     (projections (cpp))))
+(module video_settings
+  :header "native/levels/lib/include/ioj/settings/video_settings.h"
+  :header-include "ioj/settings/video_settings.h"
+  :namespace ioj
+  (record VideoSettings :comparison equality
+    (member resolution @int_point :initializer "")
+    (member window_mode @game_window_mode :initializer "")
+    (member vsync bool :initializer "")
+    (member frame_rate_limit float :initializer "")
+    (member resolution_scale float :initializer "")
+    (member overall_quality @game_graphics_preset :initializer "")
+    (member view_distance_quality @game_quality_level :initializer "")
+    (member aa_method @game_anti_aliasing_method :initializer "")
+    (member aa_quality @game_quality_level :initializer "")
+    (member shadow_quality @game_quality_level :initializer "")
+    (member global_illumination_quality @game_quality_level :initializer "")
+    (member reflections_quality @game_quality_level :initializer "")
+    (member post_processing_quality @game_quality_level :initializer "")
+    (member texture_quality @game_quality_level :initializer "")
+    (member effects_quality @game_quality_level :initializer "")
+    (member shading_quality @game_quality_level :initializer "")
+    (member bloom bool :initializer "")
+    (member motion_blur bool :initializer "")
+    (projections (cpp))))
+
+(module audio_settings
+  :header "native/levels/lib/include/ioj/settings/audio_settings.h"
+  :header-include "ioj/settings/audio_settings.h"
+  :namespace ioj
+  (record AudioSettings :comparison equality
+    (member master_volume float :initializer "")
+    (member music_volume float :initializer "")
+    (member sfx_volume float :initializer "")
+    (member ui_volume float :initializer "")
+    (projections (cpp))))
+
+(module controls_settings
+  :header "native/levels/lib/include/ioj/settings/controls_settings.h"
+  :header-include "ioj/settings/controls_settings.h"
+  :namespace ioj
+  (record ControlsSettings :comparison equality
+    (member mouse_turn_sensitivity float :initializer "")
+    (member gamepad_turn_sensitivity float :initializer "")
+    (member gamepad_turn_dead_zone float :initializer "")
+    (member invert_mouse_pitch bool :initializer "")
+    (member invert_mouse_yaw bool :initializer "")
+    (member invert_gamepad_pitch bool :initializer "")
+    (member invert_gamepad_yaw bool :initializer "")
+    (projections (cpp))))
+
 (module game_settings_state
   :header "native/levels/lib/include/ioj/settings/game_settings_state.h"
   :header-include "ioj/settings/game_settings_state.h"
