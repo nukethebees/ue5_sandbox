@@ -20,7 +20,7 @@ void UFrameLogFooterSubsystem::Initialize(FSubsystemCollectionBase& Collection) 
 
     FCoreDelegates::OnEndFrame.AddUObject(this, &UFrameLogFooterSubsystem::on_end_frame);
 
-    log_display(TEXT("Frame Log Footer Subsystem Initialized."));
+    UE_LOG(LogSandboxSubsystem, Display, TEXT("Frame Log Footer Subsystem Initialized."));
 }
 
 void UFrameLogFooterSubsystem::Deinitialize() {

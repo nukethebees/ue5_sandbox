@@ -46,8 +46,10 @@ auto ABenchmarkOrchestratorActor::BeginPlay() -> void {
 
     if ((benchmark_print_update_seconds > 0.0f) &&
         (benchmark_print_update_seconds < minimum_print_time)) {
-        log_warning(TEXT("Benchmark print time below minimum of %f seconds. Increasing it."),
-                    benchmark_print_update_seconds);
+        UE_LOG(LogTemp,
+               Warning,
+               TEXT("Increasing benchmark print interval to the minimum of %f seconds."),
+               minimum_print_time);
         benchmark_print_update_seconds = minimum_print_time;
     }
 
@@ -128,21 +130,24 @@ auto ABenchmarkOrchestratorActor::stop_trace() -> void {
 
 #if WITH_EDITOR
     if (benchmark_end == EBenchmarkEndState::Quit) {
-        log_display(TEXT("Quitting game after benchmark."));
+        UE_LOG(LogTemp, Display, TEXT("Quitting game after benchmark."));
         UKismetSystemLibrary::QuitGame(this, nullptr, EQuitPreference::Quit, true);
     } else if (benchmark_end == EBenchmarkEndState::Pause) {
-        log_display(TEXT("Pausing game after benchmark."));
+        UE_LOG(LogTemp, Display, TEXT("Pausing game after benchmark."));
         GetWorld()->bDebugPauseExecution = true;
     }
 #else
-    log_display(TEXT("Quitting game after benchmark."));
+    UE_LOG(LogTemp, Display, TEXT("Quitting game after benchmark."));
     UKismetSystemLibrary::QuitGame(this, nullptr, EQuitPreference::Quit, true);
 #endif
 }
 auto ABenchmarkOrchestratorActor::log_time() -> void {
     time_elapsed += benchmark_print_update_seconds;
-    log_display(
-        TEXT("Benchmark time: %.2f / %.2f seconds."), time_elapsed, benchmark_duration_seconds);
+    UE_LOG(LogTemp,
+           Display,
+           TEXT("Benchmark time: %.2f / %.2f seconds."),
+           time_elapsed,
+           benchmark_duration_seconds);
 }
 
 } // namespace ioj

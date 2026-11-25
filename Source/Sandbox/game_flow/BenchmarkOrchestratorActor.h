@@ -1,7 +1,5 @@
 #pragma once
 
-#include "SandboxGameShared/logging/LogMsgMixin.hpp"
-
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -18,9 +16,7 @@ enum class EBenchmarkEndState : uint8 {
 };
 
 UCLASS()
-class SANDBOX_API ABenchmarkOrchestratorActor
-    : public AActor
-    , public LogMsgMixin<"ABenchmarkOrchestratorActor"> {
+class SANDBOX_API ABenchmarkOrchestratorActor : public AActor {
     GENERATED_BODY()
   public:
     ABenchmarkOrchestratorActor();

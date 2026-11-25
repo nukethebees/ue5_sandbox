@@ -44,8 +44,9 @@ void FSandboxEditorModule::StartupModule() {
                 ioj::editor::prepare_s7_scene_for_pie(*params.World);
             }
         });
-    constexpr auto logger{NestedLogger<"StartupModule">()};
-    logger.log_verbose(TEXT("Module starting up!"));
+#if UE_BUILD_DEVELOPMENT
+    UE_LOG(LogTemp, Verbose, TEXT("FSandboxEditorModule starting up"));
+#endif
     UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(
         this, &FSandboxEditorModule::register_menu_extensions));
 }
@@ -232,7 +233,6 @@ void FSandboxEditorModule::on_pre_begin_pie(bool) {
 
 // Menu Extensions
 void FSandboxEditorModule::register_menu_extensions() {
-    constexpr auto logger{NestedLogger<"register_menu_extensions">()};
 
     FToolMenuOwnerScoped owner{this};
     TRY_INIT_PTR(tool_menus, UToolMenus::Get());
@@ -262,7 +262,9 @@ void FSandboxEditorModule::register_menu_extensions() {
                                  result ? LOCTEXT("SavedGeometry", "Saved shared entity geometry.")
                                         : FText::FromString(result.error()));
         })});
-    logger.log_log(TEXT("Registered menu extensions"));
+#if UE_BUILD_DEVELOPMENT
+    UE_LOG(LogTemp, Log, TEXT("FSandboxEditorModule registered menu extensions"));
+#endif
 }
 #undef LOCTEXT_NAMESPACE
 

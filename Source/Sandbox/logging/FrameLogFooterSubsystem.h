@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Sandbox/logging/FrameLogTracker.h"
-#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "CoreMinimal.h"
@@ -14,9 +13,7 @@
  */
 namespace ioj {
 UCLASS()
-class SANDBOX_API UFrameLogFooterSubsystem
-    : public UGameInstanceSubsystem
-    , public LogMsgMixin<"UFrameLogFooterSubsystem", LogSandboxSubsystem> {
+class SANDBOX_API UFrameLogFooterSubsystem : public UGameInstanceSubsystem {
     GENERATED_BODY()
   public:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
