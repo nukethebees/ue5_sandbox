@@ -27,10 +27,18 @@ sandbox_get_unreal_editor_names(UE_EDITOR_NAME UE_EDITOR_CMD_NAME "${UE_CONFIGUR
 sandbox_configure_unreal_engine_paths(UE "${UE_ROOT_ABSOLUTE}"
   "${UE_EDITOR_NAME}" "${UE_EDITOR_CMD_NAME}")
 
-if(NOT EXISTS "${UE_BUILD_SCRIPT}")
+if(EXISTS "${UE_ROOT_ABSOLUTE}/Engine/Build/InstalledBuild.txt" OR NOT EXISTS "${UE_BUILD_SCRIPT}")
   message(FATAL_ERROR
-    "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
-    "Expected to find Engine/Build/BatchFiles/RunUBT.bat or Build.bat.")
+    "UE_ROOT='${UE_ROOT_ABSOLUTE}' must point to the patched UE 5.8.4 source build. "
+    "The game DLL requires a unique UBT build environment.")
+endif()
+
+file(READ "${UE_ROOT_ABSOLUTE}/Engine/Build/Build.version" engine_build)
+foreach(component IN ITEMS MajorVersion MinorVersion PatchVersion)
+  string(JSON ${component} GET "${engine_build}" ${component})
+endforeach()
+if(NOT "${MajorVersion}.${MinorVersion}.${PatchVersion}" STREQUAL "5.8.4")
+  message(FATAL_ERROR "Sandbox requires the patched Unreal Engine 5.8.4 source tree. UE_ROOT='${UE_ROOT_ABSOLUTE}' contains ${MajorVersion}.${MinorVersion}.${PatchVersion}.")
 endif()
 
 if(NOT EXISTS "${UE_RUN_UAT_SCRIPT}")
@@ -39,18 +47,7 @@ if(NOT EXISTS "${UE_RUN_UAT_SCRIPT}")
     "Expected to find '${UE_RUN_UAT_SCRIPT}'.")
 endif()
 
-if(NOT EXISTS "${UE_EDITOR_EXE}")
-  message(FATAL_ERROR
-    "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
-    "Expected to find '${UE_EDITOR_EXE}'.")
-endif()
-
-if(NOT EXISTS "${UE_EDITOR_CMD_EXE}")
-  message(FATAL_ERROR
-    "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
-    "Expected to find '${UE_EDITOR_CMD_EXE}'.")
-endif()
-
+# A source-engine editor executable is an output of the editor build.
 if(NOT EXISTS "${UE_UNREAL_PAK_EXE}")
   message(FATAL_ERROR
     "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "

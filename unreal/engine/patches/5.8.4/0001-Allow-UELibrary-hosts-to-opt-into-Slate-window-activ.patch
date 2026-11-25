@@ -1,0 +1,32 @@
+From f85f1d7cdf74ceadd78968c1989bfa954a15ff8f Mon Sep 17 00:00:00 2001
+From: Matthew Love <matthewlove94@gmail.com>
+Date: Tue, 24 Nov 2026 19:41:34 +0000
+Subject: [PATCH 1/2] Allow UELibrary hosts to opt into Slate window activation
+
+---
+ .../Slate/Private/Framework/Application/SlateApplication.cpp | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/Engine/Source/Runtime/Slate/Private/Framework/Application/SlateApplication.cpp b/Engine/Source/Runtime/Slate/Private/Framework/Application/SlateApplication.cpp
+index e87746698..f4bdebd2d 100644
+--- a/Engine/Source/Runtime/Slate/Private/Framework/Application/SlateApplication.cpp
++++ b/Engine/Source/Runtime/Slate/Private/Framework/Application/SlateApplication.cpp
+@@ -919,7 +919,7 @@ FSlateApplication::FSlateApplication()
+ 	FModuleManager::Get().LoadModule(TEXT("Settings"));
+ #endif
+ 
+-	// If we are embedded inside another app then we never need to be "active"
++	// Embedded hosts start inactive. A host using -UELibraryWindowActivation supplies its initial activation.
+ 	bAppIsActive = !GUELibraryOverrideSettings.bIsEmbedded;
+ 
+ 	SetupPhysicalSensitivities();
+@@ -7256,7 +7256,8 @@ bool FSlateApplication::OnApplicationActivationChanged( const bool IsActive )
+ 
+ void FSlateApplication::ProcessApplicationActivationEvent(bool InAppActivated)
+ {
+-	if (GUELibraryOverrideSettings.bIsEmbedded)
++	if (GUELibraryOverrideSettings.bIsEmbedded
++		&& !FParse::Param(FCommandLine::Get(), TEXT("UELibraryWindowActivation")))
+ 	{
+ 		return;
+ 	}

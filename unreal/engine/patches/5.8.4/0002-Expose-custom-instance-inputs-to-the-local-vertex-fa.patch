@@ -1,0 +1,81 @@
+From 7aa8d4bba1a9090037bb42eccec7e7d2e7c6844d Mon Sep 17 00:00:00 2001
+From: Matthew Love <matthewlove94@gmail.com>
+Date: Tue, 24 Nov 2026 19:41:50 +0000
+Subject: [PATCH 2/2] Expose custom instance inputs to the local vertex factory
+
+---
+ Engine/Shaders/Private/LocalVertexFactory.ush | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/Engine/Shaders/Private/LocalVertexFactory.ush b/Engine/Shaders/Private/LocalVertexFactory.ush
+index bb74b5b08..5c711fde2 100644
+--- a/Engine/Shaders/Private/LocalVertexFactory.ush
++++ b/Engine/Shaders/Private/LocalVertexFactory.ush
+@@ -1,3 +1,4 @@
++#define LOCALVF_INSTANCE_INPUT_HOOK_VERSION 1
+ // Copyright Epic Games, Inc. All Rights Reserved.
+ 
+ /*=============================================================================
+@@ -101,10 +102,14 @@ struct FVertexFactoryInput
+ 	VF_GPUSCENE_DECLARE_INPUT_BLOCK(13)
+ 
+ #if USE_INSTANCING && !MANUAL_VERTEX_FETCH
++#ifdef LOCALVF_INSTANCE_ATTRIBUTES
++	LOCALVF_INSTANCE_ATTRIBUTES
++#else
+ 	float4 InstanceOrigin : ATTRIBUTE8;  // per-instance random in w 
+ 	half4 InstanceTransform1 : ATTRIBUTE9;  // hitproxy.r + 256 * selected in .w
+ 	half4 InstanceTransform2 : ATTRIBUTE10; // hitproxy.g in .w
+ 	half4 InstanceTransform3 : ATTRIBUTE11; // hitproxy.b in .w
++#endif
+ 	float4 InstanceLightMapAndShadowMapUVBias : ATTRIBUTE12; 
+ #endif //USE_INSTANCING
+ 
+@@ -221,10 +226,14 @@ struct FPositionOnlyVertexFactoryInput
+ 	VF_GPUSCENE_DECLARE_INPUT_BLOCK(1)
+ 
+ #if USE_INSTANCING && !MANUAL_VERTEX_FETCH
++#ifdef LOCALVF_INSTANCE_ATTRIBUTES
++	LOCALVF_INSTANCE_ATTRIBUTES
++#else
+ 	float4 InstanceOrigin : ATTRIBUTE8;  // per-instance random in w 
+ 	half4 InstanceTransform1 : ATTRIBUTE9;  // hitproxy.r + 256 * selected in .w
+ 	half4 InstanceTransform2 : ATTRIBUTE10; // hitproxy.g in .w
+ 	half4 InstanceTransform3 : ATTRIBUTE11; // hitproxy.b in .w
++#endif
+ #endif	// USE_INSTANCING
+ 
+ #if USE_INSTANCING
+@@ -253,10 +262,14 @@ struct FPositionAndNormalOnlyVertexFactoryInput
+ 	VF_GPUSCENE_DECLARE_INPUT_BLOCK(1)
+ 
+ #if USE_INSTANCING && !MANUAL_VERTEX_FETCH
++#ifdef LOCALVF_INSTANCE_ATTRIBUTES
++	LOCALVF_INSTANCE_ATTRIBUTES
++#else
+ 	float4 InstanceOrigin : ATTRIBUTE8;  // per-instance random in w 
+ 	half4 InstanceTransform1 : ATTRIBUTE9;  // hitproxy.r + 256 * selected in .w
+ 	half4 InstanceTransform2 : ATTRIBUTE10; // hitproxy.g in .w
+ 	half4 InstanceTransform3 : ATTRIBUTE11; // hitproxy.b in .w
++#endif
+ #endif	// USE_INSTANCING
+ 
+ #if USE_INSTANCING
+@@ -410,12 +423,17 @@ FVertexFactoryInstanceInput ManualFetchInstanceInput(uint InstanceId)
+ 
+ #else
+ 
++#if LOCALVF_CUSTOM_INSTANCE_INPUT
++#include "/Engine/Generated/LocalVFCustomInstanceInput.ush"
++#else
+ #define LOCALVF_GET_INSTANCE_INPUT(VFInput) MakeInstanceInput( \
+ 	VFInput.InstanceTransform1, \
+ 	VFInput.InstanceTransform2, \
+ 	VFInput.InstanceTransform3, \
+ 	VFInput.InstanceOrigin)
+ 
++#endif // LOCALVF_CUSTOM_INSTANCE_INPUT
++
+ #endif // MANUAL_VERTEX_FETCH
+ 
+ float4x4 GetInstanceTransform(FVertexFactoryInstanceInput InstanceInput)
