@@ -1,19 +1,23 @@
 #pragma once
 #include <ioj/levels/launch_options.h>
+#include <ioj/session/pending_level.h>
+#include <ioj/sim/collision/world_aabb.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <SpaceGame/levels/LevelCompletion.h>
 #include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationHost.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
 
+#include <optional>
+#include <span>
+#include <vector>
+
 #include "TestBatchOrchestrator.generated.h"
 
 class UInstancedStaticMeshComponent;
-struct FTestBatchOrchestratorTestAccess;
 
 namespace ioj {
 class UCollisionGridVisualizationComponent;
@@ -21,18 +25,9 @@ class USandboxISMCComponent;
 class USparkRendererComponent;
 class ATestSpaceShip;
 
-UENUM(BlueprintType)
-enum class EOrchestratorStartMode : uint8 {
-    Paused,
-    PausedInTest,
-    Automatic,
-    AuthoredLevel,
-};
-
 UCLASS()
 class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     GENERATED_BODY()
-    friend struct ::FTestBatchOrchestratorTestAccess;
   public:
     using tick_type = sim::SimTick::value_type;
     using time_type = double;
@@ -42,22 +37,27 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     ATestBatchOrchestrator();
 
-    void Tick(float dt) override;
     void PostLoad() override;
-    void tick(time_type const dt);
+    void present_level(time_type delta_seconds);
+    auto prepare_level(session::PendingLevel const& pending,
+                       std::optional<sim::player::PlayerSpawnData>& player) -> FLevelLoadResult;
+    auto static_geometry(sim::collision::CollisionGridSpec grid)
+        -> std::span<sim::collision::WorldAABB const>;
+    auto bind_level(session::PendingLevel const& pending, sim::LevelSim const& level) -> bool;
+    auto take_frame_delta_seconds() -> std::optional<double>;
+    void handle_level_start_failure(FString message);
+    void finish_level(profiles::CompletedLevel const& completed,
+                      bool scored,
+                      bool new_best,
+                      bool show_results);
     void start_simulation();
     void pause_simulation();
-    void reset_for_new_level();
 
     /* **************************************** */
     // Level configuration
     /* **************************************** */
     auto set_level_config(USpaceGameLevelConfig& config) -> bool;
-    void set_start_mode(EOrchestratorStartMode mode);
-    void set_level_script(FString path);
-    auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
     void set_collision_overlays(FCollisionOverlayVisibility visibility);
-    void set_presentation_enabled(bool enabled);
     auto is_presentation_enabled() const noexcept -> bool {
         return launch_options_.presentation_mode == levels::PresentationMode::Visual;
     }
@@ -66,17 +66,13 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Simulation state and timing
     /* **************************************** */
     auto get_state() const noexcept -> sim::LevelState {
-        return level_simulation_.IsSet() ? level_simulation_->state()
-                                         : sim::LevelState::Uninitialised;
+        return level_simulation_ ? level_simulation_->state() : sim::LevelState::Uninitialised;
     }
-    auto get_level_simulation() const -> sim::LevelSim const* {
-        return level_simulation_.IsSet() ? &level_simulation_.GetValue() : nullptr;
-    }
-    auto was_launched_paused() const noexcept -> bool {
-        return launch_options_.launch_mode == levels::LaunchMode::Paused;
-    }
+
+    auto get_level_simulation() const -> sim::LevelSim const* { return level_simulation_; }
+
     auto get_run_ticks_remaining() const noexcept -> TOptional<tick_type> {
-        if (!launch_options_.simulated_duration_seconds.has_value() || !level_simulation_.IsSet()) {
+        if (!launch_options_.simulated_duration_seconds.has_value() || !level_simulation_) {
             return NullOpt;
         }
 
@@ -99,10 +95,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Level loading
     /* **************************************** */
 
-    auto load_level(levels::LevelDefinition const& definition,
-                    levels::ControlContext playerless_control_context =
-                        levels::ControlContext::Observer) -> FLevelLoadResult;
-
     /* **************************************** */
     // Events, results, and presentation
     /* **************************************** */
@@ -123,11 +115,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Level initialization
     /* **************************************** */
-    void load_authored_level();
-    auto should_initialise_in_begin_play() const noexcept -> bool;
-    void handle_level_start_failure(FString message);
     void release_level();
-    void end_level(sim::RunEndReason reason, bool show_results = true);
+    void record_world_delta(UWorld* world, ELevelTick tick_type, float delta_seconds);
 
     /* **************************************** */
     // Presentation
@@ -165,19 +154,14 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
   public:
     FSimpleMulticastDelegate on_simulation_paused;
   private:
-    UPROPERTY(EditAnywhere,
-              Category = "Sandbox",
-              meta = (FilePathFilter = "scm", RelativeToGameDir))
-    FFilePath level_script;
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
-
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 
     FCollisionOverlayVisibility collision_overlays_{};
     FLevelPresentationHost presentation_host_;
-    TOptional<sim::LevelSim> level_simulation_;
+    sim::LevelSim const* level_simulation_{};
+    std::vector<sim::collision::WorldAABB> static_geometry_;
+    std::optional<double> frame_delta_seconds_;
     levels::LaunchOptions launch_options_{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox")

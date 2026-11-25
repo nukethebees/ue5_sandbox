@@ -1181,7 +1181,6 @@ auto generate_runtime_map(ioj::FObserverControlInputs const& observer,
         return false;
     }
     orchestrator->set_level_config(*config);
-    orchestrator->set_start_mode(ioj::EOrchestratorStartMode::AuthoredLevel);
 
     auto* const starfield{world->SpawnActor<ioj::AGpuStarfieldActor>()};
     if (!IsValid(starfield)) {
