@@ -48,6 +48,7 @@
 #include <algorithm>
 #include <array>
 #include <expected>
+#include <memory_resource>
 #include <optional>
 
 namespace s7_level_authoring_tests {
@@ -681,7 +682,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 *TestRunner, TEXT("Compile composed level and expression references"), compiled)) {
             return;
         }
-        ioj::sim::LevelSim simulation{std::move(*compiled)};
+
+        ioj::sim::LevelSim simulation{std::move(*compiled), *std::pmr::new_delete_resource()};
 
         TestRunner->TestEqual(TEXT("Only human capital spawns at time zero"),
                               simulation.capital_ships().num_instances(),
@@ -1060,7 +1062,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!assert_success(*TestRunner, TEXT("Compile carrier-free level"), compiled)) {
             return;
         }
-        ioj::sim::LevelSim sim{std::move(*compiled)};
+
+        ioj::sim::LevelSim sim{std::move(*compiled), *std::pmr::new_delete_resource()};
         auto const fighters{sim.fighters().entities()};
         if (!TestRunner->TestEqual(
                 TEXT("Fighter starts without a carrier"), fighters.num(), uint32{1})) {
@@ -1084,8 +1087,10 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         player->SetActorLocation(FVector{100, 20, 30});
         GEditor->BroadcastEndObjectMovement(*player);
-        TestRunner->TestTrue(TEXT("Play ignores orphaned editor config"),
+        TestRunner->TestTrue(TEXT("Standalone missions do not import the editor config"),
                              ioj::editor::s7_scene_needs_export(document) == false);
+        TestRunner->TestFalse(TEXT("Play stops when the mission dropped the edited scene"),
+                              ioj::editor::prepare_staged_mission(document).has_value());
         TestRunner->TestFalse(TEXT("A standalone mission cannot export its orphaned config"),
                               ioj::editor::check_s7_scene(level, document).has_value());
         if (!assert_success(*TestRunner,

@@ -1,7 +1,8 @@
 #pragma once
 
+#include "Containers/Ticker.h"
 #include "CoreMinimal.h"
-#include "Delegates/IDelegateInstance.h"
+#include "HAL/PlatformProcess.h"
 #include "Modules/ModuleManager.h"
 
 class AActor;
@@ -26,7 +27,11 @@ class SANDBOXEDITOR_API FSandboxEditorModule : public IModuleInterface {
     void on_property_changed(UObject* object, FPropertyChangedEvent& change);
     void on_transacted(UObject* object, FTransactionObjectEvent const& change);
     void on_pre_save_world(UWorld* world, FObjectPreSaveContext context);
-    void on_pre_begin_pie(bool simulating);
+    void play_mission(bool refresh);
+    bool can_play_mission() const;
+    bool poll_refresh(float delta_seconds);
 
-    FDelegateHandle s7_pie_handle_{};
+    FProcHandle refresh_process_;
+    FTSTicker::FDelegateHandle refresh_ticker_;
+    FString refresh_mission_;
 };

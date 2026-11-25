@@ -106,6 +106,16 @@ add_unreal_automation_test(
   FILTERS Sandbox.UnitTests.S7PlayableLevel
   LABELS s7-authoring
 )
+if(UE_CONFIGURATION STREQUAL "Development")
+  add_unreal_automation_test(
+    Sandbox.StagedEditorMissionTests
+    FILTERS Sandbox.StagedEditorTests
+    LABELS staged-editor
+  )
+  set_tests_properties(Sandbox.StagedEditorMissionTests PROPERTIES
+    ENVIRONMENT "IOJ_GAME_ARTIFACT_ROOT=${IOJ_GAME_ARTIFACT_ROOT_ABSOLUTE}"
+  )
+endif()
 add_unreal_automation_test(
   SandboxISMC.ModuleLoadSmoke
   FILTERS SandboxISMC.ModuleLoadSmoke
