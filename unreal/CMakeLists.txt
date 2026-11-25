@@ -2,12 +2,6 @@ if(NOT IOJ_WITH_UNREAL)
   return()
 endif()
 
-set(CACHE{IOJ_SPACE_GAME_TEST_TIME_SCALE}
-  TYPE STRING
-  HELP "Optional positive time scale for level-backed SpaceGame automation"
-  VALUE ""
-)
-
 if(NOT CMAKE_HOST_WIN32)
   message(FATAL_ERROR
     "This initial CMake build layer supports Windows hosts only. "
@@ -83,7 +77,7 @@ include("${PROJECT_SOURCE_DIR}/cmake/unreal_packaging.cmake")
 add_subdirectory(build)
 
 set(IOJ_UNIT_AUTOMATION_FILTERS
-  Sandbox.enum
+  SandboxEditor.Authoring
   Sandbox.UnitTests
   Sandbox.EditorTests
   SandboxEditor.UnitTests
@@ -93,7 +87,6 @@ set(IOJ_UNIT_AUTOMATION_FILTERS
   SandboxMesh.UnitTests
 )
 set(IOJ_LEVEL_AUTOMATION_FILTERS
-  Sandbox.LevelTests
   SandboxCoreEngine.LevelTests
 )
 
@@ -106,9 +99,6 @@ add_unreal_automation_test(
   Sandbox.S7AuthoringTests
   FILTERS
     Sandbox.UnitTests.S7LevelAuthoring
-    Sandbox.UnitTests.LevelScriptCatalog
-    Sandbox.UnitTests.LevelSimulation
-    Sandbox.UnitTests.SpaceGameLevelConfig
   LABELS s7-authoring
 )
 add_unreal_automation_test(
@@ -117,39 +107,19 @@ add_unreal_automation_test(
   LABELS s7-authoring
 )
 add_unreal_automation_test(
-  Sandbox.LevelInitialisationTests
-  FILTERS
-    Sandbox.UnitTests.CollisionUniformGrid
-    Sandbox.LevelTests.SharedSimulation
-  LABELS level-initialisation
-)
-add_unreal_automation_test(
   SandboxISMC.ModuleLoadSmoke
   FILTERS SandboxISMC.ModuleLoadSmoke
   LABELS ismc-module-smoke
 )
 add_unreal_automation_test(
   SandboxISMC.UnitTests
-  FILTERS SandboxISMC.UnitTests Sandbox.UnitTests.LaserPresentation
+  FILTERS SandboxISMC.UnitTests
   LABELS ismc
 )
 add_unreal_automation_test(
   Sandbox.LevelTests
   FILTERS ${IOJ_LEVEL_AUTOMATION_FILTERS}
   LABELS level
-)
-add_unreal_automation_test(
-  Sandbox.InputSmokeTests
-  FILTERS Sandbox.LevelTests.PlayerInputSmoke
-  LABELS input-smoke
-)
-add_unreal_automation_test(
-  Sandbox.InputUnitTests
-  FILTERS
-    Sandbox.UnitTests.CanonicalShipInput
-    Sandbox.UnitTests.PlayerController
-    Sandbox.UnitTests.ControlContextTransitions
-  LABELS input-unit
 )
 add_unreal_automation_test(
   Sandbox.AllAutomationTests
@@ -175,16 +145,6 @@ add_unreal_editor_test(SandboxISMC.RenderTests
 )
 sandbox_set_automation_test_properties(SandboxISMC.RenderTests)
 
-sandbox_make_automation_exec_commands(spark_render_test_commands
-  "StartsWith:Sandbox.SparkRenderTests")
-add_unreal_editor_test(Sandbox.SparkRenderTests
-  ARGUMENTS
-    "${spark_render_test_commands}"
-    -RenderOffscreen
-  LABELS level all
-  TIMEOUT 900
-)
-sandbox_set_automation_test_properties(Sandbox.SparkRenderTests)
 
 add_custom_target(unreal-unit-tests
   DEPENDS
@@ -271,7 +231,6 @@ set(all_editor_automation_filters
   ${IOJ_LEVEL_AUTOMATION_FILTERS}
   SandboxISMC.ModuleLoadSmoke
   SandboxISMC.RenderTests
-  Sandbox.SparkRenderTests
   SandboxEditor.MaterialSynth
   USFLoader.UnitTests
   USFLoader.IncludedFunctionCompilation

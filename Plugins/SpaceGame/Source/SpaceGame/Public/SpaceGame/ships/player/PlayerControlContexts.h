@@ -6,8 +6,6 @@
 #include <SpaceGame/ships/player/ObserverControlContext.h>
 #include <SpaceGame/ships/player/ShipControlContext.h>
 
-struct FPlayerControlContextsTestAccess;
-
 namespace ioj {
 struct SPACEGAME_API FPlayerControlContexts {
     auto initialise(ASpaceGamePlayerController& owner,
@@ -26,7 +24,6 @@ struct SPACEGAME_API FPlayerControlContexts {
     auto is_observer_bound() const -> bool { return observer_.is_bound(); }
     auto get_observer_speed() const -> float { return observer_.get_movement_speed(); }
   private:
-    friend struct ::FPlayerControlContextsTestAccess;
     void bind_context(levels::ControlContext context);
     void unbind_context(levels::ControlContext context);
 
