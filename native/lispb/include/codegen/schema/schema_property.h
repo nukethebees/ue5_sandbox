@@ -45,6 +45,7 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     definitions_in_source,
     dependencies,
     device,
+    description,
     display_name,
     encoding,
     enum_array,
@@ -158,10 +159,10 @@ inline constexpr auto enum_strings<lispb::codegen::SchemaProperty, Serialized>{P
     "order\000category\000case\000clipping\000columns\000comparison\000comparison-"
     "noexcept\000const\000constexpr\000constraint-policy\000conversion-"
     "header\000conversions\000count\000custom-row\000default\000definition-in-"
-    "source\000definitions-in-source\000dependencies\000device\000display-name\000encoding\000enum-"
-    "array\000equivalent-accessor\000equivalent-constructor\000equivalent-member\000equivalent-"
-    "type\000exponent-bits\000export-specifier\000field-enum-name\000field-mask-"
-    "name\000finite\000fixed-schema\000form\000format\000fractional-bits\000friend-"
+    "source\000definitions-in-source\000dependencies\000device\000description\000display-"
+    "name\000encoding\000enum-array\000equivalent-accessor\000equivalent-constructor\000equivalent-"
+    "member\000equivalent-type\000exponent-bits\000export-specifier\000field-enum-name\000field-"
+    "mask-name\000finite\000fixed-schema\000form\000format\000fractional-bits\000friend-"
     "kind\000friends\000generate-s7-reader\000generate-s7-writer\000s7-writer-includes\000generate-"
     "visitor\000header\000header-include\000headers\000helper-"
     "namespace\000helpers\000hidden\000include-order\000initializer\000inline\000invalid-"
@@ -177,14 +178,14 @@ inline constexpr auto enum_strings<lispb::codegen::SchemaProperty, Serialized>{P
     "name\000target-storage\000target-access\000template-parameters\000tooltip\000total-"
     "bits\000trailing-return-type\000unit\000using-declarations\000validation\000validation-"
     "dependencies\000value\000pack\000groups\000contiguous-groups\000ordering",
-    std::array<std::uint16_t, 126>{
-        0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,
-        132,  141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  261,  269,  290,
-        312,  325,  332,  345,  354,  365,  385,  408,  426,  442,  456,  473,  489,  505,
-        512,  525,  530,  537,  553,  565,  573,  592,  611,  630,  647,  654,  669,  677,
-        694,  702,  709,  723,  735,  742,  756,  761,  768,  780,  796,  807,  811,  819,
-        833,  837,  845,  855,  866,  888,  895,  905,  914,  923,  935,  943,  960,  968,
-        977,  985,  996,  1005, 1014, 1029, 1038, 1053, 1069, 1080, 1088, 1102, 1121, 1128,
-        1137, 1153, 1163, 1170, 1187, 1194, 1203, 1210, 1215, 1223, 1230, 1234, 1246, 1261,
-        1275, 1295, 1303, 1314, 1335, 1340, 1359, 1370, 1394, 1400, 1405, 1412, 1430, 1439}}};
+    std::array<std::uint16_t, 127>{
+        0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,  132,
+        141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  261,  269,  290,  312,  325,
+        332,  344,  357,  366,  377,  397,  420,  438,  454,  468,  485,  501,  517,  524,  537,
+        542,  549,  565,  577,  585,  604,  623,  642,  659,  666,  681,  689,  706,  714,  721,
+        735,  747,  754,  768,  773,  780,  792,  808,  819,  823,  831,  845,  849,  857,  867,
+        878,  900,  907,  917,  926,  935,  947,  955,  972,  980,  989,  997,  1008, 1017, 1026,
+        1041, 1050, 1065, 1081, 1092, 1100, 1114, 1133, 1140, 1149, 1165, 1175, 1182, 1199, 1206,
+        1215, 1222, 1227, 1235, 1242, 1246, 1258, 1273, 1287, 1307, 1315, 1326, 1347, 1352, 1371,
+        1382, 1406, 1412, 1417, 1424, 1442, 1451}}};
 } // namespace ioj

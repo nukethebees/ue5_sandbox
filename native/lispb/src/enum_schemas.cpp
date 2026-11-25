@@ -16,6 +16,7 @@ auto EnumSchemas::append() -> DeclarationHandle {
     assert(index < 0x00fffffe);
     cpp_projection.push_back({});
     name.push_back({});
+    description.push_back({});
     underlying_type.push_back({});
     values.push_back({});
     declared_values.push_back({});
@@ -40,6 +41,7 @@ auto EnumSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
                                     id,
                                     cpp_projection,
                                     name,
+                                    description,
                                     underlying_type,
                                     values,
                                     declared_values,
@@ -60,6 +62,7 @@ auto EnumSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
 void EnumSchemas::clear() {
     detail::clear_schema_columns(cpp_projection,
                                  name,
+                                 description,
                                  underlying_type,
                                  values,
                                  declared_values,

@@ -201,6 +201,7 @@
     (value definitions_in_source :serialized-name "definitions-in-source")
     (value dependencies :serialized-name "dependencies")
     (value device :serialized-name "device")
+    (value description :serialized-name "description")
     (value display_name :serialized-name "display-name")
     (value encoding :serialized-name "encoding")
     (value enum_array :serialized-name "enum-array")

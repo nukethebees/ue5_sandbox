@@ -29,6 +29,7 @@ struct EnumSchemas {
     void clear();
 
     Column<StringId> name;
+    Column<std::optional<StringId>> description;
     Column<std::optional<CppProjection>> cpp_projection;
     Column<std::optional<TypeRefId>> underlying_type;
     Column<SchemaRange<EnumeratorId>> values;

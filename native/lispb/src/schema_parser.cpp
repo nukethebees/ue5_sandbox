@@ -646,6 +646,7 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
                      P::helpers,
                      P::bit_width,
                      P::ordering,
+                     P::description,
                      P::contiguous_groups,
                      P::signed_},
                     {"value", "projections"});
@@ -721,6 +722,13 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "enum name");
+    records.description[record_index] = optional_text_id(fields, P::description);
+    if (auto const description{fields.optional(P::description)}) {
+        auto const text{parser_.text(*description, "enum description")};
+        if (text.find_first_of("\r\n") != std::string_view::npos || text.ends_with('\\')) {
+            parser_.fail(fields.positional(0), "enum description must fit on one comment line");
+        }
+    }
     records.underlying_type[record_index] =
         has_underlying_type ? std::optional{parse_type_ref(declarations, fields.positional(1))}
                             : std::nullopt;

@@ -236,6 +236,9 @@ class EnumLowering : public CppIRBuilder {
             decls.add(using_declaration(store_text(underlying_alias), underlying), 2);
         }
         decls.add(enum_bit_width_comment(ctx, schema), 1);
+        if (auto const description{ctx.declarations.enums.description[schema]}) {
+            decls.add(line_comment(ctx.text(*description)), 1);
+        }
         if (reflected) {
             decls.add(reflection_annotation(enums.reflection[schema]), 1);
             emission.header_generated_include = {
@@ -791,6 +794,9 @@ class EnumLowering : public CppIRBuilder {
         auto decls{node_list()};
         decls.add(using_declaration(store_text(alias), enum_underlying_type(ctx, schema)), 2);
         decls.add(enum_bit_width_comment(ctx, schema), 1);
+        if (auto const description{ctx.declarations.enums.description[schema]}) {
+            decls.add(line_comment(ctx.text(*description)), 1);
+        }
         decls.add(
             enumeration(enums.name[schema], intern_type(alias), enum_values(ctx, schema, false)),
             2);
@@ -951,6 +957,9 @@ class EnumLowering : public CppIRBuilder {
 
         auto decls{node_list()};
         decls.add(enum_bit_width_comment(ctx, schema), 1);
+        if (auto const description{ctx.declarations.enums.description[schema]}) {
+            decls.add(line_comment(ctx.text(*description)), 1);
+        }
         decls.add(reflection_annotation(projections.reflection[projection]), 1);
         decls.add(
             enumeration(projections.name[projection], underlying, enum_values(ctx, schema, true)),

@@ -145,6 +145,8 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
     auto result{enums.underlying_type[schema].has_value()
                     ? ir_.form("enum", {name, build_type_ref(*enums.underlying_type[schema])})
                     : ir_.form("enum", {name})};
+    result.optional_field(
+        "description", enums.description[schema], [this](auto value) { return ir_.string(value); });
     result.optional_field("bit-width", enums.bit_width[schema]);
     if (enums.signedness[schema] != EnumSignedness::unspecified) {
         result.field("signed",
