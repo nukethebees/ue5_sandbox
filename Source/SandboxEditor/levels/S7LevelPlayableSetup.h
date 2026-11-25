@@ -4,6 +4,7 @@
 #include <ioj/sim/levels/level_sim_init_data.h>
 
 #include <CoreMinimal.h>
+#include <HAL/PlatformProcess.h>
 
 class AS7LevelAuthoringDocument;
 class ULevel;
@@ -19,7 +20,11 @@ class LevelDefinition;
 }
 
 namespace ioj::editor {
-SANDBOXEDITOR_API void prepare_s7_scene_for_pie(UWorld& world);
+SANDBOXEDITOR_API auto prepare_staged_mission(AS7LevelAuthoringDocument& document)
+    -> S7AuthoringResult<FString>;
+SANDBOXEDITOR_API auto launch_staged_mission(FString const& mission, bool exit_when_ready = false)
+    -> S7AuthoringResult<FProcHandle>;
+SANDBOXEDITOR_API auto refresh_staged_player() -> FProcHandle;
 auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
     -> S7AuthoringResult<FString>;
 SANDBOXEDITOR_API auto compile_playable_s7_definition(levels::LevelDefinition const& definition,

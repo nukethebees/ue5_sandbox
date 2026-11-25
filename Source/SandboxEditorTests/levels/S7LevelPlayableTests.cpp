@@ -5,15 +5,11 @@
 #include <SandboxEditor/levels/S7LevelAuthoringSession.h>
 #include <SandboxEditor/levels/S7LevelPlayableSetup.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
-#include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxCoreEngine/strings.h>
-#include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 
-#include <Camera/CameraActor.h>
 #include <CQTest.h>
+#include <Curves/CurveFloat.h>
 #include <Editor.h>
 #include <EditorModeManager.h>
 #include <Engine/Level.h>
@@ -22,16 +18,18 @@
 #include <FileHelpers.h>
 #include <HAL/FileManager.h>
 #include <HAL/PlatformFileManager.h>
-#include <Kismet/GameplayStatics.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Guid.h>
+#include <Misc/PackageName.h>
 #include <Misc/Paths.h>
 #include <SceneManagement.h>
 #include <SceneView.h>
 #include <ScopedTransaction.h>
 #include <Tests/AutomationEditorCommon.h>
 #include <UObject/Package.h>
+#include <UObject/SavePackage.h>
 
+#include <algorithm>
 #include <expected>
 
 namespace s7_level_playable_tests {
@@ -91,9 +89,6 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
 {
     AFTER_EACH()
     {
-        if (GEditor && GEditor->PlayWorld) {
-            GEditor->EndPlayMap();
-        }
         if (previous_overlays_) {
             auto& modes{GLevelEditorModeTools()};
             modes.ActivateMode(US7LevelAuthoringMode::mode_id);
@@ -103,6 +98,130 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
             if (!authoring_was_active_) {
                 modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
             }
+        }
+        if (!source_directory_.IsEmpty()) {
+            IFileManager::Get().DeleteDirectory(*source_directory_, false, true);
+        }
+    }
+
+    TEST_METHOD(RepeatedGeometryExportsMatch)
+    {
+        source_directory_ = FPaths::Combine(
+            FPaths::ProjectSavedDir(), TEXT("Automation"), FGuid::NewGuid().ToString());
+        IFileManager::Get().MakeDirectory(*source_directory_, true);
+        FString previous;
+        for (auto const filename : {TEXT("first.scm"), TEXT("second.scm")}) {
+            auto const path{FPaths::Combine(source_directory_, filename)};
+            if (!s7_level_playable_tests::assert_success(
+                    *TestRunner,
+                    TEXT("Export configured meshes"),
+                    ioj::editor::export_entity_geometry(path))) {
+                return;
+            }
+            FString source;
+            if (!TestRunner->TestTrue(TEXT("Read exported module"),
+                                      FFileHelper::LoadFileToString(source, *path))) {
+                return;
+            }
+            if (!previous.IsEmpty()) {
+                TestRunner->TestEqual(
+                    TEXT("Identical assets give identical output"), source, previous);
+            }
+            previous = MoveTemp(source);
+        }
+    }
+
+    TEST_METHOD(DefendCapitalStartsWithExportedGeometry)
+    {
+        using namespace ioj;
+        auto const map{FPaths::Combine(
+            FPaths::ProjectContentDir(),
+            TEXT("Levels/FeatureTests/FT_soa_turrets/test_levels/defend_capital.umap"))};
+        if (!TestRunner->TestTrue(TEXT("Open Defend Capital map"),
+                                  FEditorFileUtils::LoadMap(map, false, false))) {
+            return;
+        }
+        auto* world{GEditor->GetEditorWorldContext().World()};
+        auto document{editor::find_level_authoring_document(*world->GetCurrentLevel())};
+        if (!TestRunner->TestTrue(TEXT("Map embeds its project-relative mission"),
+                                  document && IsValid(*document) &&
+                                      (*document)->source_path ==
+                                          TEXT("LevelScripts/defend_capital/defend_capital.scm"))) {
+            return;
+        }
+        auto definition{editor::read_s7_authored_level(**document)};
+        if (!s7_level_playable_tests::assert_success(
+                *TestRunner, TEXT("Load linked mission"), definition)) {
+            return;
+        }
+        auto& modes{GLevelEditorModeTools()};
+        authoring_was_active_ = modes.IsModeActive(US7LevelAuthoringMode::mode_id);
+        modes.ActivateMode(US7LevelAuthoringMode::mode_id);
+        auto& mode{*CastChecked<US7LevelAuthoringMode>(
+            modes.GetActiveScriptableMode(US7LevelAuthoringMode::mode_id))};
+        previous_overlays_ = mode.collision_overlays();
+        auto const was_dirty{world->GetPackage()->IsDirty()};
+        auto capture{[&] { return s7_level_playable_tests::capture_overlay(mode, *world); }};
+        mode.set_collision_overlays({});
+        TestRunner->TestTrue(TEXT("Hidden overlays draw no lines"), capture().IsEmpty());
+        mode.set_collision_overlays({.grid = true});
+        auto const grid{capture()};
+        FBox grid_box{grid};
+        TestRunner->TestTrue(TEXT("Grid uses the mission's 500000 cm height"),
+                             grid_box.IsValid && grid_box.Min.Z == -250000. &&
+                                 grid_box.Max.Z == 250000.);
+        mode.set_collision_overlays({.bounds = true});
+        auto const boxes{capture()};
+        TestRunner->TestFalse(TEXT("Editor draws placed collision boxes"), boxes.IsEmpty());
+        mode.set_collision_overlays({.grid = true, .bounds = true});
+        TestRunner->TestEqual(
+            TEXT("Both overlays draw independently"), capture().Num(), boxes.Num() + grid.Num());
+        TestRunner->TestEqual(TEXT("Overlay controls preserve map dirty state"),
+                              world->GetPackage()->IsDirty(),
+                              was_dirty);
+
+        mode.set_collision_overlays({.bounds = true});
+        TActorIterator<ATestCapitalShipProxy> capital{world};
+        if (!TestRunner->TestTrue(TEXT("Placed capital"), static_cast<bool>(capital))) {
+            return;
+        }
+        {
+            FScopedTransaction move{
+                NSLOCTEXT("S7PlayableLevel", "MoveCapital", "Move test capital")};
+            capital->Modify();
+            capital->GetRootComponent()->Modify();
+            capital->SetActorLocationAndRotation(FVector{1234., 5678., 9012.},
+                                                 FRotator{15., 32., 8.});
+        }
+        TestRunner->TestTrue(TEXT("Live preview follows the capital placement"),
+                             capture() != boxes);
+        GEditor->UndoTransaction();
+        TestRunner->TestTrue(TEXT("Undo restores the preview before export"), capture() == boxes);
+        mode.set_collision_overlays({.grid = true, .bounds = true});
+        s7_level_playable_tests::assert_success(
+            *TestRunner,
+            TEXT("Compile Defend Capital with its exported geometry"),
+            editor::compile_playable_s7_definition(*definition, *(*document)->level_config));
+    }
+
+    bool authoring_was_active_{};
+    TOptional<ioj::FCollisionOverlayVisibility> previous_overlays_;
+    FString source_directory_;
+};
+
+TEST_CLASS(StagedMission, "Sandbox.StagedEditorTests")
+{
+    AFTER_EACH()
+    {
+        if (process_.IsValid()) {
+            FPlatformProcess::CloseProc(process_);
+        }
+        if (!cooked_asset_.IsEmpty()) {
+            IFileManager::Get().Delete(*cooked_asset_);
+            IFileManager::Get().Delete(*FPaths::ChangeExtension(cooked_asset_, TEXT("uexp")));
+        }
+        if (!asset_file_.IsEmpty()) {
+            IFileManager::Get().Delete(*asset_file_);
         }
         if (!source_directory_.IsEmpty()) {
             IFileManager::Get().DeleteDirectory(*source_directory_, false, true);
@@ -208,274 +327,122 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
             GEditor->BroadcastEndObjectMovement(*editor_enemy);
             TestRunner->TestTrue(TEXT("Moving an exported actor requires export"),
                                  ioj::editor::s7_scene_needs_export(*document) == true);
-            editor_enemy->spawn_time_seconds = 0.;
-            world->SpawnActor<ioj::ATestCapitalShipProxy>();
-            if (!assert_success(
-                    *TestRunner,
-                    TEXT("Validate the saved scene with pending edits"),
-                    ioj::editor::read_s7_authored_level(*document).and_then([&](auto const& saved) {
-                        return ioj::editor::compile_playable_s7_definition(saved,
-                                                                           *document->level_config);
-                    }))) {
-                return;
-            }
         } else {
-            auto const targets{document->camera.targets};
-            document->camera.targets = {editor_enemy};
-            FPropertyChangedEvent change{FindFProperty<FProperty>(
-                document->GetClass(), GET_MEMBER_NAME_CHECKED(AS7LevelAuthoringDocument, camera))};
-            document->PostEditChangeProperty(change);
-            TestRunner->TestTrue(TEXT("Changing the observer target requires export"),
-                                 ioj::editor::s7_scene_needs_export(*document) == true);
-            document->camera.targets = targets;
-            for (TActorIterator<ioj::ATestBatchOrchestrator> it{world}; it; ++it) {
-                it->set_start_mode(ioj::EOrchestratorStartMode::Automatic);
-            }
+            editor_enemy->SetActorLocation(FVector{60000., 0., 0.});
+            GEditor->BroadcastEndObjectMovement(*editor_enemy);
         }
 
-        TestRunner->AddExpectedMessage(TEXT("Scene edits need export"),
-                                       ELogVerbosity::Warning,
-                                       EAutomationExpectedMessageFlags::Contains,
-                                       1);
-        TActorIterator<ioj::AGpuStarfieldActor> preview{world};
-        if (!TestRunner->TestTrue(TEXT("Editor starfield exists"), static_cast<bool>(preview))) {
+        auto const config{ioj::editor::s7_editor_config_path(*document)};
+        FString const external{source + TEXT("\n; concurrent edit\n")};
+        if (!TestRunner->TestTrue(
+                TEXT("Make an external source edit"),
+                FFileHelper::SaveStringToFile(
+                    external, *config, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))) {
             return;
         }
-        auto const preview_radius{
-            preview->GetRootComponent()->CalcBounds(FTransform::Identity).SphereRadius};
-        TestCommandBuilder.Do([] { FStartPIECommand{false}.Update(); })
-            .Until([] { return GEditor->PlayWorld && GEditor->PlayWorld->HasBegunPlay(); },
-                   FTimespan::FromSeconds(30))
-            .Then([this, observer, preview_radius] {
-                auto* const play_world{GEditor->PlayWorld.Get()};
-                if (!TestRunner->TestNotNull(TEXT("PIE world"), play_world)) {
-                    return;
+        auto conflict{ioj::editor::prepare_staged_mission(*document)};
+        TestRunner->TestFalse(TEXT("Conflicting source blocks Play"), conflict.has_value());
+        FString untouched;
+        TestRunner->TestTrue(TEXT("Play preserves the external edit"),
+                             FFileHelper::LoadFileToString(untouched, *config) &&
+                                 untouched == external);
+        if (!TestRunner->TestTrue(
+                TEXT("Restore imported source"),
+                FFileHelper::SaveStringToFile(
+                    source, *config, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))) {
+            return;
+        }
+        auto mission{ioj::editor::prepare_staged_mission(*document)};
+        if (!assert_success(
+                *TestRunner, TEXT("Prepare the edited mission for the staged player"), mission)) {
+            return;
+        }
+        auto saved{ioj::editor::read_s7_editor_input(*document)};
+        if (!assert_success(*TestRunner, TEXT("Read exported scene"), saved)) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Play exports the moved enemy"),
+                             std::ranges::any_of(saved->entities, [observer](auto const& entity) {
+                                 return entity.id == EntityId{"enemy"} &&
+                                        entity.position.x() == (observer ? 60000. : 90000.);
+                             }));
+        if (observer) {
+            auto const name{TEXT("RefreshPlay_") + FGuid::NewGuid().ToString(EGuidFormats::Digits)};
+            auto const package_name{TEXT("/Game/UI/") + name};
+            auto* package{CreatePackage(*package_name)};
+            auto* curve{NewObject<UCurveFloat>(package, *name, RF_Public | RF_Standalone)};
+            curve->FloatCurve.AddKey(1.f, 2.f);
+            asset_file_ = FPackageName::LongPackageNameToFilename(
+                package_name, FPackageName::GetAssetPackageExtension());
+            FSavePackageArgs save_args;
+            save_args.TopLevelFlags = RF_Public | RF_Standalone;
+            if (!TestRunner->TestTrue(
+                    TEXT("Save an asset in the project's cooked UI directory"),
+                    UPackage::SavePackage(package, curve, *asset_file_, save_args))) {
+                return;
+            }
+            auto artifact_root{
+                FPlatformMisc::GetEnvironmentVariable(TEXT("IOJ_GAME_ARTIFACT_ROOT"))};
+            if (artifact_root.IsEmpty()) {
+                artifact_root = FPaths::ProjectDir() / TEXT("out/game-package");
+            }
+            cooked_asset_ = artifact_root / TEXT("Win64/cook/Windows/Sandbox/Content/UI") /
+                            (name + TEXT(".uasset"));
+            process_ = ioj::editor::refresh_staged_player();
+            if (!TestRunner->TestTrue(TEXT("Start incremental cook and stage"),
+                                      process_.IsValid())) {
+                return;
+            }
+            TestCommandBuilder
+                .Until([this] { return !FPlatformProcess::IsProcRunning(process_); },
+                       FTimespan::FromMinutes(12))
+                .Then([this, path = *mission] {
+                    if (!check_exit()) {
+                        return;
+                    }
+                    if (TestRunner->TestTrue(TEXT("Refresh cooked the newly saved asset"),
+                                             FPaths::FileExists(cooked_asset_))) {
+                        launch(path);
+                    }
+                });
+        } else {
+            launch(*mission);
+        }
+        TestCommandBuilder
+            .Until(
+                [this] {
+                    return !process_.IsValid() || !FPlatformProcess::IsProcRunning(process_);
+                },
+                FTimespan::FromMinutes(2))
+            .Then([this] {
+                if (process_.IsValid()) {
+                    check_exit();
                 }
-                TActorIterator<ioj::ATestBatchOrchestrator> it{play_world};
-                if (!TestRunner->TestTrue(TEXT("PIE orchestrator"), static_cast<bool>(it))) {
-                    return;
-                }
-                auto& orchestrator{**it};
-                if (!TestRunner->TestTrue(TEXT("Authored simulation starts"),
-                                          orchestrator.get_state() ==
-                                              ioj::sim::LevelState::Running)) {
-                    return;
-                }
-                TActorIterator<ioj::AGpuStarfieldActor> starfield{play_world};
-                if (!TestRunner->TestTrue(TEXT("Runtime starfield exists"),
-                                          static_cast<bool>(starfield))) {
-                    return;
-                }
-                auto const radius{
-                    starfield->GetRootComponent()->CalcBounds(FTransform::Identity).SphereRadius};
-                TestRunner->TestTrue(TEXT("Mission scale doubles the starfield bounds"),
-                                     FMath::IsNearlyEqual(radius, 2. * preview_radius));
-                orchestrator.SetActorTickEnabled(false);
-                auto* const controller{Cast<ioj::ASpaceGamePlayerController>(
-                    UGameplayStatics::GetPlayerController(play_world, 0))};
-                if (!TestRunner->TestNotNull(TEXT("Space-game controller"), controller)) {
-                    return;
-                }
-                TestRunner->TestTrue(
-                    TEXT("Runtime control context matches viewpoint"),
-                    controller->get_active_control_context() ==
-                        (observer ? ControlContext::Observer : ControlContext::Player));
-                TestRunner->TestTrue(TEXT("Runtime uses the authored viewpoint"),
-                                     observer
-                                         ? IsValid(Cast<ACameraActor>(controller->GetViewTarget()))
-                                         : controller->GetPawn() == orchestrator.get_player_ship());
-                TestRunner->TestFalse(
-                    TEXT("PIE proxies do not remain as a second entity source"),
-                    static_cast<bool>(TActorIterator<ioj::ATestCapitalShipProxy>{play_world}));
-
-                auto const initial_capitals{observer ? uint32{1} : uint32{0}};
-                auto const* simulation{orchestrator.get_level_simulation()};
-                if (!TestRunner->TestNotNull(TEXT("Level simulation"), simulation)) {
-                    return;
-                }
-                auto const& clock{simulation->clock()};
-                TestRunner->TestEqual(TEXT("Delayed entity is absent at startup"),
-                                      simulation->capital_ships().num_instances(),
-                                      initial_capitals);
-                TestRunner->TestTrue(TEXT("Startup precedes scheduled spawn"),
-                                     clock.simulation_time() < 4.);
-                orchestrator.tick(FMath::Max(0., 4. - clock.simulation_time()));
-                TestRunner->TestEqual(TEXT("Delayed entity remains absent before its time"),
-                                      simulation->capital_ships().num_instances(),
-                                      initial_capitals);
-                orchestrator.tick(1.1);
-                auto const& capitals{simulation->capital_ships()};
-                if (TestRunner->TestEqual(TEXT("Authored event spawns the delayed entity"),
-                                          capitals.num_instances(),
-                                          initial_capitals + 1)) {
-                    TestRunner->TestEqual(
-                        TEXT("Enemy spawns at its saved position"),
-                        capitals.get_entities().view_locations().xs()[initial_capitals],
-                        30000.f);
-                }
-            })
-            .Then([this, document, editor_enemy, source] {
-                GEditor->EndPlayMap();
-                if (!TestRunner->TestTrue(TEXT("PIE preserves editor actors"),
-                                          IsValid(document) && IsValid(editor_enemy))) {
-                    return;
-                }
-                FString saved;
-                TestRunner->TestTrue(TEXT("Play preserves the saved scene"),
-                                     FFileHelper::LoadFileToString(
-                                         saved, *ioj::editor::s7_editor_config_path(*document)) &&
-                                         saved == source);
-                auto const* binding{document->entities.FindByPredicate(
-                    [](auto const& value) { return value.id == TEXT("enemy"); })};
-                TestRunner->TestTrue(TEXT("PIE preserves editor binding identity"),
-                                     binding && binding->actor == editor_enemy &&
-                                         editor_enemy->export_to_script);
             });
     }
 
-    TEST_METHOD(DelayedObserverScenePlaysThroughAuthoredRuntime)
-    { play_authored_scene(true); }
-    TEST_METHOD(DelayedPlayerScenePlaysThroughAuthoredRuntime)
+    void launch(FString const& path) {
+        auto player{ioj::editor::launch_staged_mission(path, true)};
+        if (s7_level_playable_tests::assert_success(
+                *TestRunner, TEXT("Launch staged mission"), player)) {
+            process_ = *player;
+        }
+    }
+
+    bool check_exit() {
+        int32 code{-1};
+        auto const success{FPlatformProcess::GetProcReturnCode(process_, &code)};
+        FPlatformProcess::CloseProc(process_);
+        return TestRunner->TestTrue(TEXT("Process exited successfully"), success && code == 0);
+    }
+
+    TEST_METHOD(PlayExportsAndLaunchesScriptEdits)
     { play_authored_scene(false); }
+    TEST_METHOD(RefreshCooksSavedAssetAndPlays)
+    { play_authored_scene(true); }
 
-    TEST_METHOD(RepeatedGeometryExportsMatch)
-    {
-        source_directory_ = FPaths::Combine(
-            FPaths::ProjectSavedDir(), TEXT("Automation"), FGuid::NewGuid().ToString());
-        IFileManager::Get().MakeDirectory(*source_directory_, true);
-        FString previous;
-        for (auto const filename : {TEXT("first.scm"), TEXT("second.scm")}) {
-            auto const path{FPaths::Combine(source_directory_, filename)};
-            if (!s7_level_playable_tests::assert_success(
-                    *TestRunner,
-                    TEXT("Export configured meshes"),
-                    ioj::editor::export_entity_geometry(path))) {
-                return;
-            }
-            FString source;
-            if (!TestRunner->TestTrue(TEXT("Read exported module"),
-                                      FFileHelper::LoadFileToString(source, *path))) {
-                return;
-            }
-            if (!previous.IsEmpty()) {
-                TestRunner->TestEqual(
-                    TEXT("Identical assets give identical output"), source, previous);
-            }
-            previous = MoveTemp(source);
-        }
-    }
-
-    TEST_METHOD(DefendCapitalStartsWithExportedGeometry)
-    {
-        using namespace ioj;
-        auto const map{FPaths::Combine(
-            FPaths::ProjectContentDir(),
-            TEXT("Levels/FeatureTests/FT_soa_turrets/test_levels/defend_capital.umap"))};
-        if (!TestRunner->TestTrue(TEXT("Open Defend Capital map"),
-                                  FEditorFileUtils::LoadMap(map, false, false))) {
-            return;
-        }
-        auto* world{GEditor->GetEditorWorldContext().World()};
-        auto document{editor::find_level_authoring_document(*world->GetCurrentLevel())};
-        if (!TestRunner->TestTrue(TEXT("Map embeds its project-relative mission"),
-                                  document && IsValid(*document) &&
-                                      (*document)->source_path ==
-                                          TEXT("LevelScripts/defend_capital/defend_capital.scm"))) {
-            return;
-        }
-        auto definition{editor::read_s7_authored_level(**document)};
-        if (!s7_level_playable_tests::assert_success(
-                *TestRunner, TEXT("Load linked mission"), definition)) {
-            return;
-        }
-        auto& modes{GLevelEditorModeTools()};
-        authoring_was_active_ = modes.IsModeActive(US7LevelAuthoringMode::mode_id);
-        modes.ActivateMode(US7LevelAuthoringMode::mode_id);
-        auto& mode{*CastChecked<US7LevelAuthoringMode>(
-            modes.GetActiveScriptableMode(US7LevelAuthoringMode::mode_id))};
-        previous_overlays_ = mode.collision_overlays();
-        auto const was_dirty{world->GetPackage()->IsDirty()};
-        auto capture{[&] { return s7_level_playable_tests::capture_overlay(mode, *world); }};
-        mode.set_collision_overlays({});
-        TestRunner->TestTrue(TEXT("Hidden overlays draw no lines"), capture().IsEmpty());
-        mode.set_collision_overlays({.grid = true});
-        auto const grid{capture()};
-        FBox grid_box{grid};
-        TestRunner->TestTrue(TEXT("Grid uses the mission's 500000 cm height"),
-                             grid_box.IsValid && grid_box.Min.Z == -250000. &&
-                                 grid_box.Max.Z == 250000.);
-        mode.set_collision_overlays({.bounds = true});
-        auto const boxes{capture()};
-        TestRunner->TestFalse(TEXT("Editor draws placed collision boxes"), boxes.IsEmpty());
-        mode.set_collision_overlays({.grid = true, .bounds = true});
-        TestRunner->TestEqual(
-            TEXT("Both overlays draw independently"), capture().Num(), boxes.Num() + grid.Num());
-        TestRunner->TestEqual(TEXT("Overlay controls preserve map dirty state"),
-                              world->GetPackage()->IsDirty(),
-                              was_dirty);
-
-        mode.set_collision_overlays({.bounds = true});
-        TActorIterator<ATestCapitalShipProxy> capital{world};
-        if (!TestRunner->TestTrue(TEXT("Placed capital"), static_cast<bool>(capital))) {
-            return;
-        }
-        {
-            FScopedTransaction move{
-                NSLOCTEXT("S7PlayableLevel", "MoveCapital", "Move test capital")};
-            capital->Modify();
-            capital->GetRootComponent()->Modify();
-            capital->SetActorLocationAndRotation(FVector{1234., 5678., 9012.},
-                                                 FRotator{15., 32., 8.});
-        }
-        TestRunner->TestTrue(TEXT("Live preview follows the capital placement"),
-                             capture() != boxes);
-        GEditor->UndoTransaction();
-        TestRunner->TestTrue(TEXT("Undo restores the preview before export"), capture() == boxes);
-        mode.set_collision_overlays({.grid = true, .bounds = true});
-        auto const bounds{definition->settings().entity_geometry.player_ship.half_extents};
-        TestCommandBuilder.Do([] { FStartPIECommand{false}.Update(); })
-            .Until([] { return GEditor->PlayWorld && GEditor->PlayWorld->HasBegunPlay(); },
-                   FTimespan::FromSeconds(30))
-            .Then([this, bounds] {
-                TActorIterator<ATestBatchOrchestrator> it{GEditor->PlayWorld.Get()};
-                if (!TestRunner->TestTrue(TEXT("PIE orchestrator"), static_cast<bool>(it))) {
-                    return;
-                }
-                auto* simulation{it->get_level_simulation()};
-                if (!TestRunner->TestNotNull(TEXT("Defend Capital simulation"), simulation)) {
-                    return;
-                }
-                TestRunner->TestEqual(TEXT("PIE uses the exported player collision radius"),
-                                      simulation->spatial_query_manager().entity_type_radius(
-                                          sim::EntityType::PlayerShip),
-                                      std::max({bounds.x(), bounds.y(), bounds.z()}));
-                auto* overlay{it->FindComponentByClass<UCollisionGridVisualizationComponent>()};
-                TestRunner->TestTrue(TEXT("Live grid uses the editor preview height"),
-                                     overlay && overlay->Bounds.BoxExtent.Z == 250000.);
-                it->SetActorTickEnabled(false);
-                it->tick(8.0);
-                simulation = it->get_level_simulation();
-                TestRunner->TestTrue(TEXT("Fighters launch and survive in Play"),
-                                     simulation && simulation->fighters().num_instances() > 0);
-                GEditor->RequestEndPlayMap();
-            })
-            .Until([] { return !GEditor->PlayWorld; }, FTimespan::FromSeconds(30))
-            .Then([this, expected_points = boxes.Num() + grid.Num()] {
-                auto* authoring{
-                    Cast<US7LevelAuthoringMode>(GLevelEditorModeTools().GetActiveScriptableMode(
-                        US7LevelAuthoringMode::mode_id))};
-                if (TestRunner->TestNotNull(TEXT("Authoring mode restored after Play"),
-                                            authoring)) {
-                    auto& editor_world{*GEditor->GetEditorWorldContext().World()};
-                    TestRunner->TestEqual(
-                        TEXT("Both editor overlays return after Play"),
-                        s7_level_playable_tests::capture_overlay(*authoring, editor_world).Num(),
-                        expected_points);
-                }
-            });
-    }
-
-    bool authoring_was_active_{};
-    TOptional<ioj::FCollisionOverlayVisibility> previous_overlays_;
+    FProcHandle process_;
+    FString asset_file_;
+    FString cooked_asset_;
     FString source_directory_;
 };

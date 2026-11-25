@@ -1084,8 +1084,10 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         player->SetActorLocation(FVector{100, 20, 30});
         GEditor->BroadcastEndObjectMovement(*player);
-        TestRunner->TestTrue(TEXT("Play ignores orphaned editor config"),
+        TestRunner->TestTrue(TEXT("Standalone missions do not import the editor config"),
                              ioj::editor::s7_scene_needs_export(document) == false);
+        TestRunner->TestFalse(TEXT("Play stops when the mission dropped the edited scene"),
+                              ioj::editor::prepare_staged_mission(document).has_value());
         TestRunner->TestFalse(TEXT("A standalone mission cannot export its orphaned config"),
                               ioj::editor::check_s7_scene(level, document).has_value());
         if (!assert_success(*TestRunner,

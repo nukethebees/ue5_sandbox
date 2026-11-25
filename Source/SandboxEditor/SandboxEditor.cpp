@@ -1,5 +1,6 @@
 #include "SandboxEditor/SandboxEditor.h"
 
+#include "GenericPlatform/GenericPlatformMisc.h"
 #include "SandboxEditor/levels/S7EntityGeometryExport.h"
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
@@ -9,11 +10,19 @@
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
+#include "Containers/UnrealString.h"
 #include "Editor.h"
 #include "Editor/EditorEngine.h"
 #include "Editor/UnrealEdEngine.h"
 #include "EditorModeManager.h"
+#include "HAL/Platform.h"
+#include "HAL/PlatformProcess.h"
+#include "Internationalization/Internationalization.h"
+#include "Logging/LogMacros.h"
+#include "Logging/LogVerbosity.h"
+#include "Misc/FileHelper.h"
 #include "Misc/MessageDialog.h"
+#include "Misc/Paths.h"
 #include "Modules/ModuleManager.h"
 #include "ToolMenus.h"
 #include "UnrealEdGlobals.h"
@@ -24,6 +33,87 @@
 #include <Misc/TransactionObjectEvent.h>
 #include <UObject/ObjectSaveContext.h>
 #define LOCTEXT_NAMESPACE "FSandboxEditorModule"
+
+namespace ioj::editor {
+static auto current_mission_document() -> AS7LevelAuthoringDocument* {
+    auto* const world{GEditor ? GEditor->GetEditorWorldContext().World() : nullptr};
+    auto* const level{world ? world->GetCurrentLevel() : nullptr};
+    if (!level) {
+        return nullptr;
+    }
+    auto const document{find_level_authoring_document(*level)};
+    return document ? *document : nullptr;
+}
+
+auto prepare_staged_mission(AS7LevelAuthoringDocument& document) -> S7AuthoringResult<FString> {
+    auto stale{s7_scene_needs_export(document)};
+    if (!stale) {
+        return std::unexpected{stale.error()};
+    }
+    if (document.needs_export && !*stale) {
+        return std::unexpected{FString{
+            TEXT("The mission does not import the edited scene. Restore its editor-config.scm "
+                 "import or rebuild the scene from the mission before playing.")}};
+    }
+    if (*stale) {
+        auto result{export_s7_editor_config(*document.GetLevel(), document)};
+        if (!result) {
+            return std::unexpected{result.error()};
+        }
+    }
+    return s7_mission_path(document);
+}
+auto refresh_staged_player() -> FProcHandle {
+    auto const project{FPaths::ConvertRelativePathToFull(FPaths::ProjectDir())};
+    return FPlatformProcess::CreateProc(TEXT("cmake.exe"),
+                                        TEXT("--workflow --preset development-staged-game"),
+                                        false,
+                                        true,
+                                        true,
+                                        nullptr,
+                                        0,
+                                        *project,
+                                        nullptr);
+}
+auto launch_staged_mission(FString const& mission, bool exit_when_ready)
+    -> S7AuthoringResult<FProcHandle> {
+    FString executable;
+    auto const marker{FPaths::ProjectSavedDir() / TEXT("SandboxHost.path")};
+    FFileHelper::LoadFileToString(executable, *marker);
+    executable.TrimStartAndEndInline();
+    if (!FPaths::FileExists(executable)) {
+        return std::unexpected{FString::Printf(
+            TEXT("Build the Development stage to launch SandboxHost (%s)."), *marker)};
+    }
+
+    auto const scripts{
+        FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("LevelScripts"))};
+    auto args{
+        FString::Printf(TEXT("--display-mode windowed --editor-scripts \"%s\" --mission \"%s\""),
+                        *scripts,
+                        *mission)};
+    if (exit_when_ready) {
+        args += TEXT(" --exit-when-ready");
+    }
+    auto const directory{FPaths::GetPath(executable)};
+
+    auto process{FPlatformProcess::CreateProc(
+        *executable, *args, true, false, false, nullptr, 0, *directory, nullptr)};
+    if (!process.IsValid()) {
+        return std::unexpected{FString::Printf(TEXT("Could not launch %s"), *executable)};
+    }
+    return process;
+}
+
+static void launch_mission(FString const& mission) {
+    auto process{launch_staged_mission(mission)};
+    if (!process) {
+        FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(process.error()));
+        return;
+    }
+    FPlatformProcess::CloseProc(*process);
+}
+}
 
 void FSandboxEditorModule::StartupModule() {
     if (GEditor) {
@@ -37,13 +127,6 @@ void FSandboxEditorModule::StartupModule() {
     FCoreUObjectDelegates::OnObjectTransacted.AddRaw(this, &FSandboxEditorModule::on_transacted);
     FEditorDelegates::PreSaveWorldWithContext.AddRaw(this,
                                                      &FSandboxEditorModule::on_pre_save_world);
-    FEditorDelegates::PreBeginPIE.AddRaw(this, &FSandboxEditorModule::on_pre_begin_pie);
-    s7_pie_handle_ = FWorldDelegates::OnWorldInitializedActors.AddLambda(
-        [](FActorsInitializedParams const& params) {
-            if (params.World->WorldType == EWorldType::PIE) {
-                ioj::editor::prepare_s7_scene_for_pie(*params.World);
-            }
-        });
 #if UE_BUILD_DEVELOPMENT
     UE_LOG(LogTemp, Verbose, TEXT("FSandboxEditorModule starting up"));
 #endif
@@ -65,8 +148,10 @@ void FSandboxEditorModule::ShutdownModule() {
     FCoreUObjectDelegates::OnObjectPropertyChanged.RemoveAll(this);
     FCoreUObjectDelegates::OnObjectTransacted.RemoveAll(this);
     FEditorDelegates::PreSaveWorldWithContext.RemoveAll(this);
-    FEditorDelegates::PreBeginPIE.RemoveAll(this);
-    FWorldDelegates::OnWorldInitializedActors.Remove(s7_pie_handle_);
+    FTSTicker::GetCoreTicker().RemoveTicker(refresh_ticker_);
+    if (refresh_process_.IsValid()) {
+        FPlatformProcess::CloseProc(refresh_process_);
+    }
     UToolMenus::UnRegisterStartupCallback(this);
     UToolMenus::UnregisterOwner(this);
 }
@@ -210,25 +295,55 @@ void FSandboxEditorModule::on_pre_save_world(UWorld* world, FObjectPreSaveContex
         }
     }
 }
-void FSandboxEditorModule::on_pre_begin_pie(bool) {
-    auto* world{GEditor->GetEditorWorldContext().World()};
-    if (!world) {
+bool FSandboxEditorModule::can_play_mission() const {
+    return !refresh_process_.IsValid() && ioj::editor::current_mission_document();
+}
+
+void FSandboxEditorModule::play_mission(bool refresh) {
+    auto* document{ioj::editor::current_mission_document()};
+    if (!document || refresh_process_.IsValid()) {
         return;
     }
-    for (auto* level : world->GetLevels()) {
-        auto document{ioj::editor::find_level_authoring_document(*level)};
-        if (document && *document) {
-            auto stale{ioj::editor::s7_scene_needs_export(**document)};
-            if (!stale) {
-                UE_LOG(LogS7LevelAuthoring, Warning, TEXT("%s"), *stale.error());
-            } else if (*stale) {
-                UE_LOG(LogS7LevelAuthoring,
-                       Warning,
-                       TEXT("Scene edits need export. Playing the saved level script. Use Export "
-                            "Scene."));
-            }
-        }
+    auto mission{ioj::editor::prepare_staged_mission(*document)};
+    if (!mission) {
+        FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(mission.error()));
+        return;
     }
+    if (!refresh) {
+        ioj::editor::launch_mission(*mission);
+        return;
+    }
+
+    refresh_process_ = ioj::editor::refresh_staged_player();
+    if (!refresh_process_.IsValid()) {
+        FMessageDialog::Open(EAppMsgType::Ok,
+                             LOCTEXT("RefreshStartFailed",
+                                     "Could not start the Development cook and stage workflow."));
+        return;
+    }
+    refresh_mission_ = MoveTemp(*mission);
+    refresh_ticker_ = FTSTicker::GetCoreTicker().AddTicker(
+        FTickerDelegate::CreateRaw(this, &FSandboxEditorModule::poll_refresh), 0.5f);
+}
+
+bool FSandboxEditorModule::poll_refresh(float) {
+    if (FPlatformProcess::IsProcRunning(refresh_process_)) {
+        return true;
+    }
+    int32 code{};
+    auto const success{FPlatformProcess::GetProcReturnCode(refresh_process_, &code) && code == 0};
+    FPlatformProcess::CloseProc(refresh_process_);
+    refresh_process_.Reset();
+    if (success) {
+        ioj::editor::launch_mission(refresh_mission_);
+    } else {
+        FMessageDialog::Open(
+            EAppMsgType::Ok,
+            FText::Format(LOCTEXT("RefreshFailed", "Development cook and stage failed (exit {0})."),
+                          code));
+    }
+    refresh_mission_.Reset();
+    return false;
 }
 
 // Menu Extensions
@@ -236,6 +351,25 @@ void FSandboxEditorModule::register_menu_extensions() {
 
     FToolMenuOwnerScoped owner{this};
     TRY_INIT_PTR(tool_menus, UToolMenus::Get());
+
+    auto* const play_menu{tool_menus->ExtendMenu("LevelEditor.LevelEditorToolBar.PlayToolBar")};
+    play_menu->FindOrAddSection("Play").AddEntry(FToolMenuEntry::InitToolBarButton(
+        "SandboxPlayExternalMission",
+        FUIAction{FExecuteAction::CreateRaw(this, &FSandboxEditorModule::play_mission, false),
+                  FCanExecuteAction::CreateRaw(this, &FSandboxEditorModule::can_play_mission)},
+        LOCTEXT("PlayMission", "Play Mission"),
+        LOCTEXT("PlayMissionTip",
+                "Export scene changes and run this mission with the staged Development player"),
+        FSlateIcon(FAppStyle::GetAppStyleSetName(), "PlayWorld.PlayInViewport")));
+
+    play_menu->FindOrAddSection("Play").AddEntry(FToolMenuEntry::InitToolBarButton(
+        "SandboxRefreshPlayMission",
+        FUIAction{FExecuteAction::CreateRaw(this, &FSandboxEditorModule::play_mission, true),
+                  FCanExecuteAction::CreateRaw(this, &FSandboxEditorModule::can_play_mission)},
+        LOCTEXT("RefreshPlay", "Refresh & Play"),
+        LOCTEXT("RefreshPlayTip",
+                "Cook saved asset changes, stage the Development player, and run this mission"),
+        FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Refresh")));
 
     TRY_INIT_PTR(menu, tool_menus->ExtendMenu("LevelEditor.LevelEditorToolBar.User"));
     FToolMenuSection& section{menu->AddSection("SandboxTools", FText::FromString("Sandbox Tools"))};

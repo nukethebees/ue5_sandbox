@@ -1,6 +1,6 @@
 # SandboxHost on Windows
 
-Set `UE_ROOT` to the [patched UE 5.8.4 source build](../../unreal/engine/README.md). Cook the content once in Development, then build the `stage` target for Win64 Development, DebugGame, or Shipping. All configurations share the Development cook. The player launcher lives at `stage/Windows/Sandbox/Binaries/Win64/SandboxHost.exe` beside the configuration's Unreal game DLL. Run `coj run-staged` for the Development stage. Each launcher requires its paired game DLL.
+Set `UE_ROOT` to the [patched UE 5.8.4 source build](../../unreal/engine/README.md). Cook the content once in Development, then build the `stage` target for Win64 Development, DebugGame, or Shipping. All configurations share the Development cook. The player launcher lives at `stage/Windows/Sandbox/Binaries/Win64/SandboxHost.exe` beside the configuration's Unreal game DLL. Run `coj run-staged` for the Development stage. The editor's **Play Mission** button exports scene edits and launches the Development player with the worktree scripts and profile. **Refresh & Play** also cooks and stages saved asset edits before launch. Each launcher requires its paired game DLL.
 
 SDL3 creates the launcher window, queries the desktop display, and loads the paired game DLL. Unreal receives native window messages directly and owns gameplay input. Display previews use the viewport HWND so Revert restores the original Win32 window placement.
 

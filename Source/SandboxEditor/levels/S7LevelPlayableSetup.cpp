@@ -29,34 +29,6 @@ inline constexpr TCHAR game_mode_class_path[]{
 
 }
 
-void prepare_s7_scene_for_pie(UWorld& world) {
-    for (TActorIterator<ATestBatchOrchestrator> it{&world}; it; ++it) {
-        it->set_collision_overlays(US7LevelAuthoringMode::collision_overlays());
-        auto const mode{it->get_start_mode()};
-        if (mode != EOrchestratorStartMode::AuthoredLevel &&
-            mode != EOrchestratorStartMode::Automatic) {
-            continue;
-        }
-        auto& level{*it->GetLevel()};
-        auto document{find_level_authoring_document(level)};
-        if (!document) {
-            UE_LOG(LogS7LevelAuthoring, Warning, TEXT("%s"), *document.error());
-            continue;
-        }
-        if (!*document) {
-            continue;
-        }
-        it->set_level_script(s7_mission_path(**document));
-        it->clear_player_ship();
-        auto const actors{level.Actors};
-        for (auto const actor : actors) {
-            if (IsValid(actor) && resolve_s7_level_actor(*actor)) {
-                world.DestroyActor(actor.Get(), false, false);
-            }
-        }
-    }
-}
-
 auto compile_playable_s7_definition(levels::LevelDefinition const& definition,
                                     USpaceGameLevelConfig const& resources)
     -> S7AuthoringResult<sim::LevelSimInitData> {
