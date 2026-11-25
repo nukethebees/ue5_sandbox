@@ -4,7 +4,10 @@
 #include <ioj/settings/screen_resolution.h>
 #include <ioj/settings/window_display_settings.h>
 
+#include <SDL3/SDL_rect.h>
+
 #include <expected>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -31,6 +34,10 @@ class Window {
     auto refresh_resolutions() -> Result;
     auto show(PlayerSettings& settings) -> Result;
     auto synchronize_resize(PlayerSettings& settings) -> Result;
+    auto preview(WindowDisplaySettings display) -> Result;
+    auto revert_preview() -> Result;
+    auto verify_preview() const -> Result;
+    void keep_preview(PlayerSettings& settings);
     auto configure(WindowDisplaySettings display)
         -> std::expected<WindowDisplaySettings, std::string>;
 
@@ -38,6 +45,13 @@ class Window {
     auto synchronize(bool activate) -> Result;
 
     auto display() const -> std::expected<WindowDisplaySettings, std::string>;
+    struct Preview {
+        SDL_Rect floating;
+        bool maximized;
+        bool fullscreen;
+        WindowDisplaySettings requested;
+    };
+    std::optional<Preview> preview_;
     SDL_Window* window_{};
     std::vector<ScreenResolution> supported_resolutions_;
 };

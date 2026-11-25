@@ -92,7 +92,9 @@ auto Window::synchronize_resize(PlayerSettings& settings) -> Result {
     if (!actual) {
         return std::unexpected{std::move(actual.error())};
     }
+    if (!preview_) {
     settings.set_running_display(*actual);
+    }
     return synchronize(false);
 }
 }

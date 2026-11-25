@@ -52,4 +52,73 @@ auto Window::configure(WindowDisplaySettings requested)
     }
     return actual;
 }
+
+auto Window::preview(WindowDisplaySettings requested) -> Result {
+    auto const flags{SDL_GetWindowFlags(window_)};
+    Preview previous{.maximized = (flags & SDL_WINDOW_MAXIMIZED) != 0,
+                     .fullscreen = (flags & SDL_WINDOW_FULLSCREEN) != 0};
+    if (previous.maximized && (!SDL_RestoreWindow(window_) || !SDL_SyncWindow(window_))) {
+        return std::unexpected{std::string{SDL_GetError()}};
+    }
+
+    if (!SDL_GetWindowPosition(window_, &previous.floating.x, &previous.floating.y) ||
+        !SDL_GetWindowSize(window_, &previous.floating.w, &previous.floating.h)) {
+        return std::unexpected{std::string{SDL_GetError()}};
+    }
+    preview_ = previous;
+    auto actual{configure(requested)};
+    Result result;
+    if (actual) {
+        preview_->requested = *actual;
+        result = synchronize(false);
+    } else {
+        result = std::unexpected{std::move(actual.error())};
+    }
+    if (!result) {
+        if (auto rollback{revert_preview()}; !rollback) {
+            result.error() += "; rollback failed: " + rollback.error();
+        }
+    }
+    return result;
+}
+
+void Window::keep_preview(PlayerSettings& settings) {
+    if (preview_) {
+        settings.set_running_display(preview_->requested);
+        preview_.reset();
+    }
+}
+
+auto Window::verify_preview() const -> Result {
+    if (preview_) {
+        auto actual{display()};
+        if (!actual) {
+            return std::unexpected{std::move(actual.error())};
+        }
+        if (actual->mode != preview_->requested.mode ||
+            actual->resolution != preview_->requested.resolution) {
+            return std::unexpected{"The display changed during confirmation"};
+        }
+    }
+    return {};
+}
+
+auto Window::revert_preview() -> Result {
+    if (!preview_) {
+        return {};
+    }
+    auto const& previous{*preview_};
+    if (!SDL_SetWindowFullscreen(window_, previous.fullscreen) ||
+        (!previous.fullscreen &&
+         (!SDL_SetWindowSize(window_, previous.floating.w, previous.floating.h) ||
+          !SDL_SetWindowPosition(window_, previous.floating.x, previous.floating.y))) ||
+        (previous.maximized && !SDL_MaximizeWindow(window_)) || !SDL_SyncWindow(window_)) {
+        return std::unexpected{std::string{SDL_GetError()}};
+    }
+    auto result{synchronize(false)};
+    if (result) {
+        preview_.reset();
+    }
+    return result;
+}
 }
