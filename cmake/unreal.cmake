@@ -21,6 +21,7 @@ function(sandbox_project_enables_plugin output project_file plugin_name)
 endfunction()
 
 function(add_unreal_target target_name unreal_target)
+  cmake_parse_arguments(PARSE_ARGV 2 build "" "" "BYPRODUCTS")
   set(cache_start_command)
   set(build_environment)
   if(IOJ_ENABLE_UBA_CACHE)
@@ -37,6 +38,7 @@ function(add_unreal_target target_name unreal_target)
   endif()
 
   add_custom_target(${target_name}
+    BYPRODUCTS ${build_BYPRODUCTS}
     ${cache_start_command}
     COMMAND
       ${build_environment} coj unreal-build

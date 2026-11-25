@@ -1,6 +1,6 @@
 # Patched Unreal Engine 5.8.4
 
-Sandbox uses Epic's `5.8.4-release` at `f45729c0b6f097038e72b52d366a62baeca3275b`. The first patch lets SandboxHost opt into Slate activation. The second supplies the SandboxISMC instance-input hook. The patched Git tree is `31a46918d435f5c93a95acf130fdd7524ca24422`.
+Sandbox uses Epic's `5.8.4-release` at `f45729c0b6f097038e72b52d366a62baeca3275b`. The first patch lets IojPlayer opt into Slate activation. The second supplies the SandboxISMC instance-input hook. The patched Git tree is `31a46918d435f5c93a95acf130fdd7524ca24422`.
 
 Run these PowerShell commands from the game repository with a clean Epic source checkout at `$engine`. The checkout must contain the release tag.
 
