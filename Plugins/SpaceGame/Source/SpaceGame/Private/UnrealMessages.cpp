@@ -1,5 +1,6 @@
 #include "SpaceGame/UnrealMessages.h"
 
+#include "SpaceGame/settings/OptionsDraft.h"
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 #include <ioj/host/game_host_api.h>
@@ -27,6 +28,7 @@ std::vector<ScreenResolution> const* window_resolutions{};
 struct MessageBuffer {
     std::vector<host::ProfileAction> profile_actions;
     std::vector<host::PreferenceEdit> preference_edits;
+    std::vector<TWeakObjectPtr<UOptionsDraft>> preference_senders;
     host::NavigationRequest navigation_request;
     std::optional<levels::LaunchMode> requested_simulation_mode;
     sim::player::PlayerInputEvents ship_input{*std::pmr::get_default_resource()};
@@ -55,6 +57,11 @@ auto player_profiles() -> profiles::ProfileManager const& {
 auto profile_browser() -> profiles::SaveGameBrowser const& {
     check(attached_browser);
     return *attached_browser;
+}
+
+void queue_preferences(host::PreferenceEdit edit, UOptionsDraft& draft) {
+    pending.preference_edits.push_back(edit);
+    pending.preference_senders.emplace_back(&draft);
 }
 
 void request_mission(session::PendingLevel mission) {
@@ -110,6 +117,7 @@ void IojPlayer_Attach(PlayerSettings const& settings,
 void clear_consumed_messages() {
     published.profile_actions.clear();
     published.preference_edits.clear();
+    published.preference_senders.clear();
     published.navigation_request.emplace<std::monostate>();
     published.requested_simulation_mode.reset();
 }
@@ -125,6 +133,11 @@ auto host::take_messages() -> UnrealMessages {
             published.ship_input};
 }
 
+void host::preference_result(std::size_t index, std::string_view error) {
+    if (auto* draft{published.preference_senders[index].Get()}) {
+        draft->preference_finished(published.preference_edits[index], error);
+    }
+}
 #endif
 
 void detach_player() {
