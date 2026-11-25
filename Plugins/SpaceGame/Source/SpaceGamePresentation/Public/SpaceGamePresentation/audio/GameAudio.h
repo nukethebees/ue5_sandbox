@@ -37,6 +37,7 @@ struct SPACEGAMEPRESENTATION_API FGameAudio {
     void set_master_volume(float volume);
     void set_music_volume(float volume);
     void set_sfx_volume(float volume);
+    void set_ui_volume(float volume);
 
     [[nodiscard]] auto facade() -> FGameAudioFacade;
 
@@ -64,6 +65,7 @@ struct SPACEGAMEPRESENTATION_API FGameAudio {
     float master_volume_{1.0f};
     float music_volume_{1.0f};
     float sfx_volume_{1.0f};
+    float ui_volume_{1.0f};
     bool ambience_playback_warning_logged_{};
     bool button_playback_warning_logged_{};
     bool player_ship_ambience_playback_warning_logged_{};
