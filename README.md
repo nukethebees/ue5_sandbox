@@ -41,7 +41,7 @@ Press **Play** in the editor to start the game. Hold the right mouse button and 
 
 - **Standalone native libraries** — `cmake --workflow --preset native-lean`
 - **Visual Studio project files** — `coj unreal project-files --build-dir out/build/debug-game`. Select `DebugGame Editor` and `Win64`.
-- **Stage and launch the game** — `cmake --workflow --preset development-staged-game`, then `coj run-staged`
+- **Stage and launch the game** - `cmake --workflow --preset development-staged-game`, then `coj run-staged`. See the [Win64 host options](native/sandbox_host/README.md)
 - **Package the game** — `cmake --workflow --preset development-package`
 
 Editor builds, cooking, and automation share Unreal's local Zen derived data cache. Keep it between builds.

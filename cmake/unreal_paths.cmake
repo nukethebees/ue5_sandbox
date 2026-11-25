@@ -53,6 +53,6 @@ function(sandbox_configure_game_artifact_paths prefix artifact_root base_directo
   set(${prefix}_ARCHIVE_ROOT "${configuration_root}/archive" PARENT_SCOPE)
   set(${prefix}_STAGE_DIRECTORY "${configuration_root}/stage/Windows" PARENT_SCOPE)
   set(${prefix}_ARCHIVE_DIRECTORY "${configuration_root}/archive" PARENT_SCOPE)
-  set(${prefix}_STAGE_EXECUTABLE "${configuration_root}/stage/Windows/Sandbox.exe" PARENT_SCOPE)
+  set(${prefix}_STAGE_EXECUTABLE "${configuration_root}/stage/Windows/Sandbox/Binaries/Win64/SandboxHost.exe" PARENT_SCOPE)
   set(${prefix}_VERIFICATION_ROOT "${configuration_root}/verification" PARENT_SCOPE)
 endfunction()

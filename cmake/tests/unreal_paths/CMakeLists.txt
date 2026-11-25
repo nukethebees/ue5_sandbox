@@ -23,7 +23,7 @@ sandbox_assert_equal("artifact cook path"
   "${game_artifact_COOK_DIRECTORY}" [=[C:/Artifacts Root/Sandbox/Win64/cook/Windows]=])
 sandbox_assert_equal("artifact stage executable path"
   "${game_artifact_STAGE_EXECUTABLE}"
-  [=[C:/Artifacts Root/Sandbox/Win64/DebugGame/stage/Windows/Sandbox.exe]=])
+  [=[C:/Artifacts Root/Sandbox/Win64/DebugGame/stage/Windows/Sandbox/Binaries/Win64/SandboxHost.exe]=])
 sandbox_assert_equal("artifact verification path"
   "${game_artifact_VERIFICATION_ROOT}"
   [=[C:/Artifacts Root/Sandbox/Win64/DebugGame/verification]=])

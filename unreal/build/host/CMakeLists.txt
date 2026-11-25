@@ -65,3 +65,7 @@ else()
 endif()
 add_player_launcher(SandboxHost "${PROJECT_SOURCE_DIR}/Binaries/Win64/${game_dll_name}" game)
 set(IOJ_GAME_DLL_NAME "${game_dll_name}" PARENT_SCOPE)
+
+if(UE_CONFIGURATION STREQUAL "Development")
+  add_subdirectory(tests)
+endif()
