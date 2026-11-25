@@ -1,6 +1,9 @@
 #include "support/collision_agent_storage.h"
 #include "support/simulation_checks.h"
+#include "support/simulation_test_support.h"
 #include <ioj/frame_memory_resource.h>
+#include <ioj/memory/bump_resource.h>
+#include <ioj/presentation/hud_model.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 
 #include <gtest/gtest.h>
@@ -64,6 +67,34 @@ void initialise_queries(SpatialQueryManager& manager, CollisionAgentStorage cons
 }
 
 namespace ioj::sim::tests {
+TEST(LevelLifetime, DisconnectsHudAndReturnsOverflowBeforeReusingArena) {
+    query_scratch_detail::CountingResource upstream;
+    auto const fixture{make_fixture()};
+    presentation::HudModel hud;
+    {
+        memory::BumpResource arena{4096, upstream};
+        for (unsigned mission{}; mission < 3; ++mission) {
+            SimulationScenario data{make_simulation_data(fixture)};
+            add_player_spawn(data, make_player_spawn(fixture));
+            {
+                LevelSim level{std::move(data).compile(), arena};
+                hud.initialise(level.read_access());
+                ASSERT_TRUE(hud.sampled_speed_view());
+                EXPECT_GT(upstream.outstanding.load(), 1u);
+                hud.deactivate();
+            }
+
+            EXPECT_FALSE(hud.sampled_speed_view());
+            EXPECT_EQ(upstream.outstanding.load(), 1u);
+            EXPECT_GT(arena.used_bytes(), 0u);
+            arena.reset();
+            EXPECT_EQ(arena.used_bytes(), 0u);
+        }
+    }
+
+    EXPECT_EQ(upstream.outstanding.load(), 0u);
+}
+
 TEST(QueryScratch, ExhaustionForwardsToUpstream) {
     CollisionAgentStorage owners;
     owners.publish();
