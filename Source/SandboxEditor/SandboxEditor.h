@@ -1,7 +1,5 @@
 #pragma once
 
-#include "SandboxGameShared/logging/LogMsgMixin.hpp"
-
 #include "CoreMinimal.h"
 #include "Delegates/IDelegateInstance.h"
 #include "Modules/ModuleManager.h"
@@ -12,9 +10,7 @@ struct FPropertyChangedEvent;
 class UWorld;
 class FTransactionObjectEvent;
 
-class SANDBOXEDITOR_API FSandboxEditorModule
-    : public IModuleInterface
-    , public ioj::LogMsgMixin<"FSandboxEditorModule"> {
+class SANDBOXEDITOR_API FSandboxEditorModule : public IModuleInterface {
   public:
     virtual void StartupModule() override;
     virtual void ShutdownModule() override;
