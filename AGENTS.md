@@ -142,7 +142,9 @@ Unreal Engine 5.8 project.
   In `.cpp` category groups, omit blank lines between adjacent function definitions; separate
   categories with blank lines around banners.
 * Prefer `std::in_place`/`std::unexpect` for `std::expected` returns when they avoid copies/moves.
-* Prefer concise UObject names within dedicated plugins/namespaces.
+* Prefer concise but semantically complete variable names. Do not omit meaningful nouns or
+  qualifiers merely to shorten identifiers. Names should remain understandable at their use sites
+  without consulting their declarations. Names must accurately describe what objects represent.
 * Avoid anonymous-namespace `.cpp` constants: Unreal unity builds can merge translation units.
   Prefer `static constexpr` members or `inline constexpr` constants in a specific named namespace.
 
