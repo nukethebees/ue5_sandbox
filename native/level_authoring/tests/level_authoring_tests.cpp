@@ -1,28 +1,64 @@
 #include "module_fixture.h"
-#include "settings_diff.h"
+#include "settings_diff.h" // IWYU pragma: keep
+#include <ioj/constrained_numbers.h>
 #include <ioj/files.h>
-#include <ioj/levels/authoring/campaign_parser.h>
+#include <ioj/gfx/starfield_settings.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/game_configuration.h>
 #include <ioj/levels/authoring/level_catalog_category.h>
 #include <ioj/levels/authoring/level_definition_writer.h>
-#include <ioj/levels/authoring/level_inputs_reader.h>
+#include <ioj/levels/authoring/level_inputs.h>
+#include <ioj/levels/authoring/level_inputs_reader.h> // IWYU pragma: keep
 #include <ioj/levels/authoring/level_parser.h>
+#include <ioj/levels/campaign_definition.h>
+#include <ioj/levels/diagnostic_code.h>
+#include <ioj/levels/diagnostics.h>
+#include <ioj/levels/entity_archetype.h>
+#include <ioj/levels/entity_spawn_definition.h>
+#include <ioj/levels/identifiers.h>
+#include <ioj/levels/level_camera_definition.h>
+#include <ioj/levels/level_definition.h>
+#include <ioj/levels/level_definition_components.h>
+#include <ioj/levels/logic_payloads.h>
+#include <ioj/levels/team.h>
 #include <ioj/s7/interpreter.h>
+#include <ioj/s7/reader.h>
 #include <ioj/s7/source_format.h>
+#include <ioj/s7/writer.h>
+#include <ioj/settings/game_setting.h>
+#include <ioj/settings/game_settings.h>
 #include <ioj/settings/game_settings_edit_state.h>
-#include <ioj/settings/settings_values_writer.h>
+#include <ioj/settings/game_settings_state.h>
+#include <ioj/settings/game_window_mode.h>
+#include <ioj/settings/launch_display_mode.h>
+#include <ioj/settings/player_settings.h>
+#include <ioj/settings/screen_resolution.h>
+#include <ioj/settings/setting_control_kind.h>
+#include <ioj/settings/settings.h>
+#include <ioj/settings/settings_values_writer.h> // IWYU pragma: keep
+#include <ioj/settings/window_display_settings.h>
 #include <ioj/testing/files.h>
 #include <ioj/testing/structural_diff.h>
+#include <ioj/vector.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <expected>
+#include <filesystem>
 #include <format>
 #include <limits>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <system_error>
 #include <type_traits>
-#include <unordered_set>
+#include <utility>
+#include <variant>
+#include <vector>
 
 namespace ioj::levels::authoring::tests {
 using ioj::testing::structurally_equal;
@@ -99,6 +135,43 @@ static_assert(!std::is_convertible_v<std::string, LevelId>);
 static_assert(!std::is_default_constructible_v<LevelDefinition>);
 static_assert(std::is_same_v<decltype(std::declval<LevelDefinition&>().entities()),
                              std::vector<EntitySpawnDefinition> const&>);
+
+TEST(NativeSettings, WindowSizeOverrideSurvivesAnUnrelatedAudioSave) {
+    TemporaryLevelDirectory directory;
+    auto const path{directory.path() / "Config/user-settings.scm"};
+    ScreenResolution const desktop{2560, 1440};
+    auto config{read_user_settings(IOJ_LEVEL_SCRIPTS, path, desktop)};
+    ASSERT_TRUE(config) << config.error();
+
+    auto saved{config->applied};
+    saved.window_mode = GameWindowMode::Windowed;
+    saved.resolution = {960, 540};
+    ASSERT_TRUE(save_user_settings(path, saved, config->defaults));
+
+    PlayerSettings first;
+    PlayerSettings second;
+    ASSERT_TRUE(first.load(IOJ_LEVEL_SCRIPTS, path, desktop, LaunchDisplayMode::Windowed));
+    ASSERT_TRUE(second.load(IOJ_LEVEL_SCRIPTS, path, desktop, LaunchDisplayMode::Windowed));
+    first.set_running_display({GameWindowMode::Windowed, {800, 500}});
+    auto edited{first.applied()};
+    edited.master_volume = saved.master_volume == 0.25f ? 0.75f : 0.25f;
+    auto const before{first.applied()};
+    first.apply(audio_settings(edited));
+
+    auto const backup{directory.path() / "previous.scm"};
+    std::filesystem::rename(path, backup);
+    std::filesystem::create_directory(path);
+    EXPECT_FALSE(first.save_category(GameSettingCategory::Audio, edited, before));
+    std::filesystem::remove(path);
+    std::filesystem::rename(backup, path);
+
+    ASSERT_TRUE(first.save_category(GameSettingCategory::Audio, edited, before));
+    EXPECT_EQ(second.applied(), saved);
+    saved.master_volume = edited.master_volume;
+    auto persisted{read_user_settings(IOJ_LEVEL_SCRIPTS, path, desktop)};
+    ASSERT_TRUE(persisted) << persisted.error();
+    EXPECT_EQ(persisted->applied, saved);
+}
 
 TEST(NativeSettings, PersonalPreferencesRoundTripEveryEditableScalar) {
     TemporaryLevelDirectory directory;
