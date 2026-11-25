@@ -2,6 +2,7 @@
 
 #include <ioj/settings/application_settings.h>
 #include <ioj/settings/game_settings_state.h>
+#include <ioj/settings/screen_resolution.h>
 
 #include <expected>
 #include <filesystem>

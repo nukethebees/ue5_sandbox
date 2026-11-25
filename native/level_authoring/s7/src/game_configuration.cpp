@@ -3,14 +3,30 @@
 #include "reader_diagnostics.h"
 #include <ioj/files.h>
 #include <ioj/levels/authoring/definition_reader.h>
-#include <ioj/settings/application_settings_reader.h>
+#include <ioj/levels/diagnostics.h>
+#include <ioj/s7/writer.h>
+#include <ioj/settings/application_settings.h>
+#include <ioj/settings/application_settings_reader.h> // IWYU pragma: keep
 #include <ioj/settings/game_settings_edit_state.h>
-#include <ioj/settings/game_settings_state_reader.h>
+#include <ioj/settings/game_settings_state.h>
+#include <ioj/settings/game_settings_state_reader.h> // IWYU pragma: keep
 #include <ioj/settings/game_settings_state_writer.h>
+#include <ioj/settings/screen_resolution.h>
 
+#include <codegen/sexpr/dialect.h>
+#include <codegen/sexpr/sexpr_renderer.h>
+#include <lispb/strings.h>
+
+#include <expected>
+#include <filesystem>
+#include <format>
 #include <fstream>
+#include <ios>
 #include <random>
+#include <string>
 #include <string_view>
+#include <system_error>
+#include <utility>
 
 namespace ioj::levels::authoring {
 namespace {
@@ -18,18 +34,23 @@ template <class T>
 auto read_config(DefinitionReader const& reader,
                  std::filesystem::path const& path,
                  char const* export_name) -> std::expected<T, std::string> {
+    using ConfigResult = std::expected<T, std::string>;
+
     auto ast{reader.read_script_file(path, export_name)};
     if (!ast) {
-        return std::unexpected{format_diagnostics(ast.error())};
+        return ConfigResult{std::unexpect, format_diagnostics(ast.error())};
     }
+
     auto result{s7::read<T>(s7::Reader{*ast}, ast->root, export_name)};
     if (!result) {
-        return std::unexpected{
+        return ConfigResult{
+            std::unexpect,
             std::format("{}: {}",
                         path_to_utf8(path),
                         format_diagnostics(detail::diagnostics(std::move(result.error()))))};
     }
-    return *result;
+
+    return ConfigResult{std::in_place, std::move(*result)};
 }
 
 auto read_preferences(DefinitionReader const& reader,
@@ -53,6 +74,7 @@ auto write_preferences(std::filesystem::path const& path, std::string_view sourc
         return SavePreferencesResult{std::unexpect,
                                      std::format("{}: {}", path_to_utf8(path), error.message())};
     }
+
     auto temporary{path};
     temporary += std::format(".{:x}.tmp", std::random_device{}());
     std::ofstream output{temporary, std::ios::binary | std::ios::noreplace};
@@ -60,11 +82,13 @@ auto write_preferences(std::filesystem::path const& path, std::string_view sourc
         return SavePreferencesResult{std::unexpect,
                                      std::format("Cannot create {}", path_to_utf8(temporary))};
     }
+
     output << source;
     output.close();
     if (output) {
         std::filesystem::rename(temporary, path, error);
     }
+
     std::error_code ignored;
     std::filesystem::remove(temporary, ignored);
     if (!output || error) {
@@ -98,6 +122,7 @@ auto read_user_settings(std::filesystem::path const& script_root,
             return UserSettingsResult{
                 std::unexpect, std::format("{}: {}", path_to_utf8(personal_file), error.message())};
         }
+
         auto created{save_user_settings(personal_file, *defaults, *defaults)};
         if (!created) {
             return UserSettingsResult{std::unexpect, std::move(created.error())};
@@ -108,6 +133,7 @@ auto read_user_settings(std::filesystem::path const& script_root,
     if (!applied) {
         return UserSettingsResult{std::unexpect, std::move(applied.error())};
     }
+
     return UserSettingsResult{std::in_place, *defaults, *applied};
 }
 
