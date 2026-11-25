@@ -1,15 +1,11 @@
 #include <ioj/memory/bump_resource.h>
 
-#include <sbx/memory_resource.h>
-
 #include <algorithm>
 #include <cstdint>
 #include <memory>
 
 namespace ioj::memory {
 
-BumpResource::BumpResource(std::size_t const capacity_bytes)
-    : BumpResource{capacity_bytes, *sbx::memory::mimalloc_resource()} {}
 BumpResource::BumpResource(std::size_t const capacity_bytes, std::pmr::memory_resource& upstream)
     : upstream_{upstream}
     , buffer_{nullptr, capacity_bytes, backing_alignment} {

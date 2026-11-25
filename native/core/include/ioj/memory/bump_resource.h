@@ -12,7 +12,6 @@ class BumpResource final : public std::pmr::memory_resource {
     static constexpr std::size_t default_capacity_bytes{std::size_t{1} << 30};
     static constexpr std::size_t backing_alignment{64};
 
-    explicit BumpResource(std::size_t capacity_bytes = default_capacity_bytes);
     BumpResource(std::size_t capacity_bytes, std::pmr::memory_resource& upstream);
     ~BumpResource() override;
 
