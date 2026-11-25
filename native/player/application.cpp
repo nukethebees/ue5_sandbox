@@ -5,13 +5,20 @@
 #include "window.h"
 #include <ioj/files.h>
 #include <ioj/host/game_host_api.h>
+#include <ioj/host/level_host.h>
+#include <ioj/host/mission_startup.h>
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/profiles/file_profile_storage.h>
+#include <ioj/profiles/level_score.h>
+#include <ioj/sim/levels/level_simulation_builder.h>
 
+#include <sbx/memory_resource.h>
 
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_filesystem.h>
 
+#include <chrono>
 #include <cstddef>
 #include <cstdio>
 #include <exception>
@@ -22,6 +29,7 @@
 #include <span>
 #include <string>
 #include <utility>
+#include <variant>
 
 namespace ioj::player {
 namespace {
@@ -92,7 +100,9 @@ Application::Application(CliArgs args)
     , capabilities_{query_game_capabilities()}
     , profile_browser_{
           [this] { return profiles::discover_profiles(profiles_); },
-          [this](std::string const& id) { return profiles::load_report(profiles_, id); }} {}
+          [this](std::string const& id) { return profiles::load_report(profiles_, id); }}
+    , level_arena_{memory::BumpResource::default_capacity_bytes,
+                   *sbx::memory::mimalloc_resource()} {}
 
 auto Application::run() -> Result {
     auto paths{resolve_launch_paths(args_)};
@@ -159,6 +169,13 @@ auto Application::run() -> Result {
         play_result = std::unexpected{"Unexpected exception while running the game"};
     }
 
+    try {
+        unload_level(sim::RunEndReason::WorldEnd, false);
+    } catch (...) {
+        shutdown_engine(window);
+        throw;
+    }
+
     auto shutdown_result{shutdown_engine(window)};
     if (!play_result && !shutdown_result) {
         play_result.error() += "; " + shutdown_result.error();
@@ -170,6 +187,8 @@ auto Application::run() -> Result {
 }
 auto Application::play(Window& window) -> Result {
     auto const mode{args_.launch_display_mode};
+    auto const& mission{paths_.mission_path};
+    auto const exit_when_ready{args_.exit_when_ready};
     if (!IojPlayer_GameReady()) {
         return Result{std::unexpect,
                       "Unreal did not initialize a playable world. See the game log."};
@@ -185,6 +204,15 @@ auto Application::play(Window& window) -> Result {
         }
     }
 
+    if (!mission.empty()) {
+        if (!launch_mission(mission)) {
+            return Result{std::unexpect, "Mission launch failed: " + path_to_utf8(mission)};
+        }
+
+        host::open_mission();
+    }
+
+    auto const deadline{std::chrono::steady_clock::now() + std::chrono::minutes{2}};
     while (!IojPlayer_ExitRequested()) {
         IojPlayer_BeginFrame();
         SDL_Event event;
@@ -219,13 +247,168 @@ auto Application::play(Window& window) -> Result {
             }
         }
 
+        if (exit_when_ready) {
+            auto const startup{IojPlayer_MissionStartup()};
+            if (mission.empty() || startup == MissionStartup::Ready) {
+                std::println("Ready: {}", mission.empty() ? "MainMenu" : path_to_utf8(mission));
+                return {};
+            }
+
+            if (startup == MissionStartup::Failed || std::chrono::steady_clock::now() >= deadline) {
+                return Result{std::unexpect,
+                              "Mission did not reach simulation readiness. See the game log."};
+            }
+        }
+
         if (auto result{tick_engine()}; !result) {
             return result;
         }
 
+        auto const messages{host::take_messages()};
+
+        auto const& navigation{messages.navigation_request};
+        if (auto const* menu{std::get_if<session::LevelSelectRequest>(&navigation)}) {
+            pending_level_.reset();
+            unload_level(sim::RunEndReason::WorldEnd, false);
+            host::open_menu(menu->preferred_level_id.value, menu->launch_error);
+            continue;
+        }
+
+        if (auto const* mission_request{std::get_if<session::PendingLevel>(&navigation)}) {
+            unload_level(sim::RunEndReason::WorldEnd, false);
+            pending_level_.emplace(*mission_request);
+            host::open_mission();
+            continue;
+        }
+
+        if (!level_) {
+            if (pending_level_ && host::level_world_ready()) {
+                create_level(*pending_level_);
+                pending_level_.reset();
+            }
+            continue;
+        }
+
+        if (host::presents_level(*level_)) {
+            level_->append_player_input(messages.ship_input);
+            if (messages.requested_simulation_mode == levels::LaunchMode::Running &&
+                level_->state() == sim::LevelState::Paused) {
+                level_->start();
+            } else if (messages.requested_simulation_mode == levels::LaunchMode::Paused &&
+                       level_->state() == sim::LevelState::Running) {
+                level_->pause();
+            }
+
+            if (auto delta_seconds{host::take_frame_delta_seconds()}) {
+                advance_level(*delta_seconds);
+            }
+        }
+    }
+
+    if (exit_when_ready) {
+        return Result{std::unexpect, "Engine exited before readiness"};
     }
 
     return {};
 }
 
+auto Application::launch_mission(std::filesystem::path const& path) -> bool {
+    auto definition{levels::authoring::DefinitionReader::for_level(path).read_level_file(path)};
+    if (!definition) {
+        auto error{levels::format_diagnostics(definition.error())};
+        std::println(stderr, "Mission launch failed: {}", error);
+        return false;
+    }
+
+    levels::LaunchOptions options;
+    options.control_context =
+        definition->camera() ? levels::ControlContext::Observer : levels::ControlContext::Player;
+    pending_level_.emplace(std::move(*definition), path_to_utf8(path), options);
+    return true;
+}
+void Application::create_level(session::PendingLevel& pending) {
+    pending.options.launch_mode = settings_.application().start_levels_paused
+                                    ? levels::LaunchMode::Paused
+                                    : levels::LaunchMode::Running;
+
+    sim::LevelSimInitData inputs;
+    if (!host::prepare_level(pending, inputs.player)) {
+        return;
+    }
+
+    auto const& options{pending.options};
+    auto const mode{options.launch_mode};
+    sim::LevelRunTiming const timing{
+        .time_scale = PositiveFinite<double>::make(options.requested_time_scale.get()),
+        .duration = options.simulated_duration_seconds.transform(
+            [](auto value) { return Duration::make(value); }),
+    };
+    auto built{sim::make_level_simulation_init_data(pending.definition, std::move(inputs), timing)};
+    if (!built) {
+        std::string errors;
+        for (auto const& message : built.error()) {
+            errors += message + "\n";
+        }
+
+        host::level_start_failed(errors);
+        return;
+    }
+
+    built->collision.static_bounds.reset();
+    for (auto const& bound : host::static_geometry(built->collision.grid_spec)) {
+        built->collision.static_bounds.add(bound.min, bound.max);
+    }
+
+    level_.emplace(std::move(*built), level_arena_);
+    if (!host::bind_level(pending, *level_)) {
+        unload_level(sim::RunEndReason::WorldEnd, false);
+        return;
+    }
+
+    if (level_->result()) {
+        unload_level(sim::RunEndReason::LevelCompleted, true);
+    } else if (mode == levels::LaunchMode::Running && level_->state() == sim::LevelState::Paused) {
+        level_->start();
+    }
+}
+void Application::advance_level(double delta_seconds) {
+    auto const state{level_->state()};
+    auto const previous_tick{level_->clock().get_completed_ticks()};
+    level_->advance(delta_seconds);
+    if (level_->state() == sim::LevelState::Running ||
+        level_->clock().get_completed_ticks() != previous_tick) {
+        host::present_level(delta_seconds);
+    }
+
+    if (level_->result()) {
+        unload_level(sim::RunEndReason::LevelCompleted, true);
+    } else if (state == sim::LevelState::Running && level_->state() == sim::LevelState::Paused) {
+        host::simulation_paused();
+    }
+}
+void Application::unload_level(sim::RunEndReason reason, bool show_results) {
+    if (!level_) {
+        return;
+    }
+
+    level_->stop_run(reason);
+    auto const completed{profiles::completed_level(*level_).value()};
+    auto const score{profiles::make_level_score(completed, profiles::current_timestamp())};
+    profiles::RecordSaveResult saved{};
+    if (score) {
+        saved = profiles_.append_score_record(*score);
+        if (saved.persisted) {
+            profile_browser_.refresh();
+        } else {
+            std::println(stderr, "Failed to save the score for {}", completed.metadata.id.value);
+        }
+    }
+
+    if (host::presents_level(*level_)) {
+        host::finish_level(completed, score.has_value(), saved.new_best_time, show_results);
+    }
+
+    level_.reset();
+    level_arena_.reset();
+}
 }
