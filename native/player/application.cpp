@@ -10,6 +10,7 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/profiles/file_profile_storage.h>
 #include <ioj/profiles/level_score.h>
+#include <ioj/profiles/sample_profile_records.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
 
 #include <sbx/memory_resource.h>
@@ -265,6 +266,7 @@ auto Application::play(Window& window) -> Result {
         }
 
         auto const messages{host::take_messages()};
+        process_profile_actions(messages.profile_actions);
 
         auto const& navigation{messages.navigation_request};
         if (auto const* menu{std::get_if<session::LevelSelectRequest>(&navigation)}) {
@@ -310,6 +312,51 @@ auto Application::play(Window& window) -> Result {
     }
 
     return {};
+}
+
+void Application::process_profile_actions(std::span<host::ProfileAction const> actions) {
+    using enum host::ProfileActionKind;
+    auto const count{actions.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const& action{actions[index]};
+        auto result{profiles::CreateProfileResult::succeeded};
+        switch (action.kind) {
+            case Create:
+                result = profiles_.create_profile(action.profile_name_or_id).result;
+                break;
+            case Activate:
+                if (!profiles_.activate_profile(action.profile_name_or_id)) {
+                    result = profiles::CreateProfileResult::persistence_failed;
+                }
+                break;
+            case ResetTestProfile:
+#if IOJ_SHIPPING
+                std::unreachable();
+#else
+                if (!profiles_.reset_test_profile(profiles::sample_profile_records())) {
+                    result = profiles::CreateProfileResult::persistence_failed;
+                }
+#endif
+                break;
+            case Refresh:
+                break;
+            case SelectReport:
+                if (!profile_browser_.load_profile_report(action.profile_name_or_id)) {
+                    result = profiles::CreateProfileResult::persistence_failed;
+                }
+                break;
+        }
+
+        if (result == profiles::CreateProfileResult::succeeded && action.kind != SelectReport) {
+            profile_browser_.refresh();
+        }
+
+        if (result == profiles::CreateProfileResult::persistence_failed) {
+            std::println(stderr, "Profile operation failed for '{}'", action.profile_name_or_id);
+        }
+
+        host::profile_result(index, result);
+    }
 }
 
 auto Application::launch_mission(std::filesystem::path const& path) -> bool {
