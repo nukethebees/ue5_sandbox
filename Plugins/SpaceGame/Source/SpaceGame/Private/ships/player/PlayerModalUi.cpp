@@ -3,10 +3,10 @@
 #include <SpaceGame/levels/LevelCompletion.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
-#include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/ui/common/GameUiRootLayout.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
+#include <SpaceGame/UnrealMessages.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -69,13 +69,8 @@ auto FPlayerModalUi::show_main_menu(ASpaceGamePlayerController& owner) -> bool {
                TEXT("FPlayerModalUi::show_main_menu: UI root is invalid."));
         return false;
     }
-    auto* const game_instance{owner.GetGameInstance()};
-    auto* const subsystem{UGameSubsystem::get(game_instance)};
-    auto request{IsValid(subsystem) ? subsystem->take_menu_request()
-                                    : std::optional<session::LevelSelectRequest>{}};
-    if (!request && IsValid(subsystem) && subsystem->has_level_launch_error()) {
-        request.emplace(session::LevelSelectRequest{});
-    }
+
+    auto& request{menu_selection()};
     if (!root_->show_main_menu(request.has_value(),
                                request ? FName{*to_fstring(request->preferred_level_id.value)}
                                        : NAME_None)) {

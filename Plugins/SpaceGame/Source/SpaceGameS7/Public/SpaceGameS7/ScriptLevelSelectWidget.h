@@ -9,7 +9,7 @@
 #include "ScriptLevelSelectWidget.generated.h"
 
 namespace ioj {
-class UGameSubsystem;
+class UGameUiStyleSubsystem;
 }
 
 namespace ioj::s7 {
@@ -96,7 +96,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     TSharedPtr<SScriptLevelSelectView> view_{};
     FGameUiStyle fallback_style_{};
     UPROPERTY(Transient)
-    UGameSubsystem* game_{nullptr};
+    UGameUiStyleSubsystem* style_{nullptr};
     int32 selected_entry_index_{INDEX_NONE};
     FName selected_level_id_{NAME_None};
     LevelCatalogCategory active_category_{LevelCatalogCategory::Mission};

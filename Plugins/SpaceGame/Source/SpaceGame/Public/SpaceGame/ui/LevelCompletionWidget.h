@@ -11,7 +11,7 @@ class UNativeWidgetHost;
 
 namespace ioj {
 class SLevelCompletionView;
-class UGameSubsystem;
+class UGameUiStyleSubsystem;
 
 DECLARE_MULTICAST_DELEGATE(FReturnToLevelSelectRequested);
 
@@ -51,7 +51,7 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     TSharedPtr<SLevelCompletionView> view_{};
     FGameUiStyle fallback_style_{};
     UPROPERTY(Transient)
-    UGameSubsystem* game_{nullptr};
+    UGameUiStyleSubsystem* style_{nullptr};
     bool action_requested_{false};
 };
 }

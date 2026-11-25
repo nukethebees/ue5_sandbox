@@ -1,9 +1,9 @@
 #include "SScriptLevelSelectView.h"
 
 #include <ioj/levels/launch_options.h>
-#include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/ui/common/HiveWidgets.h>
 #include <SpaceGame/ui/common/SGameButton.h>
+#include <SpaceGamePresentation/ui/style/GameUiStyle.h>
 
 #include <SandboxUI/slate/SlateSlots.h>
 

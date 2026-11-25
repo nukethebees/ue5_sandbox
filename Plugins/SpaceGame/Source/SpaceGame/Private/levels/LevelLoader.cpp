@@ -4,7 +4,7 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/system/GameSubsystem.h>
+#include <SpaceGame/UnrealMessages.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -156,26 +156,7 @@ auto FLevelLoadErrors::format(FStringView const source_path) const -> FString {
 
 void FLevelLoader::report_failure(UWorld* const world, FString message) {
     UE_LOG(LogSandbox, Error, TEXT("%s"), *message);
-#if WITH_EDITOR
-    if (IsValid(world) && world->WorldType == EWorldType::PIE) {
-        return;
-    }
-#endif
-    if (GIsAutomationTesting) {
-        return;
-    }
-
-    auto* const game_instance{IsValid(world) ? world->GetGameInstance() : nullptr};
-    auto* const subsystem{UGameSubsystem::get(game_instance)};
-    if (IsValid(subsystem)) {
-        subsystem->set_level_launch_error(MoveTemp(message));
-        if (subsystem->return_to_level_select()) {
-            return;
-        }
-    }
-    if (IsValid(world)) {
-        UGameplayStatics::OpenLevel(world, UGameSubsystem::get_main_menu_level_name());
-    }
+    request_menu({.launch_error = to_string(message)});
 }
 
 auto FLevelLoader::load(FLevelActorLoadRequest const& request) -> FLevelLoadResult {

@@ -14,7 +14,6 @@ class ACameraActor;
 class UEnhancedInputUserSettings;
 struct FLevelCompletion;
 struct FInputKeyEventArgs;
-struct FPlayerControllerTestAccess;
 
 namespace ioj {
 class UTestBatchGameUiData;
@@ -31,7 +30,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     friend struct FGlobalPlayerInput;
     friend struct FPlayerHudLifecycle;
     friend struct FPlayerModalUi;
-    friend struct ::FPlayerControllerTestAccess;
     friend class ATestBatchOrchestrator;
   public:
     using Pawn = ATestSpaceShip;
@@ -82,7 +80,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void on_player_ship_died();
     void bind_orchestrator_events();
     void unbind_orchestrator_events();
-    void on_orchestrator_reset(ATestBatchOrchestrator& orchestrator);
 
     /* **************************************** */
     // Input and presentation callbacks
@@ -139,7 +136,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     bool begin_play_finished_{false};
     bool ending_play_{false};
     bool return_to_level_select_pending_{false};
-    FTimerHandle initial_pause_timer_;
     FTimerHandle main_menu_input_timer_;
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")

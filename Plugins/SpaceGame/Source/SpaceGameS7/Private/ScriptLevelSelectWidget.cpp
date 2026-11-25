@@ -2,12 +2,13 @@
 
 #include "SScriptLevelSelectView.h"
 #include <ioj/levels/launch_options.h>
+#include <ioj/profiles/progression.h>
 #include <SpaceGame/levels/LevelUnlock.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
-#include <SpaceGame/persistence/SpaceSaveSubsystem.h>
-#include <SpaceGame/settings/GameSettingsSubsystem.h>
-#include <SpaceGame/system/GameSubsystem.h>
+#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+#include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 #include <SpaceGamePresentation/ui/style/SpaceGameUiTheme.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -81,12 +82,14 @@ auto find_level_title(TArray<FLevelScriptEntry> const& entries, FLevelId const i
     return FText::FromName(id.value);
 }
 
-auto make_unlock_evaluator(TArray<FLevelScriptEntry> const& entries,
-                           USpaceSaveSubsystem const* const save_subsystem,
-                           bool unlock_all) -> FLevelUnlockEvaluator {
+auto make_unlock_evaluator(TArray<FLevelScriptEntry> const& entries, bool unlock_all)
+    -> FLevelUnlockEvaluator {
     return FLevelUnlockEvaluator{
-        [save_subsystem](FLevelId const id) {
-            return IsValid(save_subsystem) && save_subsystem->is_level_completed(id);
+        [](FLevelId const id) {
+            return profiles::summarize_level_progress(
+                       levels::LevelId{to_string(id.value.ToString())},
+                       player_profiles().active_records())
+                       .state() == profiles::LevelProgressState::Completed;
         },
         [&entries](FLevelId const id) { return find_level_title(entries, id); },
         unlock_all,
@@ -131,8 +134,9 @@ void UScriptLevelSelectWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     auto* const game_instance{GetGameInstance()};
-    game_ = IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr;
-    if (!IsValid(game_)) {
+    style_ =
+        IsValid(game_instance) ? game_instance->GetSubsystem<UGameUiStyleSubsystem>() : nullptr;
+    if (!IsValid(style_)) {
         UE_LOG(LogSandboxUI,
                Warning,
                TEXT("UScriptLevelSelectWidget: Game subsystem is unavailable; using the "
@@ -144,7 +148,7 @@ void UScriptLevelSelectWidget::NativeOnInitialized() {
 }
 
 auto UScriptLevelSelectWidget::RebuildWidget() -> TSharedRef<SWidget> {
-    auto const* const style{IsValid(game_) ? &game_->get_ui_style() : &fallback_style_};
+    auto const* const style{IsValid(style_) ? &style_->get_ui_style() : &fallback_style_};
     auto result{
         SAssignNew(view_, SScriptLevelSelectView)
             .Style(style)
@@ -200,13 +204,14 @@ void UScriptLevelSelectWidget::refresh_levels() {
     catalog_directory_ = MoveTemp(catalog.directory);
     catalog_error_ = MoveTemp(catalog.error);
 
-    if (IsValid(game_) && game_->has_level_launch_error()) {
-        auto launch_error{game_->take_level_launch_error()};
+    if (auto& destination{menu_selection()}; destination && !destination->launch_error.empty()) {
+        auto launch_error{to_fstring(destination->launch_error)};
         catalog_error_ = catalog_error_.IsEmpty()
                            ? MoveTemp(launch_error)
                            : catalog_error_ + TEXT("\n") + MoveTemp(launch_error);
     }
 
+    menu_selection().reset();
     rebuild_catalog(get_preferred_level_id());
 }
 
@@ -234,8 +239,6 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
     }
 
     auto* const game_instance{GetGameInstance()};
-    auto* const save_subsystem{
-        IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
     auto const entry_indices{[this] {
         TMap<FLevelId, int32> result;
         auto const count{entries_.Num()};
@@ -254,22 +257,21 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
     auto add_header = [this](FString const& label) {
         view_state_.rows.Add(FLevelSelectViewRow{FText::FromString(label.ToUpper()), true});
     };
-    auto add_level =
-        [this, save_subsystem, focus_level_id, &preferred_button_index, &visible_entry_count](
+    auto add_level = [this, focus_level_id, &preferred_button_index, &visible_entry_count](
             int32 const entry_index) {
             auto const& entry{entries_[entry_index]};
             auto indicator_state{profiles::CompletionIndicatorState::Incomplete};
             if (entry) {
-                auto const id{levels::authoring::to_unreal(entry.definition->metadata().id)};
-                auto const progress{IsValid(save_subsystem) ? save_subsystem->get_level_progress(id)
-                                                            : profiles::LevelProgressSummary{}};
+            auto const progress{profiles::summarize_level_progress(
+                entry.definition->metadata().id, player_profiles().active_records())};
                 indicator_state = profiles::level_completion_indicator_state(
                     progress, entry.definition->metadata().par_time_seconds);
                 if (preferred_button_index == INDEX_NONE && !focus_level_id.IsNone() &&
-                    id.value == focus_level_id) {
+                levels::authoring::to_unreal(entry.definition->metadata().id).value ==
+                    focus_level_id) {
                     preferred_button_index = level_entry_indices_.Num();
-                }
             }
+        }
 
             view_state_.rows.Add(FLevelSelectViewRow{
                 FText::FromString(entry.display_title), false, indicator_state});
@@ -416,17 +418,12 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
 
     if (entry) {
         auto* const game_instance{GetGameInstance()};
-        auto* const save_subsystem{
-            IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
-        auto const progress{IsValid(save_subsystem)
-                                ? save_subsystem->get_level_progress(
-                                      levels::authoring::to_unreal(entry.definition->metadata().id))
-                                : profiles::LevelProgressSummary{}};
+        auto const progress{profiles::summarize_level_progress(entry.definition->metadata().id,
+                                                               player_profiles().active_records())};
         auto const evaluator{make_unlock_evaluator(
             entries_,
-            save_subsystem,
-            game_instance &&
-                UGameSettingsSubsystem::application_settings(game_instance).unlock_all_missions)};
+
+            game_instance && player_settings().application().unlock_all_missions)};
         auto const unlock_status{evaluator.evaluate(entry.definition.GetValue())};
         view_state_.description =
             FText::FromString(description_with_requirements(entry, unlock_status));
@@ -434,8 +431,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
 
         if (unlock_status.unlocked) {
             view_state_.can_launch = true;
-            if (game_instance &&
-                UGameSettingsSubsystem::application_settings(game_instance).start_levels_paused) {
+            if (game_instance && player_settings().application().start_levels_paused) {
                 view_state_.launch_mode_status =
                     NSLOCTEXT("LevelSelect", "DebugStartPaused", "DEBUG // START PAUSED");
             }
@@ -460,14 +456,7 @@ void UScriptLevelSelectWidget::handle_launch() {
         return;
     }
 
-    auto* const game_instance{GetGameInstance()};
-    auto const launch_mode{
-        game_instance &&
-                UGameSettingsSubsystem::application_settings(game_instance).start_levels_paused
-            ? ::ioj::levels::LaunchMode::Paused
-            : ::ioj::levels::LaunchMode::Running};
     ::ioj::levels::LaunchOptions options{
-        .launch_mode = launch_mode,
         .requested_time_scale = levels::launch::TimeScale::make(time_scale.GetValue()),
     };
     if (active_category_ != LevelCatalogCategory::Mission) {
@@ -509,13 +498,8 @@ void UScriptLevelSelectWidget::launch_selected_level(::ioj::levels::LaunchOption
     }
 
     auto* const game_instance{GetGameInstance()};
-    auto* const save_subsystem{
-        IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
     auto const evaluator{make_unlock_evaluator(
-        entries_,
-        save_subsystem,
-        game_instance &&
-            UGameSettingsSubsystem::application_settings(game_instance).unlock_all_missions)};
+        entries_, game_instance && player_settings().application().unlock_all_missions)};
     auto const& selected_entry{entries_[selected_entry_index_]};
     if (!evaluator.evaluate(selected_entry.definition.GetValue()).unlocked) {
         view_state_.can_launch = false;
@@ -525,26 +509,22 @@ void UScriptLevelSelectWidget::launch_selected_level(::ioj::levels::LaunchOption
         return;
     }
 
-    if (!IsValid(game_)) {
+    if (!IsValid(style_)) {
         view_state_.status =
             NSLOCTEXT("LevelSelect", "SubsystemUnavailable", "MISSION CONTROL IS UNAVAILABLE");
         publish_view();
         return;
     }
 
-    auto& entry{entries_[selected_entry_index_]};
     options.control_context = active_category_ == LevelCatalogCategory::Mission
                                 ? ::ioj::levels::ControlContext::Player
                             : active_category_ == LevelCatalogCategory::Benchmark
                                 ? ::ioj::levels::ControlContext::Benchmark
                                 : ::ioj::levels::ControlContext::Observer;
-    game_->set_pending_level(MoveTemp(entry.definition.GetValue()), entry.path, options);
-    entry.definition.Reset();
+    request_mission(
+        {selected_entry.definition.GetValue(), to_string(selected_entry.path), options});
     view_state_.can_launch = false;
-    if (options.launch_mode == ::ioj::levels::LaunchMode::Paused) {
-        view_state_.status =
-            NSLOCTEXT("LevelSelect", "StagingPaused", "STAGING LEVEL IN PAUSED STATE...");
-    } else if (options.control_context == ::ioj::levels::ControlContext::Benchmark) {
+    if (options.control_context == ::ioj::levels::ControlContext::Benchmark) {
         view_state_.status = NSLOCTEXT("LevelSelect", "StartingBenchmark", "STARTING BENCHMARK...");
     } else if (active_category_ == LevelCatalogCategory::BattleViewer) {
         view_state_.status =
@@ -553,6 +533,5 @@ void UScriptLevelSelectWidget::launch_selected_level(::ioj::levels::LaunchOption
         view_state_.status = NSLOCTEXT("LevelSelect", "Deploying", "DEPLOYING MISSION...");
     }
     publish_view();
-    UGameplayStatics::OpenLevel(this, FName{TEXT("/SpaceGame/Levels/GameRuntime")});
 }
 } // namespace ioj::s7

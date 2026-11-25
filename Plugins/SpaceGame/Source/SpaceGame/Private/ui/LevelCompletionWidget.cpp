@@ -1,10 +1,12 @@
 #include "SpaceGame/ui/LevelCompletionWidget.h"
 
 #include "SLevelCompletionView.h"
-#include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+#include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 
 #include <Components/NativeWidgetHost.h>
 #include <Engine/GameInstance.h>
@@ -24,8 +26,8 @@ void ULevelCompletionWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     auto* const game_instance{GetGameInstance()};
-    game_ = UGameSubsystem::get(game_instance);
-    if (!IsValid(game_)) {
+    style_ = UGameInstance::GetSubsystem<UGameUiStyleSubsystem>(game_instance);
+    if (!IsValid(style_)) {
         UE_LOG(LogSandboxUI,
                Warning,
                TEXT("ULevelCompletionWidget: Game subsystem is unavailable; using the default "
@@ -42,10 +44,12 @@ void ULevelCompletionWidget::NativeOnInitialized() {
         return;
     }
 
-    auto const* const style{IsValid(game_) ? &game_->get_ui_style() : &fallback_style_};
+    auto const* const style{IsValid(style_) ? &style_->get_ui_style() : &fallback_style_};
     view_host->SetContent(SAssignNew(view_, SLevelCompletionView)
                               .Style(style)
-                              .Audio(IsValid(game_) ? game_->get_audio() : FGameAudioFacade{})
+                              .Audio(IsValid(style_)
+                                         ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
+                                         : FGameAudioFacade{})
                               .OnReturnToMissionControl(FSimpleDelegate::CreateUObject(
                                   this, &ThisClass::request_return_to_mission_control)));
     refresh_view();

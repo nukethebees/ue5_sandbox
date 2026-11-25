@@ -9,7 +9,6 @@
 
 class UInputAction;
 struct FLevelCompletion;
-struct FPlayerControllerTestAccess;
 
 namespace ioj {
 class UTestBatchGameUiData;
@@ -60,7 +59,6 @@ struct SPACEGAME_API FPlayerModalUi {
     auto resume_context(levels::ControlContext fallback) const -> levels::ControlContext;
     auto is_resume_pending() const -> bool { return resume_.pending(); }
   private:
-    friend struct ::FPlayerControllerTestAccess;
     UPROPERTY(Transient)
     TObjectPtr<UGameUiRootLayout> root_{nullptr};
     UPROPERTY(Transient)

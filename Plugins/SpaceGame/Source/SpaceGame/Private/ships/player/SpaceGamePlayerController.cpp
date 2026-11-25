@@ -4,15 +4,16 @@
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
-#include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
+#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
+#include <SandboxCoreEngine/strings.h>
 
 #include <Camera/CameraActor.h>
 #include <CommonInputSubsystem.h>
@@ -164,8 +165,6 @@ void ASpaceGamePlayerController::initialise_gameplay() {
     } else {
         UE_LOG(LogSandbox, Display, TEXT("ASpaceGamePlayerController::BeginPlay: No player pawn."));
     }
-    initial_pause_timer_ =
-        GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::show_initial_pause_menu);
 }
 void ASpaceGamePlayerController::show_main_menu() {
     if (ending_play_) {
@@ -177,7 +176,6 @@ void ASpaceGamePlayerController::show_main_menu() {
     }
 }
 void ASpaceGamePlayerController::initialise_main_menu() {
-    GetWorldTimerManager().ClearTimer(initial_pause_timer_);
     modal_ui_.clear_menus(*this);
     unbind_orchestrator_events();
     detach_ship();
@@ -208,7 +206,6 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
         }
     }
     registered_input_settings_.Reset();
-    GetWorldTimerManager().ClearTimer(initial_pause_timer_);
     GetWorldTimerManager().ClearTimer(main_menu_input_timer_);
     modal_ui_.detach_callbacks(*this);
     unbind_orchestrator_events();
@@ -243,8 +240,7 @@ void ASpaceGamePlayerController::attach_ship(Pawn& ship) {
     modal_ui_.on_ship_changed(true);
 
     auto* const game_instance{GetGameInstance()};
-    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>()
-                                            : nullptr};
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameAudio>() : nullptr};
     if (IsValid(game)) {
         game->start_player_ship_ambience();
     } else {
@@ -276,8 +272,7 @@ void ASpaceGamePlayerController::OnUnPossess() {
 }
 void ASpaceGamePlayerController::detach_ship() {
     auto* const game_instance{GetGameInstance()};
-    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>()
-                                            : nullptr};
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameAudio>() : nullptr};
     if (IsValid(game)) {
         game->stop_player_ship_ambience();
     }
@@ -321,31 +316,6 @@ void ASpaceGamePlayerController::unbind_orchestrator_events() {
         orchestrator->on_simulation_paused.RemoveAll(this);
     }
     orchestrator_.Reset();
-}
-void ASpaceGamePlayerController::on_orchestrator_reset(ATestBatchOrchestrator& orchestrator) {
-    if (!is_gameplay_mode()) {
-        return;
-    }
-    modal_ui_.clear_modals(*this);
-    hud_.restore_after_modal();
-    return_to_level_select_pending_ = false;
-    control_contexts_.set_control_context(levels::ControlContext::None);
-    hud_.shutdown();
-    hud_.shutdown_benchmark(*this);
-
-    auto* const player_ship{const_cast<ATestSpaceShip*>(orchestrator.get_player_ship())};
-    if (!IsValid(player_ship)) {
-        if (IsValid(GetPawn())) {
-            UnPossess();
-        }
-        return;
-    }
-    if (GetPawn() != player_ship) {
-        Possess(player_ship);
-    } else {
-        attach_ship(*player_ship);
-        activate_ship_control();
-    }
 }
 
 /* **************************************** */
@@ -584,9 +554,8 @@ void ASpaceGamePlayerController::toggle_run_pause() {
 }
 void ASpaceGamePlayerController::show_initial_pause_menu() {
     auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator) || !orchestrator->was_launched_paused() ||
-        orchestrator->get_state() != sim::LevelState::Paused || !is_gameplay_mode() ||
-        get_active_control_context() == levels::ControlContext::Benchmark ||
+    if (!IsValid(orchestrator) || orchestrator->get_state() != sim::LevelState::Paused ||
+        !is_gameplay_mode() || get_active_control_context() == levels::ControlContext::Benchmark ||
         return_to_level_select_pending_ || modal_ui_.has_modal()) {
         return;
     }
@@ -729,10 +698,8 @@ void ASpaceGamePlayerController::return_to_level_select() {
         return;
     }
 
-    auto* const game_instance{GetGameInstance()};
-    auto* const subsystem{UGameSubsystem::get(game_instance)};
     auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(subsystem) || !IsValid(orchestrator)) {
+    if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::return_to_level_select: Required gameplay "
@@ -745,7 +712,9 @@ void ASpaceGamePlayerController::return_to_level_select() {
     auto const preferred_level_id{
         level ? FName{UTF8_TO_TCHAR(level->level_metadata().id.value.c_str())}
               : modal_ui_.completed_level_id()};
-    if (!subsystem->return_to_level_select(preferred_level_id)) {
+    if (!request_menu({levels::LevelId{preferred_level_id.IsNone()
+                                           ? std::string{}
+                                           : to_string(preferred_level_id.ToString())}})) {
         return_to_level_select_pending_ = false;
         return;
     }
