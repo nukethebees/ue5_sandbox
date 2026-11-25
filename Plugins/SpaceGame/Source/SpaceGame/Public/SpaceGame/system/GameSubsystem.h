@@ -128,7 +128,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     // State
     /* **************************************** */
-    FGameAudio audio_;
+    UGameAudio* audio_{};
     FGameCapabilities platform_capabilities_;
     TUniquePtr<memory::BumpResource> local_memory_;
     memory::BumpResource* memory_resource_{};

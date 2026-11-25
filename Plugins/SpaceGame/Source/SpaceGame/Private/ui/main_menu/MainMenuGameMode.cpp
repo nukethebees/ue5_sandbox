@@ -1,7 +1,7 @@
 #include "SpaceGame/ui/main_menu/MainMenuGameMode.h"
 
 #include "SpaceGame/ships/player/SpaceGamePlayerController.h"
-#include "SpaceGame/system/GameSubsystem.h"
+#include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
@@ -24,8 +24,7 @@ void AMainMenuGameMode::StartPlay() {
     Super::StartPlay();
 
     auto* const game_instance{GetGameInstance()};
-    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>()
-                                            : nullptr};
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameAudio>() : nullptr};
     if (!IsValid(game)) {
         UE_LOG(LogSandboxUI,
                Warning,
@@ -52,8 +51,7 @@ void AMainMenuGameMode::PostLogin(APlayerController* const new_player) {
 
 void AMainMenuGameMode::EndPlay(EEndPlayReason::Type const reason) {
     auto* const game_instance{GetGameInstance()};
-    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>()
-                                            : nullptr};
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameAudio>() : nullptr};
     if (IsValid(game)) {
         game->stop_menu_ambience();
     }

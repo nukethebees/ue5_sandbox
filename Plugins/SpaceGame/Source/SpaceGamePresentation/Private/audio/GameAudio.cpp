@@ -25,7 +25,7 @@ inline constexpr float menu_button_playback_seconds{0.5f};
 }
 
 namespace ioj {
-FGameAudioFacade::FGameAudioFacade(FGameAudio& audio)
+FGameAudioFacade::FGameAudioFacade(UGameAudio& audio)
     : audio_{&audio} {}
 
 void FGameAudioFacade::play_button_pressed() const {
@@ -41,10 +41,10 @@ void FGameAudioFacade::play_player_laser() const {
     }
 }
 
-void FGameAudio::play_player_laser() {
-    if (game_instance_.IsValid()) {
+void UGameAudio::play_player_laser() {
+    if (IsValid(GetGameInstance())) {
         UGameplayStatics::PlaySound2D(
-            game_instance_.Get(), player_laser_sound_.Get(), master_volume_ * sfx_volume_);
+            GetGameInstance(), player_laser_sound_.Get(), master_volume_ * sfx_volume_);
     }
 }
 
@@ -54,13 +54,13 @@ void FGameAudioFacade::play_entity_death(FVector const location) const {
     }
 }
 
-void FGameAudio::play_entity_death(FVector const location) {
-    if (death_impact_sounds_.IsEmpty() || !game_instance_.IsValid()) {
+void UGameAudio::play_entity_death(FVector const location) {
+    if (death_impact_sounds_.IsEmpty() || !IsValid(GetGameInstance())) {
         return;
     }
     auto* const sound{death_impact_sounds_[death_impact_indices_[next_impact_]].Get()};
     next_impact_ = (next_impact_ + 1) % death_impact_indices_.size();
-    UGameplayStatics::PlaySoundAtLocation(game_instance_.Get(),
+    UGameplayStatics::PlaySoundAtLocation(GetGameInstance(),
                                           sound,
                                           location,
                                           master_volume_ * sfx_volume_,
@@ -69,8 +69,14 @@ void FGameAudio::play_entity_death(FVector const location) {
                                           death_attenuation_.Get());
 }
 
-void FGameAudio::initialize(UGameInstance& game_instance) {
-    game_instance_ = &game_instance;
+void UGameAudio::Deinitialize() {
+    stop_menu_ambience();
+    stop_player_ship_ambience();
+    stop_button_audio();
+    Super::Deinitialize();
+}
+void UGameAudio::Initialize(FSubsystemCollectionBase& collection) {
+    Super::Initialize(collection);
     external_audio_ = resolve_audio_source_library(get_configured_audio_root());
     if (external_audio_.root.path.empty()) {
         UE_LOG(LogSandboxAudio,
@@ -204,7 +210,7 @@ void FGameAudio::initialize(UGameInstance& game_instance) {
     }
 }
 
-void FGameAudio::start_menu_ambience() {
+void UGameAudio::start_menu_ambience() {
     auto* const active_component{menu_ambience_component_.Get()};
     if (IsValid(active_component) && active_component->IsPlaying()) {
         return;
@@ -215,7 +221,8 @@ void FGameAudio::start_menu_ambience() {
     if (!IsValid(menu_ambience)) {
         return;
     }
-    auto* const game_instance{game_instance_.Get()};
+
+    auto* const game_instance{GetGameInstance()};
     if (!IsValid(game_instance)) {
         return;
     }
@@ -241,14 +248,15 @@ void FGameAudio::start_menu_ambience() {
     menu_ambience_component_ = component;
 }
 
-void FGameAudio::play_button_pressed() {
+void UGameAudio::play_button_pressed() {
     stop_button_audio();
 
     auto* const sound{menu_button_pressed_sound_.Get()};
     if (!IsValid(sound)) {
         return;
     }
-    auto* const game_instance{game_instance_.Get()};
+
+    auto* const game_instance{GetGameInstance()};
     if (!IsValid(game_instance)) {
         return;
     }
@@ -276,7 +284,7 @@ void FGameAudio::play_button_pressed() {
     component->StopDelayed(game_audio::menu_button_playback_seconds);
 }
 
-void FGameAudio::start_player_ship_ambience() {
+void UGameAudio::start_player_ship_ambience() {
     auto* const active_component{player_ship_ambience_component_.Get()};
     if (IsValid(active_component) && active_component->IsPlaying()) {
         return;
@@ -287,7 +295,8 @@ void FGameAudio::start_player_ship_ambience() {
     if (!IsValid(ambience)) {
         return;
     }
-    auto* const game_instance{game_instance_.Get()};
+
+    auto* const game_instance{GetGameInstance()};
     if (!IsValid(game_instance)) {
         return;
     }
@@ -315,7 +324,7 @@ void FGameAudio::start_player_ship_ambience() {
     player_ship_ambience_component_ = component;
 }
 
-void FGameAudio::stop_menu_ambience() {
+void UGameAudio::stop_menu_ambience() {
     auto* const component{menu_ambience_component_.Get()};
     if (IsValid(component)) {
         component->Stop();
@@ -324,7 +333,7 @@ void FGameAudio::stop_menu_ambience() {
     menu_ambience_component_.Reset();
 }
 
-void FGameAudio::stop_player_ship_ambience() {
+void UGameAudio::stop_player_ship_ambience() {
     auto* const component{player_ship_ambience_component_.Get()};
     if (IsValid(component)) {
         component->Stop();
@@ -333,7 +342,7 @@ void FGameAudio::stop_player_ship_ambience() {
     player_ship_ambience_component_.Reset();
 }
 
-void FGameAudio::stop_button_audio() {
+void UGameAudio::stop_button_audio() {
     auto* const component{menu_button_pressed_component_.Get()};
     if (IsValid(component)) {
         component->Stop();
@@ -342,7 +351,7 @@ void FGameAudio::stop_button_audio() {
     menu_button_pressed_component_.Reset();
 }
 
-void FGameAudio::set_master_volume(float const volume) {
+void UGameAudio::set_master_volume(float const volume) {
     master_volume_ = FMath::Clamp(volume, 0.0f, 1.0f);
 
     auto* const menu_ambience_component{menu_ambience_component_.Get()};
@@ -359,7 +368,7 @@ void FGameAudio::set_master_volume(float const volume) {
     }
 }
 
-void FGameAudio::set_music_volume(float const volume) {
+void UGameAudio::set_music_volume(float const volume) {
     music_volume_ = FMath::Clamp(volume, 0.0f, 1.0f);
     auto* const component{menu_ambience_component_.Get()};
     if (IsValid(component)) {
@@ -367,7 +376,7 @@ void FGameAudio::set_music_volume(float const volume) {
     }
 }
 
-void FGameAudio::set_ui_volume(float const volume) {
+void UGameAudio::set_ui_volume(float const volume) {
     ui_volume_ = FMath::Clamp(volume, 0.0f, 1.0f);
     auto* const component{menu_button_pressed_component_.Get()};
     if (IsValid(component)) {
@@ -375,7 +384,7 @@ void FGameAudio::set_ui_volume(float const volume) {
     }
 }
 
-void FGameAudio::set_sfx_volume(float const volume) {
+void UGameAudio::set_sfx_volume(float const volume) {
     sfx_volume_ = FMath::Clamp(volume, 0.0f, 1.0f);
     auto* const player_ship_ambience_component{player_ship_ambience_component_.Get()};
     if (IsValid(player_ship_ambience_component)) {
@@ -383,11 +392,11 @@ void FGameAudio::set_sfx_volume(float const volume) {
     }
 }
 
-auto FGameAudio::facade() -> FGameAudioFacade {
+auto UGameAudio::facade() -> FGameAudioFacade {
     return FGameAudioFacade{*this};
 }
 
-auto FGameAudio::external_audio_available() const noexcept -> bool {
+auto UGameAudio::external_audio_available() const noexcept -> bool {
     if (!external_audio_.root.valid || !external_audio_.menu_ambience_source.valid ||
         !external_audio_.menu_button_pressed_source.valid ||
         !external_audio_.player_ship_ambience_source.valid ||

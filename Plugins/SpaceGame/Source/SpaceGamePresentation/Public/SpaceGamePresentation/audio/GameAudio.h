@@ -6,29 +6,36 @@
 #include <CoreMinimal.h>
 #include <Sound/SoundAttenuation.h>
 #include <Sound/SoundWave.h>
+#include <Subsystems/GameInstanceSubsystem.h>
 #include <UObject/StrongObjectPtr.h>
 #include <UObject/WeakObjectPtr.h>
+
+#include "GameAudio.generated.h"
 
 class UObject;
 class UGameInstance;
 
 namespace ioj {
-struct FGameAudio;
+class UGameAudio;
 
 class SPACEGAMEPRESENTATION_API FGameAudioFacade {
   public:
     FGameAudioFacade() = default;
-    explicit FGameAudioFacade(FGameAudio& audio);
+    explicit FGameAudioFacade(UGameAudio& audio);
 
     void play_button_pressed() const;
     void play_player_laser() const;
     void play_entity_death(FVector location) const;
   private:
-    FGameAudio* audio_{};
+    UGameAudio* audio_{};
 };
 
-struct SPACEGAMEPRESENTATION_API FGameAudio {
-    void initialize(UGameInstance& game_instance);
+UCLASS()
+class SPACEGAMEPRESENTATION_API UGameAudio : public UGameInstanceSubsystem {
+    GENERATED_BODY()
+  public:
+    void Initialize(FSubsystemCollectionBase& collection) override;
+    void Deinitialize() override;
     void start_menu_ambience();
     void stop_menu_ambience();
     void start_player_ship_ambience();
@@ -49,11 +56,10 @@ struct SPACEGAMEPRESENTATION_API FGameAudio {
     void play_player_laser();
     void play_entity_death(FVector location);
 
-    TWeakObjectPtr<UGameInstance> game_instance_{};
     presentation::AudioLibraryResolution external_audio_;
     TArray<TStrongObjectPtr<USoundWave>> death_impact_sounds_;
     TStrongObjectPtr<USoundAttenuation> death_attenuation_;
-    std::array<std::uint8_t, 10'000> death_impact_indices_{};
+    std::array<std::uint8_t, 10000> death_impact_indices_{};
     std::size_t next_impact_{};
     TStrongObjectPtr<USoundWave> player_laser_sound_;
     TStrongObjectPtr<USoundWave> menu_ambience_sound_;

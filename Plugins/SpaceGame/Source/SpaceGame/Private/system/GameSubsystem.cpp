@@ -98,7 +98,8 @@ void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
         memory_resource_ = local_memory_.Get();
     }
 
-    audio_.initialize(*GetGameInstance());
+    collection.InitializeDependency(UGameAudio::StaticClass());
+    audio_ = GetGameInstance()->GetSubsystem<UGameAudio>();
 
     collection.InitializeDependency(UGameSettingsSubsystem::StaticClass());
     auto* const settings_subsystem{GetGameInstance()->GetSubsystem<UGameSettingsSubsystem>()};
@@ -140,9 +141,9 @@ void UGameSubsystem::Deinitialize() {
     if (IsValid(settings_subsystem)) {
         settings_subsystem->settings_changed.RemoveAll(this);
     }
-    audio_.stop_menu_ambience();
-    audio_.stop_player_ship_ambience();
-    audio_.stop_button_audio();
+    audio_->stop_menu_ambience();
+    audio_->stop_player_ship_ambience();
+    audio_->stop_button_audio();
 
     memory_resource_ = nullptr;
     local_memory_.Reset();
@@ -167,23 +168,23 @@ auto UGameSubsystem::get_save_game_browser() -> profiles::SaveGameBrowser& {
 }
 
 auto UGameSubsystem::get_audio() -> FGameAudioFacade {
-    return audio_.facade();
+    return audio_->facade();
 }
 
 void UGameSubsystem::start_menu_ambience() {
-    audio_.start_menu_ambience();
+    audio_->start_menu_ambience();
 }
 
 void UGameSubsystem::stop_menu_ambience() {
-    audio_.stop_menu_ambience();
+    audio_->stop_menu_ambience();
 }
 
 void UGameSubsystem::start_player_ship_ambience() {
-    audio_.start_player_ship_ambience();
+    audio_->start_player_ship_ambience();
 }
 
 void UGameSubsystem::stop_player_ship_ambience() {
-    audio_.stop_player_ship_ambience();
+    audio_->stop_player_ship_ambience();
 }
 
 void UGameSubsystem::update_audio_settings() {
@@ -194,9 +195,9 @@ void UGameSubsystem::update_audio_settings() {
         return;
     }
     auto const& settings{settings_subsystem->settings_state()};
-    audio_.set_master_volume(settings.master_volume);
-    audio_.set_music_volume(settings.music_volume);
-    audio_.set_sfx_volume(settings.sfx_volume);
+    audio_->set_master_volume(settings.master_volume);
+    audio_->set_music_volume(settings.music_volume);
+    audio_->set_sfx_volume(settings.sfx_volume);
 }
 
 /* **************************************** */
