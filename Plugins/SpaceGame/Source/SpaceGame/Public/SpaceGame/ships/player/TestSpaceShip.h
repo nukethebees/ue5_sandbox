@@ -1,8 +1,8 @@
 #pragma once
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/lasers/laser_source.h>
-#include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/laser_firing_state.h>
+#include <ioj/sim/player/player_events.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/player/space_ship_common.h>
@@ -48,9 +48,9 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     /* **************************************** */
     ATestSpaceShip();
     auto make_spawn_data() const -> sim::player::PlayerSpawnData;
-    void bind_simulation(sim::LevelSim& level);
+    void bind_simulation(sim::LevelSim const& level);
     void unbind_simulation();
-    auto commands() -> sim::player::CommandInterface;
+    auto input_events() -> sim::player::PlayerInputEvents&;
     auto has_simulation() const noexcept -> bool { return bound_level_ != nullptr; }
 
     /* **************************************** */
@@ -135,7 +135,7 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     bool debug_forward_direction{false};
 #endif
 
-    sim::LevelSim* bound_level_{};
+    sim::LevelSim const* bound_level_{};
 
   public:
 #if WITH_EDITORONLY_DATA

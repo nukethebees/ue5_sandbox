@@ -1,5 +1,6 @@
 #include "SpaceGame/ships/player/TestSpaceShip.h"
 
+#include "SpaceGame/UnrealMessages.h"
 #include <ioj/sim/levels/level_sim.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -82,17 +83,18 @@ auto ATestSpaceShip::make_spawn_data() const -> sim::player::PlayerSpawnData {
     return result;
 }
 
-void ATestSpaceShip::bind_simulation(sim::LevelSim& level) {
+void ATestSpaceShip::bind_simulation(sim::LevelSim const& level) {
     bound_level_ = &level;
 }
 
 void ATestSpaceShip::unbind_simulation() {
+    reset_level_input();
     bound_level_ = nullptr;
 }
 
-auto ATestSpaceShip::commands() -> sim::player::CommandInterface {
+auto ATestSpaceShip::input_events() -> sim::player::PlayerInputEvents& {
     checkf(bound_level_, TEXT("Player input requires bound simulation commands"));
-    return bound_level_->player_ship_commands().value();
+    return ship_input();
 }
 
 auto ATestSpaceShip::simulation() const -> sim::player::Sim const& {
@@ -124,10 +126,8 @@ auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
 }
 
 void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
+    checkf(!bound_level_, TEXT("Set the authored team before binding the ship"));
     team = new_team;
-    if (bound_level_) {
-        bound_level_->set_player_team(to_native(new_team));
-    }
 }
 
 /* **************************************** */
@@ -143,7 +143,7 @@ auto ATestSpaceShip::GetVelocity() const -> FVector {
 /* **************************************** */
 
 void ATestSpaceShip::upgrade_laser() {
-    commands().upgrade_laser();
+    input_events().upgrade_laser();
 }
 
 auto ATestSpaceShip::get_laser_trigger_mode() const noexcept -> ETestShipTriggerMode {
@@ -155,17 +155,17 @@ auto ATestSpaceShip::get_laser_firing_mode() const noexcept -> sim::LaserFiringS
 }
 
 void ATestSpaceShip::select_next_laser_trigger_mode() noexcept {
-    commands().select_next_laser_trigger_mode();
+    input_events().select_next_laser_trigger_mode();
 }
 
 void ATestSpaceShip::select_previous_laser_trigger_mode() noexcept {
-    commands().select_previous_laser_trigger_mode();
+    input_events().select_previous_laser_trigger_mode();
 }
 
 void ATestSpaceShip::set_laser_trigger_mode(ETestShipTriggerMode const value) noexcept {
     initial_.laser_trigger_mode = to_native(value);
     if (bound_level_) {
-        commands().set_laser_trigger_mode(to_native(value));
+        input_events().set_laser_trigger_mode(to_native(value));
     }
 }
 

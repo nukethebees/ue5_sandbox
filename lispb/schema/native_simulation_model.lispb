@@ -307,6 +307,12 @@
     (value EmergencyBrakeReleased)
     (value FirePressed)
     (value FireReleased)
+    (value UpgradeLaser)
+    (value NextTriggerMode)
+    (value PreviousTriggerMode)
+    (value SelectSingle)
+    (value SelectBurst3)
+    (value SelectFullAuto)
     (projections (cpp))))
 
 (module native_player_event_kind

@@ -241,6 +241,10 @@
   :spelling "Sim"
   :header "ioj/sim/fighters/sim.h")
 
+(type player_input_events
+  :spelling "PlayerInputEvents"
+  :header "ioj/sim/player/player_events.h")
+
 (type player_sim
   :spelling "Sim"
   :header "ioj/sim/player/sim.h")

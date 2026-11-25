@@ -1,8 +1,8 @@
 #include <SpaceGame/ships/player/ShipControlContext.h>
 
-#include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/UnrealMessages.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <Engine/GameInstance.h>
@@ -115,14 +115,14 @@ void FShipControlContext::bind_actions() {
     auto const ship_value = [this](auto method) {
         return [this, method](FInputActionValue const& value) {
             if (auto* const ship{get_ship()}) {
-                (ship->commands().*method)(value.Get<float>());
+                (ship->input_events().*method)(value.Get<float>());
             }
         };
     };
     auto const ship_event = [this](auto method) {
         return [this, method] {
             if (auto* const ship{get_ship()}) {
-                (ship->commands().*method)();
+                (ship->input_events().*method)();
             }
         };
     };
@@ -134,7 +134,7 @@ void FShipControlContext::bind_actions() {
     auto const clear_axis = [this, &bind_release](UInputAction* const action, auto method) {
         bind_release(action, [this, method] {
             if (auto* const ship{get_ship()}) {
-                (ship->commands().*method)(0.f);
+                (ship->input_events().*method)(0.f);
             }
         });
     };
@@ -145,20 +145,22 @@ void FShipControlContext::bind_actions() {
     }
     bind_event(input_->hold_mouse_steering, Triggered, [this] { update_mouse_steering(); });
     bind_release(input_->hold_mouse_steering, [this] { release_mouse_steering(); });
-    bind_value(
-        input_->accelerate, Triggered, ship_value(&sim::player::CommandInterface::set_accelerator));
-    clear_axis(input_->accelerate, &sim::player::CommandInterface::set_accelerator);
-    bind_event(input_->boost, Started, ship_event(&sim::player::CommandInterface::start_boost));
-    bind_release(input_->boost, ship_event(&sim::player::CommandInterface::stop_boost));
-    bind_event(input_->brake, Started, ship_event(&sim::player::CommandInterface::start_brake));
-    bind_release(input_->brake, ship_event(&sim::player::CommandInterface::stop_brake));
+    bind_value(input_->accelerate,
+               Triggered,
+               ship_value(&sim::player::PlayerInputEvents::set_accelerator));
+    clear_axis(input_->accelerate, &sim::player::PlayerInputEvents::set_accelerator);
+    bind_event(input_->boost, Started, ship_event(&sim::player::PlayerInputEvents::start_boost));
+    bind_release(input_->boost, ship_event(&sim::player::PlayerInputEvents::stop_boost));
+    bind_event(input_->brake, Started, ship_event(&sim::player::PlayerInputEvents::start_brake));
+    bind_release(input_->brake, ship_event(&sim::player::PlayerInputEvents::stop_brake));
     bind_event(input_->emergency_brake,
                Started,
-               ship_event(&sim::player::CommandInterface::start_emergency_brake));
+               ship_event(&sim::player::PlayerInputEvents::start_emergency_brake));
     bind_release(input_->emergency_brake,
-                 ship_event(&sim::player::CommandInterface::stop_emergency_brake));
+                 ship_event(&sim::player::PlayerInputEvents::stop_emergency_brake));
     bind_event(input_->fire_primary, Started, [this] { start_fire_primary(); });
-    bind_release(input_->fire_primary, ship_event(&sim::player::CommandInterface::stop_fire_laser));
+    bind_release(input_->fire_primary,
+                 ship_event(&sim::player::PlayerInputEvents::stop_fire_laser));
 }
 void FShipControlContext::remove_action_bindings() {
     if (auto* const component{input_component_.Get()}) {
@@ -177,13 +179,13 @@ void FShipControlContext::neutralise_ship_input() {
     if (!IsValid(ship) || !ship->has_simulation()) {
         return;
     }
-    ship->commands().set_pitch_input(0.f);
-    ship->commands().set_yaw_input(0.f);
-    ship->commands().set_accelerator(0.f);
-    ship->commands().stop_boost();
-    ship->commands().stop_brake();
-    ship->commands().stop_emergency_brake();
-    ship->commands().stop_fire_laser();
+    ship->input_events().set_pitch_input(0.f);
+    ship->input_events().set_yaw_input(0.f);
+    ship->input_events().set_accelerator(0.f);
+    ship->input_events().stop_boost();
+    ship->input_events().stop_brake();
+    ship->input_events().stop_emergency_brake();
+    ship->input_events().stop_fire_laser();
 }
 auto FShipControlContext::get_ship() const -> ATestSpaceShip* {
     auto* const ship{ship_.Get()};
@@ -206,8 +208,8 @@ void FShipControlContext::update_gamepad_turn() {
                    TEXT("[InputTrace] IA_Ship_Pitch -> native pitch intent %.3f"),
                    pitch);
         }
-        ship->commands().set_pitch_input(pitch);
-        ship->commands().set_yaw_input(input->GetActionValue(input_->yaw).Get<float>());
+        ship->input_events().set_pitch_input(pitch);
+        ship->input_events().set_yaw_input(input->GetActionValue(input_->yaw).Get<float>());
     }
 }
 void FShipControlContext::update_mouse_steering() {
@@ -221,12 +223,11 @@ void FShipControlContext::update_mouse_steering() {
     owner_->hud_.set_mouse_steering(mouse_displacement_);
 
     auto const command{mouse_displacement_->GetClampedToMaxSize(1.0)};
-    auto const* const settings{owner_->GetGameInstance()->GetSubsystem<UGameSettingsSubsystem>()};
-    check(settings);
-    auto const& preferences{settings->settings_state()};
+    auto const& preferences{player_settings().applied()};
     if (auto* const ship{get_ship()}) {
-        ship->commands().set_pitch_input(preferences.invert_mouse_pitch ? -command.Y : command.Y);
-        ship->commands().set_yaw_input(preferences.invert_mouse_yaw ? -command.X : command.X);
+        ship->input_events().set_pitch_input(preferences.invert_mouse_pitch ? -command.Y
+                                                                            : command.Y);
+        ship->input_events().set_yaw_input(preferences.invert_mouse_yaw ? -command.X : command.X);
     }
 }
 void FShipControlContext::release_mouse_steering() {
@@ -243,7 +244,7 @@ void FShipControlContext::start_fire_primary() {
                    Warning,
                    TEXT("[InputTrace] IA_Ship_FirePrimary -> start_fire_laser"));
         }
-        ship->commands().start_fire_laser();
+        ship->input_events().start_fire_laser();
     }
 }
 

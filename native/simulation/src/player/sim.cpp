@@ -85,7 +85,7 @@ void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
 }
 
 Sim::Sim(std::pmr::memory_resource& memory)
-    : input_queue_{std::pmr::vector<PlayerInputKind>{&memory}}
+    : input_queue_{memory}
     , health_changes_{&memory} {}
 
 /* **************************************** */
@@ -125,8 +125,30 @@ void Sim::think(float const dt, PlayerEvents& events) {
     update_movement(dt, state);
 }
 void Sim::apply_inputs(PlayerSimulationState& state, PlayerEvents& events) {
-    for (auto const input : input_queue_.inputs) {
-        switch (input) {
+    flight_intent_.pitch = input_queue_.pitch_;
+    flight_intent_.yaw = input_queue_.yaw_;
+    flight_intent_.accelerator = input_queue_.accelerator_;
+
+    for (auto const event : input_queue_.events_) {
+        switch (event) {
+            case PlayerInputKind::UpgradeLaser:
+                upgrade_laser();
+                continue;
+            case PlayerInputKind::NextTriggerMode:
+                select_next_laser_trigger_mode();
+                continue;
+            case PlayerInputKind::PreviousTriggerMode:
+                select_previous_laser_trigger_mode();
+                continue;
+            case PlayerInputKind::SelectSingle:
+                set_laser_trigger_mode(ShipTriggerMode::Single);
+                continue;
+            case PlayerInputKind::SelectBurst3:
+                set_laser_trigger_mode(ShipTriggerMode::Burst3);
+                continue;
+            case PlayerInputKind::SelectFullAuto:
+                set_laser_trigger_mode(ShipTriggerMode::FullAuto);
+                continue;
             case PlayerInputKind::BoostPressed:
                 flight_intent_.boost_held = true;
                 break;
@@ -156,7 +178,8 @@ void Sim::apply_inputs(PlayerSimulationState& state, PlayerEvents& events) {
         }
         update_propulsion_action(state, events);
     }
-    input_queue_.inputs.clear();
+
+    input_queue_.events_.clear();
 }
 void Sim::generate_fire_commands() {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::generate_fire_commands");
@@ -378,45 +401,6 @@ void Sim::update_propulsion_action(PlayerSimulationState& state, PlayerEvents& e
 }
 
 /* **************************************** */
-// Flight controls
-/* **************************************** */
-void Sim::set_accelerator(float const input) noexcept {
-    flight_intent_.accelerator = std::clamp(input, 0.f, 1.f);
-}
-
-void Sim::set_pitch_input(float const input) noexcept {
-    flight_intent_.pitch = std::clamp(input, -1.f, 1.f);
-}
-
-void Sim::set_yaw_input(float const input) noexcept {
-    flight_intent_.yaw = std::clamp(input, -1.f, 1.f);
-}
-
-void Sim::start_boost() {
-    input_queue_.add(PlayerInputKind::BoostPressed);
-}
-
-void Sim::stop_boost() {
-    input_queue_.add(PlayerInputKind::BoostReleased);
-}
-
-void Sim::start_brake() {
-    input_queue_.add(PlayerInputKind::BrakePressed);
-}
-
-void Sim::start_emergency_brake() {
-    input_queue_.add(PlayerInputKind::EmergencyBrakePressed);
-}
-
-void Sim::stop_emergency_brake() {
-    input_queue_.add(PlayerInputKind::EmergencyBrakeReleased);
-}
-
-void Sim::stop_brake() {
-    input_queue_.add(PlayerInputKind::BrakeReleased);
-}
-
-/* **************************************** */
 // Weapons
 /* **************************************** */
 
@@ -442,14 +426,6 @@ void Sim::update_laser_firing() {
             break;
         }
     }
-}
-
-void Sim::start_fire_laser() {
-    input_queue_.add(PlayerInputKind::FirePressed);
-}
-
-void Sim::stop_fire_laser() {
-    input_queue_.add(PlayerInputKind::FireReleased);
 }
 
 void Sim::fire_laser() {

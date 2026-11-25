@@ -80,8 +80,9 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
         LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
         simulation.start();
-        auto commands{simulation.player_ship_commands()};
-        commands->start_fire_laser();
+        player::PlayerInputEvents fire_input{*std::pmr::new_delete_resource()};
+        fire_input.start_fire_laser();
+        simulation.append_player_input(fire_input);
         simulation.advance(1.0);
 
         auto const shots{rate == ShipTriggerMode::Single ? 1u : 3u};
@@ -91,7 +92,7 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
         simulation.advance(1.0);
         EXPECT_EQ(simulation.lasers().get_number_spawned(), shots);
 
-        commands->start_fire_laser();
+        simulation.append_player_input(fire_input);
         simulation.advance(1.0);
         EXPECT_EQ(simulation.lasers().get_number_spawned(), shots * 2);
     }
@@ -106,13 +107,16 @@ TEST(TickPhases, AutomaticFireContinuesUntilReleased) {
     LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     simulation.start();
-    auto commands{simulation.player_ship_commands()};
-    commands->start_fire_laser();
+    player::PlayerInputEvents fire_input{*std::pmr::new_delete_resource()};
+    fire_input.start_fire_laser();
+    simulation.append_player_input(fire_input);
     simulation.advance(1.0);
     EXPECT_GT(simulation.lasers().get_number_spawned(), 3u);
     EXPECT_EQ(simulation.player_ship_simulation()->laser_firing_mode, LaserFiringState::burst);
 
-    commands->stop_fire_laser();
+    player::PlayerInputEvents release_input{*std::pmr::new_delete_resource()};
+    release_input.stop_fire_laser();
+    simulation.append_player_input(release_input);
     simulation.advance(1.0);
     auto const shots{simulation.lasers().get_number_spawned()};
     simulation.advance(1.0);
@@ -210,8 +214,9 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
 
     auto const clk_period{simulation.clock().tick_period()};
 
-    auto commands{simulation.player_ship_commands()};
-    commands->start_fire_laser();
+    player::PlayerInputEvents fire_input{*std::pmr::new_delete_resource()};
+    fire_input.start_fire_laser();
+    simulation.append_player_input(fire_input);
 
     auto const& player{*simulation.player_ship_simulation()};
 
@@ -387,7 +392,9 @@ TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
 
     auto const clk_period{simulation.clock().tick_period()};
     auto const* player{simulation.player_ship_simulation()};
-    simulation.player_ship_commands()->start_fire_laser();
+    player::PlayerInputEvents fire_input{*std::pmr::new_delete_resource()};
+    fire_input.start_fire_laser();
+    simulation.append_player_input(fire_input);
     DirectDamageEvents damage;
     damage.add(player->unique_entity_id, 100, {});
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());

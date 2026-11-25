@@ -190,7 +190,6 @@ native/simulation/include/ioj/sim/levels/level_state.h
 native/simulation/include/ioj/sim/levels/level_turret_spawn_events.h
 native/simulation/include/ioj/sim/levels/run_end_reason.h
 native/simulation/include/ioj/sim/levels/tick_player_ship_state.h
-native/simulation/include/ioj/sim/player/command_interface.h
 native/simulation/include/ioj/sim/player/flight_controller_state.h
 native/simulation/include/ioj/sim/player/laser_firing_state.h
 native/simulation/include/ioj/sim/player/phase_interface.h

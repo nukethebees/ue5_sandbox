@@ -29,7 +29,6 @@ static_assert(requires(LevelSim& simulation) {
     { simulation.entity_ledger() } -> std::same_as<EntityLedger const&>;
     { simulation.spatial_query_manager() } -> std::same_as<SpatialQueryManager const&>;
     { simulation.player_ship_simulation() } -> std::same_as<player::Sim const*>;
-    { simulation.player_ship_commands() } -> std::same_as<std::optional<player::CommandInterface>>;
 });
 
 static_assert(
@@ -205,8 +204,6 @@ TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGe
 
     auto const* player{simulation.player_ship_simulation()};
     ASSERT_NE(player, nullptr);
-    auto commands{simulation.player_ship_commands()};
-    ASSERT_TRUE(commands);
     simulation.start();
     simulation.advance(0.5);
     EXPECT_EQ(simulation.clock().get_completed_ticks().value(), 15);

@@ -18,7 +18,7 @@
 #include <ioj/sim/levels/level_state.h>
 #include <ioj/sim/levels/tick_player_ship_state.h>
 #include <ioj/sim/overlap_handler.h>
-#include <ioj/sim/player/command_interface.h>
+#include <ioj/sim/player/player_events.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/tasks/task_manager.h>
@@ -74,12 +74,11 @@ struct LevelSim {
             player.add_health(delta);
         }
     }
-    auto player_ship_commands() noexcept -> std::optional<player::CommandInterface> {
-        if (!player_ship_simulation_) {
-            return std::nullopt;
-        }
 
-        return std::optional<player::CommandInterface>{std::in_place, *player_ship_simulation_};
+    void append_player_input(player::PlayerInputEvents const& input) {
+        if (player_ship_simulation_) {
+            player_ship_simulation_->input_queue_.append_frame(input);
+        }
     }
 
     /* **************************************** */

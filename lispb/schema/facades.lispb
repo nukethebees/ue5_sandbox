@@ -1,28 +1,3 @@
-(module player_command_interface
-  :header "native/simulation/include/ioj/sim/player/command_interface.h"
-  :namespace ioj::sim::player
-  (facade CommandInterface @player_sim simulation
-    :target-storage reference
-    (method set_config void :noexcept true
-      (parameter config "PlayerSimConfig const&"))
-    (method set_pitch_input void :noexcept true (parameter input float))
-    (method set_yaw_input void :noexcept true (parameter input float))
-    (method set_accelerator void :noexcept true (parameter input float))
-    (method start_boost void)
-    (method stop_boost void)
-    (method start_brake void)
-    (method start_emergency_brake void)
-    (method stop_emergency_brake void)
-    (method stop_brake void)
-    (method start_fire_laser void)
-    (method stop_fire_laser void)
-    (method upgrade_laser void :noexcept true)
-    (method select_next_laser_trigger_mode void :noexcept true)
-    (method select_previous_laser_trigger_mode void :noexcept true)
-    (method set_laser_trigger_mode void :noexcept true
-      (parameter rate "ShipTriggerMode"))
-))
-
 (module player_phase_interface
   :header "native/simulation/include/ioj/sim/player/phase_interface.h"
   :namespace ioj::sim::player

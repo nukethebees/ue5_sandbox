@@ -82,23 +82,8 @@ struct Sim {
     void set_team(Team new_team, HealthTable const& health_table, EntityLedger& ledger) noexcept;
 
     /* **************************************** */
-    // Flight controls
-    /* **************************************** */
-    void set_pitch_input(float input) noexcept;
-    void set_yaw_input(float input) noexcept;
-    void set_accelerator(float input) noexcept;
-    void start_boost();
-    void stop_boost();
-    void start_brake();
-    void start_emergency_brake();
-    void stop_emergency_brake();
-    void stop_brake();
-
-    /* **************************************** */
     // Weapons
     /* **************************************** */
-    void start_fire_laser();
-    void stop_fire_laser();
     void upgrade_laser() noexcept;
     void select_next_laser_trigger_mode() noexcept;
     void select_previous_laser_trigger_mode() noexcept;
@@ -107,7 +92,7 @@ struct Sim {
     /* **************************************** */
     // Health and status
     /* **************************************** */
-    void add_health(Health added_health);
+    void add_health(Health delta);
     [[nodiscard]] auto health(HealthTable const& health_table) const -> ShipHealth;
     [[nodiscard]] auto is_alive(HealthTable const& health_table) const -> bool;
 

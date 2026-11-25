@@ -10,7 +10,7 @@
 namespace ioj::sim::player {
 using PlayerInputKindUnderlying = std::uint8_t;
 
-// Logical bit width: 3.
+// Logical bit width: 4.
 enum class PlayerInputKind : PlayerInputKindUnderlying {
     BoostPressed,
     BoostReleased,
@@ -20,6 +20,12 @@ enum class PlayerInputKind : PlayerInputKindUnderlying {
     EmergencyBrakeReleased,
     FirePressed,
     FireReleased,
+    UpgradeLaser,
+    NextTriggerMode,
+    PreviousTriggerMode,
+    SelectSingle,
+    SelectBurst3,
+    SelectFullAuto,
 };
 
 } // namespace ioj::sim::player
@@ -27,5 +33,5 @@ enum class PlayerInputKind : PlayerInputKindUnderlying {
 namespace ioj {
 template <>
 inline constexpr MinMax<sim::player::PlayerInputKind> enum_range<sim::player::PlayerInputKind>{
-    sim::player::PlayerInputKind::BoostPressed, sim::player::PlayerInputKind::FireReleased};
+    sim::player::PlayerInputKind::BoostPressed, sim::player::PlayerInputKind::SelectFullAuto};
 } // namespace ioj
