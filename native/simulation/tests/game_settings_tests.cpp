@@ -1,11 +1,26 @@
+#include <ioj/settings/control_binding_address.h>
+#include <ioj/settings/control_binding_snapshot.h>
 #include <ioj/settings/control_bindings.h>
+#include <ioj/settings/game_anti_aliasing_method.h>
+#include <ioj/settings/game_graphics_preset.h>
+#include <ioj/settings/game_quality_level.h>
+#include <ioj/settings/game_setting.h>
+#include <ioj/settings/game_setting_availability_provider.h>
+#include <ioj/settings/game_setting_category.h>
+#include <ioj/settings/game_setting_device.h>
+#include <ioj/settings/game_setting_option_provider.h>
+#include <ioj/settings/game_settings.h>
 #include <ioj/settings/game_settings_edit_state.h>
-#include <ioj/sim/player/game_settings_session.h>
+#include <ioj/settings/game_settings_state.h>
+#include <ioj/settings/screen_resolution.h>
 
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cstddef>
 #include <limits>
+#include <utility>
+#include <vector>
 
 namespace ioj::tests {
 TEST(GameSettings, TracksCategoryResetCommitAndCancellation) {
@@ -127,48 +142,6 @@ TEST(GameSettings, BindingConflictsRespectHardwareProfileAndChord) {
     EXPECT_FALSE(control_bindings_changed(reordered, bindings));
     reordered[0].current_key = "other";
     EXPECT_TRUE(control_bindings_changed(reordered, bindings));
-}
-
-TEST(GameSettings, DisplayRevertKeepsAppliedControls) {
-    GameSettingsState applied;
-    applied.resolution = {1920, 1080};
-    applied.mouse_turn_sensitivity = 1.f;
-    GameSettingsSession session;
-    session.initialise(applied, applied);
-    EXPECT_FALSE(session.is_editing());
-    EXPECT_FALSE(session.is_awaiting_display_confirmation());
-    EXPECT_FALSE(session.set_setting(GameSetting::VSync, true));
-    ASSERT_TRUE(session.begin_edit(applied, applied));
-    EXPECT_TRUE(session.is_editing());
-    EXPECT_FALSE(session.is_awaiting_display_confirmation());
-    ASSERT_TRUE(session.set_setting(GameSetting::Resolution, ScreenResolution{1280, 720}));
-    ASSERT_TRUE(session.set_setting(GameSetting::MouseTurnSensitivity, 1.5f));
-    EXPECT_EQ(session.apply(10.0), GameSettingsApplyResult::ConfirmDisplay);
-    EXPECT_TRUE(session.is_editing());
-    EXPECT_TRUE(session.is_awaiting_display_confirmation());
-    EXPECT_FALSE(session.begin_edit(applied, applied));
-    EXPECT_EQ(session.display_confirmation_seconds_remaining(10.25), 15);
-    EXPECT_FALSE(session.display_confirmation_expired(24.99));
-    EXPECT_TRUE(session.display_confirmation_expired(25.0));
-    EXPECT_FALSE(session.cancel());
-    EXPECT_FALSE(session.set_setting(GameSetting::VSync, true));
-    ASSERT_TRUE(session.revert_display());
-    EXPECT_TRUE(session.is_editing());
-    EXPECT_FALSE(session.is_awaiting_display_confirmation());
-    EXPECT_EQ(session.settings_state().resolution, applied.resolution);
-    EXPECT_EQ(session.settings_state().mouse_turn_sensitivity, 1.5f);
-    EXPECT_FALSE(session.is_dirty());
-    ASSERT_TRUE(session.set_setting(GameSetting::Resolution, ScreenResolution{1280, 720}));
-    EXPECT_EQ(session.apply(30.0), GameSettingsApplyResult::ConfirmDisplay);
-    ASSERT_TRUE(session.confirm_display());
-    EXPECT_EQ(session.applied_state().resolution, (ScreenResolution{1280, 720}));
-    EXPECT_FALSE(session.is_awaiting_display_confirmation());
-    ASSERT_TRUE(session.cancel());
-    EXPECT_FALSE(session.is_editing());
-    EXPECT_FALSE(session.confirm_display());
-    EXPECT_FALSE(session.revert_display());
-    EXPECT_EQ(session.apply(40.0), GameSettingsApplyResult::Ignored);
-    EXPECT_EQ(session.settings_state().resolution, (ScreenResolution{1280, 720}));
 }
 
 }

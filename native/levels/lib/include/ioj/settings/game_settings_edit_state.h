@@ -26,7 +26,6 @@ class GameSettingsEditState {
     void begin(GameSettingsState applied, GameSettingsState defaults);
     void cancel();
     void commit_all();
-    void commit_setting(GameSetting setting);
     auto set_setting(GameSetting setting, GameSettingValue const& value) -> bool;
     void reset_category(GameSettingCategory category);
 
