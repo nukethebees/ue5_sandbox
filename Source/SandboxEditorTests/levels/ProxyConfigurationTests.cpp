@@ -1,7 +1,7 @@
-#include <SandboxTests/support/SimulationTestAssets.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <Components/ArrowComponent.h>
 #include <Components/SphereComponent.h>
@@ -12,7 +12,7 @@
 #include <UObject/Package.h>
 #include <UObject/UnrealType.h>
 
-TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
+TEST_CLASS(ProxyConfiguration, "SandboxEditor.Authoring")
 {
     UWorld* world{};
     ioj::USpaceGameLevelConfig* config{};
@@ -20,11 +20,11 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
     BEFORE_EACH()
     {
         world = UWorld::CreateWorld(EWorldType::Editor, false);
-        auto* const source{ioj::load_default_level_config()};
+        auto* const source{ioj::s7_level_config::load_canonical()};
         if (!TestRunner->TestNotNull(TEXT("Default config loads"), source)) {
             return;
         }
-        config = ioj::duplicate_level_config(*source, *world);
+        config = DuplicateObject<ioj::USpaceGameLevelConfig>(source, world);
     }
 
     AFTER_EACH()
