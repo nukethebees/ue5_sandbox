@@ -1,6 +1,7 @@
 #pragma once
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+#include <ioj/cpu_simd_capabilities.h>
 #include <ioj/levels/level_definition.h>
 #include <ioj/profiles/save_browser.h>
 #include <ioj/session/launch_state.h>
@@ -17,29 +18,6 @@ class BumpResource;
 
 namespace ioj {
 class USpaceGameUiTheme;
-
-struct SPACEGAME_API FCpuSimdCapabilities {
-    bool available{};
-    bool sse{};
-    bool sse2{};
-    bool sse3{};
-    bool ssse3{};
-    bool sse4_1{};
-    bool sse4_2{};
-    bool sse4a{};
-    bool avx{};
-    bool avx2{};
-    bool avx_vnni{};
-    bool avx512_f{};
-    bool avx512_cd{};
-    bool avx512_bw{};
-    bool avx512_dq{};
-    bool avx512_vl{};
-    bool amx_tile{};
-    bool amx_bf16{};
-    bool amx_int8{};
-    bool amx_fp16{};
-};
 
 #if PLATFORM_WINDOWS
 enum class ELargePageAccessStatus : uint8 {
@@ -66,7 +44,7 @@ struct SPACEGAME_API FGameCapabilities {
     int32 physical_core_count{};
     int32 logical_core_count{};
     uint64 total_physical_memory_bytes{};
-    FCpuSimdCapabilities cpu_simd{};
+    CpuSimdCapabilities cpu_simd{};
 
 #if PLATFORM_WINDOWS
     FWindowsGameCapabilities windows{};
