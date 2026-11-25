@@ -2,6 +2,8 @@
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/turrets/sim.h>
 
+#include <memory_resource>
+
 namespace ioj::sim {
 enum class TurretAcquisitionRegressionScenario : std::uint8_t {
     NoOtherEntity,
@@ -28,7 +30,8 @@ void run_worldless_turret_acquisition_regression(
                                 {},
                                 ioj::NonNegative<std::int32_t>::make(0));
     }
-    LevelSim simulation{std::move(data).compile()};
+
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
     simulation.start();
     simulation.advance(0.5);
 

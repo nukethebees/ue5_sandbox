@@ -18,6 +18,7 @@
 #include <cmath>
 #include <iterator>
 #include <limits>
+#include <memory_resource>
 #include <thread>
 #include <vector>
 
@@ -193,7 +194,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         }
     }
 
-    sim::LevelSim simulation{std::move(data)};
+    sim::LevelSim simulation{std::move(data), *std::pmr::new_delete_resource()};
 
     auto const initial_capital_ships{simulation.capital_ships().num_instances()};
     auto const initial_turrets{simulation.turrets().num_instances()};

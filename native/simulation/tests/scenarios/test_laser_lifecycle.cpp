@@ -5,6 +5,8 @@
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 
+#include <memory_resource>
+
 namespace ioj::sim {
 namespace laser_lifecycle_test {
 auto make_fixture(std::int32_t const target_health = 100) -> tests::SimulationScenario {
@@ -60,7 +62,8 @@ void queue_targeted_projectiles(LevelSim& simulation, std::int32_t const count =
 }
 
 TEST(WorldlessSpaceGameSimulation, LasersQueuedSpawnHitsOnLaterTick) {
-    LevelSim simulation{laser_lifecycle_test::make_fixture().compile()};
+    LevelSim simulation{laser_lifecycle_test::make_fixture().compile(),
+                        *std::pmr::new_delete_resource()};
     auto const target{simulation.capital_ships().get_entities().entity_ids()[1]};
     laser_lifecycle_test::advance_to_projectile_queue_time(simulation);
     laser_lifecycle_test::queue_targeted_projectiles(simulation);
@@ -74,7 +77,8 @@ TEST(WorldlessSpaceGameSimulation, LasersQueuedSpawnHitsOnLaterTick) {
 }
 
 TEST(WorldlessSpaceGameSimulation, LasersSimultaneousHitsCauseOneDeath) {
-    LevelSim simulation{laser_lifecycle_test::make_fixture(15).compile()};
+    LevelSim simulation{laser_lifecycle_test::make_fixture(15).compile(),
+                        *std::pmr::new_delete_resource()};
     auto const ids{simulation.capital_ships().get_entities().entity_ids()};
     auto const shooter{ids[0]};
     auto const target{ids[1]};
@@ -90,7 +94,8 @@ TEST(WorldlessSpaceGameSimulation, LasersSimultaneousHitsCauseOneDeath) {
 }
 
 TEST(WorldlessSpaceGameSimulation, LasersMissExpiresWithoutDamage) {
-    LevelSim simulation{laser_lifecycle_test::make_fixture().compile()};
+    LevelSim simulation{laser_lifecycle_test::make_fixture().compile(),
+                        *std::pmr::new_delete_resource()};
     auto const ids{simulation.capital_ships().get_entities().entity_ids()};
     auto const shooter{ids[0]};
     auto const target{ids[1]};
@@ -109,7 +114,7 @@ TEST(WorldlessSpaceGameSimulation, LasersMissExpiresWithoutDamage) {
 TEST(WorldlessSpaceGameSimulation, LasersWorldBlockerConsumesProjectileWithoutEntityDamage) {
     auto data{laser_lifecycle_test::make_fixture()};
     data.runtime.collision.static_bounds.add({-1100.f, -100.f, -100.f}, {-900.f, 100.f, 100.f});
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
     auto const ids{simulation.capital_ships().get_entities().entity_ids()};
     auto const shooter{ids[0]};
     auto const target{ids[1]};

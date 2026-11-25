@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <limits>
+#include <memory_resource>
 #include <ranges>
 #include <stdexcept>
 #include <vector>
@@ -95,7 +96,7 @@ struct TrackedLinkedValue {
 
 TEST(LinkedVector, DestroysExactlyOnceAndTransfersResourceOnMove) {
     int live{};
-    memory::BumpResource resource{4096};
+    memory::BumpResource resource{4096, *std::pmr::new_delete_resource()};
     {
         LinkedVector<TrackedLinkedValue> source{resource};
         source.emplace_back(live, 1);
@@ -128,7 +129,7 @@ struct alignas(256) AlignedLinkedValue {
 };
 
 TEST(LinkedVector, AlignsElementsAndReusesSegmentsAfterClear) {
-    memory::BumpResource resource{4096};
+    memory::BumpResource resource{4096, *std::pmr::new_delete_resource()};
     LinkedVector<AlignedLinkedValue> values{resource};
     std::vector<AlignedLinkedValue*> addresses;
     for (int i{}; i < 100; ++i) {

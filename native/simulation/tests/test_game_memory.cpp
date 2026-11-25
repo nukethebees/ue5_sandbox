@@ -4,12 +4,13 @@
 #include <ioj/sim/memory/game_memory.h>
 
 #include <array>
+#include <memory_resource>
 #include <thread>
 
 namespace ioj::sim::tests {
 
 TEST(NativeSimulation, GameMemoryTest) {
-    memory::BumpResource backing{512};
+    memory::BumpResource backing{512, *std::pmr::new_delete_resource()};
     GameMemory memory{backing};
     {
         auto* const local{memory.allocate(128, 64)};

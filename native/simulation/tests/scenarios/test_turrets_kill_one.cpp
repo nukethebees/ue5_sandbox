@@ -5,6 +5,8 @@
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/turrets/sim.h>
 
+#include <memory_resource>
+
 namespace ioj::sim {
 namespace {
 void add_worldless_turrets(tests::SimulationScenario& data,
@@ -85,7 +87,7 @@ TEST(WorldlessSpaceGameSimulation, TurretsSearchRequiresLineOfSight) {
 }
 
 TEST(WorldlessSpaceGameSimulation, TurretsKillEnemy) {
-    LevelSim simulation{make_turret_duel(100)};
+    LevelSim simulation{make_turret_duel(100), *std::pmr::new_delete_resource()};
     simulation.start();
     simulation.advance(3.0);
 
@@ -96,7 +98,7 @@ TEST(WorldlessSpaceGameSimulation, TurretsKillEnemy) {
 }
 
 TEST(WorldlessSpaceGameSimulation, TurretsClearTargetsAfterEnemyDies) {
-    LevelSim simulation{make_turret_duel(100)};
+    LevelSim simulation{make_turret_duel(100), *std::pmr::new_delete_resource()};
     simulation.start();
     simulation.advance(3.0);
 
@@ -107,7 +109,7 @@ TEST(WorldlessSpaceGameSimulation, TurretsClearTargetsAfterEnemyDies) {
 }
 
 TEST(WorldlessSpaceGameSimulation, TurretsZeroDamage) {
-    LevelSim simulation{make_turret_duel(0)};
+    LevelSim simulation{make_turret_duel(0), *std::pmr::new_delete_resource()};
     auto const& turrets{simulation.turrets()};
     auto const ids{turrets.get_entities().entity_ids()};
     auto const blue{ids[0]};

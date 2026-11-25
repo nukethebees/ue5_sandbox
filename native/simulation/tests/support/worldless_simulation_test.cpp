@@ -9,7 +9,7 @@
 #include <algorithm>
 namespace ioj::sim::tests {
 WorldlessSimulationTest::WorldlessSimulationTest(LevelSimInitData data)
-    : simulation_{std::move(data)} {}
+    : simulation_{std::move(data), *std::pmr::new_delete_resource()} {}
 
 void WorldlessSimulationTest::advance(time_type const dt) {
     auto const previous_tick{simulation_.clock().get_completed_ticks()};
@@ -44,6 +44,7 @@ void WorldlessSimulationTest::queue_kills(std::span<EntityId const> const target
 }
 
 }
+#include <memory_resource>
 
 namespace ioj::sim::tests {
 auto make_simulation_data(SimulationFixture const& fixture) -> LevelSimInitData {

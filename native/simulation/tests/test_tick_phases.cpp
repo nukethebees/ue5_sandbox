@@ -6,6 +6,7 @@
 #include <ioj/sim/testing/level_sim_test_access.h>
 
 #include <array>
+#include <memory_resource>
 
 namespace ioj::sim::tests::tick_phases {
 auto make_world() -> SimulationScenario {
@@ -76,7 +77,7 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
         data.runtime.player->config.laser.fire_cooldown =
             ::ioj::NonNegativeFinite<float>::make(0.05f);
 
-        LevelSim simulation{std::move(data).compile()};
+        LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
         simulation.start();
         auto commands{simulation.player_ship_commands()};
@@ -102,7 +103,7 @@ TEST(TickPhases, AutomaticFireContinuesUntilReleased) {
     data.runtime.player->laser_trigger_mode = ShipTriggerMode::FullAuto;
     data.runtime.player->config.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(0.05f);
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     simulation.start();
     auto commands{simulation.player_ship_commands()};
@@ -128,7 +129,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
                       ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
     schedule_turret(data, {});
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto const clk_period{simulation.clock().tick_period()};
 
@@ -180,7 +181,7 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndClearsTheCarrier) {
     data.runtime.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.runtime.fighters.speed = 0.f;
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto const clk_period{simulation.clock().tick_period()};
 
@@ -205,7 +206,7 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
     auto data{make_world()};
     add_moving_player(data, {}, 1000.f);
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto const clk_period{simulation.clock().tick_period()};
 
@@ -241,7 +242,7 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
                       60.f,
                       ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto const clk_period{simulation.clock().tick_period()};
 
@@ -263,7 +264,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsDispatchTick) {
                       ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
     schedule_turret(data, {{500.f, 100.f, 0.f}}, SimTick{1});
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     queue_capital_laser(simulation);
 
@@ -299,7 +300,7 @@ TEST(TickPhases, DelayedEntityDeathTriggersAfterResolutionWithoutDuplicateOverla
                               {levels::AnyExpr{{0, 1}}}};
     data.logic.rules = {{2, {levels::WinEffect{Team::Green}}}};
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto const clk_period{simulation.clock().tick_period()};
 
@@ -347,7 +348,7 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterwa
                       60.f,
                       ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto const& laser_sim{simulation.lasers()};
 
@@ -382,7 +383,7 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterwa
 TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
     auto data{make_world()};
     add_moving_player(data);
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto const clk_period{simulation.clock().tick_period()};
     auto const* player{simulation.player_ship_simulation()};
@@ -413,7 +414,7 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
                       60.f,
                       60.f,
                       ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto const clk_period{simulation.clock().tick_period()};
     lasers::LaserSpawnRequests shot;
@@ -467,7 +468,7 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeLogicEvaluation) {
                                   levels::ChangePointsEffect{Team::Green, -3}}}};
         }
 
-        LevelSim simulation{std::move(data).compile()};
+        LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
         auto const& ledger{simulation.entity_ledger()};
         auto const& capitals{simulation.capital_ships()};
@@ -536,7 +537,8 @@ TEST(TickPhases, RemovalEventsReplaySwapRemovalAcrossTheCompleteFrame) {
                           60.f,
                           ioj::settings::PositiveHealth::make(ioj::sim::Health{100}));
     }
-    LevelSim simulation{std::move(data).compile()};
+
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto const initial{simulation.read_access().capitals().get_entities()};
     std::vector<EntityId> visual_ids{initial.entity_ids().begin(), initial.entity_ids().end()};
@@ -550,13 +552,19 @@ TEST(TickPhases, RemovalEventsReplaySwapRemovalAcrossTheCompleteFrame) {
     simulation.advance(clk_period * 2.0);
     auto const& final{simulation.read_access().capitals()};
     auto const changes{simulation.read_access().frame_events().capital_changes.const_view()};
-    ASSERT_EQ(changes.num(), 2);
+    auto const count{changes.num()};
+    ASSERT_EQ(count, 2);
     EXPECT_EQ(simulation.read_access().frame_events().deaths.num(), 2);
-    for (std::uint32_t row{}; row < changes.num(); ++row) {
-        EXPECT_EQ(changes.kinds()[row], EntityFrameChangeKind::RemoveSwap);
-        ASSERT_LT(static_cast<std::size_t>(changes.indices()[row]), visual_ids.size());
-        EXPECT_EQ(visual_ids[changes.indices()[row]], changes.ids()[row]);
-        visual_ids[changes.indices()[row]] = visual_ids.back();
+
+    auto const kinds{changes.kinds()};
+    auto const indices{changes.indices()};
+    auto const ids{changes.ids()};
+    for (std::uint32_t row{}; row < count; ++row) {
+        auto const index{indices[row]};
+        EXPECT_EQ(kinds[row], EntityFrameChangeKind::RemoveSwap);
+        ASSERT_LT(index, visual_ids.size());
+        EXPECT_EQ(visual_ids[index], ids[row]);
+        visual_ids[index] = visual_ids.back();
         visual_ids.pop_back();
     }
     ASSERT_EQ(visual_ids.size(), 1);

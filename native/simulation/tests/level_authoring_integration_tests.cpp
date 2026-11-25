@@ -6,6 +6,7 @@
 
 #include <filesystem>
 #include <format>
+#include <memory_resource>
 
 namespace ioj::sim::tests {
 namespace {
@@ -38,7 +39,7 @@ void expect_fighter_kill_from_objective(std::string_view const win_condition) {
 
     auto built{make_level_simulation_init_data(*definition, {}, {})};
     ASSERT_TRUE(built) << built.error().front();
-    LevelSim simulation{std::move(*built)};
+    LevelSim simulation{std::move(*built), *std::pmr::new_delete_resource()};
 
     auto const capitals{simulation.capital_ships().get_entities()};
     ASSERT_EQ(capitals.num(), 2);
@@ -88,7 +89,7 @@ TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReference
     auto build{[&] { return make_level_simulation_init_data(*definition, {}, {}); }};
     auto built{build()};
     ASSERT_TRUE(built);
-    LevelSim simulation{std::move(*built)};
+    LevelSim simulation{std::move(*built), *std::pmr::new_delete_resource()};
 
     EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
     EXPECT_EQ(simulation.turrets().num_instances(), 0);
@@ -116,7 +117,7 @@ TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReference
 
     auto fresh{build()};
     ASSERT_TRUE(fresh);
-    LevelSim second{std::move(*fresh)};
+    LevelSim second{std::move(*fresh), *std::pmr::new_delete_resource()};
 
     EXPECT_FALSE(second.result());
     second.start();
@@ -160,7 +161,7 @@ TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedEnt
     EXPECT_EQ(turret.laser_damages()[0], 17);
     EXPECT_EQ(spinner.initial_fire_point_indices()[0], 1);
 
-    LevelSim simulation{std::move(*built)};
+    LevelSim simulation{std::move(*built), *std::pmr::new_delete_resource()};
 
     EXPECT_EQ(simulation.capital_ships().num_instances(), 1);
     ASSERT_EQ(simulation.spinners().num_instances(), 1);

@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <memory_resource>
 #include <vector>
 
 namespace ioj::sim {
@@ -24,7 +25,8 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
     for (auto const location : locations) {
         tests::add_capital_spawn(data, location, Team::White, 999.f, 999.f);
     }
-    LevelSim simulation{std::move(data).compile()};
+
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto const& capitals{simulation.capital_ships()};
     auto const capital_ids{capitals.get_entities().entity_ids()};

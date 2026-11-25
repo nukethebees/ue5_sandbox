@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <memory_resource>
+
 namespace ioj::profiles {
 TEST(LevelScore, QueriesRetainedPlayerResultWithoutSideEffects) {
     auto const definition{levels::LevelDefinition::make(
@@ -29,7 +31,7 @@ TEST(LevelScore, QueriesRetainedPlayerResultWithoutSideEffects) {
     ASSERT_TRUE(definition);
     auto built{sim::make_level_simulation_init_data(*definition, {}, {})};
     ASSERT_TRUE(built) << built.error().front();
-    sim::LevelSim simulation{std::move(*built)};
+    sim::LevelSim simulation{std::move(*built), *std::pmr::new_delete_resource()};
     EXPECT_FALSE(completed_level(simulation));
 
     auto const player{simulation.player_ship_simulation()->unique_entity_id};

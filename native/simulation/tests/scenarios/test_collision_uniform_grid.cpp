@@ -14,6 +14,7 @@
 #include <array>
 #include <bit>
 #include <cstddef>
+#include <memory_resource>
 #include <string>
 
 namespace ioj::sim {
@@ -315,7 +316,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
     tests::add_turret_spawn(data, Vector3f{500.f, 500.f, 0.f}, {}, Team::Blue);
     tests::add_spinner_spawn(data, Vector3f{1500.f, 1500.f, 0.f}, 0.f, 0);
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
     simulation.start();
     simulation.advance(0.1);
     auto const* const player{simulation.player_ship_simulation()};

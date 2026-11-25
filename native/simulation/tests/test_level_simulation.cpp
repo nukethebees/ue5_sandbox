@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <memory_resource>
 #include <type_traits>
 #include <utility>
 
@@ -200,7 +201,7 @@ TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGe
     EXPECT_EQ(built->clock_settings.tick_rate.hz(), 30.0);
     EXPECT_EQ(built->level_metadata.id.value, "headless-player");
 
-    LevelSim simulation{std::move(*built)};
+    LevelSim simulation{std::move(*built), *std::pmr::new_delete_resource()};
 
     auto const* player{simulation.player_ship_simulation()};
     ASSERT_NE(player, nullptr);
@@ -253,7 +254,7 @@ TEST(NativeSimulation, NativeStartupRejectsFutureSpawnsOutsideGrid) {
 
 TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     auto data{make_scheduled_acquisition_battle()};
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
@@ -274,7 +275,8 @@ TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
 }
 
 TEST(NativeSimulation, QueryScratchMemoryIsReleasedAfterTheTick) {
-    LevelSim simulation{make_scheduled_acquisition_battle().compile()};
+    LevelSim simulation{make_scheduled_acquisition_battle().compile(),
+                        *std::pmr::new_delete_resource()};
     simulation.start();
     simulation.advance(simulation.clock().tick_period());
     auto const first_tick_frame_memory{simulation.memory_manager().phase_memory().stats()};
@@ -323,7 +325,7 @@ TEST(NativeSimulation, PositionSamplesCanBecomeFalseWhileLatchRemembersArrival) 
     auto compiled{std::move(data).compile()};
     auto const arrived{compiled.level_events.triggers()[0].condition};
     auto const gone{compiled.level_events.triggers()[1].condition};
-    LevelSim simulation{std::move(compiled)};
+    LevelSim simulation{std::move(compiled), *std::pmr::new_delete_resource()};
 
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
@@ -344,7 +346,7 @@ TEST(NativeSimulation, FirstDispatchedWinDeterminesResultAndStrandsOtherEffects)
     data.logic.rules = {
         {0,
          {levels::WinEffect{Team::White}, levels::WinEffect{Team::Green}, levels::StopEffect{}}}};
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     simulation.start();
     simulation.advance(1.0);
@@ -367,7 +369,7 @@ TEST(NativeSimulation, PreparationEventsSpawnInFifoOrderWithoutReplayingConsumed
     auto const second{definitions.add_spawn_event({1, 1})};
     std::array const events{second, first};
     add_timed_events(data, Duration::make(0), events);
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data), *std::pmr::new_delete_resource()};
 
     simulation.start();
     auto const period{simulation.clock().tick_period()};
@@ -399,7 +401,7 @@ TEST(NativeSimulation, QuantizedTerminalEventsDispatchInFifoOrderAndRetainPendin
     auto const queued{definitions.tick_end_events()};
     std::vector<EventHandle> expected_history{queued.begin(), queued.end()};
     expected_history.append_range(events);
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data), *std::pmr::new_delete_resource()};
 
     simulation.start();
     simulation.advance(0.2);
@@ -443,7 +445,7 @@ TEST(NativeSimulation, PlayerlessVictoryStopsAtTheTimerDeadline) {
                   .rules = {{0, {levels::WinEffect{Team::Blue}}}}};
     auto compiled{std::move(data).compile()};
     add_duration_limit(compiled, Duration::make(1.0));
-    LevelSim simulation{std::move(compiled)};
+    LevelSim simulation{std::move(compiled), *std::pmr::new_delete_resource()};
 
     simulation.start();
     simulation.advance(1.0);
@@ -460,7 +462,7 @@ TEST(NativeSimulation, PlayerlessVictoryStopsAtTheTimerDeadline) {
 TEST(NativeSimulation, ZeroDurationStopsOnFirstTick) {
     auto data{make_battle_config().compile()};
     add_duration_limit(data, Duration::make(0));
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data), *std::pmr::new_delete_resource()};
 
     simulation.start();
     simulation.advance(1.0);
@@ -483,7 +485,7 @@ TEST(NativeSimulation, InitialAndTriggeredTimerStartsUseDispatchWithoutAdvancing
     auto const stop{definitions.add_stop_event(RunEndReason::DurationReached)};
     definitions.add_trigger(second_elapsed, std::array{stop});
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     EXPECT_EQ(simulation.state(), LevelState::Paused);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
@@ -521,7 +523,7 @@ TEST(NativeSimulation, InitialEventsPublishSpawnsAndRetainStrandedEventsAfterTer
         definitions.enqueue(event);
     }
 
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data), *std::pmr::new_delete_resource()};
 
     EXPECT_EQ(simulation.state(), LevelState::Stopped);
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
@@ -553,7 +555,7 @@ TEST(NativeSimulation, RuntimeDefinitionsAndTriggersExecuteInTheirExistingPhases
     auto data{make_unspawned_battle()};
     auto const timer{data.timers.add()};
     auto const elapsed{data.conditions.add_timer_elapsed(timer)};
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data), *std::pmr::new_delete_resource()};
     auto& events{simulation.events()};
     auto const spawn{events.add_spawn_event({0, events.spawn_groups().num()})};
     auto const start{events.add_start_timer_event({timer, 2})};
@@ -588,7 +590,7 @@ TEST(NativeSimulation, KillTaskValuesMergeByTeamAndTargetAcrossDiscoveryPasses) 
     data.logic.rules = {{0, {levels::ChangePointsEffect{Team::Green, -10}}},
                         {1, {levels::ChangePointsEffect{Team::Blue, 5}}}};
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
     auto& events{simulation.events()};
     auto const root{events.triggers().back().condition};
     auto const win{events.add_win_event(Team::Blue)};
@@ -636,7 +638,7 @@ TEST(NativeSimulation, KillTaskValuesMergeByTeamAndTargetAcrossDiscoveryPasses) 
 TEST(NativeSimulation, RunsWithoutACompletionOrDurationEvent) {
     auto data{make_battle_config()};
     data.runtime.clock_settings.tick_rate = Frequency::make(10);
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     simulation.start();
     simulation.advance(1.0);
@@ -648,7 +650,7 @@ TEST(NativeSimulation, QueuedPausePreservesPendingSpawnsUntilResume) {
     auto data{make_scheduled_battle().compile()};
     std::array const pause{EventHandle{0, EventKind::Pause}};
     add_timed_events(data, Duration::make(0.21), pause);
-    LevelSim simulation{std::move(data)};
+    LevelSim simulation{std::move(data), *std::pmr::new_delete_resource()};
 
     simulation.start();
     simulation.advance(0.425);
@@ -689,7 +691,7 @@ TEST(NativeSimulation, QueuedPausePreservesPendingSpawnsUntilResume) {
 TEST(NativeSimulation, LaserFrameOutputsTest) {
     auto data{make_battle()};
     data.runtime.clock_settings.tick_rate = ioj::Frequency::make(10.0);
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto queue_shot = [](LevelSim& level, float const location) {
         lasers::LaserSpawnRequests requests;
@@ -736,7 +738,8 @@ TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
     for (auto const& bounds : static_bounds) {
         data.runtime.collision.static_bounds.add(bounds.min, bounds.max);
     }
-    LevelSim simulation{std::move(data).compile()};
+
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto const clk_period{simulation.clock().tick_period()};
 
@@ -774,7 +777,7 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     auto compiled{std::move(data).compile()};
     auto const queued{compiled.level_events.preparation_events()};
     std::vector<EventHandle> const initial_events{queued.begin(), queued.end()};
-    LevelSim simulation{std::move(compiled)};
+    LevelSim simulation{std::move(compiled), *std::pmr::new_delete_resource()};
 
     EXPECT_EQ(simulation.clock().get_completed_ticks(), SimTick{});
     EXPECT_TRUE(simulation.events().pending_preparation_events().empty());
@@ -807,7 +810,7 @@ TEST(NativeSimulation, PlayerPreservesPartialSpawnHealth) {
     add_player_spawn(data, {});
     data.runtime.player->health = {Health{50}, Health{100}};
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     auto const* const player{simulation.player_ship_simulation()};
     ASSERT_NE(player, nullptr);
@@ -857,7 +860,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     data.entities[scheduled].spawn_time_seconds =
         NonNegativeFinite<double>::make(4.0 / data.runtime.clock_settings.tick_rate.hz());
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
 
     simulation.start();
     auto const tick_period{simulation.clock().tick_period()};
@@ -907,7 +910,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
 }
 
 TEST(NativeSimulation, LevelSimOverlapResponseTest) {
-    LevelSim simulation{make_overlap_response_battle().compile()};
+    LevelSim simulation{make_overlap_response_battle().compile(), *std::pmr::new_delete_resource()};
 
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
@@ -935,8 +938,8 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
 }
 
 TEST(NativeSimulation, SimulationsKeepClocksAndEntitiesIndependent) {
-    LevelSim first{make_battle().compile()};
-    LevelSim second{make_battle().compile()};
+    LevelSim first{make_battle().compile(), *std::pmr::new_delete_resource()};
+    LevelSim second{make_battle().compile(), *std::pmr::new_delete_resource()};
 
     first.start();
     second.start();

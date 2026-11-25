@@ -9,6 +9,7 @@
 #include <cmath>
 #include <filesystem>
 #include <format>
+#include <memory_resource>
 #include <vector>
 
 namespace ioj::sim::tests::defend_capital {
@@ -54,7 +55,7 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
 
     auto built{make_level_simulation_init_data(*level, {}, {})};
     ASSERT_TRUE(built) << built.error().front();
-    LevelSim simulation{std::move(*built)};
+    LevelSim simulation{std::move(*built), *std::pmr::new_delete_resource()};
     auto const blue_capital{capital_id(simulation, *level, "capitalship-blue")};
     auto const red_objective{capital_id(simulation, *level, "capitalship-red2")};
     auto const clearance{

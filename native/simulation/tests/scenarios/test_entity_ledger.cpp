@@ -2,6 +2,8 @@
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/testing/structural_diff.h>
 
+#include <memory_resource>
+
 namespace ioj::sim {
 using ioj::testing::structurally_equal;
 TEST(WorldlessSpaceGameSimulation, EntityLedgerCountsTeams) {
@@ -24,7 +26,7 @@ TEST(WorldlessSpaceGameSimulation, EntityLedgerCountsTeams) {
         }
     }
 
-    LevelSim simulation{std::move(data).compile()};
+    LevelSim simulation{std::move(data).compile(), *std::pmr::new_delete_resource()};
     simulation.start();
     simulation.advance(0.1);
     EXPECT_PRED_FORMAT2(structurally_equal,

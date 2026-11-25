@@ -1,10 +1,12 @@
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/fighters/sim.h>
 
+#include <memory_resource>
+
 namespace ioj::sim {
 TEST(WorldlessSpaceGameSimulation, NavigationCountersFollowExecutedTicks) {
     auto const config{tests::make_fixture()};
-    LevelSim simulation{tests::make_simulation_data(config)};
+    LevelSim simulation{tests::make_simulation_data(config), *std::pmr::new_delete_resource()};
 
     fighters::NavigationCounters counters{.separation_query_count = 7, .hard_trace_count = 9};
     auto const tick_period{simulation.clock().tick_period()};
