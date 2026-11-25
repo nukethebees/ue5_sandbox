@@ -10,7 +10,6 @@ public class CpuFeatures : ModuleRules
 
         bool supported = Target.Platform == UnrealTargetPlatform.Win64 &&
                          Target.Architecture == UnrealArch.X64;
-        PublicDefinitions.Add("WITH_CPU_FEATURES=" + (supported ? "1" : "0"));
         if (!supported)
         {
             return;
@@ -25,9 +24,6 @@ public class CpuFeatures : ModuleRules
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
         string nativeToolchain = Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN") ?? "clang-cl";
-        PublicSystemIncludePaths.Add(
-            Path.Combine(repositoryRoot, "native", "third_party", "cpu_features", "include"));
-        PublicDefinitions.Add("STACK_LINE_READER_BUFFER_SIZE=1024");
 
         if (!Target.bGenerateProjectFiles)
         {

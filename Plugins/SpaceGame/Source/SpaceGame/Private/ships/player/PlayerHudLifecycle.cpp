@@ -3,11 +3,11 @@
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+#include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <Engine/GameInstance.h>
@@ -91,7 +91,8 @@ auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
     }
 
     hud_widget_ = created_widget;
-    auto* const game_subsystem{UGameSubsystem::get(owner.GetGameInstance())};
+    auto* const game_subsystem{
+        UGameInstance::GetSubsystem<UGameUiStyleSubsystem>(owner.GetGameInstance())};
     if (IsValid(game_subsystem)) {
         created_widget->apply_ui_style(game_subsystem->get_ui_style());
     } else {
@@ -170,7 +171,8 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
     }
 
     benchmark_hud_widget_ = created_widget;
-    if (auto* const game_subsystem{UGameSubsystem::get(owner.GetGameInstance())};
+    if (auto* const game_subsystem{
+            UGameInstance::GetSubsystem<UGameUiStyleSubsystem>(owner.GetGameInstance())};
         IsValid(game_subsystem)) {
         created_widget->apply_ui_style(game_subsystem->get_ui_style());
     }
