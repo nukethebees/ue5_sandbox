@@ -44,8 +44,7 @@ struct LevelSim {
     /* **************************************** */
     // Construction and lifecycle
     /* **************************************** */
-    explicit LevelSim(LevelSimInitData data,
-                      std::pmr::memory_resource& memory = *std::pmr::get_default_resource());
+    explicit LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory);
 
     LevelSim(LevelSim const&) = delete;
     LevelSim(LevelSim&&) = delete;

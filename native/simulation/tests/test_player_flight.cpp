@@ -9,6 +9,7 @@
 
 #include <array>
 #include <cmath>
+#include <memory_resource>
 #include <optional>
 #include <utility>
 
@@ -63,7 +64,7 @@ auto velocity(LevelSim& simulation) -> Vector3d {
 using namespace player_flight_tests;
 
 TEST(PlayerFlight, QueuedTapProducesOrderedTransitionsOnOneTick) {
-    LevelSim simulation{make_data().compile()};
+    LevelSim simulation{make_data().compile(), *std::pmr::new_delete_resource()};
     start(simulation);
     auto commands{simulation.player_ship_commands().value()};
     commands.start_boost();
@@ -85,7 +86,7 @@ TEST(PlayerFlight, QueuedTapProducesOrderedTransitionsOnOneTick) {
 }
 
 TEST(PlayerFlight, FullInputQueueAcceptsNewEdgesAfterTheNextTick) {
-    LevelSim simulation{make_data().compile()};
+    LevelSim simulation{make_data().compile(), *std::pmr::new_delete_resource()};
     start(simulation);
     auto commands{simulation.player_ship_commands().value()};
     for (int index{}; index < 255; ++index) {
@@ -104,7 +105,7 @@ TEST(PlayerFlight, FullInputQueueAcceptsNewEdgesAfterTheNextTick) {
 }
 
 TEST(PlayerFlight, LethalCommandPublishesAtResolutionAndStoppedAdvanceClearsDeaths) {
-    LevelSim simulation{make_data().compile()};
+    LevelSim simulation{make_data().compile(), *std::pmr::new_delete_resource()};
     auto const& ship{player_sim(simulation)};
     auto const id{ship.unique_entity_id};
     simulation.add_player_health(
@@ -133,7 +134,7 @@ TEST(PlayerFlight, LethalCommandPublishesAtResolutionAndStoppedAdvanceClearsDeat
 }
 
 TEST(PlayerFlight, HeldBoostStartsOnlyWhenBrakeReleases) {
-    LevelSim simulation{make_data().compile()};
+    LevelSim simulation{make_data().compile(), *std::pmr::new_delete_resource()};
     start(simulation);
     auto commands{simulation.player_ship_commands().value()};
     auto const& events{simulation.read_access().frame_events().player};
@@ -153,7 +154,7 @@ TEST(PlayerFlight, HeldBoostStartsOnlyWhenBrakeReleases) {
 }
 
 TEST(PlayerFlight, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
-    LevelSim simulation{make_data().compile()};
+    LevelSim simulation{make_data().compile(), *std::pmr::new_delete_resource()};
     start(simulation);
     auto const& controller{player_sim(simulation).controller_state()};
     advance_ticks(simulation, 600);
@@ -179,8 +180,8 @@ TEST(PlayerFlight, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
 }
 
 TEST(PlayerFlight, StarfoxEmergencyBrakeIsStrongerThanNormalBrake) {
-    LevelSim normal{make_data().compile()};
-    LevelSim emergency{make_data().compile()};
+    LevelSim normal{make_data().compile(), *std::pmr::new_delete_resource()};
+    LevelSim emergency{make_data().compile(), *std::pmr::new_delete_resource()};
     start(normal);
     start(emergency);
     advance_ticks(normal, 600);
@@ -195,7 +196,7 @@ TEST(PlayerFlight, StarfoxEmergencyBrakeIsStrongerThanNormalBrake) {
 }
 
 TEST(PlayerFlight, StarfoxTurnsLevelsRollAndRecoversBoostEnergy) {
-    LevelSim simulation{make_data({0.0, 0.0, 30.0}).compile()};
+    LevelSim simulation{make_data({0.0, 0.0, 30.0}).compile(), *std::pmr::new_delete_resource()};
     start(simulation);
     auto commands{simulation.player_ship_commands().value()};
     auto const& ship{player_sim(simulation)};
