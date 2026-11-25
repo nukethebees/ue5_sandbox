@@ -211,7 +211,7 @@ auto pack(TransformInput input,
             }
         }
 
-        for (auto lane{0U}; lane < lanes; ++lane) {
+        for (std::size_t lane{}; lane < lanes; ++lane) {
             auto& packed{dst[index + lane]};
             if constexpr (fields != PackingFields::Rotations) {
                 packed.position = {xyz[3 * lane], xyz[3 * lane + 1], xyz[3 * lane + 2]};
