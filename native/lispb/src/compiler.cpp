@@ -80,7 +80,7 @@ static auto scheme_reference(schema::TypeGraph const& graph, std::span<StringId 
                     result += " `'";
                     result += strings.view(store.enumerators.serialized_name[value].value_or(
                         store.enumerators.name[value]));
-                    result += "`";
+                    result += '`';
                 }
             }
             result += " |\n";
