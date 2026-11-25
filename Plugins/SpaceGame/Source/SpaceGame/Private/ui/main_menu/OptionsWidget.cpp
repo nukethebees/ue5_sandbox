@@ -1,10 +1,12 @@
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 
 #include "SGameOptionsView.h"
-#include "SpaceGame/settings/GameSettingsSubsystem.h"
-#include "SpaceGame/system/GameSubsystem.h"
+#include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+#include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 
 #include <Engine/GameInstance.h>
 #include <Widgets/Text/STextBlock.h>
@@ -26,15 +28,17 @@ void UOptionsWidget::NativeOnInitialized() {
                TEXT("UOptionsWidget: Game instance is invalid; Options is unavailable."));
         return;
     }
-    settings_ = game_instance->GetSubsystem<UGameSettingsSubsystem>();
-    game_ = UGameSubsystem::get(game_instance);
-    if (!IsValid(settings_) || !IsValid(game_)) {
+
+    settings_ = NewObject<UOptionsDraft>(this);
+    style_ = UGameInstance::GetSubsystem<UGameUiStyleSubsystem>(game_instance);
+    if (!IsValid(settings_) || !IsValid(style_)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("UOptionsWidget: Required game or settings subsystem is invalid."));
         return;
     }
 
+    settings_->save_completed.AddUObject(this, &ThisClass::handle_save_completed);
     settings_->settings_changed.AddUObject(this, &ThisClass::refresh_view);
     settings_->display_confirmation_changed.AddUObject(
         this, &ThisClass::handle_display_confirmation_changed);
@@ -45,19 +49,28 @@ void UOptionsWidget::NativeConstruct() {
     refresh_view();
 }
 
+void UOptionsWidget::NativeDestruct() {
+    cancel_leave();
+    if (IsValid(settings_)) {
+        settings_->cancel();
+    }
+
+    Super::NativeDestruct();
+}
+
 auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
-    if (!IsValid(settings_) || !IsValid(game_)) {
+    if (!IsValid(settings_) || !IsValid(style_)) {
         return SNew(STextBlock)
             .Text(NSLOCTEXT("OptionsMenu", "Unavailable", "Options are unavailable."));
     }
 
     return SAssignNew(options_view_, SGameOptionsView)
+        .IsEnabled_Lambda([this] { return !settings_->save_pending(); })
         .Settings(settings_)
-        .Capabilities(&game_->get_platform_capabilities())
-        .Style(&game_->get_ui_style())
-        .Audio(game_->get_audio())
-        .InitialTab(active_tab_)
-        .OnTabChanged(FOnOptionsTabChanged::CreateUObject(this, &ThisClass::handle_tab_changed))
+        .Capabilities(&player_capabilities())
+        .Style(&style_->get_ui_style())
+        .Audio(GetGameInstance()->GetSubsystem<UGameAudio>()->facade())
+        .Page_UObject(this, &ThisClass::page)
         .OnApply(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_apply))
         .OnReset(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_reset))
         .OnDirtyApply(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_dirty_apply))
@@ -82,23 +95,25 @@ auto UOptionsWidget::NativeOnFocusReceived(FGeometry const& geometry,
     return FReply::Handled();
 }
 
-void UOptionsWidget::select_tab(EOptionsTab const tab) {
-    active_tab_ = tab;
-    if (options_view_.IsValid()) {
-        options_view_->set_active_tab(tab);
+void UOptionsWidget::select_page(EMenuPage page, FSimpleDelegate shown) {
+    if (page == page_) {
+        shown.ExecuteIfBound();
+        return;
     }
+
+    request_leave(
+        FSimpleDelegate::CreateUObject(this, &ThisClass::open_page, page, MoveTemp(shown)));
 }
 
-void UOptionsWidget::prepare_for_open() {
-    exit_after_confirmation_ = false;
-    leave_continuation_.Unbind();
-    if (IsValid(settings_)) {
-        settings_->begin_edit(GetOwningLocalPlayer());
+void UOptionsWidget::open_page(EMenuPage page, FSimpleDelegate shown) {
+    page_ = page;
+    if (auto category{settings_category(page)}) {
+        settings_->load(GetOwningLocalPlayer(), *category);
     }
     if (options_view_.IsValid()) {
-        options_view_->hide_dirty_prompt();
-        options_view_->refresh_controls();
+        options_view_->show_page();
     }
+    shown.ExecuteIfBound();
 }
 
 void UOptionsWidget::request_leave(FSimpleDelegate continuation) {
@@ -106,11 +121,11 @@ void UOptionsWidget::request_leave(FSimpleDelegate continuation) {
         continuation.ExecuteIfBound();
         return;
     }
-    if (settings_->is_awaiting_display_confirmation()) {
+
+    if (settings_->save_pending() || settings_->is_awaiting_display_confirmation()) {
         return;
     }
     if (!settings_->is_dirty()) {
-        settings_->cancel();
         continuation.ExecuteIfBound();
         return;
     }
@@ -123,6 +138,10 @@ void UOptionsWidget::request_leave(FSimpleDelegate continuation) {
 }
 
 void UOptionsWidget::request_back() {
+    if (IsValid(settings_) && settings_->save_pending()) {
+        return;
+    }
+
     if (options_view_.IsValid() && options_view_->dismiss_interaction_modal()) {
         return;
     }
@@ -153,23 +172,14 @@ void UOptionsWidget::focus_content() {
     }
 }
 
-auto UOptionsWidget::get_focus_target() const -> UWidget* {
-    return const_cast<UOptionsWidget*>(this);
-}
-
-void UOptionsWidget::handle_tab_changed(EOptionsTab const tab) {
-    active_tab_ = tab;
-}
-
 void UOptionsWidget::handle_apply() {
-    exit_after_confirmation_ = false;
-    if (IsValid(settings_)) {
-        settings_->apply();
+    if (auto category{settings_category(page_)}) {
+        settings_->apply(*category);
     }
 }
 
 void UOptionsWidget::handle_reset() {
-    auto const category{active_category()};
+    auto const category{settings_category(page_)};
     if (IsValid(settings_) && category.IsSet()) {
         settings_->reset_category(category.GetValue());
         if (category.GetValue() == GameSettingCategory::Controls && options_view_.IsValid()) {
@@ -182,13 +192,22 @@ void UOptionsWidget::handle_dirty_apply() {
     if (!IsValid(settings_)) {
         return;
     }
-    exit_after_confirmation_ = true;
+
     if (options_view_.IsValid()) {
         options_view_->hide_dirty_prompt();
     }
-    settings_->apply();
-    if (!settings_->is_awaiting_display_confirmation()) {
+
+    if (!settings_->apply(settings_category(page_).GetValue())) {
+        cancel_leave();
+        return;
+    }
+}
+
+void UOptionsWidget::handle_save_completed(bool succeeded) {
+    if (succeeded && leave_continuation_.IsBound()) {
         complete_leave();
+    } else {
+        cancel_leave();
     }
 }
 
@@ -196,9 +215,7 @@ void UOptionsWidget::handle_dirty_discard() {
     if (options_view_.IsValid()) {
         options_view_->hide_dirty_prompt();
     }
-    if (IsValid(settings_)) {
         settings_->cancel();
-    }
     complete_leave();
 }
 
@@ -223,13 +240,6 @@ void UOptionsWidget::handle_revert_display() {
 
 void UOptionsWidget::handle_display_confirmation_changed(bool const visible) {
     refresh_view();
-    if (!visible && exit_after_confirmation_) {
-        if (IsValid(settings_)) {
-            settings_->cancel();
-        }
-        complete_leave();
-        return;
-    }
     modal_state_changed.Broadcast(visible);
 }
 
@@ -243,38 +253,16 @@ void UOptionsWidget::refresh_view() {
     }
 }
 
-auto UOptionsWidget::active_category() const -> TOptional<GameSettingCategory> {
-    switch (active_tab_) {
-        case EOptionsTab::Video:
-            return GameSettingCategory::Video;
-        case EOptionsTab::Gameplay:
-            return GameSettingCategory::Gameplay;
-        case EOptionsTab::Audio:
-            return GameSettingCategory::Audio;
-        case EOptionsTab::Controls:
-            return GameSettingCategory::Controls;
-        case EOptionsTab::Accessibility:
-            return GameSettingCategory::Accessibility;
-        case EOptionsTab::System:
-            return {};
-    }
-    return {};
-}
-
 void UOptionsWidget::complete_leave() {
     auto continuation{MoveTemp(leave_continuation_)};
     leave_continuation_.Unbind();
-    exit_after_confirmation_ = false;
-    if (IsValid(settings_)) {
-        settings_->cancel();
-    }
+
     modal_state_changed.Broadcast(false);
     continuation.ExecuteIfBound();
 }
 
 void UOptionsWidget::cancel_leave() {
     leave_continuation_.Unbind();
-    exit_after_confirmation_ = false;
     modal_state_changed.Broadcast(false);
 }
 

@@ -1,7 +1,8 @@
 #pragma once
 
-#include "SpaceGame/ui/main_menu/MainMenuWidget.h"
+#include "SpaceGame/ui/main_menu/MenuPage.h"
 #include "SpaceGamePresentation/audio/GameAudio.h"
+#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/SCompoundWidget.h>
@@ -12,16 +13,16 @@ class SWidgetSwitcher;
 namespace ioj {
 class SHiveNavigationButton;
 
-DECLARE_DELEGATE_OneParam(FOnMainMenuPageSelected, EMainMenuPage);
+DECLARE_DELEGATE_OneParam(FOnMainMenuPageSelected, EMenuPage);
 
 class SMainMenuView final : public SCompoundWidget {
   public:
     SLATE_BEGIN_ARGS(SMainMenuView)
         : _Style(nullptr)
-        , _InitialPage(EMainMenuPage::SelectMission)
+        , _Page(EMenuPage::SelectMission)
         , _Audio() {}
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
-    SLATE_ARGUMENT(EMainMenuPage, InitialPage)
+    SLATE_ATTRIBUTE(EMenuPage, Page)
     SLATE_ARGUMENT(FGameAudioFacade, Audio)
     SLATE_NAMED_SLOT(FArguments, MissionContent)
     SLATE_NAMED_SLOT(FArguments, ArchiveContent)
@@ -32,7 +33,7 @@ class SMainMenuView final : public SCompoundWidget {
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
-    void set_active_page(EMainMenuPage page);
+    void refresh_page();
     void set_mission_content(TSharedRef<SWidget> content);
     void set_navigation_enabled(bool enabled);
     void focus_navigation();
@@ -48,12 +49,12 @@ class SMainMenuView final : public SCompoundWidget {
     auto build_footer() const -> TSharedRef<SWidget>;
     void add_section(TSharedRef<SVerticalBox> const& navigation, FText text) const;
     void add_page(TSharedRef<SVerticalBox> const& navigation,
-                  EMainMenuPage page,
+                  EMenuPage page,
                   FText text,
                   EGameUiIcon icon);
-    auto handle_page(EMainMenuPage page) -> FReply;
+    auto handle_page(EMenuPage page) -> FReply;
     auto handle_quit() -> FReply;
-    auto page_content_index(EMainMenuPage page) const -> int32;
+    auto page_content_index(EMenuPage page) const -> int32;
     auto navigation_has_focus() const -> bool;
 
     FGameUiStyle const* style_{};
@@ -65,7 +66,7 @@ class SMainMenuView final : public SCompoundWidget {
     TSharedPtr<SHiveNavigationButton> quit_button_{};
     TSharedPtr<SWidgetSwitcher> content_switcher_{};
     TSharedPtr<SBox> mission_content_{};
-    EMainMenuPage active_page_{EMainMenuPage::SelectMission};
+    TAttribute<EMenuPage> page_;
     bool navigation_enabled_{true};
     bool focus_content_next_{};
 };

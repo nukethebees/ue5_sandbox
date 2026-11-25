@@ -9,7 +9,7 @@
 
 #include <Widgets/SCompoundWidget.h>
 
-class SWidgetSwitcher;
+class SBox;
 class SVerticalBox;
 class SScrollBox;
 
@@ -19,8 +19,8 @@ struct SGameOptionsViewBuilder;
 
 namespace ioj {
 class SGameButton;
-class UGameSettingsSubsystem;
-struct FGameCapabilities;
+class UOptionsDraft;
+struct GameCapabilities;
 
 enum class EControlsFocusKind : uint8 { Device, Binding };
 
@@ -40,7 +40,6 @@ struct FControlsFocusTarget {
     TFunction<bool()> has_focus{};
 };
 
-DECLARE_DELEGATE_OneParam(FOnOptionsTabChanged, EOptionsTab);
 DECLARE_DELEGATE_OneParam(FOnOptionsInteractionModalChanged, bool);
 
 class SGameOptionsView final : public SCompoundWidget {
@@ -50,14 +49,13 @@ class SGameOptionsView final : public SCompoundWidget {
         : _Settings(nullptr)
         , _Capabilities(nullptr)
         , _Style(nullptr)
-        , _InitialTab(EOptionsTab::Video)
+        , _Page(EMenuPage::SelectMission)
         , _Audio() {}
-    SLATE_ARGUMENT(UGameSettingsSubsystem*, Settings)
-    SLATE_ARGUMENT(FGameCapabilities const*, Capabilities)
+    SLATE_ARGUMENT(UOptionsDraft*, Settings)
+    SLATE_ARGUMENT(GameCapabilities const*, Capabilities)
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
-    SLATE_ARGUMENT(EOptionsTab, InitialTab)
+    SLATE_ATTRIBUTE(EMenuPage, Page)
     SLATE_ARGUMENT(FGameAudioFacade, Audio)
-    SLATE_EVENT(FOnOptionsTabChanged, OnTabChanged)
     SLATE_EVENT(FSimpleDelegate, OnApply)
     SLATE_EVENT(FSimpleDelegate, OnReset)
     SLATE_EVENT(FSimpleDelegate, OnDirtyApply)
@@ -72,7 +70,7 @@ class SGameOptionsView final : public SCompoundWidget {
     // Lifecycle and state
     /* **************************************** */
     void Construct(FArguments const& args);
-    void set_active_tab(EOptionsTab tab);
+    void show_page();
     void refresh();
     void refresh_controls();
     void focus_content();
@@ -148,10 +146,8 @@ class SGameOptionsView final : public SCompoundWidget {
     /* **************************************** */
     // Formatting and focus helpers
     /* **************************************** */
-    auto tab_text(EOptionsTab tab) const -> FText;
     auto setting_float(GameSetting setting) const -> float;
     auto format_range_value(GameSettingDescriptor const& descriptor) const -> FText;
-    auto active_category() const -> TOptional<GameSettingCategory>;
     auto controls_device_type() const -> EHardwareDevicePrimaryType;
     auto controls_focus_identity() const -> TOptional<FControlsFocusIdentity>;
     auto binding_focus_identity(FControlBindingView const& binding) const -> FControlsFocusIdentity;
@@ -164,13 +160,12 @@ class SGameOptionsView final : public SCompoundWidget {
     /* **************************************** */
     // State
     /* **************************************** */
-    TWeakObjectPtr<UGameSettingsSubsystem> settings_{};
-    FGameCapabilities const* capabilities_{};
+    TWeakObjectPtr<UOptionsDraft> settings_{};
+    GameCapabilities const* capabilities_{};
     FGameUiStyle const* style_{};
     FGameAudioFacade audio_{};
-    EOptionsTab active_tab_{EOptionsTab::Video};
+    TAttribute<EMenuPage> page_;
 
-    FOnOptionsTabChanged on_tab_changed_{};
     FSimpleDelegate on_apply_{};
     FSimpleDelegate on_reset_{};
     FSimpleDelegate on_dirty_apply_{};
@@ -196,7 +191,7 @@ class SGameOptionsView final : public SCompoundWidget {
     TSharedPtr<SGameButton> binding_clear_button_{};
     TSharedPtr<SGameButton> binding_reset_button_{};
     TSharedPtr<SGameButton> binding_cancel_button_{};
-    TSharedPtr<SWidgetSwitcher> page_switcher_{};
+    TSharedPtr<SBox> page_content_;
     TSharedPtr<SWidget> dirty_prompt_{};
     TSharedPtr<SWidget> display_prompt_{};
     TSharedPtr<SWidget> binding_management_prompt_{};
@@ -218,7 +213,7 @@ class SGameOptionsView final : public SCompoundWidget {
     bool pending_controls_reset_scroll_{};
     bool controls_rebuild_pending_{};
     TWeakPtr<SWidget> previous_focus_{};
-    TArray<TFunction<void()>> page_focus_actions_{};
+    TFunction<void()> focus_page_;
     bool dirty_prompt_visible_{};
     bool display_prompt_visible_{};
     bool binding_management_visible_{};

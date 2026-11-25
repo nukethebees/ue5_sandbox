@@ -1,11 +1,12 @@
 #include "SpaceGame/ui/PauseMenuWidget.h"
 
-#include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGamePresentation/ui/common/MenuButtonWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+#include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 
 #include <Components/TextBlock.h>
 #include <Engine/GameInstance.h>
@@ -41,20 +42,14 @@ void UPauseMenuWidget::NativeOnInitialized() {
                                                    &ThisClass::handle_options_modal_state_changed);
 
     auto* const game_instance{GetGameInstance()};
-    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>()
-                                            : nullptr};
-    auto const audio{IsValid(game) ? game->get_audio() : FGameAudioFacade{}};
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameAudio>() : nullptr};
+    auto const audio{IsValid(game) ? game->facade() : FGameAudioFacade{}};
     for (auto* const button : {resume_button,
                                audio_button,
                                controls_button,
                                return_to_level_select_button,
                                quit_button}) {
         button->set_audio(audio);
-    }
-
-    for (auto* const button : {audio_button, controls_button}) {
-        button->SetIsSelectable(true);
-        button->SetIsToggleable(true);
     }
 }
 
@@ -71,8 +66,7 @@ void UPauseMenuWidget::prepare_for_open(UInputAction& toggle_action) {
 }
 
 void UPauseMenuWidget::NativeOnActivated() {
-    options_widget->prepare_for_open();
-    show_options_tab(EOptionsTab::Audio);
+    select_page(EMenuPage::Audio);
     if (auto* const toggle_action{toggle_action_.Get()}; IsValid(toggle_action)) {
         FBindUIActionArgs const args{
             toggle_action,
@@ -108,11 +102,11 @@ void UPauseMenuWidget::handle_resume() {
 }
 
 void UPauseMenuWidget::handle_audio() {
-    show_options_tab(EOptionsTab::Audio);
+    select_page(EMenuPage::Audio);
 }
 
 void UPauseMenuWidget::handle_controls() {
-    show_options_tab(EOptionsTab::Controls);
+    select_page(EMenuPage::Controls);
 }
 
 void UPauseMenuWidget::handle_return_to_level_select() {
@@ -128,13 +122,16 @@ void UPauseMenuWidget::handle_toggle_action() {
     request_close(FSimpleDelegate::CreateUObject(this, &ThisClass::complete_resume));
 }
 
-void UPauseMenuWidget::show_options_tab(EOptionsTab const tab) {
+void UPauseMenuWidget::select_page(EMenuPage const tab) {
     if (terminal_action_requested_ || options_modal_visible_ || !IsValid(options_widget)) {
         return;
     }
-    options_widget->select_tab(tab);
-    audio_button->SetIsSelected(tab == EOptionsTab::Audio);
-    controls_button->SetIsSelected(tab == EOptionsTab::Controls);
+
+    options_widget->select_page(tab, FSimpleDelegate::CreateUObject(this, &ThisClass::show_page));
+}
+
+void UPauseMenuWidget::show_page() {
+    set_navigation_enabled(true);
     options_widget->focus_content();
 }
 
@@ -185,7 +182,9 @@ void UPauseMenuWidget::set_navigation_enabled(bool const enabled) {
                                return_to_level_select_button,
                                quit_button}) {
         if (IsValid(button)) {
-            button->SetIsEnabled(enabled);
+            auto const page{options_widget->page()};
+            button->SetIsEnabled(enabled && !(button == audio_button && page == EMenuPage::Audio) &&
+                                 !(button == controls_button && page == EMenuPage::Controls));
         }
     }
 }
@@ -197,7 +196,7 @@ void UPauseMenuWidget::set_navigation_enabled(bool const enabled) {
 void UPauseMenuWidget::apply_ui_style() {
     FGameUiStyle style;
     auto const* const game_instance{GetGameInstance()};
-    auto const* const subsystem{UGameSubsystem::get(game_instance)};
+    auto const* const subsystem{UGameInstance::GetSubsystem<UGameUiStyleSubsystem>(game_instance)};
     if (IsValid(subsystem)) {
         style = subsystem->get_ui_style();
     } else {

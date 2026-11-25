@@ -1,13 +1,15 @@
 #include "SpaceGame/ui/main_menu/MainMenuWidget.h"
 
 #include "SMainMenuView.h"
-#include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGame/UnrealMessages.h>
+#include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+#include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 
 #include <Engine/GameInstance.h>
 #include <Kismet/KismetSystemLibrary.h>
@@ -22,8 +24,8 @@ void UMainMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     auto* const game_instance{GetGameInstance()};
-    game_ = UGameSubsystem::get(game_instance);
-    if (!IsValid(game_)) {
+    style_ = UGameInstance::GetSubsystem<UGameUiStyleSubsystem>(game_instance);
+    if (!IsValid(style_)) {
         UE_LOG(LogSandboxUI,
                Warning,
                TEXT("UMainMenuWidget: Game subsystem is unavailable; using the default UI theme."));
@@ -53,13 +55,9 @@ void UMainMenuWidget::prepare_for_open(TSubclassOf<ULevelSelectWidget> level_sel
     }
 }
 
-void UMainMenuWidget::select_page(EMainMenuPage const page) {
-    request_page(page);
-}
-
 auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
     create_content_widgets();
-    auto const* const style{IsValid(game_) ? &game_->get_ui_style() : &fallback_style_};
+    auto const* const style{IsValid(style_) ? &style_->get_ui_style() : &fallback_style_};
     auto const mission_content{IsValid(level_select_widget_) ? level_select_widget_->TakeWidget()
                                                              : SNullWidget::NullWidget};
     auto const archive_content{IsValid(save_game_viewer_) ? save_game_viewer_->TakeWidget()
@@ -70,8 +68,9 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto result{
         SAssignNew(view_, SMainMenuView)
             .Style(style)
-            .InitialPage(active_page_)
-            .Audio(IsValid(game_) ? game_->get_audio() : FGameAudioFacade{})
+            .Page_UObject(options_widget_, &UOptionsWidget::page)
+            .Audio(IsValid(style_) ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
+                                   : FGameAudioFacade{})
             .MissionContent()[mission_content]
             .ArchiveContent()[archive_content]
             .OptionsContent()[options_content]
@@ -111,9 +110,10 @@ auto UMainMenuWidget::NativeOnFocusReceived(FGeometry const& geometry,
 
 auto UMainMenuWidget::NativeOnHandleBackAction() -> bool {
     if (page_modal_visible_) {
-        if (active_page_ == EMainMenuPage::DataArchive && IsValid(save_game_viewer_)) {
+        if (IsValid(options_widget_) && options_widget_->page() == EMenuPage::DataArchive &&
+            IsValid(save_game_viewer_)) {
             save_game_viewer_->request_back();
-        } else if (is_options_page(active_page_) && IsValid(options_widget_)) {
+        } else if (IsValid(options_widget_) && options_widget_->page() >= EMenuPage::Video) {
             options_widget_->request_back();
         }
         return true;
@@ -122,32 +122,6 @@ auto UMainMenuWidget::NativeOnHandleBackAction() -> bool {
         view_->focus_navigation();
     }
     return true;
-}
-
-auto UMainMenuWidget::is_options_page(EMainMenuPage const page) -> bool {
-    return page >= EMainMenuPage::Video && page <= EMainMenuPage::System;
-}
-
-auto UMainMenuWidget::options_tab_for_page(EMainMenuPage const page) -> EOptionsTab {
-    switch (page) {
-        case EMainMenuPage::Video:
-            return EOptionsTab::Video;
-        case EMainMenuPage::Gameplay:
-            return EOptionsTab::Gameplay;
-        case EMainMenuPage::Audio:
-            return EOptionsTab::Audio;
-        case EMainMenuPage::Controls:
-            return EOptionsTab::Controls;
-        case EMainMenuPage::Accessibility:
-            return EOptionsTab::Accessibility;
-        case EMainMenuPage::System:
-            return EOptionsTab::System;
-        case EMainMenuPage::SelectMission:
-        case EMainMenuPage::DataArchive:
-            break;
-    }
-    checkNoEntry();
-    return EOptionsTab::Video;
 }
 
 void UMainMenuWidget::create_content_widgets() {
@@ -199,37 +173,21 @@ void UMainMenuWidget::create_content_widgets() {
     }
 }
 
-void UMainMenuWidget::request_page(EMainMenuPage const page) {
-    if (page == active_page_ || page_modal_visible_) {
+void UMainMenuWidget::request_page(EMenuPage const page) {
+    if (page_modal_visible_ || !IsValid(options_widget_)) {
         return;
     }
-    if (is_options_page(active_page_) && !is_options_page(page) && IsValid(options_widget_)) {
-        options_widget_->request_leave(
+    options_widget_->select_page(page,
             FSimpleDelegate::CreateUObject(this, &ThisClass::show_page, page));
-        return;
-    }
-    show_page(page);
 }
 
-void UMainMenuWidget::show_page(EMainMenuPage const page) {
-    auto const entering_options{!options_open_ && is_options_page(page)};
-    if (!is_options_page(page)) {
-        options_open_ = false;
-    } else if (entering_options) {
-        options_open_ = true;
-        if (IsValid(options_widget_)) {
-            options_widget_->prepare_for_open();
-        }
+void UMainMenuWidget::show_page(EMenuPage const page) {
+    if (view_.IsValid()) {
+        view_->refresh_page();
     }
 
-    active_page_ = page;
-    if (view_.IsValid()) {
-        view_->set_active_page(page);
-    }
-    if (page == EMainMenuPage::SelectMission && IsValid(level_select_widget_)) {
+    if (page == EMenuPage::SelectMission && IsValid(level_select_widget_)) {
         level_select_widget_->refresh();
-    } else if (is_options_page(page) && IsValid(options_widget_)) {
-        options_widget_->select_tab(options_tab_for_page(page));
     }
 }
 
@@ -237,7 +195,8 @@ void UMainMenuWidget::request_quit() {
     if (page_modal_visible_) {
         return;
     }
-    if (is_options_page(active_page_) && IsValid(options_widget_)) {
+
+    if (IsValid(options_widget_) && options_widget_->page() >= EMenuPage::Video) {
         options_widget_->request_leave(FSimpleDelegate::CreateUObject(this, &ThisClass::quit_game));
         return;
     }
@@ -249,11 +208,13 @@ void UMainMenuWidget::quit_game() {
 }
 
 void UMainMenuWidget::focus_active_content() {
-    if (active_page_ == EMainMenuPage::SelectMission && IsValid(level_select_widget_)) {
+    if (IsValid(options_widget_) && options_widget_->page() == EMenuPage::SelectMission &&
+        IsValid(level_select_widget_)) {
         level_select_widget_->focus_primary_action();
-    } else if (active_page_ == EMainMenuPage::DataArchive && IsValid(save_game_viewer_)) {
+    } else if (IsValid(options_widget_) && options_widget_->page() == EMenuPage::DataArchive &&
+               IsValid(save_game_viewer_)) {
         save_game_viewer_->focus_primary_action();
-    } else if (is_options_page(active_page_) && IsValid(options_widget_)) {
+    } else if (IsValid(options_widget_) && options_widget_->page() >= EMenuPage::Video) {
         options_widget_->focus_content();
     }
 }

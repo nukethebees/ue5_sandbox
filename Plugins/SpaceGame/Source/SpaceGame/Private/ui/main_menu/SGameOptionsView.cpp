@@ -1,13 +1,14 @@
 #include "SGameOptionsView.h"
 
-#include "SpaceGame/settings/GameSettingsBackend.h"
-#include "SpaceGame/settings/GameSettingsSubsystem.h"
-#include "SpaceGame/system/GameSubsystem.h"
+#include "SpaceGame/settings/GameVideoSettings.h"
+#include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
 #include "SpaceGame/ui/common/SGameButton.h"
+#include <ioj/game_capabilities.h>
 
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SettingsWidgets.h"
+#include <SandboxCoreEngine/strings.h>
 
 #include "Framework/Application/SlateApplication.h"
 #include "InputCoreTypes.h"
@@ -17,8 +18,8 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
-#include "Widgets/Layout/SWidgetSwitcher.h"
 #include "Widgets/SBoxPanel.h"
+#include "Widgets/SNullWidget.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
 
@@ -112,16 +113,16 @@ auto simd_feature_text(std::initializer_list<FSimdFeatureDisplay> const features
 }
 
 #if PLATFORM_WINDOWS
-auto large_page_access_text(ELargePageAccessStatus const status) -> FText {
+auto large_page_access_text(LargePageAccess const status) -> FText {
     switch (status) {
-        case ELargePageAccessStatus::Unsupported:
+        case LargePageAccess::Unsupported:
             return NSLOCTEXT("OptionsMenu", "LargePagesUnsupported", "Unsupported");
-        case ELargePageAccessStatus::Enabled:
+        case LargePageAccess::Enabled:
             return NSLOCTEXT("OptionsMenu", "LargePagesEnabled", "Enabled");
-        case ELargePageAccessStatus::PrivilegeUnavailable:
+        case LargePageAccess::PrivilegeUnavailable:
             return NSLOCTEXT(
                 "OptionsMenu", "LargePagesPrivilegeUnavailable", "Privilege unavailable");
-        case ELargePageAccessStatus::QueryFailed:
+        case LargePageAccess::QueryFailed:
             return NSLOCTEXT("OptionsMenu", "LargePagesQueryFailed", "Unknown (query failed)");
     }
     return NSLOCTEXT("OptionsMenu", "UnknownValue", "Unknown");
@@ -137,9 +138,8 @@ void SGameOptionsView::Construct(FArguments const& args) {
     capabilities_ = args._Capabilities;
     style_ = args._Style;
     audio_ = args._Audio;
-    active_tab_ = args._InitialTab;
+    page_ = args._Page;
     check(style_ != nullptr);
-    on_tab_changed_ = args._OnTabChanged;
     on_apply_ = args._OnApply;
     on_reset_ = args._OnReset;
     on_dirty_apply_ = args._OnDirtyApply;
@@ -148,10 +148,9 @@ void SGameOptionsView::Construct(FArguments const& args) {
     on_confirm_display_ = args._OnConfirmDisplay;
     on_revert_display_ = args._OnRevertDisplay;
     on_interaction_modal_changed_ = args._OnInteractionModalChanged;
-    page_focus_actions_.SetNum(static_cast<int32>(EOptionsTab::System) + 1);
 
     auto header{build_header()};
-    auto body{build_body()};
+    auto body{SAssignNew(page_content_, SBox)[build_body()]};
     auto footer{build_footer()};
     dirty_prompt_ = build_dirty_prompt();
     display_prompt_ = build_display_prompt();
@@ -180,11 +179,11 @@ void SGameOptionsView::Construct(FArguments const& args) {
     refresh();
 }
 
-void SGameOptionsView::set_active_tab(EOptionsTab const tab) {
-    active_tab_ = tab;
-    if (page_switcher_.IsValid()) {
-        page_switcher_->SetActiveWidgetIndex(static_cast<int32>(active_tab_));
-    }
+void SGameOptionsView::show_page() {
+    focus_page_ = {};
+    controls_content_.Reset();
+    controls_focus_targets_.Reset();
+    page_content_->SetContent(build_body());
     refresh();
 }
 
@@ -194,7 +193,7 @@ void SGameOptionsView::refresh() {
         return;
     }
 
-    auto const category{active_category()};
+    auto const category{settings_category(page_.Get())};
     if (reset_button_.IsValid()) {
         reset_button_->SetEnabled(category.IsSet() &&
                                   !settings->is_at_defaults(category.GetValue()) &&
@@ -229,9 +228,8 @@ void SGameOptionsView::refresh_controls() {
 }
 
 void SGameOptionsView::focus_content() {
-    auto const index{static_cast<int32>(active_tab_)};
-    if (page_focus_actions_.IsValidIndex(index) && page_focus_actions_[index]) {
-        page_focus_actions_[index]();
+    if (focus_page_) {
+        focus_page_();
         return;
     }
     FSlateApplication::Get().SetKeyboardFocus(SharedThis(this), EFocusCause::SetDirectly);
@@ -417,26 +415,33 @@ auto SGameOptionsView::build_header() -> TSharedRef<SWidget> {
                .AutoHeight()[SNew(STextBlock)
                                  .Text(NSLOCTEXT("OptionsMenu", "Section", "SYSTEM CONFIGURATION"))
                                  .TextStyle(&style_->text(EGameTextStyle::Caption))] +
-           SVerticalBox::Slot().AutoHeight().Padding(
-               FMargin{0.0f, 4.0f})[SNew(STextBlock)
-                                        .Text_Lambda([this] { return tab_text(active_tab_); })
+           SVerticalBox::Slot().AutoHeight().Padding(FMargin{
+               0.0f, 4.0f})[SNew(STextBlock)
+                                .Text_Lambda([this] {
+                                    auto category{settings_category(page_.Get())};
+                                    return category
+                                             ? category_label(*category)
+                                             : NSLOCTEXT("OptionsMenu", "SystemTab", "System");
+                                })
                                         .TextStyle(&style_->text(EGameTextStyle::Heading1))];
 }
 
 auto SGameOptionsView::build_body() -> TSharedRef<SWidget> {
-    SAssignNew(page_switcher_, SWidgetSwitcher).WidgetIndex(static_cast<int32>(active_tab_)) +
-        SWidgetSwitcher::Slot()[build_category_page(GameSettingCategory::Video)] +
-        SWidgetSwitcher::Slot()[build_category_page(GameSettingCategory::Gameplay)] +
-        SWidgetSwitcher::Slot()[build_category_page(GameSettingCategory::Audio)] +
-        SWidgetSwitcher::Slot()[build_controls_page()] +
-        SWidgetSwitcher::Slot()[build_category_page(GameSettingCategory::Accessibility)] +
-        SWidgetSwitcher::Slot()[build_system_page()];
-    return page_switcher_.ToSharedRef();
+    if (page_.Get() == EMenuPage::Controls) {
+        return build_controls_page();
+    }
+    if (auto category{settings_category(page_.Get())}) {
+        return build_category_page(*category);
+    }
+    return page_.Get() == EMenuPage::System ? build_system_page() : SNullWidget::NullWidget;
 }
 
 auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
     auto const spacing{style_->settings().button_spacing};
     return SNew(SBorder)
+        .Visibility_Lambda([this] {
+            return settings_category(page_.Get()) ? EVisibility::Visible : EVisibility::Collapsed;
+        })
         .BorderImage(&style_->chrome().footer_background)
         .Padding(style_->chrome().footer_padding)
             [SNew(SHorizontalBox) + SHorizontalBox::Slot().FillWidth(1.0f) +
@@ -445,13 +450,13 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
                       .Style(&style_->button(EGameButtonStyle::Secondary))
                       .Audio(audio_)
                       .Text_Lambda([this] {
-                          if (active_tab_ != EOptionsTab::Controls) {
+                          if (page_.Get() != EMenuPage::Controls) {
                               return NSLOCTEXT("OptionsMenu", "ResetCategory", "Reset Category");
                           }
                           return NSLOCTEXT("OptionsMenu", "ResetAllControls", "Reset All Controls");
                       })
                       .ToolTipText_Lambda([this] {
-                          if (active_tab_ != EOptionsTab::Controls) {
+                          if (page_.Get() != EMenuPage::Controls) {
                               return FText::GetEmpty();
                           }
                           return NSLOCTEXT(
@@ -467,7 +472,7 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
                  .AutoWidth()[SAssignNew(apply_button_, SGameButton)
                                   .Style(&style_->button(EGameButtonStyle::Primary))
                                   .Audio(audio_)
-                                  .Text(NSLOCTEXT("OptionsMenu", "Apply", "Apply"))
+                                  .Text(NSLOCTEXT("OptionsMenu", "Save", "Save"))
                                   .OnClicked_Lambda([delegate = on_apply_]() {
                                       delegate.ExecuteIfBound();
                                       return FReply::Handled();
@@ -516,9 +521,8 @@ auto SGameOptionsView::build_category_page(GameSettingCategory const category)
             }
             TFunction<void()> focus_action;
             auto const row{build_setting_row(*descriptor, focus_action)};
-            auto const page_index{static_cast<int32>(category)};
-            if (!page_focus_actions_[page_index] && focus_action) {
-                page_focus_actions_[page_index] = MoveTemp(focus_action);
+            if (!focus_page_ && focus_action) {
+                focus_page_ = MoveTemp(focus_action);
             }
             rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)[row];
         }
@@ -652,9 +656,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
             .device = GameSettingDevice::Controller,
         },
         controller_button.ToSharedRef());
-    page_focus_actions_[static_cast<int32>(EOptionsTab::Controls)] = [keyboard_mouse_button] {
-        keyboard_mouse_button->focus();
-    };
+    focus_page_ = [keyboard_mouse_button] { keyboard_mouse_button->focus(); };
 
     add_setting_sections(GameSettingDevice::Shared);
     add_setting_sections(controls_device_);
@@ -1139,26 +1141,27 @@ auto SGameOptionsView::build_system_page() -> TSharedRef<SWidget> {
                                                .Title(MoveTemp(title))[rows]];
     };
 
-    auto operating_system{capabilities_->operating_system_version};
-    if (!capabilities_->operating_system_subversion.IsEmpty()) {
+    auto operating_system{to_fstring(capabilities_->operating_system_version)};
+    if (!capabilities_->operating_system_subversion.empty()) {
         if (!operating_system.IsEmpty()) {
             operating_system += TEXT(" ");
         }
-        operating_system += capabilities_->operating_system_subversion;
+        operating_system += to_fstring(capabilities_->operating_system_subversion);
     }
 
     add_section(NSLOCTEXT("OptionsMenu", "PlatformSection", "Platform"),
                 {{NSLOCTEXT("OptionsMenu", "PlatformLabel", "Platform"),
-                  friendly_platform_name(capabilities_->platform_name)},
+                  friendly_platform_name(to_fstring(capabilities_->platform_name))},
                  {NSLOCTEXT("OptionsMenu", "ArchitectureLabel", "Architecture"),
-                  capability_text(capabilities_->host_architecture)},
+                  capability_text(to_fstring(capabilities_->host_architecture))},
                  {NSLOCTEXT("OptionsMenu", "OperatingSystemLabel", "Operating System"),
                   capability_text(operating_system)}});
     add_section(
         NSLOCTEXT("OptionsMenu", "ProcessorSection", "Processor"),
         {{NSLOCTEXT("OptionsMenu", "CpuVendorLabel", "CPU Vendor"),
-          capability_text(capabilities_->cpu_vendor)},
-         {NSLOCTEXT("OptionsMenu", "CpuLabel", "CPU"), capability_text(capabilities_->cpu_brand)},
+                  capability_text(to_fstring(capabilities_->cpu_vendor))},
+                 {NSLOCTEXT("OptionsMenu", "CpuLabel", "CPU"),
+                  capability_text(to_fstring(capabilities_->cpu_brand))},
          {NSLOCTEXT("OptionsMenu", "PhysicalCoresLabel", "Physical Cores"),
           FText::AsNumber(capabilities_->physical_core_count)},
          {NSLOCTEXT("OptionsMenu", "LogicalCoresLabel", "Logical Cores"),
@@ -1198,7 +1201,7 @@ auto SGameOptionsView::build_system_page() -> TSharedRef<SWidget> {
 
     add_section(NSLOCTEXT("OptionsMenu", "GraphicsSection", "Graphics"),
                 {{NSLOCTEXT("OptionsMenu", "GpuLabel", "GPU"),
-                  capability_text(capabilities_->primary_gpu_brand)}});
+                  capability_text(to_fstring(capabilities_->primary_gpu_brand))}});
     add_section(NSLOCTEXT("OptionsMenu", "MemorySection", "Memory"),
                 {{NSLOCTEXT("OptionsMenu", "PhysicalMemoryLabel", "Physical Memory"),
                   FText::AsMemory(capabilities_->total_physical_memory_bytes)}});
@@ -1227,7 +1230,7 @@ auto SGameOptionsView::build_dirty_prompt() -> TSharedRef<SWidget> {
     auto dirty_apply{SAssignNew(dirty_apply_button_, SGameButton)
                          .Style(&primary)
                          .Audio(audio_)
-                         .Text(NSLOCTEXT("OptionsMenu", "PromptApply", "Apply"))
+                         .Text(NSLOCTEXT("OptionsMenu", "PromptSave", "Save"))
                          .OnClicked_Lambda([delegate = on_dirty_apply_]() {
                              delegate.ExecuteIfBound();
                              return FReply::Handled();
@@ -1249,7 +1252,7 @@ auto SGameOptionsView::build_dirty_prompt() -> TSharedRef<SWidget> {
                             return FReply::Handled();
                         })};
     return build_modal(
-        NSLOCTEXT("OptionsMenu", "UnsavedPrompt", "Apply your changes before leaving?"),
+        NSLOCTEXT("OptionsMenu", "UnsavedPrompt", "Save your changes before leaving?"),
         {dirty_apply, dirty_discard, dirty_stay});
 }
 
@@ -1579,24 +1582,6 @@ auto SGameOptionsView::build_modal(TAttribute<FText> title,
 /* **************************************** */
 // Formatting and focus helpers
 /* **************************************** */
-auto SGameOptionsView::tab_text(EOptionsTab const tab) const -> FText {
-    switch (tab) {
-        case EOptionsTab::Video:
-            return NSLOCTEXT("OptionsMenu", "VideoTab", "Video");
-        case EOptionsTab::Gameplay:
-            return NSLOCTEXT("OptionsMenu", "GameplayTab", "Gameplay");
-        case EOptionsTab::Audio:
-            return NSLOCTEXT("OptionsMenu", "AudioTab", "Audio");
-        case EOptionsTab::Controls:
-            return NSLOCTEXT("OptionsMenu", "ControlsTab", "Controls");
-        case EOptionsTab::Accessibility:
-            return NSLOCTEXT("OptionsMenu", "AccessibilityTab", "Accessibility");
-        case EOptionsTab::System:
-            return NSLOCTEXT("OptionsMenu", "SystemTab", "System");
-    }
-    return FText::GetEmpty();
-}
-
 auto SGameOptionsView::setting_float(GameSetting const setting) const -> float {
     auto const* const settings{settings_.Get()};
     if (settings == nullptr) {
@@ -1622,24 +1607,6 @@ auto SGameOptionsView::format_range_value(GameSettingDescriptor const& descripto
         default:
             return FText::AsNumber(value);
     }
-}
-
-auto SGameOptionsView::active_category() const -> TOptional<GameSettingCategory> {
-    switch (active_tab_) {
-        case EOptionsTab::Video:
-            return GameSettingCategory::Video;
-        case EOptionsTab::Gameplay:
-            return GameSettingCategory::Gameplay;
-        case EOptionsTab::Audio:
-            return GameSettingCategory::Audio;
-        case EOptionsTab::Controls:
-            return GameSettingCategory::Controls;
-        case EOptionsTab::Accessibility:
-            return GameSettingCategory::Accessibility;
-        case EOptionsTab::System:
-            return {};
-    }
-    return {};
 }
 
 auto SGameOptionsView::controls_device_type() const -> EHardwareDevicePrimaryType {

@@ -78,7 +78,8 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     /* **************************************** */
     // View state and presentation
     /* **************************************** */
-    void show_options_tab(EOptionsTab tab);
+    void select_page(EMenuPage page);
+    void show_page();
     void request_close(FSimpleDelegate continuation);
     void complete_resume();
     void complete_return_to_level_select();
