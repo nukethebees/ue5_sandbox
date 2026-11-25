@@ -461,6 +461,7 @@ class NativeWorkflowTests(unittest.TestCase):
         # File names containing 'generated' alone have never been excluded.
         included["lispb/tests/generated_tests.cpp"] = "lispb"
         excluded = (
+            "player/main.cpp",  # Built only in the Unreal configuration.
             "third_party/example/src/example.cpp",
             "sbx_mimalloc/src/example.cpp",
             "s7/third_party/s7_sandbox.cpp",
