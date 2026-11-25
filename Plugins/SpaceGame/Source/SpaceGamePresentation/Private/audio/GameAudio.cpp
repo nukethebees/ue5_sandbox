@@ -257,7 +257,7 @@ void FGameAudio::play_button_pressed() {
     constexpr bool auto_destroy{false};
     auto* const component{UGameplayStatics::CreateSound2D(game_instance,
                                                           sound,
-                                                          master_volume_ * sfx_volume_,
+                                                          master_volume_ * ui_volume_,
                                                           1.0f,
                                                           0.0f,
                                                           nullptr,
@@ -351,7 +351,7 @@ void FGameAudio::set_master_volume(float const volume) {
     }
     auto* const menu_button_pressed_component{menu_button_pressed_component_.Get()};
     if (IsValid(menu_button_pressed_component)) {
-        menu_button_pressed_component->SetVolumeMultiplier(master_volume_ * sfx_volume_);
+        menu_button_pressed_component->SetVolumeMultiplier(master_volume_ * ui_volume_);
     }
     auto* const player_ship_ambience_component{player_ship_ambience_component_.Get()};
     if (IsValid(player_ship_ambience_component)) {
@@ -367,12 +367,16 @@ void FGameAudio::set_music_volume(float const volume) {
     }
 }
 
-void FGameAudio::set_sfx_volume(float const volume) {
-    sfx_volume_ = FMath::Clamp(volume, 0.0f, 1.0f);
+void FGameAudio::set_ui_volume(float const volume) {
+    ui_volume_ = FMath::Clamp(volume, 0.0f, 1.0f);
     auto* const component{menu_button_pressed_component_.Get()};
     if (IsValid(component)) {
-        component->SetVolumeMultiplier(master_volume_ * sfx_volume_);
+        component->SetVolumeMultiplier(master_volume_ * ui_volume_);
     }
+}
+
+void FGameAudio::set_sfx_volume(float const volume) {
+    sfx_volume_ = FMath::Clamp(volume, 0.0f, 1.0f);
     auto* const player_ship_ambience_component{player_ship_ambience_component_.Get()};
     if (IsValid(player_ship_ambience_component)) {
         player_ship_ambience_component->SetVolumeMultiplier(master_volume_ * sfx_volume_);
