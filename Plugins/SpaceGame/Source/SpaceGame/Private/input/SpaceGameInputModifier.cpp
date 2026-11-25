@@ -1,7 +1,7 @@
 #include "SpaceGame/input/SpaceGameInputModifier.h"
 
 #include "ioj/input/response.h"
-#include "SpaceGame/settings/GameSettingsSubsystem.h"
+#include "SpaceGame/UnrealMessages.h"
 
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputSubsystems.h"
@@ -11,15 +11,6 @@
 
 namespace ioj {
 namespace {
-auto input_settings(UEnhancedPlayerInput const* const player_input)
-    -> UGameSettingsSubsystem const* {
-    auto const* controller{player_input ? Cast<APlayerController>(player_input->GetOuter())
-                                        : nullptr};
-    return controller
-             ? UGameInstance::GetSubsystem<UGameSettingsSubsystem>(controller->GetGameInstance())
-             : nullptr;
-}
-
 auto native_response(ESpaceGameInputResponse const response) -> input::Response {
     switch (response) {
         case ESpaceGameInputResponse::TurnPointerDelta:
@@ -49,11 +40,7 @@ auto USpaceGameInputModifier::ModifyRaw_Implementation(
     FInputActionValue current_value,
     float const delta_time) -> FInputActionValue {
     static_cast<void>(delta_time);
-    auto const* const settings{input_settings(player_input)};
-    if (settings == nullptr) {
-        return current_value;
-    }
-    auto const& values{settings->settings_state()};
+    auto const& values{player_settings().applied()};
     auto const response_type{native_response(response)};
     auto const response_axis{native_axis(axis)};
     switch (current_value.GetValueType()) {

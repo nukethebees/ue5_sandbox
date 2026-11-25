@@ -1,7 +1,7 @@
 #include "Sandbox/logging/FrameLogFooterSubsystem.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
-#include <SpaceGame/settings/GameSettingsSubsystem.h>
+#include <SpaceGame/UnrealMessages.h>
 
 #include "Misc/CoreDelegates.h"
 #include <Subsystems/SubsystemCollection.h>
@@ -10,8 +10,10 @@ namespace ioj {
 void UFrameLogFooterSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
     Super::Initialize(Collection);
 
-    Collection.InitializeDependency<UGameSettingsSubsystem>();
-    if (!UGameSettingsSubsystem::application_settings(GetGameInstance()).frame_log_footer) {
+#if !defined(UE_LIBRARY_ENABLED) || !UE_LIBRARY_ENABLED
+    return;
+#else
+    if (!player_settings().application().frame_log_footer) {
         return;
     }
     frame_log_tracker = MakeUnique<FFrameLogTracker>();
@@ -21,6 +23,7 @@ void UFrameLogFooterSubsystem::Initialize(FSubsystemCollectionBase& Collection) 
     FCoreDelegates::OnEndFrame.AddUObject(this, &UFrameLogFooterSubsystem::on_end_frame);
 
     UE_LOG(LogSandboxSubsystem, Display, TEXT("Frame Log Footer Subsystem Initialized."));
+#endif
 }
 
 void UFrameLogFooterSubsystem::Deinitialize() {
