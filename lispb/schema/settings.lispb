@@ -79,10 +79,7 @@
   (record ApplicationSettings :generate-visitor true :generate-s7-reader true :s7-tag "application"
     (member unlock_all_missions bool :initializer "" :required true)
     (member start_levels_paused bool :initializer "" :required true)
-    (member show_collision bool :initializer "" :required true)
-    (member pause_pie_on_start bool :initializer "" :required true)
     (member print_save_data bool :initializer "" :required true)
-    (member export_test_results bool :initializer "" :required true)
     (member frame_log_footer bool :initializer "" :required true)
     (projections (cpp))))
 (module video_settings

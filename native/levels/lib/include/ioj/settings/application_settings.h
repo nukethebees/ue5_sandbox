@@ -19,10 +19,7 @@ struct ApplicationSettings {
     enum class Field : std::uint8_t {
         unlock_all_missions,
         start_levels_paused,
-        show_collision,
-        pause_pie_on_start,
         print_save_data,
-        export_test_results,
         frame_log_footer,
     };
 
@@ -37,17 +34,8 @@ struct ApplicationSettings {
         if constexpr (Selected == Field::start_levels_paused) {
             return (self.start_levels_paused);
         }
-        if constexpr (Selected == Field::show_collision) {
-            return (self.show_collision);
-        }
-        if constexpr (Selected == Field::pause_pie_on_start) {
-            return (self.pause_pie_on_start);
-        }
         if constexpr (Selected == Field::print_save_data) {
             return (self.print_save_data);
-        }
-        if constexpr (Selected == Field::export_test_results) {
-            return (self.export_test_results);
         }
         if constexpr (Selected == Field::frame_log_footer) {
             return (self.frame_log_footer);
@@ -70,16 +58,8 @@ struct ApplicationSettings {
             case Field::start_levels_paused:
                 return invoke_field<Field::start_levels_paused>(self,
                                                                 std::forward<Visitor>(visitor));
-            case Field::show_collision:
-                return invoke_field<Field::show_collision>(self, std::forward<Visitor>(visitor));
-            case Field::pause_pie_on_start:
-                return invoke_field<Field::pause_pie_on_start>(self,
-                                                               std::forward<Visitor>(visitor));
             case Field::print_save_data:
                 return invoke_field<Field::print_save_data>(self, std::forward<Visitor>(visitor));
-            case Field::export_test_results:
-                return invoke_field<Field::export_test_results>(self,
-                                                                std::forward<Visitor>(visitor));
             case Field::frame_log_footer:
                 return invoke_field<Field::frame_log_footer>(self, std::forward<Visitor>(visitor));
         }
@@ -89,21 +69,17 @@ struct ApplicationSettings {
 
     bool unlock_all_missions{};
     bool start_levels_paused{};
-    bool show_collision{};
-    bool pause_pie_on_start{};
     bool print_save_data{};
-    bool export_test_results{};
     bool frame_log_footer{};
 };
 
 template <>
 [[nodiscard]] constexpr auto enum_count<ApplicationSettings::Field>() noexcept -> std::size_t {
-    return 7ULL;
+    return 4ULL;
 }
 
 template <>
-inline constexpr auto enum_strings<ApplicationSettings::Field, Name>{
-    PackedStrings{"unlock_all_missions\000start_levels_paused\000show_collision\000pause_pie_on_"
-                  "start\000print_save_data\000export_test_results\000frame_log_footer",
-                  std::array<std::uint8_t, 8>{0, 20, 40, 55, 74, 90, 110, 127}}};
+inline constexpr auto enum_strings<ApplicationSettings::Field, Name>{PackedStrings{
+    "unlock_all_missions\000start_levels_paused\000print_save_data\000frame_log_footer",
+    std::array<std::uint8_t, 5>{0, 20, 40, 56, 73}}};
 } // namespace ioj

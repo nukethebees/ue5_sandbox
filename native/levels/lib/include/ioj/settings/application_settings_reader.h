@@ -28,20 +28,12 @@ struct TypeReader<ApplicationSettings> : RecordReader<ApplicationSettings> {
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 7> field_names{"unlock-all-missions",
-                                                                 "start-levels-paused",
-                                                                 "show-collision",
-                                                                 "pause-pie-on-start",
-                                                                 "print-save-data",
-                                                                 "export-test-results",
-                                                                 "frame-log-footer"};
+    static constexpr std::array<std::string_view, 4> field_names{
+        "unlock-all-missions", "start-levels-paused", "print-save-data", "frame-log-footer"};
     static constexpr auto required{
         required_fields<Field, field_names.size()>({Field::unlock_all_missions,
                                                     Field::start_levels_paused,
-                                                    Field::show_collision,
-                                                    Field::pause_pie_on_start,
                                                     Field::print_save_data,
-                                                    Field::export_test_results,
                                                     Field::frame_log_footer})};
 };
 

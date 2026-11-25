@@ -23,10 +23,7 @@
 | --- | --- | --- |
 | `:unlock-all-missions` | `bool` | |
 | `:start-levels-paused` | `bool` | |
-| `:show-collision` | `bool` | |
-| `:pause-pie-on-start` | `bool` | |
 | `:print-save-data` | `bool` | |
-| `:export-test-results` | `bool` | |
 | `:frame-log-footer` | `bool` | |
 
 ## `user-settings`
