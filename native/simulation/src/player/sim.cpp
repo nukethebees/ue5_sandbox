@@ -74,7 +74,9 @@ void Sim::initialise(PlayerSpawnData const& spawn,
     set_laser_mode(LaserFiringState::idle);
     set_laser_trigger_mode(laser_trigger_mode);
 
+    if (spawn.sample_speed) {
     configure_speed_sampling(clock);
+    }
     planned_state_ = state_;
 }
 void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
@@ -101,7 +103,7 @@ void Sim::prepare_tick(float const dt, EntityTables& tables, SimClock const& clo
     laser_shot_cooldown -= dt;
     state_.controller.elapsed_since_spawn += dt;
 
-    if (speed_sampling_enabled) {
+    if (!speed_samples.empty()) {
         --speed_sample_ticks_remaining;
         if (speed_sample_ticks_remaining <= 0) {
             sample_speed(clock);

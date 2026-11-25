@@ -42,6 +42,7 @@ class ResolutionInterface;
 
 struct PlayerSpawnData {
     PlayerSimConfig config;
+    bool sample_speed{};
     Team team{Team::White};
 
     Transform3d transform{Transform3d{}};
@@ -79,7 +80,6 @@ struct Sim {
     auto target_speed() const noexcept -> float;
     void set_config(PlayerSimConfig const& new_config) noexcept;
     void set_team(Team new_team, HealthTable const& health_table, EntityLedger& ledger) noexcept;
-    void set_speed_sampling_enabled(bool enabled) noexcept { speed_sampling_enabled = enabled; }
 
     /* **************************************** */
     // Flight controls
@@ -134,7 +134,6 @@ struct Sim {
     LaserFiringState laser_firing_mode{LaserFiringState::idle};
     ShipTriggerMode laser_trigger_mode{ShipTriggerMode::Burst3};
 
-    bool speed_sampling_enabled{};
 
     std::uint32_t speed_sample_index{0};
     std::uint32_t speed_sample_max{0};

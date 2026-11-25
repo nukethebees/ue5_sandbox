@@ -5,8 +5,6 @@
     :target-storage reference
     (method set_config void :noexcept true
       (parameter config "PlayerSimConfig const&"))
-    (method set_speed_sampling_enabled void :noexcept true
-      (parameter enabled bool))
     (method set_pitch_input void :noexcept true (parameter input float))
     (method set_yaw_input void :noexcept true (parameter input float))
     (method set_accelerator void :noexcept true (parameter input float))

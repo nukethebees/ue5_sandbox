@@ -71,6 +71,7 @@ ATestSpaceShip::ATestSpaceShip()
 
 auto ATestSpaceShip::make_spawn_data() const -> sim::player::PlayerSpawnData {
     sim::player::PlayerSpawnData result;
+    result.sample_speed = WITH_EDITOR;
     result.team = to_native(team);
     result.transform = to_native(GetActorTransform());
     result.laser_mode = initial_.laser_mode;
@@ -83,9 +84,6 @@ auto ATestSpaceShip::make_spawn_data() const -> sim::player::PlayerSpawnData {
 
 void ATestSpaceShip::bind_simulation(sim::LevelSim& level) {
     bound_level_ = &level;
-#if WITH_EDITOR
-    commands().set_speed_sampling_enabled(true);
-#endif
 }
 
 void ATestSpaceShip::unbind_simulation() {

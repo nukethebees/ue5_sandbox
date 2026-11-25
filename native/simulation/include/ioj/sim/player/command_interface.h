@@ -13,10 +13,6 @@ class CommandInterface {
 
     void set_config(PlayerSimConfig const& config) noexcept { simulation.set_config(config); }
 
-    void set_speed_sampling_enabled(bool enabled) noexcept {
-        simulation.set_speed_sampling_enabled(enabled);
-    }
-
     void set_pitch_input(float input) noexcept { simulation.set_pitch_input(input); }
 
     void set_yaw_input(float input) noexcept { simulation.set_yaw_input(input); }

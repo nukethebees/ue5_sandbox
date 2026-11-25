@@ -65,6 +65,7 @@ TEST(HudModel, PlayerStatusAndFlightRetainPayloads) {
     auto data{hud_test::data()};
     auto player{make_player_spawn(fixture)};
     player.team = Team::Blue;
+    player.sample_speed = true;
     player.health = {Health{37}, Health{100}};
     add_player_spawn(data, player);
     for (std::int32_t index{}; index < 3; ++index) {
@@ -90,9 +91,7 @@ TEST(HudModel, PlayerStatusAndFlightRetainPayloads) {
         EXPECT_EQ(samples->samples.size(), player_simulation->speed_samples.size());
         EXPECT_EQ(samples->oldest_index, 0);
     }
-    auto commands{simulation.player_ship_commands()};
-    ASSERT_TRUE(commands);
-    commands->set_speed_sampling_enabled(true);
+
     harness.queue_kills(std::array{capitals.get_entities().entity_ids()[0]}, player_id);
     harness.queue_kills(std::array{capitals.get_entities().entity_ids()[1]}, rival);
     simulation.start();
