@@ -40,6 +40,7 @@ add_dependencies(game unreal-native-dependencies check-generated-code)
 set_property(TARGET editor PROPERTY FOLDER "Sandbox/Unreal/Build")
 set_property(TARGET game PROPERTY FOLDER "Sandbox/Unreal/Build")
 
+add_subdirectory(host)
 add_unreal_packaging_targets()
 foreach(sandbox_unreal_packaging_target IN ITEMS
     cook
