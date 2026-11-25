@@ -360,6 +360,11 @@ auto check_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& docume
 }
 auto export_s7_editor_config(ULevel& level, AS7LevelAuthoringDocument& document)
     -> S7AuthoringResult<void> {
+    if (!document.editor_source_matches()) {
+        return S7AuthoringResult<void>{std::unexpect,
+                                       TEXT("The editor-config source changed. Import the source "
+                                            "before exporting scene edits.")};
+    }
     auto prepared{prepare_export(level, document)};
     if (!prepared) {
         document.set_needs_export(true);
@@ -380,6 +385,9 @@ auto export_s7_editor_config(ULevel& level, AS7LevelAuthoringDocument& document)
             binding.actor->bIsEditorOnlyActor = true;
         }
         document.entities.Append(bindings);
+    }
+    if (saved) {
+        document.remember_editor_source();
     }
     document.set_needs_export(!saved);
     return saved;
@@ -499,6 +507,7 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
             } else if (previous != relative) {
                 document->set_needs_export(false);
             }
+            document->remember_editor_source();
             return document;
         }
         failure = setup.error();
@@ -698,6 +707,7 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
             document.camera.targets.Add(binding->actor);
         }
     }
+    document.remember_editor_source();
     document.set_needs_export(false);
     return {};
 }
