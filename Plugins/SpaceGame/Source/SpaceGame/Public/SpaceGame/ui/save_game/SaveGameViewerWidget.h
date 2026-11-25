@@ -1,5 +1,7 @@
 #pragma once
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+#include <ioj/host/unreal_messages.h>
+#include <ioj/profiles/create_profile_result.h>
 #include <ioj/profiles/save_browser.h>
 
 #include "Blueprint/UserWidget.h"
@@ -7,9 +9,8 @@
 #include "SaveGameViewerWidget.generated.h"
 
 namespace ioj {
-class USpaceSaveSubsystem;
 class SSaveGameViewerView;
-class UGameSubsystem;
+class UGameUiStyleSubsystem;
 
 struct FSaveProfileViewRow {
     FString profile_id{};
@@ -60,13 +61,15 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     /* **************************************** */
     USaveGameViewerWidget(FObjectInitializer const& object_initializer);
 
-    void set_browser(profiles::SaveGameBrowser& browser);
     void focus_primary_action();
     [[nodiscard]] auto get_focus_target() const -> UWidget*;
 
     void select_profile(FString const& profile_id);
     void select_outcome(FString const& outcome_id);
     void refresh();
+    void profile_action_finished(host::ProfileActionKind kind,
+                                 std::string_view text,
+                                 profiles::CreateProfileResult result);
     void begin_create_profile();
     void cancel_create_profile();
     void request_back();
@@ -114,13 +117,12 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     void handle_activate_profile();
     void handle_reset_test_profile();
     void refresh_and_select(FString const& profile_id);
+    void show_create_result(profiles::CreateProfileResult result);
     void show_create_profile_error(FText const& error);
 
     /* **************************************** */
     // Data sources and selection
     /* **************************************** */
-    auto resolve_browser() -> profiles::SaveGameBrowser*;
-    auto resolve_save_subsystem() const -> USpaceSaveSubsystem*;
     void rebuild_profiles();
     void apply_profile_selection(FString const& profile_id);
     void rebuild_outcomes(profiles::ProfileReport const& report);
@@ -142,11 +144,10 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     FString selected_profile_id_{};
     FString selected_outcome_id_{};
     FSaveGameViewState view_state_{};
-    profiles::SaveGameBrowser* browser_override_{nullptr};
     TSharedPtr<SSaveGameViewerView> view_{};
     FGameUiStyle fallback_style_{};
     UPROPERTY(Transient)
-    UGameSubsystem* game_{nullptr};
+    UGameUiStyleSubsystem* style_{nullptr};
     bool create_profile_open_{};
 };
 

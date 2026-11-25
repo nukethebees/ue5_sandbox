@@ -1,13 +1,14 @@
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
 
-#include "SpaceGame/persistence/SpaceSaveSubsystem.h"
-#include "SpaceGame/system/GameSubsystem.h"
+#include "SpaceGame/UnrealMessages.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include "SSaveGameViewerView.h"
 #include <ioj/profiles/profile_manager.h>
 #include <ioj/profiles/save_browser.h>
+#include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+#include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -45,8 +46,8 @@ void USaveGameViewerWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     auto* const game_instance{GetGameInstance()};
-    game_ = UGameSubsystem::get(game_instance);
-    if (!IsValid(game_)) {
+    style_ = UGameInstance::GetSubsystem<UGameUiStyleSubsystem>(game_instance);
+    if (!IsValid(style_)) {
         UE_LOG(LogSandboxUI,
                Warning,
                TEXT("USaveGameViewerWidget: Game subsystem is unavailable; using the default UI "
@@ -60,11 +61,12 @@ void USaveGameViewerWidget::NativeOnInitialized() {
 }
 
 auto USaveGameViewerWidget::RebuildWidget() -> TSharedRef<SWidget> {
-    auto const* const style{IsValid(game_) ? &game_->get_ui_style() : &fallback_style_};
+    auto const* const style{IsValid(style_) ? &style_->get_ui_style() : &fallback_style_};
     auto result{
         SAssignNew(view_, SSaveGameViewerView)
             .Style(style)
-            .Audio(IsValid(game_) ? game_->get_audio() : FGameAudioFacade{})
+            .Audio(IsValid(style_) ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
+                                   : FGameAudioFacade{})
             .OnProfileSelected(
                 FOnSaveProfileSelected::CreateUObject(this, &ThisClass::select_profile))
             .OnOutcomeSelected(
@@ -96,11 +98,6 @@ auto USaveGameViewerWidget::NativeOnFocusReceived(FGeometry const& geometry,
 /* **************************************** */
 // Navigation and profile actions
 /* **************************************** */
-void USaveGameViewerWidget::set_browser(profiles::SaveGameBrowser& browser) {
-    browser_override_ = &browser;
-    rebuild_profiles();
-}
-
 void USaveGameViewerWidget::focus_primary_action() {
     if (view_.IsValid()) {
         view_->focus_selected_profile();
@@ -112,16 +109,7 @@ auto USaveGameViewerWidget::get_focus_target() const -> UWidget* {
 }
 
 void USaveGameViewerWidget::refresh() {
-    auto* const browser{resolve_browser()};
-    if (!browser) {
-        show_empty_profiles();
-        publish_all();
-        return;
-    }
-
-    browser->refresh();
-    rebuild_profiles();
-    focus_primary_action();
+    queue_profile_action(host::ProfileActionKind::Refresh, {}, this);
 }
 
 void USaveGameViewerWidget::begin_create_profile() {
@@ -148,18 +136,49 @@ void USaveGameViewerWidget::request_back() {
 }
 
 void USaveGameViewerWidget::handle_create_profile(FString const& display_name) {
-    auto* const save_subsystem{resolve_save_subsystem()};
-    if (!IsValid(save_subsystem)) {
-        show_create_profile_error(
-            NSLOCTEXT("SaveGameViewer", "CreateUnavailable", "Save profiles are unavailable."));
-        return;
-    }
+    queue_profile_action(host::ProfileActionKind::Create, to_string(display_name), this);
+}
 
-    auto const response{save_subsystem->create_profile(display_name)};
-    switch (response.result) {
+void USaveGameViewerWidget::profile_action_finished(host::ProfileActionKind kind,
+                                                    std::string_view text,
+                                                    profiles::CreateProfileResult result) {
+    using enum host::ProfileActionKind;
+    switch (kind) {
+        case Create:
+            show_create_result(result);
+        return;
+        case Activate:
+        case ResetTestProfile:
+            if (result == profiles::CreateProfileResult::succeeded) {
+                refresh_and_select(to_fstring(player_profiles().active_profile_id()));
+            }
+
+            return;
+        case Refresh:
+            rebuild_profiles();
+            focus_primary_action();
+            return;
+        case SelectReport:
+            if (selected_profile_id_ == to_fstring(text)) {
+                auto const* report{profile_browser().loaded_profile_report()};
+                if (result == profiles::CreateProfileResult::succeeded && report) {
+                    rebuild_outcomes(*report);
+                } else {
+                    rebuild_outcomes({});
+                }
+
+                publish_profile();
+            }
+
+            return;
+    }
+}
+
+void USaveGameViewerWidget::show_create_result(profiles::CreateProfileResult result) {
+    switch (result) {
         case profiles::CreateProfileResult::succeeded: {
             cancel_create_profile();
-            refresh_and_select(to_fstring(response.profile_id));
+            refresh_and_select(to_fstring(player_profiles().active_profile_id()));
             return;
         }
         case profiles::CreateProfileResult::empty_name: {
@@ -187,63 +206,23 @@ void USaveGameViewerWidget::handle_create_profile(FString const& display_name) {
 }
 
 void USaveGameViewerWidget::handle_activate_profile() {
-    auto* const save_subsystem{resolve_save_subsystem()};
-    if (!IsValid(save_subsystem) || selected_profile_id_.IsEmpty()) {
+    if (selected_profile_id_.IsEmpty()) {
         return;
     }
-    if (!save_subsystem->activate_profile(TCHAR_TO_UTF8(*selected_profile_id_))) {
-        UE_LOG(LogSandboxUI,
-               Warning,
-               TEXT("USaveGameViewerWidget::handle_activate_profile: Failed to activate '%s'."),
-               *selected_profile_id_);
-        return;
-    }
-    refresh_and_select(selected_profile_id_);
+
+    queue_profile_action(host::ProfileActionKind::Activate, to_string(selected_profile_id_), this);
 }
 
 void USaveGameViewerWidget::handle_reset_test_profile() {
 #if !UE_BUILD_SHIPPING
-    auto* const save_subsystem{resolve_save_subsystem()};
-    if (!IsValid(save_subsystem) || !save_subsystem->reset_test_profile()) {
-        UE_LOG(LogSandboxUI,
-               Warning,
-               TEXT("USaveGameViewerWidget::handle_reset_test_profile: Failed to reset the test "
-                    "profile."));
-        return;
-    }
-
-    refresh_and_select(to_fstring(save_subsystem->get_active_profile_id()));
+    queue_profile_action(host::ProfileActionKind::ResetTestProfile, {}, this);
 #endif
 }
 
 /* **************************************** */
 // Data sources and selection
 /* **************************************** */
-auto USaveGameViewerWidget::resolve_browser() -> profiles::SaveGameBrowser* {
-    if (browser_override_) {
-        return browser_override_;
-    }
-
-    if (!IsValid(game_)) {
-        UE_LOG(LogSandboxUI,
-               Warning,
-               TEXT("USaveGameViewerWidget::resolve_browser: Game subsystem is invalid."));
-        return nullptr;
-    }
-    return &game_->get_save_game_browser();
-}
-
-auto USaveGameViewerWidget::resolve_save_subsystem() const -> USpaceSaveSubsystem* {
-    auto* const game_instance{GetGameInstance()};
-    return USpaceSaveSubsystem::get(game_instance);
-}
-
 void USaveGameViewerWidget::refresh_and_select(FString const& profile_id) {
-    auto* const browser{resolve_browser()};
-    if (!browser) {
-        return;
-    }
-    browser->refresh();
     selected_profile_id_ = profile_id;
     rebuild_profiles();
 }
@@ -256,9 +235,8 @@ void USaveGameViewerWidget::show_create_profile_error(FText const& error) {
 
 void USaveGameViewerWidget::rebuild_profiles() {
     view_state_ = FSaveGameViewState{};
-    auto* const browser{resolve_browser()};
-    auto const profiles{browser ? browser->summaries()
-                                : std::span<profiles::ProfileSummary const>{}};
+    auto const& browser{profile_browser()};
+    auto const profiles{browser.summaries()};
     if (profiles.empty()) {
         show_empty_profiles();
         publish_all();
@@ -268,7 +246,7 @@ void USaveGameViewerWidget::rebuild_profiles() {
     auto const profile_count{static_cast<int32>(profiles.size())};
     view_state_.profiles.Reserve(profile_count);
     for (auto const& profile : profiles) {
-        auto const active{profile.profile_id == browser->active_profile_id()};
+        auto const active{profile.profile_id == browser.active_profile_id()};
         auto const marker{active ? TEXT("ACTIVE // ") : TEXT("")};
         view_state_.profiles.Add(FSaveProfileViewRow{
             .profile_id = to_fstring(profile.profile_id),
@@ -296,13 +274,9 @@ void USaveGameViewerWidget::select_profile(FString const& profile_id) {
 }
 
 void USaveGameViewerWidget::apply_profile_selection(FString const& profile_id) {
-    auto* const browser{resolve_browser()};
-    if (!browser) {
-        show_empty_profiles();
-        return;
-    }
+    auto const& browser{profile_browser()};
 
-    auto const profiles{browser->summaries()};
+    auto const profiles{browser.summaries()};
     auto const profile_count{static_cast<int32>(profiles.size())};
     for (int32 index{}; index < profile_count; ++index) {
         auto const& profile{profiles[index]};
@@ -316,20 +290,10 @@ void USaveGameViewerWidget::apply_profile_selection(FString const& profile_id) {
         if (profile_changed) {
             selected_outcome_id_.Reset();
         }
-        show_profile(profile, browser->active_profile_id());
 
-        if (browser->load_profile_report(TCHAR_TO_UTF8(*profile_id))) {
-            auto const* const report{browser->loaded_profile_report()};
-            if (report) {
-                rebuild_outcomes(*report);
-            }
-        } else {
-            UE_LOG(LogSandboxUI,
-                   Warning,
-                   TEXT("USaveGameViewerWidget::select_profile: Failed to load profile '%s'."),
-                   *profile_id);
-            rebuild_outcomes(profiles::ProfileReport{.profile_id = TCHAR_TO_UTF8(*profile_id)});
-        }
+        show_profile(profile, browser.active_profile_id());
+
+        queue_profile_action(host::ProfileActionKind::SelectReport, to_string(profile_id), this);
         return;
     }
 }
@@ -374,8 +338,7 @@ void USaveGameViewerWidget::select_outcome(FString const& outcome_id) {
 }
 
 void USaveGameViewerWidget::apply_outcome_selection(FString const& outcome_id) {
-    auto* const browser{resolve_browser()};
-    auto const* const report{browser ? browser->loaded_profile_report() : nullptr};
+    auto const* const report{profile_browser().loaded_profile_report()};
     if (!report || report->profile_id != TCHAR_TO_UTF8(*selected_profile_id_)) {
         return;
     }
