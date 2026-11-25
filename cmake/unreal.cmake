@@ -30,8 +30,7 @@ function(add_unreal_target target_name unreal_target)
         -EngineRoot "${UE_ROOT_ABSOLUTE}"
         -CapacityGB "${IOJ_UBA_CACHE_CAPACITY_GB}"
     )
-    set(build_environment
-      "${CMAKE_COMMAND}" -E env
+    set(build_environment "${CMAKE_COMMAND}" -E env
         "UnrealBuildTool_UnrealBuildAccelerator__Cache=127.0.0.1:1347"
         "UnrealBuildTool_UnrealBuildAccelerator__WriteCache=True"
     )
