@@ -21,6 +21,7 @@ public class SpaceGame : ModuleRules
             "SandboxISMC",
             "SandboxShaders",
             "NativeSimulation",
+            "NativeLevelAuthoring",
             "NativeProfiles",
             "NativePresentation",
             "SandboxUI",
@@ -41,7 +42,7 @@ public class SpaceGame : ModuleRules
 
         PrivateDependencyModuleNames.AddRange(new string[]
         {
-            "NativeLevelAuthoring",
+            "ApplicationCore",
             "CpuFeatures",
             "Niagara",
             "Slate",
@@ -53,6 +54,12 @@ public class SpaceGame : ModuleRules
         foreach (string hiveIcon in Directory.GetFiles(hiveIconDirectory, "*.svg"))
         {
             RuntimeDependencies.Add(hiveIcon);
+        }
+
+        if (Target.Type == TargetType.Game)
+        {
+            PrivateDefinitions.Add("SANDBOX_HOST_EXPORTS");
+            PrivateIncludePaths.Add(Path.Combine(Target.ProjectFile.Directory.FullName, "native", "sandbox_host", "include"));
         }
 
         if (Target.bBuildEditor)
