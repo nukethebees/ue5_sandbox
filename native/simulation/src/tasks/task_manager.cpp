@@ -247,15 +247,17 @@ void TaskManager::allocate(TaskAllocationContext const ctx) {
 
     auto const active_triggers{ctx.events.active_triggers()};
     auto const triggers{ctx.events.triggers()};
+    auto const trigger_events{ctx.events.trigger_events()};
     for (auto const index : active_triggers) {
         if (is_trigger_checked(index)) {
             continue;
         }
 
-        auto const trigger_events{ctx.events.trigger_events(index)};
         auto const trigger{triggers[index]};
-
-        for (auto const trigger_event : trigger_events) {
+        std::size_t const begin{trigger.events.offset};
+        auto const end{begin + trigger.events.count};
+        for (auto event_index{begin}; event_index < end; ++event_index) {
+            auto const trigger_event{trigger_events[event_index]};
             auto const event_kind{trigger_event.kind()};
 
             if (is_task_value_event(event_kind)) {
