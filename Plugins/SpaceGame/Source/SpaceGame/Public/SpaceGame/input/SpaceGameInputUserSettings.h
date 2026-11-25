@@ -13,6 +13,7 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
     GENERATED_BODY()
   public:
     void finalize_canonical_registration();
+    [[nodiscard]] bool save_profile();
 
     [[nodiscard]] auto chord_mapping_for_mapping(FString const& profile_id,
                                                  FPlayerKeyMapping const& mapping) const

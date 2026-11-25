@@ -4,8 +4,10 @@
 #include "SpaceGame/input/CanonicalShipControls.h"
 #include "SpaceGame/input/ControlBindingMetadata.h"
 
+#include "Engine/LocalPlayer.h"
 #include "EnhancedActionKeyMapping.h"
 #include "InputMappingContext.h"
+#include "Kismet/GameplayStatics.h"
 #include "PlayerMappableKeySettings.h"
 
 namespace ioj {
@@ -28,6 +30,12 @@ void USpaceGameInputUserSettings::finalize_canonical_registration() {
     for (auto const& id : obsolete_ids) {
         SavedKeyProfilesMap.Remove(id);
     }
+}
+
+bool USpaceGameInputUserSettings::save_profile() {
+    auto* const player{GetLocalPlayer()};
+    return IsValid(player) && UGameplayStatics::SaveGameToSlot(
+                                  this, GetSaveFilename(player), player->GetLocalPlayerIndex());
 }
 
 auto USpaceGameInputUserSettings::chord_mapping_for_mapping(FString const& profile_id,
