@@ -266,6 +266,7 @@ auto Application::play(Window& window) -> Result {
         }
 
         auto const messages{host::take_messages()};
+        process_preferences(window, messages.preference_edits);
         process_profile_actions(messages.profile_actions);
 
         auto const& navigation{messages.navigation_request};
@@ -356,6 +357,53 @@ void Application::process_profile_actions(std::span<host::ProfileAction const> a
         }
 
         host::profile_result(index, result);
+    }
+}
+
+void Application::process_preferences(Window& window, std::span<host::PreferenceEdit const> edits) {
+    auto const count{edits.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const& edit{edits[index]};
+        if (edit.action != host::PreferenceAction::Save) {
+            auto result{edit.action == host::PreferenceAction::PreviewDisplay
+                            ? window.preview({edit.values.window_mode, edit.values.resolution})
+                            : window.revert_preview()};
+            host::preference_result(index, result ? std::string_view{} : result.error());
+            continue;
+        }
+
+        auto result{edit.category == GameSettingCategory::Video ? window.verify_preview()
+                                                                : Result{}};
+        if (result) {
+            result = settings_.save_category(edit.category, edit.values, edit.original_settings);
+        }
+        if (!result) {
+            if (edit.category == GameSettingCategory::Video) {
+                if (auto rollback{window.revert_preview()}; !rollback) {
+                    result.error() += "; rollback failed: " + rollback.error();
+                }
+            }
+            host::preference_result(index, result.error());
+            continue;
+        }
+
+        switch (edit.category) {
+            case GameSettingCategory::Video:
+                settings_.apply(video_settings(edit.values));
+                window.keep_preview(settings_);
+                break;
+            case GameSettingCategory::Audio:
+                settings_.apply(audio_settings(edit.values));
+                break;
+            case GameSettingCategory::Controls:
+                settings_.apply(controls_settings(edit.values));
+                break;
+            case GameSettingCategory::Gameplay:
+            case GameSettingCategory::Accessibility:
+                break;
+        }
+
+        host::preference_result(index, {});
     }
 }
 

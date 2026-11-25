@@ -24,6 +24,7 @@ class Application {
   private:
     auto play(Window& window) -> Result;
     void process_profile_actions(std::span<host::ProfileAction const> actions);
+    void process_preferences(Window& window, std::span<host::PreferenceEdit const> edits);
     auto launch_mission(std::filesystem::path const& path) -> bool;
     void create_level(session::PendingLevel& pending);
     void advance_level(double delta_seconds);
