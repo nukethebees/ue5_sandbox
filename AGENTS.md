@@ -111,6 +111,8 @@ Unreal Engine 5.8 project.
   ordinary member functions, then data members. Put static factories with ordinary functions.
   Keep data members last and separate distinct groups with blank lines.
 * Put forward declarations before definitions, separated by a blank line.
+* Include what you use in headers and source files. Include the public header that declares
+  each dependency, including standard-library facilities and required template specializations.
 * Keep headers concise. Comment declarations only for non-obvious contracts names/types cannot
   express; put implementation explanations in source files. Never restate routine declarations,
   members, or code in comments.
