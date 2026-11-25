@@ -23,7 +23,11 @@ const ASSET_DIRECTORIES: [&str; 5] = [
 
 #[derive(Clone, Copy, ValueEnum)]
 enum Configuration {
+    Debug,
+    #[value(name = "DebugGame", alias = "debug-game")]
+    DebugGame,
     Development,
+    Test,
     Shipping,
 }
 
@@ -227,14 +231,27 @@ fn verify(
     let package = std::path::absolute(&request.package_root)?;
     let artifacts = std::path::absolute(&request.verification_directory)?;
 
+    let binaries = package.join("Sandbox/Binaries/Win64");
     let binary = match request.configuration {
-        Configuration::Development => "Sandbox.exe",
-        Configuration::Shipping => "Sandbox-Win64-Shipping.exe",
+        Configuration::Debug => "Sandbox-Win64-Debug.dll",
+        Configuration::DebugGame => "Sandbox-Win64-DebugGame.dll",
+        Configuration::Development => "Sandbox.dll",
+        Configuration::Test => "Sandbox-Win64-Test.dll",
+        Configuration::Shipping => "Sandbox-Win64-Shipping.dll",
     };
-
+    for legacy in [package.join("Sandbox.exe"), binaries.join(binary).with_extension("exe")] {
+        if legacy.exists() {
+            return Err(format!("Obsolete player launcher in archive: {}", legacy.display()).into());
+        }
+    }
+    let debug = matches!(request.configuration, Configuration::Debug | Configuration::DebugGame);
+    if debug || matches!(request.configuration, Configuration::Development) {
+        require_file(&binaries.join("SandboxTracyClient.dll"))?;
+    }
     for path in [
-        package.join("Sandbox.exe"),
-        package.join("Sandbox/Binaries/Win64").join(binary),
+        binaries.join("IojPlayer.exe"),
+        binaries.join(binary),
+        binaries.join(if debug { "SandboxTBB12_debug.dll" } else { "SandboxTBB12.dll" }),
         package.join("Engine/Extras/Redist/en-us/vc_redist.x64.exe"),
         request.unreal_pak.clone(),
     ] {
