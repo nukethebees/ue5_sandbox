@@ -42,15 +42,6 @@ public class Sandbox : ModuleRules
             "UMG",
             "SandboxUI",
         });
-        
-        if (Target.bBuildEditor)
-        {
-            // Scoped transaction
-            PrivateDependencyModuleNames.AddRange(new string[] { 
-                "UnrealEd", 
-                "FunctionalTesting", 
-            });
-        }
 
         Target.Logger.LogInformation("=== Sandbox Build.cs [Start] ===");
         Target.Logger.LogInformation($"OptimizeCode : {OptimizeCode}");
