@@ -1,8 +1,6 @@
 #pragma once
 
-#include <ioj/levels/launch_options.h>
-#include <ioj/session/pending_level.h>
-#include <ioj/sim/player/sim.h>
+#include <ioj/session/mission_launch_request.h>
 
 #include <optional>
 #include <string_view>
@@ -23,11 +21,8 @@ namespace ioj::host {
 IOJ_LEVEL_API auto level_world_ready() -> bool;
 IOJ_LEVEL_API void open_menu(std::string_view preferred_level_id, std::string_view error);
 IOJ_LEVEL_API void open_mission();
-IOJ_LEVEL_API auto prepare_level(session::PendingLevel const& pending,
-                                 std::optional<sim::player::PlayerSpawnData>& player) -> bool;
-IOJ_LEVEL_API auto bind_level(session::PendingLevel const& pending, sim::LevelSim const& level)
-    -> bool;
-IOJ_LEVEL_API void level_start_failed(std::string_view error);
+IOJ_LEVEL_API auto bind_level(session::MissionLaunchRequest const& mission,
+                              sim::LevelSim const& level) -> bool;
 IOJ_LEVEL_API auto presents_level(sim::LevelSim const& level) -> bool;
 IOJ_LEVEL_API auto take_frame_delta_seconds() -> std::optional<double>;
 IOJ_LEVEL_API void present_level(double delta_seconds);

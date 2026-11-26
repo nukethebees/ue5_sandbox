@@ -220,12 +220,9 @@ auto Application::play(Window& window,
     }
 
     if (!mission_path.empty()) {
-        if (!launch_mission(mission_path)) {
-            return ApplicationResult{std::unexpect,
-                                     "Mission launch failed: " + path_to_utf8(mission_path)};
+        if (auto result{launch_mission(mission_path)}; !result) {
+            return result;
         }
-
-        host::open_mission();
     }
 
     auto const deadline{std::chrono::steady_clock::now() + std::chrono::minutes{2}};
@@ -287,24 +284,25 @@ auto Application::play(Window& window,
 
         auto const& navigation{messages.navigation_request};
         if (auto const* menu{std::get_if<session::LevelSelectRequest>(&navigation)}) {
-            pending_level_.reset();
             unload_level(sim::RunEndReason::WorldEnd, false);
             host::open_menu(menu->preferred_level_id.value, menu->launch_error);
             continue;
         }
 
-        if (auto const* mission_request{std::get_if<session::PendingLevel>(&navigation)}) {
+        if (auto const* mission{std::get_if<session::MissionLaunchRequest>(&navigation)}) {
             unload_level(sim::RunEndReason::WorldEnd, false);
-            pending_level_.emplace(*mission_request);
-            host::open_mission();
+            if (auto result{launch_mission(*mission)}; !result) {
+                host::open_menu(mission->definition.metadata().id.value, result.error());
+            }
+            continue;
+        }
+
+        if (mission_to_bind_ && host::level_world_ready()) {
+            bind_level();
             continue;
         }
 
         if (!level_) {
-            if (pending_level_ && host::level_world_ready()) {
-                create_level(*pending_level_);
-                pending_level_.reset();
-            }
             continue;
         }
 
@@ -424,50 +422,47 @@ void Application::process_preferences(Window& window, std::span<host::Preference
     }
 }
 
-auto Application::launch_mission(std::filesystem::path const& path) -> bool {
+auto Application::launch_mission(std::filesystem::path const& path) -> ApplicationResult {
     auto definition{levels::authoring::DefinitionReader::for_level(path).read_level_file(path)};
     if (!definition) {
-        auto error{levels::format_diagnostics(definition.error())};
-        std::println(stderr, "Mission launch failed: {}", error);
-        return false;
+        return ApplicationResult{std::unexpect, levels::format_diagnostics(definition.error())};
     }
 
     levels::LaunchOptions options;
     options.control_context =
         definition->camera() ? levels::ControlContext::Observer : levels::ControlContext::Player;
-    pending_level_.emplace(std::move(*definition), path_to_utf8(path), options);
-    return true;
+    return launch_mission({std::move(*definition), path_to_utf8(path), options});
 }
-void Application::create_level(session::PendingLevel& pending) {
-    pending.options.launch_mode = settings_.application().start_levels_paused
+auto Application::launch_mission(session::MissionLaunchRequest mission) -> ApplicationResult {
+    mission.options.launch_mode = settings_.application().start_levels_paused
                                     ? levels::LaunchMode::Paused
                                     : levels::LaunchMode::Running;
-
-    sim::LevelSimInitData inputs;
-    if (!host::prepare_level(pending, inputs.player)) {
-        return;
-    }
-
-    auto const& options{pending.options};
-    auto const mode{options.launch_mode};
+    auto const& options{mission.options};
     sim::LevelRunTiming const timing{
         .time_scale = PositiveFinite<double>::make(options.requested_time_scale.get()),
         .duration = options.simulated_duration_seconds.transform(
             [](auto value) { return Duration::make(value); }),
     };
-    auto built{sim::make_level_simulation_init_data(pending.definition, std::move(inputs), timing)};
+    auto built{sim::make_level_simulation_init_data(mission.definition, {}, timing)};
     if (!built) {
         std::string errors;
         for (auto const& message : built.error()) {
             errors += message + "\n";
         }
 
-        host::level_start_failed(errors);
-        return;
+        return ApplicationResult{std::unexpect, std::move(errors)};
     }
 
     level_.emplace(std::move(*built), level_arena_);
-    if (!host::bind_level(pending, *level_)) {
+    mission_to_bind_.emplace(std::move(mission));
+    host::open_mission();
+    return {};
+}
+void Application::bind_level() {
+    auto const mode{mission_to_bind_->options.launch_mode};
+    auto const bound{host::bind_level(*mission_to_bind_, *level_)};
+    mission_to_bind_.reset();
+    if (!bound) {
         unload_level(sim::RunEndReason::WorldEnd, false);
         return;
     }
@@ -494,6 +489,7 @@ void Application::advance_level(double delta_seconds) {
     }
 }
 void Application::unload_level(sim::RunEndReason reason, bool show_results) {
+    mission_to_bind_.reset();
     if (!level_) {
         return;
     }

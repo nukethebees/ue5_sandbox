@@ -69,21 +69,15 @@ void open_menu(std::string_view preferred_level_id, std::string_view error) {
     UGameplayStatics::OpenLevel(GEngine->GameViewport->GetWorld(),
                                 TEXT("/SpaceGame/Levels/MainMenu"));
 }
-auto prepare_level(session::PendingLevel const& pending,
-                   std::optional<sim::player::PlayerSpawnData>& player) -> bool {
-    auto result{level_world->prepare_level(pending, player)};
+auto bind_level(session::MissionLaunchRequest const& mission, sim::LevelSim const& level) -> bool {
+    auto result{level_world->prepare_level(mission)};
     if (!result) {
         level_world->handle_level_start_failure(
-            result.error().format(to_fstring(pending.source_path)));
+            result.error().format(to_fstring(mission.source_path)));
+        return false;
     }
 
-    return result.has_value();
-}
-auto bind_level(session::PendingLevel const& pending, sim::LevelSim const& level) -> bool {
-    return level_world->bind_level(pending, level);
-}
-void level_start_failed(std::string_view error) {
-    level_world->handle_level_start_failure(to_fstring(error));
+    return level_world->bind_level(mission, level);
 }
 auto presents_level(sim::LevelSim const& level) -> bool {
     return level_world.IsValid() && level_world->get_level_simulation() == &level;

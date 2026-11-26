@@ -9,7 +9,7 @@ flowchart TD
     H --> V[Player view and HUD]
 ```
 
-Application owns the main loop, the current LevelSim and its reusable arena. Unreal creates presentation actors, supplies static geometry, and reads the bound simulation after fixed ticks. Application detaches presentation before destroying the level and resetting the arena. Menu actions and input travel back to Application in the published frame messages.
+Application owns the main loop, the current LevelSim and its reusable arena. It constructs the simulation paused using the mission's spawn data and static collision boxes. Once Unreal binds its presentation actors, Application starts the simulation if requested. Unreal reads the simulation after fixed ticks and publishes menu actions and input in frame messages. Application detaches presentation before destroying the level and resetting the arena.
 
 Carriers launch fighters in a vertical column above their collision bounds. Preview the column on the capital proxy.
 

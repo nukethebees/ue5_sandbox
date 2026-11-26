@@ -1,6 +1,6 @@
 #pragma once
 #include <ioj/levels/launch_options.h>
-#include <ioj/session/pending_level.h>
+#include <ioj/session/mission_launch_request.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <SpaceGame/levels/LevelCompletion.h>
 #include <SpaceGame/levels/LevelLoader.h>
@@ -36,9 +36,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     void PostLoad() override;
     void present_level(time_type delta_seconds);
-    auto prepare_level(session::PendingLevel const& pending,
-                       std::optional<sim::player::PlayerSpawnData>& player) -> FLevelLoadResult;
-    auto bind_level(session::PendingLevel const& pending, sim::LevelSim const& level) -> bool;
+    auto prepare_level(session::MissionLaunchRequest const& mission) -> FLevelLoadResult;
+    auto bind_level(session::MissionLaunchRequest const& mission, sim::LevelSim const& level)
+        -> bool;
     auto take_frame_delta_seconds() -> std::optional<double>;
     void handle_level_start_failure(FString message);
     void finish_level(profiles::CompletedLevel const& completed,

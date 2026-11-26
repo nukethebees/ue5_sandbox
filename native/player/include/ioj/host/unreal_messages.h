@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/session/level_select_request.h>
-#include <ioj/session/pending_level.h>
+#include <ioj/session/mission_launch_request.h>
 #include <ioj/settings/game_setting_category.h>
 #include <ioj/settings/game_settings_state.h>
 #include <ioj/sim/player/player_events.h>
@@ -29,7 +29,7 @@ struct PreferenceEdit {
 };
 
 using NavigationRequest =
-    std::variant<std::monostate, session::PendingLevel, session::LevelSelectRequest>;
+    std::variant<std::monostate, session::MissionLaunchRequest, session::LevelSelectRequest>;
 
 struct UnrealMessages {
     std::span<ProfileAction const> profile_actions;

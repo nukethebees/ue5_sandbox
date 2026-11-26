@@ -80,7 +80,7 @@ void queue_preferences(host::PreferenceEdit edit, UOptionsDraft& draft) {
     pending.preference_senders.emplace_back(&draft);
 }
 
-void request_mission(session::PendingLevel mission) {
+void request_mission(session::MissionLaunchRequest mission) {
     pending.navigation_request = std::move(mission);
 }
 

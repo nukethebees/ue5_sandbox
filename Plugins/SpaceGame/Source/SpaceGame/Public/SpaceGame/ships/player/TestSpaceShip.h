@@ -47,7 +47,6 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     // Lifecycle and simulation binding
     /* **************************************** */
     ATestSpaceShip();
-    auto make_spawn_data() const -> sim::player::PlayerSpawnData;
     void bind_simulation(sim::LevelSim const& level);
     void unbind_simulation();
     auto input_events() -> sim::player::PlayerInputEvents&;

@@ -155,11 +155,10 @@ void ATestBatchOrchestrator::clear_player_ship() {
 /* **************************************** */
 // Level preparation and startup
 /* **************************************** */
-auto ATestBatchOrchestrator::prepare_level(session::PendingLevel const& pending,
-                                           std::optional<sim::player::PlayerSpawnData>& player)
+auto ATestBatchOrchestrator::prepare_level(session::MissionLaunchRequest const& mission)
     -> FLevelLoadResult {
-    launch_options_ = pending.options;
-    auto const& definition{pending.definition};
+    launch_options_ = mission.options;
+    auto const& definition{mission.definition};
     auto const playerless_control_context{launch_options_.control_context};
     auto const fail{[](ELevelLoadErrorCode const code, FString message) -> FLevelLoadResult {
         FLevelLoadErrors errors;
@@ -216,12 +215,10 @@ auto ATestBatchOrchestrator::prepare_level(session::PendingLevel const& pending,
         return fail(ELevelLoadErrorCode::InvalidLevelConfig, FString::Join(messages, TEXT("\n")));
     }
 
-    if (IsValid(player_ship)) {
-        if (is_presentation_enabled() && !level_config->player_ship.team_visual_data) {
-            return fail(ELevelLoadErrorCode::InvalidLevelConfig,
-                        TEXT("Missing player ship team visual data"));
-        }
-        player = player_ship->make_spawn_data();
+    if (IsValid(player_ship) && is_presentation_enabled() &&
+        !level_config->player_ship.team_visual_data) {
+        return fail(ELevelLoadErrorCode::InvalidLevelConfig,
+                    TEXT("Missing player ship team visual data"));
     }
 
     if (is_presentation_enabled()) {
@@ -239,10 +236,10 @@ auto ATestBatchOrchestrator::prepare_level(session::PendingLevel const& pending,
     return {};
 }
 
-auto ATestBatchOrchestrator::bind_level(session::PendingLevel const& pending,
+auto ATestBatchOrchestrator::bind_level(session::MissionLaunchRequest const& mission,
                                         sim::LevelSim const& level) -> bool {
     check(!level_simulation_);
-    auto const resources{get_presentation_resources(pending.definition.settings())};
+    auto const resources{get_presentation_resources(mission.definition.settings())};
     auto* const audio{GetGameInstance()->GetSubsystem<UGameAudio>()};
     check(audio);
     level_simulation_ = &level;
@@ -263,7 +260,7 @@ auto ATestBatchOrchestrator::bind_level(session::PendingLevel const& pending,
         if (IsValid(player_ship)) {
             controller->activate_ship_control();
         }
-        if (pending.options.launch_mode == levels::LaunchMode::Paused) {
+        if (mission.options.launch_mode == levels::LaunchMode::Paused) {
             controller->show_initial_pause_menu();
         }
     }
@@ -276,7 +273,7 @@ auto ATestBatchOrchestrator::bind_level(session::PendingLevel const& pending,
         }
     }
 
-    UE_LOG(LogSandbox, Display, TEXT("Mission ready: %s"), *to_fstring(pending.source_path));
+    UE_LOG(LogSandbox, Display, TEXT("Mission ready: %s"), *to_fstring(mission.source_path));
     frame_delta_seconds_.reset();
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
     report_mission_startup(MissionStartup::Ready);

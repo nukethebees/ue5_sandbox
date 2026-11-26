@@ -5,7 +5,7 @@
 #include <ioj/memory/bump_resource.h>
 #include <ioj/profiles/profile_manager.h>
 #include <ioj/profiles/save_browser.h>
-#include <ioj/session/pending_level.h>
+#include <ioj/session/mission_launch_request.h>
 #include <ioj/settings/player_settings.h>
 #include <ioj/sim/levels/level_sim.h>
 
@@ -27,13 +27,14 @@ class Application {
         -> ApplicationResult;
     void process_profile_actions(std::span<host::ProfileAction const> actions);
     void process_preferences(Window& window, std::span<host::PreferenceEdit const> edits);
-    auto launch_mission(std::filesystem::path const& path) -> bool;
-    void create_level(session::PendingLevel& pending);
+    auto launch_mission(std::filesystem::path const& path) -> ApplicationResult;
+    auto launch_mission(session::MissionLaunchRequest mission) -> ApplicationResult;
+    void bind_level();
     void advance_level(double delta_seconds);
     void unload_level(sim::RunEndReason reason, bool show_results);
 
     PlayerSettings settings_;
-    std::optional<session::PendingLevel> pending_level_;
+    std::optional<session::MissionLaunchRequest> mission_to_bind_;
     profiles::ProfileManager profiles_;
     profiles::SaveGameBrowser profile_browser_;
     memory::BumpResource level_arena_;

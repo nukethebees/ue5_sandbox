@@ -70,19 +70,6 @@ ATestSpaceShip::ATestSpaceShip()
     configure_ship_mesh();
 }
 
-auto ATestSpaceShip::make_spawn_data() const -> sim::player::PlayerSpawnData {
-    sim::player::PlayerSpawnData result;
-    result.sample_speed = WITH_EDITOR;
-    result.team = to_native(team);
-    result.transform = to_native(GetActorTransform());
-    result.laser_mode = initial_.laser_mode;
-    result.laser_trigger_mode = initial_.laser_trigger_mode;
-    result.health = {initial_.health, initial_.health};
-
-    result.config = initial_;
-    return result;
-}
-
 void ATestSpaceShip::bind_simulation(sim::LevelSim const& level) {
     bound_level_ = &level;
 }

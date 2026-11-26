@@ -6,7 +6,7 @@
 #include <string>
 
 namespace ioj::session {
-struct PendingLevel {
+struct MissionLaunchRequest {
     levels::LevelDefinition definition;
     std::string source_path{};
     levels::LaunchOptions options{};
