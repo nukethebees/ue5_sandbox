@@ -2,7 +2,7 @@
 
 #include <ioj/host/unreal_messages.h>
 #include <ioj/presentation/profile_view.h>
-#include <ioj/settings/player_settings.h>
+#include <ioj/settings/player_settings_view.h>
 #include <ioj/sim/player/player_events.h>
 #include <ioj/system_capabilities.h>
 
@@ -13,7 +13,7 @@ class UOptionsDraft;
 class ULevelSelectWidget;
 class USaveGameViewerWidget;
 
-SPACEGAME_API auto player_settings() -> PlayerSettings const&;
+SPACEGAME_API auto player_settings() -> PlayerSettingsView const&;
 SPACEGAME_API auto system_capabilities() -> SystemCapabilities const&;
 SPACEGAME_API auto player_profiles() -> presentation::ProfileView const&;
 void queue_profile_action(host::ProfileActionKind kind,

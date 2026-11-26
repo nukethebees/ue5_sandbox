@@ -168,7 +168,8 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     auto const capabilities{query_system_capabilities()};
     auto const engine_command_line{
         engine_arguments(project_directory, settings.launch_display_mode(), args.user_directory)};
-    IojPlayer_Attach(settings, capabilities, window.supported_resolutions());
+    IojPlayer_Attach(capabilities);
+    host::present_settings(settings.view(), window.supported_resolutions());
     application.publish_profiles();
     if (auto result{start_engine(window, engine_command_line, settings.launch_display_mode())};
         !result) {
@@ -219,6 +220,7 @@ auto Application::play(Window& window,
         if (auto result{window.show(settings_)}; !result) {
             return result;
         }
+        host::present_settings(settings_.view(), window.supported_resolutions());
     }
 
     if (!mission_path.empty()) {
@@ -249,6 +251,7 @@ auto Application::play(Window& window,
                     if (auto result{window.refresh_resolutions()}; !result) {
                         return result;
                     }
+                    host::present_settings(settings_.view(), window.supported_resolutions());
                     break;
             }
         }
@@ -260,6 +263,7 @@ auto Application::play(Window& window,
             if (auto result{window.synchronize_resize(settings_)}; !result) {
                 return result;
             }
+            host::present_settings(settings_.view(), window.supported_resolutions());
         }
 
         if (exit_when_ready) {
@@ -505,6 +509,7 @@ void Application::process_preferences(Window& window, std::span<host::Preference
                 break;
         }
 
+        host::present_settings(settings_.view(), window.supported_resolutions());
         host::preference_result(index, {});
     }
 }

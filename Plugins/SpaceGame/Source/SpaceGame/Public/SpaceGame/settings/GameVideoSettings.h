@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/settings/player_settings.h>
+#include <ioj/settings/settings_result.h>
 #include <ioj/settings/video_settings.h>
 
 namespace ioj {

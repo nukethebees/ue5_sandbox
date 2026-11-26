@@ -10,7 +10,7 @@
 #include <ioj/levels/control_context.h>
 #include <ioj/levels/diagnostics.h>
 #include <ioj/levels/launch_options.h>
-#include <ioj/settings/player_settings.h>
+#include <ioj/settings/player_settings_view.h>
 #include <ioj/settings/screen_resolution.h>
 #include <SpaceGame/settings/GameVideoSettings.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
@@ -113,7 +113,7 @@ void IojPlayer_Detach() {
 }
 
 auto IojPlayer_ApplyPreferences() -> bool {
-    auto const& values{player_settings().applied()};
+    auto const& values{player_settings().applied_values};
     if (auto result{FGameVideoSettings{}.apply_quality(values.video)}; !result) {
         UE_LOG(LogTemp,
                Error,

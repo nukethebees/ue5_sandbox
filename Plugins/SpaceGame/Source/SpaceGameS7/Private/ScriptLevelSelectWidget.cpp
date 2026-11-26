@@ -445,7 +445,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
 
         if (entry.unlocked) {
             view_state_.can_launch = true;
-            if (game_instance && player_settings().application().start_levels_paused) {
+            if (game_instance && player_settings().application.start_levels_paused) {
                 view_state_.launch_mode_status =
                     NSLOCTEXT("LevelSelect", "DebugStartPaused", "DEBUG // START PAUSED");
             }

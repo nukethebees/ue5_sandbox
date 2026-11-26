@@ -13,7 +13,7 @@
 #include <ioj/settings/game_setting_option_provider.h>
 #include <ioj/settings/game_setting_value.h>
 #include <ioj/settings/game_settings.h>
-#include <ioj/settings/player_settings.h>
+#include <ioj/settings/player_settings_view.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -66,7 +66,7 @@ void UOptionsDraft::load(ULocalPlayer* player, GameSettingCategory category) {
     check(!is_awaiting_display_confirmation());
     auto const& settings{player_settings()};
     editing_local_player_ = player;
-    draft_.begin(settings.applied(), settings.defaults());
+    draft_.begin(settings.applied_values, settings.defaults);
     bindings_ = category == GameSettingCategory::Controls ? all_control_bindings()
                                                           : TArray<FControlBindingView>{};
     original_bindings_ = bindings_;
@@ -191,7 +191,7 @@ void UOptionsDraft::preference_finished(host::PreferenceEdit const& edit, std::s
     draft_.commit_all();
     settings_changed.Broadcast();
     if (is_awaiting_display_confirmation()) {
-        draft_.begin(player_settings().applied(), player_settings().defaults());
+        draft_.begin(player_settings().applied_values, player_settings().defaults);
         finish_display_confirmation();
     }
 
@@ -223,7 +223,7 @@ void UOptionsDraft::reset_category(GameSettingCategory category) {
 
     draft_.reset_category(category);
     if (category == GameSettingCategory::Video) {
-        if (player_settings().launch_display_mode() != LaunchDisplayMode::Preferences) {
+        if (player_settings().launch_mode != LaunchDisplayMode::Preferences) {
             draft_.set_setting(GameSetting::WindowMode, draft_.applied().video.window_mode);
         } else if (draft_.pending().video.window_mode == GameWindowMode::Fullscreen) {
             draft_.set_setting(GameSetting::WindowMode, GameWindowMode::Borderless);

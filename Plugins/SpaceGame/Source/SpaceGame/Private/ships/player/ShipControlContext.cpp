@@ -235,7 +235,7 @@ void FShipControlContext::update_mouse_steering() {
     owner_->hud_.set_mouse_steering(mouse_displacement_);
 
     auto const command{mouse_displacement_->GetClampedToMaxSize(1.0)};
-    auto const& preferences{player_settings().applied().controls};
+    auto const& preferences{player_settings().applied_values.controls};
     if (auto* const ship{get_ship()}) {
         ship->input_events().set_pitch_input(preferences.invert_mouse_pitch ? -command.Y
                                                                             : command.Y);

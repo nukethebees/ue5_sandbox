@@ -13,7 +13,7 @@ void UFrameLogFooterSubsystem::Initialize(FSubsystemCollectionBase& Collection) 
 #if !defined(UE_LIBRARY_ENABLED) || !UE_LIBRARY_ENABLED
     return;
 #else
-    if (!player_settings().application().frame_log_footer) {
+    if (!player_settings().application.frame_log_footer) {
         return;
     }
 

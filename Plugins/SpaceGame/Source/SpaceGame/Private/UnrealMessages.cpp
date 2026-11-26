@@ -20,11 +20,11 @@
 
 namespace ioj {
 namespace {
-PlayerSettings const* attached_settings{};
+PlayerSettingsView attached_settings{};
 SystemCapabilities const* attached_capabilities{};
 presentation::ProfileView published_profiles{};
 std::optional<session::LevelSelectRequest> menu_destination;
-std::vector<ScreenResolution> const* window_resolutions{};
+std::span<ScreenResolution const> window_resolutions{};
 
 struct MessageBuffer {
     std::vector<host::ProfileAction> profile_actions;
@@ -49,9 +49,8 @@ FAutoConsoleCommand reset_profile_command{
 #endif
 }
 
-auto player_settings() -> PlayerSettings const& {
-    check(attached_settings);
-    return *attached_settings;
+auto player_settings() -> PlayerSettingsView const& {
+    return attached_settings;
 }
 
 auto system_capabilities() -> SystemCapabilities const& {
@@ -100,7 +99,7 @@ auto menu_selection() -> std::optional<session::LevelSelectRequest>& {
 }
 
 auto supported_resolutions() -> std::span<ScreenResolution const> {
-    return *window_resolutions;
+    return window_resolutions;
 }
 
 void request_simulation_mode(levels::LaunchMode mode) {
@@ -117,20 +116,19 @@ void reset_level_input() {
 }
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-void IojPlayer_Attach(PlayerSettings const& settings,
-                      SystemCapabilities const& capabilities,
-                      std::vector<ScreenResolution> const& resolutions) {
-    attached_settings = &settings;
+void IojPlayer_Attach(SystemCapabilities const& capabilities) {
     attached_capabilities = &capabilities;
-    window_resolutions = &resolutions;
 }
-
 void host::present_catalog(presentation::MissionCatalogView const& catalog) {
     if (auto* widget{published.catalog_request.Get()}) {
         widget->present_catalog(catalog);
     }
 }
-
+void host::present_settings(PlayerSettingsView const& settings,
+                            std::span<ScreenResolution const> resolutions) {
+    window_resolutions = resolutions;
+    attached_settings = settings;
+}
 void host::present_profiles(presentation::ProfileView const& profiles) {
     published_profiles = profiles;
 }
@@ -175,9 +173,9 @@ void detach_player() {
     published = MessageBuffer{};
     pending = MessageBuffer{};
     menu_destination.reset();
-    window_resolutions = nullptr;
+    window_resolutions = {};
     published_profiles = {};
-    attached_settings = nullptr;
+    attached_settings = {};
     attached_capabilities = nullptr;
 }
 }

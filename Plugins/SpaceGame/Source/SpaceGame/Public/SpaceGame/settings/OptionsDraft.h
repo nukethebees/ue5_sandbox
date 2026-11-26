@@ -9,7 +9,7 @@
 #include <ioj/settings/game_setting_value.h>
 #include <ioj/settings/game_settings_edit_state.h>
 #include <ioj/settings/game_settings_state.h>
-#include <ioj/settings/player_settings.h>
+#include <ioj/settings/settings_result.h>
 #include <SpaceGame/settings/ControlBindingAddress.h>
 #include <SpaceGame/settings/ControlBindingView.h>
 #include <SpaceGame/settings/GameSettingOption.h>

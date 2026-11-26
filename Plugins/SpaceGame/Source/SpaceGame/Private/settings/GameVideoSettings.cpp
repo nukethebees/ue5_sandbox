@@ -1,7 +1,7 @@
 #include "SpaceGame/settings/GameVideoSettings.h"
 
 #include "SpaceGame/settings/SpaceGameUserSettings.h"
-#include <ioj/settings/player_settings.h>
+#include <ioj/settings/settings_result.h>
 #include <ioj/settings/video_settings.h>
 
 #include "CoreGlobals.h"

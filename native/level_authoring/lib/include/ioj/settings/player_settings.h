@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ioj/settings/application_settings.h>
 #include <ioj/settings/audio_settings.h>
 #include <ioj/settings/controls_settings.h>
 #include <ioj/settings/game_setting.h>
@@ -10,7 +9,9 @@
 #include <ioj/settings/game_settings_edit_state.h>
 #include <ioj/settings/game_settings_state.h>
 #include <ioj/settings/launch_display_mode.h>
+#include <ioj/settings/player_settings_view.h>
 #include <ioj/settings/screen_resolution.h>
+#include <ioj/settings/settings_result.h>
 #include <ioj/settings/video_settings.h>
 #include <ioj/settings/window_display_settings.h>
 
@@ -21,8 +22,6 @@
 #include <vector>
 
 namespace ioj {
-using SettingsResult = std::expected<void, std::string>;
-
 class PlayerSettings {
   public:
     auto load(std::filesystem::path const& scripts,
@@ -43,15 +42,13 @@ class PlayerSettings {
                        GameSettingsState const& original_settings) -> SettingsResult;
 
     auto saved_display() const -> WindowDisplaySettings;
-    auto is_available(GameSettingsState const& draft, GameSetting setting) const -> bool;
-    auto choices(GameSettingsState const& draft,
-                 GameSettingOptionProvider provider,
-                 std::span<ScreenResolution const> resolutions) const
-        -> std::vector<GameSettingChoice>;
-    auto set_setting(GameSettingsEditState& edit,
-                     GameSetting setting,
-                     GameSettingValue const& value,
-                     std::span<ScreenResolution const> resolutions) const -> bool;
+    auto view() const -> PlayerSettingsView {
+        return {application_settings_,
+                applied_settings_,
+                default_settings_,
+                launch_display_mode_,
+                saved_settings_.video.resolution};
+    }
 
   private:
     std::filesystem::path user_settings_path_;

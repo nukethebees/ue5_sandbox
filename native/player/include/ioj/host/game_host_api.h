@@ -5,8 +5,8 @@
 #include <ioj/settings/screen_resolution.h>
 
 #include <cstddef>
+#include <span>
 #include <string_view>
-#include <vector>
 
 namespace ioj::host {
 struct UnrealMessages;
@@ -18,16 +18,14 @@ struct MissionCatalogView;
 }
 namespace ioj {
 struct SystemCapabilities;
-class PlayerSettings;
+struct PlayerSettingsView;
 #ifdef IOJ_PLAYER_EXPORTS
 #define IOJ_PLAYER_API __declspec(dllexport)
 #else
 #define IOJ_PLAYER_API __declspec(dllimport)
 #endif
 extern "C" {
-    IOJ_PLAYER_API void IojPlayer_Attach(PlayerSettings const& settings,
-                                         SystemCapabilities const& capabilities,
-                                         std::vector<ScreenResolution> const& resolutions);
+    IOJ_PLAYER_API void IojPlayer_Attach(SystemCapabilities const& capabilities);
     IOJ_PLAYER_API auto IojPlayer_MissionStartup() -> MissionStartup;
     IOJ_PLAYER_API void IojPlayer_Detach();
     IOJ_PLAYER_API auto IojPlayer_ApplyPreferences() -> bool;
@@ -43,6 +41,8 @@ namespace host {
 // BeginFrame clears consumed requests and input edges. Axes carry forward.
 // Requests queued while handling results belong to the next batch.
 IOJ_PLAYER_API void present_catalog(presentation::MissionCatalogView const& catalog);
+IOJ_PLAYER_API void present_settings(PlayerSettingsView const& settings,
+                                     std::span<ScreenResolution const> resolutions);
 IOJ_PLAYER_API void present_profiles(presentation::ProfileView const& profiles);
 IOJ_PLAYER_API auto take_messages() -> UnrealMessages;
 IOJ_PLAYER_API void profile_result(std::size_t index, profiles::CreateProfileResult result);
