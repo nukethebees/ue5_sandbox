@@ -42,7 +42,7 @@
 		},
 		{
 			"Name": "Water",
-			"Enabled": true
+			"Enabled": false
 		},
 		{
 			"Name": "Landmass",
