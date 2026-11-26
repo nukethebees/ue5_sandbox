@@ -71,7 +71,7 @@ void validate_levels(std::vector<DefinitionEntry<LevelDefinition>>& entries) {
         states[start].visit = EntryState::Visit::Active;
         while (!stack.empty()) {
             auto& frame{stack.back()};
-            auto const& dependencies{entries[frame.index].definition->unlock_level_ids()};
+            auto const dependencies{entries[frame.index].definition->unlock_level_ids()};
             if (frame.next == dependencies.size()) {
                 states[frame.index].visit = EntryState::Visit::Complete;
                 stack.pop_back();

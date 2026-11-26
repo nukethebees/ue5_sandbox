@@ -126,7 +126,7 @@ auto binding(AS7LevelAuthoringDocument& document, FString const& id) -> FS7Level
 
 auto entity(ioj::levels::LevelDefinition const& definition, std::string_view const id)
     -> ioj::levels::EntitySpawnDefinition const* {
-    auto const& entities{definition.entities()};
+    auto const entities{definition.entities()};
     auto const found{
         std::ranges::find_if(entities, [id](auto const& value) { return value.id.value == id; })};
     return found == entities.end() ? nullptr : &*found;

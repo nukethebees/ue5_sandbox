@@ -4,6 +4,7 @@
 #include <ioj/levels/level_definition_components.h>
 
 #include <optional>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -23,7 +24,7 @@ class LevelDefinition {
         -> std::expected<LevelDefinition, Diagnostics>;
 
     [[nodiscard]] auto metadata() const -> LevelMetadata const& { return metadata_; }
-    [[nodiscard]] auto unlock_level_ids() const -> std::vector<LevelId> const& {
+    [[nodiscard]] auto unlock_level_ids() const -> std::span<LevelId const> {
         return unlock_level_ids_;
     }
     [[nodiscard]] auto player_entity_id() const -> EntityId const& { return player_entity_id_; }
@@ -31,7 +32,7 @@ class LevelDefinition {
         return camera_;
     }
     [[nodiscard]] auto logic() const -> LogicDefinition const& { return logic_; }
-    [[nodiscard]] auto entities() const -> std::vector<EntitySpawnDefinition> const& {
+    [[nodiscard]] auto entities() const -> std::span<EntitySpawnDefinition const> {
         return entities_;
     }
     [[nodiscard]] auto settings() const -> settings::Settings const& { return settings_; }

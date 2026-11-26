@@ -6,6 +6,9 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
+
 namespace ioj::levels::authoring::decoding_tests {
 namespace {
 constexpr char valid_camera_level[]{R"(
@@ -109,7 +112,7 @@ TEST(S7LevelDefinition, DecodesDeclarativeUnlockCriteria) {
                   " :unlock (list (level-completed 'first-level) (level-completed 'second-level))");
     auto const result{ioj::levels::authoring::tests::read_test_level(DefinitionReader{}, source)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
-    EXPECT_EQ(result->unlock_level_ids(),
-              (std::vector{LevelId{"first-level"}, LevelId{"second-level"}}));
+    std::array const expected{LevelId{"first-level"}, LevelId{"second-level"}};
+    EXPECT_TRUE(std::ranges::equal(result->unlock_level_ids(), expected));
 }
 }

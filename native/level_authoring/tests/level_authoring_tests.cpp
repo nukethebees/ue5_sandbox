@@ -52,6 +52,7 @@
 #include <format>
 #include <limits>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -136,7 +137,7 @@ static_assert(!std::is_convertible_v<EntityId, Team>);
 static_assert(!std::is_convertible_v<std::string, LevelId>);
 static_assert(!std::is_default_constructible_v<LevelDefinition>);
 static_assert(std::is_same_v<decltype(std::declval<LevelDefinition&>().entities()),
-                             std::vector<EntitySpawnDefinition> const&>);
+                             std::span<EntitySpawnDefinition const>>);
 
 TEST(NativeSettings, WindowSizeOverrideSurvivesAnUnrelatedAudioSave) {
     TemporaryLevelDirectory directory;
