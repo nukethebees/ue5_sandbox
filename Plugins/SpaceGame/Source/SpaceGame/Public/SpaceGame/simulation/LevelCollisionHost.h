@@ -1,18 +1,17 @@
 #pragma once
-#include <ioj/sim/collision/collision_grid.h>
 #include <ioj/sim/collision/entity_aabbs.h>
-#include <ioj/world_aabb.h>
 #include <ioj/sim/entities/entity_type.h>
+#include <ioj/world_aabb.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
 
-#include <Containers/ArrayView.h>
+#include <Containers/UnrealString.h>
 
 #include <cstddef>
 #include <expected>
 #include <vector>
 
 class UStaticMesh;
-class UWorld;
+class ULevel;
 class AActor;
 
 namespace ioj {
@@ -23,10 +22,10 @@ using FEntityBoundsExtractionResult = std::expected<sim::collision::EntityAABBs,
 struct SPACEGAME_API FLevelCollisionHost {
     using EntityMeshes = EnumArray<UStaticMesh const*, sim::EntityType>;
     static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityBoundsExtractionResult;
-    static auto extract_static_geometry(UWorld& world,
-                                        FCollisionGridConfig const& config,
-                                        sim::collision::CollisionGridSpec grid_spec,
-                                        TConstArrayView<AActor const*> excluded_actors = {})
-        -> std::vector<WorldAABB>;
+#if WITH_EDITOR
+    static auto exports_actor(AActor const& actor, FCollisionGridConfig const& config) -> bool;
+    static auto export_static_collision(ULevel const& level, FCollisionGridConfig const& config)
+        -> std::expected<std::vector<WorldAABB>, FString>;
+#endif
 };
 }

@@ -466,11 +466,6 @@ void Application::create_level(session::PendingLevel& pending) {
         return;
     }
 
-    built->collision.static_bounds.reset();
-    for (auto const& bound : host::static_geometry(built->collision.grid_spec)) {
-        built->collision.static_bounds.add(bound.min, bound.max);
-    }
-
     level_.emplace(std::move(*built), level_arena_);
     if (!host::bind_level(pending, *level_)) {
         unload_level(sim::RunEndReason::WorldEnd, false);

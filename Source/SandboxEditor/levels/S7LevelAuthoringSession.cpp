@@ -15,6 +15,7 @@
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/fighter/TestFighterProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -141,6 +142,13 @@ auto collect_editor_scene(ULevel const& level,
     using Result = S7AuthoringResult<void>;
 
     using namespace s7_level_authoring_session_detail;
+    auto boxes{
+        FLevelCollisionHost::export_static_collision(level, document.level_config->collision_grid)};
+    if (!boxes) {
+        return Result{std::unexpect, std::move(boxes.error())};
+    }
+
+    input.static_collision = std::move(*boxes);
     input.entities.clear();
     input.player = {};
     input.camera.reset();

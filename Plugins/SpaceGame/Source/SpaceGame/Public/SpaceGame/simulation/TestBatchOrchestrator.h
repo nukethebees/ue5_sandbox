@@ -1,7 +1,6 @@
 #pragma once
 #include <ioj/levels/launch_options.h>
 #include <ioj/session/pending_level.h>
-#include <ioj/world_aabb.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <SpaceGame/levels/LevelCompletion.h>
 #include <SpaceGame/levels/LevelLoader.h>
@@ -12,8 +11,6 @@
 #include <GameFramework/Actor.h>
 
 #include <optional>
-#include <span>
-#include <vector>
 
 #include "TestBatchOrchestrator.generated.h"
 
@@ -41,8 +38,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void present_level(time_type delta_seconds);
     auto prepare_level(session::PendingLevel const& pending,
                        std::optional<sim::player::PlayerSpawnData>& player) -> FLevelLoadResult;
-    auto static_geometry(sim::collision::CollisionGridSpec grid)
-        -> std::span<WorldAABB const>;
     auto bind_level(session::PendingLevel const& pending, sim::LevelSim const& level) -> bool;
     auto take_frame_delta_seconds() -> std::optional<double>;
     void handle_level_start_failure(FString message);
@@ -160,7 +155,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FCollisionOverlayVisibility collision_overlays_{};
     FLevelPresentationHost presentation_host_;
     sim::LevelSim const* level_simulation_{};
-    std::vector<WorldAABB> static_geometry_;
     std::optional<double> frame_delta_seconds_;
     levels::LaunchOptions launch_options_{};
 

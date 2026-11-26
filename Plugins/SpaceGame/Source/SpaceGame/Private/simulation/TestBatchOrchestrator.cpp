@@ -11,7 +11,6 @@
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -94,7 +93,6 @@ void ATestBatchOrchestrator::release_level() {
     level_simulation_ = nullptr;
     frame_delta_seconds_.reset();
     reset_level_input();
-    static_geometry_.clear();
 }
 void ATestBatchOrchestrator::start_simulation() {
     if (get_state() != sim::LevelState::Paused) {
@@ -241,14 +239,6 @@ auto ATestBatchOrchestrator::prepare_level(session::PendingLevel const& pending,
     return {};
 }
 
-auto ATestBatchOrchestrator::static_geometry(sim::collision::CollisionGridSpec grid)
-    -> std::span<WorldAABB const> {
-    AActor const* const excluded_actors[]{this};
-    static_geometry_ = FLevelCollisionHost::extract_static_geometry(
-        *GetWorld(), level_config->collision_grid, grid, excluded_actors);
-    return static_geometry_;
-}
-
 auto ATestBatchOrchestrator::bind_level(session::PendingLevel const& pending,
                                         sim::LevelSim const& level) -> bool {
     check(!level_simulation_);
@@ -287,7 +277,6 @@ auto ATestBatchOrchestrator::bind_level(session::PendingLevel const& pending,
     }
 
     UE_LOG(LogSandbox, Display, TEXT("Mission ready: %s"), *to_fstring(pending.source_path));
-    static_geometry_.clear();
     frame_delta_seconds_.reset();
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
     report_mission_startup(MissionStartup::Ready);

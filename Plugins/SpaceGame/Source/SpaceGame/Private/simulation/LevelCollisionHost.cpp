@@ -12,12 +12,15 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/PrimitiveComponent.h>
 #include <Engine/EngineTypes.h>
+#include <Engine/Level.h>
 #include <Engine/StaticMesh.h>
-#include <EngineUtils.h>
 #include <GameFramework/Actor.h>
 #include <Math/Transform.h>
 #include <PhysicsEngine/AggregateGeom.h>
 #include <PhysicsEngine/BodySetup.h>
+
+#include <algorithm>
+#include <array>
 
 namespace ioj {
 namespace {
@@ -119,6 +122,7 @@ void set_mesh_aabb(EntityAABBs& aabbs,
     aabbs.set_half_extents(type, Vector3f{half_extents.X, half_extents.Y, half_extents.Z});
 }
 
+#if WITH_EDITOR
 auto has_unsupported_geometry(FKAggregateGeom const& geometry) -> bool {
     return any_non_empty(geometry.TaperedCapsuleElems,
                          geometry.LevelSetElems,
@@ -127,77 +131,7 @@ auto has_unsupported_geometry(FKAggregateGeom const& geometry) -> bool {
                          geometry.SkinnedTriangleMeshElems);
 }
 
-struct FStaticCollisionComponentData {
-    FVector3f min_point{FVector3f::ZeroVector};
-    FVector3f max_point{FVector3f::ZeroVector};
-};
-
-auto extract_static_collision_component(UPrimitiveComponent& component,
-                                        sim::collision::CollisionGridSpec const grid_spec,
-                                        AActor const* const expected_owner,
-                                        TCHAR const*& rejection_reason)
-    -> TOptional<FStaticCollisionComponentData> {
-    auto* const actor{component.GetOwner()};
-    if (!IsValid(actor)) {
-        rejection_reason = TEXT("component has no valid owner");
-        return {};
-    }
-    if (expected_owner && actor != expected_owner) {
-        rejection_reason = TEXT("component owner does not match the enumerated actor");
-        return {};
-    }
-    if (component.GetCollisionEnabled() == ECollisionEnabled::NoCollision ||
-        !component.IsQueryCollisionEnabled()) {
-        rejection_reason = TEXT("component has no query collision");
-        return {};
-    }
-    if (component.Mobility != EComponentMobility::Static) {
-        rejection_reason = TEXT("component mobility is not static");
-        return {};
-    }
-    if (component.IsA<UInstancedStaticMeshComponent>()) {
-        rejection_reason = TEXT("instanced static mesh components are not supported");
-        return {};
-    }
-
-    auto* const body_setup{component.GetBodySetup()};
-    if (!IsValid(body_setup)) {
-        rejection_reason = TEXT("component has no body setup");
-        return {};
-    }
-    if (body_setup->CollisionTraceFlag == CTF_UseComplexAsSimple) {
-        rejection_reason = TEXT("complex-as-simple collision is not supported");
-        return {};
-    }
-    if (has_unsupported_geometry(body_setup->AggGeom)) {
-        rejection_reason = TEXT("aggregate geometry contains unsupported shape types");
-        return {};
-    }
-
-    auto const aabb{get_aabb(body_setup->AggGeom, component.GetComponentTransform())};
-    if (!aabb.IsValid) {
-        rejection_reason = TEXT("component has no query-enabled simple collision geometry");
-        return {};
-    }
-
-    FVector3f const min_point{aabb.Min};
-    FVector3f const max_point{aabb.Max};
-    auto const [min_coord, max_coord]{
-        sim::collision::to_cell_coord_bounds(grid_spec,
-                                             Vector3f{min_point.X, min_point.Y, min_point.Z},
-                                             Vector3f{max_point.X, max_point.Y, max_point.Z})};
-    if (min_point.ContainsNaN() || max_point.ContainsNaN() ||
-        !sim::collision::is_cell_coord_in_bounds(grid_spec, min_coord) ||
-        !sim::collision::is_cell_coord_in_bounds(grid_spec, max_coord)) {
-        rejection_reason = TEXT("world AABB is invalid or outside the collision grid");
-        return {};
-    }
-
-    return FStaticCollisionComponentData{
-        .min_point = min_point,
-        .max_point = max_point,
-    };
-}
+#endif
 }
 
 auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
@@ -214,86 +148,64 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
     }
     return result;
 }
-auto FLevelCollisionHost::extract_static_geometry(
-    UWorld& world,
-    FCollisionGridConfig const& config,
-    sim::collision::CollisionGridSpec const grid_spec,
-    TConstArrayView<AActor const*> const excluded_actors)
-    -> std::vector<WorldAABB> {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ioj::sim::FLevelCollisionHost::extract_static_geometry);
-    checkf(config.is_valid(), TEXT("Cannot harvest static collision with an invalid grid config"));
+#if WITH_EDITOR
+auto FLevelCollisionHost::exports_actor(AActor const& actor, FCollisionGridConfig const& config)
+    -> bool {
+    return !FActorEditorUtils::IsABuilderBrush(&actor) &&
+           !actor_is_any(actor, config.omitted_collision_actor_classes) &&
+           actor_is_any(actor, config.harvested_collision_actor_classes);
+}
 
-    std::vector<WorldAABB> static_aabbs;
-    int32 unexpected_actor_count{};
-    int32 unsupported_component_count{};
-
-    for (TActorIterator<AActor> actor_it{&world}; actor_it; ++actor_it) {
-        auto* const actor{*actor_it};
-        if (!IsValid(actor) || excluded_actors.Contains(actor) ||
-            FActorEditorUtils::IsABuilderBrush(actor)) {
+auto FLevelCollisionHost::export_static_collision(ULevel const& level,
+                                                  FCollisionGridConfig const& config)
+    -> std::expected<std::vector<WorldAABB>, FString> {
+    std::vector<WorldAABB> boxes;
+    for (auto const& actor : level.Actors) {
+        if (!IsValid(actor) || !exports_actor(*actor, config)) {
             continue;
         }
 
         TInlineComponentArray<UPrimitiveComponent*> components;
         actor->GetComponents(components);
-
-        auto const has_collision{components.ContainsByPredicate([](auto const* const component) {
-            return IsValid(component) &&
-                   component->GetCollisionEnabled() != ECollisionEnabled::NoCollision;
-        })};
-        if (!has_collision) {
-            continue;
-        }
-
-        if (actor_is_any(*actor, config.omitted_collision_actor_classes)) {
-            continue;
-        }
-        if (!actor_is_any(*actor, config.harvested_collision_actor_classes)) {
-            ++unexpected_actor_count;
-            UE_LOG(LogSandbox,
-                   Warning,
-                   TEXT("Collision-enabled actor %s of class %s is neither harvested nor omitted"),
-                   *actor->GetPathName(),
-                   *actor->GetClass()->GetPathName());
-            continue;
-        }
-
-        for (auto* const component : components) {
-            if (!IsValid(component) ||
-                component->GetCollisionEnabled() == ECollisionEnabled::NoCollision) {
+        for (auto* component : components) {
+            if (!IsValid(component) || component->Mobility != EComponentMobility::Static ||
+                !component->IsQueryCollisionEnabled()) {
                 continue;
             }
 
-            auto const reject_component{[&](TCHAR const* const reason) {
-                ++unsupported_component_count;
-                UE_LOG(LogSandbox,
-                       Warning,
-                       TEXT("Cannot harvest collision component %s on actor %s: %s"),
-                       *component->GetPathName(),
-                       *actor->GetPathName(),
-                       reason);
-            }};
-
-            TCHAR const* rejection_reason{};
-            auto const data{
-                extract_static_collision_component(*component, grid_spec, actor, rejection_reason)};
-            if (!data) {
-                reject_component(rejection_reason);
+            auto const* body{component->GetBodySetup()};
+            if (!IsValid(body)) {
                 continue;
             }
 
-            static_aabbs.push_back({{data->min_point.X, data->min_point.Y, data->min_point.Z},
-                                    {data->max_point.X, data->max_point.Y, data->max_point.Z}});
+            if (component->IsA<UInstancedStaticMeshComponent>() ||
+                body->CollisionTraceFlag == CTF_UseComplexAsSimple ||
+                has_unsupported_geometry(body->AggGeom)) {
+                return std::unexpected{FString::Printf(TEXT("Unsupported static collision on %s"),
+                                                       *component->GetPathName())};
+            }
+
+            auto const bounds{get_aabb(body->AggGeom, component->GetComponentTransform())};
+            if (!bounds.IsValid) {
+                continue;
+            }
+
+            FVector3f const min{bounds.Min};
+            FVector3f const max{bounds.Max};
+            if (min.ContainsNaN() || max.ContainsNaN()) {
+                return std::unexpected{FString::Printf(TEXT("Non-finite static collision on %s"),
+                                                       *component->GetPathName())};
+            }
+
+            boxes.push_back({{min.X, min.Y, min.Z}, {max.X, max.Y, max.Z}});
         }
     }
 
-    UE_LOG(LogSandbox,
-           Display,
-           TEXT("Harvested %d static collision components; reported %d unsupported components and "
-                "%d unexpected actors"),
-           static_cast<int32>(static_aabbs.size()),
-           unsupported_component_count,
-           unexpected_actor_count);
-    return static_aabbs;
+    std::ranges::sort(boxes, {}, [](WorldAABB const& box) {
+        return std::array{
+            box.min.x(), box.min.y(), box.min.z(), box.max.x(), box.max.y(), box.max.z()};
+    });
+    return boxes;
 }
+#endif
 }

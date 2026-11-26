@@ -8,6 +8,8 @@
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
+#include <SpaceGame/simulation/LevelCollisionHost.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include "Containers/UnrealString.h"
 #include "Editor.h"
@@ -189,9 +191,6 @@ void mark_s7_edit(UObject* object, FName property = NAME_None) {
     auto* actor{Cast<AActor>(object)};
     if (auto* component{Cast<USceneComponent>(object)}) {
         actor = component->GetOwner();
-        if (!actor || component != actor->GetRootComponent()) {
-            return;
-        }
     }
 
     auto* world{actor ? actor->GetWorld() : nullptr};
@@ -209,20 +208,32 @@ void mark_s7_edit(UObject* object, FName property = NAME_None) {
         return;
     }
 
+    auto document{ioj::editor::find_level_authoring_document(*actor->GetLevel())};
+    if (!document || !*document) {
+        return;
+    }
+
+    auto const* config{(*document)->level_config.Get()};
+    if (config && ioj::FLevelCollisionHost::exports_actor(*actor, config->collision_grid)) {
+        (*document)->set_needs_export(true);
+        return;
+    }
+
+    if (object != actor && object != actor->GetRootComponent()) {
+        return;
+    }
+
     auto const resolved{ioj::editor::resolve_s7_level_actor(*actor)};
     if (!resolved || (!resolved->export_to_script && property != TEXT("export_to_script"))) {
         return;
     }
 
-    auto document{ioj::editor::find_level_authoring_document(*actor->GetLevel())};
-    if (document && *document) {
-        if (property == TEXT("ActorLabel") &&
-            (*document)->entities.ContainsByPredicate(
-                [actor](auto const& binding) { return binding.actor == actor; })) {
-            return;
-        }
-        (*document)->set_needs_export(true);
+    if (property == TEXT("ActorLabel") &&
+        (*document)->entities.ContainsByPredicate(
+            [actor](auto const& binding) { return binding.actor == actor; })) {
+        return;
     }
+    (*document)->set_needs_export(true);
 }
 }
 void FSandboxEditorModule::register_actor_events() {
