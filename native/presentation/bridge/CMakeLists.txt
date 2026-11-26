@@ -1,0 +1,18 @@
+add_library(native-presentation-bridge STATIC)
+target_sources(native-presentation-bridge
+  PRIVATE
+    src/mission_frame.cpp
+)
+target_include_directories(native-presentation-bridge
+  PUBLIC
+    include
+)
+target_link_libraries(native-presentation-bridge
+  PUBLIC
+    native-presentation-interface
+  PRIVATE
+    native-presentation
+    native-simulation
+)
+ioj_apply_native_abi(native-presentation-bridge)
+ioj_enable_warnings(native-presentation-bridge)

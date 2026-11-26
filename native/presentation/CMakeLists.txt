@@ -11,5 +11,6 @@ target_link_libraries(native-presentation-interface
     sandbox::native_defaults
 )
 
+add_subdirectory(bridge)
 add_subdirectory(lib)
 add_subdirectory(tests)

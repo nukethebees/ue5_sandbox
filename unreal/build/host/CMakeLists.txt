@@ -41,6 +41,7 @@ target_link_libraries(IojPlayer
     comctl32
     native-level-authoring-s7
     native-profiles
+    native-presentation-bridge
     native-simulation
     sbx-mimalloc
     native-levels
