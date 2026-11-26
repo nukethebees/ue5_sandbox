@@ -14,8 +14,7 @@ auto main(int argc, char** argv) -> int {
             return cli_args.error();
         }
 
-        Application application{std::move(*cli_args)};
-        if (auto result{application.run()}; !result) {
+        if (auto result{Application::run(std::move(*cli_args))}; !result) {
             std::println(stderr, "{}", result.error());
             return 1;
         }

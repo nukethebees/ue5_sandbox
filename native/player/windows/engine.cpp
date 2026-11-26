@@ -1,6 +1,5 @@
 #include "player/engine.h"
 
-#include "player/cli_args.h"
 #include "player/window.h"
 #include "player/windows/system.h"
 #include "player/windows/unreal_library.h"
@@ -12,8 +11,8 @@
 #include <string>
 
 namespace ioj {
-auto start_engine(Window& window, LaunchPaths const& paths, CliArgs const& args) -> ApplicationResult {
-    auto const arguments{engine_arguments(paths.binary_directory, args)};
+auto start_engine(Window& window, std::wstring const& arguments, LaunchDisplayMode mode)
+    -> ApplicationResult {
     auto const status{UELibrary_InitW(
         GetModuleHandleW(nullptr), native_handle(window.sdl_window()), arguments.c_str())};
     if (status != 0) {
@@ -21,7 +20,7 @@ auto start_engine(Window& window, LaunchPaths const& paths, CliArgs const& args)
         return ApplicationResult{std::unexpect, std::format("UELibrary_InitW failed ({})", status)};
     }
 
-    if (args.launch_display_mode != LaunchDisplayMode::Headless) {
+    if (mode != LaunchDisplayMode::Headless) {
         if (auto result{connect_unreal_window(window.sdl_window())}; !result) {
             shutdown_engine(window);
             return result;

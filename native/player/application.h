@@ -1,7 +1,6 @@
 #pragma once
 
 #include "player/engine.h"
-#include <ioj/system_capabilities.h>
 #include <ioj/host/unreal_messages.h>
 #include <ioj/memory/bump_resource.h>
 #include <ioj/profiles/profile_manager.h>
@@ -10,19 +9,22 @@
 #include <ioj/settings/player_settings.h>
 #include <ioj/sim/levels/level_sim.h>
 
-#include <expected>
+#include <filesystem>
 #include <optional>
 #include <span>
-#include <string>
 
 namespace ioj {
+struct CliArgs;
+
 class Application {
   public:
-    explicit Application(CliArgs args);
-    // Run one engine instance through shutdown.
-    auto run() -> std::expected<void, std::string>;
+    static auto run(CliArgs args) -> ApplicationResult;
+
   private:
-    auto play(Window& window) -> ApplicationResult;
+    explicit Application(profiles::ProfileManager profiles);
+
+    auto play(Window& window, std::filesystem::path const& mission_path, bool exit_when_ready)
+        -> ApplicationResult;
     void process_profile_actions(std::span<host::ProfileAction const> actions);
     void process_preferences(Window& window, std::span<host::PreferenceEdit const> edits);
     auto launch_mission(std::filesystem::path const& path) -> bool;
@@ -30,9 +32,6 @@ class Application {
     void advance_level(double delta_seconds);
     void unload_level(sim::RunEndReason reason, bool show_results);
 
-    CliArgs const args_;
-    LaunchPaths paths_;
-    SystemCapabilities const capabilities_;
     PlayerSettings settings_;
     std::optional<session::PendingLevel> pending_level_;
     profiles::ProfileManager profiles_;
