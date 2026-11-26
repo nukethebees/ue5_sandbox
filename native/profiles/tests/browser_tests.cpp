@@ -1,132 +1,76 @@
 #include "test_support.h"
-#include <ioj/profiles/file_profile_storage.h>
-#include <ioj/profiles/progression.h>
+#include <ioj/profiles/profile_manager.h>
 #include <ioj/profiles/save_browser.h>
 
 #include <gtest/gtest.h>
 
-#include <chrono>
-#include <unordered_map>
+#include <vector>
 
 namespace ioj::profiles {
 
-namespace save_game_browser_test {
-auto make_summary(std::string profile_id, Timestamp last_played_at, std::uint64_t const total_kills)
-    -> ProfileSummary {
-    return {
-        .profile_id = std::move(profile_id),
-        .display_name = "Display name",
-        .created_at = test_date(2026, 1, 1),
-        .last_played_at = last_played_at,
-        .total_simulation_duration_seconds = 42.f,
-        .total_kills = total_kills,
-        .outcome_count = 1,
-    };
-}
-
-auto no_report(std::string const&) -> std::optional<ProfileReport> {
-    return {};
-}
-}
-
 TEST(SaveGameBrowser, RefreshReplacesCachedSummaries) {
+    FakeProfileStorage storage;
+    ProfileManager manager{storage.make()};
+    ASSERT_TRUE(manager.initialise());
+    SaveGameBrowser browser;
+    browser.refresh(manager);
+    ASSERT_EQ(browser.summaries().size(), 1u);
+    EXPECT_EQ(browser.active_profile_id(), manager.active_profile_id());
 
-    std::int32_t refresh_count{};
-    SaveGameBrowser browser{
-        [&refresh_count] {
-            ++refresh_count;
-            if (refresh_count == 1) {
-                return ProfileListing{.active_profile_id = "first",
-                                      .summaries = {save_game_browser_test::make_summary(
-                                          "first", test_date(2026, 1, 1), 10)}};
-            }
-
-            if (refresh_count == 2) {
-                return ProfileListing{.active_profile_id = "second",
-                                      .summaries = {save_game_browser_test::make_summary(
-                                          "second", test_date(2026, 1, 2), 20)}};
-            }
-            return ProfileListing{};
-        },
-        save_game_browser_test::no_report};
-
-    browser.refresh();
-    ASSERT_EQ(browser.summaries().size(), 1) << "First refresh has one summary";
-    EXPECT_EQ(browser.active_profile_id(), "first");
-    EXPECT_EQ(browser.summaries()[0].profile_id, std::string{"first"})
-        << "First refresh uses first result";
-
-    browser.refresh();
-    ASSERT_EQ(browser.summaries().size(), 1) << "Second refresh still has one summary";
-    EXPECT_EQ(browser.active_profile_id(), "second");
-    EXPECT_EQ(browser.summaries()[0].profile_id, std::string{"second"})
-        << "Second refresh replaces first result";
-    browser.refresh();
-    EXPECT_TRUE(browser.summaries().empty()) << "Empty discovery clears stale summaries";
-    EXPECT_TRUE(browser.active_profile_id().empty());
+    auto const created{manager.create_profile("Second")};
+    ASSERT_EQ(created.result, CreateProfileResult::succeeded);
+    ASSERT_TRUE(manager.append_score_record({.date = 1, .kills = 4}));
+    browser.refresh(manager);
+    ASSERT_EQ(browser.summaries().size(), 2u);
+    EXPECT_EQ(browser.active_profile_id(), created.profile_id);
+    EXPECT_EQ(browser.summaries().front().total_kills, 4u);
 }
 
 TEST(SaveGameBrowser, OrderIsNewestFirstAndDeterministic) {
+    FakeProfileStorage storage{
+        .index_exists = true,
+        .index = {.active_profile_id = "older",
+                  .profiles = {{.profile_id = "zulu", .last_played_at = 2},
+                               {.profile_id = "older", .last_played_at = 1},
+                               {.profile_id = "alpha", .last_played_at = 2}}},
+        .results = {{"older", ProfileResultsData{.score_records = {{.date = 1}}}}}};
+    ProfileManager manager{storage.make()};
+    ASSERT_TRUE(manager.initialise());
 
-    auto const shared_timestamp{test_date(2026, 6, 2)};
-    SaveGameBrowser browser{
-        [shared_timestamp] {
-            return ProfileListing{
-                .summaries = {
-                    save_game_browser_test::make_summary("zulu", shared_timestamp, 1),
-                    save_game_browser_test::make_summary("older", test_date(2026, 6, 1), 2),
-                    save_game_browser_test::make_summary("alpha", shared_timestamp, 3),
-                }};
-        },
-        save_game_browser_test::no_report};
-
-    browser.refresh();
-
+    SaveGameBrowser browser;
+    browser.refresh(manager);
     auto const summaries{browser.summaries()};
-    ASSERT_EQ(summaries.size(), 3);
-    EXPECT_EQ(summaries[0].profile_id, std::string{"alpha"})
-        << "Alphabetical tie-breaker comes first";
-    EXPECT_EQ(summaries[1].profile_id, std::string{"zulu"}) << "Second tied profile follows";
-    EXPECT_EQ(summaries[2].profile_id, std::string{"older"}) << "Older profile comes last";
+    ASSERT_EQ(summaries.size(), 3u);
+    EXPECT_EQ(summaries[0].profile_id, "alpha");
+    EXPECT_EQ(summaries[1].profile_id, "zulu");
+    EXPECT_EQ(summaries[2].profile_id, "older");
 }
 
 TEST(SaveGameBrowser, ReportsAreLoadedLazilyAndRefreshInvalidatesTheCache) {
+    FakeProfileStorage storage;
+    ProfileManager manager{storage.make()};
+    ASSERT_TRUE(manager.initialise());
+    auto const first_profile{manager.active_profile_id()};
+    ASSERT_TRUE(manager.append_score_record({.date = 1, .level_name = "mission"}));
+    auto const second{manager.create_profile("Second")};
+    ASSERT_EQ(second.result, CreateProfileResult::succeeded);
 
-    std::int32_t report_load_count{};
-    SaveGameBrowser browser{
-        [] {
-            return ProfileListing{.summaries = {save_game_browser_test::make_summary(
-                                      "profile", test_date(2026, 1, 1), 5)}};
-        },
-        [&report_load_count](std::string const& profile_id) -> std::optional<ProfileReport> {
-            ++report_load_count;
-            if (profile_id != "profile") {
-                return {};
-            }
-            return ProfileReport{
-                .profile_id = profile_id,
-                .outcomes = {{.outcome_id = "outcome"}},
-            };
-        }};
+    SaveGameBrowser browser;
+    browser.refresh(manager);
+    EXPECT_EQ(browser.loaded_profile_report(), nullptr);
+    ASSERT_TRUE(browser.load_profile_report(manager, first_profile));
+    EXPECT_EQ(browser.loaded_profile_report()->outcomes.size(), 1u);
+    EXPECT_EQ(manager.active_profile_id(), second.profile_id);
 
-    browser.refresh();
-    EXPECT_TRUE(report_load_count == 0) << "Refresh does not load a report";
-    EXPECT_TRUE(browser.loaded_profile_report() == nullptr) << "No report is initially cached";
+    storage.results.at(first_profile).score_records.clear();
+    ASSERT_TRUE(browser.load_profile_report(manager, first_profile));
+    EXPECT_EQ(browser.loaded_profile_report()->outcomes.size(), 1u);
 
-    ASSERT_TRUE(browser.load_profile_report("profile")) << "Known profile report loads";
-    EXPECT_TRUE(report_load_count == 1) << "Report source is called once";
-    EXPECT_EQ(browser.loaded_profile_report()->outcomes.size(), 1)
-        << "Loaded report retains its outcome";
-
-    EXPECT_TRUE(browser.load_profile_report("profile")) << "Reloading selected profile succeeds";
-    EXPECT_TRUE(report_load_count == 1) << "Selected report is served from cache";
-
-    browser.refresh();
-    EXPECT_TRUE(browser.loaded_profile_report() == nullptr)
-        << "Refresh invalidates the selected report";
-    ASSERT_TRUE(browser.load_profile_report("profile"));
-    EXPECT_EQ(report_load_count, 2);
-    EXPECT_FALSE(browser.load_profile_report("missing"));
+    browser.refresh(manager);
+    EXPECT_EQ(browser.loaded_profile_report(), nullptr);
+    ASSERT_TRUE(browser.load_profile_report(manager, first_profile));
+    EXPECT_TRUE(browser.loaded_profile_report()->outcomes.empty());
+    EXPECT_FALSE(browser.load_profile_report(manager, "missing"));
     EXPECT_EQ(browser.loaded_profile_report(), nullptr);
 }
 

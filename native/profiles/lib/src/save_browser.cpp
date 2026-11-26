@@ -6,42 +6,53 @@
 #include <algorithm>
 #include <format>
 #include <utility>
+#include <vector>
 
 namespace ioj::profiles {
-SaveGameBrowser::SaveGameBrowser(SummarySource summary_source, ReportSource report_source)
-    : summary_source_{std::move(summary_source)}
-    , report_source_{std::move(report_source)} {}
-void SaveGameBrowser::refresh() {
+void SaveGameBrowser::refresh(ProfileManager const& manager) {
     loaded_report_.reset();
-    listing_ = summary_source_ ? summary_source_() : ProfileListing{};
-    std::ranges::sort(listing_.summaries, [](auto const& lhs, auto const& rhs) {
+    active_profile_id_ = manager.active_profile_id();
+    summaries_.clear();
+
+    for (auto const& profile : manager.profiles()) {
+        summaries_.push_back(
+            {.profile_id = profile.profile_id,
+             .display_name = profile.display_name,
+             .created_at = profile.created_at,
+             .last_played_at = profile.last_played_at,
+             .total_simulation_duration_seconds = profile.total_simulation_duration_seconds,
+             .total_kills = profile.total_kills,
+             .outcome_count = profile.outcome_count});
+    }
+
+    std::ranges::sort(summaries_, [](auto const& lhs, auto const& rhs) {
         if (lhs.last_played_at != rhs.last_played_at) {
             return lhs.last_played_at > rhs.last_played_at;
         }
         return lhs.profile_id < rhs.profile_id;
     });
 }
-bool SaveGameBrowser::load_profile_report(std::string const& profile_id) {
+bool SaveGameBrowser::load_profile_report(ProfileManager const& manager,
+                                          std::string const& profile_id) {
     if (loaded_report_ && loaded_report_->profile_id == profile_id) {
         return true;
     }
-    loaded_report_.reset();
-    if (!report_source_) {
+
+    std::vector<ScoreRecord> records;
+    if (!manager.load_profile_records(profile_id, records)) {
+        loaded_report_.reset();
         return false;
     }
-    auto report{report_source_(profile_id)};
-    if (!report || report->profile_id != profile_id) {
-        return false;
-    }
-    loaded_report_ = std::move(report);
+
+    loaded_report_ = make_report(profile_id, records);
     return true;
 }
 auto SaveGameBrowser::summaries() const -> std::span<ProfileSummary const> {
-    return listing_.summaries;
+    return summaries_;
 }
 
 auto SaveGameBrowser::active_profile_id() const -> std::string_view {
-    return listing_.active_profile_id;
+    return active_profile_id_;
 }
 auto SaveGameBrowser::loaded_profile_report() const -> ProfileReport const* {
     return loaded_report_ ? &*loaded_report_ : nullptr;
@@ -81,27 +92,5 @@ auto make_report(std::string profile_id, std::span<ScoreRecord const> records) -
         });
     }
     return report;
-}
-auto discover_profiles(ProfileManager const& manager) -> ProfileListing {
-    ProfileListing listing{.active_profile_id = manager.active_profile_id()};
-    for (auto const& profile : manager.profiles()) {
-        listing.summaries.push_back(
-            {.profile_id = profile.profile_id,
-             .display_name = profile.display_name,
-             .created_at = profile.created_at,
-             .last_played_at = profile.last_played_at,
-             .total_simulation_duration_seconds = profile.total_simulation_duration_seconds,
-             .total_kills = profile.total_kills,
-             .outcome_count = profile.outcome_count});
-    }
-    return listing;
-}
-auto load_report(ProfileManager const& manager, std::string const& profile_id)
-    -> std::optional<ProfileReport> {
-    std::vector<ScoreRecord> records;
-    if (!manager.load_profile_records(profile_id, records)) {
-        return std::nullopt;
-    }
-    return make_report(profile_id, records);
 }
 }

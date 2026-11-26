@@ -99,9 +99,6 @@ auto resolve_launch_paths(CliArgs const& args) -> PathsResult {
 Application::Application(CliArgs args)
     : args_{std::move(args)}
     , capabilities_{query_system_capabilities()}
-    , profile_browser_{
-          [this] { return profiles::discover_profiles(profiles_); },
-          [this](std::string const& id) { return profiles::load_report(profiles_, id); }}
     , level_arena_{memory::BumpResource::default_capacity_bytes,
                    *sbx::memory::mimalloc_resource()} {}
 
@@ -156,7 +153,7 @@ auto Application::run() -> ApplicationResult {
                      profiles_.active_records().size());
     }
 
-    profile_browser_.refresh();
+    profile_browser_.refresh(profiles_);
     IojPlayer_Attach(
         settings_, capabilities_, window.supported_resolutions(), profiles_, profile_browser_);
     if (auto result{start_engine(window, paths_, args_)}; !result) {
@@ -344,14 +341,14 @@ void Application::process_profile_actions(std::span<host::ProfileAction const> a
             case Refresh:
                 break;
             case SelectReport:
-                if (!profile_browser_.load_profile_report(action.profile_name_or_id)) {
+                if (!profile_browser_.load_profile_report(profiles_, action.profile_name_or_id)) {
                     result = profiles::CreateProfileResult::persistence_failed;
                 }
                 break;
         }
 
         if (result == profiles::CreateProfileResult::succeeded && action.kind != SelectReport) {
-            profile_browser_.refresh();
+            profile_browser_.refresh(profiles_);
         }
 
         if (result == profiles::CreateProfileResult::persistence_failed) {
@@ -495,7 +492,7 @@ void Application::unload_level(sim::RunEndReason reason, bool show_results) {
     if (score) {
         saved = profiles_.append_score_record(*score);
         if (saved.persisted) {
-            profile_browser_.refresh();
+            profile_browser_.refresh(profiles_);
         } else {
             std::println(stderr, "Failed to save the score for {}", completed.metadata.id.value);
         }
