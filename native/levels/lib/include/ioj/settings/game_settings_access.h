@@ -16,38 +16,46 @@ namespace ioj {
 template <typename Derived>
 class GameSettingsAccess {
   public:
-    auto resolution() const -> ScreenResolution { return derived().settings_state().resolution; }
+    auto resolution() const -> ScreenResolution {
+        return derived().settings_state().video.resolution;
+    }
 
     void set_resolution(ScreenResolution const value) {
         derived().set_setting(GameSetting::Resolution, GameSettingValue{value});
     }
 
-    auto window_mode() const -> GameWindowMode { return derived().settings_state().window_mode; }
+    auto window_mode() const -> GameWindowMode {
+        return derived().settings_state().video.window_mode;
+    }
 
     void set_window_mode(GameWindowMode const value) {
         derived().set_setting(GameSetting::WindowMode, GameSettingValue{value});
     }
 
-    auto vsync() const -> bool { return derived().settings_state().vsync; }
+    auto vsync() const -> bool { return derived().settings_state().video.vsync; }
 
     void set_vsync(bool const value) {
         derived().set_setting(GameSetting::VSync, GameSettingValue{value});
     }
 
-    auto frame_rate_limit() const -> float { return derived().settings_state().frame_rate_limit; }
+    auto frame_rate_limit() const -> float {
+        return derived().settings_state().video.frame_rate_limit;
+    }
 
     void set_frame_rate_limit(float const value) {
         derived().set_setting(GameSetting::FrameRateLimit, GameSettingValue{value});
     }
 
-    auto resolution_scale() const -> float { return derived().settings_state().resolution_scale; }
+    auto resolution_scale() const -> float {
+        return derived().settings_state().video.resolution_scale;
+    }
 
     void set_resolution_scale(float const value) {
         derived().set_setting(GameSetting::ResolutionScale, GameSettingValue{value});
     }
 
     auto overall_quality() const -> GameGraphicsPreset {
-        return derived().settings_state().overall_quality;
+        return derived().settings_state().video.overall_quality;
     }
 
     void set_overall_quality(GameGraphicsPreset const value) {
@@ -55,7 +63,7 @@ class GameSettingsAccess {
     }
 
     auto view_distance_quality() const -> GameQualityLevel {
-        return derived().settings_state().view_distance_quality;
+        return derived().settings_state().video.view_distance_quality;
     }
 
     void set_view_distance_quality(GameQualityLevel const value) {
@@ -63,21 +71,23 @@ class GameSettingsAccess {
     }
 
     auto aa_method() const -> GameAntiAliasingMethod {
-        return derived().settings_state().aa_method;
+        return derived().settings_state().video.aa_method;
     }
 
     void set_aa_method(GameAntiAliasingMethod const value) {
         derived().set_setting(GameSetting::AAMethod, GameSettingValue{value});
     }
 
-    auto aa_quality() const -> GameQualityLevel { return derived().settings_state().aa_quality; }
+    auto aa_quality() const -> GameQualityLevel {
+        return derived().settings_state().video.aa_quality;
+    }
 
     void set_aa_quality(GameQualityLevel const value) {
         derived().set_setting(GameSetting::AAQuality, GameSettingValue{value});
     }
 
     auto shadow_quality() const -> GameQualityLevel {
-        return derived().settings_state().shadow_quality;
+        return derived().settings_state().video.shadow_quality;
     }
 
     void set_shadow_quality(GameQualityLevel const value) {
@@ -85,7 +95,7 @@ class GameSettingsAccess {
     }
 
     auto global_illumination_quality() const -> GameQualityLevel {
-        return derived().settings_state().global_illumination_quality;
+        return derived().settings_state().video.global_illumination_quality;
     }
 
     void set_global_illumination_quality(GameQualityLevel const value) {
@@ -93,7 +103,7 @@ class GameSettingsAccess {
     }
 
     auto reflections_quality() const -> GameQualityLevel {
-        return derived().settings_state().reflections_quality;
+        return derived().settings_state().video.reflections_quality;
     }
 
     void set_reflections_quality(GameQualityLevel const value) {
@@ -101,7 +111,7 @@ class GameSettingsAccess {
     }
 
     auto post_processing_quality() const -> GameQualityLevel {
-        return derived().settings_state().post_processing_quality;
+        return derived().settings_state().video.post_processing_quality;
     }
 
     void set_post_processing_quality(GameQualityLevel const value) {
@@ -109,7 +119,7 @@ class GameSettingsAccess {
     }
 
     auto texture_quality() const -> GameQualityLevel {
-        return derived().settings_state().texture_quality;
+        return derived().settings_state().video.texture_quality;
     }
 
     void set_texture_quality(GameQualityLevel const value) {
@@ -117,7 +127,7 @@ class GameSettingsAccess {
     }
 
     auto effects_quality() const -> GameQualityLevel {
-        return derived().settings_state().effects_quality;
+        return derived().settings_state().video.effects_quality;
     }
 
     void set_effects_quality(GameQualityLevel const value) {
@@ -125,51 +135,51 @@ class GameSettingsAccess {
     }
 
     auto shading_quality() const -> GameQualityLevel {
-        return derived().settings_state().shading_quality;
+        return derived().settings_state().video.shading_quality;
     }
 
     void set_shading_quality(GameQualityLevel const value) {
         derived().set_setting(GameSetting::ShadingQuality, GameSettingValue{value});
     }
 
-    auto bloom() const -> bool { return derived().settings_state().bloom; }
+    auto bloom() const -> bool { return derived().settings_state().video.bloom; }
 
     void set_bloom(bool const value) {
         derived().set_setting(GameSetting::Bloom, GameSettingValue{value});
     }
 
-    auto motion_blur() const -> bool { return derived().settings_state().motion_blur; }
+    auto motion_blur() const -> bool { return derived().settings_state().video.motion_blur; }
 
     void set_motion_blur(bool const value) {
         derived().set_setting(GameSetting::MotionBlur, GameSettingValue{value});
     }
 
-    auto master_volume() const -> float { return derived().settings_state().master_volume; }
+    auto master_volume() const -> float { return derived().settings_state().audio.master_volume; }
 
     void set_master_volume(float const value) {
         derived().set_setting(GameSetting::MasterVolume, GameSettingValue{value});
     }
 
-    auto music_volume() const -> float { return derived().settings_state().music_volume; }
+    auto music_volume() const -> float { return derived().settings_state().audio.music_volume; }
 
     void set_music_volume(float const value) {
         derived().set_setting(GameSetting::MusicVolume, GameSettingValue{value});
     }
 
-    auto sfx_volume() const -> float { return derived().settings_state().sfx_volume; }
+    auto sfx_volume() const -> float { return derived().settings_state().audio.sfx_volume; }
 
     void set_sfx_volume(float const value) {
         derived().set_setting(GameSetting::SfxVolume, GameSettingValue{value});
     }
 
-    auto ui_volume() const -> float { return derived().settings_state().ui_volume; }
+    auto ui_volume() const -> float { return derived().settings_state().audio.ui_volume; }
 
     void set_ui_volume(float const value) {
         derived().set_setting(GameSetting::UIVolume, GameSettingValue{value});
     }
 
     auto mouse_turn_sensitivity() const -> float {
-        return derived().settings_state().mouse_turn_sensitivity;
+        return derived().settings_state().controls.mouse_turn_sensitivity;
     }
 
     void set_mouse_turn_sensitivity(float const value) {
@@ -177,7 +187,7 @@ class GameSettingsAccess {
     }
 
     auto gamepad_turn_sensitivity() const -> float {
-        return derived().settings_state().gamepad_turn_sensitivity;
+        return derived().settings_state().controls.gamepad_turn_sensitivity;
     }
 
     void set_gamepad_turn_sensitivity(float const value) {
@@ -185,7 +195,7 @@ class GameSettingsAccess {
     }
 
     auto gamepad_turn_dead_zone() const -> float {
-        return derived().settings_state().gamepad_turn_dead_zone;
+        return derived().settings_state().controls.gamepad_turn_dead_zone;
     }
 
     void set_gamepad_turn_dead_zone(float const value) {
@@ -193,21 +203,23 @@ class GameSettingsAccess {
     }
 
     auto invert_mouse_pitch() const -> bool {
-        return derived().settings_state().invert_mouse_pitch;
+        return derived().settings_state().controls.invert_mouse_pitch;
     }
 
     void set_invert_mouse_pitch(bool const value) {
         derived().set_setting(GameSetting::InvertMousePitch, GameSettingValue{value});
     }
 
-    auto invert_mouse_yaw() const -> bool { return derived().settings_state().invert_mouse_yaw; }
+    auto invert_mouse_yaw() const -> bool {
+        return derived().settings_state().controls.invert_mouse_yaw;
+    }
 
     void set_invert_mouse_yaw(bool const value) {
         derived().set_setting(GameSetting::InvertMouseYaw, GameSettingValue{value});
     }
 
     auto invert_gamepad_pitch() const -> bool {
-        return derived().settings_state().invert_gamepad_pitch;
+        return derived().settings_state().controls.invert_gamepad_pitch;
     }
 
     void set_invert_gamepad_pitch(bool const value) {
@@ -215,7 +227,7 @@ class GameSettingsAccess {
     }
 
     auto invert_gamepad_yaw() const -> bool {
-        return derived().settings_state().invert_gamepad_yaw;
+        return derived().settings_state().controls.invert_gamepad_yaw;
     }
 
     void set_invert_gamepad_yaw(bool const value) {

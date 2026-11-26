@@ -2126,7 +2126,8 @@ TEST_F(SourceLoaderTest, LoadsSettingsControls) {
     auto& settings{store.settings};
     auto& settings_modules{store.settings_modules};
     files.write_root(R"(
-(module data :header "Preferences.h" (record Preferences (member resolution_scale float) (projections (cpp))))
+(module data :header "Preferences.h" (record VideoSettings (member resolution_scale float) (projections (cpp)))
+  (record Preferences (member video VideoSettings) (projections (cpp))))
 (settings-module settings
   :header "Settings.h"
   :api-name TSettingsAccess
@@ -2161,7 +2162,8 @@ TEST_F(SourceLoaderTest, LoadsSettingsControls) {
 TEST_F(SourceLoaderTest, SettingsCanUseAPreviouslyDeclaredRecord) {
     files.write_root(R"(
 (module preferences :header "Preferences.h" :namespace game
-  (record Preferences (member vsync bool) (projections (cpp))))
+  (record VideoSettings (member vsync bool) (projections (cpp)))
+  (record Preferences (member video VideoSettings) (projections (cpp))))
 (settings-module settings :header "Settings.h" :namespace game
   :api-name SettingsAccess :storage Preferences
   (category video "Video")
@@ -2181,7 +2183,8 @@ TEST_F(SourceLoaderTest, SettingsCanUseAPreviouslyDeclaredRecord) {
 TEST_F(SourceLoaderTest, SettingsDeviceDefaultsToShared) {
     auto& store{files.store()};
     files.write_root(R"(
-(module data :header "Preferences.h" (record Preferences (member vsync bool) (projections (cpp))))
+(module data :header "Preferences.h" (record VideoSettings (member vsync bool) (projections (cpp)))
+  (record Preferences (member video VideoSettings) (projections (cpp))))
 (settings-module settings
   :header "Settings.h"
   :api-name TSettingsAccess

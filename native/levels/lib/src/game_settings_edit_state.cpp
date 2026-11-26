@@ -21,11 +21,12 @@ auto setting_values_equal(GameSettingValue const& left, GameSettingValue const& 
 }
 
 auto graphics_preset(GameSettingsState const& state) -> GameGraphicsPreset {
-    auto const quality{state.view_distance_quality};
-    if (state.aa_quality != quality || state.shadow_quality != quality ||
-        state.global_illumination_quality != quality || state.reflections_quality != quality ||
-        state.post_processing_quality != quality || state.texture_quality != quality ||
-        state.effects_quality != quality || state.shading_quality != quality) {
+    auto const quality{state.video.view_distance_quality};
+    if (state.video.aa_quality != quality || state.video.shadow_quality != quality ||
+        state.video.global_illumination_quality != quality ||
+        state.video.reflections_quality != quality ||
+        state.video.post_processing_quality != quality || state.video.texture_quality != quality ||
+        state.video.effects_quality != quality || state.video.shading_quality != quality) {
         return GameGraphicsPreset::Custom;
     }
 
@@ -41,7 +42,7 @@ auto game_audio_volume(float const value) -> float {
 auto game_setting_is_available(GameSettingAvailabilityProvider const provider,
                                GameSettingsState const& state) -> bool {
     return provider != GameSettingAvailabilityProvider::AAQuality ||
-           state.aa_method != GameAntiAliasingMethod::Off;
+           state.video.aa_method != GameAntiAliasingMethod::Off;
 }
 
 auto normalize_game_setting_value(GameSettingDescriptor const& descriptor,
@@ -165,22 +166,22 @@ void apply_graphics_preset(GameSettingsState& state, GameGraphicsPreset const pr
     }
 
     auto const quality{static_cast<GameQualityLevel>(static_cast<std::uint8_t>(preset) - 1)};
-    state.overall_quality = preset;
-    state.view_distance_quality = quality;
-    state.aa_quality = quality;
-    state.shadow_quality = quality;
-    state.global_illumination_quality = quality;
-    state.reflections_quality = quality;
-    state.post_processing_quality = quality;
-    state.texture_quality = quality;
-    state.effects_quality = quality;
-    state.shading_quality = quality;
+    state.video.overall_quality = preset;
+    state.video.view_distance_quality = quality;
+    state.video.aa_quality = quality;
+    state.video.shadow_quality = quality;
+    state.video.global_illumination_quality = quality;
+    state.video.reflections_quality = quality;
+    state.video.post_processing_quality = quality;
+    state.video.texture_quality = quality;
+    state.video.effects_quality = quality;
+    state.video.shading_quality = quality;
 }
 }
 
 void GameSettingsEditState::begin(GameSettingsState applied, GameSettingsState defaults) {
-    applied.overall_quality = graphics_preset(applied);
-    defaults.overall_quality = graphics_preset(defaults);
+    applied.video.overall_quality = graphics_preset(applied);
+    defaults.video.overall_quality = graphics_preset(defaults);
     applied_ = applied;
     pending_ = applied_;
     defaults_ = defaults;
@@ -208,7 +209,7 @@ auto GameSettingsEditState::set_setting(GameSetting const setting, GameSettingVa
 
     static_cast<void>(set_game_setting_value(pending_, setting, *normalized));
     if (is_graphics_quality_setting(setting)) {
-        pending_.overall_quality = graphics_preset(pending_);
+        pending_.video.overall_quality = graphics_preset(pending_);
     }
 
     return true;

@@ -2785,17 +2785,19 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
     auto& declarations{ctx.storage.declarations};
     auto const manifest{parse_test_manifest(ctx, R"(
 (module preferences :header "Preferences.h"
-  (record Preferences (member vsync bool) (projections (cpp))))
+  (record VideoSettings (member vsync bool) (projections (cpp)))
+  (record Preferences (member video VideoSettings) (projections (cpp))))
 (settings-module settings :header "Settings.h" :source "Settings.cpp"
   :api-name TSettingsAccess :storage Preferences
   (category video "Video")
-  (setting vsync "VSync" :category missing :backend engine :apply deferred (control toggle)))
+  (setting vsync "VSync" :category video :backend engine :apply deferred (control toggle)))
 )")};
     auto const module{manifest.modules.back()};
     auto const setting{
         declarations.items(declarations.settings_modules.settings_list[module]).front()};
     auto& settings_schemas{declarations.settings};
     auto& kind{declarations.setting_controls.kind[settings_schemas.control[setting]]};
+    settings_schemas.category[setting] = ctx.storage.strings.intern("missing");
     expect_invalid_module(ctx, module);
     settings_schemas.category[setting] = ctx.storage.strings.intern("video");
     kind = SettingControlKind::choice;

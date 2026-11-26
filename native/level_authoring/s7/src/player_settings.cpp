@@ -47,94 +47,24 @@ auto PlayerSettings::load(std::filesystem::path const& scripts,
 }
 
 auto PlayerSettings::saved_display() const -> WindowDisplaySettings {
-    return {saved_settings_.window_mode, saved_settings_.resolution};
+    return {saved_settings_.video.window_mode, saved_settings_.video.resolution};
 }
 
 void PlayerSettings::set_running_display(WindowDisplaySettings display) {
-    applied_settings_.window_mode = display.mode;
-    applied_settings_.resolution = display.resolution;
-}
-
-auto video_settings(GameSettingsState const& state) -> VideoSettings {
-    return {
-        .resolution = state.resolution,
-        .window_mode = state.window_mode,
-        .vsync = state.vsync,
-        .frame_rate_limit = state.frame_rate_limit,
-        .resolution_scale = state.resolution_scale,
-        .overall_quality = state.overall_quality,
-        .view_distance_quality = state.view_distance_quality,
-        .aa_method = state.aa_method,
-        .aa_quality = state.aa_quality,
-        .shadow_quality = state.shadow_quality,
-        .global_illumination_quality = state.global_illumination_quality,
-        .reflections_quality = state.reflections_quality,
-        .post_processing_quality = state.post_processing_quality,
-        .texture_quality = state.texture_quality,
-        .effects_quality = state.effects_quality,
-        .shading_quality = state.shading_quality,
-        .bloom = state.bloom,
-        .motion_blur = state.motion_blur,
-    };
+    applied_settings_.video.window_mode = display.mode;
+    applied_settings_.video.resolution = display.resolution;
 }
 
 void PlayerSettings::apply(VideoSettings const& values) {
-    applied_settings_.resolution = values.resolution;
-    applied_settings_.window_mode = values.window_mode;
-    applied_settings_.vsync = values.vsync;
-    applied_settings_.frame_rate_limit = values.frame_rate_limit;
-    applied_settings_.resolution_scale = values.resolution_scale;
-    applied_settings_.overall_quality = values.overall_quality;
-    applied_settings_.view_distance_quality = values.view_distance_quality;
-    applied_settings_.aa_method = values.aa_method;
-    applied_settings_.aa_quality = values.aa_quality;
-    applied_settings_.shadow_quality = values.shadow_quality;
-    applied_settings_.global_illumination_quality = values.global_illumination_quality;
-    applied_settings_.reflections_quality = values.reflections_quality;
-    applied_settings_.post_processing_quality = values.post_processing_quality;
-    applied_settings_.texture_quality = values.texture_quality;
-    applied_settings_.effects_quality = values.effects_quality;
-    applied_settings_.shading_quality = values.shading_quality;
-    applied_settings_.bloom = values.bloom;
-    applied_settings_.motion_blur = values.motion_blur;
-}
-
-auto audio_settings(GameSettingsState const& state) -> AudioSettings {
-    return {
-        .master_volume = state.master_volume,
-        .music_volume = state.music_volume,
-        .sfx_volume = state.sfx_volume,
-        .ui_volume = state.ui_volume,
-    };
+    applied_settings_.video = values;
 }
 
 void PlayerSettings::apply(AudioSettings const& values) {
-    applied_settings_.master_volume = values.master_volume;
-    applied_settings_.music_volume = values.music_volume;
-    applied_settings_.sfx_volume = values.sfx_volume;
-    applied_settings_.ui_volume = values.ui_volume;
-}
-
-auto controls_settings(GameSettingsState const& state) -> ControlsSettings {
-    return {
-        .mouse_turn_sensitivity = state.mouse_turn_sensitivity,
-        .gamepad_turn_sensitivity = state.gamepad_turn_sensitivity,
-        .gamepad_turn_dead_zone = state.gamepad_turn_dead_zone,
-        .invert_mouse_pitch = state.invert_mouse_pitch,
-        .invert_mouse_yaw = state.invert_mouse_yaw,
-        .invert_gamepad_pitch = state.invert_gamepad_pitch,
-        .invert_gamepad_yaw = state.invert_gamepad_yaw,
-    };
+    applied_settings_.audio = values;
 }
 
 void PlayerSettings::apply(ControlsSettings const& values) {
-    applied_settings_.mouse_turn_sensitivity = values.mouse_turn_sensitivity;
-    applied_settings_.gamepad_turn_sensitivity = values.gamepad_turn_sensitivity;
-    applied_settings_.gamepad_turn_dead_zone = values.gamepad_turn_dead_zone;
-    applied_settings_.invert_mouse_pitch = values.invert_mouse_pitch;
-    applied_settings_.invert_mouse_yaw = values.invert_mouse_yaw;
-    applied_settings_.invert_gamepad_pitch = values.invert_gamepad_pitch;
-    applied_settings_.invert_gamepad_yaw = values.invert_gamepad_yaw;
+    applied_settings_.controls = values;
 }
 
 auto PlayerSettings::save_category(GameSettingCategory category,
@@ -172,7 +102,7 @@ auto PlayerSettings::is_available(GameSettingsState const& draft, GameSetting se
             return launch_display_mode_ == LaunchDisplayMode::Preferences;
         case GameSetting::Resolution:
             return launch_display_mode_ != LaunchDisplayMode::Headless &&
-                   draft.window_mode == GameWindowMode::Windowed;
+                   draft.video.window_mode == GameWindowMode::Windowed;
         default:
             break;
     }
@@ -186,10 +116,10 @@ auto PlayerSettings::choices(GameSettingsState const& draft,
     -> std::vector<GameSettingChoice> {
     auto choices{game_setting_choices(provider, resolutions)};
     if (provider == GameSettingOptionProvider::SupportedResolutions &&
-        std::ranges::find(resolutions, draft.resolution) == resolutions.end()) {
+        std::ranges::find(resolutions, draft.video.resolution) == resolutions.end()) {
         choices.push_back(
-            {draft.resolution,
-             std::format("{} x {}", draft.resolution.width, draft.resolution.height)});
+            {draft.video.resolution,
+             std::format("{} x {}", draft.video.resolution.width, draft.video.resolution.height)});
     }
 
     if (provider == GameSettingOptionProvider::WindowModes) {
@@ -218,18 +148,20 @@ auto PlayerSettings::set_setting(GameSettingsEditState& edit,
         }
     }
 
-    auto const previous{draft.window_mode};
+    auto const previous{draft.video.window_mode};
     auto normalized{normalize_game_setting_value(descriptor, value, allowed, true)};
     if (!normalized || !edit.set_setting(setting, *normalized)) {
         return false;
     }
 
-    auto const mode{draft.window_mode};
+    auto const mode{draft.video.window_mode};
     if (setting == GameSetting::WindowMode && mode != previous) {
         auto const& applied{applied_settings_};
-        auto const restore_size{mode == GameWindowMode::Windowed && applied.window_mode != mode};
+        auto const restore_size{mode == GameWindowMode::Windowed &&
+                                applied.video.window_mode != mode};
         edit.set_setting(GameSetting::Resolution,
-                         restore_size ? saved_settings_.resolution : applied.resolution);
+                         restore_size ? saved_settings_.video.resolution
+                                      : applied.video.resolution);
     }
 
     return true;

@@ -96,7 +96,8 @@ auto UOptionsDraft::apply(GameSettingCategory category) -> bool {
     auto const& pending{draft_.pending()};
     auto const& applied{draft_.applied()};
     if (category == GameSettingCategory::Video &&
-        (pending.window_mode != applied.window_mode || pending.resolution != applied.resolution)) {
+        (pending.video.window_mode != applied.video.window_mode ||
+         pending.video.resolution != applied.video.resolution)) {
         save_pending_ = true;
         queue_preferences({host::PreferenceAction::PreviewDisplay, category, pending, applied},
                           *this);
@@ -200,17 +201,17 @@ void UOptionsDraft::preference_finished(host::PreferenceEdit const& edit, std::s
 auto UOptionsDraft::apply_settings(GameSettingCategory category, GameSettingsState const& values)
     -> SettingsResult {
     if (category == GameSettingCategory::Video) {
-        if (auto result{video_.apply_quality(video_settings(values))}; !result) {
+        if (auto result{video_.apply_quality(values.video)}; !result) {
             return result;
         }
     }
 
     if (category == GameSettingCategory::Audio) {
         auto* audio{editing_local_player_->GetGameInstance()->GetSubsystem<UGameAudio>()};
-        audio->set_master_volume(values.master_volume);
-        audio->set_music_volume(values.music_volume);
-        audio->set_sfx_volume(values.sfx_volume);
-        audio->set_ui_volume(values.ui_volume);
+        audio->set_master_volume(values.audio.master_volume);
+        audio->set_music_volume(values.audio.music_volume);
+        audio->set_sfx_volume(values.audio.sfx_volume);
+        audio->set_ui_volume(values.audio.ui_volume);
     }
 
     return {};
@@ -223,13 +224,13 @@ void UOptionsDraft::reset_category(GameSettingCategory category) {
     draft_.reset_category(category);
     if (category == GameSettingCategory::Video) {
         if (player_settings().launch_display_mode() != LaunchDisplayMode::Preferences) {
-            draft_.set_setting(GameSetting::WindowMode, draft_.applied().window_mode);
-        } else if (draft_.pending().window_mode == GameWindowMode::Fullscreen) {
+            draft_.set_setting(GameSetting::WindowMode, draft_.applied().video.window_mode);
+        } else if (draft_.pending().video.window_mode == GameWindowMode::Fullscreen) {
             draft_.set_setting(GameSetting::WindowMode, GameWindowMode::Borderless);
         }
 
         if (!is_available(GameSetting::Resolution)) {
-            draft_.set_setting(GameSetting::Resolution, draft_.applied().resolution);
+            draft_.set_setting(GameSetting::Resolution, draft_.applied().video.resolution);
         }
     } else if (category == GameSettingCategory::Controls) {
         reset_all_control_bindings();

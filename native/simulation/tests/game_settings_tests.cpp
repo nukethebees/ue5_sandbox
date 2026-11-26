@@ -25,10 +25,10 @@
 namespace ioj::tests {
 TEST(GameSettings, TracksCategoryResetCommitAndCancellation) {
     GameSettingsState applied;
-    applied.master_volume = 0.25f;
+    applied.audio.master_volume = 0.25f;
     auto defaults{applied};
-    defaults.vsync = true;
-    defaults.master_volume = 1.f;
+    defaults.video.vsync = true;
+    defaults.audio.master_volume = 1.f;
     GameSettingsEditState state;
     state.begin(applied, defaults);
     EXPECT_FALSE(state.is_dirty());
@@ -37,41 +37,41 @@ TEST(GameSettings, TracksCategoryResetCommitAndCancellation) {
     EXPECT_FALSE(state.is_dirty(GameSettingCategory::Video));
     state.reset_category(GameSettingCategory::Video);
     EXPECT_TRUE(state.is_at_defaults(GameSettingCategory::Video));
-    EXPECT_EQ(state.pending().master_volume, 0.5f);
+    EXPECT_EQ(state.pending().audio.master_volume, 0.5f);
     EXPECT_TRUE(state.is_dirty(GameSettingCategory::Video));
     state.commit_all();
     EXPECT_FALSE(state.is_dirty());
     ASSERT_TRUE(state.set_setting(GameSetting::MotionBlur, true));
     state.cancel();
-    EXPECT_FALSE(state.pending().motion_blur);
+    EXPECT_FALSE(state.pending().video.motion_blur);
     ASSERT_TRUE(state.set_setting(GameSetting::InvertGamepadPitch, true));
     EXPECT_TRUE(state.is_dirty(GameSettingCategory::Controls));
     state.reset_category(GameSettingCategory::Controls);
-    EXPECT_FALSE(state.pending().invert_gamepad_pitch);
+    EXPECT_FALSE(state.pending().controls.invert_gamepad_pitch);
 }
 
 TEST(GameSettings, GraphicsPresetUpdatesOnlyQualityGroups) {
     GameSettingsState applied;
-    applied.resolution_scale = 73.f;
-    applied.motion_blur = true;
+    applied.video.resolution_scale = 73.f;
+    applied.video.motion_blur = true;
     GameSettingsEditState state;
     state.begin(applied, applied);
     ASSERT_TRUE(state.set_setting(GameSetting::OverallQuality, GameGraphicsPreset::High));
     auto expected{applied};
-    expected.overall_quality = GameGraphicsPreset::High;
-    expected.view_distance_quality = GameQualityLevel::High;
-    expected.aa_quality = GameQualityLevel::High;
-    expected.shadow_quality = GameQualityLevel::High;
-    expected.global_illumination_quality = GameQualityLevel::High;
-    expected.reflections_quality = GameQualityLevel::High;
-    expected.post_processing_quality = GameQualityLevel::High;
-    expected.texture_quality = GameQualityLevel::High;
-    expected.effects_quality = GameQualityLevel::High;
-    expected.shading_quality = GameQualityLevel::High;
+    expected.video.overall_quality = GameGraphicsPreset::High;
+    expected.video.view_distance_quality = GameQualityLevel::High;
+    expected.video.aa_quality = GameQualityLevel::High;
+    expected.video.shadow_quality = GameQualityLevel::High;
+    expected.video.global_illumination_quality = GameQualityLevel::High;
+    expected.video.reflections_quality = GameQualityLevel::High;
+    expected.video.post_processing_quality = GameQualityLevel::High;
+    expected.video.texture_quality = GameQualityLevel::High;
+    expected.video.effects_quality = GameQualityLevel::High;
+    expected.video.shading_quality = GameQualityLevel::High;
     EXPECT_EQ(state.pending(), expected);
     ASSERT_TRUE(state.set_setting(GameSetting::ShadowQuality, GameQualityLevel::Medium));
-    expected.shadow_quality = GameQualityLevel::Medium;
-    expected.overall_quality = GameGraphicsPreset::Custom;
+    expected.video.shadow_quality = GameQualityLevel::Medium;
+    expected.video.overall_quality = GameGraphicsPreset::Custom;
     EXPECT_EQ(state.pending(), expected);
     ASSERT_TRUE(state.set_setting(GameSetting::OverallQuality, GameGraphicsPreset::Custom));
     EXPECT_EQ(state.pending(), expected);
@@ -80,7 +80,7 @@ TEST(GameSettings, GraphicsPresetUpdatesOnlyQualityGroups) {
 TEST(GameSettings, NormalizesRangesAndChecksSuppliedCapabilities) {
     GameSettingsState state;
     EXPECT_FALSE(game_setting_is_available(GameSettingAvailabilityProvider::AAQuality, state));
-    state.aa_method = GameAntiAliasingMethod::TAA;
+    state.video.aa_method = GameAntiAliasingMethod::TAA;
     EXPECT_TRUE(game_setting_is_available(GameSettingAvailabilityProvider::AAQuality, state));
     auto const& volume{game_setting_descriptor(GameSetting::MasterVolume)};
     EXPECT_EQ(normalize_game_setting_value(volume, 4.f), GameSettingValue{1.f});

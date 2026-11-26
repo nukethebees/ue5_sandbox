@@ -6,7 +6,7 @@
 
 namespace ioj::input {
 namespace {
-auto inverted(Response const response, Axis const axis, GameSettingsState const& settings) noexcept
+auto inverted(Response const response, Axis const axis, ControlsSettings const& settings) noexcept
     -> bool {
     if (response == Response::TurnPointerDelta) {
         switch (axis) {
@@ -29,7 +29,7 @@ auto inverted(Response const response, Axis const axis, GameSettingsState const&
     return false;
 }
 
-auto scale(Response const response, GameSettingsState const& settings) noexcept -> double {
+auto scale(Response const response, ControlsSettings const& settings) noexcept -> double {
     switch (response) {
         case Response::TurnPointerDelta:
             return clamp_sensitivity(settings.mouse_turn_sensitivity) / 400.0;
@@ -43,7 +43,7 @@ template <std::size_t N>
 auto apply_vector_response(Vector<double, N> value,
                            Response const response,
                            Axis const axis,
-                           GameSettingsState const& settings) noexcept -> Vector<double, N> {
+                           ControlsSettings const& settings) noexcept -> Vector<double, N> {
     if (response != Response::TurnPointerDelta) {
         auto const threshold{clamp_dead_zone(settings.gamepad_turn_dead_zone)};
         auto const magnitude{size(value)};
@@ -71,7 +71,7 @@ auto clamp_dead_zone(float const value) noexcept -> float {
 auto apply_response(float value,
                     Response const response,
                     Axis const axis,
-                    GameSettingsState const& settings) noexcept -> float {
+                    ControlsSettings const& settings) noexcept -> float {
     if (response != Response::TurnPointerDelta) {
         auto const threshold{clamp_dead_zone(settings.gamepad_turn_dead_zone)};
         auto const magnitude{std::abs(value)};
@@ -85,13 +85,13 @@ auto apply_response(float value,
 auto apply_response(Vector2d const value,
                     Response const response,
                     Axis const axis,
-                    GameSettingsState const& settings) noexcept -> Vector2d {
+                    ControlsSettings const& settings) noexcept -> Vector2d {
     return apply_vector_response(value, response, axis, settings);
 }
 auto apply_response(Vector3d const value,
                     Response const response,
                     Axis const axis,
-                    GameSettingsState const& settings) noexcept -> Vector3d {
+                    ControlsSettings const& settings) noexcept -> Vector3d {
     return apply_vector_response(value, response, axis, settings);
 }
 }

@@ -86,58 +86,8 @@
   :header "native/levels/lib/include/ioj/settings/video_settings.h"
   :header-include "ioj/settings/video_settings.h"
   :namespace ioj
-  (record VideoSettings :comparison equality
-    (member resolution @int_point :initializer "")
-    (member window_mode @game_window_mode :initializer "")
-    (member vsync bool :initializer "")
-    (member frame_rate_limit float :initializer "")
-    (member resolution_scale float :initializer "")
-    (member overall_quality @game_graphics_preset :initializer "")
-    (member view_distance_quality @game_quality_level :initializer "")
-    (member aa_method @game_anti_aliasing_method :initializer "")
-    (member aa_quality @game_quality_level :initializer "")
-    (member shadow_quality @game_quality_level :initializer "")
-    (member global_illumination_quality @game_quality_level :initializer "")
-    (member reflections_quality @game_quality_level :initializer "")
-    (member post_processing_quality @game_quality_level :initializer "")
-    (member texture_quality @game_quality_level :initializer "")
-    (member effects_quality @game_quality_level :initializer "")
-    (member shading_quality @game_quality_level :initializer "")
-    (member bloom bool :initializer "")
-    (member motion_blur bool :initializer "")
-    (projections (cpp))))
-
-(module audio_settings
-  :header "native/levels/lib/include/ioj/settings/audio_settings.h"
-  :header-include "ioj/settings/audio_settings.h"
-  :namespace ioj
-  (record AudioSettings :comparison equality
-    (member master_volume float :initializer "")
-    (member music_volume float :initializer "")
-    (member sfx_volume float :initializer "")
-    (member ui_volume float :initializer "")
-    (projections (cpp))))
-
-(module controls_settings
-  :header "native/levels/lib/include/ioj/settings/controls_settings.h"
-  :header-include "ioj/settings/controls_settings.h"
-  :namespace ioj
-  (record ControlsSettings :comparison equality
-    (member mouse_turn_sensitivity float :initializer "")
-    (member gamepad_turn_sensitivity float :initializer "")
-    (member gamepad_turn_dead_zone float :initializer "")
-    (member invert_mouse_pitch bool :initializer "")
-    (member invert_mouse_yaw bool :initializer "")
-    (member invert_gamepad_pitch bool :initializer "")
-    (member invert_gamepad_yaw bool :initializer "")
-    (projections (cpp))))
-
-(module game_settings_state
-  :header "native/levels/lib/include/ioj/settings/game_settings_state.h"
-  :header-include "ioj/settings/game_settings_state.h"
-  :namespace ioj
-  (record GameSettingsState :comparison equality :generate-visitor true
-    :generate-s7-reader true :generate-s7-writer true :s7-tag "user-settings"
+  (record VideoSettings :comparison equality :generate-visitor true
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "video-settings"
     :s7-reader-includes ("ioj/settings/screen_resolution_reader.h")
     :s7-writer-includes ("ioj/settings/screen_resolution_writer.h")
     (member resolution @int_point :initializer "")
@@ -158,10 +108,26 @@
     (member shading_quality @game_quality_level :initializer "" :required true)
     (member bloom bool :initializer "" :required true)
     (member motion_blur bool :initializer "" :required true)
+    (projections (cpp))))
+
+(module audio_settings
+  :header "native/levels/lib/include/ioj/settings/audio_settings.h"
+  :header-include "ioj/settings/audio_settings.h"
+  :namespace ioj
+  (record AudioSettings :comparison equality :generate-visitor true
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "audio-settings"
     (member master_volume float :initializer "" :required true :finite true :minimum 0 :maximum 1)
     (member music_volume float :initializer "" :required true :finite true :minimum 0 :maximum 1)
     (member sfx_volume float :initializer "" :required true :finite true :minimum 0 :maximum 1)
     (member ui_volume float :initializer "" :required true :finite true :minimum 0 :maximum 1)
+    (projections (cpp))))
+
+(module controls_settings
+  :header "native/levels/lib/include/ioj/settings/controls_settings.h"
+  :header-include "ioj/settings/controls_settings.h"
+  :namespace ioj
+  (record ControlsSettings :comparison equality :generate-visitor true
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "controls-settings"
     (member mouse_turn_sensitivity float :initializer "" :required true :finite true :minimum 0.01 :maximum 2.0)
     (member gamepad_turn_sensitivity float :initializer "" :required true :finite true :minimum 0.25 :maximum 2.0)
     (member gamepad_turn_dead_zone float :initializer "" :required true :finite true :minimum 0.0 :maximum 0.5)
@@ -169,6 +135,22 @@
     (member invert_mouse_yaw bool :initializer "" :required true)
     (member invert_gamepad_pitch bool :initializer "" :required true)
     (member invert_gamepad_yaw bool :initializer "" :required true)
+    (projections (cpp))))
+
+(module game_settings_state
+  :header "native/levels/lib/include/ioj/settings/game_settings_state.h"
+  :header-include "ioj/settings/game_settings_state.h"
+  :namespace ioj
+  :prelude ("#include <ioj/settings/audio_settings.h>"
+            "#include <ioj/settings/controls_settings.h>"
+            "#include <ioj/settings/video_settings.h>")
+  (record GameSettingsState :comparison equality :generate-visitor true
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "user-settings"
+    :s7-reader-includes ("ioj/settings/video_settings_reader.h" "ioj/settings/audio_settings_reader.h" "ioj/settings/controls_settings_reader.h")
+    :s7-writer-includes ("ioj/settings/video_settings_writer.h" "ioj/settings/audio_settings_writer.h" "ioj/settings/controls_settings_writer.h")
+    (member video VideoSettings :initializer "" :required true)
+    (member audio AudioSettings :initializer "" :required true)
+    (member controls ControlsSettings :initializer "" :required true)
     (projections (cpp))))
 
 (settings-module game_settings

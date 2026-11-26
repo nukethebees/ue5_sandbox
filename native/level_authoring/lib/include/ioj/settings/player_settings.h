@@ -23,10 +23,6 @@
 namespace ioj {
 using SettingsResult = std::expected<void, std::string>;
 
-auto video_settings(GameSettingsState const& state) -> VideoSettings;
-auto audio_settings(GameSettingsState const& state) -> AudioSettings;
-auto controls_settings(GameSettingsState const& state) -> ControlsSettings;
-
 class PlayerSettings {
   public:
     auto load(std::filesystem::path const& scripts,

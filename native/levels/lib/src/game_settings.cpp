@@ -509,91 +509,91 @@ auto game_setting_descriptor(GameSetting const id) -> GameSettingDescriptor cons
 auto game_setting_value(GameSettingsState const& state, GameSetting const id) -> GameSettingValue {
     switch (id) {
         case GameSetting::Resolution: {
-            return GameSettingValue{state.resolution};
+            return GameSettingValue{state.video.resolution};
         }
         case GameSetting::WindowMode: {
-            return GameSettingValue{state.window_mode};
+            return GameSettingValue{state.video.window_mode};
         }
         case GameSetting::VSync: {
-            return GameSettingValue{state.vsync};
+            return GameSettingValue{state.video.vsync};
         }
         case GameSetting::FrameRateLimit: {
-            return GameSettingValue{state.frame_rate_limit};
+            return GameSettingValue{state.video.frame_rate_limit};
         }
         case GameSetting::ResolutionScale: {
-            return GameSettingValue{state.resolution_scale};
+            return GameSettingValue{state.video.resolution_scale};
         }
         case GameSetting::OverallQuality: {
-            return GameSettingValue{state.overall_quality};
+            return GameSettingValue{state.video.overall_quality};
         }
         case GameSetting::ViewDistanceQuality: {
-            return GameSettingValue{state.view_distance_quality};
+            return GameSettingValue{state.video.view_distance_quality};
         }
         case GameSetting::AAMethod: {
-            return GameSettingValue{state.aa_method};
+            return GameSettingValue{state.video.aa_method};
         }
         case GameSetting::AAQuality: {
-            return GameSettingValue{state.aa_quality};
+            return GameSettingValue{state.video.aa_quality};
         }
         case GameSetting::ShadowQuality: {
-            return GameSettingValue{state.shadow_quality};
+            return GameSettingValue{state.video.shadow_quality};
         }
         case GameSetting::GlobalIlluminationQuality: {
-            return GameSettingValue{state.global_illumination_quality};
+            return GameSettingValue{state.video.global_illumination_quality};
         }
         case GameSetting::ReflectionsQuality: {
-            return GameSettingValue{state.reflections_quality};
+            return GameSettingValue{state.video.reflections_quality};
         }
         case GameSetting::PostProcessingQuality: {
-            return GameSettingValue{state.post_processing_quality};
+            return GameSettingValue{state.video.post_processing_quality};
         }
         case GameSetting::TextureQuality: {
-            return GameSettingValue{state.texture_quality};
+            return GameSettingValue{state.video.texture_quality};
         }
         case GameSetting::EffectsQuality: {
-            return GameSettingValue{state.effects_quality};
+            return GameSettingValue{state.video.effects_quality};
         }
         case GameSetting::ShadingQuality: {
-            return GameSettingValue{state.shading_quality};
+            return GameSettingValue{state.video.shading_quality};
         }
         case GameSetting::Bloom: {
-            return GameSettingValue{state.bloom};
+            return GameSettingValue{state.video.bloom};
         }
         case GameSetting::MotionBlur: {
-            return GameSettingValue{state.motion_blur};
+            return GameSettingValue{state.video.motion_blur};
         }
         case GameSetting::MasterVolume: {
-            return GameSettingValue{state.master_volume};
+            return GameSettingValue{state.audio.master_volume};
         }
         case GameSetting::MusicVolume: {
-            return GameSettingValue{state.music_volume};
+            return GameSettingValue{state.audio.music_volume};
         }
         case GameSetting::SfxVolume: {
-            return GameSettingValue{state.sfx_volume};
+            return GameSettingValue{state.audio.sfx_volume};
         }
         case GameSetting::UIVolume: {
-            return GameSettingValue{state.ui_volume};
+            return GameSettingValue{state.audio.ui_volume};
         }
         case GameSetting::MouseTurnSensitivity: {
-            return GameSettingValue{state.mouse_turn_sensitivity};
+            return GameSettingValue{state.controls.mouse_turn_sensitivity};
         }
         case GameSetting::GamepadTurnSensitivity: {
-            return GameSettingValue{state.gamepad_turn_sensitivity};
+            return GameSettingValue{state.controls.gamepad_turn_sensitivity};
         }
         case GameSetting::GamepadTurnDeadZone: {
-            return GameSettingValue{state.gamepad_turn_dead_zone};
+            return GameSettingValue{state.controls.gamepad_turn_dead_zone};
         }
         case GameSetting::InvertMousePitch: {
-            return GameSettingValue{state.invert_mouse_pitch};
+            return GameSettingValue{state.controls.invert_mouse_pitch};
         }
         case GameSetting::InvertMouseYaw: {
-            return GameSettingValue{state.invert_mouse_yaw};
+            return GameSettingValue{state.controls.invert_mouse_yaw};
         }
         case GameSetting::InvertGamepadPitch: {
-            return GameSettingValue{state.invert_gamepad_pitch};
+            return GameSettingValue{state.controls.invert_gamepad_pitch};
         }
         case GameSetting::InvertGamepadYaw: {
-            return GameSettingValue{state.invert_gamepad_yaw};
+            return GameSettingValue{state.controls.invert_gamepad_yaw};
         }
     }
     assert((false));
@@ -609,7 +609,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.resolution = *typed_value;
+            state.video.resolution = *typed_value;
             return true;
         }
         case GameSetting::WindowMode: {
@@ -617,7 +617,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.window_mode = *typed_value;
+            state.video.window_mode = *typed_value;
             return true;
         }
         case GameSetting::VSync: {
@@ -625,7 +625,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.vsync = *typed_value;
+            state.video.vsync = *typed_value;
             return true;
         }
         case GameSetting::FrameRateLimit: {
@@ -633,7 +633,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.frame_rate_limit = *typed_value;
+            state.video.frame_rate_limit = *typed_value;
             return true;
         }
         case GameSetting::ResolutionScale: {
@@ -641,7 +641,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.resolution_scale = *typed_value;
+            state.video.resolution_scale = *typed_value;
             return true;
         }
         case GameSetting::OverallQuality: {
@@ -649,7 +649,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.overall_quality = *typed_value;
+            state.video.overall_quality = *typed_value;
             return true;
         }
         case GameSetting::ViewDistanceQuality: {
@@ -657,7 +657,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.view_distance_quality = *typed_value;
+            state.video.view_distance_quality = *typed_value;
             return true;
         }
         case GameSetting::AAMethod: {
@@ -665,7 +665,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.aa_method = *typed_value;
+            state.video.aa_method = *typed_value;
             return true;
         }
         case GameSetting::AAQuality: {
@@ -673,7 +673,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.aa_quality = *typed_value;
+            state.video.aa_quality = *typed_value;
             return true;
         }
         case GameSetting::ShadowQuality: {
@@ -681,7 +681,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.shadow_quality = *typed_value;
+            state.video.shadow_quality = *typed_value;
             return true;
         }
         case GameSetting::GlobalIlluminationQuality: {
@@ -689,7 +689,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.global_illumination_quality = *typed_value;
+            state.video.global_illumination_quality = *typed_value;
             return true;
         }
         case GameSetting::ReflectionsQuality: {
@@ -697,7 +697,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.reflections_quality = *typed_value;
+            state.video.reflections_quality = *typed_value;
             return true;
         }
         case GameSetting::PostProcessingQuality: {
@@ -705,7 +705,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.post_processing_quality = *typed_value;
+            state.video.post_processing_quality = *typed_value;
             return true;
         }
         case GameSetting::TextureQuality: {
@@ -713,7 +713,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.texture_quality = *typed_value;
+            state.video.texture_quality = *typed_value;
             return true;
         }
         case GameSetting::EffectsQuality: {
@@ -721,7 +721,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.effects_quality = *typed_value;
+            state.video.effects_quality = *typed_value;
             return true;
         }
         case GameSetting::ShadingQuality: {
@@ -729,7 +729,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.shading_quality = *typed_value;
+            state.video.shading_quality = *typed_value;
             return true;
         }
         case GameSetting::Bloom: {
@@ -737,7 +737,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.bloom = *typed_value;
+            state.video.bloom = *typed_value;
             return true;
         }
         case GameSetting::MotionBlur: {
@@ -745,7 +745,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.motion_blur = *typed_value;
+            state.video.motion_blur = *typed_value;
             return true;
         }
         case GameSetting::MasterVolume: {
@@ -753,7 +753,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.master_volume = *typed_value;
+            state.audio.master_volume = *typed_value;
             return true;
         }
         case GameSetting::MusicVolume: {
@@ -761,7 +761,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.music_volume = *typed_value;
+            state.audio.music_volume = *typed_value;
             return true;
         }
         case GameSetting::SfxVolume: {
@@ -769,7 +769,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.sfx_volume = *typed_value;
+            state.audio.sfx_volume = *typed_value;
             return true;
         }
         case GameSetting::UIVolume: {
@@ -777,7 +777,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.ui_volume = *typed_value;
+            state.audio.ui_volume = *typed_value;
             return true;
         }
         case GameSetting::MouseTurnSensitivity: {
@@ -785,7 +785,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.mouse_turn_sensitivity = *typed_value;
+            state.controls.mouse_turn_sensitivity = *typed_value;
             return true;
         }
         case GameSetting::GamepadTurnSensitivity: {
@@ -793,7 +793,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.gamepad_turn_sensitivity = *typed_value;
+            state.controls.gamepad_turn_sensitivity = *typed_value;
             return true;
         }
         case GameSetting::GamepadTurnDeadZone: {
@@ -801,7 +801,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.gamepad_turn_dead_zone = *typed_value;
+            state.controls.gamepad_turn_dead_zone = *typed_value;
             return true;
         }
         case GameSetting::InvertMousePitch: {
@@ -809,7 +809,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.invert_mouse_pitch = *typed_value;
+            state.controls.invert_mouse_pitch = *typed_value;
             return true;
         }
         case GameSetting::InvertMouseYaw: {
@@ -817,7 +817,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.invert_mouse_yaw = *typed_value;
+            state.controls.invert_mouse_yaw = *typed_value;
             return true;
         }
         case GameSetting::InvertGamepadPitch: {
@@ -825,7 +825,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.invert_gamepad_pitch = *typed_value;
+            state.controls.invert_gamepad_pitch = *typed_value;
             return true;
         }
         case GameSetting::InvertGamepadYaw: {
@@ -833,7 +833,7 @@ auto set_game_setting_value(GameSettingsState& state,
             if (typed_value == nullptr) {
                 return false;
             }
-            state.invert_gamepad_yaw = *typed_value;
+            state.controls.invert_gamepad_yaw = *typed_value;
             return true;
         }
     }

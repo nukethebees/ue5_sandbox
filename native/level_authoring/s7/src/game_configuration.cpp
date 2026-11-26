@@ -58,10 +58,10 @@ auto read_preferences(DefinitionReader const& reader,
                       ScreenResolution desktop) {
     auto state{read_config<GameSettingsState>(reader, path, "preferences")};
     if (state) {
-        if (state->resolution == ScreenResolution{}) {
-            state->resolution = desktop;
+        if (state->video.resolution == ScreenResolution{}) {
+            state->video.resolution = desktop;
         }
-        state->overall_quality = graphics_preset(*state);
+        state->video.overall_quality = graphics_preset(*state);
     }
 
     return state;
@@ -145,8 +145,22 @@ auto save_user_settings(std::filesystem::path const& personal_file,
     lispb::Strings strings;
     s7::SExprIR ir{strings};
     auto form{ir.form("copy-with", {ir.atom("defaults")})};
-    s7::PropertyWriter writer{ir, form, state, &defaults};
-    s7::TypeWriter<GameSettingsState>::properties(writer);
+    auto write_category{[&]<typename T>(std::string_view key, T GameSettingsState::* member) {
+        auto const& category{state.*member};
+        auto const& base{defaults.*member};
+        if (s7::equivalent(category, base)) {
+            return;
+        }
+
+        auto const category_key{ir.atom(std::format(":{}", key))};
+        auto const inherited{
+            ir.form("user-settings-ref", {ir.atom("defaults"), category_key}).build()};
+        auto overrides{ir.form("copy-with", {inherited})};
+        s7::PropertyWriter writer{ir, overrides, category, &base};
+        s7::TypeWriter<T>::properties(writer);
+        form.field(key, overrides.build());
+    }};
+    s7::TypeWriter<GameSettingsState>::properties(write_category);
     lispb::codegen::sexpr::SExprRenderer renderer{ir, lispb::codegen::sexpr::Dialect::scheme};
     return write_preferences(personal_file,
                              "(export preferences)\n"

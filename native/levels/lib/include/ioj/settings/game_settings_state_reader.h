@@ -3,15 +3,15 @@
 
 #pragma once
 
-#include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
+#include "ioj/settings/audio_settings_reader.h"
+#include "ioj/settings/controls_settings_reader.h"
 #include "ioj/settings/game_settings_state.h"
-#include "ioj/settings/screen_resolution_reader.h"
+#include "ioj/settings/video_settings_reader.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
 #include <string_view>
-#include <utility>
 
 namespace ioj::s7 {
 template <>
@@ -22,41 +22,8 @@ struct TypeReader<GameSettingsState> : RecordReader<GameSettingsState> {
             "user-settings",
             field_names,
             [&result](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
-                    if constexpr (field == Field::gamepad_turn_dead_zone) {
-                        read(member,
-                             constraints::finite,
-                             constraints::minimum(0.00000000000000000e+00),
-                             constraints::maximum(5.00000000000000000e-01));
-                    } else if constexpr (field == Field::frame_rate_limit) {
-                        read(member, constraints::finite, constraints::minimum(0ULL));
-                    } else if constexpr (field == Field::resolution_scale) {
-                        read(member,
-                             constraints::finite,
-                             constraints::minimum(50ULL),
-                             constraints::maximum(100ULL));
-                    } else if constexpr (field == Field::overall_quality) {
-                        std::unreachable();
-                    } else if constexpr (field >= Field::master_volume &&
-                                         field <= Field::ui_volume) {
-                        read(member,
-                             constraints::finite,
-                             constraints::minimum(0ULL),
-                             constraints::maximum(1ULL));
-                    } else if constexpr (field == Field::mouse_turn_sensitivity) {
-                        read(member,
-                             constraints::finite,
-                             constraints::minimum(1.00000000000000002e-02),
-                             constraints::maximum(2.00000000000000000e+00));
-                    } else if constexpr (field == Field::gamepad_turn_sensitivity) {
-                        read(member,
-                             constraints::finite,
-                             constraints::minimum(2.50000000000000000e-01),
-                             constraints::maximum(2.00000000000000000e+00));
-                    } else {
-                        read(member);
-                    }
-                });
+                value_type::visit_field(
+                    result, selected, [&read]<Field field>(auto& member) { read(member); });
             },
             required);
     }
@@ -64,63 +31,9 @@ struct TypeReader<GameSettingsState> : RecordReader<GameSettingsState> {
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 29> field_names{"resolution",
-                                                                  "window-mode",
-                                                                  "vsync",
-                                                                  "frame-rate-limit",
-                                                                  "resolution-scale",
-                                                                  "",
-                                                                  "view-distance-quality",
-                                                                  "aa-method",
-                                                                  "aa-quality",
-                                                                  "shadow-quality",
-                                                                  "global-illumination-quality",
-                                                                  "reflections-quality",
-                                                                  "post-processing-quality",
-                                                                  "texture-quality",
-                                                                  "effects-quality",
-                                                                  "shading-quality",
-                                                                  "bloom",
-                                                                  "motion-blur",
-                                                                  "master-volume",
-                                                                  "music-volume",
-                                                                  "sfx-volume",
-                                                                  "ui-volume",
-                                                                  "mouse-turn-sensitivity",
-                                                                  "gamepad-turn-sensitivity",
-                                                                  "gamepad-turn-dead-zone",
-                                                                  "invert-mouse-pitch",
-                                                                  "invert-mouse-yaw",
-                                                                  "invert-gamepad-pitch",
-                                                                  "invert-gamepad-yaw"};
+    static constexpr std::array<std::string_view, 3> field_names{"video", "audio", "controls"};
     static constexpr auto required{
-        required_fields<Field, field_names.size()>({Field::window_mode,
-                                                    Field::vsync,
-                                                    Field::frame_rate_limit,
-                                                    Field::resolution_scale,
-                                                    Field::view_distance_quality,
-                                                    Field::aa_method,
-                                                    Field::aa_quality,
-                                                    Field::shadow_quality,
-                                                    Field::global_illumination_quality,
-                                                    Field::reflections_quality,
-                                                    Field::post_processing_quality,
-                                                    Field::texture_quality,
-                                                    Field::effects_quality,
-                                                    Field::shading_quality,
-                                                    Field::bloom,
-                                                    Field::motion_blur,
-                                                    Field::master_volume,
-                                                    Field::music_volume,
-                                                    Field::sfx_volume,
-                                                    Field::ui_volume,
-                                                    Field::mouse_turn_sensitivity,
-                                                    Field::gamepad_turn_sensitivity,
-                                                    Field::gamepad_turn_dead_zone,
-                                                    Field::invert_mouse_pitch,
-                                                    Field::invert_mouse_yaw,
-                                                    Field::invert_gamepad_pitch,
-                                                    Field::invert_gamepad_yaw})};
+        required_fields<Field, field_names.size()>({Field::video, Field::audio, Field::controls})};
 };
 
 } // namespace ioj::s7

@@ -3,9 +3,93 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+
+#include <array>
+#include <cassert>
+#include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj {
 struct ControlsSettings {
     bool operator==(ControlsSettings const&) const = default;
+
+    enum class Field : std::uint8_t {
+        mouse_turn_sensitivity,
+        gamepad_turn_sensitivity,
+        gamepad_turn_dead_zone,
+        invert_mouse_pitch,
+        invert_mouse_yaw,
+        invert_gamepad_pitch,
+        invert_gamepad_yaw,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, ControlsSettings> &&
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
+    {
+        if constexpr (Selected == Field::mouse_turn_sensitivity) {
+            return (self.mouse_turn_sensitivity);
+        }
+        if constexpr (Selected == Field::gamepad_turn_sensitivity) {
+            return (self.gamepad_turn_sensitivity);
+        }
+        if constexpr (Selected == Field::gamepad_turn_dead_zone) {
+            return (self.gamepad_turn_dead_zone);
+        }
+        if constexpr (Selected == Field::invert_mouse_pitch) {
+            return (self.invert_mouse_pitch);
+        }
+        if constexpr (Selected == Field::invert_mouse_yaw) {
+            return (self.invert_mouse_yaw);
+        }
+        if constexpr (Selected == Field::invert_gamepad_pitch) {
+            return (self.invert_gamepad_pitch);
+        }
+        if constexpr (Selected == Field::invert_gamepad_yaw) {
+            return (self.invert_gamepad_yaw);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, ControlsSettings>
+    {
+        switch (field) {
+            case Field::mouse_turn_sensitivity:
+                return invoke_field<Field::mouse_turn_sensitivity>(self,
+                                                                   std::forward<Visitor>(visitor));
+            case Field::gamepad_turn_sensitivity:
+                return invoke_field<Field::gamepad_turn_sensitivity>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::gamepad_turn_dead_zone:
+                return invoke_field<Field::gamepad_turn_dead_zone>(self,
+                                                                   std::forward<Visitor>(visitor));
+            case Field::invert_mouse_pitch:
+                return invoke_field<Field::invert_mouse_pitch>(self,
+                                                               std::forward<Visitor>(visitor));
+            case Field::invert_mouse_yaw:
+                return invoke_field<Field::invert_mouse_yaw>(self, std::forward<Visitor>(visitor));
+            case Field::invert_gamepad_pitch:
+                return invoke_field<Field::invert_gamepad_pitch>(self,
+                                                                 std::forward<Visitor>(visitor));
+            case Field::invert_gamepad_yaw:
+                return invoke_field<Field::invert_gamepad_yaw>(self,
+                                                               std::forward<Visitor>(visitor));
+        }
+        assert((false && "Invalid record field"));
+        std::unreachable();
+    }
 
     float mouse_turn_sensitivity{};
     float gamepad_turn_sensitivity{};
@@ -15,4 +99,15 @@ struct ControlsSettings {
     bool invert_gamepad_pitch{};
     bool invert_gamepad_yaw{};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<ControlsSettings::Field>() noexcept -> std::size_t {
+    return 7ULL;
+}
+
+template <>
+inline constexpr auto enum_strings<ControlsSettings::Field, Name>{PackedStrings{
+    "mouse_turn_sensitivity\000gamepad_turn_sensitivity\000gamepad_turn_dead_zone\000invert_mouse_"
+    "pitch\000invert_mouse_yaw\000invert_gamepad_pitch\000invert_gamepad_yaw",
+    std::array<std::uint8_t, 8>{0, 23, 48, 71, 90, 107, 128, 147}}};
 } // namespace ioj

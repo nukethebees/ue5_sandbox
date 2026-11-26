@@ -3,8 +3,10 @@
 
 #pragma once
 
+#include "ioj/settings/audio_settings_writer.h"
+#include "ioj/settings/controls_settings_writer.h"
 #include "ioj/settings/game_settings_state.h"
-#include "ioj/settings/screen_resolution_writer.h"
+#include "ioj/settings/video_settings_writer.h"
 #include <ioj/s7/writer.h>
 
 #include <string_view>
@@ -18,34 +20,9 @@ struct TypeWriter<GameSettingsState> : RecordWriter<GameSettingsState> {
     static void properties(Visitor& visit) {
         using T = ioj::GameSettingsState;
 
-        visit("resolution", &T::resolution);
-        visit("window-mode", &T::window_mode);
-        visit("vsync", &T::vsync);
-        visit("frame-rate-limit", &T::frame_rate_limit);
-        visit("resolution-scale", &T::resolution_scale);
-        visit("view-distance-quality", &T::view_distance_quality);
-        visit("aa-method", &T::aa_method);
-        visit("aa-quality", &T::aa_quality);
-        visit("shadow-quality", &T::shadow_quality);
-        visit("global-illumination-quality", &T::global_illumination_quality);
-        visit("reflections-quality", &T::reflections_quality);
-        visit("post-processing-quality", &T::post_processing_quality);
-        visit("texture-quality", &T::texture_quality);
-        visit("effects-quality", &T::effects_quality);
-        visit("shading-quality", &T::shading_quality);
-        visit("bloom", &T::bloom);
-        visit("motion-blur", &T::motion_blur);
-        visit("master-volume", &T::master_volume);
-        visit("music-volume", &T::music_volume);
-        visit("sfx-volume", &T::sfx_volume);
-        visit("ui-volume", &T::ui_volume);
-        visit("mouse-turn-sensitivity", &T::mouse_turn_sensitivity);
-        visit("gamepad-turn-sensitivity", &T::gamepad_turn_sensitivity);
-        visit("gamepad-turn-dead-zone", &T::gamepad_turn_dead_zone);
-        visit("invert-mouse-pitch", &T::invert_mouse_pitch);
-        visit("invert-mouse-yaw", &T::invert_mouse_yaw);
-        visit("invert-gamepad-pitch", &T::invert_gamepad_pitch);
-        visit("invert-gamepad-yaw", &T::invert_gamepad_yaw);
+        visit("video", &T::video);
+        visit("audio", &T::audio);
+        visit("controls", &T::controls);
     }
 };
 

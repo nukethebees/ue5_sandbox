@@ -253,10 +253,11 @@ class SettingsLowering : public CppIRBuilder {
         std::vector<SwitchCaseId> getter_cases;
         for (auto const setting : settings) {
             auto const name{decls.settings.name[setting]};
-            getter_cases.push_back(
-                switch_case(scope_member(named_type("GameSetting"), title_case(ctx.text(name))),
-                            block({return_stmt(init_list({member_access(state, name)},
-                                                         intern_type("GameSettingValue")))})));
+            getter_cases.push_back(switch_case(
+                scope_member(named_type("GameSetting"), title_case(ctx.text(name))),
+                block({return_stmt(init_list(
+                    {member_access(member_access(state, decls.settings.category[setting]), name)},
+                    intern_type("GameSettingValue")))})));
         }
         auto const getter{create("game_setting_value",
                                  named_type("GameSettingValue"),
@@ -268,7 +269,8 @@ class SettingsLowering : public CppIRBuilder {
         std::vector<SwitchCaseId> setter_cases;
         auto const setting_count{settings.size()};
         for (std::size_t index{}; index < setting_count; ++index) {
-            auto const name{decls.settings.name[settings[index]]};
+            auto const setting{settings[index]};
+            auto const name{decls.settings.name[setting]};
             auto const typed_value{named("typed_value")};
             setter_cases.push_back(switch_case(
                 scope_member(named_type("GameSetting"), title_case(ctx.text(name))),
@@ -280,8 +282,9 @@ class SettingsLowering : public CppIRBuilder {
                                            {unary(UnaryOperator::address_of, value)})),
                     if_stmt(binary(BinaryOperator::equal, typed_value, literal(nullptr)),
                             block({return_stmt(literal(false))})),
-                    assignment(member_access(state, name),
-                               unary(UnaryOperator::dereference, typed_value)),
+                    assignment(
+                        member_access(member_access(state, decls.settings.category[setting]), name),
+                        unary(UnaryOperator::dereference, typed_value)),
                     return_stmt(literal(true)),
                 })));
         }
@@ -312,7 +315,9 @@ class SettingsLowering : public CppIRBuilder {
                 .return_syntax = ReturnSyntax::trailing,
                 .implementation = {.kind = FunctionImplementationKind::body,
                                    .body = {return_stmt(member_access(
-                                       member_call(call(this->name("derived")), "settings_state"),
+                                       member_access(member_call(call(this->name("derived")),
+                                                                 "settings_state"),
+                                                     ctx.declarations.settings.category[setting]),
                                        name))}},
                 .receiver = FunctionReceiver::const_,
                 .flags = {.define_in_header = true}};

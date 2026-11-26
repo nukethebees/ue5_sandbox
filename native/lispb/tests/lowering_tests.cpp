@@ -900,7 +900,8 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
     CompilerTestContext ctx;
     auto const manifest{parse_test_manifest(ctx, R"(
 (module preferences :namespace game :header "Preferences.h"
-  (record FSettingsState (member vsync bool) (member frame_limit float) (projections (cpp))))
+  (record VideoSettings (member vsync bool) (member frame_limit float) (projections (cpp)))
+  (record FSettingsState (member video VideoSettings) (projections (cpp))))
 (settings-module settings :namespace game :header "Settings.h" :source "Settings.cpp"
   :api-name TSettingsAccess :storage FSettingsState
   (category video "Video")

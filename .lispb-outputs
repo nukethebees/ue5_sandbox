@@ -42,10 +42,14 @@ native/levels/lib/include/ioj/settings/attack_distance_band.h
 native/levels/lib/include/ioj/settings/attack_distance_band_reader.h
 native/levels/lib/include/ioj/settings/attack_distance_band_writer.h
 native/levels/lib/include/ioj/settings/audio_settings.h
+native/levels/lib/include/ioj/settings/audio_settings_reader.h
+native/levels/lib/include/ioj/settings/audio_settings_writer.h
 native/levels/lib/include/ioj/settings/capital_presentation.h
 native/levels/lib/include/ioj/settings/capital_presentation_reader.h
 native/levels/lib/include/ioj/settings/capital_presentation_writer.h
 native/levels/lib/include/ioj/settings/controls_settings.h
+native/levels/lib/include/ioj/settings/controls_settings_reader.h
+native/levels/lib/include/ioj/settings/controls_settings_writer.h
 native/levels/lib/include/ioj/settings/entity_geometry.h
 native/levels/lib/include/ioj/settings/entity_geometry_reader.h
 native/levels/lib/include/ioj/settings/entity_geometry_writer.h
@@ -104,6 +108,8 @@ native/levels/lib/include/ioj/settings/turret_presentation.h
 native/levels/lib/include/ioj/settings/turret_presentation_reader.h
 native/levels/lib/include/ioj/settings/turret_presentation_writer.h
 native/levels/lib/include/ioj/settings/video_settings.h
+native/levels/lib/include/ioj/settings/video_settings_reader.h
+native/levels/lib/include/ioj/settings/video_settings_writer.h
 native/levels/lib/include/ioj/sim/capital_ships/capital_ship_sim_config.h
 native/levels/lib/include/ioj/sim/capital_ships/capital_ship_sim_config_reader.h
 native/levels/lib/include/ioj/sim/capital_ships/capital_ship_sim_config_writer.h

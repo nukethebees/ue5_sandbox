@@ -381,9 +381,10 @@ void Application::process_preferences(Window& window, std::span<host::Preference
     for (std::size_t index{}; index < count; ++index) {
         auto const& edit{edits[index]};
         if (edit.action != host::PreferenceAction::Save) {
-            auto result{edit.action == host::PreferenceAction::PreviewDisplay
-                            ? window.preview({edit.values.window_mode, edit.values.resolution})
-                            : window.revert_preview()};
+            auto result{
+                edit.action == host::PreferenceAction::PreviewDisplay
+                    ? window.preview({edit.values.video.window_mode, edit.values.video.resolution})
+                    : window.revert_preview()};
             host::preference_result(index, result ? std::string_view{} : result.error());
             continue;
         }
@@ -405,14 +406,14 @@ void Application::process_preferences(Window& window, std::span<host::Preference
 
         switch (edit.category) {
             case GameSettingCategory::Video:
-                settings_.apply(video_settings(edit.values));
+                settings_.apply(edit.values.video);
                 window.keep_preview(settings_);
                 break;
             case GameSettingCategory::Audio:
-                settings_.apply(audio_settings(edit.values));
+                settings_.apply(edit.values.audio);
                 break;
             case GameSettingCategory::Controls:
-                settings_.apply(controls_settings(edit.values));
+                settings_.apply(edit.values.controls);
                 break;
             case GameSettingCategory::Gameplay:
             case GameSettingCategory::Accessibility:

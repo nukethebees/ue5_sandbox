@@ -5,11 +5,9 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
-#include "ioj/settings/game_anti_aliasing_method.h"
-#include "ioj/settings/game_graphics_preset.h"
-#include "ioj/settings/game_quality_level.h"
-#include "ioj/settings/game_window_mode.h"
-#include "ioj/settings/screen_resolution.h"
+#include <ioj/settings/audio_settings.h>
+#include <ioj/settings/controls_settings.h>
+#include <ioj/settings/video_settings.h>
 
 #include <array>
 #include <cassert>
@@ -24,35 +22,9 @@ struct GameSettingsState {
     bool operator==(GameSettingsState const&) const = default;
 
     enum class Field : std::uint8_t {
-        resolution,
-        window_mode,
-        vsync,
-        frame_rate_limit,
-        resolution_scale,
-        overall_quality,
-        view_distance_quality,
-        aa_method,
-        aa_quality,
-        shadow_quality,
-        global_illumination_quality,
-        reflections_quality,
-        post_processing_quality,
-        texture_quality,
-        effects_quality,
-        shading_quality,
-        bloom,
-        motion_blur,
-        master_volume,
-        music_volume,
-        sfx_volume,
-        ui_volume,
-        mouse_turn_sensitivity,
-        gamepad_turn_sensitivity,
-        gamepad_turn_dead_zone,
-        invert_mouse_pitch,
-        invert_mouse_yaw,
-        invert_gamepad_pitch,
-        invert_gamepad_yaw,
+        video,
+        audio,
+        controls,
     };
 
     template <Field Selected, typename Self>
@@ -60,92 +32,14 @@ struct GameSettingsState {
         requires (std::same_as<std::remove_const_t<Self>, GameSettingsState> &&
                   std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
-        if constexpr (Selected == Field::resolution) {
-            return (self.resolution);
+        if constexpr (Selected == Field::video) {
+            return (self.video);
         }
-        if constexpr (Selected == Field::window_mode) {
-            return (self.window_mode);
+        if constexpr (Selected == Field::audio) {
+            return (self.audio);
         }
-        if constexpr (Selected == Field::vsync) {
-            return (self.vsync);
-        }
-        if constexpr (Selected == Field::frame_rate_limit) {
-            return (self.frame_rate_limit);
-        }
-        if constexpr (Selected == Field::resolution_scale) {
-            return (self.resolution_scale);
-        }
-        if constexpr (Selected == Field::overall_quality) {
-            return (self.overall_quality);
-        }
-        if constexpr (Selected == Field::view_distance_quality) {
-            return (self.view_distance_quality);
-        }
-        if constexpr (Selected == Field::aa_method) {
-            return (self.aa_method);
-        }
-        if constexpr (Selected == Field::aa_quality) {
-            return (self.aa_quality);
-        }
-        if constexpr (Selected == Field::shadow_quality) {
-            return (self.shadow_quality);
-        }
-        if constexpr (Selected == Field::global_illumination_quality) {
-            return (self.global_illumination_quality);
-        }
-        if constexpr (Selected == Field::reflections_quality) {
-            return (self.reflections_quality);
-        }
-        if constexpr (Selected == Field::post_processing_quality) {
-            return (self.post_processing_quality);
-        }
-        if constexpr (Selected == Field::texture_quality) {
-            return (self.texture_quality);
-        }
-        if constexpr (Selected == Field::effects_quality) {
-            return (self.effects_quality);
-        }
-        if constexpr (Selected == Field::shading_quality) {
-            return (self.shading_quality);
-        }
-        if constexpr (Selected == Field::bloom) {
-            return (self.bloom);
-        }
-        if constexpr (Selected == Field::motion_blur) {
-            return (self.motion_blur);
-        }
-        if constexpr (Selected == Field::master_volume) {
-            return (self.master_volume);
-        }
-        if constexpr (Selected == Field::music_volume) {
-            return (self.music_volume);
-        }
-        if constexpr (Selected == Field::sfx_volume) {
-            return (self.sfx_volume);
-        }
-        if constexpr (Selected == Field::ui_volume) {
-            return (self.ui_volume);
-        }
-        if constexpr (Selected == Field::mouse_turn_sensitivity) {
-            return (self.mouse_turn_sensitivity);
-        }
-        if constexpr (Selected == Field::gamepad_turn_sensitivity) {
-            return (self.gamepad_turn_sensitivity);
-        }
-        if constexpr (Selected == Field::gamepad_turn_dead_zone) {
-            return (self.gamepad_turn_dead_zone);
-        }
-        if constexpr (Selected == Field::invert_mouse_pitch) {
-            return (self.invert_mouse_pitch);
-        }
-        if constexpr (Selected == Field::invert_mouse_yaw) {
-            return (self.invert_mouse_yaw);
-        }
-        if constexpr (Selected == Field::invert_gamepad_pitch) {
-            return (self.invert_gamepad_pitch);
-        }
-        if constexpr (Selected == Field::invert_gamepad_yaw) {
-            return (self.invert_gamepad_yaw);
+        if constexpr (Selected == Field::controls) {
+            return (self.controls);
         }
     }
 
@@ -159,125 +53,28 @@ struct GameSettingsState {
         requires std::same_as<std::remove_const_t<Self>, GameSettingsState>
     {
         switch (field) {
-            case Field::resolution:
-                return invoke_field<Field::resolution>(self, std::forward<Visitor>(visitor));
-            case Field::window_mode:
-                return invoke_field<Field::window_mode>(self, std::forward<Visitor>(visitor));
-            case Field::vsync:
-                return invoke_field<Field::vsync>(self, std::forward<Visitor>(visitor));
-            case Field::frame_rate_limit:
-                return invoke_field<Field::frame_rate_limit>(self, std::forward<Visitor>(visitor));
-            case Field::resolution_scale:
-                return invoke_field<Field::resolution_scale>(self, std::forward<Visitor>(visitor));
-            case Field::overall_quality:
-                return invoke_field<Field::overall_quality>(self, std::forward<Visitor>(visitor));
-            case Field::view_distance_quality:
-                return invoke_field<Field::view_distance_quality>(self,
-                                                                  std::forward<Visitor>(visitor));
-            case Field::aa_method:
-                return invoke_field<Field::aa_method>(self, std::forward<Visitor>(visitor));
-            case Field::aa_quality:
-                return invoke_field<Field::aa_quality>(self, std::forward<Visitor>(visitor));
-            case Field::shadow_quality:
-                return invoke_field<Field::shadow_quality>(self, std::forward<Visitor>(visitor));
-            case Field::global_illumination_quality:
-                return invoke_field<Field::global_illumination_quality>(
-                    self, std::forward<Visitor>(visitor));
-            case Field::reflections_quality:
-                return invoke_field<Field::reflections_quality>(self,
-                                                                std::forward<Visitor>(visitor));
-            case Field::post_processing_quality:
-                return invoke_field<Field::post_processing_quality>(self,
-                                                                    std::forward<Visitor>(visitor));
-            case Field::texture_quality:
-                return invoke_field<Field::texture_quality>(self, std::forward<Visitor>(visitor));
-            case Field::effects_quality:
-                return invoke_field<Field::effects_quality>(self, std::forward<Visitor>(visitor));
-            case Field::shading_quality:
-                return invoke_field<Field::shading_quality>(self, std::forward<Visitor>(visitor));
-            case Field::bloom:
-                return invoke_field<Field::bloom>(self, std::forward<Visitor>(visitor));
-            case Field::motion_blur:
-                return invoke_field<Field::motion_blur>(self, std::forward<Visitor>(visitor));
-            case Field::master_volume:
-                return invoke_field<Field::master_volume>(self, std::forward<Visitor>(visitor));
-            case Field::music_volume:
-                return invoke_field<Field::music_volume>(self, std::forward<Visitor>(visitor));
-            case Field::sfx_volume:
-                return invoke_field<Field::sfx_volume>(self, std::forward<Visitor>(visitor));
-            case Field::ui_volume:
-                return invoke_field<Field::ui_volume>(self, std::forward<Visitor>(visitor));
-            case Field::mouse_turn_sensitivity:
-                return invoke_field<Field::mouse_turn_sensitivity>(self,
-                                                                   std::forward<Visitor>(visitor));
-            case Field::gamepad_turn_sensitivity:
-                return invoke_field<Field::gamepad_turn_sensitivity>(
-                    self, std::forward<Visitor>(visitor));
-            case Field::gamepad_turn_dead_zone:
-                return invoke_field<Field::gamepad_turn_dead_zone>(self,
-                                                                   std::forward<Visitor>(visitor));
-            case Field::invert_mouse_pitch:
-                return invoke_field<Field::invert_mouse_pitch>(self,
-                                                               std::forward<Visitor>(visitor));
-            case Field::invert_mouse_yaw:
-                return invoke_field<Field::invert_mouse_yaw>(self, std::forward<Visitor>(visitor));
-            case Field::invert_gamepad_pitch:
-                return invoke_field<Field::invert_gamepad_pitch>(self,
-                                                                 std::forward<Visitor>(visitor));
-            case Field::invert_gamepad_yaw:
-                return invoke_field<Field::invert_gamepad_yaw>(self,
-                                                               std::forward<Visitor>(visitor));
+            case Field::video:
+                return invoke_field<Field::video>(self, std::forward<Visitor>(visitor));
+            case Field::audio:
+                return invoke_field<Field::audio>(self, std::forward<Visitor>(visitor));
+            case Field::controls:
+                return invoke_field<Field::controls>(self, std::forward<Visitor>(visitor));
         }
         assert((false && "Invalid record field"));
         std::unreachable();
     }
 
-    ScreenResolution resolution{};
-    GameWindowMode window_mode{};
-    bool vsync{};
-    float frame_rate_limit{};
-    float resolution_scale{};
-    GameGraphicsPreset overall_quality{};
-    GameQualityLevel view_distance_quality{};
-    GameAntiAliasingMethod aa_method{};
-    GameQualityLevel aa_quality{};
-    GameQualityLevel shadow_quality{};
-    GameQualityLevel global_illumination_quality{};
-    GameQualityLevel reflections_quality{};
-    GameQualityLevel post_processing_quality{};
-    GameQualityLevel texture_quality{};
-    GameQualityLevel effects_quality{};
-    GameQualityLevel shading_quality{};
-    bool bloom{};
-    bool motion_blur{};
-    float master_volume{};
-    float music_volume{};
-    float sfx_volume{};
-    float ui_volume{};
-    float mouse_turn_sensitivity{};
-    float gamepad_turn_sensitivity{};
-    float gamepad_turn_dead_zone{};
-    bool invert_mouse_pitch{};
-    bool invert_mouse_yaw{};
-    bool invert_gamepad_pitch{};
-    bool invert_gamepad_yaw{};
+    VideoSettings video{};
+    AudioSettings audio{};
+    ControlsSettings controls{};
 };
 
 template <>
 [[nodiscard]] constexpr auto enum_count<GameSettingsState::Field>() noexcept -> std::size_t {
-    return 29ULL;
+    return 3ULL;
 }
 
 template <>
-inline constexpr auto enum_strings<GameSettingsState::Field, Name>{PackedStrings{
-    "resolution\000window_mode\000vsync\000frame_rate_limit\000resolution_scale\000overall_"
-    "quality\000view_distance_quality\000aa_method\000aa_quality\000shadow_quality\000global_"
-    "illumination_quality\000reflections_quality\000post_processing_quality\000texture_"
-    "quality\000effects_quality\000shading_quality\000bloom\000motion_blur\000master_"
-    "volume\000music_volume\000sfx_volume\000ui_volume\000mouse_turn_sensitivity\000gamepad_turn_"
-    "sensitivity\000gamepad_turn_dead_zone\000invert_mouse_pitch\000invert_mouse_yaw\000invert_"
-    "gamepad_pitch\000invert_gamepad_yaw",
-    std::array<std::uint16_t, 30>{0,   11,  23,  29,  46,  63,  79,  101, 111, 122,
-                                  137, 165, 185, 209, 225, 241, 257, 263, 275, 289,
-                                  302, 313, 323, 346, 371, 394, 413, 430, 451, 470}}};
+inline constexpr auto enum_strings<GameSettingsState::Field, Name>{
+    PackedStrings{"video\000audio\000controls", std::array<std::uint8_t, 4>{0, 6, 12, 21}}};
 } // namespace ioj

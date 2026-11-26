@@ -1073,7 +1073,8 @@ auto SchemaParser::resolve_settings_storage(Declarations const& declarations,
 
 auto SchemaParser::parse_setting(Declarations& declarations,
                                  sexpr::FormId const form,
-                                 DeclarationHandle storage) -> SettingId {
+                                 DeclarationHandle storage,
+                                 std::optional<StringId> scope) -> SettingId {
     Fields const fields{parser_, form, "setting", 2};
     fields.validate({P::tooltip, P::category, P::backend, P::apply, P::device}, {"control"});
     if (fields.declarations().size() != 1) {
@@ -1088,8 +1089,19 @@ auto SchemaParser::parse_setting(Declarations& declarations,
     records.tooltip[record_index] = optional_text_id(fields, P::tooltip);
     records.category[record_index] =
         parser_.identifier(fields.required(P::category), "setting category");
-    auto const members{declarations.items(declarations.records.members[storage])};
+    auto const groups{declarations.items(declarations.records.members[storage])};
     auto const& children{declarations.child_occurrences};
+    auto const group{std::ranges::find(groups,
+                                       records.category[record_index],
+                                       [&](ChildOccurrenceId id) { return children.name[id]; })};
+    if (group == groups.end()) {
+        parser_.fail(form, "Setting category has no matching state record member");
+    }
+
+    auto const group_type{declarations.type_refs.name[children.type[*group]]};
+    auto const category_record{
+        resolve_settings_storage(declarations, form, group_type, scope).first};
+    auto const members{declarations.items(declarations.records.members[category_record])};
     auto const member{std::ranges::find(members,
                                         records.name[record_index],
                                         [&](ChildOccurrenceId id) { return children.name[id]; })};
@@ -1747,7 +1759,11 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
                         categories.push_back(record_id);
                     }
                 } else {
-                    settings.push_back(parse_setting(declarations, declaration, state));
+                    settings.push_back(
+                        parse_setting(declarations,
+                                      declaration,
+                                      state,
+                                      declarations.module_settings_store.namespace_name[owner]));
                 }
             } catch (sexpr::SourceError const& error) {
                 if (!first_error) {

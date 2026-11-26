@@ -3,15 +3,162 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/settings/game_anti_aliasing_method.h"
 #include "ioj/settings/game_graphics_preset.h"
 #include "ioj/settings/game_quality_level.h"
 #include "ioj/settings/game_window_mode.h"
 #include "ioj/settings/screen_resolution.h"
 
+#include <array>
+#include <cassert>
+#include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj {
 struct VideoSettings {
     bool operator==(VideoSettings const&) const = default;
+
+    enum class Field : std::uint8_t {
+        resolution,
+        window_mode,
+        vsync,
+        frame_rate_limit,
+        resolution_scale,
+        overall_quality,
+        view_distance_quality,
+        aa_method,
+        aa_quality,
+        shadow_quality,
+        global_illumination_quality,
+        reflections_quality,
+        post_processing_quality,
+        texture_quality,
+        effects_quality,
+        shading_quality,
+        bloom,
+        motion_blur,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, VideoSettings> &&
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
+    {
+        if constexpr (Selected == Field::resolution) {
+            return (self.resolution);
+        }
+        if constexpr (Selected == Field::window_mode) {
+            return (self.window_mode);
+        }
+        if constexpr (Selected == Field::vsync) {
+            return (self.vsync);
+        }
+        if constexpr (Selected == Field::frame_rate_limit) {
+            return (self.frame_rate_limit);
+        }
+        if constexpr (Selected == Field::resolution_scale) {
+            return (self.resolution_scale);
+        }
+        if constexpr (Selected == Field::overall_quality) {
+            return (self.overall_quality);
+        }
+        if constexpr (Selected == Field::view_distance_quality) {
+            return (self.view_distance_quality);
+        }
+        if constexpr (Selected == Field::aa_method) {
+            return (self.aa_method);
+        }
+        if constexpr (Selected == Field::aa_quality) {
+            return (self.aa_quality);
+        }
+        if constexpr (Selected == Field::shadow_quality) {
+            return (self.shadow_quality);
+        }
+        if constexpr (Selected == Field::global_illumination_quality) {
+            return (self.global_illumination_quality);
+        }
+        if constexpr (Selected == Field::reflections_quality) {
+            return (self.reflections_quality);
+        }
+        if constexpr (Selected == Field::post_processing_quality) {
+            return (self.post_processing_quality);
+        }
+        if constexpr (Selected == Field::texture_quality) {
+            return (self.texture_quality);
+        }
+        if constexpr (Selected == Field::effects_quality) {
+            return (self.effects_quality);
+        }
+        if constexpr (Selected == Field::shading_quality) {
+            return (self.shading_quality);
+        }
+        if constexpr (Selected == Field::bloom) {
+            return (self.bloom);
+        }
+        if constexpr (Selected == Field::motion_blur) {
+            return (self.motion_blur);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, VideoSettings>
+    {
+        switch (field) {
+            case Field::resolution:
+                return invoke_field<Field::resolution>(self, std::forward<Visitor>(visitor));
+            case Field::window_mode:
+                return invoke_field<Field::window_mode>(self, std::forward<Visitor>(visitor));
+            case Field::vsync:
+                return invoke_field<Field::vsync>(self, std::forward<Visitor>(visitor));
+            case Field::frame_rate_limit:
+                return invoke_field<Field::frame_rate_limit>(self, std::forward<Visitor>(visitor));
+            case Field::resolution_scale:
+                return invoke_field<Field::resolution_scale>(self, std::forward<Visitor>(visitor));
+            case Field::overall_quality:
+                return invoke_field<Field::overall_quality>(self, std::forward<Visitor>(visitor));
+            case Field::view_distance_quality:
+                return invoke_field<Field::view_distance_quality>(self,
+                                                                  std::forward<Visitor>(visitor));
+            case Field::aa_method:
+                return invoke_field<Field::aa_method>(self, std::forward<Visitor>(visitor));
+            case Field::aa_quality:
+                return invoke_field<Field::aa_quality>(self, std::forward<Visitor>(visitor));
+            case Field::shadow_quality:
+                return invoke_field<Field::shadow_quality>(self, std::forward<Visitor>(visitor));
+            case Field::global_illumination_quality:
+                return invoke_field<Field::global_illumination_quality>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::reflections_quality:
+                return invoke_field<Field::reflections_quality>(self,
+                                                                std::forward<Visitor>(visitor));
+            case Field::post_processing_quality:
+                return invoke_field<Field::post_processing_quality>(self,
+                                                                    std::forward<Visitor>(visitor));
+            case Field::texture_quality:
+                return invoke_field<Field::texture_quality>(self, std::forward<Visitor>(visitor));
+            case Field::effects_quality:
+                return invoke_field<Field::effects_quality>(self, std::forward<Visitor>(visitor));
+            case Field::shading_quality:
+                return invoke_field<Field::shading_quality>(self, std::forward<Visitor>(visitor));
+            case Field::bloom:
+                return invoke_field<Field::bloom>(self, std::forward<Visitor>(visitor));
+            case Field::motion_blur:
+                return invoke_field<Field::motion_blur>(self, std::forward<Visitor>(visitor));
+        }
+        assert((false && "Invalid record field"));
+        std::unreachable();
+    }
 
     ScreenResolution resolution{};
     GameWindowMode window_mode{};
@@ -32,4 +179,18 @@ struct VideoSettings {
     bool bloom{};
     bool motion_blur{};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<VideoSettings::Field>() noexcept -> std::size_t {
+    return 18ULL;
+}
+
+template <>
+inline constexpr auto enum_strings<VideoSettings::Field, Name>{PackedStrings{
+    "resolution\000window_mode\000vsync\000frame_rate_limit\000resolution_scale\000overall_"
+    "quality\000view_distance_quality\000aa_method\000aa_quality\000shadow_quality\000global_"
+    "illumination_quality\000reflections_quality\000post_processing_quality\000texture_"
+    "quality\000effects_quality\000shading_quality\000bloom\000motion_blur",
+    std::array<std::uint16_t, 19>{
+        0, 11, 23, 29, 46, 63, 79, 101, 111, 122, 137, 165, 185, 209, 225, 241, 257, 263, 275}}};
 } // namespace ioj

@@ -147,8 +147,8 @@ TEST(NativeSettings, WindowSizeOverrideSurvivesAnUnrelatedAudioSave) {
     ASSERT_TRUE(config) << config.error();
 
     auto saved{config->applied};
-    saved.window_mode = GameWindowMode::Windowed;
-    saved.resolution = {960, 540};
+    saved.video.window_mode = GameWindowMode::Windowed;
+    saved.video.resolution = {960, 540};
     ASSERT_TRUE(save_user_settings(path, saved, config->defaults));
 
     PlayerSettings first;
@@ -157,9 +157,9 @@ TEST(NativeSettings, WindowSizeOverrideSurvivesAnUnrelatedAudioSave) {
     ASSERT_TRUE(second.load(IOJ_LEVEL_SCRIPTS, path, desktop, LaunchDisplayMode::Windowed));
     first.set_running_display({GameWindowMode::Windowed, {800, 500}});
     auto edited{first.applied()};
-    edited.master_volume = saved.master_volume == 0.25f ? 0.75f : 0.25f;
+    edited.audio.master_volume = saved.audio.master_volume == 0.25f ? 0.75f : 0.25f;
     auto const before{first.applied()};
-    first.apply(audio_settings(edited));
+    first.apply(edited.audio);
 
     auto const backup{directory.path() / "previous.scm"};
     std::filesystem::rename(path, backup);
@@ -170,7 +170,7 @@ TEST(NativeSettings, WindowSizeOverrideSurvivesAnUnrelatedAudioSave) {
 
     ASSERT_TRUE(first.save_category(GameSettingCategory::Audio, edited, before));
     EXPECT_EQ(second.applied(), saved);
-    saved.master_volume = edited.master_volume;
+    saved.audio.master_volume = edited.audio.master_volume;
     auto persisted{read_user_settings(IOJ_LEVEL_SCRIPTS, path, desktop)};
     ASSERT_TRUE(persisted) << persisted.error();
     EXPECT_EQ(persisted->applied, saved);
@@ -184,7 +184,7 @@ TEST(NativeSettings, PersonalPreferencesRoundTripEveryEditableScalar) {
     auto const config{read_user_settings(scripts, path, desktop)};
     ASSERT_TRUE(config) << config.error();
     ASSERT_EQ(config->applied, config->defaults);
-    EXPECT_EQ(config->defaults.resolution, desktop);
+    EXPECT_EQ(config->defaults.video.resolution, desktop);
     auto const app{read_application_settings(scripts)};
     ASSERT_TRUE(app) << app.error();
 
@@ -217,7 +217,7 @@ TEST(NativeSettings, PersonalPreferencesRoundTripEveryEditableScalar) {
         ASSERT_TRUE(set_game_setting_value(changed, descriptor.id, replacement));
     }
 
-    changed.overall_quality = graphics_preset(changed);
+    changed.video.overall_quality = graphics_preset(changed);
     auto const saved{save_user_settings(path, changed, config->defaults)};
     ASSERT_TRUE(saved) << saved.error();
     auto const loaded{read_user_settings(scripts, path, desktop)};
@@ -234,17 +234,19 @@ TEST(NativeSettings, HandEditedPreferencesSurviveUnrealSavedRemovalAndReportInva
     std::filesystem::create_directories(path.parent_path());
     std::filesystem::create_directories(ini.parent_path());
     auto const personal_source{[](std::string_view overrides) {
-        return module_source("preferences",
-                             std::format("(copy-with (module-ref (import-module "
-                                         "\"Settings/user-defaults.scm\") 'preferences) {})",
-                                         overrides));
+        return module_source(
+            "preferences",
+            std::format("(let ((base (module-ref (import-module \"Settings/user-defaults.scm\") "
+                        "'preferences))) (copy-with base :controls (copy-with (user-settings-ref "
+                        "base :controls) {})))",
+                        overrides));
     }};
     ASSERT_TRUE(write_files({{path, personal_source(":mouse-turn-sensitivity 2")},
                              {ini, "[GameUserSettings]\nMouseTurnSensitivity=0.5"}}));
     auto read = [&] { return read_user_settings(IOJ_LEVEL_SCRIPTS, path, {1920, 1080}); };
     auto const loaded{read()};
     ASSERT_TRUE(loaded) << loaded.error();
-    EXPECT_EQ(loaded->applied.mouse_turn_sensitivity, 2.f);
+    EXPECT_EQ(loaded->applied.controls.mouse_turn_sensitivity, 2.f);
     std::filesystem::remove_all(directory.path() / "Saved");
     auto const reloaded{read()};
     ASSERT_TRUE(reloaded) << reloaded.error();
@@ -271,17 +273,19 @@ TEST(NativeSettings, SavedPreferencesInheritNewDefaultsUntilOverridden) {
     auto const initial{read()};
     ASSERT_TRUE(initial) << initial.error();
     auto personal{initial->applied};
-    personal.mouse_turn_sensitivity = 2.f;
+    personal.controls.mouse_turn_sensitivity = 2.f;
     ASSERT_TRUE(save_user_settings(path, personal, initial->defaults));
 
     std::filesystem::rename(defaults, settings / "original.scm");
     ASSERT_TRUE(write_files({{defaults, module_source("preferences", R"(
-        (copy-with (module-ref (import-module "Settings/original.scm") 'preferences)
-                   :music-volume 0.375 :mouse-turn-sensitivity 1))")}}));
+        (let ((base (module-ref (import-module "Settings/original.scm") 'preferences)))
+          (copy-with base
+            :audio (copy-with (user-settings-ref base :audio) :music-volume 0.375)
+            :controls (copy-with (user-settings-ref base :controls) :mouse-turn-sensitivity 1))))")}}));
     auto const updated{read()};
     ASSERT_TRUE(updated) << updated.error();
-    EXPECT_EQ(updated->applied.music_volume, 0.375f);
-    EXPECT_EQ(updated->applied.mouse_turn_sensitivity, 2.f);
+    EXPECT_EQ(updated->applied.audio.music_volume, 0.375f);
+    EXPECT_EQ(updated->applied.controls.mouse_turn_sensitivity, 2.f);
     ASSERT_TRUE(save_user_settings(path, updated->defaults, updated->defaults));
     auto const reset_source{read_file(path)};
     ASSERT_TRUE(reset_source);

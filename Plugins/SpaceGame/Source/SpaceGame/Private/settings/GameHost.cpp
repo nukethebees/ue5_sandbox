@@ -124,7 +124,7 @@ void IojPlayer_Detach() {
 
 auto IojPlayer_ApplyPreferences() -> bool {
     auto const& values{player_settings().applied()};
-    if (auto result{FGameVideoSettings{}.apply_quality(video_settings(values))}; !result) {
+    if (auto result{FGameVideoSettings{}.apply_quality(values.video)}; !result) {
         UE_LOG(LogTemp,
                Error,
                TEXT("Applying video preferences failed: %s"),
@@ -134,10 +134,10 @@ auto IojPlayer_ApplyPreferences() -> bool {
 
     auto* audio{GEngine->GameViewport->GetWorld()->GetGameInstance()->GetSubsystem<UGameAudio>()};
     check(audio);
-    audio->set_master_volume(values.master_volume);
-    audio->set_music_volume(values.music_volume);
-    audio->set_sfx_volume(values.sfx_volume);
-    audio->set_ui_volume(values.ui_volume);
+    audio->set_master_volume(values.audio.master_volume);
+    audio->set_music_volume(values.audio.music_volume);
+    audio->set_sfx_volume(values.audio.sfx_volume);
+    audio->set_ui_volume(values.audio.ui_volume);
     return true;
 }
 

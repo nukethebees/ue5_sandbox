@@ -3,13 +3,83 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+
+#include <array>
+#include <cassert>
+#include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj {
 struct AudioSettings {
     bool operator==(AudioSettings const&) const = default;
+
+    enum class Field : std::uint8_t {
+        master_volume,
+        music_volume,
+        sfx_volume,
+        ui_volume,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, AudioSettings> &&
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
+    {
+        if constexpr (Selected == Field::master_volume) {
+            return (self.master_volume);
+        }
+        if constexpr (Selected == Field::music_volume) {
+            return (self.music_volume);
+        }
+        if constexpr (Selected == Field::sfx_volume) {
+            return (self.sfx_volume);
+        }
+        if constexpr (Selected == Field::ui_volume) {
+            return (self.ui_volume);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, AudioSettings>
+    {
+        switch (field) {
+            case Field::master_volume:
+                return invoke_field<Field::master_volume>(self, std::forward<Visitor>(visitor));
+            case Field::music_volume:
+                return invoke_field<Field::music_volume>(self, std::forward<Visitor>(visitor));
+            case Field::sfx_volume:
+                return invoke_field<Field::sfx_volume>(self, std::forward<Visitor>(visitor));
+            case Field::ui_volume:
+                return invoke_field<Field::ui_volume>(self, std::forward<Visitor>(visitor));
+        }
+        assert((false && "Invalid record field"));
+        std::unreachable();
+    }
 
     float master_volume{};
     float music_volume{};
     float sfx_volume{};
     float ui_volume{};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<AudioSettings::Field>() noexcept -> std::size_t {
+    return 4ULL;
+}
+
+template <>
+inline constexpr auto enum_strings<AudioSettings::Field, Name>{
+    PackedStrings{"master_volume\000music_volume\000sfx_volume\000ui_volume",
+                  std::array<std::uint8_t, 5>{0, 14, 27, 38, 48}}};
 } // namespace ioj

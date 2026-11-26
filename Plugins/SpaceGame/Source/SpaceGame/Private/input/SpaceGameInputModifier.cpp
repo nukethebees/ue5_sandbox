@@ -42,7 +42,7 @@ auto USpaceGameInputModifier::ModifyRaw_Implementation(
     FInputActionValue current_value,
     float const delta_time) -> FInputActionValue {
     static_cast<void>(delta_time);
-    auto const& values{player_settings().applied()};
+    auto const& values{player_settings().applied().controls};
     auto const response_type{native_response(response)};
     auto const response_axis{native_axis(axis)};
     switch (current_value.GetValueType()) {

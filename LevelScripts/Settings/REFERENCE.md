@@ -30,34 +30,9 @@
 
 | Member | Type | Enum values |
 | --- | --- | --- |
-| `:resolution` | `ScreenResolution` | |
-| `:window-mode` | `GameWindowMode` | `'windowed` `'borderless` `'fullscreen` |
-| `:vsync` | `bool` | |
-| `:frame-rate-limit` | `float` | |
-| `:resolution-scale` | `float` | |
-| `:view-distance-quality` | `GameQualityLevel` | `'low` `'medium` `'high` `'epic` |
-| `:aa-method` | `GameAntiAliasingMethod` | `'off` `'fxaa` `'taa` `'tsr` `'smaa` |
-| `:aa-quality` | `GameQualityLevel` | `'low` `'medium` `'high` `'epic` |
-| `:shadow-quality` | `GameQualityLevel` | `'low` `'medium` `'high` `'epic` |
-| `:global-illumination-quality` | `GameQualityLevel` | `'low` `'medium` `'high` `'epic` |
-| `:reflections-quality` | `GameQualityLevel` | `'low` `'medium` `'high` `'epic` |
-| `:post-processing-quality` | `GameQualityLevel` | `'low` `'medium` `'high` `'epic` |
-| `:texture-quality` | `GameQualityLevel` | `'low` `'medium` `'high` `'epic` |
-| `:effects-quality` | `GameQualityLevel` | `'low` `'medium` `'high` `'epic` |
-| `:shading-quality` | `GameQualityLevel` | `'low` `'medium` `'high` `'epic` |
-| `:bloom` | `bool` | |
-| `:motion-blur` | `bool` | |
-| `:master-volume` | `float` | |
-| `:music-volume` | `float` | |
-| `:sfx-volume` | `float` | |
-| `:ui-volume` | `float` | |
-| `:mouse-turn-sensitivity` | `float` | |
-| `:gamepad-turn-sensitivity` | `float` | |
-| `:gamepad-turn-dead-zone` | `float` | |
-| `:invert-mouse-pitch` | `bool` | |
-| `:invert-mouse-yaw` | `bool` | |
-| `:invert-gamepad-pitch` | `bool` | |
-| `:invert-gamepad-yaw` | `bool` | |
+| `:video` | `VideoSettings` | |
+| `:audio` | `AudioSettings` | |
+| `:controls` | `ControlsSettings` | |
 
 ## `entity-geometry`
 
@@ -206,13 +181,6 @@
 | `:galactic-haze` | `GalacticHazeSettings` | |
 | `:galactic-core` | `GalacticCoreSettings` | |
 | `:nebular-knot` | `NebularKnotSettings` | |
-
-## `resolution`
-
-| Member | Type | Enum values |
-| --- | --- | --- |
-| `width` | `std::int32_t` | |
-| `height` | `std::int32_t` | |
 
 ## `mesh-bounds`
 
