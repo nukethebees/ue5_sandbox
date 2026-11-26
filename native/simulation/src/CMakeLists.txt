@@ -4,8 +4,6 @@ set(simulation_headers
   damage_queue.h
   deterministic_bias.h
   direct_damage_events.h
-  fixed_tick.h
-  fixed_tick_loop.h
   index_span.h
   overlap_handler.h
   profiling.h
@@ -169,7 +167,6 @@ target_sources(native-simulation
     combat_statistics.cpp
     collision/entity_world_bounds.cpp
     fighters/fighter_navigation.cpp
-    fixed_tick.cpp
     levels/level_memory_manager.cpp
     levels/level_read_access.cpp
     levels/level_sim.cpp

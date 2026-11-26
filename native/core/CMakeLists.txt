@@ -18,6 +18,7 @@ target_sources(native-core
     include/ioj/rotator_types.h
     include/ioj/rotators3f.h
     include/ioj/rotator_math.h
+    src/fixed_tick.cpp
     src/rotator_math.cpp
     include/ioj/math_types.h
     include/ioj/transform3d.h

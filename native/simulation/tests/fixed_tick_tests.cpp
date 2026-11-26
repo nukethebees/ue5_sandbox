@@ -1,5 +1,5 @@
-#include "ioj/sim/fixed_tick.h"
-#include "ioj/sim/fixed_tick_loop.h"
+#include "ioj/fixed_tick.h"
+#include "ioj/fixed_tick_loop.h"
 #include "ioj/sim/sim_time.h"
 #include <ioj/sim/levels/simulation_settings.h>
 #include <ioj/sim/sim_clock.h>

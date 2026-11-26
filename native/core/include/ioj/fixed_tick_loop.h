@@ -1,10 +1,10 @@
 #pragma once
 
-#include "ioj/sim/fixed_tick.h"
+#include "ioj/fixed_tick.h"
 #include <ioj/constrained_numbers.h>
 #include <ioj/frequency.h>
 
-namespace ioj::sim {
+namespace ioj {
 struct FixedTickLoop {
     void initialise() { accumulator = 0.0; }
 

@@ -1,7 +1,7 @@
 #pragma once
 
+#include <ioj/fixed_tick_loop.h>
 #include <ioj/settings/tick_settings.h>
-#include <ioj/sim/fixed_tick_loop.h>
 #include <ioj/sim/sim_time.h>
 #include <ioj/sim/simulation_phase.h>
 

@@ -1,6 +1,6 @@
-#include "ioj/sim/fixed_tick.h"
+#include "ioj/fixed_tick.h"
 
-namespace ioj::sim {
+namespace ioj {
 auto tick_loop_period(double const tick_rate) noexcept -> double {
     return 1.0 / tick_rate;
 }

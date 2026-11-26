@@ -7,7 +7,7 @@
 #include <ioj/presentation/player_flight_hud_data.h>
 #include <ioj/presentation/player_status_hud_data.h>
 #include <ioj/presentation/sampled_speed_hud_view.h>
-#include <ioj/sim/fixed_tick_loop.h>
+#include <ioj/fixed_tick_loop.h>
 #include <ioj/sim/levels/hud_settings.h>
 #include <ioj/sim/levels/level_read_access.h>
 
