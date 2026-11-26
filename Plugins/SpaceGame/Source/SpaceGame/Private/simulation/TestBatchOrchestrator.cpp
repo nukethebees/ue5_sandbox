@@ -235,7 +235,7 @@ auto ATestBatchOrchestrator::prepare_level(presentation::MissionInit const& miss
 }
 
 auto ATestBatchOrchestrator::bind_level(presentation::MissionInit const& mission,
-                                        presentation::MissionFrame const& frame, sim::LevelSim const& level) -> bool {
+                                        presentation::MissionFrame const& frame) -> bool {
     check(!status_);
     auto const resources{get_presentation_resources(mission)};
     auto* const audio{GetGameInstance()->GetSubsystem<UGameAudio>()};
@@ -250,7 +250,7 @@ auto ATestBatchOrchestrator::bind_level(presentation::MissionInit const& mission
 
     if (is_presentation_enabled()) {
         presentation_host_.initialise(
-            resources.config, resources.player, audio->facade(), mission, frame, level.read_access());
+            resources.config, resources.player, audio->facade(), mission, frame);
         auto* controller{
             CastChecked<ASpaceGamePlayerController>(GetWorld()->GetFirstPlayerController())};
         if (IsValid(player_ship)) {
@@ -338,13 +338,13 @@ auto ATestBatchOrchestrator::take_frame_delta_seconds() -> std::optional<double>
     return std::exchange(frame_delta_seconds_, std::nullopt);
 }
 void ATestBatchOrchestrator::present_level(time_type const delta_seconds,
-                                           presentation::MissionFrame const& frame, sim::LevelSim const& level) {
+                                           presentation::MissionFrame const& frame) {
     check(status_);
     status_ = frame.status;
     if (IsValid(player_ship) && frame.player) {
         player_ship->present_player(*frame.player);
     }
-    presentation_host_.tick(delta_seconds, frame, level.read_access());
+    presentation_host_.tick(delta_seconds, frame);
 
     for (auto const victim : frame.events.victims) {
         if (victim.entity_type() == sim::EntityType::PlayerShip && IsValid(player_ship)) {

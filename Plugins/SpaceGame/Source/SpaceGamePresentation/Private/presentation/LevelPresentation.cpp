@@ -1,6 +1,5 @@
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 
-#include <ioj/sim/entities/entity_tables.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 
@@ -14,7 +13,7 @@ auto FLevelPresentationResources::is_valid() const -> bool {
            IsValid(spinners) && IsValid(sparks);
 }
 FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resources,
-                                       presentation::MissionFrame const& frame, sim::LevelReadAccess const& view,
+                                       presentation::MissionFrame const& frame,
                                        FGameAudioFacade audio)
     : config_{resources.config}
     , audio_{audio}
@@ -72,7 +71,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     lasers.begin_play_presentation(frame.lasers, config.laser_instance_reserve);
 }
 
-void FLevelPresentation::tick(float const dt, presentation::MissionFrame const& frame, sim::LevelReadAccess const& view) {
+void FLevelPresentation::tick(float const dt, presentation::MissionFrame const& frame) {
     auto const completed_tick{frame.status.completed_tick};
     if (last_completed_tick_ == completed_tick) {
         sparks.commit(dt);

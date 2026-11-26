@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ioj/presentation/mission_frame.h>
 #include <ioj/presentation/mission_init.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
@@ -36,9 +35,9 @@ class SPACEGAMEPRESENTATION_API FLevelPresentationHost {
                     TOptional<FPlayerPresentationResources> player,
                     FGameAudioFacade audio,
                     presentation::MissionInit const& mission,
-                    presentation::MissionFrame const& frame, sim::LevelReadAccess const& view);
+                    presentation::MissionFrame const& frame);
     void reset();
-    void tick(double dt, presentation::MissionFrame const& frame, sim::LevelReadAccess const& view);
+    void tick(double dt, presentation::MissionFrame const& frame);
 
     auto make_resources(FLevelVisualConfig const& config,
                         TOptional<FPlayerPresentationResources> player) const

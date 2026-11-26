@@ -68,7 +68,7 @@ void open_menu(std::string_view preferred_level_id, std::string_view error) {
     UGameplayStatics::OpenLevel(GEngine->GameViewport->GetWorld(),
                                 TEXT("/SpaceGame/Levels/MainMenu"));
 }
-auto bind_level(presentation::MissionInit const& mission, presentation::MissionFrame const& frame, sim::LevelSim const& level)
+auto bind_level(presentation::MissionInit const& mission, presentation::MissionFrame const& frame)
     -> bool {
     auto result{level_world->prepare_level(mission)};
     if (!result) {
@@ -77,7 +77,7 @@ auto bind_level(presentation::MissionInit const& mission, presentation::MissionF
         return false;
     }
 
-    return level_world->bind_level(mission, frame, level);
+    return level_world->bind_level(mission, frame);
 }
 auto presents_level() -> bool {
     return level_world.IsValid() && level_world->has_level();
@@ -86,8 +86,8 @@ auto take_frame_delta_seconds() -> std::optional<double> {
     return level_world->take_frame_delta_seconds();
 }
 
-void present_level(double delta_seconds, presentation::MissionFrame const& frame, sim::LevelSim const& level) {
-    level_world->present_level(delta_seconds, frame, level);
+void present_level(double delta_seconds, presentation::MissionFrame const& frame) {
+    level_world->present_level(delta_seconds, frame);
 }
 void simulation_paused() {
     level_world->on_simulation_paused.Broadcast();

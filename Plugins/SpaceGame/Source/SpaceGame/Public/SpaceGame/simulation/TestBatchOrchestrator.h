@@ -1,7 +1,6 @@
 #pragma once
 #include <ioj/presentation/mission_frame.h>
 #include <ioj/presentation/mission_init.h>
-#include <ioj/sim/levels/level_sim.h>
 #include <SpaceGame/levels/LevelCompletion.h>
 #include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -35,10 +34,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     ATestBatchOrchestrator();
 
     void PostLoad() override;
-    void present_level(time_type delta_seconds, presentation::MissionFrame const& frame, sim::LevelSim const& level);
+    void present_level(time_type delta_seconds, presentation::MissionFrame const& frame);
     auto prepare_level(presentation::MissionInit const& mission) -> FLevelLoadResult;
     auto bind_level(presentation::MissionInit const& mission,
-                    presentation::MissionFrame const& frame, sim::LevelSim const& level) -> bool;
+                    presentation::MissionFrame const& frame) -> bool;
     auto take_frame_delta_seconds() -> std::optional<double>;
     void handle_level_start_failure(FString message);
     void finish_level(profiles::CompletedLevel const& completed,
