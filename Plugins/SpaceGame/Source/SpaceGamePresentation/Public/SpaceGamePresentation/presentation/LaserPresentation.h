@@ -1,8 +1,6 @@
 #pragma once
 
-#include <ioj/sim/lasers/laser_source.h>
-#include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/levels/simulation_frame_events.h>
+#include <ioj/presentation/mission_frame.h>
 #include <SpaceGamePresentation/entities/TeamColours.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
@@ -32,17 +30,17 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
     }
     void set_spark_effects(FSparkEffects& effects) noexcept { spark_effects_ = &effects; }
   private:
-    auto simulation() const -> sim::lasers::Sim const& { return *simulation_; }
-
     void clear_runtime_state_presentation();
-    void begin_play_presentation(int32 reserve);
-    void update_visual_data(sim::SimulationFrameEvents const* impacts);
+    void begin_play_presentation(presentation::LaserView const& lasers, int32 reserve);
+    void update_visual_data(presentation::LaserView const& lasers,
+                            presentation::FrameEvents const* impacts);
     void end_tick_presentation();
 
     void configure_ismc();
-    void fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) const;
-    void update_ismc();
-    void queue_hit_sparks(sim::SimulationFrameEvents const& impacts);
+    void fill_chunk(presentation::LaserView const& lasers,
+                    FSandboxISMCInstanceChunkWriter& chunk) const;
+    void update_ismc(presentation::LaserView const& lasers);
+    void queue_hit_sparks(presentation::FrameEvents const& impacts);
 
     FLaserProjectileConfig const* actor_config{nullptr};
 
@@ -57,7 +55,6 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
     bool debugging_shapes_enabled{false};
 #endif
 
-    sim::lasers::Sim const* simulation_{};
     FTeamColours player_colours_;
     FTeamColours fighter_colours_;
     FTeamColours turret_colours_;

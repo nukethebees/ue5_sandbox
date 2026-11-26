@@ -35,7 +35,8 @@ void FLaserPresentation::clear_runtime_state_presentation() {
     visible_indices_.Reset();
 }
 
-void FLaserPresentation::begin_play_presentation(int32 reserve) {
+void FLaserPresentation::begin_play_presentation(presentation::LaserView const& lasers,
+                                                 int32 reserve) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::begin_play_presentation);
     TRACE_COUNTER_SET(SandboxTestLaserISMCCount, 0);
 
@@ -54,12 +55,13 @@ void FLaserPresentation::begin_play_presentation(int32 reserve) {
     debug_drawer.world = instances->GetWorld();
 #endif
 
-    update_visual_data(nullptr);
+    update_visual_data(lasers, nullptr);
 }
 
-void FLaserPresentation::update_visual_data(sim::SimulationFrameEvents const* impacts) {
+void FLaserPresentation::update_visual_data(presentation::LaserView const& lasers,
+                                            presentation::FrameEvents const* impacts) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_visual_data);
-    update_ismc();
+    update_ismc(lasers);
     if (impacts) {
         queue_hit_sparks(*impacts);
     }
@@ -96,34 +98,34 @@ auto FLaserPresentation::source_colour(sim::LaserSource const source) const -> F
             return FLinearColor::White;
     }
 }
-void FLaserPresentation::update_ismc() {
+void FLaserPresentation::update_ismc(presentation::LaserView const& lasers) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_ismc);
-    auto const entities{simulation().get_entities()};
-    auto const active{entities.active()};
-    auto const count{static_cast<int32>(entities.num())};
+    auto const active{lasers.active};
+    auto const count{static_cast<int32>(lasers.active.size())};
     visible_indices_.Reset();
     for (int32 index{}; index < count; ++index) {
         if (active[index] != 0) {
             visible_indices_.Add(index);
         }
     }
-    instances->set_instances(visible_indices_.Num(),
-                             ESandboxISMCParallelism::Auto,
-                             [this](FSandboxISMCInstanceChunkWriter& chunk) { fill_chunk(chunk); });
+    instances->set_instances(
+        visible_indices_.Num(),
+        ESandboxISMCParallelism::Auto,
+        [this, &lasers](FSandboxISMCInstanceChunkWriter& chunk) { fill_chunk(lasers, chunk); });
 }
 
-void FLaserPresentation::fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) const {
-    auto const entities{simulation().get_entities()};
+void FLaserPresentation::fill_chunk(presentation::LaserView const& lasers,
+                                    FSandboxISMCInstanceChunkWriter& chunk) const {
     auto const first_index{chunk.first_index()};
     auto const chunk_count{chunk.num()};
-    auto const locations{entities.view_locations()};
-    auto const rotations{entities.view_rotations()};
+    auto const locations{lasers.locations};
+    auto const rotations{lasers.rotations};
     auto const pitches{rotations.pitches()};
     auto const yaws{rotations.yaws()};
     auto const rolls{rotations.rolls()};
-    auto const sources{entities.sources()};
-    auto const initial_lifetimes{entities.initial_lifetimes()};
-    auto const spawn_times{entities.spawn_times()};
+    auto const sources{lasers.sources};
+    auto const initial_lifetimes{lasers.initial_lifetimes};
+    auto const spawn_times{lasers.spawn_times};
     TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
     transform_positions.SetNumUninitialized(chunk.num());
     TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
@@ -148,21 +150,19 @@ void FLaserPresentation::fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) cons
                                                             transform_rotations);
 }
 
-void FLaserPresentation::queue_hit_sparks(sim::SimulationFrameEvents const& impacts) {
+void FLaserPresentation::queue_hit_sparks(presentation::FrameEvents const& events) {
     if (actor_config->impact_sparks.count <= 0) {
         return;
     }
 
-    auto const hit_details{impacts.laser_impacts.const_view()};
-
     auto const& style{actor_config->impact_sparks};
-    auto const locations{hit_details.view_locations()};
-    auto const sources{hit_details.sources()};
-    auto const directions{hit_details.view_emission_directions()};
+    auto const locations{events.impacts.view_locations()};
+    auto const sources{events.impacts.sources()};
+    auto const directions{events.impacts.view_emission_directions()};
 
     std::uint32_t first{};
-    auto tick{impacts.base_tick};
-    for (auto const counts : impacts.ticks) {
+    auto tick{events.base_tick};
+    for (auto const counts : events.ticks) {
         for (auto index{first}; index < counts.impacts; ++index) {
             auto const location{to_unreal(vector_at(locations, index))};
             auto const colour{source_colour(sources[index])};
