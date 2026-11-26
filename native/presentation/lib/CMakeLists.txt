@@ -16,7 +16,8 @@ target_include_directories(native-presentation
 target_link_libraries(native-presentation
   PUBLIC
     native-presentation-interface
-    native-simulation
+    native-core
+    native-levels
     native-ui
 )
 ioj_enable_warnings(native-presentation)

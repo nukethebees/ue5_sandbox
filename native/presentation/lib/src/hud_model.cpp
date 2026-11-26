@@ -1,14 +1,5 @@
 #include <ioj/presentation/hud_model.h>
 
-#include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entities/entity_ledger.h>
-#include <ioj/sim/entities/entity_tables.h>
-#include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/player/sim.h>
-#include <ioj/sim/sim_clock.h>
-#include <ioj/sim/spinners/sim.h>
-#include <ioj/sim/turrets/sim.h>
-
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -26,7 +17,7 @@ auto replace(T& current, T next) -> bool {
 }
 }
 
-void HudModel::initialise(sim::LevelReadAccess const view) {
+void HudModel::initialise(MissionFrame const& frame) {
     deactivate();
     tick_loop_.initialise();
     std::array const periods{settings_.player_status_update_period,
@@ -39,24 +30,24 @@ void HudModel::initialise(sim::LevelReadAccess const view) {
         update_timers_.add_started(PeriodicTickCountdown8::period_type::make(
             static_cast<PeriodicTickCountdown8::counter_type>(ticks)));
     }
-    simulation_.emplace(view);
-    force_sample();
+    active_ = true;
+    force_sample(frame);
 }
 void HudModel::deactivate() {
-    simulation_.reset();
+    active_ = false;
     update_timers_.reset();
     entity_count_data_ = {};
     player_status_data_ = {};
     player_flight_data_ = {};
 }
-auto HudModel::advance(double const delta_seconds) -> HudChanges {
+auto HudModel::advance(double const delta_seconds, MissionFrame const& frame) -> HudChanges {
     HudChanges changes;
     if (!active()) {
         return changes;
     }
     tick_loop_.add_time(delta_seconds);
     while (tick_loop_.try_tick()) {
-        auto const next{tick(1)};
+        auto const next{tick(1, frame)};
         changes.entity_counts |= next.entity_counts;
         changes.player_status |= next.player_status;
         changes.player_flight |= next.player_flight;
@@ -64,123 +55,44 @@ auto HudModel::advance(double const delta_seconds) -> HudChanges {
     }
     return changes;
 }
-auto HudModel::tick(PeriodicTickCountdown8::counter_type const num_ticks) -> HudChanges {
+auto HudModel::tick(PeriodicTickCountdown8::counter_type const num_ticks, MissionFrame const& frame)
+    -> HudChanges {
     assert(num_ticks >= 0);
     HudChanges changes;
     if (!active()) {
         return changes;
     }
-    changes.player_flight = collect_player_flight_data();
-    changes.sampled_speed = num_ticks > 0 && player_for_collection() != nullptr;
+    changes.player_flight = hud_detail::replace(
+        player_flight_data_,
+        frame.player.transform([](auto const& player) { return player.flight; }));
+    changes.sampled_speed = num_ticks > 0 && frame.sampled_speed.has_value();
     update_timers_.tick(num_ticks);
     if (update_timers_.try_consume(0)) {
-        changes.player_status = collect_player_status_data();
+        changes.player_status = hud_detail::replace(
+            player_status_data_,
+            frame.player.transform([](auto const& player) { return player.status; }));
     }
     if (update_timers_.try_consume(1)) {
-        changes.entity_counts = collect_entity_count_data();
+        changes.entity_counts = hud_detail::replace(entity_count_data_, frame.entity_counts);
     }
     return changes;
 }
-auto HudModel::force_sample() -> HudChanges {
+auto HudModel::force_sample(MissionFrame const& frame) -> HudChanges {
     if (!active()) {
         return {};
     }
-    auto const entity_counts{collect_entity_count_data()};
+    auto const entity_counts{hud_detail::replace(entity_count_data_, frame.entity_counts)};
     return {.entity_counts = entity_counts,
-            .player_status = collect_player_status_data(),
-            .player_flight = collect_player_flight_data(),
-            .sampled_speed = player_for_collection() != nullptr};
+            .player_status = hud_detail::replace(
+                player_status_data_,
+                frame.player.transform([](auto const& player) { return player.status; })),
+            .player_flight = hud_detail::replace(
+                player_flight_data_,
+                frame.player.transform([](auto const& player) { return player.flight; })),
+            .sampled_speed = frame.sampled_speed.has_value()};
 }
 auto HudModel::seconds_per_tick() const -> float {
     return static_cast<float>(tick_loop_.get_tick_period());
 }
 
-auto HudModel::display_batches() const -> std::array<AgentDisplayBatch, 4> {
-    assert(simulation_);
-    auto const& view{*simulation_};
-    auto const& capitals_sim{view.capitals()};
-    auto const& fighters_sim{view.fighters()};
-    auto const& turrets_sim{view.turrets()};
-    auto const capitals{capitals_sim.get_entities()};
-    auto const fighters{fighters_sim.entities()};
-    auto const turrets{turrets_sim.get_entities()};
-    auto const spinners{view.spinners().get_entities()};
-    using sim::EntityType;
-    return {
-        {{EntityType::CapitalShip,
-          capitals.entity_ids(),
-          capitals.view_locations().resolve(),
-          {},
-          view.entity_tables().health.const_view<EntityType::CapitalShip>(),
-          capitals.teams()},
-         {EntityType::Fighter,
-          fighters.entity_ids(),
-          fighters.view_locations().resolve(),
-          fighters.view_velocities().resolve(),
-          view.entity_tables().health.const_view<EntityType::Fighter>(),
-          fighters.teams()},
-         {EntityType::Turret,
-          turrets.entity_ids(),
-          turrets.view_locations().resolve(),
-          {},
-          view.entity_tables().health.const_view<EntityType::Turret>(),
-          turrets.teams()},
-         {EntityType::TubeSpinner, spinners.entity_ids(), spinners.view_locations().resolve(), {}, {}, {}}}};
-}
-
-auto HudModel::collect_entity_count_data() -> bool {
-    return hud_detail::replace(
-        entity_count_data_,
-        EntityCountHudData{simulation_->entity_ledger().count_alive_per_team_and_type()});
-}
-
-auto HudModel::collect_player_status_data() -> bool {
-    std::optional<PlayerStatusHudData> next;
-    if (auto const* player{player_for_collection()}) {
-        next.emplace(PlayerStatusHudData{
-            .health = player->health(simulation_->entity_tables().health),
-            .speed = player->speed(),
-            .target_speed = player->target_speed(),
-            .energy = player->energy(),
-            .points = simulation_->entity_ledger().kills(player->unique_entity_id),
-            .trigger_mode = player->laser_trigger_mode});
-    }
-    return hud_detail::replace(player_status_data_, next);
-}
-auto HudModel::collect_player_flight_data() -> bool {
-    std::optional<PlayerFlightHudData> next;
-    if (auto const* player{player_for_collection()}) {
-        auto& data{next.emplace()};
-        auto const socket{player->get_middle_socket()};
-        auto const& physical{player->physical_state()};
-        auto const local{physical.transform.inverse_transform_vector_no_scale(physical.velocity)};
-        auto const& intent{player->flight_intent()};
-        auto const& controller{player->controller_state()};
-        auto const speed_limit{std::max(player->target_speed(), 1.f)};
-        data.flight_vector_debug = {
-            .turn_input = {intent.yaw, intent.pitch},
-            .local_velocity = {static_cast<float>(local.y() / speed_limit),
-                               static_cast<float>(local.x() / speed_limit)}};
-        data.ship_velocity = physical.velocity;
-        data.target_velocity = physical.transform.forward() * player->target_speed();
-        data.throttle = intent.accelerator;
-        data.boost_brake_state = controller.effective_action;
-        data.crosshair_origin = socket.location;
-        data.crosshair_direction = socket.forward();
-    }
-    return hud_detail::replace(player_flight_data_, next);
-}
-auto HudModel::sampled_speed_view() const -> std::optional<SampledSpeedHudView> {
-    if (!active()) {
-        return std::nullopt;
-    }
-    auto const* player{player_for_collection()};
-    if (!player) {
-        return std::nullopt;
-    }
-    return SampledSpeedHudView{player->speed_samples, player->speed_sample_index};
-}
-auto HudModel::player_for_collection() const -> sim::player::Sim const* {
-    return simulation_->player();
-}
 }

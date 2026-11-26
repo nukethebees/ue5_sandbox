@@ -250,7 +250,7 @@ auto ATestBatchOrchestrator::bind_level(presentation::MissionInit const& mission
 
     if (is_presentation_enabled()) {
         presentation_host_.initialise(
-            resources.config, resources.player, audio->facade(), mission, frame, level.read_access(), level.spatial_query_manager());
+            resources.config, resources.player, audio->facade(), mission, frame, level.read_access());
         auto* controller{
             CastChecked<ASpaceGamePlayerController>(GetWorld()->GetFirstPlayerController())};
         if (IsValid(player_ship)) {

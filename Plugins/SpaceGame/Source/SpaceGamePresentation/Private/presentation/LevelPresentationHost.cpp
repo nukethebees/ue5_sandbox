@@ -33,7 +33,7 @@ void FLevelPresentationHost::initialise(FLevelVisualConfig const& config,
                                         TOptional<FPlayerPresentationResources> player,
                                         FGameAudioFacade audio,
                                         presentation::MissionInit const& mission,
-                                        presentation::MissionFrame const& frame, sim::LevelReadAccess const& view, sim::SpatialQueryManager const& spatial_queries) {
+                                        presentation::MissionFrame const& frame, sim::LevelReadAccess const& view) {
     check(!presentation_.IsSet());
     check(components_.is_valid());
 
@@ -41,7 +41,7 @@ void FLevelPresentationHost::initialise(FLevelVisualConfig const& config,
     presentation_.Emplace(resources, view, audio);
     components_.collision_grid->set_static_bounds(mission.static_bounds);
     components_.collision_grid->update_entity_bounds(frame.entity_bounds);
-    hud_manager_.initialise(view, spatial_queries, config, components_.soft_targets);
+    hud_manager_.initialise(frame, mission.radii, config, components_.soft_targets);
 }
 
 void FLevelPresentationHost::reset() {
@@ -67,7 +67,7 @@ void FLevelPresentationHost::tick(double const dt, presentation::MissionFrame co
     }
 
     components_.collision_grid->update_entity_bounds(frame.entity_bounds);
-    hud_manager_.advance(dt);
+    hud_manager_.advance(dt, frame);
     presentation_->tick(static_cast<float>(dt), view);
 }
 

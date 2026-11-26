@@ -36,7 +36,7 @@ class SPACEGAMEPRESENTATION_API FLevelPresentationHost {
                     TOptional<FPlayerPresentationResources> player,
                     FGameAudioFacade audio,
                     presentation::MissionInit const& mission,
-                    presentation::MissionFrame const& frame, sim::LevelReadAccess const& view, sim::SpatialQueryManager const& spatial_queries);
+                    presentation::MissionFrame const& frame, sim::LevelReadAccess const& view);
     void reset();
     void tick(double dt, presentation::MissionFrame const& frame, sim::LevelReadAccess const& view);
 

@@ -3,6 +3,7 @@ target_link_libraries(native-simulation-tests
   PRIVATE
     native-test-support
     native-presentation
+    native-presentation-bridge
 )
 target_sources(native-simulation-tests PRIVATE
   entity_lookup_tables_tests.cpp

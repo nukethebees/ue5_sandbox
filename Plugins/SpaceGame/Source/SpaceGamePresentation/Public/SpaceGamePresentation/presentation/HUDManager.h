@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ioj/periodic_tick_countdown.h>
 #include <ioj/presentation/entity_overlay.h>
 #include <ioj/presentation/entity_overlay_health_maximums.h>
 #include <ioj/presentation/entity_overlay_team_colours.h>
@@ -8,6 +7,7 @@
 #include <ioj/presentation/radar.h>
 #include <ioj/presentation/soft_target.h>
 #include <ioj/settings/entity_overlay.h>
+#include <ioj/sim/entities/entity_type_radii.h>
 #include <SpaceGamePresentation/presentation/EntityOverlaySource.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
 #include <SpaceGamePresentation/presentation/WorldSoftTargetMaterialData.h>
@@ -23,10 +23,6 @@
 
 struct FLevelVisualConfig;
 class UInstancedStaticMeshComponent;
-
-namespace ioj::sim {
-struct SpatialQueryManager;
-}
 
 namespace ioj {
 class USimulationHudWidget;
@@ -55,14 +51,12 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     void configure(sim::HudSettings settings) { model_.configure(settings); }
     auto settings() const -> sim::HudSettings const& { return model_.settings(); }
 
-    void initialise(sim::LevelReadAccess view,
-                    sim::SpatialQueryManager const& new_spatial_query_manager,
+    void initialise(presentation::MissionFrame const& mission,
+                    sim::EntityTypeRadii const& radii,
                     FLevelVisualConfig const& level_config,
                     UInstancedStaticMeshComponent* soft_target_instances = nullptr);
     void deactivate();
-    void advance(double dt);
-    void tick(PeriodicTickCountdown8::counter_type num_ticks);
-    void force_sample();
+    void advance(double dt, presentation::MissionFrame const& mission);
 
     void register_hud(USimulationHudWidget& hud);
     void unregister_hud(USimulationHudWidget& hud);
@@ -89,9 +83,10 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         presentation::SoftTargetState soft_targets{};
     };
 
-    void update_entity_overlays(float delta_seconds);
-    void update_entity_overlay_objective_roles();
-    void update_entity_overlay(FRegisteredHud& registration,
+    void update_entity_overlays(presentation::MissionFrame const& mission, float delta_seconds);
+    void update_entity_overlay_objective_roles(presentation::MissionFrame const& mission);
+    void update_entity_overlay(presentation::MissionFrame const& mission,
+                               FRegisteredHud& registration,
                                float delta_seconds,
                                bool render_world_target);
     void configure_world_soft_target_renderer();
@@ -102,23 +97,28 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                                FLinearColor neutral_color,
                                FLinearColor in_range_color,
                                FWorldSoftTargetCustomDataBuffer& custom_data);
-    void update_radars();
-    void update_radar(FRegisteredHud& registration);
+    void update_radars(presentation::MissionFrame const& mission);
+    void update_radar(presentation::MissionFrame const& mission, FRegisteredHud& registration);
 
     template <typename Hud>
-    void update_hud(Hud& hud, presentation::HudChanges const& changes);
-    void update_huds(presentation::HudChanges const& changes);
+    void update_hud(presentation::MissionFrame const& mission,
+                    Hud& hud,
+                    presentation::HudChanges const& changes);
+    void update_huds(presentation::MissionFrame const& mission,
+                     presentation::HudChanges const& changes);
     void synchronise_hud(USimulationHudWidget& hud) const;
     void update_entity_count_hud(USimulationHudWidget& hud) const;
     void update_player_status_hud(UShipHudWidget& hud) const;
     void update_player_flight_hud(UShipHudWidget& hud) const;
 #if WITH_EDITOR
-    void update_sampled_speed_hud(UShipHudWidget& hud) const;
+    void update_sampled_speed_hud(presentation::MissionFrame const& mission,
+                                  UShipHudWidget& hud) const;
 #endif
 
     presentation::HudModel model_;
     TArray<FRegisteredHud> registered_huds;
-    sim::SpatialQueryManager const* spatial_query_manager{};
+    sim::EntityTypeRadii entity_radii_{};
+    bool sample_on_next_frame_{};
     FEntityOverlaySettings entity_overlay_resources_;
     ioj::settings::EntityOverlay entity_overlay_settings_;
     FEntityOverlayStyle entity_overlay_style_;

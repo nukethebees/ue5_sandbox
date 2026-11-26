@@ -1,15 +1,14 @@
 #pragma once
 
+#include <ioj/fixed_tick_loop.h>
 #include <ioj/periodic_tick_countdown.h>
-#include <ioj/presentation/agent_display_batch.h>
 #include <ioj/presentation/entity_count_hud_data.h>
 #include <ioj/presentation/hud_changes.h>
+#include <ioj/presentation/mission_frame.h>
 #include <ioj/presentation/player_flight_hud_data.h>
 #include <ioj/presentation/player_status_hud_data.h>
 #include <ioj/presentation/sampled_speed_hud_view.h>
-#include <ioj/fixed_tick_loop.h>
 #include <ioj/sim/levels/hud_settings.h>
-#include <ioj/sim/levels/level_read_access.h>
 
 #include <array>
 #include <cstdint>
@@ -21,14 +20,14 @@ class HudModel {
   public:
     void configure(sim::HudSettings settings) { settings_ = settings; }
     auto settings() const -> sim::HudSettings const& { return settings_; }
-    void initialise(sim::LevelReadAccess view);
+    void initialise(MissionFrame const& frame);
     void deactivate();
-    auto advance(double delta_seconds) -> HudChanges;
-    auto tick(PeriodicTickCountdown8::counter_type num_ticks) -> HudChanges;
-    auto force_sample() -> HudChanges;
+    auto advance(double delta_seconds, MissionFrame const& frame) -> HudChanges;
+    auto tick(PeriodicTickCountdown8::counter_type num_ticks, MissionFrame const& frame)
+        -> HudChanges;
+    auto force_sample(MissionFrame const& frame) -> HudChanges;
 
-    auto level() const -> sim::LevelReadAccess const& { return simulation_.value(); }
-    auto active() const -> bool { return simulation_.has_value(); }
+    auto active() const -> bool { return active_; }
     auto entity_count_data() const -> EntityCountHudData const& { return entity_count_data_; }
     auto player_status_data() const -> std::optional<PlayerStatusHudData> const& {
         return player_status_data_;
@@ -36,19 +35,11 @@ class HudModel {
     auto player_flight_data() const -> std::optional<PlayerFlightHudData> const& {
         return player_flight_data_;
     }
-    // Borrowed until the player simulation is advanced, reconfigured, or destroyed.
-    auto sampled_speed_view() const -> std::optional<SampledSpeedHudView>;
     auto seconds_per_tick() const -> float;
-    auto player_for_collection() const -> sim::player::Sim const*;
-    auto display_batches() const -> std::array<AgentDisplayBatch, 4>;
   private:
-    auto collect_entity_count_data() -> bool;
-    auto collect_player_status_data() -> bool;
-    auto collect_player_flight_data() -> bool;
-
     sim::HudSettings settings_;
-    std::optional<sim::LevelReadAccess> simulation_;
-    sim::FixedTickLoop tick_loop_;
+    bool active_{};
+    FixedTickLoop tick_loop_;
     PeriodicTickCountdown8 update_timers_;
     EntityCountHudData entity_count_data_;
     std::optional<PlayerStatusHudData> player_status_data_;
