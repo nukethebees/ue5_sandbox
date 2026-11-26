@@ -1,6 +1,5 @@
 #include "SpaceGame/levels/LevelLoader.h"
 
-#include <ioj/presentation/observer_camera.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -18,8 +17,6 @@
 #include <EngineUtils.h>
 #include <GameFramework/PlayerController.h>
 #include <Kismet/GameplayStatics.h>
-
-#include <vector>
 
 namespace ioj {
 namespace {
@@ -65,7 +62,7 @@ class FSpawnedActorTransaction final {
 
 auto spawn_player(UWorld& world,
                   USpaceGameLevelConfig const& config,
-                  levels::EntitySpawnDefinition const& entity,
+                  presentation::PlayerSpawn const& entity,
                   FSpawnedActorTransaction& transaction,
                   FLevelLoadErrors& result) -> ATestSpaceShip* {
     auto const team{to_unreal(entity.team)};
@@ -83,8 +80,8 @@ auto spawn_player(UWorld& world,
 
     transaction.add(*player);
     player->set_team(team);
-    if (entity.overrides.health) {
-        player->set_initial_health(entity.overrides.health->get().value());
+    if (entity.initial_health) {
+        player->set_initial_health(*entity.initial_health);
     }
 
     if (!finish_spawn(*player, transform)) {
@@ -97,28 +94,13 @@ auto spawn_player(UWorld& world,
     return player;
 }
 
-auto initial_camera_transform(levels::LevelDefinition const& definition) -> FTransform {
-    auto const& camera{*definition.camera()};
-    std::vector<Vector3d> target_positions;
-    target_positions.reserve(camera.target_entity_ids.size());
-    for (auto const& target_id : camera.target_entity_ids) {
-        auto const position{definition.entity(target_id).position};
-        target_positions.push_back(position);
-    }
-
-    auto const transform{presentation::make_observer_camera_transform(
-        target_positions, camera.offset_direction, camera.distance)};
-    check(transform.has_value());
-    return to_unreal(transform->transform);
-}
-
 auto spawn_initial_camera(UWorld& world,
                           ASpaceGamePlayerController& player_controller,
-                          levels::LevelDefinition const& definition,
+                          Transform3d const& initial_camera,
                           FSpawnedActorTransaction& transaction,
                           FLevelLoadErrors& result,
                           levels::ControlContext const control_context) -> bool {
-    auto const transform{initial_camera_transform(definition)};
+    auto const transform{to_unreal(initial_camera)};
     auto* const camera{
         world.SpawnActorDeferred<ACameraActor>(ACameraActor::StaticClass(), transform)};
     if (!IsValid(camera)) {
@@ -169,9 +151,9 @@ auto FLevelLoader::load(FLevelActorLoadRequest const& request) -> FLevelLoadResu
     FLevelLoadResult result{std::unexpect};
     auto& errors{result.error()};
     auto& world{request.world};
-    auto const& definition{request.definition};
+    auto const& mission{request.mission};
     auto const& config{request.config};
-    auto const has_player{!definition.player_entity_id().empty()};
+    auto const has_player{mission.player.has_value()};
     auto const& visual{request.visual};
     if (!has_player && visual &&
         visual->playerless_control_context != levels::ControlContext::Observer &&
@@ -196,20 +178,19 @@ auto FLevelLoader::load(FLevelActorLoadRequest const& request) -> FLevelLoadResu
         return result;
     }
 
-    FSpawnedActorTransaction transaction{1 + (definition.camera() ? 1 : 0)};
+    FSpawnedActorTransaction transaction{1 + (mission.camera ? 1 : 0)};
     ATestSpaceShip* player{nullptr};
     if (has_player && visual) {
-        player = spawn_player(
-            world, config, definition.entity(definition.player_entity_id()), transaction, errors);
+        player = spawn_player(world, config, *mission.player, transaction, errors);
         if (!IsValid(player)) {
             return result;
         }
     }
 
-    if (visual && definition.camera()) {
+    if (visual && mission.camera) {
         if (!spawn_initial_camera(world,
                                   visual->controller,
-                                  definition,
+                                  *mission.camera,
                                   transaction,
                                   errors,
                                   visual->playerless_control_context)) {

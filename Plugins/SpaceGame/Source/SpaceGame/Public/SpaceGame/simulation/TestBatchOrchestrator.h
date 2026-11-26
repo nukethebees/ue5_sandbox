@@ -1,6 +1,6 @@
 #pragma once
-#include <ioj/levels/launch_options.h>
-#include <ioj/session/mission_launch_request.h>
+#include <ioj/presentation/mission_frame.h>
+#include <ioj/presentation/mission_init.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <SpaceGame/levels/LevelCompletion.h>
 #include <SpaceGame/levels/LevelLoader.h>
@@ -35,10 +35,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     ATestBatchOrchestrator();
 
     void PostLoad() override;
-    void present_level(time_type delta_seconds);
-    auto prepare_level(session::MissionLaunchRequest const& mission) -> FLevelLoadResult;
-    auto bind_level(session::MissionLaunchRequest const& mission, sim::LevelSim const& level)
-        -> bool;
+    void present_level(time_type delta_seconds, presentation::MissionFrame const& frame, sim::LevelSim const& level);
+    auto prepare_level(presentation::MissionInit const& mission) -> FLevelLoadResult;
+    auto bind_level(presentation::MissionInit const& mission,
+                    presentation::MissionFrame const& frame, sim::LevelSim const& level) -> bool;
     auto take_frame_delta_seconds() -> std::optional<double>;
     void handle_level_start_failure(FString message);
     void finish_level(profiles::CompletedLevel const& completed,
@@ -54,30 +54,24 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto set_level_config(USpaceGameLevelConfig& config) -> bool;
     void set_collision_overlays(FCollisionOverlayVisibility visibility);
     auto is_presentation_enabled() const noexcept -> bool {
-        return launch_options_.presentation_mode == levels::PresentationMode::Visual;
+        return presentation_mode_ == levels::PresentationMode::Visual;
     }
 
     /* **************************************** */
     // Simulation state and timing
     /* **************************************** */
     auto get_state() const noexcept -> sim::LevelState {
-        return level_simulation_ ? level_simulation_->state() : sim::LevelState::Uninitialised;
+        return status_ ? status_->state : sim::LevelState::Uninitialised;
     }
 
-    auto get_level_simulation() const -> sim::LevelSim const* { return level_simulation_; }
+    auto has_level() const -> bool { return status_.has_value(); }
+    auto mission_id() const -> FName { return mission_id_; }
 
     auto get_run_ticks_remaining() const noexcept -> TOptional<tick_type> {
-        if (!launch_options_.simulated_duration_seconds.has_value() || !level_simulation_) {
-            return NullOpt;
+        if (status_ && status_->ticks_remaining) {
+            return *status_->ticks_remaining;
         }
-
-        auto const& clk{level_simulation_->clock()};
-        auto const end_tick{
-            clk.duration_to_tick_period(
-                   Duration::make(launch_options_.simulated_duration_seconds.value()))
-                .get()};
-        auto const completed_ticks{clk.get_completed_ticks().value()};
-        return completed_ticks >= end_tick ? 0 : end_tick - completed_ticks;
+        return NullOpt;
     }
 
     /* **************************************** */
@@ -118,7 +112,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     void bind_presentation_components();
     void refresh_collision_grid_visualization();
-    auto get_presentation_resources(settings::Settings const& settings) const
+    auto get_presentation_resources(presentation::MissionInit const& mission) const
         -> FLevelPresentationResources;
     /* **************************************** */
     // State
@@ -154,9 +148,11 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     FCollisionOverlayVisibility collision_overlays_{};
     FLevelPresentationHost presentation_host_;
-    sim::LevelSim const* level_simulation_{};
+    std::optional<presentation::MissionStatus> status_;
+    FName mission_id_;
+    sim::collision::CollisionGridSpec grid_{};
     std::optional<double> frame_delta_seconds_;
-    levels::LaunchOptions launch_options_{};
+    levels::PresentationMode presentation_mode_{levels::PresentationMode::Visual};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};

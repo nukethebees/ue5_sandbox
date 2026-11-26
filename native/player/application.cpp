@@ -4,6 +4,7 @@
 #include "player/engine.h"
 #include "player/window.h"
 #include <ioj/bridge/completed_level.h>
+#include <ioj/bridge/mission_frame.h>
 #include <ioj/files.h>
 #include <ioj/host/game_host_api.h>
 #include <ioj/host/level_host.h>
@@ -330,7 +331,7 @@ auto Application::play(Window& window,
             continue;
         }
 
-        if (host::presents_level(*level_)) {
+        if (host::presents_level()) {
             level_->append_player_input(messages.ship_input);
             if (messages.requested_simulation_mode == levels::LaunchMode::Running &&
                 level_->state() == sim::LevelState::Paused) {
@@ -552,7 +553,10 @@ auto Application::launch_mission(session::MissionLaunchRequest mission) -> Appli
 }
 void Application::bind_level() {
     auto const mode{mission_to_bind_->options.launch_mode};
-    auto const bound{host::bind_level(*mission_to_bind_, *level_)};
+    mission_duration_seconds_ = mission_to_bind_->options.simulated_duration_seconds.transform(
+        [](auto value) { return value.get(); });
+    auto const bound{host::bind_level(bridge::mission_init(*mission_to_bind_, *level_),
+                                      bridge::mission_frame(*level_, mission_duration_seconds_), *level_)};
     mission_to_bind_.reset();
     if (!bound) {
         unload_level(sim::RunEndReason::WorldEnd, false);
@@ -567,12 +571,12 @@ void Application::bind_level() {
 }
 void Application::advance_level(double delta_seconds) {
     auto const state{level_->state()};
-    auto const previous_tick{level_->clock().get_completed_ticks()};
     level_->advance(delta_seconds);
-    if (level_->state() == sim::LevelState::Running ||
-        level_->clock().get_completed_ticks() != previous_tick) {
-        host::present_level(delta_seconds);
-    }
+    auto const frame{bridge::mission_frame(*level_, mission_duration_seconds_)};
+    auto const visual_delta{
+        level_->state() == sim::LevelState::Running || !frame.events.ticks.empty() ? delta_seconds
+                                                                                   : 0.0};
+    host::present_level(visual_delta, frame, *level_);
 
     if (level_->result()) {
         unload_level(sim::RunEndReason::LevelCompleted, true);
@@ -600,7 +604,7 @@ void Application::unload_level(sim::RunEndReason reason, bool show_results) {
         }
     }
 
-    if (host::presents_level(*level_)) {
+    if (host::presents_level()) {
         host::finish_level(completed, score.has_value(), saved.new_best_time, show_results);
     }
 

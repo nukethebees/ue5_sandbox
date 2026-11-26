@@ -6,7 +6,6 @@
 #include <ioj/host/game_host_api.h>
 #include <ioj/host/level_host.h>
 #include <ioj/host/mission_startup.h>
-#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/control_context.h>
 #include <ioj/levels/diagnostics.h>
 #include <ioj/levels/launch_options.h>
@@ -69,7 +68,8 @@ void open_menu(std::string_view preferred_level_id, std::string_view error) {
     UGameplayStatics::OpenLevel(GEngine->GameViewport->GetWorld(),
                                 TEXT("/SpaceGame/Levels/MainMenu"));
 }
-auto bind_level(session::MissionLaunchRequest const& mission, sim::LevelSim const& level) -> bool {
+auto bind_level(presentation::MissionInit const& mission, presentation::MissionFrame const& frame, sim::LevelSim const& level)
+    -> bool {
     auto result{level_world->prepare_level(mission)};
     if (!result) {
         level_world->handle_level_start_failure(
@@ -77,17 +77,17 @@ auto bind_level(session::MissionLaunchRequest const& mission, sim::LevelSim cons
         return false;
     }
 
-    return level_world->bind_level(mission, level);
+    return level_world->bind_level(mission, frame, level);
 }
-auto presents_level(sim::LevelSim const& level) -> bool {
-    return level_world.IsValid() && level_world->get_level_simulation() == &level;
+auto presents_level() -> bool {
+    return level_world.IsValid() && level_world->has_level();
 }
 auto take_frame_delta_seconds() -> std::optional<double> {
     return level_world->take_frame_delta_seconds();
 }
 
-void present_level(double delta_seconds) {
-    level_world->present_level(delta_seconds);
+void present_level(double delta_seconds, presentation::MissionFrame const& frame, sim::LevelSim const& level) {
+    level_world->present_level(delta_seconds, frame, level);
 }
 void simulation_paused() {
     level_world->on_simulation_paused.Broadcast();
@@ -96,7 +96,7 @@ void finish_level(profiles::CompletedLevel const& completed,
                   bool scored,
                   bool new_best,
                   bool show_results) {
-    if (level_world.IsValid() && level_world->get_level_simulation()) {
+    if (level_world.IsValid() && level_world->has_level()) {
         level_world->finish_level(completed, scored, new_best, show_results);
     }
 }

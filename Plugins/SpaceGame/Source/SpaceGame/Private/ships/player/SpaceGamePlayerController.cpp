@@ -741,10 +741,8 @@ void ASpaceGamePlayerController::return_to_level_select() {
     }
 
     return_to_level_select_pending_ = true;
-    auto const* const level{orchestrator->get_level_simulation()};
-    auto const preferred_level_id{
-        level ? FName{UTF8_TO_TCHAR(level->level_metadata().id.value.c_str())}
-              : modal_ui_.completed_level_id()};
+    auto const preferred_level_id{orchestrator->has_level() ? orchestrator->mission_id()
+                                                            : modal_ui_.completed_level_id()};
     if (!request_menu({levels::LevelId{preferred_level_id.IsNone()
                                            ? std::string{}
                                            : to_string(preferred_level_id.ToString())}})) {

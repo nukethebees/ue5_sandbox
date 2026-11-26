@@ -39,6 +39,7 @@ class Application {
     PlayerSettings settings_;
     std::filesystem::path scripts_directory_;
     std::optional<levels::authoring::DefinitionCatalog> catalog_;
+    std::optional<double> mission_duration_seconds_;
     std::optional<session::MissionLaunchRequest> mission_to_bind_;
     profiles::ProfileManager profiles_;
     profiles::SaveGameBrowser profile_browser_;
