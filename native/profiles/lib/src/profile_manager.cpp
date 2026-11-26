@@ -134,17 +134,15 @@ bool ProfileManager::activate_profile(std::string const& profile_id) {
     if (!active_results_.has_value() || profile_id == index_.active_profile_id) {
         return active_results_.has_value() && find_profile(profile_id) != nullptr;
     }
-    auto const previous_index{index_};
-    auto const previous_results{active_results_};
-    auto const succeeded{storage_.with_exclusive_access([this, &profile_id] {
+    return storage_.with_exclusive_access([this, &profile_id] {
         ProfileIndexData latest_index{};
         if (storage_.load_index(latest_index) != LoadResult::succeeded ||
             latest_index.save_version != current_save_version) {
             return false;
         }
-        index_ = std::move(latest_index);
-        auto* const metadata{find_profile(profile_id)};
-        if (!metadata) {
+        auto const metadata{
+            std::ranges::find(latest_index.profiles, profile_id, &ProfileMetadata::profile_id)};
+        if (metadata == latest_index.profiles.end()) {
             return false;
         }
 
@@ -154,20 +152,16 @@ bool ProfileManager::activate_profile(std::string const& profile_id) {
             return false;
         }
 
-        index_.active_profile_id = profile_id;
+        latest_index.active_profile_id = profile_id;
         update_profile_metadata(*metadata, loaded_results.score_records);
-        if (!storage_.save_index(index_)) {
+        if (!storage_.save_index(latest_index)) {
             return false;
         }
 
+        index_ = std::move(latest_index);
         active_results_ = std::move(loaded_results);
         return true;
-    })};
-    if (!succeeded) {
-        index_ = previous_index;
-        active_results_ = previous_results;
-    }
-    return succeeded;
+    });
 }
 
 bool ProfileManager::load_profile_records(std::string const& profile_id,
