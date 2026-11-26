@@ -86,8 +86,8 @@ auto launch_staged_mission(FString const& mission, bool exit_when_ready)
     FFileHelper::LoadFileToString(executable, *marker);
     executable.TrimStartAndEndInline();
     if (!FPaths::FileExists(executable)) {
-        return std::unexpected{FString::Printf(
-            TEXT("Build the Development stage to launch IojPlayer (%s)."), *marker)};
+        return std::unexpected{
+            FString::Printf(TEXT("Build the Development stage to launch ioj.exe (%s)."), *marker)};
     }
 
     auto const scripts{

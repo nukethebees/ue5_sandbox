@@ -249,7 +249,7 @@ fn verify(
         require_file(&binaries.join("SandboxTracyClient.dll"))?;
     }
     for path in [
-        binaries.join("IojPlayer.exe"),
+        binaries.join("ioj.exe"),
         binaries.join(binary),
         binaries.join(if debug { "SandboxTBB12_debug.dll" } else { "SandboxTBB12.dll" }),
         package.join("Engine/Extras/Redist/en-us/vc_redist.x64.exe"),

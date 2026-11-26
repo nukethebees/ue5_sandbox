@@ -25,7 +25,7 @@ impl Fixture {
         write(&request.unreal_pak);
         for path in [
             "Sandbox/LevelScripts/Nested/Scenario.scm",
-            "Sandbox/Binaries/Win64/IojPlayer.exe",
+            "Sandbox/Binaries/Win64/ioj.exe",
             "Sandbox/Binaries/Win64/Sandbox.dll",
             "Sandbox/Binaries/Win64/Sandbox-Win64-DebugGame.dll",
             "Sandbox/Binaries/Win64/Sandbox-Win64-Shipping.dll",
@@ -148,7 +148,7 @@ fn archive_rejects_a_leftover_stock_launcher() {
 #[test]
 fn missing_files_and_containers_are_rejected() {
     for (path, message) in [
-        ("Sandbox/Binaries/Win64/IojPlayer.exe", "Required package file"),
+        ("Sandbox/Binaries/Win64/ioj.exe", "Required package file"),
         ("Sandbox/Binaries/Win64/Sandbox.dll", "Required package file"),
         ("Sandbox/Content/Paks/game.pak", "No pak files"),
         ("Sandbox/Content/Paks/game.utoc", "No IoStore containers"),
