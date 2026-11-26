@@ -476,6 +476,7 @@ add_custom_target(check-generated-code
   USES_TERMINAL
   VERBATIM
 )
+add_dependencies(generate-code generate-codegen-compile-fixture)
 add_dependencies(check-generated-code check-generated-codegen-compile-fixture)
 
 add_subdirectory(slate)
