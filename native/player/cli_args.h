@@ -8,7 +8,7 @@
 #include <optional>
 #include <string>
 
-namespace ioj::player {
+namespace ioj {
 struct CliArgs {
     std::filesystem::path mission_path;
     std::filesystem::path editor_scripts_directory;

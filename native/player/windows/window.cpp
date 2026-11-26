@@ -6,7 +6,7 @@
 #include <SDL3/SDL_properties.h>
 #include <SDL3/SDL_video.h>
 
-namespace ioj::player {
+namespace ioj {
 namespace {
 auto CALLBACK forward_window_message(
     HWND hwnd, UINT message, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR) -> LRESULT {
@@ -42,7 +42,7 @@ auto native_handle(SDL_Window* window) -> HWND {
         SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
 }
 
-auto connect_unreal_window(SDL_Window* window) -> Result {
+auto connect_unreal_window(SDL_Window* window) -> ApplicationResult {
     if (!SetWindowSubclass(native_handle(window), forward_window_message, 1, 0)) {
         return std::unexpected{"Could not forward window messages to Unreal"};
     }

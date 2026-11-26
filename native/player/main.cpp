@@ -7,7 +7,7 @@
 #include <utility>
 
 auto main(int argc, char** argv) -> int {
-    using namespace ioj::player;
+    using namespace ioj;
     try {
         auto cli_args{parse_cli_args(argc, argv)};
         if (!cli_args) {

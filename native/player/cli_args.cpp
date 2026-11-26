@@ -14,7 +14,7 @@
 #include <string_view>
 #include <system_error>
 
-namespace ioj::player {
+namespace ioj {
 namespace {
 auto dimension(std::string_view text, std::int32_t& value) -> bool {
     auto const end{text.data() + text.size()};

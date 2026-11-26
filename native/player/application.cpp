@@ -32,7 +32,7 @@
 #include <utility>
 #include <variant>
 
-namespace ioj::player {
+namespace ioj {
 namespace {
 auto user_settings_path(CliArgs const& args,
                         std::filesystem::path const& scripts,
@@ -105,7 +105,9 @@ Application::Application(CliArgs args)
     , level_arena_{memory::BumpResource::default_capacity_bytes,
                    *sbx::memory::mimalloc_resource()} {}
 
-auto Application::run() -> Result {
+auto Application::run() -> ApplicationResult {
+    using Result = ApplicationResult;
+
     auto paths{resolve_launch_paths(args_)};
     if (!paths) {
         return Result{std::unexpect, std::move(paths.error())};
@@ -186,17 +188,17 @@ auto Application::run() -> Result {
     }
     return shutdown_result;
 }
-auto Application::play(Window& window) -> Result {
+auto Application::play(Window& window) -> ApplicationResult {
     auto const mode{args_.launch_display_mode};
     auto const& mission{paths_.mission_path};
     auto const exit_when_ready{args_.exit_when_ready};
     if (!IojPlayer_GameReady()) {
-        return Result{std::unexpect,
+        return ApplicationResult{std::unexpect,
                       "Unreal did not initialize a playable world. See the game log."};
     }
 
     if (!IojPlayer_ApplyPreferences()) {
-        return Result{std::unexpect, "Could not apply player preferences. See the game log."};
+        return ApplicationResult{std::unexpect, "Could not apply player preferences. See the game log."};
     }
 
     if (mode != LaunchDisplayMode::Headless) {
@@ -207,7 +209,7 @@ auto Application::play(Window& window) -> Result {
 
     if (!mission.empty()) {
         if (!launch_mission(mission)) {
-            return Result{std::unexpect, "Mission launch failed: " + path_to_utf8(mission)};
+            return ApplicationResult{std::unexpect, "Mission launch failed: " + path_to_utf8(mission)};
         }
 
         host::open_mission();
@@ -256,7 +258,7 @@ auto Application::play(Window& window) -> Result {
             }
 
             if (startup == MissionStartup::Failed || std::chrono::steady_clock::now() >= deadline) {
-                return Result{std::unexpect,
+                return ApplicationResult{std::unexpect,
                               "Mission did not reach simulation readiness. See the game log."};
             }
         }
@@ -309,7 +311,7 @@ auto Application::play(Window& window) -> Result {
     }
 
     if (exit_when_ready) {
-        return Result{std::unexpect, "Engine exited before readiness"};
+        return ApplicationResult{std::unexpect, "Engine exited before readiness"};
     }
 
     return {};
@@ -373,7 +375,7 @@ void Application::process_preferences(Window& window, std::span<host::Preference
         }
 
         auto result{edit.category == GameSettingCategory::Video ? window.verify_preview()
-                                                                : Result{}};
+                                                                : ApplicationResult{}};
         if (result) {
             result = settings_.save_category(edit.category, edit.values, edit.original_settings);
         }

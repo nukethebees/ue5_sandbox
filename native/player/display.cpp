@@ -9,7 +9,7 @@
 #include <expected>
 #include <utility>
 
-namespace ioj::player {
+namespace ioj {
 auto Window::display() const -> std::expected<WindowDisplaySettings, std::string> {
     WindowDisplaySettings actual;
     if (!SDL_GetWindowSizeInPixels(window_, &actual.resolution.width, &actual.resolution.height)) {
@@ -20,7 +20,7 @@ auto Window::display() const -> std::expected<WindowDisplaySettings, std::string
     return actual;
 }
 
-auto Window::synchronize(bool activate) -> Result {
+auto Window::synchronize(bool activate) -> ApplicationResult {
     int x{};
     int y{};
     auto actual{display()};
@@ -53,7 +53,7 @@ auto Window::configure(WindowDisplaySettings requested)
     return actual;
 }
 
-auto Window::preview(WindowDisplaySettings requested) -> Result {
+auto Window::preview(WindowDisplaySettings requested) -> ApplicationResult {
     auto const flags{SDL_GetWindowFlags(window_)};
     Preview previous{.maximized = (flags & SDL_WINDOW_MAXIMIZED) != 0,
                      .fullscreen = (flags & SDL_WINDOW_FULLSCREEN) != 0};
@@ -67,7 +67,7 @@ auto Window::preview(WindowDisplaySettings requested) -> Result {
     }
     preview_ = previous;
     auto actual{configure(requested)};
-    Result result;
+    ApplicationResult result;
     if (actual) {
         preview_->requested = *actual;
         result = synchronize(false);
@@ -89,7 +89,7 @@ void Window::keep_preview(PlayerSettings& settings) {
     }
 }
 
-auto Window::verify_preview() const -> Result {
+auto Window::verify_preview() const -> ApplicationResult {
     if (preview_) {
         auto actual{display()};
         if (!actual) {
@@ -103,7 +103,7 @@ auto Window::verify_preview() const -> Result {
     return {};
 }
 
-auto Window::revert_preview() -> Result {
+auto Window::revert_preview() -> ApplicationResult {
     if (!preview_) {
         return {};
     }

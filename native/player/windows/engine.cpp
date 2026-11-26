@@ -11,14 +11,14 @@
 #include <format>
 #include <string>
 
-namespace ioj::player {
-auto start_engine(Window& window, LaunchPaths const& paths, CliArgs const& args) -> Result {
+namespace ioj {
+auto start_engine(Window& window, LaunchPaths const& paths, CliArgs const& args) -> ApplicationResult {
     auto const arguments{engine_arguments(paths.binary_directory, args)};
     auto const status{UELibrary_InitW(
         GetModuleHandleW(nullptr), native_handle(window.sdl_window()), arguments.c_str())};
     if (status != 0) {
         IojPlayer_Detach();
-        return Result{std::unexpect, std::format("UELibrary_InitW failed ({})", status)};
+        return ApplicationResult{std::unexpect, std::format("UELibrary_InitW failed ({})", status)};
     }
 
     if (args.launch_display_mode != LaunchDisplayMode::Headless) {
@@ -30,7 +30,7 @@ auto start_engine(Window& window, LaunchPaths const& paths, CliArgs const& args)
     return {};
 }
 
-auto shutdown_engine(Window& window) -> Result {
+auto shutdown_engine(Window& window) -> ApplicationResult {
     disconnect_unreal_window(window.sdl_window());
     auto const failed{IojPlayer_GameFailed()};
     auto const status{UELibrary_Shutdown()};
@@ -42,9 +42,9 @@ auto shutdown_engine(Window& window) -> Result {
     return {};
 }
 
-auto tick_engine() -> Result {
+auto tick_engine() -> ApplicationResult {
     if (auto status{UELibrary_Tick()}; status != 0) {
-        return Result{std::unexpect, std::format("UELibrary_Tick failed ({})", status)};
+        return ApplicationResult{std::unexpect, std::format("UELibrary_Tick failed ({})", status)};
     }
 
     return {};

@@ -15,14 +15,14 @@
 #include <span>
 #include <string>
 
-namespace ioj::player {
+namespace ioj {
 class Application {
   public:
     explicit Application(CliArgs args);
     // Run one engine instance through shutdown.
     auto run() -> std::expected<void, std::string>;
   private:
-    auto play(Window& window) -> Result;
+    auto play(Window& window) -> ApplicationResult;
     void process_profile_actions(std::span<host::ProfileAction const> actions);
     void process_preferences(Window& window, std::span<host::PreferenceEdit const> edits);
     auto launch_mission(std::filesystem::path const& path) -> bool;

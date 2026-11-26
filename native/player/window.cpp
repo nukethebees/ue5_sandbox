@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <memory>
 
-namespace ioj::player {
+namespace ioj {
 Window::~Window() {
     if (window_) {
         SDL_DestroyWindow(window_);
@@ -21,12 +21,12 @@ Window::~Window() {
     SDL_Quit();
 }
 
-auto Window::create() -> Result {
+auto Window::create() -> ApplicationResult {
     SDL_SetMainReady();
     // Slate pumps the process message queue and owns keyboard and mouse input.
     SDL_SetHint(SDL_HINT_WINDOWS_ENABLE_MESSAGELOOP, "0");
     if (!SDL_Init(SDL_INIT_VIDEO)) {
-        return Result{std::unexpect, SDL_GetError()};
+        return ApplicationResult{std::unexpect, SDL_GetError()};
     }
 
     window_ =
@@ -35,7 +35,7 @@ auto Window::create() -> Result {
                          startup_size.height,
                          SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (!window_) {
-        return Result{std::unexpect, SDL_GetError()};
+        return ApplicationResult{std::unexpect, SDL_GetError()};
     }
 
     return refresh_resolutions();
@@ -50,7 +50,7 @@ auto Window::desktop_resolution() const -> std::expected<ScreenResolution, std::
     return ScreenResolution{mode->w, mode->h};
 }
 
-auto Window::refresh_resolutions() -> Result {
+auto Window::refresh_resolutions() -> ApplicationResult {
     int count{};
     auto** modes{SDL_GetFullscreenDisplayModes(SDL_GetDisplayForWindow(window_), &count)};
     if (!modes) {
@@ -70,7 +70,7 @@ auto Window::refresh_resolutions() -> Result {
     return {};
 }
 
-auto Window::show(PlayerSettings& settings) -> Result {
+auto Window::show(PlayerSettings& settings) -> ApplicationResult {
     if (!SDL_ShowWindow(window_) || !SDL_SyncWindow(window_)) {
         return std::unexpected{std::string{SDL_GetError()}};
     }
@@ -83,7 +83,7 @@ auto Window::show(PlayerSettings& settings) -> Result {
     return synchronize(true);
 }
 
-auto Window::synchronize_resize(PlayerSettings& settings) -> Result {
+auto Window::synchronize_resize(PlayerSettings& settings) -> ApplicationResult {
     if (SDL_GetWindowFlags(window_) & (SDL_WINDOW_HIDDEN | SDL_WINDOW_MINIMIZED)) {
         return {};
     }

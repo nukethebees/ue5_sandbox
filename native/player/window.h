@@ -15,9 +15,7 @@ struct SDL_Window;
 
 namespace ioj {
 class PlayerSettings;
-}
 
-namespace ioj::player {
 class Window {
   public:
     Window() = default;
@@ -25,24 +23,24 @@ class Window {
     Window(Window const&) = delete;
     auto operator=(Window const&) -> Window& = delete;
 
-    auto create() -> Result;
+    auto create() -> ApplicationResult;
     auto desktop_resolution() const -> std::expected<ScreenResolution, std::string>;
     auto sdl_window() const -> SDL_Window* { return window_; }
     auto supported_resolutions() const -> std::vector<ScreenResolution> const& {
         return supported_resolutions_;
     }
-    auto refresh_resolutions() -> Result;
-    auto show(PlayerSettings& settings) -> Result;
-    auto synchronize_resize(PlayerSettings& settings) -> Result;
-    auto preview(WindowDisplaySettings display) -> Result;
-    auto revert_preview() -> Result;
-    auto verify_preview() const -> Result;
+    auto refresh_resolutions() -> ApplicationResult;
+    auto show(PlayerSettings& settings) -> ApplicationResult;
+    auto synchronize_resize(PlayerSettings& settings) -> ApplicationResult;
+    auto preview(WindowDisplaySettings display) -> ApplicationResult;
+    auto revert_preview() -> ApplicationResult;
+    auto verify_preview() const -> ApplicationResult;
     void keep_preview(PlayerSettings& settings);
     auto configure(WindowDisplaySettings display)
         -> std::expected<WindowDisplaySettings, std::string>;
 
   private:
-    auto synchronize(bool activate) -> Result;
+    auto synchronize(bool activate) -> ApplicationResult;
 
     auto display() const -> std::expected<WindowDisplaySettings, std::string>;
     struct Preview {

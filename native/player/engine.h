@@ -9,15 +9,15 @@
 #include <optional>
 #include <string>
 
-namespace ioj::player {
+namespace ioj {
 class Window;
 
 inline constexpr ScreenResolution startup_size{1280, 720};
 
-using Result = std::expected<void, std::string>;
-using PathResult = std::expected<std::filesystem::path, std::string>;
+using ApplicationResult = std::expected<void, std::string>;
+using FilesystemPathResult = std::expected<std::filesystem::path, std::string>;
 
-auto local_app_data() -> PathResult;
+auto local_app_data() -> FilesystemPathResult;
 
 struct LaunchPaths {
     std::filesystem::path binary_directory;
@@ -31,8 +31,8 @@ auto engine_arguments(std::filesystem::path const& directory, CliArgs const& arg
 auto initial_display(CliArgs const& args, WindowDisplaySettings saved)
     -> std::optional<WindowDisplaySettings>;
 
-auto start_engine(Window& window, LaunchPaths const& paths, CliArgs const& args) -> Result;
+auto start_engine(Window& window, LaunchPaths const& paths, CliArgs const& args) -> ApplicationResult;
 
-auto shutdown_engine(Window& window) -> Result;
-auto tick_engine() -> Result;
+auto shutdown_engine(Window& window) -> ApplicationResult;
+auto tick_engine() -> ApplicationResult;
 }

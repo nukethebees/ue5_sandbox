@@ -13,7 +13,7 @@
 #include <optional>
 #include <utility>
 
-namespace ioj::player {
+namespace ioj {
 auto engine_arguments(std::filesystem::path const& directory, CliArgs const& args) -> std::wstring {
     auto const project{directory.parent_path().parent_path() / L"Sandbox.uproject"};
     auto arguments{
