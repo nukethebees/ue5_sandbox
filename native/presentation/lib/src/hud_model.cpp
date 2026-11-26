@@ -109,23 +109,23 @@ auto HudModel::display_batches() const -> std::array<AgentDisplayBatch, 4> {
     return {
         {{EntityType::CapitalShip,
           capitals.entity_ids(),
-          capitals.view_locations(),
+          capitals.view_locations().resolve(),
           {},
           view.entity_tables().health.const_view<EntityType::CapitalShip>(),
           capitals.teams()},
          {EntityType::Fighter,
           fighters.entity_ids(),
-          fighters.view_locations(),
-          fighters.view_velocities(),
+          fighters.view_locations().resolve(),
+          fighters.view_velocities().resolve(),
           view.entity_tables().health.const_view<EntityType::Fighter>(),
           fighters.teams()},
          {EntityType::Turret,
           turrets.entity_ids(),
-          turrets.view_locations(),
+          turrets.view_locations().resolve(),
           {},
           view.entity_tables().health.const_view<EntityType::Turret>(),
           turrets.teams()},
-         {EntityType::TubeSpinner, spinners.entity_ids(), spinners.view_locations(), {}, {}, {}}}};
+         {EntityType::TubeSpinner, spinners.entity_ids(), spinners.view_locations().resolve(), {}, {}, {}}}};
 }
 
 auto HudModel::collect_entity_count_data() -> bool {

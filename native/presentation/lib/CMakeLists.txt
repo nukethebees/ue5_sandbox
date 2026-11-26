@@ -15,6 +15,7 @@ target_include_directories(native-presentation
 )
 target_link_libraries(native-presentation
   PUBLIC
+    native-presentation-interface
     native-simulation
     native-ui
 )

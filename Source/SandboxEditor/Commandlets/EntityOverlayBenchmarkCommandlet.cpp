@@ -7,6 +7,7 @@
 #include <ioj/presentation/entity_overlay.h>
 #include <ioj/presentation/entity_overlay_health_maximums.h>
 #include <ioj/presentation/entity_overlay_team_colours.h>
+#include <ioj/sim/entities/health_table.h>
 #include <ioj/team_array.h>
 
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
@@ -27,7 +28,7 @@ auto make_view(::ioj::sim::TurretEntityData const& entities,
     auto const data{entities.const_view()};
     return {{{::ioj::sim::EntityType::Turret,
               data.entity_ids(),
-              data.view_locations(),
+              data.view_locations().resolve(),
               {},
               health_table.const_view<::ioj::sim::EntityType::Turret>(),
               data.teams()}}};

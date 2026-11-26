@@ -4,8 +4,8 @@
 #include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/entities/health_table.h>
-#include <ioj/vectors3f.h>
+#include <ioj/sim/entities/health_const_view.h>
+#include <ioj/vectors3f_view.h>
 
 #include <span>
 
@@ -32,8 +32,8 @@ struct AgentDisplayBatch {
 
     EntityType type{};
     std::span<EntityId const> ids;
-    vectors3f::CompactConstView locations;
-    vectors3f::CompactConstView velocities;
+    vectors3f::ConstView locations;
+    vectors3f::ConstView velocities;
     HealthConstView healths;
     std::span<Team const> teams;
 };

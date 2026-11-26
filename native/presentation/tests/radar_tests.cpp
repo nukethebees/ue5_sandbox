@@ -29,8 +29,8 @@ struct RadarScene {
         for (std::uint32_t index{}; index < count; ++index) {
             batches.push_back({types[index],
                                std::span{ids}.subspan(index, 1),
-                               locations.const_view(index, 1),
-                               velocities.const_view(index, 1),
+                               locations.const_view(index, 1).resolve(),
+                               velocities.const_view(index, 1).resolve(),
                                sim::HealthConstView{types[index], healths},
                                std::span{teams}.subspan(index, 1)});
         }
