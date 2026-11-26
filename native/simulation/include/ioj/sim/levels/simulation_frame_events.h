@@ -2,19 +2,14 @@
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_frame_changes.h>
 #include <ioj/sim/lasers/laser_hit_details.h>
+#include <ioj/sim/levels/frame_event_counts.h>
 #include <ioj/sim/player/player_events.h>
 #include <ioj/sim/sim_tick.h>
 
 namespace ioj::sim {
 // Accumulate fixed-tick occurrences until the next outer advance.
 struct SimulationFrameEvents {
-    // Each row stores the exclusive stream ends after one fixed tick.
-    struct TickCounts {
-        std::uint32_t deaths;
-        std::uint32_t impacts;
-        std::uint32_t capital_changes;
-        std::uint32_t turret_changes;
-    };
+    using TickCounts = FrameEventCounts;
     explicit SimulationFrameEvents(std::pmr::memory_resource& memory)
         : ticks{&memory}
         , deaths{memory}
