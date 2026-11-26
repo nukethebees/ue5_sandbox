@@ -12,7 +12,6 @@ public class SandboxGameShared : ModuleRules
 
         PublicDependencyModuleNames.AddRange(new string[]
         {
-            "AIModule",
             "SandboxCore",
             "SandboxCoreEngine",
             "Core",

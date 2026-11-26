@@ -32,13 +32,10 @@ public class Sandbox : ModuleRules
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {
-            "AIModule",
             "DeveloperSettings",
             "EnhancedInput",
-            "GameplayTasks",
             "InputCore",
             "Niagara",
-            "NavigationSystem",
             "Slate",
             "SlateCore",
             "TraceLog",

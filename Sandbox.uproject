@@ -13,8 +13,7 @@
 				"Engine",
 				"UMG",
 				"Slate",
-				"SlateCore",
-				"AIModule"
+				"SlateCore"
 			]
 		},
 		{
