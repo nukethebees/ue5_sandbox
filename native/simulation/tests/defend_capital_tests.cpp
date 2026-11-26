@@ -153,6 +153,7 @@ TEST_P(DefendCapitalOutcome, AwardsVictoryOnTheDecidingTick) {
         levels::authoring::DefinitionReader{script_root()}, R"(
       (copy-with (module-ref (import-module "defend_capital/defend_capital.scm") 'mission)
         :settings (settings :tick (tick :tick-rate 1))
+        :static-collision (list)
         :entities (list
           (entity :id 'playership :archetype 'player-fighter :team 'blue :position '(0 10000 0))
           (entity :id 'capitalship-blue :archetype 'capital-ship :team 'blue
