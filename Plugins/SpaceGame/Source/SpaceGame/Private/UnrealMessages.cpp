@@ -22,8 +22,7 @@ namespace ioj {
 namespace {
 PlayerSettings const* attached_settings{};
 SystemCapabilities const* attached_capabilities{};
-profiles::ProfileManager const* profile_manager{};
-profiles::SaveGameBrowser const* attached_browser{};
+presentation::ProfileView published_profiles{};
 std::optional<session::LevelSelectRequest> menu_destination;
 std::vector<ScreenResolution> const* window_resolutions{};
 
@@ -60,14 +59,8 @@ auto system_capabilities() -> SystemCapabilities const& {
     return *attached_capabilities;
 }
 
-auto player_profiles() -> profiles::ProfileManager const& {
-    check(profile_manager);
-    return *profile_manager;
-}
-
-auto profile_browser() -> profiles::SaveGameBrowser const& {
-    check(attached_browser);
-    return *attached_browser;
+auto player_profiles() -> presentation::ProfileView const& {
+    return published_profiles;
 }
 
 void queue_profile_action(host::ProfileActionKind kind,
@@ -126,20 +119,20 @@ void reset_level_input() {
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 void IojPlayer_Attach(PlayerSettings const& settings,
                       SystemCapabilities const& capabilities,
-                      std::vector<ScreenResolution> const& resolutions,
-                      profiles::ProfileManager const& profiles,
-                      profiles::SaveGameBrowser const& reports) {
+                      std::vector<ScreenResolution> const& resolutions) {
     attached_settings = &settings;
     attached_capabilities = &capabilities;
     window_resolutions = &resolutions;
-    profile_manager = &profiles;
-    attached_browser = &reports;
 }
 
 void host::present_catalog(presentation::MissionCatalogView const& catalog) {
     if (auto* widget{published.catalog_request.Get()}) {
         widget->present_catalog(catalog);
     }
+}
+
+void host::present_profiles(presentation::ProfileView const& profiles) {
+    published_profiles = profiles;
 }
 
 void clear_consumed_messages() {
@@ -183,8 +176,7 @@ void detach_player() {
     pending = MessageBuffer{};
     menu_destination.reset();
     window_resolutions = nullptr;
-    profile_manager = nullptr;
-    attached_browser = nullptr;
+    published_profiles = {};
     attached_settings = nullptr;
     attached_capabilities = nullptr;
 }

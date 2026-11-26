@@ -27,6 +27,7 @@ class Application {
     auto play(Window& window, std::filesystem::path const& mission_path, bool exit_when_ready)
         -> ApplicationResult;
     void publish_catalog();
+    void publish_profiles() const;
     void process_profile_actions(std::span<host::ProfileAction const> actions);
     void process_preferences(Window& window, std::span<host::PreferenceEdit const> edits);
     auto launch_mission(std::filesystem::path const& path) -> ApplicationResult;

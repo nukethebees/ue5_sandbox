@@ -13,11 +13,8 @@ struct UnrealMessages;
 }
 
 namespace ioj::presentation {
+struct ProfileView;
 struct MissionCatalogView;
-}
-namespace ioj::profiles {
-class ProfileManager;
-class SaveGameBrowser;
 }
 namespace ioj {
 struct SystemCapabilities;
@@ -30,9 +27,7 @@ class PlayerSettings;
 extern "C" {
     IOJ_PLAYER_API void IojPlayer_Attach(PlayerSettings const& settings,
                                          SystemCapabilities const& capabilities,
-                                         std::vector<ScreenResolution> const& resolutions,
-                                         profiles::ProfileManager const& profiles,
-                                         profiles::SaveGameBrowser const& browser);
+                                         std::vector<ScreenResolution> const& resolutions);
     IOJ_PLAYER_API auto IojPlayer_MissionStartup() -> MissionStartup;
     IOJ_PLAYER_API void IojPlayer_Detach();
     IOJ_PLAYER_API auto IojPlayer_ApplyPreferences() -> bool;
@@ -48,6 +43,7 @@ namespace host {
 // BeginFrame clears consumed requests and input edges. Axes carry forward.
 // Requests queued while handling results belong to the next batch.
 IOJ_PLAYER_API void present_catalog(presentation::MissionCatalogView const& catalog);
+IOJ_PLAYER_API void present_profiles(presentation::ProfileView const& profiles);
 IOJ_PLAYER_API auto take_messages() -> UnrealMessages;
 IOJ_PLAYER_API void profile_result(std::size_t index, profiles::CreateProfileResult result);
 IOJ_PLAYER_API void preference_result(std::size_t index, std::string_view error);

@@ -1,6 +1,7 @@
 #pragma once
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include <ioj/host/unreal_messages.h>
+#include <ioj/presentation/profile_view.h>
 #include <ioj/profiles/create_profile_result.h>
 #include <ioj/profiles/save_browser.h>
 
@@ -125,7 +126,7 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     /* **************************************** */
     void rebuild_profiles();
     void apply_profile_selection(FString const& profile_id);
-    void rebuild_outcomes(profiles::ProfileReport const& report);
+    void rebuild_outcomes(presentation::ProfileReportView const& report);
     void apply_outcome_selection(FString const& outcome_id);
     void show_profile(profiles::ProfileSummary const& profile, std::string_view active_profile_id);
     void show_outcome(profiles::LevelOutcomeSummary const& outcome);

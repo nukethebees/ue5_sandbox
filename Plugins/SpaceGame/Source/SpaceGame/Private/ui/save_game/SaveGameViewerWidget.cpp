@@ -4,8 +4,8 @@
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include "SSaveGameViewerView.h"
+#include <ioj/presentation/profile_view.h>
 #include <ioj/profiles/profile_manager.h>
-#include <ioj/profiles/save_browser.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
@@ -152,7 +152,7 @@ void USaveGameViewerWidget::profile_action_finished(host::ProfileActionKind kind
         case Activate:
         case ResetTestProfile:
             if (result == profiles::CreateProfileResult::succeeded) {
-                refresh_and_select(to_fstring(player_profiles().active_profile_id()));
+                refresh_and_select(to_fstring(player_profiles().active_profile_id));
             }
 
             return;
@@ -162,7 +162,7 @@ void USaveGameViewerWidget::profile_action_finished(host::ProfileActionKind kind
             return;
         case SelectReport:
             if (selected_profile_id_ == to_fstring(text)) {
-                auto const* report{profile_browser().loaded_profile_report()};
+                auto const& report{player_profiles().report};
                 if (result == profiles::CreateProfileResult::succeeded && report) {
                     rebuild_outcomes(*report);
                 } else {
@@ -180,7 +180,7 @@ void USaveGameViewerWidget::show_create_result(profiles::CreateProfileResult res
     switch (result) {
         case profiles::CreateProfileResult::succeeded: {
             cancel_create_profile();
-            refresh_and_select(to_fstring(player_profiles().active_profile_id()));
+            refresh_and_select(to_fstring(player_profiles().active_profile_id));
             return;
         }
         case profiles::CreateProfileResult::empty_name: {
@@ -237,8 +237,8 @@ void USaveGameViewerWidget::show_create_profile_error(FText const& error) {
 
 void USaveGameViewerWidget::rebuild_profiles() {
     view_state_ = FSaveGameViewState{};
-    auto const& browser{profile_browser()};
-    auto const profiles{browser.summaries()};
+    auto const& browser{player_profiles()};
+    auto const profiles{browser.summaries};
     if (profiles.empty()) {
         show_empty_profiles();
         publish_all();
@@ -248,7 +248,7 @@ void USaveGameViewerWidget::rebuild_profiles() {
     auto const profile_count{static_cast<int32>(profiles.size())};
     view_state_.profiles.Reserve(profile_count);
     for (auto const& profile : profiles) {
-        auto const active{profile.profile_id == browser.active_profile_id()};
+        auto const active{profile.profile_id == browser.active_profile_id};
         auto const marker{active ? TEXT("ACTIVE // ") : TEXT("")};
         view_state_.profiles.Add(FSaveProfileViewRow{
             .profile_id = to_fstring(profile.profile_id),
@@ -278,9 +278,9 @@ void USaveGameViewerWidget::select_profile(FString const& profile_id) {
 }
 
 void USaveGameViewerWidget::apply_profile_selection(FString const& profile_id) {
-    auto const& browser{profile_browser()};
+    auto const& browser{player_profiles()};
 
-    auto const profiles{browser.summaries()};
+    auto const profiles{browser.summaries};
     auto const profile_count{static_cast<int32>(profiles.size())};
     for (int32 index{}; index < profile_count; ++index) {
         auto const& profile{profiles[index]};
@@ -295,14 +295,14 @@ void USaveGameViewerWidget::apply_profile_selection(FString const& profile_id) {
             selected_outcome_id_.Reset();
         }
 
-        show_profile(profile, browser.active_profile_id());
+        show_profile(profile, browser.active_profile_id);
 
         queue_profile_action(host::ProfileActionKind::SelectReport, to_string(profile_id), this);
         return;
     }
 }
 
-void USaveGameViewerWidget::rebuild_outcomes(profiles::ProfileReport const& report) {
+void USaveGameViewerWidget::rebuild_outcomes(presentation::ProfileReportView const& report) {
     view_state_.outcomes.Reset();
     view_state_.statistics.Reset();
     view_state_.selected_outcome_index = INDEX_NONE;
@@ -342,7 +342,7 @@ void USaveGameViewerWidget::select_outcome(FString const& outcome_id) {
 }
 
 void USaveGameViewerWidget::apply_outcome_selection(FString const& outcome_id) {
-    auto const* const report{profile_browser().loaded_profile_report()};
+    auto const& report{player_profiles().report};
     if (!report || report->profile_id != TCHAR_TO_UTF8(*selected_profile_id_)) {
         return;
     }

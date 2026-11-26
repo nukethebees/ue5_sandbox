@@ -10,6 +10,7 @@
 #include <ioj/host/mission_startup.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/presentation/mission_catalog.h>
+#include <ioj/presentation/profile_view.h>
 #include <ioj/profiles/file_profile_storage.h>
 #include <ioj/profiles/level_score.h>
 #include <ioj/profiles/progression.h>
@@ -167,11 +168,8 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     auto const capabilities{query_system_capabilities()};
     auto const engine_command_line{
         engine_arguments(project_directory, settings.launch_display_mode(), args.user_directory)};
-    IojPlayer_Attach(settings,
-                     capabilities,
-                     window.supported_resolutions(),
-                     application.profiles_,
-                     application.profile_browser_);
+    IojPlayer_Attach(settings, capabilities, window.supported_resolutions());
+    application.publish_profiles();
     if (auto result{start_engine(window, engine_command_line, settings.launch_display_mode())};
         !result) {
         return result;
@@ -409,6 +407,14 @@ void Application::publish_catalog() {
     host::present_catalog({directory, errors, missions, campaigns});
 }
 
+void Application::publish_profiles() const {
+    presentation::ProfileView view{profiles_.active_profile_id(), profile_browser_.summaries(), {}};
+    if (auto const* report{profile_browser_.loaded_profile_report()}) {
+        view.report.emplace(report->profile_id, report->outcomes);
+    }
+    host::present_profiles(view);
+}
+
 void Application::process_profile_actions(std::span<host::ProfileAction const> actions) {
     using enum host::ProfileActionKind;
     auto const count{actions.size()};
@@ -450,6 +456,7 @@ void Application::process_profile_actions(std::span<host::ProfileAction const> a
             std::println(stderr, "Profile operation failed for '{}'", action.profile_name_or_id);
         }
 
+        publish_profiles();
         host::profile_result(index, result);
     }
 }
@@ -582,6 +589,7 @@ void Application::unload_level(sim::RunEndReason reason, bool show_results) {
         saved = profiles_.append_score_record(*score);
         if (saved.persisted) {
             profile_browser_.refresh(profiles_);
+            publish_profiles();
         } else {
             std::println(stderr, "Failed to save the score for {}", completed.metadata.id.value);
         }
