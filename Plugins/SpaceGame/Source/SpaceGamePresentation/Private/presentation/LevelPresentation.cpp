@@ -53,7 +53,6 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
         [](auto const&... systems) { (systems.ValidateOptionalAssets(), ...); }};
     ValidateOptionalAssets(capital_ships, turrets);
 
-    spinners.simulation_ = &view.spinners();
     lasers.simulation_ = &view.lasers();
     lasers.player_colours_ =
         UTestTeamVisualData::build_team_colour_cache(config.player_ship.team_visual_data);
@@ -70,7 +69,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     capital_ships.begin_play_presentation(frame);
     capital_ship_fighters.begin_play_presentation(frame);
     turrets.begin_play_presentation(frame);
-    spinners.begin_play_presentation();
+    spinners.begin_play_presentation(frame);
     lasers.begin_play_presentation(config.laser_instance_reserve);
 }
 
@@ -97,11 +96,11 @@ void FLevelPresentation::tick(float const dt, presentation::MissionFrame const& 
     capital_ships.update_visual_data(frame.events);
     turrets.update_visual_data(frame.events);
     capital_ship_fighters.update_visual_data(frame);
-    spinners.update_visual_data();
+    spinners.update_visual_data(frame);
     lasers.update_visual_data(&view.frame_events());
     capital_ships.end_tick_presentation(frame);
     turrets.end_tick_presentation(frame);
-    spinners.end_tick_presentation();
+    spinners.end_tick_presentation(frame);
     lasers.end_tick_presentation();
     capital_ships.commit_visual_data();
     capital_ship_fighters.commit_visual_data(frame);
