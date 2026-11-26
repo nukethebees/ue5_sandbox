@@ -85,7 +85,7 @@ void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason)
 }
 void ATestBatchOrchestrator::release_level() {
     if (IsValid(player_ship)) {
-        player_ship->unbind_simulation();
+        player_ship->clear_player_frame();
     }
 
     presentation_host_.reset();
@@ -146,7 +146,7 @@ auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
 }
 void ATestBatchOrchestrator::clear_player_ship() {
     if (IsValid(player_ship)) {
-        player_ship->unbind_simulation();
+        player_ship->clear_player_frame();
     }
 
     player_ship = nullptr;
@@ -245,7 +245,7 @@ auto ATestBatchOrchestrator::bind_level(presentation::MissionInit const& mission
     grid_ = mission.grid;
     refresh_collision_grid_visualization();
     if (IsValid(player_ship) && frame.player) {
-        player_ship->bind_simulation(level);
+        player_ship->present_player(*frame.player);
     }
 
     if (is_presentation_enabled()) {
@@ -341,6 +341,9 @@ void ATestBatchOrchestrator::present_level(time_type const delta_seconds,
                                            presentation::MissionFrame const& frame, sim::LevelSim const& level) {
     check(status_);
     status_ = frame.status;
+    if (IsValid(player_ship) && frame.player) {
+        player_ship->present_player(*frame.player);
+    }
     presentation_host_.tick(delta_seconds, level.read_access(), level.spatial_query_manager());
 
     for (auto const victim : frame.events.victims) {

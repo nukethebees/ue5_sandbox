@@ -1,10 +1,10 @@
 #pragma once
+#include <ioj/presentation/mission_frame.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/player_events.h>
 #include <ioj/sim/player/ship_laser_mode.h>
-#include <ioj/sim/player/sim.h>
 #include <ioj/sim/player/space_ship_common.h>
 #include <ioj/sim/player/trigger_mode.h>
 #include <SpaceGame/ships/player/TestShipTriggerModeConversion.h>
@@ -47,10 +47,10 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     // Lifecycle and simulation binding
     /* **************************************** */
     ATestSpaceShip();
-    void bind_simulation(sim::LevelSim const& level);
-    void unbind_simulation();
+    void present_player(presentation::PlayerFrame const& player) { player_frame_ = player; }
+    void clear_player_frame();
     auto input_events() -> sim::player::PlayerInputEvents&;
-    auto has_simulation() const noexcept -> bool { return bound_level_ != nullptr; }
+    auto has_player_frame() const noexcept -> bool { return player_frame_.has_value(); }
 
     /* **************************************** */
     // Entity identity and configuration
@@ -59,7 +59,8 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     auto get_team() const noexcept -> ETestTeam;
     void set_team(ETestTeam new_team) noexcept;
     void set_initial_health(int32 value) noexcept {
-        initial_.health = settings::PositiveHealth::make(sim::Health{value});
+        check(value > 0);
+        initial_health_ = value;
     }
 
     /* **************************************** */
@@ -99,8 +100,6 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     /* **************************************** */
     auto GetVelocity() const -> FVector override;
 
-    auto simulation() const -> sim::player::Sim const&;
-
     void handle_simulation_death();
     void configure_ship_mesh();
 
@@ -122,7 +121,7 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara", meta = (AllowPrivateAccess))
     UNiagaraComponent* boost_engine_effect{nullptr};
 
-    sim::PlayerSimConfig initial_;
+    int32 initial_health_{1000};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Logging", meta = (AllowPrivateAccess))
     FActorLoggingConfig log_config{1.f};
@@ -134,7 +133,7 @@ class SPACEGAME_API ATestSpaceShip : public APawn {
     bool debug_forward_direction{false};
 #endif
 
-    sim::LevelSim const* bound_level_{};
+    std::optional<presentation::PlayerFrame> player_frame_;
 
   public:
 #if WITH_EDITORONLY_DATA

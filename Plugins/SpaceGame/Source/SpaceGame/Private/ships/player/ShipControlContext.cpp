@@ -49,7 +49,7 @@ auto FShipControlContext::can_bind() const -> bool {
     auto* const ship{ship_.Get()};
     if (!initialised_ || !owner_.IsValid() || !input_component_.IsValid() ||
         !input_subsystem_object_.IsValid() || !input_subsystem_ || !IsValid(ship) ||
-        !ship->has_simulation() || !input_) {
+        !ship->has_player_frame() || !input_) {
         return false;
     }
 
@@ -185,7 +185,7 @@ void FShipControlContext::neutralise_ship_input() {
     }
 
     auto* const ship{ship_.Get()};
-    if (!IsValid(ship) || !ship->has_simulation()) {
+    if (!IsValid(ship) || !ship->has_player_frame()) {
         return;
     }
     ship->input_events().set_pitch_input(0.f);
@@ -198,7 +198,7 @@ void FShipControlContext::neutralise_ship_input() {
 }
 auto FShipControlContext::get_ship() const -> ATestSpaceShip* {
     auto* const ship{ship_.Get()};
-    if (!IsValid(ship) || !ship->has_simulation()) {
+    if (!IsValid(ship) || !ship->has_player_frame()) {
         UE_LOG(LogSandboxController, Warning, TEXT("Player ship simulation is unavailable."));
         return nullptr;
     }
