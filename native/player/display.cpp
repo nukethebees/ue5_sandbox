@@ -1,4 +1,4 @@
-#include "window.h"
+#include "player/window.h"
 #include <ioj/host/game_host_api.h>
 #include <ioj/settings/game_window_mode.h>
 #include <ioj/settings/player_settings.h>

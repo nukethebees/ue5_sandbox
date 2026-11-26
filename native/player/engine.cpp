@@ -1,6 +1,6 @@
-#include "engine.h"
+#include "player/engine.h"
 
-#include "cli_args.h"
+#include "player/cli_args.h"
 #include <ioj/settings/game_window_mode.h>
 #include <ioj/settings/launch_display_mode.h>
 #include <ioj/settings/screen_resolution.h>

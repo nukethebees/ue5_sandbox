@@ -1,7 +1,6 @@
-#include "system.h"
+#include "player/windows/system.h"
 
-#include "../engine.h"
-#include <ioj/settings/screen_resolution.h>
+#include "player/engine.h"
 #include <ioj/system_error_message.h>
 
 #include <combaseapi.h>

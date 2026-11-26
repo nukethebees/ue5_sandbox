@@ -1,7 +1,11 @@
 set(host_directory "${PROJECT_SOURCE_DIR}/native/player")
 add_executable(IojPlayer)
 set_target_properties(IojPlayer PROPERTIES OUTPUT_NAME ioj)
-target_include_directories(IojPlayer PRIVATE "${host_directory}/include")
+target_include_directories(IojPlayer
+  PRIVATE
+    "${PROJECT_SOURCE_DIR}/native"
+    "${host_directory}/include"
+)
 set(agility_sdk "${UE_ROOT_ABSOLUTE}/Engine/Source/ThirdParty/Windows/AgilitySDK")
 target_include_directories(IojPlayer SYSTEM
   PRIVATE

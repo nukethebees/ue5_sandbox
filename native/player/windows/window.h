@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../engine.h"
-#include "system.h"
+#include "player/engine.h"
+#include "player/windows/system.h"
 
 struct SDL_Window;
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "system.h"
+#include "player/windows/system.h"
 
 // Win64 imports from UELibraryAPI.h, whose public header requires UBT platform headers.
 extern "C" {

@@ -1,10 +1,10 @@
-#include "../engine.h"
+#include "player/engine.h"
 
-#include "../cli_args.h"
-#include "../window.h"
-#include "system.h"
-#include "unreal_library.h"
-#include "window.h"
+#include "player/cli_args.h"
+#include "player/window.h"
+#include "player/windows/system.h"
+#include "player/windows/unreal_library.h"
+#include "player/windows/window.h"
 #include <ioj/host/game_host_api.h>
 
 #include <expected>

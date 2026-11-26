@@ -1,8 +1,8 @@
-#include "application.h"
+#include "player/application.h"
 
-#include "cli_args.h"
-#include "engine.h"
-#include "window.h"
+#include "player/cli_args.h"
+#include "player/engine.h"
+#include "player/window.h"
 #include <ioj/files.h>
 #include <ioj/host/game_host_api.h>
 #include <ioj/host/level_host.h>

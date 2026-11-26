@@ -1,5 +1,5 @@
-#include "application.h"
-#include "cli_args.h"
+#include "player/application.h"
+#include "player/cli_args.h"
 
 #include <cstdio>
 #include <exception>

@@ -1,6 +1,6 @@
-#include "window.h"
+#include "player/windows/window.h"
 
-#include "unreal_library.h"
+#include "player/windows/unreal_library.h"
 
 #include <commctrl.h>
 #include <SDL3/SDL_properties.h>
