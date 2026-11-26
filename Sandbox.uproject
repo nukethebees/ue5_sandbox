@@ -526,7 +526,7 @@
 		},
 		{
 			"Name": "CQTestEnhancedInput",
-			"Enabled": true
+			"Enabled": false
 		}
 	],
 	"TargetPlatforms": [
