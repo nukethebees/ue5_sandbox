@@ -1,6 +1,6 @@
 #include <ioj/levels/launch_options.h>
 #pragma once
-#include <ioj/levels/authoring/level_catalog_category.h>
+#include <ioj/levels/level_catalog_category.h>
 #include <ioj/profiles/completion_indicator_state.h>
 #include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
@@ -13,7 +13,6 @@ class UGameUiStyleSubsystem;
 }
 
 namespace ioj::s7 {
-using ioj::levels::authoring::FCampaignScriptEntry;
 using ioj::levels::authoring::FLevelScriptEntry;
 using ioj::levels::authoring::LevelCatalogCategory;
 
@@ -60,6 +59,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     }
 
     void refresh() override;
+    void present_catalog(presentation::MissionCatalogView const& catalog) override;
     void focus_primary_action() override;
   protected:
     void NativeOnInitialized() override;
@@ -89,7 +89,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     void publish_catalog();
 
     TArray<FLevelScriptEntry> entries_{};
-    TArray<FCampaignScriptEntry> campaigns_{};
+    TArray<levels::CampaignDefinition> campaigns_{};
     TArray<int32> level_entry_indices_{};
     FString catalog_directory_{};
     FString catalog_error_{};

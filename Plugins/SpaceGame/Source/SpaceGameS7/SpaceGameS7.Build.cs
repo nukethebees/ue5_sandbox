@@ -15,7 +15,7 @@ public class SpaceGameS7 : ModuleRules
             "CommonUI",
             "Core",
             "CoreUObject",
-            "NativeLevelAuthoring",
+            "NativeLevels",
             "SpaceGame",
             "SpaceGameSimulation",
             "SpaceGamePresentation",

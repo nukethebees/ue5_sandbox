@@ -9,8 +9,10 @@
 #include <ioj/host/level_host.h>
 #include <ioj/host/mission_startup.h>
 #include <ioj/levels/authoring/definition_reader.h>
+#include <ioj/presentation/mission_catalog.h>
 #include <ioj/profiles/file_profile_storage.h>
 #include <ioj/profiles/level_score.h>
+#include <ioj/profiles/progression.h>
 #include <ioj/profiles/sample_profile_records.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/system_capabilities.h>
@@ -125,6 +127,7 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     }
 
     Application application{std::move(*profile_manager)};
+    application.scripts_directory_ = scripts_directory;
 
     Window window;
     if (auto result{window.create()}; !result) {
@@ -283,6 +286,10 @@ auto Application::play(Window& window,
         process_preferences(window, messages.preference_edits);
         process_profile_actions(messages.profile_actions);
 
+        if (messages.refresh_catalog) {
+            publish_catalog();
+        }
+
         auto const& navigation{messages.navigation_request};
         if (auto const* menu{std::get_if<session::LevelSelectRequest>(&navigation)}) {
             unload_level(sim::RunEndReason::WorldEnd, false);
@@ -290,11 +297,25 @@ auto Application::play(Window& window,
             continue;
         }
 
-        if (auto const* mission{std::get_if<session::MissionLaunchRequest>(&navigation)}) {
+        if (auto const* mission{std::get_if<host::MissionSelection>(&navigation)}) {
             unload_level(sim::RunEndReason::WorldEnd, false);
-            if (auto result{launch_mission(*mission)}; !result) {
-                host::open_menu(mission->definition.metadata().id.value, result.error());
+            if (catalog_) {
+                auto const entry{std::ranges::find_if(catalog_->levels, [&](auto const& candidate) {
+                    return candidate.definition &&
+                           candidate.definition->metadata().id == mission->id;
+                })};
+                if (entry != catalog_->levels.end()) {
+                    auto result{launch_mission({std::move(*entry->definition),
+                                                path_to_utf8(entry->source_path),
+                                                mission->options})};
+                    catalog_.reset();
+                    if (!result) {
+                        host::open_menu(mission->id.value, result.error());
+                    }
+                    continue;
+                }
             }
+            host::open_menu(mission->id.value, "The selected mission is no longer available.");
             continue;
         }
 
@@ -328,6 +349,64 @@ auto Application::play(Window& window,
     }
 
     return {};
+}
+
+void Application::publish_catalog() {
+    auto loaded{
+        levels::authoring::DefinitionReader{}.read_root_file(scripts_directory_ / "catalog.scm")};
+    auto const directory{path_to_utf8(scripts_directory_)};
+    if (!loaded) {
+        catalog_.reset();
+        host::present_catalog({directory, levels::format_diagnostics(loaded.error()), {}, {}});
+        return;
+    }
+
+    catalog_.emplace(std::move(*loaded));
+    std::vector<presentation::MissionListing> missions;
+    std::vector<levels::CampaignDefinition const*> campaigns;
+    std::string errors;
+    auto append_error = [&](std::string const& error) {
+        if (!errors.empty()) {
+            errors += '\n';
+        }
+        errors += error;
+    };
+    auto completed = [&](levels::LevelId const& id) {
+        return profiles::summarize_level_progress(id, profiles_.active_records()).state() ==
+               profiles::LevelProgressState::Completed;
+    };
+    missions.reserve(catalog_->levels.size());
+    for (auto const& entry : catalog_->levels) {
+        auto& row{missions.emplace_back()};
+        row.path = path_to_utf8(entry.source_path);
+        row.script = entry.source_text;
+        if (!entry.definition) {
+            row.error = levels::format_diagnostics(entry.definition.error());
+            append_error(row.error);
+            continue;
+        }
+
+        auto const& definition{*entry.definition};
+        row.metadata = &definition.metadata();
+        row.category = levels::authoring::catalog_category(definition);
+        row.team_count = levels::participating_teams(definition).size();
+        row.entity_count = definition.entities().size();
+        row.has_player = !definition.player_entity_id().empty();
+        row.progress =
+            profiles::summarize_level_progress(row.metadata->id, profiles_.active_records());
+        row.indicator = profiles::level_completion_indicator_state(row.progress,
+                                                                   row.metadata->par_time_seconds);
+        row.prerequisites = profiles::evaluate_unlock(definition, completed);
+        row.unlocked = row.prerequisites.unlocked(settings_.application().unlock_all_missions);
+    }
+    for (auto const& entry : catalog_->campaigns) {
+        if (entry.definition) {
+            campaigns.push_back(&*entry.definition);
+        } else {
+            append_error(levels::format_diagnostics(entry.definition.error()));
+        }
+    }
+    host::present_catalog({directory, errors, missions, campaigns});
 }
 
 void Application::process_profile_actions(std::span<host::ProfileAction const> actions) {

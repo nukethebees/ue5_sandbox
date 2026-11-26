@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/levels/authoring/definition_catalog.h>
+#include <ioj/presentation/mission_catalog.h>
 
 #include <CoreMinimal.h>
 
@@ -12,29 +12,19 @@ struct SPACEGAMES7_API FLevelScriptEntry {
     FString display_title{};
     FString description{};
     FString error{};
-    TOptional<levels::LevelDefinition> definition{NullOpt};
+    levels::LevelId id{};
+    std::optional<float> par_time{};
+    LevelCatalogCategory category{};
+    int32 team_count{};
+    int32 entity_count{};
+    bool has_player{};
+    profiles::LevelProgressSummary progress{};
+    profiles::CompletionIndicatorState indicator{};
+    profiles::UnlockStatus prerequisites{};
+    bool unlocked{};
 
-    explicit operator bool() const noexcept { return definition.IsSet(); }
-};
-
-struct SPACEGAMES7_API FCampaignScriptEntry {
-    FString filename{};
-    FString path{};
-    FString error{};
-    TOptional<CampaignDefinition> definition{NullOpt};
-
-    explicit operator bool() const noexcept { return definition.IsSet(); }
-};
-
-struct SPACEGAMES7_API FLevelScriptCatalogResult {
-    FString directory{};
-    FString error{};
-    TArray<FLevelScriptEntry> entries{};
-    TArray<FCampaignScriptEntry> campaigns{};
+    explicit operator bool() const noexcept { return !id.empty(); }
 };
 
 SPACEGAMES7_API auto default_level_script_directory() -> FString;
-SPACEGAMES7_API auto default_level_script_root() -> FString;
-SPACEGAMES7_API auto load_level_script_catalog(FStringView root_path) -> FLevelScriptCatalogResult;
-SPACEGAMES7_API auto load_level_script_catalog() -> FLevelScriptCatalogResult;
 }

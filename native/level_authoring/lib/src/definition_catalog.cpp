@@ -2,7 +2,7 @@
 
 #include <ioj/ascii.h>
 #include <ioj/files.h>
-#include <ioj/levels/authoring/level_catalog_category.h>
+#include <ioj/levels/level_catalog_category.h>
 
 #include <algorithm>
 #include <unordered_map>

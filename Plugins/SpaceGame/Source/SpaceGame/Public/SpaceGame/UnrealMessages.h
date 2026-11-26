@@ -11,6 +11,7 @@
 
 namespace ioj {
 class UOptionsDraft;
+class ULevelSelectWidget;
 class USaveGameViewerWidget;
 
 SPACEGAME_API auto player_settings() -> PlayerSettings const&;
@@ -21,7 +22,8 @@ void queue_profile_action(host::ProfileActionKind kind,
                           std::string_view profile_name_or_id,
                           USaveGameViewerWidget* widget);
 void queue_preferences(host::PreferenceEdit edit, UOptionsDraft& draft);
-SPACEGAME_API void request_mission(session::MissionLaunchRequest mission);
+SPACEGAME_API void request_mission(host::MissionSelection mission);
+SPACEGAME_API void request_mission_catalog(ULevelSelectWidget& widget);
 bool request_menu(session::LevelSelectRequest request);
 SPACEGAME_API auto menu_selection() -> std::optional<session::LevelSelectRequest>&;
 auto supported_resolutions() -> std::span<ScreenResolution const>;

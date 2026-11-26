@@ -1,6 +1,7 @@
 #include "SpaceGame/UnrealMessages.h"
 
 #include "SpaceGame/settings/OptionsDraft.h"
+#include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
@@ -32,6 +33,7 @@ struct MessageBuffer {
     std::vector<host::PreferenceEdit> preference_edits;
     std::vector<TWeakObjectPtr<UOptionsDraft>> preference_senders;
     host::NavigationRequest navigation_request;
+    TWeakObjectPtr<ULevelSelectWidget> catalog_request;
     std::optional<levels::LaunchMode> requested_simulation_mode;
     sim::player::PlayerInputEvents ship_input{*std::pmr::get_default_resource()};
 };
@@ -80,7 +82,11 @@ void queue_preferences(host::PreferenceEdit edit, UOptionsDraft& draft) {
     pending.preference_senders.emplace_back(&draft);
 }
 
-void request_mission(session::MissionLaunchRequest mission) {
+void request_mission_catalog(ULevelSelectWidget& widget) {
+    pending.catalog_request = &widget;
+}
+
+void request_mission(host::MissionSelection mission) {
     pending.navigation_request = std::move(mission);
 }
 
@@ -130,7 +136,14 @@ void IojPlayer_Attach(PlayerSettings const& settings,
     attached_browser = &reports;
 }
 
+void host::present_catalog(presentation::MissionCatalogView const& catalog) {
+    if (auto* widget{published.catalog_request.Get()}) {
+        widget->present_catalog(catalog);
+    }
+}
+
 void clear_consumed_messages() {
+    published.catalog_request.Reset();
     published.profile_actions.clear();
     published.profile_senders.clear();
     published.preference_edits.clear();
@@ -147,7 +160,8 @@ auto host::take_messages() -> UnrealMessages {
             published.preference_edits,
             published.navigation_request,
             published.requested_simulation_mode,
-            published.ship_input.view()};
+            published.ship_input.view(),
+            published.catalog_request.IsValid()};
 }
 
 void host::profile_result(std::size_t index, profiles::CreateProfileResult result) {

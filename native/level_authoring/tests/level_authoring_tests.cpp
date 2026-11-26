@@ -5,7 +5,6 @@
 #include <ioj/gfx/starfield_settings.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/game_configuration.h>
-#include <ioj/levels/authoring/level_catalog_category.h>
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/levels/authoring/level_inputs.h>
 #include <ioj/levels/authoring/level_inputs_reader.h> // IWYU pragma: keep
@@ -17,6 +16,7 @@
 #include <ioj/levels/entity_spawn_definition.h>
 #include <ioj/levels/identifiers.h>
 #include <ioj/levels/level_camera_definition.h>
+#include <ioj/levels/level_catalog_category.h>
 #include <ioj/levels/level_definition.h>
 #include <ioj/levels/level_definition_components.h>
 #include <ioj/levels/logic_payloads.h>

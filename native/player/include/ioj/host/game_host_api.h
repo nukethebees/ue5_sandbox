@@ -12,6 +12,9 @@ namespace ioj::host {
 struct UnrealMessages;
 }
 
+namespace ioj::presentation {
+struct MissionCatalogView;
+}
 namespace ioj::profiles {
 class ProfileManager;
 class SaveGameBrowser;
@@ -44,6 +47,7 @@ namespace host {
 // Call once after the Unreal tick. Views last until the next BeginFrame or detach.
 // BeginFrame clears consumed requests and input edges. Axes carry forward.
 // Requests queued while handling results belong to the next batch.
+IOJ_PLAYER_API void present_catalog(presentation::MissionCatalogView const& catalog);
 IOJ_PLAYER_API auto take_messages() -> UnrealMessages;
 IOJ_PLAYER_API void profile_result(std::size_t index, profiles::CreateProfileResult result);
 IOJ_PLAYER_API void preference_result(std::size_t index, std::string_view error);

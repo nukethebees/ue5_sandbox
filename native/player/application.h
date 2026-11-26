@@ -2,6 +2,7 @@
 
 #include "player/engine.h"
 #include <ioj/host/unreal_messages.h>
+#include <ioj/levels/authoring/definition_catalog.h>
 #include <ioj/memory/bump_resource.h>
 #include <ioj/profiles/profile_manager.h>
 #include <ioj/profiles/save_browser.h>
@@ -25,6 +26,7 @@ class Application {
 
     auto play(Window& window, std::filesystem::path const& mission_path, bool exit_when_ready)
         -> ApplicationResult;
+    void publish_catalog();
     void process_profile_actions(std::span<host::ProfileAction const> actions);
     void process_preferences(Window& window, std::span<host::PreferenceEdit const> edits);
     auto launch_mission(std::filesystem::path const& path) -> ApplicationResult;
@@ -34,6 +36,8 @@ class Application {
     void unload_level(sim::RunEndReason reason, bool show_results);
 
     PlayerSettings settings_;
+    std::filesystem::path scripts_directory_;
+    std::optional<levels::authoring::DefinitionCatalog> catalog_;
     std::optional<session::MissionLaunchRequest> mission_to_bind_;
     profiles::ProfileManager profiles_;
     profiles::SaveGameBrowser profile_browser_;

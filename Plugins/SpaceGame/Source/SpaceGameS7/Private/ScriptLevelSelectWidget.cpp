@@ -2,8 +2,6 @@
 
 #include "SScriptLevelSelectView.h"
 #include <ioj/levels/launch_options.h>
-#include <ioj/profiles/progression.h>
-#include <SpaceGame/levels/LevelUnlock.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/UnrealMessages.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
@@ -16,12 +14,11 @@
 
 #include <Engine/GameInstance.h>
 #include <Kismet/GameplayStatics.h>
+#include <Misc/Paths.h>
 
 namespace ioj::s7 {
-using ioj::levels::authoring::catalog_category;
 using ioj::levels::authoring::FLevelScriptEntry;
 using ioj::levels::authoring::LevelCatalogCategory;
-using ioj::levels::authoring::load_level_script_catalog;
 
 namespace {
 auto progress_label(profiles::LevelProgressSummary const& progress) -> FString {
@@ -40,20 +37,16 @@ auto progress_label(profiles::LevelProgressSummary const& progress) -> FString {
 
 auto level_details(FLevelScriptEntry const& entry, profiles::LevelProgressSummary const& progress)
     -> FString {
-    auto const& definition{entry.definition.GetValue()};
-    auto const teams{levels::participating_teams(definition)};
-    auto details{
-        FString::Printf(TEXT("LEVEL ID  //  %s\nTEAMS  //  %d    ENTITIES  //  %d    "
-                             "PLAYER ASSET  //  %s\nPROGRESS  //  %s"),
-                        *to_fstring(definition.metadata().id.value),
-                        static_cast<int32>(teams.size()),
-                        static_cast<int32>(definition.entities().size()),
-                        !definition.player_entity_id().empty() ? TEXT("ASSIGNED") : TEXT("NONE"),
-                        *progress_label(progress).ToUpper())};
-    auto const par_time{definition.metadata().par_time_seconds};
+    auto details{FString::Printf(TEXT("LEVEL ID  //  %s\nTEAMS  //  %d    ENTITIES  //  %d    "
+                                      "PLAYER ASSET  //  %s\nPROGRESS  //  %s"),
+                                 *to_fstring(entry.id.value),
+                                 entry.team_count,
+                                 entry.entity_count,
+                                 entry.has_player ? TEXT("ASSIGNED") : TEXT("NONE"),
+                                 *progress_label(progress).ToUpper())};
+    auto const par_time{entry.par_time};
     if (par_time.has_value()) {
-        auto const par_achieved{profiles::level_completion_indicator_state(progress, par_time) ==
-                                profiles::CompletionIndicatorState::ParAchieved};
+        auto const par_achieved{entry.indicator == profiles::CompletionIndicatorState::ParAchieved};
         details += FString::Printf(TEXT("\nPAR TIME  //  %.1f S    PAR STATUS  //  %s"),
                                    *par_time,
                                    par_achieved ? TEXT("ACHIEVED") : TEXT("NOT ACHIEVED"));
@@ -78,7 +71,7 @@ auto level_details(FLevelScriptEntry const& entry, profiles::LevelProgressSummar
 
 auto find_level_title(TArray<FLevelScriptEntry> const& entries, FLevelId const id) -> FText {
     for (auto const& entry : entries) {
-        if (entry && levels::authoring::to_unreal(entry.definition->metadata().id) == id) {
+        if (entry && levels::authoring::to_unreal(entry.id) == id) {
             return FText::FromString(entry.display_title);
         }
     }
@@ -86,24 +79,10 @@ auto find_level_title(TArray<FLevelScriptEntry> const& entries, FLevelId const i
     return FText::FromName(id.value);
 }
 
-auto make_unlock_evaluator(TArray<FLevelScriptEntry> const& entries, bool unlock_all)
-    -> FLevelUnlockEvaluator {
-    return FLevelUnlockEvaluator{
-        [](FLevelId const id) {
-            return profiles::summarize_level_progress(
-                       levels::LevelId{to_string(id.value.ToString())},
-                       player_profiles().active_records())
-                       .state() == profiles::LevelProgressState::Completed;
-        },
-        [&entries](FLevelId const id) { return find_level_title(entries, id); },
-        unlock_all,
-    };
-}
-
 auto description_with_requirements(FLevelScriptEntry const& entry,
-                                   FLevelUnlockStatus const& unlock_status) -> FString {
+                                   TArray<FLevelScriptEntry> const& entries) -> FString {
     auto description{entry.description};
-    if (unlock_status.criteria.IsEmpty()) {
+    if (entry.prerequisites.criteria.empty()) {
         return description;
     }
 
@@ -111,10 +90,14 @@ auto description_with_requirements(FLevelScriptEntry const& entry,
         description += TEXT("\n\n");
     }
     description += TEXT("DEPLOYMENT REQUIREMENTS");
-    for (auto const& criterion : unlock_status.criteria) {
-        description += FString::Printf(TEXT("\n%s %s"),
-                                       criterion.satisfied ? TEXT("\u2713") : TEXT("\u2610"),
-                                       *criterion.description.ToString());
+    for (auto const& criterion : entry.prerequisites.criteria) {
+        description += FString::Printf(
+            TEXT("\n%s %s"),
+            criterion.satisfied ? TEXT("\u2713") : TEXT("\u2610"),
+            *FText::Format(
+                 NSLOCTEXT("LevelUnlock", "CompleteLevel", "Complete {0}"),
+                 find_level_title(entries, levels::authoring::to_unreal(criterion.level_id)))
+                 .ToString());
     }
 
     return description;
@@ -126,7 +109,7 @@ auto entry_matches_category(FLevelScriptEntry const& entry, LevelCatalogCategory
         return category == LevelCatalogCategory::Mission;
     }
 
-    auto const content_category{catalog_category(entry.definition.GetValue())};
+    auto const content_category{entry.category};
     return category == LevelCatalogCategory::Mission
              ? content_category == LevelCatalogCategory::Mission
              : content_category == LevelCatalogCategory::BattleViewer;
@@ -205,11 +188,40 @@ void UScriptLevelSelectWidget::refresh_levels() {
     catalog_directory_.Reset();
     catalog_error_.Reset();
 
-    auto catalog{load_level_script_catalog()};
-    entries_ = MoveTemp(catalog.entries);
-    campaigns_ = MoveTemp(catalog.campaigns);
-    catalog_directory_ = MoveTemp(catalog.directory);
-    catalog_error_ = MoveTemp(catalog.error);
+    request_mission_catalog(*this);
+}
+
+void UScriptLevelSelectWidget::present_catalog(presentation::MissionCatalogView const& catalog) {
+    entries_.Reset(static_cast<int32>(catalog.missions.size()));
+    for (auto const& row : catalog.missions) {
+        auto& entry{entries_.Emplace_GetRef()};
+        entry.path = to_fstring(row.path);
+        entry.filename = FPaths::GetCleanFilename(entry.path);
+        entry.source_text = to_fstring(row.script);
+        if (!row.metadata) {
+            entry.display_title = FPaths::GetBaseFilename(entry.path);
+            entry.error = to_fstring(row.error);
+            continue;
+        }
+        entry.display_title = to_fstring(row.metadata->title);
+        entry.description = to_fstring(row.metadata->description);
+        entry.id = row.metadata->id;
+        entry.par_time = row.metadata->par_time_seconds;
+        entry.category = row.category;
+        entry.team_count = static_cast<int32>(row.team_count);
+        entry.entity_count = static_cast<int32>(row.entity_count);
+        entry.has_player = row.has_player;
+        entry.progress = row.progress;
+        entry.indicator = row.indicator;
+        entry.prerequisites = row.prerequisites;
+        entry.unlocked = row.unlocked;
+    }
+    campaigns_.Reset(static_cast<int32>(catalog.campaigns.size()));
+    for (auto const* campaign : catalog.campaigns) {
+        campaigns_.Add(*campaign);
+    }
+    catalog_directory_ = to_fstring(catalog.directory);
+    catalog_error_ = to_fstring(catalog.error);
 
     if (auto& destination{menu_selection()}; destination && !destination->launch_error.empty()) {
         auto launch_error{to_fstring(destination->launch_error)};
@@ -252,8 +264,7 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
         auto const count{entries_.Num()};
         for (int32 index{}; index < count; ++index) {
             if (entries_[index]) {
-                result.Add(levels::authoring::to_unreal(entries_[index].definition->metadata().id),
-                           index);
+                result.Add(levels::authoring::to_unreal(entries_[index].id), index);
             }
         }
 
@@ -271,13 +282,9 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
         auto const& entry{entries_[entry_index]};
         auto indicator_state{profiles::CompletionIndicatorState::Incomplete};
         if (entry) {
-            auto const progress{profiles::summarize_level_progress(
-                entry.definition->metadata().id, player_profiles().active_records())};
-            indicator_state = profiles::level_completion_indicator_state(
-                progress, entry.definition->metadata().par_time_seconds);
+            indicator_state = entry.indicator;
             if (preferred_button_index == INDEX_NONE && !focus_level_id.IsNone() &&
-                levels::authoring::to_unreal(entry.definition->metadata().id).value ==
-                    focus_level_id) {
+                levels::authoring::to_unreal(entry.id).value == focus_level_id) {
                 preferred_button_index = level_entry_indices_.Num();
             }
         }
@@ -290,11 +297,8 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
 
     TSet<FLevelId> grouped_levels;
     for (auto const& campaign : campaigns_) {
-        if (!campaign) {
-            continue;
-        }
         TArray<int32> visible_indices;
-        for (auto const level_id : campaign.definition->level_ids) {
+        for (auto const level_id : campaign.level_ids) {
             auto const* const entry_index{
                 entry_indices.Find(levels::authoring::to_unreal(level_id))};
             check(entry_index);
@@ -309,12 +313,11 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
             continue;
         }
 
-        add_header(to_fstring(campaign.definition->title));
+        add_header(to_fstring(campaign.title));
         ++visible_campaign_count;
         for (auto const entry_index : visible_indices) {
             add_level(entry_index);
-            auto const level_id{
-                levels::authoring::to_unreal(entries_[entry_index].definition->metadata().id)};
+            auto const level_id{levels::authoring::to_unreal(entries_[entry_index].id)};
             grouped_levels.Add(level_id);
         }
     }
@@ -323,8 +326,7 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
     auto const entry_count{entries_.Num()};
     for (int32 index{}; index < entry_count; ++index) {
         if (!entries_[index] || !entry_matches_category(entries_[index], active_category_) ||
-            grouped_levels.Contains(
-                levels::authoring::to_unreal(entries_[index].definition->metadata().id))) {
+            grouped_levels.Contains(levels::authoring::to_unreal(entries_[index].id))) {
             continue;
         }
 
@@ -423,10 +425,9 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
     }
 
     selected_entry_index_ = entry_index;
-    selected_level_id_ =
-        entries_[entry_index]
-            ? levels::authoring::to_unreal(entries_[entry_index].definition->metadata().id).value
-            : NAME_None;
+    selected_level_id_ = entries_[entry_index]
+                           ? levels::authoring::to_unreal(entries_[entry_index].id).value
+                           : NAME_None;
     view_state_.selected_button_index = button_index;
 
     auto const& entry{entries_[entry_index]};
@@ -438,18 +439,11 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
 
     if (entry) {
         auto* const game_instance{GetGameInstance()};
-        auto const progress{profiles::summarize_level_progress(entry.definition->metadata().id,
-                                                               player_profiles().active_records())};
-        auto const evaluator{make_unlock_evaluator(
-            entries_,
-
-            game_instance && player_settings().application().unlock_all_missions)};
-        auto const unlock_status{evaluator.evaluate(entry.definition.GetValue())};
-        view_state_.description =
-            FText::FromString(description_with_requirements(entry, unlock_status));
+        auto const progress{entry.progress};
+        view_state_.description = FText::FromString(description_with_requirements(entry, entries_));
         view_state_.details = FText::FromString(level_details(entry, progress));
 
-        if (unlock_status.unlocked) {
+        if (entry.unlocked) {
             view_state_.can_launch = true;
             if (game_instance && player_settings().application().start_levels_paused) {
                 view_state_.launch_mode_status =
@@ -519,11 +513,8 @@ void UScriptLevelSelectWidget::launch_selected_level(::ioj::levels::LaunchOption
         return;
     }
 
-    auto* const game_instance{GetGameInstance()};
-    auto const evaluator{make_unlock_evaluator(
-        entries_, game_instance && player_settings().application().unlock_all_missions)};
     auto const& selected_entry{entries_[selected_entry_index_]};
-    if (!evaluator.evaluate(selected_entry.definition.GetValue()).unlocked) {
+    if (!selected_entry.unlocked) {
         view_state_.can_launch = false;
         view_state_.status =
             NSLOCTEXT("LevelSelect", "Locked", "LOCKED  //  DEPLOYMENT REQUIREMENTS INCOMPLETE");
@@ -543,8 +534,7 @@ void UScriptLevelSelectWidget::launch_selected_level(::ioj::levels::LaunchOption
                             : active_category_ == LevelCatalogCategory::Benchmark
                                 ? ::ioj::levels::ControlContext::Benchmark
                                 : ::ioj::levels::ControlContext::Observer;
-    request_mission(
-        {selected_entry.definition.GetValue(), to_string(selected_entry.path), options});
+    request_mission({selected_entry.id, options});
     view_state_.can_launch = false;
     if (options.control_context == ::ioj::levels::ControlContext::Benchmark) {
         view_state_.status = NSLOCTEXT("LevelSelect", "StartingBenchmark", "STARTING BENCHMARK...");
