@@ -1,6 +1,5 @@
 #pragma once
-#include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/levels/simulation_frame_events.h>
+#include <ioj/presentation/mission_frame.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 
@@ -26,29 +25,28 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
     void set_actor_config(FCapitalShipConfig const* new_config,
                           settings::CapitalPresentation const& settings) noexcept;
   private:
-    auto simulation() const -> sim::capital_ships::Sim const& { return *simulation_; }
     void set_niagara_spawner(FDelayedNiagaraSpawns& spawner);
     void ValidateOptionalAssets() const;
 
     void clear_runtime_state_presentation();
-    void begin_play_presentation();
-    void update_visual_data(sim::SimulationFrameEvents const& events);
+    void begin_play_presentation(presentation::MissionFrame const& frame);
+    void update_visual_data(presentation::FrameEvents const& events);
     void commit_visual_data();
-    void end_tick_presentation();
+    void end_tick_presentation(presentation::MissionFrame const& frame);
 
     void configure_ismc();
-    void add_initial_visual_instances();
-    void add_visual_instances(int32 first_index, int32 count);
-    void trigger_death_effects(sim::SimulationFrameEvents const& events);
-    void validate_array_sizes() const;
+    void add_initial_visual_instances(presentation::MissionFrame const& frame);
+    void add_visual_instances(presentation::MissionFrame const& frame,
+                              int32 first_index,
+                              int32 count);
+    void trigger_death_effects(presentation::FrameEvents const& events);
+    void validate_array_sizes(presentation::MissionFrame const& frame) const;
 
     FCapitalShipConfig const* actor_config{nullptr};
     settings::CapitalPresentation const* settings_{};
 
     UInstancedStaticMeshComponent* instances{nullptr};
     FDelayedNiagaraSpawns* niagara_spawner{nullptr};
-
-    sim::capital_ships::Sim const* simulation_{};
 };
 
 } // namespace ioj
