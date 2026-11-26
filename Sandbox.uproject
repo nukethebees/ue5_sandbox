@@ -46,7 +46,7 @@
 		},
 		{
 			"Name": "Landmass",
-			"Enabled": true
+			"Enabled": false
 		},
 		{
 			"Name": "FunctionalTestingEditor",
