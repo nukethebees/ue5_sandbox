@@ -3,6 +3,7 @@
 #include "player/cli_args.h"
 #include "player/engine.h"
 #include "player/window.h"
+#include <ioj/bridge/completed_level.h>
 #include <ioj/files.h>
 #include <ioj/host/game_host_api.h>
 #include <ioj/host/level_host.h>
@@ -495,7 +496,7 @@ void Application::unload_level(sim::RunEndReason reason, bool show_results) {
     }
 
     level_->stop_run(reason);
-    auto const completed{profiles::completed_level(*level_).value()};
+    auto const completed{bridge::completed_level(*level_).value()};
     auto const score{profiles::make_level_score(completed, profiles::current_timestamp())};
     profiles::RecordSaveResult saved{};
     if (score) {

@@ -5,9 +5,6 @@
 #include <ioj/profiles/score_record.h>
 
 #include <optional>
-namespace ioj::sim {
-struct LevelSim;
-}
 namespace ioj::profiles {
 struct CompletedLevel {
     levels::LevelMetadata metadata;
@@ -19,6 +16,5 @@ struct CompletedLevel {
     KillCount player_team_kills;
 };
 
-auto completed_level(sim::LevelSim const& simulation) -> std::optional<CompletedLevel>;
 auto make_level_score(CompletedLevel const& level, Timestamp date) -> std::optional<ScoreRecord>;
 }

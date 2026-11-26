@@ -11,6 +11,8 @@ target_sources(native-profiles-tests
 target_link_libraries(native-profiles-tests
   PRIVATE
     native-profiles
+    native-presentation-bridge
+    native-simulation
     GTest::gtest_main
     sandbox::native_defaults
     ioj::test_pch

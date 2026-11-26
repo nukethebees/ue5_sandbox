@@ -16,7 +16,6 @@ target_link_libraries(native-profiles
   PUBLIC
     native-levels
     native-core
-    native-simulation
   PRIVATE
     nlohmann_json::nlohmann_json
 )

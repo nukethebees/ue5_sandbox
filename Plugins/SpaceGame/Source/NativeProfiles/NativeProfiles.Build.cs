@@ -8,7 +8,6 @@ public class NativeProfiles : ModuleRules
     {
         Type = ModuleType.External;
         PublicDependencyModuleNames.Add("NativeLevels");
-        PublicDependencyModuleNames.Add("NativeSimulation");
         PublicDependencyModuleNames.Add("NativeOneTBB");
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
