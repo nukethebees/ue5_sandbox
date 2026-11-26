@@ -12,9 +12,11 @@ add_executable(native-soa-tests)
 target_sources(native-soa-tests
   PRIVATE
     tests.cpp
+    resolved_view_tests.cpp
     src/types.cpp
     include/native_soa/types.hpp
 )
+set_source_files_properties(resolved_view_tests.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 ioj_enable_warnings(native-soa-tests)
 target_include_directories(native-soa-tests
   PRIVATE
