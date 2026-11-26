@@ -4,7 +4,7 @@
 #include <ioj/session/mission_launch_request.h>
 #include <ioj/settings/game_setting_category.h>
 #include <ioj/settings/game_settings_state.h>
-#include <ioj/sim/player/player_events.h>
+#include <ioj/sim/player/player_input_frame.h>
 
 #include <optional>
 #include <span>
@@ -36,6 +36,6 @@ struct UnrealMessages {
     std::span<PreferenceEdit const> preference_edits;
     NavigationRequest const& navigation_request;
     std::optional<levels::LaunchMode> requested_simulation_mode;
-    sim::player::PlayerInputEvents const& ship_input;
+    sim::player::PlayerInputFrame ship_input;
 };
 }

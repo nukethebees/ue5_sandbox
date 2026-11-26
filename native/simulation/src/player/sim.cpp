@@ -128,11 +128,12 @@ void Sim::think(float const dt, PlayerEvents& events) {
     update_movement(dt, state);
 }
 void Sim::apply_inputs(PlayerSimulationState& state, PlayerEvents& events) {
-    flight_intent_.pitch = input_queue_.pitch_;
-    flight_intent_.yaw = input_queue_.yaw_;
-    flight_intent_.accelerator = input_queue_.accelerator_;
+    auto const input{input_queue_.view()};
+    flight_intent_.pitch = input.pitch;
+    flight_intent_.yaw = input.yaw;
+    flight_intent_.accelerator = input.accelerator;
 
-    for (auto const event : input_queue_.events_) {
+    for (auto const event : input.events) {
         switch (event) {
             case PlayerInputKind::UpgradeLaser:
                 upgrade_laser();
@@ -183,7 +184,7 @@ void Sim::apply_inputs(PlayerSimulationState& state, PlayerEvents& events) {
         update_propulsion_action(state, events);
     }
 
-    input_queue_.events_.clear();
+    input_queue_.clear_events();
 }
 void Sim::generate_fire_commands() {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::generate_fire_commands");

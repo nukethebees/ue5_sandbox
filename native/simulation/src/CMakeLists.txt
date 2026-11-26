@@ -106,7 +106,6 @@ set(levels_headers
 list(TRANSFORM levels_headers PREPEND "../include/ioj/sim/levels/")
 
 set(player_headers
-  player_events.h
   player_spatial_data.h
   flight_response.h
 )

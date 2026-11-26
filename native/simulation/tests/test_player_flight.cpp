@@ -62,7 +62,7 @@ TEST(PlayerFlight, WeaponModeCommandsAreConsumedInOrderByTheNextFixedTick) {
     input.select_previous_laser_trigger_mode();
     input.set_laser_trigger_mode(ShipTriggerMode::Burst3);
     input.select_next_laser_trigger_mode();
-    simulation.append_player_input(input);
+    simulation.append_player_input(input.view());
     simulation.advance(0.0);
     EXPECT_EQ(ship.laser_trigger_mode, original);
     advance_ticks(simulation, 1);
@@ -78,7 +78,7 @@ TEST(PlayerFlight, QueuedTapProducesOrderedTransitionsOnOneTick) {
     input.stop_boost();
     input.start_fire_laser();
     input.stop_fire_laser();
-    simulation.append_player_input(input);
+    simulation.append_player_input(input.view());
     simulation.advance(0.0);
     auto const& events{simulation.read_access().frame_events().player};
     EXPECT_TRUE(events.empty());
@@ -101,7 +101,7 @@ TEST(PlayerFlight, FullInputQueueAcceptsNewEdgesAfterTheNextTick) {
     }
 
     input.stop_boost();
-    simulation.append_player_input(input);
+    simulation.append_player_input(input.view());
     advance_ticks(simulation, 1);
     auto const& events{simulation.read_access().frame_events().player};
     ASSERT_EQ(events.size(), 1u);
@@ -109,7 +109,7 @@ TEST(PlayerFlight, FullInputQueueAcceptsNewEdgesAfterTheNextTick) {
 
     player::PlayerInputEvents release{*std::pmr::new_delete_resource()};
     release.stop_boost();
-    simulation.append_player_input(release);
+    simulation.append_player_input(release.view());
     advance_ticks(simulation, 1);
     ASSERT_EQ(events.size(), 1u);
     EXPECT_EQ(events.front(), player::PlayerEventKind::BoostStopped);
@@ -151,13 +151,13 @@ TEST(PlayerFlight, HeldBoostStartsOnlyWhenBrakeReleases) {
     auto const& events{simulation.read_access().frame_events().player};
     input.start_brake();
     input.start_boost();
-    simulation.append_player_input(input);
+    simulation.append_player_input(input.view());
     advance_ticks(simulation, 1);
     EXPECT_TRUE(events.empty());
 
     player::PlayerInputEvents release{*std::pmr::new_delete_resource()};
     release.stop_brake();
-    simulation.append_player_input(release);
+    simulation.append_player_input(release.view());
     advance_ticks(simulation, 1);
     ASSERT_EQ(events.size(), 1u);
     EXPECT_EQ(events.front(), player::PlayerEventKind::BoostStarted);
@@ -179,7 +179,7 @@ TEST(PlayerFlight, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
 
     player::PlayerInputEvents throttle_input{*std::pmr::new_delete_resource()};
     throttle_input.set_accelerator(1.f);
-    simulation.append_player_input(throttle_input);
+    simulation.append_player_input(throttle_input.view());
     EXPECT_EQ(controller.effective_action, player::BoostBrakeState::None);
     advance_ticks(simulation, 180);
     EXPECT_EQ(controller.effective_action, player::BoostBrakeState::Boost);
@@ -187,12 +187,12 @@ TEST(PlayerFlight, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
     EXPECT_LT(player_sim(simulation).energy(), 1.f);
 
     throttle_input.set_accelerator(0.f);
-    simulation.append_player_input(throttle_input);
+    simulation.append_player_input(throttle_input.view());
     advance_ticks(simulation, 1);
     auto const energy_before_brake{player_sim(simulation).energy()};
     player::PlayerInputEvents brake_input{*std::pmr::new_delete_resource()};
     brake_input.start_brake();
-    simulation.append_player_input(brake_input);
+    simulation.append_player_input(brake_input.view());
     advance_ticks(simulation, 180);
     EXPECT_LT(size(velocity(simulation)), cruise_speed);
     EXPECT_LT(player_sim(simulation).energy(), energy_before_brake);
@@ -208,10 +208,10 @@ TEST(PlayerFlight, StarfoxEmergencyBrakeIsStrongerThanNormalBrake) {
 
     player::PlayerInputEvents brake_input{*std::pmr::new_delete_resource()};
     brake_input.start_brake();
-    normal.append_player_input(brake_input);
+    normal.append_player_input(brake_input.view());
     player::PlayerInputEvents emergency_brake_input{*std::pmr::new_delete_resource()};
     emergency_brake_input.start_emergency_brake();
-    emergency.append_player_input(emergency_brake_input);
+    emergency.append_player_input(emergency_brake_input.view());
     advance_ticks(normal, 30);
     advance_ticks(emergency, 30);
 
@@ -226,7 +226,7 @@ TEST(PlayerFlight, StarfoxTurnsLevelsRollAndRecoversBoostEnergy) {
     auto const& physical{ship.physical_state()};
     input.set_pitch_input(0.25f);
     input.set_yaw_input(0.5f);
-    simulation.append_player_input(input);
+    simulation.append_player_input(input.view());
     advance_ticks(simulation, 30);
     auto const turn{physical.transform.rotator()};
     EXPECT_NEAR(turn.pitch, -0.986, 0.01);
@@ -238,7 +238,7 @@ TEST(PlayerFlight, StarfoxTurnsLevelsRollAndRecoversBoostEnergy) {
     input.set_pitch_input(0.f);
     input.set_yaw_input(0.f);
     input.start_boost();
-    simulation.append_player_input(input);
+    simulation.append_player_input(input.view());
     advance_ticks(simulation, 120);
     EXPECT_NEAR(ship.energy(), 0.5f, 0.001f);
     EXPECT_NEAR(physical.transform.rotator().roll, 14.655, 0.01);
@@ -248,7 +248,7 @@ TEST(PlayerFlight, StarfoxTurnsLevelsRollAndRecoversBoostEnergy) {
     EXPECT_NEAR(ship.energy(), 0.f, 0.005f);
     player::PlayerInputEvents release{*std::pmr::new_delete_resource()};
     release.stop_boost();
-    simulation.append_player_input(release);
+    simulation.append_player_input(release.view());
     advance_ticks(simulation, 420);
     EXPECT_NEAR(ship.energy(), 1.f, 0.001f);
     EXPECT_NEAR(size(physical.velocity), 11941.77, 1.0);

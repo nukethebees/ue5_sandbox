@@ -147,7 +147,7 @@ auto host::take_messages() -> UnrealMessages {
             published.preference_edits,
             published.navigation_request,
             published.requested_simulation_mode,
-            published.ship_input};
+            published.ship_input.view()};
 }
 
 void host::profile_result(std::size_t index, profiles::CreateProfileResult result) {

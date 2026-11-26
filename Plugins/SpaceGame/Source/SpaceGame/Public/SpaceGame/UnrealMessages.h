@@ -4,6 +4,7 @@
 #include <ioj/profiles/profile_manager.h>
 #include <ioj/profiles/save_browser.h>
 #include <ioj/settings/player_settings.h>
+#include <ioj/sim/player/player_events.h>
 #include <ioj/system_capabilities.h>
 
 #include <string_view>

@@ -1,6 +1,6 @@
 #pragma once
 #include <ioj/sim/player/player_event_kind.h>
-#include <ioj/sim/player/player_input_kind.h>
+#include <ioj/sim/player/player_input_frame.h>
 #include <ioj/sim/player/trigger_mode.h>
 
 #include <algorithm>
@@ -19,14 +19,17 @@ struct PlayerInputEvents {
         accelerator_ = previous.accelerator_;
     }
 
-    void append_frame(PlayerInputEvents const& input) {
-        for (auto event : input.events_) {
+    auto view() const -> PlayerInputFrame { return {events_, pitch_, yaw_, accelerator_}; }
+    void clear_events() { events_.clear(); }
+
+    void append_frame(PlayerInputFrame const input) {
+        for (auto event : input.events) {
             add(event);
         }
 
-        pitch_ = input.pitch_;
-        yaw_ = input.yaw_;
-        accelerator_ = input.accelerator_;
+        pitch_ = input.pitch;
+        yaw_ = input.yaw;
+        accelerator_ = input.accelerator;
     }
 
     void set_pitch_input(float input) noexcept { pitch_ = std::clamp(input, -1.f, 1.f); }
@@ -59,7 +62,6 @@ struct PlayerInputEvents {
     }
 
   private:
-    friend struct Sim;
     void add(PlayerInputKind event) {
         if (events_.size() < 255) {
             events_.push_back(event);

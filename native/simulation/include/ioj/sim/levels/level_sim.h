@@ -76,7 +76,7 @@ struct LevelSim {
         }
     }
 
-    void append_player_input(player::PlayerInputEvents const& input) {
+    void append_player_input(player::PlayerInputFrame input) {
         if (player_ship_simulation_) {
             player_ship_simulation_->input_queue_.append_frame(input);
         }
