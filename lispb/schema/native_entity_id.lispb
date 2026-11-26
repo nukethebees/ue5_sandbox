@@ -1,5 +1,5 @@
 (module native_entity_id
-  :header "native/simulation/include/ioj/sim/entities/entity_id.h"
+  :header "native/levels/lib/include/ioj/sim/entities/entity_id.h"
   :namespace ioj::sim
   (integer-scalar EntityIndex :bit-width 24)
   (record EntityId

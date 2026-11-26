@@ -1,5 +1,5 @@
 (module native_boost_brake_state
-  :header "native/simulation/include/ioj/sim/player/space_ship_common.h"
+  :header "native/levels/lib/include/ioj/sim/player/space_ship_common.h"
   :header-include "ioj/sim/player/space_ship_common.h"
   :namespace ioj::sim::player
   (enum BoostBrakeState @native_uint8
@@ -23,7 +23,7 @@
     (projections (cpp))))
 
 (module native_laser_firing_state
-  :header "native/simulation/include/ioj/sim/player/laser_firing_state.h"
+  :header "native/levels/lib/include/ioj/sim/player/laser_firing_state.h"
   :namespace ioj::sim
   (enum LaserFiringState @native_uint8
     :native-api true
@@ -52,7 +52,7 @@
         :reflection uenum))))
 
 (module native_run_end_reason
-  :header "native/simulation/include/ioj/sim/levels/run_end_reason.h"
+  :header "native/levels/lib/include/ioj/sim/levels/run_end_reason.h"
   :namespace ioj::sim
   (enum RunEndReason @native_uint8
     :native-api true

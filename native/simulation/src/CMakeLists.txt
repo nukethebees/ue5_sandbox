@@ -8,7 +8,6 @@ set(simulation_headers
   overlap_handler.h
   profiling.h
   sim_clock.h
-  sim_tick.h
   sim_time.h
   step_response.h
 )
@@ -37,7 +36,6 @@ set(collision_headers
   spatial.h
   spatial_query_manager.h
   trace_hits.h
-  world_aabbs.h
 )
 
 list(TRANSFORM collision_headers PREPEND "../include/ioj/sim/collision/")
@@ -45,21 +43,16 @@ list(TRANSFORM collision_headers PREPEND "../include/ioj/sim/collision/")
 set(entities_headers
   entity_death_info.h
   entity_frame_changes.h
-  entity_frame_change.h
   entity_history.h
-  entity_id.h
   entity_id_checks.h
   entity_ledger.h
   entity_life_state.h
   entity_lookup_table.h
   entity_table_operations.h
   entity_tables.h
-  entity_type.h
   entity_type_runs.h
   health_table.h
-  ship_health.h
   team_checks.h
-  team_entity_array.h
 )
 
 list(TRANSFORM entities_headers PREPEND "../include/ioj/sim/entities/")
@@ -96,8 +89,6 @@ list(TRANSFORM fighters_headers PREPEND "../include/ioj/sim/fighters/")
 
 set(lasers_headers
   laser_entities.h
-  laser_hit_details.h
-  laser_source.h
   laser_spawn_requests.h
 )
 
@@ -108,7 +99,6 @@ set(levels_headers
   level_memory_manager.h
   level_read_access.h
   level_sim.h
-  level_state.h
   spawn_context.h
   tick_player_ship_state.h
 )

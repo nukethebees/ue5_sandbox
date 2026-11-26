@@ -1,5 +1,5 @@
 (module native_world_aabbs
-  :header "native/simulation/include/ioj/sim/collision/world_aabbs.h"
+  :header "native/levels/lib/include/ioj/sim/collision/world_aabbs.h"
   :namespace ioj::sim::collision
   (struct WorldAABBs
     (member min_points nested @native_vectors_3f)

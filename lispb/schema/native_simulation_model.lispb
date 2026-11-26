@@ -1,5 +1,5 @@
 (module native_level_state
-  :header "native/simulation/include/ioj/sim/levels/level_state.h"
+  :header "native/levels/lib/include/ioj/sim/levels/level_state.h"
   :header-include "ioj/sim/levels/level_state.h"
   :namespace ioj::sim
   (enum LevelState std::uint8_t
@@ -88,7 +88,7 @@
     (projections (cpp))))
 
 (module native_collision_grid_spec
-  :header "native/simulation/include/ioj/sim/collision/collision_grid_spec.h"
+  :header "native/levels/lib/include/ioj/sim/collision/collision_grid_spec.h"
   :header-include "ioj/sim/collision/collision_grid_spec.h"
   :namespace ioj::sim::collision
   (record CollisionGridSpec
@@ -251,7 +251,7 @@
     (projections (cpp))))
 
 (module native_laser_source
-  :header "native/simulation/include/ioj/sim/lasers/laser_source.h"
+  :header "native/levels/lib/include/ioj/sim/lasers/laser_source.h"
   :header-include "ioj/sim/lasers/laser_source.h"
   :namespace ioj::sim
   (record LaserSource
@@ -296,7 +296,7 @@
     (projections (cpp))))
 
 (module native_player_input_kind
-  :header "native/simulation/include/ioj/sim/player/player_input_kind.h"
+  :header "native/levels/lib/include/ioj/sim/player/player_input_kind.h"
   :header-include "ioj/sim/player/player_input_kind.h"
   :namespace ioj::sim::player
   (enum PlayerInputKind std::uint8_t
@@ -317,7 +317,7 @@
     (projections (cpp))))
 
 (module native_player_event_kind
-  :header "native/simulation/include/ioj/sim/player/player_event_kind.h"
+  :header "native/levels/lib/include/ioj/sim/player/player_event_kind.h"
   :header-include "ioj/sim/player/player_event_kind.h"
   :namespace ioj::sim::player
   (enum PlayerEventKind std::uint8_t

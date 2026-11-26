@@ -114,7 +114,7 @@
 ))
 
 (module laser_hit_details
-  :header "native/simulation/include/ioj/sim/lasers/laser_hit_details.h"
+  :header "native/levels/lib/include/ioj/sim/lasers/laser_hit_details.h"
   :namespace ioj::sim
   (struct LaserHitDetails
     (member locations nested @native_vectors_3f)

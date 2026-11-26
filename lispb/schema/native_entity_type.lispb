@@ -1,5 +1,5 @@
 (module native_entity_type
-  :header "native/simulation/include/ioj/sim/entities/entity_type.h"
+  :header "native/levels/lib/include/ioj/sim/entities/entity_type.h"
   :header-include "ioj/sim/entities/entity_type.h"
   :namespace ioj::sim
   (enum EntityType @native_uint8
