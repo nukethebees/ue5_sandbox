@@ -1,5 +1,6 @@
 #include "SpaceGame/simulation/LevelCollisionHost.h"
 
+#if WITH_EDITOR
 #include <ioj/sim/entities/entity_type.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -122,7 +123,6 @@ void set_mesh_aabb(EntityAABBs& aabbs,
     aabbs.set_half_extents(type, Vector3f{half_extents.X, half_extents.Y, half_extents.Z});
 }
 
-#if WITH_EDITOR
 auto has_unsupported_geometry(FKAggregateGeom const& geometry) -> bool {
     return any_non_empty(geometry.TaperedCapsuleElems,
                          geometry.LevelSetElems,
@@ -131,7 +131,6 @@ auto has_unsupported_geometry(FKAggregateGeom const& geometry) -> bool {
                          geometry.SkinnedTriangleMeshElems);
 }
 
-#endif
 }
 
 auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
@@ -148,7 +147,6 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
     }
     return result;
 }
-#if WITH_EDITOR
 auto FLevelCollisionHost::exports_actor(AActor const& actor, FCollisionGridConfig const& config)
     -> bool {
     return !FActorEditorUtils::IsABuilderBrush(&actor) &&
@@ -207,5 +205,5 @@ auto FLevelCollisionHost::export_static_collision(ULevel const& level,
     });
     return boxes;
 }
-#endif
 }
+#endif

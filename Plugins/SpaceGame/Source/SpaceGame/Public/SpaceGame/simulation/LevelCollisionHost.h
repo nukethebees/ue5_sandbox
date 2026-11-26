@@ -1,4 +1,5 @@
 #pragma once
+#if WITH_EDITOR
 #include <ioj/sim/collision/entity_aabbs.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/world_aabb.h>
@@ -22,10 +23,9 @@ using FEntityBoundsExtractionResult = std::expected<sim::collision::EntityAABBs,
 struct SPACEGAME_API FLevelCollisionHost {
     using EntityMeshes = EnumArray<UStaticMesh const*, sim::EntityType>;
     static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityBoundsExtractionResult;
-#if WITH_EDITOR
     static auto exports_actor(AActor const& actor, FCollisionGridConfig const& config) -> bool;
     static auto export_static_collision(ULevel const& level, FCollisionGridConfig const& config)
         -> std::expected<std::vector<WorldAABB>, FString>;
-#endif
 };
 }
+#endif
