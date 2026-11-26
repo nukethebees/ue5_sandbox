@@ -1,8 +1,5 @@
 set(sandbox_unreal_native_dependency_targets
   sbx-mimalloc
-  native-simulation
-  native-level-authoring-s7
-  sandbox-s7
   native-core
   native-ismc
   native-ui
@@ -41,7 +38,7 @@ endif()
 set(game_import_library "${PROJECT_SOURCE_DIR}/Binaries/Win64/${game_binary_name}.lib")
 set(IOJ_GAME_DLL_NAME "${game_binary_name}.dll")
 add_unreal_target(game Sandbox BYPRODUCTS "${game_import_library}")
-add_dependencies(editor unreal-native-dependencies unreal-generated-inputs)
+add_dependencies(editor native-level-authoring-s7 sandbox-s7 native-simulation unreal-native-dependencies unreal-generated-inputs)
 add_dependencies(game unreal-native-dependencies check-generated-code)
 set_property(TARGET editor PROPERTY FOLDER "Sandbox/Unreal/Build")
 set_property(TARGET game PROPERTY FOLDER "Sandbox/Unreal/Build")
