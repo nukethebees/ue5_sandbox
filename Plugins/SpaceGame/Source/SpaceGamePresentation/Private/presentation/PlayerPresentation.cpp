@@ -14,9 +14,9 @@ namespace ioj {
 FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
                                          FPlayerShipConfig const& config,
                                          settings::PlayerPresentation const& settings,
-                                         sim::LevelReadAccess const& view)
+                                         presentation::MissionFrame const& frame)
     : resources_{MoveTemp(resources)}
-    , last_tick_{view.clock().get_completed_ticks()} {
+    , last_tick_{frame.status.completed_tick} {
     if (!resources_.pulse.IsValid() || !resources_.engine.IsValid() || !resources_.mesh.IsValid() ||
         !resources_.space_dust.IsValid()) {
         UE_LOG(LogSandbox, Error, TEXT("Player visual resources are incomplete"));
@@ -31,25 +31,24 @@ FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
     resources_.engine->SetFloatParameter(TEXT("sparks_colour_intensity"),
                                          settings.boost_effect_colour_intensity);
     resources_.space_dust->apply_settings(config.space_dust);
-    tick(view);
+    tick(frame);
 }
-void FPlayerPresentation::tick(sim::LevelReadAccess const& view) {
-    auto const& state{*view.player()};
-    auto const& physical{state.physical_state()};
-    auto const& presentation{state.presentation_state()};
-    auto const action{state.controller_state().effective_action};
+void FPlayerPresentation::tick(presentation::MissionFrame const& frame) {
+    auto const& state{*frame.player};
+    auto const action{state.flight.boost_brake_state};
     if (!resources_.root.IsValid() || !resources_.mesh.IsValid() || !resources_.pulse.IsValid() ||
         !resources_.engine.IsValid() || !resources_.space_dust.IsValid()) {
         return;
     }
     resources_.root->SetWorldTransform(
-        to_unreal(physical.transform), false, nullptr, ETeleportType::TeleportPhysics);
-    resources_.mesh->SetRelativeTransform(to_unreal(presentation.body_transform));
-    resources_.engine->SetVectorParameter(TEXT("ship_velocity"), to_unreal(physical.velocity));
-    resources_.space_dust->update_motion(to_unreal(physical.velocity));
-    auto const tick{view.clock().get_completed_ticks()};
+        to_unreal(state.transform), false, nullptr, ETeleportType::TeleportPhysics);
+    resources_.mesh->SetRelativeTransform(to_unreal(state.body_transform));
+    resources_.engine->SetVectorParameter(TEXT("ship_velocity"),
+                                          to_unreal(state.flight.ship_velocity));
+    resources_.space_dust->update_motion(to_unreal(state.flight.ship_velocity));
+    auto const tick{frame.status.completed_tick};
     if (last_tick_ != tick) {
-        for (auto const event : view.frame_events().player) {
+        for (auto const event : frame.events.player) {
             if (event == sim::player::PlayerEventKind::BoostStarted) {
                 resources_.pulse->Activate();
                 break;
@@ -74,10 +73,10 @@ void FPlayerPresentation::tick(sim::LevelReadAccess const& view) {
         return end;
     };
     if (resources_.debug_forward_socket_direction) {
-        draw_direction(to_unreal(state.get_middle_socket()), 5000.f);
+        draw_direction(to_unreal(state.middle_socket), 5000.f);
     }
     if (resources_.debug_forward_direction) {
-        draw_direction(to_unreal(physical.transform), 5000.f);
+        draw_direction(to_unreal(state.transform), 5000.f);
     }
 #endif
 }

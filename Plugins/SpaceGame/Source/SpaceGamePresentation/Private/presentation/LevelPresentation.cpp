@@ -1,7 +1,6 @@
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 
 #include <ioj/sim/entities/entity_tables.h>
-#include <ioj/sim/sim_clock.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 
@@ -15,7 +14,7 @@ auto FLevelPresentationResources::is_valid() const -> bool {
            IsValid(spinners) && IsValid(sparks);
 }
 FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resources,
-                                       sim::LevelReadAccess const& view,
+                                       presentation::MissionFrame const& frame, sim::LevelReadAccess const& view,
                                        FGameAudioFacade audio)
     : config_{resources.config}
     , audio_{audio}
@@ -25,14 +24,15 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     , capital_ship_fighters{*resources.fighters}
     , turrets{*resources.turrets}
     , spinners{*resources.spinners} {
-    last_completed_tick_ = view.clock().get_completed_ticks();
+    last_completed_tick_ = frame.status.completed_tick;
     auto const& config{config_};
     resources.sparks->initialise(config.sparks);
     sparks.clear();
-    auto const* player{view.player()};
-    if (resources.player.IsSet() && player != nullptr) {
-        player_.Emplace(
-            resources.player.GetValue(), config.player_ship, config.presentation.player_ship, view);
+    if (resources.player.IsSet() && frame.player.has_value()) {
+        player_.Emplace(resources.player.GetValue(),
+                        config.player_ship,
+                        config.presentation.player_ship,
+                        frame);
     }
 #if WITH_EDITORONLY_DATA
     lasers.debug_drawer = config.laser_debug_drawer;
@@ -58,7 +58,6 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     turrets.simulation_ = &view.turrets();
     spinners.simulation_ = &view.spinners();
     lasers.simulation_ = &view.lasers();
-    last_completed_tick_ = view.clock().get_completed_ticks();
     lasers.player_colours_ =
         UTestTeamVisualData::build_team_colour_cache(config.player_ship.team_visual_data);
     lasers.fighter_colours_ =
@@ -79,8 +78,8 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     lasers.begin_play_presentation(config.laser_instance_reserve);
 }
 
-void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) {
-    auto const completed_tick{view.clock().get_completed_ticks()};
+void FLevelPresentation::tick(float const dt, presentation::MissionFrame const& frame, sim::LevelReadAccess const& view) {
+    auto const completed_tick{frame.status.completed_tick};
     if (last_completed_tick_ == completed_tick) {
         sparks.commit(dt);
         effects.update_spawns(dt, *lasers.instances->GetWorld());
@@ -88,16 +87,16 @@ void FLevelPresentation::tick(float const dt, sim::LevelReadAccess const& view) 
     }
 
     last_completed_tick_ = completed_tick;
-    for (auto const event : view.frame_events().player) {
+    for (auto const event : frame.events.player) {
         if (event == sim::player::PlayerEventKind::ShotFired) {
             audio_.play_player_laser();
         }
     }
-    for (auto const location : view.frame_events().deaths.const_view().locations()) {
+    for (auto const location : frame.events.death_locations) {
         audio_.play_entity_death(FVector{to_unreal(location)});
     }
     if (player_.IsSet()) {
-        player_->tick(view);
+        player_->tick(frame);
     }
     capital_ships.update_visual_data(view.frame_events());
     turrets.update_visual_data(view.frame_events());

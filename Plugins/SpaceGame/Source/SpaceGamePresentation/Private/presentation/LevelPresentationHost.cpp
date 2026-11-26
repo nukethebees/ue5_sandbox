@@ -38,7 +38,7 @@ void FLevelPresentationHost::initialise(FLevelVisualConfig const& config,
     check(components_.is_valid());
 
     auto const resources{make_resources(config, MoveTemp(player))};
-    presentation_.Emplace(resources, view, audio);
+    presentation_.Emplace(resources, frame, view, audio);
     components_.collision_grid->set_static_bounds(mission.static_bounds);
     components_.collision_grid->update_entity_bounds(frame.entity_bounds);
     hud_manager_.initialise(frame, mission.radii, config, components_.soft_targets);
@@ -68,7 +68,7 @@ void FLevelPresentationHost::tick(double const dt, presentation::MissionFrame co
 
     components_.collision_grid->update_entity_bounds(frame.entity_bounds);
     hud_manager_.advance(dt, frame);
-    presentation_->tick(static_cast<float>(dt), view);
+    presentation_->tick(static_cast<float>(dt), frame, view);
 }
 
 auto FLevelPresentationHost::make_resources(FLevelVisualConfig const& config,

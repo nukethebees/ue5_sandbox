@@ -1,6 +1,6 @@
 #pragma once
+#include <ioj/presentation/mission_frame.h>
 #include <ioj/sim/levels/level_read_access.h>
-#include <ioj/sim/sim_tick.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/presentation/CapitalPresentation.h>
 #include <SpaceGamePresentation/presentation/DelayedNiagaraSpawns.h>
@@ -27,14 +27,14 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentationResources {
 
 struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     FLevelPresentation(FLevelPresentationResources const& resources,
-                       sim::LevelReadAccess const& view,
+                       presentation::MissionFrame const& frame, sim::LevelReadAccess const& view,
                        FGameAudioFacade audio);
     FLevelPresentation(FLevelPresentation const&) = delete;
     FLevelPresentation(FLevelPresentation&&) = delete;
     auto operator=(FLevelPresentation const&) -> FLevelPresentation& = delete;
     auto operator=(FLevelPresentation&&) -> FLevelPresentation& = delete;
 
-    void tick(float dt, sim::LevelReadAccess const& view);
+    void tick(float dt, presentation::MissionFrame const& frame, sim::LevelReadAccess const& view);
     auto get_last_completed_tick() const -> sim::SimTick::value_type {
         return last_completed_tick_.value();
     }
