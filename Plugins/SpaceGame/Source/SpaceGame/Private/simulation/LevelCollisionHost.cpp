@@ -219,11 +219,11 @@ auto FLevelCollisionHost::extract_static_geometry(
     FCollisionGridConfig const& config,
     sim::collision::CollisionGridSpec const grid_spec,
     TConstArrayView<AActor const*> const excluded_actors)
-    -> std::vector<sim::collision::WorldAABB> {
+    -> std::vector<WorldAABB> {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ioj::sim::FLevelCollisionHost::extract_static_geometry);
     checkf(config.is_valid(), TEXT("Cannot harvest static collision with an invalid grid config"));
 
-    std::vector<sim::collision::WorldAABB> static_aabbs;
+    std::vector<WorldAABB> static_aabbs;
     int32 unexpected_actor_count{};
     int32 unsupported_component_count{};
 

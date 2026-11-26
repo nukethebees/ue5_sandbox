@@ -42,6 +42,7 @@ auto detail::process_level(LevelInput input) -> LevelDefinitionReadResult {
                      input.par_time},
         .player_entity_id = std::move(input.player),
         .camera = std::move(input.camera),
+        .static_collision = std::move(input.static_collision),
         .settings = std::move(input.settings),
     };
     Diagnostics errors;

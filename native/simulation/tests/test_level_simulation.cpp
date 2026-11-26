@@ -733,8 +733,8 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
 
 TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
     auto data{make_battle()};
-    std::array<collision::WorldAABB, 1> static_bounds{
-        collision::WorldAABB{{{-10.f, 490.f, -10.f}}, {{10.f, 510.f, 10.f}}}};
+    std::array<WorldAABB, 1> static_bounds{
+        WorldAABB{{{-10.f, 490.f, -10.f}}, {{10.f, 510.f, 10.f}}}};
     for (auto const& bounds : static_bounds) {
         data.runtime.collision.static_bounds.add(bounds.min, bounds.max);
     }

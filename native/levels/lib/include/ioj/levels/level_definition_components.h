@@ -5,6 +5,7 @@
 #include <ioj/levels/level_metadata.h>
 #include <ioj/levels/logic_definition.h>
 #include <ioj/settings/settings.h>
+#include <ioj/world_aabb.h>
 
 #include <optional>
 #include <vector>
@@ -18,6 +19,7 @@ struct LevelDefinitionComponents {
     std::optional<LevelCameraDefinition> camera{};
     LogicDefinition logic{};
     std::vector<EntitySpawnDefinition> entities{};
+    std::vector<WorldAABB> static_collision{};
     settings::Settings settings{};
 };
 }

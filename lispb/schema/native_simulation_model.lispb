@@ -97,12 +97,13 @@
     (projections (cpp))))
 
 (module native_collision_world_aabb
-  :header "native/simulation/include/ioj/sim/collision/world_aabb.h"
-  :header-include "ioj/sim/collision/world_aabb.h"
-  :namespace ioj::sim::collision
-  (record WorldAABB
-    (member min @native_vector_3f)
-    (member max @native_vector_3f)
+  :header "native/levels/lib/include/ioj/world_aabb.h"
+  :header-include "ioj/world_aabb.h"
+  :namespace ioj
+  (record WorldAABB :comparison equality :generate-visitor true
+    :generate-s7-reader true :generate-s7-writer true :s7-tag "world-aabb"
+    (member min @native_vector_3f :initializer "" :required true)
+    (member max @native_vector_3f :initializer "" :required true)
     (projections (cpp))))
 
 (module attack_distance_band

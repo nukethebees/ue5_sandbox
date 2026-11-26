@@ -18,6 +18,7 @@ class LevelDefinition {
         , camera_{std::move(components.camera)}
         , logic_{std::move(components.logic)}
         , entities_{std::move(components.entities)}
+        , static_collision_{std::move(components.static_collision)}
         , settings_{std::move(components.settings)} {}
   public:
     [[nodiscard]] static auto make(LevelDefinitionComponents definition)
@@ -35,6 +36,9 @@ class LevelDefinition {
     [[nodiscard]] auto entities() const -> std::span<EntitySpawnDefinition const> {
         return entities_;
     }
+    [[nodiscard]] auto static_collision() const -> std::span<WorldAABB const> {
+        return static_collision_;
+    }
     [[nodiscard]] auto settings() const -> settings::Settings const& { return settings_; }
     // Require an entity ID belonging to this definition.
     [[nodiscard]] auto entity(EntityId const& id) const -> EntitySpawnDefinition const&;
@@ -45,6 +49,7 @@ class LevelDefinition {
     std::optional<LevelCameraDefinition> camera_;
     LogicDefinition logic_;
     std::vector<EntitySpawnDefinition> entities_;
+    std::vector<WorldAABB> static_collision_;
     settings::Settings settings_;
 };
 

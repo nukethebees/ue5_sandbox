@@ -16,6 +16,7 @@
 #include "ioj/settings/settings.h"
 #include "ioj/settings/simulation_constraints.h"
 #include "ioj/vector_value_math.h"
+#include <ioj/world_aabb.h>
 
 #include <array>
 #include <cassert>
@@ -146,6 +147,7 @@ struct LevelInput {
     std::optional<ioj::levels::LevelCameraDefinition> camera{};
     ioj::settings::Settings settings{};
     LogicDefinition logic{};
+    std::vector<ioj::WorldAABB> static_collision{};
     std::vector<ioj::levels::authoring::EntityInput> entities{};
 };
 

@@ -134,6 +134,24 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
             std::unexpect, 1, "Player input was supplied for a level without a player entity"};
     }
     apply_settings(settings, inputs);
+    auto const grid{inputs.collision.grid_spec};
+    auto const half_size{collision::grid_half_size(grid)};
+    for (auto const& box : definition.static_collision()) {
+        for (std::size_t axis{}; axis < 3; ++axis) {
+            auto const min{box.min[axis]};
+            auto const max{box.max[axis]};
+            if (!std::isfinite(min) || !std::isfinite(max) || min > max || min < -half_size[axis] ||
+                min >= half_size[axis] || max > half_size[axis]) {
+                return LevelSimulationBuildResult{
+                    std::unexpect,
+                    1,
+                    "Static collision box is invalid or outside the collision grid"};
+            }
+        }
+
+        inputs.collision.static_bounds.add(box.min, box.max);
+    }
+
     if (timing.time_scale) {
         inputs.clock_settings.time_scale = *timing.time_scale;
     }

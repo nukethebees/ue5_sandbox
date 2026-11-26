@@ -1,7 +1,7 @@
 #pragma once
 #include <ioj/sim/collision/collision_grid.h>
 #include <ioj/sim/collision/entity_aabbs.h>
-#include <ioj/sim/collision/world_aabb.h>
+#include <ioj/world_aabb.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
 
@@ -27,6 +27,6 @@ struct SPACEGAME_API FLevelCollisionHost {
                                         FCollisionGridConfig const& config,
                                         sim::collision::CollisionGridSpec grid_spec,
                                         TConstArrayView<AActor const*> excluded_actors = {})
-        -> std::vector<sim::collision::WorldAABB>;
+        -> std::vector<WorldAABB>;
 };
 }

@@ -9,6 +9,7 @@
 #include "ioj/levels/level_camera_definition_reader.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
+#include "ioj/world_aabb_reader.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -84,6 +85,9 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
                     case Field::logic:
                         read(result.logic);
                         break;
+                    case Field::static_collision:
+                        read(result.static_collision);
+                        break;
                     case Field::entities:
                         read(result.entities);
                         break;
@@ -103,10 +107,11 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
         camera,
         settings,
         logic,
+        static_collision,
         entities,
     };
 
-    static constexpr std::array<std::string_view, 10> field_names{"id",
+    static constexpr std::array<std::string_view, 11> field_names{"id",
                                                                   "title",
                                                                   "description",
                                                                   "par-time",
@@ -115,6 +120,7 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
                                                                   "camera",
                                                                   "settings",
                                                                   "logic",
+                                                                  "static-collision",
                                                                   "entities"};
     static constexpr auto required{
         required_fields<Field, field_names.size()>({Field::id, Field::title})};

@@ -363,6 +363,7 @@
 
 
 
+(type static_collision_boxes :spelling "std::vector<ioj::WorldAABB>" :header "vector")
 (type input_entities :spelling "std::vector<ioj::levels::authoring::EntityInput>" :header "vector")
 
 (type input_camera :spelling "std::optional<ioj::levels::LevelCameraDefinition>" :header "ioj/levels/level_camera_definition.h")

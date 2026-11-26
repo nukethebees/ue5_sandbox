@@ -140,6 +140,9 @@ native/levels/lib/include/ioj/sim/spinners/spinner_sim_config_writer.h
 native/levels/lib/include/ioj/sim/turrets/turret_sim_config.h
 native/levels/lib/include/ioj/sim/turrets/turret_sim_config_reader.h
 native/levels/lib/include/ioj/sim/turrets/turret_sim_config_writer.h
+native/levels/lib/include/ioj/world_aabb.h
+native/levels/lib/include/ioj/world_aabb_reader.h
+native/levels/lib/include/ioj/world_aabb_writer.h
 native/levels/lib/src/game_settings.cpp
 native/player/include/ioj/host/mission_startup.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data.h
@@ -155,7 +158,6 @@ native/simulation/include/ioj/sim/collision/line_traces.h
 native/simulation/include/ioj/sim/collision/query_result_types.h
 native/simulation/include/ioj/sim/collision/trace_entity_filter.h
 native/simulation/include/ioj/sim/collision/trace_hits.h
-native/simulation/include/ioj/sim/collision/world_aabb.h
 native/simulation/include/ioj/sim/collision/world_aabbs.h
 native/simulation/include/ioj/sim/direct_damage_events.h
 native/simulation/include/ioj/sim/entities/entity_death_info.h

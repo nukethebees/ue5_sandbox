@@ -78,6 +78,7 @@
   :header "native/level_authoring/lib/include/ioj/levels/authoring/level_inputs.h"
   :header-include "ioj/levels/authoring/level_inputs.h"
   :namespace ioj::levels::authoring
+  :prelude ("#include <ioj/world_aabb.h>")
   (record EntityInput :generate-s7-writer true
     :s7-writer-includes ("ioj/levels/authoring/identifier_writer.h" "ioj/levels/authoring/positional_inputs_writer.h" "ioj/levels/level_camera_definition_writer.h")
     :generate-visitor true :generate-s7-reader true :s7-tag "entity"
@@ -99,7 +100,7 @@
 
   (record LevelInput
     :generate-s7-reader true :s7-tag "level"
-    :s7-reader-includes ("ioj/levels/level_camera_definition_reader.h")
+    :s7-reader-includes ("ioj/levels/level_camera_definition_reader.h" "ioj/world_aabb_reader.h")
     (member id @input_level_id :initializer "" :required true)
     (member title @native_string :initializer "" :required true)
     (member description @native_string :initializer "")
@@ -109,6 +110,7 @@
     (member camera @input_camera :initializer "")
     (member settings @input_settings :initializer "")
     (member logic @input_logic :initializer "")
+    (member static_collision @static_collision_boxes :initializer "")
     (member entities @input_entities :initializer "")
     (projections (cpp)))
   (record CatalogInput :generate-s7-reader true :s7-tag "catalog"

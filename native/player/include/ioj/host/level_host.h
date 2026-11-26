@@ -3,7 +3,7 @@
 #include <ioj/levels/launch_options.h>
 #include <ioj/session/pending_level.h>
 #include <ioj/sim/collision/collision_grid_spec.h>
-#include <ioj/sim/collision/world_aabb.h>
+#include <ioj/world_aabb.h>
 #include <ioj/sim/player/sim.h>
 
 #include <optional>
@@ -29,7 +29,7 @@ IOJ_LEVEL_API void open_mission();
 IOJ_LEVEL_API auto prepare_level(session::PendingLevel const& pending,
                                  std::optional<sim::player::PlayerSpawnData>& player) -> bool;
 IOJ_LEVEL_API auto static_geometry(sim::collision::CollisionGridSpec grid)
-    -> std::span<sim::collision::WorldAABB const>;
+    -> std::span<WorldAABB const>;
 IOJ_LEVEL_API auto bind_level(session::PendingLevel const& pending, sim::LevelSim const& level)
     -> bool;
 IOJ_LEVEL_API void level_start_failed(std::string_view error);

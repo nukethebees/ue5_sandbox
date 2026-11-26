@@ -242,7 +242,7 @@ auto ATestBatchOrchestrator::prepare_level(session::PendingLevel const& pending,
 }
 
 auto ATestBatchOrchestrator::static_geometry(sim::collision::CollisionGridSpec grid)
-    -> std::span<sim::collision::WorldAABB const> {
+    -> std::span<WorldAABB const> {
     AActor const* const excluded_actors[]{this};
     static_geometry_ = FLevelCollisionHost::extract_static_geometry(
         *GetWorld(), level_config->collision_grid, grid, excluded_actors);

@@ -80,7 +80,7 @@ auto prepare_level(session::PendingLevel const& pending,
     return result.has_value();
 }
 auto static_geometry(sim::collision::CollisionGridSpec grid)
-    -> std::span<sim::collision::WorldAABB const> {
+    -> std::span<WorldAABB const> {
     return level_world->static_geometry(grid);
 }
 auto bind_level(session::PendingLevel const& pending, sim::LevelSim const& level) -> bool {

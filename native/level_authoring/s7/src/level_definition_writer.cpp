@@ -2,6 +2,7 @@
 
 #include <ioj/levels/authoring/level_inputs_writer.h>
 #include <ioj/s7/ast.h>
+#include <ioj/world_aabb_writer.h>
 
 namespace ioj::levels::authoring {
 auto make_entity_input(EntitySpawnDefinition const& entity) -> EntityInput {
@@ -90,6 +91,8 @@ auto emit_editor_level_source(LevelInput const& level, s7::Ast const* saved_scen
     form.optional_field("unlock", level.unlock, write_value);
     writer("player", &LevelInput::player);
     form.optional_field("camera", level.camera, write_value);
+
+    writer("static-collision", &LevelInput::static_collision);
 
     auto entities{ir.form("list")};
     for (auto const& entity : level.entities) {

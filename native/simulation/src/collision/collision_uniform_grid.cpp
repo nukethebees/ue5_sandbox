@@ -90,7 +90,7 @@ auto CollisionUniformGrid::to_string(collision::CellCoord const value) -> std::s
 /* **************************************** */
 // Static collision
 /* **************************************** */
-void CollisionUniformGrid::set_static_aabbs(collision::WorldAABBs static_aabbs) {
+void CollisionUniformGrid::set_static_aabbs(WorldAABBs static_aabbs) {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::set_static_aabbs");
 
     if (!is_configured()) {
@@ -378,7 +378,7 @@ void CollisionUniformGrid::write_overlaps(
 }
 template <bool Write>
 auto CollisionUniformGrid::overlaps_impl(
-    collision::WorldAABB const& query_bounds,
+    WorldAABB const& query_bounds,
     EntityId const ignored_entity,
     std::span<EntityId> const out_entities,
     std::span<StaticGeometryIndex> const out_static_geometry_indices) const -> OverlapCounts {
