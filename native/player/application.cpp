@@ -63,9 +63,10 @@ auto open_profiles(std::filesystem::path const& project_directory,
     }
 
     auto const save_directory{user_root / "Saved/SaveGames"};
-    profiles::ProfileManager manager{profiles::make_file_profile_storage(save_directory)};
-    if (!manager.initialise()) {
-        return std::unexpected{"Could not initialize profiles in " + path_to_utf8(save_directory)};
+    auto manager{
+        profiles::ProfileManager::open(profiles::make_file_profile_storage(save_directory))};
+    if (!manager) {
+        return std::unexpected{manager.error() + " in " + path_to_utf8(save_directory)};
     }
 
     return manager;

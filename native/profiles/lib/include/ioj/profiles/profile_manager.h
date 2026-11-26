@@ -4,22 +4,20 @@
 #include <ioj/profiles/profile_storage.h>
 #include <ioj/profiles/record_save_result.h>
 
-#include <optional>
+#include <expected>
 #include <span>
+#include <string>
+#include <vector>
 
 namespace ioj::profiles {
 class ProfileManager {
   public:
     static constexpr std::int32_t max_profile_name_length{32};
 
-    ProfileManager() = default;
-    explicit ProfileManager(ProfileStorage storage);
-
-    bool initialise();
+    static auto open(ProfileStorage storage) -> std::expected<ProfileManager, std::string>;
     auto profiles() const -> std::span<ProfileMetadata const>;
     auto active_profile_id() const -> std::string const&;
     auto active_records() const -> std::span<ScoreRecord const>;
-    auto has_active_profile() const -> bool;
 
     auto create_profile(std::string display_name) -> CreateProfileResponse;
     bool activate_profile(std::string const& profile_id);
@@ -32,6 +30,8 @@ class ProfileManager {
                                       std::span<ProfileMetadata const> profiles)
         -> CreateProfileResult;
   private:
+    explicit ProfileManager(ProfileStorage storage);
+
     static auto make_metadata(std::string profile_id,
                               std::string display_name,
                               Timestamp created_at,
@@ -47,6 +47,6 @@ class ProfileManager {
 
     ProfileStorage storage_{};
     ProfileIndexData index_{};
-    std::optional<ProfileResultsData> active_results_;
+    ProfileResultsData active_profile_results_;
 };
 }

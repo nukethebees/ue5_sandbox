@@ -10,17 +10,17 @@ namespace ioj::profiles {
 
 TEST(SaveGameBrowser, RefreshReplacesCachedSummaries) {
     FakeProfileStorage storage;
-    ProfileManager manager{storage.make()};
-    ASSERT_TRUE(manager.initialise());
+    auto manager{ProfileManager::open(storage.make())};
+    ASSERT_TRUE(manager);
     SaveGameBrowser browser;
-    browser.refresh(manager);
+    browser.refresh(*manager);
     ASSERT_EQ(browser.summaries().size(), 1u);
-    EXPECT_EQ(browser.active_profile_id(), manager.active_profile_id());
+    EXPECT_EQ(browser.active_profile_id(), manager->active_profile_id());
 
-    auto const created{manager.create_profile("Second")};
+    auto const created{manager->create_profile("Second")};
     ASSERT_EQ(created.result, CreateProfileResult::succeeded);
-    ASSERT_TRUE(manager.append_score_record({.date = 1, .kills = 4}));
-    browser.refresh(manager);
+    ASSERT_TRUE(manager->append_score_record({.date = 1, .kills = 4}));
+    browser.refresh(*manager);
     ASSERT_EQ(browser.summaries().size(), 2u);
     EXPECT_EQ(browser.active_profile_id(), created.profile_id);
     EXPECT_EQ(browser.summaries().front().total_kills, 4u);
@@ -34,11 +34,11 @@ TEST(SaveGameBrowser, OrderIsNewestFirstAndDeterministic) {
                                {.profile_id = "older", .last_played_at = 1},
                                {.profile_id = "alpha", .last_played_at = 2}}},
         .results = {{"older", ProfileResultsData{.score_records = {{.date = 1}}}}}};
-    ProfileManager manager{storage.make()};
-    ASSERT_TRUE(manager.initialise());
+    auto manager{ProfileManager::open(storage.make())};
+    ASSERT_TRUE(manager);
 
     SaveGameBrowser browser;
-    browser.refresh(manager);
+    browser.refresh(*manager);
     auto const summaries{browser.summaries()};
     ASSERT_EQ(summaries.size(), 3u);
     EXPECT_EQ(summaries[0].profile_id, "alpha");
@@ -48,29 +48,29 @@ TEST(SaveGameBrowser, OrderIsNewestFirstAndDeterministic) {
 
 TEST(SaveGameBrowser, ReportsAreLoadedLazilyAndRefreshInvalidatesTheCache) {
     FakeProfileStorage storage;
-    ProfileManager manager{storage.make()};
-    ASSERT_TRUE(manager.initialise());
-    auto const first_profile{manager.active_profile_id()};
-    ASSERT_TRUE(manager.append_score_record({.date = 1, .level_name = "mission"}));
-    auto const second{manager.create_profile("Second")};
+    auto manager{ProfileManager::open(storage.make())};
+    ASSERT_TRUE(manager);
+    auto const first_profile{manager->active_profile_id()};
+    ASSERT_TRUE(manager->append_score_record({.date = 1, .level_name = "mission"}));
+    auto const second{manager->create_profile("Second")};
     ASSERT_EQ(second.result, CreateProfileResult::succeeded);
 
     SaveGameBrowser browser;
-    browser.refresh(manager);
+    browser.refresh(*manager);
     EXPECT_EQ(browser.loaded_profile_report(), nullptr);
-    ASSERT_TRUE(browser.load_profile_report(manager, first_profile));
+    ASSERT_TRUE(browser.load_profile_report(*manager, first_profile));
     EXPECT_EQ(browser.loaded_profile_report()->outcomes.size(), 1u);
-    EXPECT_EQ(manager.active_profile_id(), second.profile_id);
+    EXPECT_EQ(manager->active_profile_id(), second.profile_id);
 
     storage.results.at(first_profile).score_records.clear();
-    ASSERT_TRUE(browser.load_profile_report(manager, first_profile));
+    ASSERT_TRUE(browser.load_profile_report(*manager, first_profile));
     EXPECT_EQ(browser.loaded_profile_report()->outcomes.size(), 1u);
 
-    browser.refresh(manager);
+    browser.refresh(*manager);
     EXPECT_EQ(browser.loaded_profile_report(), nullptr);
-    ASSERT_TRUE(browser.load_profile_report(manager, first_profile));
+    ASSERT_TRUE(browser.load_profile_report(*manager, first_profile));
     EXPECT_TRUE(browser.loaded_profile_report()->outcomes.empty());
-    EXPECT_FALSE(browser.load_profile_report(manager, "missing"));
+    EXPECT_FALSE(browser.load_profile_report(*manager, "missing"));
     EXPECT_EQ(browser.loaded_profile_report(), nullptr);
 }
 

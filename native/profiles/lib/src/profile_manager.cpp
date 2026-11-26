@@ -36,13 +36,19 @@ inline std::string const test_profile_name{"Test Profile"};
 ProfileManager::ProfileManager(ProfileStorage storage)
     : storage_{std::move(storage)} {}
 
-bool ProfileManager::initialise() {
-    if (!storage_.with_exclusive_access || !storage_.load_index || !storage_.save_index ||
-        !storage_.load_results || !storage_.save_results) {
-        return false;
+auto ProfileManager::open(ProfileStorage storage) -> std::expected<ProfileManager, std::string> {
+    if (!storage.with_exclusive_access || !storage.load_index || !storage.save_index ||
+        !storage.load_results || !storage.save_results) {
+        return std::unexpected{"Incomplete profile storage"};
     }
 
-    return storage_.with_exclusive_access([this] { return initialise_locked(); });
+    ProfileManager manager{std::move(storage)};
+    if (!manager.storage_.with_exclusive_access(
+            [&manager] { return manager.initialise_locked(); })) {
+        return std::unexpected{"Could not load or create the active profile"};
+    }
+
+    return manager;
 }
 
 bool ProfileManager::initialise_locked() {
@@ -76,7 +82,7 @@ bool ProfileManager::initialise_locked() {
         return false;
     }
     index_ = std::move(loaded_index);
-    active_results_ = std::move(results);
+    active_profile_results_ = std::move(results);
     return true;
 }
 
@@ -89,12 +95,7 @@ auto ProfileManager::active_profile_id() const -> std::string const& {
 }
 
 auto ProfileManager::active_records() const -> std::span<ScoreRecord const> {
-    return active_results_ ? std::span<ScoreRecord const>{active_results_->score_records}
-                           : std::span<ScoreRecord const>{};
-}
-
-auto ProfileManager::has_active_profile() const -> bool {
-    return active_results_.has_value() && find_profile(index_.active_profile_id) != nullptr;
+    return active_profile_results_.score_records;
 }
 
 /* **************************************** */
@@ -102,9 +103,6 @@ auto ProfileManager::has_active_profile() const -> bool {
 /* **************************************** */
 auto ProfileManager::create_profile(std::string display_name) -> CreateProfileResponse {
     CreateProfileResponse response{};
-    if (!active_results_.has_value()) {
-        return response;
-    }
     auto const active_profile_id{index_.active_profile_id};
     storage_.with_exclusive_access([this, &display_name, &response, &active_profile_id] {
         if (!reload_latest(active_profile_id)) {
@@ -131,8 +129,8 @@ auto ProfileManager::create_profile(std::string display_name) -> CreateProfileRe
 }
 
 bool ProfileManager::activate_profile(std::string const& profile_id) {
-    if (!active_results_.has_value() || profile_id == index_.active_profile_id) {
-        return active_results_.has_value() && find_profile(profile_id) != nullptr;
+    if (profile_id == index_.active_profile_id) {
+        return true;
     }
     return storage_.with_exclusive_access([this, &profile_id] {
         ProfileIndexData latest_index{};
@@ -159,18 +157,18 @@ bool ProfileManager::activate_profile(std::string const& profile_id) {
         }
 
         index_ = std::move(latest_index);
-        active_results_ = std::move(loaded_results);
+        active_profile_results_ = std::move(loaded_results);
         return true;
     });
 }
 
 bool ProfileManager::load_profile_records(std::string const& profile_id,
                                           std::vector<ScoreRecord>& records) const {
-    if (!active_results_.has_value() || !find_profile(profile_id)) {
+    if (!find_profile(profile_id)) {
         return false;
     }
     if (profile_id == index_.active_profile_id) {
-        records = active_results_->score_records;
+        records = active_profile_results_.score_records;
         return true;
     }
 
@@ -187,10 +185,6 @@ bool ProfileManager::load_profile_records(std::string const& profile_id,
 }
 
 auto ProfileManager::append_score_record(ScoreRecord const& record) -> RecordSaveResult {
-    if (!active_results_.has_value()) {
-        return {};
-    }
-
     auto const active_profile_id{index_.active_profile_id};
     bool new_best_time{};
     auto const persisted{
@@ -200,20 +194,20 @@ auto ProfileManager::append_score_record(ScoreRecord const& record) -> RecordSav
             }
 
             if (record.outcome == LevelOutcome::Victory) {
-                auto const progress{summarize_level_progress(levels::LevelId{record.level_name},
-                                                             active_results_->score_records)};
+                auto const progress{summarize_level_progress(
+                    levels::LevelId{record.level_name}, active_profile_results_.score_records)};
                 new_best_time = progress.best_completion_time_seconds < 0.f ||
                                 record.time_seconds < progress.best_completion_time_seconds;
             }
 
-            active_results_->score_records.push_back(record);
-            if (!storage_.save_results(active_profile_id, *active_results_)) {
-                active_results_->score_records.pop_back();
+            active_profile_results_.score_records.push_back(record);
+            if (!storage_.save_results(active_profile_id, active_profile_results_)) {
+                active_profile_results_.score_records.pop_back();
                 return false;
             }
 
             auto* const metadata{find_profile(active_profile_id)};
-            update_profile_metadata(*metadata, active_results_->score_records);
+            update_profile_metadata(*metadata, active_profile_results_.score_records);
             // Results are authoritative; initialization repairs stale aggregate metadata.
             static_cast<void>(storage_.save_index(index_));
             return true;
@@ -222,9 +216,6 @@ auto ProfileManager::append_score_record(ScoreRecord const& record) -> RecordSav
 }
 
 bool ProfileManager::reset_test_profile(std::span<ScoreRecord const> const records) {
-    if (!active_results_.has_value()) {
-        return false;
-    }
     auto const active_profile_id{index_.active_profile_id};
     return storage_.with_exclusive_access([this, records, &active_profile_id] {
         if (!reload_latest(active_profile_id)) {
@@ -293,7 +284,7 @@ bool ProfileManager::reload_latest(std::string const& active_profile_id) {
     }
     latest_index.active_profile_id = active_profile_id;
     index_ = std::move(latest_index);
-    active_results_ = std::move(latest_results);
+    active_profile_results_ = std::move(latest_results);
     return true;
 }
 
@@ -329,7 +320,7 @@ bool ProfileManager::save_new_profile(ProfileMetadata const& metadata,
         return false;
     }
 
-    active_results_ = std::move(results);
+    active_profile_results_ = std::move(results);
     return true;
 }
 

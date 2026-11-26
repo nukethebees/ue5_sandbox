@@ -60,19 +60,19 @@ TEST(ProfileStorage, RecoversPreviousGenerationIncludingDebugSettings) {
 TEST(ProfileStorage, FailedReplacementPreservesPublishedRecordsAndRollsBackManager) {
     storage_tests::Directory directory;
     auto const root{directory.path / "profiles"};
-    ProfileManager manager{make_file_profile_storage(root)};
-    ASSERT_TRUE(manager.initialise());
+    auto manager{ProfileManager::open(make_file_profile_storage(root))};
+    ASSERT_TRUE(manager);
     ScoreRecord const original{.date = 1,
                                .level_name = "mission",
                                .end_reason = sim::RunEndReason::DurationReached,
                                .kills = std::numeric_limits<KillCount>::max()};
-    ASSERT_TRUE(manager.append_score_record(original));
+    ASSERT_TRUE(manager->append_score_record(original));
     auto const backup{root / "profile_default_profile.json.bak"};
     std::filesystem::remove(backup);
     std::filesystem::create_directory(backup);
-    EXPECT_FALSE(manager.append_score_record({.date = 2, .level_name = "mission", .kills = 8}));
-    ASSERT_EQ(manager.active_records().size(), 1u);
-    EXPECT_EQ(manager.active_records()[0], original);
+    EXPECT_FALSE(manager->append_score_record({.date = 2, .level_name = "mission", .kills = 8}));
+    ASSERT_EQ(manager->active_records().size(), 1u);
+    EXPECT_EQ(manager->active_records()[0], original);
     auto storage{make_file_profile_storage(root)};
     ProfileResultsData published;
     ASSERT_EQ(storage.load_results("default_profile", published), LoadResult::succeeded);
@@ -91,67 +91,67 @@ TEST(ProfileStorage, MergeDeduplicatesPayloadsAndRebuildsMetadataBeforePublicati
                             .time_seconds = 3.f};
     ScoreRecord const second{.date = 2, .level_name = "mission", .kills = 4, .time_seconds = 5.f};
     for (auto const& source : sources) {
-        ProfileManager manager{make_file_profile_storage(source)};
-        ASSERT_TRUE(manager.initialise());
-        ASSERT_TRUE(manager.append_score_record(first));
+        auto manager{ProfileManager::open(make_file_profile_storage(source))};
+        ASSERT_TRUE(manager);
+        ASSERT_TRUE(manager->append_score_record(first));
     }
-    ProfileManager second_source{make_file_profile_storage(sources[1])};
-    ASSERT_TRUE(second_source.initialise());
-    ASSERT_TRUE(second_source.append_score_record(second));
+    auto second_source{ProfileManager::open(make_file_profile_storage(sources[1]))};
+    ASSERT_TRUE(second_source);
+    ASSERT_TRUE(second_source->append_score_record(second));
     auto const destination{directory.path / "merged"};
     auto const merged{merge_profile_files(sources, {}, destination)};
     ASSERT_TRUE(merged);
     EXPECT_EQ(merged->source_record_count, 3u);
     EXPECT_EQ(merged->unique_record_count, 2u);
-    ProfileManager result{make_file_profile_storage(destination)};
-    ASSERT_TRUE(result.initialise());
-    ASSERT_EQ(result.active_records().size(), 2u);
-    EXPECT_EQ(result.active_records()[0], first);
-    EXPECT_EQ(result.active_records()[1], second);
-    EXPECT_EQ(result.profiles()[0].total_kills, std::uint64_t{first.kills} + second.kills);
-    EXPECT_EQ(result.profiles()[0].total_simulation_duration_seconds, 8.f);
+    auto result{ProfileManager::open(make_file_profile_storage(destination))};
+    ASSERT_TRUE(result);
+    ASSERT_EQ(result->active_records().size(), 2u);
+    EXPECT_EQ(result->active_records()[0], first);
+    EXPECT_EQ(result->active_records()[1], second);
+    EXPECT_EQ(result->profiles()[0].total_kills, std::uint64_t{first.kills} + second.kills);
+    EXPECT_EQ(result->profiles()[0].total_simulation_duration_seconds, 8.f);
     EXPECT_FALSE(merge_profile_files(sources, {}, destination));
 }
 TEST(ProfileStorage, CloneIsPublishedOnceAndRemainsIsolated) {
     storage_tests::Directory directory;
     auto const shared_root{directory.path / "Shared"};
     auto const experiment_root{directory.path / "Experiment"};
-    ProfileManager shared{make_file_profile_storage(shared_root)};
-    ASSERT_TRUE(shared.initialise());
-    ASSERT_TRUE(shared.append_score_record({.date = 1, .level_name = "mission", .kills = 7}));
+    auto shared{ProfileManager::open(make_file_profile_storage(shared_root))};
+    ASSERT_TRUE(shared);
+    ASSERT_TRUE(shared->append_score_record({.date = 1, .level_name = "mission", .kills = 7}));
     std::string error;
     ASSERT_TRUE(clone_profile_files(shared_root, experiment_root, error)) << error;
-    ProfileManager experiment{make_file_profile_storage(experiment_root)};
-    ASSERT_TRUE(experiment.initialise());
-    ASSERT_TRUE(experiment.append_score_record({.date = 2, .level_name = "mission", .kills = 3}));
+    auto experiment{ProfileManager::open(make_file_profile_storage(experiment_root))};
+    ASSERT_TRUE(experiment);
+    ASSERT_TRUE(experiment->append_score_record({.date = 2, .level_name = "mission", .kills = 3}));
     ASSERT_TRUE(clone_profile_files(shared_root, experiment_root, error));
-    ProfileManager reloaded_shared{make_file_profile_storage(shared_root)};
-    ProfileManager reloaded_experiment{make_file_profile_storage(experiment_root)};
-    ASSERT_TRUE(reloaded_shared.initialise());
-    ASSERT_TRUE(reloaded_experiment.initialise());
-    ASSERT_EQ(reloaded_shared.active_records().size(), 1u);
-    ASSERT_EQ(reloaded_experiment.active_records().size(), 2u);
-    EXPECT_EQ(reloaded_shared.active_records()[0].kills, 7);
-    EXPECT_EQ(reloaded_experiment.active_records()[1].kills, 3);
+    auto reloaded_shared{ProfileManager::open(make_file_profile_storage(shared_root))};
+    auto reloaded_experiment{ProfileManager::open(make_file_profile_storage(experiment_root))};
+    ASSERT_TRUE(reloaded_shared);
+    ASSERT_TRUE(reloaded_experiment);
+    ASSERT_EQ(reloaded_shared->active_records().size(), 1u);
+    ASSERT_EQ(reloaded_experiment->active_records().size(), 2u);
+    EXPECT_EQ(reloaded_shared->active_records()[0].kills, 7);
+    EXPECT_EQ(reloaded_experiment->active_records()[1].kills, 3);
 }
 TEST(ProfileStorage, ConcurrentIndependentManagersKeepEveryResult) {
     storage_tests::Directory directory;
     auto const root{directory.path / "Shared"};
-    ProfileManager initial{make_file_profile_storage(root)};
-    ASSERT_TRUE(initial.initialise());
+    auto initial{ProfileManager::open(make_file_profile_storage(root))};
+    ASSERT_TRUE(initial);
     std::atomic<bool> succeeded{true};
     std::vector<std::thread> workers;
     for (std::uint32_t producer{}; producer < 4; ++producer) {
         workers.emplace_back([&, producer] {
-            ProfileManager manager{make_file_profile_storage(root)};
-            if (!manager.initialise()) {
+            auto manager{ProfileManager::open(make_file_profile_storage(root))};
+            if (!manager) {
                 succeeded = false;
                 return;
             }
             for (std::uint32_t row{}; row < 4; ++row) {
-                if (!manager.append_score_record({.date = producer * 4 + row + 1,
-                                                  .level_name = "mission",
-                                                  .kills = producer * 4 + row})) {
+                if (!manager->append_score_record({.date = producer * 4 + row + 1,
+                                                   .level_name = "mission",
+                                                   .kills = producer * 4 + row})) {
                     succeeded = false;
                 }
             }
@@ -161,9 +161,9 @@ TEST(ProfileStorage, ConcurrentIndependentManagersKeepEveryResult) {
         worker.join();
     }
     ASSERT_TRUE(succeeded);
-    ProfileManager reloaded{make_file_profile_storage(root)};
-    ASSERT_TRUE(reloaded.initialise());
-    auto const records{reloaded.active_records()};
+    auto reloaded{ProfileManager::open(make_file_profile_storage(root))};
+    ASSERT_TRUE(reloaded);
+    auto const records{reloaded->active_records()};
     ASSERT_EQ(records.size(), 16u);
     std::array<bool, 16> seen{};
     for (auto const& record : records) {
