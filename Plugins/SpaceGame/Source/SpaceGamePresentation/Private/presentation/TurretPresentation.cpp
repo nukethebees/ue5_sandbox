@@ -43,7 +43,7 @@ void FTurretPresentation::clear_runtime_state_presentation() {
     ismc_transforms.Reset();
 }
 
-void FTurretPresentation::begin_play_presentation() {
+void FTurretPresentation::begin_play_presentation(presentation::MissionFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::begin_play_presentation);
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FTurretPresentation actor_config is nullptr."));
@@ -57,11 +57,11 @@ void FTurretPresentation::begin_play_presentation() {
     debug_drawer.world = instances->GetWorld();
 
     configure_ismc();
-    auto const entities{simulation().get_entities()};
+    auto const& entities{frame.turrets()};
     auto const count{static_cast<int32>(entities.num())};
     ismc_transforms.Reserve(count);
-    auto const locations{entities.view_locations()};
-    auto const rotations{entities.view_rotations()};
+    auto const locations{entities.locations};
+    auto const rotations{frame.turret_rotations};
     auto const pitches{rotations.pitches()};
     auto const yaws{rotations.yaws()};
     auto const rolls{rotations.rolls()};
@@ -69,26 +69,26 @@ void FTurretPresentation::begin_play_presentation() {
         ismc_transforms.Emplace(FRotator{to_unreal(Rotator3f{pitches[i], yaws[i], rolls[i]})},
                                 FVector{to_unreal(vector_at(locations, i))});
     }
-    add_initial_visual_instances();
-    validate_array_sizes();
+    add_initial_visual_instances(frame);
+    validate_array_sizes(frame);
 }
 
-void FTurretPresentation::update_visual_data(sim::SimulationFrameEvents const& events) {
+void FTurretPresentation::update_visual_data(presentation::FrameEvents const& events) {
     auto const colours{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
-    auto const changes{events.turret_changes.const_view()};
-    auto const count{changes.num()};
+    auto const changes{events.turret_changes};
+    auto const count{changes.kinds.size()};
     for (std::uint32_t row{}; row < count; ++row) {
-        if (changes.kinds()[row] == sim::EntityFrameChangeKind::RemoveSwap) {
-            ismc_transforms.RemoveAtSwap(changes.indices()[row], EAllowShrinking::No);
-            instances->RemoveInstance(changes.indices()[row]);
+        if (changes.kinds[row] == sim::EntityFrameChangeKind::RemoveSwap) {
+            ismc_transforms.RemoveAtSwap(changes.indices[row], EAllowShrinking::No);
+            instances->RemoveInstance(changes.indices[row]);
         } else {
-            FTransform const transform{FRotator{to_unreal(changes.rotations()[row])},
-                                       FVector{to_unreal(changes.locations()[row])}};
+            FTransform const transform{FRotator{to_unreal(changes.rotations[row])},
+                                       FVector{to_unreal(changes.locations[row])}};
             auto const index{instances->AddInstance(transform, is_world_space)};
-            check(index == static_cast<int32>(changes.indices()[row]));
+            check(index == static_cast<int32>(changes.indices[row]));
             ismc_transforms.Add(transform);
-            auto const colour{colours[to_unreal(changes.teams()[row])]};
+            auto const colour{colours[to_unreal(changes.teams[row])]};
             float const rgb[]{colour.R, colour.G, colour.B};
             instances->SetCustomData(index, rgb, false);
         }
@@ -96,18 +96,18 @@ void FTurretPresentation::update_visual_data(sim::SimulationFrameEvents const& e
     trigger_death_effects(events);
 }
 
-void FTurretPresentation::commit_visual_data(sim::HealthConstView healths) {
+void FTurretPresentation::commit_visual_data(presentation::MissionFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::commit_visual_data);
 
     instances->MarkRenderStateDirty();
     if (draw_target_arrows_enabled || draw_debug_entity_info_enabled) {
-        draw_debugging_shapes(healths);
+        draw_debugging_shapes(frame);
     }
 }
 
-void FTurretPresentation::end_tick_presentation() {
+void FTurretPresentation::end_tick_presentation(presentation::MissionFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::end_tick_presentation);
-    validate_array_sizes();
+    validate_array_sizes(frame);
 }
 
 void FTurretPresentation::configure_ismc() {
@@ -119,14 +119,15 @@ void FTurretPresentation::configure_ismc() {
                           });
 }
 
-void FTurretPresentation::add_initial_visual_instances() {
-    add_visual_instances(ismc_transforms, 0);
-    validate_array_sizes();
+void FTurretPresentation::add_initial_visual_instances(presentation::MissionFrame const& frame) {
+    add_visual_instances(frame, ismc_transforms, 0);
+    validate_array_sizes(frame);
 }
 
-void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transforms,
+void FTurretPresentation::add_visual_instances(presentation::MissionFrame const& frame,
+                                               TArray<FTransform> const& transforms,
                                                int32 const first_entity_index) {
-    auto const entities{simulation().get_entities()};
+    auto const& entities{frame.turrets()};
     auto const n_to_add{transforms.Num()};
     if (n_to_add == 0) {
         return;
@@ -136,7 +137,7 @@ void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transfo
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     TArray<float> custom_data;
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
-    auto const teams{entities.teams()};
+    auto const teams{entities.teams};
 
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
@@ -151,9 +152,8 @@ void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transfo
         first_entity_index, first_entity_index + n_to_add - 1, custom_data, false);
 }
 
-void FTurretPresentation::trigger_death_effects(sim::SimulationFrameEvents const& events) {
-    auto const deaths{events.deaths.const_view()};
-    auto const death_locations{deaths.locations()};
+void FTurretPresentation::trigger_death_effects(presentation::FrameEvents const& events) {
+    auto const death_locations{events.death_locations};
     auto const n{static_cast<int32>(death_locations.size())};
     auto* world{instances->GetWorld()};
     auto* explosion_system{actor_config->death_effect.Get()};
@@ -167,7 +167,7 @@ void FTurretPresentation::trigger_death_effects(sim::SimulationFrameEvents const
 
     for (int32 i{0}; i < n; ++i) {
 
-        if (deaths.victims()[i].entity_type() != sim::EntityType::Turret) {
+        if (events.victims[i].entity_type() != sim::EntityType::Turret) {
             continue;
         }
         constexpr bool auto_destroy{true};
@@ -185,27 +185,26 @@ void FTurretPresentation::trigger_death_effects(sim::SimulationFrameEvents const
     }
 }
 
-void FTurretPresentation::validate_array_sizes() const {
+void FTurretPresentation::validate_array_sizes(presentation::MissionFrame const& frame) const {
     fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(static_cast<int32>(simulation().num_instances())),
+        SANDBOX_NAMED_NUM(static_cast<int32>(frame.turrets().num())),
         SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }
 
-void FTurretPresentation::draw_debugging_shapes(sim::HealthConstView healths) const {
+void FTurretPresentation::draw_debugging_shapes(presentation::MissionFrame const& frame) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::draw_debugging_shapes);
 
-    auto const& turret_simulation{simulation()};
-    auto const entities{turret_simulation.get_entities()};
-    auto const n{static_cast<int32>(turret_simulation.num_instances())};
+    auto const& entities{frame.turrets()};
+    auto const n{static_cast<int32>(entities.num())};
     auto const text_offset{actor_config->debug_status_text_offset};
 
     auto& drawer{debug_drawer};
-    auto const locations{entities.view_locations()};
-    auto const targets{entities.target_ids()};
-    auto const target_locations{entities.view_target_locations()};
-    auto const ids{entities.entity_ids()};
+    auto const locations{entities.locations};
+    auto const targets{frame.turret_targets.ids};
+    auto const target_locations{frame.turret_targets.locations};
+    auto const ids{entities.ids};
 
     for (int32 i{0}; i < n; ++i) {
         auto const turret_location{FVector{to_unreal(vector_at(locations, i))}};
@@ -222,8 +221,9 @@ void FTurretPresentation::draw_debugging_shapes(sim::HealthConstView healths) co
         if (draw_debug_entity_info_enabled) {
             auto const entity_id{ids[i]};
 
-            auto const msg{FString::Printf(
-                TEXT("[%u] HP=%d"), entity_id.raw_value(), healths.health(entity_id).value())};
+            auto const msg{FString::Printf(TEXT("[%u] HP=%d"),
+                                           entity_id.raw_value(),
+                                           entities.healths.health(entity_id).value())};
             auto const msg_location{turret_location + text_offset};
             drawer.draw_string(msg_location, msg);
         }

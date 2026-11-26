@@ -1,6 +1,5 @@
 #pragma once
-#include <ioj/sim/levels/simulation_frame_events.h>
-#include <ioj/sim/turrets/sim.h>
+#include <ioj/presentation/mission_frame.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 
@@ -24,24 +23,24 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     void set_actor_config(FTurretConfig const* new_config,
                           settings::TurretPresentation const& settings) noexcept;
   private:
-    auto simulation() const -> sim::turrets::Sim const& { return *simulation_; }
     void ValidateOptionalAssets() const;
     void clear_runtime_state_presentation();
-    void begin_play_presentation();
-    void update_visual_data(sim::SimulationFrameEvents const& events);
-    void commit_visual_data(sim::HealthConstView healths);
-    void end_tick_presentation();
+    void begin_play_presentation(presentation::MissionFrame const& frame);
+    void update_visual_data(presentation::FrameEvents const& events);
+    void commit_visual_data(presentation::MissionFrame const& frame);
+    void end_tick_presentation(presentation::MissionFrame const& frame);
 
-    void add_initial_visual_instances();
-    void add_visual_instances(TArray<FTransform> const& transforms, int32 first_entity_index);
+    void add_initial_visual_instances(presentation::MissionFrame const& frame);
+    void add_visual_instances(presentation::MissionFrame const& frame,
+                              TArray<FTransform> const& transforms,
+                              int32 first_entity_index);
     void configure_ismc();
-    void trigger_death_effects(sim::SimulationFrameEvents const& events);
-    void draw_debugging_shapes(sim::HealthConstView healths) const;
-    void validate_array_sizes() const;
+    void trigger_death_effects(presentation::FrameEvents const& events);
+    void draw_debugging_shapes(presentation::MissionFrame const& frame) const;
+    void validate_array_sizes(presentation::MissionFrame const& frame) const;
 
     FTurretConfig const* actor_config{nullptr};
     settings::TurretPresentation const* settings_{};
-    sim::turrets::Sim const* simulation_{};
 
     UInstancedStaticMeshComponent* instances{nullptr};
     TArray<FTransform> ismc_transforms;
