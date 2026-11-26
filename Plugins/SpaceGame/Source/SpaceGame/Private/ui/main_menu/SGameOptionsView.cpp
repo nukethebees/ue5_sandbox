@@ -4,7 +4,7 @@
 #include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
 #include "SpaceGame/ui/common/SGameButton.h"
-#include <ioj/game_capabilities.h>
+#include <ioj/system_capabilities.h>
 
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SettingsWidgets.h"

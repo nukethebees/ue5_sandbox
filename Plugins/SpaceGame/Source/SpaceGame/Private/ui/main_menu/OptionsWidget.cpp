@@ -67,7 +67,7 @@ auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
     return SAssignNew(options_view_, SGameOptionsView)
         .IsEnabled_Lambda([this] { return !settings_->save_pending(); })
         .Settings(settings_)
-        .Capabilities(&player_capabilities())
+        .Capabilities(&system_capabilities())
         .Style(&style_->get_ui_style())
         .Audio(GetGameInstance()->GetSubsystem<UGameAudio>()->facade())
         .Page_UObject(this, &ThisClass::page)

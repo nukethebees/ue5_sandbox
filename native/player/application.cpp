@@ -98,7 +98,7 @@ auto resolve_launch_paths(CliArgs const& args) -> PathsResult {
 
 Application::Application(CliArgs args)
     : args_{std::move(args)}
-    , capabilities_{query_game_capabilities()}
+    , capabilities_{query_system_capabilities()}
     , profile_browser_{
           [this] { return profiles::discover_profiles(profiles_); },
           [this](std::string const& id) { return profiles::load_report(profiles_, id); }}

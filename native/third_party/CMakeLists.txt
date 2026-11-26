@@ -66,11 +66,6 @@ foreach(google_test_target IN ITEMS gtest gtest_main)
   ioj_apply_native_abi(${google_test_target})
 endforeach()
 
-set(IOJ_CPU_FEATURES_SOURCE_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/cpu_features")
-add_subdirectory(cpu_features_integration EXCLUDE_FROM_ALL)
-unset(IOJ_CPU_FEATURES_SOURCE_DIRECTORY)
-ioj_apply_native_abi(cpu_features)
-
 set(HWY_ENABLE_CONTRIB OFF CACHE BOOL "" FORCE)
 set(HWY_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(HWY_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
@@ -115,14 +110,10 @@ if(IOJ_WITH_UNREAL)
     ARCHIVE_OUTPUT_DIRECTORY
       "${IOJ_NATIVE_OUTPUT_ROOT}/Highway/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
-  target_link_libraries(cpu_features
-    PRIVATE
-      ioj::unreal_avx2
-  )
-  set_target_properties(cpu_features PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY
-      "${IOJ_NATIVE_OUTPUT_ROOT}/CpuFeatures/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
-  )
+  set(IOJ_CPU_FEATURES_SOURCE_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/cpu_features")
+  add_subdirectory(cpu_features_integration EXCLUDE_FROM_ALL)
+  unset(IOJ_CPU_FEATURES_SOURCE_DIRECTORY)
+  ioj_apply_native_abi(cpu_features)
 endif()
 
 set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)

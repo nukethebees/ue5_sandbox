@@ -9,7 +9,7 @@ struct WindowsMemoryCapabilities {
     std::uint64_t large_page_minimum_bytes{};
     LargePageAccess large_page_access_status{LargePageAccess::QueryFailed};
 };
-struct GameCapabilities {
+struct SystemCapabilities {
     std::string platform_name;
     std::string host_architecture;
     std::string operating_system_version;
@@ -24,9 +24,5 @@ struct GameCapabilities {
     WindowsMemoryCapabilities windows;
 };
 
-void query_cpu_capabilities(GameCapabilities& result);
-
-namespace player {
-auto query_game_capabilities() -> GameCapabilities;
-}
+auto query_system_capabilities() -> SystemCapabilities;
 }

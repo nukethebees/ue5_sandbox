@@ -20,7 +20,7 @@
 namespace ioj {
 namespace {
 PlayerSettings const* attached_settings{};
-GameCapabilities const* attached_capabilities{};
+SystemCapabilities const* attached_capabilities{};
 profiles::ProfileManager const* profile_manager{};
 profiles::SaveGameBrowser const* attached_browser{};
 std::optional<session::LevelSelectRequest> menu_destination;
@@ -53,7 +53,7 @@ auto player_settings() -> PlayerSettings const& {
     return *attached_settings;
 }
 
-auto player_capabilities() -> GameCapabilities const& {
+auto system_capabilities() -> SystemCapabilities const& {
     check(attached_capabilities);
     return *attached_capabilities;
 }
@@ -119,7 +119,7 @@ void reset_level_input() {
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 void IojPlayer_Attach(PlayerSettings const& settings,
-                      GameCapabilities const& capabilities,
+                      SystemCapabilities const& capabilities,
                       std::vector<ScreenResolution> const& resolutions,
                       profiles::ProfileManager const& profiles,
                       profiles::SaveGameBrowser const& reports) {

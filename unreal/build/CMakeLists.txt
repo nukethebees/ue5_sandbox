@@ -8,7 +8,6 @@ set(sandbox_unreal_native_dependency_targets
   native-ui
   native-presentation
   native-profiles
-  cpu_features
 )
 set(sandbox_unreal_native_dependencies)
 foreach(sandbox_unreal_dependency IN LISTS sandbox_unreal_native_dependency_targets)

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "player/engine.h"
-#include <ioj/game_capabilities.h>
+#include <ioj/system_capabilities.h>
 #include <ioj/host/unreal_messages.h>
 #include <ioj/memory/bump_resource.h>
 #include <ioj/profiles/profile_manager.h>
@@ -32,7 +32,7 @@ class Application {
 
     CliArgs const args_;
     LaunchPaths paths_;
-    GameCapabilities const capabilities_;
+    SystemCapabilities const capabilities_;
     PlayerSettings settings_;
     std::optional<session::PendingLevel> pending_level_;
     profiles::ProfileManager profiles_;

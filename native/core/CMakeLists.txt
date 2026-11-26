@@ -19,7 +19,6 @@ target_sources(native-core
     include/ioj/rotators3f.h
     include/ioj/rotator_math.h
     src/rotator_math.cpp
-    src/cpu_simd_capabilities.cpp
     include/ioj/math_types.h
     include/ioj/transform3d.h
     src/transform3d.cpp
@@ -84,7 +83,6 @@ target_include_directories(native-core
 
 # Isolate code with link dependencies that only some Unreal modules consume.
 set_source_files_properties(
-  src/cpu_simd_capabilities.cpp
   src/files.cpp
   src/frame_memory_resource.cpp
   src/bump_resource.cpp
@@ -99,7 +97,6 @@ target_link_libraries(native-core
     TBB::tbb
 
   PRIVATE
-    CpuFeatures::cpu_features
     ioj::core_pch
     sandbox::mimalloc
     "$<$<BOOL:${IOJ_WITH_TRACY}>:sandbox::profiling>"

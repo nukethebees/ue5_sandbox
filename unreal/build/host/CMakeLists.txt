@@ -29,12 +29,13 @@ target_sources(IojPlayer
     "${host_directory}/windows/window.cpp"
     "${host_directory}/display.cpp"
     "${host_directory}/windows/system.cpp"
-    "${host_directory}/windows/capabilities.cpp"
+    "${host_directory}/windows/system_capabilities.cpp"
 )
 target_link_libraries(IojPlayer
   PRIVATE
     "${game_import_library}"
     CLI11::CLI11
+    CpuFeatures::cpu_features
     SDL3::SDL3-static
     advapi32
     comctl32

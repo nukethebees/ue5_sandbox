@@ -1,10 +1,10 @@
 #pragma once
 
-#include <ioj/game_capabilities.h>
 #include <ioj/host/unreal_messages.h>
 #include <ioj/profiles/profile_manager.h>
 #include <ioj/profiles/save_browser.h>
 #include <ioj/settings/player_settings.h>
+#include <ioj/system_capabilities.h>
 
 #include <string_view>
 
@@ -13,7 +13,7 @@ class UOptionsDraft;
 class USaveGameViewerWidget;
 
 SPACEGAME_API auto player_settings() -> PlayerSettings const&;
-SPACEGAME_API auto player_capabilities() -> GameCapabilities const&;
+SPACEGAME_API auto system_capabilities() -> SystemCapabilities const&;
 SPACEGAME_API auto player_profiles() -> profiles::ProfileManager const&;
 auto profile_browser() -> profiles::SaveGameBrowser const&;
 void queue_profile_action(host::ProfileActionKind kind,

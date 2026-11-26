@@ -17,7 +17,7 @@ class ProfileManager;
 class SaveGameBrowser;
 }
 namespace ioj {
-struct GameCapabilities;
+struct SystemCapabilities;
 class PlayerSettings;
 #ifdef IOJ_PLAYER_EXPORTS
 #define IOJ_PLAYER_API __declspec(dllexport)
@@ -26,7 +26,7 @@ class PlayerSettings;
 #endif
 extern "C" {
     IOJ_PLAYER_API void IojPlayer_Attach(PlayerSettings const& settings,
-                                         GameCapabilities const& capabilities,
+                                         SystemCapabilities const& capabilities,
                                          std::vector<ScreenResolution> const& resolutions,
                                          profiles::ProfileManager const& profiles,
                                          profiles::SaveGameBrowser const& browser);
