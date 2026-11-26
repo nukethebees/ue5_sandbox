@@ -36,23 +36,11 @@ auto to_closed_max_cell(float const value,
 /* **************************************** */
 // Grid spec
 /* **************************************** */
-auto is_configured(CollisionGridSpec const spec) noexcept -> bool {
-    if (spec.dimensions.x() <= 0 || spec.dimensions.y() <= 0 || spec.dimensions.z() <= 0 ||
-        !is_positive_finite(spec.cell_dimensions)) {
-        return false;
-    }
-
-    return levels::grid_cell_count_fits(
-        spec.dimensions.x(), spec.dimensions.y(), spec.dimensions.z());
-}
 auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_size) noexcept
     -> CellCoord {
     return {levels::grid_axis_count(grid_size.x(), cell_size.x()),
             levels::grid_axis_count(grid_size.y(), cell_size.y()),
             levels::grid_axis_count(grid_size.z(), cell_size.z())};
-}
-auto grid_half_size(CollisionGridSpec const spec) noexcept -> Vector3f {
-    return Vector3f{spec.dimensions} * spec.cell_dimensions * 0.5f;
 }
 
 auto num_cells(CollisionGridSpec const spec) noexcept -> GridCellCount {

@@ -2,9 +2,9 @@
 
 #include "ioj/sim/collision/collision_scalar_types.h"
 #include "ioj/vectors3f.h"
+#include <ioj/levels/collision_grid_geometry.h>
 #include <ioj/sim/collision/cell_coord.h>
 #include <ioj/sim/collision/cell_coord_bounds.h>
-#include <ioj/sim/collision/collision_grid_spec.h>
 
 #include <cstdint>
 #include <limits>
@@ -17,10 +17,8 @@ inline constexpr float no_trace_hit{std::numeric_limits<float>::infinity()};
 // Grid spec
 /* **************************************** */
 
-[[nodiscard]] auto is_configured(CollisionGridSpec spec) noexcept -> bool;
 [[nodiscard]] auto calculate_grid_dimensions(Vector3f grid_size, Vector3f cell_size) noexcept
     -> CellCoord;
-[[nodiscard]] auto grid_half_size(CollisionGridSpec spec) noexcept -> Vector3f;
 [[nodiscard]] auto num_cells(CollisionGridSpec spec) noexcept -> GridCellCount;
 [[nodiscard]] auto to_index(CollisionGridSpec spec, CellCoord coordinate) noexcept -> CellIndex;
 [[nodiscard]] auto to_cell_coord(float value, float cell_dimension, int grid_dimension) noexcept
