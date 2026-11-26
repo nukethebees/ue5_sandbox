@@ -25,7 +25,7 @@ void FFighterPresentation::clear_runtime_state_presentation() {
     instances->clear_instances();
 }
 
-void FFighterPresentation::begin_play_presentation(sim::HealthConstView const healths) {
+void FFighterPresentation::begin_play_presentation(presentation::MissionFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::begin_play_presentation);
 
     if (!actor_config) {
@@ -41,19 +41,19 @@ void FFighterPresentation::begin_play_presentation(sim::HealthConstView const he
 
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = instances->GetWorld();
-    update_visual_data(healths);
-    commit_visual_data();
+    update_visual_data(frame);
+    commit_visual_data(frame);
 }
 
-void FFighterPresentation::update_visual_data(sim::HealthConstView const healths) {
+void FFighterPresentation::update_visual_data(presentation::MissionFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_visual_data);
-    update_ismc(healths);
+    update_ismc(frame);
 }
 
-void FFighterPresentation::commit_visual_data() {
+void FFighterPresentation::commit_visual_data(presentation::MissionFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::commit_visual_data);
     if (enable_target_debug_drawing || enable_ship_location_debug_drawing) {
-        draw_debug_shapes();
+        draw_debug_shapes(frame);
     }
 }
 
@@ -70,27 +70,27 @@ void FFighterPresentation::configure_ismc() {
     instances->set_num_custom_data_floats(n_custom_ismc_floats);
 }
 
-void FFighterPresentation::update_ismc(sim::HealthConstView const healths) {
+void FFighterPresentation::update_ismc(presentation::MissionFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_ismc);
 
-    auto const data{simulation().entities()};
+    auto const& data{frame.fighters()};
     auto const count{static_cast<int32>(data.num())};
-    auto const ids{data.entity_ids()};
+    auto const ids{data.ids};
     visible_indices_.Reset();
     for (int32 index{}; index < count; ++index) {
-        if (sim::is_alive(healths.health(ids[index]))) {
+        if (sim::is_alive(data.healths.health(ids[index]))) {
             visible_indices_.Add(index);
         }
     }
     instances->set_instances(
         visible_indices_.Num(),
         ESandboxISMCParallelism::Auto,
-        [this, &data](FSandboxISMCInstanceChunkWriter& chunk) {
+        [this, &data, &frame](FSandboxISMCInstanceChunkWriter& chunk) {
             auto const first_index{chunk.first_index()};
             auto const chunk_count{chunk.num()};
-            auto const locations{data.view_locations()};
-            auto const aim_directions{data.view_aim_directions()};
-            auto const teams{data.teams()};
+            auto const locations{data.locations};
+            auto const aim_directions{frame.fighter_aim};
+            auto const teams{data.teams};
 
             TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
             transform_positions.SetNumUninitialized(chunk.num());
@@ -116,14 +116,14 @@ void FFighterPresentation::update_ismc(sim::HealthConstView const healths) {
         });
 }
 
-void FFighterPresentation::draw_debug_shapes() {
+void FFighterPresentation::draw_debug_shapes(presentation::MissionFrame const& frame) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::draw_debug_shapes);
 
-    auto const data{simulation().entities()};
+    auto const& data{frame.fighters()};
     auto const n{static_cast<int32>(data.num())};
-    auto const locations{data.view_locations()};
-    auto const targets{data.target_ids()};
-    auto const target_locations{data.view_target_locations()};
+    auto const locations{data.locations};
+    auto const targets{frame.fighter_targets.ids};
+    auto const target_locations{frame.fighter_targets.locations};
 
     for (int32 i{0}; i < n; ++i) {
         FVector const ship_location{to_unreal(vector_at(locations, i))};

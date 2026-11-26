@@ -53,7 +53,6 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
         [](auto const&... systems) { (systems.ValidateOptionalAssets(), ...); }};
     ValidateOptionalAssets(capital_ships, turrets);
 
-    capital_ship_fighters.simulation_ = &view.fighters();
     turrets.simulation_ = &view.turrets();
     spinners.simulation_ = &view.spinners();
     lasers.simulation_ = &view.lasers();
@@ -70,8 +69,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     turrets.clear_runtime_state_presentation();
     spinners.clear_runtime_state_presentation();
     capital_ships.begin_play_presentation(frame);
-    capital_ship_fighters.begin_play_presentation(
-        view.entity_tables().health.const_view<sim::EntityType::Fighter>());
+    capital_ship_fighters.begin_play_presentation(frame);
     turrets.begin_play_presentation();
     spinners.begin_play_presentation();
     lasers.begin_play_presentation(config.laser_instance_reserve);
@@ -99,8 +97,7 @@ void FLevelPresentation::tick(float const dt, presentation::MissionFrame const& 
     }
     capital_ships.update_visual_data(frame.events);
     turrets.update_visual_data(view.frame_events());
-    capital_ship_fighters.update_visual_data(
-        view.entity_tables().health.const_view<sim::EntityType::Fighter>());
+    capital_ship_fighters.update_visual_data(frame);
     spinners.update_visual_data();
     lasers.update_visual_data(&view.frame_events());
     capital_ships.end_tick_presentation(frame);
@@ -108,7 +105,7 @@ void FLevelPresentation::tick(float const dt, presentation::MissionFrame const& 
     spinners.end_tick_presentation();
     lasers.end_tick_presentation();
     capital_ships.commit_visual_data();
-    capital_ship_fighters.commit_visual_data();
+    capital_ship_fighters.commit_visual_data(frame);
     turrets.commit_visual_data(view.entity_tables().health.const_view<sim::EntityType::Turret>());
     spinners.commit_visual_data();
     sparks.commit(dt);

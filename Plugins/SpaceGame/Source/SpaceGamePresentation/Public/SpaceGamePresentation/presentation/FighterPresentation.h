@@ -1,7 +1,6 @@
 #pragma once
 
-#include <ioj/sim/entities/health_table.h>
-#include <ioj/sim/fighters/sim.h>
+#include <ioj/presentation/mission_frame.h>
 #include <SpaceGamePresentation/entities/TeamColours.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
@@ -23,16 +22,14 @@ struct SPACEGAMEPRESENTATION_API FFighterPresentation {
 
     void set_actor_config(FFighterConfig const* new_config) noexcept;
   private:
-    auto simulation() const -> sim::fighters::Sim const& { return *simulation_; }
-
     void clear_runtime_state_presentation();
-    void begin_play_presentation(sim::HealthConstView healths);
-    void update_visual_data(sim::HealthConstView healths);
-    void commit_visual_data();
+    void begin_play_presentation(presentation::MissionFrame const& frame);
+    void update_visual_data(presentation::MissionFrame const& frame);
+    void commit_visual_data(presentation::MissionFrame const& frame);
 
     void configure_ismc();
-    void update_ismc(sim::HealthConstView healths);
-    void draw_debug_shapes();
+    void update_ismc(presentation::MissionFrame const& frame);
+    void draw_debug_shapes(presentation::MissionFrame const& frame);
 
     USandboxISMCComponent* instances{nullptr};
 
@@ -43,8 +40,6 @@ struct SPACEGAMEPRESENTATION_API FFighterPresentation {
     FDrawDebugConfig debug_drawer;
     bool enable_target_debug_drawing{false};
     bool enable_ship_location_debug_drawing{false};
-
-    sim::fighters::Sim const* simulation_{};
 };
 
 } // namespace ioj
