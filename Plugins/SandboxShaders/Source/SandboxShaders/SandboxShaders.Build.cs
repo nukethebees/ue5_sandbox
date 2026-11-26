@@ -22,10 +22,14 @@ public class SandboxShaders : ModuleRules
             "NativeLevels",
         });
 
+        if (Target.bBuildEditor)
+        {
+            PrivateDependencyModuleNames.Add("NativeLevelAuthoring");
+        }
+
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "Projects",
-            "NativeLevelAuthoring",
             "RenderCore",
             "RHI",
         });

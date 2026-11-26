@@ -15,11 +15,13 @@ class SANDBOXSHADERS_API AGpuStarfieldActor : public AActor {
   public:
     AGpuStarfieldActor();
 
-    void PostRegisterAllComponents() override;
     void set_starfield_settings(starfield::Settings const& settings);
 
+#if WITH_EDITOR
+    void PostRegisterAllComponents() override;
     UFUNCTION(CallInEditor, BlueprintCallable, Category = "GPU Starfield")
     void load_preview_settings();
+#endif
 
     UPROPERTY(EditAnywhere,
               Category = "GPU Starfield",

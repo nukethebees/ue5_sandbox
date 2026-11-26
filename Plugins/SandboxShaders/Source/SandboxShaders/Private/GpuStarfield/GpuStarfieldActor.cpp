@@ -1,11 +1,13 @@
 #include "SandboxShaders/GpuStarfield/GpuStarfieldActor.h"
 
+#if WITH_EDITOR
 #include <ioj/levels/authoring/definition_reader.h>
 
 #include <Engine/World.h>
 #include <Misc/Paths.h>
 
 DEFINE_LOG_CATEGORY_STATIC(LogGpuStarfieldSettings, Log, All);
+#endif
 
 namespace ioj {
 AGpuStarfieldActor::AGpuStarfieldActor() {
@@ -15,6 +17,7 @@ AGpuStarfieldActor::AGpuStarfieldActor() {
     SetRootComponent(starfield_component_);
 }
 
+#if WITH_EDITOR
 void AGpuStarfieldActor::PostRegisterAllComponents() {
     Super::PostRegisterAllComponents();
     if (GetWorld() && !GetWorld()->IsGameWorld()) {
@@ -37,6 +40,8 @@ void AGpuStarfieldActor::load_preview_settings() {
 
     set_starfield_settings(settings->starfield);
 }
+
+#endif
 
 void AGpuStarfieldActor::set_starfield_settings(starfield::Settings const& settings) {
     starfield_component_->apply_settings(settings, colours);
