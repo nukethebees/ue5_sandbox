@@ -250,7 +250,7 @@ auto ATestBatchOrchestrator::bind_level(presentation::MissionInit const& mission
 
     if (is_presentation_enabled()) {
         presentation_host_.initialise(
-            resources.config, resources.player, audio->facade(), level.read_access(), level.spatial_query_manager());
+            resources.config, resources.player, audio->facade(), mission, frame, level.read_access(), level.spatial_query_manager());
         auto* controller{
             CastChecked<ASpaceGamePlayerController>(GetWorld()->GetFirstPlayerController())};
         if (IsValid(player_ship)) {
@@ -344,7 +344,7 @@ void ATestBatchOrchestrator::present_level(time_type const delta_seconds,
     if (IsValid(player_ship) && frame.player) {
         player_ship->present_player(*frame.player);
     }
-    presentation_host_.tick(delta_seconds, level.read_access(), level.spatial_query_manager());
+    presentation_host_.tick(delta_seconds, frame, level.read_access());
 
     for (auto const victim : frame.events.victims) {
         if (victim.entity_type() == sim::EntityType::PlayerShip && IsValid(player_ship)) {

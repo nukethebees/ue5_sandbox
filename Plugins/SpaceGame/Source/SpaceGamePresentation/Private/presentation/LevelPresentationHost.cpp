@@ -1,6 +1,5 @@
 #include <SpaceGamePresentation/presentation/LevelPresentationHost.h>
 
-#include <ioj/sim/collision/spatial_query_manager.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -33,14 +32,15 @@ void FLevelPresentationHost::configure_collision_grid(
 void FLevelPresentationHost::initialise(FLevelVisualConfig const& config,
                                         TOptional<FPlayerPresentationResources> player,
                                         FGameAudioFacade audio,
-                                        sim::LevelReadAccess const& view,
-                                        sim::SpatialQueryManager const& spatial_queries) {
+                                        presentation::MissionInit const& mission,
+                                        presentation::MissionFrame const& frame, sim::LevelReadAccess const& view, sim::SpatialQueryManager const& spatial_queries) {
     check(!presentation_.IsSet());
     check(components_.is_valid());
 
     auto const resources{make_resources(config, MoveTemp(player))};
     presentation_.Emplace(resources, view, audio);
-    update_collision_bounds(spatial_queries);
+    components_.collision_grid->set_static_bounds(mission.static_bounds);
+    components_.collision_grid->update_entity_bounds(frame.entity_bounds);
     hud_manager_.initialise(view, spatial_queries, config, components_.soft_targets);
 }
 
@@ -61,14 +61,12 @@ void FLevelPresentationHost::reset() {
     }
 }
 
-void FLevelPresentationHost::tick(double const dt,
-                                  sim::LevelReadAccess const& view,
-                                  sim::SpatialQueryManager const& spatial_queries) {
+void FLevelPresentationHost::tick(double const dt, presentation::MissionFrame const& frame, sim::LevelReadAccess const& view) {
     if (!presentation_.IsSet()) {
         return;
     }
 
-    update_collision_bounds(spatial_queries);
+    components_.collision_grid->update_entity_bounds(frame.entity_bounds);
     hud_manager_.advance(dt);
     presentation_->tick(static_cast<float>(dt), view);
 }
@@ -84,12 +82,6 @@ auto FLevelPresentationHost::make_resources(FLevelVisualConfig const& config,
             .sparks = components_.sparks,
             .config = config,
             .player = MoveTemp(player)};
-}
-
-void FLevelPresentationHost::update_collision_bounds(
-    sim::SpatialQueryManager const& spatial_queries) {
-    components_.collision_grid->update_collision_bounds(spatial_queries.entity_collision_bounds(),
-                                                        spatial_queries.static_collision_bounds());
 }
 
 } // namespace ioj

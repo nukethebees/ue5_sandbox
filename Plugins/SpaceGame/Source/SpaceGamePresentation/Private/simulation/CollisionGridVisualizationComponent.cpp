@@ -1,8 +1,6 @@
 #include "SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h"
 
-#include <ioj/sim/collision/collision_grid.h>
-#include <ioj/sim/collision/entity_cell_data.h>
-#include <ioj/sim/collision/world_aabbs.h>
+#include <ioj/levels/collision_grid_geometry.h>
 
 #include <SandboxCoreEngine/VectorConversion.h>
 
@@ -108,11 +106,9 @@ class FCollisionGridSceneProxy final : public FPrimitiveSceneProxy {
                entity_bounds_.GetAllocatedSize() + static_bounds_.GetAllocatedSize();
     }
 
-    void update_collision_bounds_render_thread(TArray<FBox3f> entity_bounds,
-                                               TArray<FBox3f> static_bounds) {
+    void update_entity_bounds_render_thread(TArray<FBox3f> entity_bounds) {
         check(IsInRenderingThread());
         entity_bounds_ = MoveTemp(entity_bounds);
-        static_bounds_ = MoveTemp(static_bounds);
     }
   private:
     auto is_visible(FBox3f const& bounds, FSceneView const& view) const -> bool {
@@ -223,62 +219,58 @@ UCollisionGridVisualizationComponent::UCollisionGridVisualizationComponent() {
 
 void UCollisionGridVisualizationComponent::configure(
     TOptional<FCollisionGridVisualizationSettings> settings) {
-    if (!settings.IsSet()) {
-        clear();
-        return;
+    if (settings) {
+        grid_ = settings->grid;
+        line_colour_ = settings->line_colour;
+        line_thickness_ = settings->line_thickness;
+    } else {
+        grid_ = {};
     }
-
-    grid_ = settings->grid;
-    line_colour_ = settings->line_colour;
-    line_thickness_ = settings->line_thickness;
-    show_grid_ = settings->visibility.grid;
-    show_collision_bounds_ = settings->visibility.bounds;
+    show_grid_ = settings && settings->visibility.grid;
+    show_collision_bounds_ = settings && settings->visibility.bounds;
     if (!show_collision_bounds_) {
         entity_bounds_.Reset();
-        static_bounds_.Reset();
     }
     UpdateBounds();
 
     MarkRenderStateDirty();
 }
 
-void UCollisionGridVisualizationComponent::update_collision_bounds(
-    sim::collision::EntityCellData::CompactConstView const entity_aabbs,
-    sim::collision::WorldAABBs::CompactConstView const static_aabbs) {
+void UCollisionGridVisualizationComponent::update_entity_bounds(
+    sim::collision::world_aabbs::ConstView const entity_aabbs) {
     if (!show_collision_bounds_) {
         return;
     }
 
     auto const entity_count{static_cast<int32>(entity_aabbs.num())};
-    auto const entity_min_points{entity_aabbs.view_min_points().resolve()};
-    auto const entity_max_points{entity_aabbs.view_max_points().resolve()};
+    auto const entity_min_points{entity_aabbs.view_min_points()};
+    auto const entity_max_points{entity_aabbs.view_max_points()};
     entity_bounds_.Reset();
     entity_bounds_.Reserve(entity_count);
     for (int32 i{}; i < entity_count; ++i) {
         entity_bounds_.Emplace(to_unreal(entity_min_points[i]), to_unreal(entity_max_points[i]));
     }
 
+    MarkRenderDynamicDataDirty();
+}
+
+void UCollisionGridVisualizationComponent::set_static_bounds(
+    sim::collision::world_aabbs::ConstView const static_aabbs) {
     auto const static_count{static_cast<int32>(static_aabbs.num())};
-    auto const static_min_points{static_aabbs.view_min_points().resolve()};
-    auto const static_max_points{static_aabbs.view_max_points().resolve()};
+    auto const static_min_points{static_aabbs.view_min_points()};
+    auto const static_max_points{static_aabbs.view_max_points()};
     static_bounds_.SetNumUninitialized(static_count, EAllowShrinking::No);
     for (int32 i{}; i < static_count; ++i) {
         static_bounds_[i] =
             FBox3f{to_unreal(static_min_points[i]), to_unreal(static_max_points[i])};
     }
 
-    MarkRenderDynamicDataDirty();
+    MarkRenderStateDirty();
 }
 
 void UCollisionGridVisualizationComponent::clear() {
-    entity_bounds_.Reset();
     static_bounds_.Reset();
-    grid_ = {};
-    show_grid_ = false;
-    show_collision_bounds_ = false;
-    UpdateBounds();
-
-    MarkRenderStateDirty();
+    configure(NullOpt);
 }
 
 auto UCollisionGridVisualizationComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
@@ -312,13 +304,10 @@ void UCollisionGridVisualizationComponent::SendRenderDynamicData_Concurrent() {
 
     auto* const scene_proxy{static_cast<FCollisionGridSceneProxy*>(SceneProxy)};
     TArray<FBox3f> entity_bounds_snapshot{entity_bounds_};
-    TArray<FBox3f> static_bounds_snapshot{static_bounds_};
     ENQUEUE_RENDER_COMMAND(UpdateCollisionVisualizationBounds)
     ([scene_proxy,
-      entity_bounds = MoveTemp(entity_bounds_snapshot),
-      static_bounds = MoveTemp(static_bounds_snapshot)](FRHICommandListImmediate&) mutable {
-        scene_proxy->update_collision_bounds_render_thread(MoveTemp(entity_bounds),
-                                                           MoveTemp(static_bounds));
+      entity_bounds = MoveTemp(entity_bounds_snapshot)](FRHICommandListImmediate&) mutable {
+        scene_proxy->update_entity_bounds_render_thread(MoveTemp(entity_bounds));
     });
 }
 

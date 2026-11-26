@@ -1,7 +1,6 @@
 #pragma once
 
-#include <ioj/sim/collision/entity_cell_data.h>
-#include <ioj/sim/collision/world_aabbs.h>
+#include <ioj/sim/collision/world_aabbs_view.h>
 #include <SpaceGamePresentation/simulation/CollisionOverlay.h>
 
 #include <Components/PrimitiveComponent.h>
@@ -24,8 +23,8 @@ class SPACEGAMEPRESENTATION_API UCollisionGridVisualizationComponent final
     UCollisionGridVisualizationComponent();
 
     void configure(TOptional<FCollisionGridVisualizationSettings> settings);
-    void update_collision_bounds(sim::collision::EntityCellData::CompactConstView entity_aabbs,
-                                 sim::collision::WorldAABBs::CompactConstView static_aabbs);
+    void update_entity_bounds(sim::collision::world_aabbs::ConstView entity_aabbs);
+    void set_static_bounds(sim::collision::world_aabbs::ConstView static_aabbs);
     void clear();
 
     auto CreateSceneProxy() -> FPrimitiveSceneProxy* override;

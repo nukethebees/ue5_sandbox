@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/presentation/mission_frame.h>
+#include <ioj/presentation/mission_init.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 #include <SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h>
@@ -33,12 +35,10 @@ class SPACEGAMEPRESENTATION_API FLevelPresentationHost {
     void initialise(FLevelVisualConfig const& config,
                     TOptional<FPlayerPresentationResources> player,
                     FGameAudioFacade audio,
-                    sim::LevelReadAccess const& view,
-                    sim::SpatialQueryManager const& spatial_queries);
+                    presentation::MissionInit const& mission,
+                    presentation::MissionFrame const& frame, sim::LevelReadAccess const& view, sim::SpatialQueryManager const& spatial_queries);
     void reset();
-    void tick(double dt,
-              sim::LevelReadAccess const& view,
-              sim::SpatialQueryManager const& spatial_queries);
+    void tick(double dt, presentation::MissionFrame const& frame, sim::LevelReadAccess const& view);
 
     auto make_resources(FLevelVisualConfig const& config,
                         TOptional<FPlayerPresentationResources> player) const
@@ -49,8 +49,6 @@ class SPACEGAMEPRESENTATION_API FLevelPresentationHost {
     }
 
   private:
-    void update_collision_bounds(sim::SpatialQueryManager const& spatial_queries);
-
     FLevelPresentationComponents components_;
     FHUDManager hud_manager_;
     TOptional<FLevelPresentation> presentation_;
