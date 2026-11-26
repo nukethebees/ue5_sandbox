@@ -20,8 +20,7 @@ public class SpaceGame : ModuleRules
             "SandboxGameShared",
             "SandboxISMC",
             "SandboxShaders",
-            "NativeSimulation",
-            "NativeLevelAuthoring",
+            "NativeLevels",
             "NativeProfiles",
             "NativePresentation",
             "SandboxUI",
@@ -64,7 +63,7 @@ public class SpaceGame : ModuleRules
 
         if (Target.bBuildEditor)
         {
-            PrivateDependencyModuleNames.Add("UnrealEd");
+            PrivateDependencyModuleNames.AddRange(new string[] { "UnrealEd", "NativeSimulation" });
         }
     }
 }

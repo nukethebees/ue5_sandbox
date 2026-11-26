@@ -9,6 +9,6 @@ public class SpaceGameSimulation : ModuleRules
         bAllowUETypesInNamespaces = true;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
         PublicDependencyModuleNames.AddRange(
-            new string[] { "Core", "NativeSimulation", "SandboxCore" });
+            new string[] { "Core", "NativeLevels", "SandboxCore" });
     }
 }
