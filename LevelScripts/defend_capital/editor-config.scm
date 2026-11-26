@@ -1,11 +1,22 @@
 (export scene)
-
 (define scene (level
   :id 'defend-capital
   :title "defend_capital"
   :description ""
   :player 'playership
-  :settings (settings)
+  :static-collision (list
+    (world-aabb
+      :min '(-88210.2734375 -14550.6484375 51140.0)
+      :max '(-69449.7265625 3670.648193359375 52140.0))
+    (world-aabb
+      :min '(-51730.26953125 32529.3515625 50370.0)
+      :max '(-32969.7265625 50750.6484375 51370.0))
+    (world-aabb
+      :min '(-40789.99609375 -203140.0 -500.0)
+      :max '(-5789.99755859375 -153140.0 500.0))
+    (world-aabb
+      :min '(20917.501953125 -200015.0 -500.0)
+      :max '(51542.50390625 -156265.0 500.0)))
   :entities (list
     (entity
       :id 'capitalship-blue
@@ -216,4 +227,5 @@
       :id 'staticturret-blue9
       :archetype 'static-turret
       :team 'blue
-      :position '(-34280.0 40300.0 52140.0)))))
+      :position '(-34280.0 40300.0 52140.0)))
+  :settings (settings)))
