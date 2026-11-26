@@ -500,7 +500,7 @@
 		},
 		{
 			"Name": "ExampleCustomDataInterface",
-			"Enabled": true
+			"Enabled": false
 		},
 		{
 			"Name": "InterchangeEditor",
