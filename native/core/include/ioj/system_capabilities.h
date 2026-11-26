@@ -17,8 +17,8 @@ struct SystemCapabilities {
     std::string cpu_vendor;
     std::string cpu_brand;
     std::string primary_gpu_brand;
-    int physical_core_count{};
-    int logical_core_count{};
+    std::uint32_t physical_core_count{};
+    std::uint32_t logical_core_count{};
     std::uint64_t total_physical_memory_bytes{};
     CpuSimdCapabilities cpu_simd;
     WindowsMemoryCapabilities windows;

@@ -12,6 +12,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <format>
@@ -127,7 +128,7 @@ auto windows_version_value(wchar_t const* name) -> std::string {
 
     return path_to_utf8(std::filesystem::path{value.data()});
 }
-auto physical_core_count() -> int {
+auto physical_core_count() -> std::uint32_t {
     DWORD bytes{};
     GetLogicalProcessorInformationEx(RelationProcessorCore, nullptr, &bytes);
     std::vector<std::byte> buffer(bytes);
@@ -136,7 +137,7 @@ auto physical_core_count() -> int {
         return 0;
     }
 
-    int cores{};
+    std::uint32_t cores{};
     for (DWORD offset{}; offset < bytes; offset += info->Size) {
         info = reinterpret_cast<SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*>(buffer.data() + offset);
         ++cores;
@@ -167,7 +168,7 @@ auto query_system_capabilities() -> SystemCapabilities {
                                                      windows_version_value(L"DisplayVersion"),
                                                      windows_version_value(L"CurrentBuildNumber"));
     query_cpu_capabilities(result);
-    result.logical_core_count = SDL_GetNumLogicalCPUCores();
+    result.logical_core_count = static_cast<std::uint32_t>(SDL_GetNumLogicalCPUCores());
     result.physical_core_count = physical_core_count();
     MEMORYSTATUSEX memory{sizeof(MEMORYSTATUSEX)};
     if (GlobalMemoryStatusEx(&memory)) {
