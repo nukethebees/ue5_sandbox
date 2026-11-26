@@ -3,155 +3,19 @@
 
 #pragma once
 
+#include "entity_frame_changes_compact_view.h"
 #include "ioj/levels/team.h"
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/rotator_types.h"
 #include "ioj/sim/entities/entity_frame_change.h"
 #include "ioj/sim/entities/entity_id.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj::sim {
-namespace entity_frame_changes {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<EntityFrameChangeKind,
-                                              std::uint32_t,
-                                              Vector3f,
-                                              Rotator3f,
-                                              ::ioj::Team,
-                                              EntityId> {
-    static constexpr std::size_t kinds_column{0ULL};
-    static constexpr std::size_t indices_column{1ULL};
-    static constexpr std::size_t locations_column{2ULL};
-    static constexpr std::size_t rotations_column{3ULL};
-    static constexpr std::size_t teams_column{4ULL};
-    static constexpr std::size_t ids_column{5ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityFrameChangeKind>* kinds{};
-    Element<std::uint32_t>* indices{};
-    Element<Vector3f>* locations{};
-    Element<Rotator3f>* rotations{};
-    Element<::ioj::Team>* teams{};
-    Element<EntityId>* ids{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.kinds, self.indices, self.locations, self.rotations, self.teams, self.ids);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.kinds(),
-                    source.indices(),
-                    source.locations(),
-                    source.rotations(),
-                    source.teams(),
-                    source.ids());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = entity_frame_changes::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto kinds() const { return this->column(this->columns_.kinds); }
-    auto indices() const { return this->column(this->columns_.indices); }
-    auto locations() const { return this->column(this->columns_.locations); }
-    auto rotations() const { return this->column(this->columns_.rotations); }
-    auto teams() const { return this->column(this->columns_.teams); }
-    auto ids() const { return this->column(this->columns_.ids); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::sim::entity_frame_changes::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = entity_frame_changes::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto kinds() const {
-        return this->template column<EntityFrameChangeKind>(Layout::kinds_column);
-    }
-    auto indices() const { return this->template column<std::uint32_t>(Layout::indices_column); }
-    auto locations() const { return this->template column<Vector3f>(Layout::locations_column); }
-    auto rotations() const { return this->template column<Rotator3f>(Layout::rotations_column); }
-    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-    auto ids() const { return this->template column<EntityId>(Layout::ids_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::entity_frame_changes::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace entity_frame_changes
 
 /* **************************************** */
 // Owner
@@ -166,7 +30,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct EntityFrameChanges
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<EntityFrameChanges,
-                                             entity_frame_changes::Layout::column_types,
+                                             entity_frame_changes::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = entity_frame_changes::Schema;
     using Operations = native_soa::StorageOperations;
@@ -216,8 +80,9 @@ struct EntityFrameChanges
     auto rotations(this auto& self) { return self.view().rotations(); }
     auto teams(this auto& self) { return self.view().teams(); }
     auto ids(this auto& self) { return self.view().ids(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<EntityFrameChanges, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<EntityFrameChanges,
+                                                                 entity_frame_changes::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

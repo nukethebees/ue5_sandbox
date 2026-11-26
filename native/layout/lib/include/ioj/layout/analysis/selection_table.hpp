@@ -5,167 +5,16 @@
 
 #include "ioj/layout/analysis/payload_footprint.hpp"
 #include "ioj/layout/analysis/region_footprint.hpp"
+#include "ioj/layout/analysis/selection_table_compact_view.hpp"
 #include "ioj/layout/analyzer/access_operation.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>
-#include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
-namespace selection_table {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<std::size_t,
-                                              AccessOperation,
-                                              PayloadFootprint,
-                                              PayloadFootprint,
-                                              RegionFootprint,
-                                              RegionFootprint,
-                                              std::optional<std::uint64_t>> {
-    static constexpr std::size_t source_column{0ULL};
-    static constexpr std::size_t operation_column{1ULL};
-    static constexpr std::size_t bytes_column{2ULL};
-    static constexpr std::size_t bits_column{3ULL};
-    static constexpr std::size_t cache_column{4ULL};
-    static constexpr std::size_t pages_column{5ULL};
-    static constexpr std::size_t capacity_slack_bytes_column{6ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<std::size_t>* source{};
-    Element<AccessOperation>* operation{};
-    Element<PayloadFootprint>* bytes{};
-    Element<PayloadFootprint>* bits{};
-    Element<RegionFootprint>* cache{};
-    Element<RegionFootprint>* pages{};
-    Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.source,
-                    self.operation,
-                    self.bytes,
-                    self.bits,
-                    self.cache,
-                    self.pages,
-                    self.capacity_slack_bytes);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.source(),
-                    source.operation(),
-                    source.bytes(),
-                    source.bits(),
-                    source.cache(),
-                    source.pages(),
-                    source.capacity_slack_bytes());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = selection_table::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto source() const { return this->column(this->columns_.source); }
-    auto operation() const { return this->column(this->columns_.operation); }
-    auto bytes() const { return this->column(this->columns_.bytes); }
-    auto bits() const { return this->column(this->columns_.bits); }
-    auto cache() const { return this->column(this->columns_.cache); }
-    auto pages() const { return this->column(this->columns_.pages); }
-    auto capacity_slack_bytes() const { return this->column(this->columns_.capacity_slack_bytes); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::layout::selection_table::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = selection_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto source() const { return this->template column<std::size_t>(Layout::source_column); }
-    auto operation() const {
-        return this->template column<AccessOperation>(Layout::operation_column);
-    }
-    auto bytes() const { return this->template column<PayloadFootprint>(Layout::bytes_column); }
-    auto bits() const { return this->template column<PayloadFootprint>(Layout::bits_column); }
-    auto cache() const { return this->template column<RegionFootprint>(Layout::cache_column); }
-    auto pages() const { return this->template column<RegionFootprint>(Layout::pages_column); }
-    auto capacity_slack_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::capacity_slack_bytes_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::layout::selection_table::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace selection_table
 
 /* **************************************** */
 // Owner
@@ -181,7 +30,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct SelectionTable
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<SelectionTable,
-                                             selection_table::Layout::column_types,
+                                             selection_table::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = selection_table::Schema;
     using Operations = native_soa::StorageOperations;
@@ -232,8 +81,9 @@ struct SelectionTable
     auto cache(this auto& self) { return self.view().cache(); }
     auto pages(this auto& self) { return self.view().pages(); }
     auto capacity_slack_bytes(this auto& self) { return self.view().capacity_slack_bytes(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<SelectionTable, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<SelectionTable,
+                                                                 selection_table::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append(std::size_t selected_source, AccessOperation selected_operation);

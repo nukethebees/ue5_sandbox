@@ -3,153 +3,19 @@
 
 #pragma once
 
+#include "ioj/layout/analysis/code_table_compact_view.hpp"
 #include "ioj/layout/analyzer/enum_code_value.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
 #include "codegen/schema/packed_integer_value.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>
-#include <optional>
 #include <string_view>
-#include <type_traits>
 
 namespace ioj::layout {
-namespace code_table {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<std::string_view,
-                                              std::uint8_t,
-                                              std::uint8_t,
-                                              std::optional<ioj::layout::EnumCodeValue>,
-                                              std::optional<lispb::codegen::PackedIntegerValue>> {
-    static constexpr std::size_t name_column{0ULL};
-    static constexpr std::size_t sentinel_column{1ULL};
-    static constexpr std::size_t count_sentinel_column{2ULL};
-    static constexpr std::size_t code_column{3ULL};
-    static constexpr std::size_t integer_value_column{4ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<std::string_view>* name{};
-    Element<std::uint8_t>* sentinel{};
-    Element<std::uint8_t>* count_sentinel{};
-    Element<std::optional<ioj::layout::EnumCodeValue>>* code{};
-    Element<std::optional<lispb::codegen::PackedIntegerValue>>* integer_value{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.name, self.sentinel, self.count_sentinel, self.code, self.integer_value);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.name(),
-                    source.sentinel(),
-                    source.count_sentinel(),
-                    source.code(),
-                    source.integer_value());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = code_table::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto name() const { return this->column(this->columns_.name); }
-    auto sentinel() const { return this->column(this->columns_.sentinel); }
-    auto count_sentinel() const { return this->column(this->columns_.count_sentinel); }
-    auto code() const { return this->column(this->columns_.code); }
-    auto integer_value() const { return this->column(this->columns_.integer_value); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::layout::code_table::Layout::column_types, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = code_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto name() const { return this->template column<std::string_view>(Layout::name_column); }
-    auto sentinel() const { return this->template column<std::uint8_t>(Layout::sentinel_column); }
-    auto count_sentinel() const {
-        return this->template column<std::uint8_t>(Layout::count_sentinel_column);
-    }
-    auto code() const {
-        return this->template column<std::optional<ioj::layout::EnumCodeValue>>(
-            Layout::code_column);
-    }
-    auto integer_value() const {
-        return this->template column<std::optional<lispb::codegen::PackedIntegerValue>>(
-            Layout::integer_value_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::layout::code_table::Layout::column_types,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace code_table
 
 /* **************************************** */
 // Owner
@@ -162,9 +28,8 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 // integer_value: std::optional<lispb::codegen::PackedIntegerValue>
 struct CodeTable
     : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<CodeTable,
-                                             code_table::Layout::column_types,
-                                             native_soa::StorageOperations> {
+    , soa_storage_detail::
+          OwnerRowOperations<CodeTable, code_table::ColumnTypes, native_soa::StorageOperations> {
     using soa_schema = code_table::Schema;
     using Operations = native_soa::StorageOperations;
     using Layout = code_table::Layout;
@@ -213,7 +78,7 @@ struct CodeTable
     auto code(this auto& self) { return self.view().code(); }
     auto integer_value(this auto& self) { return self.view().integer_value(); }
     using RowOperations = soa_storage_detail::
-        OwnerRowOperations<CodeTable, Layout::column_types, native_soa::StorageOperations>;
+        OwnerRowOperations<CodeTable, code_table::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();

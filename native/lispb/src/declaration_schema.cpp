@@ -298,6 +298,7 @@ auto soa_generated_cpp_names(Declarations const& declarations, DeclarationHandle
                             "CompactView",
                             "CompactConstView",
                             "ViewImpl",
+                            "ColumnTypes",
                             "DataPointers",
                             "View",
                             "ConstView"}) {

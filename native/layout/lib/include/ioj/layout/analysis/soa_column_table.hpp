@@ -5,10 +5,10 @@
 
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/physical_fact_id.hpp"
+#include "ioj/layout/analysis/soa_column_table_compact_view.hpp"
 #include "ioj/layout/analyzer/cache_line_tiling.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
 #include "lispb/indices.h"
 #include "lispb/schema/indices.h"
@@ -16,250 +16,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>
-#include <optional>
 #include <string_view>
-#include <type_traits>
 
 namespace ioj::layout {
-namespace soa_column_table {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<AnalysisId,
-                                              std::string_view,
-                                              lispb::schema::TypeId,
-                                              lispb::StringId,
-                                              lispb::StringId,
-                                              std::uint8_t,
-                                              std::optional<ioj::layout::PhysicalFactId>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<ioj::layout::CacheLineTiling>> {
-    static constexpr std::size_t parent_column{0ULL};
-    static constexpr std::size_t name_column{1ULL};
-    static constexpr std::size_t semantic_type_column{2ULL};
-    static constexpr std::size_t schema_type_column{3ULL};
-    static constexpr std::size_t physical_type_column{4ULL};
-    static constexpr std::size_t overridden_column{5ULL};
-    static constexpr std::size_t type_facts_column{6ULL};
-    static constexpr std::size_t total_bytes_column{7ULL};
-    static constexpr std::size_t allocation_offset_bytes_column{8ULL};
-    static constexpr std::size_t padding_before_bytes_column{9ULL};
-    static constexpr std::size_t minimum_cache_lines_column{10ULL};
-    static constexpr std::size_t elements_per_cache_line_column{11ULL};
-    static constexpr std::size_t minimum_pages_column{12ULL};
-    static constexpr std::size_t complete_elements_per_page_column{13ULL};
-    static constexpr std::size_t cache_line_tiling_column{14ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<AnalysisId>* parent{};
-    Element<std::string_view>* name{};
-    Element<lispb::schema::TypeId>* semantic_type{};
-    Element<lispb::StringId>* schema_type{};
-    Element<lispb::StringId>* physical_type{};
-    Element<std::uint8_t>* overridden{};
-    Element<std::optional<ioj::layout::PhysicalFactId>>* type_facts{};
-    Element<std::optional<std::uint64_t>>* total_bytes{};
-    Element<std::optional<std::uint64_t>>* allocation_offset_bytes{};
-    Element<std::optional<std::uint64_t>>* padding_before_bytes{};
-    Element<std::optional<std::uint64_t>>* minimum_cache_lines{};
-    Element<std::optional<std::uint64_t>>* elements_per_cache_line{};
-    Element<std::optional<std::uint64_t>>* minimum_pages{};
-    Element<std::optional<std::uint64_t>>* complete_elements_per_page{};
-    Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.parent,
-                    self.name,
-                    self.semantic_type,
-                    self.schema_type,
-                    self.physical_type,
-                    self.overridden,
-                    self.type_facts,
-                    self.total_bytes,
-                    self.allocation_offset_bytes,
-                    self.padding_before_bytes,
-                    self.minimum_cache_lines,
-                    self.elements_per_cache_line,
-                    self.minimum_pages,
-                    self.complete_elements_per_page,
-                    self.cache_line_tiling);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.parent(),
-                    source.name(),
-                    source.semantic_type(),
-                    source.schema_type(),
-                    source.physical_type(),
-                    source.overridden(),
-                    source.type_facts(),
-                    source.total_bytes(),
-                    source.allocation_offset_bytes(),
-                    source.padding_before_bytes(),
-                    source.minimum_cache_lines(),
-                    source.elements_per_cache_line(),
-                    source.minimum_pages(),
-                    source.complete_elements_per_page(),
-                    source.cache_line_tiling());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = soa_column_table::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto parent() const { return this->column(this->columns_.parent); }
-    auto name() const { return this->column(this->columns_.name); }
-    auto semantic_type() const { return this->column(this->columns_.semantic_type); }
-    auto schema_type() const { return this->column(this->columns_.schema_type); }
-    auto physical_type() const { return this->column(this->columns_.physical_type); }
-    auto overridden() const { return this->column(this->columns_.overridden); }
-    auto type_facts() const { return this->column(this->columns_.type_facts); }
-    auto total_bytes() const { return this->column(this->columns_.total_bytes); }
-    auto allocation_offset_bytes() const {
-        return this->column(this->columns_.allocation_offset_bytes);
-    }
-    auto padding_before_bytes() const { return this->column(this->columns_.padding_before_bytes); }
-    auto minimum_cache_lines() const { return this->column(this->columns_.minimum_cache_lines); }
-    auto elements_per_cache_line() const {
-        return this->column(this->columns_.elements_per_cache_line);
-    }
-    auto minimum_pages() const { return this->column(this->columns_.minimum_pages); }
-    auto complete_elements_per_page() const {
-        return this->column(this->columns_.complete_elements_per_page);
-    }
-    auto cache_line_tiling() const { return this->column(this->columns_.cache_line_tiling); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::layout::soa_column_table::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = soa_column_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto parent() const { return this->template column<AnalysisId>(Layout::parent_column); }
-    auto name() const { return this->template column<std::string_view>(Layout::name_column); }
-    auto semantic_type() const {
-        return this->template column<lispb::schema::TypeId>(Layout::semantic_type_column);
-    }
-    auto schema_type() const {
-        return this->template column<lispb::StringId>(Layout::schema_type_column);
-    }
-    auto physical_type() const {
-        return this->template column<lispb::StringId>(Layout::physical_type_column);
-    }
-    auto overridden() const {
-        return this->template column<std::uint8_t>(Layout::overridden_column);
-    }
-    auto type_facts() const {
-        return this->template column<std::optional<ioj::layout::PhysicalFactId>>(
-            Layout::type_facts_column);
-    }
-    auto total_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::total_bytes_column);
-    }
-    auto allocation_offset_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::allocation_offset_bytes_column);
-    }
-    auto padding_before_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::padding_before_bytes_column);
-    }
-    auto minimum_cache_lines() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::minimum_cache_lines_column);
-    }
-    auto elements_per_cache_line() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::elements_per_cache_line_column);
-    }
-    auto minimum_pages() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::minimum_pages_column);
-    }
-    auto complete_elements_per_page() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::complete_elements_per_page_column);
-    }
-    auto cache_line_tiling() const {
-        return this->template column<std::optional<ioj::layout::CacheLineTiling>>(
-            Layout::cache_line_tiling_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::layout::soa_column_table::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace soa_column_table
 
 /* **************************************** */
 // Owner
@@ -283,7 +42,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct SoaColumnTable
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<SoaColumnTable,
-                                             soa_column_table::Layout::column_types,
+                                             soa_column_table::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = soa_column_table::Schema;
     using Operations = native_soa::StorageOperations;
@@ -344,8 +103,9 @@ struct SoaColumnTable
         return self.view().complete_elements_per_page();
     }
     auto cache_line_tiling(this auto& self) { return self.view().cache_line_tiling(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<SoaColumnTable, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<SoaColumnTable,
+                                                                 soa_column_table::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();

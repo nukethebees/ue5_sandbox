@@ -94,13 +94,16 @@ class SoaApiLowering : public CppIRBuilder {
         }
         auto const operations{receiver == SoaReceiver::owner ? "OwnerRowOperations"
                                                              : "ViewRowOperations"};
-        return template_type(named_type("ioj::soa_storage_detail::" + std::string{operations},
-                                        NameOrigin::global,
-                                        {dependency(operations, "ioj/single_allocation/view.h")}),
-                             {named_type(type_name),
-                              named_type(schema_namespace(ctx, schema) + "::Layout::column_types",
-                                         NameOrigin::global),
-                              base});
+        return template_type(
+            named_type(
+                "ioj::soa_storage_detail::" + std::string{operations},
+                NameOrigin::global,
+                {dependency(operations,
+                            receiver == SoaReceiver::owner ? "ioj/single_allocation/operations.h"
+                                                           : "ioj/single_allocation/view.h")}),
+            {named_type(type_name),
+             named_type(schema_namespace(ctx, schema) + "::ColumnTypes", NameOrigin::global),
+             base});
     }
     auto lower_soa_api(LoweringContext& parent_context,
                        DeclarationHandle schema,

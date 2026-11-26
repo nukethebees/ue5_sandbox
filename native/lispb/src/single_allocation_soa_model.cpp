@@ -113,11 +113,6 @@ class SingleAllocationModelLowering : public CppIRBuilder {
                     auto const nested_type{
                         type_graph.occurrences().type[type_graph.occurrences().index(occurrence)]};
                     auto const nested{type_graph.definition(nested_type)};
-                    auto const cpp_type{type_graph.occurrences()
-                                            .cpp_type[type_graph.occurrences().index(occurrence)]};
-                    auto const nested_dependencies{type_dependencies(cpp_type)};
-                    dependencies.insert(
-                        dependencies.end(), nested_dependencies.begin(), nested_dependencies.end());
                     self(self, nested, path);
                     continue;
                 }

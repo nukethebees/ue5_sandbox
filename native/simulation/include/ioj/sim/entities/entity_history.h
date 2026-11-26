@@ -3,144 +3,18 @@
 
 #pragma once
 
+#include "entity_history_compact_view.h"
 #include "ioj/kill_count.h"
 #include "ioj/levels/team.h"
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_life_state.h"
 #include "ioj/sim/sim_tick.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
-#include <cstddef>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj::sim {
-namespace entity_history {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::
-          ColumnLayouts<::ioj::Team, KillCount, LifeState, SimTick, Vector3f> {
-    static constexpr std::size_t teams_column{0ULL};
-    static constexpr std::size_t kills_column{1ULL};
-    static constexpr std::size_t life_state_column{2ULL};
-    static constexpr std::size_t death_ticks_column{3ULL};
-    static constexpr std::size_t death_locations_column{4ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<::ioj::Team>* teams{};
-    Element<KillCount>* kills{};
-    Element<LifeState>* life_state{};
-    Element<SimTick>* death_ticks{};
-    Element<Vector3f>* death_locations{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(
-            self.teams, self.kills, self.life_state, self.death_ticks, self.death_locations);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.teams(),
-                    source.kills(),
-                    source.life_state(),
-                    source.death_ticks(),
-                    source.death_locations());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = entity_history::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto teams() const { return this->column(this->columns_.teams); }
-    auto kills() const { return this->column(this->columns_.kills); }
-    auto life_state() const { return this->column(this->columns_.life_state); }
-    auto death_ticks() const { return this->column(this->columns_.death_ticks); }
-    auto death_locations() const { return this->column(this->columns_.death_locations); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::sim::entity_history::Layout::column_types, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = entity_history::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-    auto kills() const { return this->template column<KillCount>(Layout::kills_column); }
-    auto life_state() const { return this->template column<LifeState>(Layout::life_state_column); }
-    auto death_ticks() const { return this->template column<SimTick>(Layout::death_ticks_column); }
-    auto death_locations() const {
-        return this->template column<Vector3f>(Layout::death_locations_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::sim::entity_history::Layout::column_types,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace entity_history
 
 /* **************************************** */
 // Owner
@@ -154,7 +28,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct EntityHistory
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<EntityHistory,
-                                             entity_history::Layout::column_types,
+                                             entity_history::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = entity_history::Schema;
     using Operations = native_soa::StorageOperations;
@@ -203,8 +77,9 @@ struct EntityHistory
     auto life_state(this auto& self) { return self.view().life_state(); }
     auto death_ticks(this auto& self) { return self.view().death_ticks(); }
     auto death_locations(this auto& self) { return self.view().death_locations(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<EntityHistory, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<EntityHistory,
+                                                                 entity_history::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

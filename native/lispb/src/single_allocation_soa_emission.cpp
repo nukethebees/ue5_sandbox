@@ -99,26 +99,48 @@ class SingleAllocationEmitter : public CppIRBuilder {
         result.append(section_header("Layout")).new_lines(1).add(layout);
         return result.build();
     }
-    auto emit_single_allocation_views(LoweringContext& ctx,
-                                      SingleAllocationModelId model,
-                                      NodeListBuilder& source,
-                                      NodeListBuilder& declarations) -> Nodes {
-        auto const& models{lowering_storage().single_allocation_models};
-        auto const schema{models.schema[models.index(model)]};
-        auto const strided{is_strided_schema(ctx, schema)};
-        declarations.add(forward_declaration(store_text("CompactView")))
-            .new_lines(1)
-            .add(forward_declaration(store_text("CompactConstView")))
-            .new_lines(1);
+    auto emit_resolved_views(LoweringContext& ctx,
+                             SingleAllocationModelId model,
+                             NodeListBuilder& source,
+                             NodeListBuilder& declarations) -> Nodes {
+        auto const& storage{lowering_storage()};
+        std::vector<CppTypeId> types;
+        auto const& models{storage.single_allocation_models};
+        auto const& columns{storage.single_allocation_columns};
+        for (auto const column : storage.items(models.columns[models.index(model)])) {
+            types.push_back(columns.type[columns.index(column)]);
+        }
         auto result{node_list()};
-        result.append(section_header("Column pointers"))
+        result
+            .add(using_declaration(
+                store_text("ColumnTypes"),
+                template_type(
+                    named_type("ioj::soa_storage_detail::ColumnTypes",
+                               NameOrigin::global,
+                               {dependency("ColumnTypes", "ioj/single_allocation/column_types.h")}),
+                    types)))
+            .new_lines(2)
+            .append(section_header("Column pointers"))
             .new_lines(1)
             .add(data_pointers_node(model))
             .new_lines(2)
             .add(schema_node(ctx, model))
             .new_lines(2)
-            .append(emit_pointer_views(ctx, model, source, declarations))
-            .new_lines(2)
+            .append(emit_pointer_views(ctx, model, source, declarations));
+        return result.build();
+    }
+    auto emit_compact_views(LoweringContext& ctx,
+                            SingleAllocationModelId model,
+                            NodeListBuilder& source) -> Nodes {
+        auto result{node_list()};
+        auto const& models{lowering_storage().single_allocation_models};
+        auto const schema{models.schema[models.index(model)]};
+        auto const strided{is_strided_schema(ctx, schema)};
+        result.add(forward_declaration(store_text("CompactView")))
+            .new_lines(1)
+            .add(forward_declaration(store_text("CompactConstView")))
+            .new_lines(1);
+        result.new_lines(2)
             .append(section_header(strided ? "Strided views" : "Compact views"))
             .new_lines(1)
             .add(compact_view_node(ctx, model))
@@ -552,12 +574,21 @@ class SingleAllocationEmitter : public CppIRBuilder {
     auto shared_view_type(LoweringContext& ctx, DeclarationHandle schema, bool resolved)
         -> CppTypeId {
         auto const scope{schema_namespace(ctx, schema)};
-        return template_type(
-            std_types().conditional_t,
-            {named_type("Const"),
-             named_type(scope + (resolved ? "::ConstView" : "::CompactConstView"),
-                        NameOrigin::global),
-             named_type(scope + (resolved ? "::View" : "::CompactView"), NameOrigin::global)});
+        auto const target{ctx.for_declaration(schema).module};
+        std::vector<TypeDependencyId> dependencies;
+        if (target != ctx.module) {
+            auto const header{source_include(ctx, ctx.declarations.module_settings(target))};
+            dependencies.push_back(
+                dependency(scope, soa_header_path(header, resolved ? "_view" : "_compact_view")));
+        }
+        return template_type(std_types().conditional_t,
+                             {named_type("Const"),
+                              named_type(scope + (resolved ? "::ConstView" : "::CompactConstView"),
+                                         NameOrigin::global,
+                                         dependencies),
+                              named_type(scope + (resolved ? "::View" : "::CompactView"),
+                                         NameOrigin::global,
+                                         dependencies)});
     }
     auto view_accessor_nodes(LoweringContext& ctx, SingleAllocationModelId model, bool resolved)
         -> Nodes {
@@ -665,17 +696,15 @@ class SingleAllocationEmitter : public CppIRBuilder {
         result.append(section_header("Views")).new_lines(1);
 
         auto const scope{schema_namespace(ctx, schema)};
-        auto const base{
-            template_type(named_type("ioj::soa_storage_detail::ViewBase", NameOrigin::global),
-                          {nested_type(named_type("Layout"), "column_types"),
-                           named_type("DataPointers"),
-                           named_type("Const")})};
+        auto const base{template_type(
+            named_type("ioj::soa_storage_detail::ViewBase",
+                       NameOrigin::global,
+                       {dependency("ViewBase", "ioj/single_allocation/view.h")}),
+            {named_type("ColumnTypes"), named_type("DataPointers"), named_type("Const")})};
         auto children{node_list()};
         children.append(adjacent(
             {using_declaration(store_text("Base"), base),
              using_import(named_type("Base::Base")),
-             using_declaration(store_text("Layout"),
-                               named_type(scope + "::Layout", NameOrigin::global)),
              using_declaration(store_text("view_type"),
                                named_type(scope + "::" + mutable_name, NameOrigin::global)),
              using_declaration(store_text("const_view_type"),
@@ -867,12 +896,16 @@ class SingleAllocationEmitter : public CppIRBuilder {
 auto emit_single_allocation_layout(LoweringContext& ctx, SingleAllocationModelId model) -> Nodes {
     return SingleAllocationEmitter{ctx.ir}.emit_single_allocation_layout(ctx, model);
 }
-auto emit_single_allocation_views(LoweringContext& ctx,
-                                  SingleAllocationModelId model,
-                                  NodeListBuilder& source,
-                                  NodeListBuilder& declarations) -> Nodes {
-    return SingleAllocationEmitter{ctx.ir}.emit_single_allocation_views(
-        ctx, model, source, declarations);
+auto emit_resolved_views(LoweringContext& ctx,
+                         SingleAllocationModelId model,
+                         NodeListBuilder& source,
+                         NodeListBuilder& declarations) -> Nodes {
+    return SingleAllocationEmitter{ctx.ir}.emit_resolved_views(ctx, model, source, declarations);
+}
+auto emit_compact_views(LoweringContext& ctx,
+                        SingleAllocationModelId model,
+                        NodeListBuilder& source) -> Nodes {
+    return SingleAllocationEmitter{ctx.ir}.emit_compact_views(ctx, model, source);
 }
 auto emit_single_allocation_container(LoweringContext& ctx,
                                       SingleAllocationModelId model,

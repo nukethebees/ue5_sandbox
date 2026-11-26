@@ -6,195 +6,13 @@
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/lasers/laser_source.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
-#include "ioj/vectors3f.h"
+#include "ioj/single_allocation/operations.h"
+#include "laser_hit_details_compact_view.h"
 
 #include <cassert>
-#include <cstddef>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj::sim {
-namespace laser_hit_details {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::
-          ColumnLayouts<float, float, float, float, float, float, LaserSource> {
-    static constexpr std::size_t locations_xs_column{0ULL};
-    static constexpr std::size_t locations_ys_column{1ULL};
-    static constexpr std::size_t locations_zs_column{2ULL};
-    static constexpr std::size_t emission_directions_xs_column{3ULL};
-    static constexpr std::size_t emission_directions_ys_column{4ULL};
-    static constexpr std::size_t emission_directions_zs_column{5ULL};
-    static constexpr std::size_t sources_column{6ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* locations_xs{};
-    Element<float>* locations_ys{};
-    Element<float>* locations_zs{};
-    Element<float>* emission_directions_xs{};
-    Element<float>* emission_directions_ys{};
-    Element<float>* emission_directions_zs{};
-    Element<LaserSource>* sources{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.locations_xs,
-                    self.locations_ys,
-                    self.locations_zs,
-                    self.emission_directions_xs,
-                    self.emission_directions_ys,
-                    self.emission_directions_zs,
-                    self.sources);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        auto const& locations_view{source.view_locations()};
-        auto const& emission_directions_view{source.view_emission_directions()};
-        return func(locations_view.xs(),
-                    locations_view.ys(),
-                    locations_view.zs(),
-                    emission_directions_view.xs(),
-                    emission_directions_view.ys(),
-                    emission_directions_view.zs(),
-                    source.sources());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = laser_hit_details::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.locations_xs,
-                this->columns_.locations_ys,
-                this->columns_.locations_zs,
-                this->num()};
-    }
-    auto view_emission_directions() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.emission_directions_xs,
-                this->columns_.emission_directions_ys,
-                this->columns_.emission_directions_zs,
-                this->num()};
-    }
-    auto sources() const { return this->column(this->columns_.sources); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::sim::laser_hit_details::Layout::column_types, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             Vector3f const new_locations,
-             Vector3f const new_emission_directions,
-             ioj::sim::LaserSource const new_sources) const {
-        assert((index < num()));
-        this->view_locations().set(index, new_locations);
-        this->view_emission_directions().set(index, new_emission_directions);
-        this->sources()[index] = new_sources;
-    }
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = laser_hit_details::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::locations_xs_column,
-                    Layout::locations_ys_column);
-    }
-    auto view_emission_directions() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::emission_directions_xs_column,
-                    Layout::emission_directions_ys_column);
-    }
-    auto sources() const { return this->template column<LaserSource>(Layout::sources_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::laser_hit_details::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             Vector3f const new_locations,
-             Vector3f const new_emission_directions,
-             ioj::sim::LaserSource const new_sources) const {
-        assert((index < num()));
-        this->view_locations().set(index, new_locations);
-        this->view_emission_directions().set(index, new_emission_directions);
-        this->sources()[index] = new_sources;
-    }
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace laser_hit_details
 
 /* **************************************** */
 // Owner
@@ -210,7 +28,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct LaserHitDetails
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<LaserHitDetails,
-                                             laser_hit_details::Layout::column_types,
+                                             laser_hit_details::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = laser_hit_details::Schema;
     using Operations = native_soa::StorageOperations;
@@ -259,8 +77,9 @@ struct LaserHitDetails
         return self.view().view_emission_directions();
     }
     auto sources(this auto& self) { return self.view().sources(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<LaserHitDetails, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<LaserHitDetails,
+                                                                 laser_hit_details::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

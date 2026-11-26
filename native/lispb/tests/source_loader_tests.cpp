@@ -723,10 +723,10 @@ TEST_F(SourceLoaderTest, ScalarProjectionKeepsSemanticIdentityAndDependencies) {
         expect_dependency_edge(graph, consumer, health);
     }
     auto const generated{files.render(manifest)};
-    auto const& header{generated.front().content};
+    auto const& header{generated.at(1).content};
     expect_contains_all(header, {"struct Health", "#include <cstdint>"});
     EXPECT_LT(header.find("struct Health"), header.find("struct Vessel"));
-    EXPECT_LT(header.find("struct Health"), header.find("struct Fleet"));
+    EXPECT_TRUE(generated.front().content.contains("struct Fleet"));
     EXPECT_FALSE(header.contains("Health_Invalid"));
 }
 
@@ -2223,10 +2223,10 @@ TEST_F(SourceLoaderTest, OrdinarySoaPreservesLogicalApi) {
     ASSERT_EQ(soas.const_view_functions[schema_row].size(), 1U);
     EXPECT_TRUE(store.functions.is_const[store.items(soas.const_view_functions[schema_row])[0]]);
     ASSERT_EQ(soas.mutable_view_functions[schema_row].size(), 1U);
-    auto const output{files.render(manifest).front().content};
-    expect_contains_all(
-        output,
-        {"struct API Rows", "std::pmr::memory_resource& resource", "return this->values()[0];"});
+    auto const generated{files.render(manifest)};
+    auto const& output{generated.front().content};
+    expect_contains_all(output, {"struct API Rows", "std::pmr::memory_resource& resource"});
+    EXPECT_TRUE(generated.at(2).content.contains("return this->values()[0];"));
     EXPECT_FALSE(output.contains("struct Rows {"));
     EXPECT_TRUE(output.contains("void noop() {"));
 }

@@ -4,202 +4,19 @@
 #pragma once
 
 #include "ioj/layout/analysis/analysis_id.hpp"
+#include "ioj/layout/analysis/component_table_compact_view.hpp"
 #include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
 #include "lispb/schema/indices.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>
-#include <optional>
 #include <string_view>
-#include <type_traits>
 
 namespace ioj::layout {
-namespace component_table {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<AnalysisId,
-                                              std::string_view,
-                                              std::string_view,
-                                              lispb::schema::TypeId,
-                                              std::uint64_t,
-                                              std::optional<ioj::layout::PhysicalFactId>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>> {
-    static constexpr std::size_t parent_column{0ULL};
-    static constexpr std::size_t name_column{1ULL};
-    static constexpr std::size_t tag_column{2ULL};
-    static constexpr std::size_t semantic_type_column{3ULL};
-    static constexpr std::size_t element_count_column{4ULL};
-    static constexpr std::size_t element_facts_column{5ULL};
-    static constexpr std::size_t offset_bytes_column{6ULL};
-    static constexpr std::size_t extent_bytes_column{7ULL};
-    static constexpr std::size_t padding_before_bytes_column{8ULL};
-    static constexpr std::size_t slack_bytes_column{9ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<AnalysisId>* parent{};
-    Element<std::string_view>* name{};
-    Element<std::string_view>* tag{};
-    Element<lispb::schema::TypeId>* semantic_type{};
-    Element<std::uint64_t>* element_count{};
-    Element<std::optional<ioj::layout::PhysicalFactId>>* element_facts{};
-    Element<std::optional<std::uint64_t>>* offset_bytes{};
-    Element<std::optional<std::uint64_t>>* extent_bytes{};
-    Element<std::optional<std::uint64_t>>* padding_before_bytes{};
-    Element<std::optional<std::uint64_t>>* slack_bytes{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.parent,
-                    self.name,
-                    self.tag,
-                    self.semantic_type,
-                    self.element_count,
-                    self.element_facts,
-                    self.offset_bytes,
-                    self.extent_bytes,
-                    self.padding_before_bytes,
-                    self.slack_bytes);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.parent(),
-                    source.name(),
-                    source.tag(),
-                    source.semantic_type(),
-                    source.element_count(),
-                    source.element_facts(),
-                    source.offset_bytes(),
-                    source.extent_bytes(),
-                    source.padding_before_bytes(),
-                    source.slack_bytes());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = component_table::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto parent() const { return this->column(this->columns_.parent); }
-    auto name() const { return this->column(this->columns_.name); }
-    auto tag() const { return this->column(this->columns_.tag); }
-    auto semantic_type() const { return this->column(this->columns_.semantic_type); }
-    auto element_count() const { return this->column(this->columns_.element_count); }
-    auto element_facts() const { return this->column(this->columns_.element_facts); }
-    auto offset_bytes() const { return this->column(this->columns_.offset_bytes); }
-    auto extent_bytes() const { return this->column(this->columns_.extent_bytes); }
-    auto padding_before_bytes() const { return this->column(this->columns_.padding_before_bytes); }
-    auto slack_bytes() const { return this->column(this->columns_.slack_bytes); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::layout::component_table::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = component_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto parent() const { return this->template column<AnalysisId>(Layout::parent_column); }
-    auto name() const { return this->template column<std::string_view>(Layout::name_column); }
-    auto tag() const { return this->template column<std::string_view>(Layout::tag_column); }
-    auto semantic_type() const {
-        return this->template column<lispb::schema::TypeId>(Layout::semantic_type_column);
-    }
-    auto element_count() const {
-        return this->template column<std::uint64_t>(Layout::element_count_column);
-    }
-    auto element_facts() const {
-        return this->template column<std::optional<ioj::layout::PhysicalFactId>>(
-            Layout::element_facts_column);
-    }
-    auto offset_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::offset_bytes_column);
-    }
-    auto extent_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::extent_bytes_column);
-    }
-    auto padding_before_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::padding_before_bytes_column);
-    }
-    auto slack_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::slack_bytes_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::layout::component_table::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace component_table
 
 /* **************************************** */
 // Owner
@@ -218,7 +35,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct ComponentTable
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<ComponentTable,
-                                             component_table::Layout::column_types,
+                                             component_table::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = component_table::Schema;
     using Operations = native_soa::StorageOperations;
@@ -272,8 +89,9 @@ struct ComponentTable
     auto extent_bytes(this auto& self) { return self.view().extent_bytes(); }
     auto padding_before_bytes(this auto& self) { return self.view().padding_before_bytes(); }
     auto slack_bytes(this auto& self) { return self.view().slack_bytes(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<ComponentTable, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<ComponentTable,
+                                                                 component_table::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();

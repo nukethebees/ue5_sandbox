@@ -5,142 +5,16 @@
 
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/relationship_metrics.hpp"
+#include "ioj/layout/analysis/relationship_table_compact_view.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
 #include "lispb/schema/indices.h"
 
 #include <cstddef>
 #include <memory_resource>
-#include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
-namespace relationship_table {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<AnalysisId,
-                                              std::optional<std::size_t>,
-                                              lispb::schema::RelationshipId,
-                                              std::optional<ioj::layout::RelationshipMetrics>> {
-    static constexpr std::size_t owner_column{0ULL};
-    static constexpr std::size_t field_column{1ULL};
-    static constexpr std::size_t relationship_column{2ULL};
-    static constexpr std::size_t metrics_column{3ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<AnalysisId>* owner{};
-    Element<std::optional<std::size_t>>* field{};
-    Element<lispb::schema::RelationshipId>* relationship{};
-    Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.owner, self.field, self.relationship, self.metrics);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.owner(), source.field(), source.relationship(), source.metrics());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = relationship_table::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto owner() const { return this->column(this->columns_.owner); }
-    auto field() const { return this->column(this->columns_.field); }
-    auto relationship() const { return this->column(this->columns_.relationship); }
-    auto metrics() const { return this->column(this->columns_.metrics); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::layout::relationship_table::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = relationship_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto owner() const { return this->template column<AnalysisId>(Layout::owner_column); }
-    auto field() const {
-        return this->template column<std::optional<std::size_t>>(Layout::field_column);
-    }
-    auto relationship() const {
-        return this->template column<lispb::schema::RelationshipId>(Layout::relationship_column);
-    }
-    auto metrics() const {
-        return this->template column<std::optional<ioj::layout::RelationshipMetrics>>(
-            Layout::metrics_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::layout::relationship_table::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace relationship_table
 
 /* **************************************** */
 // Owner
@@ -153,7 +27,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct RelationshipTable
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<RelationshipTable,
-                                             relationship_table::Layout::column_types,
+                                             relationship_table::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = relationship_table::Schema;
     using Operations = native_soa::StorageOperations;
@@ -201,8 +75,9 @@ struct RelationshipTable
     auto field(this auto& self) { return self.view().field(); }
     auto relationship(this auto& self) { return self.view().relationship(); }
     auto metrics(this auto& self) { return self.view().metrics(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<RelationshipTable, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<RelationshipTable,
+                                                                 relationship_table::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();

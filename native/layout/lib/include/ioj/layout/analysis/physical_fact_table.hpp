@@ -3,169 +3,18 @@
 
 #pragma once
 
+#include "ioj/layout/analysis/physical_fact_table_compact_view.hpp"
 #include "ioj/layout/fact_origin.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
 #include "lispb/indices.h"
 #include "lispb/schema/enum_signedness.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <memory_resource>
-#include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
-namespace physical_fact_table {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<std::uint64_t,
-                                              std::uint64_t,
-                                              lispb::schema::EnumSignedness,
-                                              std::optional<std::uint32_t>,
-                                              lispb::StringId,
-                                              FactOrigin> {
-    static constexpr std::size_t size_bytes_column{0ULL};
-    static constexpr std::size_t alignment_bytes_column{1ULL};
-    static constexpr std::size_t signedness_column{2ULL};
-    static constexpr std::size_t unsigned_value_bits_column{3ULL};
-    static constexpr std::size_t provenance_column{4ULL};
-    static constexpr std::size_t origin_column{5ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<std::uint64_t>* size_bytes{};
-    Element<std::uint64_t>* alignment_bytes{};
-    Element<lispb::schema::EnumSignedness>* signedness{};
-    Element<std::optional<std::uint32_t>>* unsigned_value_bits{};
-    Element<lispb::StringId>* provenance{};
-    Element<FactOrigin>* origin{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.size_bytes,
-                    self.alignment_bytes,
-                    self.signedness,
-                    self.unsigned_value_bits,
-                    self.provenance,
-                    self.origin);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.size_bytes(),
-                    source.alignment_bytes(),
-                    source.signedness(),
-                    source.unsigned_value_bits(),
-                    source.provenance(),
-                    source.origin());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = physical_fact_table::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto size_bytes() const { return this->column(this->columns_.size_bytes); }
-    auto alignment_bytes() const { return this->column(this->columns_.alignment_bytes); }
-    auto signedness() const { return this->column(this->columns_.signedness); }
-    auto unsigned_value_bits() const { return this->column(this->columns_.unsigned_value_bits); }
-    auto provenance() const { return this->column(this->columns_.provenance); }
-    auto origin() const { return this->column(this->columns_.origin); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::layout::physical_fact_table::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = physical_fact_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto size_bytes() const {
-        return this->template column<std::uint64_t>(Layout::size_bytes_column);
-    }
-    auto alignment_bytes() const {
-        return this->template column<std::uint64_t>(Layout::alignment_bytes_column);
-    }
-    auto signedness() const {
-        return this->template column<lispb::schema::EnumSignedness>(Layout::signedness_column);
-    }
-    auto unsigned_value_bits() const {
-        return this->template column<std::optional<std::uint32_t>>(
-            Layout::unsigned_value_bits_column);
-    }
-    auto provenance() const {
-        return this->template column<lispb::StringId>(Layout::provenance_column);
-    }
-    auto origin() const { return this->template column<FactOrigin>(Layout::origin_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::layout::physical_fact_table::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace physical_fact_table
 
 /* **************************************** */
 // Owner
@@ -180,7 +29,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct PhysicalFactTable
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<PhysicalFactTable,
-                                             physical_fact_table::Layout::column_types,
+                                             physical_fact_table::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = physical_fact_table::Schema;
     using Operations = native_soa::StorageOperations;
@@ -230,8 +79,9 @@ struct PhysicalFactTable
     auto unsigned_value_bits(this auto& self) { return self.view().unsigned_value_bits(); }
     auto provenance(this auto& self) { return self.view().provenance(); }
     auto origin(this auto& self) { return self.view().origin(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<PhysicalFactTable, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<PhysicalFactTable,
+                                                                 physical_fact_table::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

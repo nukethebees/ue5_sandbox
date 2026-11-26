@@ -10,178 +10,15 @@
 #include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/layout/analysis/scenario_id.hpp"
 #include "ioj/layout/analysis/soa_layout.hpp"
+#include "ioj/layout/analysis/type_analysis_table_compact_view.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
 #include "lispb/schema/indices.h"
 
-#include <cstddef>
 #include <memory_resource>
-#include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
-namespace type_analysis_table {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<lispb::schema::TypeId,
-                                              ScenarioId,
-                                              std::optional<ioj::layout::PhysicalFactId>,
-                                              std::optional<ioj::layout::EnumBacking>,
-                                              std::optional<ioj::layout::AggregateLayout>,
-                                              std::optional<ioj::layout::PackedLayout>,
-                                              std::optional<ioj::layout::SoaLayout>> {
-    static constexpr std::size_t schema_type_column{0ULL};
-    static constexpr std::size_t scenario_column{1ULL};
-    static constexpr std::size_t physical_column{2ULL};
-    static constexpr std::size_t enum_backing_column{3ULL};
-    static constexpr std::size_t aggregate_column{4ULL};
-    static constexpr std::size_t packed_column{5ULL};
-    static constexpr std::size_t soa_column{6ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<lispb::schema::TypeId>* schema_type{};
-    Element<ScenarioId>* scenario{};
-    Element<std::optional<ioj::layout::PhysicalFactId>>* physical{};
-    Element<std::optional<ioj::layout::EnumBacking>>* enum_backing{};
-    Element<std::optional<ioj::layout::AggregateLayout>>* aggregate{};
-    Element<std::optional<ioj::layout::PackedLayout>>* packed{};
-    Element<std::optional<ioj::layout::SoaLayout>>* soa{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.schema_type,
-                    self.scenario,
-                    self.physical,
-                    self.enum_backing,
-                    self.aggregate,
-                    self.packed,
-                    self.soa);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.schema_type(),
-                    source.scenario(),
-                    source.physical(),
-                    source.enum_backing(),
-                    source.aggregate(),
-                    source.packed(),
-                    source.soa());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = type_analysis_table::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto schema_type() const { return this->column(this->columns_.schema_type); }
-    auto scenario() const { return this->column(this->columns_.scenario); }
-    auto physical() const { return this->column(this->columns_.physical); }
-    auto enum_backing() const { return this->column(this->columns_.enum_backing); }
-    auto aggregate() const { return this->column(this->columns_.aggregate); }
-    auto packed() const { return this->column(this->columns_.packed); }
-    auto soa() const { return this->column(this->columns_.soa); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::layout::type_analysis_table::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = type_analysis_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto schema_type() const {
-        return this->template column<lispb::schema::TypeId>(Layout::schema_type_column);
-    }
-    auto scenario() const { return this->template column<ScenarioId>(Layout::scenario_column); }
-    auto physical() const {
-        return this->template column<std::optional<ioj::layout::PhysicalFactId>>(
-            Layout::physical_column);
-    }
-    auto enum_backing() const {
-        return this->template column<std::optional<ioj::layout::EnumBacking>>(
-            Layout::enum_backing_column);
-    }
-    auto aggregate() const {
-        return this->template column<std::optional<ioj::layout::AggregateLayout>>(
-            Layout::aggregate_column);
-    }
-    auto packed() const {
-        return this->template column<std::optional<ioj::layout::PackedLayout>>(
-            Layout::packed_column);
-    }
-    auto soa() const {
-        return this->template column<std::optional<ioj::layout::SoaLayout>>(Layout::soa_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::layout::type_analysis_table::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace type_analysis_table
 
 /* **************************************** */
 // Owner
@@ -197,7 +34,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct TypeAnalysisTable
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<TypeAnalysisTable,
-                                             type_analysis_table::Layout::column_types,
+                                             type_analysis_table::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = type_analysis_table::Schema;
     using Operations = native_soa::StorageOperations;
@@ -248,8 +85,9 @@ struct TypeAnalysisTable
     auto aggregate(this auto& self) { return self.view().aggregate(); }
     auto packed(this auto& self) { return self.view().packed(); }
     auto soa(this auto& self) { return self.view().soa(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<TypeAnalysisTable, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<TypeAnalysisTable,
+                                                                 type_analysis_table::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     AnalysisId append(lispb::schema::TypeId type, ScenarioId scenario_id);

@@ -5,176 +5,13 @@
 
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
-#include "ioj/vectors3f.h"
+#include "ioj/single_allocation/operations.h"
+#include "world_aabbs_compact_view.h"
 
 #include <cassert>
-#include <cstddef>
-#include <cstdint>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj::sim::collision {
-namespace world_aabbs {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<float, float, float, float, float, float> {
-    static constexpr std::size_t min_points_xs_column{0ULL};
-    static constexpr std::size_t min_points_ys_column{1ULL};
-    static constexpr std::size_t min_points_zs_column{2ULL};
-    static constexpr std::size_t max_points_xs_column{3ULL};
-    static constexpr std::size_t max_points_ys_column{4ULL};
-    static constexpr std::size_t max_points_zs_column{5ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* min_points_xs{};
-    Element<float>* min_points_ys{};
-    Element<float>* min_points_zs{};
-    Element<float>* max_points_xs{};
-    Element<float>* max_points_ys{};
-    Element<float>* max_points_zs{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.min_points_xs,
-                    self.min_points_ys,
-                    self.min_points_zs,
-                    self.max_points_xs,
-                    self.max_points_ys,
-                    self.max_points_zs);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        auto const& min_points_view{source.view_min_points()};
-        auto const& max_points_view{source.view_max_points()};
-        return func(min_points_view.xs(),
-                    min_points_view.ys(),
-                    min_points_view.zs(),
-                    max_points_view.xs(),
-                    max_points_view.ys(),
-                    max_points_view.zs());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = world_aabbs::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_min_points() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.min_points_xs,
-                this->columns_.min_points_ys,
-                this->columns_.min_points_zs,
-                this->num()};
-    }
-    auto view_max_points() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.max_points_xs,
-                this->columns_.max_points_ys,
-                this->columns_.max_points_zs,
-                this->num()};
-    }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::sim::collision::world_aabbs::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) const {
-        assert((index < num()));
-        this->view_min_points().set(index, new_min_points);
-        this->view_max_points().set(index, new_max_points);
-    }
-};
-
-/* **************************************** */
-// Strided views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::StridedViewBase<float, Const>;
-    using Base::Base;
-    using Layout = world_aabbs::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    using State = std::conditional_t<Const,
-                                     soa_storage_detail::StorageState const,
-                                     soa_storage_detail::StorageState>;
-    CompactViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{soa_storage_detail::make_strided_view<Base, Layout>(
-              state, offset, count, Layout::min_points_xs_column, Layout::min_points_ys_column)} {}
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_min_points() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return {this->column(0LL).data(), this->byte_stride(), this->num()};
-    }
-    auto view_max_points() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return {this->column(3LL).data(), this->byte_stride(), this->num()};
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::collision::world_aabbs::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) const {
-        assert((index < num()));
-        this->view_min_points().set(index, new_min_points);
-        this->view_max_points().set(index, new_max_points);
-    }
-};
-static_assert(std::is_trivially_copyable_v<CompactView>);
-
-} // namespace world_aabbs
 
 /* **************************************** */
 // Owner
@@ -188,9 +25,8 @@ static_assert(std::is_trivially_copyable_v<CompactView>);
 // max_points_zs: float
 struct WorldAABBs
     : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<WorldAABBs,
-                                             world_aabbs::Layout::column_types,
-                                             native_soa::StorageOperations> {
+    , soa_storage_detail::
+          OwnerRowOperations<WorldAABBs, world_aabbs::ColumnTypes, native_soa::StorageOperations> {
     using soa_schema = world_aabbs::Schema;
     using Operations = native_soa::StorageOperations;
     using Layout = world_aabbs::Layout;
@@ -236,7 +72,7 @@ struct WorldAABBs
     auto view_min_points(this auto& self) { return self.view().view_min_points(); }
     auto view_max_points(this auto& self) { return self.view().view_max_points(); }
     using RowOperations = soa_storage_detail::
-        OwnerRowOperations<WorldAABBs, Layout::column_types, native_soa::StorageOperations>;
+        OwnerRowOperations<WorldAABBs, world_aabbs::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) {

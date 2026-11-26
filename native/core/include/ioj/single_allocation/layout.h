@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/single_allocation/column_types.h>
+
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -141,7 +143,7 @@ struct LayoutCursor {
 
 template <typename... Ts>
 struct ColumnLayouts {
-    using column_types = ColumnLayouts;
+    using column_types = soa_storage_detail::ColumnTypes<Ts...>;
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
     static constexpr auto num_columns{sizeof...(Ts)};

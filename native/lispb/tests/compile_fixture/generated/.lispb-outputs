@@ -1,5 +1,7 @@
 lispb-outputs-v1
 FieldMasks.h
+FieldMasks_compact_view.h
+FieldMasks_view.h
 Generated.h
 GroupedEnums.h
 InlineFacade.h
@@ -20,6 +22,8 @@ Records.h
 Records_reader.h
 ReferenceFacade.h
 RestrictionRows.h
+RestrictionRows_compact_view.h
+RestrictionRows_view.h
 ScalarValues.h
 SignatureDefinitions.cpp
 SignatureDefinitions.h

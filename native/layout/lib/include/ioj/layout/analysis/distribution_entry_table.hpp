@@ -3,180 +3,17 @@
 
 #pragma once
 
+#include "ioj/layout/analysis/distribution_entry_table_compact_view.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
 #include "codegen/schema/packed_integer_value.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>
-#include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
-namespace distribution_entry_table {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<std::optional<std::size_t>,
-                                              std::optional<lispb::codegen::PackedIntegerValue>,
-                                              std::uint64_t,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>> {
-    static constexpr std::size_t component_column{0ULL};
-    static constexpr std::size_t value_column{1ULL};
-    static constexpr std::size_t weight_column{2ULL};
-    static constexpr std::size_t extent_bytes_column{3ULL};
-    static constexpr std::size_t slack_bytes_column{4ULL};
-    static constexpr std::size_t weighted_extent_bytes_column{5ULL};
-    static constexpr std::size_t weighted_slack_bytes_column{6ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<std::optional<std::size_t>>* component{};
-    Element<std::optional<lispb::codegen::PackedIntegerValue>>* value{};
-    Element<std::uint64_t>* weight{};
-    Element<std::optional<std::uint64_t>>* extent_bytes{};
-    Element<std::optional<std::uint64_t>>* slack_bytes{};
-    Element<std::optional<std::uint64_t>>* weighted_extent_bytes{};
-    Element<std::optional<std::uint64_t>>* weighted_slack_bytes{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.component,
-                    self.value,
-                    self.weight,
-                    self.extent_bytes,
-                    self.slack_bytes,
-                    self.weighted_extent_bytes,
-                    self.weighted_slack_bytes);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.component(),
-                    source.value(),
-                    source.weight(),
-                    source.extent_bytes(),
-                    source.slack_bytes(),
-                    source.weighted_extent_bytes(),
-                    source.weighted_slack_bytes());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = distribution_entry_table::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto component() const { return this->column(this->columns_.component); }
-    auto value() const { return this->column(this->columns_.value); }
-    auto weight() const { return this->column(this->columns_.weight); }
-    auto extent_bytes() const { return this->column(this->columns_.extent_bytes); }
-    auto slack_bytes() const { return this->column(this->columns_.slack_bytes); }
-    auto weighted_extent_bytes() const {
-        return this->column(this->columns_.weighted_extent_bytes);
-    }
-    auto weighted_slack_bytes() const { return this->column(this->columns_.weighted_slack_bytes); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::layout::distribution_entry_table::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = distribution_entry_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto component() const {
-        return this->template column<std::optional<std::size_t>>(Layout::component_column);
-    }
-    auto value() const {
-        return this->template column<std::optional<lispb::codegen::PackedIntegerValue>>(
-            Layout::value_column);
-    }
-    auto weight() const { return this->template column<std::uint64_t>(Layout::weight_column); }
-    auto extent_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::extent_bytes_column);
-    }
-    auto slack_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::slack_bytes_column);
-    }
-    auto weighted_extent_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::weighted_extent_bytes_column);
-    }
-    auto weighted_slack_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::weighted_slack_bytes_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::layout::distribution_entry_table::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace distribution_entry_table
 
 /* **************************************** */
 // Owner
@@ -192,7 +29,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct DistributionEntryTable
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<DistributionEntryTable,
-                                             distribution_entry_table::Layout::column_types,
+                                             distribution_entry_table::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = distribution_entry_table::Schema;
     using Operations = native_soa::StorageOperations;
@@ -243,9 +80,10 @@ struct DistributionEntryTable
     auto slack_bytes(this auto& self) { return self.view().slack_bytes(); }
     auto weighted_extent_bytes(this auto& self) { return self.view().weighted_extent_bytes(); }
     auto weighted_slack_bytes(this auto& self) { return self.view().weighted_slack_bytes(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<DistributionEntryTable,
-                                                                 Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<DistributionEntryTable,
+                                               distribution_entry_table::ColumnTypes,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

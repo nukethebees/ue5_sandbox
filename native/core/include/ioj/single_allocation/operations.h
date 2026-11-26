@@ -1,8 +1,8 @@
 #pragma once
 
+#include <ioj/single_allocation/compact_view.h>
 #include <ioj/single_allocation/concepts.h>
 #include <ioj/single_allocation/removal.h>
-#include <ioj/single_allocation/view.h>
 #include <ioj/soa_permutation.h>
 
 #include <algorithm>
@@ -17,6 +17,44 @@
 #include <utility>
 
 namespace ioj::soa_storage_detail {
+
+template <typename Source>
+    requires (std::is_pointer_v<std::remove_cvref_t<Source>> ||
+              requires(Source const& value) { value.data(); })
+constexpr auto source_data(Source const& source) noexcept {
+    if constexpr (std::is_pointer_v<std::remove_cvref_t<Source>>) {
+        return source;
+    } else {
+        return source.data();
+    }
+}
+
+// External sources may validate independent columns; generated pointer views validate on
+// construction.
+template <typename Source>
+void validate_source(Source const& source) {
+    if constexpr (requires { source.validate(); }) {
+        source.validate();
+    }
+}
+
+template <typename Self, typename Columns, typename Base>
+struct OwnerRowOperations;
+
+template <typename Self, typename Base, typename... Ts>
+struct OwnerRowOperations<Self, ColumnTypes<Ts...>, Base> : Base {
+    void set(std::uint32_t index, Ts const... values) {
+        assign_row(static_cast<Self&>(*this), index, values...);
+    }
+    auto add(Ts const... values) -> std::uint32_t {
+        auto& self{static_cast<Self&>(*this)};
+        auto const index{self.num()};
+        // Snapshot arguments by value before growth can invalidate their source columns.
+        self.add_uninitialised(1);
+        self.set(index, values...);
+        return index;
+    }
+};
 
 template <typename Data>
 auto offset_columns(Data pointers, std::uint32_t offset) noexcept -> Data {

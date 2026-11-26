@@ -30,21 +30,23 @@ class SingleAllocationLowering : public CppIRBuilder {
         auto result{node_list()};
         auto source{node_list()};
         auto view_source{node_list()};
-        auto shared{node_list()};
+        auto resolved{node_list()};
+        auto compact{node_list()};
         auto declarations{node_list()};
         declarations.add(forward_declaration(store_text("Schema"))).new_lines(1);
-        auto const views{emit_single_allocation_views(ctx, model, view_source, declarations)};
+        auto const views{emit_resolved_views(ctx, model, view_source, declarations)};
 
-        shared.append(declarations.build()).new_lines(2);
-        shared.append(emit_single_allocation_layout(ctx, model)).new_lines(2);
-        shared.append(views);
-        result.add(namespace_node(namespace_name, shared.build()));
+        resolved.append(declarations.build()).new_lines(2).append(views);
+        compact.append(emit_single_allocation_layout(ctx, model)).new_lines(2);
+        compact.append(emit_compact_views(ctx, model, view_source));
+        Nodes resolved_nodes{namespace_node(namespace_name, resolved.build())};
+        Nodes compact_nodes{namespace_node(namespace_name, compact.build())};
         auto const source_views{view_source.build()};
         if (!source_views.empty()) {
             source.add(namespace_node(namespace_name, source_views)).new_lines(2);
         }
         if (soas.layout_only[row]) {
-            return {result.build(), source.build()};
+            return {result.build(), source.build(), resolved_nodes, compact_nodes};
         }
         result.new_lines(2);
         result.add(block_comment("****************************************"))
@@ -65,7 +67,7 @@ class SingleAllocationLowering : public CppIRBuilder {
         }
         result.add(emit_single_allocation_container(ctx, model, source));
 
-        return {result.build(), source.build()};
+        return {result.build(), source.build(), resolved_nodes, compact_nodes};
     }
 };
 

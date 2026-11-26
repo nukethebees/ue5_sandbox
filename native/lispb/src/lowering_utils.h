@@ -38,6 +38,7 @@ auto join(LoweringContext const& ctx, SchemaRange<StringId> values, std::string_
     -> std::string;
 auto join_lines(std::vector<std::string> const& values) -> std::string;
 auto join_lines(LoweringContext const& ctx, SchemaRange<StringId> values) -> std::string;
+auto soa_header_path(std::string_view path, std::string_view suffix) -> std::string;
 auto source_include(LoweringContext const& ctx, ModuleSettingsId settings) -> std::string;
 void append_type_dependencies(std::vector<TypeDependencyId>& result,
                               std::string const& key,

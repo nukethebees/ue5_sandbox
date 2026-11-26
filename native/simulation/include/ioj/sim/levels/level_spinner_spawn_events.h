@@ -7,194 +7,13 @@
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/levels/level_entity_ref.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
-#include "ioj/vectors3f.h"
+#include "ioj/single_allocation/operations.h"
+#include "level_spinner_spawn_events_compact_view.h"
 
 #include <cassert>
-#include <cstddef>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj::sim {
-namespace level_spinner_spawn_events {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<LevelEntityRef,
-                                              float,
-                                              float,
-                                              float,
-                                              float,
-                                              ioj::NonNegative<std::int32_t>> {
-    static constexpr std::size_t entity_indices_column{0ULL};
-    static constexpr std::size_t locations_xs_column{1ULL};
-    static constexpr std::size_t locations_ys_column{2ULL};
-    static constexpr std::size_t locations_zs_column{3ULL};
-    static constexpr std::size_t yaws_column{4ULL};
-    static constexpr std::size_t initial_fire_point_indices_column{5ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<LevelEntityRef>* entity_indices{};
-    Element<float>* locations_xs{};
-    Element<float>* locations_ys{};
-    Element<float>* locations_zs{};
-    Element<float>* yaws{};
-    Element<ioj::NonNegative<std::int32_t>>* initial_fire_point_indices{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.entity_indices,
-                    self.locations_xs,
-                    self.locations_ys,
-                    self.locations_zs,
-                    self.yaws,
-                    self.initial_fire_point_indices);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        auto const& locations_view{source.view_locations()};
-        return func(source.entity_indices(),
-                    locations_view.xs(),
-                    locations_view.ys(),
-                    locations_view.zs(),
-                    source.yaws(),
-                    source.initial_fire_point_indices());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = level_spinner_spawn_events::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entity_indices() const { return this->column(this->columns_.entity_indices); }
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.locations_xs,
-                this->columns_.locations_ys,
-                this->columns_.locations_zs,
-                this->num()};
-    }
-    auto yaws() const { return this->column(this->columns_.yaws); }
-    auto initial_fire_point_indices() const {
-        return this->column(this->columns_.initial_fire_point_indices);
-    }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::sim::level_spinner_spawn_events::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             ioj::sim::LevelEntityRef const new_entity_indices,
-             Vector3f const new_locations,
-             float const new_yaws,
-             ioj::NonNegative<std::int32_t> const new_initial_fire_point_indices) const {
-        assert((index < num()));
-        this->entity_indices()[index] = new_entity_indices;
-        this->view_locations().set(index, new_locations);
-        this->yaws()[index] = new_yaws;
-        this->initial_fire_point_indices()[index] = new_initial_fire_point_indices;
-    }
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = level_spinner_spawn_events::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entity_indices() const {
-        return this->template column<LevelEntityRef>(Layout::entity_indices_column);
-    }
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::locations_xs_column,
-                    Layout::locations_ys_column);
-    }
-    auto yaws() const { return this->template column<float>(Layout::yaws_column); }
-    auto initial_fire_point_indices() const {
-        return this->template column<ioj::NonNegative<std::int32_t>>(
-            Layout::initial_fire_point_indices_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::level_spinner_spawn_events::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             ioj::sim::LevelEntityRef const new_entity_indices,
-             Vector3f const new_locations,
-             float const new_yaws,
-             ioj::NonNegative<std::int32_t> const new_initial_fire_point_indices) const {
-        assert((index < num()));
-        this->entity_indices()[index] = new_entity_indices;
-        this->view_locations().set(index, new_locations);
-        this->yaws()[index] = new_yaws;
-        this->initial_fire_point_indices()[index] = new_initial_fire_point_indices;
-    }
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace level_spinner_spawn_events
 
 /* **************************************** */
 // Owner
@@ -209,7 +28,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct LevelSpinnerSpawnEvents
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<LevelSpinnerSpawnEvents,
-                                             level_spinner_spawn_events::Layout::column_types,
+                                             level_spinner_spawn_events::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = level_spinner_spawn_events::Schema;
     using Operations = native_soa::StorageOperations;
@@ -259,9 +78,10 @@ struct LevelSpinnerSpawnEvents
     auto initial_fire_point_indices(this auto& self) {
         return self.view().initial_fire_point_indices();
     }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<LevelSpinnerSpawnEvents,
-                                                                 Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<LevelSpinnerSpawnEvents,
+                                               level_spinner_spawn_events::ColumnTypes,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

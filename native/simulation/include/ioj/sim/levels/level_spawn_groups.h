@@ -6,124 +6,13 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_type.h"
 #include "ioj/sim/levels/level_event_count.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
+#include "level_spawn_groups_compact_view.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj::sim {
-namespace level_spawn_groups {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<EntityType, std::int32_t, LevelEventCount> {
-    static constexpr std::size_t types_column{0ULL};
-    static constexpr std::size_t offsets_column{1ULL};
-    static constexpr std::size_t counts_column{2ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityType>* types{};
-    Element<std::int32_t>* offsets{};
-    Element<LevelEventCount>* counts{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.types, self.offsets, self.counts);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.types(), source.offsets(), source.counts());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = level_spawn_groups::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto types() const { return this->column(this->columns_.types); }
-    auto offsets() const { return this->column(this->columns_.offsets); }
-    auto counts() const { return this->column(this->columns_.counts); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::sim::level_spawn_groups::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = level_spawn_groups::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto types() const { return this->template column<EntityType>(Layout::types_column); }
-    auto offsets() const { return this->template column<std::int32_t>(Layout::offsets_column); }
-    auto counts() const { return this->template column<LevelEventCount>(Layout::counts_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::level_spawn_groups::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace level_spawn_groups
 
 /* **************************************** */
 // Owner
@@ -135,7 +24,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct LevelSpawnGroups
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<LevelSpawnGroups,
-                                             level_spawn_groups::Layout::column_types,
+                                             level_spawn_groups::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = level_spawn_groups::Schema;
     using Operations = native_soa::StorageOperations;
@@ -182,8 +71,9 @@ struct LevelSpawnGroups
     auto types(this auto& self) { return self.view().types(); }
     auto offsets(this auto& self) { return self.view().offsets(); }
     auto counts(this auto& self) { return self.view().counts(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<LevelSpawnGroups, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<LevelSpawnGroups,
+                                                                 level_spawn_groups::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

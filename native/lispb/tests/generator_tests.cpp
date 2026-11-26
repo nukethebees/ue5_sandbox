@@ -59,16 +59,26 @@ auto example_manifest(CompilerTestContext& ctx) -> Manifest {
 TEST(Generator, LowersDynamicSoaIntoNativeOwnerAndViews) {
     CompilerTestContext ctx;
     auto const files{render_test_manifest(ctx, example_manifest(ctx))};
-    ASSERT_EQ(files.size(), 2);
-    auto const& header{files.front().content};
-    auto const& source{files.back().content};
+    ASSERT_EQ(files.size(), 4);
+    auto const& header{files[0].content};
+    auto const& source{files[1].content};
+    ASSERT_EQ(files[2].path, "Generated_view.h");
+    ASSERT_EQ(files[3].path, "Generated_compact_view.h");
+    expect_contains_all(files[2].content,
+                        {"namespace f_data", "ViewBase<", "#include \"Project/Handle.h\""});
+    expect_contains_none(files[2].content,
+                         {"CompactView",
+                          "ColumnLayouts",
+                          "native_soa/storage.h",
+                          "single_allocation/layout.h",
+                          "memory_resource"});
+    expect_contains_all(files[3].content,
+                        {"struct EXAMPLE_API CompactConstView", "Project/Generated_view.h"});
+    expect_contains_none(files[3].content, {"native_soa/storage.h", "StorageOperations"});
     expect_contains_all(header,
-                        {"namespace f_data",
-                         "struct EXAMPLE_API CompactConstView",
-                         "ViewBase<",
-                         "std::pmr::memory_resource&",
-                         "#include \"Project/Handle.h\"",
-                         "using Operations = ioj::native_soa::StorageOperations;"});
+                        {"std::pmr::memory_resource&",
+                         "using Operations = ioj::native_soa::StorageOperations;",
+                         "Project/Generated_compact_view.h"});
     expect_contains_none(header, {"void apply_permutation(", "TArray", "validate_array_sizes"});
     EXPECT_TRUE(source.contains("#include \"Project/Generated.h\""));
 }
@@ -83,7 +93,8 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
             (member matrix array std::int32_t :mask-field true :mask-dimensions ((row_index "2") (column_index "3")))
             (member last array std::int32_t :mask-field true))))")};
 
-    auto const header{render_test_manifest(ctx, manifest).front().content};
+    auto const files{render_test_manifest(ctx, manifest)};
+    auto const& header{files.at(2).content};
     expect_contains_all(
         header,
         {"enum class EField : std::uint8_t",
@@ -92,7 +103,7 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
          "Last = static_cast<std::uint8_t>(Matrix) + (2) * (3)",
          "struct FFieldMask : ioj::FieldMask<EField, static_cast<std::size_t>(EField::Count)>",
          "matrix_field(std::int32_t const row_index, std::int32_t const column_index)",
-         "ColumnLayouts<FFieldMask, std::int32_t, std::int32_t, std::int32_t>"});
+         "ColumnTypes<FFieldMask, std::int32_t, std::int32_t, std::int32_t>"});
     EXPECT_FALSE(header.contains("CoreMinimal.h"));
 }
 

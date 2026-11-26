@@ -3,122 +3,15 @@
 
 #pragma once
 
+#include "change_points_events_compact_view.h"
 #include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/points.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
-#include <cstddef>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj::sim {
-namespace change_points_events {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<PointsChange, ::ioj::Team> {
-    static constexpr std::size_t deltas_column{0ULL};
-    static constexpr std::size_t teams_column{1ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<PointsChange>* deltas{};
-    Element<::ioj::Team>* teams{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.deltas, self.teams);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.deltas(), source.teams());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = change_points_events::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto deltas() const { return this->column(this->columns_.deltas); }
-    auto teams() const { return this->column(this->columns_.teams); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::sim::change_points_events::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = change_points_events::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto deltas() const { return this->template column<PointsChange>(Layout::deltas_column); }
-    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::change_points_events::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace change_points_events
 
 /* **************************************** */
 // Owner
@@ -129,7 +22,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct ChangePointsEvents
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<ChangePointsEvents,
-                                             change_points_events::Layout::column_types,
+                                             change_points_events::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = change_points_events::Schema;
     using Operations = native_soa::StorageOperations;
@@ -175,8 +68,9 @@ struct ChangePointsEvents
   public:
     auto deltas(this auto& self) { return self.view().deltas(); }
     auto teams(this auto& self) { return self.view().teams(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<ChangePointsEvents, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<ChangePointsEvents,
+                                                                 change_points_events::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

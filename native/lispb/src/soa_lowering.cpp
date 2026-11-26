@@ -37,26 +37,18 @@ class SoaLowering : public CppIRBuilder {
         : CppIRBuilder{ir} {}
     auto lower_soa_declaration(LoweringContext& ctx, DeclarationHandle schema)
         -> DeclarationEmission {
-        auto const& soas{ctx.declarations.soas};
-        auto const row{soas.index(schema)};
         auto header{node_list()};
         auto const masks{field_mask_nodes(ctx, schema)};
         if (!masks.empty()) {
             header.new_lines(2).append(masks).new_lines(2);
         }
-        if (soas.layout_only[row] && soas.const_view_functions[row].empty() &&
-            soas.mutable_view_functions[row].empty() && !soas.equivalent_type[row]) {
-            auto const type{ctx.semantic.find_declared(ctx.module, soas.name[row])};
-            if (ctx.semantic.users_of(*type).empty()) {
-                header.add(namespace_node(store_text(soa_namespace_name(ctx.text(soas.name[row]))),
-                                          emit_single_allocation_layout(
-                                              ctx, build_single_allocation_model(ctx, schema))));
-                return {.header = header.build(), .format_generated = true};
-            }
-        }
         auto lowered{lower_single_allocation(ctx, schema)};
-        header.append(lowered.header);
-        return {.header = header.build(), .source = lowered.source, .format_generated = true};
+        header.append(lowered.resolved);
+        return {.header = lowered.header,
+                .source = lowered.source,
+                .format_generated = true,
+                .resolved_views = header.build(),
+                .compact_views = lowered.compact};
     }
   private:
     auto mask_field_width(LoweringContext& ctx, SoaMemberId member) -> Expr {

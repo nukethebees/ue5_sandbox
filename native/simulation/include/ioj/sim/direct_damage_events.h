@@ -3,130 +3,15 @@
 
 #pragma once
 
+#include "direct_damage_events_compact_view.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj::sim {
-namespace direct_damage_events {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<EntityId, std::int32_t, EntityId> {
-    static constexpr std::size_t damaged_entities_column{0ULL};
-    static constexpr std::size_t damage_amounts_column{1ULL};
-    static constexpr std::size_t instigators_column{2ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityId>* damaged_entities{};
-    Element<std::int32_t>* damage_amounts{};
-    Element<EntityId>* instigators{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.damaged_entities, self.damage_amounts, self.instigators);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.damaged_entities(), source.damage_amounts(), source.instigators());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = direct_damage_events::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto damaged_entities() const { return this->column(this->columns_.damaged_entities); }
-    auto damage_amounts() const { return this->column(this->columns_.damage_amounts); }
-    auto instigators() const { return this->column(this->columns_.instigators); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::sim::direct_damage_events::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = direct_damage_events::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto damaged_entities() const {
-        return this->template column<EntityId>(Layout::damaged_entities_column);
-    }
-    auto damage_amounts() const {
-        return this->template column<std::int32_t>(Layout::damage_amounts_column);
-    }
-    auto instigators() const { return this->template column<EntityId>(Layout::instigators_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::direct_damage_events::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace direct_damage_events
 
 /* **************************************** */
 // Owner
@@ -138,7 +23,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct DirectDamageEvents
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<DirectDamageEvents,
-                                             direct_damage_events::Layout::column_types,
+                                             direct_damage_events::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = direct_damage_events::Schema;
     using Operations = native_soa::StorageOperations;
@@ -185,8 +70,9 @@ struct DirectDamageEvents
     auto damaged_entities(this auto& self) { return self.view().damaged_entities(); }
     auto damage_amounts(this auto& self) { return self.view().damage_amounts(); }
     auto instigators(this auto& self) { return self.view().instigators(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<DirectDamageEvents, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<DirectDamageEvents,
+                                                                 direct_damage_events::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::set;
     void add(EntityId const damaged_entity,
              std::int32_t const damage_amount,

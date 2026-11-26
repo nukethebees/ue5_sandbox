@@ -4,126 +4,12 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
+#include "radar_positions_compact_view.hpp"
 
-#include <cstddef>
-#include <cstdint>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj::ui::radar_2d {
-namespace positions {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<float, float> {
-    static constexpr std::size_t xs_column{0ULL};
-    static constexpr std::size_t ys_column{1ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* xs{};
-    Element<float>* ys{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.xs, self.ys);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.xs(), source.ys());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = positions::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(this->columns_.xs); }
-    auto ys() const { return this->column(this->columns_.ys); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::ui::radar_2d::positions::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Strided views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::StridedViewBase<float, Const>;
-    using Base::Base;
-    using Layout = positions::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    using State = std::conditional_t<Const,
-                                     soa_storage_detail::StorageState const,
-                                     soa_storage_detail::StorageState>;
-    CompactViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{soa_storage_detail::make_strided_view<Base, Layout>(
-              state, offset, count, Layout::xs_column, Layout::ys_column)} {}
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(0LL); }
-    auto ys() const { return this->column(1LL); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::ui::radar_2d::positions::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(std::is_trivially_copyable_v<CompactView>);
-
-} // namespace positions
 
 /* **************************************** */
 // Owner
@@ -133,9 +19,8 @@ static_assert(std::is_trivially_copyable_v<CompactView>);
 // ys: float
 struct Positions
     : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<Positions,
-                                             positions::Layout::column_types,
-                                             native_soa::StorageOperations> {
+    , soa_storage_detail::
+          OwnerRowOperations<Positions, positions::ColumnTypes, native_soa::StorageOperations> {
     using soa_schema = positions::Schema;
     using Operations = native_soa::StorageOperations;
     using Layout = positions::Layout;
@@ -181,7 +66,7 @@ struct Positions
     auto xs(this auto& self) { return self.view().xs(); }
     auto ys(this auto& self) { return self.view().ys(); }
     using RowOperations = soa_storage_detail::
-        OwnerRowOperations<Positions, Layout::column_types, native_soa::StorageOperations>;
+        OwnerRowOperations<Positions, positions::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

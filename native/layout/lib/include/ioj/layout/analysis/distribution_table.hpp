@@ -5,211 +5,16 @@
 
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/distribution_id.hpp"
+#include "ioj/layout/analysis/distribution_table_compact_view.hpp"
 #include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <memory_resource>
 #include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
-namespace distribution_table {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<AnalysisId,
-                                              RowRange,
-                                              std::uint64_t,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<long double>,
-                                              std::optional<long double>,
-                                              std::optional<long double>,
-                                              std::optional<long double>> {
-    static constexpr std::size_t analysis_column{0ULL};
-    static constexpr std::size_t entries_column{1ULL};
-    static constexpr std::size_t element_count_column{2ULL};
-    static constexpr std::size_t total_weight_column{3ULL};
-    static constexpr std::size_t total_extent_bytes_column{4ULL};
-    static constexpr std::size_t total_slack_bytes_column{5ULL};
-    static constexpr std::size_t expected_extent_bytes_column{6ULL};
-    static constexpr std::size_t expected_slack_bytes_column{7ULL};
-    static constexpr std::size_t expected_selected_extent_bytes_column{8ULL};
-    static constexpr std::size_t expected_selected_slack_bytes_column{9ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<AnalysisId>* analysis{};
-    Element<RowRange>* entries{};
-    Element<std::uint64_t>* element_count{};
-    Element<std::optional<std::uint64_t>>* total_weight{};
-    Element<std::optional<std::uint64_t>>* total_extent_bytes{};
-    Element<std::optional<std::uint64_t>>* total_slack_bytes{};
-    Element<std::optional<long double>>* expected_extent_bytes{};
-    Element<std::optional<long double>>* expected_slack_bytes{};
-    Element<std::optional<long double>>* expected_selected_extent_bytes{};
-    Element<std::optional<long double>>* expected_selected_slack_bytes{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.analysis,
-                    self.entries,
-                    self.element_count,
-                    self.total_weight,
-                    self.total_extent_bytes,
-                    self.total_slack_bytes,
-                    self.expected_extent_bytes,
-                    self.expected_slack_bytes,
-                    self.expected_selected_extent_bytes,
-                    self.expected_selected_slack_bytes);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.analysis(),
-                    source.entries(),
-                    source.element_count(),
-                    source.total_weight(),
-                    source.total_extent_bytes(),
-                    source.total_slack_bytes(),
-                    source.expected_extent_bytes(),
-                    source.expected_slack_bytes(),
-                    source.expected_selected_extent_bytes(),
-                    source.expected_selected_slack_bytes());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = distribution_table::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto analysis() const { return this->column(this->columns_.analysis); }
-    auto entries() const { return this->column(this->columns_.entries); }
-    auto element_count() const { return this->column(this->columns_.element_count); }
-    auto total_weight() const { return this->column(this->columns_.total_weight); }
-    auto total_extent_bytes() const { return this->column(this->columns_.total_extent_bytes); }
-    auto total_slack_bytes() const { return this->column(this->columns_.total_slack_bytes); }
-    auto expected_extent_bytes() const {
-        return this->column(this->columns_.expected_extent_bytes);
-    }
-    auto expected_slack_bytes() const { return this->column(this->columns_.expected_slack_bytes); }
-    auto expected_selected_extent_bytes() const {
-        return this->column(this->columns_.expected_selected_extent_bytes);
-    }
-    auto expected_selected_slack_bytes() const {
-        return this->column(this->columns_.expected_selected_slack_bytes);
-    }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::layout::distribution_table::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = distribution_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto analysis() const { return this->template column<AnalysisId>(Layout::analysis_column); }
-    auto entries() const { return this->template column<RowRange>(Layout::entries_column); }
-    auto element_count() const {
-        return this->template column<std::uint64_t>(Layout::element_count_column);
-    }
-    auto total_weight() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::total_weight_column);
-    }
-    auto total_extent_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::total_extent_bytes_column);
-    }
-    auto total_slack_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::total_slack_bytes_column);
-    }
-    auto expected_extent_bytes() const {
-        return this->template column<std::optional<long double>>(
-            Layout::expected_extent_bytes_column);
-    }
-    auto expected_slack_bytes() const {
-        return this->template column<std::optional<long double>>(
-            Layout::expected_slack_bytes_column);
-    }
-    auto expected_selected_extent_bytes() const {
-        return this->template column<std::optional<long double>>(
-            Layout::expected_selected_extent_bytes_column);
-    }
-    auto expected_selected_slack_bytes() const {
-        return this->template column<std::optional<long double>>(
-            Layout::expected_selected_slack_bytes_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::layout::distribution_table::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace distribution_table
 
 /* **************************************** */
 // Owner
@@ -228,7 +33,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct DistributionTable
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<DistributionTable,
-                                             distribution_table::Layout::column_types,
+                                             distribution_table::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = distribution_table::Schema;
     using Operations = native_soa::StorageOperations;
@@ -286,8 +91,9 @@ struct DistributionTable
     auto expected_selected_slack_bytes(this auto& self) {
         return self.view().expected_selected_slack_bytes();
     }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<DistributionTable, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<DistributionTable,
+                                                                 distribution_table::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     DistributionId append(AnalysisId owner, RowRange samples, std::uint64_t count);

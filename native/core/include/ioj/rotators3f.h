@@ -5,154 +5,13 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/rotator_types.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/rotators3f_compact_view.h"
+#include "ioj/single_allocation/operations.h"
 
-#include <cassert>
-#include <cstddef>
 #include <cstdint>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj {
-namespace rotators3f {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<float, float, float> {
-    static constexpr std::size_t pitches_column{0ULL};
-    static constexpr std::size_t yaws_column{1ULL};
-    static constexpr std::size_t rolls_column{2ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* pitches{};
-    Element<float>* yaws{};
-    Element<float>* rolls{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.pitches, self.yaws, self.rolls);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.pitches(), source.yaws(), source.rolls());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = rotators3f::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto pitches() const { return this->column(this->columns_.pitches); }
-    auto yaws() const { return this->column(this->columns_.yaws); }
-    auto rolls() const { return this->column(this->columns_.rolls); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-    using equivalent_type = Rotator3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
-    }
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::rotators3f::Layout::column_types, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index, Rotator3f const value) const {
-        set(index, value.pitch, value.yaw, value.roll);
-    }
-    using equivalent_type = Rotator3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
-    }
-};
-
-/* **************************************** */
-// Strided views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::StridedViewBase<float, Const>;
-    using Base::Base;
-    using Layout = rotators3f::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    using State = std::conditional_t<Const,
-                                     soa_storage_detail::StorageState const,
-                                     soa_storage_detail::StorageState>;
-    CompactViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{soa_storage_detail::make_strided_view<Base, Layout>(
-              state, offset, count, Layout::pitches_column, Layout::yaws_column)} {}
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto pitches() const { return this->column(0LL); }
-    auto yaws() const { return this->column(1LL); }
-    auto rolls() const { return this->column(2LL); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-    using equivalent_type = Rotator3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
-    }
-};
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                            ioj::rotators3f::Layout::column_types,
-                                                            CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index, Rotator3f const value) const {
-        set(index, value.pitch, value.yaw, value.roll);
-    }
-    using equivalent_type = Rotator3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert((index < num()));
-        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
-    }
-};
-static_assert(std::is_trivially_copyable_v<CompactView>);
-
-} // namespace rotators3f
 
 /* **************************************** */
 // Owner
@@ -163,9 +22,8 @@ static_assert(std::is_trivially_copyable_v<CompactView>);
 // rolls: float
 struct Rotators3f
     : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<Rotators3f,
-                                             rotators3f::Layout::column_types,
-                                             native_soa::StorageOperations> {
+    , soa_storage_detail::
+          OwnerRowOperations<Rotators3f, rotators3f::ColumnTypes, native_soa::StorageOperations> {
     using soa_schema = rotators3f::Schema;
     using Operations = native_soa::StorageOperations;
     using Layout = rotators3f::Layout;
@@ -212,7 +70,7 @@ struct Rotators3f
     auto yaws(this auto& self) { return self.view().yaws(); }
     auto rolls(this auto& self) { return self.view().rolls(); }
     using RowOperations = soa_storage_detail::
-        OwnerRowOperations<Rotators3f, Layout::column_types, native_soa::StorageOperations>;
+        OwnerRowOperations<Rotators3f, rotators3f::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Rotator3f const value) {

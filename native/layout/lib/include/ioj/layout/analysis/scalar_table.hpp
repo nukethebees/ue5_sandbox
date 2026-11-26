@@ -10,203 +10,17 @@
 #include "ioj/layout/analysis/optional_presence_encoding.hpp"
 #include "ioj/layout/analysis/optional_sentinel_encoding.hpp"
 #include "ioj/layout/analysis/quantized_encoding.hpp"
+#include "ioj/layout/analysis/scalar_table_compact_view.hpp"
 #include "ioj/layout/analysis/varint_encoding.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
 #include "lispb/schema/indices.h"
 
 #include <cstddef>
 #include <memory_resource>
-#include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
-namespace scalar_table {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<lispb::schema::TypeId,
-                                              std::optional<ioj::layout::IntegerDomain>,
-                                              std::optional<ioj::layout::EnumDomain>,
-                                              std::optional<ioj::layout::OptionalSentinelEncoding>,
-                                              std::optional<ioj::layout::OptionalPresenceEncoding>,
-                                              std::optional<ioj::layout::QuantizedEncoding>,
-                                              std::optional<ioj::layout::FixedEncoding>,
-                                              std::optional<ioj::layout::FloatEncoding>,
-                                              std::optional<ioj::layout::VarintEncoding>> {
-    static constexpr std::size_t type_column{0ULL};
-    static constexpr std::size_t integer_domain_column{1ULL};
-    static constexpr std::size_t enum_domain_column{2ULL};
-    static constexpr std::size_t optional_sentinel_encoding_column{3ULL};
-    static constexpr std::size_t optional_presence_encoding_column{4ULL};
-    static constexpr std::size_t quantized_encoding_column{5ULL};
-    static constexpr std::size_t fixed_encoding_column{6ULL};
-    static constexpr std::size_t float_encoding_column{7ULL};
-    static constexpr std::size_t varint_encoding_column{8ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<lispb::schema::TypeId>* type{};
-    Element<std::optional<ioj::layout::IntegerDomain>>* integer_domain{};
-    Element<std::optional<ioj::layout::EnumDomain>>* enum_domain{};
-    Element<std::optional<ioj::layout::OptionalSentinelEncoding>>* optional_sentinel_encoding{};
-    Element<std::optional<ioj::layout::OptionalPresenceEncoding>>* optional_presence_encoding{};
-    Element<std::optional<ioj::layout::QuantizedEncoding>>* quantized_encoding{};
-    Element<std::optional<ioj::layout::FixedEncoding>>* fixed_encoding{};
-    Element<std::optional<ioj::layout::FloatEncoding>>* float_encoding{};
-    Element<std::optional<ioj::layout::VarintEncoding>>* varint_encoding{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.type,
-                    self.integer_domain,
-                    self.enum_domain,
-                    self.optional_sentinel_encoding,
-                    self.optional_presence_encoding,
-                    self.quantized_encoding,
-                    self.fixed_encoding,
-                    self.float_encoding,
-                    self.varint_encoding);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.type(),
-                    source.integer_domain(),
-                    source.enum_domain(),
-                    source.optional_sentinel_encoding(),
-                    source.optional_presence_encoding(),
-                    source.quantized_encoding(),
-                    source.fixed_encoding(),
-                    source.float_encoding(),
-                    source.varint_encoding());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = scalar_table::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto type() const { return this->column(this->columns_.type); }
-    auto integer_domain() const { return this->column(this->columns_.integer_domain); }
-    auto enum_domain() const { return this->column(this->columns_.enum_domain); }
-    auto optional_sentinel_encoding() const {
-        return this->column(this->columns_.optional_sentinel_encoding);
-    }
-    auto optional_presence_encoding() const {
-        return this->column(this->columns_.optional_presence_encoding);
-    }
-    auto quantized_encoding() const { return this->column(this->columns_.quantized_encoding); }
-    auto fixed_encoding() const { return this->column(this->columns_.fixed_encoding); }
-    auto float_encoding() const { return this->column(this->columns_.float_encoding); }
-    auto varint_encoding() const { return this->column(this->columns_.varint_encoding); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::layout::scalar_table::Layout::column_types, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = scalar_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto type() const { return this->template column<lispb::schema::TypeId>(Layout::type_column); }
-    auto integer_domain() const {
-        return this->template column<std::optional<ioj::layout::IntegerDomain>>(
-            Layout::integer_domain_column);
-    }
-    auto enum_domain() const {
-        return this->template column<std::optional<ioj::layout::EnumDomain>>(
-            Layout::enum_domain_column);
-    }
-    auto optional_sentinel_encoding() const {
-        return this->template column<std::optional<ioj::layout::OptionalSentinelEncoding>>(
-            Layout::optional_sentinel_encoding_column);
-    }
-    auto optional_presence_encoding() const {
-        return this->template column<std::optional<ioj::layout::OptionalPresenceEncoding>>(
-            Layout::optional_presence_encoding_column);
-    }
-    auto quantized_encoding() const {
-        return this->template column<std::optional<ioj::layout::QuantizedEncoding>>(
-            Layout::quantized_encoding_column);
-    }
-    auto fixed_encoding() const {
-        return this->template column<std::optional<ioj::layout::FixedEncoding>>(
-            Layout::fixed_encoding_column);
-    }
-    auto float_encoding() const {
-        return this->template column<std::optional<ioj::layout::FloatEncoding>>(
-            Layout::float_encoding_column);
-    }
-    auto varint_encoding() const {
-        return this->template column<std::optional<ioj::layout::VarintEncoding>>(
-            Layout::varint_encoding_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::layout::scalar_table::Layout::column_types,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace scalar_table
 
 /* **************************************** */
 // Owner
@@ -224,7 +38,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct ScalarTable
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<ScalarTable,
-                                             scalar_table::Layout::column_types,
+                                             scalar_table::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = scalar_table::Schema;
     using Operations = native_soa::StorageOperations;
@@ -282,7 +96,7 @@ struct ScalarTable
     auto float_encoding(this auto& self) { return self.view().float_encoding(); }
     auto varint_encoding(this auto& self) { return self.view().varint_encoding(); }
     using RowOperations = soa_storage_detail::
-        OwnerRowOperations<ScalarTable, Layout::column_types, native_soa::StorageOperations>;
+        OwnerRowOperations<ScalarTable, scalar_table::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append(lispb::schema::TypeId value);

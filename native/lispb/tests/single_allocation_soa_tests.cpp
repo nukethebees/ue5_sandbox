@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -22,6 +23,16 @@ namespace single_allocation_tests {
 using lispb::codegen::CompilerTestContext;
 using lispb::test_support::expect_contains_all;
 using lispb::test_support::expect_contains_none;
+
+auto generated_headers(std::span<lispb::codegen::GeneratedFile const> files) -> std::string {
+    std::string headers;
+    for (auto const& file : files) {
+        if (file.path.extension() == ".h") {
+            headers += file.content;
+        }
+    }
+    return headers;
+}
 
 TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
     CompilerTestContext ctx;
@@ -38,7 +49,7 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
             (member nested_types array example::sub::Token)
             (member foreign_types array other::Token)
             (member shadowed_types array example::Base))))"))};
-    auto const& output{files.front().content};
+    auto const output{generated_headers(files)};
     expect_contains_all(
         output,
         {"namespace world_aabbs",
@@ -50,7 +61,7 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
          "ColumnLayouts<std::int32_t, float, Token, sub::Token, other::Token, Base>",
          "Element<Base>* shadowed_types",
          "struct DataPointers",
-         "ViewBase<Layout::column_types, DataPointers, Const>"});
+         "ViewBase<ColumnTypes, DataPointers, Const>"});
     EXPECT_FALSE(output.contains("make_data_unchecked("));
     expect_contains_all(output, {"auto ids() const", "ids_column{0ULL}", "nested_xs_column{1ULL}"});
     EXPECT_FALSE(output.contains("LayoutColumns"));
@@ -79,7 +90,7 @@ TEST(SingleAllocationSoa, RowOperationsUseNestedEquivalentValues) {
           (struct Rows
             (member ids array std::int32_t)
             (member points nested Points))))"))};
-    auto const& output{files.front().content};
+    auto const output{generated_headers(files)};
     expect_contains_all(output,
                         {("void set(size_type index, std::int32_t const new_ids, Point const "
                           "new_points) const"),
@@ -106,7 +117,7 @@ auto render(std::string_view declarations) -> std::string {
         parse_test_manifest(ctx,
                             R"((module test :header "Test.h" :source "Test.cpp" )" +
                                 std::string{declarations} + ")"))};
-    return files.front().content;
+    return generated_headers(files);
 }
 
 TEST(SingleAllocationSoa, AuthoredRowFunctionsSuppressAutomaticOverloads) {
@@ -281,7 +292,7 @@ TEST_P(ConflictingSoaModuleDeclaration, RejectsSharedViewTypeCollisions) {
 
 INSTANTIATE_TEST_SUITE_P(SingleAllocationSoa,
                          ConflictingSoaModuleDeclaration,
-                         testing::Values("CompactView", "DataPointers"));
+                         testing::Values("CompactView", "DataPointers", "ColumnTypes"));
 
 TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
     auto const output{render(schemas() + R"(
@@ -307,8 +318,9 @@ TEST(SingleAllocationSoa, PreservesCommonApiInSchemaNamespace) {
               :body #cpp{return $column(values)[0];}cpp#)
             (mutable-view-function clear_first void :body #cpp{$column(values)[0] = 0;}cpp#)
             (view-function read_first float :const true :body #cpp{return $column(values)[0];}cpp#))))"))};
-    auto const& header{files.front().content};
-    auto const& implementation{files.back().content};
+    auto const header{generated_headers(files)};
+    ASSERT_EQ(files.at(1).path, "Api.cpp");
+    auto const& implementation{files.at(1).content};
     expect_contains_all(header,
                         {"struct ROWS_API LogicalRows",
                          "namespace logical_rows",

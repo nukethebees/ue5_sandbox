@@ -3,135 +3,15 @@
 
 #pragma once
 
+#include "entity_overlaps_compact_view.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/entities/entity_id.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
-#include <cstddef>
-#include <cstdint>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj::sim::collision {
-namespace entity_entity_overlaps {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<EntityId, EntityId> {
-    static constexpr std::size_t first_entities_column{0ULL};
-    static constexpr std::size_t second_entities_column{1ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityId>* first_entities{};
-    Element<EntityId>* second_entities{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.first_entities, self.second_entities);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.first_entities(), source.second_entities());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = entity_entity_overlaps::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto first_entities() const { return this->column(this->columns_.first_entities); }
-    auto second_entities() const { return this->column(this->columns_.second_entities); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Strided views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::StridedViewBase<EntityId, Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::StridedViewBase<EntityId, Const>;
-    using Base::Base;
-    using Layout = entity_entity_overlaps::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    using State = std::conditional_t<Const,
-                                     soa_storage_detail::StorageState const,
-                                     soa_storage_detail::StorageState>;
-    CompactViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{
-              soa_storage_detail::make_strided_view<Base, Layout>(state,
-                                                                  offset,
-                                                                  count,
-                                                                  Layout::first_entities_column,
-                                                                  Layout::second_entities_column)} {
-
-    }
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto first_entities() const { return this->column(0LL); }
-    auto second_entities() const { return this->column(1LL); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(std::is_trivially_copyable_v<CompactConstView>);
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(std::is_trivially_copyable_v<CompactView>);
-
-} // namespace entity_entity_overlaps
 
 /* **************************************** */
 // Owner
@@ -142,7 +22,7 @@ static_assert(std::is_trivially_copyable_v<CompactView>);
 struct EntityEntityOverlaps
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<EntityEntityOverlaps,
-                                             entity_entity_overlaps::Layout::column_types,
+                                             entity_entity_overlaps::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = entity_entity_overlaps::Schema;
     using Operations = native_soa::StorageOperations;
@@ -188,9 +68,10 @@ struct EntityEntityOverlaps
   public:
     auto first_entities(this auto& self) { return self.view().first_entities(); }
     auto second_entities(this auto& self) { return self.view().second_entities(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<EntityEntityOverlaps,
-                                                                 Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<EntityEntityOverlaps,
+                                               entity_entity_overlaps::ColumnTypes,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
@@ -198,116 +79,6 @@ struct EntityEntityOverlaps
     friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
-
-namespace entity_static_overlaps {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout : single_allocation_layout::ColumnLayouts<EntityId, StaticGeometryIndex> {
-    static constexpr std::size_t entities_column{0ULL};
-    static constexpr std::size_t static_geometry_indices_column{1ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<EntityId>* entities{};
-    Element<StaticGeometryIndex>* static_geometry_indices{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.entities, self.static_geometry_indices);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.entities(), source.static_geometry_indices());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = entity_static_overlaps::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entities() const { return this->column(this->columns_.entities); }
-    auto static_geometry_indices() const {
-        return this->column(this->columns_.static_geometry_indices);
-    }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ioj::sim::collision::entity_static_overlaps::Layout::column_types,
-        ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = entity_static_overlaps::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto entities() const { return this->template column<EntityId>(Layout::entities_column); }
-    auto static_geometry_indices() const {
-        return this->template column<StaticGeometryIndex>(Layout::static_geometry_indices_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::sim::collision::entity_static_overlaps::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace entity_static_overlaps
 
 /* **************************************** */
 // Owner
@@ -318,7 +89,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct EntityStaticOverlaps
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<EntityStaticOverlaps,
-                                             entity_static_overlaps::Layout::column_types,
+                                             entity_static_overlaps::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = entity_static_overlaps::Schema;
     using Operations = native_soa::StorageOperations;
@@ -364,9 +135,10 @@ struct EntityStaticOverlaps
   public:
     auto entities(this auto& self) { return self.view().entities(); }
     auto static_geometry_indices(this auto& self) { return self.view().static_geometry_indices(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<EntityStaticOverlaps,
-                                                                 Layout::column_types,
-                                                                 native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<EntityStaticOverlaps,
+                                               entity_static_overlaps::ColumnTypes,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:

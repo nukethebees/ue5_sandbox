@@ -7,187 +7,14 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/collision/query_result_types.h"
+#include "ioj/sim/collision/trace_hits_compact_view.h"
 #include "ioj/sim/entities/entity_id.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
-#include "ioj/vectors3f.h"
+#include "ioj/single_allocation/operations.h"
 
 #include <cassert>
-#include <cstddef>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj::sim {
-namespace trace_hits {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::
-          ColumnLayouts<float, float, float, EntityId, collision::StaticGeometryIndex, TraceHit> {
-    static constexpr std::size_t locations_xs_column{0ULL};
-    static constexpr std::size_t locations_ys_column{1ULL};
-    static constexpr std::size_t locations_zs_column{2ULL};
-    static constexpr std::size_t entities_column{3ULL};
-    static constexpr std::size_t static_geometry_indices_column{4ULL};
-    static constexpr std::size_t hits_column{5ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* locations_xs{};
-    Element<float>* locations_ys{};
-    Element<float>* locations_zs{};
-    Element<EntityId>* entities{};
-    Element<collision::StaticGeometryIndex>* static_geometry_indices{};
-    Element<TraceHit>* hits{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.locations_xs,
-                    self.locations_ys,
-                    self.locations_zs,
-                    self.entities,
-                    self.static_geometry_indices,
-                    self.hits);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        auto const& locations_view{source.view_locations()};
-        return func(locations_view.xs(),
-                    locations_view.ys(),
-                    locations_view.zs(),
-                    source.entities(),
-                    source.static_geometry_indices(),
-                    source.hits());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = trace_hits::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->columns_.locations_xs,
-                this->columns_.locations_ys,
-                this->columns_.locations_zs,
-                this->num()};
-    }
-    auto entities() const { return this->column(this->columns_.entities); }
-    auto static_geometry_indices() const {
-        return this->column(this->columns_.static_geometry_indices);
-    }
-    auto hits() const { return this->column(this->columns_.hits); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::sim::trace_hits::Layout::column_types, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             Vector3f const new_locations,
-             EntityId const new_entities,
-             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices,
-             ioj::sim::TraceHit const new_hits) const {
-        assert((index < num()));
-        this->view_locations().set(index, new_locations);
-        this->entities()[index] = new_entities;
-        this->static_geometry_indices()[index] = new_static_geometry_indices;
-        this->hits()[index] = new_hits;
-    }
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = trace_hits::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto view_locations() const
-        -> std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView> {
-        return soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, vectors3f::CompactConstView, vectors3f::CompactView>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::locations_xs_column,
-                    Layout::locations_ys_column);
-    }
-    auto entities() const { return this->template column<EntityId>(Layout::entities_column); }
-    auto static_geometry_indices() const {
-        return this->template column<collision::StaticGeometryIndex>(
-            Layout::static_geometry_indices_column);
-    }
-    auto hits() const { return this->template column<TraceHit>(Layout::hits_column); }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base =
-        ioj::soa_storage_detail::ViewRowOperations<CompactView,
-                                                   ioj::sim::trace_hits::Layout::column_types,
-                                                   CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-    void set(size_type index,
-             Vector3f const new_locations,
-             EntityId const new_entities,
-             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices,
-             ioj::sim::TraceHit const new_hits) const {
-        assert((index < num()));
-        this->view_locations().set(index, new_locations);
-        this->entities()[index] = new_entities;
-        this->static_geometry_indices()[index] = new_static_geometry_indices;
-        this->hits()[index] = new_hits;
-    }
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace trace_hits
 
 /* **************************************** */
 // Owner
@@ -201,9 +28,8 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 // hits: ioj::sim::TraceHit
 struct TraceHits
     : protected native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<TraceHits,
-                                             trace_hits::Layout::column_types,
-                                             native_soa::StorageOperations> {
+    , soa_storage_detail::
+          OwnerRowOperations<TraceHits, trace_hits::ColumnTypes, native_soa::StorageOperations> {
     using soa_schema = trace_hits::Schema;
     using Operations = native_soa::StorageOperations;
     using Layout = trace_hits::Layout;
@@ -251,7 +77,7 @@ struct TraceHits
     auto static_geometry_indices(this auto& self) { return self.view().static_geometry_indices(); }
     auto hits(this auto& self) { return self.view().hits(); }
     using RowOperations = soa_storage_detail::
-        OwnerRowOperations<TraceHits, Layout::column_types, native_soa::StorageOperations>;
+        OwnerRowOperations<TraceHits, trace_hits::ColumnTypes, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,

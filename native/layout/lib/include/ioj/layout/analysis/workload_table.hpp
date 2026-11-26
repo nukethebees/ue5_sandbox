@@ -9,253 +9,15 @@
 #include "ioj/layout/analysis/region_footprint.hpp"
 #include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/layout/analysis/workload_id.hpp"
+#include "ioj/layout/analysis/workload_table_compact_view.hpp"
 #include "ioj/layout/analyzer/cache_capacity_analysis.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/single_allocation/layout.h"
-#include "ioj/single_allocation/view.h"
+#include "ioj/single_allocation/operations.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <memory_resource>
-#include <optional>
-#include <type_traits>
 
 namespace ioj::layout {
-namespace workload_table {
-struct Schema;
-struct CompactView;
-struct CompactConstView;
-struct View;
-struct ConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct Layout
-    : single_allocation_layout::ColumnLayouts<AnalysisId,
-                                              RowRange,
-                                              std::uint64_t,
-                                              std::uint64_t,
-                                              PayloadFootprint,
-                                              PayloadFootprint,
-                                              RegionFootprint,
-                                              RegionFootprint,
-                                              CacheCapacityAnalysis,
-                                              PackedAccessWaste,
-                                              std::uint8_t,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>,
-                                              std::optional<std::uint64_t>> {
-    static constexpr std::size_t analysis_column{0ULL};
-    static constexpr std::size_t selections_column{1ULL};
-    static constexpr std::size_t element_count_column{2ULL};
-    static constexpr std::size_t multiplicity_column{3ULL};
-    static constexpr std::size_t bytes_column{4ULL};
-    static constexpr std::size_t bits_column{5ULL};
-    static constexpr std::size_t cache_column{6ULL};
-    static constexpr std::size_t pages_column{7ULL};
-    static constexpr std::size_t cache_capacity_column{8ULL};
-    static constexpr std::size_t packed_waste_column{9ULL};
-    static constexpr std::size_t footprint_exact_column{10ULL};
-    static constexpr std::size_t storage_bytes_column{11ULL};
-    static constexpr std::size_t full_logical_payload_bytes_column{12ULL};
-    static constexpr std::size_t unselected_payload_bytes_column{13ULL};
-    static constexpr std::size_t allocated_payload_bytes_column{14ULL};
-    static constexpr std::size_t capacity_slack_bytes_column{15ULL};
-};
-
-/* **************************************** */
-// Column pointers
-/* **************************************** */
-template <typename Byte>
-struct DataPointers {
-    template <typename T>
-    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<AnalysisId>* analysis{};
-    Element<RowRange>* selections{};
-    Element<std::uint64_t>* element_count{};
-    Element<std::uint64_t>* multiplicity{};
-    Element<PayloadFootprint>* bytes{};
-    Element<PayloadFootprint>* bits{};
-    Element<RegionFootprint>* cache{};
-    Element<RegionFootprint>* pages{};
-    Element<CacheCapacityAnalysis>* cache_capacity{};
-    Element<PackedAccessWaste>* packed_waste{};
-    Element<std::uint8_t>* footprint_exact{};
-    Element<std::optional<std::uint64_t>>* storage_bytes{};
-    Element<std::optional<std::uint64_t>>* full_logical_payload_bytes{};
-    Element<std::optional<std::uint64_t>>* unselected_payload_bytes{};
-    Element<std::optional<std::uint64_t>>* allocated_payload_bytes{};
-    Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
-    template <typename Self, typename Func>
-    static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.analysis,
-                    self.selections,
-                    self.element_count,
-                    self.multiplicity,
-                    self.bytes,
-                    self.bits,
-                    self.cache,
-                    self.pages,
-                    self.cache_capacity,
-                    self.packed_waste,
-                    self.footprint_exact,
-                    self.storage_bytes,
-                    self.full_logical_payload_bytes,
-                    self.unselected_payload_bytes,
-                    self.allocated_payload_bytes,
-                    self.capacity_slack_bytes);
-    }
-};
-
-struct Schema {
-    template <typename Columns, typename Func>
-    static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.analysis(),
-                    source.selections(),
-                    source.element_count(),
-                    source.multiplicity(),
-                    source.bytes(),
-                    source.bits(),
-                    source.cache(),
-                    source.pages(),
-                    source.cache_capacity(),
-                    source.packed_waste(),
-                    source.footprint_exact(),
-                    source.storage_bytes(),
-                    source.full_logical_payload_bytes(),
-                    source.unselected_payload_bytes(),
-                    source.allocated_payload_bytes(),
-                    source.capacity_slack_bytes());
-    }
-};
-
-/* **************************************** */
-// Views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const> {
-    using Base = soa_storage_detail::ViewBase<Layout::column_types, DataPointers, Const>;
-    using Base::Base;
-    using Layout = workload_table::Layout;
-    using view_type = View;
-    using const_view_type = ConstView;
-    using soa_schema = Schema;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto analysis() const { return this->column(this->columns_.analysis); }
-    auto selections() const { return this->column(this->columns_.selections); }
-    auto element_count() const { return this->column(this->columns_.element_count); }
-    auto multiplicity() const { return this->column(this->columns_.multiplicity); }
-    auto bytes() const { return this->column(this->columns_.bytes); }
-    auto bits() const { return this->column(this->columns_.bits); }
-    auto cache() const { return this->column(this->columns_.cache); }
-    auto pages() const { return this->column(this->columns_.pages); }
-    auto cache_capacity() const { return this->column(this->columns_.cache_capacity); }
-    auto packed_waste() const { return this->column(this->columns_.packed_waste); }
-    auto footprint_exact() const { return this->column(this->columns_.footprint_exact); }
-    auto storage_bytes() const { return this->column(this->columns_.storage_bytes); }
-    auto full_logical_payload_bytes() const {
-        return this->column(this->columns_.full_logical_payload_bytes);
-    }
-    auto unselected_payload_bytes() const {
-        return this->column(this->columns_.unselected_payload_bytes);
-    }
-    auto allocated_payload_bytes() const {
-        return this->column(this->columns_.allocated_payload_bytes);
-    }
-    auto capacity_slack_bytes() const { return this->column(this->columns_.capacity_slack_bytes); }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ioj::layout::workload_table::Layout::column_types, ViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct CompactViewImpl : soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Schema;
-    using Base = soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = workload_table::Layout;
-    using view_type = CompactView;
-    using const_view_type = CompactConstView;
-    using resolved_view_type = std::conditional_t<Const, ConstView, View>;
-    template <bool Enabled = Const>
-    CompactViewImpl(CompactViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto analysis() const { return this->template column<AnalysisId>(Layout::analysis_column); }
-    auto selections() const { return this->template column<RowRange>(Layout::selections_column); }
-    auto element_count() const {
-        return this->template column<std::uint64_t>(Layout::element_count_column);
-    }
-    auto multiplicity() const {
-        return this->template column<std::uint64_t>(Layout::multiplicity_column);
-    }
-    auto bytes() const { return this->template column<PayloadFootprint>(Layout::bytes_column); }
-    auto bits() const { return this->template column<PayloadFootprint>(Layout::bits_column); }
-    auto cache() const { return this->template column<RegionFootprint>(Layout::cache_column); }
-    auto pages() const { return this->template column<RegionFootprint>(Layout::pages_column); }
-    auto cache_capacity() const {
-        return this->template column<CacheCapacityAnalysis>(Layout::cache_capacity_column);
-    }
-    auto packed_waste() const {
-        return this->template column<PackedAccessWaste>(Layout::packed_waste_column);
-    }
-    auto footprint_exact() const {
-        return this->template column<std::uint8_t>(Layout::footprint_exact_column);
-    }
-    auto storage_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(Layout::storage_bytes_column);
-    }
-    auto full_logical_payload_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::full_logical_payload_bytes_column);
-    }
-    auto unselected_payload_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::unselected_payload_bytes_column);
-    }
-    auto allocated_payload_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::allocated_payload_bytes_column);
-    }
-    auto capacity_slack_bytes() const {
-        return this->template column<std::optional<std::uint64_t>>(
-            Layout::capacity_slack_bytes_column);
-    }
-};
-struct CompactConstView : CompactViewImpl<true> {
-    using Base = CompactViewImpl<true>;
-    using Base::Base;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactConstView>());
-struct CompactView
-    : soa_storage_detail::
-          ViewRowOperations<CompactView, Layout::column_types, CompactViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        CompactView,
-        ioj::layout::workload_table::Layout::column_types,
-        CompactViewImpl<false>>;
-    using Base::Base;
-    using Base::set;
-};
-static_assert(soa_storage_detail::validate_compact_view<CompactView>());
-
-} // namespace workload_table
 
 /* **************************************** */
 // Owner
@@ -280,7 +42,7 @@ static_assert(soa_storage_detail::validate_compact_view<CompactView>());
 struct WorkloadTable
     : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<WorkloadTable,
-                                             workload_table::Layout::column_types,
+                                             workload_table::ColumnTypes,
                                              native_soa::StorageOperations> {
     using soa_schema = workload_table::Schema;
     using Operations = native_soa::StorageOperations;
@@ -344,8 +106,9 @@ struct WorkloadTable
     }
     auto allocated_payload_bytes(this auto& self) { return self.view().allocated_payload_bytes(); }
     auto capacity_slack_bytes(this auto& self) { return self.view().capacity_slack_bytes(); }
-    using RowOperations = soa_storage_detail::
-        OwnerRowOperations<WorkloadTable, Layout::column_types, native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<WorkloadTable,
+                                                                 workload_table::ColumnTypes,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     WorkloadId
