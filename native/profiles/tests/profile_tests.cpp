@@ -4,7 +4,6 @@
 
 #include <gtest/gtest.h>
 
-
 namespace ioj::profiles {
 
 namespace save_profile_manager_test {

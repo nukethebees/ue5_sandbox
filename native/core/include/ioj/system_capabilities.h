@@ -1,14 +1,18 @@
 #pragma once
+
 #include <ioj/cpu_simd_capabilities.h>
 
 #include <cstdint>
 #include <string>
+
 namespace ioj {
 enum class LargePageAccess { Unsupported, Enabled, PrivilegeUnavailable, QueryFailed };
+
 struct WindowsMemoryCapabilities {
     std::uint64_t large_page_minimum_bytes{};
     LargePageAccess large_page_access_status{LargePageAccess::QueryFailed};
 };
+
 struct SystemCapabilities {
     std::string platform_name;
     std::string host_architecture;

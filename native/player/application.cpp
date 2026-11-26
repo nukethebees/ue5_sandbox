@@ -193,9 +193,11 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     if (!play_result && !shutdown_result) {
         play_result.error() += "; " + shutdown_result.error();
     }
+
     if (!play_result) {
         return play_result;
     }
+
     return shutdown_result;
 }
 auto Application::play(Window& window,
@@ -203,11 +205,12 @@ auto Application::play(Window& window,
                        bool exit_when_ready) -> ApplicationResult {
     if (!IojPlayer_GameReady()) {
         return ApplicationResult{std::unexpect,
-                      "Unreal did not initialize a playable world. See the game log."};
+                                 "Unreal did not initialize a playable world. See the game log."};
     }
 
     if (!IojPlayer_ApplyPreferences()) {
-        return ApplicationResult{std::unexpect, "Could not apply player preferences. See the game log."};
+        return ApplicationResult{std::unexpect,
+                                 "Could not apply player preferences. See the game log."};
     }
 
     if (settings_.launch_display_mode() != LaunchDisplayMode::Headless) {
@@ -269,8 +272,8 @@ auto Application::play(Window& window,
             }
 
             if (startup == MissionStartup::Failed || std::chrono::steady_clock::now() >= deadline) {
-                return ApplicationResult{std::unexpect,
-                              "Mission did not reach simulation readiness. See the game log."};
+                return ApplicationResult{
+                    std::unexpect, "Mission did not reach simulation readiness. See the game log."};
             }
         }
 

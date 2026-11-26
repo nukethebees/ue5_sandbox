@@ -132,6 +132,7 @@ bool ProfileManager::activate_profile(std::string const& profile_id) {
     if (profile_id == index_.active_profile_id) {
         return true;
     }
+
     return storage_.with_exclusive_access([this, &profile_id] {
         ProfileIndexData latest_index{};
         if (storage_.load_index(latest_index) != LoadResult::succeeded ||
