@@ -46,9 +46,8 @@ Unreal Engine 5.8 project.
 * Drive all builds, including UBT, through CMake. Read [CMake style](cmake/STYLE.md) before editing CMake files.
 * After worktree preparation, build affected targets and run relevant CTest labels. Fast loop:
   `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"`.
-  Run relevant light checks after implementation and expensive categories once on the final
-  candidate. Integration does not rerun validation. Build Unreal for tooling/native work only
-  when a dependency requires it.
+  Run the smallest existing checks that cover the changed behavior. Run a full Unreal editor
+  build or game cook only when the change requires it. Integration does not rerun validation.
 * `native-simulation-tests` runs the simulation suite. `native-tests` includes native soak and
   compile contracts and excludes standalone developer tools.
 * Developer-tool tests are opt-in by scope: run them for changes to tools/tests, their directly
@@ -177,6 +176,9 @@ Unreal Engine 5.8 project.
 
 # Testing
 
+* Test the UI manually only when the maintainer explicitly asks. This includes driving
+  buttons through accessibility tools or temporary scripts. Let existing fully automated UI
+  tests run normally as part of the relevant test workflow.
 * Do not use image-based validation, including screenshots or screen recordings.
 * Run static analysis only when explicitly requested or modifying its tooling. Run AddressSanitizer (ASAN)
   builds/tests only when explicitly requested.
