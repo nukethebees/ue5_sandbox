@@ -199,3 +199,18 @@
     (value StarfoxFirePrimaryKeyboardMouse :serialized-name "Starfox.FirePrimary.KeyboardMouse")
     (value StarfoxFirePrimaryGamepad :serialized-name "Starfox.FirePrimary.Gamepad" :groups (gamepad_mapping))
     (projections (cpp))))
+
+(module input_modifiers
+  :header "native/player/include/ioj/host/modifiers.h"
+  :namespace ioj::host
+  (record Modifiers :layout packed :bits 16
+    (member left_shift bool :bits 1)
+    (member right_shift bool :bits 1)
+    (member left_control bool :bits 1)
+    (member right_control bool :bits 1)
+    (member left_alt bool :bits 1)
+    (member right_alt bool :bits 1)
+    (member left_command bool :bits 1)
+    (member right_command bool :bits 1)
+    (member caps_lock bool :bits 1)
+    (projections (cpp :storage std::uint16_t))))

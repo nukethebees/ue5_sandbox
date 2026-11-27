@@ -170,6 +170,7 @@ native/levels/lib/include/ioj/world_aabb.h
 native/levels/lib/include/ioj/world_aabb_reader.h
 native/levels/lib/include/ioj/world_aabb_writer.h
 native/levels/lib/src/game_settings.cpp
+native/player/include/ioj/host/modifiers.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data_compact_view.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data_view.h

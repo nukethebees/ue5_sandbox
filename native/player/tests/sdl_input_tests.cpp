@@ -13,6 +13,7 @@
 #include <vector>
 
 namespace ioj::host::tests {
+static_assert(sizeof(Modifiers) == 2);
 struct Presentation {
     InputRoute route;
     std::vector<std::string> keys;

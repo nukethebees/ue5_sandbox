@@ -24,15 +24,15 @@ auto controller() -> ASpaceGamePlayerController* {
     return world ? Cast<ASpaceGamePlayerController>(world->GetFirstPlayerController()) : nullptr;
 }
 auto modifier_state(Modifiers modifiers) -> FModifierKeysState {
-    return {modifiers.left_shift,
-            modifiers.right_shift,
-            modifiers.left_control,
-            modifiers.right_control,
-            modifiers.left_alt,
-            modifiers.right_alt,
-            modifiers.left_command,
-            modifiers.right_command,
-            modifiers.caps_lock};
+    return {modifiers.left_shift(),
+            modifiers.right_shift(),
+            modifiers.left_control(),
+            modifiers.right_control(),
+            modifiers.left_alt(),
+            modifiers.right_alt(),
+            modifiers.left_command(),
+            modifiers.right_command(),
+            modifiers.caps_lock()};
 }
 auto mouse_button(int button) -> FKey {
     switch (button) {

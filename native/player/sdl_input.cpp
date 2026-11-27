@@ -353,15 +353,15 @@ void SdlInput::handle(SDL_Event const& event) {
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP: {
             auto const mod{event.key.mod};
-            modifiers_ = {bool(mod & SDL_KMOD_LSHIFT),
-                          bool(mod & SDL_KMOD_RSHIFT),
-                          bool(mod & SDL_KMOD_LCTRL),
-                          bool(mod & SDL_KMOD_RCTRL),
-                          bool(mod & SDL_KMOD_LALT),
-                          bool(mod & SDL_KMOD_RALT),
-                          bool(mod & SDL_KMOD_LGUI),
-                          bool(mod & SDL_KMOD_RGUI),
-                          bool(mod & SDL_KMOD_CAPS)};
+            modifiers_ = host::Modifiers{bool(mod & SDL_KMOD_LSHIFT),
+                                         bool(mod & SDL_KMOD_RSHIFT),
+                                         bool(mod & SDL_KMOD_LCTRL),
+                                         bool(mod & SDL_KMOD_RCTRL),
+                                         bool(mod & SDL_KMOD_LALT),
+                                         bool(mod & SDL_KMOD_RALT),
+                                         bool(mod & SDL_KMOD_LGUI),
+                                         bool(mod & SDL_KMOD_RGUI),
+                                         bool(mod & SDL_KMOD_CAPS)};
             key(key_name(event.key), event.key.down, event.key.repeat, event.key.key);
             if (event.key.down && event.key.key == SDLK_BACKSPACE &&
                 route_.context == input::Context::Menu && !(mod & (SDL_KMOD_CTRL | SDL_KMOD_ALT)) &&

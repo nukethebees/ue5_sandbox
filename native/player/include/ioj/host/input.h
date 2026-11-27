@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/host/modifiers.h>
 #include <ioj/input/flight_input.h>
 
 #include <cstdint>
@@ -20,18 +21,6 @@ struct PointerInput {
     float x;
     float y;
     float wheel;
-};
-
-struct Modifiers {
-    bool left_shift;
-    bool right_shift;
-    bool left_control;
-    bool right_control;
-    bool left_alt;
-    bool right_alt;
-    bool left_command;
-    bool right_command;
-    bool caps_lock;
 };
 
 struct ViewerMotion {
