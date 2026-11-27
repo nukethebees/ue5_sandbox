@@ -1,8 +1,9 @@
 #pragma once
 
 #include <ioj/host/modifiers.h>
-#include <ioj/input/flight_input.h>
+#include <ioj/input/key_code.h>
 #include <ioj/input/menu_navigation.h>
+#include <ioj/vector.h>
 
 #include <cstdint>
 #include <optional>
@@ -12,13 +13,6 @@
 #include <variant>
 
 namespace ioj::host {
-struct InputRoute {
-    input::Context context{};
-    bool movable_viewer{};
-    bool resume_available{};
-    bool operator==(InputRoute const&) const = default;
-};
-
 struct MenuStatus {
     bool pause_visible{};
     bool accepts_resume{};

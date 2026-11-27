@@ -15,7 +15,7 @@
 #include <vector>
 
 namespace ioj {
-class SdlInput;
+class GameInput;
 
 struct CliArgs;
 class LevelStorage;
@@ -42,7 +42,7 @@ class Application {
     void publish_profiles() const;
     void process_profile_actions(std::span<host::ProfileAction const> actions);
     void process_preferences(Window& window,
-                             SdlInput& input,
+                             GameInput& input,
                              std::span<host::PreferenceEdit const> edits);
     auto launch_level(LevelStorage& storage, std::filesystem::path const& path)
         -> ApplicationResult;

@@ -1,4 +1,6 @@
+#include "player/game_input.h"
 #include "player/sdl_input.h"
+#include <ioj/input/ship_input.h>
 
 #include <gtest/gtest.h>
 #include <SDL3/SDL_error.h>
@@ -52,6 +54,7 @@ void present_input(PresentationEvent const& event) {
 namespace ioj::tests {
 class SdlPlayerInput : public ::testing::Test {
   protected:
+    bool route_to_pause_menu{};
     void SetUp() override {
         SDL_SetMainReady();
         ASSERT_TRUE(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) << SDL_GetError();
@@ -59,28 +62,43 @@ class SdlPlayerInput : public ::testing::Test {
         window_ = SDL_CreateWindow("Input test", 100, 100, 0);
         ASSERT_NE(window_, nullptr) << SDL_GetError();
         ASSERT_EQ(SDL_GetKeyboardFocus(), window_);
-        input_.emplace(*window_, settings_);
+        devices_.emplace(*window_);
+        input_.emplace(settings_);
     }
     void TearDown() override {
         input_.reset();
+        devices_.reset();
         SDL_DestroyWindow(window_);
         SDL_Quit();
     }
     void frame() {
         input_->begin_frame();
-        input_->synchronize(host::tests::presentation.route, host::tests::presentation.menu);
+        auto synchronize = [&] {
+            input_->synchronize(host::tests::presentation.route, host::tests::presentation.menu);
+            devices_->set_window_modes(input_->relative_mouse(), input_->editing_text());
+        };
+        synchronize();
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
-            input_->handle(event);
-            consume();
+            if (auto physical{devices_->translate(event)}) {
+                input_->resolve(*physical);
+                input_->append_commands(commands_);
+                consume();
+            }
+            synchronize();
         }
-        input_->finish_frame(0.016);
+        input_->repeat_navigation(0.016);
+        input_->append_commands(commands_);
+        input_->append_frame_commands(0.016, commands_);
         consume();
     }
     void consume() {
-        for (auto const& event : input_->events()) {
+        for (auto const& event : commands_) {
             if (auto const* action{std::get_if<host::PlayerAction>(&event)}) {
                 host::tests::presentation.actions.push_back(*action);
+                if (route_to_pause_menu && *action == host::PlayerAction::OpenPause) {
+                    host::tests::presentation.route = {input::Context::Menu, true};
+                }
             } else if (auto const* button{std::get_if<host::MenuButton>(&event)}) {
                 if (button->down) {
                     host::tests::presentation.commands.push_back(button->command);
@@ -90,6 +108,7 @@ class SdlPlayerInput : public ::testing::Test {
                 host::present_input(std::get<host::PresentationEvent>(event));
             }
         }
+        commands_.clear();
     }
     void press(SDL_Keycode key, SDL_Scancode scancode, SDL_Keymod modifiers = SDL_KMOD_NONE) {
         SDL_Event event{};
@@ -103,7 +122,11 @@ class SdlPlayerInput : public ::testing::Test {
     }
     ControlsSettings settings_{};
     SDL_Window* window_{};
-    std::optional<SdlInput> input_;
+    std::optional<SdlInput> devices_;
+    std::optional<GameInput> input_;
+    std::vector<host::InputEvent> commands_;
+    std::vector<sim::player::PlayerInputKind> ship_events_;
+    auto ship_frame() { return input::ship_input_frame(input_->state(), ship_events_); }
 };
 
 TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
@@ -148,20 +171,20 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     press(SDLK_W, SDL_SCANCODE_W);
     press(SDLK_LSHIFT, SDL_SCANCODE_LSHIFT);
     frame();
-    EXPECT_EQ(input_->ship_frame().accelerator, 1.f);
-    ASSERT_EQ(input_->ship_frame().events.size(), 1u);
-    EXPECT_EQ(input_->ship_frame().events.front(), sim::player::PlayerInputKind::BoostPressed);
+    EXPECT_EQ(ship_frame().accelerator, 1.f);
+    ASSERT_EQ(ship_frame().events.size(), 1u);
+    EXPECT_EQ(ship_frame().events.front(), sim::player::PlayerInputKind::BoostPressed);
 
-    view.route = {input::Context::Observer, true};
+    view.route = {input::Context::Observer};
     press(SDLK_D, SDL_SCANCODE_D);
     frame();
     ASSERT_TRUE(view.motion);
     EXPECT_EQ(view.motion->right, 1.f);
-    EXPECT_EQ(input_->ship_frame().accelerator, 0.f);
-    ASSERT_EQ(input_->ship_frame().events.size(), 1u);
-    EXPECT_EQ(input_->ship_frame().events.front(), sim::player::PlayerInputKind::BoostReleased);
+    EXPECT_EQ(ship_frame().accelerator, 0.f);
+    ASSERT_EQ(ship_frame().events.size(), 1u);
+    EXPECT_EQ(ship_frame().events.front(), sim::player::PlayerInputKind::BoostReleased);
 
-    view.route = {input::Context::Benchmark, false};
+    view.route = {input::Context::Benchmark};
     view.motion.reset();
     press(SDLK_DOWN, SDL_SCANCODE_DOWN);
     press(SDLK_RETURN, SDL_SCANCODE_RETURN);
@@ -186,6 +209,45 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
               input::MainMenuItem::SelectLevel);
 }
 
+TEST_F(SdlPlayerInput, PauseReroutesTheNextEventInTheSamePoll) {
+    auto& view{host::tests::presentation};
+    route_to_pause_menu = true;
+    view.route = {input::Context::Gameplay};
+    press(SDLK_ESCAPE, SDL_SCANCODE_ESCAPE);
+    press(SDLK_DOWN, SDL_SCANCODE_DOWN);
+    frame();
+    EXPECT_EQ(view.actions, std::vector{host::PlayerAction::OpenPause});
+    EXPECT_EQ(view.commands, std::vector{input::MenuCommand::Down});
+}
+
+TEST_F(SdlPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
+    auto& view{host::tests::presentation};
+    view.route = {input::Context::Observer};
+    frame();
+    input_->resolve(input::PhysicalPointerButton{
+        {}, PhysicalKey::RightMouseButton, input::ButtonState::Pressed, 1});
+    input_->resolve(input::PointerMotion{{}, {20.f, 10.f}});
+    input_->resolve(input::WheelMotion{{}, 1.f});
+    input_->resolve(input::PhysicalButton{PhysicalKey::D, 0, {}, input::ButtonState::Pressed});
+    EXPECT_TRUE(input_->state().held.observer_right());
+    EXPECT_EQ(input_->state().observer_speed, input::ObserverSpeedPreset::Fast);
+    EXPECT_EQ(input_->state().axes_2d[input::Axis2DAction::ObserverLookDelta],
+              (Vector2f{20.f, -10.f}));
+    input_->resolve(input::FocusLost{});
+    EXPECT_FALSE(input_->relative_mouse());
+    EXPECT_TRUE(input_->state().released.observer_right());
+    EXPECT_EQ(input_->state().axes_2d[input::Axis2DAction::ObserverLookDelta], Vector2f{});
+
+    view.route = {input::Context::Menu};
+    frame();
+    input_->resolve(
+        input::PhysicalButton{PhysicalKey::GamepadDPadDown, 0, {}, input::ButtonState::Pressed});
+    input_->repeat_navigation(0.41);
+    input_->append_commands(commands_);
+    ASSERT_EQ(commands_.size(), 1u);
+    EXPECT_TRUE(std::get<host::MenuButton>(commands_.front()).repeat);
+}
+
 TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {
     auto& view{host::tests::presentation};
     SDL_Event event{};
@@ -204,7 +266,7 @@ TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {
         view.pointer,
         (std::vector<host::PointerAction>{host::PointerAction::Down, host::PointerAction::Up}));
 
-    view.route = {input::Context::Observer, true};
+    view.route = {input::Context::Observer};
     event.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
     event.button.button = SDL_BUTTON_RIGHT;
     event.button.down = true;
@@ -220,7 +282,7 @@ TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {
     event.button.button = SDL_BUTTON_MIDDLE;
     ASSERT_TRUE(SDL_PushEvent(&event));
     frame();
-    view.route = {input::Context::Menu, false, true};
+    view.route = {input::Context::Menu, true};
     event.button.type = SDL_EVENT_MOUSE_BUTTON_UP;
     event.button.down = false;
     ASSERT_TRUE(SDL_PushEvent(&event));
@@ -259,19 +321,19 @@ TEST_F(SdlPlayerInput, UnpluggingVirtualGamepadReleasesFlightButton) {
     ASSERT_TRUE(SDL_SetJoystickVirtualButton(stick, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, true));
     SDL_UpdateJoysticks();
     frame();
-    ASSERT_EQ(input_->ship_frame().events.size(), 1u);
-    EXPECT_EQ(input_->ship_frame().events.front(), sim::player::PlayerInputKind::BoostPressed);
+    ASSERT_EQ(ship_frame().events.size(), 1u);
+    EXPECT_EQ(ship_frame().events.front(), sim::player::PlayerInputKind::BoostPressed);
     ASSERT_TRUE(SDL_SetJoystickVirtualAxis(stick, SDL_GAMEPAD_AXIS_LEFT_TRIGGER, 32767));
     SDL_UpdateJoysticks();
     frame();
-    EXPECT_FLOAT_EQ(input_->ship_frame().accelerator, 1.f);
-    view.route = {input::Context::Menu, false, true};
+    EXPECT_FLOAT_EQ(ship_frame().accelerator, 1.f);
+    view.route = {input::Context::Menu, true};
     frame();
-    EXPECT_FLOAT_EQ(input_->ship_frame().accelerator, 0.f);
+    EXPECT_FLOAT_EQ(ship_frame().accelerator, 0.f);
     view.route = {input::Context::Gameplay, false};
     frame();
-    EXPECT_FLOAT_EQ(input_->ship_frame().accelerator, 1.f);
-    EXPECT_TRUE(input_->ship_frame().events.empty());
+    EXPECT_FLOAT_EQ(ship_frame().accelerator, 1.f);
+    EXPECT_TRUE(ship_frame().events.empty());
     ASSERT_TRUE(SDL_SetJoystickVirtualButton(stick, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, false));
     SDL_UpdateJoysticks();
     frame();
@@ -280,7 +342,7 @@ TEST_F(SdlPlayerInput, UnpluggingVirtualGamepadReleasesFlightButton) {
     frame();
     ASSERT_TRUE(SDL_DetachVirtualJoystick(id));
     frame();
-    ASSERT_EQ(input_->ship_frame().events.size(), 1u);
-    EXPECT_EQ(input_->ship_frame().events.front(), sim::player::PlayerInputKind::BoostReleased);
+    ASSERT_EQ(ship_frame().events.size(), 1u);
+    EXPECT_EQ(ship_frame().events.front(), sim::player::PlayerInputKind::BoostReleased);
 }
 }

@@ -2,6 +2,7 @@
 
 #include "player/cli_args.h"
 #include "player/engine.h"
+#include "player/game_input.h"
 #include "player/loaded_level.h"
 #include "player/sdl_input.h"
 #include "player/window.h"
@@ -11,6 +12,7 @@
 #include <ioj/files.h>
 #include <ioj/host/game_host_api.h>
 #include <ioj/host/level_host.h>
+#include <ioj/input/ship_input.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/presentation/level_catalog.h>
 #include <ioj/presentation/profile_view.h>
@@ -92,15 +94,15 @@ auto initialize_presentation(LoadedLevel& level) -> bool {
     }
     return initialized;
 }
-auto input_route(LoadedLevel const* level, host::MenuStatus menu) -> host::InputRoute {
+auto input_route(LoadedLevel const* level, host::MenuStatus menu) -> InputRoute {
     if (!level || level->presentation_setup || menu.pause_visible) {
-        return {input::Context::Menu, false, menu.accepts_resume};
+        return {input::Context::Menu, menu.accepts_resume};
     }
     switch (level->control_context) {
         case levels::ControlContext::Observer:
-            return {input::Context::Observer, true};
+            return {input::Context::Observer};
         case levels::ControlContext::Benchmark:
-            return {input::Context::Benchmark, false};
+            return {input::Context::Benchmark};
         case levels::ControlContext::Player: {
             auto const* ship{level->simulation.player_ship_simulation()};
             if (ship && ship->is_alive(level->simulation.entity_tables().health)) {
@@ -309,10 +311,14 @@ auto Application::play(Window& window,
     auto const deadline{previous_frame_time + std::chrono::minutes{2}};
     std::vector<AvailableLevel> available_levels;
 
-    SdlInput input{*window.sdl_window(), settings_.applied().controls};
+    SdlInput devices{*window.sdl_window()};
+    GameInput input{settings_.applied().controls};
+    std::vector<host::InputEvent> commands;
+    std::vector<sim::player::PlayerInputKind> ship_events;
     auto synchronize_input = [&] {
         auto const menu{host::menu_status()};
         input.synchronize(input_route(storage.get(), menu), menu);
+        devices.set_window_modes(input.relative_mouse(), input.editing_text());
     };
     bool end_selected{};
     bool end_benchmark{};
@@ -368,7 +374,7 @@ auto Application::play(Window& window,
         }
     };
     auto consume_input = [&] {
-        for (auto const& event : input.events()) {
+        for (auto const& event : commands) {
             if (auto const* action{std::get_if<host::PlayerAction>(&event)}) {
                 dispatch(*action);
             } else if (auto const* button{std::get_if<host::MenuButton>(&event)}) {
@@ -390,6 +396,7 @@ auto Application::play(Window& window,
             }
             process_widget_actions();
         }
+        commands.clear();
     };
     auto last_input_frame{previous_frame_time};
     while (!IojPlayer_ExitRequested()) {
@@ -400,8 +407,11 @@ auto Application::play(Window& window,
         bool close_requested{};
         bool viewport_changed{};
         while (SDL_PollEvent(&event)) {
-            input.handle(event);
-            consume_input();
+            if (auto physical{devices.translate(event)}) {
+                input.resolve(*physical);
+                input.append_commands(commands);
+                consume_input();
+            }
             synchronize_input();
             switch (event.type) {
                 case SDL_EVENT_QUIT:
@@ -449,7 +459,12 @@ auto Application::play(Window& window,
         auto const input_delta{std::chrono::duration<double>{input_time - last_input_frame}};
         last_input_frame = input_time;
         synchronize_input();
-        input.finish_frame(std::min(input_delta.count(), max_frame_delta_seconds));
+        auto const seconds{std::min(input_delta.count(), max_frame_delta_seconds)};
+        if (devices.focused()) {
+            input.repeat_navigation(seconds);
+            input.append_commands(commands);
+        }
+        input.append_frame_commands(seconds, commands);
         consume_input();
         if (auto result{tick_engine()}; !result) {
             return result;
@@ -531,7 +546,8 @@ auto Application::play(Window& window,
         }
 
         if (host::presents_level()) {
-            level->simulation.append_player_input(input.ship_frame());
+            level->simulation.append_player_input(
+                input::ship_input_frame(input.state(), ship_events));
 
             auto const frame_time{std::chrono::steady_clock::now()};
             if (messages.requested_simulation_mode == levels::LaunchMode::Running &&
@@ -645,7 +661,7 @@ void Application::process_profile_actions(std::span<host::ProfileAction const> a
 }
 
 void Application::process_preferences(Window& window,
-                                      SdlInput& input,
+                                      GameInput& input,
                                       std::span<host::PreferenceEdit const> edits) {
     auto const count{edits.size()};
     for (std::size_t index{}; index < count; ++index) {
