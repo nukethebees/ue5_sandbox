@@ -190,7 +190,9 @@ constexpr std::array<float, 5> viewer_speeds{5000.f, 15000.f, 50000.f, 150000.f,
 
 SdlInput::SdlInput(SDL_Window& window, ControlsSettings const& controls)
     : window_{window}
-    , controls_{controls} {}
+    , controls_{controls} {
+    flight_.configure(controls_, route_.context);
+}
 SdlInput::~SdlInput() {
     SDL_CloseGamepad(gamepad_);
 }
@@ -238,6 +240,12 @@ void SdlInput::refresh_bindings() {
 }
 void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character) {
     using enum host::PlayerAction;
+    if (route_.resume_available && flight_.is_pause_button(code)) {
+        if (!repeat && flight_.update(code, down ? 1.f : 0.f, controls_)) {
+            events_.emplace_back(RequestResume);
+        }
+        return;
+    }
     if (route_.context == input::Context::Menu) {
         events_.emplace_back(host::MenuKey{code, character, down, repeat, modifiers_});
         return;
@@ -247,7 +255,7 @@ void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character
     }
     if (route_.context == input::Context::Gameplay) {
         if (flight_.update(code, down ? 1.f : 0.f, controls_)) {
-            host::pause_or_exit_viewer();
+            events_.emplace_back(host::PlayerAction::OpenPause);
         }
         return;
     }
@@ -273,7 +281,7 @@ void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character
         return;
     }
     if (down && flight_.update(code, 1.f, controls_)) {
-        host::pause_or_exit_viewer();
+        events_.emplace_back(host::PlayerAction::OpenPause);
         return;
     }
     if (!down) {
@@ -363,6 +371,11 @@ void SdlInput::handle(SDL_Event const& event) {
                 break;
             }
             auto const mask{SDL_BUTTON_MASK(button.button)};
+            if ((route_.resume_available || route_.movable_viewer) &&
+                flight_.is_pause_button(name) && !(ui_mouse_buttons_ & mask)) {
+                key(name, button.down, false, 0);
+                break;
+            }
             bool const pointer_visible{
                 route_.context == input::Context::Menu ||
                 (route_.context == input::Context::BenchmarkViewer && !viewer_looking_)};
@@ -450,7 +463,7 @@ void SdlInput::axis_value(std::size_t axis, float value) {
         events_.emplace_back(host::MenuAxis{axis_keys[axis], value, modifiers_});
     } else if ((route_.context == input::Context::Gameplay || route_.movable_viewer) &&
                flight_.update(axis_keys[axis], value, controls_)) {
-        host::pause_or_exit_viewer();
+        events_.emplace_back(host::PlayerAction::OpenPause);
     }
     // Digital aliases are independently rebindable in the Controls menu.
     if ((before >= 0.5f) != (value >= 0.5f)) {

@@ -274,13 +274,6 @@ auto ASpaceGamePlayerController::set_control_context(levels::ControlContext cont
 void ASpaceGamePlayerController::present_steering(TOptional<FVector2D> position) {
     hud_.set_mouse_steering(position);
 }
-void ASpaceGamePlayerController::pause_or_exit_viewer() {
-    if (control_context_ == levels::ControlContext::Benchmark) {
-        return_to_level_select();
-    } else {
-        toggle_pause_game();
-    }
-}
 void ASpaceGamePlayerController::present_viewer_motion(host::ViewerMotion const& motion,
                                                        double dt) {
     if (control_context_ != levels::ControlContext::Observer) {
@@ -310,52 +303,6 @@ void ASpaceGamePlayerController::set_observer_movement_speed(float const speed) 
 /* **************************************** */
 // Modal and simulation transitions
 /* **************************************** */
-void ASpaceGamePlayerController::toggle_pause_game() {
-    if (!is_gameplay_mode()) {
-        return;
-    }
-
-    auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator)) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ASpaceGamePlayerController::toggle_pause_game: Orchestrator is invalid."));
-        return;
-    }
-
-    switch (orchestrator->get_state()) {
-        case sim::LevelState::StableSetup:
-            break;
-        case sim::LevelState::Running: {
-            if (return_to_level_select_pending_ || modal_ui_.is_completion_active() ||
-                modal_ui_.is_resume_pending()) {
-                return;
-            }
-
-            if (!suspend_gameplay_for_modal()) {
-                return;
-            }
-
-            orchestrator->pause_simulation();
-            break;
-        }
-        case sim::LevelState::Uninitialised:
-        case sim::LevelState::Paused: {
-            if (modal_ui_.is_pause_active()) {
-                modal_ui_.request_resume();
-            } else if (!modal_ui_.has_completion()) {
-                resume_game();
-            }
-            break;
-        }
-        case sim::LevelState::Stopped: {
-            UE_LOG(LogSandboxController,
-                   Error,
-                   TEXT("ASpaceGamePlayerController::toggle_pause_game: Orchestrator is stopped."));
-            break;
-        }
-    }
-}
 void ASpaceGamePlayerController::show_initial_pause_menu() {
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(orchestrator) || orchestrator->get_state() != sim::LevelState::Paused ||

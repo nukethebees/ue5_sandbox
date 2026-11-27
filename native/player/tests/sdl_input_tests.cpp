@@ -27,9 +27,6 @@ Presentation presentation;
 
 namespace ioj::host {
 void read_legacy_key_bindings(void*, LegacyBindingSink) {}
-void pause_or_exit_viewer() {
-    tests::presentation.actions.push_back(PlayerAction::OpenPause);
-}
 void present_input(PresentationEvent const& event) {
     auto& view{tests::presentation};
     if (auto const* key{std::get_if<MenuKey>(&event)}; key && key->down) {
@@ -168,6 +165,31 @@ TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {
     ASSERT_TRUE(view.motion);
     EXPECT_TRUE(view.motion->looking);
     EXPECT_EQ(view.pointer.size(), 2u);
+
+    settings_.bindings.emplace().push_back(
+        {FlightMapping::GeneralPauseKeyboardMouse, PhysicalKey::MiddleMouseButton});
+    view.route = {input::Context::Gameplay, false};
+    event.button.button = SDL_BUTTON_MIDDLE;
+    ASSERT_TRUE(SDL_PushEvent(&event));
+    frame();
+    view.route = {input::Context::Menu, false, true};
+    event.button.type = SDL_EVENT_MOUSE_BUTTON_UP;
+    event.button.down = false;
+    ASSERT_TRUE(SDL_PushEvent(&event));
+    frame();
+    event.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    event.button.down = true;
+    ASSERT_TRUE(SDL_PushEvent(&event));
+    frame();
+    EXPECT_EQ(view.actions,
+              (std::vector{host::PlayerAction::OpenPause, host::PlayerAction::RequestResume}));
+    EXPECT_EQ(view.pointer.size(), 2u);
+
+    view.route.resume_available = false;
+    ASSERT_TRUE(SDL_PushEvent(&event));
+    frame();
+    EXPECT_EQ(view.pointer.back(), host::PointerAction::Down);
+    EXPECT_EQ(view.actions.size(), 2u);
 }
 
 TEST_F(SdlPlayerInput, UnpluggingVirtualGamepadReleasesFlightButton) {
@@ -195,7 +217,7 @@ TEST_F(SdlPlayerInput, UnpluggingVirtualGamepadReleasesFlightButton) {
     SDL_UpdateJoysticks();
     frame();
     EXPECT_FLOAT_EQ(input_->ship_frame().accelerator, 1.f);
-    view.route = {input::Context::Menu, false};
+    view.route = {input::Context::Menu, false, true};
     frame();
     EXPECT_FLOAT_EQ(input_->ship_frame().accelerator, 0.f);
     view.route = {input::Context::Gameplay, false};

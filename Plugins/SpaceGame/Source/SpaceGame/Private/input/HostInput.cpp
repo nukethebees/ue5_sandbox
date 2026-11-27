@@ -86,10 +86,15 @@ void read_legacy_key_bindings(void* destination, LegacyBindingSink sink) {
         }
     }
 }
-void pause_or_exit_viewer() {
-    auto* const player{controller()};
+void show_pause_menu() {
+    auto* player{controller()};
     check(player);
-    player->pause_or_exit_viewer();
+    player->show_initial_pause_menu();
+}
+void request_resume() {
+    auto* player{controller()};
+    check(player);
+    player->request_resume();
 }
 namespace {
 void present_viewer_motion(ViewerMotion const& motion, double delta_seconds) {

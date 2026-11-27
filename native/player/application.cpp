@@ -316,6 +316,7 @@ auto Application::play(Window& window,
     };
     bool end_selected{};
     bool end_benchmark{};
+    bool open_when_paused{};
     auto dispatch = [&](host::PlayerAction action) {
         auto* const level{storage.get()};
         if (!level || level->presentation_setup || end_benchmark) {
@@ -328,7 +329,15 @@ auto Application::play(Window& window,
         }
         switch (action) {
             case OpenPause:
+                if (simulation.state() == sim::LevelState::Running) {
+                    open_when_paused = true;
+                    simulation.pause();
+                } else if (simulation.state() == sim::LevelState::Paused) {
+                    host::show_pause_menu();
+                }
+                break;
             case RequestResume:
+                host::request_resume();
                 break;
             case BenchmarkNext:
                 end_selected = !end_selected;
@@ -485,6 +494,7 @@ auto Application::play(Window& window,
 
         if (level->presentation_setup && host::level_world_ready()) {
             end_selected = false;
+            open_when_paused = false;
             if (!initialize_presentation(*level)) {
                 unload_level(storage, sim::RunEndReason::WorldEnd, false);
                 if (exit_when_ready) {
@@ -522,6 +532,10 @@ auto Application::play(Window& window,
             auto const elapsed{std::chrono::duration<double>{frame_time - previous_frame_time}};
             previous_frame_time = frame_time;
             advance_level(level->simulation, std::min(elapsed.count(), max_frame_delta_seconds));
+            if (open_when_paused && level->simulation.state() == sim::LevelState::Paused) {
+                open_when_paused = false;
+                host::show_pause_menu();
+            }
             if (level->simulation.state() == sim::LevelState::Stopped) {
                 unload_level(storage, sim::RunEndReason::LevelCompleted, true);
             }

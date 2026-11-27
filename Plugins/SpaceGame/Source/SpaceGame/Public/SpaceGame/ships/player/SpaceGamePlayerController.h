@@ -32,7 +32,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
   public:
     using Pawn = ATestSpaceShip;
     ASpaceGamePlayerController();
-    void pause_or_exit_viewer();
+    void show_initial_pause_menu();
     auto main_menu() const -> UMainMenuWidget* { return modal_ui_.main_menu(); }
     auto pause_visible() const -> bool { return modal_ui_.is_pause_active(); }
     auto accepts_resume() const -> bool { return modal_ui_.accepts_resume(); }
@@ -93,8 +93,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     /* **************************************** */
     // Modal and simulation transitions
     /* **************************************** */
-    void toggle_pause_game();
-    void show_initial_pause_menu();
     auto open_pause_menu() -> bool;
     auto suspend_gameplay_for_modal() -> bool;
     void resume_game();
