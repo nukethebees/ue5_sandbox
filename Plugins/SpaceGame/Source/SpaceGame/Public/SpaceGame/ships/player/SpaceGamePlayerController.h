@@ -33,6 +33,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     using Pawn = ATestSpaceShip;
     ASpaceGamePlayerController();
     void pause_or_exit_viewer();
+    auto main_menu() const -> UMainMenuWidget* { return modal_ui_.main_menu(); }
     void present_viewer_motion(host::ViewerMotion const& motion, double dt);
     void present_steering(TOptional<FVector2D> position);
     void Tick(float dt) override;

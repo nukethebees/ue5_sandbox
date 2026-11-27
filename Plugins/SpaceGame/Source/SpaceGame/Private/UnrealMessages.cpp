@@ -35,6 +35,8 @@ struct MessageBuffer {
     std::optional<levels::LaunchMode> requested_simulation_mode;
 };
 
+std::vector<host::WidgetAction> pending_actions;
+std::vector<host::WidgetAction> dispatched_actions;
 MessageBuffer pending;
 MessageBuffer published;
 
@@ -100,6 +102,9 @@ auto supported_resolutions() -> std::span<ScreenResolution const> {
     return window_resolutions;
 }
 
+void queue_input_action(host::WidgetAction action) {
+    pending_actions.push_back(action);
+}
 void request_simulation_mode(levels::LaunchMode mode) {
     pending.requested_simulation_mode = mode;
 }
@@ -136,6 +141,12 @@ void clear_consumed_messages() {
     published.requested_simulation_mode.reset();
 }
 
+auto host::take_widget_actions() -> std::span<WidgetAction const> {
+    dispatched_actions.clear();
+    dispatched_actions.swap(pending_actions);
+    return dispatched_actions;
+}
+
 auto host::take_messages() -> UnrealMessages {
     std::swap(pending, published);
 
@@ -161,6 +172,8 @@ void host::preference_result(std::size_t index, std::string_view error) {
 #endif
 
 void detach_player() {
+    pending_actions.clear();
+    dispatched_actions.clear();
     published = MessageBuffer{};
     pending = MessageBuffer{};
     menu_destination.reset();

@@ -16,8 +16,7 @@ void SMainMenuView::Construct(FArguments const& args) {
     audio_ = args._Audio;
     page_ = args._Page;
     check(style_ != nullptr);
-    on_page_selected_ = args._OnPageSelected;
-    on_quit_ = args._OnQuit;
+    on_item_ = args._OnItem;
     on_focus_content_ = args._OnFocusContent;
 
     SAssignNew(level_content_, SBox)[args._LevelContent.Widget];
@@ -110,35 +109,26 @@ auto SMainMenuView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_ev
         focus_navigation();
         return FReply::Handled();
     }
-    if (!navigation_enabled_ || !navigation_has_focus()) {
-        return SCompoundWidget::OnKeyDown(geometry, key_event);
+    return SCompoundWidget::OnKeyDown(geometry, key_event);
+}
+auto SMainMenuView::focused_item() const -> std::optional<input::MainMenuItem> {
+    if (quit_button_ && quit_button_->has_focus()) {
+        return input::MainMenuItem::Quit;
     }
-
-    auto direction{0};
-    if (key == EKeys::Up || key == EKeys::Gamepad_DPad_Up) {
-        direction = -1;
-    } else if (key == EKeys::Down || key == EKeys::Gamepad_DPad_Down) {
-        direction = 1;
-    }
-    if (direction == 0) {
-        return SCompoundWidget::OnKeyDown(geometry, key_event);
-    }
-
-    auto buttons{page_buttons_};
-    buttons.Add(quit_button_);
-    auto current_index{static_cast<int32>(page_.Get())};
-    auto const button_count{buttons.Num()};
-    for (int32 index{}; index < button_count; ++index) {
-        if (buttons[index].IsValid() && buttons[index]->has_focus()) {
-            current_index = index;
-            break;
+    auto const count{page_buttons_.Num()};
+    for (int32 index{}; index < count; ++index) {
+        if (page_buttons_[index]->has_focus()) {
+            return static_cast<input::MainMenuItem>(index);
         }
     }
-    auto const next_index{(current_index + direction + button_count) % button_count};
-    if (buttons[next_index].IsValid()) {
-        buttons[next_index]->focus();
+    return {};
+}
+void SMainMenuView::focus_item(input::MainMenuItem item) {
+    if (item == input::MainMenuItem::Quit) {
+        quit_button_->focus();
+    } else {
+        page_buttons_[static_cast<int32>(item)]->focus();
     }
-    return FReply::Handled();
 }
 
 auto SMainMenuView::build_header() const -> TSharedRef<SWidget> {
@@ -207,16 +197,13 @@ auto SMainMenuView::build_navigation() -> TSharedRef<SWidget> {
 
     navigation->AddSlot().FillHeight(1.0f);
     navigation->AddSlot().AutoHeight().Padding(
-        FMargin{0.0f,
-                0.0f,
-                0.0f,
-                style_->chrome()
-                    .navigation_spacing})[SAssignNew(quit_button_, SHiveNavigationButton)
-                                              .Style(style_)
-                                              .Icon(&style_->icon(EGameUiIcon::System))
-                                              .Text(NSLOCTEXT("MainMenu", "QuitGame", "Quit Game"))
-                                              .Audio(audio_)
-                                              .OnClicked(this, &SMainMenuView::handle_quit)];
+        FMargin{0.0f, 0.0f, 0.0f, style_->chrome().navigation_spacing})
+        [SAssignNew(quit_button_, SHiveNavigationButton)
+             .Style(style_)
+             .Icon(&style_->icon(EGameUiIcon::System))
+             .Text(NSLOCTEXT("MainMenu", "QuitGame", "Quit Game"))
+             .Audio(audio_)
+             .OnClicked(this, &SMainMenuView::activate_item, input::MainMenuItem::Quit)];
     navigation->AddSlot().AutoHeight().Padding(FMargin{
         0.0f,
         14.0f,
@@ -257,26 +244,19 @@ void SMainMenuView::add_page(TSharedRef<SVerticalBox> const& navigation,
                              EGameUiIcon const icon) {
     TSharedPtr<SHiveNavigationButton> button;
     navigation->AddSlot().AutoHeight().Padding(
-        FMargin{0.0f,
-                0.0f,
-                0.0f,
-                style_->chrome()
-                    .navigation_spacing})[SAssignNew(button, SHiveNavigationButton)
-                                              .Style(style_)
-                                              .Icon(&style_->icon(icon))
-                                              .Text(MoveTemp(text))
-                                              .Audio(audio_)
-                                              .OnClicked(this, &SMainMenuView::handle_page, page)];
+        FMargin{0.0f, 0.0f, 0.0f, style_->chrome().navigation_spacing})
+        [SAssignNew(button, SHiveNavigationButton)
+             .Style(style_)
+             .Icon(&style_->icon(icon))
+             .Text(MoveTemp(text))
+             .Audio(audio_)
+             .OnClicked(
+                 this, &SMainMenuView::activate_item, static_cast<input::MainMenuItem>(page))];
     page_buttons_.Add(button);
 }
 
-auto SMainMenuView::handle_page(EMenuPage const page) -> FReply {
-    on_page_selected_.ExecuteIfBound(page);
-    return FReply::Handled();
-}
-
-auto SMainMenuView::handle_quit() -> FReply {
-    on_quit_.ExecuteIfBound();
+auto SMainMenuView::activate_item(input::MainMenuItem item) -> FReply {
+    on_item_.ExecuteIfBound(item);
     return FReply::Handled();
 }
 
@@ -291,11 +271,6 @@ auto SMainMenuView::page_content_index(EMenuPage const page) const -> int32 {
 }
 
 auto SMainMenuView::navigation_has_focus() const -> bool {
-    for (auto const& button : page_buttons_) {
-        if (button.IsValid() && button->has_focus()) {
-            return true;
-        }
-    }
-    return quit_button_.IsValid() && quit_button_->has_focus();
+    return focused_item().has_value();
 }
 } // namespace ioj

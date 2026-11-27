@@ -2,6 +2,7 @@
 #include "input/BindingKey.h"
 #include <ioj/host/input.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
+#include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -166,6 +167,20 @@ void ui_text(std::string_view text, Modifiers modifiers) {
     for (int32 i{}; i < characters.Len(); ++i) {
         slate.ProcessKeyCharEvent(
             FCharacterEvent{characters[i], modifier_state(modifiers), 0, false});
+    }
+}
+void focus_main_item(input::MainMenuItem item) {
+    if (auto* player{controller()}) {
+        if (auto* main{player->main_menu()}) {
+            main->focus_item(item);
+        }
+    }
+}
+void activate_main_item(input::MainMenuItem item) {
+    if (auto* player{controller()}) {
+        if (auto* main{player->main_menu()}) {
+            main->activate_item(item);
+        }
     }
 }
 auto editing_text() -> bool {

@@ -3,7 +3,11 @@
 #include <ioj/host/modifiers.h>
 #include <ioj/input/flight_input.h>
 
+#include <ioj/input/menu_navigation.h>
+
 #include <cstdint>
+#include <span>
+#include <variant>
 #include <optional>
 #include <string_view>
 
@@ -13,6 +17,16 @@ struct InputRoute {
     bool movable_viewer{};
     bool operator==(InputRoute const&) const = default;
 };
+
+enum class PlayerAction {
+    OpenPause,
+    RequestResume,
+    BenchmarkNext,
+    BenchmarkActivate,
+    ToggleBenchmark,
+    EndBenchmark
+};
+using WidgetAction = std::variant<PlayerAction, input::MainMenuItem>;
 
 enum class PointerAction { Move, Down, Up, DoubleClick, Wheel };
 struct PointerInput {
@@ -50,5 +64,8 @@ IOJ_INPUT_API void ui_axis(input::KeyCode code, float value, Modifiers modifiers
 IOJ_INPUT_API void ui_pointer(PointerInput const& event, Modifiers modifiers);
 IOJ_INPUT_API void ui_text(std::string_view text, Modifiers modifiers);
 IOJ_INPUT_API auto editing_text() -> bool;
+IOJ_INPUT_API void focus_main_item(input::MainMenuItem item);
+IOJ_INPUT_API void activate_main_item(input::MainMenuItem item);
+IOJ_INPUT_API auto take_widget_actions() -> std::span<WidgetAction const>;
 #undef IOJ_INPUT_API
 }

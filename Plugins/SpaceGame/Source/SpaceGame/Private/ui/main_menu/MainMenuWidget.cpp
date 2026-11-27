@@ -66,19 +66,18 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const options_content{IsValid(options_widget_) ? options_widget_->TakeWidget()
                                                         : SNullWidget::NullWidget};
 
-    auto result{
-        SAssignNew(view_, SMainMenuView)
-            .Style(style)
-            .Page_UObject(options_widget_, &UOptionsWidget::page)
-            .Audio(IsValid(style_) ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
-                                   : FGameAudioFacade{})
-            .LevelContent()[level_content]
-            .ArchiveContent()[archive_content]
-            .OptionsContent()[options_content]
-            .OnPageSelected(FOnMainMenuPageSelected::CreateUObject(this, &ThisClass::request_page))
-            .OnQuit(FSimpleDelegate::CreateUObject(this, &ThisClass::request_quit))
-            .OnFocusContent(
-                FSimpleDelegate::CreateUObject(this, &ThisClass::focus_active_content))};
+    auto result{SAssignNew(view_, SMainMenuView)
+                    .Style(style)
+                    .Page_UObject(options_widget_, &UOptionsWidget::page)
+                    .Audio(IsValid(style_) ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
+                                           : FGameAudioFacade{})
+                    .LevelContent()[level_content]
+                    .ArchiveContent()[archive_content]
+                    .OptionsContent()[options_content]
+                    .OnItem(FOnMainMenuItem::CreateLambda(
+                        [](input::MainMenuItem item) { queue_input_action(item); }))
+                    .OnFocusContent(
+                        FSimpleDelegate::CreateUObject(this, &ThisClass::focus_active_content))};
     if (focus_level_content_) {
         view_->focus_content_on_next_focus();
     }
@@ -180,6 +179,21 @@ void UMainMenuWidget::create_content_widgets() {
     }
 }
 
+auto UMainMenuWidget::focused_item() const -> std::optional<input::MainMenuItem> {
+    return view_ && !page_modal_visible_ ? view_->focused_item() : std::nullopt;
+}
+void UMainMenuWidget::focus_item(input::MainMenuItem item) {
+    if (view_ && !page_modal_visible_) {
+        view_->focus_item(item);
+    }
+}
+void UMainMenuWidget::activate_item(input::MainMenuItem item) {
+    if (item == input::MainMenuItem::Quit) {
+        request_quit();
+    } else {
+        request_page(static_cast<EMenuPage>(item));
+    }
+}
 void UMainMenuWidget::request_page(EMenuPage const page) {
     if (page_modal_visible_ || !IsValid(options_widget_)) {
         return;

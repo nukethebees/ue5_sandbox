@@ -289,6 +289,11 @@ auto Application::play(Window& window,
     std::vector<AvailableLevel> available_levels;
 
     SdlInput input{*window.sdl_window(), settings_.applied().controls};
+    auto process_widget_actions = [&] {
+        for (auto const& action : host::take_widget_actions()) {
+            host::activate_main_item(std::get<input::MainMenuItem>(action));
+        }
+    };
     auto last_input_frame{previous_frame_time};
     while (!IojPlayer_ExitRequested()) {
         IojPlayer_BeginFrame();
@@ -298,6 +303,7 @@ auto Application::play(Window& window,
         bool viewport_changed{};
         while (SDL_PollEvent(&event)) {
             input.handle(event);
+            process_widget_actions();
             switch (event.type) {
                 case SDL_EVENT_QUIT:
                 case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
@@ -348,6 +354,7 @@ auto Application::play(Window& window,
             return result;
         }
 
+        process_widget_actions();
         auto const messages{host::take_messages()};
         process_preferences(window, messages.preference_edits);
         process_profile_actions(messages.profile_actions);

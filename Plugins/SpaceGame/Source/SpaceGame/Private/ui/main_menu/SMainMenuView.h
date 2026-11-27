@@ -13,7 +13,7 @@ class SWidgetSwitcher;
 namespace ioj {
 class SHiveNavigationButton;
 
-DECLARE_DELEGATE_OneParam(FOnMainMenuPageSelected, EMenuPage);
+DECLARE_DELEGATE_OneParam(FOnMainMenuItem, input::MainMenuItem);
 
 class SMainMenuView final : public SCompoundWidget {
   public:
@@ -27,8 +27,7 @@ class SMainMenuView final : public SCompoundWidget {
     SLATE_NAMED_SLOT(FArguments, LevelContent)
     SLATE_NAMED_SLOT(FArguments, ArchiveContent)
     SLATE_NAMED_SLOT(FArguments, OptionsContent)
-    SLATE_EVENT(FOnMainMenuPageSelected, OnPageSelected)
-    SLATE_EVENT(FSimpleDelegate, OnQuit)
+    SLATE_EVENT(FOnMainMenuItem, OnItem)
     SLATE_EVENT(FSimpleDelegate, OnFocusContent)
     SLATE_END_ARGS()
 
@@ -37,6 +36,8 @@ class SMainMenuView final : public SCompoundWidget {
     void set_level_content(TSharedRef<SWidget> content);
     void set_navigation_enabled(bool enabled);
     void focus_navigation();
+    auto focused_item() const -> std::optional<input::MainMenuItem>;
+    void focus_item(input::MainMenuItem item);
     void focus_content_on_next_focus();
 
     auto SupportsKeyboardFocus() const -> bool override { return true; }
@@ -52,15 +53,13 @@ class SMainMenuView final : public SCompoundWidget {
                   EMenuPage page,
                   FText text,
                   EGameUiIcon icon);
-    auto handle_page(EMenuPage page) -> FReply;
-    auto handle_quit() -> FReply;
+    auto activate_item(input::MainMenuItem item) -> FReply;
     auto page_content_index(EMenuPage page) const -> int32;
     auto navigation_has_focus() const -> bool;
 
     FGameUiStyle const* style_{};
     FGameAudioFacade audio_{};
-    FOnMainMenuPageSelected on_page_selected_{};
-    FSimpleDelegate on_quit_{};
+    FOnMainMenuItem on_item_{};
     FSimpleDelegate on_focus_content_{};
     TArray<TSharedPtr<SHiveNavigationButton>> page_buttons_{};
     TSharedPtr<SHiveNavigationButton> quit_button_{};
