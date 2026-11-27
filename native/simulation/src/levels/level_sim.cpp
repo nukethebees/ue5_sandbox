@@ -118,23 +118,23 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
 /* **************************************** */
 // Level results
 /* **************************************** */
-void LevelSim::stop_run(RunEndReason const reason) {
-    if (state_ == LevelState::Stopped) {
-        return;
+auto LevelSim::stop_run(RunEndReason const reason) -> LevelResult {
+    if (!terminal_) {
+        event_manager_.enqueue_stop(reason);
+        event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_, points_);
     }
-    event_manager_.enqueue_stop(reason);
-    event_manager_.dispatch_tick_end(timers_, clock_, state_, terminal_, points_);
+    return level_result(terminal_.value());
 }
 auto LevelSim::result() const -> std::optional<LevelResult> {
-    if (!terminal_) {
-        return std::nullopt;
-    }
-    auto const event{terminal_->event};
+    return terminal_.transform([this](TerminalEvent terminal) { return level_result(terminal); });
+}
+auto LevelSim::level_result(TerminalEvent terminal) const -> LevelResult {
+    auto const event{terminal.event};
     if (event.kind() == EventKind::Win) {
         return LevelResult{
-            *terminal_, event_manager_.win_event(event).winner, RunEndReason::LevelCompleted};
+            terminal, event_manager_.win_event(event).winner, RunEndReason::LevelCompleted};
     }
-    return LevelResult{*terminal_, std::nullopt, event_manager_.stop_event(event)};
+    return LevelResult{terminal, std::nullopt, event_manager_.stop_event(event)};
 }
 
 /* **************************************** */

@@ -532,7 +532,7 @@ void Application::initialize_presentation(LoadedLevel& level) {
         return;
     }
 
-    if (simulation.result()) {
+    if (simulation.state() == sim::LevelState::Stopped) {
         unload_level(sim::RunEndReason::LevelCompleted, true);
     } else if (mode == levels::LaunchMode::Running &&
                simulation.state() == sim::LevelState::Paused) {
@@ -549,7 +549,7 @@ void Application::advance_level(sim::LevelSim& simulation, double delta_seconds)
                                 : 0.0};
     host::present_level(visual_delta, frame);
 
-    if (simulation.result()) {
+    if (simulation.state() == sim::LevelState::Stopped) {
         unload_level(sim::RunEndReason::LevelCompleted, true);
     } else if (state == sim::LevelState::Running && simulation.state() == sim::LevelState::Paused) {
         host::simulation_paused();
@@ -561,8 +561,8 @@ void Application::unload_level(sim::RunEndReason reason, bool show_results) {
         return;
     }
 
-    level->simulation.stop_run(reason);
-    auto const completed{bridge::completed_level(level->simulation).value()};
+    auto const result{level->simulation.stop_run(reason)};
+    auto const completed{bridge::completed_level(level->simulation, result)};
     auto const score{profiles::make_level_score(completed, profiles::current_timestamp())};
     profiles::RecordSaveResult saved{};
     if (score) {

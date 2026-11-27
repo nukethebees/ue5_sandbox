@@ -86,7 +86,7 @@ struct LevelSim {
     /* **************************************** */
     // Level results
     /* **************************************** */
-    void stop_run(RunEndReason reason);
+    auto stop_run(RunEndReason reason) -> LevelResult;
     auto result() const -> std::optional<LevelResult>;
 
     /* **************************************** */
@@ -139,6 +139,8 @@ struct LevelSim {
         track_player_movement(EntityId player, Transform3d const& before, Transform3d const& after);
     void detect_and_handle_overlaps(std::span<EntityId const> moved_fighters,
                                     FrameMemoryResource& scratch);
+
+    auto level_result(TerminalEvent terminal) const -> LevelResult;
 
     LevelState state_{LevelState::Uninitialised};
     TeamArray<TeamPoints> points_{};
