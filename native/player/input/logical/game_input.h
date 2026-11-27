@@ -1,7 +1,7 @@
 #pragma once
 
 #include "player/input/physical/physical_input.h"
-#include <ioj/input/dispatch/events.h>
+#include <ioj/host/input.h>
 #include <ioj/input/logical/flight_input.h>
 
 #include <array>

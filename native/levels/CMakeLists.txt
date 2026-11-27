@@ -16,6 +16,7 @@ target_sources(native-levels
     lib/src/flight_input.cpp
     lib/src/input_state.cpp
     lib/src/ship_input.cpp
+    lib/src/input_dispatcher.cpp
 )
 target_include_directories(native-levels
   PUBLIC

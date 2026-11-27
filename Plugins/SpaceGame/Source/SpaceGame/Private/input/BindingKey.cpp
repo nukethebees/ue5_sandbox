@@ -1,6 +1,6 @@
 #include "input/BindingKey.h"
 
-#include <ioj/input/dispatch/events.h>
+#include <ioj/host/input.h>
 
 #include <SandboxCoreEngine/strings.h>
 

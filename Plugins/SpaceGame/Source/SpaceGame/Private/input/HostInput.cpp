@@ -1,7 +1,7 @@
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 #include "input/BindingCapture.h"
 #include "input/BindingKey.h"
-#include <ioj/input/dispatch/events.h>
+#include <ioj/host/input.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>

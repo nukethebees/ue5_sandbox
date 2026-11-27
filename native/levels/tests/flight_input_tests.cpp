@@ -1,14 +1,17 @@
-#include <ioj/input/dispatch/ship_input.h>
+#include <ioj/input/dispatch/input_dispatcher.h>
 #include <ioj/input/logical/flight_input.h>
 
 #include <gtest/gtest.h>
+
+#include <algorithm>
+#include <array>
 
 namespace ioj::tests {
 TEST(FlightInput, MultipleDevicesProduceOneOrderedPressAndRelease) {
     ControlsSettings settings{};
     FlightInputState input;
     LogicalInputState state;
-    std::vector<sim::player::PlayerInputKind> ship_events;
+    InputDispatcher dispatch;
     reset_flight_input(input, state);
     map_flight_button(input,
                       state,
@@ -28,9 +31,9 @@ TEST(FlightInput, MultipleDevicesProduceOneOrderedPressAndRelease) {
                       ButtonState::Released,
                       settings,
                       InputContext::Gameplay);
-    ASSERT_EQ(ship_input_frame(state, ship_events).events.size(), 1u);
-    EXPECT_EQ(ship_input_frame(state, ship_events).events.front(),
-              sim::player::PlayerInputKind::FirePressed);
+    dispatch.publish_ship(state);
+    ASSERT_EQ(dispatch.ship_input().events.size(), 1u);
+    EXPECT_EQ(dispatch.ship_input().events.front(), sim::player::PlayerInputKind::FirePressed);
 
     state.begin_frame();
     map_flight_button(input,
@@ -46,7 +49,8 @@ TEST(FlightInput, MultipleDevicesProduceOneOrderedPressAndRelease) {
                       settings,
                       InputContext::Gameplay);
     reset_flight_input(input, state);
-    auto const events{ship_input_frame(state, ship_events).events};
+    dispatch.publish_ship(state);
+    auto const events{dispatch.ship_input().events};
     ASSERT_EQ(events.size(), 3u);
     EXPECT_EQ(events[0], sim::player::PlayerInputKind::FireReleased);
     EXPECT_EQ(events[1], sim::player::PlayerInputKind::BoostPressed);
@@ -57,7 +61,7 @@ TEST(FlightInput, EdgesBetweenTicksKeepTheirOrder) {
     ControlsSettings settings{};
     FlightInputState bindings;
     LogicalInputState state;
-    std::vector<sim::player::PlayerInputKind> events;
+    InputDispatcher dispatch;
     reset_flight_input(bindings, state);
     for (auto edge : {ButtonState::Pressed, ButtonState::Released, ButtonState::Pressed}) {
         map_flight_button(
@@ -65,8 +69,9 @@ TEST(FlightInput, EdgesBetweenTicksKeepTheirOrder) {
     }
     EXPECT_TRUE(state.held.fire());
     using enum sim::player::PlayerInputKind;
-    ship_input_frame(state, events);
-    EXPECT_EQ(events, (std::vector{FirePressed, FireReleased, FirePressed}));
+    dispatch.publish_ship(state);
+    EXPECT_TRUE(std::ranges::equal(dispatch.ship_input().events,
+                                   std::array{FirePressed, FireReleased, FirePressed}));
     state.begin_frame();
     EXPECT_TRUE(state.held.fire());
     EXPECT_TRUE(state.transitions.empty());
@@ -77,7 +82,7 @@ TEST(FlightInput, ReboundPauseAndViewerControlsAreIsolatedFromFlight) {
     settings.bindings[FlightMapping::GeneralPauseKeyboardMouse] = PhysicalKey::P;
     FlightInputState input;
     LogicalInputState state;
-    std::vector<sim::player::PlayerInputKind> ship_events;
+    InputDispatcher dispatch;
     reset_flight_input(input, state);
     map_flight_button(
         input, state, PhysicalKey::Escape, ButtonState::Pressed, settings, InputContext::Observer);
@@ -96,8 +101,9 @@ TEST(FlightInput, ReboundPauseAndViewerControlsAreIsolatedFromFlight) {
                       ButtonState::Pressed,
                       settings,
                       InputContext::Observer);
-    EXPECT_TRUE(ship_input_frame(state, ship_events).events.empty());
-    EXPECT_EQ(ship_input_frame(state, ship_events).accelerator, 0.f);
+    dispatch.publish_ship(state);
+    EXPECT_TRUE(dispatch.ship_input().events.empty());
+    EXPECT_EQ(dispatch.ship_input().accelerator, 0.f);
     settings.bindings[FlightMapping::GeneralPauseKeyboardMouse] = PhysicalKey::NonUSHash;
     reset_flight_input(input, state);
     map_flight_button(
@@ -137,7 +143,7 @@ TEST(FlightInput, PointerSteeringHandsBackToHeldStickAndClearsOnContextChange) {
     ControlsSettings settings{.mouse_turn_sensitivity = 1.f, .gamepad_turn_sensitivity = 1.f};
     FlightInputState input;
     LogicalInputState state;
-    std::vector<sim::player::PlayerInputKind> ship_events;
+    InputDispatcher dispatch;
     reset_flight_input(input, state);
     map_flight_axis(input, state, PhysicalKey::GamepadLeftX, -1.f, settings);
     map_flight_button(input,
@@ -148,16 +154,19 @@ TEST(FlightInput, PointerSteeringHandsBackToHeldStickAndClearsOnContextChange) {
                       InputContext::Gameplay);
     map_flight_pointer(input, state, {200.f, 0.f}, settings);
     state.begin_frame();
-    EXPECT_FLOAT_EQ(ship_input_frame(state, ship_events).yaw, 0.5f);
+    dispatch.publish_ship(state);
+    EXPECT_FLOAT_EQ(dispatch.ship_input().yaw, 0.5f);
     map_flight_button(input,
                       state,
                       PhysicalKey::RightMouseButton,
                       ButtonState::Released,
                       settings,
                       InputContext::Gameplay);
-    EXPECT_FLOAT_EQ(ship_input_frame(state, ship_events).yaw, -1.f);
+    dispatch.publish_ship(state);
+    EXPECT_FLOAT_EQ(dispatch.ship_input().yaw, -1.f);
     reset_flight_input(input, state);
-    EXPECT_EQ(ship_input_frame(state, ship_events).yaw, 0.f);
+    dispatch.publish_ship(state);
+    EXPECT_EQ(dispatch.ship_input().yaw, 0.f);
     settings.bindings[FlightMapping::FlightYawKeyboardMouse] = PhysicalKey::J;
     reset_flight_input(input, state);
     map_flight_button(
@@ -168,11 +177,14 @@ TEST(FlightInput, PointerSteeringHandsBackToHeldStickAndClearsOnContextChange) {
                       ButtonState::Pressed,
                       settings,
                       InputContext::Gameplay);
-    EXPECT_FLOAT_EQ(ship_input_frame(state, ship_events).yaw, 1.f);
+    dispatch.publish_ship(state);
+    EXPECT_FLOAT_EQ(dispatch.ship_input().yaw, 1.f);
     state.begin_frame();
-    EXPECT_FLOAT_EQ(ship_input_frame(state, ship_events).yaw, 1.f);
+    dispatch.publish_ship(state);
+    EXPECT_FLOAT_EQ(dispatch.ship_input().yaw, 1.f);
     map_flight_button(
         input, state, PhysicalKey::J, ButtonState::Released, settings, InputContext::Gameplay);
-    EXPECT_FLOAT_EQ(ship_input_frame(state, ship_events).yaw, 0.f);
+    dispatch.publish_ship(state);
+    EXPECT_FLOAT_EQ(dispatch.ship_input().yaw, 0.f);
 }
 }
