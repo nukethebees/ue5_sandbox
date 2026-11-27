@@ -2,9 +2,6 @@
 
 #include "player/game_input.h"
 
-#include <algorithm>
-#include <array>
-
 namespace ioj {
 auto PauseMenu::handle(host::PlayerAction action, sim::LevelState simulation) -> Command {
     if (action == host::PlayerAction::RequestResume) {
@@ -54,14 +51,10 @@ auto PauseMenu::navigate(input::MenuCommand command, bool repeated) -> Command {
         default:
             break;
     }
-    static constexpr std::array items{
-        Item::Resume, Item::Audio, Item::Controls, Item::LevelSelect, Item::Quit};
-    auto index{std::ranges::find(items, selected) - items.begin()};
-    int const step{command == Up || command == Previous ? -1 : 1};
+    auto const backwards{command == Up || command == Previous};
     do {
-        index = (index + step + std::ssize(items)) % std::ssize(items);
-    } while (items[index] == page);
-    selected = items[index];
+        selected = backwards ? cycle_previous(selected) : cycle_next(selected);
+    } while (selected == page);
     return host::PauseCommand{host::PauseCommandKind::Select, selected};
 }
 

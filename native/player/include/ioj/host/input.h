@@ -21,16 +21,6 @@ struct MenuStatus {
     std::optional<input::MainMenuItem> main_focus;
 };
 
-enum class PlayerAction {
-    OpenPause,
-    RequestResume,
-    BenchmarkNext,
-    BenchmarkActivate,
-    ToggleBenchmark,
-    EndBenchmark
-};
-
-enum class PointerAction { Move, Down, Up, DoubleClick, Wheel };
 struct PointerInput {
     PointerAction action;
     PhysicalKey button;
