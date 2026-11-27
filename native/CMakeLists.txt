@@ -105,4 +105,8 @@ add_custom_target(native-tests
     mesh-gen-tests
     check-generated-code
 )
+if(WIN32 AND TARGET SDL3::SDL3-static)
+  add_subdirectory(player/tests)
+  add_dependencies(native-tests native-player-input-tests)
+endif()
 set_property(TARGET native-tests PROPERTY FOLDER "Sandbox/Native/Tests")
