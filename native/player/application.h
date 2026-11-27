@@ -44,7 +44,7 @@ class Application {
     void process_profile_actions(std::span<host::ProfileAction const> actions);
     void process_preferences(Window& window,
                              GameInput& input,
-                             std::vector<host::InputEvent>& commands,
+                             host::InputEvents& commands,
                              std::span<host::PreferenceEdit const> edits);
     auto launch_level(LevelStorage& storage, std::filesystem::path const& path)
         -> ApplicationResult;

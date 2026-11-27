@@ -12,6 +12,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 namespace ioj::host {
 struct MenuStatus {
@@ -85,6 +86,7 @@ using PresentationEvent =
     std::variant<MenuKey, MenuAxis, MenuPointer, MenuText, SteeringIndicator, ViewerStep>;
 using WidgetAction = std::variant<PlayerAction, input::MainMenuItem, PauseWidgetEvent>;
 using InputEvent = std::variant<PlayerAction, MenuButton, PresentationEvent>;
+using InputEvents = std::vector<InputEvent>;
 
 #ifdef IOJ_PLAYER_EXPORTS
 #define IOJ_INPUT_API __declspec(dllexport)

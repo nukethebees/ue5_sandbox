@@ -170,7 +170,7 @@ auto GameInput::editing_text() const -> bool {
 void GameInput::begin_frame() {
     state_.begin_frame();
 }
-void GameInput::release_context(std::vector<host::InputEvent>& output) {
+void GameInput::release_context(host::InputEvents& output) {
     auto const first{state_.transitions.size()};
     for (auto const& button : routed_buttons_) {
         state_.button(button.action, ButtonState::Released);
@@ -181,7 +181,7 @@ void GameInput::release_context(std::vector<host::InputEvent>& output) {
     state_.observer_look = input::ObserverLookMode::Pointer;
     state_.axes_2d[input::Axis2DAction::ObserverLookDelta] = {};
 }
-void GameInput::synchronize(std::vector<host::InputEvent>& output,
+void GameInput::synchronize(host::InputEvents& output,
                             InputRoute route,
                             host::MenuStatus menu) {
     auto const mode{menu.capturing_binding || menu.editing_text ? input::MenuInputMode::Raw
@@ -200,7 +200,7 @@ void GameInput::synchronize(std::vector<host::InputEvent>& output,
         refresh_bindings(output);
     }
 }
-void GameInput::refresh_bindings(std::vector<host::InputEvent>& output) {
+void GameInput::refresh_bindings(host::InputEvents& output) {
     auto const first{state_.transitions.size()};
     flight_.configure(state_, controls_, route_.context);
     publish_transitions(output, first);
@@ -216,7 +216,7 @@ void GameInput::refresh_bindings(std::vector<host::InputEvent>& output) {
         }
     }
 }
-void GameInput::publish_transitions(std::vector<host::InputEvent>& output, std::size_t first) {
+void GameInput::publish_transitions(host::InputEvents& output, std::size_t first) {
     for (auto const payload : std::span{state_.transitions}.subspan(first)) {
         if (auto command{menu_command(payload.action)}) {
             output.emplace_back(host::MenuButton{*command,
@@ -249,7 +249,7 @@ void GameInput::publish_transitions(std::vector<host::InputEvent>& output, std::
         }
     }
 }
-void GameInput::routed_button(std::vector<host::InputEvent>& output,
+void GameInput::routed_button(host::InputEvents& output,
                               KeyCode key,
                               DigitalAction action,
                               ButtonState edge) {
@@ -294,7 +294,7 @@ void GameInput::routed_button(std::vector<host::InputEvent>& output,
                                  : input::ObserverLookMode::Pointer;
     }
 }
-void GameInput::button(std::vector<host::InputEvent>& output,
+void GameInput::button(host::InputEvents& output,
                        KeyCode key,
                        ButtonState edge,
                        std::uint32_t character) {
@@ -345,10 +345,10 @@ void GameInput::button(std::vector<host::InputEvent>& output,
         }
     }
 }
-void GameInput::resolve(std::vector<host::InputEvent>& output, input::PhysicalEvent const& event) {
+void GameInput::resolve(host::InputEvents& output, input::PhysicalEvent const& event) {
     std::visit([&](auto const& value) { apply(output, value); }, event);
 }
-void GameInput::apply(std::vector<host::InputEvent>& output, input::PhysicalButton event) {
+void GameInput::apply(host::InputEvents& output, input::PhysicalButton event) {
     if (!is_gamepad_control(event.key.key)) {
         physical_.modifiers = event.modifiers;
     }
@@ -364,12 +364,12 @@ void GameInput::apply(std::vector<host::InputEvent>& output, input::PhysicalButt
         output.emplace_back(host::MenuText{"\b", modifiers});
     }
 }
-void GameInput::apply(std::vector<host::InputEvent>& output, input::TextInput const& event) {
+void GameInput::apply(host::InputEvents& output, input::TextInput const& event) {
     if (physical_.focus == input::WindowFocus::Gained && editing_text()) {
         output.emplace_back(host::MenuText{event.text, physical_.modifiers});
     }
 }
-void GameInput::apply(std::vector<host::InputEvent>& output, input::PhysicalPointerButton event) {
+void GameInput::apply(host::InputEvents& output, input::PhysicalPointerButton event) {
     if (!track_button(physical_, event.key, event.state) ||
         physical_.focus == input::WindowFocus::Lost) {
         return;
@@ -405,7 +405,7 @@ void GameInput::apply(std::vector<host::InputEvent>& output, input::PhysicalPoin
         button(output, event.key, event.state);
     }
 }
-void GameInput::apply(std::vector<host::InputEvent>& output, input::PointerMotion event) {
+void GameInput::apply(host::InputEvents& output, input::PointerMotion event) {
     if (physical_.focus == input::WindowFocus::Lost) {
         return;
     }
@@ -424,7 +424,7 @@ void GameInput::apply(std::vector<host::InputEvent>& output, input::PointerMotio
                                               physical_.modifiers});
     }
 }
-void GameInput::apply(std::vector<host::InputEvent>& output, input::WheelMotion event) {
+void GameInput::apply(host::InputEvents& output, input::WheelMotion event) {
     if (physical_.focus == input::WindowFocus::Lost) {
         return;
     }
@@ -448,7 +448,7 @@ void GameInput::apply(std::vector<host::InputEvent>& output, input::WheelMotion 
         button(output, key, ButtonState::Released);
     }
 }
-void GameInput::apply(std::vector<host::InputEvent>& output, input::PhysicalAxis event) {
+void GameInput::apply(host::InputEvents& output, input::PhysicalAxis event) {
     auto const axis{std::ranges::find(
         game_input_tables::gamepad_axes, event.key, &game_input_tables::GamepadAxisKeys::axis)};
     assert(axis != game_input_tables::gamepad_axes.end());
@@ -479,7 +479,7 @@ void GameInput::apply(std::vector<host::InputEvent>& output, input::PhysicalAxis
         direction(axis->negative, -sample);
     }
 }
-void GameInput::apply(std::vector<host::InputEvent>& output, input::GamepadDisconnected) {
+void GameInput::apply(host::InputEvents& output, input::GamepadDisconnected) {
     for (std::size_t i{}; i < game_input_tables::gamepad_axes.size(); ++i) {
         if (physical_.gamepad_axes[i] != 0.f) {
             apply(output, input::PhysicalAxis{game_input_tables::gamepad_axes[i].axis, 0.f});
@@ -492,7 +492,7 @@ void GameInput::apply(std::vector<host::InputEvent>& output, input::GamepadDisco
     }
     std::erase_if(physical_.held, [](KeyCode key) { return is_gamepad_control(key.key); });
 }
-void GameInput::apply(std::vector<host::InputEvent>& output, input::WindowFocus focus) {
+void GameInput::apply(host::InputEvents& output, input::WindowFocus focus) {
     if (std::exchange(physical_.focus, focus) == focus) {
         return;
     }
@@ -506,7 +506,7 @@ void GameInput::apply(std::vector<host::InputEvent>& output, input::WindowFocus 
     physical_.modifiers = {};
     pointer_capture_ = {};
 }
-void GameInput::repeat_navigation(std::vector<host::InputEvent>& output, double seconds) {
+void GameInput::repeat_navigation(host::InputEvents& output, double seconds) {
     for (std::size_t i{}; i < game_input_tables::repeating_actions.size(); ++i) {
         auto& delay{repeat_delays_[i]};
         if (delay > 0.) {
@@ -520,7 +520,7 @@ void GameInput::repeat_navigation(std::vector<host::InputEvent>& output, double 
         }
     }
 }
-void GameInput::append_frame_commands(double seconds, std::vector<host::InputEvent>& output) const {
+void GameInput::append_frame_commands(double seconds, host::InputEvents& output) const {
     if (route_.context == Context::Gameplay) {
         output.emplace_back(host::SteeringIndicator{state_.pointer_steering});
     }
