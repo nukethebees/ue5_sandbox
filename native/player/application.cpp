@@ -413,7 +413,8 @@ void Application::publish_catalog() {
 }
 
 void Application::publish_profiles() const {
-    presentation::ProfileView view{profiles_.active_profile_id(), profile_browser_.summaries(), {}};
+    presentation::ProfileView view{
+        profile_browser_.active_profile_id(), profile_browser_.summaries(), {}};
     if (auto const* report{profile_browser_.loaded_profile_report()}) {
         view.report.emplace(report->profile_id, report->outcomes);
     }
