@@ -87,6 +87,8 @@ struct ViewerStep {
 using PresentationEvent =
     std::variant<MenuKey, MenuAxis, MenuPointer, MenuText, SteeringIndicator, ViewerStep>;
 
+using InputEvent = std::variant<PlayerAction, PresentationEvent>;
+
 #ifdef IOJ_PLAYER_EXPORTS
 #define IOJ_INPUT_API __declspec(dllexport)
 #else

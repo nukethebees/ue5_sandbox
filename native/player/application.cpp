@@ -360,7 +360,11 @@ auto Application::play(Window& window,
     };
     auto consume_input = [&] {
         for (auto const& event : input.events()) {
-            host::present_input(event);
+            if (auto const* action{std::get_if<host::PlayerAction>(&event)}) {
+                dispatch(*action);
+            } else {
+                host::present_input(std::get<host::PresentationEvent>(event));
+            }
             process_widget_actions();
         }
     };

@@ -20,7 +20,7 @@ struct Presentation {
     std::vector<PointerAction> pointer;
     std::string text;
     std::optional<ViewerMotion> motion;
-    int pauses{};
+    std::vector<PlayerAction> actions;
 };
 Presentation presentation;
 }
@@ -28,7 +28,7 @@ Presentation presentation;
 namespace ioj::host {
 void read_legacy_key_bindings(void*, LegacyBindingSink) {}
 void pause_or_exit_viewer() {
-    ++tests::presentation.pauses;
+    tests::presentation.actions.push_back(PlayerAction::OpenPause);
 }
 void present_input(PresentationEvent const& event) {
     auto& view{tests::presentation};
@@ -77,7 +77,11 @@ class SdlPlayerInput : public ::testing::Test {
     }
     void consume() {
         for (auto const& event : input_->events()) {
-            host::present_input(event);
+            if (auto const* action{std::get_if<host::PlayerAction>(&event)}) {
+                host::tests::presentation.actions.push_back(*action);
+            } else {
+                host::present_input(std::get<host::PresentationEvent>(event));
+            }
         }
     }
     void press(SDL_Keycode key, SDL_Scancode scancode) {
@@ -125,9 +129,14 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
 
     view.route = {input::Context::BenchmarkViewer, false};
     view.motion.reset();
+    press(SDLK_DOWN, SDL_SCANCODE_DOWN);
+    press(SDLK_RETURN, SDL_SCANCODE_RETURN);
     press(SDLK_ESCAPE, SDL_SCANCODE_ESCAPE);
     frame();
-    EXPECT_EQ(view.pauses, 1);
+    EXPECT_EQ(view.actions,
+              (std::vector{host::PlayerAction::BenchmarkNext,
+                           host::PlayerAction::BenchmarkActivate,
+                           host::PlayerAction::EndBenchmark}));
     EXPECT_FALSE(view.motion);
     EXPECT_EQ(view.keys.size(), 1u);
 }

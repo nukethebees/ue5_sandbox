@@ -237,6 +237,7 @@ void SdlInput::refresh_bindings() {
     }
 }
 void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character) {
+    using enum host::PlayerAction;
     if (route_.context == input::Context::Menu) {
         events_.emplace_back(host::MenuKey{code, character, down, repeat, modifiers_});
         return;
@@ -251,12 +252,28 @@ void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character
         return;
     }
 
-    if (down && ((!route_.movable_viewer && code == PhysicalKey::Escape) ||
-                 (route_.movable_viewer && flight_.update(code, 1.f, controls_)))) {
-        host::pause_or_exit_viewer();
+    if (!route_.movable_viewer) {
+        if (down) {
+            if (auto command{input::menu_command(code.key, false)}) {
+                switch (*command) {
+                    case input::MenuCommand::Back:
+                        events_.emplace_back(EndBenchmark);
+                        break;
+                    case input::MenuCommand::Accept:
+                        events_.emplace_back(BenchmarkActivate);
+                        break;
+                    default:
+                        events_.emplace_back(BenchmarkNext);
+                        break;
+                }
+            } else if (flight_.is_pause_button(code)) {
+                events_.emplace_back(ToggleBenchmark);
+            }
+        }
         return;
     }
-    if (!route_.movable_viewer) {
+    if (down && flight_.update(code, 1.f, controls_)) {
+        host::pause_or_exit_viewer();
         return;
     }
     if (!down) {
@@ -359,7 +376,9 @@ void SdlInput::handle(SDL_Event const& event) {
                 ui_mouse_buttons_ &= ~mask;
                 events_.emplace_back(host::MenuPointer{{host::PointerAction::Up, name, button.x, button.y, 0.f}, modifiers_});
             }
-            if (route_.context != input::Context::Menu) {
+            bool const hud_click{route_.context == input::Context::BenchmarkViewer &&
+                                 !route_.movable_viewer && button.button == SDL_BUTTON_LEFT};
+            if (route_.context != input::Context::Menu && !hud_click) {
                 key(name, button.down, false, 0);
             }
             break;
