@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 #include "ioj/packed_value.h"
@@ -997,6 +998,10 @@ struct EnumTraits<BindingGroup> {
     static constexpr std::array values{
         BindingGroup::Flight, BindingGroup::Combat, BindingGroup::Utility};
 };
+
+template <>
+inline constexpr auto enum_strings<BindingGroup, Name>{
+    PackedStrings{"Flight\000Combat\000Utility", std::array<std::uint8_t, 4>{0, 7, 14, 22}}};
 
 template <>
 struct EnumTraits<InputResponse> {
