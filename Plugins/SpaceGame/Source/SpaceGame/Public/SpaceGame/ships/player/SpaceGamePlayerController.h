@@ -26,7 +26,6 @@ UCLASS()
 class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     GENERATED_BODY()
 
-    friend struct FShipControlContext;
     friend struct FPlayerHudLifecycle;
     friend struct FPlayerModalUi;
     friend class ATestBatchOrchestrator;
