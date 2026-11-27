@@ -3,7 +3,8 @@
 #include <ioj/input/logical/input_state.h>
 
 namespace ioj {
-auto ship_input_frame(InputState const& state, std::vector<sim::player::PlayerInputKind>& events)
+auto ship_input_frame(LogicalInputState const& state,
+                      std::vector<sim::player::PlayerInputKind>& events)
     -> sim::player::PlayerInputFrame {
     using enum sim::player::PlayerInputKind;
     events.clear();

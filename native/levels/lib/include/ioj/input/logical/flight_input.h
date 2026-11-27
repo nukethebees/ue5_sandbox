@@ -4,8 +4,6 @@
 #include <ioj/input/logical/input_state.h>
 #include <ioj/settings/controls_settings.h>
 
-#include <array>
-
 namespace ioj {
 auto clamp_sensitivity(float value) noexcept -> float;
 auto clamp_dead_zone(float value) noexcept -> float;
@@ -23,29 +21,29 @@ auto apply_response(Vector3d value,
                     FlightAxis axis,
                     ControlsSettings const& settings) noexcept -> Vector3d;
 
-class FlightInputResolver {
-  public:
-    void configure(InputState& state, ControlsSettings const& controls, InputContext context);
-    auto is_pause_button(PhysicalKey key) const -> bool;
-    void button(InputState& state,
-                PhysicalKey key,
-                ButtonState edge,
-                ControlsSettings const& controls);
-    void pointer_motion(InputState& state, Vector2f delta, ControlsSettings const& controls);
-    void sample_axis(InputState& state,
+struct FlightInputState {
+    DigitalActions keyboard_mouse_held;
+    DigitalActions gamepad_held;
+    float keyboard_mouse_acceleration{};
+    float gamepad_acceleration{};
+    Vector2f gamepad_turn{};
+    Vector2f keyboard_turn{};
+};
+auto is_pause_button(FlightBindings const& bindings, PhysicalKey key) -> bool;
+void reset_flight_input(FlightInputState& flight, LogicalInputState& state);
+void map_flight_button(FlightInputState& flight,
+                       LogicalInputState& state,
+                       PhysicalKey key,
+                       ButtonState edge,
+                       ControlsSettings const& controls,
+                       InputContext context);
+void map_flight_pointer(FlightInputState& flight,
+                        LogicalInputState& state,
+                        Vector2f delta,
+                        ControlsSettings const& controls);
+void map_flight_axis(FlightInputState& flight,
+                     LogicalInputState& state,
                      PhysicalKey key,
                      float position,
                      ControlsSettings const& controls);
-    void reset(InputState& state);
-  private:
-    void update_turn(InputState& state, ControlsSettings const& controls) const;
-    void resolve_digital(InputState& state, PhysicalKey key, bool down);
-
-    FlightBindings bindings_;
-    DigitalActions keyboard_mouse_held_;
-    DigitalActions gamepad_held_;
-    std::array<float, 2> accelerator_sources_{};
-    Vector2f gamepad_turn_{};
-    Vector2f keyboard_turn_{};
-};
 }

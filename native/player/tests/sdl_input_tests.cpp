@@ -308,7 +308,10 @@ TEST_F(SdlPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
     input_->resolve(commands_, WheelMotion{{}, 1.f});
     input_->resolve(commands_, PhysicalButton{PhysicalKey::D, {}, ButtonState::Pressed});
     EXPECT_TRUE(input_->state().held.observer_right());
-    EXPECT_EQ(input_->state().observer_speed, ObserverSpeedPreset::Fast);
+    input_->append_frame_commands(0.016, commands_);
+    consume();
+    ASSERT_TRUE(view.motion);
+    EXPECT_FLOAT_EQ(view.motion->speed, 150000.f);
     EXPECT_EQ(input_->state().axes_2d[Axis2DAction::ObserverLookDelta], (Vector2f{20.f, -10.f}));
     input_->resolve(commands_, WindowFocus::Lost);
     EXPECT_FALSE(input_->relative_mouse());

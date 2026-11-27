@@ -8,12 +8,12 @@
 #include <string_view>
 
 namespace ioj {
-struct FlightControl {
+struct FlightControlDescriptor {
     std::string_view label;
     PhysicalKey default_key;
     FlightMapping mapping;
     BindingGroup group;
 };
 auto accepts_binding(FlightMapping mapping, PhysicalKey key) -> bool;
-auto flight_controls() -> std::span<FlightControl const>;
+auto flight_controls() -> std::span<FlightControlDescriptor const>;
 }

@@ -14,7 +14,7 @@ struct ActionTransition {
     ButtonState state;
 };
 
-struct InputState {
+struct LogicalInputState {
     void button(DigitalAction action, ButtonState state);
     void begin_frame();
 
@@ -23,7 +23,5 @@ struct InputState {
     EnumArray<Vector2f, Axis2DAction> axes_2d;
     EnumArray<float, Axis1DAction> axes_1d;
     DigitalActions held;
-    ObserverSpeedPreset observer_speed{ObserverSpeedPreset::Normal};
-    ObserverLookMode observer_look{ObserverLookMode::Pointer};
 };
 }

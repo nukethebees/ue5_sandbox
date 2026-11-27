@@ -1,7 +1,7 @@
 #include <ioj/input/logical/input_state.h>
 
 namespace ioj {
-void InputState::button(DigitalAction action, ButtonState edge) {
+void LogicalInputState::button(DigitalAction action, ButtonState edge) {
     auto const down{edge == ButtonState::Pressed};
     if (held.get(action) == down) {
         return;
@@ -10,7 +10,7 @@ void InputState::button(DigitalAction action, ButtonState edge) {
     transitions.push_back({action, edge});
 }
 
-void InputState::begin_frame() {
+void LogicalInputState::begin_frame() {
     transitions.clear();
     axes_2d[Axis2DAction::ObserverLookDelta] = {};
 }

@@ -17,6 +17,11 @@ struct InputRoute {
     bool operator==(InputRoute const&) const = default;
 };
 
+struct ObserverInputState {
+    ObserverSpeedPreset speed{ObserverSpeedPreset::Normal};
+    ObserverLookMode look{ObserverLookMode::Pointer};
+};
+
 class GameInput {
   public:
     GameInput(ControlsSettings const& controls, WindowFocus focus);
@@ -28,7 +33,7 @@ class GameInput {
     void repeat_navigation(host::InputEvents& output, double seconds);
     auto relative_mouse() const -> bool;
     auto editing_text() const -> bool;
-    auto state() const -> InputState const& { return state_; }
+    auto state() const -> LogicalInputState const& { return state_; }
     void append_frame_commands(double seconds, host::InputEvents& output) const;
   private:
     struct RoutedButton {
@@ -54,8 +59,9 @@ class GameInput {
 
     ControlsSettings const& controls_;
     PhysicalInputState physical_;
-    InputState state_;
-    FlightInputResolver flight_;
+    LogicalInputState state_;
+    FlightInputState flight_;
+    ObserverInputState observer_;
     std::vector<RoutedButton> routed_buttons_;
     std::array<double, digital_action_repeatable_navigation_values.size()> repeat_delays_{};
     std::uint8_t pointer_capture_{};
