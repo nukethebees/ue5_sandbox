@@ -96,6 +96,10 @@ void UShipHudWidget::ReleaseSlateResources(bool const release_children) {
 }
 
 void UShipHudWidget::set_mouse_steering(TOptional<FVector2D> const displacement) {
+    if (mouse_steering_ == displacement) {
+        return;
+    }
+
     mouse_steering_ = displacement;
     if (auto const widget{GetCachedWidget()}) {
         widget->Invalidate(EInvalidateWidgetReason::Paint);
