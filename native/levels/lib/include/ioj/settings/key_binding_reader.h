@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/s7/record_reader.h"
+#include "ioj/settings/binding_value_reader.h"
 #include "ioj/settings/key_binding.h"
 #include <ioj/s7/field_reader.h>
 

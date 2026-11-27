@@ -3,13 +3,14 @@
 
 #pragma once
 
-#include <string>
+#include "ioj/input/flight_mapping.h"
+#include "ioj/input/key_code.h"
 
 namespace ioj {
 struct KeyBinding {
     bool operator==(KeyBinding const&) const = default;
 
-    std::string mapping{};
-    std::string key{};
+    FlightMapping mapping{};
+    input::KeyCode key{};
 };
 } // namespace ioj

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/settings/binding_value_writer.h"
 #include "ioj/settings/key_binding.h"
 #include <ioj/s7/writer.h>
 

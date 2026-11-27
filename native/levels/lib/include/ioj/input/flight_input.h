@@ -38,7 +38,7 @@ struct FlightControl {
 };
 auto binding_name_equal(std::string_view left, std::string_view right) -> bool;
 auto flight_controls() -> std::span<FlightControl const>;
-auto bound_key(FlightControl const& control, ControlsSettings const& settings) -> std::string_view;
+auto bound_key(FlightControl const& control, ControlsSettings const& settings) -> std::string;
 
 struct FlightBinding {
     FlightAction action;

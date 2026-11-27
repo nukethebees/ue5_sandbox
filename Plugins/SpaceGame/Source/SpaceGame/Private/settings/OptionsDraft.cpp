@@ -119,7 +119,8 @@ auto UOptionsDraft::save(GameSettingCategory category) -> bool {
                 auto const key{row.current_key.IsValid()
                                    ? to_string(row.current_key.GetFName().ToString())
                                    : std::string{}};
-                overrides.push_back({to_string(row.address.mapping_name.ToString()), key});
+                overrides.push_back({*input::parse_mapping(to_string(row.address.mapping_name.ToString())),
+                                     input::parse_key(key)});
             }
         }
         requested.controls.bindings = std::move(overrides);

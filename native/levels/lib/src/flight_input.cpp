@@ -53,16 +53,16 @@ auto flight_controls() -> std::span<FlightControl const> {
     };
     return controls;
 }
-auto bound_key(FlightControl const& control, ControlsSettings const& settings) -> std::string_view {
+auto bound_key(FlightControl const& control, ControlsSettings const& settings) -> std::string {
     if (settings.bindings) {
         auto const found{std::ranges::find_if(*settings.bindings, [&](auto const& entry) {
-            return binding_name_equal(entry.mapping, control.mapping);
+            return entry.mapping == *parse_mapping(control.mapping);
         })};
         if (found != settings.bindings->end()) {
-            return found->key;
+            return serialized_key(found->key);
         }
     }
-    return control.default_key;
+    return std::string{control.default_key};
 }
 FlightInput::FlightInput()
     : events_{*std::pmr::get_default_resource()} {}

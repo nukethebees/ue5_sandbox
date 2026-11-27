@@ -26,7 +26,7 @@ TEST(FlightInput, MultipleDevicesProduceOneOrderedPressAndRelease) {
 
 TEST(FlightInput, ReboundPauseAndViewerControlsAreIsolatedFromFlight) {
     ControlsSettings settings{};
-    settings.bindings.emplace().push_back({"general.pause.keyboardmouse", "p"});
+    settings.bindings.emplace().push_back({*parse_mapping("general.pause.keyboardmouse"), parse_key("p")});
     FlightInput input;
     input.configure(settings, Context::BenchmarkViewer);
     EXPECT_FALSE(input.update("Escape", 1.f, settings));
@@ -51,7 +51,7 @@ TEST(FlightInput, PointerSteeringHandsBackToHeldStickAndClearsOnContextChange) {
     EXPECT_FLOAT_EQ(input.frame().yaw, -1.f);
     input.configure(settings, Context::Menu);
     EXPECT_EQ(input.frame().yaw, 0.f);
-    settings.bindings.emplace().push_back({"Starfox.Yaw.KeyboardMouse", "J"});
+    settings.bindings.emplace().push_back({FlightMapping::StarfoxYawKeyboardMouse, PhysicalKey::J});
     input.configure(settings, Context::Gameplay);
     input.update("J", 1.f, settings);
     input.update("RightMouseButton", 1.f, settings);
