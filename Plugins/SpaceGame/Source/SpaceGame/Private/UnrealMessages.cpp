@@ -37,14 +37,12 @@ KeyboardLayout keyboard;
 PlayerSettingsView attached_settings{};
 PlayerMenu* attached_menu{};
 SystemCapabilities const* attached_capabilities{};
-std::optional<session::LevelSelectRequest> menu_destination;
+std::string menu_error;
 std::span<ScreenResolution const> window_resolutions{};
 
 struct MessageBuffer {
     std::vector<host::PreferenceEdit> preference_edits;
     std::vector<TWeakObjectPtr<UOptionsDraft>> preference_senders;
-    host::NavigationRequest navigation_request;
-    TWeakObjectPtr<ULevelSelectWidget> catalog_request;
 };
 
 std::vector<host::WidgetAction> pending_actions;
@@ -89,30 +87,12 @@ void queue_preferences(host::PreferenceEdit edit, UOptionsDraft& draft) {
     pending.preference_senders.emplace_back(&draft);
 }
 
-void request_level_catalog(ULevelSelectWidget& widget) {
-    pending.catalog_request = &widget;
+void request_level_catalog() {
+    endpoint.send(host::UnrealMessageKind::RefreshCatalog);
 }
-
-void request_level(host::LevelSelection level) {
-    pending.navigation_request = std::move(level);
+auto launch_error() -> std::string_view {
+    return menu_error;
 }
-
-bool request_menu(session::LevelSelectRequest request) {
-    if (auto* existing{std::get_if<session::LevelSelectRequest>(&pending.navigation_request)}) {
-        if (!request.launch_error.empty()) {
-            existing->launch_error = std::move(request.launch_error);
-        }
-        return false;
-    }
-
-    pending.navigation_request = std::move(request);
-    return true;
-}
-
-auto menu_selection() -> std::optional<session::LevelSelectRequest>& {
-    return menu_destination;
-}
-
 auto supported_resolutions() -> std::span<ScreenResolution const> {
     return window_resolutions;
 }
@@ -187,8 +167,7 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 break;
             }
             case OpenMenu:
-                menu_selection().emplace(levels::LevelId{player_menu().selected_level},
-                                         messages.errors[index]);
+                menu_error = messages.errors[index];
                 level_world.Reset();
                 UGameplayStatics::OpenLevel(world, TEXT("/SpaceGame/Levels/MainMenu"));
                 break;
@@ -226,6 +205,14 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 }
                 break;
             }
+            case Catalog:
+                if (auto* main{player ? player->main_menu() : nullptr}) {
+                    if (auto* widget{main->level_select()}) {
+                        widget->present_catalog(messages.catalogs[index]);
+                        menu_error.clear();
+                    }
+                }
+                break;
             case Profiles:
                 if (auto* main{player ? player->main_menu() : nullptr}) {
                     if (auto* widget{main->save_game_viewer()}) {
@@ -271,21 +258,14 @@ void IojPlayer_Attach(SystemCapabilities const& capabilities, PlayerMenu& menu) 
     attached_menu = &menu;
     attached_capabilities = &capabilities;
 }
-void host::present_catalog(presentation::LevelCatalogView const& catalog) {
-    if (auto* widget{published.catalog_request.Get()}) {
-        widget->present_catalog(catalog);
-    }
-}
 void host::present_settings(PlayerSettingsView const& settings,
                             std::span<ScreenResolution const> resolutions) {
     window_resolutions = resolutions;
     attached_settings = settings;
 }
 void clear_consumed_messages() {
-    published.catalog_request.Reset();
     published.preference_edits.clear();
     published.preference_senders.clear();
-    published.navigation_request.emplace<std::monostate>();
 }
 
 auto host::take_widget_actions() -> std::span<WidgetAction const> {
@@ -294,12 +274,10 @@ auto host::take_widget_actions() -> std::span<WidgetAction const> {
     return dispatched_actions;
 }
 
-auto host::take_messages() -> HostRequests {
+auto host::take_preferences() -> std::span<PreferenceEdit const> {
     std::swap(pending, published);
 
-    return {published.preference_edits,
-            published.navigation_request,
-            published.catalog_request.IsValid()};
+    return published.preference_edits;
 }
 
 void host::preference_result(std::size_t index, std::string_view error) {
@@ -319,7 +297,7 @@ void detach_player() {
     dispatched_actions.clear();
     published = MessageBuffer{};
     pending = MessageBuffer{};
-    menu_destination.reset();
+    menu_error.clear();
     window_resolutions = {};
     attached_settings = {};
     attached_capabilities = nullptr;

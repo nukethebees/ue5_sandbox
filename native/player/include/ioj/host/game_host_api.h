@@ -10,7 +10,7 @@
 namespace ioj::host {
 struct NativeMessages;
 struct UnrealMessages;
-struct HostRequests;
+struct PreferenceEdit;
 }
 
 namespace ioj::presentation {
@@ -42,10 +42,9 @@ namespace host {
 // Call once after the Unreal tick. Views last until the next BeginFrame or detach.
 // BeginFrame clears consumed requests.
 // Requests queued while handling results belong to the next batch.
-IOJ_PLAYER_API void present_catalog(presentation::LevelCatalogView const& catalog);
 IOJ_PLAYER_API void present_settings(PlayerSettingsView const& settings,
                                      std::span<ScreenResolution const> resolutions);
-IOJ_PLAYER_API auto take_messages() -> HostRequests;
+IOJ_PLAYER_API auto take_preferences() -> std::span<PreferenceEdit const>;
 IOJ_PLAYER_API void preference_result(std::size_t index, std::string_view error);
 }
 #undef IOJ_PLAYER_API

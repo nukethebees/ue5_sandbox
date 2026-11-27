@@ -289,7 +289,7 @@ void Application::handle_action(host::PlayerAction action) {
                                            : levels::LaunchMode::Running);
             break;
         case EndBenchmark:
-            return_requested_ = true;
+            return_to_menu();
             break;
     }
 }
@@ -314,7 +314,7 @@ void Application::choose_pause(host::PauseMenuItem item) {
             endpoint_.present_pause({host::PauseCommandKind::ShowPage, item});
             break;
         case LevelSelect:
-            return_requested_ = true;
+            return_to_menu();
             break;
         case Quit:
             quit_requested_ = true;
@@ -331,11 +331,40 @@ void Application::finish_leave(bool accepted) {
 
 void Application::apply_menu(MenuUpdate update) {
     if (update.operation == MenuOperation::Activate) {
+        if (update.target.kind == MenuTarget::Kind::Page &&
+            update.target.page() == MainMenuItem::Quit) {
+            quit_requested_ = true;
+            return;
+        }
         if (update.target.kind == MenuTarget::Kind::Profile ||
             update.target.kind == MenuTarget::Kind::Outcome) {
             publish_profiles();
         } else if (update.target.kind == MenuTarget::Kind::Control) {
             switch (update.target.control()) {
+                case MenuControl::ReturnToLevels:
+                    return_to_menu();
+                    return;
+                case MenuControl::Launch: {
+                    auto const entry{
+                        std::ranges::find_if(available_levels_, [this](auto const& candidate) {
+                            return candidate.definition.metadata().id.value == menu_.selected_level;
+                        })};
+                    auto const options{menu_.launch_options()};
+                    if (!options) {
+                        return;
+                    }
+                    if (entry == available_levels_.end()) {
+                        return_to_menu("The selected level is no longer available.");
+                        return;
+                    }
+                    auto result{launch_level(
+                        entry->definition, path_to_utf8(entry->source_path), *options)};
+                    if (!result) {
+                        return_to_menu(result.error());
+                    }
+                    available_levels_.clear();
+                    return;
+                }
                 case MenuControl::ConfirmCreate:
                 case MenuControl::ActivateProfile:
                 case MenuControl::RefreshProfiles:
@@ -411,6 +440,9 @@ void Application::exchange() {
                     result_ = std::unexpected{
                         "Could not present the native pause menu. See the game log."};
                 }
+                break;
+            case host::UnrealMessageKind::RefreshCatalog:
+                publish_catalog();
                 break;
             case host::UnrealMessageKind::RefreshProfiles:
                 profile_action(MenuControl::RefreshProfiles);
@@ -565,6 +597,17 @@ void Application::process_input(double seconds) {
     }
 }
 
+void Application::return_to_menu(std::string error) {
+    if (exit_when_ready_) {
+        result_ = std::unexpected{error.empty() ? "Level startup was cancelled" : error};
+    }
+    if (auto* level{storage_.get()}) {
+        menu_.selected_level = level->simulation.level_metadata().id.value;
+    }
+    unload_level(sim::RunEndReason::WorldEnd, false);
+    menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
+    endpoint_.open_menu(std::move(error));
+}
 auto Application::play(std::filesystem::path const& level_path) -> ApplicationResult {
     exchange();
     if (!engine_.ready) {
@@ -630,61 +673,9 @@ auto Application::play(std::filesystem::path const& level_path) -> ApplicationRe
         }
 
         exchange();
-        auto const messages{host::take_messages()};
-        if (return_requested_) {
-            auto const id{storage_.get()->simulation.level_metadata().id};
-            unload_level(sim::RunEndReason::WorldEnd, false);
-            menu_.selected_level = id.value;
-            menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
-            endpoint_.open_menu({});
-            endpoint_.exchange();
-            return_requested_ = false;
-            continue;
-        }
-        if (process_preferences(messages.preference_edits)) {
+        if (process_preferences(host::take_preferences())) {
             input_->refresh_bindings();
             consume_commands();
-        }
-
-        if (messages.refresh_catalog) {
-            publish_catalog();
-        }
-
-        auto const& navigation{messages.navigation_request};
-        if (exit_when_ready_ && !std::holds_alternative<std::monostate>(navigation)) {
-            return ApplicationResult{std::unexpect, "Level startup was cancelled"};
-        }
-        if (auto const* menu{std::get_if<session::LevelSelectRequest>(&navigation)}) {
-            unload_level(sim::RunEndReason::WorldEnd, false);
-            menu_.selected_level = menu->preferred_level_id.value;
-            menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
-            endpoint_.open_menu(menu->launch_error);
-            endpoint_.exchange();
-            continue;
-        }
-
-        if (auto const* selection{std::get_if<host::LevelSelection>(&navigation)}) {
-            unload_level(sim::RunEndReason::WorldEnd, false);
-            auto const entry{std::ranges::find_if(available_levels_, [&](auto const& candidate) {
-                return candidate.definition.metadata().id == selection->id;
-            })};
-            if (entry != available_levels_.end()) {
-                auto result{launch_level(
-                    entry->definition, path_to_utf8(entry->source_path), selection->options)};
-                available_levels_ = std::vector<AvailableLevel>{};
-                if (!result) {
-                    menu_.selected_level = selection->id.value;
-                    menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
-                    endpoint_.open_menu(result.error());
-                    endpoint_.exchange();
-                }
-                continue;
-            }
-            menu_.selected_level = selection->id.value;
-            menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
-            endpoint_.open_menu("The selected level is no longer available.");
-            endpoint_.exchange();
-            continue;
         }
 
         auto* const level{storage_.get()};
@@ -751,7 +742,8 @@ void Application::publish_catalog() {
     menu_.levels.clear();
     if (!loaded) {
         auto const error{levels::format_diagnostics(loaded.error())};
-        host::present_catalog({directory, error, {}, {}});
+        endpoint_.present_catalog({directory, error, {}, {}});
+        endpoint_.exchange();
         return;
     }
 
@@ -786,7 +778,8 @@ void Application::publish_catalog() {
             menu_.select(menu_.primary_target(settings_.view()));
         }
     }
-    host::present_catalog({directory, rows.errors, rows.listings, rows.campaigns});
+    endpoint_.present_catalog({directory, rows.errors, rows.listings, rows.campaigns});
+    endpoint_.exchange();
 
     available_levels_.reserve(
         std::ranges::count(rows.listings, true, &presentation::LevelListing::unlocked));

@@ -39,6 +39,7 @@ class Application {
     void publish_catalog();
     void publish_profiles();
     void profile_action(MenuControl action);
+    void return_to_menu(std::string error = {});
     auto launch_level(std::filesystem::path const& path) -> ApplicationResult;
     auto launch_level(levels::LevelDefinition const& definition,
                       std::string source_path,
@@ -58,7 +59,6 @@ class Application {
     std::vector<AvailableLevel> available_levels_;
     ApplicationResult result_{};
     bool quit_requested_{};
-    bool return_requested_{};
     bool exit_when_ready_{};
 };
 }

@@ -157,7 +157,7 @@ auto UScriptLevelSelectWidget::NativeOnFocusReceived(FGeometry const& geometry,
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
     if (view_.IsValid()) {
-        view_->present({player_menu().focus, MenuOperation::Focus});
+        view_->present({menu_presentation().focus, MenuOperation::Focus});
     }
 
     return FReply::Handled();
@@ -165,11 +165,7 @@ auto UScriptLevelSelectWidget::NativeOnFocusReceived(FGeometry const& geometry,
 
 void UScriptLevelSelectWidget::present(MenuUpdate const& update) {
     if (update.operation == MenuOperation::Activate) {
-        if (update.target == MenuTarget{MenuControl::Launch}) {
-            if (auto const options{player_menu().launch_options()}; options && view_state_.can_launch) {
-                request_level({levels::LevelId{player_menu().selected_level}, *options});
-            }
-        } else if (update.target.kind == MenuTarget::Kind::Category) {
+        if (update.target.kind == MenuTarget::Kind::Category) {
             rebuild_catalog();
         } else if (update.target.kind == MenuTarget::Kind::Level) {
             auto const index{level_entry_indices_.IndexOfByPredicate([&](int32 row) {
@@ -191,7 +187,7 @@ void UScriptLevelSelectWidget::refresh_levels() {
     catalog_directory_.Reset();
     catalog_error_.Reset();
 
-    request_level_catalog(*this);
+    request_level_catalog();
 }
 
 void UScriptLevelSelectWidget::present_catalog(presentation::LevelCatalogView const& catalog) {
@@ -226,21 +222,20 @@ void UScriptLevelSelectWidget::present_catalog(presentation::LevelCatalogView co
     catalog_directory_ = to_fstring(catalog.directory);
     catalog_error_ = to_fstring(catalog.error);
 
-    if (auto& destination{menu_selection()}; destination && !destination->launch_error.empty()) {
-        auto launch_error{to_fstring(destination->launch_error)};
+    if (auto error{launch_error()}; !error.empty()) {
+        auto launch_error{to_fstring(error)};
         catalog_error_ = catalog_error_.IsEmpty()
                            ? MoveTemp(launch_error)
                            : catalog_error_ + TEXT("\n") + MoveTemp(launch_error);
     }
 
-    menu_selection().reset();
     rebuild_catalog();
 }
 
 void UScriptLevelSelectWidget::rebuild_catalog() {
     level_entry_indices_.Reset();
     view_state_ = FLevelSelectViewState{};
-    view_state_.category = player_menu().category;
+    view_state_.category = menu_presentation().category;
 
     if (view_state_.category == LevelCatalogCategory::Playable) {
         view_state_.title = NSLOCTEXT("LevelSelect", "SelectLevel", "SELECT AN OPERATION");
@@ -283,7 +278,7 @@ void UScriptLevelSelectWidget::rebuild_catalog() {
             }
 
             auto const id{entry ? entry.id.value : to_string(entry.path)};
-            if (id == player_menu().selected_level) {
+            if (id == menu_presentation().selected_level) {
                 preferred_button_index = level_entry_indices_.Num();
             }
             view_state_.rows.Add(FLevelSelectViewRow{
@@ -388,9 +383,9 @@ void UScriptLevelSelectWidget::rebuild_catalog() {
     }
 
     publish_catalog();
-    if (view_ && player_menu().focus.is_row() &&
-        player_menu().page == MainMenuItem::SelectLevel) {
-        view_->present({player_menu().focus, MenuOperation::Focus});
+    if (view_ && menu_presentation().focus.is_row() &&
+        menu_presentation().page == MainMenuItem::SelectLevel) {
+        view_->present({menu_presentation().focus, MenuOperation::Focus});
     }
 }
 

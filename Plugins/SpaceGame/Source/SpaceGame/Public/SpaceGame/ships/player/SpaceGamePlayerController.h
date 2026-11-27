@@ -72,8 +72,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     }
 
     auto can_activate_gameplay_control() const -> bool {
-        return is_gameplay_mode() && !return_to_level_select_pending_ && !modal_ui_.has_modal() &&
-               !modal_ui_.is_resume_pending();
+        return is_gameplay_mode() && !modal_ui_.has_modal() && !modal_ui_.is_resume_pending();
     }
 
     void initialise_gameplay();
@@ -99,8 +98,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void on_simulation_paused();
     void finish_level();
     void show_level_completion(FLevelCompletion const& completion);
-    void return_to_level_select();
-    void quit_game();
 
     /* **************************************** */
     // Diagnostics
@@ -124,7 +121,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     EPlayerControllerMode mode_{EPlayerControllerMode::Gameplay};
     bool begin_play_finished_{false};
     bool ending_play_{false};
-    bool return_to_level_select_pending_{false};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")
     FActorLoggingConfig log_config{1.f};

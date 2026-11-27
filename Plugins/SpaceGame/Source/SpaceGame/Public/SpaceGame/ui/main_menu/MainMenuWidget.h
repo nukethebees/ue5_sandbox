@@ -22,10 +22,10 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
   public:
     UMainMenuWidget();
     void present(MenuUpdate const& update);
-    void focus_item(MainMenuItem item);
-    void activate_item(MainMenuItem item);
-
+    auto level_select() const -> ULevelSelectWidget* { return level_select_widget_; }
     auto save_game_viewer() const -> USaveGameViewerWidget* { return save_game_viewer_; }
+    void focus_item(MainMenuItem item);
+
     void prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class);
   protected:
     void NativeOnInitialized() override;
@@ -37,7 +37,6 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
   private:
     void create_content_widgets();
     void show_page(MainMenuItem page);
-    void quit_game();
     void restore_focus();
     void handle_page_modal_changed(bool visible);
 

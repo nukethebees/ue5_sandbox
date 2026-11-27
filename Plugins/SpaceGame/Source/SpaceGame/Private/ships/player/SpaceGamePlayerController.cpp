@@ -1,6 +1,6 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 
-#include <ioj/host/input.h>
+#include <ioj/host/messages.h>
 #include <SandboxGameShared/utilities/macros/null_checks.hpp>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -274,7 +274,7 @@ auto ASpaceGamePlayerController::set_control_context(levels::ControlContext cont
     return true;
 }
 void ASpaceGamePlayerController::present_menu(MenuUpdate const& update) {
-    switch (player_menu().screen) {
+    switch (menu_presentation().screen) {
         case MenuScreen::Main:
             if (auto* main{modal_ui_.main_menu()}) {
                 main->present(update);
@@ -286,9 +286,6 @@ void ASpaceGamePlayerController::present_menu(MenuUpdate const& update) {
             }
             break;
         case MenuScreen::Completion:
-            if (update.operation == MenuOperation::Activate) {
-                return_to_level_select();
-            }
             break;
         case MenuScreen::Closed:
             break;
@@ -337,7 +334,7 @@ auto ASpaceGamePlayerController::present_pause(host::PauseCommand command) -> bo
         widget->present(command);
         return true;
     }
-    if (!is_gameplay_mode() || return_to_level_select_pending_ || modal_ui_.has_modal()) {
+    if (!is_gameplay_mode() || modal_ui_.has_modal()) {
         UE_LOG(
             LogSandboxController, Error, TEXT("Cannot present a pause menu in the current view."));
         return false;
@@ -362,7 +359,7 @@ auto ASpaceGamePlayerController::present_pause(host::PauseCommand command) -> bo
     return true;
 }
 void ASpaceGamePlayerController::restore_gameplay_presentation() {
-    if (!is_gameplay_mode() || return_to_level_select_pending_) {
+    if (!is_gameplay_mode()) {
         return;
     }
 
@@ -398,7 +395,7 @@ void ASpaceGamePlayerController::restore_gameplay_presentation() {
 }
 void ASpaceGamePlayerController::on_pause_menu_deactivated() {
     modal_ui_.close_pause(*this);
-    if (is_gameplay_mode() && !return_to_level_select_pending_) {
+    if (is_gameplay_mode()) {
         restore_gameplay_presentation();
     }
 }
@@ -406,7 +403,7 @@ void ASpaceGamePlayerController::on_completion_menu_deactivated() {
     modal_ui_.close_completion(*this);
 }
 void ASpaceGamePlayerController::on_simulation_paused() {
-    if (!is_gameplay_mode() || return_to_level_select_pending_) {
+    if (!is_gameplay_mode()) {
         return;
     }
 
@@ -420,7 +417,7 @@ void ASpaceGamePlayerController::finish_level() {
     hud_.shutdown_benchmark();
 }
 void ASpaceGamePlayerController::show_level_completion(FLevelCompletion const& completion) {
-    if (!is_gameplay_mode() || return_to_level_select_pending_) {
+    if (!is_gameplay_mode()) {
         return;
     }
 
@@ -428,53 +425,6 @@ void ASpaceGamePlayerController::show_level_completion(FLevelCompletion const& c
         modal_ui_.show_completion(*this, completion);
     }
 }
-void ASpaceGamePlayerController::return_to_level_select() {
-    if (!is_gameplay_mode()) {
-        return;
-    }
-
-    if (return_to_level_select_pending_) {
-        return;
-    }
-
-    auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator)) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ASpaceGamePlayerController::return_to_level_select: Required gameplay "
-                    "objects are invalid."));
-        return;
-    }
-
-    return_to_level_select_pending_ = true;
-    auto const preferred_level_id{orchestrator->has_level() ? orchestrator->level_id()
-                                                            : modal_ui_.completed_level_id()};
-    if (!request_menu({levels::LevelId{preferred_level_id.IsNone()
-                                           ? std::string{}
-                                           : to_string(preferred_level_id.ToString())}})) {
-        return_to_level_select_pending_ = false;
-        return;
-    }
-
-    modal_ui_.clear_menus(*this);
-    hud_.cancel_restore();
-    hud_.shutdown_benchmark();
-    set_control_context(levels::ControlContext::None);
-}
-void ASpaceGamePlayerController::quit_game() {
-    if (!is_gameplay_mode()) {
-        return;
-    }
-
-    if (return_to_level_select_pending_) {
-        return;
-    }
-
-    return_to_level_select_pending_ = true;
-    modal_ui_.detach_callbacks(*this);
-    UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, false);
-}
-
 /* **************************************** */
 // Diagnostics
 /* **************************************** */

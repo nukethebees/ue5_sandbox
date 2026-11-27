@@ -147,13 +147,13 @@ void UMainMenuWidget::present(MenuUpdate const& update) {
             options_widget_->refresh_view();
         }
         if (update.operation == MenuOperation::Activate) {
-            activate_item(item);
+            show_page(item);
         } else {
             focus_item(item);
         }
-    } else if (player_menu().page == MainMenuItem::SelectLevel && level_select_widget_) {
+    } else if (menu_presentation().page == MainMenuItem::SelectLevel && level_select_widget_) {
         level_select_widget_->present(update);
-    } else if (player_menu().page == MainMenuItem::DataArchive && save_game_viewer_) {
+    } else if (menu_presentation().page == MainMenuItem::DataArchive && save_game_viewer_) {
         save_game_viewer_->present(update);
     } else if (options_widget_) {
         options_widget_->present(update);
@@ -162,13 +162,6 @@ void UMainMenuWidget::present(MenuUpdate const& update) {
 void UMainMenuWidget::focus_item(MainMenuItem item) {
     if (view_) {
         view_->focus_item(item);
-    }
-}
-void UMainMenuWidget::activate_item(MainMenuItem item) {
-    if (item == MainMenuItem::Quit) {
-        quit_game();
-    } else {
-        show_page(item);
     }
 }
 void UMainMenuWidget::show_page(MainMenuItem page) {
@@ -181,12 +174,8 @@ void UMainMenuWidget::show_page(MainMenuItem page) {
     }
 }
 
-void UMainMenuWidget::quit_game() {
-    UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
-}
-
 void UMainMenuWidget::restore_focus() {
-    present({player_menu().focus, MenuOperation::Focus});
+    present({menu_presentation().focus, MenuOperation::Focus});
 }
 
 void UMainMenuWidget::handle_page_modal_changed(bool const visible) {
