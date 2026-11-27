@@ -96,6 +96,19 @@ class StringEnumParserLowering : public CppIRBuilder {
                        Entries const& entries,
                        std::size_t const prefix_size,
                        std::size_t position = 0) -> Nodes {
+        if (length == 1) {
+            std::vector<SwitchCaseId> cases;
+            for (auto const entry : entries) {
+                auto const byte{static_cast<unsigned char>(entry.key[prefix_size])};
+                cases.push_back(
+                    switch_case(character_literal(byte), block({return_stmt(entry.value)})));
+            }
+            cases.push_back(
+                switch_case({}, block({return_stmt(type_reference(std_types().nullopt))})));
+            auto const byte{
+                static_cast_expr(std_types().unsigned_char, subscript(input, literal(0u)))};
+            return {switch_stmt(byte, cases)};
+        }
         if (length == 0 || entries.size() <= linear_limit) {
             return comparisons(input, entries, prefix_size);
         }

@@ -54,19 +54,23 @@ using ioj::to_serialized_string;
     -> std::optional<MaterialOperator> {
     switch (value.size()) {
         case 1ULL: {
-            if (value == "+") {
-                return MaterialOperator::add;
+            switch (static_cast<unsigned char>(value[0U])) {
+                case '+': {
+                    return MaterialOperator::add;
+                }
+                case '-': {
+                    return MaterialOperator::subtract;
+                }
+                case '*': {
+                    return MaterialOperator::multiply;
+                }
+                case '/': {
+                    return MaterialOperator::divide;
+                }
+                default: {
+                    return std::nullopt;
+                }
             }
-            if (value == "-") {
-                return MaterialOperator::subtract;
-            }
-            if (value == "*") {
-                return MaterialOperator::multiply;
-            }
-            if (value == "/") {
-                return MaterialOperator::divide;
-            }
-            return std::nullopt;
         }
         case 3ULL: {
             if (value == "sin") {

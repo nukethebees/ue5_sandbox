@@ -173,162 +173,84 @@ enum class PhysicalKey : PhysicalKeyUnderlying {
     -> std::optional<PhysicalKey> {
     switch (value.size()) {
         case 1ULL: {
-            switch (static_cast<unsigned char>(value[0ULL])) {
+            switch (static_cast<unsigned char>(value[0U])) {
                 case 'A': {
-                    if (value == "A") {
-                        return PhysicalKey::A;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::A;
                 }
                 case 'B': {
-                    if (value == "B") {
-                        return PhysicalKey::B;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::B;
                 }
                 case 'C': {
-                    if (value == "C") {
-                        return PhysicalKey::C;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::C;
                 }
                 case 'D': {
-                    if (value == "D") {
-                        return PhysicalKey::D;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::D;
                 }
                 case 'E': {
-                    if (value == "E") {
-                        return PhysicalKey::E;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::E;
                 }
                 case 'F': {
-                    if (value == "F") {
-                        return PhysicalKey::F;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::F;
                 }
                 case 'G': {
-                    if (value == "G") {
-                        return PhysicalKey::G;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::G;
                 }
                 case 'H': {
-                    if (value == "H") {
-                        return PhysicalKey::H;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::H;
                 }
                 case 'I': {
-                    if (value == "I") {
-                        return PhysicalKey::I;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::I;
                 }
                 case 'J': {
-                    if (value == "J") {
-                        return PhysicalKey::J;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::J;
                 }
                 case 'K': {
-                    if (value == "K") {
-                        return PhysicalKey::K;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::K;
                 }
                 case 'L': {
-                    if (value == "L") {
-                        return PhysicalKey::L;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::L;
                 }
                 case 'M': {
-                    if (value == "M") {
-                        return PhysicalKey::M;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::M;
                 }
                 case 'N': {
-                    if (value == "N") {
-                        return PhysicalKey::N;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::N;
                 }
                 case 'O': {
-                    if (value == "O") {
-                        return PhysicalKey::O;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::O;
                 }
                 case 'P': {
-                    if (value == "P") {
-                        return PhysicalKey::P;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::P;
                 }
                 case 'Q': {
-                    if (value == "Q") {
-                        return PhysicalKey::Q;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::Q;
                 }
                 case 'R': {
-                    if (value == "R") {
-                        return PhysicalKey::R;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::R;
                 }
                 case 'S': {
-                    if (value == "S") {
-                        return PhysicalKey::S;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::S;
                 }
                 case 'T': {
-                    if (value == "T") {
-                        return PhysicalKey::T;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::T;
                 }
                 case 'U': {
-                    if (value == "U") {
-                        return PhysicalKey::U;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::U;
                 }
                 case 'V': {
-                    if (value == "V") {
-                        return PhysicalKey::V;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::V;
                 }
                 case 'W': {
-                    if (value == "W") {
-                        return PhysicalKey::W;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::W;
                 }
                 case 'X': {
-                    if (value == "X") {
-                        return PhysicalKey::X;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::X;
                 }
                 case 'Y': {
-                    if (value == "Y") {
-                        return PhysicalKey::Y;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::Y;
                 }
                 case 'Z': {
-                    if (value == "Z") {
-                        return PhysicalKey::Z;
-                    }
-                    return std::nullopt;
+                    return PhysicalKey::Z;
                 }
                 default: {
                     return std::nullopt;
