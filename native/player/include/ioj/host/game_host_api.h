@@ -18,13 +18,14 @@ struct LevelCatalogView;
 namespace ioj {
 struct SystemCapabilities;
 struct PlayerSettingsView;
+struct PlayerMenu;
 #ifdef IOJ_PLAYER_EXPORTS
 #define IOJ_PLAYER_API __declspec(dllexport)
 #else
 #define IOJ_PLAYER_API __declspec(dllimport)
 #endif
 extern "C" {
-    IOJ_PLAYER_API void IojPlayer_Attach(SystemCapabilities const& capabilities);
+    IOJ_PLAYER_API void IojPlayer_Attach(SystemCapabilities const& capabilities, PlayerMenu& menu);
     IOJ_PLAYER_API void IojPlayer_Detach();
     IOJ_PLAYER_API auto IojPlayer_ApplyPreferences() -> bool;
     IOJ_PLAYER_API auto IojPlayer_GameFailed() -> bool;

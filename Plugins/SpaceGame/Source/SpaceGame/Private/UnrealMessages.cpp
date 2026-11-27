@@ -20,6 +20,7 @@
 namespace ioj {
 namespace {
 PlayerSettingsView attached_settings{};
+PlayerMenu* attached_menu{};
 SystemCapabilities const* attached_capabilities{};
 presentation::ProfileView published_profiles{};
 std::optional<session::LevelSelectRequest> menu_destination;
@@ -47,6 +48,11 @@ FAutoConsoleCommand reset_profile_command{
     FConsoleCommandDelegate::CreateLambda(
         [] { queue_profile_action(host::ProfileActionKind::ResetTestProfile, {}, nullptr); })};
 #endif
+}
+
+auto player_menu() -> PlayerMenu& {
+    check(attached_menu);
+    return *attached_menu;
 }
 
 auto player_settings() -> PlayerSettingsView const& {
@@ -114,7 +120,8 @@ void clear_requested_simulation_mode() {
 }
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-void IojPlayer_Attach(SystemCapabilities const& capabilities) {
+void IojPlayer_Attach(SystemCapabilities const& capabilities, PlayerMenu& menu) {
+    attached_menu = &menu;
     attached_capabilities = &capabilities;
 }
 void host::present_catalog(presentation::LevelCatalogView const& catalog) {
@@ -181,5 +188,6 @@ void detach_player() {
     published_profiles = {};
     attached_settings = {};
     attached_capabilities = nullptr;
+    attached_menu = nullptr;
 }
 }

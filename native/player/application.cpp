@@ -215,7 +215,9 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     auto const engine_command_line{
         engine_arguments(project_directory, settings.launch_display_mode(), args.user_directory)};
     LevelStorage storage;
-    IojPlayer_Attach(capabilities);
+    application.menu_.show_reset_profile = !IOJ_SHIPPING;
+    application.menu_.draft.begin(settings.view().applied_values, settings.view().defaults);
+    IojPlayer_Attach(capabilities, application.menu_);
     host::present_settings(settings.view(), window.supported_resolutions());
     application.publish_profiles();
     if (auto result{start_engine(window, engine_command_line, settings.launch_display_mode())};
@@ -471,6 +473,8 @@ auto Application::play(Window& window,
         if (play_input.end_benchmark) {
             auto const id{storage.get()->simulation.level_metadata().id};
             unload_level(storage, sim::RunEndReason::WorldEnd, false);
+            menu_.selected_level = id.value;
+            menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
             host::open_menu(id.value, {});
             play_input.end_benchmark = false;
             continue;
@@ -490,6 +494,8 @@ auto Application::play(Window& window,
         }
         if (auto const* menu{std::get_if<session::LevelSelectRequest>(&navigation)}) {
             unload_level(storage, sim::RunEndReason::WorldEnd, false);
+            menu_.selected_level = menu->preferred_level_id.value;
+            menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
             host::open_menu(menu->preferred_level_id.value, menu->launch_error);
             continue;
         }
@@ -506,10 +512,14 @@ auto Application::play(Window& window,
                                          selection->options)};
                 available_levels = std::vector<AvailableLevel>{};
                 if (!result) {
+                    menu_.selected_level = selection->id.value;
+                    menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
                     host::open_menu(selection->id.value, result.error());
                 }
                 continue;
             }
+            menu_.selected_level = selection->id.value;
+            menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
             host::open_menu(selection->id.value, "The selected level is no longer available.");
             continue;
         }
@@ -579,11 +589,12 @@ auto Application::play(Window& window,
     return {};
 }
 
-auto Application::publish_catalog(std::filesystem::path const& scripts_directory) const
+auto Application::publish_catalog(std::filesystem::path const& scripts_directory)
     -> std::vector<AvailableLevel> {
     auto loaded{
         levels::authoring::DefinitionReader{}.read_root_file(scripts_directory / "catalog.scm")};
     auto const directory{path_to_utf8(scripts_directory)};
+    menu_.levels.clear();
     if (!loaded) {
         host::present_catalog({directory, levels::format_diagnostics(loaded.error()), {}, {}});
         return {};
@@ -591,6 +602,36 @@ auto Application::publish_catalog(std::filesystem::path const& scripts_directory
 
     auto const rows{bridge::make_catalog_rows(
         *loaded, profiles_.active_records(), settings_.application().unlock_all_levels)};
+    auto append = [&](presentation::LevelListing const& row) {
+        auto const& id{row.metadata ? row.metadata->id.value : row.path};
+        menu_.levels.push_back({id, row.category, row.unlocked});
+    };
+    for (auto const* campaign : rows.campaigns) {
+        for (auto const& id : campaign->level_ids) {
+            auto const it{std::ranges::find_if(rows.listings, [&](auto const& row) {
+                return row.metadata && row.metadata->id == id;
+            })};
+            if (it != rows.listings.end()) {
+                append(*it);
+            }
+        }
+    }
+    for (auto const& row : rows.listings) {
+        if (!row.metadata ||
+            !std::ranges::contains(menu_.levels, row.metadata->id.value, &CatalogControl::id)) {
+            append(row);
+        }
+    }
+    auto visible{[this](auto const& row) { return row.visible_in(menu_.category); }};
+    auto const selected{std::ranges::find(menu_.levels, menu_.selected_level, &CatalogControl::id)};
+    if (selected == menu_.levels.end() || !visible(*selected)) {
+        auto const first{std::ranges::find_if(menu_.levels, visible)};
+        menu_.selected_level = first == menu_.levels.end() ? std::string{} : first->id;
+        if (auto row{std::get_if<MenuRow>(&menu_.focus)};
+            row && row->kind == MenuRow::Kind::Level) {
+            menu_.select(menu_.primary_target(settings_.view()));
+        }
+    }
     host::present_catalog({directory, rows.errors, rows.listings, rows.campaigns});
 
     std::vector<AvailableLevel> available_levels;
@@ -605,11 +646,28 @@ auto Application::publish_catalog(std::filesystem::path const& scripts_directory
     return available_levels;
 }
 
-void Application::publish_profiles() const {
+void Application::publish_profiles() {
     presentation::ProfileView view{
         profile_browser_.active_profile_id(), profile_browser_.summaries(), {}};
     if (auto const* report{profile_browser_.loaded_profile_report()}) {
         view.report.emplace(report->profile_id, report->outcomes);
+    }
+    menu_.profiles.clear();
+    for (auto const& profile : view.summaries) {
+        menu_.profiles.push_back(profile.profile_id);
+    }
+    menu_.active_profile = view.active_profile_id;
+    if (!std::ranges::contains(menu_.profiles, menu_.selected_profile)) {
+        menu_.selected_profile = menu_.active_profile;
+    }
+    menu_.outcomes.clear();
+    if (view.report && view.report->profile_id == menu_.selected_profile) {
+        for (auto const& row : view.report->outcomes) {
+            menu_.outcomes.push_back(row.outcome_id);
+        }
+    }
+    if (!std::ranges::contains(menu_.outcomes, menu_.selected_outcome)) {
+        menu_.selected_outcome = menu_.outcomes.empty() ? std::string{} : menu_.outcomes.front();
     }
     host::present_profiles(view);
 }
@@ -649,6 +707,12 @@ void Application::process_profile_actions(std::span<host::ProfileAction const> a
 
         if (result == profiles::CreateProfileResult::succeeded && action.kind != SelectReport) {
             profile_browser_.refresh(profiles_);
+            if (action.kind != Refresh) {
+                menu_.selected_profile = profile_browser_.active_profile_id();
+            }
+            if (action.kind == Create && menu_.create_profile) {
+                menu_.set_create_profile(false);
+            }
         }
 
         if (result == profiles::CreateProfileResult::persistence_failed) {
@@ -751,6 +815,7 @@ auto Application::launch_level(LevelStorage& storage,
     storage.load(
         std::move(*built),
         bridge::make_level_presentation_setup(definition, std::move(source_path), options));
+    menu_.open(MenuScreen::Closed);
     host::open_level();
     return {};
 }
@@ -775,6 +840,9 @@ void Application::unload_level(LevelStorage& storage, sim::RunEndReason reason, 
     }
 
     if (host::presents_level()) {
+        if (show_results) {
+            menu_.open(MenuScreen::Completion);
+        }
         host::finish_level(completed, score.has_value(), saved.new_best_time, show_results);
     }
 

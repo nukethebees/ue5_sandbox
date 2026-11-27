@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/host/unreal_messages.h>
+#include <ioj/input/dispatch/player_menu.h>
 #include <ioj/presentation/profile_view.h>
 #include <ioj/settings/player_settings_view.h>
 #include <ioj/system_capabilities.h>
@@ -12,6 +13,7 @@ class UOptionsDraft;
 class ULevelSelectWidget;
 class USaveGameViewerWidget;
 
+SPACEGAME_API auto player_menu() -> PlayerMenu&;
 SPACEGAME_API auto player_settings() -> PlayerSettingsView const&;
 SPACEGAME_API auto system_capabilities() -> SystemCapabilities const&;
 SPACEGAME_API auto player_profiles() -> presentation::ProfileView const&;

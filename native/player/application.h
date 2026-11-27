@@ -2,6 +2,7 @@
 
 #include "player/engine.h"
 #include <ioj/host/unreal_messages.h>
+#include <ioj/input/dispatch/player_menu.h>
 #include <ioj/levels/launch_options.h>
 #include <ioj/levels/level_definition.h>
 #include <ioj/profiles/profile_manager.h>
@@ -35,9 +36,9 @@ class Application {
               std::filesystem::path const& level_path,
               std::filesystem::path const& scripts_directory,
               bool exit_when_ready) -> ApplicationResult;
-    auto publish_catalog(std::filesystem::path const& scripts_directory) const
+    auto publish_catalog(std::filesystem::path const& scripts_directory)
         -> std::vector<AvailableLevel>;
-    void publish_profiles() const;
+    void publish_profiles();
     void process_profile_actions(std::span<host::ProfileAction const> actions);
     auto process_preferences(Window& window, std::span<host::PreferenceEdit const> edits) -> bool;
     auto launch_level(LevelStorage& storage, std::filesystem::path const& path)
@@ -49,6 +50,7 @@ class Application {
     void unload_level(LevelStorage& storage, sim::RunEndReason reason, bool show_results);
 
     PlayerSettings settings_;
+    PlayerMenu menu_;
     profiles::ProfileManager profiles_;
     profiles::SaveGameBrowser profile_browser_;
 };
