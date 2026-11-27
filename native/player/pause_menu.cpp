@@ -1,6 +1,6 @@
 #include "player/pause_menu.h"
 
-#include "player/input/logical/game_input.h"
+#include "player/input/logical/logical_input_system.h"
 
 namespace ioj {
 auto PauseMenu::handle(host::PlayerAction action, sim::LevelState simulation) -> Command {

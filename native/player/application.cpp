@@ -2,8 +2,7 @@
 
 #include "player/cli_args.h"
 #include "player/engine.h"
-#include "player/input/logical/game_input.h"
-#include "player/input/physical/sdl_input.h"
+#include "player/input/input_system.h"
 #include "player/loaded_level.h"
 #include "player/window.h"
 #include <ioj/bridge/completed_level.h>
@@ -13,7 +12,6 @@
 #include <ioj/host/game_host_api.h>
 #include <ioj/host/level_host.h>
 #include <ioj/input/dispatch/menu_navigation.h>
-#include <ioj/input/dispatch/ship_input.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/presentation/level_catalog.h>
 #include <ioj/presentation/profile_view.h>
@@ -25,7 +23,6 @@
 #include <ioj/system_capabilities.h>
 
 #include <SDL3/SDL_error.h>
-#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_filesystem.h>
 
 #include <algorithm>
@@ -259,24 +256,22 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     return shutdown_result;
 }
 namespace {
-struct PlayerInputSession {
+struct PlayerInputSession : InputReceiver {
     PlayerInputSession(SDL_Window& window,
                        ControlsSettings const& controls,
                        LevelStorage& levels,
                        std::chrono::steady_clock::time_point& previous_frame)
         : storage{levels}
         , previous_frame_time{previous_frame}
-        , devices{window}
-        , input{controls, devices.focused() ? WindowFocus::Gained : WindowFocus::Lost} {}
+        , input{window, controls} {}
 
-    void synchronize_input() {
+    auto routing() const -> InputRouting override {
         auto const menu{host::menu_status()};
         auto const* level{storage.get()};
         auto const route{level && !level->presentation_setup
                              ? level->pause_menu.route(level_input_route(*level))
                              : InputRoute{}};
-        input.synchronize(commands, route, menu.input_mode);
-        devices.set_window_modes(input.relative_mouse(), input.editing_text());
+        return {route, menu.input_mode};
     }
     void update_pause_simulation(LoadedLevel& level) {
         auto const request{level.pause_menu.simulation_request(level.simulation.state())};
@@ -347,8 +342,8 @@ struct PlayerInputSession {
             }
         }
     }
-    void consume_input() {
-        for (auto const& event : commands) {
+    void consume(std::span<host::MenuEvent const> events) override {
+        for (auto const& event : events) {
             if (auto const* action{std::get_if<host::PlayerAction>(&event)}) {
                 dispatch(*action);
             } else if (auto const* button{std::get_if<host::MenuButton>(&event)}) {
@@ -372,19 +367,20 @@ struct PlayerInputSession {
                 } else {
                     host::present_menu_button(*button);
                 }
-            } else {
-                host::present_input(std::get<host::PresentationEvent>(event));
             }
             process_widget_actions();
         }
-        commands.clear();
+    }
+    void consume(std::span<host::PresentationEvent const> events) override {
+        for (auto const& event : events) {
+            host::present_input(event);
+            process_widget_actions();
+        }
     }
 
     LevelStorage& storage;
     std::chrono::steady_clock::time_point& previous_frame_time;
-    SdlInput devices;
-    GameInput input;
-    host::InputEvents commands;
+    InputSystem input;
     ApplicationResult pause_presentation{};
     bool end_selected{};
     bool end_benchmark{};
@@ -426,50 +422,28 @@ auto Application::play(Window& window,
 
     PlayerInputSession play_input{
         *window.sdl_window(), settings_.applied().controls, storage, previous_frame_time};
-    std::vector<sim::player::PlayerInputKind> ship_events;
     auto last_input_frame{previous_frame_time};
     while (!IojPlayer_ExitRequested()) {
         IojPlayer_BeginFrame();
-        play_input.input.begin_frame();
-        play_input.synchronize_input();
-        play_input.consume_input();
-        SDL_Event event;
-        bool close_requested{};
-        bool viewport_changed{};
-        while (SDL_PollEvent(&event)) {
-            if (auto physical{play_input.devices.translate(event)}) {
-                play_input.input.resolve(play_input.commands, *physical);
-                play_input.consume_input();
+        auto const input_time{std::chrono::steady_clock::now()};
+        auto const input_delta{std::chrono::duration<double>{input_time - last_input_frame}};
+        last_input_frame = input_time;
+        auto const window_events{play_input.input.advance(
+            std::min(input_delta.count(), max_frame_delta_seconds), play_input)};
+        if (window_events.display_changed) {
+            if (auto result{window.refresh_resolutions()}; !result) {
+                return result;
             }
-            play_input.synchronize_input();
-            play_input.consume_input();
-            switch (event.type) {
-                case SDL_EVENT_QUIT:
-                case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-                    close_requested = true;
-                    break;
-                case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-                case SDL_EVENT_WINDOW_MOVED:
-                    viewport_changed = true;
-                    break;
-                case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
-                case SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED:
-                case SDL_EVENT_DISPLAY_DESKTOP_MODE_CHANGED:
-                    if (auto result{window.refresh_resolutions()}; !result) {
-                        return result;
-                    }
-                    host::present_settings(settings_.view(), window.supported_resolutions());
-                    break;
-            }
+            host::present_settings(settings_.view(), window.supported_resolutions());
         }
         if (!play_input.pause_presentation) {
             return play_input.pause_presentation;
         }
-        if (close_requested || IojPlayer_ExitRequested()) {
+        if (window_events.close_requested || IojPlayer_ExitRequested()) {
             break;
         }
 
-        if (viewport_changed) {
+        if (window_events.viewport_changed) {
             if (auto result{window.synchronize_resize(settings_)}; !result) {
                 return result;
             }
@@ -488,17 +462,6 @@ auto Application::play(Window& window,
             }
         }
 
-        auto const input_time{std::chrono::steady_clock::now()};
-        auto const input_delta{std::chrono::duration<double>{input_time - last_input_frame}};
-        last_input_frame = input_time;
-        play_input.synchronize_input();
-        play_input.consume_input();
-        auto const seconds{std::min(input_delta.count(), max_frame_delta_seconds)};
-        if (play_input.devices.focused()) {
-            play_input.input.repeat_navigation(play_input.commands, seconds);
-        }
-        play_input.input.append_frame_commands(seconds, play_input.commands);
-        play_input.consume_input();
         if (auto result{tick_engine()}; !result) {
             return result;
         }
@@ -512,8 +475,9 @@ auto Application::play(Window& window,
             play_input.end_benchmark = false;
             continue;
         }
-        process_preferences(
-            window, play_input.input, play_input.commands, messages.preference_edits);
+        if (process_preferences(window, messages.preference_edits)) {
+            play_input.input.refresh_bindings(play_input);
+        }
         process_profile_actions(messages.profile_actions);
 
         if (messages.refresh_catalog) {
@@ -586,8 +550,7 @@ auto Application::play(Window& window,
         }
 
         if (host::presents_level()) {
-            level->simulation.append_player_input(
-                ship_input_frame(play_input.input.state(), ship_events));
+            level->simulation.append_player_input(play_input.input.ship_input());
 
             auto const frame_time{std::chrono::steady_clock::now()};
             if (messages.requested_simulation_mode == levels::LaunchMode::Running &&
@@ -697,10 +660,9 @@ void Application::process_profile_actions(std::span<host::ProfileAction const> a
     }
 }
 
-void Application::process_preferences(Window& window,
-                                      GameInput& input,
-                                      host::InputEvents& commands,
-                                      std::span<host::PreferenceEdit const> edits) {
+auto Application::process_preferences(Window& window, std::span<host::PreferenceEdit const> edits)
+    -> bool {
+    bool controls_changed{};
     auto const count{edits.size()};
     for (std::size_t index{}; index < count; ++index) {
         auto const& edit{edits[index]};
@@ -738,7 +700,7 @@ void Application::process_preferences(Window& window,
                 break;
             case GameSettingCategory::Controls:
                 settings_.apply(edit.values.controls);
-                input.refresh_bindings(commands);
+                controls_changed = true;
                 break;
             case GameSettingCategory::Gameplay:
             case GameSettingCategory::Accessibility:
@@ -748,6 +710,7 @@ void Application::process_preferences(Window& window,
         host::present_settings(settings_.view(), window.supported_resolutions());
         host::preference_result(index, {});
     }
+    return controls_changed;
 }
 
 auto Application::launch_level(LevelStorage& storage, std::filesystem::path const& path)

@@ -7,7 +7,6 @@
 #include <span>
 #include <string>
 #include <variant>
-#include <vector>
 
 namespace ioj::host {
 struct KeyboardLabel {
@@ -20,8 +19,6 @@ struct MenuStatus {
     std::optional<MainMenuItem> main_focus;
 };
 
-using InputEvent = std::variant<PlayerAction, MenuButton, PresentationEvent>;
-using InputEvents = std::vector<InputEvent>;
 using WidgetAction = std::variant<PlayerAction, MainMenuItem, PauseWidgetEvent>;
 #ifdef IOJ_PLAYER_EXPORTS
 #define IOJ_INPUT_API __declspec(dllexport)

@@ -1,4 +1,4 @@
-#include "player/input/physical/sdl_input.h"
+#include "player/input/physical/physical_input_system.h"
 
 #include <ioj/host/input.h>
 
@@ -6,6 +6,7 @@
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_video.h>
 
+#include <algorithm>
 #include <array>
 #include <utility>
 
@@ -99,17 +100,41 @@ constexpr std::array<PhysicalKey, SDL_GAMEPAD_AXIS_COUNT> axis_keys{
 
 }
 
-SdlInput::SdlInput(SDL_Window& window)
+auto PhysicalInputState::track_button(PhysicalKey key, ButtonState edge, bool repeat) -> bool {
+    if (repeat) {
+        return std::ranges::contains(held, key);
+    }
+    if (edge == ButtonState::Released) {
+        return std::erase(held, key) != 0;
+    } else if (edge == ButtonState::Pressed && !std::ranges::contains(held, key)) {
+        held.push_back(key);
+        return true;
+    }
+    return false;
+}
+auto PhysicalInputState::axis_edge(PhysicalKey key, float magnitude) -> std::optional<ButtonState> {
+    auto const was_held{std::ranges::contains(held, key)};
+    auto const active{was_held ? magnitude > 0.40f : magnitude >= 0.50f};
+    if (was_held == active) {
+        return {};
+    }
+    auto const edge{active ? ButtonState::Pressed : ButtonState::Released};
+    track_button(key, edge);
+    return edge;
+}
+
+PhysicalInputSystem::PhysicalInputSystem(SDL_Window& window)
     : window_{window} {
+    state_.focus = focused() ? WindowFocus::Gained : WindowFocus::Lost;
     present_keyboard_layout();
 }
-SdlInput::~SdlInput() {
+PhysicalInputSystem::~PhysicalInputSystem() {
     SDL_CloseGamepad(gamepad_);
 }
-auto SdlInput::focused() const -> bool {
+auto PhysicalInputSystem::focused() const -> bool {
     return SDL_GetKeyboardFocus() == &window_;
 }
-void SdlInput::set_window_modes(bool relative_mouse, bool text_input) {
+void PhysicalInputSystem::set_window_modes(bool relative_mouse, bool text_input) {
     auto const focus{focused()};
     auto const relative{relative_mouse && focus};
     if (SDL_GetWindowRelativeMouseMode(&window_) != relative) {
@@ -124,11 +149,37 @@ void SdlInput::set_window_modes(bool relative_mouse, bool text_input) {
         }
     }
 }
-auto SdlInput::translate(SDL_Event const& event) -> std::optional<PhysicalEvent> {
+auto PhysicalInputSystem::poll() -> WindowInputEvents {
+    events_.clear();
+    WindowInputEvents window;
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_EVENT_QUIT:
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                window.close_requested = true;
+                break;
+            case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+            case SDL_EVENT_WINDOW_MOVED:
+                window.viewport_changed = true;
+                break;
+            case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+            case SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED:
+            case SDL_EVENT_DISPLAY_DESKTOP_MODE_CHANGED:
+                window.display_changed = true;
+                break;
+            default:
+                collect(event);
+                break;
+        }
+    }
+    return window;
+}
+void PhysicalInputSystem::collect(SDL_Event const& event) {
     using enum ButtonState;
     if (event.type == SDL_EVENT_KEYMAP_CHANGED) {
         present_keyboard_layout();
-        return {};
+        return;
     }
 
     if (event.type == SDL_EVENT_GAMEPAD_ADDED || event.type == SDL_EVENT_GAMEPAD_REMOVED) {
@@ -148,69 +199,73 @@ auto SdlInput::translate(SDL_Event const& event) -> std::optional<PhysicalEvent>
         }
 
         if (removed) {
-            return GamepadDisconnected{};
+            events_.push(GamepadDisconnected{});
         }
-        return {};
+        return;
     }
     auto const* target{SDL_GetWindowFromEvent(&event)};
     if (target && target != &window_) {
-        return {};
+        return;
     }
     switch (event.type) {
         case SDL_EVENT_WINDOW_FOCUS_LOST:
-            return WindowFocus::Lost;
+            events_.push(WindowFocus::Lost);
+            return;
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
-            return WindowFocus::Gained;
+            events_.push(WindowFocus::Gained);
+            return;
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP: {
             auto const key{static_cast<PhysicalKey>(event.key.scancode)};
             if (is_keyboard_key(key)) {
-                return PhysicalButton{key,
-                                      modifiers(event.key.mod),
-                                      event.key.down ? Pressed : Released,
-                                      event.key.repeat};
+                events_.push(PhysicalButton{key,
+                                            modifiers(event.key.mod),
+                                            event.key.down ? Pressed : Released,
+                                            event.key.repeat});
             }
             break;
         }
         case SDL_EVENT_TEXT_INPUT:
-            return TextInput{event.text.text};
+            events_.push(TextInput{event.text.text});
+            return;
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP: {
             auto const& button{event.button};
             auto const code{mouse_key(button.button)};
             if (code != PhysicalKey::Unbound) {
-                return PhysicalPointerButton{
-                    {button.x, button.y}, code, button.down ? Pressed : Released, button.clicks};
+                events_.push(PhysicalPointerButton{
+                    {button.x, button.y}, code, button.down ? Pressed : Released, button.clicks});
             }
             break;
         }
         case SDL_EVENT_MOUSE_MOTION:
-            return PointerMotion{{event.motion.x, event.motion.y},
-                                 {event.motion.xrel, event.motion.yrel}};
+            events_.push(PointerMotion{{event.motion.x, event.motion.y},
+                                       {event.motion.xrel, event.motion.yrel}});
+            return;
         case SDL_EVENT_MOUSE_WHEEL:
-            return WheelMotion{{event.wheel.mouse_x, event.wheel.mouse_y},
-                               event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y
-                                                                               : event.wheel.y};
+            events_.push(WheelMotion{
+                {event.wheel.mouse_x, event.wheel.mouse_y},
+                event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y : event.wheel.y});
+            return;
         case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
         case SDL_EVENT_GAMEPAD_BUTTON_UP:
             if (gamepad_ && SDL_GetGamepadID(gamepad_) == event.gbutton.which) {
                 auto const code{pad_button(event.gbutton.button)};
                 if (code != PhysicalKey::Unbound) {
-                    return PhysicalButton{code, {}, event.gbutton.down ? Pressed : Released};
+                    events_.push(PhysicalButton{code, {}, event.gbutton.down ? Pressed : Released});
                 }
             }
             break;
         case SDL_EVENT_GAMEPAD_AXIS_MOTION:
             if (gamepad_ && SDL_GetGamepadID(gamepad_) == event.gaxis.which) {
                 auto const axis{event.gaxis.axis};
-                return PhysicalAxis{
+                events_.push(PhysicalAxis{
                     axis_keys[axis],
-                    axis_value(static_cast<SDL_GamepadAxis>(axis), event.gaxis.value)};
+                    axis_value(static_cast<SDL_GamepadAxis>(axis), event.gaxis.value)});
             }
             break;
         default:
             break;
     }
-    return {};
 }
 }

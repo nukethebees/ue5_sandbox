@@ -7,12 +7,15 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
-#include <variant>
 #include <vector>
 
 namespace ioj {
 struct PhysicalInputState {
+    auto track_button(PhysicalKey key, ButtonState edge, bool repeat = false) -> bool;
+    auto axis_edge(PhysicalKey key, float magnitude) -> std::optional<ButtonState>;
+
     std::vector<PhysicalKey> held;
     std::array<float, 6> gamepad_axes{};
     host::Modifiers modifiers{};
@@ -47,12 +50,4 @@ struct TextInput {
     std::string text;
 };
 struct GamepadDisconnected {};
-using PhysicalEvent = std::variant<PhysicalButton,
-                                   PhysicalPointerButton,
-                                   PhysicalAxis,
-                                   PointerMotion,
-                                   WheelMotion,
-                                   TextInput,
-                                   GamepadDisconnected,
-                                   WindowFocus>;
 }

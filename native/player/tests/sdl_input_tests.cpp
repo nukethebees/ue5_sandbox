@@ -1,8 +1,7 @@
-#include "player/input/logical/game_input.h"
-#include "player/input/physical/sdl_input.h"
+#include "player/input/input_system.h"
 #include "player/pause_menu.h"
+#include <ioj/host/input.h>
 #include <ioj/input/dispatch/menu_navigation.h>
-#include <ioj/input/dispatch/ship_input.h>
 
 #include <gtest/gtest.h>
 #include <SDL3/SDL_error.h>
@@ -13,6 +12,7 @@
 #include <SDL3/SDL_video.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -66,7 +66,9 @@ void present_input(PresentationEvent const& event) {
 }
 
 namespace ioj::tests {
-class SdlPlayerInput : public ::testing::Test {
+class SdlPlayerInput
+    : public ::testing::Test
+    , public InputReceiver {
   protected:
     PauseMenu pause_menu_;
     std::vector<host::PauseCommand> pause_commands_;
@@ -77,38 +79,20 @@ class SdlPlayerInput : public ::testing::Test {
         window_ = SDL_CreateWindow("Input test", 100, 100, 0);
         ASSERT_NE(window_, nullptr) << SDL_GetError();
         ASSERT_EQ(SDL_GetKeyboardFocus(), window_);
-        devices_.emplace(*window_);
-        input_.emplace(settings_, WindowFocus::Gained);
+        input_.emplace(*window_, settings_);
     }
     void TearDown() override {
         input_.reset();
-        devices_.reset();
         SDL_DestroyWindow(window_);
         SDL_Quit();
     }
-    void frame() {
-        input_->begin_frame();
-        auto synchronize = [&] {
-            input_->synchronize(commands_,
-                                pause_menu_.route(host::tests::presentation.route),
-                                host::tests::presentation.menu.input_mode);
-            devices_->set_window_modes(input_->relative_mouse(), input_->editing_text());
-        };
-        synchronize();
-        SDL_Event event{};
-        while (SDL_PollEvent(&event)) {
-            if (auto physical{devices_->translate(event)}) {
-                input_->resolve(commands_, *physical);
-                consume();
-            }
-            synchronize();
-        }
-        input_->repeat_navigation(commands_, 0.016);
-        input_->append_frame_commands(0.016, commands_);
-        consume();
+    void frame() { input_->advance(0.016, *this); }
+    auto routing() const -> InputRouting override {
+        return {pause_menu_.route(host::tests::presentation.route),
+                host::tests::presentation.menu.input_mode};
     }
-    void consume() {
-        for (auto const& event : commands_) {
+    void consume(std::span<host::MenuEvent const> events) override {
+        for (auto const& event : events) {
             if (auto const* action{std::get_if<host::PlayerAction>(&event)}) {
                 host::tests::presentation.actions.push_back(*action);
                 if (auto command{pause_menu_.handle(*action, sim::LevelState::Running)}) {
@@ -127,29 +111,31 @@ class SdlPlayerInput : public ::testing::Test {
                     host::tests::presentation.commands.push_back(button->command);
                     host::tests::presentation.modifiers = button->modifiers;
                 }
-            } else {
-                host::present_input(std::get<host::PresentationEvent>(event));
             }
         }
-        commands_.clear();
     }
-    void press(SDL_Keycode key, SDL_Scancode scancode, SDL_Keymod modifiers = SDL_KMOD_NONE) {
+    void consume(std::span<host::PresentationEvent const> events) override {
+        for (auto const& event : events) {
+            host::present_input(event);
+        }
+    }
+    void key_event(SDL_Keycode key,
+                   SDL_Scancode scancode,
+                   SDL_Keymod modifiers = SDL_KMOD_NONE,
+                   bool down = true) {
         SDL_Event event{};
-        event.key.type = SDL_EVENT_KEY_DOWN;
+        event.key.type = down ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
         event.key.windowID = SDL_GetWindowID(window_);
         event.key.scancode = scancode;
         event.key.key = key;
-        event.key.down = true;
+        event.key.down = down;
         event.key.mod = modifiers;
         ASSERT_TRUE(SDL_PushEvent(&event));
     }
     ControlsSettings settings_{};
     SDL_Window* window_{};
-    std::optional<SdlInput> devices_;
-    std::optional<GameInput> input_;
-    std::vector<host::InputEvent> commands_;
-    std::vector<sim::player::PlayerInputKind> ship_events_;
-    auto ship_frame() { return ship_input_frame(input_->state(), ship_events_); }
+    std::optional<InputSystem> input_;
+    auto ship_frame() const { return input_->ship_input(); }
 };
 
 TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
@@ -158,7 +144,7 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     ASSERT_NE(label, view.labels.end());
     EXPECT_EQ(label->name,
               SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_SCANCODE_W, SDL_KMOD_NONE, false)));
-    press(SDLK_DOWN, SDL_SCANCODE_DOWN);
+    key_event(SDLK_DOWN, SDL_SCANCODE_DOWN);
     frame();
     view.menu.input_mode = MenuInputMode::TextEntry;
     SDL_Event text{};
@@ -170,9 +156,9 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     EXPECT_EQ(view.commands, std::vector{MenuCommand::Down});
     EXPECT_EQ(view.text, "abc");
     view.menu.input_mode = MenuInputMode::Navigation;
-    press(SDLK_TAB,
-          SDL_SCANCODE_TAB,
-          SDL_KMOD_RSHIFT | SDL_KMOD_LCTRL | SDL_KMOD_RALT | SDL_KMOD_LGUI | SDL_KMOD_CAPS);
+    key_event(SDLK_TAB,
+              SDL_SCANCODE_TAB,
+              SDL_KMOD_RSHIFT | SDL_KMOD_LCTRL | SDL_KMOD_RALT | SDL_KMOD_LGUI | SDL_KMOD_CAPS);
     frame();
     EXPECT_EQ(view.commands.back(), MenuCommand::Previous);
     host::Modifiers expected;
@@ -182,10 +168,10 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     expected.set_left_command(true);
     expected.set_caps_lock(true);
     EXPECT_EQ(view.modifiers, expected);
-    input_->resolve(commands_, PhysicalButton{PhysicalKey::Tab, {}, ButtonState::Released});
-    press(SDLK_TAB,
-          SDL_SCANCODE_TAB,
-          SDL_KMOD_LSHIFT | SDL_KMOD_RCTRL | SDL_KMOD_LALT | SDL_KMOD_RGUI);
+    key_event(SDLK_TAB, SDL_SCANCODE_TAB, SDL_KMOD_NONE, false);
+    key_event(SDLK_TAB,
+              SDL_SCANCODE_TAB,
+              SDL_KMOD_LSHIFT | SDL_KMOD_RCTRL | SDL_KMOD_LALT | SDL_KMOD_RGUI);
     frame();
     EXPECT_EQ(view.commands.back(), MenuCommand::Previous);
     expected = {};
@@ -196,15 +182,15 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     EXPECT_EQ(view.modifiers, expected);
 
     view.route = {InputContext::Gameplay, false};
-    press(SDLK_Z, SDL_SCANCODE_W);
-    press(SDLK_LSHIFT, SDL_SCANCODE_LSHIFT);
+    key_event(SDLK_Z, SDL_SCANCODE_W);
+    key_event(SDLK_LSHIFT, SDL_SCANCODE_LSHIFT);
     frame();
     EXPECT_EQ(ship_frame().accelerator, 1.f);
     ASSERT_EQ(ship_frame().events.size(), 1u);
     EXPECT_EQ(ship_frame().events.front(), sim::player::PlayerInputKind::BoostPressed);
 
     view.route = {InputContext::Observer};
-    press(SDLK_D, SDL_SCANCODE_D);
+    key_event(SDLK_D, SDL_SCANCODE_D);
     frame();
     ASSERT_TRUE(view.motion);
     EXPECT_EQ(view.motion->right, 1.f);
@@ -212,12 +198,12 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     ASSERT_EQ(ship_frame().events.size(), 1u);
     EXPECT_EQ(ship_frame().events.front(), sim::player::PlayerInputKind::BoostReleased);
 
-    input_->resolve(commands_, PhysicalButton{PhysicalKey::Down, {}, ButtonState::Released});
+    key_event(SDLK_DOWN, SDL_SCANCODE_DOWN, SDL_KMOD_NONE, false);
     view.route = {InputContext::Benchmark};
     view.motion.reset();
-    press(SDLK_DOWN, SDL_SCANCODE_DOWN);
-    press(SDLK_RETURN, SDL_SCANCODE_RETURN);
-    press(SDLK_ESCAPE, SDL_SCANCODE_ESCAPE);
+    key_event(SDLK_DOWN, SDL_SCANCODE_DOWN);
+    key_event(SDLK_RETURN, SDL_SCANCODE_RETURN);
+    key_event(SDLK_ESCAPE, SDL_SCANCODE_ESCAPE);
     frame();
     EXPECT_EQ(view.actions,
               (std::vector{host::PlayerAction::BenchmarkNext,
@@ -227,11 +213,11 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     EXPECT_TRUE(view.keys.empty());
 
     view.route = {InputContext::Menu};
-    input_->resolve(commands_, PhysicalButton{PhysicalKey::Down, {}, ButtonState::Released});
+    key_event(SDLK_DOWN, SDL_SCANCODE_DOWN, SDL_KMOD_NONE, false);
     view.menu.input_mode = MenuInputMode::BindingCapture;
-    press(SDLK_DOWN, SDL_SCANCODE_DOWN);
-    press(SDLK_A, SDL_SCANCODE_UNKNOWN);
-    press(SDLK_RETURN, SDL_SCANCODE_KP_ENTER);
+    key_event(SDLK_DOWN, SDL_SCANCODE_DOWN);
+    key_event(SDLK_A, SDL_SCANCODE_UNKNOWN);
+    key_event(SDLK_RETURN, SDL_SCANCODE_KP_ENTER);
     frame();
     EXPECT_EQ(view.keys, (std::vector<PhysicalKey>{PhysicalKey::Down, PhysicalKey::NumPadEnter}));
     EXPECT_EQ(view.commands.size(), 3u);
@@ -240,33 +226,45 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
               MainMenuItem::SelectLevel);
 }
 
-TEST_F(SdlPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModifiers) {
+class LogicalPlayerInput : public ::testing::Test {
+  protected:
+    void map(auto event) {
+        batch_.clear();
+        batch_.push(event);
+        input_.map_until_dispatch(dispatch_, batch_, 0);
+    }
+    ControlsSettings settings_;
+    PhysicalInputState physical_;
+    PhysicalInputBatch batch_;
+    LogicalInputSystem input_{settings_, physical_};
+    InputDispatcher dispatch_;
+};
+
+TEST_F(LogicalPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModifiers) {
     using enum ButtonState;
     host::Modifiers shift{};
     shift.set_left_shift(true);
     auto key = [&](PhysicalKey code,
                    ButtonState edge,
                    host::Modifiers modifiers = {},
-                   bool repeat = false) {
-        input_->resolve(commands_, PhysicalButton{code, modifiers, edge, repeat});
-    };
+                   bool repeat = false) { map(PhysicalButton{code, modifiers, edge, repeat}); };
     key(PhysicalKey::Tab, Pressed, shift);
     key(PhysicalKey::Tab, Pressed, {}, true);
     key(PhysicalKey::Tab, Released);
     key(PhysicalKey::Tab, Pressed, {}, true);
     key(PhysicalKey::GamepadDPadDown, Pressed);
     key(PhysicalKey::Down, Pressed);
-    input_->repeat_navigation(commands_, 0.41);
+    input_.repeat_navigation(dispatch_, 0.41);
     key(PhysicalKey::GamepadDPadDown, Released);
-    input_->repeat_navigation(commands_, 0.41);
-    input_->synchronize(commands_, {InputContext::Gameplay}, {});
+    input_.repeat_navigation(dispatch_, 0.41);
+    input_.synchronize(dispatch_, {InputContext::Gameplay}, {});
 
-    ASSERT_EQ(commands_.size(), 6u);
-    auto const& transitions{input_->state().transitions};
+    ASSERT_EQ(dispatch_.size(), 6u);
+    auto const& transitions{input_.state().transitions};
     ASSERT_EQ(transitions.size(), 4u);
     std::size_t transition_index{};
-    for (std::size_t i{}; i < commands_.size(); ++i) {
-        auto const& button{std::get<host::MenuButton>(commands_[i])};
+    for (std::size_t i{}; i < dispatch_.size(); ++i) {
+        auto const& button{std::get<host::MenuButton>(dispatch_.menu_input()[i])};
         EXPECT_EQ(button.command, i < 3 ? MenuCommand::Previous : MenuCommand::Down);
         EXPECT_EQ(button.down, i != 2 && i != 5);
         EXPECT_EQ(button.repeat, i == 1 || i == 4);
@@ -283,9 +281,9 @@ TEST_F(SdlPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModifier
 TEST_F(SdlPlayerInput, PauseReroutesTheNextEventInTheSamePoll) {
     auto& view{host::tests::presentation};
     view.route = {InputContext::Gameplay};
-    press(SDLK_ESCAPE, SDL_SCANCODE_ESCAPE);
-    press(SDLK_DOWN, SDL_SCANCODE_DOWN);
-    press(SDLK_LSHIFT, SDL_SCANCODE_LSHIFT);
+    key_event(SDLK_ESCAPE, SDL_SCANCODE_ESCAPE);
+    key_event(SDLK_DOWN, SDL_SCANCODE_DOWN);
+    key_event(SDLK_LSHIFT, SDL_SCANCODE_LSHIFT);
     frame();
     EXPECT_EQ(view.actions, std::vector{host::PlayerAction::OpenPause});
     EXPECT_TRUE(view.commands.empty());
@@ -297,36 +295,31 @@ TEST_F(SdlPlayerInput, PauseReroutesTheNextEventInTheSamePoll) {
     EXPECT_TRUE(ship_frame().events.empty());
 }
 
-TEST_F(SdlPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
-    auto& view{host::tests::presentation};
-    view.route = {InputContext::Observer};
-    frame();
-    input_->resolve(
-        commands_,
-        PhysicalPointerButton{{}, PhysicalKey::RightMouseButton, ButtonState::Pressed, 1});
-    input_->resolve(commands_, PointerMotion{{}, {20.f, 10.f}});
-    input_->resolve(commands_, WheelMotion{{}, 1.f});
-    input_->resolve(commands_, PhysicalButton{PhysicalKey::D, {}, ButtonState::Pressed});
-    EXPECT_TRUE(input_->state().held.observer_right());
-    input_->append_frame_commands(0.016, commands_);
-    consume();
-    ASSERT_TRUE(view.motion);
-    EXPECT_FLOAT_EQ(view.motion->speed, 150000.f);
-    EXPECT_EQ(input_->state().axes_2d[Axis2DAction::ObserverLookDelta], (Vector2f{20.f, -10.f}));
-    input_->resolve(commands_, WindowFocus::Lost);
-    EXPECT_FALSE(input_->relative_mouse());
-    EXPECT_FALSE(input_->state().held.observer_right());
-    EXPECT_EQ(input_->state().axes_2d[Axis2DAction::ObserverLookDelta], Vector2f{});
+TEST_F(LogicalPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
+    input_.synchronize(dispatch_, {InputContext::Observer}, {});
+    map(PhysicalPointerButton{{}, PhysicalKey::RightMouseButton, ButtonState::Pressed, 1});
+    map(PointerMotion{{}, {20.f, 10.f}});
+    map(WheelMotion{{}, 1.f});
+    map(PhysicalButton{PhysicalKey::D, {}, ButtonState::Pressed});
+    EXPECT_TRUE(input_.state().held.observer_right());
+    input_.append_frame_commands(0.016, dispatch_);
+    ASSERT_FALSE(dispatch_.presentation_input().empty());
+    EXPECT_FLOAT_EQ(std::get<host::ViewerStep>(dispatch_.presentation_input().back()).motion.speed,
+                    150000.f);
+    EXPECT_EQ(input_.state().axes_2d[Axis2DAction::ObserverLookDelta], (Vector2f{20.f, -10.f}));
+    map(WindowFocus::Lost);
+    EXPECT_FALSE(input_.relative_mouse());
+    EXPECT_FALSE(input_.state().held.observer_right());
+    EXPECT_EQ(input_.state().axes_2d[Axis2DAction::ObserverLookDelta], Vector2f{});
 
-    view.route = {InputContext::Menu};
-    input_->resolve(commands_, WindowFocus::Gained);
-    frame();
-    input_->resolve(commands_,
-                    PhysicalButton{PhysicalKey::GamepadDPadDown, {}, ButtonState::Pressed});
-    input_->repeat_navigation(commands_, 0.41);
-    ASSERT_EQ(commands_.size(), 2u);
-    EXPECT_FALSE(std::get<host::MenuButton>(commands_.front()).repeat);
-    EXPECT_TRUE(std::get<host::MenuButton>(commands_.back()).repeat);
+    map(WindowFocus::Gained);
+    input_.synchronize(dispatch_, {InputContext::Menu}, {});
+    dispatch_.begin_frame();
+    map(PhysicalButton{PhysicalKey::GamepadDPadDown, {}, ButtonState::Pressed});
+    input_.repeat_navigation(dispatch_, 0.41);
+    ASSERT_EQ(dispatch_.size(), 2u);
+    EXPECT_FALSE(std::get<host::MenuButton>(dispatch_.menu_input().front()).repeat);
+    EXPECT_TRUE(std::get<host::MenuButton>(dispatch_.menu_input().back()).repeat);
 }
 
 TEST_F(SdlPlayerInput, FocusChangesAndButtonsInOnePollRespectEventOrder) {
@@ -340,14 +333,12 @@ TEST_F(SdlPlayerInput, FocusChangesAndButtonsInOnePollRespectEventOrder) {
     };
 
     focus(SDL_EVENT_WINDOW_FOCUS_LOST);
-    press(SDLK_LSHIFT, SDL_SCANCODE_LSHIFT);
+    key_event(SDLK_LSHIFT, SDL_SCANCODE_LSHIFT);
     focus(SDL_EVENT_WINDOW_FOCUS_GAINED);
-    press(SDLK_S, SDL_SCANCODE_S);
+    key_event(SDLK_S, SDL_SCANCODE_S);
     frame();
-    EXPECT_FALSE(input_->state().held.boost());
-    EXPECT_TRUE(input_->state().held.brake());
-    ship_frame();
-    EXPECT_EQ(ship_events_, std::vector{sim::player::PlayerInputKind::BrakePressed});
+    EXPECT_TRUE(std::ranges::equal(ship_frame().events,
+                                   std::array{sim::player::PlayerInputKind::BrakePressed}));
 }
 
 TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {
@@ -409,11 +400,11 @@ TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {
     EXPECT_EQ(view.actions.size(), 2u);
 }
 
-TEST_F(SdlPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocus) {
+TEST_F(LogicalPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocus) {
     using enum sim::player::PlayerInputKind;
-    auto route = [&](InputContext context) { input_->synchronize(commands_, {context}, {}); };
+    auto route = [&](InputContext context) { input_.synchronize(dispatch_, {context}, {}); };
     auto sample = [&](float value) {
-        input_->resolve(commands_, PhysicalAxis{PhysicalKey::GamepadRightTriggerAxis, value});
+        map(PhysicalAxis{PhysicalKey::GamepadRightTriggerAxis, value});
     };
     route(InputContext::Gameplay);
     sample(0.50f);
@@ -422,58 +413,52 @@ TEST_F(SdlPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocus) {
     route(InputContext::Menu);
     route(InputContext::Gameplay);
     sample(0.9f);
-    EXPECT_FALSE(input_->state().held.fire());
+    EXPECT_FALSE(input_.state().held.fire());
     sample(0.40f);
     sample(0.51f);
-    input_->refresh_bindings(commands_);
+    input_.refresh_bindings(dispatch_);
     sample(0.7f);
-    EXPECT_FALSE(input_->state().held.fire());
+    EXPECT_FALSE(input_.state().held.fire());
     sample(0.3f);
     sample(0.6f);
-    input_->resolve(commands_, WindowFocus::Lost);
+    map(WindowFocus::Lost);
     sample(0.7f);
-    input_->resolve(commands_, WindowFocus::Gained);
+    map(WindowFocus::Gained);
     sample(0.8f);
-    EXPECT_FALSE(input_->state().held.fire());
+    EXPECT_FALSE(input_.state().held.fire());
     sample(0.39f);
     sample(0.6f);
-    input_->resolve(
-        commands_,
-        PhysicalPointerButton{{}, PhysicalKey::LeftMouseButton, ButtonState::Pressed, 1});
-    input_->resolve(commands_, GamepadDisconnected{});
-    EXPECT_TRUE(input_->state().held.fire());
-    input_->resolve(
-        commands_,
-        PhysicalPointerButton{{}, PhysicalKey::LeftMouseButton, ButtonState::Released, 1});
-    ship_frame();
-    EXPECT_EQ(ship_events_,
-              (std::vector{FirePressed,
-                           FireReleased,
-                           FirePressed,
-                           FireReleased,
-                           FirePressed,
-                           FireReleased,
-                           FirePressed,
-                           FireReleased}));
+    map(PhysicalPointerButton{{}, PhysicalKey::LeftMouseButton, ButtonState::Pressed, 1});
+    map(GamepadDisconnected{});
+    EXPECT_TRUE(input_.state().held.fire());
+    map(PhysicalPointerButton{{}, PhysicalKey::LeftMouseButton, ButtonState::Released, 1});
+    dispatch_.publish_ship(input_.state());
+    EXPECT_TRUE(std::ranges::equal(dispatch_.ship_input().events,
+                                   std::array{FirePressed,
+                                              FireReleased,
+                                              FirePressed,
+                                              FireReleased,
+                                              FirePressed,
+                                              FireReleased,
+                                              FirePressed,
+                                              FireReleased}));
 }
 
-TEST_F(SdlPlayerInput, RebindingFireToAnAlreadyHeldStickWaitsForNeutral) {
-    input_->synchronize(commands_, {InputContext::Gameplay}, {});
-    auto sample = [&](float value) {
-        input_->resolve(commands_, PhysicalAxis{PhysicalKey::GamepadRightX, value});
-    };
+TEST_F(LogicalPlayerInput, RebindingFireToAnAlreadyHeldStickWaitsForNeutral) {
+    input_.synchronize(dispatch_, {InputContext::Gameplay}, {});
+    auto sample = [&](float value) { map(PhysicalAxis{PhysicalKey::GamepadRightX, value}); };
     sample(-0.8f);
     settings_.bindings[FlightMapping::FlightFirePrimaryGamepad] = PhysicalKey::GamepadRightX;
-    input_->refresh_bindings(commands_);
+    input_.refresh_bindings(dispatch_);
     sample(-0.6f);
-    EXPECT_TRUE(input_->state().transitions.empty());
+    EXPECT_TRUE(input_.state().transitions.empty());
     sample(-0.4f);
     sample(-0.5f);
-    EXPECT_TRUE(input_->state().held.fire());
+    EXPECT_TRUE(input_.state().held.fire());
     sample(-0.45f);
-    EXPECT_TRUE(input_->state().held.fire());
+    EXPECT_TRUE(input_.state().held.fire());
     sample(-0.4f);
-    EXPECT_FALSE(input_->state().held.fire());
+    EXPECT_FALSE(input_.state().held.fire());
 }
 
 TEST_F(SdlPlayerInput, UnpluggingVirtualGamepadReleasesFlightButton) {

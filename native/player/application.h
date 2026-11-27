@@ -2,7 +2,6 @@
 
 #include "player/engine.h"
 #include <ioj/host/unreal_messages.h>
-#include <ioj/input/dispatch/events.h>
 #include <ioj/levels/launch_options.h>
 #include <ioj/levels/level_definition.h>
 #include <ioj/profiles/profile_manager.h>
@@ -16,8 +15,6 @@
 #include <vector>
 
 namespace ioj {
-class GameInput;
-
 struct CliArgs;
 class LevelStorage;
 
@@ -42,10 +39,7 @@ class Application {
         -> std::vector<AvailableLevel>;
     void publish_profiles() const;
     void process_profile_actions(std::span<host::ProfileAction const> actions);
-    void process_preferences(Window& window,
-                             GameInput& input,
-                             host::InputEvents& commands,
-                             std::span<host::PreferenceEdit const> edits);
+    auto process_preferences(Window& window, std::span<host::PreferenceEdit const> edits) -> bool;
     auto launch_level(LevelStorage& storage, std::filesystem::path const& path)
         -> ApplicationResult;
     auto launch_level(LevelStorage& storage,
