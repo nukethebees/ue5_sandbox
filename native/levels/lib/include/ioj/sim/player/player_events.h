@@ -55,11 +55,7 @@ struct PlayerInputEvents {
     }
 
   private:
-    void add(PlayerInputKind event) {
-        if (events_.size() < 255) {
-            events_.push_back(event);
-        }
-    }
+    void add(PlayerInputKind event) { events_.push_back(event); }
 
     std::pmr::vector<PlayerInputKind> events_;
     float pitch_{};

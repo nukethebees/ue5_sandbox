@@ -92,7 +92,7 @@ TEST(PlayerFlight, QueuedTapProducesOrderedTransitionsOnOneTick) {
     EXPECT_TRUE(events.empty());
 }
 
-TEST(PlayerFlight, FullInputQueueAcceptsNewEdgesAfterTheNextTick) {
+TEST(PlayerFlight, ReleaseAfter255InputsIsConsumedInOrder) {
     LevelSim simulation{make_data().compile(), *std::pmr::new_delete_resource()};
     simulation.start();
     player::PlayerInputEvents input{*std::pmr::new_delete_resource()};
@@ -104,15 +104,9 @@ TEST(PlayerFlight, FullInputQueueAcceptsNewEdgesAfterTheNextTick) {
     simulation.append_player_input(input.view());
     advance_ticks(simulation, 1);
     auto const& events{simulation.read_access().frame_events().player};
-    ASSERT_EQ(events.size(), 1u);
+    ASSERT_EQ(events.size(), 2u);
     EXPECT_EQ(events.front(), player::PlayerEventKind::BoostStarted);
-
-    player::PlayerInputEvents release{*std::pmr::new_delete_resource()};
-    release.stop_boost();
-    simulation.append_player_input(release.view());
-    advance_ticks(simulation, 1);
-    ASSERT_EQ(events.size(), 1u);
-    EXPECT_EQ(events.front(), player::PlayerEventKind::BoostStopped);
+    EXPECT_EQ(events.back(), player::PlayerEventKind::BoostStopped);
 }
 
 TEST(PlayerFlight, LethalCommandPublishesAtResolutionAndStoppedAdvanceClearsDeaths) {
