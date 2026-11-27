@@ -8,8 +8,6 @@
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
-#include <Input/UIActionBindingHandle.h>
-#include <InputAction.h>
 #include <Widgets/CommonActivatableWidgetContainer.h>
 
 namespace ioj {
@@ -54,7 +52,7 @@ auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
     return true;
 }
 
-auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action) -> UPauseMenuWidget* {
+auto UGameUiRootLayout::show_pause_menu() -> UPauseMenuWidget* {
     auto* const ui_data{ui_data_.Get()};
     if (!IsValid(ui_data) || !IsValid(modal_stack)) {
         UE_LOG(LogSandboxUI,
@@ -75,8 +73,7 @@ auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action) -> UPauseMe
 
     auto const pause_menu_class{ui_data->get_widget_class<UPauseMenuWidget>()};
     auto* const pause_menu{modal_stack->AddWidget<UPauseMenuWidget>(
-        pause_menu_class,
-        [&toggle_action](UPauseMenuWidget& widget) { widget.prepare_for_open(toggle_action); })};
+        pause_menu_class, [](UPauseMenuWidget& widget) { widget.prepare_for_open(); })};
     if (!IsValid(pause_menu)) {
         UE_LOG(LogSandboxUI,
                Error,

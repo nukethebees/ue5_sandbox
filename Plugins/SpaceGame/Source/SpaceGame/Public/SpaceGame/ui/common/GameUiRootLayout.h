@@ -8,7 +8,6 @@
 #include "GameUiRootLayout.generated.h"
 
 class UCommonActivatableWidgetStack;
-class UInputAction;
 namespace ioj {
 class UTestBatchGameUiData;
 class ULevelSelectWidget;
@@ -22,7 +21,7 @@ class SPACEGAME_API UGameUiRootLayout : public UCommonActivatableWidget {
   public:
     auto initialise(UTestBatchGameUiData& ui_data) -> bool;
     auto show_main_menu(bool show_level_select, FName preferred_level_id = NAME_None) -> bool;
-    auto show_pause_menu(UInputAction& toggle_action) -> UPauseMenuWidget*;
+    auto show_pause_menu() -> UPauseMenuWidget*;
     auto show_level_completion(FLevelCompletion data) -> ULevelCompletionWidget*;
     void clear_menus();
 

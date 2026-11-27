@@ -3,11 +3,8 @@
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 
-#include <Input/UIActionBindingHandle.h>
-
 #include "PauseMenuWidget.generated.h"
 
-class UInputAction;
 class UOverlay;
 class UTextBlock;
 
@@ -25,7 +22,7 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     // State and opening
     /* **************************************** */
     [[nodiscard]] auto get_options_widget() const -> UOptionsWidget* { return options_widget; }
-    void prepare_for_open(UInputAction& toggle_action);
+    void prepare_for_open();
 
     FPauseReturnToLevelSelectRequested return_to_level_select_requested;
     FPauseQuitRequested quit_requested;
@@ -36,8 +33,8 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     void NativeOnInitialized() override;
     void NativeConstruct() override;
     void NativeOnActivated() override;
-    void NativeOnDeactivated() override;
     auto NativeGetDesiredFocusTarget() const -> UWidget* override;
+    FReply NativeOnKeyDown(FGeometry const& geometry, FKeyEvent const& event) override;
     auto NativeOnHandleBackAction() -> bool override;
 
     /* **************************************** */
@@ -91,8 +88,6 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     /* **************************************** */
     // State
     /* **************************************** */
-    TWeakObjectPtr<UInputAction> toggle_action_;
-    FUIActionBindingHandle toggle_action_binding_;
     bool options_modal_visible_{};
     bool terminal_action_requested_{false};
 };

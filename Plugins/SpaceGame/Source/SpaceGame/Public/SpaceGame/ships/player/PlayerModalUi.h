@@ -7,7 +7,6 @@
 
 #include "PlayerModalUi.generated.h"
 
-class UInputAction;
 struct FLevelCompletion;
 
 namespace ioj {
@@ -29,12 +28,12 @@ struct SPACEGAME_API FPlayerModalUi {
     /* **************************************** */
     // Main menu
     /* **************************************** */
-    auto show_main_menu(ASpaceGamePlayerController& owner) -> bool;
+    auto show_main_menu() -> bool;
     void apply_main_menu_input_mode(ASpaceGamePlayerController& owner);
     /* **************************************** */
     // Modal widgets and callbacks
     /* **************************************** */
-    auto show_pause(ASpaceGamePlayerController& owner, UInputAction& action) -> bool;
+    auto show_pause(ASpaceGamePlayerController& owner) -> bool;
     auto show_completion(ASpaceGamePlayerController& owner, FLevelCompletion const& completion)
         -> bool;
     void detach_callbacks(ASpaceGamePlayerController& owner);

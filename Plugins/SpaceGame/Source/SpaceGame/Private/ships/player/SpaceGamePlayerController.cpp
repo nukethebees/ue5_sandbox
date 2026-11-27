@@ -189,7 +189,7 @@ void ASpaceGamePlayerController::initialise_main_menu() {
     control_contexts_.shutdown();
     hud_.shutdown();
     hud_.shutdown_benchmark(*this);
-    if (!modal_ui_.initialise_root(*this, ui_data) || !modal_ui_.show_main_menu(*this)) {
+    if (!modal_ui_.initialise_root(*this, ui_data) || !modal_ui_.show_main_menu()) {
         return;
     }
 
@@ -605,7 +605,7 @@ void ASpaceGamePlayerController::show_initial_pause_menu() {
 auto ASpaceGamePlayerController::open_pause_menu() -> bool {
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(orchestrator) || orchestrator->get_state() != sim::LevelState::Paused ||
-        !modal_ui_.has_root() || !IsValid(global_input.toggle_menu)) {
+        !modal_ui_.has_root()) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::open_pause_menu: Paused gameplay UI is not "
@@ -613,7 +613,7 @@ auto ASpaceGamePlayerController::open_pause_menu() -> bool {
         return false;
     }
 
-    return modal_ui_.show_pause(*this, *global_input.toggle_menu);
+    return modal_ui_.show_pause(*this);
 }
 auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {
     auto* const orchestrator{orchestrator_.Get()};

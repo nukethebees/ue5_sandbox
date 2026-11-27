@@ -4,15 +4,16 @@
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <ioj/input/flight_input.h>
+#include <SpaceGame/UnrealMessages.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 
+#include <SandboxCoreEngine/strings.h>
+
 #include <Components/TextBlock.h>
 #include <Engine/GameInstance.h>
-#include <Input/CommonUIInputTypes.h>
-#include <Input/UIActionBinding.h>
-#include <InputAction.h>
 #include <Widgets/DeclarativeSyntaxSupport.h>
 
 namespace ioj {
@@ -58,8 +59,7 @@ void UPauseMenuWidget::NativeConstruct() {
     apply_ui_style();
 }
 
-void UPauseMenuWidget::prepare_for_open(UInputAction& toggle_action) {
-    toggle_action_ = &toggle_action;
+void UPauseMenuWidget::prepare_for_open() {
     terminal_action_requested_ = false;
     options_modal_visible_ = false;
     set_navigation_enabled(true);
@@ -67,28 +67,26 @@ void UPauseMenuWidget::prepare_for_open(UInputAction& toggle_action) {
 
 void UPauseMenuWidget::NativeOnActivated() {
     select_page(EMenuPage::Audio);
-    if (auto* const toggle_action{toggle_action_.Get()}; IsValid(toggle_action)) {
-        FBindUIActionArgs const args{
-            toggle_action,
-            false,
-            FSimpleDelegate::CreateUObject(this, &ThisClass::handle_toggle_action)};
-        toggle_action_binding_ = RegisterUIActionBinding(args);
-    }
-
     Super::NativeOnActivated();
-}
-
-void UPauseMenuWidget::NativeOnDeactivated() {
-    if (toggle_action_binding_.IsValid()) {
-        toggle_action_binding_.Unregister();
-        toggle_action_binding_ = {};
-    }
-
-    Super::NativeOnDeactivated();
 }
 
 auto UPauseMenuWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
     return resume_button;
+}
+
+FReply UPauseMenuWidget::NativeOnKeyDown(FGeometry const& geometry, FKeyEvent const& event) {
+    if (!event.IsRepeat()) {
+        auto const key{to_string(event.GetKey().GetFName().ToString())};
+        for (auto const& control : input::flight_controls()) {
+            if (control.action == input::FlightAction::Pause &&
+                input::binding_name_equal(
+                    input::bound_key(control, player_settings().applied_values.controls), key)) {
+                handle_toggle_action();
+                return FReply::Handled();
+            }
+        }
+    }
+    return Super::NativeOnKeyDown(geometry, event);
 }
 
 auto UPauseMenuWidget::NativeOnHandleBackAction() -> bool {
@@ -124,12 +122,12 @@ void UPauseMenuWidget::handle_toggle_action() {
     request_close(FSimpleDelegate::CreateUObject(this, &ThisClass::complete_resume));
 }
 
-void UPauseMenuWidget::select_page(EMenuPage const tab) {
+void UPauseMenuWidget::select_page(EMenuPage const page) {
     if (terminal_action_requested_ || options_modal_visible_ || !IsValid(options_widget)) {
         return;
     }
 
-    options_widget->select_page(tab, FSimpleDelegate::CreateUObject(this, &ThisClass::show_page));
+    options_widget->select_page(page, FSimpleDelegate::CreateUObject(this, &ThisClass::show_page));
 }
 
 void UPauseMenuWidget::show_page() {

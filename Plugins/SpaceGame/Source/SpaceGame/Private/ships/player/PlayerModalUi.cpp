@@ -12,7 +12,6 @@
 #include <SandboxCoreEngine/strings.h>
 
 #include <Engine/GameInstance.h>
-#include <InputAction.h>
 
 namespace ioj {
 /* **************************************** */
@@ -65,7 +64,7 @@ auto FPlayerModalUi::has_root() const -> bool {
 /* **************************************** */
 // Main menu
 /* **************************************** */
-auto FPlayerModalUi::show_main_menu(ASpaceGamePlayerController& owner) -> bool {
+auto FPlayerModalUi::show_main_menu() -> bool {
     if (!has_root()) {
         UE_LOG(LogSandboxController,
                Error,
@@ -96,13 +95,13 @@ void FPlayerModalUi::apply_main_menu_input_mode(ASpaceGamePlayerController& owne
 /* **************************************** */
 // Modal widgets and callbacks
 /* **************************************** */
-auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner, UInputAction& action) -> bool {
+auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner) -> bool {
     if (!has_root()) {
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));
         return false;
     }
 
-    pause_menu_ = root_->show_pause_menu(action);
+    pause_menu_ = root_->show_pause_menu();
     if (!IsValid(pause_menu_)) {
         return false;
     }
