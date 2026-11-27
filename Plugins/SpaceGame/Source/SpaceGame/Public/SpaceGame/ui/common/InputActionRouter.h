@@ -9,6 +9,6 @@ UCLASS()
 class SPACEGAME_API UInputActionRouter : public UCommonUIActionRouterBase {
     GENERATED_BODY()
   protected:
-    TSharedRef<FCommonAnalogCursor> MakeAnalogCursor() const override;
+    void PostAnalogCursorCreate() override;
 };
 }

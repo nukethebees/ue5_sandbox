@@ -1,22 +1,8 @@
 #include <SpaceGame/ui/common/InputActionRouter.h>
 
-#include <Input/CommonAnalogCursor.h>
-
 namespace ioj {
-class FGameAnalogCursor final : public FCommonAnalogCursor {
-  public:
-    explicit FGameAnalogCursor(UCommonUIActionRouterBase const& router)
-        : FCommonAnalogCursor{router} {}
-
-    bool ShouldVirtualAcceptSimulateMouseButton(FKeyEvent const& event,
-                                                EInputEvent const input_event) const override {
-        // A synthetic Accept click would reach the viewport's gameplay mouse bindings.
-        return ActionRouter.GetActiveInputMode(ECommonInputMode::Game) != ECommonInputMode::Game &&
-               FCommonAnalogCursor::ShouldVirtualAcceptSimulateMouseButton(event, input_event);
-    }
-};
-
-TSharedRef<FCommonAnalogCursor> UInputActionRouter::MakeAnalogCursor() const {
-    return FCommonAnalogCursor::CreateAnalogCursor<FGameAnalogCursor>(*this);
+void UInputActionRouter::PostAnalogCursorCreate() {
+    // SDL supplies pointer input. Registering the CommonUI preprocessor would turn
+    // controller Accept into a second, synthetic pointer source.
 }
 }
