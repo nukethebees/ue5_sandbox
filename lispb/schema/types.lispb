@@ -473,3 +473,8 @@
 (type timer_index :spelling "ioj::levels::TimerIndex" :header "ioj/levels/logic_indices.h")
 (type latch_index :spelling "ioj::levels::LatchIndex" :header "ioj/levels/logic_indices.h")
 (type spawn_group_index :spelling "ioj::levels::SpawnGroupIndex" :header "ioj/levels/logic_indices.h")
+
+(type input_key :spelling "ioj::PhysicalKey" :header "ioj/input/physical/physical_key.h")
+(type button_edge :spelling "ioj::ButtonState" :header "ioj/input/physical/button_state.h")
+(type input_modifiers :spelling "ioj::host::Modifiers" :header "ioj/input/physical/modifiers.h")
+(type input_point :spelling "ioj::Vector2f" :header "ioj/vector.h")

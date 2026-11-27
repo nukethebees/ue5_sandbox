@@ -332,7 +332,7 @@
     (projections (cpp))))
 
 (module input_modifiers
-  :header "native/player/include/ioj/input/physical/modifiers.h"
+  :header "native/levels/lib/include/ioj/input/physical/modifiers.h"
   :namespace ioj::host
   (record Modifiers :layout packed :bits 16
     (member left_shift bool :bits 1)
@@ -347,7 +347,7 @@
     (projections (cpp :storage std::uint16_t))))
 
 (module player_host_actions
-  :header "native/player/include/ioj/input/dispatch/input_actions.h"
+  :header "native/levels/lib/include/ioj/input/dispatch/input_actions.h"
   :namespace ioj::host
   (enum PlayerAction @native_uint8 :native-api true :helpers (traits)
     (value OpenPause)
@@ -387,3 +387,57 @@
     (value LeaveAccepted)
     (value LeaveCancelled)
     (projections (cpp))))
+
+(module physical_event_kind
+  :header "native/player/include/ioj/input/physical/event_kind.h"
+  :namespace ioj
+  (enum PhysicalEventKind @native_uint8 :native-api true
+    (value Button)
+    (value PointerButton)
+    (value Axis)
+    (value PointerMotion)
+    (value Wheel)
+    (value Text)
+    (value Disconnect)
+    (value FocusGained)
+    (value FocusLost)
+    (projections (cpp))))
+
+(module physical_buttons
+  :header "native/player/include/ioj/input/physical/buttons.h"
+  :namespace ioj
+  (struct PhysicalButtonsRows
+    (member keys array @input_key)
+    (member modifiers array @input_modifiers)
+    (member states array @button_edge)
+    (member repeats array bool)))
+
+(module physical_pointer_buttons
+  :header "native/player/include/ioj/input/physical/pointer_buttons.h"
+  :namespace ioj
+  (struct PhysicalPointerButtonsRows
+    (member positions array @input_point)
+    (member keys array @input_key)
+    (member states array @button_edge)
+    (member clicks array @native_uint8)))
+
+(module physical_axes
+  :header "native/player/include/ioj/input/physical/axes.h"
+  :namespace ioj
+  (struct PhysicalAxesRows
+    (member keys array @input_key)
+    (member positions array float)))
+
+(module physical_motions
+  :header "native/player/include/ioj/input/physical/motions.h"
+  :namespace ioj
+  (struct PhysicalMotionsRows
+    (member positions array @input_point)
+    (member deltas array @input_point)))
+
+(module physical_wheels
+  :header "native/player/include/ioj/input/physical/wheels.h"
+  :namespace ioj
+  (struct PhysicalWheelsRows
+    (member positions array @input_point)
+    (member steps array float)))
