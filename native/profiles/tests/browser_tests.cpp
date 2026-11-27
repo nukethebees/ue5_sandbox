@@ -51,7 +51,7 @@ TEST(SaveGameBrowser, ReportsAreLoadedLazilyAndRefreshInvalidatesTheCache) {
     auto manager{ProfileManager::open(storage.make())};
     ASSERT_TRUE(manager);
     auto const first_profile{manager->active_profile_id()};
-    ASSERT_TRUE(manager->append_score_record({.date = 1, .level_name = "mission"}));
+    ASSERT_TRUE(manager->append_score_record({.date = 1, .level_name = "level"}));
     auto const second{manager->create_profile("Second")};
     ASSERT_EQ(second.result, CreateProfileResult::succeeded);
 

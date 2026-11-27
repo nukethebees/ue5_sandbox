@@ -12,7 +12,7 @@
 # bugprone-suspicious-stringview-data-usage: Windows calls already pass lengths (5).
 # bugprone-misplaced-widening-cast: mixes guarded/constant arithmetic with size
 # calculations needing bounds review (17); defer that review rather than add casts.
-# bugprone-narrowing-conversions: includes mission kill-count signedness policy (4).
+# bugprone-narrowing-conversions: includes level kill-count signedness policy (4).
 # bugprone-unchecked-optional-access: 721 reports, including checked result wrappers
 # and explicitly guarded optionals; too noisy for this rollout.
 # Further deferred checks; preserve existing contracts and review findings separately.

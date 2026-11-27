@@ -63,14 +63,14 @@ TEST(ProfileStorage, FailedReplacementPreservesPublishedRecordsAndRollsBackManag
     auto manager{ProfileManager::open(make_file_profile_storage(root))};
     ASSERT_TRUE(manager);
     ScoreRecord const original{.date = 1,
-                               .level_name = "mission",
+                               .level_name = "level",
                                .end_reason = sim::RunEndReason::DurationReached,
                                .kills = std::numeric_limits<KillCount>::max()};
     ASSERT_TRUE(manager->append_score_record(original));
     auto const backup{root / "profile_default_profile.json.bak"};
     std::filesystem::remove(backup);
     std::filesystem::create_directory(backup);
-    EXPECT_FALSE(manager->append_score_record({.date = 2, .level_name = "mission", .kills = 8}));
+    EXPECT_FALSE(manager->append_score_record({.date = 2, .level_name = "level", .kills = 8}));
     ASSERT_EQ(manager->active_records().size(), 1u);
     EXPECT_EQ(manager->active_records()[0], original);
     auto storage{make_file_profile_storage(root)};
@@ -86,10 +86,10 @@ TEST(ProfileStorage, MergeDeduplicatesPayloadsAndRebuildsMetadataBeforePublicati
     storage_tests::Directory directory;
     std::array const sources{directory.path / "one", directory.path / "two"};
     ScoreRecord const first{.date = 1,
-                            .level_name = "mission",
+                            .level_name = "level",
                             .kills = std::numeric_limits<KillCount>::max(),
                             .time_seconds = 3.f};
-    ScoreRecord const second{.date = 2, .level_name = "mission", .kills = 4, .time_seconds = 5.f};
+    ScoreRecord const second{.date = 2, .level_name = "level", .kills = 4, .time_seconds = 5.f};
     for (auto const& source : sources) {
         auto manager{ProfileManager::open(make_file_profile_storage(source))};
         ASSERT_TRUE(manager);
@@ -118,12 +118,12 @@ TEST(ProfileStorage, CloneIsPublishedOnceAndRemainsIsolated) {
     auto const experiment_root{directory.path / "Experiment"};
     auto shared{ProfileManager::open(make_file_profile_storage(shared_root))};
     ASSERT_TRUE(shared);
-    ASSERT_TRUE(shared->append_score_record({.date = 1, .level_name = "mission", .kills = 7}));
+    ASSERT_TRUE(shared->append_score_record({.date = 1, .level_name = "level", .kills = 7}));
     std::string error;
     ASSERT_TRUE(clone_profile_files(shared_root, experiment_root, error)) << error;
     auto experiment{ProfileManager::open(make_file_profile_storage(experiment_root))};
     ASSERT_TRUE(experiment);
-    ASSERT_TRUE(experiment->append_score_record({.date = 2, .level_name = "mission", .kills = 3}));
+    ASSERT_TRUE(experiment->append_score_record({.date = 2, .level_name = "level", .kills = 3}));
     ASSERT_TRUE(clone_profile_files(shared_root, experiment_root, error));
     auto reloaded_shared{ProfileManager::open(make_file_profile_storage(shared_root))};
     auto reloaded_experiment{ProfileManager::open(make_file_profile_storage(experiment_root))};
@@ -150,7 +150,7 @@ TEST(ProfileStorage, ConcurrentIndependentManagersKeepEveryResult) {
             }
             for (std::uint32_t row{}; row < 4; ++row) {
                 if (!manager->append_score_record({.date = producer * 4 + row + 1,
-                                                   .level_name = "mission",
+                                                   .level_name = "level",
                                                    .kills = producer * 4 + row})) {
                     succeeded = false;
                 }
@@ -185,7 +185,7 @@ TEST(ProfileStorage, RejectsUnsafeIdentifiersAndIncompleteSourcesWithoutPublicat
 
     EXPECT_FALSE(storage.save_results("../escaped", {}));
     EXPECT_FALSE(storage.save_results(
-        "invalid", {.score_records = {{.level_name = "mission", .time_seconds = -1.f}}}));
+        "invalid", {.score_records = {{.level_name = "level", .time_seconds = -1.f}}}));
     EXPECT_FALSE(std::filesystem::exists(directory.path / "source/profile_invalid.json"));
     ProfileResultsData ignored;
     EXPECT_EQ(storage.load_results("../escaped", ignored), LoadResult::failed);

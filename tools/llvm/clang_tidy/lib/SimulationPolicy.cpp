@@ -50,9 +50,6 @@ static bool is_view_record(CXXRecordDecl const* record) {
             .Cases({"ioj::Rotators3fView", "ioj::Rotators3fConstView"}, true)
             .Cases({"ioj::sim::TraceHitsView", "ioj::sim::TraceHitsConstView"}, true)
             .Cases({"ioj::sim::LevelSpawnGroupsView", "ioj::sim::LevelSpawnGroupsConstView"}, true)
-            .Cases({"ioj::sim::LevelMissionEventGroupsView",
-                    "ioj::sim::LevelMissionEventGroupsConstView"},
-                   true)
             .Cases({"ioj::sim::PlayerAgentView", "ioj::sim::AgentTargetView"}, true)
             .Case("ioj::sim::collision::DetectedOverlapsView", true)
             .Default(false)) {
