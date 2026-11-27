@@ -24,8 +24,6 @@ public class SpaceGame : ModuleRules
             "NativeProfiles",
             "NativePresentation",
             "SandboxUI",
-            "CommonInput",
-            "CommonUI",
             "Core",
             "CoreUObject",
             "DeveloperSettings",

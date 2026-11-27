@@ -12,7 +12,6 @@ public class SpaceGameS7 : ModuleRules
 
         PublicDependencyModuleNames.AddRange(new string[]
         {
-            "CommonUI",
             "Core",
             "CoreUObject",
             "NativeLevels",
