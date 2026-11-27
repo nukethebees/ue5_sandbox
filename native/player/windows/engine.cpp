@@ -33,12 +33,10 @@ auto start_engine(Window& window, std::wstring const& arguments, LaunchDisplayMo
 
 auto shutdown_engine(Window& window) -> ApplicationResult {
     disconnect_unreal_window(window.sdl_window());
-    auto const failed{IojPlayer_GameFailed()};
     auto const status{UELibrary_Shutdown()};
     IojPlayer_Detach();
-    if (status != 0 || failed) {
-        return std::unexpected{
-            std::format("Game exited with an error ({})", status != 0 ? status : 1)};
+    if (status != 0) {
+        return std::unexpected{std::format("Game exited with an error ({})", status)};
     }
     return {};
 }

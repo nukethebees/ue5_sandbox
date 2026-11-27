@@ -4,7 +4,6 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
 #include "SpaceGame/UnrealMessages.h"
 #include <ioj/host/game_host_api.h>
-#include <ioj/host/level_host.h>
 #include <ioj/levels/control_context.h>
 #include <ioj/levels/diagnostics.h>
 #include <ioj/levels/launch_options.h>
@@ -84,20 +83,6 @@ auto IojPlayer_ApplyPreferences() -> bool {
     audio->set_sfx_volume(values.audio.sfx_volume);
     audio->set_ui_volume(values.audio.ui_volume);
     return true;
-}
-
-auto IojPlayer_GameFailed() -> bool {
-    return GIsCriticalError;
-}
-
-auto IojPlayer_GameReady() -> bool {
-    auto const* viewport{GEngine ? GEngine->GameViewport.Get() : nullptr};
-    auto const* world{viewport ? viewport->GetWorld() : nullptr};
-    return world && world->HasBegunPlay();
-}
-
-auto IojPlayer_ExitRequested() -> bool {
-    return IsEngineExitRequested();
 }
 
 void IojPlayer_BeginFrame() {

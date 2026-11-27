@@ -11,7 +11,6 @@
 #include <ioj/bridge/level_frame.h>
 #include <ioj/files.h>
 #include <ioj/host/game_host_api.h>
-#include <ioj/host/level_host.h>
 #include <ioj/input/dispatch/player_menu.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/presentation/level_catalog.h>
@@ -407,6 +406,18 @@ struct Application::PlayerInputSession {
                     }
                     break;
                 }
+                case host::UnrealMessageKind::Status:
+                    application.engine_ = replies.status[index];
+                    if (application.engine_.failed) {
+                        pause_presentation = std::unexpected{"Unreal reported a critical error"};
+                    }
+                    break;
+                case host::UnrealMessageKind::SimulationMode:
+                    if (auto* level{storage.get()};
+                        level && !level->presentation_setup && menu.screen != MenuScreen::Pause) {
+                        level->set_simulation_mode(replies.simulation_modes[index]);
+                    }
+                    break;
                 case host::UnrealMessageKind::LevelInitialized:
                     break;
                 case host::UnrealMessageKind::PausePresented:
@@ -559,7 +570,9 @@ auto Application::play(Window& window,
                        std::filesystem::path const& level_path,
                        std::filesystem::path const& scripts_directory,
                        bool exit_when_ready) -> ApplicationResult {
-    if (!IojPlayer_GameReady()) {
+    PlayerInputSession play_input{*this, window, settings_, menu_, storage};
+    play_input.process_widget_actions();
+    if (!engine_.ready) {
         return ApplicationResult{std::unexpect,
                                  "Unreal did not initialize a playable world. See the game log."};
     }
@@ -587,8 +600,7 @@ auto Application::play(Window& window,
     auto const deadline{last_input_frame + std::chrono::minutes{2}};
     std::vector<AvailableLevel> available_levels;
 
-    PlayerInputSession play_input{*this, window, settings_, menu_, storage};
-    while (!IojPlayer_ExitRequested()) {
+    while (!engine_.exit_requested) {
         IojPlayer_BeginFrame();
         if (menu_.prompt == OptionsPrompt::Display && !menu_.saving &&
             menu_.display_seconds_remaining() == 0) {
@@ -618,8 +630,7 @@ auto Application::play(Window& window,
         if (!play_input.pause_presentation) {
             return play_input.pause_presentation;
         }
-        if (window_events.close_requested || play_input.quit_requested ||
-            IojPlayer_ExitRequested()) {
+        if (window_events.close_requested || play_input.quit_requested || engine_.exit_requested) {
             break;
         }
 
@@ -653,7 +664,8 @@ auto Application::play(Window& window,
             unload_level(storage, sim::RunEndReason::WorldEnd, false);
             menu_.selected_level = id.value;
             menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
-            host::open_menu(id.value, {});
+            endpoint_.open_menu({});
+            endpoint_.exchange();
             play_input.return_requested = false;
             continue;
         }
@@ -674,7 +686,8 @@ auto Application::play(Window& window,
             unload_level(storage, sim::RunEndReason::WorldEnd, false);
             menu_.selected_level = menu->preferred_level_id.value;
             menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
-            host::open_menu(menu->preferred_level_id.value, menu->launch_error);
+            endpoint_.open_menu(menu->launch_error);
+            endpoint_.exchange();
             continue;
         }
 
@@ -692,13 +705,15 @@ auto Application::play(Window& window,
                 if (!result) {
                     menu_.selected_level = selection->id.value;
                     menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
-                    host::open_menu(selection->id.value, result.error());
+                    endpoint_.open_menu(result.error());
+                    endpoint_.exchange();
                 }
                 continue;
             }
             menu_.selected_level = selection->id.value;
             menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
-            host::open_menu(selection->id.value, "The selected level is no longer available.");
+            endpoint_.open_menu("The selected level is no longer available.");
+            endpoint_.exchange();
             continue;
         }
 
@@ -707,7 +722,7 @@ auto Application::play(Window& window,
             continue;
         }
 
-        if (level->presentation_setup && host::level_world_ready()) {
+        if (level->presentation_setup && engine_.world_ready) {
             auto const start_paused{level->presentation_setup->launch_mode ==
                                         levels::LaunchMode::Paused &&
                                     (level->control_context == levels::ControlContext::Player ||
@@ -719,7 +734,8 @@ auto Application::play(Window& window,
                     return ApplicationResult{std::unexpect, std::move(error)};
                 }
                 menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
-                host::open_menu(menu_.selected_level, error);
+                endpoint_.open_menu(error);
+                endpoint_.exchange();
                 continue;
             }
 
@@ -738,12 +754,9 @@ auto Application::play(Window& window,
             continue;
         }
 
-        if (host::presents_level()) {
+        if (engine_.presents_level) {
             level->simulation.append_player_input(play_input.input.ship_input());
 
-            if (messages.requested_simulation_mode) {
-                level->set_simulation_mode(*messages.requested_simulation_mode);
-            }
             advance_level(level->simulation, level->elapsed_seconds(), endpoint_);
             level->update_pause(menu_.screen == MenuScreen::Pause);
             if (level->simulation.state() == sim::LevelState::Stopped) {
@@ -995,7 +1008,8 @@ auto Application::launch_level(LevelStorage& storage,
         std::move(*built),
         bridge::make_level_presentation_setup(definition, std::move(source_path), options));
     menu_.open(MenuScreen::Closed);
-    host::open_level();
+    endpoint_.send(host::NativeMessageKind::OpenLevel);
+    endpoint_.exchange();
     return {};
 }
 void Application::unload_level(LevelStorage& storage, sim::RunEndReason reason, bool show_results) {
@@ -1018,7 +1032,7 @@ void Application::unload_level(LevelStorage& storage, sim::RunEndReason reason, 
         }
     }
 
-    if (host::presents_level()) {
+    if (engine_.presents_level) {
         if (show_results) {
             menu_.open(MenuScreen::Completion);
         }

@@ -33,7 +33,6 @@ void request_player_action(host::PlayerAction action);
 void report_pause_interaction(host::PauseWidgetEvent event);
 void queue_input_action(host::WidgetAction action);
 void request_simulation_mode(levels::LaunchMode mode);
-void clear_requested_simulation_mode();
 void clear_consumed_messages();
 void detach_player();
 }

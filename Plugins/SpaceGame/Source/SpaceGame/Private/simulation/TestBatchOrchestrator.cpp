@@ -89,7 +89,6 @@ void ATestBatchOrchestrator::release_level() {
     presentation_host_.reset();
     status_.reset();
     level_id_ = NAME_None;
-    clear_requested_simulation_mode();
 }
 void ATestBatchOrchestrator::start_simulation() {
     if (get_state() != sim::LevelState::Paused) {

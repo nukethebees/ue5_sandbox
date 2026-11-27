@@ -34,9 +34,6 @@ extern "C" {
     IOJ_PLAYER_API void IojPlayer_Attach(SystemCapabilities const& capabilities, PlayerMenu& menu);
     IOJ_PLAYER_API void IojPlayer_Detach();
     IOJ_PLAYER_API auto IojPlayer_ApplyPreferences() -> bool;
-    IOJ_PLAYER_API auto IojPlayer_GameFailed() -> bool;
-    IOJ_PLAYER_API auto IojPlayer_GameReady() -> bool;
-    IOJ_PLAYER_API auto IojPlayer_ExitRequested() -> bool;
     IOJ_PLAYER_API void IojPlayer_BeginFrame();
     IOJ_PLAYER_API auto
         IojPlayer_InitializeWindow(int x, int y, int width, int height, bool activate) -> bool;

@@ -52,6 +52,7 @@ class Application {
     void unload_level(LevelStorage& storage, sim::RunEndReason reason, bool show_results);
 
     host::NativeEndpoint endpoint_;
+    host::EngineStatus engine_{};
     PlayerSettings settings_;
     PlayerMenu menu_;
     profiles::ProfileManager profiles_;

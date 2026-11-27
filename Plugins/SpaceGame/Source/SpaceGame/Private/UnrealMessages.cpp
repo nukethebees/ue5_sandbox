@@ -8,7 +8,6 @@
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 #include <ioj/host/game_host_api.h>
-#include <ioj/host/level_host.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
@@ -19,6 +18,7 @@
 #include <Engine/GameViewportClient.h>
 #include <Engine/World.h>
 #include <Kismet/GameplayStatics.h>
+#include <UnrealEngine.h>
 #endif
 
 #include <Misc/AssertionMacros.h>
@@ -45,7 +45,6 @@ struct MessageBuffer {
     std::vector<TWeakObjectPtr<UOptionsDraft>> preference_senders;
     host::NavigationRequest navigation_request;
     TWeakObjectPtr<ULevelSelectWidget> catalog_request;
-    std::optional<levels::LaunchMode> requested_simulation_mode;
 };
 
 std::vector<host::WidgetAction> pending_actions;
@@ -137,16 +136,13 @@ void queue_input_action(host::WidgetAction action) {
     pending_actions.push_back(action);
 }
 void request_simulation_mode(levels::LaunchMode mode) {
-    pending.requested_simulation_mode = mode;
-}
-
-void clear_requested_simulation_mode() {
-    pending.requested_simulation_mode.reset();
+    endpoint.request_simulation_mode(mode);
 }
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 namespace {
 TWeakObjectPtr<ATestBatchOrchestrator> level_world;
+std::optional<host::EngineStatus> reported_status;
 }
 void attach_level_world(ATestBatchOrchestrator& actor) {
     check(!level_world.IsValid());
@@ -156,26 +152,6 @@ void detach_level_world(ATestBatchOrchestrator& actor) {
     if (level_world.Get(true) == &actor) {
         level_world.Reset();
     }
-}
-namespace host {
-auto level_world_ready() -> bool {
-    return level_world.IsValid();
-}
-void open_level() {
-    level_world.Reset();
-    UGameplayStatics::OpenLevel(GEngine->GameViewport->GetWorld(),
-                                TEXT("/SpaceGame/Levels/GameRuntime"));
-}
-void open_menu(std::string_view preferred_level_id, std::string_view error) {
-    menu_selection().emplace(levels::LevelId{std::string{preferred_level_id}}, std::string{error});
-    level_world.Reset();
-    UGameplayStatics::OpenLevel(GEngine->GameViewport->GetWorld(),
-                                TEXT("/SpaceGame/Levels/MainMenu"));
-}
-auto presents_level() -> bool {
-    return level_world.IsValid() && level_world->has_level();
-}
-
 }
 void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
     auto* const viewport{GEngine ? GEngine->GameViewport.Get() : nullptr};
@@ -210,6 +186,16 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 player->present_steering(position);
                 break;
             }
+            case OpenMenu:
+                menu_selection().emplace(levels::LevelId{player_menu().selected_level},
+                                         messages.errors[index]);
+                level_world.Reset();
+                UGameplayStatics::OpenLevel(world, TEXT("/SpaceGame/Levels/MainMenu"));
+                break;
+            case OpenLevel:
+                level_world.Reset();
+                UGameplayStatics::OpenLevel(world, TEXT("/SpaceGame/Levels/GameRuntime"));
+                break;
             case InitializeLevel: {
                 auto const& init{messages.initializations[index]};
                 auto result{level_world->initialize_level(init.level, init.frame)};
@@ -264,6 +250,15 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 checkNoEntry();
         }
     }
+    host::EngineStatus const current_status{world && world->HasBegunPlay(),
+                                            level_world.IsValid(),
+                                            level_world.IsValid() && level_world->has_level(),
+                                            IsEngineExitRequested(),
+                                            !!GIsCriticalError};
+    if (current_status != reported_status) {
+        reported_status = current_status;
+        engine_status(current_status);
+    }
 }
 void IojPlayer_Exchange(host::NativeMessages const& outgoing, host::UnrealMessages& incoming) {
     endpoint.receive(outgoing);
@@ -291,7 +286,6 @@ void clear_consumed_messages() {
     published.preference_edits.clear();
     published.preference_senders.clear();
     published.navigation_request.emplace<std::monostate>();
-    published.requested_simulation_mode.reset();
 }
 
 auto host::take_widget_actions() -> std::span<WidgetAction const> {
@@ -305,7 +299,6 @@ auto host::take_messages() -> HostRequests {
 
     return {published.preference_edits,
             published.navigation_request,
-            published.requested_simulation_mode,
             published.catalog_request.IsValid()};
 }
 
@@ -317,6 +310,10 @@ void host::preference_result(std::size_t index, std::string_view error) {
 #endif
 
 void detach_player() {
+#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+    reported_status.reset();
+    level_world.Reset();
+#endif
     endpoint.clear();
     pending_actions.clear();
     dispatched_actions.clear();

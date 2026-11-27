@@ -31,7 +31,6 @@ using NavigationRequest = std::variant<std::monostate, LevelSelection, session::
 struct HostRequests {
     std::span<PreferenceEdit const> preference_edits;
     NavigationRequest const& navigation_request;
-    std::optional<levels::LaunchMode> requested_simulation_mode;
     bool refresh_catalog;
 };
 }

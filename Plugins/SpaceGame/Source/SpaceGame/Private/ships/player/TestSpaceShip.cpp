@@ -76,7 +76,6 @@ void ATestSpaceShip::present_player(Team player_team, sim::ShipHealth health, Ve
 }
 
 void ATestSpaceShip::clear_player_frame() {
-    clear_requested_simulation_mode();
     player_snapshot_.reset();
 }
 
