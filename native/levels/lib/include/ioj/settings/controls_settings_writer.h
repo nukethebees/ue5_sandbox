@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/settings/controls_settings.h"
+#include "ioj/settings/key_binding_writer.h"
 #include <ioj/s7/writer.h>
 
 #include <string_view>
@@ -24,6 +25,7 @@ struct TypeWriter<ControlsSettings> : RecordWriter<ControlsSettings> {
         visit("invert-mouse-yaw", &T::invert_mouse_yaw);
         visit("invert-gamepad-pitch", &T::invert_gamepad_pitch);
         visit("invert-gamepad-yaw", &T::invert_gamepad_yaw);
+        visit("bindings", &T::bindings);
     }
 };
 

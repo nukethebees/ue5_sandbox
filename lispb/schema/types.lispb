@@ -284,6 +284,7 @@
 (type native_campaign_id :spelling "ioj::levels::CampaignId" :header "ioj/levels/identifiers.h")
 (type native_entity_ids :spelling "std::vector<ioj::levels::EntityId>" :header "ioj/levels/identifiers.h")
 (type native_level_ids :spelling "std::vector<ioj::levels::LevelId>" :header "ioj/levels/identifiers.h")
+(type optional_key_bindings :spelling "std::optional<std::vector<ioj::KeyBinding>>" :header "ioj/settings/key_binding.h")
 (type native_string :spelling "std::string" :header "string")
 
 (type native_cell_coord :spelling "ioj::sim::collision::CellCoord" :header "ioj/sim/collision/cell_coord.h")

@@ -5,14 +5,17 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/settings/key_binding.h"
 
 #include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace ioj {
 struct ControlsSettings {
@@ -26,6 +29,7 @@ struct ControlsSettings {
         invert_mouse_yaw,
         invert_gamepad_pitch,
         invert_gamepad_yaw,
+        bindings,
     };
 
     template <Field Selected, typename Self>
@@ -53,6 +57,9 @@ struct ControlsSettings {
         }
         if constexpr (Selected == Field::invert_gamepad_yaw) {
             return (self.invert_gamepad_yaw);
+        }
+        if constexpr (Selected == Field::bindings) {
+            return (self.bindings);
         }
     }
 
@@ -86,6 +93,8 @@ struct ControlsSettings {
             case Field::invert_gamepad_yaw:
                 return invoke_field<Field::invert_gamepad_yaw>(self,
                                                                std::forward<Visitor>(visitor));
+            case Field::bindings:
+                return invoke_field<Field::bindings>(self, std::forward<Visitor>(visitor));
         }
         assert((false && "Invalid record field"));
         std::unreachable();
@@ -98,16 +107,17 @@ struct ControlsSettings {
     bool invert_mouse_yaw{};
     bool invert_gamepad_pitch{};
     bool invert_gamepad_yaw{};
+    std::optional<std::vector<ioj::KeyBinding>> bindings{};
 };
 
 template <>
 [[nodiscard]] constexpr auto enum_count<ControlsSettings::Field>() noexcept -> std::size_t {
-    return 7ULL;
+    return 8ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<ControlsSettings::Field, Name>{PackedStrings{
     "mouse_turn_sensitivity\000gamepad_turn_sensitivity\000gamepad_turn_dead_zone\000invert_mouse_"
-    "pitch\000invert_mouse_yaw\000invert_gamepad_pitch\000invert_gamepad_yaw",
-    std::array<std::uint8_t, 8>{0, 23, 48, 71, 90, 107, 128, 147}}};
+    "pitch\000invert_mouse_yaw\000invert_gamepad_pitch\000invert_gamepad_yaw\000bindings",
+    std::array<std::uint8_t, 9>{0, 23, 48, 71, 90, 107, 128, 147, 156}}};
 } // namespace ioj

@@ -6,6 +6,7 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/settings/controls_settings.h"
+#include "ioj/settings/key_binding_reader.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -47,13 +48,14 @@ struct TypeReader<ControlsSettings> : RecordReader<ControlsSettings> {
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 7> field_names{"mouse-turn-sensitivity",
+    static constexpr std::array<std::string_view, 8> field_names{"mouse-turn-sensitivity",
                                                                  "gamepad-turn-sensitivity",
                                                                  "gamepad-turn-dead-zone",
                                                                  "invert-mouse-pitch",
                                                                  "invert-mouse-yaw",
                                                                  "invert-gamepad-pitch",
-                                                                 "invert-gamepad-yaw"};
+                                                                 "invert-gamepad-yaw",
+                                                                 "bindings"};
     static constexpr auto required{
         required_fields<Field, field_names.size()>({Field::mouse_turn_sensitivity,
                                                     Field::gamepad_turn_sensitivity,
