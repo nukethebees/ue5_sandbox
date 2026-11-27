@@ -12,21 +12,19 @@
 namespace ioj {
 using ButtonStateUnderlying = std::uint8_t;
 
-// Logical bit width: 2.
+// Logical bit width: 1.
 enum class ButtonState : ButtonStateUnderlying {
     Released,
     Pressed,
-    Repeated,
 };
 
 template <>
 inline constexpr MinMax<ButtonState> enum_range<ButtonState>{ButtonState::Released,
-                                                             ButtonState::Repeated};
+                                                             ButtonState::Pressed};
 
 template <>
 struct EnumTraits<ButtonState> {
-    static constexpr std::array values{
-        ButtonState::Released, ButtonState::Pressed, ButtonState::Repeated};
+    static constexpr std::array values{ButtonState::Released, ButtonState::Pressed};
 };
 
 } // namespace ioj

@@ -5,7 +5,6 @@
   (enum ButtonState @native_uint8 :native-api true :helpers (traits)
     (value Released)
     (value Pressed)
-    (value Repeated)
     (projections (cpp))))
 
 (module game_input_actions

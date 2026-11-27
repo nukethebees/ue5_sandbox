@@ -121,14 +121,18 @@ auto observer_action(PhysicalKey key) -> std::optional<DigitalAction> {
             return {};
     }
 }
-auto track_button(PhysicalInputState& state, KeyCode key, ButtonState edge) -> bool {
+auto track_button(PhysicalInputState& state, KeyCode key, ButtonState edge, bool repeat = false)
+    -> bool {
+    if (repeat) {
+        return std::ranges::contains(state.held, key);
+    }
     if (edge == ButtonState::Released) {
         return std::erase(state.held, key) != 0;
     } else if (edge == ButtonState::Pressed && !std::ranges::contains(state.held, key)) {
         state.held.push_back(key);
         return true;
     }
-    return edge == ButtonState::Repeated && std::ranges::contains(state.held, key);
+    return false;
 }
 auto axis_edge(PhysicalInputState& state, KeyCode key, float magnitude)
     -> std::optional<ButtonState> {
@@ -202,10 +206,8 @@ void GameInput::refresh_bindings(host::InputEvents& output) {
 void GameInput::publish_transitions(host::InputEvents& output, std::size_t first) {
     for (auto const payload : std::span{state_.transitions}.subspan(first)) {
         if (auto command{menu_command(payload.action)}) {
-            output.emplace_back(host::MenuButton{*command,
-                                                 payload.state != ButtonState::Released,
-                                                 payload.state == ButtonState::Repeated,
-                                                 physical_.modifiers});
+            output.emplace_back(host::MenuButton{
+                *command, payload.state != ButtonState::Released, false, physical_.modifiers});
             continue;
         }
         if (payload.state == ButtonState::Pressed) {
@@ -247,13 +249,13 @@ void GameInput::routed_button(host::InputEvents& output,
             return;
         }
         action = found->action;
-        if (edge == ButtonState::Released) {
-            routed_buttons_.erase(found);
-        }
+        routed_buttons_.erase(found);
     }
+
     auto const direction{std::ranges::find(digital_action_repeatable_navigation_values, action)};
     if (direction != digital_action_repeatable_navigation_values.end() && is_gamepad_control(key.key)) {
-        auto& delay{repeat_delays_[direction - digital_action_repeatable_navigation_values.begin()]};
+        auto& delay{
+            repeat_delays_[direction - digital_action_repeatable_navigation_values.begin()]};
         if (edge == ButtonState::Pressed && delay == 0.) {
             delay = 0.4;
         } else if (edge == ButtonState::Released &&
@@ -277,17 +279,15 @@ void GameInput::routed_button(host::InputEvents& output,
                                  : ObserverLookMode::Pointer;
     }
 }
-void GameInput::button(host::InputEvents& output,
-                       KeyCode key,
-                       ButtonState edge,
-                       std::uint32_t character) {
+void GameInput::button(host::InputEvents& output, KeyCode key, ButtonState edge, std::uint32_t character, bool repeat) {
     auto const down{edge != ButtonState::Released};
-    auto const repeat{edge == ButtonState::Repeated};
     if ((route_.resume_available || route_.context == InputContext::Observer ||
          route_.context == InputContext::Gameplay) &&
         (route_.context == InputContext::Gameplay || flight_.is_pause_button(key))) {
         auto const first{state_.transitions.size()};
-        flight_.button(state_, key, edge, controls_);
+        if (!repeat) {
+            flight_.button(state_, key, edge, controls_);
+        }
         publish_transitions(output, first);
         return;
     }
@@ -295,10 +295,17 @@ void GameInput::button(host::InputEvents& output,
         output.emplace_back(host::MenuKey{key, character, down, repeat, physical_.modifiers});
         return;
     }
-    if (edge != ButtonState::Pressed) {
+    if (repeat || edge == ButtonState::Released) {
         auto const source{std::ranges::find(routed_buttons_, key, &RoutedButton::key)};
         if (source != routed_buttons_.end() && (!repeat || route_.context == InputContext::Menu)) {
-            routed_button(output, key, source->action, edge);
+            if (repeat) {
+                if (auto command{menu_command(source->action)}) {
+                    output.emplace_back(
+                        host::MenuButton{*command, true, true, physical_.modifiers});
+                }
+            } else {
+                routed_button(output, key, source->action, edge);
+            }
         }
         return;
     }
@@ -311,12 +318,12 @@ void GameInput::button(host::InputEvents& output,
         return;
     }
     if (route_.context == InputContext::Observer) {
-        if (auto action{observer_action(key.key)}; action && !repeat) {
+        if (auto action{observer_action(key.key)}) {
             routed_button(output, key, *action, edge);
         }
         return;
     }
-    if (route_.context == InputContext::Benchmark && !repeat) {
+    if (route_.context == InputContext::Benchmark) {
         if (navigation) {
             auto const action{
                 *navigation == DigitalAction::MenuAccept ? DigitalAction::BenchmarkActivate
@@ -335,11 +342,11 @@ void GameInput::apply(host::InputEvents& output, PhysicalButton event) {
     if (!is_gamepad_control(event.key.key)) {
         physical_.modifiers = event.modifiers;
     }
-    if (!track_button(physical_, event.key, event.state) ||
+    if (!track_button(physical_, event.key, event.state, event.repeat) ||
         physical_.focus == WindowFocus::Lost) {
         return;
     }
-    button(output, event.key, event.state, event.character);
+    button(output, event.key, event.state, event.character, event.repeat);
     auto const modifiers{physical_.modifiers};
     if (editing_text() && event.key == PhysicalKey::BackSpace &&
         event.state != ButtonState::Released && !modifiers.left_control() &&
@@ -495,9 +502,9 @@ void GameInput::repeat_navigation(host::InputEvents& output, double seconds) {
         if (delay > 0.) {
             delay -= seconds;
             if (delay <= 0.) {
-                auto const first{state_.transitions.size()};
-                state_.button(digital_action_repeatable_navigation_values[i], ButtonState::Repeated);
-                publish_transitions(output, first);
+                auto const command{menu_command(digital_action_repeatable_navigation_values[i])};
+                assert(command);
+                output.emplace_back(host::MenuButton{*command, true, true, physical_.modifiers});
                 delay = 0.1;
             }
         }

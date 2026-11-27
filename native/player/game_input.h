@@ -46,7 +46,8 @@ class GameInput {
     void button(host::InputEvents& output,
                 KeyCode key,
                 ButtonState edge,
-                std::uint32_t character = {});
+                std::uint32_t character = {},
+                bool repeat = false);
     void routed_button(host::InputEvents& output,
                        KeyCode key,
                        DigitalAction action,

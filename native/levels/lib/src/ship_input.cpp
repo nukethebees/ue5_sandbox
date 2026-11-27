@@ -8,9 +8,6 @@ auto ship_input_frame(InputState const& state, std::vector<sim::player::PlayerIn
     using enum sim::player::PlayerInputKind;
     events.clear();
     for (auto const [action, edge] : state.transitions) {
-        if (edge == ButtonState::Repeated) {
-            continue;
-        }
         auto const down{edge == ButtonState::Pressed};
         switch (action) {
             case DigitalAction::Fire:

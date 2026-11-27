@@ -250,9 +250,8 @@ auto SdlInput::translate(SDL_Event const& event) -> std::optional<PhysicalEvent>
             return PhysicalButton{keyboard_key(event.key),
                                          event.key.key,
                                          modifiers(event.key.mod),
-                                         event.key.repeat ? Repeated
-                                         : event.key.down ? Pressed
-                                                          : Released};
+                                         event.key.down ? Pressed : Released,
+                                         event.key.repeat};
         }
         case SDL_EVENT_TEXT_INPUT:
             return TextInput{event.text.text};

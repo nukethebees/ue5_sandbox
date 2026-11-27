@@ -217,7 +217,7 @@ void FlightInputResolver::button(InputState& state,
                                  KeyCode key,
                                  ButtonState edge,
                                  ControlsSettings const& controls) {
-    if (edge == ButtonState::Repeated || key == PhysicalKey::Unbound) {
+    if (key == PhysicalKey::Unbound) {
         return;
     }
     auto const down{edge == ButtonState::Pressed};

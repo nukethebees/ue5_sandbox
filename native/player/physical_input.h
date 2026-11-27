@@ -16,6 +16,7 @@ struct PhysicalButton {
     std::uint32_t character{};
     host::Modifiers modifiers{};
     ButtonState state{};
+    bool repeat{};
 };
 struct PhysicalPointerButton {
     Vector2f position;

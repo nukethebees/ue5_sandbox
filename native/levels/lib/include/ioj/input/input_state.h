@@ -23,8 +23,6 @@ struct InputState {
     EnumArray<Vector2f, Axis2DAction> axes_2d;
     EnumArray<float, Axis1DAction> axes_1d;
     DigitalActions held;
-    DigitalActions pressed;
-    DigitalActions released;
     ObserverSpeedPreset observer_speed{ObserverSpeedPreset::Normal};
     ObserverLookMode observer_look{ObserverLookMode::Pointer};
 };

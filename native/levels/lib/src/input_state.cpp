@@ -2,24 +2,16 @@
 
 namespace ioj {
 void InputState::button(DigitalAction action, ButtonState edge) {
-    if (edge == ButtonState::Repeated && !held.get(action)) {
+    auto const down{edge == ButtonState::Pressed};
+    if (held.get(action) == down) {
         return;
     }
-    if (edge != ButtonState::Repeated) {
-        auto const down{edge == ButtonState::Pressed};
-        if (held.get(action) == down) {
-            return;
-        }
-        held.set(action, down);
-        (down ? pressed : released).set(action, true);
-    }
+    held.set(action, down);
     transitions.push_back({action, edge});
 }
 
 void InputState::begin_frame() {
     transitions.clear();
-    pressed = {};
-    released = {};
     axes_2d[Axis2DAction::ObserverLookDelta] = {};
 }
 }

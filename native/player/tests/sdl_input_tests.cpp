@@ -228,13 +228,16 @@ TEST_F(SdlPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModifier
     using enum ButtonState;
     host::Modifiers shift{};
     shift.set_left_shift(true);
-    auto key = [&](PhysicalKey code, ButtonState edge, host::Modifiers modifiers = {}) {
-        input_->resolve(commands_, PhysicalButton{code, 0, modifiers, edge});
+    auto key = [&](PhysicalKey code,
+                   ButtonState edge,
+                   host::Modifiers modifiers = {},
+                   bool repeat = false) {
+        input_->resolve(commands_, PhysicalButton{code, 0, modifiers, edge, repeat});
     };
     key(PhysicalKey::Tab, Pressed, shift);
-    key(PhysicalKey::Tab, Repeated);
+    key(PhysicalKey::Tab, Pressed, {}, true);
     key(PhysicalKey::Tab, Released);
-    key(PhysicalKey::Tab, Repeated);
+    key(PhysicalKey::Tab, Pressed, {}, true);
     key(PhysicalKey::GamepadDPadDown, Pressed);
     key(PhysicalKey::Down, Pressed);
     input_->repeat_navigation(commands_, 0.41);
@@ -244,19 +247,20 @@ TEST_F(SdlPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModifier
 
     ASSERT_EQ(commands_.size(), 6u);
     auto const& transitions{input_->state().transitions};
-    ASSERT_EQ(transitions.size(), commands_.size());
+    ASSERT_EQ(transitions.size(), 4u);
+    std::size_t transition_index{};
     for (std::size_t i{}; i < commands_.size(); ++i) {
         auto const& button{std::get<host::MenuButton>(commands_[i])};
         EXPECT_EQ(button.command, i < 3 ? MenuCommand::Previous : MenuCommand::Down);
         EXPECT_EQ(button.down, i != 2 && i != 5);
         EXPECT_EQ(button.repeat, i == 1 || i == 4);
         EXPECT_EQ(button.modifiers.left_shift(), i == 0);
-        EXPECT_EQ(transitions[i].action,
-                  i < 3 ? DigitalAction::MenuPrevious : DigitalAction::MenuDown);
-        EXPECT_EQ(transitions[i].state,
-                  button.repeat ? Repeated
-                  : button.down ? Pressed
-                                : Released);
+        if (!button.repeat) {
+            auto const transition{transitions[transition_index++]};
+            EXPECT_EQ(transition.action,
+                      i < 3 ? DigitalAction::MenuPrevious : DigitalAction::MenuDown);
+            EXPECT_EQ(transition.state, button.down ? Pressed : Released);
+        }
     }
 }
 
@@ -294,7 +298,7 @@ TEST_F(SdlPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
               (Vector2f{20.f, -10.f}));
     input_->resolve(commands_, WindowFocus::Lost);
     EXPECT_FALSE(input_->relative_mouse());
-    EXPECT_TRUE(input_->state().released.observer_right());
+    EXPECT_FALSE(input_->state().held.observer_right());
     EXPECT_EQ(input_->state().axes_2d[Axis2DAction::ObserverLookDelta], Vector2f{});
 
     view.route = {InputContext::Menu};
