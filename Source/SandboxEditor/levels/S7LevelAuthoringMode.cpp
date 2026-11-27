@@ -4,6 +4,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringModeToolkit.h"
 #include "SandboxEditor/levels/S7LevelObserverCamera.h"
+#include "SandboxEditor/levels/S7SceneActors.h"
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/rotator_math.h>
@@ -413,7 +414,7 @@ auto US7LevelAuthoringMode::selected_binding() const -> FS7LevelEntityBinding* {
 }
 auto US7LevelAuthoringMode::selected_script_id() const -> FString {
     auto const* binding{selected_binding()};
-    return binding ? binding->id : FString{};
+    return binding ? s7_actor_script_id(*binding->actor, &binding->id) : FString{};
 }
 void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
     auto* const binding{selected_binding()};
@@ -430,12 +431,13 @@ void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
         notify_changed();
         return;
     }
-    if (binding->id == id) {
+    if (selected_script_id() == id) {
         return;
     }
     if (document_->entities.ContainsByPredicate(
             [binding, &id](FS7LevelEntityBinding const& candidate) {
-                return &candidate != binding && candidate.id == id;
+                return &candidate != binding && IsValid(candidate.actor) &&
+                       s7_actor_script_id(*candidate.actor, &candidate.id) == id;
             })) {
         UE_LOG(LogS7LevelAuthoring, Warning, TEXT("Script ID '%s' is already in use."), *id);
         notify_changed();
@@ -444,7 +446,18 @@ void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
 
     FScopedTransaction transaction{LOCTEXT("RenameEntityId", "Rename S7 Entity ID")};
     document_->Modify();
-    binding->id = id;
+    SceneActors::visit_scene_actor(*binding->actor, [&](auto& actor, auto) {
+        if (actor.export_to_script) {
+            actor.Modify();
+            auto const label{s7_actor_label_for_id(id)};
+            if constexpr (requires { actor.custom_name; }) {
+                actor.custom_name = FName{*label};
+            }
+            actor.SetActorLabel(label);
+        } else {
+            binding->id = id;
+        }
+    });
     document_->set_needs_export(true);
     UE_LOG(LogS7LevelAuthoring, Display, TEXT("Renamed selected entity to '%s'."), *id);
     notify_changed();

@@ -138,7 +138,8 @@ namespace {
 auto collect_editor_scene(ULevel const& level,
                           AS7LevelAuthoringDocument const& document,
                           levels::authoring::LevelInput& input,
-                          TArray<FS7LevelEntityBinding>& new_bindings) -> S7AuthoringResult<void> {
+                          TArray<FS7LevelEntityBinding>& changed_bindings)
+    -> S7AuthoringResult<void> {
     using Result = S7AuthoringResult<void>;
 
     using namespace s7_level_authoring_session_detail;
@@ -168,23 +169,20 @@ auto collect_editor_scene(ULevel const& level,
                 return {};
             }
 
-            auto const name{
-                known ? *known
-                      : canonical_s7_level_entity_id(actor.GetActorLabel(), TEXTVIEW("entity"))
-                            .ToString()};
+            auto const name{s7_actor_script_id(actor, known)};
             if (!is_canonical_s7_level_entity_id(name) || names.Contains(name)) {
                 return Result{
                     std::unexpect,
                     FString::Printf(TEXT("Invalid or duplicate entity ID '%s'. Rename the entity "
-                                         "or its unbound actor label."),
+                                         "or change its Outliner label."),
                                     *name)};
             }
 
             names.Add(name);
             auto const entity_id{id(name)};
             ids.Add(&actor, entity_id);
-            if (!known) {
-                new_bindings.Add({.id = name, .actor = &actor});
+            if (!known || *known != name) {
+                changed_bindings.Add({.id = name, .actor = &actor});
             }
 
             if (!actor.export_to_script) {
@@ -419,11 +417,16 @@ auto export_s7_editor_config(ULevel& level, AS7LevelAuthoringDocument& document)
         document.Modify();
         document.entities.RemoveAll([](auto const& value) { return !IsValid(value.actor); });
         for (auto const& binding : bindings) {
-            binding.actor->Modify();
-            binding.actor->bIsEditorOnlyActor = true;
+            auto* existing{document.entities.FindByPredicate(
+                [&](auto const& entry) { return entry.actor == binding.actor; })};
+            if (existing) {
+                existing->id = binding.id;
+            } else {
+                binding.actor->Modify();
+                binding.actor->bIsEditorOnlyActor = true;
+                document.entities.Add(binding);
+            }
         }
-
-        document.entities.Append(bindings);
     }
 
     if (saved) {
@@ -503,7 +506,7 @@ auto set_up_s7_level(ULevel& level, LevelSetup operation, FString source_path)
 
         levels::authoring::LevelInput input{
             .id = levels::LevelId{to_string(
-                canonical_s7_level_entity_id(map_name, TEXTVIEW("level")).ToString())},
+                canonical_s7_level_entity_id(map_name, TEXTVIEW("level")))},
             .title = to_string(map_name)};
         auto saved{s7_level_authoring_session_detail::save_generated(
             baseline_path, to_fstring(levels::authoring::emit_editor_level_source(input)))};
@@ -734,17 +737,7 @@ auto import_s7_level(ULevel& level, AS7LevelAuthoringDocument& document, Rebuild
         actor->SetActorTransform(transform);
         actor->RerunConstructionScripts();
         actor->PostEditMove(true);
-        auto const* previous{previous_actors.FindRef(name)};
-        if (previous && previous->IsA(type)) {
-            SceneActors::visit_scene_actor(*actor, [&](auto& proxy, auto) {
-                if constexpr (requires { proxy.custom_name; }) {
-                    using Proxy = std::remove_cvref_t<decltype(proxy)>;
-                    proxy.custom_name = CastChecked<Proxy>(previous)->custom_name;
-                }
-            });
-        }
-        actor->SetActorLabel(previous && previous->IsA(type) ? previous->GetActorLabel() : name,
-                             true);
+        restore_s7_actor_name(*actor, name, previous_actors.FindRef(name));
         actor->SetFolderPath(
             FName{StaticEnum<ETestTeam>()->GetNameStringByValue(std::to_underlying(team))});
         bindings.Add({.id = name, .actor = actor});

@@ -303,8 +303,11 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         spinner_actor->initial_fire_point = 1;
         player_actor->set_team(ioj::ETestTeam::Green);
         player_actor->health_override = 123;
+        capital_actor->SetActorLabel(TEXT("capital"));
+        spinner_actor->SetActorLabel(TEXT("spinner"));
+        player_actor->SetActorLabel(TEXT("player"));
         document->entities = {
-            {.id = TEXT("capital"), .actor = capital_actor},
+            {.id = TEXT("old-capital"), .actor = capital_actor},
             {.id = TEXT("turret"), .actor = turret_actor},
             {.id = TEXT("spinner"), .actor = spinner_actor},
             {.id = TEXT("player"), .actor = player_actor},
@@ -551,6 +554,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestEqual(TEXT("Copy two capitals"), copies.Num(), 2)) {
             return;
         }
+        for (auto* copy : copies) {
+            set_custom_name(*CastChecked<ioj::ATestCapitalShipProxy>(copy), NAME_None);
+        }
 
         auto* fighter{fixture->world->SpawnActor<ioj::ATestFighterProxy>()};
         fighter->set_team(ioj::ETestTeam::Green);
@@ -568,21 +574,16 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                             ioj::editor::export_s7_editor_config(level, document))) {
             return;
         }
-        TArray<FString> ids;
-        for (auto* copy : copies) {
-            ids.Add(document.entities
-                        .FindByPredicate([copy](auto const& entry) { return entry.actor == copy; })
-                        ->id);
-        }
-
         if (!TestRunner->TestTrue(TEXT("Change both copied capitals to orange through Details"),
                                   edit_team_in_details({copies[0], copies[1]}, TEXT("Orange")))) {
             return;
         }
 
+        TArray<FString> ids;
         for (auto* copy : copies) {
             TestRunner->TestTrue(TEXT("Each selected capital immediately displays orange"),
                                  copy->GetActorLabel().StartsWith(TEXT("capitalship-orange-")));
+            ids.Add(copy->GetActorLabel());
         }
 
         set_custom_name(*capital, TEXT("escort"));
@@ -592,6 +593,17 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
 
+        auto const pending{ioj::editor::check_s7_scene(level, document)};
+        if (!TestRunner->TestTrue(TEXT("Logic must reference the pending entity name"),
+                                  !pending &&
+                                      pending.error().Contains(TEXT("Unknown entity: capital"))) ||
+            !TestRunner->TestTrue(TEXT("Update the flagship reference"),
+                                  write_source(directory.root(),
+                                               fixture->human_source.Replace(
+                                                   TEXT("entity-destroyed 'capital"),
+                                                   *(TEXT("entity-destroyed '") + ids[0]))))) {
+            return;
+        }
         if (!assert_success(*TestRunner,
                             TEXT("Export changed teams"),
                             ioj::editor::export_s7_editor_config(level, document)) ||
@@ -604,17 +616,16 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         for (auto const& id : ids) {
             auto* entry{binding(document, id)};
             TestRunner->TestTrue(
-                TEXT("Rebuilt copy retains its script ID and displays orange"),
-                entry && entry->actor->GetActorLabel().StartsWith(TEXT("capitalship-orange-")));
+                TEXT("Export and rebuild use the Outliner label when Custom Name is None"),
+                entry && entry->actor->GetActorLabel() == id);
         }
 
-        auto const* named{binding(document, TEXT("capital"))};
-        TestRunner->TestTrue(
-            TEXT("A custom display label survives rebuild with its original script ID"),
-            named && named->actor->GetActorLabel() == TEXT("escort"));
+        auto const* named{binding(document, TEXT("escort"))};
+        TestRunner->TestTrue(TEXT("The custom name is the exported ID and survives rebuild"),
+                             named && named->actor->GetActorLabel() == TEXT("escort"));
         auto* entry{binding(document, TEXT("fighter10"))};
-        TestRunner->TestTrue(TEXT("Legacy fighter ID gets the current team label"),
-                             entry && entry->actor->GetActorLabel() == TEXT("fighter-green-0"));
+        TestRunner->TestTrue(TEXT("Rebuilding restores the fighter's exported label"),
+                             entry && entry->actor->GetActorLabel() == TEXT("fighter10"));
     }
 
     TEST_METHOD(RebuildRestoresOwnershipAndExportRejectsDuplicateDeclarations)

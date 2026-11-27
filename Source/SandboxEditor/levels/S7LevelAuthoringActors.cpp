@@ -21,6 +21,11 @@
 namespace ioj::editor {
 
 namespace {
+auto proxy_label_prefix(levels::EntityArchetype archetype, ETestTeam team) -> FString {
+    auto const team_name{StaticEnum<ETestTeam>()->GetNameStringByValue(static_cast<int64>(team))};
+    return (to_fstring(levels::to_string(archetype)) + TEXT("-") + team_name + TEXT("-")).ToLower();
+}
+
 bool has_indexed_label(FString const& label, FString const& prefix) {
     if (!label.StartsWith(prefix, ESearchCase::CaseSensitive)) {
         return false;
@@ -53,18 +58,13 @@ void assign_proxy_labels(ULevel const& level, TSet<AActor*> const* selected) {
         if constexpr (requires { actor.custom_name; }) {
             if (!selected || selected->Contains(&actor)) {
                 if (actor.custom_name.IsNone()) {
-                    auto const team{StaticEnum<ETestTeam>()->GetNameStringByValue(
-                        static_cast<int64>(actor.get_team()))};
-                    auto prefix{to_fstring(levels::to_string(archetype)) + TEXT("-") + team +
-                                TEXT("-")};
-                    pending.Add(Candidate{&actor, prefix.ToLower()});
+                    pending.Add(Candidate{&actor, proxy_label_prefix(archetype, actor.get_team())});
                     return;
                 }
                 actor.SetActorLabel(actor.custom_name.ToString());
             }
         }
-        occupied.Add(
-            canonical_s7_level_entity_id(actor.GetActorLabel(), TEXTVIEW("entity")).ToString());
+        occupied.Add(canonical_s7_level_entity_id(actor.GetActorLabel(), TEXTVIEW("entity")));
     });
 
     auto const available{[&](FString const& label, AActor* actor) {
@@ -101,6 +101,44 @@ void name_placed_s7_proxies(ULevel const& level, TSet<AActor*> const& placed) {
 }
 void refresh_s7_proxy_labels(ULevel const& level) {
     assign_proxy_labels(level, nullptr);
+}
+
+auto s7_actor_script_id(AActor const& actor, FString const* bound_id) -> FString {
+    FString name{actor.GetActorLabel()};
+    SceneActors::visit_scene_actor(actor, [&](auto const& proxy, auto) {
+        if (!proxy.export_to_script && bound_id) {
+            name = *bound_id;
+        } else if constexpr (requires { proxy.custom_name; }) {
+            if (!proxy.custom_name.IsNone()) {
+                name = proxy.custom_name.ToString();
+            }
+        }
+    });
+    return canonical_s7_level_entity_id(name, TEXTVIEW("entity"));
+}
+
+auto s7_actor_label_for_id(FString const& id) -> FString {
+    // Unreal reserves None. The quoted Scheme symbol round-trips to the same ID.
+    return id == TEXT("none") ? FString{TEXT("'none")} : id;
+}
+
+void restore_s7_actor_name(AActor& actor, FString const& id, AActor const* previous) {
+    auto label{s7_actor_label_for_id(id)};
+    SceneActors::visit_scene_actor(actor, [&](auto& proxy, auto archetype) {
+        if constexpr (requires { proxy.custom_name; }) {
+            using Proxy = std::remove_cvref_t<decltype(proxy)>;
+            auto const* prior{Cast<Proxy>(previous)};
+            if (prior && !prior->custom_name.IsNone() &&
+                canonical_s7_level_entity_id(prior->custom_name.ToString(), TEXTVIEW("entity")) ==
+                    id) {
+                proxy.custom_name = prior->custom_name;
+                label = prior->custom_name.ToString();
+            } else if (!has_indexed_label(id, proxy_label_prefix(archetype, proxy.get_team()))) {
+                proxy.custom_name = FName{*label};
+            }
+        }
+    });
+    actor.SetActorLabel(label);
 }
 
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor> {
@@ -144,9 +182,12 @@ auto s7_level_actor_class(levels::EntityArchetype const archetype,
     return type;
 }
 
-auto canonical_s7_level_entity_id(FStringView const text, FStringView const fallback) -> FName {
-    return FName{to_fstring(levels::authoring::canonical_symbol(
-        TCHAR_TO_UTF8(*FString{text}), TCHAR_TO_UTF8(*FString{fallback})))};
+auto canonical_s7_level_entity_id(FStringView const text, FStringView const fallback) -> FString {
+    if (is_canonical_s7_level_entity_id(text)) {
+        return FString{text};
+    }
+    return to_fstring(levels::authoring::canonical_symbol(TCHAR_TO_UTF8(*FString{text}),
+                                                          TCHAR_TO_UTF8(*FString{fallback})));
 }
 
 auto is_canonical_s7_level_entity_id(FStringView const value) -> bool {
