@@ -33,12 +33,12 @@ void UPauseMenuWidget::NativeOnInitialized() {
         return;
     }
 
-    resume_button->OnClicked().AddUObject(this, &ThisClass::handle_resume);
-    audio_button->OnClicked().AddUObject(this, &ThisClass::handle_audio);
-    controls_button->OnClicked().AddUObject(this, &ThisClass::handle_controls);
-    return_to_level_select_button->OnClicked().AddUObject(
-        this, &ThisClass::handle_return_to_level_select);
-    quit_button->OnClicked().AddUObject(this, &ThisClass::handle_quit);
+    resume_button->clicked.AddUObject(this, &ThisClass::handle_resume);
+    audio_button->clicked.AddUObject(this, &ThisClass::handle_audio);
+    controls_button->clicked.AddUObject(this, &ThisClass::handle_controls);
+    return_to_level_select_button->clicked.AddUObject(this,
+                                                      &ThisClass::handle_return_to_level_select);
+    quit_button->clicked.AddUObject(this, &ThisClass::handle_quit);
     options_widget->modal_state_changed.AddUObject(this,
                                                    &ThisClass::handle_options_modal_state_changed);
 
@@ -71,7 +71,7 @@ void UPauseMenuWidget::NativeOnActivated() {
 }
 
 auto UPauseMenuWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
-    return resume_button;
+    return resume_button->focus_target();
 }
 
 FReply UPauseMenuWidget::NativeOnKeyDown(FGeometry const& geometry, FKeyEvent const& event) {

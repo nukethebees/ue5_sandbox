@@ -3,42 +3,30 @@
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
-#include <CommonButtonBase.h>
-#include <CommonTextBlock.h>
+#include <Blueprint/UserWidget.h>
 
 #include "MenuButtonWidget.generated.h"
 
 class UBorder;
 
+class UButton;
+class USizeBox;
+class UTextBlock;
+
 namespace ioj {
 UCLASS()
-class SPACEGAMEPRESENTATION_API UMenuTextStyle : public UCommonTextStyle {
+class SPACEGAMEPRESENTATION_API UMenuButtonWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    UMenuTextStyle();
-};
-
-UCLASS()
-class SPACEGAMEPRESENTATION_API UMenuButtonStyle : public UCommonButtonStyle {
-    GENERATED_BODY()
-  public:
-    UMenuButtonStyle();
-};
-
-UCLASS()
-class SPACEGAMEPRESENTATION_API UMenuButtonWidget : public UCommonButtonBase {
-    GENERATED_BODY()
-  public:
-    UMenuButtonWidget();
+    FSimpleMulticastDelegate clicked;
+    auto focus_target() const -> UWidget*;
 
     void set_text(FText const& text);
     [[nodiscard]] auto get_text() const -> FText;
     void set_audio(FGameAudioFacade audio);
   protected:
     void NativePreConstruct() override;
-    void NativeOnPressed() override;
-    void NativeOnReleased() override;
-    void NativeOnCurrentTextStyleChanged() override;
+    void NativeOnInitialized() override;
     void NativeOnAddedToFocusPath(FFocusEvent const& focus_event) override;
     void NativeOnRemovedFromFocusPath(FFocusEvent const& focus_event) override;
 
@@ -57,13 +45,22 @@ class SPACEGAMEPRESENTATION_API UMenuButtonWidget : public UCommonButtonBase {
     FGameButtonPresentationStyle style_override_{};
 
     UPROPERTY(meta = (BindWidget, GeneratorRoot))
+    USizeBox* button_size{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UButton* button{nullptr};
+    UPROPERTY(meta = (BindWidget))
     UBorder* background{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UCommonTextBlock* label_text{nullptr};
+    UTextBlock* label_text{nullptr};
   private:
     auto resolve_style() const -> FGameButtonPresentationStyle;
+    UFUNCTION()
     void update_visual_style();
+    UFUNCTION()
+    void handle_click();
+    UFUNCTION()
+    void handle_press();
 
     FGameButtonPresentationStyle resolved_style_{};
     FGameAudioFacade audio_{};

@@ -29,21 +29,21 @@ void UBenchmarkHudWidget::NativeOnInitialized() {
     }
     if (IsValid(pause_resume_button)) {
         pause_resume_button->set_text(INVTEXT("Pause"));
-        pause_resume_button->OnClicked().AddUObject(this, &ThisClass::handle_pause_requested);
+        pause_resume_button->clicked.AddUObject(this, &ThisClass::handle_pause_requested);
     }
     if (IsValid(end_benchmark_button)) {
         end_benchmark_button->set_text(INVTEXT("End"));
-        end_benchmark_button->OnClicked().AddUObject(this, &ThisClass::handle_end_requested);
+        end_benchmark_button->clicked.AddUObject(this, &ThisClass::handle_end_requested);
     }
 }
 
 void UBenchmarkHudWidget::NativeDestruct() {
     clear_update_timer();
     if (IsValid(end_benchmark_button)) {
-        end_benchmark_button->OnClicked().RemoveAll(this);
+        end_benchmark_button->clicked.RemoveAll(this);
     }
     if (IsValid(pause_resume_button)) {
-        pause_resume_button->OnClicked().RemoveAll(this);
+        pause_resume_button->clicked.RemoveAll(this);
     }
     state_source_ = {};
     Super::NativeDestruct();

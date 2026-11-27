@@ -23,7 +23,7 @@
 #include <AssetRegistry/AssetRegistryModule.h>
 #include <Blueprint/WidgetTree.h>
 #include <BlueprintEditorLibrary.h>
-#include <CommonTextBlock.h>
+#include <Brushes/SlateNoResource.h>
 #include <Components/Border.h>
 #include <Components/Button.h>
 #include <Components/ButtonSlot.h>
@@ -214,11 +214,26 @@ auto generate_menu_button_widget() -> UClass* {
 
     auto* const background{make_widget<UBorder>(*blueprint->WidgetTree, TEXT("background"))};
     background->SetVisibility(ESlateVisibility::HitTestInvisible);
-    auto* const label{make_widget<UCommonTextBlock>(*blueprint->WidgetTree, TEXT("label_text"))};
+    auto* const label{make_widget<UTextBlock>(*blueprint->WidgetTree, TEXT("label_text"))};
     label->SetJustification(ETextJustify::Center);
     label->SetVisibility(ESlateVisibility::HitTestInvisible);
     background->SetContent(label);
-    blueprint->WidgetTree->RootWidget = background;
+    auto& tree{*blueprint->WidgetTree};
+    auto* const button{make_widget<UButton>(tree, TEXT("button"))};
+    FButtonStyle style;
+    style.SetNormal(FSlateNoResource())
+        .SetHovered(FSlateNoResource())
+        .SetPressed(FSlateNoResource())
+        .SetDisabled(FSlateNoResource());
+    style.SetNormalPadding(FMargin{}).SetPressedPadding(FMargin{});
+    button->SetStyle(style);
+    auto* const slot{CastChecked<UButtonSlot>(button->AddChild(background))};
+    slot->SetPadding(FMargin{});
+    slot->SetHorizontalAlignment(HAlign_Fill);
+    slot->SetVerticalAlignment(VAlign_Fill);
+    auto* const size{make_widget<USizeBox>(tree, TEXT("button_size"))};
+    size->SetContent(button);
+    tree.RootWidget = size;
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 

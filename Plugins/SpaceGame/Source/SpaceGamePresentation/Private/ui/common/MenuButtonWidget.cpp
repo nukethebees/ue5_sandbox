@@ -6,50 +6,30 @@
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 
 #include <Components/Border.h>
+#include <Components/Button.h>
+#include <Components/SizeBox.h>
+#include <Components/TextBlock.h>
 #include <Engine/GameInstance.h>
-#include <Styling/CoreStyle.h>
 
 namespace ioj {
-namespace {
-auto make_no_draw_brush() -> FSlateBrush {
-    FSlateBrush brush;
-    brush.DrawAs = ESlateBrushDrawType::NoDrawType;
-    return brush;
+auto UMenuButtonWidget::focus_target() const -> UWidget* {
+    return button;
 }
-
+void UMenuButtonWidget::NativeOnInitialized() {
+    Super::NativeOnInitialized();
+    button->OnClicked.AddDynamic(this, &ThisClass::handle_click);
+    button->OnPressed.AddDynamic(this, &ThisClass::handle_press);
+    button->OnReleased.AddDynamic(this, &ThisClass::update_visual_style);
+    button->OnHovered.AddDynamic(this, &ThisClass::update_visual_style);
+    button->OnUnhovered.AddDynamic(this, &ThisClass::update_visual_style);
 }
-
-UMenuTextStyle::UMenuTextStyle() {
-    Font = FCoreStyle::GetDefaultFontStyle(TEXT("Regular"), 14);
-    Color = FLinearColor::White;
+void UMenuButtonWidget::handle_click() {
+    clicked.Broadcast();
 }
-
-UMenuButtonStyle::UMenuButtonStyle() {
-    bSingleMaterial = false;
-    NormalBase = make_no_draw_brush();
-    NormalHovered = make_no_draw_brush();
-    NormalPressed = make_no_draw_brush();
-    SelectedBase = make_no_draw_brush();
-    SelectedHovered = make_no_draw_brush();
-    SelectedPressed = make_no_draw_brush();
-    Disabled = make_no_draw_brush();
-    ButtonPadding = FMargin{};
-    CustomPadding = FMargin{};
-    MinWidth = 0;
-    MinHeight = 0;
-    MaxWidth = 0;
-    MaxHeight = 0;
-    NormalTextStyle = UMenuTextStyle::StaticClass();
-    NormalHoveredTextStyle = UMenuTextStyle::StaticClass();
-    SelectedTextStyle = UMenuTextStyle::StaticClass();
-    SelectedHoveredTextStyle = UMenuTextStyle::StaticClass();
-    DisabledTextStyle = UMenuTextStyle::StaticClass();
+void UMenuButtonWidget::handle_press() {
+    audio_.play_button_pressed();
+    update_visual_style();
 }
-
-UMenuButtonWidget::UMenuButtonWidget() {
-    SetStyle(UMenuButtonStyle::StaticClass());
-}
-
 void UMenuButtonWidget::set_text(FText const& text) {
     text_ = text;
     if (IsValid(label_text)) {
@@ -77,22 +57,6 @@ void UMenuButtonWidget::NativePreConstruct() {
     }
 
     label_text->SetText(text_);
-    update_visual_style();
-}
-
-void UMenuButtonWidget::NativeOnPressed() {
-    Super::NativeOnPressed();
-    audio_.play_button_pressed();
-    update_visual_style();
-}
-
-void UMenuButtonWidget::NativeOnReleased() {
-    Super::NativeOnReleased();
-    update_visual_style();
-}
-
-void UMenuButtonWidget::NativeOnCurrentTextStyleChanged() {
-    Super::NativeOnCurrentTextStyleChanged();
     update_visual_style();
 }
 
@@ -128,12 +92,11 @@ void UMenuButtonWidget::update_visual_style() {
         return;
     }
 
-    auto const selected{GetSelected()};
-    auto const interaction_enabled{IsInteractionEnabled()};
+    auto const interaction_enabled{GetIsEnabled()};
     auto const hovered{IsHovered()};
-    auto const focused{HasAnyUserFocus()};
-    auto const pressed{IsPressed()};
-    auto const& button_style{selected ? resolved_style_.selected : resolved_style_.normal};
+    auto const focused{button->HasAnyUserFocus()};
+    auto const pressed{button->IsPressed()};
+    auto const& button_style{resolved_style_.normal};
 
     auto const* brush{&button_style.Normal};
     if (!interaction_enabled) {
@@ -150,17 +113,18 @@ void UMenuButtonWidget::update_visual_style() {
     auto const* text_style{&resolved_style_.normal_text};
     if (!interaction_enabled) {
         text_style = &resolved_style_.disabled_text;
-    } else if (selected) {
-        text_style = hovered || focused ? &resolved_style_.selected_hovered_text
-                                        : &resolved_style_.selected_text;
     } else if (hovered || focused) {
         text_style = &resolved_style_.normal_hovered_text;
     }
     apply_text_style(*label_text, *text_style);
 
-    SetMinDimensions(FMath::RoundToInt(resolved_style_.minimum_size.X),
-                     FMath::RoundToInt(resolved_style_.minimum_size.Y));
-    SetMaxDimensions(FMath::RoundToInt(resolved_style_.maximum_size.X),
-                     FMath::RoundToInt(resolved_style_.maximum_size.Y));
+    button_size->SetMinDesiredWidth(resolved_style_.minimum_size.X);
+    button_size->SetMinDesiredHeight(resolved_style_.minimum_size.Y);
+    if (resolved_style_.maximum_size.X > 0.f) {
+        button_size->SetMaxDesiredWidth(resolved_style_.maximum_size.X);
+    }
+    if (resolved_style_.maximum_size.Y > 0.f) {
+        button_size->SetMaxDesiredHeight(resolved_style_.maximum_size.Y);
+    }
 }
 }
