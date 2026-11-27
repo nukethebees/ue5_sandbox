@@ -308,7 +308,7 @@ auto s7_scene_needs_export(AS7LevelAuthoringDocument const& document) -> S7Autho
     s7::ModuleInput baseline{*s7_editor_config_path(document)};
     std::filesystem::path const path{*s7_mission_path(document)};
     auto mission{levels::authoring::DefinitionReader::for_level(path).read_script_file(
-        path, "mission", &baseline)};
+        path, "level-definition", &baseline)};
     if (!mission) {
         return Result{std::unexpect, to_fstring(levels::format_diagnostics(mission.error()))};
     }
@@ -510,9 +510,9 @@ auto set_up_s7_mission(ULevel& level, MissionSetup operation, FString source_pat
         }
 
         auto const source{FString::Printf(
-            TEXT("(export mission)\n"
+            TEXT("(export level-definition)\n"
                  "(define scene (module-ref (import-module \"%s/editor-config.scm\") 'scene))\n"
-                 "(define mission\n"
+                 "(define level-definition\n"
                  "  (copy-with scene :settings (merge-settings\n"
                  "    (module-ref (import-module \"Settings/level-defaults.scm\") 'game-settings)\n"
                  "    (level-ref scene :settings))))\n"),

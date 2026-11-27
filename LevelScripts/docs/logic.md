@@ -1,4 +1,4 @@
-# Mission logic
+# Level logic
 
 Declare expressions and rules inside one `:logic (logic ...)` block. Scheme builds the rules at load time. The simulation samples them after deaths each tick.
 

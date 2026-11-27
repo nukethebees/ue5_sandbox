@@ -1,4 +1,4 @@
-(export mission)
+(export level-definition)
 
 (define logic-library (import-module "Libraries/logic.scm"))
 (define destroy-all (module-ref logic-library 'destroy-all))
@@ -7,7 +7,7 @@
 (define win-race (module-ref logic-library 'win-race))
 (define named-capitals (module-ref (import-module "Libraries/formations.scm") 'named-capitals))
 
-(define mission
+(define level-definition
   (let ((reserve-id 'red-capital-3)
         (reserve-time 60))
     (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)

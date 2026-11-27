@@ -1,8 +1,8 @@
-(export mission)
+(export level-definition)
 
 (define entities-at (module-ref (import-module "Libraries/formations.scm") 'entities-at))
 
-(define mission
+(define level-definition
   (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'spark-renderer-showcase
     :title "Spark Renderer Showcase"

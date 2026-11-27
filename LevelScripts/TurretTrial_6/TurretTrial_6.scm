@@ -1,8 +1,8 @@
-(export mission)
+(export level-definition)
 
 (define turret-trial (module-ref (import-module "Libraries/turret-trials.scm") 'turret-trial))
 
-(define mission
+(define level-definition
   (turret-trial 6
     "Choose which of two mutually supporting turret clusters to attack first."
     '(0 -73000 1000)

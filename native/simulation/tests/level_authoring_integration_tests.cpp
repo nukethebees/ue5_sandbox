@@ -10,14 +10,14 @@
 
 namespace ioj::sim::tests {
 namespace {
-auto mission_reader() -> levels::authoring::DefinitionReader {
+auto level_reader() -> levels::authoring::DefinitionReader {
     return levels::authoring::DefinitionReader{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} /
                                                "LevelScripts"};
 }
 
 void expect_fighter_kill_from_objective(std::string_view const win_condition) {
     auto const definition{
-        ioj::levels::authoring::tests::read_test_level(mission_reader(),
+        ioj::levels::authoring::tests::read_test_level(level_reader(),
                                                        std::format(R"(
       (level :id 'fighter-kill :title "Fighter kill"
         :camera (camera :look-at '(blue-capital) :offset-direction '(-1 0 0) :distance 1000)
@@ -69,7 +69,7 @@ TEST(LevelAuthoringIntegration, BlueFighterAttacksTheValueOfALatchedWinCondition
 }
 
 TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReferences) {
-    auto const definition{ioj::levels::authoring::tests::read_test_level(mission_reader(), R"(
+    auto const definition{ioj::levels::authoring::tests::read_test_level(level_reader(), R"(
       (level :id 'reserves :title "Reserves"
         :camera (camera :look-at '(hero) :offset-direction '(-1 0 0) :distance 1000)
         :entities (list
@@ -127,7 +127,7 @@ TEST(LevelAuthoringIntegration, ExplicitGroupsSpawnOnceAndPreserveDeathReference
 }
 
 TEST(LevelAuthoringIntegration, SpawnEventsPreserveOverridesAndResolveDelayedEntityReferences) {
-    auto definition{ioj::levels::authoring::tests::read_test_level(mission_reader(), R"(
+    auto definition{ioj::levels::authoring::tests::read_test_level(level_reader(), R"(
       (level :id 'authored-spawns :title "Authored spawns"
         :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
         :camera (camera :look-at '(capital) :offset-direction '(-1 0 0) :distance 1000)

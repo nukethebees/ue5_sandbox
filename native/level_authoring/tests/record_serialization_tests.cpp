@@ -124,8 +124,8 @@ TEST(SchemeRecords, HumanRootComposesAnIncompleteGeneratedBaseline) {
                                            :position '(0 0 0) :initial-spawn-delay 0))
                    :settings (settings :fighters (fighters :speed 4000) :tick (tick :time-scale 2)))))"},
          {entry,
-          R"((export mission) (define base (module-ref (import-module "Example/editor-config.scm") 'scene))
-          (define mission (copy-with base :settings (merge-settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
+          R"((export level-definition) (define base (module-ref (import-module "Example/editor-config.scm") 'scene))
+          (define level-definition (copy-with base :settings (merge-settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
                                        (level-ref base :settings) (settings :tick (tick :time-scale 3)))
             :entities (append (level-ref base :entities)
             (list (entity :id 'pilot :archetype 'player-fighter :team 'blue :position '(0 0 0)))))))"}}));

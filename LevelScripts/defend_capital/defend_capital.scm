@@ -1,4 +1,4 @@
-(export mission)
+(export level-definition)
 
 (define logic-library (import-module "Libraries/logic.scm"))
 (define level-delay (module-ref logic-library 'level-delay))
@@ -6,7 +6,7 @@
 
 (define scene (module-ref (import-module "defend_capital/editor-config.scm") 'scene))
 
-(define mission
+(define level-definition
   (copy-with scene
     :settings (merge-settings
       (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)

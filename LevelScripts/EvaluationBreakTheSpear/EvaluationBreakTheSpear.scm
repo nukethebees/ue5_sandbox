@@ -1,4 +1,4 @@
-(export mission)
+(export level-definition)
 
 (define logic-library (import-module "Libraries/logic.scm"))
 (define destroy-all (module-ref logic-library 'destroy-all))
@@ -9,7 +9,7 @@
 (define entities-at (module-ref formations 'entities-at))
 (define named-capitals (module-ref formations 'named-capitals))
 
-(define mission
+(define level-definition
   (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'evaluation-break-the-spear
     :title "Evaluation 01: Break the Spear"

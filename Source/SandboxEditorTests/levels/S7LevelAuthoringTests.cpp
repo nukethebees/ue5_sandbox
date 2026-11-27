@@ -180,9 +180,9 @@ auto make_composed_fixture(FAutomationTestBase& test, FTemporarySourceDirectory 
     };
     auto const generated_path{ioj::editor::s7_editor_config_path(document)};
     auto const human_source{FString{TEXT(R"scm(; Human-owned source must survive editor export.
-(export mission)
+(export level-definition)
 (define base (module-ref (import-module "Authoring/editor-config.scm") 'scene))
-(define mission
+(define level-definition
   (copy-with base
     :settings (merge-settings
       (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
@@ -754,9 +754,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 write_source(ioj::editor::s7_editor_config_path(document),
                              ioj::to_fstring(authoring::emit_editor_level_source(*baseline)))) ||
             !TestRunner->TestTrue(TEXT("Write human transformations"),
-                                  write_source(directory.root(), TEXT(R"scm((export mission)
+                                  write_source(directory.root(), TEXT(R"scm((export level-definition)
 (define base (module-ref (import-module "Authoring/editor-config.scm") 'scene))
-(define mission
+(define level-definition
   (copy-with base
     :title (string-append (level-ref base :title) " suffix")
     :entities (map (lambda (ship)
@@ -1121,7 +1121,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             !TestRunner->TestTrue(
                 TEXT("Make the mission standalone"),
                 write_source(directory.root(),
-                             standalone + TEXT("\n(export mission)\n(define mission scene)\n")))) {
+                             standalone + TEXT("\n(export level-definition)\n(define level-definition scene)\n")))) {
             return;
         }
         player->SetActorLocation(FVector{100, 20, 30});

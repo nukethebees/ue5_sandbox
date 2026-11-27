@@ -766,7 +766,7 @@ TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
         {path,
          "(define benchmark-title (module-ref (import-module \"Libraries/metadata.scm\") "
          "'benchmark-title))\n" +
-             module_source("mission", source)},
+             module_source("level-definition", source)},
     }));
     auto const result{DefinitionReader::for_level(path).read_level_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
@@ -810,12 +810,13 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
         (collision-grid :cell-size '(100000000 100000000 100000000) :level-size '(2000000000 2000000000 2000000000))))");
     auto const title_import{
         R"((define shared-title (module-ref (import-module "metadata.scm") 'title)))"};
-    auto const mission{title_import + module_source("mission", source)};
+    auto const level{title_import + module_source("level-definition", source)};
     ASSERT_TRUE(write_files({
         {root / "metadata.scm", module_source("title", "\"Shared\"")},
-        {root / "first.scm", mission},
+        {root / "first.scm", level},
         {root / "second.scm",
-         title_import + module_source("mission", "(copy-with " + source + " :id 'second)")},
+         title_import +
+             module_source("level-definition", "(copy-with " + source + " :id 'second)")},
         {root / "broken.scm", "(undefined-function)"},
         {root / "ignored.scm", "(error 'ignored \"Must not be loaded\")"},
         {root / "campaign.scm",
@@ -834,7 +835,7 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     ASSERT_EQ(levels.size(), 5u);
     ASSERT_EQ(catalog->campaigns.size(), 1u);
     ASSERT_TRUE(levels[0].definition);
-    EXPECT_EQ(levels[0].source_text, mission);
+    EXPECT_EQ(levels[0].source_text, level);
     EXPECT_EQ(levels[0].definition->metadata().title, "Shared");
     ASSERT_FALSE(levels[1].definition);
     EXPECT_EQ(levels[1].source_text, "(undefined-function)");
@@ -869,12 +870,12 @@ TEST(NativeLevelAuthoringReader, EachCatalogEntryHasItsOwnNestedImportBudget) {
     TemporaryLevelDirectory directory;
     auto const& root{directory.path()};
     auto const limit{s7::InterpreterOptions{}.max_loaded_files};
-    auto const mission{module_source("mission", minimal_source())};
+    auto const level{module_source("level-definition", minimal_source())};
     auto const with_imports{[&](std::size_t count) {
         return std::format(R"((do ((i 0 (+ i 1))) ((= i {})) (import-module "helper.scm"))
 {})",
                            count,
-                           mission);
+                           level);
     }};
     ASSERT_TRUE(write_files({
         {root / "catalog.scm",
@@ -998,7 +999,7 @@ TEST(NativeLevelAuthoringReader, RestartsGeneratedIdsForEachDefinitionInOneRoot)
     auto const& root{directory.path()};
     for (auto const name : {"first", "second"}) {
         ASSERT_TRUE(write_files({{root / std::format("{}.scm", name),
-                                  module_source("mission",
+                                  module_source("level-definition",
                                                 std::format(R"(
           (level :id '{} :title "Generated" :player 'player
             :entities (list

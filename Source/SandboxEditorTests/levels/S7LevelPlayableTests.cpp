@@ -314,8 +314,8 @@ TEST_CLASS(StagedMission, "Sandbox.StagedEditorTests")
         if (!TestRunner->TestTrue(
                 TEXT("Set the mission star scale"),
                 FFileHelper::SaveStringToFile(
-                    TEXT("\n(set! mission (copy-with mission :settings (merge-settings (level-ref "
-                         "mission :settings) "
+                    TEXT("\n(set! level-definition (copy-with level-definition :settings (merge-settings (level-ref "
+                         "level-definition :settings) "
                          "(settings :starfield (starfield :star (star :scale 2))))))\n"),
                     *root,
                     FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM,

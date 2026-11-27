@@ -134,7 +134,7 @@ TEST(DefendCapital, BothTeamsLeaveTheirLaunchSlotsToAttackTheOpposingObjective) 
     EXPECT_TRUE(red_departed) << "A Red fighter clears its launch slot targeting capitalship-blue."
                               << first_wave_history(
                                      simulation.entity_ledger(), first_wave_issued, Team::Red);
-    EXPECT_TRUE(simulation.result()) << "The mission finishes within 80 simulated seconds";
+    EXPECT_TRUE(simulation.result()) << "The level finishes within 80 simulated seconds";
 }
 
 struct OutcomeCase {
@@ -148,10 +148,10 @@ class DefendCapitalOutcome : public ::testing::TestWithParam<OutcomeCase> {};
 
 TEST_P(DefendCapitalOutcome, AwardsVictoryOnTheDecidingTick) {
     auto const& scenario{GetParam()};
-    // Keep the live mission rules but isolate their inputs from incidental combat.
+    // Keep the live level rules but isolate their inputs from incidental combat.
     auto const level{ioj::levels::authoring::tests::read_test_level(
         levels::authoring::DefinitionReader{script_root()}, R"(
-      (copy-with (module-ref (import-module "defend_capital/defend_capital.scm") 'mission)
+      (copy-with (module-ref (import-module "defend_capital/defend_capital.scm") 'level-definition)
         :settings (settings :tick (tick :tick-rate 1))
         :static-collision (list)
         :entities (list
@@ -182,7 +182,7 @@ TEST_P(DefendCapitalOutcome, AwardsVictoryOnTheDecidingTick) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    MissionRules,
+    LevelRules,
     DefendCapitalOutcome,
     ::testing::Values(OutcomeCase{"RedObjectiveDestroyedEarly", 1, {Team::Red}, Team::Blue},
                       OutcomeCase{"BlueCapitalDestroyedEarly", 1, {Team::Blue}, Team::Red},

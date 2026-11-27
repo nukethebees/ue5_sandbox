@@ -1,10 +1,10 @@
-(export mission)
+(export level-definition)
 
 (define formations (import-module "Libraries/formations.scm"))
 (define entities-at (module-ref formations 'entities-at))
 (define translate-positions (module-ref formations 'translate-positions))
 
-(define mission
+(define level-definition
   (let ()
     (define capital-slots
       '((-35000 -45000 -6000)

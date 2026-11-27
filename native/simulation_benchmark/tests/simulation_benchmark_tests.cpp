@@ -201,8 +201,8 @@ TEST(SimulationBenchmarkJson, EmitsStableSchemaAndEscapesStrings) {
 
 TEST(SimulationBenchmarkRunner, RejectsPlayerBoundsOutsideTheCollisionGrid) {
     TemporaryFile file;
-    std::ofstream{file.path()} << R"((export mission)
-        (define mission (level :id 'outside :title "Outside" :player 'pilot
+    std::ofstream{file.path()} << R"((export level-definition)
+        (define level-definition (level :id 'outside :title "Outside" :player 'pilot
             :entities (list (entity :id 'pilot :archetype 'player-fighter
                                     :team 'blue :position '(100000000 0 0))))))";
     auto result{run_benchmark({.level_path = file.path(), .simulated_seconds = 0.01})};

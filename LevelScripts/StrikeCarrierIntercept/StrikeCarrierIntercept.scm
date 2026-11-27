@@ -1,4 +1,4 @@
-(export mission)
+(export level-definition)
 
 (define logic-library (import-module "Libraries/logic.scm"))
 (define destroy-all (module-ref logic-library 'destroy-all))
@@ -6,7 +6,7 @@
 (define win-race (module-ref logic-library 'win-race))
 (define entities-at (module-ref (import-module "Libraries/formations.scm") 'entities-at))
 
-(define mission
+(define level-definition
   (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'strike-carrier-intercept
     :title "Strike 03: Carrier Intercept"

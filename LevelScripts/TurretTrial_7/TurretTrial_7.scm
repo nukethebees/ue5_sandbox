@@ -1,8 +1,8 @@
-(export mission)
+(export level-definition)
 
 (define turret-trial (module-ref (import-module "Libraries/turret-trials.scm") 'turret-trial))
 
-(define mission
+(define level-definition
   (turret-trial 7
     "Break an eight-turret ring before the 120-second limit expires."
     '(0 -74000 1000)

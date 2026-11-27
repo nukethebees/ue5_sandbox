@@ -1,8 +1,8 @@
-(export mission)
+(export level-definition)
 
 (define turret-trial (module-ref (import-module "Libraries/turret-trials.scm") 'turret-trial))
 
-(define mission
+(define level-definition
   (turret-trial 8
     "Clear two interlocking turret layers within 105 seconds."
     '(0 -75200 1000)

@@ -1,10 +1,10 @@
-(export mission)
+(export level-definition)
 
 (define logic-library (import-module "Libraries/logic.scm"))
 (define destroy-any (module-ref logic-library 'destroy-any))
 (define level-delay (module-ref logic-library 'level-delay))
 (define win-race (module-ref logic-library 'win-race))
-(define mission
+(define level-definition
   (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'defence-screen-duty
     :title "Defence 01: Screen Duty"

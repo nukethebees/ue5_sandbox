@@ -1,9 +1,9 @@
-(export mission)
+(export level-definition)
 
 (define positions-on-line (module-ref (import-module "Libraries/formations.scm") 'positions-on-line))
 (define turret-trial (module-ref (import-module "Libraries/turret-trials.scm") 'turret-trial))
 
-(define mission
+(define level-definition
   (turret-trial 2
     "Break a shallow defensive line before its fields of fire overlap."
     '(0 -75000 1000)

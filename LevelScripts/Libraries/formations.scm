@@ -8,7 +8,7 @@
         :position position :rotation rotation))
     positions))
 
-;; Keep IDs beside their positions for units referenced by cameras or missions.
+;; Keep IDs beside their positions for units referenced by cameras or levels.
 (define (named-capitals team rotation slots)
   (map
     (lambda (slot)

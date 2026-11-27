@@ -105,38 +105,38 @@ auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
     auto const full_path{std::filesystem::absolute(path)};
     auto const root{full_path.parent_path()};
     return with_source_path(
-        with_interpreter(root,
-                         script_library_root_,
-                         [&](s7::Interpreter& interpreter) -> CatalogReadResult {
-                             auto paths{interpreter
-                                            .import_ast(ioj::path_to_utf8(root),
-                                                        ioj::path_to_utf8(full_path.filename()),
-                                                        "catalog")
-                                            .and_then([](s7::Ast const& ast) {
-                                                return s7::read<CatalogInput>(
-                                                    s7::Reader{ast}, ast.root, "catalog");
-                                            })};
-                             if (!paths) {
-                                 return CatalogReadResult{
-                                     std::unexpect, detail::diagnostics(std::move(paths.error()))};
-                             }
-                             std::vector<DefinitionEntry<LevelDefinition>> levels;
-                             std::vector<DefinitionEntry<CampaignDefinition>> campaigns;
-                             for (auto const& path : paths->levels) {
-                                 levels.push_back(read_entry<LevelDefinition>(
-                                     interpreter, root, path, "mission", [](s7::Ast const& ast) {
-                                         return parse_level(ast, ast.root);
-                                     }));
-                             }
-                             for (auto const& path : paths->campaigns) {
-                                 campaigns.push_back(read_entry<CampaignDefinition>(
-                                     interpreter, root, path, "campaign", [](s7::Ast const& ast) {
-                                         return parse_campaign(ast, ast.root);
-                                     }));
-                             }
-                             return CatalogReadResult{
-                                 std::in_place, std::move(levels), std::move(campaigns)};
-                         }),
+        with_interpreter(
+            root,
+            script_library_root_,
+            [&](s7::Interpreter& interpreter) -> CatalogReadResult {
+                auto paths{interpreter
+                               .import_ast(ioj::path_to_utf8(root),
+                                           ioj::path_to_utf8(full_path.filename()),
+                                           "catalog")
+                               .and_then([](s7::Ast const& ast) {
+                                   return s7::read<CatalogInput>(
+                                       s7::Reader{ast}, ast.root, "catalog");
+                               })};
+                if (!paths) {
+                    return CatalogReadResult{std::unexpect,
+                                             detail::diagnostics(std::move(paths.error()))};
+                }
+                std::vector<DefinitionEntry<LevelDefinition>> levels;
+                std::vector<DefinitionEntry<CampaignDefinition>> campaigns;
+                for (auto const& path : paths->levels) {
+                    levels.push_back(read_entry<LevelDefinition>(
+                        interpreter, root, path, "level-definition", [](s7::Ast const& ast) {
+                            return parse_level(ast, ast.root);
+                        }));
+                }
+                for (auto const& path : paths->campaigns) {
+                    campaigns.push_back(read_entry<CampaignDefinition>(
+                        interpreter, root, path, "campaign", [](s7::Ast const& ast) {
+                            return parse_campaign(ast, ast.root);
+                        }));
+                }
+                return CatalogReadResult{std::in_place, std::move(levels), std::move(campaigns)};
+            }),
         full_path);
 }
 
@@ -171,7 +171,7 @@ auto DefinitionReader::read_script_file(std::filesystem::path const& path,
 auto DefinitionReader::read_level_file(std::filesystem::path const& path,
                                        s7::ModuleInput* module) const -> LevelDefinitionReadResult {
     return with_source_path(
-        read_script_file(path, "mission", module).and_then([&](s7::Ast const& ast) {
+        read_script_file(path, "level-definition", module).and_then([&](s7::Ast const& ast) {
             return parse_level(ast, ast.root);
         }),
         path);

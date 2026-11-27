@@ -1,6 +1,6 @@
-(export mission)
+(export level-definition)
 
-(define mission
+(define level-definition
   (level :settings (module-ref (import-module "Settings/level-defaults.scm") 'game-settings)
     :id 'fleet-overview
     :title "Fleet Overview"

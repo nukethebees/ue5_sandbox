@@ -48,9 +48,9 @@ TEST(S7LevelDefinition, DecodesScheduledSpawnsAndRules) {
               EntityId{"enemy"});
 }
 
-TEST(S7LevelDefinition, DecodesPlayerMissionMetadataAndPlacement) {
+TEST(S7LevelDefinition, DecodesPlayerLevelMetadataAndPlacement) {
     auto const result{ioj::levels::authoring::tests::read_test_level(DefinitionReader{}, R"(
-      (level :id 'player-mission :title "Player Mission" :par-time 75.5 :player 'player
+      (level :id 'player-level :title "Player Level" :par-time 75.5 :player 'player
         :logic (logic (on :when (entity-destroyed 'enemy) :do (win 'blue)))
         :entities (list
           (entity :id 'player :archetype 'player-fighter :team 'blue
@@ -59,8 +59,8 @@ TEST(S7LevelDefinition, DecodesPlayerMissionMetadataAndPlacement) {
             :position '(-1000 0 0) :rotation '(0 180 0))))
     )")};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
-    EXPECT_EQ(result->metadata().id, LevelId{"player-mission"});
-    EXPECT_EQ(result->metadata().title, "Player Mission");
+    EXPECT_EQ(result->metadata().id, LevelId{"player-level"});
+    EXPECT_EQ(result->metadata().title, "Player Level");
     EXPECT_EQ(result->metadata().par_time_seconds, 75.5f);
     EXPECT_EQ(result->player_entity_id(), EntityId{"player"});
     EXPECT_EQ(result->entity(EntityId{"player"}).position, (Vector3d{100., 200., 300.}));

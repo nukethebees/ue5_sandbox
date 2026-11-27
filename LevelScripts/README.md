@@ -1,10 +1,10 @@
 # Author a level
 
-Copy [Border Skirmish](BorderSkirmish/BorderSkirmish.scm), give the level a unique `:id`, and export `mission`. Add its path to [the catalog](catalog.scm) or a [campaign](Campaigns/). Use symbols for IDs and quoted lists for positions. Imports resolve from `LevelScripts/` and expose only declared exports.
+Copy [Border Skirmish](BorderSkirmish/BorderSkirmish.scm), give the level a unique `:id`, and export `level-definition`. Add its path to [the catalog](catalog.scm) or a [campaign](Campaigns/). Use symbols for IDs and quoted lists for positions. Imports resolve from `LevelScripts/` and expose only declared exports.
 
 Keep level logic in `LevelName/LevelName.scm` beside its `editor-config.scm`. Save the linked map or use **Export Scene** to write placements, viewpoint and static collision to that file. Script-only levels can supply the same boxes, for example `:static-collision (list (world-aabb :min '(0 0 0) :max '(100 200 80)))`. Both corners use world coordinates.
 
-Use `(merge-settings game-settings scene-settings mission-settings)` to combine [level defaults](Settings/level-defaults.scm), editor settings, and mission overrides. Settings merge field by field, including nested fields. When two arguments set the same field, the later value wins.
+Use `(merge-settings game-settings scene-settings level-settings)` to combine [level defaults](Settings/level-defaults.scm), editor settings, and level overrides. Settings merge field by field, including nested fields. When two arguments set the same field, the later value wins.
 
 Place a **Fighter Proxy** to set its position, heading, and team. Export actors with **Details → Level Authoring → Export**. Carrier launches share `:max-live-auto-spawned-fighters` across authored teams, including teams with future spawns. Placed fighters bypass the cap.
 
@@ -14,7 +14,7 @@ Run a saved level headlessly:
 coj benchmark native-simulation --level LevelScripts/BorderSkirmish/BorderSkirmish.scm --seconds 10
 ```
 
-[Mission logic](docs/logic.md) · [Edit a map in Unreal](../Source/SandboxEditor/levels/README.md) · [Loading pipeline](../native/level_authoring/ARCHITECTURE.md)
+[Level logic](docs/logic.md) · [Edit a map in Unreal](../Source/SandboxEditor/levels/README.md) · [Loading pipeline](../native/level_authoring/ARCHITECTURE.md)
 
 ## Settings
 

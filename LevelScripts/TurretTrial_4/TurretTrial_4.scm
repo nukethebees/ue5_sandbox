@@ -1,8 +1,8 @@
-(export mission)
+(export level-definition)
 
 (define turret-trial (module-ref (import-module "Libraries/turret-trials.scm") 'turret-trial))
 
-(define mission
+(define level-definition
   (turret-trial 4
     "Dismantle a diamond formation with overlapping coverage."
     '(0 -74000 1000)

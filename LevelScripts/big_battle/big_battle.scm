@@ -1,4 +1,4 @@
-(export mission)
+(export level-definition)
 
 (define editor-config-module 
   (import-module "big_battle/editor-config.scm"))
@@ -11,7 +11,7 @@
 (define game-settings 
   (module-ref level-defaults-module 'game-settings))
 
-(define mission
+(define level-definition
   (copy-with scene
     :settings (merge-settings
       game-settings

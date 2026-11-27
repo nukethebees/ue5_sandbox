@@ -1,8 +1,8 @@
-(export mission)
+(export level-definition)
 
 ;; Initial-state seed exported from Unreal Editor.
 
-(define mission (level
+(define level-definition (level
   :id 'batch-benchmark
   :title "Batch Benchmark"
 

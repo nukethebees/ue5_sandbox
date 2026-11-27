@@ -32,7 +32,7 @@ class ModuleFixture {
 };
 
 inline auto read_test_level(DefinitionReader const& reader, std::string_view source) {
-    return reader.read_level_file(ModuleFixture{"mission", source}.path());
+    return reader.read_level_file(ModuleFixture{"level-definition", source}.path());
 }
 inline auto read_test_settings(DefinitionReader const& reader,
                                std::string_view source,

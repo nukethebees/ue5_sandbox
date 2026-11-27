@@ -1,8 +1,8 @@
-(export mission)
+(export level-definition)
 
 (define benchmark-fleet-level (module-ref (import-module "Libraries/benchmark-fleet.scm") 'benchmark-fleet-level))
 
-(define mission
+(define level-definition
   (benchmark-fleet-level 'benchmark-fleet-09
     "Benchmark Fleet 09 — 256 Capitals"
     "256 capital ships across two opposing fleets; up to 1792 entities after all fighter wings deploy."
