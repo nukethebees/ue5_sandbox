@@ -4,7 +4,6 @@
 #include <ioj/input/input_state.h>
 
 #include <array>
-#include <bitset>
 #include <cstdint>
 
 namespace ioj {
@@ -34,9 +33,10 @@ class FlightInputResolver {
     void resolve_digital(InputState& state, KeyCode key, bool down);
 
     FlightBindings bindings_;
-    std::bitset<enum_count<FlightMapping>()> active_digital_sources_;
+    DigitalActions keyboard_mouse_held_;
+    DigitalActions gamepad_held_;
     std::array<float, 2> accelerator_sources_{};
     Vector2f gamepad_turn_{};
-    Vector2f pointer_turn_{};
+    Vector2f keyboard_turn_{};
 };
 }

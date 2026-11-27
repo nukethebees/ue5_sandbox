@@ -4,6 +4,7 @@
 #include <ioj/vector_value_math.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <utility>
 
@@ -139,18 +140,18 @@ struct DigitalBinding {
     FlightMapping mapping;
     DigitalAction action;
 };
-constexpr DigitalBinding digital_bindings[]{
-    {FlightMapping::GeneralPauseKeyboardMouse, DigitalAction::Pause},
-    {FlightMapping::GeneralPauseGamepad, DigitalAction::Pause},
-    {FlightMapping::FlightSteerKeyboardMouse, DigitalAction::HoldToSteer},
-    {FlightMapping::FlightBrakeKeyboardMouse, DigitalAction::Brake},
-    {FlightMapping::FlightBrakeGamepad, DigitalAction::Brake},
-    {FlightMapping::FlightBoostKeyboardMouse, DigitalAction::Boost},
-    {FlightMapping::FlightBoostGamepad, DigitalAction::Boost},
-    {FlightMapping::FlightEmergencyBrakeKeyboardMouse, DigitalAction::EmergencyBrake},
-    {FlightMapping::FlightEmergencyBrakeGamepad, DigitalAction::EmergencyBrake},
-    {FlightMapping::FlightFirePrimaryKeyboardMouse, DigitalAction::Fire},
-    {FlightMapping::FlightFirePrimaryGamepad, DigitalAction::Fire},
+constexpr std::array digital_bindings{
+    DigitalBinding{FlightMapping::GeneralPauseKeyboardMouse, DigitalAction::Pause},
+    DigitalBinding{FlightMapping::GeneralPauseGamepad, DigitalAction::Pause},
+    DigitalBinding{FlightMapping::FlightSteerKeyboardMouse, DigitalAction::HoldToSteer},
+    DigitalBinding{FlightMapping::FlightBrakeKeyboardMouse, DigitalAction::Brake},
+    DigitalBinding{FlightMapping::FlightBrakeGamepad, DigitalAction::Brake},
+    DigitalBinding{FlightMapping::FlightBoostKeyboardMouse, DigitalAction::Boost},
+    DigitalBinding{FlightMapping::FlightBoostGamepad, DigitalAction::Boost},
+    DigitalBinding{FlightMapping::FlightEmergencyBrakeKeyboardMouse, DigitalAction::EmergencyBrake},
+    DigitalBinding{FlightMapping::FlightEmergencyBrakeGamepad, DigitalAction::EmergencyBrake},
+    DigitalBinding{FlightMapping::FlightFirePrimaryKeyboardMouse, DigitalAction::Fire},
+    DigitalBinding{FlightMapping::FlightFirePrimaryGamepad, DigitalAction::Fire},
 };
 constexpr std::array accelerator_mappings{FlightMapping::FlightAccelerateKeyboardMouse,
                                           FlightMapping::FlightAccelerateGamepad};
@@ -158,13 +159,13 @@ struct TurnBinding {
     FlightMapping mapping;
     FlightAxis component;
 };
-constexpr TurnBinding pointer_bindings[]{
-    {FlightMapping::FlightPitchKeyboardMouse, FlightAxis::Pitch},
-    {FlightMapping::FlightYawKeyboardMouse, FlightAxis::Yaw},
+constexpr std::array pointer_bindings{
+    TurnBinding{FlightMapping::FlightPitchKeyboardMouse, FlightAxis::Pitch},
+    TurnBinding{FlightMapping::FlightYawKeyboardMouse, FlightAxis::Yaw},
 };
-constexpr TurnBinding stick_bindings[]{
-    {FlightMapping::FlightPitchGamepad, FlightAxis::Pitch},
-    {FlightMapping::FlightYawGamepad, FlightAxis::Yaw},
+constexpr std::array stick_bindings{
+    TurnBinding{FlightMapping::FlightPitchGamepad, FlightAxis::Pitch},
+    TurnBinding{FlightMapping::FlightYawGamepad, FlightAxis::Yaw},
 };
 }
 
@@ -198,13 +199,9 @@ void FlightInputResolver::resolve_digital(InputState& state, KeyCode key, bool d
         if (!bindings_.matches(mapping, key)) {
             continue;
         }
-        active_digital_sources_.set(std::to_underlying(mapping), down);
-        auto const active{
-            down ||
-            std::ranges::any_of(flight_binding_details::digital_bindings, [&](auto binding) {
-                return binding.action == action &&
-                       active_digital_sources_[std::to_underlying(binding.mapping)];
-            })};
+        auto& held{is_gamepad_mapping(mapping) ? gamepad_held_ : keyboard_mouse_held_};
+        held.set(action, down);
+        auto const active{keyboard_mouse_held_.get(action) || gamepad_held_.get(action)};
         if (action == DigitalAction::HoldToSteer && active != state.pointer_steering.has_value()) {
             if (active) {
                 state.pointer_steering.emplace();
@@ -268,7 +265,7 @@ void FlightInputResolver::sample_axis(InputState& state,
     if (key != PhysicalKey::MouseX && key != PhysicalKey::MouseY) {
         for (auto binding : flight_binding_details::pointer_bindings) {
             if (bindings_.matches(binding.mapping, key)) {
-                (binding.component == FlightAxis::Yaw ? pointer_turn_.x() : pointer_turn_.y()) = position;
+                (binding.component == FlightAxis::Yaw ? keyboard_turn_.x() : keyboard_turn_.y()) = position;
             }
         }
     }
@@ -279,8 +276,8 @@ void FlightInputResolver::update_turn(InputState& state, ControlsSettings const&
     auto& turn{state.axes_2d[Axis2DAction::FlightTurn]};
     if (state.pointer_steering) {
         auto direction{*state.pointer_steering};
-        direction.x() += pointer_turn_.x();
-        direction.y() += pointer_turn_.y();
+        direction.x() += keyboard_turn_.x();
+        direction.y() += keyboard_turn_.y();
         auto const scale{std::max(1.0, size(direction))};
         turn.x() =
             static_cast<float>(direction.x() / scale) * (controls.invert_mouse_yaw ? -1.f : 1.f);
@@ -296,9 +293,10 @@ void FlightInputResolver::reset(InputState& state) {
     for (auto const binding : flight_binding_details::digital_bindings) {
         state.button(binding.action, ButtonState::Released);
     }
-    active_digital_sources_.reset();
+    keyboard_mouse_held_ = {};
+    gamepad_held_ = {};
     gamepad_turn_ = {};
-    pointer_turn_ = {};
+    keyboard_turn_ = {};
     accelerator_sources_ = {};
     state.pointer_steering.reset();
     state.axes_1d[Axis1DAction::Accelerate] = {};
