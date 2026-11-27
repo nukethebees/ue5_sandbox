@@ -111,7 +111,8 @@ char const* text = "; not a LispB comment";
         SerializationCase{"SettingsAndUmbrella",
                           R"(
 (module preferences :header "Preferences.h"
-    (record SettingsState (member vsync bool) (projections (cpp))))
+    (record VideoSettings (member vsync bool) (projections (cpp)))
+    (record SettingsState (member video VideoSettings) (projections (cpp))))
 (settings-module settings :header "Settings.h" :source "Settings.cpp"
     :api-name SettingsAccess :storage SettingsState
     (category video "Video")

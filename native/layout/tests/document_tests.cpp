@@ -616,7 +616,8 @@ TEST(DocumentEdit, WholeSourceReplacementSupportsAllModuleKindsAndRejectsInvalid
             (record ShipState :layout packed (member health @LayoutEditValue :bits 12)
     (projections (cpp :storage std::uint16_t))) (integer-scalar LayoutEditValue :bit-width 1))
         (module preferences :header "Preferences.h"
-            (record SettingsState (member vsync bool) (projections (cpp))))
+            (record VideoSettings (member vsync bool) (projections (cpp)))
+            (record SettingsState (member video VideoSettings) (projections (cpp))))
         (settings-module settings :header "Settings.h" :source "Settings.cpp"
             :api-name SettingsAccess :storage SettingsState
             (category video "Video")
