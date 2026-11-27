@@ -223,8 +223,9 @@ struct KeyedBits : detail::KeyedBitsBase {
             }
         } else if constexpr (std::same_as<decltype(Key), groups::Sparse>) {
             if constexpr (Key == groups::Sparse::Positive) {
-                self.set_pair_0(value[0ULL]);
-                self.set_pair_1(value[1ULL]);
+                std::array<bool, 2> const& array_value{static_cast<decltype(value)&&>(value)};
+                self.set_pair_0(array_value[0ULL]);
+                self.set_pair_1(array_value[1ULL]);
             } else {
                 static_assert(false, "Unsupported enum accessor key");
             }

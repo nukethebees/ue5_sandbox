@@ -409,6 +409,27 @@ set_tests_properties(S7ReaderRejectsUnsupportedMember PROPERTIES
   LABELS "all;native;codegen;compile-contract;subprocess"
   RESOURCE_LOCK codegen-negative-build
 )
+foreach(contract IN ITEMS short long wrong_type)
+  set(reject_target "codegen-reject-packed-array-${contract}")
+  add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL)
+  target_sources(${reject_target} PRIVATE tests/compile_fixture/rejected_array_${contract}.cpp)
+  target_link_libraries(${reject_target}
+    PRIVATE
+      codegen-generated-compile-fixture
+      sandbox::native_defaults
+      native-core
+  )
+  add_test(NAME EnumAccessorRejectsArray_${contract}
+    COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
+      "-DREJECT_TARGET=${reject_target}" "-DEXPECTED_DIAGNOSTIC=array_value"
+      -P "${PROJECT_SOURCE_DIR}/cmake/expect_compile_failure.cmake"
+  )
+  set_tests_properties(EnumAccessorRejectsArray_${contract} PROPERTIES
+    LABELS "all;native;codegen;compile-contract"
+    RESOURCE_LOCK codegen-negative-build
+  )
+endforeach()
+
 add_library(codegen-reject-unmapped-key OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/unsupported_enum_accessor.cpp)
 target_link_libraries(codegen-reject-unmapped-key PRIVATE codegen-generated-compile-fixture sandbox::native_defaults native-core)
 add_test(NAME EnumAccessorRejectsUnmappedKey

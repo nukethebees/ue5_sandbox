@@ -23,6 +23,11 @@ static_assert(std::same_as<decltype(std::declval<KeyedFields&&>().get<Action::Mo
 static_assert(
     std::same_as<decltype(std::declval<KeyedFields const&&>().get(Sparse::Negative)), int const&&>);
 static_assert(std::same_as<decltype(std::declval<KeyedBits&>().get<Action::Move>()), bool>);
+static_assert([] {
+    KeyedBits bits{};
+    bits.set<Sparse::Positive>(std::array{true, false});
+    return bits.get<Sparse::Positive>() == std::array{true, false};
+}());
 TEST(EnumAccessors, RuntimeKeysPreserveReferencesAndPackedNeighbors) {
     KeyedFields fields{};
     auto key{Sparse::Negative};
