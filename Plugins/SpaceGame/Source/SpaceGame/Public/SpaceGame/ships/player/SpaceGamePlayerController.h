@@ -74,7 +74,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
 
     void initialise_gameplay();
     void initialise_main_menu();
-    void apply_main_menu_input_mode();
     void attach_ship(Pawn& ship);
     void detach_ship();
     void activate_ship_control();
@@ -85,7 +84,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     /* **************************************** */
     // Input and presentation callbacks
     /* **************************************** */
-    void set_observer_look_active(bool active);
     void set_observer_movement_speed(float speed);
 
     /* **************************************** */
@@ -123,13 +121,11 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     levels::ControlContext control_context_{levels::ControlContext::None};
     TWeakObjectPtr<ACameraActor> viewer_camera_;
     float viewer_speed_{50000.f};
-    bool viewer_looking_{};
     TWeakObjectPtr<ATestBatchOrchestrator> orchestrator_;
     EPlayerControllerMode mode_{EPlayerControllerMode::Gameplay};
     bool begin_play_finished_{false};
     bool ending_play_{false};
     bool return_to_level_select_pending_{false};
-    FTimerHandle main_menu_input_timer_;
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")
     FActorLoggingConfig log_config{1.f};

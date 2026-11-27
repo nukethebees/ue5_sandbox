@@ -29,7 +29,6 @@ struct SPACEGAME_API FPlayerModalUi {
     // Main menu
     /* **************************************** */
     auto show_main_menu() -> bool;
-    void apply_main_menu_input_mode(ASpaceGamePlayerController& owner);
     /* **************************************** */
     // Modal widgets and callbacks
     /* **************************************** */

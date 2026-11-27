@@ -81,16 +81,6 @@ auto FPlayerModalUi::show_main_menu() -> bool {
 
     return true;
 }
-void FPlayerModalUi::apply_main_menu_input_mode(ASpaceGamePlayerController& owner) {
-    if (!IsValid(root_) || !IsValid(root_->get_active_screen())) {
-        return;
-    }
-
-    FInputModeUIOnly input_mode{};
-    input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-    owner.SetInputMode(input_mode);
-    owner.SetShowMouseCursor(true);
-}
 
 /* **************************************** */
 // Modal widgets and callbacks

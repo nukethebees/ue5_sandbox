@@ -24,6 +24,7 @@
 
 namespace ioj {
 ASpaceGamePlayerController::ASpaceGamePlayerController() {
+    SetShowMouseCursor(true);
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
 }
@@ -40,9 +41,6 @@ void ASpaceGamePlayerController::BeginPlay() {
     initialise_gameplay();
 }
 void ASpaceGamePlayerController::initialise_gameplay() {
-    FInputModeGameOnly input_mode{};
-    SetInputMode(input_mode);
-    SetShowMouseCursor(false);
     bind_orchestrator_events();
     if (auto* const ship{Cast<Pawn>(GetPawn())}; IsValid(ship)) {
         attach_ship(*ship);
@@ -72,19 +70,10 @@ void ASpaceGamePlayerController::initialise_main_menu() {
         return;
     }
 
-    apply_main_menu_input_mode();
-    main_menu_input_timer_ =
-        GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::apply_main_menu_input_mode);
     SetActorTickEnabled(false);
-}
-void ASpaceGamePlayerController::apply_main_menu_input_mode() {
-    if (mode_ == EPlayerControllerMode::MainMenu && !ending_play_) {
-        modal_ui_.apply_main_menu_input_mode(*this);
-    }
 }
 void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
     ending_play_ = true;
-    GetWorldTimerManager().ClearTimer(main_menu_input_timer_);
     modal_ui_.detach_callbacks(*this);
     unbind_orchestrator_events();
     detach_ship();
@@ -246,11 +235,6 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
         return false;
     }
 
-    FInputModeGameAndUI input_mode{};
-    input_mode.SetHideCursorDuringCapture(false);
-    input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-    SetInputMode(input_mode);
-    SetShowMouseCursor(true);
     SetActorTickEnabled(true);
     return true;
 }
@@ -281,10 +265,6 @@ auto ASpaceGamePlayerController::set_control_context(levels::ControlContext cont
     if (context == levels::ControlContext::Observer && !viewer_camera_.IsValid()) {
         return false;
     }
-    if (viewer_looking_ && context != levels::ControlContext::Observer) {
-        viewer_looking_ = false;
-        set_observer_look_active(false);
-    }
     if (context != levels::ControlContext::Player) {
         present_steering({});
     }
@@ -307,10 +287,6 @@ void ASpaceGamePlayerController::present_viewer_motion(host::ViewerMotion const&
         return;
     }
     auto& camera{*viewer_camera_.Get()};
-    if (viewer_looking_ != motion.looking) {
-        viewer_looking_ = motion.looking;
-        set_observer_look_active(viewer_looking_);
-    }
     if (viewer_speed_ != motion.speed) {
         viewer_speed_ = motion.speed;
         set_observer_movement_speed(viewer_speed_);
@@ -326,22 +302,6 @@ void ASpaceGamePlayerController::present_viewer_motion(host::ViewerMotion const&
                        camera.GetActorForwardVector() * motion.forward)
                           .GetClampedToMaxSize(1.)};
     camera.AddActorWorldOffset((planar + FVector::UpVector * motion.up) * motion.speed * dt);
-}
-void ASpaceGamePlayerController::set_observer_look_active(bool const active) {
-    if (active) {
-        FInputModeGameOnly input_mode{};
-        SetInputMode(input_mode);
-        SetShowMouseCursor(false);
-        return;
-    }
-
-    if (get_active_control_context() == levels::ControlContext::Observer) {
-        FInputModeGameAndUI input_mode{};
-        input_mode.SetHideCursorDuringCapture(false);
-        input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-        SetInputMode(input_mode);
-        SetShowMouseCursor(true);
-    }
 }
 void ASpaceGamePlayerController::set_observer_movement_speed(float const speed) {
     hud_.set_observer_speed(speed);
