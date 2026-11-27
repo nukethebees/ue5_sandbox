@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGame/ships/player/PlayerControlContexts.h>
+#include <ioj/levels/control_context.h>
 #include <SpaceGame/ships/player/PlayerHudLifecycle.h>
 #include <SpaceGame/ships/player/PlayerModalUi.h>
 #include <SpaceGamePresentation/support/logging/ActorLoggingConfig.h>
@@ -15,9 +15,7 @@ struct ViewerMotion;
 }
 
 class ACameraActor;
-class UEnhancedInputUserSettings;
 struct FLevelCompletion;
-struct FInputKeyEventArgs;
 
 namespace ioj {
 class UTestBatchGameUiData;
@@ -31,15 +29,12 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     friend struct FShipControlContext;
     friend struct FObserverControlContext;
     friend struct FBenchmarkControlContext;
-    friend struct FGlobalPlayerInput;
     friend struct FPlayerHudLifecycle;
     friend struct FPlayerModalUi;
     friend class ATestBatchOrchestrator;
   public:
     using Pawn = ATestSpaceShip;
     ASpaceGamePlayerController();
-    bool InputKey(FInputKeyEventArgs const& event_args) override;
-    void SetupInputComponent() override;
     void pause_or_exit_viewer();
     void present_viewer_motion(host::ViewerMotion const& motion, double dt);
     void present_steering(TOptional<FVector2D> position);
@@ -48,7 +43,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     auto activate_playerless_camera(ACameraActor& camera, levels::ControlContext context) -> bool;
     auto activate_run_controls() -> bool;
     [[nodiscard]] auto get_active_control_context() const noexcept -> levels::ControlContext {
-        return control_contexts_.get_active_context();
+        return control_context_;
     }
     [[nodiscard]] auto get_active_hud() const -> USimulationHudWidget const* {
         return hud_.get_hud();
@@ -57,8 +52,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
         return hud_.get_benchmark_hud();
     }
     [[nodiscard]] auto is_observer_movement_enabled() const noexcept -> bool {
-        return get_active_control_context() == levels::ControlContext::Observer &&
-               control_contexts_.is_observer_bound();
+        return control_context_ == levels::ControlContext::Observer;
     }
 
   protected:
@@ -94,9 +88,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     /* **************************************** */
     // Input and presentation callbacks
     /* **************************************** */
-    void initialise_input_user_settings();
-    UFUNCTION()
-    void on_input_user_settings_initialized(UEnhancedInputUserSettings const* settings);
     void set_observer_look_active(bool active);
     void set_observer_movement_speed(float speed);
 
@@ -125,22 +116,14 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     TObjectPtr<UTestBatchGameUiData> ui_data{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    FSpaceShipControllerInputs input;
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    FGlobalControlInputs global_input;
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    FObserverControlInputs observer_input;
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    FBenchmarkControlInputs benchmark_input;
-
     UPROPERTY(Transient)
     FPlayerHudLifecycle hud_;
     UPROPERTY(Transient)
     FPlayerModalUi modal_ui_;
 
-    FPlayerControlContexts control_contexts_;
-    TWeakObjectPtr<UEnhancedInputUserSettings> registered_input_settings_;
+    auto set_control_context(levels::ControlContext context) -> bool;
+
+    levels::ControlContext control_context_{levels::ControlContext::None};
     TWeakObjectPtr<ACameraActor> viewer_camera_;
     float viewer_speed_{50000.f};
     bool viewer_looking_{};
