@@ -409,7 +409,7 @@ set_tests_properties(S7ReaderRejectsUnsupportedMember PROPERTIES
   LABELS "all;native;codegen;compile-contract;subprocess"
   RESOURCE_LOCK codegen-negative-build
 )
-foreach(contract IN ITEMS short long wrong_type)
+foreach(contract IN ITEMS short long wrong_type scalar)
   set(reject_target "codegen-reject-packed-array-${contract}")
   add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL)
   target_sources(${reject_target} PRIVATE tests/compile_fixture/rejected_array_${contract}.cpp)
@@ -421,7 +421,7 @@ foreach(contract IN ITEMS short long wrong_type)
   )
   add_test(NAME EnumAccessorRejectsArray_${contract}
     COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
-      "-DREJECT_TARGET=${reject_target}" "-DEXPECTED_DIAGNOSTIC=array_value"
+      "-DREJECT_TARGET=${reject_target}" "-DEXPECTED_DIAGNOSTIC=std::array<bool, *2>"
       -P "${PROJECT_SOURCE_DIR}/cmake/expect_compile_failure.cmake"
   )
   set_tests_properties(EnumAccessorRejectsArray_${contract} PROPERTIES

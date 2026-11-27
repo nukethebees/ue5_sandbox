@@ -127,8 +127,9 @@ class EnumAccessorLowering : public CppIRBuilder {
         Nodes body;
         std::vector<Syntax> elements;
         if (setter) {
+            auto const array_ref{decorate_type(field.value_type, "", " const&")};
             body.push_back(variable(
-                decorate_type(field.value_type, "", " const&"), "array_value", forwarded_value()));
+                "auto const&", "array_value", static_cast_expr(array_ref, forwarded_value())));
         }
         std::uint64_t index{};
         for (auto element : field.elements) {
