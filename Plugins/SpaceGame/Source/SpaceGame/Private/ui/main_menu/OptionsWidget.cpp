@@ -49,6 +49,11 @@ void UOptionsWidget::NativeConstruct() {
     refresh_view();
 }
 
+void UOptionsWidget::NativeOnAddedToFocusPath(FFocusEvent const& event) {
+    Super::NativeOnAddedToFocusPath(event);
+    content_focused.Broadcast();
+}
+
 void UOptionsWidget::NativeDestruct() {
     cancel_leave();
     if (IsValid(settings_)) {
@@ -116,13 +121,14 @@ void UOptionsWidget::open_page(EMenuPage page, FSimpleDelegate shown) {
     shown.ExecuteIfBound();
 }
 
-void UOptionsWidget::request_leave(FSimpleDelegate continuation) {
+void UOptionsWidget::request_leave(FSimpleDelegate continuation, FSimpleDelegate cancelled) {
     if (!IsValid(settings_)) {
         continuation.ExecuteIfBound();
         return;
     }
 
     if (settings_->save_pending() || settings_->is_awaiting_display_confirmation()) {
+        cancelled.ExecuteIfBound();
         return;
     }
 
@@ -132,6 +138,7 @@ void UOptionsWidget::request_leave(FSimpleDelegate continuation) {
     }
 
     leave_continuation_ = MoveTemp(continuation);
+    leave_cancelled_ = MoveTemp(cancelled);
     if (options_view_.IsValid()) {
         options_view_->show_dirty_prompt();
     }
@@ -262,6 +269,7 @@ void UOptionsWidget::refresh_view() {
 }
 
 void UOptionsWidget::complete_leave() {
+    leave_cancelled_.Unbind();
     auto continuation{MoveTemp(leave_continuation_)};
     leave_continuation_.Unbind();
 
@@ -270,8 +278,10 @@ void UOptionsWidget::complete_leave() {
 }
 
 void UOptionsWidget::cancel_leave() {
+    auto cancelled{MoveTemp(leave_cancelled_)};
     leave_continuation_.Unbind();
     modal_state_changed.Broadcast(false);
+    cancelled.ExecuteIfBound();
 }
 
 } // namespace ioj

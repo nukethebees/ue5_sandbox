@@ -62,6 +62,7 @@ void UMenuButtonWidget::NativePreConstruct() {
 
 void UMenuButtonWidget::NativeOnAddedToFocusPath(FFocusEvent const& focus_event) {
     Super::NativeOnAddedToFocusPath(focus_event);
+    focus_received.Broadcast();
     update_visual_style();
 }
 

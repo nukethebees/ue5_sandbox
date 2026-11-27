@@ -19,6 +19,7 @@ class SPACEGAMEPRESENTATION_API UMenuButtonWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     FSimpleMulticastDelegate clicked;
+    FSimpleMulticastDelegate focus_received;
     auto focus_target() const -> UWidget*;
 
     void set_text(FText const& text);
