@@ -97,6 +97,7 @@
       "lispb/schema/enums.lispb"
       "lispb/schema/sandbox_ismc.lispb"
       "lispb/schema/facades.lispb"
+      "lispb/schema/player_input.lispb"
       "lispb/schema/settings.lispb")
     :output-root (project-path "."))
 

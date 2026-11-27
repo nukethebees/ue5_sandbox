@@ -28,6 +28,8 @@ native/level_authoring/lib/include/ioj/levels/authoring/record_constructors.h
 native/levels/lib/include/ioj/gfx/starfield_settings.h
 native/levels/lib/include/ioj/gfx/starfield_settings_reader.h
 native/levels/lib/include/ioj/gfx/starfield_settings_writer.h
+native/levels/lib/include/ioj/input/flight_mapping.h
+native/levels/lib/include/ioj/input/physical_key.h
 native/levels/lib/include/ioj/levels/campaign_definition.h
 native/levels/lib/include/ioj/levels/campaign_definition_reader.h
 native/levels/lib/include/ioj/levels/campaign_definition_writer.h
