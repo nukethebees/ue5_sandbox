@@ -1,5 +1,7 @@
 #include <ioj/settings/game_settings_edit_state.h>
 
+#include <ioj/input/flight_controls.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -215,7 +217,43 @@ auto GameSettingsEditState::set_setting(GameSetting const setting, GameSettingVa
     return true;
 }
 
+auto GameSettingsEditState::binding_conflicts(FlightMapping mapping, PhysicalKey key) const
+    -> std::vector<FlightMapping> {
+    std::vector<FlightMapping> conflicts;
+    if (key == PhysicalKey::Unbound) {
+        return conflicts;
+    }
+    for (auto other : EnumTraits<FlightMapping>::values) {
+        if (other != mapping && is_gamepad_mapping(other) == is_gamepad_mapping(mapping) &&
+            pending_.controls.bindings[other] == key) {
+            conflicts.push_back(other);
+        }
+    }
+    return conflicts;
+}
+
+auto GameSettingsEditState::set_binding(FlightMapping mapping,
+                                        PhysicalKey key,
+                                        bool replace_conflicts) -> bool {
+    if (key != PhysicalKey::Unbound && !accepts_binding(mapping, key)) {
+        return false;
+    }
+    auto const conflicts{binding_conflicts(mapping, key)};
+    if (!conflicts.empty() && !replace_conflicts) {
+        return false;
+    }
+    for (auto other : conflicts) {
+        pending_.controls.bindings[other] = PhysicalKey::Unbound;
+    }
+    pending_.controls.bindings[mapping] = key;
+    return true;
+}
+
 void GameSettingsEditState::reset_category(GameSettingCategory const category) {
+    if (category == GameSettingCategory::Controls) {
+        pending_.controls.bindings = defaults_.controls.bindings;
+    }
+
     for (auto const& descriptor : game_setting_descriptors()) {
         if (descriptor.category == category) {
             static_cast<void>(set_game_setting_value(
@@ -241,6 +279,10 @@ auto GameSettingsEditState::value(GameSetting const setting) const -> GameSettin
 }
 
 auto GameSettingsEditState::is_dirty() const -> bool {
+    if (pending_.controls.bindings != applied_.controls.bindings) {
+        return true;
+    }
+
     for (auto const& descriptor : game_setting_descriptors()) {
         if (!setting_values_equal(game_setting_value(pending_, descriptor.id),
                                   game_setting_value(applied_, descriptor.id))) {
@@ -252,6 +294,11 @@ auto GameSettingsEditState::is_dirty() const -> bool {
 }
 
 auto GameSettingsEditState::is_dirty(GameSettingCategory const category) const -> bool {
+    if (category == GameSettingCategory::Controls &&
+        pending_.controls.bindings != applied_.controls.bindings) {
+        return true;
+    }
+
     for (auto const& descriptor : game_setting_descriptors()) {
         if (descriptor.category == category &&
             !setting_values_equal(game_setting_value(pending_, descriptor.id),
@@ -264,6 +311,11 @@ auto GameSettingsEditState::is_dirty(GameSettingCategory const category) const -
 }
 
 auto GameSettingsEditState::is_at_defaults(GameSettingCategory const category) const -> bool {
+    if (category == GameSettingCategory::Controls &&
+        pending_.controls.bindings != defaults_.controls.bindings) {
+        return false;
+    }
+
     for (auto const& descriptor : game_setting_descriptors()) {
         if (descriptor.category == category &&
             !setting_values_equal(game_setting_value(pending_, descriptor.id),

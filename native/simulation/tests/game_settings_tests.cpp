@@ -151,4 +151,20 @@ TEST(GameSettings, BindingConflictsRespectHardwareProfileAndChord) {
     EXPECT_TRUE(control_bindings_changed(reordered, bindings));
 }
 
+TEST(GameSettings, BindingConflictsReplaceOnlyTheOtherMapping) {
+    GameSettingsEditState draft;
+    draft.begin({}, {});
+    using enum FlightMapping;
+    auto const key{draft.pending().controls.bindings[FlightFirePrimaryKeyboardMouse]};
+    EXPECT_FALSE(draft.set_binding(FlightBoostKeyboardMouse, key, false));
+    EXPECT_EQ(draft.binding_conflicts(FlightBoostKeyboardMouse, key),
+              (std::vector{FlightFirePrimaryKeyboardMouse}));
+    EXPECT_TRUE(draft.set_binding(FlightBoostKeyboardMouse, key, true));
+    EXPECT_EQ(draft.pending().controls.bindings[FlightFirePrimaryKeyboardMouse],
+              PhysicalKey::Unbound);
+    EXPECT_EQ(draft.pending().controls.bindings[FlightBoostKeyboardMouse], key);
+    EXPECT_TRUE(draft.is_dirty(GameSettingCategory::Controls));
+    draft.cancel();
+    EXPECT_FALSE(draft.is_dirty());
+}
 }

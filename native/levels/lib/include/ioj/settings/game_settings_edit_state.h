@@ -27,6 +27,9 @@ class GameSettingsEditState {
     void cancel();
     void commit_all();
     auto set_setting(GameSetting setting, GameSettingValue const& value) -> bool;
+    auto binding_conflicts(FlightMapping mapping, PhysicalKey key) const
+        -> std::vector<FlightMapping>;
+    auto set_binding(FlightMapping mapping, PhysicalKey key, bool replace_conflicts) -> bool;
     void reset_category(GameSettingCategory category);
 
     auto applied() const -> GameSettingsState const&;
