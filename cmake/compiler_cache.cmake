@@ -1,5 +1,5 @@
 foreach(language IN ITEMS C CXX)
-  if(CMAKE_${language}_COMPILER_ID MATCHES "Clang|MSVC")
+  if(CMAKE_${language}_COMPILER_ID MATCHES "Clang")
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
       "${CMAKE_${language}_COMPILER}"
     )

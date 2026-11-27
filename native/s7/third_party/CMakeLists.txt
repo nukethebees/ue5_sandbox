@@ -37,11 +37,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       -Wno-constant-logical-operand
       -Wno-inconsistent-dllimport
   )
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  target_compile_options(sandbox-s7-third-party
-    PRIVATE
-      /wd4273 # s7 redeclares the CRT's __p__environ without its dllimport annotation.
-  )
 endif()
 ioj_apply_native_abi(sandbox-s7-third-party)
 

@@ -26,20 +26,6 @@
       }
     },
     {
-      "name": "unreal-msvc",
-      "hidden": true,
-      "inherits": "windows-msvc",
-      "cacheVariables": {
-        "CMAKE_C_FLAGS_RELEASE": "/O2 /DNDEBUG",
-        "CMAKE_C_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
-        "CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG",
-        "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
-        "CMAKE_UNITY_BUILD": true,
-        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32",
-        "IOJ_WITH_UNREAL": true
-      }
-    },
-    {
       "name": "debug",
       "displayName": "Debug",
       "inherits": "unreal",
@@ -79,51 +65,6 @@
       "name": "test",
       "displayName": "Test",
       "inherits": "unreal",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "UE_CONFIGURATION": "Test"
-      }
-    },
-    {
-      "name": "debug-msvc",
-      "displayName": "Debug (MSVC native)",
-      "inherits": "unreal-msvc",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "UE_CONFIGURATION": "Debug"
-      }
-    },
-    {
-      "name": "debug-game-msvc",
-      "displayName": "DebugGame (MSVC native)",
-      "inherits": "unreal-msvc",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "UE_CONFIGURATION": "DebugGame"
-      }
-    },
-    {
-      "name": "development-msvc",
-      "displayName": "Development (MSVC native)",
-      "inherits": "unreal-msvc",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "UE_CONFIGURATION": "Development"
-      }
-    },
-    {
-      "name": "shipping-msvc",
-      "displayName": "Shipping (MSVC native)",
-      "inherits": "unreal-msvc",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "UE_CONFIGURATION": "Shipping"
-      }
-    },
-    {
-      "name": "test-msvc",
-      "displayName": "Test (MSVC native)",
-      "inherits": "unreal-msvc",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "UE_CONFIGURATION": "Test"
@@ -187,48 +128,6 @@
     {
       "name": "debug-game-unit-prerequisites",
       "configurePreset": "debug-game",
-      "targets": [
-        "unreal-unit-tests"
-      ]
-    },
-    {
-      "name": "debug-msvc",
-      "configurePreset": "debug-msvc",
-      "targets": [
-        "editor"
-      ]
-    },
-    {
-      "name": "debug-game-msvc",
-      "configurePreset": "debug-game-msvc",
-      "targets": [
-        "editor"
-      ]
-    },
-    {
-      "name": "development-msvc",
-      "configurePreset": "development-msvc",
-      "targets": [
-        "editor"
-      ]
-    },
-    {
-      "name": "shipping-msvc",
-      "configurePreset": "shipping-msvc",
-      "targets": [
-        "game"
-      ]
-    },
-    {
-      "name": "test-msvc",
-      "configurePreset": "test-msvc",
-      "targets": [
-        "editor"
-      ]
-    },
-    {
-      "name": "debug-game-msvc-unit-prerequisites",
-      "configurePreset": "debug-game-msvc",
       "targets": [
         "unreal-unit-tests"
       ]
@@ -342,32 +241,6 @@
       }
     },
     {
-      "name": "debug-game-msvc-level-tests",
-      "inherits": "test-base",
-      "configurePreset": "debug-game-msvc",
-      "filter": {
-        "include": {
-          "label": "^level$"
-        },
-        "exclude": {
-          "label": "^developer-tool$"
-        }
-      }
-    },
-    {
-      "name": "debug-game-msvc-unit-tests",
-      "inherits": "test-base",
-      "configurePreset": "debug-game-msvc",
-      "filter": {
-        "include": {
-          "label": "^unit$"
-        },
-        "exclude": {
-          "label": "^developer-tool$"
-        }
-      }
-    },
-    {
       "name": "debug-game-tests",
       "inherits": "test-base",
       "configurePreset": "debug-game",
@@ -401,42 +274,9 @@
       }
     },
     {
-      "name": "debug-game-msvc-tests",
-      "inherits": "test-base",
-      "configurePreset": "debug-game-msvc",
-      "filter": {
-        "include": {
-          "label": "^all$"
-        },
-        "exclude": {
-          "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxEditor\\.MaterialSynth)$"
-        }
-      }
-    },
-    {
-      "name": "debug-game-msvc-full-tests",
-      "inherits": "test-base",
-      "configurePreset": "debug-game-msvc",
-      "filter": {
-        "include": {
-          "label": "^(all|developer-tool)$"
-        }
-      }
-    },
-    {
       "name": "debug-game-all-unreal-tests",
       "inherits": "test-base",
       "configurePreset": "debug-game",
-      "filter": {
-        "include": {
-          "label": "^unreal-all$"
-        }
-      }
-    },
-    {
-      "name": "debug-game-msvc-all-unreal-tests",
-      "inherits": "test-base",
-      "configurePreset": "debug-game-msvc",
       "filter": {
         "include": {
           "label": "^unreal-all$"
@@ -511,71 +351,6 @@
       ]
     },
     {
-      "name": "debug-msvc",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-msvc"
-        },
-        {
-          "type": "build",
-          "name": "debug-msvc"
-        }
-      ]
-    },
-    {
-      "name": "debug-game-msvc",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-game-msvc"
-        },
-        {
-          "type": "build",
-          "name": "debug-game-msvc"
-        }
-      ]
-    },
-    {
-      "name": "development-msvc",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "development-msvc"
-        },
-        {
-          "type": "build",
-          "name": "development-msvc"
-        }
-      ]
-    },
-    {
-      "name": "shipping-msvc",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "shipping-msvc"
-        },
-        {
-          "type": "build",
-          "name": "shipping-msvc"
-        }
-      ]
-    },
-    {
-      "name": "test-msvc",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "test-msvc"
-        },
-        {
-          "type": "build",
-          "name": "test-msvc"
-        }
-      ]
-    },
-    {
       "name": "debug-game-unit-tests",
       "steps": [
         {
@@ -589,23 +364,6 @@
         {
           "type": "test",
           "name": "debug-game-unit-tests"
-        }
-      ]
-    },
-    {
-      "name": "debug-game-msvc-unit-tests",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-game-msvc"
-        },
-        {
-          "type": "build",
-          "name": "debug-game-msvc-unit-prerequisites"
-        },
-        {
-          "type": "test",
-          "name": "debug-game-msvc-unit-tests"
         }
       ]
     },

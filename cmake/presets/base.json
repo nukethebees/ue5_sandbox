@@ -38,24 +38,6 @@
           "intelliSenseMode": "windows-clang-x64"
         }
       }
-    },
-    {
-      "name": "windows-msvc",
-      "hidden": true,
-      "inherits": "base",
-      "architecture": {
-        "value": "x64",
-        "strategy": "external"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      },
-      "toolchainFile": "${sourceDir}/cmake/toolchains/windows-msvc.cmake",
-      "cacheVariables": {
-        "UE_PLATFORM": "Win64"
-      }
     }
   ],
   "testPresets": [

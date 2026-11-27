@@ -410,43 +410,37 @@ def make_unreal_document() -> dict[str, Any]:
         ("shipping", "Shipping", "Release", "Shipping"),
         ("test", "Test", "Release", "Test"),
     )
-    compiler_variants = (
-        ("", "", "windows-clang-cl", "unreal"),
-        ("-msvc", " (MSVC native)", "windows-msvc", "unreal-msvc"),
-    )
 
     configure_presets: list[dict[str, Any]] = []
-    for _, _, compiler_base, unreal_base in compiler_variants:
+    configure_presets.append(
+        {
+            "name": "unreal",
+            "hidden": True,
+            "inherits": "windows-clang-cl",
+            "cacheVariables": {
+                "CMAKE_C_FLAGS_RELEASE": "/O2 /DNDEBUG",
+                "CMAKE_C_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
+                "CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG",
+                "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
+                "CMAKE_UNITY_BUILD": True,
+                "CMAKE_UNITY_BUILD_BATCH_SIZE": "32",
+                "IOJ_WITH_UNREAL": True,
+            },
+        }
+    )
+
+    for name, display_name, cmake_build_type, ue_configuration in unreal_configurations:
         configure_presets.append(
             {
-                "name": unreal_base,
-                "hidden": True,
-                "inherits": compiler_base,
+                "name": name,
+                "displayName": display_name,
+                "inherits": "unreal",
                 "cacheVariables": {
-                    "CMAKE_C_FLAGS_RELEASE": "/O2 /DNDEBUG",
-                    "CMAKE_C_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
-                    "CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG",
-                    "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
-                    "CMAKE_UNITY_BUILD": True,
-                    "CMAKE_UNITY_BUILD_BATCH_SIZE": "32",
-                    "IOJ_WITH_UNREAL": True,
+                    "CMAKE_BUILD_TYPE": cmake_build_type,
+                    "UE_CONFIGURATION": ue_configuration,
                 },
             }
         )
-
-    for suffix, display_suffix, _, unreal_base in compiler_variants:
-        for name, display_name, cmake_build_type, ue_configuration in unreal_configurations:
-            configure_presets.append(
-                {
-                    "name": f"{name}{suffix}",
-                    "displayName": f"{display_name}{display_suffix}",
-                    "inherits": unreal_base,
-                    "cacheVariables": {
-                        "CMAKE_BUILD_TYPE": cmake_build_type,
-                        "UE_CONFIGURATION": ue_configuration,
-                    },
-                }
-            )
 
     build_presets: list[dict[str, Any]] = [
         {
@@ -468,24 +462,23 @@ def make_unreal_document() -> dict[str, Any]:
             ],
         },
     ]
-    for suffix, _, _, _ in compiler_variants:
-        for name, _, _, _ in unreal_configurations:
-            target = "game" if name == "shipping" else "editor"
-            build_presets.append(
-                {
-                    "name": f"{name}{suffix}",
-                    "configurePreset": f"{name}{suffix}",
-                    "targets": [target],
-                }
-            )
-
+    for name, _, _, _ in unreal_configurations:
+        target = "game" if name == "shipping" else "editor"
         build_presets.append(
             {
-                "name": f"debug-game{suffix}-unit-prerequisites",
-                "configurePreset": f"debug-game{suffix}",
-                "targets": ["unreal-unit-tests"],
+                "name": name,
+                "configurePreset": name,
+                "targets": [target],
             }
         )
+
+    build_presets.append(
+        {
+            "name": "debug-game-unit-prerequisites",
+            "configurePreset": "debug-game",
+            "targets": ["unreal-unit-tests"],
+        }
+    )
 
     build_presets.append({
         "name": "debug-game-tool-tests-build", "configurePreset": "debug-game",
@@ -513,19 +506,18 @@ def make_unreal_document() -> dict[str, Any]:
     )
 
     test_presets: list[dict[str, Any]] = []
-    for suffix in ("", "-msvc"):
-        for name, label in (
-            ("level-tests", "^level$"),
-            ("unit-tests", "^unit$"),
-        ):
-            test_presets.append(
-                {
-                    "name": f"debug-game{suffix}-{name}",
-                    "inherits": "test-base",
-                    "configurePreset": f"debug-game{suffix}",
-                    "filter": {"include": {"label": label}, "exclude": {"label": "^developer-tool$"}},
-                }
-            )
+    for name, label in (
+        ("level-tests", "^level$"),
+        ("unit-tests", "^unit$"),
+    ):
+        test_presets.append(
+            {
+                "name": f"debug-game-{name}",
+                "inherits": "test-base",
+                "configurePreset": "debug-game",
+                "filter": {"include": {"label": label}, "exclude": {"label": "^developer-tool$"}},
+            }
+        )
     test_presets.insert(
         1,
         {
@@ -564,69 +556,43 @@ def make_unreal_document() -> dict[str, Any]:
             "filter": {"include": {"label": "^usfloader$"}},
         }
     )
-    for suffix in ("-msvc",):
-        test_presets.extend(
-            [
-                {
-                    "name": f"debug-game{suffix}-tests",
-                    "inherits": "test-base",
-                    "configurePreset": f"debug-game{suffix}",
-                    "filter": {
-                        "include": {"label": "^all$"},
-                        "exclude": {
-                            "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxEditor\\.MaterialSynth)$"
-                        },
-                    },
-                },
-                {
-                    "name": f"debug-game{suffix}-full-tests",
-                    "inherits": "test-base",
-                    "configurePreset": f"debug-game{suffix}",
-                    "filter": {"include": {"label": "^(all|developer-tool)$"}},
-                },
-            ]
-        )
+    test_presets.append(
+        {
+            "name": "debug-game-all-unreal-tests",
+            "inherits": "test-base",
+            "configurePreset": "debug-game",
+            "filter": {"include": {"label": "^unreal-all$"}},
+        }
+    )
 
-    for suffix in ("", "-msvc"):
-        test_presets.append(
+    workflow_presets: list[dict[str, Any]] = []
+    for name, _, _, _ in unreal_configurations:
+        preset_name = name
+        workflow_presets.append(
             {
-                "name": f"debug-game{suffix}-all-unreal-tests",
-                "inherits": "test-base",
-                "configurePreset": f"debug-game{suffix}",
-                "filter": {"include": {"label": "^unreal-all$"}},
+                "name": preset_name,
+                "steps": [
+                    {"type": "configure", "name": preset_name},
+                    {"type": "build", "name": preset_name},
+                ],
             }
         )
 
-    workflow_presets: list[dict[str, Any]] = []
-    for suffix, _, _, _ in compiler_variants:
-        for name, _, _, _ in unreal_configurations:
-            preset_name = f"{name}{suffix}"
-            workflow_presets.append(
-                {
-                    "name": preset_name,
-                    "steps": [
-                        {"type": "configure", "name": preset_name},
-                        {"type": "build", "name": preset_name},
-                    ],
-                }
-            )
-
-    for suffix in ("", "-msvc"):
-        for test_suffix in ("unit-tests",):
-            test_name = f"debug-game{suffix}-{test_suffix}"
-            workflow_presets.append(
-                {
-                    "name": test_name,
-                    "steps": [
-                        {"type": "configure", "name": f"debug-game{suffix}"},
-                        {
-                            "type": "build",
-                            "name": f"debug-game{suffix}-unit-prerequisites",
-                        },
-                        {"type": "test", "name": test_name},
-                    ],
-                }
-            )
+    for test_suffix in ("unit-tests",):
+        test_name = f"debug-game-{test_suffix}"
+        workflow_presets.append(
+            {
+                "name": test_name,
+                "steps": [
+                    {"type": "configure", "name": "debug-game"},
+                    {
+                        "type": "build",
+                        "name": "debug-game-unit-prerequisites",
+                    },
+                    {"type": "test", "name": test_name},
+                ],
+            }
+        )
     workflow_presets.extend(
         [
             {
@@ -834,11 +800,7 @@ def main() -> int:
     )
     arguments = parser.parse_args()
 
-    combinations, rejected = expand_matrix(PLATFORMS, CONFIGURATIONS, FEATURES)
-    if len(combinations) != 12:
-        raise ValueError(f"Expected 12 supported native combinations, got {len(combinations)}.")
-    if len(rejected) != 4:
-        raise ValueError(f"Expected 4 explicitly rejected MSVC ASan combinations, got {len(rejected)}.")
+    combinations = expand_matrix(PLATFORMS, CONFIGURATIONS, FEATURES)
 
     documents = {
         PRESET_DIRECTORY / "base.json": make_base_document(),

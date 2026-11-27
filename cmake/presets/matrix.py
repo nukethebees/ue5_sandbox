@@ -16,7 +16,6 @@ class Compiler:
     display_name: str
     base_preset: str
     toolchain_file: str
-    supports_asan: bool = False
 
 
 @dataclass(frozen=True)
@@ -124,9 +123,8 @@ def expand_matrix(
     platforms: Iterable[Platform],
     configurations: Iterable[Configuration],
     features: tuple[Feature, ...],
-) -> tuple[tuple[Combination, ...], tuple[tuple[str, str], ...]]:
+) -> tuple[Combination, ...]:
     combinations: list[Combination] = []
-    rejected: list[tuple[str, str]] = []
 
     for platform in platforms:
         for compiler in platform.compilers:
@@ -137,24 +135,13 @@ def expand_matrix(
                         for feature, is_enabled in zip(features, enabled, strict=True)
                         if is_enabled
                     )
-                    combination = Combination(platform, compiler, configuration, selected)
-
-                    if any(feature.name == "asan" for feature in selected) and not compiler.supports_asan:
-                        rejected.append(
-                            (
-                                combination.name,
-                                "AddressSanitizer is supported only by the validated clang-cl toolchain.",
-                            )
-                        )
-                        continue
-
-                    combinations.append(combination)
+                    combinations.append(Combination(platform, compiler, configuration, selected))
 
     names = [combination.name for combination in combinations]
     if len(names) != len(set(names)):
         raise ValueError("The native matrix generated duplicate preset names.")
 
-    return tuple(combinations), tuple(rejected)
+    return tuple(combinations)
 
 
 def validate_preset_references(document: Mapping[str, Any]) -> None:

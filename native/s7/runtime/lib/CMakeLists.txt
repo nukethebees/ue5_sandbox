@@ -18,20 +18,12 @@ target_include_directories(sandbox-s7
     include
 )
 
-add_library(sandbox-s7-warning-exceptions INTERFACE)
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  target_compile_options(sandbox-s7-warning-exceptions
-    INTERFACE
-      /wd5039 # The third-party s7 C callback typedefs cannot express noexcept.
-  )
-endif()
 target_link_libraries(sandbox-s7
   PUBLIC
     sandbox::native_defaults
     native-s7-data
   PRIVATE
     sandbox-s7-third-party
-    sandbox-s7-warning-exceptions
     "$<$<BOOL:${IOJ_WITH_UNREAL}>:ioj::unreal_avx2>"
 )
 ioj_enable_warnings(sandbox-s7)

@@ -138,50 +138,6 @@
       }
     },
     {
-      "name": "win-x64-msvc-debug",
-      "displayName": "Native Windows x64 MSVC Debug",
-      "inherits": [
-        "windows-msvc",
-        "native-common",
-        "native-config-debug"
-      ]
-    },
-    {
-      "name": "win-x64-msvc-debug-unity",
-      "displayName": "Native Windows x64 MSVC Debug + Unity",
-      "inherits": [
-        "windows-msvc",
-        "native-common",
-        "native-config-debug"
-      ],
-      "cacheVariables": {
-        "CMAKE_UNITY_BUILD": true,
-        "CMAKE_UNITY_BUILD_BATCH_SIZE": "8"
-      }
-    },
-    {
-      "name": "win-x64-msvc-release",
-      "displayName": "Native Windows x64 MSVC Release",
-      "inherits": [
-        "windows-msvc",
-        "native-common",
-        "native-config-release"
-      ]
-    },
-    {
-      "name": "win-x64-msvc-release-unity",
-      "displayName": "Native Windows x64 MSVC Release + Unity",
-      "inherits": [
-        "windows-msvc",
-        "native-common",
-        "native-config-release"
-      ],
-      "cacheVariables": {
-        "CMAKE_UNITY_BUILD": true,
-        "CMAKE_UNITY_BUILD_BATCH_SIZE": "8"
-      }
-    },
-    {
       "name": "native",
       "displayName": "Native development (Windows x64 clang-cl Debug + Unity)",
       "inherits": "win-x64-clangcl-debug-unity"
@@ -328,34 +284,6 @@
     {
       "name": "win-x64-clangcl-release-asan-unity",
       "configurePreset": "win-x64-clangcl-release-asan-unity",
-      "targets": [
-        "native-tests"
-      ]
-    },
-    {
-      "name": "win-x64-msvc-debug",
-      "configurePreset": "win-x64-msvc-debug",
-      "targets": [
-        "native-tests"
-      ]
-    },
-    {
-      "name": "win-x64-msvc-debug-unity",
-      "configurePreset": "win-x64-msvc-debug-unity",
-      "targets": [
-        "native-tests"
-      ]
-    },
-    {
-      "name": "win-x64-msvc-release",
-      "configurePreset": "win-x64-msvc-release",
-      "targets": [
-        "native-tests"
-      ]
-    },
-    {
-      "name": "win-x64-msvc-release-unity",
-      "configurePreset": "win-x64-msvc-release-unity",
       "targets": [
         "native-tests"
       ]
@@ -516,46 +444,6 @@
       "name": "win-x64-clangcl-release-asan-unity",
       "inherits": "test-base",
       "configurePreset": "win-x64-clangcl-release-asan-unity",
-      "filter": {
-        "include": {
-          "label": "^all$"
-        }
-      }
-    },
-    {
-      "name": "win-x64-msvc-debug",
-      "inherits": "test-base",
-      "configurePreset": "win-x64-msvc-debug",
-      "filter": {
-        "include": {
-          "label": "^all$"
-        }
-      }
-    },
-    {
-      "name": "win-x64-msvc-debug-unity",
-      "inherits": "test-base",
-      "configurePreset": "win-x64-msvc-debug-unity",
-      "filter": {
-        "include": {
-          "label": "^all$"
-        }
-      }
-    },
-    {
-      "name": "win-x64-msvc-release",
-      "inherits": "test-base",
-      "configurePreset": "win-x64-msvc-release",
-      "filter": {
-        "include": {
-          "label": "^all$"
-        }
-      }
-    },
-    {
-      "name": "win-x64-msvc-release-unity",
-      "inherits": "test-base",
-      "configurePreset": "win-x64-msvc-release-unity",
       "filter": {
         "include": {
           "label": "^all$"
@@ -840,74 +728,6 @@
         {
           "type": "test",
           "name": "win-x64-clangcl-release-asan-unity"
-        }
-      ]
-    },
-    {
-      "name": "win-x64-msvc-debug",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "win-x64-msvc-debug"
-        },
-        {
-          "type": "build",
-          "name": "win-x64-msvc-debug"
-        },
-        {
-          "type": "test",
-          "name": "win-x64-msvc-debug"
-        }
-      ]
-    },
-    {
-      "name": "win-x64-msvc-debug-unity",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "win-x64-msvc-debug-unity"
-        },
-        {
-          "type": "build",
-          "name": "win-x64-msvc-debug-unity"
-        },
-        {
-          "type": "test",
-          "name": "win-x64-msvc-debug-unity"
-        }
-      ]
-    },
-    {
-      "name": "win-x64-msvc-release",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "win-x64-msvc-release"
-        },
-        {
-          "type": "build",
-          "name": "win-x64-msvc-release"
-        },
-        {
-          "type": "test",
-          "name": "win-x64-msvc-release"
-        }
-      ]
-    },
-    {
-      "name": "win-x64-msvc-release-unity",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "win-x64-msvc-release-unity"
-        },
-        {
-          "type": "build",
-          "name": "win-x64-msvc-release-unity"
-        },
-        {
-          "type": "test",
-          "name": "win-x64-msvc-release-unity"
         }
       ]
     },

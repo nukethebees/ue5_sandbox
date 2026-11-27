@@ -4,8 +4,6 @@ add_library(ioj_warning_level INTERFACE)
 add_library(ioj::warning_level ALIAS ioj_warning_level)
 add_library(ioj_codegen_warning_exceptions INTERFACE)
 add_library(ioj::codegen_warning_exceptions ALIAS ioj_codegen_warning_exceptions)
-add_library(ioj_msvc_strict INTERFACE)
-add_library(ioj::msvc_strict ALIAS ioj_msvc_strict)
 add_library(ioj_clang_strict INTERFACE)
 add_library(ioj::clang_strict ALIAS ioj_clang_strict)
 
@@ -67,78 +65,11 @@ if(IOJ_IS_CLANG_CL)
   endforeach()
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  set(ioj_msvc_additional_warnings
-    /w44191 # A function pointer conversion is unsafe.
-    /w44242 # A conversion may lose data.
-    /w44254 # An operator conversion may lose data.
-    /w44263 # A member function does not override a base virtual function.
-    /w44264 # A base virtual function is hidden and has no override.
-    /w44265 # A class with virtual functions has a non-virtual destructor.
-    /w44266 # A derived function hides a base virtual overload.
-    /w44287 # An unsigned value is compared with a negative constant.
-    /w44355 # this is used in a base member initializer.
-    /w44388 # A comparison mixes signed and unsigned values.
-    /w44545 # A function name before a comma is missing an argument list.
-    /w44546 # A function call before a comma is missing an argument list.
-    /w44547 # An operator before a comma has no effect.
-    /w44548 # An expression before a comma has no effect.
-    /w44549 # An operator before a comma probably has the wrong intent.
-    /w44555 # An expression has no effect.
-    /w44574 # A macro defined as zero may have been used with #ifdef by mistake.
-    /w44577 # noexcept is used without an exception-handling mode.
-    /w44608 # More than one union member is initialized.
-    /w44619 # A warning pragma refers to an unknown warning number.
-    /w44643 # Code forward-declares a name in namespace std.
-    /w44668 # An undefined preprocessor symbol is replaced with zero.
-    /w44749 # offsetof is used with a non-standard-layout type.
-    /w44774 # A format argument is not a string literal.
-    /w44777 # A variadic argument does not match its format specifier.
-    /w44800 # A value is implicitly converted to bool.
-    /w44826 # A conversion sign-extends a value unexpectedly.
-    /w44905 # A wide string literal is cast to a narrow string pointer.
-    /w44906 # A narrow string literal is cast to a wide string pointer.
-    /w44928 # Copy initialization applies multiple user-defined conversions.
-    /w44946 # reinterpret_cast is used between related classes.
-    /w44986 # An exception specification differs from an earlier declaration.
-    /w44987 # A deprecated dynamic exception specification is used.
-    /w45029 # An alignment attribute is applied in an invalid context.
-    /w45031 # Warning state is popped from a different source file.
-    /w45032 # Warning state is pushed without a matching pop.
-    /w45038 # Members are initialized in declaration order, not list order.
-    /w45039 # A potentially throwing callback crosses an extern C boundary.
-    /w45041 # A redundant out-of-line constexpr definition is used.
-    /w45042 # inline is used on a block-scope function declaration.
-    /w45204 # A polymorphic class has a non-virtual trivial destructor.
-    /w45214 # An operation on a volatile value is deprecated.
-    /w45215 # A volatile-qualified function parameter is deprecated.
-    /w45216 # A volatile-qualified return type is deprecated.
-    /w45217 # A volatile-qualified structured binding is deprecated.
-    /w45220 # A volatile member changes generated special-member triviality.
-    /w45233 # An explicitly captured lambda variable is unused.
-    /w45240 # An attribute is ignored in its current position.
-    /w45243 # Using an incomplete class may violate the ODR because of ABI limits.
-    /w45249 # An enum bit-field cannot represent all named enumerators.
-    /w45256 # A non-defining enum declaration is not standalone.
-    /w45259 # An explicit specialization is missing template <>.
-    /w45262 # A switch case falls through without an annotation.
-    /w45263 # Moving a temporary prevents copy elision.
-    /w45264 # A const variable is unused.
-    /w45266 # A const qualifier on a return type has no effect.
-    /w45267 # An implicitly generated copy operation is deprecated.
-  )
-  foreach(ioj_msvc_warning IN LISTS ioj_msvc_additional_warnings)
-    target_add_supported_options(ioj_msvc_strict COMPILE
-      "${ioj_msvc_warning}"
-    )
-  endforeach()
-endif()
 
 add_library(ioj_warnings INTERFACE)
 add_library(ioj::warnings ALIAS ioj_warnings)
 target_link_libraries(ioj_warnings INTERFACE
   ioj::warning_level
-  ioj::msvc_strict
   ioj::clang_strict
 )
 

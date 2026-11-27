@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 4.4.2)
 
 
 project(SandboxUnrealBuild LANGUAGES C CXX)
+if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_VERSION VERSION_LESS 24)
+  message(FATAL_ERROR "Native targets require Clang 24 or later.")
+endif()
 include(cmake/compiler_cache.cmake)
 enable_testing()
 include(cmake/test_environment.cmake)

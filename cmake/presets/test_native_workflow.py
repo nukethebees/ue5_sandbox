@@ -658,30 +658,6 @@ cmake_language(DEFER CALL check_simulation_policy)
             self.assertIn("/permissive-", consumer_policy)
             self.assertNotRegex(consumer_policy, r"/W4|/WX|-Werror|-Wpedantic")
 
-            msvc_build = Path(temporary_root) / "msvc build with spaces"
-            self.run_cmake(
-                "--preset", "win-x64-msvc-debug", "-S", str(self.source_dir), "-B", str(msvc_build),
-                "-DIOJ_BUILD_DEVELOPER_TOOLS=OFF", "-DCMAKE_COMPILE_WARNING_AS_ERROR=OFF",
-                f"-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES={policy_check.as_posix()}",
-            )
-            msvc_policy = (msvc_build / "consumer-policy.txt").read_text()
-            for requirement in ("cxx_std_23", "_ITERATOR_DEBUG_LEVEL=0", "/permissive-", "/Zc:preprocessor"):
-                self.assertIn(requirement, msvc_policy)
-            self.assertNotRegex(msvc_policy, r"/W[0-4X]|/w4\d+|-Werror|-Wpedantic")
-            commands = self.run_cmake("--build", str(msvc_build), "--target", "native-core", "policy-consumer",
-                                      "--", "-t", "commands")
-            consumer_command = next(line for line in commands.splitlines() if "policy_fixture.cpp" in line)
-            for option in ("/permissive-", "/Zc:preprocessor"):
-                self.assertEqual(consumer_command.count(option), 1, consumer_command)
-            self.assertNotRegex(consumer_command, r"[/-]W4|[/-]WX|/w4\d+|-Werror|-Wpedantic")
-            core_commands = [line for line in commands.splitlines()
-                             if "/native/core/src/" in line.replace("\\", "/") and re.search(r" [/-]c ", line)]
-            self.assertTrue(core_commands)
-            for command in core_commands:
-                for option in ("/permissive-", "/Zc:preprocessor", "/W4"):
-                    self.assertEqual(command.count(option), 1, command)
-                self.assertNotRegex(command, r"[/-]WX\b")
-
             dry_run = self.run_cmake(
                 "--build",
                 str(build_directory),

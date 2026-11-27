@@ -95,36 +95,6 @@ class CompilerCacheTests(unittest.TestCase):
             run(self.cmake, "--build", str(build))
             self.assertEqual(pch.stat().st_mtime_ns, timestamp)
 
-    def test_msvc_reconfigure_preserves_unchanged_pch(self):
-        with tempfile.TemporaryDirectory(prefix="msvc-pch-") as directory:
-            root = Path(directory)
-            module = self.source_dir / "cmake/compiler_cache.cmake"
-            toolchain = self.source_dir / "cmake/toolchains/windows-msvc.cmake"
-            (root / "pch.hpp").write_text("#pragma once\nstruct Value { int number; };\n")
-            (root / "probe.cpp").write_text("int read(Value const& value) { return value.number; }\n")
-            (root / "CMakeLists.txt").write_text(
-                'cmake_minimum_required(VERSION 4.4.2)\n'
-                'project(MsvcPch LANGUAGES CXX)\n'
-                f'include("{module.as_posix()}")\n'
-                'add_library(probe OBJECT probe.cpp)\n'
-                'target_precompile_headers(probe PRIVATE pch.hpp)\n'
-            )
-            build = root / "build"
-            configure = (self.cmake, "-S", str(root), "-B", str(build), "-G", "Ninja",
-                         f"--toolchain={toolchain}", "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY")
-
-            def run(*command):
-                result = subprocess.run(command, capture_output=True, text=True)
-                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-            run(*configure)
-            run(self.cmake, "--build", str(build))
-            pch = next(build.rglob("*.pch"))
-            timestamp = pch.stat().st_mtime_ns
-            run(*configure)
-            run(self.cmake, "--build", str(build))
-            self.assertEqual(pch.stat().st_mtime_ns, timestamp)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

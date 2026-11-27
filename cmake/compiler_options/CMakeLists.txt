@@ -7,19 +7,12 @@ if(IOJ_ENABLE_BUILD_PROFILING)
     INTERFACE
       "$<$<COMPILE_LANG_AND_ID:C,Clang,AppleClang>:-ftime-trace>"
       "$<$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang>:-ftime-trace>"
-      "$<$<COMPILE_LANG_AND_ID:C,MSVC>:/Bt+>"
-      "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Bt+>"
   )
 endif()
 
 add_library(ioj_cxx_standard INTERFACE)
 add_library(ioj::cxx_standard ALIAS ioj_cxx_standard)
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  # Preserve the pinned MSVC presets until CMake supports their C++26 mode.
-  target_compile_features(ioj_cxx_standard INTERFACE cxx_std_23)
-else()
-  target_compile_features(ioj_cxx_standard INTERFACE cxx_std_26)
-endif()
+target_compile_features(ioj_cxx_standard INTERFACE cxx_std_26)
 
 add_library(ioj_native_abi INTERFACE)
 add_library(ioj::native_abi ALIAS ioj_native_abi)
@@ -38,41 +31,6 @@ if(IOJ_MSVC_FRONTEND)
   target_compile_options(ioj_cxx_conformance INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:/permissive->")
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  set(ioj_msvc_conformance_options
-    /Zc:__cplusplus
-    /Zc:alignedNew
-    /Zc:auto
-    /Zc:char8_t
-    /Zc:checkGwOdr
-    /Zc:enumTypes
-    /Zc:externC
-    /Zc:externConstexpr
-    /Zc:forScope
-    /Zc:gotoScope
-    /Zc:hiddenFriend
-    /Zc:implicitNoexcept
-    /Zc:inline
-    /Zc:lambda
-    /Zc:noexceptTypes
-    /Zc:preprocessor
-    /Zc:referenceBinding
-    /Zc:rvalueCast
-    /Zc:sizedDealloc
-    /Zc:static_assert
-    /Zc:strictStrings
-    /Zc:templateScope
-    /Zc:ternary
-    /Zc:threadSafeInit
-    /Zc:tlsGuards
-    /Zc:u8EscapeEncoding
-    /Zc:wchar_t
-    /Zc:zeroSizeArrayNew
-  )
-  # Required policy for the pinned MSVC toolchain; never silently drop conformance.
-  target_compile_options(ioj_cxx_conformance INTERFACE
-    "$<$<COMPILE_LANGUAGE:CXX>:${ioj_msvc_conformance_options}>")
-endif()
 
 add_library(ioj_arch_avx2 INTERFACE)
 add_library(ioj::arch_avx2 ALIAS ioj_arch_avx2)
@@ -116,11 +74,7 @@ if(IOJ_MSVC_FRONTEND)
   target_compile_options(ioj_arch_avx2 INTERFACE /arch:AVX2)
   target_compile_options(ioj_arch_avx512 INTERFACE /arch:AVX512)
 
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_compile_options(ioj_fp_precise INTERFACE "SHELL:-Xclang -ffp-contract=off")
-  else()
-    target_compile_options(ioj_fp_precise INTERFACE /fp:precise)
-  endif()
+  target_compile_options(ioj_fp_precise INTERFACE "SHELL:-Xclang -ffp-contract=off")
   target_compile_options(ioj_fp_strict INTERFACE /fp:strict)
   target_compile_options(ioj_fp_fast INTERFACE /fp:fast)
 
