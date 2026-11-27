@@ -21,7 +21,7 @@ coj benchmark native-simulation --level LevelScripts/BorderSkirmish/BorderSkirmi
 Browse the [Scheme settings reference](Settings/REFERENCE.md) for field types and enum values.
 
 - Set process and debug flags in [application.scm](Settings/application.scm).
-- Tune gameplay and Starfox flight in [simulation.scm](Settings/simulation.scm) and visuals in [presentation.scm](Settings/presentation.scm). Use **Tools → Export Entity Geometry** after changing shared meshes, sockets, or fighter wave size.
+- Tune gameplay and flight in [simulation.scm](Settings/simulation.scm) and visuals in [presentation.scm](Settings/presentation.scm). Use **Tools → Export Entity Geometry** after changing shared meshes, sockets, or fighter wave size.
 - Set factory preferences in [user-defaults.scm](Settings/user-defaults.scm). Edit personal overrides in `Settings/preferences.scm` or use **Options → Apply**. Packaged games store overrides under the local application settings directory in `IsleOfJebbers/Config/`.
 - Reset a category in **Options**, then **Apply**. Controls saves key overrides in the same preferences file.
 

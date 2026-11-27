@@ -110,7 +110,7 @@ TEST(GameSettings, NormalizesRangesAndChecksSuppliedCapabilities) {
 }
 
 TEST(GameSettings, BindingIdentityIgnoresProfileAndDistinguishesSlotsAndDevices) {
-    ControlBindingAddress first{1, FlightMapping::StarfoxFirePrimaryKeyboardMouse, 1};
+    ControlBindingAddress first{1, FlightMapping::FlightFirePrimaryKeyboardMouse, 1};
     auto second{first};
     second.profile_index = 2;
     EXPECT_EQ(control_binding_identity(first, 1), control_binding_identity(second, 1));
@@ -124,20 +124,20 @@ TEST(GameSettings, BindingIdentityIgnoresProfileAndDistinguishesSlotsAndDevices)
 
 TEST(GameSettings, BindingConflictsRespectHardwareProfileAndChord) {
     std::array<ControlBindingSnapshot, 5> bindings{{
-        {.address = {1, FlightMapping::StarfoxFirePrimaryKeyboardMouse, 1},
+        {.address = {1, FlightMapping::FlightFirePrimaryKeyboardMouse, 1},
          .current_key = PhysicalKey::SpaceBar},
-        {.address = {1, FlightMapping::StarfoxBoostKeyboardMouse, 1},
+        {.address = {1, FlightMapping::FlightBoostKeyboardMouse, 1},
          .current_key = PhysicalKey::SpaceBar},
-        {.address = {1, FlightMapping::StarfoxBrakeKeyboardMouse, 1},
+        {.address = {1, FlightMapping::FlightBrakeKeyboardMouse, 1},
          .current_key = PhysicalKey::SpaceBar},
-        {.address = {2, FlightMapping::StarfoxBoostKeyboardMouse, 1},
+        {.address = {2, FlightMapping::FlightBoostKeyboardMouse, 1},
          .current_key = PhysicalKey::SpaceBar},
-        {.address = {1, FlightMapping::StarfoxBoostGamepad, 1},
+        {.address = {1, FlightMapping::FlightBoostGamepad, 1},
          .current_key = PhysicalKey::SpaceBar},
     }};
     EXPECT_EQ(control_binding_conflicts(bindings, bindings[0].address, PhysicalKey::SpaceBar),
               (std::vector<std::size_t>{1, 2}));
-    bindings[0].chord = ControlBindingAddress{1, FlightMapping::StarfoxSteerKeyboardMouse, 1};
+    bindings[0].chord = ControlBindingAddress{1, FlightMapping::FlightSteerKeyboardMouse, 1};
     EXPECT_TRUE(
         control_binding_conflicts(bindings, bindings[0].address, PhysicalKey::SpaceBar).empty());
     bindings[2].chord = bindings[0].chord;

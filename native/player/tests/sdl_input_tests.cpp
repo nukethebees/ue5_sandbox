@@ -446,7 +446,7 @@ TEST_F(SdlPlayerInput, RebindingFireToAnAlreadyHeldStickWaitsForNeutral) {
     };
     sample(-0.8f);
     settings_.bindings.emplace().push_back(
-        {FlightMapping::StarfoxFirePrimaryGamepad, PhysicalKey::GamepadRightX});
+        {FlightMapping::FlightFirePrimaryGamepad, PhysicalKey::GamepadRightX});
     input_->refresh_bindings(commands_);
     sample(-0.6f);
     EXPECT_TRUE(input_->state().transitions.empty());

@@ -17,12 +17,12 @@ auto accepts_binding(FlightMapping mapping, KeyCode key) -> bool {
             return is_gamepad_button(key.key);
         case FlightMapping::GeneralPauseKeyboardMouse:
             return is_keyboard_mouse_button(key.key);
-        case FlightMapping::StarfoxPitchKeyboardMouse:
-        case FlightMapping::StarfoxYawKeyboardMouse:
+        case FlightMapping::FlightPitchKeyboardMouse:
+        case FlightMapping::FlightYawKeyboardMouse:
             return is_keyboard_mouse_button(key.key) || key == PhysicalKey::MouseX ||
                    key == PhysicalKey::MouseY;
-        case FlightMapping::StarfoxSteerKeyboardMouse:
-        case FlightMapping::StarfoxAccelerateKeyboardMouse:
+        case FlightMapping::FlightSteerKeyboardMouse:
+        case FlightMapping::FlightAccelerateKeyboardMouse:
             return is_keyboard_mouse_button(key.key);
         default:
             return is_gamepad_control(key.key) || is_keyboard_mouse_button(key.key) ||
@@ -43,77 +43,77 @@ auto flight_controls() -> std::span<FlightControl const> {
          10},
         {"Pitch",
          PhysicalKey::MouseY,
-         FlightMapping::StarfoxPitchKeyboardMouse,
+         FlightMapping::FlightPitchKeyboardMouse,
          BindingGroup::Flight,
          10},
         {"Pitch",
          PhysicalKey::GamepadLeftY,
-         FlightMapping::StarfoxPitchGamepad,
+         FlightMapping::FlightPitchGamepad,
          BindingGroup::Flight,
          10},
         {"Yaw",
          PhysicalKey::MouseX,
-         FlightMapping::StarfoxYawKeyboardMouse,
+         FlightMapping::FlightYawKeyboardMouse,
          BindingGroup::Flight,
          20},
         {"Yaw",
          PhysicalKey::GamepadLeftX,
-         FlightMapping::StarfoxYawGamepad,
+         FlightMapping::FlightYawGamepad,
          BindingGroup::Flight,
          20},
         {"Hold to steer",
          PhysicalKey::RightMouseButton,
-         FlightMapping::StarfoxSteerKeyboardMouse,
+         FlightMapping::FlightSteerKeyboardMouse,
          BindingGroup::Flight,
          30},
         {"Accelerate",
          PhysicalKey::W,
-         FlightMapping::StarfoxAccelerateKeyboardMouse,
+         FlightMapping::FlightAccelerateKeyboardMouse,
          BindingGroup::Flight,
          40},
         {"Accelerate",
          PhysicalKey::GamepadLeftTriggerAxis,
-         FlightMapping::StarfoxAccelerateGamepad,
+         FlightMapping::FlightAccelerateGamepad,
          BindingGroup::Flight,
          40},
         {"Brake",
          PhysicalKey::S,
-         FlightMapping::StarfoxBrakeKeyboardMouse,
+         FlightMapping::FlightBrakeKeyboardMouse,
          BindingGroup::Flight,
          50},
         {"Brake",
          PhysicalKey::GamepadLeftShoulder,
-         FlightMapping::StarfoxBrakeGamepad,
+         FlightMapping::FlightBrakeGamepad,
          BindingGroup::Flight,
          50},
         {"Boost",
          PhysicalKey::LeftShift,
-         FlightMapping::StarfoxBoostKeyboardMouse,
+         FlightMapping::FlightBoostKeyboardMouse,
          BindingGroup::Flight,
          60},
         {"Boost",
          PhysicalKey::GamepadRightShoulder,
-         FlightMapping::StarfoxBoostGamepad,
+         FlightMapping::FlightBoostGamepad,
          BindingGroup::Flight,
          60},
         {"Emergency Brake",
          PhysicalKey::X,
-         FlightMapping::StarfoxEmergencyBrakeKeyboardMouse,
+         FlightMapping::FlightEmergencyBrakeKeyboardMouse,
          BindingGroup::Flight,
          70},
         {"Emergency Brake",
          PhysicalKey::GamepadFaceButtonLeft,
-         FlightMapping::StarfoxEmergencyBrakeGamepad,
+         FlightMapping::FlightEmergencyBrakeGamepad,
          BindingGroup::Flight,
          70},
         {"Fire Primary",
          PhysicalKey::LeftMouseButton,
-         FlightMapping::StarfoxFirePrimaryKeyboardMouse,
+         FlightMapping::FlightFirePrimaryKeyboardMouse,
          BindingGroup::Combat,
          100},
         {"Fire Primary",
          PhysicalKey::GamepadRightTriggerAxis,
-         FlightMapping::StarfoxFirePrimaryGamepad,
+         FlightMapping::FlightFirePrimaryGamepad,
          BindingGroup::Combat,
          100},
     };
@@ -142,29 +142,29 @@ struct DigitalBinding {
 constexpr DigitalBinding digital_bindings[]{
     {FlightMapping::GeneralPauseKeyboardMouse, DigitalAction::Pause},
     {FlightMapping::GeneralPauseGamepad, DigitalAction::Pause},
-    {FlightMapping::StarfoxSteerKeyboardMouse, DigitalAction::HoldToSteer},
-    {FlightMapping::StarfoxBrakeKeyboardMouse, DigitalAction::Brake},
-    {FlightMapping::StarfoxBrakeGamepad, DigitalAction::Brake},
-    {FlightMapping::StarfoxBoostKeyboardMouse, DigitalAction::Boost},
-    {FlightMapping::StarfoxBoostGamepad, DigitalAction::Boost},
-    {FlightMapping::StarfoxEmergencyBrakeKeyboardMouse, DigitalAction::EmergencyBrake},
-    {FlightMapping::StarfoxEmergencyBrakeGamepad, DigitalAction::EmergencyBrake},
-    {FlightMapping::StarfoxFirePrimaryKeyboardMouse, DigitalAction::Fire},
-    {FlightMapping::StarfoxFirePrimaryGamepad, DigitalAction::Fire},
+    {FlightMapping::FlightSteerKeyboardMouse, DigitalAction::HoldToSteer},
+    {FlightMapping::FlightBrakeKeyboardMouse, DigitalAction::Brake},
+    {FlightMapping::FlightBrakeGamepad, DigitalAction::Brake},
+    {FlightMapping::FlightBoostKeyboardMouse, DigitalAction::Boost},
+    {FlightMapping::FlightBoostGamepad, DigitalAction::Boost},
+    {FlightMapping::FlightEmergencyBrakeKeyboardMouse, DigitalAction::EmergencyBrake},
+    {FlightMapping::FlightEmergencyBrakeGamepad, DigitalAction::EmergencyBrake},
+    {FlightMapping::FlightFirePrimaryKeyboardMouse, DigitalAction::Fire},
+    {FlightMapping::FlightFirePrimaryGamepad, DigitalAction::Fire},
 };
-constexpr std::array accelerator_mappings{FlightMapping::StarfoxAccelerateKeyboardMouse,
-                                          FlightMapping::StarfoxAccelerateGamepad};
+constexpr std::array accelerator_mappings{FlightMapping::FlightAccelerateKeyboardMouse,
+                                          FlightMapping::FlightAccelerateGamepad};
 struct TurnBinding {
     FlightMapping mapping;
     Axis component;
 };
 constexpr TurnBinding pointer_bindings[]{
-    {FlightMapping::StarfoxPitchKeyboardMouse, Axis::Pitch},
-    {FlightMapping::StarfoxYawKeyboardMouse, Axis::Yaw},
+    {FlightMapping::FlightPitchKeyboardMouse, Axis::Pitch},
+    {FlightMapping::FlightYawKeyboardMouse, Axis::Yaw},
 };
 constexpr TurnBinding stick_bindings[]{
-    {FlightMapping::StarfoxPitchGamepad, Axis::Pitch},
-    {FlightMapping::StarfoxYawGamepad, Axis::Yaw},
+    {FlightMapping::FlightPitchGamepad, Axis::Pitch},
+    {FlightMapping::FlightYawGamepad, Axis::Yaw},
 };
 }
 

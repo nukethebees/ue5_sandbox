@@ -184,8 +184,8 @@ TEST(NativeSettings, ReboundClearedAndResetKeysSurviveReload) {
     ASSERT_TRUE(settings.load(IOJ_LEVEL_SCRIPTS, path, desktop, LaunchDisplayMode::Windowed));
     auto edited{settings.applied()};
     edited.controls.bindings =
-        std::vector<KeyBinding>{{FlightMapping::StarfoxBoostKeyboardMouse, PhysicalKey::B},
-                                {FlightMapping::StarfoxFirePrimaryGamepad, PhysicalKey::Unbound}};
+        std::vector<KeyBinding>{{FlightMapping::FlightBoostKeyboardMouse, PhysicalKey::B},
+                                {FlightMapping::FlightFirePrimaryGamepad, PhysicalKey::Unbound}};
     auto saved{settings.save_category(GameSettingCategory::Controls, edited, settings.applied())};
     ASSERT_TRUE(saved) << saved.error();
     auto loaded{read_user_settings(IOJ_LEVEL_SCRIPTS, path, desktop)};

@@ -82,16 +82,16 @@ TEST(FlightInput, ReboundPauseAndViewerControlsAreIsolatedFromFlight) {
 
 TEST(FlightInput, TransientPointerMotionCannotHoldFireOrAcceleration) {
     using enum FlightMapping;
-    EXPECT_TRUE(accepts_binding(StarfoxYawKeyboardMouse, PhysicalKey::MouseY));
-    EXPECT_TRUE(accepts_binding(StarfoxAccelerateGamepad, PhysicalKey::GamepadFaceButtonTop));
-    EXPECT_TRUE(accepts_binding(StarfoxFirePrimaryGamepad, PhysicalKey::GamepadRightTriggerAxis));
-    EXPECT_TRUE(accepts_binding(StarfoxFirePrimaryKeyboardMouse, PhysicalKey::MouseScrollUp));
-    EXPECT_FALSE(accepts_binding(StarfoxFirePrimaryKeyboardMouse, PhysicalKey::MouseX));
-    EXPECT_FALSE(accepts_binding(StarfoxAccelerateKeyboardMouse, PhysicalKey::MouseY));
-    EXPECT_FALSE(accepts_binding(StarfoxPitchKeyboardMouse, PhysicalKey::MouseWheelAxis));
+    EXPECT_TRUE(accepts_binding(FlightYawKeyboardMouse, PhysicalKey::MouseY));
+    EXPECT_TRUE(accepts_binding(FlightAccelerateGamepad, PhysicalKey::GamepadFaceButtonTop));
+    EXPECT_TRUE(accepts_binding(FlightFirePrimaryGamepad, PhysicalKey::GamepadRightTriggerAxis));
+    EXPECT_TRUE(accepts_binding(FlightFirePrimaryKeyboardMouse, PhysicalKey::MouseScrollUp));
+    EXPECT_FALSE(accepts_binding(FlightFirePrimaryKeyboardMouse, PhysicalKey::MouseX));
+    EXPECT_FALSE(accepts_binding(FlightAccelerateKeyboardMouse, PhysicalKey::MouseY));
+    EXPECT_FALSE(accepts_binding(FlightPitchKeyboardMouse, PhysicalKey::MouseWheelAxis));
     ControlsSettings controls{};
-    controls.bindings.emplace().push_back({StarfoxFirePrimaryKeyboardMouse, PhysicalKey::MouseX});
-    controls.bindings->push_back({StarfoxAccelerateKeyboardMouse, PhysicalKey::MouseY});
+    controls.bindings.emplace().push_back({FlightFirePrimaryKeyboardMouse, PhysicalKey::MouseX});
+    controls.bindings->push_back({FlightAccelerateKeyboardMouse, PhysicalKey::MouseY});
     FlightInputResolver flight;
     InputState state;
     flight.configure(state, controls, Context::Gameplay);
@@ -117,7 +117,7 @@ TEST(FlightInput, PointerSteeringHandsBackToHeldStickAndClearsOnContextChange) {
     EXPECT_FLOAT_EQ(ship_input_frame(state, ship_events).yaw, -1.f);
     input.configure(state, settings, Context::Menu);
     EXPECT_EQ(ship_input_frame(state, ship_events).yaw, 0.f);
-    settings.bindings.emplace().push_back({FlightMapping::StarfoxYawKeyboardMouse, PhysicalKey::J});
+    settings.bindings.emplace().push_back({FlightMapping::FlightYawKeyboardMouse, PhysicalKey::J});
     input.configure(state, settings, Context::Gameplay);
     input.button(state, PhysicalKey::J, ButtonState::Pressed, settings);
     input.button(state, PhysicalKey::RightMouseButton, ButtonState::Pressed, settings);

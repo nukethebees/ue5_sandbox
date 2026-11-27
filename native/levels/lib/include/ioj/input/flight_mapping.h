@@ -10,6 +10,8 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
+#include <string_view>
 
 namespace ioj {
 using FlightMappingUnderlying = std::uint8_t;
@@ -18,56 +20,166 @@ using FlightMappingUnderlying = std::uint8_t;
 enum class FlightMapping : FlightMappingUnderlying {
     GeneralPauseKeyboardMouse,
     GeneralPauseGamepad,
-    StarfoxPitchKeyboardMouse,
-    StarfoxPitchGamepad,
-    StarfoxYawKeyboardMouse,
-    StarfoxYawGamepad,
-    StarfoxSteerKeyboardMouse,
-    StarfoxAccelerateKeyboardMouse,
-    StarfoxAccelerateGamepad,
-    StarfoxBrakeKeyboardMouse,
-    StarfoxBrakeGamepad,
-    StarfoxBoostKeyboardMouse,
-    StarfoxBoostGamepad,
-    StarfoxEmergencyBrakeKeyboardMouse,
-    StarfoxEmergencyBrakeGamepad,
-    StarfoxFirePrimaryKeyboardMouse,
-    StarfoxFirePrimaryGamepad,
+    FlightPitchKeyboardMouse,
+    FlightPitchGamepad,
+    FlightYawKeyboardMouse,
+    FlightYawGamepad,
+    FlightSteerKeyboardMouse,
+    FlightAccelerateKeyboardMouse,
+    FlightAccelerateGamepad,
+    FlightBrakeKeyboardMouse,
+    FlightBrakeGamepad,
+    FlightBoostKeyboardMouse,
+    FlightBoostGamepad,
+    FlightEmergencyBrakeKeyboardMouse,
+    FlightEmergencyBrakeGamepad,
+    FlightFirePrimaryKeyboardMouse,
+    FlightFirePrimaryGamepad,
 };
+[[nodiscard]] constexpr auto
+    try_parse_serialized_flight_mapping(std::string_view const value) noexcept
+    -> std::optional<FlightMapping> {
+    switch (value.size()) {
+        case 18ULL: {
+            if (value == "Flight.Yaw.Gamepad") {
+                return FlightMapping::FlightYawGamepad;
+            }
+            return std::nullopt;
+        }
+        case 20ULL: {
+            if (value == "Flight.Pitch.Gamepad") {
+                return FlightMapping::FlightPitchGamepad;
+            }
+            if (value == "Flight.Brake.Gamepad") {
+                return FlightMapping::FlightBrakeGamepad;
+            }
+            if (value == "Flight.Boost.Gamepad") {
+                return FlightMapping::FlightBoostGamepad;
+            }
+            return std::nullopt;
+        }
+        case 21ULL: {
+            if (value == "General.Pause.Gamepad") {
+                return FlightMapping::GeneralPauseGamepad;
+            }
+            return std::nullopt;
+        }
+        case 24ULL: {
+            if (value == "Flight.Yaw.KeyboardMouse") {
+                return FlightMapping::FlightYawKeyboardMouse;
+            }
+            return std::nullopt;
+        }
+        case 25ULL: {
+            if (value == "Flight.Accelerate.Gamepad") {
+                return FlightMapping::FlightAccelerateGamepad;
+            }
+            return std::nullopt;
+        }
+        case 26ULL: {
+            switch (static_cast<unsigned char>(value[7ULL])) {
+                case 'B': {
+                    if (value == "Flight.Brake.KeyboardMouse") {
+                        return FlightMapping::FlightBrakeKeyboardMouse;
+                    }
+                    if (value == "Flight.Boost.KeyboardMouse") {
+                        return FlightMapping::FlightBoostKeyboardMouse;
+                    }
+                    return std::nullopt;
+                }
+                case 'F': {
+                    if (value == "Flight.FirePrimary.Gamepad") {
+                        return FlightMapping::FlightFirePrimaryGamepad;
+                    }
+                    return std::nullopt;
+                }
+                case 'P': {
+                    if (value == "Flight.Pitch.KeyboardMouse") {
+                        return FlightMapping::FlightPitchKeyboardMouse;
+                    }
+                    return std::nullopt;
+                }
+                case 'S': {
+                    if (value == "Flight.Steer.KeyboardMouse") {
+                        return FlightMapping::FlightSteerKeyboardMouse;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 27ULL: {
+            if (value == "General.Pause.KeyboardMouse") {
+                return FlightMapping::GeneralPauseKeyboardMouse;
+            }
+            return std::nullopt;
+        }
+        case 29ULL: {
+            if (value == "Flight.EmergencyBrake.Gamepad") {
+                return FlightMapping::FlightEmergencyBrakeGamepad;
+            }
+            return std::nullopt;
+        }
+        case 31ULL: {
+            if (value == "Flight.Accelerate.KeyboardMouse") {
+                return FlightMapping::FlightAccelerateKeyboardMouse;
+            }
+            return std::nullopt;
+        }
+        case 32ULL: {
+            if (value == "Flight.FirePrimary.KeyboardMouse") {
+                return FlightMapping::FlightFirePrimaryKeyboardMouse;
+            }
+            return std::nullopt;
+        }
+        case 35ULL: {
+            if (value == "Flight.EmergencyBrake.KeyboardMouse") {
+                return FlightMapping::FlightEmergencyBrakeKeyboardMouse;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
+        }
+    }
+}
+
 inline constexpr std::array<FlightMapping, 8ULL> flight_mapping_gamepad_mapping_values{
     FlightMapping::GeneralPauseGamepad,
-    FlightMapping::StarfoxPitchGamepad,
-    FlightMapping::StarfoxYawGamepad,
-    FlightMapping::StarfoxAccelerateGamepad,
-    FlightMapping::StarfoxBrakeGamepad,
-    FlightMapping::StarfoxBoostGamepad,
-    FlightMapping::StarfoxEmergencyBrakeGamepad,
-    FlightMapping::StarfoxFirePrimaryGamepad};
+    FlightMapping::FlightPitchGamepad,
+    FlightMapping::FlightYawGamepad,
+    FlightMapping::FlightAccelerateGamepad,
+    FlightMapping::FlightBrakeGamepad,
+    FlightMapping::FlightBoostGamepad,
+    FlightMapping::FlightEmergencyBrakeGamepad,
+    FlightMapping::FlightFirePrimaryGamepad};
 
 [[nodiscard]] constexpr auto is_gamepad_mapping(FlightMapping const value) noexcept -> bool {
     switch (value) {
         case FlightMapping::GeneralPauseGamepad: {
             return true;
         }
-        case FlightMapping::StarfoxPitchGamepad: {
+        case FlightMapping::FlightPitchGamepad: {
             return true;
         }
-        case FlightMapping::StarfoxYawGamepad: {
+        case FlightMapping::FlightYawGamepad: {
             return true;
         }
-        case FlightMapping::StarfoxAccelerateGamepad: {
+        case FlightMapping::FlightAccelerateGamepad: {
             return true;
         }
-        case FlightMapping::StarfoxBrakeGamepad: {
+        case FlightMapping::FlightBrakeGamepad: {
             return true;
         }
-        case FlightMapping::StarfoxBoostGamepad: {
+        case FlightMapping::FlightBoostGamepad: {
             return true;
         }
-        case FlightMapping::StarfoxEmergencyBrakeGamepad: {
+        case FlightMapping::FlightEmergencyBrakeGamepad: {
             return true;
         }
-        case FlightMapping::StarfoxFirePrimaryGamepad: {
+        case FlightMapping::FlightFirePrimaryGamepad: {
             return true;
         }
         default:
@@ -77,27 +189,27 @@ inline constexpr std::array<FlightMapping, 8ULL> flight_mapping_gamepad_mapping_
 
 template <>
 inline constexpr MinMax<FlightMapping> enum_range<FlightMapping>{
-    FlightMapping::GeneralPauseKeyboardMouse, FlightMapping::StarfoxFirePrimaryGamepad};
+    FlightMapping::GeneralPauseKeyboardMouse, FlightMapping::FlightFirePrimaryGamepad};
 
 template <>
 struct EnumTraits<FlightMapping> {
     static constexpr std::array values{FlightMapping::GeneralPauseKeyboardMouse,
                                        FlightMapping::GeneralPauseGamepad,
-                                       FlightMapping::StarfoxPitchKeyboardMouse,
-                                       FlightMapping::StarfoxPitchGamepad,
-                                       FlightMapping::StarfoxYawKeyboardMouse,
-                                       FlightMapping::StarfoxYawGamepad,
-                                       FlightMapping::StarfoxSteerKeyboardMouse,
-                                       FlightMapping::StarfoxAccelerateKeyboardMouse,
-                                       FlightMapping::StarfoxAccelerateGamepad,
-                                       FlightMapping::StarfoxBrakeKeyboardMouse,
-                                       FlightMapping::StarfoxBrakeGamepad,
-                                       FlightMapping::StarfoxBoostKeyboardMouse,
-                                       FlightMapping::StarfoxBoostGamepad,
-                                       FlightMapping::StarfoxEmergencyBrakeKeyboardMouse,
-                                       FlightMapping::StarfoxEmergencyBrakeGamepad,
-                                       FlightMapping::StarfoxFirePrimaryKeyboardMouse,
-                                       FlightMapping::StarfoxFirePrimaryGamepad};
+                                       FlightMapping::FlightPitchKeyboardMouse,
+                                       FlightMapping::FlightPitchGamepad,
+                                       FlightMapping::FlightYawKeyboardMouse,
+                                       FlightMapping::FlightYawGamepad,
+                                       FlightMapping::FlightSteerKeyboardMouse,
+                                       FlightMapping::FlightAccelerateKeyboardMouse,
+                                       FlightMapping::FlightAccelerateGamepad,
+                                       FlightMapping::FlightBrakeKeyboardMouse,
+                                       FlightMapping::FlightBrakeGamepad,
+                                       FlightMapping::FlightBoostKeyboardMouse,
+                                       FlightMapping::FlightBoostGamepad,
+                                       FlightMapping::FlightEmergencyBrakeKeyboardMouse,
+                                       FlightMapping::FlightEmergencyBrakeGamepad,
+                                       FlightMapping::FlightFirePrimaryKeyboardMouse,
+                                       FlightMapping::FlightFirePrimaryGamepad};
 };
 
 template <>
@@ -107,12 +219,12 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<FlightMapping, Serialized>{PackedStrings{
-    "General.Pause.KeyboardMouse\000General.Pause.Gamepad\000Starfox.Pitch."
-    "KeyboardMouse\000Starfox.Pitch.Gamepad\000Starfox.Yaw.KeyboardMouse\000Starfox.Yaw."
-    "Gamepad\000Starfox.Steer.KeyboardMouse\000Starfox.Accelerate.KeyboardMouse\000Starfox."
-    "Accelerate.Gamepad\000Starfox.Brake.KeyboardMouse\000Starfox.Brake.Gamepad\000Starfox.Boost."
-    "KeyboardMouse\000Starfox.Boost.Gamepad\000Starfox.EmergencyBrake.KeyboardMouse\000Starfox."
-    "EmergencyBrake.Gamepad\000Starfox.FirePrimary.KeyboardMouse\000Starfox.FirePrimary.Gamepad",
+    "General.Pause.KeyboardMouse\000General.Pause.Gamepad\000Flight.Pitch.KeyboardMouse\000Flight."
+    "Pitch.Gamepad\000Flight.Yaw.KeyboardMouse\000Flight.Yaw.Gamepad\000Flight.Steer."
+    "KeyboardMouse\000Flight.Accelerate.KeyboardMouse\000Flight.Accelerate.Gamepad\000Flight.Brake."
+    "KeyboardMouse\000Flight.Brake.Gamepad\000Flight.Boost.KeyboardMouse\000Flight.Boost."
+    "Gamepad\000Flight.EmergencyBrake.KeyboardMouse\000Flight.EmergencyBrake.Gamepad\000Flight."
+    "FirePrimary.KeyboardMouse\000Flight.FirePrimary.Gamepad",
     std::array<std::uint16_t, 18>{
-        0, 28, 50, 78, 100, 126, 146, 174, 207, 234, 262, 284, 312, 334, 371, 402, 436, 464}}};
+        0, 28, 50, 77, 98, 123, 142, 169, 201, 227, 254, 275, 302, 323, 359, 389, 422, 449}}};
 } // namespace ioj

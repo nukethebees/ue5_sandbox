@@ -161,7 +161,7 @@ TEST(PlayerFlight, HeldBoostStartsOnlyWhenBrakeReleases) {
               player::BoostBrakeState::Boost);
 }
 
-TEST(PlayerFlight, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
+TEST(PlayerFlight, FlightConvergesToCruiseAndSupportsBoostAndBrake) {
     LevelSim simulation{make_data().compile(), *std::pmr::new_delete_resource()};
     simulation.start();
     auto const& controller{player_sim(simulation).controller_state()};
@@ -192,7 +192,7 @@ TEST(PlayerFlight, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
     EXPECT_LT(player_sim(simulation).energy(), energy_before_brake);
 }
 
-TEST(PlayerFlight, StarfoxEmergencyBrakeIsStrongerThanNormalBrake) {
+TEST(PlayerFlight, FlightEmergencyBrakeIsStrongerThanNormalBrake) {
     LevelSim normal{make_data().compile(), *std::pmr::new_delete_resource()};
     LevelSim emergency{make_data().compile(), *std::pmr::new_delete_resource()};
     normal.start();
@@ -212,7 +212,7 @@ TEST(PlayerFlight, StarfoxEmergencyBrakeIsStrongerThanNormalBrake) {
     EXPECT_LT(size(velocity(emergency)), size(velocity(normal)));
 }
 
-TEST(PlayerFlight, StarfoxTurnsLevelsRollAndRecoversBoostEnergy) {
+TEST(PlayerFlight, FlightTurnsLevelsRollAndRecoversBoostEnergy) {
     LevelSim simulation{make_data({0.0, 0.0, 30.0}).compile(), *std::pmr::new_delete_resource()};
     simulation.start();
     player::PlayerInputEvents input{*std::pmr::new_delete_resource()};
