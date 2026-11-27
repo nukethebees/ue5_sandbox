@@ -29,7 +29,7 @@ TEST(PauseMenu, PausedLaunchPointerSelectionAndOptionsLeaveConfirmation) {
     EXPECT_TRUE(menu.widget_event({Select, Controls}));
     EXPECT_TRUE(menu.widget_event({Activate, Controls}));
     EXPECT_TRUE(menu.widget_event({LeaveAccepted, Controls}));
-    EXPECT_EQ(menu.view, PauseMenu::View::Options);
+    EXPECT_EQ(menu.view, PauseMenuView::Options);
     EXPECT_EQ(menu.page, Controls);
     EXPECT_TRUE(menu.widget_event({Select, Quit}));
     EXPECT_TRUE(menu.widget_event({Activate, Quit}));
@@ -37,12 +37,12 @@ TEST(PauseMenu, PausedLaunchPointerSelectionAndOptionsLeaveConfirmation) {
     EXPECT_FALSE(menu.route({}).resume_available);
     menu.widget_event({ModalClosed});
     menu.widget_event({LeaveCancelled, Quit});
-    EXPECT_EQ(menu.view, PauseMenu::View::Sidebar);
+    EXPECT_EQ(menu.view, PauseMenuView::Sidebar);
     EXPECT_FALSE(menu.pending);
     EXPECT_FALSE(menu.widget_event({LeaveAccepted, Quit}));
     EXPECT_TRUE(menu.widget_event({Activate, Quit}));
     EXPECT_TRUE(menu.widget_event({LeaveAccepted, Quit}));
-    EXPECT_EQ(menu.view, PauseMenu::View::Leaving);
+    EXPECT_EQ(menu.view, PauseMenuView::Leaving);
 }
 
 }

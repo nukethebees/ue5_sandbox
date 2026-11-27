@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/input/actions.h>
 #include <ioj/input/flight_mapping.h>
 #include <ioj/input/key_code.h>
 #include <ioj/settings/controls_settings.h>
@@ -9,8 +10,6 @@
 #include <string_view>
 
 namespace ioj {
-enum class BindingGroup : std::uint8_t { Flight, Utility, Combat };
-
 struct FlightControl {
     std::string_view label;
     KeyCode default_key;

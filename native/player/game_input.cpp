@@ -34,10 +34,6 @@ constexpr std::array gamepad_axes{
     GamepadAxisKeys{PhysicalKey::GamepadLeftTriggerAxis, PhysicalKey::GamepadLeftTrigger},
     GamepadAxisKeys{PhysicalKey::GamepadRightTriggerAxis, PhysicalKey::GamepadRightTrigger},
 };
-constexpr std::array repeating_actions{DigitalAction::MenuUp,
-                                       DigitalAction::MenuDown,
-                                       DigitalAction::MenuLeft,
-                                       DigitalAction::MenuRight};
 constexpr std::array pointer_keys{PhysicalKey::LeftMouseButton,
                                   PhysicalKey::RightMouseButton,
                                   PhysicalKey::MiddleMouseButton,
@@ -157,7 +153,7 @@ auto GameInput::relative_mouse() const -> bool {
            state_.observer_look == ObserverLookMode::Camera;
 }
 auto GameInput::editing_text() const -> bool {
-    return route_.context == InputContext::Menu && editing_text_;
+    return route_.context == InputContext::Menu && menu_mode_ == MenuInputMode::TextEntry;
 }
 void GameInput::begin_frame() {
     state_.begin_frame();
@@ -173,12 +169,7 @@ void GameInput::release_context(host::InputEvents& output) {
     state_.observer_look = ObserverLookMode::Pointer;
     state_.axes_2d[Axis2DAction::ObserverLookDelta] = {};
 }
-void GameInput::synchronize(host::InputEvents& output,
-                            InputRoute route,
-                            host::MenuStatus menu) {
-    auto const mode{menu.capturing_binding || menu.editing_text ? MenuInputMode::Raw
-                                                                : MenuInputMode::Navigation};
-    editing_text_ = menu.editing_text;
+void GameInput::synchronize(host::InputEvents& output, InputRoute route, MenuInputMode mode) {
     if (mode != menu_mode_) {
         menu_mode_ = mode;
         repeat_delays_ = {};
@@ -260,9 +251,9 @@ void GameInput::routed_button(host::InputEvents& output,
             routed_buttons_.erase(found);
         }
     }
-    auto const direction{std::ranges::find(game_input_tables::repeating_actions, action)};
-    if (direction != game_input_tables::repeating_actions.end() && is_gamepad_control(key.key)) {
-        auto& delay{repeat_delays_[direction - game_input_tables::repeating_actions.begin()]};
+    auto const direction{std::ranges::find(digital_action_repeatable_navigation_values, action)};
+    if (direction != digital_action_repeatable_navigation_values.end() && is_gamepad_control(key.key)) {
+        auto& delay{repeat_delays_[direction - digital_action_repeatable_navigation_values.begin()]};
         if (edge == ButtonState::Pressed && delay == 0.) {
             delay = 0.4;
         } else if (edge == ButtonState::Released &&
@@ -300,7 +291,7 @@ void GameInput::button(host::InputEvents& output,
         publish_transitions(output, first);
         return;
     }
-    if (route_.context == InputContext::Menu && menu_mode_ == MenuInputMode::Raw) {
+    if (route_.context == InputContext::Menu && menu_mode_ != MenuInputMode::Navigation) {
         output.emplace_back(host::MenuKey{key, character, down, repeat, physical_.modifiers});
         return;
     }
@@ -448,7 +439,7 @@ void GameInput::apply(host::InputEvents& output, PhysicalAxis event) {
     physical_.gamepad_axes[axis - game_input_tables::gamepad_axes.begin()] = sample;
     auto const edge{axis_edge(physical_, axis->axis, std::abs(sample))};
     auto const focused{physical_.focus == WindowFocus::Gained};
-    if (focused && route_.context == InputContext::Menu && menu_mode_ == MenuInputMode::Raw) {
+    if (focused && route_.context == InputContext::Menu && menu_mode_ != MenuInputMode::Navigation) {
         output.emplace_back(host::MenuAxis{event.key, sample, physical_.modifiers});
     } else if (focused && route_.context == InputContext::Gameplay) {
         if (edge) {
@@ -499,13 +490,13 @@ void GameInput::apply(host::InputEvents& output, WindowFocus focus) {
     pointer_capture_ = {};
 }
 void GameInput::repeat_navigation(host::InputEvents& output, double seconds) {
-    for (std::size_t i{}; i < game_input_tables::repeating_actions.size(); ++i) {
+    for (std::size_t i{}; i < digital_action_repeatable_navigation_values.size(); ++i) {
         auto& delay{repeat_delays_[i]};
         if (delay > 0.) {
             delay -= seconds;
             if (delay <= 0.) {
                 auto const first{state_.transitions.size()};
-                state_.button(game_input_tables::repeating_actions[i], ButtonState::Repeated);
+                state_.button(digital_action_repeatable_navigation_values[i], ButtonState::Repeated);
                 publish_transitions(output, first);
                 delay = 0.1;
             }

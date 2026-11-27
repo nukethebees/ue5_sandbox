@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/host/modifiers.h>
+#include <ioj/input/actions.h>
 #include <ioj/input/button_state.h>
 #include <ioj/input/key_code.h>
 #include <ioj/vector.h>
@@ -38,7 +39,6 @@ struct TextInput {
     std::string text;
 };
 struct GamepadDisconnected {};
-enum class WindowFocus : std::uint8_t { Lost, Gained };
 using PhysicalEvent = std::variant<PhysicalButton,
                                    PhysicalPointerButton,
                                    PhysicalAxis,

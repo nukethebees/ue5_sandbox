@@ -16,8 +16,7 @@
 
 namespace ioj::host {
 struct MenuStatus {
-    bool editing_text{};
-    bool capturing_binding{};
+    MenuInputMode input_mode{MenuInputMode::Navigation};
     std::optional<MainMenuItem> main_focus;
 };
 

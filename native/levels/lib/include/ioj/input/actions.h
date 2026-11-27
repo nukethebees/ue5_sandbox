@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <utility>
+
 namespace ioj {
 using DigitalActionUnderlying = std::uint8_t;
 
@@ -47,6 +48,16 @@ enum class DigitalAction : DigitalActionUnderlying {
     BenchmarkEnd,
 };
 
+inline constexpr std::array<DigitalAction, 4ULL> digital_action_repeatable_navigation_values{
+    DigitalAction::MenuUp,
+    DigitalAction::MenuDown,
+    DigitalAction::MenuLeft,
+    DigitalAction::MenuRight};
+
+[[nodiscard]] constexpr auto is_repeatable_navigation(DigitalAction const value) noexcept -> bool {
+    return value >= DigitalAction::MenuUp && value <= DigitalAction::MenuRight;
+}
+
 template <>
 inline constexpr MinMax<DigitalAction> enum_range<DigitalAction>{DigitalAction::Pause,
                                                                  DigitalAction::BenchmarkEnd};
@@ -74,17 +85,32 @@ template <>
 inline constexpr MinMax<Axis2DAction> enum_range<Axis2DAction>{Axis2DAction::FlightTurn,
                                                                Axis2DAction::ObserverLookDelta};
 
+using PauseMenuViewUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class PauseMenuView : PauseMenuViewUnderlying {
+    Closed,
+    Sidebar,
+    Options,
+    Leaving,
+};
+
+template <>
+inline constexpr MinMax<PauseMenuView> enum_range<PauseMenuView>{PauseMenuView::Closed,
+                                                                 PauseMenuView::Leaving};
+
 using MenuInputModeUnderlying = std::uint8_t;
 
-// Logical bit width: 1.
+// Logical bit width: 2.
 enum class MenuInputMode : MenuInputModeUnderlying {
     Navigation,
-    Raw,
+    BindingCapture,
+    TextEntry,
 };
 
 template <>
 inline constexpr MinMax<MenuInputMode> enum_range<MenuInputMode>{MenuInputMode::Navigation,
-                                                                 MenuInputMode::Raw};
+                                                                 MenuInputMode::TextEntry};
 
 using ObserverSpeedPresetUnderlying = std::uint8_t;
 
@@ -126,6 +152,163 @@ enum class ObserverLookMode : ObserverLookModeUnderlying {
 template <>
 inline constexpr MinMax<ObserverLookMode> enum_range<ObserverLookMode>{ObserverLookMode::Pointer,
                                                                        ObserverLookMode::Camera};
+
+using MenuCommandUnderlying = std::uint8_t;
+
+// Logical bit width: 3.
+enum class MenuCommand : MenuCommandUnderlying {
+    Up,
+    Down,
+    Left,
+    Right,
+    Next,
+    Previous,
+    Accept,
+    Back,
+};
+
+template <>
+inline constexpr MinMax<MenuCommand> enum_range<MenuCommand>{MenuCommand::Up, MenuCommand::Back};
+
+using MainMenuItemUnderlying = std::uint8_t;
+
+// Logical bit width: 4.
+enum class MainMenuItem : MainMenuItemUnderlying {
+    SelectLevel,
+    DataArchive,
+    Video,
+    Gameplay,
+    Audio,
+    Controls,
+    Accessibility,
+    System,
+    Quit,
+};
+
+[[nodiscard]] constexpr auto cycle_next(MainMenuItem const value) noexcept -> MainMenuItem {
+    switch (value) {
+        case MainMenuItem::SelectLevel: {
+            return MainMenuItem::DataArchive;
+        }
+        case MainMenuItem::DataArchive: {
+            return MainMenuItem::Video;
+        }
+        case MainMenuItem::Video: {
+            return MainMenuItem::Gameplay;
+        }
+        case MainMenuItem::Gameplay: {
+            return MainMenuItem::Audio;
+        }
+        case MainMenuItem::Audio: {
+            return MainMenuItem::Controls;
+        }
+        case MainMenuItem::Controls: {
+            return MainMenuItem::Accessibility;
+        }
+        case MainMenuItem::Accessibility: {
+            return MainMenuItem::System;
+        }
+        case MainMenuItem::System: {
+            return MainMenuItem::Quit;
+        }
+        case MainMenuItem::Quit: {
+            return MainMenuItem::SelectLevel;
+        }
+        default: {
+            assert((false));
+            return value;
+        }
+    }
+}
+
+[[nodiscard]] constexpr auto cycle_previous(MainMenuItem const value) noexcept -> MainMenuItem {
+    switch (value) {
+        case MainMenuItem::SelectLevel: {
+            return MainMenuItem::Quit;
+        }
+        case MainMenuItem::DataArchive: {
+            return MainMenuItem::SelectLevel;
+        }
+        case MainMenuItem::Video: {
+            return MainMenuItem::DataArchive;
+        }
+        case MainMenuItem::Gameplay: {
+            return MainMenuItem::Video;
+        }
+        case MainMenuItem::Audio: {
+            return MainMenuItem::Gameplay;
+        }
+        case MainMenuItem::Controls: {
+            return MainMenuItem::Audio;
+        }
+        case MainMenuItem::Accessibility: {
+            return MainMenuItem::Controls;
+        }
+        case MainMenuItem::System: {
+            return MainMenuItem::Accessibility;
+        }
+        case MainMenuItem::Quit: {
+            return MainMenuItem::System;
+        }
+        default: {
+            assert((false));
+            return value;
+        }
+    }
+}
+
+template <>
+inline constexpr MinMax<MainMenuItem> enum_range<MainMenuItem>{MainMenuItem::SelectLevel,
+                                                               MainMenuItem::Quit};
+
+using BindingGroupUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class BindingGroup : BindingGroupUnderlying {
+    Flight,
+    Combat,
+    Utility,
+};
+
+template <>
+inline constexpr MinMax<BindingGroup> enum_range<BindingGroup>{BindingGroup::Flight,
+                                                               BindingGroup::Utility};
+
+using InputResponseUnderlying = std::uint8_t;
+
+// Logical bit width: 1.
+enum class InputResponse : InputResponseUnderlying {
+    TurnPointerDelta,
+    GamepadTurn,
+};
+
+template <>
+inline constexpr MinMax<InputResponse> enum_range<InputResponse>{InputResponse::TurnPointerDelta,
+                                                                 InputResponse::GamepadTurn};
+
+using FlightAxisUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class FlightAxis : FlightAxisUnderlying {
+    None,
+    Pitch,
+    Yaw,
+};
+
+template <>
+inline constexpr MinMax<FlightAxis> enum_range<FlightAxis>{FlightAxis::None, FlightAxis::Yaw};
+
+using WindowFocusUnderlying = std::uint8_t;
+
+// Logical bit width: 1.
+enum class WindowFocus : WindowFocusUnderlying {
+    Lost,
+    Gained,
+};
+
+template <>
+inline constexpr MinMax<WindowFocus> enum_range<WindowFocus>{WindowFocus::Lost,
+                                                             WindowFocus::Gained};
 
 struct DigitalActions;
 
@@ -770,7 +953,8 @@ template <>
 
 template <>
 struct EnumTraits<MenuInputMode> {
-    static constexpr std::array values{MenuInputMode::Navigation, MenuInputMode::Raw};
+    static constexpr std::array values{
+        MenuInputMode::Navigation, MenuInputMode::BindingCapture, MenuInputMode::TextEntry};
 };
 
 template <>
@@ -793,6 +977,52 @@ struct EnumTraits<InputContext> {
                                        InputContext::Gameplay,
                                        InputContext::Observer,
                                        InputContext::Benchmark};
+};
+
+template <>
+struct EnumTraits<MenuCommand> {
+    static constexpr std::array values{MenuCommand::Up,
+                                       MenuCommand::Down,
+                                       MenuCommand::Left,
+                                       MenuCommand::Right,
+                                       MenuCommand::Next,
+                                       MenuCommand::Previous,
+                                       MenuCommand::Accept,
+                                       MenuCommand::Back};
+};
+
+template <>
+struct EnumTraits<MainMenuItem> {
+    static constexpr std::array values{MainMenuItem::SelectLevel,
+                                       MainMenuItem::DataArchive,
+                                       MainMenuItem::Video,
+                                       MainMenuItem::Gameplay,
+                                       MainMenuItem::Audio,
+                                       MainMenuItem::Controls,
+                                       MainMenuItem::Accessibility,
+                                       MainMenuItem::System,
+                                       MainMenuItem::Quit};
+};
+
+template <>
+struct EnumTraits<BindingGroup> {
+    static constexpr std::array values{
+        BindingGroup::Flight, BindingGroup::Combat, BindingGroup::Utility};
+};
+
+template <>
+struct EnumTraits<InputResponse> {
+    static constexpr std::array values{InputResponse::TurnPointerDelta, InputResponse::GamepadTurn};
+};
+
+template <>
+struct EnumTraits<FlightAxis> {
+    static constexpr std::array values{FlightAxis::None, FlightAxis::Pitch, FlightAxis::Yaw};
+};
+
+template <>
+struct EnumTraits<WindowFocus> {
+    static constexpr std::array values{WindowFocus::Lost, WindowFocus::Gained};
 };
 
 } // namespace ioj

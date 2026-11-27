@@ -275,7 +275,7 @@ struct PlayerInputSession {
         auto const route{level && !level->presentation_setup
                              ? level->pause_menu.route(level_input_route(*level))
                              : InputRoute{}};
-        input.synchronize(commands, route, menu);
+        input.synchronize(commands, route, menu.input_mode);
         devices.set_window_modes(input.relative_mouse(), input.editing_text());
     }
     void update_pause_simulation(LoadedLevel& level) {
@@ -355,7 +355,7 @@ struct PlayerInputSession {
                 auto const focus{host::menu_status().main_focus};
                 using enum MenuCommand;
                 auto* level{storage.get()};
-                if (level && level->pause_menu.view == PauseMenu::View::Sidebar &&
+                if (level && level->pause_menu.view == PauseMenuView::Sidebar &&
                     !level->pause_menu.options_modal) {
                     if (button->down) {
                         present_pause(*level,

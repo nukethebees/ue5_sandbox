@@ -49,9 +49,11 @@ auto menu_status() -> MenuStatus {
         (widget->GetType() == SEditableText::StaticWidgetClass().GetWidgetType() ||
          widget->GetType() == SMultiLineEditableText::StaticWidgetClass().GetWidgetType())};
     auto const* main{player ? player->main_menu() : nullptr};
-    return {editing,
-            widget && widget->GetMetaData<FBindingCapture>().IsValid(),
-            main ? main->focused_item() : std::nullopt};
+    auto const capturing{widget && widget->GetMetaData<FBindingCapture>().IsValid()};
+    auto const mode{capturing ? MenuInputMode::BindingCapture
+                    : editing ? MenuInputMode::TextEntry
+                              : MenuInputMode::Navigation};
+    return {mode, main ? main->focused_item() : std::nullopt};
 }
 auto present_pause(PauseCommand command) -> bool {
     auto* player{controller()};

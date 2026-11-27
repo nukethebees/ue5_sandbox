@@ -2,6 +2,7 @@
 
 #include <ioj/host/input.h>
 #include <ioj/host/pause_menu.h>
+#include <ioj/input/actions.h>
 #include <ioj/levels/launch_mode.h>
 #include <ioj/sim/levels/level_state.h>
 
@@ -13,7 +14,6 @@ struct InputRoute;
 struct PauseMenu {
     using Item = host::PauseMenuItem;
     using Command = std::optional<host::PauseCommand>;
-    enum class View { Closed, Sidebar, Options, Leaving };
 
     auto handle(host::PlayerAction action, sim::LevelState simulation) -> Command;
     auto route(InputRoute underlying) const -> InputRoute;
@@ -22,7 +22,7 @@ struct PauseMenu {
     auto widget_event(host::PauseWidgetEvent event) -> Command;
     auto simulation_request(sim::LevelState state) -> std::optional<levels::LaunchMode>;
 
-    View view{View::Closed};
+    PauseMenuView view{PauseMenuView::Closed};
     Item selected{Item::Resume};
     Item page{Item::Audio};
     std::optional<Item> pending;

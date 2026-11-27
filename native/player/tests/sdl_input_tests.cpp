@@ -77,7 +77,7 @@ class SdlPlayerInput : public ::testing::Test {
         auto synchronize = [&] {
             input_->synchronize(commands_,
                                 pause_menu_.route(host::tests::presentation.route),
-                                host::tests::presentation.menu);
+                                host::tests::presentation.menu.input_mode);
             devices_->set_window_modes(input_->relative_mouse(), input_->editing_text());
         };
         synchronize();
@@ -105,7 +105,7 @@ class SdlPlayerInput : public ::testing::Test {
                     }
                 }
             } else if (auto const* button{std::get_if<host::MenuButton>(&event)}) {
-                if (button->down && pause_menu_.view == PauseMenu::View::Sidebar) {
+                if (button->down && pause_menu_.view == PauseMenuView::Sidebar) {
                     if (auto command{pause_menu_.navigate(button->command, button->repeat)}) {
                         pause_commands_.push_back(*command);
                     }
@@ -142,7 +142,7 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     auto& view{host::tests::presentation};
     press(SDLK_DOWN, SDL_SCANCODE_DOWN);
     frame();
-    view.menu.editing_text = true;
+    view.menu.input_mode = MenuInputMode::TextEntry;
     SDL_Event text{};
     text.text.type = SDL_EVENT_TEXT_INPUT;
     text.text.windowID = SDL_GetWindowID(window_);
@@ -151,7 +151,7 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     frame();
     EXPECT_EQ(view.commands, std::vector{MenuCommand::Down});
     EXPECT_EQ(view.text, "abc");
-    view.menu.editing_text = false;
+    view.menu.input_mode = MenuInputMode::Navigation;
     press(SDLK_TAB,
           SDL_SCANCODE_TAB,
           SDL_KMOD_RSHIFT | SDL_KMOD_LCTRL | SDL_KMOD_RALT | SDL_KMOD_LGUI | SDL_KMOD_CAPS);
@@ -213,7 +213,7 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     view.route = {InputContext::Menu};
     input_->resolve(commands_,
                     PhysicalButton{PhysicalKey::Down, 0, {}, ButtonState::Released});
-    view.menu.capturing_binding = true;
+    view.menu.input_mode = MenuInputMode::BindingCapture;
     press(SDLK_DOWN, SDL_SCANCODE_DOWN);
     frame();
     EXPECT_EQ(view.keys, std::vector<KeyCode>{PhysicalKey::Down});

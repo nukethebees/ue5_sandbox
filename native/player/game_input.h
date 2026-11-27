@@ -28,8 +28,7 @@ class GameInput {
   public:
     GameInput(ControlsSettings const& controls, WindowFocus focus);
 
-    void
-        synchronize(host::InputEvents& output, InputRoute route, host::MenuStatus menu);
+    void synchronize(host::InputEvents& output, InputRoute route, MenuInputMode mode);
     void refresh_bindings(host::InputEvents& output);
     void begin_frame();
     void resolve(host::InputEvents& output, PhysicalEvent const& event);
@@ -68,10 +67,9 @@ class GameInput {
     InputState state_;
     FlightInputResolver flight_;
     std::vector<RoutedButton> routed_buttons_;
-    std::array<double, 4> repeat_delays_{};
+    std::array<double, digital_action_repeatable_navigation_values.size()> repeat_delays_{};
     std::uint8_t pointer_capture_{};
     InputRoute route_{};
     MenuInputMode menu_mode_{};
-    bool editing_text_{};
 };
 }
