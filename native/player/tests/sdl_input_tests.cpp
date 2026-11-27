@@ -1,3 +1,4 @@
+#include "UnrealEndpoint.h"
 #include "player/input/input_system.h"
 #include "player/pause_menu.h"
 #include <ioj/host/input.h>
@@ -533,4 +534,24 @@ TEST_F(SdlPlayerInput, UnpluggingVirtualGamepadReleasesFlightButton) {
     ASSERT_EQ(ship_frame().events.size(), 1u);
     EXPECT_EQ(ship_frame().events.front(), sim::player::PlayerInputKind::BoostReleased);
 }
+
+TEST(UnrealEndpoint, ReplyHandlesPreserveOrderAcrossPayloadTypesAndReset) {
+    host::UnrealEndpoint unreal_;
+    unreal_.hit(MenuControl::BattleSpeed);
+    unreal_.edit_text({MenuControl::BattleSpeed, "2"});
+    unreal_.hit(MenuControl::Launch);
+    auto const replies{unreal_.messages()};
+    ASSERT_EQ(replies.order.size(), 3u);
+    EXPECT_EQ(replies.order[0].kind, host::UnrealMessageKind::Hit);
+    EXPECT_EQ(replies.hits[replies.order[0].index], MenuTarget{MenuControl::BattleSpeed});
+    EXPECT_EQ(replies.order[1].kind, host::UnrealMessageKind::EditText);
+    EXPECT_EQ(replies.edits[replies.order[1].index].value, "2");
+    EXPECT_EQ(replies.order[2].kind, host::UnrealMessageKind::Hit);
+    EXPECT_EQ(replies.hits[replies.order[2].index], MenuTarget{MenuControl::Launch});
+    unreal_.clear();
+    EXPECT_TRUE(unreal_.messages().order.empty());
+    unreal_.hit(MenuControl::Launch);
+    EXPECT_EQ(unreal_.messages().order.front().index, 0u);
+}
+
 }

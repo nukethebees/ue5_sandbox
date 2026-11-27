@@ -1,5 +1,6 @@
 #include "SpaceGame/UnrealMessages.h"
 
+#include "UnrealEndpoint.h"
 #include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
@@ -19,6 +20,7 @@
 
 namespace ioj {
 namespace {
+host::UnrealEndpoint endpoint;
 PlayerSettingsView attached_settings{};
 PlayerMenu* attached_menu{};
 SystemCapabilities const* attached_capabilities{};
@@ -111,6 +113,9 @@ auto supported_resolutions() -> std::span<ScreenResolution const> {
 void hit_menu_control(MenuTarget target) {
     queue_input_action(MenuHit{std::move(target)});
 }
+void request_player_action(host::PlayerAction action) {
+    endpoint.player_action(action);
+}
 void queue_input_action(host::WidgetAction action) {
     pending_actions.push_back(action);
 }
@@ -123,6 +128,19 @@ void clear_requested_simulation_mode() {
 }
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
+    for (auto const [kind, index] : messages.order) {
+        check(kind == NativeMessageKind::Benchmark);
+        host::select_benchmark_button(messages.benchmark_selections[index] != 0);
+    }
+}
+void IojPlayer_Exchange(host::NativeMessages const& outgoing, host::UnrealMessages& incoming) {
+    endpoint.receive(outgoing);
+    incoming = endpoint.messages();
+}
+void IojPlayer_ReleaseMessages() {
+    endpoint.clear();
+}
 void IojPlayer_Attach(SystemCapabilities const& capabilities, PlayerMenu& menu) {
     attached_menu = &menu;
     attached_capabilities = &capabilities;
@@ -157,7 +175,7 @@ auto host::take_widget_actions() -> std::span<WidgetAction const> {
     return dispatched_actions;
 }
 
-auto host::take_messages() -> UnrealMessages {
+auto host::take_messages() -> HostRequests {
     std::swap(pending, published);
 
     return {published.profile_actions,
@@ -182,6 +200,7 @@ void host::preference_result(std::size_t index, std::string_view error) {
 #endif
 
 void detach_player() {
+    endpoint.clear();
     pending_actions.clear();
     dispatched_actions.clear();
     published = MessageBuffer{};

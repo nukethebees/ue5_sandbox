@@ -4,6 +4,7 @@
 #include "player/engine.h"
 #include "player/input/input_system.h"
 #include "player/loaded_level.h"
+#include "player/native_endpoint.h"
 #include "player/window.h"
 #include <ioj/bridge/completed_level.h>
 #include <ioj/bridge/level_catalog.h>
@@ -26,6 +27,7 @@
 #include <SDL3/SDL_filesystem.h>
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <cstdio>
@@ -315,7 +317,7 @@ struct PlayerInputSession : InputReceiver {
                 break;
             case BenchmarkNext:
                 level->end_selected = !level->end_selected;
-                host::select_benchmark_button(level->end_selected);
+                endpoint.select_benchmark(level->end_selected);
                 break;
             case ToggleBenchmark:
                 if (simulation.state() == sim::LevelState::Running) {
@@ -361,6 +363,12 @@ struct PlayerInputSession : InputReceiver {
         }
     }
     void process_widget_actions() {
+        auto const& replies{endpoint.exchange()};
+        for (auto const [kind, index] : replies.order) {
+            assert(kind == host::UnrealMessageKind::Action);
+            dispatch(replies.actions[index]);
+        }
+        endpoint.release_replies();
         for (;;) {
             auto const actions{host::take_widget_actions()};
             if (actions.empty()) {
@@ -440,6 +448,7 @@ struct PlayerInputSession : InputReceiver {
         process_widget_actions();
     }
 
+    host::NativeEndpoint endpoint;
     LevelStorage& storage;
     Window& window;
     PlayerSettings const& settings;

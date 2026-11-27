@@ -8,7 +8,9 @@
 #include <string_view>
 
 namespace ioj::host {
+struct NativeMessages;
 struct UnrealMessages;
+struct HostRequests;
 }
 
 namespace ioj::presentation {
@@ -25,6 +27,10 @@ struct PlayerMenu;
 #define IOJ_PLAYER_API __declspec(dllimport)
 #endif
 extern "C" {
+    // The reply borrows Unreal's outbox until the next exchange, engine tick or release.
+    IOJ_PLAYER_API void IojPlayer_Exchange(host::NativeMessages const& outgoing,
+                                           host::UnrealMessages& incoming);
+    IOJ_PLAYER_API void IojPlayer_ReleaseMessages();
     IOJ_PLAYER_API void IojPlayer_Attach(SystemCapabilities const& capabilities, PlayerMenu& menu);
     IOJ_PLAYER_API void IojPlayer_Detach();
     IOJ_PLAYER_API auto IojPlayer_ApplyPreferences() -> bool;
@@ -43,7 +49,7 @@ IOJ_PLAYER_API void present_catalog(presentation::LevelCatalogView const& catalo
 IOJ_PLAYER_API void present_settings(PlayerSettingsView const& settings,
                                      std::span<ScreenResolution const> resolutions);
 IOJ_PLAYER_API void present_profiles(presentation::ProfileView const& profiles);
-IOJ_PLAYER_API auto take_messages() -> UnrealMessages;
+IOJ_PLAYER_API auto take_messages() -> HostRequests;
 IOJ_PLAYER_API void profile_result(std::size_t index, profiles::CreateProfileResult result);
 IOJ_PLAYER_API void preference_result(std::size_t index, std::string_view error);
 }

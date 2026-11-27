@@ -196,9 +196,9 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
                               : FRunHudState{};
     });
     created_widget->pause_requested.AddLambda(
-        [] { queue_input_action(host::PlayerAction::ToggleBenchmark); });
+        [] { request_player_action(host::PlayerAction::ToggleBenchmark); });
     created_widget->end_requested.AddLambda(
-        [] { queue_input_action(host::PlayerAction::EndBenchmark); });
+        [] { request_player_action(host::PlayerAction::EndBenchmark); });
     created_widget->AddToPlayerScreen(100);
     created_widget->select_button(false);
     return true;

@@ -35,7 +35,7 @@ struct LevelSelection {
 
 using NavigationRequest = std::variant<std::monostate, LevelSelection, session::LevelSelectRequest>;
 
-struct UnrealMessages {
+struct HostRequests {
     std::span<ProfileAction const> profile_actions;
     std::span<PreferenceEdit const> preference_edits;
     NavigationRequest const& navigation_request;
