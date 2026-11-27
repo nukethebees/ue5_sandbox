@@ -93,24 +93,6 @@ auto initialize_presentation(LoadedLevel& level) -> bool {
     }
     return initialized;
 }
-auto level_input_route(LoadedLevel const& level) -> InputRoute {
-    switch (level.control_context) {
-        case levels::ControlContext::Observer:
-            return {InputContext::Observer};
-        case levels::ControlContext::Benchmark:
-            return {InputContext::Benchmark};
-        case levels::ControlContext::Player: {
-            auto const* ship{level.simulation.player_ship_simulation()};
-            if (ship && ship->is_alive(level.simulation.entity_tables().health)) {
-                return {InputContext::Gameplay};
-            }
-            break;
-        }
-        case levels::ControlContext::None:
-            break;
-    }
-    return {};
-}
 void advance_level(sim::LevelSim& simulation, double delta_seconds) {
     auto const state{simulation.state()};
     simulation.advance(delta_seconds);
@@ -263,10 +245,8 @@ struct PlayerInputSession : InputReceiver {
     PlayerInputSession(Window& game_window,
                        PlayerSettings const& player_settings,
                        PlayerMenu& player_menu,
-                       LevelStorage& levels,
-                       std::chrono::steady_clock::time_point& previous_frame)
+                       LevelStorage& levels)
         : storage{levels}
-        , previous_frame_time{previous_frame}
         , window{game_window}
         , settings{player_settings}
         , menu{player_menu}
@@ -275,7 +255,7 @@ struct PlayerInputSession : InputReceiver {
     auto routing() const -> InputRouting override {
         auto const* level{storage.get()};
         auto route{level && !level->presentation_setup
-                       ? level->pause_menu.route(level_input_route(*level))
+                       ? level->pause_menu.route(InputRoute{level->input_context()})
                        : InputRoute{}};
         if (menu.prompt != OptionsPrompt::None ||
             menu.draft.binding_edit().prompt != BindingPrompt::Closed || menu.saving) {
@@ -285,11 +265,8 @@ struct PlayerInputSession : InputReceiver {
     }
     void update_pause_simulation(LoadedLevel& level) {
         auto const request{level.pause_menu.simulation_request(level.simulation.state())};
-        if (request == levels::LaunchMode::Paused) {
-            level.simulation.pause();
-        } else if (request == levels::LaunchMode::Running) {
-            level.simulation.start();
-            previous_frame_time = std::chrono::steady_clock::now();
+        if (request) {
+            level.set_simulation_mode(*request);
         }
     }
     void present_pause(LoadedLevel& level, PauseMenu::Command command) {
@@ -329,7 +306,7 @@ struct PlayerInputSession : InputReceiver {
         auto& simulation{level->simulation};
         using enum host::PlayerAction;
         if (action == BenchmarkActivate) {
-            action = end_selected ? EndBenchmark : ToggleBenchmark;
+            action = level->end_selected ? EndBenchmark : ToggleBenchmark;
         }
         switch (action) {
             case OpenPause:
@@ -337,15 +314,14 @@ struct PlayerInputSession : InputReceiver {
                 present_pause(*level, level->pause_menu.handle(action, simulation.state()));
                 break;
             case BenchmarkNext:
-                end_selected = !end_selected;
-                host::select_benchmark_button(end_selected);
+                level->end_selected = !level->end_selected;
+                host::select_benchmark_button(level->end_selected);
                 break;
             case ToggleBenchmark:
                 if (simulation.state() == sim::LevelState::Running) {
-                    simulation.pause();
+                    level->set_simulation_mode(levels::LaunchMode::Paused);
                 } else if (simulation.state() == sim::LevelState::Paused) {
-                    simulation.start();
-                    previous_frame_time = std::chrono::steady_clock::now();
+                    level->set_simulation_mode(levels::LaunchMode::Running);
                 }
                 break;
             case EndBenchmark:
@@ -465,13 +441,11 @@ struct PlayerInputSession : InputReceiver {
     }
 
     LevelStorage& storage;
-    std::chrono::steady_clock::time_point& previous_frame_time;
     Window& window;
     PlayerSettings const& settings;
     PlayerMenu& menu;
     InputSystem input;
     ApplicationResult pause_presentation{};
-    bool end_selected{};
     bool end_benchmark{};
 };
 }
@@ -505,12 +479,11 @@ auto Application::play(Window& window,
     }
 
     constexpr double max_frame_delta_seconds{0.1};
-    auto previous_frame_time{std::chrono::steady_clock::now()};
-    auto const deadline{previous_frame_time + std::chrono::minutes{2}};
+    auto last_input_frame{std::chrono::steady_clock::now()};
+    auto const deadline{last_input_frame + std::chrono::minutes{2}};
     std::vector<AvailableLevel> available_levels;
 
-    PlayerInputSession play_input{window, settings_, menu_, storage, previous_frame_time};
-    auto last_input_frame{previous_frame_time};
+    PlayerInputSession play_input{window, settings_, menu_, storage};
     while (!IojPlayer_ExitRequested()) {
         IojPlayer_BeginFrame();
         if (menu_.prompt == OptionsPrompt::Display && !menu_.saving &&
@@ -627,7 +600,6 @@ auto Application::play(Window& window,
         }
 
         if (level->presentation_setup && host::level_world_ready()) {
-            play_input.end_selected = false;
             auto const start_paused{level->presentation_setup->launch_mode ==
                                         levels::LaunchMode::Paused &&
                                     (level->control_context == levels::ControlContext::Player ||
@@ -652,26 +624,17 @@ auto Application::play(Window& window,
                 return {};
             }
 
-            previous_frame_time = std::chrono::steady_clock::now();
+            level->previous_frame = std::chrono::steady_clock::now();
             continue;
         }
 
         if (host::presents_level()) {
             level->simulation.append_player_input(play_input.input.ship_input());
 
-            auto const frame_time{std::chrono::steady_clock::now()};
-            if (messages.requested_simulation_mode == levels::LaunchMode::Running &&
-                level->simulation.state() == sim::LevelState::Paused) {
-                level->simulation.start();
-                previous_frame_time = frame_time;
-            } else if (messages.requested_simulation_mode == levels::LaunchMode::Paused &&
-                       level->simulation.state() == sim::LevelState::Running) {
-                level->simulation.pause();
+            if (messages.requested_simulation_mode) {
+                level->set_simulation_mode(*messages.requested_simulation_mode);
             }
-
-            auto const elapsed{std::chrono::duration<double>{frame_time - previous_frame_time}};
-            previous_frame_time = frame_time;
-            advance_level(level->simulation, std::min(elapsed.count(), max_frame_delta_seconds));
+            advance_level(level->simulation, level->elapsed_seconds());
             play_input.update_pause_simulation(*level);
             if (level->simulation.state() == sim::LevelState::Stopped) {
                 unload_level(storage, sim::RunEndReason::LevelCompleted, true);
