@@ -4,6 +4,8 @@
 #include "SpaceGame/ui/common/SGameButton.h"
 
 #include <Framework/Application/SlateApplication.h>
+#include <ioj/input/dispatch/player_menu.h>
+#include <SandboxCoreEngine/strings.h>
 #include <InputCoreTypes.h>
 #include <Widgets/Images/SImage.h>
 #include <Widgets/Input/SEditableText.h>
@@ -214,6 +216,69 @@ auto SSaveGameViewerView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& 
 /* **************************************** */
 // Layout construction
 /* **************************************** */
+void SSaveGameViewerView::present(MenuUpdate const& update) {
+    auto const activate{update.operation == MenuOperation::Activate};
+    if (auto row{std::get_if<MenuRow>(&update.target)}) {
+        auto const id{to_fstring(row->id)};
+        if (row->kind == MenuRow::Kind::Profile) {
+            auto const index{state_.profiles.IndexOfByPredicate(
+                [&](auto const& entry) { return entry.profile_id == id; })};
+            if (profile_buttons_.IsValidIndex(index)) {
+                if (activate) {
+                    on_profile_selected_.ExecuteIfBound(id);
+                }
+                profile_buttons_[index]->focus();
+            }
+        } else {
+            auto const index{state_.outcomes.IndexOfByPredicate(
+                [&](auto const& entry) { return entry.outcome_id == id; })};
+            if (outcome_buttons_.IsValidIndex(index)) {
+                if (activate) {
+                    on_outcome_selected_.ExecuteIfBound(id);
+                }
+                outcome_buttons_[index]->focus();
+            }
+        }
+    } else if (auto control{std::get_if<MenuControl>(&update.target)}) {
+        auto apply = [activate](auto const& button, auto const& action) {
+            if (activate) {
+                action.ExecuteIfBound();
+            } else {
+                button->focus();
+            }
+        };
+        switch (*control) {
+            case MenuControl::RefreshProfiles:
+                apply(refresh_button_, on_refresh_);
+                break;
+            case MenuControl::ActivateProfile:
+                apply(activate_button_, on_activate_);
+                break;
+            case MenuControl::ResetProfile:
+                apply(reset_button_, on_reset_test_profile_);
+                break;
+            case MenuControl::CreateProfile:
+                apply(create_button_, on_begin_create_);
+                break;
+            case MenuControl::CancelCreate:
+                apply(cancel_button_, on_cancel_create_);
+                break;
+            case MenuControl::ProfileName:
+                FSlateApplication::Get().SetKeyboardFocus(profile_name_input_);
+                break;
+            case MenuControl::ConfirmCreate:
+                if (activate) {
+                    on_create_.ExecuteIfBound(profile_name_input_->GetText().ToString());
+                } else {
+                    confirm_button_->focus();
+                }
+                break;
+            default:
+                break;
+        }
+    }
+}
+
 auto SSaveGameViewerView::build_header() const -> TSharedRef<SWidget> {
     return SNew(SVerticalBox) +
            SVerticalBox::Slot()
@@ -364,9 +429,8 @@ auto SSaveGameViewerView::build_footer() -> TSharedRef<SWidget> {
         NSLOCTEXT("SaveGameViewer", "CreateProfile", "New Service Record"),
         FOnClicked::CreateSP(this, &SSaveGameViewerView::handle_action, on_begin_create_))];
 #if !UE_BUILD_SHIPPING
-    TSharedPtr<SGameButton> reset_button;
     footer->AddSlot().AutoWidth()[action_button(
-        reset_button,
+        reset_button_,
         *style_,
         audio_,
         EGameButtonStyle::Secondary,
@@ -388,8 +452,6 @@ auto SSaveGameViewerView::build_footer() -> TSharedRef<SWidget> {
 }
 
 auto SSaveGameViewerView::build_create_prompt() -> TSharedRef<SWidget> {
-    TSharedPtr<SGameButton> confirm_button;
-    TSharedPtr<SGameButton> cancel_button;
     auto const input{
         SNew(SBorder)
             .BorderImage(&style_->chrome().frame_border)
@@ -440,7 +502,7 @@ auto SSaveGameViewerView::build_create_prompt() -> TSharedRef<SWidget> {
                                       [SNew(SHorizontalBox) +
                                        SHorizontalBox::Slot().FillWidth(1.0f) +
                                        SHorizontalBox::Slot().AutoWidth()[action_button(
-                                           cancel_button,
+                                           cancel_button_,
                                            *style_,
                                            audio_,
                                            EGameButtonStyle::Secondary,
@@ -450,7 +512,7 @@ auto SSaveGameViewerView::build_create_prompt() -> TSharedRef<SWidget> {
                                                                 on_cancel_create_))] +
                                        SHorizontalBox::Slot().AutoWidth().Padding(
                                            FMargin{10.0f, 0.0f, 0.0f, 0.0f})[action_button(
-                                           confirm_button,
+                                           confirm_button_,
                                            *style_,
                                            audio_,
                                            EGameButtonStyle::Primary,

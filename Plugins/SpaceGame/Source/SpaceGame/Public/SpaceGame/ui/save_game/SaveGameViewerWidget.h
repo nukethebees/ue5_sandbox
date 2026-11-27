@@ -10,6 +10,7 @@
 #include "SaveGameViewerWidget.generated.h"
 
 namespace ioj {
+struct MenuUpdate;
 class SSaveGameViewerView;
 class UGameUiStyleSubsystem;
 
@@ -62,6 +63,7 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     /* **************************************** */
     USaveGameViewerWidget(FObjectInitializer const& object_initializer);
 
+    void present(MenuUpdate const& update);
     void focus_primary_action();
     [[nodiscard]] auto get_focus_target() const -> UWidget*;
 

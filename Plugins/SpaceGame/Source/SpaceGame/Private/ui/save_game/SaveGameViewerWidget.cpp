@@ -98,6 +98,12 @@ auto USaveGameViewerWidget::NativeOnFocusReceived(FGeometry const& geometry,
 /* **************************************** */
 // Navigation and profile actions
 /* **************************************** */
+void USaveGameViewerWidget::present(MenuUpdate const& update) {
+    if (view_) {
+        view_->present(update);
+    }
+}
+
 void USaveGameViewerWidget::focus_primary_action() {
     if (view_.IsValid()) {
         view_->focus_selected_profile();

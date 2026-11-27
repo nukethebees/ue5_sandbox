@@ -41,6 +41,7 @@ class SSaveGameViewerView final : public SCompoundWidget {
     void replace_state(FSaveGameViewState const& state);
     void replace_profile(FSaveGameViewState const& state);
     void update_outcome(FSaveGameViewState const& state);
+    void present(MenuUpdate const& update);
     void focus_selected_profile();
     void show_create_profile();
     void hide_create_profile();
@@ -101,6 +102,9 @@ class SSaveGameViewerView final : public SCompoundWidget {
     TSharedPtr<STextBlock> outcome_name_{};
     TSharedPtr<STextBlock> outcome_status_{};
     TSharedPtr<STextBlock> outcome_metadata_{};
+    TSharedPtr<SGameButton> reset_button_;
+    TSharedPtr<SGameButton> confirm_button_;
+    TSharedPtr<SGameButton> cancel_button_;
     TSharedPtr<SGameButton> activate_button_{};
     TSharedPtr<SGameButton> refresh_button_{};
     TSharedPtr<SGameButton> create_button_{};
