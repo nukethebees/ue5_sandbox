@@ -736,7 +736,7 @@ class Validator {
             auto const valid_codes{domains.distinct_code_count[domain_row] == value_count && [&] {
                 for (std::size_t index{}; index < value_count; ++index) {
                     auto const code{domains.code(domain, index)};
-                    if (!code || code->negative || code->magnitude >= value_count) {
+                    if (!code) {
                         return false;
                     }
                 }
@@ -744,9 +744,7 @@ class Validator {
             }()};
             if (!valid_codes) {
                 throw std::invalid_argument{
-                    std::format("Enum '{}' string conversions require known, unique, zero-based "
-                                "contiguous codes",
-                                name)};
+                    std::format("Enum '{}' string conversions require known, unique codes", name)};
             }
         }
         auto const has_serialized_conversion{

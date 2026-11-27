@@ -74,7 +74,8 @@ class EnumLowering : public CppIRBuilder {
     auto enum_strings_specialization(std::string_view qualified,
                                      std::string_view category,
                                      std::span<std::string const> names,
-                                     bool wide) -> NodeId {
+                                     bool wide,
+                                     std::span<Syntax const> sparse_keys = {}) -> NodeId {
         std::string blob;
         std::vector<std::size_t> offsets{0};
         std::vector<std::size_t> wide_offsets{0};
@@ -133,11 +134,18 @@ class EnumLowering : public CppIRBuilder {
         auto const offset_type{std_types().integer(bits)};
         auto const offsets_type{
             template_type(std_types().array, {offset_type, intern_type(std::to_string(count))})};
-        auto const initializer{
+        auto initializer{
             init_list({literal_value, init_list(offset_values, offsets_type)},
                       named_type("ioj::PackedStrings",
                                  NameOrigin::global,
                                  {dependency("ioj::PackedStrings", "ioj/enum_strings.h")}))};
+        if (!sparse_keys.empty()) {
+            initializer =
+                init_list({init_list(sparse_keys, std_types().array), initializer},
+                          named_type("ioj::SparseEnumStrings",
+                                     NameOrigin::global,
+                                     {dependency("ioj::SparseEnumStrings", "ioj/enum_strings.h")}));
+        }
         auto const variable_id{variable(
             intern_type("auto"),
             template_id(
@@ -413,14 +421,24 @@ class EnumLowering : public CppIRBuilder {
         auto const& domains{ctx.semantic.enum_domains()};
         auto const domain{domains.find(schema)};
         auto const declared_values{ctx.declarations.items(enums.values[schema])};
-        std::vector<EnumeratorId> values(declared_values.size());
         auto const value_count{declared_values.size()};
+        auto const qualified{qualified_enum_name(ctx, settings, schema)};
+        auto const enum_type{named_type(qualified, NameOrigin::global)};
+        auto const dense{!domains.minimum_value[domain]->negative &&
+                         domains.maximum_value[domain]->magnitude < value_count};
+        std::vector<EnumeratorId> values(value_count);
+        std::vector<Syntax> sparse_keys;
         for (std::size_t ordinal{}; ordinal < value_count; ++ordinal) {
-            values[domains.code(domain, ordinal)->magnitude] = declared_values[ordinal];
+            auto const value{declared_values[ordinal]};
+            if (dense) {
+                values[domains.code(domain, ordinal)->magnitude] = value;
+            } else {
+                values[ordinal] = value;
+                sparse_keys.push_back(scope_member(enum_type, enumerators.name[value]));
+            }
         }
 
         auto const name{ctx.text(enums.name[schema])};
-        auto const qualified{qualified_enum_name(ctx, settings, schema)};
         std::vector<std::string> names;
         names.reserve(value_count);
         for (auto const value : values) {
@@ -433,7 +451,7 @@ class EnumLowering : public CppIRBuilder {
                     : value_name);
         }
 
-        return enum_strings_specialization(qualified, category, names, wide);
+        return enum_strings_specialization(qualified, category, names, wide, sparse_keys);
     }
 
     auto string_lookup(LoweringContext& ctx,

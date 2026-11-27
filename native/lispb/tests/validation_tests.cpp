@@ -116,26 +116,29 @@ auto valid_soa_module(CompilerTestContext& ctx) -> lispb::codegen::ModuleHandle 
         .modules.front();
 }
 
-TEST(Validation, EnumStringTablesRequireKnownDenseZeroBasedCodes) {
-    for (auto const values : {"(value First :value -1) (value Second :value 0)",
-                              "(value First :value 0) (value Second :value 2)",
-                              "(value First :value 1) (value Second :value 2)",
-                              "(value First :value 0) (value Second :value 0)",
-                              "(value First :value \"external_code\") (value Second :value 1)"}) {
-        for (auto const options :
-             {":native-api true :helpers (to-string)", ":conversions (lex-to-string)"}) {
-            SCOPED_TRACE(values);
-            SCOPED_TRACE(options);
+TEST(Validation, EnumStringTablesRequireKnownUniqueCodes) {
+    for (auto const options :
+         {":native-api true :helpers (to-string)", ":conversions (lex-to-string)"}) {
+        SCOPED_TRACE(options);
+        auto render = [&](std::string_view values) {
             CompilerTestContext ctx;
             auto const source{std::format("(module test :header \"Test.h\" :source \"Test.cpp\" "
                                           "(enum State int {} {} (projections (cpp))))",
                                           options,
                                           values)};
-            auto const message{capture_exception_message<std::invalid_argument>(
-                [&] { render_test_manifest(ctx, parse_test_manifest(ctx, source)); })};
-            ASSERT_TRUE(message) << "Expected dense enum diagnostic";
-            EXPECT_NE(message->find("zero-based contiguous codes"), std::string_view::npos)
-                << *message;
+            render_test_manifest(ctx, parse_test_manifest(ctx, source));
+        };
+        EXPECT_NO_THROW(render("(value First :value -1) (value Second :value 2)"));
+        EXPECT_NO_THROW(render("(value First :value 3) (value Second :value 7)"));
+
+        for (auto const values :
+             {"(value First :value 0) (value Second :value 0)",
+              "(value First :value \"external_code\") (value Second :value 1)"}) {
+            SCOPED_TRACE(values);
+            auto const message{
+                capture_exception_message<std::invalid_argument>([&] { render(values); })};
+            ASSERT_TRUE(message) << "Expected enum code diagnostic";
+            EXPECT_NE(message->find("known, unique codes"), std::string_view::npos) << *message;
         }
     }
 }

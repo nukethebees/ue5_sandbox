@@ -22,6 +22,11 @@ struct PackedStrings {
         -> std::basic_string_view<Char> {
         auto const index{std::to_underlying(value)};
         assert(([&] { return std::cmp_greater_equal(index, 0) && std::cmp_less(index, N - 1); }()));
+        return at(static_cast<std::size_t>(index));
+    }
+
+    [[nodiscard]] constexpr auto at(std::size_t index) const noexcept
+        -> std::basic_string_view<Char> {
         auto const begin{offsets[index]};
         return {data + begin, static_cast<std::size_t>(offsets[index + 1] - begin - 1)};
     }
@@ -34,6 +39,22 @@ struct PackedStrings {
 
 template <typename Char, typename Offset, std::size_t N>
 PackedStrings(Char const*, std::array<Offset, N>) -> PackedStrings<Char, Offset, N>;
+
+template <typename Enum, std::size_t N, typename Strings>
+struct SparseEnumStrings {
+    [[nodiscard]] constexpr auto operator()(Enum value) const noexcept {
+        for (std::size_t i{}; i < N; ++i) {
+            if (keys[i] == value) {
+                return strings.at(i);
+            }
+        }
+        assert(false);
+        std::unreachable();
+    }
+
+    std::array<Enum, N> keys;
+    Strings strings;
+};
 
 template <typename Enum, typename Category>
 inline constexpr auto enum_strings = nullptr;
