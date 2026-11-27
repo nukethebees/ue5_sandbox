@@ -1,36 +1,21 @@
 #pragma once
 
-#include <ioj/host/unreal_messages.h>
-#include <ioj/input/dispatch/player_menu.h>
-#include <ioj/input/physical/keyboard_layout.h>
-#include <ioj/presentation/profile_view.h>
-#include <ioj/settings/player_settings_view.h>
+#include <ioj/host/messages.h>
 #include <ioj/system_capabilities.h>
 
-#include <string_view>
-
 namespace ioj {
-class UOptionsDraft;
-class ULevelSelectWidget;
-class USaveGameViewerWidget;
-
-SPACEGAME_API auto keyboard_layout() -> KeyboardLayout const&;
 SPACEGAME_API auto menu_presentation() -> MenuPresentation const&;
-SPACEGAME_API void edit_menu_text(MenuControl control, std::string value);
-void edit_setting(GameSetting setting, GameSettingValue value);
-SPACEGAME_API auto player_menu() -> PlayerMenu&;
 SPACEGAME_API auto player_settings() -> PlayerSettingsView const&;
 SPACEGAME_API auto system_capabilities() -> SystemCapabilities const&;
-void request_profile_refresh();
-void queue_preferences(host::PreferenceEdit edit, UOptionsDraft& draft);
-SPACEGAME_API void request_level_catalog();
-SPACEGAME_API auto launch_error() -> std::string_view;
-auto supported_resolutions() -> std::span<ScreenResolution const>;
+SPACEGAME_API auto keyboard_layout() -> KeyboardLayout const&;
+SPACEGAME_API auto supported_resolutions() -> std::span<ScreenResolution const>;
 SPACEGAME_API void hit_menu_control(MenuTarget target);
-void request_player_action(host::PlayerAction action);
+SPACEGAME_API void edit_menu_text(MenuControl control, std::string value);
+void edit_setting(GameSetting setting, GameSettingValue value);
 void report_pause_interaction(host::PauseWidgetEvent event);
-void queue_input_action(host::WidgetAction action);
+void request_player_action(host::PlayerAction action);
+SPACEGAME_API void request_level_catalog();
+void request_profile_refresh();
 void request_simulation_mode(levels::LaunchMode mode);
-void clear_consumed_messages();
-void detach_player();
+SPACEGAME_API auto launch_error() -> std::string_view;
 }

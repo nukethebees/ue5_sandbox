@@ -10,7 +10,6 @@ namespace ioj {
 struct MenuUpdate;
 enum class GameSettingCategory : uint8;
 class SGameOptionsView;
-class UOptionsDraft;
 class UGameUiStyleSubsystem;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOptionsModalStateChanged, bool);
@@ -38,14 +37,7 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
   private:
-    void handle_apply();
-    void handle_confirm_display();
-    void handle_revert_display();
-    void handle_display_confirmation_changed(bool visible);
     void handle_interaction_modal_changed(bool visible);
-
-    UPROPERTY(Transient)
-    UOptionsDraft* settings_{nullptr};
 
     UPROPERTY(Transient)
     UGameUiStyleSubsystem* style_{nullptr};

@@ -5,7 +5,6 @@
 #include "player/loaded_level.h"
 #include "player/native_endpoint.h"
 #include "player/window.h"
-#include <ioj/host/unreal_messages.h>
 #include <ioj/levels/level_definition.h>
 #include <ioj/profiles/profile_manager.h>
 #include <ioj/profiles/save_browser.h>
@@ -35,7 +34,11 @@ class Application {
     void choose_pause(host::PauseMenuItem item);
     void finish_leave(bool accepted);
     void apply_menu(MenuUpdate update);
-    auto process_preferences(std::span<host::PreferenceEdit const> edits) -> bool;
+    void present_menu(MenuUpdate update);
+    void apply_preferences(bool keep_display);
+    void revert_display();
+    void finish_preferences(host::SettingsApplied result);
+    void publish_settings();
     void publish_catalog();
     void publish_profiles();
     void profile_action(MenuControl action);

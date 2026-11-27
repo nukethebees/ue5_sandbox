@@ -1,107 +1,63 @@
 #include "SpaceGame/UnrealMessages.h"
 
 #include "settings/GameHost.h"
-#include "SpaceGame/settings/OptionsDraft.h"
-#include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
-#include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
 #include "UnrealEndpoint.h"
+#include <ioj/host/game_host_api.h>
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-#include <ioj/host/game_host_api.h>
+#include <SpaceGame/settings/GameVideoSettings.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
+#include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
+#include <SpaceGamePresentation/audio/GameAudio.h>
+#include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 
 #include <SandboxCoreEngine/strings.h>
 
 #include <Engine/Engine.h>
+#include <Engine/GameInstance.h>
 #include <Engine/GameViewportClient.h>
 #include <Engine/World.h>
+#include <HAL/IConsoleManager.h>
 #include <Kismet/GameplayStatics.h>
+#include <Misc/App.h>
+#include <Misc/MessageDialog.h>
 #include <UnrealEngine.h>
 #endif
-
-#include <Misc/AssertionMacros.h>
-#include <UObject/WeakObjectPtrTemplates.h>
-#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
-#include <HAL/IConsoleManager.h>
-#endif
-
-#include <utility>
-#include <vector>
 
 namespace ioj {
 namespace {
 host::UnrealEndpoint endpoint;
+MenuPresentation menu;
+PlayerSettingsView settings_view;
 KeyboardLayout keyboard;
-PlayerSettingsView attached_settings{};
-PlayerMenu* attached_menu{};
-SystemCapabilities const* attached_capabilities{};
+SystemCapabilities capabilities;
+std::vector<ScreenResolution> resolutions;
 std::string menu_error;
-std::span<ScreenResolution const> window_resolutions{};
-
-struct MessageBuffer {
-    std::vector<host::PreferenceEdit> preference_edits;
-    std::vector<TWeakObjectPtr<UOptionsDraft>> preference_senders;
-};
-
-std::vector<host::WidgetAction> pending_actions;
-std::vector<host::WidgetAction> dispatched_actions;
-MessageBuffer pending;
-MessageBuffer published;
-
-#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED && !UE_BUILD_SHIPPING
-FAutoConsoleCommand reset_profile_command{
-    TEXT("spacegame_reset_test_profile"),
-    TEXT("Replaces the dedicated Test Profile and activates it."),
-    FConsoleCommandDelegate::CreateLambda(
-        [] { endpoint.send(host::UnrealMessageKind::ResetTestProfile); })};
-#endif
 }
 
+auto menu_presentation() -> MenuPresentation const& {
+    return menu;
+}
+auto player_settings() -> PlayerSettingsView const& {
+    return settings_view;
+}
+auto system_capabilities() -> SystemCapabilities const& {
+    return capabilities;
+}
 auto keyboard_layout() -> KeyboardLayout const& {
     return keyboard;
 }
-auto menu_presentation() -> MenuPresentation const& {
-    return player_menu();
-}
-auto player_menu() -> PlayerMenu& {
-    check(attached_menu);
-    return *attached_menu;
-}
-
-auto player_settings() -> PlayerSettingsView const& {
-    return attached_settings;
-}
-
-auto system_capabilities() -> SystemCapabilities const& {
-    check(attached_capabilities);
-    return *attached_capabilities;
-}
-
-void request_profile_refresh() {
-    endpoint.send(host::UnrealMessageKind::RefreshProfiles);
-}
-void queue_preferences(host::PreferenceEdit edit, UOptionsDraft& draft) {
-    pending.preference_edits.push_back(std::move(edit));
-    pending.preference_senders.emplace_back(&draft);
-}
-
-void request_level_catalog() {
-    endpoint.send(host::UnrealMessageKind::RefreshCatalog);
+auto supported_resolutions() -> std::span<ScreenResolution const> {
+    return resolutions;
 }
 auto launch_error() -> std::string_view {
     return menu_error;
 }
-auto supported_resolutions() -> std::span<ScreenResolution const> {
-    return window_resolutions;
-}
-
 void hit_menu_control(MenuTarget target) {
     endpoint.hit(std::move(target));
-}
-void request_player_action(host::PlayerAction action) {
-    endpoint.player_action(action);
 }
 void edit_menu_text(MenuControl control, std::string value) {
     endpoint.edit_text({control, std::move(value)});
@@ -109,11 +65,17 @@ void edit_menu_text(MenuControl control, std::string value) {
 void edit_setting(GameSetting setting, GameSettingValue value) {
     endpoint.edit_setting({setting, std::move(value)});
 }
+void request_level_catalog() {
+    endpoint.send(host::UnrealMessageKind::RefreshCatalog);
+}
+void request_profile_refresh() {
+    endpoint.send(host::UnrealMessageKind::RefreshProfiles);
+}
 void report_pause_interaction(host::PauseWidgetEvent event) {
     endpoint.pause_interaction(event);
 }
-void queue_input_action(host::WidgetAction action) {
-    pending_actions.push_back(action);
+void request_player_action(host::PlayerAction action) {
+    endpoint.player_action(action);
 }
 void request_simulation_mode(levels::LaunchMode mode) {
     endpoint.request_simulation_mode(mode);
@@ -123,6 +85,30 @@ void request_simulation_mode(levels::LaunchMode mode) {
 namespace {
 TWeakObjectPtr<ATestBatchOrchestrator> level_world;
 std::optional<host::EngineStatus> reported_status;
+#if !UE_BUILD_SHIPPING
+FAutoConsoleCommand reset_profile_command{
+    TEXT("spacegame_reset_test_profile"),
+    TEXT("Replaces the dedicated Test Profile and activates it."),
+    FConsoleCommandDelegate::CreateLambda(
+        [] { endpoint.send(host::UnrealMessageKind::ResetTestProfile); })};
+#endif
+
+auto apply_preferences(host::ApplySettings const& edit) -> std::string {
+    if (edit.category == GameSettingCategory::Video) {
+        if (auto result{FGameVideoSettings{}.apply_quality(edit.values.video)}; !result) {
+            return result.error();
+        }
+    } else if (edit.category == GameSettingCategory::Audio) {
+        auto* audio{
+            GEngine->GameViewport->GetWorld()->GetGameInstance()->GetSubsystem<UGameAudio>()};
+        check(audio);
+        audio->set_master_volume(edit.values.audio.master_volume);
+        audio->set_music_volume(edit.values.audio.music_volume);
+        audio->set_sfx_volume(edit.values.audio.sfx_volume);
+        audio->set_ui_volume(edit.values.audio.ui_volume);
+    }
+    return {};
+}
 }
 void attach_level_world(ATestBatchOrchestrator& actor) {
     check(!level_world.IsValid());
@@ -133,13 +119,14 @@ void detach_level_world(ATestBatchOrchestrator& actor) {
         level_world.Reset();
     }
 }
+
 void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
     auto* const viewport{GEngine ? GEngine->GameViewport.Get() : nullptr};
     auto* const world{viewport ? viewport->GetWorld() : nullptr};
     auto* const player{world ? Cast<ASpaceGamePlayerController>(world->GetFirstPlayerController())
                              : nullptr};
     for (auto const [kind, index] : messages.order) {
-        using enum NativeMessageKind;
+        using enum host::NativeMessageKind;
         switch (kind) {
             case Key:
                 host::present_input(messages.keys[index]);
@@ -150,8 +137,21 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
             case Pointer:
                 host::present_input(messages.pointers[index]);
                 break;
+            case Menu: {
+                auto const& message{messages.menus[index]};
+                menu = message.state;
+                if (player && message.update) {
+                    player->present_menu(*message.update);
+                }
+                break;
+            }
             case Pause:
-                pause_presented(host::present_pause(messages.pause_commands[index]));
+                pause_presented(player && player->present_pause(messages.pause_commands[index]));
+                break;
+            case Benchmark:
+                if (auto* hud{player->get_benchmark_hud()}) {
+                    hud->select_button(messages.benchmark_selections[index] != 0);
+                }
                 break;
             case Viewer: {
                 auto const& step{messages.viewer_steps[index]};
@@ -166,6 +166,40 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 player->present_steering(position);
                 break;
             }
+            case Keyboard:
+                keyboard = *messages.keyboards[index];
+                break;
+            case Capabilities:
+                capabilities = *messages.capabilities[index];
+                break;
+            case Settings: {
+                auto const& update{messages.settings[index]};
+                settings_view = update.values;
+                resolutions.assign(update.resolutions.begin(), update.resolutions.end());
+                break;
+            }
+            case Catalog:
+                if (auto* main{player ? player->main_menu() : nullptr}) {
+                    if (auto* widget{main->level_select()}) {
+                        widget->present_catalog(messages.catalogs[index]);
+                        menu_error.clear();
+                    }
+                }
+                break;
+            case Profiles:
+                if (auto* main{player ? player->main_menu() : nullptr}) {
+                    if (auto* widget{main->save_game_viewer()}) {
+                        widget->present_profiles(messages.profiles[index]);
+                    }
+                }
+                break;
+            case ProfileResult:
+                if (auto* main{player ? player->main_menu() : nullptr}) {
+                    if (auto* widget{main->save_game_viewer()}) {
+                        widget->show_create_result(messages.profile_results[index]);
+                    }
+                }
+                break;
             case OpenMenu:
                 menu_error = messages.errors[index];
                 level_world.Reset();
@@ -205,36 +239,19 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 }
                 break;
             }
-            case Catalog:
-                if (auto* main{player ? player->main_menu() : nullptr}) {
-                    if (auto* widget{main->level_select()}) {
-                        widget->present_catalog(messages.catalogs[index]);
-                        menu_error.clear();
-                    }
+            case ApplySettings: {
+                auto const& edit{messages.preferences[index]};
+                settings_applied({edit.operation, edit.category, apply_preferences(edit)});
+                break;
+            }
+            case Error: {
+                auto const message{FText::FromString(to_fstring(messages.errors[index]))};
+                UE_LOG(LogTemp, Error, TEXT("%s"), *message.ToString());
+                if (!FApp::IsUnattended() && !GIsAutomationTesting) {
+                    FMessageDialog::Open(EAppMsgType::Ok, message);
                 }
                 break;
-            case Profiles:
-                if (auto* main{player ? player->main_menu() : nullptr}) {
-                    if (auto* widget{main->save_game_viewer()}) {
-                        widget->present_profiles(messages.profiles[index]);
-                    }
-                }
-                break;
-            case ProfileResult:
-                if (auto* main{player ? player->main_menu() : nullptr}) {
-                    if (auto* widget{main->save_game_viewer()}) {
-                        widget->show_create_result(messages.profile_results[index]);
-                    }
-                }
-                break;
-            case Keyboard:
-                keyboard = *messages.keyboards[index];
-                break;
-            case Benchmark:
-                host::select_benchmark_button(messages.benchmark_selections[index] != 0);
-                break;
-            default:
-                checkNoEntry();
+            }
         }
     }
     host::EngineStatus const current_status{world && world->HasBegunPlay(),
@@ -254,53 +271,14 @@ void IojPlayer_Exchange(host::NativeMessages const& outgoing, host::UnrealMessag
 void IojPlayer_ReleaseMessages() {
     endpoint.clear();
 }
-void IojPlayer_Attach(SystemCapabilities const& capabilities, PlayerMenu& menu) {
-    attached_menu = &menu;
-    attached_capabilities = &capabilities;
-}
-void host::present_settings(PlayerSettingsView const& settings,
-                            std::span<ScreenResolution const> resolutions) {
-    window_resolutions = resolutions;
-    attached_settings = settings;
-}
-void clear_consumed_messages() {
-    published.preference_edits.clear();
-    published.preference_senders.clear();
-}
-
-auto host::take_widget_actions() -> std::span<WidgetAction const> {
-    dispatched_actions.clear();
-    dispatched_actions.swap(pending_actions);
-    return dispatched_actions;
-}
-
-auto host::take_preferences() -> std::span<PreferenceEdit const> {
-    std::swap(pending, published);
-
-    return published.preference_edits;
-}
-
-void host::preference_result(std::size_t index, std::string_view error) {
-    if (auto* draft{published.preference_senders[index].Get()}) {
-        draft->preference_finished(published.preference_edits[index], error);
-    }
-}
-#endif
-
-void detach_player() {
-#if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+void IojPlayer_Detach() {
+    endpoint = {};
     reported_status.reset();
     level_world.Reset();
-#endif
-    endpoint.clear();
-    pending_actions.clear();
-    dispatched_actions.clear();
-    published = MessageBuffer{};
-    pending = MessageBuffer{};
+    menu = {};
+    settings_view = {};
+    resolutions.clear();
     menu_error.clear();
-    window_resolutions = {};
-    attached_settings = {};
-    attached_capabilities = nullptr;
-    attached_menu = nullptr;
 }
+#endif
 }
