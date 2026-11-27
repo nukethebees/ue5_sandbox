@@ -1,4 +1,3 @@
-#include <ioj/levels/launch_options.h>
 #pragma once
 #include <ioj/levels/level_catalog_category.h>
 #include <ioj/profiles/completion_indicator_state.h>
@@ -37,7 +36,6 @@ struct FLevelSelectViewState {
     FText script{};
     FText launch_mode_status{};
     LevelCatalogCategory category{LevelCatalogCategory::Playable};
-    TOptional<double> playerless_time_scale{};
     int32 selected_button_index{INDEX_NONE};
     bool can_launch{};
 };
@@ -47,15 +45,6 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     GENERATED_BODY()
   public:
     UScriptLevelSelectWidget();
-
-    [[nodiscard]] auto can_launch_selected_level() const noexcept -> bool {
-        return view_state_.can_launch &&
-               (active_category_ == LevelCatalogCategory::Playable ||
-                (get_active_playerless_time_scale().IsSet() && battle_duration_valid_));
-    }
-    [[nodiscard]] auto get_active_category() const noexcept -> LevelCatalogCategory {
-        return active_category_;
-    }
 
     void refresh() override;
     void present_catalog(presentation::LevelCatalogView const& catalog) override;
@@ -67,23 +56,10 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
   private:
-    void launch_selected_level(::ioj::levels::LaunchOptions options);
     void refresh_levels();
     void rebuild_catalog();
-    void select_category(LevelCatalogCategory category);
-    void select_level(int32 button_index);
-    void set_battle_time_scale(TOptional<double> time_scale);
-    void set_battle_duration(TOptional<double> duration, bool valid);
-    void set_battle_simulation_only(bool simulation_only);
     void apply_level_selection(int32 button_index);
 
-    [[nodiscard]] auto get_active_playerless_time_scale() const noexcept
-        -> TOptional<double> const& {
-        return active_category_ == LevelCatalogCategory::Benchmark ? benchmark_time_scale_
-                                                                   : battle_viewer_time_scale_;
-    }
-
-    void handle_launch();
     void publish_view();
     void publish_catalog();
 
@@ -97,12 +73,5 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     FGameUiStyle fallback_style_{};
     UPROPERTY(Transient)
     UGameUiStyleSubsystem* style_{nullptr};
-    int32 selected_entry_index_{INDEX_NONE};
-    LevelCatalogCategory active_category_{LevelCatalogCategory::Playable};
-    TOptional<double> battle_viewer_time_scale_{1.0};
-    TOptional<double> benchmark_time_scale_{10.0};
-    TOptional<double> battle_duration_{};
-    bool battle_duration_valid_{true};
-    bool battle_simulation_only_{};
 };
 }

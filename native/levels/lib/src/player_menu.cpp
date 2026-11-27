@@ -5,6 +5,9 @@
 
 #include <algorithm>
 #include <cassert>
+#include <charconv>
+#include <string_view>
+#include <system_error>
 
 namespace ioj {
 auto settings_category(MainMenuItem page) -> std::optional<GameSettingCategory> {
@@ -24,7 +27,55 @@ auto settings_category(MainMenuItem page) -> std::optional<GameSettingCategory> 
     }
 }
 
-auto PlayerMenu::binding_rows() const -> std::vector<ControlBindingRow> {
+namespace {
+auto parse_number(std::string_view text) -> std::optional<double> {
+    if (text.starts_with('+')) {
+        text.remove_prefix(1);
+    }
+    double value{};
+    auto const end{text.data() + text.size()};
+    auto const result{std::from_chars(text.data(), end, value, std::chars_format::fixed)};
+    if (result.ec != std::errc{} || result.ptr != end) {
+        return {};
+    }
+    return value;
+}
+}
+auto MenuPresentation::launch_speed() const -> std::string const& {
+    return category == levels::authoring::LevelCatalogCategory::Benchmark ? benchmark_speed
+                                                                          : viewer_speed;
+}
+auto MenuPresentation::speed_value() const -> std::optional<double> {
+    auto value{parse_number(launch_speed())};
+    return value && levels::launch::TimeScale::valid(*value) ? value : std::nullopt;
+}
+auto MenuPresentation::duration_value() const -> std::optional<double> {
+    auto value{parse_number(duration)};
+    return value && PositiveFinite<double>::valid(*value) ? value : std::nullopt;
+}
+auto MenuPresentation::launch_options() const -> std::optional<levels::LaunchOptions> {
+    levels::LaunchOptions options;
+    using Category = levels::authoring::LevelCatalogCategory;
+    if (category == Category::Playable) {
+        return options;
+    }
+    auto const speed{speed_value()};
+    auto const seconds{duration_value()};
+    if (!speed || (!duration.empty() && !seconds)) {
+        return {};
+    }
+    options.requested_time_scale = levels::launch::TimeScale::make(*speed);
+    if (seconds) {
+        options.simulated_duration_seconds = PositiveFinite<double>::make(*seconds);
+    }
+    options.presentation_mode = simulation_only ? levels::PresentationMode::SimulationOnly
+                                                : levels::PresentationMode::Visual;
+    options.control_context = category == Category::Benchmark ? levels::ControlContext::Benchmark
+                                                              : levels::ControlContext::Observer;
+    return options;
+}
+
+auto MenuPresentation::binding_rows() const -> std::vector<ControlBindingRow> {
     std::vector<ControlBindingRow> rows;
     for (auto const& control : flight_controls()) {
         if (is_gamepad_mapping(control.mapping) == (device == GameSettingDevice::Controller)) {
@@ -77,7 +128,7 @@ auto PlayerMenu::finish_main_leave(bool accepted) -> std::optional<MenuUpdate> {
     return MenuUpdate{*destination, MenuOperation::Activate};
 }
 
-auto PlayerMenu::display_seconds_remaining() const -> int {
+auto MenuPresentation::display_seconds_remaining() const -> int {
     return static_cast<int>(std::max<std::int64_t>(
         0,
         std::chrono::ceil<std::chrono::seconds>(display_deadline - std::chrono::steady_clock::now())
@@ -101,6 +152,7 @@ void PlayerMenu::set_prompt(OptionsPrompt next) {
 
 void PlayerMenu::set_create_profile(bool open) {
     create_profile = open;
+    profile_name.clear();
     focus = open ? MenuControl::ProfileName : MenuControl::CreateProfile;
 }
 
@@ -140,7 +192,7 @@ auto PlayerMenu::content_targets(PlayerSettingsView const& settings) const
         if (category != Category::Playable) {
             targets.insert(targets.end(), {BattleSpeed, BattleDuration, SimulationOnly});
         }
-        if (can_launch && launch_options_valid) {
+        if (can_launch && launch_options()) {
             targets.emplace_back(Launch);
         }
     } else if (page == MainMenuItem::DataArchive) {
@@ -199,6 +251,35 @@ auto PlayerMenu::primary_target(PlayerSettingsView const& settings) const -> Men
     return targets.empty() ? MenuTarget{page} : std::move(targets.front());
 }
 
+auto PlayerMenu::edit_text(MenuControl control, std::string text) -> std::optional<MenuUpdate> {
+    if (screen == MenuScreen::Closed || saving) {
+        return {};
+    }
+    if (control == MenuControl::ProfileName && create_profile) {
+        profile_name = std::move(text);
+    } else if (page == MainMenuItem::SelectLevel &&
+               category != levels::authoring::LevelCatalogCategory::Playable) {
+        auto const last{text.find_last_not_of(" \t\r\n")};
+        if (last == std::string::npos) {
+            text.clear();
+        } else {
+            text.erase(last + 1);
+            text.erase(0, text.find_first_not_of(" \t\r\n"));
+        }
+        if (control == MenuControl::BattleDuration) {
+            duration = std::move(text);
+        } else if (control == MenuControl::BattleSpeed) {
+            (category == levels::authoring::LevelCatalogCategory::Benchmark ? benchmark_speed
+                                                                            : viewer_speed) =
+                std::move(text);
+        } else {
+            return {};
+        }
+        return MenuUpdate{control, MenuOperation::RefreshSettings};
+    }
+    return {};
+}
+
 auto PlayerMenu::activate(MenuTarget target,
                           PlayerSettingsView const& settings,
                           std::span<ScreenResolution const> resolutions)
@@ -232,6 +313,9 @@ auto PlayerMenu::activate(MenuTarget target,
         return {};
     }
     focus = target;
+    if (target == MenuTarget{MenuControl::SimulationOnly}) {
+        simulation_only = !simulation_only;
+    }
     if (target == MenuTarget{MenuControl::CreateProfile} ||
         target == MenuTarget{MenuControl::CancelCreate}) {
         set_create_profile(target == MenuTarget{MenuControl::CreateProfile});

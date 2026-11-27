@@ -18,24 +18,12 @@ struct SScriptLevelSelectViewBuilder;
 namespace ioj::s7 {
 using ioj::levels::authoring::LevelCatalogCategory;
 
-DECLARE_DELEGATE_OneParam(FOnLevelRowSelected, int32);
-DECLARE_DELEGATE_OneParam(FOnLevelCategorySelected, LevelCatalogCategory);
-DECLARE_DELEGATE_OneParam(FOnBattleSpeedChanged, TOptional<double>);
-DECLARE_DELEGATE_TwoParams(FOnBattleDurationChanged, TOptional<double>, bool);
-DECLARE_DELEGATE_OneParam(FOnBattleBoolChanged, bool);
-
 class SScriptLevelSelectView final : public SCompoundWidget {
     friend struct ::SlateGenerated::ioj::s7::SScriptLevelSelectViewBuilder;
   public:
     SLATE_BEGIN_ARGS(SScriptLevelSelectView)
         : _Style(nullptr) {}
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
-    SLATE_EVENT(FOnLevelRowSelected, OnLevelSelected)
-    SLATE_EVENT(FOnLevelCategorySelected, OnCategorySelected)
-    SLATE_EVENT(FOnBattleSpeedChanged, OnBattleSpeedChanged)
-    SLATE_EVENT(FOnBattleDurationChanged, OnBattleDurationChanged)
-    SLATE_EVENT(FOnBattleBoolChanged, OnBattleSimulationOnlyChanged)
-    SLATE_EVENT(FSimpleDelegate, OnLaunch)
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
@@ -67,12 +55,6 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     void focus_level(int32 button_index);
 
     FGameUiStyle const* style_{};
-    FOnLevelRowSelected on_level_selected_{};
-    FOnLevelCategorySelected on_category_selected_{};
-    FOnBattleSpeedChanged on_battle_speed_changed_{};
-    FOnBattleDurationChanged on_battle_duration_changed_{};
-    FOnBattleBoolChanged on_battle_simulation_only_changed_{};
-    FSimpleDelegate on_launch_{};
 
     TSharedPtr<SVerticalBox> catalog_rows_{};
     TSharedPtr<STextBlock> title_{};
@@ -97,8 +79,5 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     LevelCatalogCategory category_{LevelCatalogCategory::Playable};
     int32 selected_button_index_{INDEX_NONE};
     bool selected_level_can_launch_{};
-    bool battle_speed_valid_{true};
-    bool battle_duration_valid_{true};
-    bool battle_simulation_only_{};
 };
 } // namespace ioj::s7

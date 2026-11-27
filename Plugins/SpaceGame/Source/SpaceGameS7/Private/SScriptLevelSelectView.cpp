@@ -6,6 +6,7 @@
 #include <SpaceGame/ui/common/SMenuEditableText.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
 
+#include <SandboxCoreEngine/strings.h>
 #include <SandboxUI/slate/SlateSlots.h>
 
 #include <Framework/Application/SlateApplication.h>
@@ -25,12 +26,6 @@ using ioj::levels::authoring::LevelCatalogCategory;
 void SScriptLevelSelectView::Construct(FArguments const& args) {
     style_ = args._Style;
     check(style_ != nullptr);
-    on_level_selected_ = args._OnLevelSelected;
-    on_category_selected_ = args._OnCategorySelected;
-    on_battle_speed_changed_ = args._OnBattleSpeedChanged;
-    on_battle_duration_changed_ = args._OnBattleDurationChanged;
-    on_battle_simulation_only_changed_ = args._OnBattleSimulationOnlyChanged;
-    on_launch_ = args._OnLaunch;
 
     ChildSlot[SlateGenerated::ioj::s7::SScriptLevelSelectViewBuilder{*this}.BuildRoot(
         &style_->chrome().body_background, build_header(), build_catalog(), build_details())];
@@ -60,24 +55,21 @@ void SScriptLevelSelectView::update_state(FLevelSelectViewState const& state) {
     selected_level_can_launch_ = state.can_launch;
     auto const playerless{category_ != LevelCatalogCategory::Playable};
     if (playerless) {
-        auto const speed_text{
-            state.playerless_time_scale.IsSet()
-                ? FText::FromString(FString::SanitizeFloat(state.playerless_time_scale.GetValue()))
-                : FText::GetEmpty()};
+        auto const speed_text{FText::FromString(to_fstring(player_menu().launch_speed()))};
         if (!battle_speed_input_->GetText().EqualTo(speed_text)) {
             battle_speed_input_->SetText(speed_text);
         }
 
-        handle_battle_duration_changed(battle_duration_input_->GetText());
+        auto const duration{FText::FromString(to_fstring(player_menu().duration))};
+        if (!battle_duration_input_->GetText().EqualTo(duration)) {
+            battle_duration_input_->SetText(duration);
+        }
+        simulation_only_->SetIsChecked(player_menu().simulation_only
+                                           ? ECheckBoxState::Checked
+                                           : ECheckBoxState::Unchecked);
     }
 
     battle_options_->SetVisibility(playerless ? EVisibility::Visible : EVisibility::Collapsed);
-    battle_speed_error_->SetVisibility(playerless && !battle_speed_valid_
-                                           ? EVisibility::HitTestInvisible
-                                           : EVisibility::Collapsed);
-    battle_duration_error_->SetVisibility(playerless && !battle_duration_valid_
-                                              ? EVisibility::HitTestInvisible
-                                              : EVisibility::Collapsed);
     update_launch_availability();
     Invalidate(EInvalidateWidgetReason::Layout | EInvalidateWidgetReason::Paint);
 }
@@ -91,24 +83,20 @@ auto SScriptLevelSelectView::OnFocusReceived(FGeometry const& geometry,
 }
 
 void SScriptLevelSelectView::present(MenuUpdate const& update) {
-    auto const activate{update.operation == MenuOperation::Activate};
+    if (update.operation == MenuOperation::RefreshSettings) {
+        update_launch_availability();
+        return;
+    }
     if (update.target.kind == MenuTarget::Kind::Category) {
         auto const category{update.target.category()};
-        if (activate) {
-            on_category_selected_.ExecuteIfBound(category);
-        }
         auto const button{category == LevelCatalogCategory::Playable ? level_category_button_
                           : category == LevelCatalogCategory::BattleViewer
                               ? battle_viewer_category_button_
                               : benchmark_category_button_};
         button->focus();
     } else if (update.target.is_row()) {
-        auto const* row{&update.target};
-        auto const index{level_ids_.Find(row->id)};
+        auto const index{level_ids_.Find(update.target.id)};
         if (index != INDEX_NONE) {
-            if (activate) {
-                on_level_selected_.ExecuteIfBound(index);
-            }
             focus_level(index);
         }
     } else if (update.target.kind == MenuTarget::Kind::Control) {
@@ -122,20 +110,13 @@ void SScriptLevelSelectView::present(MenuUpdate const& update) {
                 slate.SetKeyboardFocus(battle_duration_input_);
                 break;
             case MenuControl::SimulationOnly:
-                if (activate) {
-                    auto const state{battle_simulation_only_ ? ECheckBoxState::Unchecked
-                                                             : ECheckBoxState::Checked};
-                    simulation_only_->SetIsChecked(state);
-                    handle_simulation_only_changed(state);
-                }
+                simulation_only_->SetIsChecked(player_menu().simulation_only
+                                                   ? ECheckBoxState::Checked
+                                                   : ECheckBoxState::Unchecked);
                 slate.SetKeyboardFocus(simulation_only_);
                 break;
             case MenuControl::Launch:
-                if (activate) {
-                    on_launch_.ExecuteIfBound();
-                } else {
-                    launch_button_->focus();
-                }
+                launch_button_->focus();
                 break;
             default:
                 break;
@@ -381,44 +362,34 @@ auto SScriptLevelSelectView::request_launch() -> FReply {
 }
 
 void SScriptLevelSelectView::handle_battle_speed_changed(FText const& text) {
-    auto value_text{text.ToString()};
-    value_text.TrimStartAndEndInline();
-    auto const numeric{value_text.IsNumeric()};
-    auto const value{numeric ? FCString::Atod(*value_text) : 0.0};
-    battle_speed_valid_ = numeric && levels::launch::TimeScale::valid(value);
-    battle_speed_error_->SetVisibility(battle_speed_valid_ ? EVisibility::Collapsed
-                                                           : EVisibility::HitTestInvisible);
-    update_launch_availability();
-    on_battle_speed_changed_.ExecuteIfBound(battle_speed_valid_ ? TOptional<double>{value}
-                                                                : TOptional<double>{});
+    auto value{to_string(text.ToString())};
+    if (value != player_menu().launch_speed()) {
+        player_menu().edit_text(MenuControl::BattleSpeed, std::move(value));
+        update_launch_availability();
+    }
 }
-
 void SScriptLevelSelectView::handle_battle_duration_changed(FText const& text) {
-    auto value_text{text.ToString()};
-    value_text.TrimStartAndEndInline();
-    auto const blank{value_text.IsEmpty()};
-    auto const numeric{value_text.IsNumeric()};
-    auto const value{numeric ? FCString::Atod(*value_text) : 0.0};
-    auto const valid_duration{numeric && PositiveFinite<double>::valid(value)};
-    battle_duration_valid_ = blank || valid_duration;
-    battle_duration_error_->SetVisibility(battle_duration_valid_ ? EVisibility::Collapsed
-                                                                 : EVisibility::HitTestInvisible);
-    update_launch_availability();
-    on_battle_duration_changed_.ExecuteIfBound(
-        valid_duration ? TOptional<double>{value} : TOptional<double>{}, battle_duration_valid_);
+    auto value{to_string(text.ToString())};
+    if (value != player_menu().duration) {
+        player_menu().edit_text(MenuControl::BattleDuration, std::move(value));
+        update_launch_availability();
+    }
 }
-
-void SScriptLevelSelectView::handle_simulation_only_changed(ECheckBoxState const state) {
-    battle_simulation_only_ = state == ECheckBoxState::Checked;
-    handle_battle_duration_changed(battle_duration_input_->GetText());
-    on_battle_simulation_only_changed_.ExecuteIfBound(battle_simulation_only_);
+void SScriptLevelSelectView::handle_simulation_only_changed(ECheckBoxState state) {
+    if ((state == ECheckBoxState::Checked) != player_menu().simulation_only) {
+        hit_menu_control(MenuControl::SimulationOnly);
+    }
 }
-
 void SScriptLevelSelectView::update_launch_availability() {
-    auto const speed_is_valid{category_ == LevelCatalogCategory::Playable ||
-                              (battle_speed_valid_ && battle_duration_valid_)};
-    player_menu().launch_options_valid = speed_is_valid;
-    launch_button_->SetEnabled(selected_level_can_launch_ && speed_is_valid);
+    auto const& menu{player_menu()};
+    auto const playerless{category_ != LevelCatalogCategory::Playable};
+    battle_speed_error_->SetVisibility(
+        playerless && !menu.speed_value() ? EVisibility::HitTestInvisible : EVisibility::Collapsed);
+    battle_duration_error_->SetVisibility(playerless && !menu.duration.empty() &&
+                                                  !menu.duration_value()
+                                              ? EVisibility::HitTestInvisible
+                                              : EVisibility::Collapsed);
+    launch_button_->SetEnabled(selected_level_can_launch_ && menu.launch_options().has_value());
 }
 
 void SScriptLevelSelectView::rebuild_catalog(FLevelSelectViewState const& state) {
