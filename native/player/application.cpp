@@ -98,9 +98,9 @@ auto input_route(LoadedLevel const* level, host::MenuStatus menu) -> host::Input
     }
     switch (level->control_context) {
         case levels::ControlContext::Observer:
-            return {input::Context::BenchmarkViewer, true};
+            return {input::Context::Observer, true};
         case levels::ControlContext::Benchmark:
-            return {input::Context::BenchmarkViewer, false};
+            return {input::Context::Benchmark, false};
         case levels::ControlContext::Player: {
             auto const* ship{level->simulation.player_ship_simulation()};
             if (ship && ship->is_alive(level->simulation.entity_tables().health)) {

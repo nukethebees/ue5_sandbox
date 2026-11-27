@@ -388,7 +388,7 @@ void SdlInput::handle(SDL_Event const& event) {
             }
             bool const pointer_visible{
                 route_.context == input::Context::Menu ||
-                (route_.context == input::Context::BenchmarkViewer && !viewer_looking_)};
+                ((route_.context == input::Context::Observer || route_.context == input::Context::Benchmark) && !viewer_looking_)};
             bool const camera_toggle{route_.movable_viewer && button.button == SDL_BUTTON_RIGHT};
             if (button.down && pointer_visible && !camera_toggle) {
                 ui_mouse_buttons_ |= mask;
@@ -401,7 +401,7 @@ void SdlInput::handle(SDL_Event const& event) {
                 events_.emplace_back(host::MenuPointer{
                     {host::PointerAction::Up, code, button.x, button.y, 0.f}, modifiers_});
             }
-            bool const hud_click{route_.context == input::Context::BenchmarkViewer &&
+            bool const hud_click{(route_.context == input::Context::Observer || route_.context == input::Context::Benchmark) &&
                                  !route_.movable_viewer && button.button == SDL_BUTTON_LEFT};
             if (route_.context != input::Context::Menu && !hud_click) {
                 key(code, button.down, false, 0);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/input/actions.h>
 #include <ioj/input/flight_mapping.h>
 #include <ioj/input/key_code.h>
 #include <ioj/settings/controls_settings.h>
@@ -15,7 +16,6 @@
 #include <vector>
 
 namespace ioj::input {
-enum class Context { Menu, Gameplay, BenchmarkViewer };
 enum class FlightAction {
     Pause,
     Accelerate,

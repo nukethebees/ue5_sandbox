@@ -152,7 +152,7 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     ASSERT_EQ(input_->ship_frame().events.size(), 1u);
     EXPECT_EQ(input_->ship_frame().events.front(), sim::player::PlayerInputKind::BoostPressed);
 
-    view.route = {input::Context::BenchmarkViewer, true};
+    view.route = {input::Context::Observer, true};
     press(SDLK_D, SDL_SCANCODE_D);
     frame();
     ASSERT_TRUE(view.motion);
@@ -161,7 +161,7 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     ASSERT_EQ(input_->ship_frame().events.size(), 1u);
     EXPECT_EQ(input_->ship_frame().events.front(), sim::player::PlayerInputKind::BoostReleased);
 
-    view.route = {input::Context::BenchmarkViewer, false};
+    view.route = {input::Context::Benchmark, false};
     view.motion.reset();
     press(SDLK_DOWN, SDL_SCANCODE_DOWN);
     press(SDLK_RETURN, SDL_SCANCODE_RETURN);
@@ -204,7 +204,7 @@ TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {
         view.pointer,
         (std::vector<host::PointerAction>{host::PointerAction::Down, host::PointerAction::Up}));
 
-    view.route = {input::Context::BenchmarkViewer, true};
+    view.route = {input::Context::Observer, true};
     event.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
     event.button.button = SDL_BUTTON_RIGHT;
     event.button.down = true;

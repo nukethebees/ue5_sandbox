@@ -8,6 +8,7 @@
 #include "ioj/min_max.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace ioj {
@@ -98,6 +99,11 @@ struct EnumTraits<FlightMapping> {
                                        FlightMapping::StarfoxFirePrimaryKeyboardMouse,
                                        FlightMapping::StarfoxFirePrimaryGamepad};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<FlightMapping>() noexcept -> std::size_t {
+    return 17ULL;
+}
 
 template <>
 inline constexpr auto enum_strings<FlightMapping, Serialized>{PackedStrings{

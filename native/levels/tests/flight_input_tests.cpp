@@ -29,7 +29,7 @@ TEST(FlightInput, ReboundPauseAndViewerControlsAreIsolatedFromFlight) {
     settings.bindings.emplace().push_back(
         {*parse_mapping("general.pause.keyboardmouse"), parse_key("p")});
     FlightInput input;
-    input.configure(settings, Context::BenchmarkViewer);
+    input.configure(settings, Context::Observer);
     EXPECT_FALSE(input.update(PhysicalKey::Escape, 1.f, settings));
     EXPECT_TRUE(input.update(PhysicalKey::P, 1.f, settings));
     EXPECT_FALSE(input.update(PhysicalKey::P, 1.f, settings));

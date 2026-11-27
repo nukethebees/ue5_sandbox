@@ -1,3 +1,102 @@
+(module physical_button_state
+  :header "native/levels/lib/include/ioj/input/button_state.h"
+  :header-include "ioj/input/button_state.h"
+  :namespace ioj::input
+  (enum ButtonState @native_uint8 :native-api true :helpers (traits)
+    (value Released)
+    (value Pressed)
+    (value Repeated)
+    (projections (cpp))))
+
+(module game_input_actions
+  :header "native/levels/lib/include/ioj/input/actions.h"
+  :header-include "ioj/input/actions.h"
+  :namespace ioj::input
+  (enum DigitalAction @native_uint8 :native-api true :helpers (traits)
+    (value Pause)
+    (value Boost)
+    (value Brake)
+    (value EmergencyBrake)
+    (value Fire)
+    (value HoldToSteer)
+    (value ObserverRight)
+    (value ObserverLeft)
+    (value ObserverForward)
+    (value ObserverBackward)
+    (value ObserverUp)
+    (value ObserverDown)
+    (value ObserverFast)
+    (value ObserverToggleLook)
+    (value MenuUp)
+    (value MenuDown)
+    (value MenuLeft)
+    (value MenuRight)
+    (value MenuNext)
+    (value MenuPrevious)
+    (value MenuAccept)
+    (value MenuBack)
+    (value BenchmarkNext)
+    (value BenchmarkActivate)
+    (value BenchmarkToggle)
+    (value BenchmarkEnd)
+    (projections (cpp)))
+  (enum Axis1DAction @native_uint8 :enum-array true :native-api true :helpers (traits)
+    (value Accelerate)
+    (projections (cpp)))
+  (enum Axis2DAction @native_uint8 :enum-array true :native-api true :helpers (traits)
+    (value FlightTurn)
+    (value ObserverLookDelta)
+    (projections (cpp)))
+  (enum MenuInputMode @native_uint8 :native-api true :helpers (traits)
+    (value Navigation)
+    (value Raw)
+    (projections (cpp)))
+  (enum ObserverSpeedPreset @native_uint8 :enum-array true :native-api true :helpers (traits)
+    (value Slowest)
+    (value Slow)
+    (value Normal)
+    (value Fast)
+    (value Fastest)
+    (projections (cpp)))
+  (enum Context @native_uint8 :native-api true :helpers (traits)
+    (value Menu)
+    (value Gameplay)
+    (value Observer)
+    (value Benchmark)
+    (projections (cpp)))
+  (enum ObserverLookMode @native_uint8
+    (value Pointer)
+    (value Camera)
+    (projections (cpp)))
+  (record DigitalActions :layout packed :bits 32
+    (member pause bool :bits 1 :enum-accessor (@DigitalAction Pause))
+    (member boost bool :bits 1 :enum-accessor (@DigitalAction Boost))
+    (member brake bool :bits 1 :enum-accessor (@DigitalAction Brake))
+    (member emergency_brake bool :bits 1 :enum-accessor (@DigitalAction EmergencyBrake))
+    (member fire bool :bits 1 :enum-accessor (@DigitalAction Fire))
+    (member hold_to_steer bool :bits 1 :enum-accessor (@DigitalAction HoldToSteer))
+    (member observer_right bool :bits 1 :enum-accessor (@DigitalAction ObserverRight))
+    (member observer_left bool :bits 1 :enum-accessor (@DigitalAction ObserverLeft))
+    (member observer_forward bool :bits 1 :enum-accessor (@DigitalAction ObserverForward))
+    (member observer_backward bool :bits 1 :enum-accessor (@DigitalAction ObserverBackward))
+    (member observer_up bool :bits 1 :enum-accessor (@DigitalAction ObserverUp))
+    (member observer_down bool :bits 1 :enum-accessor (@DigitalAction ObserverDown))
+    (member observer_fast bool :bits 1 :enum-accessor (@DigitalAction ObserverFast))
+    (member observer_toggle_look bool :bits 1 :enum-accessor (@DigitalAction ObserverToggleLook))
+    (member menu_up bool :bits 1 :enum-accessor (@DigitalAction MenuUp))
+    (member menu_down bool :bits 1 :enum-accessor (@DigitalAction MenuDown))
+    (member menu_left bool :bits 1 :enum-accessor (@DigitalAction MenuLeft))
+    (member menu_right bool :bits 1 :enum-accessor (@DigitalAction MenuRight))
+    (member menu_next bool :bits 1 :enum-accessor (@DigitalAction MenuNext))
+    (member menu_previous bool :bits 1 :enum-accessor (@DigitalAction MenuPrevious))
+    (member menu_accept bool :bits 1 :enum-accessor (@DigitalAction MenuAccept))
+    (member menu_back bool :bits 1 :enum-accessor (@DigitalAction MenuBack))
+    (member benchmark_next bool :bits 1 :enum-accessor (@DigitalAction BenchmarkNext))
+    (member benchmark_activate bool :bits 1 :enum-accessor (@DigitalAction BenchmarkActivate))
+    (member benchmark_toggle bool :bits 1 :enum-accessor (@DigitalAction BenchmarkToggle))
+    (member benchmark_end bool :bits 1 :enum-accessor (@DigitalAction BenchmarkEnd))
+    (projections (cpp :storage std::uint32_t))))
+
 (module physical_key
   :header "native/levels/lib/include/ioj/input/physical_key.h"
   :header-include "ioj/input/physical_key.h"
@@ -179,6 +278,7 @@
   :header-include "ioj/input/flight_mapping.h"
   :namespace ioj
   (enum FlightMapping @native_uint8
+    :enum-array true
     :native-api true
     :helpers (traits to-serialized-string)
     (value GeneralPauseKeyboardMouse :serialized-name "General.Pause.KeyboardMouse")
