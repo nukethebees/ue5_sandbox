@@ -33,7 +33,6 @@
 #include <Engine/GameInstance.h>
 
 #include <cstdint>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -78,9 +77,6 @@ auto initialize_level(presentation::LevelInit const& level, presentation::LevelF
 }
 auto presents_level() -> bool {
     return level_world.IsValid() && level_world->has_level();
-}
-auto take_frame_delta_seconds() -> std::optional<double> {
-    return level_world->take_frame_delta_seconds();
 }
 
 void present_level(double delta_seconds, presentation::LevelFrame const& frame) {

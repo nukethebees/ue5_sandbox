@@ -37,7 +37,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void present_level(time_type delta_seconds, presentation::LevelFrame const& frame);
     auto initialize_level(presentation::LevelInit const& level,
                           presentation::LevelFrame const& frame) -> FLevelLoadResult;
-    auto take_frame_delta_seconds() -> std::optional<double>;
     void handle_level_start_failure(FString message);
     void finish_level(profiles::CompletedLevel const& completed,
                       bool scored,
@@ -99,7 +98,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Level initialization
     /* **************************************** */
     void release_level();
-    void record_world_delta(UWorld* world, ELevelTick tick_type, float delta_seconds);
 
     /* **************************************** */
     // Presentation
@@ -143,7 +141,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     std::optional<presentation::LevelStatus> status_;
     FName level_id_;
     sim::collision::CollisionGridSpec grid_{};
-    std::optional<double> frame_delta_seconds_;
     levels::PresentationMode presentation_mode_{levels::PresentationMode::Visual};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox")

@@ -260,8 +260,11 @@ auto Application::play(Window& window,
         }
     }
 
+    constexpr double max_frame_delta_seconds{0.1};
+    auto previous_frame_time{std::chrono::steady_clock::now()};
+    auto const deadline{previous_frame_time + std::chrono::minutes{2}};
     std::vector<AvailableLevel> available_levels;
-    auto const deadline{std::chrono::steady_clock::now() + std::chrono::minutes{2}};
+
     while (!IojPlayer_ExitRequested()) {
         IojPlayer_BeginFrame();
         SDL_Event event;
@@ -374,24 +377,29 @@ auto Application::play(Window& window,
                 std::println("Ready: {}", path_to_utf8(level_path));
                 return {};
             }
+
+            previous_frame_time = std::chrono::steady_clock::now();
             continue;
         }
 
         if (host::presents_level()) {
             level->simulation.append_player_input(messages.ship_input);
+
+            auto const frame_time{std::chrono::steady_clock::now()};
             if (messages.requested_simulation_mode == levels::LaunchMode::Running &&
                 level->simulation.state() == sim::LevelState::Paused) {
                 level->simulation.start();
+                previous_frame_time = frame_time;
             } else if (messages.requested_simulation_mode == levels::LaunchMode::Paused &&
                        level->simulation.state() == sim::LevelState::Running) {
                 level->simulation.pause();
             }
 
-            if (auto delta_seconds{host::take_frame_delta_seconds()}) {
-                advance_level(level->simulation, *delta_seconds);
-                if (level->simulation.state() == sim::LevelState::Stopped) {
-                    unload_level(storage, sim::RunEndReason::LevelCompleted, true);
-                }
+            auto const elapsed{std::chrono::duration<double>{frame_time - previous_frame_time}};
+            previous_frame_time = frame_time;
+            advance_level(level->simulation, std::min(elapsed.count(), max_frame_delta_seconds));
+            if (level->simulation.state() == sim::LevelState::Stopped) {
+                unload_level(storage, sim::RunEndReason::LevelCompleted, true);
             }
         }
     }

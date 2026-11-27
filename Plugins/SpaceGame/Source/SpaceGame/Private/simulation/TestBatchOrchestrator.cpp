@@ -26,7 +26,8 @@
 #include <Misc/Paths.h>
 #include <SandboxISMCComponent.h>
 
-#include <utility>
+#include <expected>
+#include <optional>
 
 namespace ioj {
 /* **************************************** */
@@ -71,11 +72,9 @@ void ATestBatchOrchestrator::BeginPlay() {
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
     attach_level_world(*this);
-    FWorldDelegates::OnWorldPostActorTick.AddUObject(this, &ThisClass::record_world_delta);
 #endif
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
-    FWorldDelegates::OnWorldPostActorTick.RemoveAll(this);
     release_level();
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
     detach_level_world(*this);
@@ -90,7 +89,6 @@ void ATestBatchOrchestrator::release_level() {
     presentation_host_.reset();
     status_.reset();
     level_id_ = NAME_None;
-    frame_delta_seconds_.reset();
     reset_level_input();
 }
 void ATestBatchOrchestrator::start_simulation() {
@@ -262,7 +260,6 @@ auto ATestBatchOrchestrator::initialize_level(presentation::LevelInit const& lev
     }
 
     UE_LOG(LogSandbox, Display, TEXT("Level ready: %s"), *to_fstring(level.setup.source_path));
-    frame_delta_seconds_.reset();
     return {};
 }
 void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
@@ -307,14 +304,6 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
 /* **************************************** */
 // Simulation state
 /* **************************************** */
-void ATestBatchOrchestrator::record_world_delta(UWorld* world, ELevelTick, float delta_seconds) {
-    if (status_ && world == GetWorld()) {
-        frame_delta_seconds_ = delta_seconds;
-    }
-}
-auto ATestBatchOrchestrator::take_frame_delta_seconds() -> std::optional<double> {
-    return std::exchange(frame_delta_seconds_, std::nullopt);
-}
 void ATestBatchOrchestrator::present_level(time_type const delta_seconds,
                                            presentation::LevelFrame const& frame) {
     check(status_);
