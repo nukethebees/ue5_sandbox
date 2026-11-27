@@ -303,12 +303,20 @@ void ASpaceGamePlayerController::set_observer_movement_speed(float const speed) 
 /* **************************************** */
 // Modal and simulation transitions
 /* **************************************** */
-void ASpaceGamePlayerController::show_initial_pause_menu() {
-    auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator) || orchestrator->get_state() != sim::LevelState::Paused ||
-        !is_gameplay_mode() || get_active_control_context() == levels::ControlContext::Benchmark ||
-        return_to_level_select_pending_ || modal_ui_.has_modal()) {
-        return;
+auto ASpaceGamePlayerController::present_pause(host::PauseCommand command) -> bool {
+    if (command.kind != host::PauseCommandKind::Open) {
+        auto* widget{modal_ui_.pause_menu()};
+        if (!IsValid(widget)) {
+            UE_LOG(LogSandboxController, Error, TEXT("Pause menu command has no widget."));
+            return false;
+        }
+        widget->present(command);
+        return true;
+    }
+    if (!is_gameplay_mode() || return_to_level_select_pending_ || modal_ui_.has_modal()) {
+        UE_LOG(
+            LogSandboxController, Error, TEXT("Cannot present a pause menu in the current view."));
+        return false;
     }
 
     auto const restore_context{get_active_control_context() == levels::ControlContext::None &&
@@ -318,49 +326,18 @@ void ASpaceGamePlayerController::show_initial_pause_menu() {
     modal_ui_.begin_suspend(restore_context);
     if (!set_control_context(levels::ControlContext::None)) {
         modal_ui_.clear_resume();
-        return;
-    }
-
-    hud_.hide_for_modal();
-    if (!open_pause_menu()) {
-        resume_game();
-    }
-}
-auto ASpaceGamePlayerController::open_pause_menu() -> bool {
-    auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator) || orchestrator->get_state() != sim::LevelState::Paused ||
-        !modal_ui_.has_root()) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ASpaceGamePlayerController::open_pause_menu: Paused gameplay UI is not "
-                    "available."));
-        return false;
-    }
-
-    return modal_ui_.show_pause(*this);
-}
-auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {
-    auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator) || (orchestrator->get_state() != sim::LevelState::Running &&
-                                   orchestrator->get_state() != sim::LevelState::Paused &&
-                                   orchestrator->get_state() != sim::LevelState::Stopped)) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ASpaceGamePlayerController::suspend_gameplay_for_modal: Gameplay is not "
-                    "ready."));
-        return false;
-    }
-
-    modal_ui_.begin_suspend(get_active_control_context());
-    if (!set_control_context(levels::ControlContext::None)) {
-        modal_ui_.clear_resume();
         return false;
     }
 
     hud_.hide_for_modal();
+    if (!modal_ui_.show_pause(*this)) {
+        restore_gameplay_presentation();
+        return false;
+    }
+    modal_ui_.pause_menu()->present(command);
     return true;
 }
-void ASpaceGamePlayerController::resume_game() {
+void ASpaceGamePlayerController::restore_gameplay_presentation() {
     if (!is_gameplay_mode() || return_to_level_select_pending_) {
         return;
     }
@@ -369,14 +346,16 @@ void ASpaceGamePlayerController::resume_game() {
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ASpaceGamePlayerController::resume_game: Orchestrator is invalid."));
+               TEXT("ASpaceGamePlayerController::restore_gameplay_presentation: Orchestrator is "
+                    "invalid."));
         return;
     }
 
     if (orchestrator->get_state() == sim::LevelState::Stopped) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ASpaceGamePlayerController::resume_game: Orchestrator is stopped."));
+               TEXT("ASpaceGamePlayerController::restore_gameplay_presentation: Orchestrator is "
+                    "stopped."));
         return;
     }
 
@@ -392,24 +371,11 @@ void ASpaceGamePlayerController::resume_game() {
     if (target_context == levels::ControlContext::Player) {
         hud_.initialise(*this, orchestrator, ui_data, target_context, viewer_speed_);
     }
-
-    switch (orchestrator->get_state()) {
-        case sim::LevelState::Uninitialised:
-        case sim::LevelState::Paused: {
-            orchestrator->start_simulation();
-            break;
-        }
-        case sim::LevelState::Running:
-        case sim::LevelState::StableSetup:
-        case sim::LevelState::Stopped: {
-            break;
-        }
-    }
 }
 void ASpaceGamePlayerController::on_pause_menu_deactivated() {
     modal_ui_.close_pause(*this);
     if (is_gameplay_mode() && !return_to_level_select_pending_) {
-        resume_game();
+        restore_gameplay_presentation();
     }
 }
 void ASpaceGamePlayerController::on_completion_menu_deactivated() {
@@ -421,13 +387,6 @@ void ASpaceGamePlayerController::on_simulation_paused() {
     }
 
     hud_.update_run_controls();
-    if (!modal_ui_.is_resume_pending() || modal_ui_.has_modal()) {
-        return;
-    }
-
-    if (!open_pause_menu()) {
-        resume_game();
-    }
 }
 void ASpaceGamePlayerController::finish_level() {
     modal_ui_.clear_modals(*this);

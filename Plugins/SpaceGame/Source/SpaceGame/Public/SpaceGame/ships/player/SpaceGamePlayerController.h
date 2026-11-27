@@ -11,6 +11,7 @@
 #include "SpaceGamePlayerController.generated.h"
 
 namespace ioj::host {
+struct PauseCommand;
 struct ViewerMotion;
 }
 
@@ -32,11 +33,8 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
   public:
     using Pawn = ATestSpaceShip;
     ASpaceGamePlayerController();
-    void show_initial_pause_menu();
+    auto present_pause(host::PauseCommand command) -> bool;
     auto main_menu() const -> UMainMenuWidget* { return modal_ui_.main_menu(); }
-    auto pause_visible() const -> bool { return modal_ui_.is_pause_active(); }
-    auto accepts_resume() const -> bool { return modal_ui_.accepts_resume(); }
-    void request_resume() { modal_ui_.request_resume(); }
     void present_viewer_motion(host::ViewerMotion const& motion, double dt);
     void present_steering(TOptional<FVector2D> position);
     void Tick(float dt) override;
@@ -93,9 +91,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     /* **************************************** */
     // Modal and simulation transitions
     /* **************************************** */
-    auto open_pause_menu() -> bool;
-    auto suspend_gameplay_for_modal() -> bool;
-    void resume_game();
+    void restore_gameplay_presentation();
     void on_pause_menu_deactivated();
     void on_completion_menu_deactivated();
     void on_simulation_paused();

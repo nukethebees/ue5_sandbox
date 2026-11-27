@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/host/modifiers.h>
+#include <ioj/host/pause_menu.h>
 #include <ioj/input/key_code.h>
 #include <ioj/input/menu_navigation.h>
 #include <ioj/vector.h>
@@ -14,8 +15,6 @@
 
 namespace ioj::host {
 struct MenuStatus {
-    bool pause_visible{};
-    bool accepts_resume{};
     bool editing_text{};
     bool capturing_binding{};
     std::optional<input::MainMenuItem> main_focus;
@@ -84,7 +83,7 @@ struct ViewerStep {
 };
 using PresentationEvent =
     std::variant<MenuKey, MenuAxis, MenuPointer, MenuText, SteeringIndicator, ViewerStep>;
-using WidgetAction = std::variant<PlayerAction, input::MainMenuItem>;
+using WidgetAction = std::variant<PlayerAction, input::MainMenuItem, PauseWidgetEvent>;
 using InputEvent = std::variant<PlayerAction, MenuButton, PresentationEvent>;
 
 #ifdef IOJ_PLAYER_EXPORTS
@@ -95,8 +94,7 @@ using InputEvent = std::variant<PlayerAction, MenuButton, PresentationEvent>;
 IOJ_INPUT_API auto menu_status() -> MenuStatus;
 using LegacyBindingSink = void (*)(void*, FlightMapping mapping, input::KeyCode key);
 IOJ_INPUT_API void read_legacy_key_bindings(void* destination, LegacyBindingSink sink);
-IOJ_INPUT_API void show_pause_menu();
-IOJ_INPUT_API void request_resume();
+IOJ_INPUT_API auto present_pause(PauseCommand command) -> bool;
 IOJ_INPUT_API void select_benchmark_button(bool end_selected);
 IOJ_INPUT_API void focus_main_item(input::MainMenuItem item);
 IOJ_INPUT_API void activate_main_item(input::MainMenuItem item);

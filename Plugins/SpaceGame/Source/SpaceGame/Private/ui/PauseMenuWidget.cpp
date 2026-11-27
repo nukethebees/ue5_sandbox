@@ -4,6 +4,7 @@
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGame/UnrealMessages.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
@@ -31,12 +32,22 @@ void UPauseMenuWidget::NativeOnInitialized() {
         return;
     }
 
-    resume_button->clicked.AddUObject(this, &ThisClass::handle_resume);
-    audio_button->clicked.AddUObject(this, &ThisClass::handle_audio);
-    controls_button->clicked.AddUObject(this, &ThisClass::handle_controls);
-    return_to_level_select_button->clicked.AddUObject(this,
-                                                      &ThisClass::handle_return_to_level_select);
-    quit_button->clicked.AddUObject(this, &ThisClass::handle_quit);
+    using enum host::PauseMenuItem;
+    for (auto item : {Resume, Audio, Controls, LevelSelect, Quit}) {
+        auto* button{button_for(item)};
+        button->clicked.AddUObject(
+            this,
+            &ThisClass::send_event,
+            host::PauseWidgetEvent{host::PauseWidgetEventKind::Activate, item});
+        button->focus_received.AddUObject(
+            this,
+            &ThisClass::send_event,
+            host::PauseWidgetEvent{host::PauseWidgetEventKind::Select, item});
+    }
+    options_widget->content_focused.AddUObject(
+        this,
+        &ThisClass::send_event,
+        host::PauseWidgetEvent{host::PauseWidgetEventKind::ContentFocused});
     options_widget->modal_state_changed.AddUObject(this,
                                                    &ThisClass::handle_options_modal_state_changed);
 
@@ -58,10 +69,9 @@ void UPauseMenuWidget::NativeConstruct() {
 }
 
 void UPauseMenuWidget::prepare_for_open() {
-    terminal_action_requested_ = false;
     options_modal_visible_ = false;
+    options_widget->select_page(EMenuPage::Audio, {});
     set_navigation_enabled(true);
-    select_page(EMenuPage::Audio);
 }
 
 auto UPauseMenuWidget::focus_target() const -> UWidget* {
@@ -69,88 +79,79 @@ auto UPauseMenuWidget::focus_target() const -> UWidget* {
 }
 
 auto UPauseMenuWidget::handle_back() -> bool {
-    handle_resume();
+    if (options_modal_visible_) {
+        options_widget->request_back();
+    } else {
+        send_event({host::PauseWidgetEventKind::Activate, host::PauseMenuItem::Resume});
+    }
     return true;
 }
 
-/* **************************************** */
-// Navigation callbacks
-/* **************************************** */
-void UPauseMenuWidget::handle_resume() {
-    request_close(FSimpleDelegate::CreateUObject(this, &ThisClass::complete_resume));
-}
-
-void UPauseMenuWidget::handle_audio() {
-    select_page(EMenuPage::Audio);
-}
-
-void UPauseMenuWidget::handle_controls() {
-    select_page(EMenuPage::Controls);
-}
-
-void UPauseMenuWidget::handle_return_to_level_select() {
-    request_close(
-        FSimpleDelegate::CreateUObject(this, &ThisClass::complete_return_to_level_select));
-}
-
-void UPauseMenuWidget::handle_quit() {
-    request_close(FSimpleDelegate::CreateUObject(this, &ThisClass::complete_quit));
-}
-
-void UPauseMenuWidget::select_page(EMenuPage const page) {
-    if (terminal_action_requested_ || options_modal_visible_ || !IsValid(options_widget)) {
-        return;
+auto UPauseMenuWidget::button_for(host::PauseMenuItem item) const -> UMenuButtonWidget* {
+    using enum host::PauseMenuItem;
+    switch (item) {
+        case Resume:
+            return resume_button;
+        case Audio:
+            return audio_button;
+        case Controls:
+            return controls_button;
+        case LevelSelect:
+            return return_to_level_select_button;
+        case Quit:
+            return quit_button;
     }
-
-    options_widget->select_page(page, FSimpleDelegate::CreateUObject(this, &ThisClass::show_page));
+    checkNoEntry();
+    return nullptr;
 }
 
-void UPauseMenuWidget::show_page() {
-    set_navigation_enabled(true);
-    options_widget->focus_content();
+void UPauseMenuWidget::send_event(host::PauseWidgetEvent event) {
+    queue_input_action(event);
 }
 
-void UPauseMenuWidget::request_close(FSimpleDelegate continuation) {
-    if (terminal_action_requested_) {
-        return;
-    }
-
-    if (options_modal_visible_) {
-        if (IsValid(options_widget)) {
-            options_widget->request_back();
-        }
-
-        return;
-    }
-
-    if (IsValid(options_widget)) {
-        options_widget->request_leave(MoveTemp(continuation));
-        return;
-    }
-
-    continuation.ExecuteIfBound();
-}
-
-void UPauseMenuWidget::complete_resume() {
-    close();
-}
-
-void UPauseMenuWidget::complete_return_to_level_select() {
-    if (!terminal_action_requested_) {
-        terminal_action_requested_ = true;
-        return_to_level_select_requested.Broadcast();
-    }
-}
-
-void UPauseMenuWidget::complete_quit() {
-    if (!terminal_action_requested_) {
-        terminal_action_requested_ = true;
-        quit_requested.Broadcast();
+void UPauseMenuWidget::present(host::PauseCommand command) {
+    using enum host::PauseCommandKind;
+    switch (command.kind) {
+        case Open:
+        case host::PauseCommandKind::Select:
+            button_for(command.item)->focus_target()->SetKeyboardFocus();
+            break;
+        case CheckLeave:
+            options_widget->request_leave(
+                FSimpleDelegate::CreateUObject(
+                    this,
+                    &ThisClass::send_event,
+                    host::PauseWidgetEvent{host::PauseWidgetEventKind::LeaveAccepted,
+                                           command.item}),
+                FSimpleDelegate::CreateUObject(
+                    this,
+                    &ThisClass::send_event,
+                    host::PauseWidgetEvent{host::PauseWidgetEventKind::LeaveCancelled,
+                                           command.item}));
+            break;
+        case ShowPage:
+            options_widget->select_page(
+                command.item == host::PauseMenuItem::Audio ? EMenuPage::Audio : EMenuPage::Controls,
+                FSimpleDelegate::CreateUObject(options_widget, &UOptionsWidget::focus_content));
+            set_navigation_enabled(!options_modal_visible_);
+            break;
+        case Finish:
+            if (command.item == host::PauseMenuItem::Resume) {
+                close();
+            } else if (command.item == host::PauseMenuItem::LevelSelect) {
+                return_to_level_select_requested.Broadcast();
+            } else {
+                check(command.item == host::PauseMenuItem::Quit);
+                quit_requested.Broadcast();
+            }
+            break;
     }
 }
 
 void UPauseMenuWidget::handle_options_modal_state_changed(bool const visible) {
     options_modal_visible_ = visible;
+    send_event({visible ? host::PauseWidgetEventKind::ModalOpened
+                        : host::PauseWidgetEventKind::ModalClosed});
     set_navigation_enabled(!visible);
 }
 

@@ -175,22 +175,11 @@ void FPlayerModalUi::close_completion(ASpaceGamePlayerController& owner) {
 
     completion_menu_ = nullptr;
 }
-auto FPlayerModalUi::accepts_resume() const -> bool {
-    return is_pause_active() && pause_menu_->accepts_resume();
-}
-void FPlayerModalUi::request_resume() {
-    if (accepts_resume()) {
-        pause_menu_->handle_resume();
-    }
-}
 auto FPlayerModalUi::has_modal() const -> bool {
     return IsValid(pause_menu_) || IsValid(completion_menu_);
 }
 auto FPlayerModalUi::has_completion() const -> bool {
     return IsValid(completion_menu_);
-}
-auto FPlayerModalUi::is_pause_active() const -> bool {
-    return IsValid(pause_menu_) && pause_menu_->GetParent() != nullptr;
 }
 auto FPlayerModalUi::is_completion_active() const -> bool {
     return IsValid(completion_menu_) && completion_menu_->GetParent() != nullptr;

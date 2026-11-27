@@ -42,13 +42,11 @@ struct SPACEGAME_API FPlayerModalUi {
     void clear_menus(ASpaceGamePlayerController& owner);
     void close_pause(ASpaceGamePlayerController& owner);
     void close_completion(ASpaceGamePlayerController& owner);
-    auto accepts_resume() const -> bool;
-    void request_resume();
+    auto pause_menu() const -> UPauseMenuWidget* { return pause_menu_; }
     auto has_root() const -> bool;
     auto has_modal() const -> bool;
     auto completed_level_id() const -> FName;
     auto has_completion() const -> bool;
-    auto is_pause_active() const -> bool;
     auto is_completion_active() const -> bool;
 
     /* **************************************** */

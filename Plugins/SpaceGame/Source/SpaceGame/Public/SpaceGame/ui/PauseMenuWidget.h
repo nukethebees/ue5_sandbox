@@ -2,6 +2,7 @@
 
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
+#include <ioj/host/pause_menu.h>
 
 #include "PauseMenuWidget.generated.h"
 
@@ -23,8 +24,7 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     /* **************************************** */
     [[nodiscard]] auto get_options_widget() const -> UOptionsWidget* { return options_widget; }
     void prepare_for_open();
-    bool accepts_resume() const { return !terminal_action_requested_ && !options_modal_visible_; }
-    void handle_resume();
+    void present(host::PauseCommand command);
 
     FPauseReturnToLevelSelectRequested return_to_level_select_requested;
     FPauseQuitRequested quit_requested;
@@ -65,20 +65,8 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     /* **************************************** */
     // Navigation callbacks
     /* **************************************** */
-    void handle_audio();
-    void handle_controls();
-    void handle_return_to_level_select();
-    void handle_quit();
-
-    /* **************************************** */
-    // View state and presentation
-    /* **************************************** */
-    void select_page(EMenuPage page);
-    void show_page();
-    void request_close(FSimpleDelegate continuation);
-    void complete_resume();
-    void complete_return_to_level_select();
-    void complete_quit();
+    auto button_for(host::PauseMenuItem item) const -> UMenuButtonWidget*;
+    void send_event(host::PauseWidgetEvent event);
     void handle_options_modal_state_changed(bool visible);
     void set_navigation_enabled(bool enabled);
     void apply_ui_style();
@@ -87,6 +75,5 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     // State
     /* **************************************** */
     bool options_modal_visible_{};
-    bool terminal_action_requested_{false};
 };
 }

@@ -94,18 +94,15 @@ auto initialize_presentation(LoadedLevel& level) -> bool {
     }
     return initialized;
 }
-auto input_route(LoadedLevel const* level, host::MenuStatus menu) -> InputRoute {
-    if (!level || level->presentation_setup || menu.pause_visible) {
-        return {input::Context::Menu, menu.accepts_resume};
-    }
-    switch (level->control_context) {
+auto level_input_route(LoadedLevel const& level) -> InputRoute {
+    switch (level.control_context) {
         case levels::ControlContext::Observer:
             return {input::Context::Observer};
         case levels::ControlContext::Benchmark:
             return {input::Context::Benchmark};
         case levels::ControlContext::Player: {
-            auto const* ship{level->simulation.player_ship_simulation()};
-            if (ship && ship->is_alive(level->simulation.entity_tables().health)) {
+            auto const* ship{level.simulation.player_ship_simulation()};
+            if (ship && ship->is_alive(level.simulation.entity_tables().health)) {
                 return {input::Context::Gameplay};
             }
             break;
@@ -317,12 +314,32 @@ auto Application::play(Window& window,
     std::vector<sim::player::PlayerInputKind> ship_events;
     auto synchronize_input = [&] {
         auto const menu{host::menu_status()};
-        input.synchronize(commands, input_route(storage.get(), menu), menu);
+        auto const* level{storage.get()};
+        auto const route{level && !level->presentation_setup
+                             ? level->pause_menu.route(level_input_route(*level))
+                             : InputRoute{}};
+        input.synchronize(commands, route, menu);
         devices.set_window_modes(input.relative_mouse(), input.editing_text());
     };
     bool end_selected{};
     bool end_benchmark{};
-    bool open_when_paused{};
+    auto update_pause_simulation = [&](LoadedLevel& level) {
+        auto const request{level.pause_menu.simulation_request(level.simulation.state())};
+        if (request == levels::LaunchMode::Paused) {
+            level.simulation.pause();
+        } else if (request == levels::LaunchMode::Running) {
+            level.simulation.start();
+            previous_frame_time = std::chrono::steady_clock::now();
+        }
+    };
+    ApplicationResult pause_presentation{};
+    auto present_pause = [&](LoadedLevel& level, PauseMenu::Command command) {
+        update_pause_simulation(level);
+        if (command && !host::present_pause(*command)) {
+            pause_presentation =
+                std::unexpected{"Could not present the native pause menu. See the game log."};
+        }
+    };
     auto dispatch = [&](host::PlayerAction action) {
         auto* const level{storage.get()};
         if (!level || level->presentation_setup || end_benchmark) {
@@ -335,15 +352,8 @@ auto Application::play(Window& window,
         }
         switch (action) {
             case OpenPause:
-                if (simulation.state() == sim::LevelState::Running) {
-                    open_when_paused = true;
-                    simulation.pause();
-                } else if (simulation.state() == sim::LevelState::Paused) {
-                    host::show_pause_menu();
-                }
-                break;
             case RequestResume:
-                host::request_resume();
+                present_pause(*level, level->pause_menu.handle(action, simulation.state()));
                 break;
             case BenchmarkNext:
                 end_selected = !end_selected;
@@ -365,11 +375,21 @@ auto Application::play(Window& window,
         }
     };
     auto process_widget_actions = [&] {
-        for (auto const& action : host::take_widget_actions()) {
-            if (auto const* item{std::get_if<input::MainMenuItem>(&action)}) {
-                host::activate_main_item(*item);
-            } else {
-                dispatch(std::get<host::PlayerAction>(action));
+        for (;;) {
+            auto const actions{host::take_widget_actions()};
+            if (actions.empty()) {
+                break;
+            }
+            for (auto const& action : actions) {
+                if (auto const* item{std::get_if<input::MainMenuItem>(&action)}) {
+                    host::activate_main_item(*item);
+                } else if (auto const* event{std::get_if<host::PauseWidgetEvent>(&action)}) {
+                    if (auto* level{storage.get()}) {
+                        present_pause(*level, level->pause_menu.widget_event(*event));
+                    }
+                } else {
+                    dispatch(std::get<host::PlayerAction>(action));
+                }
             }
         }
     };
@@ -380,7 +400,14 @@ auto Application::play(Window& window,
             } else if (auto const* button{std::get_if<host::MenuButton>(&event)}) {
                 auto const focus{host::menu_status().main_focus};
                 using enum input::MenuCommand;
-                if (focus && (button->command == Up || button->command == Down)) {
+                auto* level{storage.get()};
+                if (level && level->pause_menu.view == PauseMenu::View::Sidebar &&
+                    !level->pause_menu.options_modal) {
+                    if (button->down) {
+                        present_pause(*level,
+                                      level->pause_menu.navigate(button->command, button->repeat));
+                    }
+                } else if (focus && (button->command == Up || button->command == Down)) {
                     if (button->down) {
                         host::focus_main_item(input::move_main_selection(*focus, button->command));
                     }
@@ -432,6 +459,9 @@ auto Application::play(Window& window,
                     host::present_settings(settings_.view(), window.supported_resolutions());
                     break;
             }
+        }
+        if (!pause_presentation) {
+            return pause_presentation;
         }
         if (close_requested || IojPlayer_ExitRequested()) {
             break;
@@ -524,7 +554,10 @@ auto Application::play(Window& window,
 
         if (level->presentation_setup && host::level_world_ready()) {
             end_selected = false;
-            open_when_paused = false;
+            auto const start_paused{level->presentation_setup->launch_mode ==
+                                        levels::LaunchMode::Paused &&
+                                    (level->control_context == levels::ControlContext::Player ||
+                                     level->control_context == levels::ControlContext::Observer)};
             if (!initialize_presentation(*level)) {
                 unload_level(storage, sim::RunEndReason::WorldEnd, false);
                 if (exit_when_ready) {
@@ -534,6 +567,9 @@ auto Application::play(Window& window,
                 continue;
             }
 
+            if (start_paused) {
+                dispatch(host::PlayerAction::OpenPause);
+            }
             if (level->simulation.state() == sim::LevelState::Stopped) {
                 unload_level(storage, sim::RunEndReason::LevelCompleted, true);
             }
@@ -563,10 +599,7 @@ auto Application::play(Window& window,
             auto const elapsed{std::chrono::duration<double>{frame_time - previous_frame_time}};
             previous_frame_time = frame_time;
             advance_level(level->simulation, std::min(elapsed.count(), max_frame_delta_seconds));
-            if (open_when_paused && level->simulation.state() == sim::LevelState::Paused) {
-                open_when_paused = false;
-                host::show_pause_menu();
-            }
+            update_pause_simulation(*level);
             if (level->simulation.state() == sim::LevelState::Stopped) {
                 unload_level(storage, sim::RunEndReason::LevelCompleted, true);
             }

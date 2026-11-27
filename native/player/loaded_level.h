@@ -1,5 +1,6 @@
 #pragma once
 
+#include "player/pause_menu.h"
 #include <ioj/memory/bump_resource.h>
 #include <ioj/presentation/level_init.h>
 #include <ioj/sim/levels/level_sim.h>
@@ -12,6 +13,7 @@ struct LoadedLevel {
                 memory::BumpResource& arena,
                 presentation::LevelPresentationSetup setup);
 
+    PauseMenu pause_menu;
     levels::ControlContext control_context;
     sim::LevelSim simulation;
     std::optional<presentation::LevelPresentationSetup> presentation_setup;

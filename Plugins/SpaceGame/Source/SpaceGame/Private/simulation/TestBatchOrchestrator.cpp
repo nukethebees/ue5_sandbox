@@ -246,9 +246,6 @@ auto ATestBatchOrchestrator::initialize_level(presentation::LevelInit const& lev
         if (IsValid(player_ship)) {
             controller->Possess(player_ship);
         }
-        if (level.setup.launch_mode == levels::LaunchMode::Paused) {
-            controller->show_initial_pause_menu();
-        }
     }
 
     if (!is_presentation_enabled()) {

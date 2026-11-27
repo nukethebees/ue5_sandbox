@@ -52,9 +52,7 @@ auto menu_status() -> MenuStatus {
         (widget->GetType() == SEditableText::StaticWidgetClass().GetWidgetType() ||
          widget->GetType() == SMultiLineEditableText::StaticWidgetClass().GetWidgetType())};
     auto const* main{player ? player->main_menu() : nullptr};
-    return {player && player->pause_visible(),
-            player && player->accepts_resume(),
-            editing,
+    return {editing,
             widget && widget->GetMetaData<FBindingCapture>().IsValid(),
             main ? main->focused_item() : std::nullopt};
 }
@@ -87,15 +85,10 @@ void read_legacy_key_bindings(void* destination, LegacyBindingSink sink) {
         }
     }
 }
-void show_pause_menu() {
+auto present_pause(PauseCommand command) -> bool {
     auto* player{controller()};
     check(player);
-    player->show_initial_pause_menu();
-}
-void request_resume() {
-    auto* player{controller()};
-    check(player);
-    player->request_resume();
+    return player->present_pause(command);
 }
 void select_benchmark_button(bool end_selected) {
     auto* player{controller()};

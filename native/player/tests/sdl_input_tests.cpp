@@ -1,4 +1,5 @@
 #include "player/game_input.h"
+#include "player/pause_menu.h"
 #include "player/sdl_input.h"
 #include <ioj/input/ship_input.h>
 
@@ -54,7 +55,8 @@ void present_input(PresentationEvent const& event) {
 namespace ioj::tests {
 class SdlPlayerInput : public ::testing::Test {
   protected:
-    bool route_to_pause_menu{};
+    PauseMenu pause_menu_;
+    std::vector<host::PauseCommand> pause_commands_;
     void SetUp() override {
         SDL_SetMainReady();
         ASSERT_TRUE(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) << SDL_GetError();
@@ -74,8 +76,9 @@ class SdlPlayerInput : public ::testing::Test {
     void frame() {
         input_->begin_frame();
         auto synchronize = [&] {
-            input_->synchronize(
-                commands_, host::tests::presentation.route, host::tests::presentation.menu);
+            input_->synchronize(commands_,
+                                pause_menu_.route(host::tests::presentation.route),
+                                host::tests::presentation.menu);
             devices_->set_window_modes(input_->relative_mouse(), input_->editing_text());
         };
         synchronize();
@@ -95,11 +98,19 @@ class SdlPlayerInput : public ::testing::Test {
         for (auto const& event : commands_) {
             if (auto const* action{std::get_if<host::PlayerAction>(&event)}) {
                 host::tests::presentation.actions.push_back(*action);
-                if (route_to_pause_menu && *action == host::PlayerAction::OpenPause) {
-                    host::tests::presentation.route = {input::Context::Menu, true};
+                if (auto command{pause_menu_.handle(*action, sim::LevelState::Running)}) {
+                    pause_commands_.push_back(*command);
+                    if (command->kind == host::PauseCommandKind::CheckLeave) {
+                        pause_menu_.widget_event(
+                            {host::PauseWidgetEventKind::LeaveAccepted, command->item});
+                    }
                 }
             } else if (auto const* button{std::get_if<host::MenuButton>(&event)}) {
-                if (button->down) {
+                if (button->down && pause_menu_.view == PauseMenu::View::Sidebar) {
+                    if (auto command{pause_menu_.navigate(button->command, button->repeat)}) {
+                        pause_commands_.push_back(*command);
+                    }
+                } else if (button->down) {
                     host::tests::presentation.commands.push_back(button->command);
                     host::tests::presentation.modifiers = button->modifiers;
                 }
@@ -252,13 +263,19 @@ TEST_F(SdlPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModifier
 
 TEST_F(SdlPlayerInput, PauseReroutesTheNextEventInTheSamePoll) {
     auto& view{host::tests::presentation};
-    route_to_pause_menu = true;
     view.route = {input::Context::Gameplay};
     press(SDLK_ESCAPE, SDL_SCANCODE_ESCAPE);
     press(SDLK_DOWN, SDL_SCANCODE_DOWN);
+    press(SDLK_LSHIFT, SDL_SCANCODE_LSHIFT);
     frame();
     EXPECT_EQ(view.actions, std::vector{host::PlayerAction::OpenPause});
-    EXPECT_EQ(view.commands, std::vector{input::MenuCommand::Down});
+    EXPECT_TRUE(view.commands.empty());
+    EXPECT_EQ(pause_menu_.selected, host::PauseMenuItem::Controls);
+    EXPECT_EQ(pause_commands_,
+              (std::vector<host::PauseCommand>{
+                  {host::PauseCommandKind::Open, host::PauseMenuItem::Resume},
+                  {host::PauseCommandKind::Select, host::PauseMenuItem::Controls}}));
+    EXPECT_TRUE(ship_frame().events.empty());
 }
 
 TEST_F(SdlPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
