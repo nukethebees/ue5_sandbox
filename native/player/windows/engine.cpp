@@ -22,7 +22,9 @@ auto start_engine(Window& window, std::wstring const& arguments, LaunchDisplayMo
 
     if (mode != LaunchDisplayMode::Headless) {
         if (auto result{connect_unreal_window(window.sdl_window())}; !result) {
-            shutdown_engine(window);
+            if (auto shutdown{shutdown_engine(window)}; !shutdown) {
+                result.error() += "; " + shutdown.error();
+            }
             return result;
         }
     }

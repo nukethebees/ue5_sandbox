@@ -217,7 +217,11 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     try {
         application.unload_level(storage, sim::RunEndReason::WorldEnd, false);
     } catch (...) {
-        shutdown_engine(window);
+        if (auto shutdown{shutdown_engine(window)}; !shutdown) {
+            std::println(
+                stderr, "Engine shutdown failed during level cleanup: {}", shutdown.error());
+        }
+
         throw;
     }
 
