@@ -431,11 +431,11 @@
 
 (type capital_spawn_view
   :spelling "ioj::sim::LevelCapitalSpawnEvents::CompactConstView"
-  :header "ioj/sim/levels/level_capital_spawn_events.h")
+  :header "ioj/sim/levels/level_spawn_tables.h")
 
 (type turret_spawn_view
   :spelling "ioj::sim::LevelTurretSpawnEvents::CompactConstView"
-  :header "ioj/sim/levels/level_turret_spawn_events.h")
+  :header "ioj/sim/levels/level_spawn_tables.h")
 
 (type spawned_entity_ids
   :spelling "std::vector<ioj::sim::EntityId>"

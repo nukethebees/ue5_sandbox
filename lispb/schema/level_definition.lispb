@@ -6,18 +6,15 @@
     (member teams array @native_team)
 ))
 
-(module level_runtime_events_level_spawn_groups
-  :header "native/simulation/include/ioj/sim/levels/level_spawn_groups.h"
+(module level_spawn_tables
+  :header "native/simulation/include/ioj/sim/levels/level_spawn_tables.h"
   :namespace ioj::sim
   (struct LevelSpawnGroups
     (member types array @native_entity_type)
     (member offsets array int32)
     (member counts array @native_level_event_count)
-))
+)
 
-(module level_runtime_events_level_capital_spawn_events
-  :header "native/simulation/include/ioj/sim/levels/level_capital_spawn_events.h"
-  :namespace ioj::sim
   (struct LevelCapitalSpawnEvents
     (member entity_indices array ioj::sim::LevelEntityRef)
     (member locations nested @native_vectors_3f)
@@ -26,11 +23,8 @@
     (member healths array @native_health)
     (member initial_fighter_spawn_delays array @settings_nonnegative_float)
     (member fighter_spawn_cooldowns array @settings_nonnegative_float)
-))
+)
 
-(module level_runtime_events_level_turret_spawn_events
-  :header "native/simulation/include/ioj/sim/levels/level_turret_spawn_events.h"
-  :namespace ioj::sim
   (struct LevelTurretSpawnEvents
     (member entity_indices array ioj::sim::LevelEntityRef)
     (member locations nested @native_vectors_3f)
@@ -38,11 +32,8 @@
     (member teams array @native_team)
     (member healths array @native_health)
     (member laser_damages array @settings_nonnegative_int)
-))
+)
 
-(module level_runtime_events_level_spinner_spawn_events
-  :header "native/simulation/include/ioj/sim/levels/level_spinner_spawn_events.h"
-  :namespace ioj::sim
   (struct LevelSpinnerSpawnEvents
     (member entity_indices array ioj::sim::LevelEntityRef)
     (member locations nested @native_vectors_3f)

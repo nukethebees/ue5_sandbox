@@ -4,7 +4,7 @@
 #pragma once
 
 #include "ioj/sim/capital_ships/sim.h"
-#include "ioj/sim/levels/level_capital_spawn_events.h"
+#include "ioj/sim/levels/level_spawn_tables.h"
 #include "ioj/sim/levels/spawn_context.h"
 
 #include <vector>

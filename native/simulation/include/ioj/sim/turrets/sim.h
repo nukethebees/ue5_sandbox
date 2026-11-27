@@ -2,10 +2,7 @@
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/entities/entity_frame_changes.h>
 #include <ioj/sim/entities/entity_tables.h>
-#include <ioj/sim/levels/level_capital_spawn_events.h>
-#include <ioj/sim/levels/level_spawn_groups.h>
-#include <ioj/sim/levels/level_spinner_spawn_events.h>
-#include <ioj/sim/levels/level_turret_spawn_events.h>
+#include <ioj/sim/levels/level_spawn_tables.h>
 #include <ioj/sim/turrets/phase_inputs.h>
 #include <ioj/sim/turrets/turret_entity_data.h>
 #include <ioj/sim/turrets/turret_sim_config.h>

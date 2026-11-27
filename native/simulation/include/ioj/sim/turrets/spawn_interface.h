@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ioj/sim/levels/level_turret_spawn_events.h"
+#include "ioj/sim/levels/level_spawn_tables.h"
 #include "ioj/sim/levels/spawn_context.h"
 #include "ioj/sim/turrets/sim.h"
 

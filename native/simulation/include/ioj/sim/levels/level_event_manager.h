@@ -6,11 +6,8 @@
 #include <ioj/sim/levels/change_points_events.h>
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/event_trigger.h>
-#include <ioj/sim/levels/level_capital_spawn_events.h>
-#include <ioj/sim/levels/level_spawn_groups.h>
-#include <ioj/sim/levels/level_spinner_spawn_events.h>
+#include <ioj/sim/levels/level_spawn_tables.h>
 #include <ioj/sim/levels/level_state.h>
-#include <ioj/sim/levels/level_turret_spawn_events.h>
 #include <ioj/sim/levels/run_end_reason.h>
 #include <ioj/sim/levels/start_timer_event.h>
 #include <ioj/sim/levels/terminal_event.h>

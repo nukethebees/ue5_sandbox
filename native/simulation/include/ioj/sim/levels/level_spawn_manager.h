@@ -7,10 +7,8 @@
 #include <ioj/sim/fighters/phase_inputs.h>
 #include <ioj/sim/levels/event_handle.h>
 #include <ioj/sim/levels/fighter_launch_column.h>
-#include <ioj/sim/levels/level_capital_spawn_events.h>
 #include <ioj/sim/levels/level_entity_ref.h>
-#include <ioj/sim/levels/level_spinner_spawn_events.h>
-#include <ioj/sim/levels/level_turret_spawn_events.h>
+#include <ioj/sim/levels/level_spawn_tables.h>
 #include <ioj/team_array.h>
 
 #include <cstdint>

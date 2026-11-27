@@ -7,7 +7,7 @@
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/levels/level_capital_spawn_events.h>
+#include <ioj/sim/levels/level_spawn_tables.h>
 
 #include <cstdint>
 #include <span>
