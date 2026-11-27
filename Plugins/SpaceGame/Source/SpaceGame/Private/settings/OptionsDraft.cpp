@@ -379,36 +379,11 @@ auto UOptionsDraft::all_control_bindings() const -> TArray<FControlBindingView> 
             .display_name = FText::FromString(to_fstring(control.label)),
             .display_category = control_binding_group_label(group),
             .display_group = group,
-            .display_order = control.display_order,
             .device_type = device.PrimaryDeviceType,
             .current_key = binding_key(key),
             .default_key = binding_key(control.default_key),
         });
     }
-
-    result.Sort([](auto const& left, auto const& right) {
-        if (left.address.profile_index != right.address.profile_index) {
-            return left.address.profile_index < right.address.profile_index;
-        }
-
-        if (left.display_group != right.display_group) {
-            return static_cast<uint8>(left.display_group) < static_cast<uint8>(right.display_group);
-        }
-
-        if (left.display_order != right.display_order) {
-            return left.display_order < right.display_order;
-        }
-
-        if (left.device_type != right.device_type) {
-            return static_cast<uint8>(left.device_type) < static_cast<uint8>(right.device_type);
-        }
-
-        if (left.address.mapping != right.address.mapping) {
-            return left.address.mapping < right.address.mapping;
-        }
-
-        return left.address.slot < right.address.slot;
-    });
 
     return result;
 }

@@ -13,7 +13,6 @@ struct FControlBindingView {
     FText display_name;
     FText display_category;
     EControlBindingGroup display_group{EControlBindingGroup::Flight};
-    int32 display_order{};
     EHardwareDevicePrimaryType device_type{EHardwareDevicePrimaryType::Unspecified};
     FKey current_key;
     FKey default_key;
