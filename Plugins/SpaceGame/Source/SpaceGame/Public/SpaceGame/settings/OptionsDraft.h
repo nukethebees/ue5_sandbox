@@ -93,7 +93,6 @@ class SPACEGAME_API UOptionsDraft final : public UObject {
     FGameVideoSettings video_;
     TWeakObjectPtr<ULocalPlayer> editing_local_player_{};
 
-    GameSettingsEditState draft_;
     double confirmation_deadline_{};
     bool save_pending_{};
     FTSTicker::FDelegateHandle display_confirmation_ticker_;

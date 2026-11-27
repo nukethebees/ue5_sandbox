@@ -10,7 +10,6 @@
 #include <ioj/settings/game_setting_value.h>
 #include <ioj/settings/game_settings.h>
 #include <ioj/settings/player_settings_view.h>
-#include <SpaceGame/input/ControlBindingMetadata.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -59,7 +58,7 @@ void UOptionsDraft::load(ULocalPlayer* player) {
     check(!is_awaiting_display_confirmation());
     auto const& settings{player_settings()};
     editing_local_player_ = player;
-    draft_.begin(settings.applied_values, settings.defaults);
+    player_menu().draft.begin(settings.applied_values, settings.defaults);
     settings_changed.Broadcast();
 }
 
@@ -72,7 +71,7 @@ void UOptionsDraft::cancel() {
         revert_display_changes();
     }
 
-    draft_.cancel();
+    player_menu().draft.cancel();
     settings_changed.Broadcast();
 }
 
@@ -82,8 +81,8 @@ auto UOptionsDraft::apply(GameSettingCategory category) -> bool {
         return false;
     }
 
-    auto const& pending{draft_.pending()};
-    auto const& applied{draft_.applied()};
+    auto const& pending{player_menu().draft.pending()};
+    auto const& applied{player_menu().draft.applied()};
     if (category == GameSettingCategory::Video &&
         (pending.video.window_mode != applied.video.window_mode ||
          pending.video.resolution != applied.video.resolution)) {
@@ -97,12 +96,12 @@ auto UOptionsDraft::apply(GameSettingCategory category) -> bool {
 }
 
 auto UOptionsDraft::save(GameSettingCategory category) -> bool {
-    if (auto result{apply_settings(category, draft_.pending())}; !result) {
+    if (auto result{apply_settings(category, player_menu().draft.pending())}; !result) {
         report_settings_error("Applying settings failed: " + result.error());
         return false;
     }
 
-    queue_preferences({host::PreferenceAction::Save, category, draft_.pending(), draft_.applied()},
+    queue_preferences({host::PreferenceAction::Save, category, player_menu().draft.pending(), player_menu().draft.applied()},
                       *this);
     save_pending_ = true;
     return true;
@@ -120,7 +119,7 @@ void UOptionsDraft::preference_finished(host::PreferenceEdit const& edit, std::s
         }
 
         if (edit.action == host::PreferenceAction::RevertDisplay) {
-            draft_.cancel();
+            player_menu().draft.cancel();
             finish_display_confirmation();
             save_completed.Broadcast(false);
         } else {
@@ -134,7 +133,7 @@ void UOptionsDraft::preference_finished(host::PreferenceEdit const& edit, std::s
 
     if (!error.empty()) {
         std::string message{error};
-        auto restored{apply_settings(category, draft_.applied())};
+        auto restored{apply_settings(category, player_menu().draft.applied())};
 
         report_settings_error("Saving settings failed: " + message +
                               (restored ? "" : "; restoring settings failed: " + restored.error()));
@@ -146,7 +145,7 @@ void UOptionsDraft::preference_finished(host::PreferenceEdit const& edit, std::s
         return;
     }
 
-    draft_.begin(player_settings().applied_values, player_settings().defaults);
+    player_menu().draft.begin(player_settings().applied_values, player_settings().defaults);
     settings_changed.Broadcast();
     if (is_awaiting_display_confirmation()) {
         finish_display_confirmation();
@@ -178,16 +177,16 @@ void UOptionsDraft::reset_category(GameSettingCategory category) {
         return;
     }
 
-    draft_.reset_category(category);
+    player_menu().draft.reset_category(category);
     if (category == GameSettingCategory::Video) {
         if (player_settings().launch_mode != LaunchDisplayMode::Preferences) {
-            draft_.set_setting(GameSetting::WindowMode, draft_.applied().video.window_mode);
-        } else if (draft_.pending().video.window_mode == GameWindowMode::Fullscreen) {
-            draft_.set_setting(GameSetting::WindowMode, GameWindowMode::Borderless);
+            player_menu().draft.set_setting(GameSetting::WindowMode, player_menu().draft.applied().video.window_mode);
+        } else if (player_menu().draft.pending().video.window_mode == GameWindowMode::Fullscreen) {
+            player_menu().draft.set_setting(GameSetting::WindowMode, GameWindowMode::Borderless);
         }
 
         if (!is_available(GameSetting::Resolution)) {
-            draft_.set_setting(GameSetting::Resolution, draft_.applied().video.resolution);
+            player_menu().draft.set_setting(GameSetting::Resolution, player_menu().draft.applied().video.resolution);
         }
     }
 
@@ -212,13 +211,13 @@ void UOptionsDraft::revert_display_changes() {
     save_pending_ = true;
     queue_preferences({host::PreferenceAction::RevertDisplay,
                        GameSettingCategory::Video,
-                       draft_.pending(),
-                       draft_.applied()},
+                       player_menu().draft.pending(),
+                       player_menu().draft.applied()},
                       *this);
 }
 
 auto UOptionsDraft::value(GameSetting const setting) const -> GameSettingValue {
-    return draft_.value(setting);
+    return player_menu().draft.value(setting);
 }
 
 void UOptionsDraft::set_setting(GameSetting const setting, GameSettingValue const& value) {
@@ -228,7 +227,7 @@ void UOptionsDraft::set_setting(GameSetting const setting, GameSettingValue cons
     }
 
     auto const& descriptor{game_setting_descriptor(setting)};
-    if (!player_settings().set_setting(draft_, setting, value, supported_resolutions())) {
+    if (!player_settings().set_setting(player_menu().draft, setting, value, supported_resolutions())) {
         UE_LOG(LogTemp,
                Warning,
                TEXT("Rejected invalid value for game setting %s"),
@@ -258,7 +257,7 @@ auto UOptionsDraft::options(GameSetting const setting) const -> TArray<FGameSett
     }
 
     auto const choices{
-        player_settings().choices(draft_.pending(), provider, supported_resolutions())};
+        player_settings().choices(player_menu().draft.pending(), provider, supported_resolutions())};
     TArray<FGameSettingOption> result;
     result.Reserve(static_cast<int32>(choices.size()));
     for (auto const& choice : choices) {
@@ -274,15 +273,15 @@ auto UOptionsDraft::options(GameSetting const setting) const -> TArray<FGameSett
 
 auto UOptionsDraft::is_available(GameSetting const setting) const -> bool {
     return editing_local_player_.IsValid() &&
-           player_settings().is_available(draft_.pending(), setting);
+           player_settings().is_available(player_menu().draft.pending(), setting);
 }
 
 auto UOptionsDraft::is_dirty() const -> bool {
-    return draft_.is_dirty();
+    return player_menu().draft.is_dirty();
 }
 
 auto UOptionsDraft::is_at_defaults(GameSettingCategory const category) const -> bool {
-    return draft_.is_at_defaults(category);
+    return player_menu().draft.is_at_defaults(category);
 }
 
 auto UOptionsDraft::is_awaiting_display_confirmation() const -> bool {
@@ -333,9 +332,9 @@ auto UOptionsDraft::control_bindings(GameSettingDevice device) const
         if (is_gamepad_mapping(control.mapping) == (device == GameSettingDevice::Controller)) {
             result.Add(FControlBindingView{control.mapping,
                                            FText::FromString(to_fstring(control.label)),
-                                           control_binding_group_label(control.group),
-                                           draft_.pending().controls.bindings[control.mapping],
-                                           draft_.defaults().controls.bindings[control.mapping]});
+                                           FText::FromString(to_fstring(to_string(control.group))),
+                                           player_menu().draft.pending().controls.bindings[control.mapping],
+                                           player_menu().draft.defaults().controls.bindings[control.mapping]});
         }
     }
     return result;
@@ -343,7 +342,7 @@ auto UOptionsDraft::control_bindings(GameSettingDevice device) const
 auto UOptionsDraft::binding_conflicts(FlightMapping mapping, PhysicalKey key) const
     -> TArray<FText> {
     TArray<FText> result;
-    auto const conflicts{draft_.binding_conflicts(mapping, key)};
+    auto const conflicts{player_menu().draft.binding_conflicts(mapping, key)};
     for (auto const& control : flight_controls()) {
         if (std::ranges::contains(conflicts, control.mapping)) {
             result.Add(FText::FromString(to_fstring(control.label)));
@@ -354,7 +353,7 @@ auto UOptionsDraft::binding_conflicts(FlightMapping mapping, PhysicalKey key) co
 auto UOptionsDraft::set_control_binding(FlightMapping mapping,
                                         PhysicalKey key,
                                         bool replace_conflicts) -> bool {
-    if (!draft_.set_binding(mapping, key, replace_conflicts)) {
+    if (!player_menu().draft.set_binding(mapping, key, replace_conflicts)) {
         return false;
     }
     settings_changed.Broadcast();
