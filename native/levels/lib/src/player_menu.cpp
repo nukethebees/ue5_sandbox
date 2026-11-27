@@ -42,7 +42,7 @@ void PlayerMenu::open(MenuScreen next, bool content) {
     focus =
         next == MenuScreen::Completion ? MenuTarget{MenuControl::ReturnToLevels} : MenuTarget{page};
     if (content && next == MenuScreen::Main) {
-        focus = MenuRow{MenuRow::Kind::Level, selected_level};
+        focus = MenuTarget{MenuTarget::Kind::Level, selected_level};
     }
     category = levels::authoring::LevelCatalogCategory::Playable;
     pending_page.reset();
@@ -131,7 +131,7 @@ auto PlayerMenu::content_targets(PlayerSettingsView const& settings) const
         bool can_launch{};
         for (auto const& level : levels) {
             if (level.visible_in(category)) {
-                targets.emplace_back(MenuRow{MenuRow::Kind::Level, level.id});
+                targets.emplace_back(MenuTarget{MenuTarget::Kind::Level, level.id});
                 if (level.id == selected_level) {
                     can_launch = level.unlocked;
                 }
@@ -145,10 +145,10 @@ auto PlayerMenu::content_targets(PlayerSettingsView const& settings) const
         }
     } else if (page == MainMenuItem::DataArchive) {
         for (auto const& id : profiles) {
-            targets.emplace_back(MenuRow{MenuRow::Kind::Profile, id});
+            targets.emplace_back(MenuTarget{MenuTarget::Kind::Profile, id});
         }
         for (auto const& id : outcomes) {
-            targets.emplace_back(MenuRow{MenuRow::Kind::Outcome, id});
+            targets.emplace_back(MenuTarget{MenuTarget::Kind::Outcome, id});
         }
         if (!selected_profile.empty() && selected_profile != active_profile) {
             targets.emplace_back(ActivateProfile);
@@ -190,10 +190,10 @@ auto PlayerMenu::content_targets(PlayerSettingsView const& settings) const
 auto PlayerMenu::primary_target(PlayerSettingsView const& settings) const -> MenuTarget {
     if (page == MainMenuItem::SelectLevel && prompt == OptionsPrompt::None) {
         return selected_level.empty() ? MenuTarget{category}
-                                      : MenuTarget{MenuRow{MenuRow::Kind::Level, selected_level}};
+                                      : MenuTarget{MenuTarget::Kind::Level, selected_level};
     }
     if (page == MainMenuItem::DataArchive && !create_profile && !selected_profile.empty()) {
-        return MenuRow{MenuRow::Kind::Profile, selected_profile};
+        return MenuTarget{MenuTarget::Kind::Profile, selected_profile};
     }
     auto targets{content_targets(settings)};
     return targets.empty() ? MenuTarget{page} : std::move(targets.front());
@@ -206,19 +206,20 @@ auto PlayerMenu::activate(MenuTarget target,
     if (saving || screen == MenuScreen::Closed) {
         return {};
     }
-    if (auto choice{std::get_if<BindingChoice>(&target)}) {
-        if (!draft.binding_action_available(*choice)) {
+    if (target.kind == MenuTarget::Kind::Binding) {
+        auto const choice{target.binding()};
+        if (!draft.binding_action_available(choice)) {
             return {};
         }
-        draft.choose_binding_action(*choice);
+        draft.choose_binding_action(choice);
         return MenuUpdate{draft.binding_edit().mapping, MenuOperation::BindingPrompt};
     }
-    if (std::holds_alternative<MainMenuItem>(target)) {
+    if (target.kind == MenuTarget::Kind::Page) {
         if (screen != MenuScreen::Main || prompt != OptionsPrompt::None || create_profile ||
             draft.binding_edit().prompt != BindingPrompt::Closed) {
             return {};
         }
-        auto const item{std::get<MainMenuItem>(target)};
+        auto const item{target.page()};
         if (item != page && !leave_ready()) {
             pending_page = item;
             return MenuUpdate{focus, MenuOperation::Focus};
@@ -235,11 +236,12 @@ auto PlayerMenu::activate(MenuTarget target,
         target == MenuTarget{MenuControl::CancelCreate}) {
         set_create_profile(target == MenuTarget{MenuControl::CreateProfile});
     }
-    if (auto setting{std::get_if<GameSetting>(&target)}) {
-        auto const& row{game_setting_descriptor(*setting)};
+    if (target.kind == MenuTarget::Kind::Setting) {
+        auto const setting{target.setting()};
+        auto const& row{game_setting_descriptor(setting)};
         if (row.control_kind == SettingControlKind::Toggle) {
             settings.set_setting(
-                draft, *setting, !std::get<bool>(draft.value(*setting)), resolutions);
+                draft, setting, !std::get<bool>(draft.value(setting)), resolutions);
             return MenuUpdate{target, MenuOperation::RefreshSettings};
         }
         if (row.control_kind == SettingControlKind::Choice) {
@@ -247,29 +249,34 @@ auto PlayerMenu::activate(MenuTarget target,
         }
         return {};
     }
-    if (auto mapping{std::get_if<FlightMapping>(&target)}) {
-        draft.manage_binding(*mapping);
+    if (target.kind == MenuTarget::Kind::Mapping) {
+        auto const mapping{target.mapping()};
+        draft.manage_binding(mapping);
     }
-    if (auto selected{std::get_if<GameSettingDevice>(&target)}) {
-        device = *selected;
+    if (target.kind == MenuTarget::Kind::Device) {
+        auto const selected{target.device()};
+        device = selected;
     }
-    if (auto selected{std::get_if<levels::authoring::LevelCatalogCategory>(&target)}) {
-        category = *selected;
+    if (target.kind == MenuTarget::Kind::Category) {
+        auto const selected{target.category()};
+        category = selected;
         auto first{std::ranges::find_if(
             levels, [this](auto const& level) { return level.visible_in(category); })};
         selected_level = first == levels.end() ? std::string{} : first->id;
     }
-    if (auto row{std::get_if<MenuRow>(&target)}) {
-        switch (row->kind) {
-            case MenuRow::Kind::Level:
-                selected_level = row->id;
+    if (target.is_row()) {
+        switch (target.kind) {
+            case MenuTarget::Kind::Level:
+                selected_level = target.id;
                 break;
-            case MenuRow::Kind::Profile:
-                selected_profile = row->id;
+            case MenuTarget::Kind::Profile:
+                selected_profile = target.id;
                 break;
-            case MenuRow::Kind::Outcome:
-                selected_outcome = row->id;
+            case MenuTarget::Kind::Outcome:
+                selected_outcome = target.id;
                 break;
+            default:
+                std::unreachable();
         }
     }
     return MenuUpdate{std::move(target), MenuOperation::Activate};
@@ -311,23 +318,25 @@ auto PlayerMenu::navigate(MenuCommand command,
         return {};
     }
     auto const backward{command == Previous || command == Up || command == Left};
-    if (auto item{std::get_if<MainMenuItem>(&focus)}) {
+    if (focus.kind == MenuTarget::Kind::Page) {
+        auto const item{focus.page()};
         if (command == Right) {
             return select(primary_target(settings));
         }
         if (command == Left) {
             return {};
         }
-        return select(backward ? cycle_previous(*item) : cycle_next(*item));
+        return select(backward ? cycle_previous(item) : cycle_next(item));
     }
     auto targets{content_targets(settings)};
     if (targets.empty()) {
         return {};
     }
     if (command == Left || command == Right) {
-        if (auto setting{std::get_if<GameSetting>(&focus)}) {
-            auto const& row{game_setting_descriptor(*setting)};
-            auto value{draft.value(*setting)};
+        if (focus.kind == MenuTarget::Kind::Setting) {
+            auto const setting{focus.setting()};
+            auto const& row{game_setting_descriptor(setting)};
+            auto value{draft.value(setting)};
             if (row.control_kind == SettingControlKind::FloatRange) {
                 value = static_cast<float>(
                     std::clamp(std::get<float>(value) + (backward ? -row.step : row.step),
@@ -346,22 +355,24 @@ auto PlayerMenu::navigate(MenuCommand command,
             } else if (row.control_kind == SettingControlKind::Toggle) {
                 value = !backward;
             }
-            settings.set_setting(draft, *setting, value, resolutions);
+            settings.set_setting(draft, setting, value, resolutions);
             return MenuUpdate{focus, MenuOperation::RefreshSettings};
         }
         using Category = levels::authoring::LevelCatalogCategory;
-        if (auto tab{std::get_if<Category>(&focus)}) {
-            auto index{static_cast<int>(*tab) + (backward ? -1 : 1)};
+        if (focus.kind == MenuTarget::Kind::Category) {
+            auto const tab{focus.category()};
+            auto index{static_cast<int>(tab) + (backward ? -1 : 1)};
             if (index >= 0 && index <= static_cast<int>(Category::Benchmark)) {
                 return activate(static_cast<Category>(index), settings, resolutions);
             }
         }
-        if (auto row{std::get_if<MenuRow>(&focus)}) {
-            if (!backward && row->kind == MenuRow::Kind::Profile && !outcomes.empty()) {
-                return select(MenuRow{MenuRow::Kind::Outcome, selected_outcome});
+        if (focus.is_row()) {
+            auto const* row{&focus};
+            if (!backward && row->kind == MenuTarget::Kind::Profile && !outcomes.empty()) {
+                return select(MenuTarget{MenuTarget::Kind::Outcome, selected_outcome});
             }
-            if (backward && row->kind == MenuRow::Kind::Outcome) {
-                return select(MenuRow{MenuRow::Kind::Profile, selected_profile});
+            if (backward && row->kind == MenuTarget::Kind::Outcome) {
+                return select(MenuTarget{MenuTarget::Kind::Profile, selected_profile});
             }
         }
         if (backward && screen == MenuScreen::Main && prompt == OptionsPrompt::None &&
@@ -369,16 +380,14 @@ auto PlayerMenu::navigate(MenuCommand command,
             return select(page);
         }
     }
-    if (command == Down && std::holds_alternative<levels::authoring::LevelCatalogCategory>(focus)) {
+    if (command == Down && focus.kind == MenuTarget::Kind::Category) {
         return select(primary_target(settings));
     }
     if (command == Up || command == Down) {
-        if (auto const* row{std::get_if<MenuRow>(&focus)}) {
-            std::erase_if(targets, [row](auto const& target) {
-                auto const* candidate{std::get_if<MenuRow>(&target)};
-                return !candidate || candidate->kind != row->kind;
-            });
-            if (row->kind == MenuRow::Kind::Level && !targets.empty() && command == Up &&
+        if (focus.is_row()) {
+            auto const* row{&focus};
+            std::erase_if(targets, [row](auto const& target) { return target.kind != row->kind; });
+            if (row->kind == MenuTarget::Kind::Level && !targets.empty() && command == Up &&
                 focus == targets.front()) {
                 return select(category);
             }

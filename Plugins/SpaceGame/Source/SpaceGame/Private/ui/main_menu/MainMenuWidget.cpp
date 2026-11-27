@@ -141,14 +141,15 @@ void UMainMenuWidget::create_content_widgets() {
 }
 
 void UMainMenuWidget::present(MenuUpdate const& update) {
-    if (auto item{std::get_if<MainMenuItem>(&update.target)}) {
+    if (update.target.kind == MenuTarget::Kind::Page) {
+        auto const item{update.target.page()};
         if (options_widget_) {
             options_widget_->refresh_view();
         }
         if (update.operation == MenuOperation::Activate) {
-            activate_item(*item);
+            activate_item(item);
         } else {
-            focus_item(*item);
+            focus_item(item);
         }
     } else if (player_menu().page == MainMenuItem::SelectLevel && level_select_widget_) {
         level_select_widget_->present(update);

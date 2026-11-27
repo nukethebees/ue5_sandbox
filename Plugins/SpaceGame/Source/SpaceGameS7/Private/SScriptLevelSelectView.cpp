@@ -92,16 +92,18 @@ auto SScriptLevelSelectView::OnFocusReceived(FGeometry const& geometry,
 
 void SScriptLevelSelectView::present(MenuUpdate const& update) {
     auto const activate{update.operation == MenuOperation::Activate};
-    if (auto category{std::get_if<LevelCatalogCategory>(&update.target)}) {
+    if (update.target.kind == MenuTarget::Kind::Category) {
+        auto const category{update.target.category()};
         if (activate) {
-            on_category_selected_.ExecuteIfBound(*category);
+            on_category_selected_.ExecuteIfBound(category);
         }
-        auto const button{*category == LevelCatalogCategory::Playable ? level_category_button_
-                          : *category == LevelCatalogCategory::BattleViewer
+        auto const button{category == LevelCatalogCategory::Playable ? level_category_button_
+                          : category == LevelCatalogCategory::BattleViewer
                               ? battle_viewer_category_button_
                               : benchmark_category_button_};
         button->focus();
-    } else if (auto row{std::get_if<MenuRow>(&update.target)}) {
+    } else if (update.target.is_row()) {
+        auto const* row{&update.target};
         auto const index{level_ids_.Find(row->id)};
         if (index != INDEX_NONE) {
             if (activate) {
@@ -109,9 +111,10 @@ void SScriptLevelSelectView::present(MenuUpdate const& update) {
             }
             focus_level(index);
         }
-    } else if (auto control{std::get_if<MenuControl>(&update.target)}) {
+    } else if (update.target.kind == MenuTarget::Kind::Control) {
+        auto const control{update.target.control()};
         auto& slate{FSlateApplication::Get()};
-        switch (*control) {
+        switch (control) {
             case MenuControl::BattleSpeed:
                 slate.SetKeyboardFocus(battle_speed_input_);
                 break;
@@ -368,7 +371,7 @@ auto SScriptLevelSelectView::handle_category_selected(LevelCatalogCategory const
 }
 
 auto SScriptLevelSelectView::handle_level_selected(int32 const button_index) -> FReply {
-    hit_menu_control(MenuRow{MenuRow::Kind::Level, level_ids_[button_index]});
+    hit_menu_control(MenuTarget{MenuTarget::Kind::Level, level_ids_[button_index]});
     return FReply::Handled();
 }
 

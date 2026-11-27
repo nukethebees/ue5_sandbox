@@ -136,9 +136,10 @@ auto SSaveGameViewerView::OnFocusReceived(FGeometry const& geometry, FFocusEvent
 
 void SSaveGameViewerView::present(MenuUpdate const& update) {
     auto const activate{update.operation == MenuOperation::Activate};
-    if (auto row{std::get_if<MenuRow>(&update.target)}) {
+    if (update.target.is_row()) {
+        auto const* row{&update.target};
         auto const id{to_fstring(row->id)};
-        if (row->kind == MenuRow::Kind::Profile) {
+        if (row->kind == MenuTarget::Kind::Profile) {
             auto const index{state_.profiles.IndexOfByPredicate(
                 [&](auto const& entry) { return entry.profile_id == id; })};
             if (profile_buttons_.IsValidIndex(index)) {
@@ -157,7 +158,8 @@ void SSaveGameViewerView::present(MenuUpdate const& update) {
                 outcome_buttons_[index]->focus();
             }
         }
-    } else if (auto control{std::get_if<MenuControl>(&update.target)}) {
+    } else if (update.target.kind == MenuTarget::Kind::Control) {
+        auto const control{update.target.control()};
         auto apply = [activate](auto const& button, auto const& action) {
             if (activate) {
                 action.ExecuteIfBound();
@@ -165,7 +167,7 @@ void SSaveGameViewerView::present(MenuUpdate const& update) {
                 button->focus();
             }
         };
-        switch (*control) {
+        switch (control) {
             case MenuControl::RefreshProfiles:
                 apply(refresh_button_, on_refresh_);
                 break;
@@ -456,12 +458,12 @@ auto SSaveGameViewerView::build_create_prompt() -> TSharedRef<SWidget> {
 // Actions and view updates
 /* **************************************** */
 auto SSaveGameViewerView::handle_profile(FString profile_id) -> FReply {
-    hit_menu_control(MenuRow{MenuRow::Kind::Profile, to_string(profile_id)});
+    hit_menu_control(MenuTarget{MenuTarget::Kind::Profile, to_string(profile_id)});
     return FReply::Handled();
 }
 
 auto SSaveGameViewerView::handle_outcome(FString outcome_id) -> FReply {
-    hit_menu_control(MenuRow{MenuRow::Kind::Outcome, to_string(outcome_id)});
+    hit_menu_control(MenuTarget{MenuTarget::Kind::Outcome, to_string(outcome_id)});
     return FReply::Handled();
 }
 

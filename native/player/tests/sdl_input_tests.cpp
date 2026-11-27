@@ -223,7 +223,7 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     menu.levels = {{"battle", Category::BattleViewer, true}};
     ASSERT_TRUE(menu.activate(Category::Benchmark, settings, {}));
     ASSERT_TRUE(menu.navigate(MenuCommand::Down, false, settings, {}));
-    EXPECT_EQ(menu.focus, (MenuTarget{MenuRow{MenuRow::Kind::Level, "battle"}}));
+    EXPECT_EQ(menu.focus, (MenuTarget{MenuTarget::Kind::Level, "battle"}));
     ASSERT_TRUE(menu.navigate(MenuCommand::Up, false, settings, {}));
     EXPECT_EQ(menu.focus, MenuTarget{Category::Benchmark});
 

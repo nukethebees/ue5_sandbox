@@ -369,7 +369,7 @@ struct PlayerInputSession : InputReceiver {
 
     void present_menu(MenuUpdate const& update) {
         if (menu.prompt == OptionsPrompt::Dirty && update.operation == MenuOperation::Activate) {
-            auto const choice{std::get<MenuControl>(update.target)};
+            auto const choice{update.target.control()};
             menu.set_prompt(OptionsPrompt::None);
             if (choice == MenuControl::Discard) {
                 menu.draft.cancel();
@@ -724,8 +724,7 @@ auto Application::publish_catalog(std::filesystem::path const& scripts_directory
     if (selected == menu_.levels.end() || !visible(*selected)) {
         auto const first{std::ranges::find_if(menu_.levels, visible)};
         menu_.selected_level = first == menu_.levels.end() ? std::string{} : first->id;
-        if (auto row{std::get_if<MenuRow>(&menu_.focus)};
-            row && row->kind == MenuRow::Kind::Level) {
+        if (menu_.focus.kind == MenuTarget::Kind::Level) {
             menu_.select(menu_.primary_target(settings_.view()));
         }
     }

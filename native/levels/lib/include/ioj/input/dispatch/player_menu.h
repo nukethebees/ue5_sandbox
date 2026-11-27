@@ -57,21 +57,62 @@ enum class MenuScreen { Main, Pause, Completion, Closed };
 enum class OptionsPrompt { None, Dirty, Display };
 enum class MenuOperation { Focus, Activate, RefreshSettings, BindingPrompt };
 
-struct MenuRow {
-    enum class Kind { Level, Profile, Outcome };
-    auto operator==(MenuRow const&) const -> bool = default;
+struct MenuTarget {
+    enum class Kind {
+        Page,
+        Device,
+        Setting,
+        Mapping,
+        Binding,
+        Category,
+        Control,
+        Level,
+        Profile,
+        Outcome
+    };
+
+    MenuTarget(MainMenuItem value)
+        : kind{Kind::Page}
+        , index{static_cast<unsigned>(value)} {}
+    MenuTarget(GameSettingDevice value)
+        : kind{Kind::Device}
+        , index{static_cast<unsigned>(value)} {}
+    MenuTarget(GameSetting value)
+        : kind{Kind::Setting}
+        , index{static_cast<unsigned>(value)} {}
+    MenuTarget(FlightMapping value)
+        : kind{Kind::Mapping}
+        , index{static_cast<unsigned>(value)} {}
+    MenuTarget(BindingChoice value)
+        : kind{Kind::Binding}
+        , index{static_cast<unsigned>(value)} {}
+    MenuTarget(levels::authoring::LevelCatalogCategory value)
+        : kind{Kind::Category}
+        , index{static_cast<unsigned>(value)} {}
+    MenuTarget(MenuControl value)
+        : kind{Kind::Control}
+        , index{static_cast<unsigned>(value)} {}
+    MenuTarget(Kind row_kind, std::string row_id)
+        : kind{row_kind}
+        , id{std::move(row_id)} {}
+    auto operator==(MenuTarget const&) const -> bool = default;
+    auto is_row() const -> bool {
+        return kind == Kind::Level || kind == Kind::Profile || kind == Kind::Outcome;
+    }
+    auto page() const -> MainMenuItem { return static_cast<MainMenuItem>(index); }
+    auto device() const -> GameSettingDevice { return static_cast<GameSettingDevice>(index); }
+    auto setting() const -> GameSetting { return static_cast<GameSetting>(index); }
+    auto mapping() const -> FlightMapping { return static_cast<FlightMapping>(index); }
+    auto binding() const -> BindingChoice { return static_cast<BindingChoice>(index); }
+    auto category() const -> levels::authoring::LevelCatalogCategory {
+        return static_cast<levels::authoring::LevelCatalogCategory>(index);
+    }
+    auto control() const -> MenuControl { return static_cast<MenuControl>(index); }
+
     Kind kind;
+    unsigned index{};
     std::string id;
 };
-
-using MenuTarget = std::variant<MainMenuItem,
-                                GameSettingDevice,
-                                GameSetting,
-                                FlightMapping,
-                                BindingChoice,
-                                levels::authoring::LevelCatalogCategory,
-                                MenuRow,
-                                MenuControl>;
 
 struct MenuHit {
     MenuTarget target;
@@ -123,10 +164,10 @@ struct PlayerMenu {
         if (prompt == BindingPrompt::Capture || prompt == BindingPrompt::Unsupported) {
             return MenuInputMode::BindingCapture;
         }
-        auto const* control{std::get_if<MenuControl>(&focus)};
-        if (control &&
-            (*control == MenuControl::ProfileName || *control == MenuControl::BattleSpeed ||
-             *control == MenuControl::BattleDuration)) {
+        if (focus.kind == MenuTarget::Kind::Control &&
+            (focus.control() == MenuControl::ProfileName ||
+             focus.control() == MenuControl::BattleSpeed ||
+             focus.control() == MenuControl::BattleDuration)) {
             return MenuInputMode::TextEntry;
         }
         return MenuInputMode::Navigation;

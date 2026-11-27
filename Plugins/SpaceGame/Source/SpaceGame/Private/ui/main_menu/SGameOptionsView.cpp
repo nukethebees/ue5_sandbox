@@ -255,27 +255,31 @@ void SGameOptionsView::present(MenuUpdate const& update) {
     if (update.operation == MenuOperation::RefreshSettings) {
         return;
     }
-    if (auto setting{std::get_if<GameSetting>(&update.target)}) {
-        if (auto* focus{setting_focus_.Find(*setting)}) {
+    if (update.target.kind == MenuTarget::Kind::Setting) {
+        auto const setting{update.target.setting()};
+        if (auto* focus{setting_focus_.Find(setting)}) {
             (*focus)();
         }
-    } else if (auto device{std::get_if<GameSettingDevice>(&update.target)}) {
+    } else if (update.target.kind == MenuTarget::Kind::Device) {
+        auto const device{update.target.device()};
         if (activate) {
             request_controls_rebuild(true);
         } else {
-            restore_controls_focus(FControlsFocusIdentity{*device});
+            restore_controls_focus(FControlsFocusIdentity{device});
         }
-    } else if (auto mapping{std::get_if<FlightMapping>(&update.target)}) {
+    } else if (update.target.kind == MenuTarget::Kind::Mapping) {
+        auto const mapping{update.target.mapping()};
         if (activate) {
             auto const rows{player_menu().binding_rows()};
             auto const row{std::ranges::find_if(
-                rows, [&](auto const& item) { return item.control.mapping == *mapping; })};
+                rows, [&](auto const& item) { return item.control.mapping == mapping; })};
             check(row != rows.end());
             open_binding_management(*row);
         } else {
-            restore_controls_focus(FControlsFocusIdentity{*mapping});
+            restore_controls_focus(FControlsFocusIdentity{mapping});
         }
-    } else if (auto control{std::get_if<MenuControl>(&update.target)}) {
+    } else if (update.target.kind == MenuTarget::Kind::Control) {
+        auto const control{update.target.control()};
         auto apply = [activate](auto const& button, auto const& action) {
             if (activate) {
                 action.ExecuteIfBound();
@@ -283,7 +287,7 @@ void SGameOptionsView::present(MenuUpdate const& update) {
                 button->focus();
             }
         };
-        switch (*control) {
+        switch (control) {
             case MenuControl::Apply:
                 apply(apply_button_, on_apply_);
                 break;

@@ -390,7 +390,7 @@ void UScriptLevelSelectWidget::rebuild_catalog() {
     }
 
     publish_catalog();
-    if (view_ && std::holds_alternative<MenuRow>(player_menu().focus) &&
+    if (view_ && player_menu().focus.is_row() &&
         player_menu().page == MainMenuItem::SelectLevel) {
         view_->present({player_menu().focus, MenuOperation::Focus});
     }
