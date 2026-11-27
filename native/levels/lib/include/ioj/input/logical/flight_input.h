@@ -21,7 +21,21 @@ auto apply_response(Vector3d value,
                     FlightAxis axis,
                     ControlsSettings const& settings) noexcept -> Vector3d;
 
+auto is_pause_button(FlightBindings const& bindings, PhysicalKey key) -> bool;
+
 struct FlightInputState {
+    void reset(LogicalInputState& state);
+    void button(LogicalInputState& state,
+                PhysicalKey key,
+                ButtonState edge,
+                ControlsSettings const& controls,
+                InputContext context);
+    void pointer(LogicalInputState& state, Vector2f delta, ControlsSettings const& controls);
+    void axis(LogicalInputState& state,
+              PhysicalKey key,
+              float position,
+              ControlsSettings const& controls);
+
     DigitalActions keyboard_mouse_held;
     DigitalActions gamepad_held;
     float keyboard_mouse_acceleration{};
@@ -29,21 +43,4 @@ struct FlightInputState {
     Vector2f gamepad_turn{};
     Vector2f keyboard_turn{};
 };
-auto is_pause_button(FlightBindings const& bindings, PhysicalKey key) -> bool;
-void reset_flight_input(FlightInputState& flight, LogicalInputState& state);
-void map_flight_button(FlightInputState& flight,
-                       LogicalInputState& state,
-                       PhysicalKey key,
-                       ButtonState edge,
-                       ControlsSettings const& controls,
-                       InputContext context);
-void map_flight_pointer(FlightInputState& flight,
-                        LogicalInputState& state,
-                        Vector2f delta,
-                        ControlsSettings const& controls);
-void map_flight_axis(FlightInputState& flight,
-                     LogicalInputState& state,
-                     PhysicalKey key,
-                     float position,
-                     ControlsSettings const& controls);
 }

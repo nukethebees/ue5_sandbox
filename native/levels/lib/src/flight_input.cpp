@@ -231,26 +231,24 @@ void resolve_digital(FlightInputState& flight,
 }
 
 }
-void map_flight_button(FlightInputState& flight,
-                       LogicalInputState& state,
-                       PhysicalKey key,
-                       ButtonState edge,
-                       ControlsSettings const& controls,
-                       InputContext context) {
+void FlightInputState::button(LogicalInputState& state,
+                              PhysicalKey key,
+                              ButtonState edge,
+                              ControlsSettings const& controls,
+                              InputContext context) {
     if (key == PhysicalKey::Unbound) {
         return;
     }
     auto const down{edge == ButtonState::Pressed};
-    resolve_digital(flight, state, key, down, controls, context);
+    resolve_digital(*this, state, key, down, controls, context);
     if (context == InputContext::Gameplay) {
-        map_flight_axis(flight, state, key, down ? 1.f : 0.f, controls);
+        axis(state, key, down ? 1.f : 0.f, controls);
     }
 }
 
-void map_flight_pointer(FlightInputState& flight,
-                        LogicalInputState& state,
-                        Vector2f delta,
-                        ControlsSettings const& controls) {
+void FlightInputState::pointer(LogicalInputState& state,
+                               Vector2f delta,
+                               ControlsSettings const& controls) {
     for (auto key : {PhysicalKey::MouseX, PhysicalKey::MouseY}) {
         auto const motion{key == PhysicalKey::MouseX ? delta.x() : delta.y()};
         if (state.pointer_steering) {
@@ -265,47 +263,44 @@ void map_flight_pointer(FlightInputState& flight,
             }
         }
     }
-    update_turn(flight, state, controls);
+    update_turn(*this, state, controls);
 }
 
-void map_flight_axis(FlightInputState& flight,
-                     LogicalInputState& state,
-                     PhysicalKey key,
-                     float position,
-                     ControlsSettings const& controls) {
+void FlightInputState::axis(LogicalInputState& state,
+                            PhysicalKey key,
+                            float position,
+                            ControlsSettings const& controls) {
     if (controls.bindings[FlightMapping::FlightAccelerateKeyboardMouse] == key) {
-        flight.keyboard_mouse_acceleration = position;
+        keyboard_mouse_acceleration = position;
     }
     if (controls.bindings[FlightMapping::FlightAccelerateGamepad] == key) {
-        flight.gamepad_acceleration = position;
+        gamepad_acceleration = position;
     }
-    auto const strongest{std::abs(flight.gamepad_acceleration) >
-                                 std::abs(flight.keyboard_mouse_acceleration)
-                             ? flight.gamepad_acceleration
-                             : flight.keyboard_mouse_acceleration};
+    auto const strongest{std::abs(gamepad_acceleration) > std::abs(keyboard_mouse_acceleration)
+                             ? gamepad_acceleration
+                             : keyboard_mouse_acceleration};
     state.axes_1d[Axis1DAction::Accelerate] = std::clamp(strongest, 0.f, 1.f);
     for (auto binding : flight_binding_details::stick_bindings) {
         if (controls.bindings[binding.mapping] == key) {
-            (binding.component == FlightAxis::Yaw ? flight.gamepad_turn.x()
-                                                  : flight.gamepad_turn.y()) = position;
+            (binding.component == FlightAxis::Yaw ? gamepad_turn.x() : gamepad_turn.y()) = position;
         }
     }
     if (key != PhysicalKey::MouseX && key != PhysicalKey::MouseY) {
         for (auto binding : flight_binding_details::pointer_bindings) {
             if (controls.bindings[binding.mapping] == key) {
-                (binding.component == FlightAxis::Yaw ? flight.keyboard_turn.x()
-                                                      : flight.keyboard_turn.y()) = position;
+                (binding.component == FlightAxis::Yaw ? keyboard_turn.x() : keyboard_turn.y()) =
+                    position;
             }
         }
     }
-    update_turn(flight, state, controls);
+    update_turn(*this, state, controls);
 }
 
-void reset_flight_input(FlightInputState& flight, LogicalInputState& state) {
+void FlightInputState::reset(LogicalInputState& state) {
     for (auto const binding : flight_binding_details::digital_bindings) {
         state.button(binding.action, ButtonState::Released);
     }
-    flight = {};
+    *this = {};
     state.pointer_steering.reset();
     state.axes_1d[Axis1DAction::Accelerate] = {};
     state.axes_2d[Axis2DAction::FlightTurn] = {};

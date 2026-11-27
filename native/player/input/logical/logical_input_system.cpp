@@ -134,7 +134,7 @@ LogicalInputSystem::LogicalInputSystem(ControlsSettings const& controls,
                                        PhysicalInputState& physical)
     : controls_{controls}
     , physical_{physical} {
-    reset_flight_input(flight_, state_);
+    flight_.reset(state_);
 }
 auto LogicalInputSystem::relative_mouse() const -> bool {
     return route_.context == InputContext::Gameplay || observer_.look == ObserverLookMode::Camera;
@@ -173,15 +173,14 @@ void
 }
 void LogicalInputSystem::refresh_bindings(InputDispatcher& output) {
     auto const first{state_.transitions.size()};
-    reset_flight_input(flight_, state_);
+    flight_.reset(state_);
     publish_transitions(output, first);
     if (route_.context == InputContext::Gameplay && physical_.focus == WindowFocus::Gained) {
         for (auto key : physical_.held) {
-            map_flight_axis(flight_, state_, key, 1.f, controls_);
+            flight_.axis(state_, key, 1.f, controls_);
         }
         for (std::size_t i{}; i < game_input_tables::gamepad_axes.size(); ++i) {
-            map_flight_axis(flight_,
-                            state_,
+            flight_.axis(state_,
                             game_input_tables::gamepad_axes[i].axis,
                             physical_.gamepad_axes[i],
                             controls_);
@@ -279,7 +278,7 @@ void LogicalInputSystem::button(InputDispatcher& output,
         (route_.context == InputContext::Gameplay || is_pause_button(controls_.bindings, key))) {
         auto const first{state_.transitions.size()};
         if (!repeat) {
-            map_flight_button(flight_, state_, key, edge, controls_, route_.context);
+            flight_.button(state_, key, edge, controls_, route_.context);
         }
         publish_transitions(output, first);
         return;
@@ -415,7 +414,7 @@ void LogicalInputSystem::apply(InputDispatcher& output, PointerMotion event) {
         return;
     }
     if (route_.context == InputContext::Gameplay) {
-        map_flight_pointer(flight_, state_, event.delta, controls_);
+        flight_.pointer(state_, event.delta, controls_);
     } else if (observer_.look == ObserverLookMode::Camera) {
         auto& look{state_.axes_2d[Axis2DAction::ObserverLookDelta]};
         look.x() += event.delta.x();
@@ -475,9 +474,9 @@ void LogicalInputSystem::apply(InputDispatcher& output, PhysicalAxis event) {
         }
     } else if (focused && route_.context == InputContext::Gameplay) {
         if (edge) {
-            map_flight_button(flight_, state_, event.key, *edge, controls_, route_.context);
+            flight_.button(state_, event.key, *edge, controls_, route_.context);
         }
-        map_flight_axis(flight_, state_, event.key, sample, controls_);
+        flight_.axis(state_, event.key, sample, controls_);
     }
     auto direction = [&](PhysicalKey key, float position) {
         if (key != PhysicalKey::Unbound) {
@@ -520,7 +519,7 @@ void LogicalInputSystem::apply(InputDispatcher& output, WindowFocus focus) {
     }
 
     release_context(output);
-    reset_flight_input(flight_, state_);
+    flight_.reset(state_);
     physical_.modifiers = {};
     pointer_capture_ = {};
 }

@@ -1,4 +1,3 @@
-#include <ioj/input/dispatch/input_dispatcher.h>
 #include <ioj/input/logical/flight_input.h>
 
 #include <gtest/gtest.h>
@@ -11,67 +10,59 @@ TEST(FlightInput, MultipleDevicesProduceOneOrderedPressAndRelease) {
     ControlsSettings settings{};
     FlightInputState input;
     LogicalInputState state;
-    InputDispatcher dispatch;
-    reset_flight_input(input, state);
-    map_flight_button(input,
-                      state,
-                      PhysicalKey::LeftMouseButton,
-                      ButtonState::Pressed,
-                      settings,
-                      InputContext::Gameplay);
-    map_flight_button(input,
-                      state,
-                      PhysicalKey::GamepadRightTriggerAxis,
-                      ButtonState::Pressed,
-                      settings,
-                      InputContext::Gameplay);
-    map_flight_button(input,
-                      state,
-                      PhysicalKey::LeftMouseButton,
-                      ButtonState::Released,
-                      settings,
-                      InputContext::Gameplay);
-    dispatch.publish_ship(state);
-    ASSERT_EQ(dispatch.ship_input().events.size(), 1u);
-    EXPECT_EQ(dispatch.ship_input().events.front(), sim::player::PlayerInputKind::FirePressed);
+    input.reset(state);
+    input.button(state,
+                 PhysicalKey::LeftMouseButton,
+                 ButtonState::Pressed,
+                 settings,
+                 InputContext::Gameplay);
+    input.button(state,
+                 PhysicalKey::GamepadRightTriggerAxis,
+                 ButtonState::Pressed,
+                 settings,
+                 InputContext::Gameplay);
+    input.button(state,
+                 PhysicalKey::LeftMouseButton,
+                 ButtonState::Released,
+                 settings,
+                 InputContext::Gameplay);
+    ASSERT_EQ(state.transitions.size(), 1u);
+    EXPECT_EQ(state.transitions.front().action, DigitalAction::Fire);
+    EXPECT_EQ(state.transitions.front().state, ButtonState::Pressed);
 
     state.begin_frame();
-    map_flight_button(input,
-                      state,
-                      PhysicalKey::GamepadRightTriggerAxis,
-                      ButtonState::Released,
-                      settings,
-                      InputContext::Gameplay);
-    map_flight_button(input,
-                      state,
-                      PhysicalKey::LeftShift,
-                      ButtonState::Pressed,
-                      settings,
-                      InputContext::Gameplay);
-    reset_flight_input(input, state);
-    dispatch.publish_ship(state);
-    auto const events{dispatch.ship_input().events};
-    ASSERT_EQ(events.size(), 3u);
-    EXPECT_EQ(events[0], sim::player::PlayerInputKind::FireReleased);
-    EXPECT_EQ(events[1], sim::player::PlayerInputKind::BoostPressed);
-    EXPECT_EQ(events[2], sim::player::PlayerInputKind::BoostReleased);
+    input.button(state,
+                 PhysicalKey::GamepadRightTriggerAxis,
+                 ButtonState::Released,
+                 settings,
+                 InputContext::Gameplay);
+    input.button(
+        state, PhysicalKey::LeftShift, ButtonState::Pressed, settings, InputContext::Gameplay);
+    input.reset(state);
+    ASSERT_EQ(state.transitions.size(), 3u);
+    EXPECT_EQ(state.transitions[0].action, DigitalAction::Fire);
+    EXPECT_EQ(state.transitions[0].state, ButtonState::Released);
+    EXPECT_EQ(state.transitions[1].action, DigitalAction::Boost);
+    EXPECT_EQ(state.transitions[1].state, ButtonState::Pressed);
+    EXPECT_EQ(state.transitions[2].action, DigitalAction::Boost);
+    EXPECT_EQ(state.transitions[2].state, ButtonState::Released);
 }
 
 TEST(FlightInput, EdgesBetweenTicksKeepTheirOrder) {
     ControlsSettings settings{};
     FlightInputState bindings;
     LogicalInputState state;
-    InputDispatcher dispatch;
-    reset_flight_input(bindings, state);
+    bindings.reset(state);
     for (auto edge : {ButtonState::Pressed, ButtonState::Released, ButtonState::Pressed}) {
-        map_flight_button(
-            bindings, state, PhysicalKey::LeftMouseButton, edge, settings, InputContext::Gameplay);
+        bindings.button(
+            state, PhysicalKey::LeftMouseButton, edge, settings, InputContext::Gameplay);
     }
     EXPECT_TRUE(state.held.fire());
-    using enum sim::player::PlayerInputKind;
-    dispatch.publish_ship(state);
-    EXPECT_TRUE(std::ranges::equal(dispatch.ship_input().events,
-                                   std::array{FirePressed, FireReleased, FirePressed}));
+    EXPECT_TRUE(std::ranges::equal(
+        state.transitions,
+        std::array{ButtonState::Pressed, ButtonState::Released, ButtonState::Pressed},
+        {},
+        &ActionTransition::state));
     state.begin_frame();
     EXPECT_TRUE(state.held.fire());
     EXPECT_TRUE(state.transitions.empty());
@@ -82,32 +73,23 @@ TEST(FlightInput, ReboundPauseAndViewerControlsAreIsolatedFromFlight) {
     settings.bindings[FlightMapping::GeneralPauseKeyboardMouse] = PhysicalKey::P;
     FlightInputState input;
     LogicalInputState state;
-    InputDispatcher dispatch;
-    reset_flight_input(input, state);
-    map_flight_button(
-        input, state, PhysicalKey::Escape, ButtonState::Pressed, settings, InputContext::Observer);
+    input.reset(state);
+    input.button(
+        state, PhysicalKey::Escape, ButtonState::Pressed, settings, InputContext::Observer);
     EXPECT_FALSE(state.held.pause());
-    map_flight_button(
-        input, state, PhysicalKey::P, ButtonState::Pressed, settings, InputContext::Observer);
+    input.button(state, PhysicalKey::P, ButtonState::Pressed, settings, InputContext::Observer);
     EXPECT_TRUE(state.held.pause());
-    map_flight_button(
-        input, state, PhysicalKey::P, ButtonState::Pressed, settings, InputContext::Observer);
+    input.button(state, PhysicalKey::P, ButtonState::Pressed, settings, InputContext::Observer);
     EXPECT_EQ(state.transitions.size(), 1u);
-    map_flight_button(
-        input, state, PhysicalKey::W, ButtonState::Pressed, settings, InputContext::Observer);
-    map_flight_button(input,
-                      state,
-                      PhysicalKey::LeftShift,
-                      ButtonState::Pressed,
-                      settings,
-                      InputContext::Observer);
-    dispatch.publish_ship(state);
-    EXPECT_TRUE(dispatch.ship_input().events.empty());
-    EXPECT_EQ(dispatch.ship_input().accelerator, 0.f);
+    input.button(state, PhysicalKey::W, ButtonState::Pressed, settings, InputContext::Observer);
+    input.button(
+        state, PhysicalKey::LeftShift, ButtonState::Pressed, settings, InputContext::Observer);
+    ASSERT_EQ(state.transitions.size(), 1u);
+    EXPECT_EQ(state.transitions.front().action, DigitalAction::Pause);
+    EXPECT_EQ(state.axes_1d[Axis1DAction::Accelerate], 0.f);
     settings.bindings[FlightMapping::GeneralPauseKeyboardMouse] = PhysicalKey::NonUSHash;
-    reset_flight_input(input, state);
-    map_flight_button(
-        input, state, PhysicalKey::NonUSHash, ButtonState::Pressed, settings, InputContext::Menu);
+    input.reset(state);
+    input.button(state, PhysicalKey::NonUSHash, ButtonState::Pressed, settings, InputContext::Menu);
     EXPECT_TRUE(state.held.pause());
     for (auto key : {PhysicalKey::MouseScrollUp, PhysicalKey::MouseX}) {
         EXPECT_FALSE(accepts_binding(FlightMapping::GeneralPauseKeyboardMouse, key));
@@ -126,16 +108,15 @@ TEST(FlightInput, TransientPointerMotionCannotHoldFireOrAcceleration) {
     ControlsSettings controls{};
     FlightInputState flight;
     LogicalInputState state;
-    reset_flight_input(flight, state);
-    map_flight_pointer(flight, state, {10.f, 20.f}, controls);
+    flight.reset(state);
+    flight.pointer(state, {10.f, 20.f}, controls);
     EXPECT_TRUE(state.transitions.empty());
     EXPECT_EQ(state.axes_1d[Axis1DAction::Accelerate], 0.f);
-    map_flight_button(flight,
-                      state,
-                      PhysicalKey::LeftMouseButton,
-                      ButtonState::Pressed,
-                      controls,
-                      InputContext::Gameplay);
+    flight.button(state,
+                  PhysicalKey::LeftMouseButton,
+                  ButtonState::Pressed,
+                  controls,
+                  InputContext::Gameplay);
     EXPECT_TRUE(state.held.fire());
 }
 
@@ -143,48 +124,36 @@ TEST(FlightInput, PointerSteeringHandsBackToHeldStickAndClearsOnContextChange) {
     ControlsSettings settings{.mouse_turn_sensitivity = 1.f, .gamepad_turn_sensitivity = 1.f};
     FlightInputState input;
     LogicalInputState state;
-    InputDispatcher dispatch;
-    reset_flight_input(input, state);
-    map_flight_axis(input, state, PhysicalKey::GamepadLeftX, -1.f, settings);
-    map_flight_button(input,
-                      state,
-                      PhysicalKey::RightMouseButton,
-                      ButtonState::Pressed,
-                      settings,
-                      InputContext::Gameplay);
-    map_flight_pointer(input, state, {200.f, 0.f}, settings);
+    input.reset(state);
+    input.axis(state, PhysicalKey::GamepadLeftX, -1.f, settings);
+    input.button(state,
+                 PhysicalKey::RightMouseButton,
+                 ButtonState::Pressed,
+                 settings,
+                 InputContext::Gameplay);
+    input.pointer(state, {200.f, 0.f}, settings);
     state.begin_frame();
-    dispatch.publish_ship(state);
-    EXPECT_FLOAT_EQ(dispatch.ship_input().yaw, 0.5f);
-    map_flight_button(input,
-                      state,
-                      PhysicalKey::RightMouseButton,
-                      ButtonState::Released,
-                      settings,
-                      InputContext::Gameplay);
-    dispatch.publish_ship(state);
-    EXPECT_FLOAT_EQ(dispatch.ship_input().yaw, -1.f);
-    reset_flight_input(input, state);
-    dispatch.publish_ship(state);
-    EXPECT_EQ(dispatch.ship_input().yaw, 0.f);
+    EXPECT_FLOAT_EQ(state.axes_2d[Axis2DAction::FlightTurn].x(), 0.5f);
+    input.button(state,
+                 PhysicalKey::RightMouseButton,
+                 ButtonState::Released,
+                 settings,
+                 InputContext::Gameplay);
+    EXPECT_FLOAT_EQ(state.axes_2d[Axis2DAction::FlightTurn].x(), -1.f);
+    input.reset(state);
+    EXPECT_EQ(state.axes_2d[Axis2DAction::FlightTurn].x(), 0.f);
     settings.bindings[FlightMapping::FlightYawKeyboardMouse] = PhysicalKey::J;
-    reset_flight_input(input, state);
-    map_flight_button(
-        input, state, PhysicalKey::J, ButtonState::Pressed, settings, InputContext::Gameplay);
-    map_flight_button(input,
-                      state,
-                      PhysicalKey::RightMouseButton,
-                      ButtonState::Pressed,
-                      settings,
-                      InputContext::Gameplay);
-    dispatch.publish_ship(state);
-    EXPECT_FLOAT_EQ(dispatch.ship_input().yaw, 1.f);
+    input.reset(state);
+    input.button(state, PhysicalKey::J, ButtonState::Pressed, settings, InputContext::Gameplay);
+    input.button(state,
+                 PhysicalKey::RightMouseButton,
+                 ButtonState::Pressed,
+                 settings,
+                 InputContext::Gameplay);
+    EXPECT_FLOAT_EQ(state.axes_2d[Axis2DAction::FlightTurn].x(), 1.f);
     state.begin_frame();
-    dispatch.publish_ship(state);
-    EXPECT_FLOAT_EQ(dispatch.ship_input().yaw, 1.f);
-    map_flight_button(
-        input, state, PhysicalKey::J, ButtonState::Released, settings, InputContext::Gameplay);
-    dispatch.publish_ship(state);
-    EXPECT_FLOAT_EQ(dispatch.ship_input().yaw, 0.f);
+    EXPECT_FLOAT_EQ(state.axes_2d[Axis2DAction::FlightTurn].x(), 1.f);
+    input.button(state, PhysicalKey::J, ButtonState::Released, settings, InputContext::Gameplay);
+    EXPECT_FLOAT_EQ(state.axes_2d[Axis2DAction::FlightTurn].x(), 0.f);
 }
 }
