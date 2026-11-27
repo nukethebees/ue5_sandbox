@@ -9,182 +9,1014 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
+#include <string_view>
 
 namespace ioj {
-using PhysicalKeyUnderlying = std::uint8_t;
+using PhysicalKeyUnderlying = std::uint16_t;
 
-// Logical bit width: 8.
+// Logical bit width: 10.
 enum class PhysicalKey : PhysicalKeyUnderlying {
-    Unbound,
-    Character,
-    A,
-    B,
-    C,
-    D,
-    E,
-    F,
-    G,
-    H,
-    I,
-    J,
-    K,
-    L,
-    M,
-    N,
-    O,
-    P,
-    Q,
-    R,
-    S,
-    T,
-    U,
-    V,
-    W,
-    X,
-    Y,
-    Z,
-    F1,
-    F2,
-    F3,
-    F4,
-    F5,
-    F6,
-    F7,
-    F8,
-    F9,
-    F10,
-    F11,
-    F12,
-    Zero,
-    One,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    Seven,
-    Eight,
-    Nine,
-    NumPadOne,
-    NumPadTwo,
-    NumPadThree,
-    NumPadFour,
-    NumPadFive,
-    NumPadSix,
-    NumPadSeven,
-    NumPadEight,
-    NumPadNine,
-    NumPadZero,
-    Enter,
-    Escape,
-    BackSpace,
-    Tab,
-    SpaceBar,
-    CapsLock,
-    PrintScreen,
-    ScrollLock,
-    Pause,
-    Insert,
-    Home,
-    PageUp,
-    Delete,
-    End,
-    PageDown,
-    Right,
-    Left,
-    Down,
-    Up,
-    NumLock,
-    Divide,
-    Multiply,
-    Subtract,
-    Add,
-    Decimal,
-    LeftControl,
-    LeftShift,
-    LeftAlt,
-    LeftCommand,
-    RightControl,
-    RightShift,
-    RightAlt,
-    RightCommand,
-    MediaNext,
-    MediaPrevious,
-    MediaPlayPause,
-    MediaStop,
-    VolumeUp,
-    VolumeDown,
-    VolumeMute,
-    LeftMouseButton,
-    RightMouseButton,
-    MiddleMouseButton,
-    ThumbMouseButton,
-    ThumbMouseButton2,
-    Hyphen,
-    Equals,
-    LeftBracket,
-    RightBracket,
-    Backslash,
-    Semicolon,
-    Apostrophe,
-    Tilde,
-    Comma,
-    Period,
-    Slash,
-    Underscore,
-    Ampersand,
-    Asterix,
-    Caret,
-    Colon,
-    Dollar,
-    Exclamation,
-    LeftParantheses,
-    RightParantheses,
-    Quote,
-    AAccentGrave,
-    EAccentGrave,
-    EAccentAigu,
-    CCedille,
-    Section,
-    MouseX,
-    MouseY,
-    MouseScrollUp,
-    MouseScrollDown,
-    Mouse2D,
-    MouseWheelAxis,
-    GamepadFaceButtonBottom,
-    GamepadFaceButtonRight,
-    GamepadFaceButtonTop,
-    GamepadFaceButtonLeft,
-    GamepadSpecialLeft,
-    GamepadSpecialRight,
-    GamepadLeftThumbstick,
-    GamepadRightThumbstick,
-    GamepadLeftShoulder,
-    GamepadRightShoulder,
-    GamepadDPadUp,
-    GamepadDPadDown,
-    GamepadDPadLeft,
-    GamepadDPadRight,
-    GamepadLeftX,
-    GamepadLeftY,
-    GamepadRightX,
-    GamepadRightY,
-    GamepadLeftTriggerAxis,
-    GamepadRightTriggerAxis,
-    GamepadLeftStickUp,
-    GamepadLeftStickDown,
-    GamepadLeftStickRight,
-    GamepadRightStickRight,
-    GamepadRightStickUp,
-    GamepadLeftTrigger,
-    GamepadRightTrigger,
-    GamepadLeftStickLeft,
-    GamepadRightStickLeft,
-    GamepadRightStickDown,
+    Unbound = 0,
+    A = 4,
+    B = 5,
+    C = 6,
+    D = 7,
+    E = 8,
+    F = 9,
+    G = 10,
+    H = 11,
+    I = 12,
+    J = 13,
+    K = 14,
+    L = 15,
+    M = 16,
+    N = 17,
+    O = 18,
+    P = 19,
+    Q = 20,
+    R = 21,
+    S = 22,
+    T = 23,
+    U = 24,
+    V = 25,
+    W = 26,
+    X = 27,
+    Y = 28,
+    Z = 29,
+    One = 30,
+    Two = 31,
+    Three = 32,
+    Four = 33,
+    Five = 34,
+    Six = 35,
+    Seven = 36,
+    Eight = 37,
+    Nine = 38,
+    Zero = 39,
+    Enter = 40,
+    Escape = 41,
+    BackSpace = 42,
+    Tab = 43,
+    SpaceBar = 44,
+    Hyphen = 45,
+    Equals = 46,
+    LeftBracket = 47,
+    RightBracket = 48,
+    Backslash = 49,
+    NonUSHash = 50,
+    Semicolon = 51,
+    Apostrophe = 52,
+    Tilde = 53,
+    Comma = 54,
+    Period = 55,
+    Slash = 56,
+    CapsLock = 57,
+    F1 = 58,
+    F2 = 59,
+    F3 = 60,
+    F4 = 61,
+    F5 = 62,
+    F6 = 63,
+    F7 = 64,
+    F8 = 65,
+    F9 = 66,
+    F10 = 67,
+    F11 = 68,
+    F12 = 69,
+    PrintScreen = 70,
+    ScrollLock = 71,
+    Pause = 72,
+    Insert = 73,
+    Home = 74,
+    PageUp = 75,
+    Delete = 76,
+    End = 77,
+    PageDown = 78,
+    Right = 79,
+    Left = 80,
+    Down = 81,
+    Up = 82,
+    NumLock = 83,
+    Divide = 84,
+    Multiply = 85,
+    Subtract = 86,
+    Add = 87,
+    NumPadEnter = 88,
+    NumPadOne = 89,
+    NumPadTwo = 90,
+    NumPadThree = 91,
+    NumPadFour = 92,
+    NumPadFive = 93,
+    NumPadSix = 94,
+    NumPadSeven = 95,
+    NumPadEight = 96,
+    NumPadNine = 97,
+    NumPadZero = 98,
+    Decimal = 99,
+    NonUSBackslash = 100,
+    VolumeMute = 127,
+    VolumeUp = 128,
+    VolumeDown = 129,
+    LeftControl = 224,
+    LeftShift = 225,
+    LeftAlt = 226,
+    LeftCommand = 227,
+    RightControl = 228,
+    RightShift = 229,
+    RightAlt = 230,
+    RightCommand = 231,
+    LeftMouseButton = 512,
+    RightMouseButton = 513,
+    MiddleMouseButton = 514,
+    ThumbMouseButton = 515,
+    ThumbMouseButton2 = 516,
+    MouseX = 517,
+    MouseY = 518,
+    MouseScrollUp = 519,
+    MouseScrollDown = 520,
+    Mouse2D = 521,
+    MouseWheelAxis = 522,
+    GamepadFaceButtonBottom = 768,
+    GamepadFaceButtonRight = 769,
+    GamepadFaceButtonTop = 770,
+    GamepadFaceButtonLeft = 771,
+    GamepadSpecialLeft = 772,
+    GamepadSpecialRight = 773,
+    GamepadLeftThumbstick = 774,
+    GamepadRightThumbstick = 775,
+    GamepadLeftShoulder = 776,
+    GamepadRightShoulder = 777,
+    GamepadDPadUp = 778,
+    GamepadDPadDown = 779,
+    GamepadDPadLeft = 780,
+    GamepadDPadRight = 781,
+    GamepadLeftX = 782,
+    GamepadLeftY = 783,
+    GamepadRightX = 784,
+    GamepadRightY = 785,
+    GamepadLeftTriggerAxis = 786,
+    GamepadRightTriggerAxis = 787,
+    GamepadLeftStickUp = 788,
+    GamepadLeftStickDown = 789,
+    GamepadLeftStickRight = 790,
+    GamepadRightStickRight = 791,
+    GamepadRightStickUp = 792,
+    GamepadLeftTrigger = 793,
+    GamepadRightTrigger = 794,
+    GamepadLeftStickLeft = 795,
+    GamepadRightStickLeft = 796,
+    GamepadRightStickDown = 797,
 };
-inline constexpr std::array<PhysicalKey, 130ULL> physical_key_keyboard_mouse_button_values{
-    PhysicalKey::Character,
+[[nodiscard]] constexpr auto
+    try_parse_serialized_physical_key(std::string_view const value) noexcept
+    -> std::optional<PhysicalKey> {
+    switch (value.size()) {
+        case 1ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
+                case 'A': {
+                    if (value == "A") {
+                        return PhysicalKey::A;
+                    }
+                    return std::nullopt;
+                }
+                case 'B': {
+                    if (value == "B") {
+                        return PhysicalKey::B;
+                    }
+                    return std::nullopt;
+                }
+                case 'C': {
+                    if (value == "C") {
+                        return PhysicalKey::C;
+                    }
+                    return std::nullopt;
+                }
+                case 'D': {
+                    if (value == "D") {
+                        return PhysicalKey::D;
+                    }
+                    return std::nullopt;
+                }
+                case 'E': {
+                    if (value == "E") {
+                        return PhysicalKey::E;
+                    }
+                    return std::nullopt;
+                }
+                case 'F': {
+                    if (value == "F") {
+                        return PhysicalKey::F;
+                    }
+                    return std::nullopt;
+                }
+                case 'G': {
+                    if (value == "G") {
+                        return PhysicalKey::G;
+                    }
+                    return std::nullopt;
+                }
+                case 'H': {
+                    if (value == "H") {
+                        return PhysicalKey::H;
+                    }
+                    return std::nullopt;
+                }
+                case 'I': {
+                    if (value == "I") {
+                        return PhysicalKey::I;
+                    }
+                    return std::nullopt;
+                }
+                case 'J': {
+                    if (value == "J") {
+                        return PhysicalKey::J;
+                    }
+                    return std::nullopt;
+                }
+                case 'K': {
+                    if (value == "K") {
+                        return PhysicalKey::K;
+                    }
+                    return std::nullopt;
+                }
+                case 'L': {
+                    if (value == "L") {
+                        return PhysicalKey::L;
+                    }
+                    return std::nullopt;
+                }
+                case 'M': {
+                    if (value == "M") {
+                        return PhysicalKey::M;
+                    }
+                    return std::nullopt;
+                }
+                case 'N': {
+                    if (value == "N") {
+                        return PhysicalKey::N;
+                    }
+                    return std::nullopt;
+                }
+                case 'O': {
+                    if (value == "O") {
+                        return PhysicalKey::O;
+                    }
+                    return std::nullopt;
+                }
+                case 'P': {
+                    if (value == "P") {
+                        return PhysicalKey::P;
+                    }
+                    return std::nullopt;
+                }
+                case 'Q': {
+                    if (value == "Q") {
+                        return PhysicalKey::Q;
+                    }
+                    return std::nullopt;
+                }
+                case 'R': {
+                    if (value == "R") {
+                        return PhysicalKey::R;
+                    }
+                    return std::nullopt;
+                }
+                case 'S': {
+                    if (value == "S") {
+                        return PhysicalKey::S;
+                    }
+                    return std::nullopt;
+                }
+                case 'T': {
+                    if (value == "T") {
+                        return PhysicalKey::T;
+                    }
+                    return std::nullopt;
+                }
+                case 'U': {
+                    if (value == "U") {
+                        return PhysicalKey::U;
+                    }
+                    return std::nullopt;
+                }
+                case 'V': {
+                    if (value == "V") {
+                        return PhysicalKey::V;
+                    }
+                    return std::nullopt;
+                }
+                case 'W': {
+                    if (value == "W") {
+                        return PhysicalKey::W;
+                    }
+                    return std::nullopt;
+                }
+                case 'X': {
+                    if (value == "X") {
+                        return PhysicalKey::X;
+                    }
+                    return std::nullopt;
+                }
+                case 'Y': {
+                    if (value == "Y") {
+                        return PhysicalKey::Y;
+                    }
+                    return std::nullopt;
+                }
+                case 'Z': {
+                    if (value == "Z") {
+                        return PhysicalKey::Z;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 2ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
+                case 'F': {
+                    switch (static_cast<unsigned char>(value[1ULL])) {
+                        case '1': {
+                            if (value == "F1") {
+                                return PhysicalKey::F1;
+                            }
+                            return std::nullopt;
+                        }
+                        case '2': {
+                            if (value == "F2") {
+                                return PhysicalKey::F2;
+                            }
+                            return std::nullopt;
+                        }
+                        case '3': {
+                            if (value == "F3") {
+                                return PhysicalKey::F3;
+                            }
+                            return std::nullopt;
+                        }
+                        case '4': {
+                            if (value == "F4") {
+                                return PhysicalKey::F4;
+                            }
+                            return std::nullopt;
+                        }
+                        case '5': {
+                            if (value == "F5") {
+                                return PhysicalKey::F5;
+                            }
+                            return std::nullopt;
+                        }
+                        case '6': {
+                            if (value == "F6") {
+                                return PhysicalKey::F6;
+                            }
+                            return std::nullopt;
+                        }
+                        case '7': {
+                            if (value == "F7") {
+                                return PhysicalKey::F7;
+                            }
+                            return std::nullopt;
+                        }
+                        case '8': {
+                            if (value == "F8") {
+                                return PhysicalKey::F8;
+                            }
+                            return std::nullopt;
+                        }
+                        case '9': {
+                            if (value == "F9") {
+                                return PhysicalKey::F9;
+                            }
+                            return std::nullopt;
+                        }
+                        default: {
+                            return std::nullopt;
+                        }
+                    }
+                }
+                case 'U': {
+                    if (value == "Up") {
+                        return PhysicalKey::Up;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 3ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
+                case 'A': {
+                    if (value == "Add") {
+                        return PhysicalKey::Add;
+                    }
+                    return std::nullopt;
+                }
+                case 'E': {
+                    if (value == "End") {
+                        return PhysicalKey::End;
+                    }
+                    return std::nullopt;
+                }
+                case 'F': {
+                    if (value == "F10") {
+                        return PhysicalKey::F10;
+                    }
+                    if (value == "F11") {
+                        return PhysicalKey::F11;
+                    }
+                    if (value == "F12") {
+                        return PhysicalKey::F12;
+                    }
+                    return std::nullopt;
+                }
+                case 'O': {
+                    if (value == "One") {
+                        return PhysicalKey::One;
+                    }
+                    return std::nullopt;
+                }
+                case 'S': {
+                    if (value == "Six") {
+                        return PhysicalKey::Six;
+                    }
+                    return std::nullopt;
+                }
+                case 'T': {
+                    if (value == "Two") {
+                        return PhysicalKey::Two;
+                    }
+                    if (value == "Tab") {
+                        return PhysicalKey::Tab;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 4ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
+                case 'D': {
+                    if (value == "Down") {
+                        return PhysicalKey::Down;
+                    }
+                    return std::nullopt;
+                }
+                case 'F': {
+                    if (value == "Four") {
+                        return PhysicalKey::Four;
+                    }
+                    if (value == "Five") {
+                        return PhysicalKey::Five;
+                    }
+                    return std::nullopt;
+                }
+                case 'H': {
+                    if (value == "Home") {
+                        return PhysicalKey::Home;
+                    }
+                    return std::nullopt;
+                }
+                case 'L': {
+                    if (value == "Left") {
+                        return PhysicalKey::Left;
+                    }
+                    return std::nullopt;
+                }
+                case 'N': {
+                    if (value == "Nine") {
+                        return PhysicalKey::Nine;
+                    }
+                    return std::nullopt;
+                }
+                case 'Z': {
+                    if (value == "Zero") {
+                        return PhysicalKey::Zero;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 5ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
+                case 'C': {
+                    if (value == "Comma") {
+                        return PhysicalKey::Comma;
+                    }
+                    return std::nullopt;
+                }
+                case 'E': {
+                    if (value == "Eight") {
+                        return PhysicalKey::Eight;
+                    }
+                    if (value == "Enter") {
+                        return PhysicalKey::Enter;
+                    }
+                    return std::nullopt;
+                }
+                case 'P': {
+                    if (value == "Pause") {
+                        return PhysicalKey::Pause;
+                    }
+                    return std::nullopt;
+                }
+                case 'R': {
+                    if (value == "Right") {
+                        return PhysicalKey::Right;
+                    }
+                    return std::nullopt;
+                }
+                case 'S': {
+                    if (value == "Seven") {
+                        return PhysicalKey::Seven;
+                    }
+                    if (value == "Slash") {
+                        return PhysicalKey::Slash;
+                    }
+                    return std::nullopt;
+                }
+                case 'T': {
+                    if (value == "Three") {
+                        return PhysicalKey::Three;
+                    }
+                    if (value == "Tilde") {
+                        return PhysicalKey::Tilde;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 6ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
+                case 'D': {
+                    if (value == "Delete") {
+                        return PhysicalKey::Delete;
+                    }
+                    if (value == "Divide") {
+                        return PhysicalKey::Divide;
+                    }
+                    return std::nullopt;
+                }
+                case 'E': {
+                    if (value == "Escape") {
+                        return PhysicalKey::Escape;
+                    }
+                    if (value == "Equals") {
+                        return PhysicalKey::Equals;
+                    }
+                    return std::nullopt;
+                }
+                case 'H': {
+                    if (value == "Hyphen") {
+                        return PhysicalKey::Hyphen;
+                    }
+                    return std::nullopt;
+                }
+                case 'I': {
+                    if (value == "Insert") {
+                        return PhysicalKey::Insert;
+                    }
+                    return std::nullopt;
+                }
+                case 'M': {
+                    if (value == "MouseX") {
+                        return PhysicalKey::MouseX;
+                    }
+                    if (value == "MouseY") {
+                        return PhysicalKey::MouseY;
+                    }
+                    return std::nullopt;
+                }
+                case 'P': {
+                    if (value == "Period") {
+                        return PhysicalKey::Period;
+                    }
+                    if (value == "PageUp") {
+                        return PhysicalKey::PageUp;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 7ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
+                case 'D': {
+                    if (value == "Decimal") {
+                        return PhysicalKey::Decimal;
+                    }
+                    return std::nullopt;
+                }
+                case 'L': {
+                    if (value == "LeftAlt") {
+                        return PhysicalKey::LeftAlt;
+                    }
+                    return std::nullopt;
+                }
+                case 'M': {
+                    if (value == "Mouse2D") {
+                        return PhysicalKey::Mouse2D;
+                    }
+                    return std::nullopt;
+                }
+                case 'N': {
+                    if (value == "NumLock") {
+                        return PhysicalKey::NumLock;
+                    }
+                    return std::nullopt;
+                }
+                case 'U': {
+                    if (value == "Unbound") {
+                        return PhysicalKey::Unbound;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 8ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
+                case 'C': {
+                    if (value == "CapsLock") {
+                        return PhysicalKey::CapsLock;
+                    }
+                    return std::nullopt;
+                }
+                case 'M': {
+                    if (value == "Multiply") {
+                        return PhysicalKey::Multiply;
+                    }
+                    return std::nullopt;
+                }
+                case 'P': {
+                    if (value == "PageDown") {
+                        return PhysicalKey::PageDown;
+                    }
+                    return std::nullopt;
+                }
+                case 'R': {
+                    if (value == "RightAlt") {
+                        return PhysicalKey::RightAlt;
+                    }
+                    return std::nullopt;
+                }
+                case 'S': {
+                    if (value == "SpaceBar") {
+                        return PhysicalKey::SpaceBar;
+                    }
+                    if (value == "Subtract") {
+                        return PhysicalKey::Subtract;
+                    }
+                    return std::nullopt;
+                }
+                case 'V': {
+                    if (value == "VolumeUp") {
+                        return PhysicalKey::VolumeUp;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 9ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
+                case 'B': {
+                    if (value == "BackSpace") {
+                        return PhysicalKey::BackSpace;
+                    }
+                    if (value == "Backslash") {
+                        return PhysicalKey::Backslash;
+                    }
+                    return std::nullopt;
+                }
+                case 'L': {
+                    if (value == "LeftShift") {
+                        return PhysicalKey::LeftShift;
+                    }
+                    return std::nullopt;
+                }
+                case 'N': {
+                    if (value == "NonUSHash") {
+                        return PhysicalKey::NonUSHash;
+                    }
+                    if (value == "NumPadOne") {
+                        return PhysicalKey::NumPadOne;
+                    }
+                    if (value == "NumPadTwo") {
+                        return PhysicalKey::NumPadTwo;
+                    }
+                    if (value == "NumPadSix") {
+                        return PhysicalKey::NumPadSix;
+                    }
+                    return std::nullopt;
+                }
+                case 'S': {
+                    if (value == "Semicolon") {
+                        return PhysicalKey::Semicolon;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 10ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
+                case 'A': {
+                    if (value == "Apostrophe") {
+                        return PhysicalKey::Apostrophe;
+                    }
+                    return std::nullopt;
+                }
+                case 'N': {
+                    if (value == "NumPadFour") {
+                        return PhysicalKey::NumPadFour;
+                    }
+                    if (value == "NumPadFive") {
+                        return PhysicalKey::NumPadFive;
+                    }
+                    if (value == "NumPadNine") {
+                        return PhysicalKey::NumPadNine;
+                    }
+                    if (value == "NumPadZero") {
+                        return PhysicalKey::NumPadZero;
+                    }
+                    return std::nullopt;
+                }
+                case 'R': {
+                    if (value == "RightShift") {
+                        return PhysicalKey::RightShift;
+                    }
+                    return std::nullopt;
+                }
+                case 'S': {
+                    if (value == "ScrollLock") {
+                        return PhysicalKey::ScrollLock;
+                    }
+                    return std::nullopt;
+                }
+                case 'V': {
+                    if (value == "VolumeMute") {
+                        return PhysicalKey::VolumeMute;
+                    }
+                    if (value == "VolumeDown") {
+                        return PhysicalKey::VolumeDown;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 11ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
+                case 'L': {
+                    if (value == "LeftBracket") {
+                        return PhysicalKey::LeftBracket;
+                    }
+                    if (value == "LeftControl") {
+                        return PhysicalKey::LeftControl;
+                    }
+                    if (value == "LeftCommand") {
+                        return PhysicalKey::LeftCommand;
+                    }
+                    return std::nullopt;
+                }
+                case 'N': {
+                    if (value == "NumPadEnter") {
+                        return PhysicalKey::NumPadEnter;
+                    }
+                    if (value == "NumPadThree") {
+                        return PhysicalKey::NumPadThree;
+                    }
+                    if (value == "NumPadSeven") {
+                        return PhysicalKey::NumPadSeven;
+                    }
+                    if (value == "NumPadEight") {
+                        return PhysicalKey::NumPadEight;
+                    }
+                    return std::nullopt;
+                }
+                case 'P': {
+                    if (value == "PrintScreen") {
+                        return PhysicalKey::PrintScreen;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 12ULL: {
+            if (value == "RightBracket") {
+                return PhysicalKey::RightBracket;
+            }
+            if (value == "RightControl") {
+                return PhysicalKey::RightControl;
+            }
+            if (value == "RightCommand") {
+                return PhysicalKey::RightCommand;
+            }
+            return std::nullopt;
+        }
+        case 13ULL: {
+            if (value == "MouseScrollUp") {
+                return PhysicalKey::MouseScrollUp;
+            }
+            if (value == "Gamepad_LeftX") {
+                return PhysicalKey::GamepadLeftX;
+            }
+            if (value == "Gamepad_LeftY") {
+                return PhysicalKey::GamepadLeftY;
+            }
+            return std::nullopt;
+        }
+        case 14ULL: {
+            if (value == "NonUSBackslash") {
+                return PhysicalKey::NonUSBackslash;
+            }
+            if (value == "MouseWheelAxis") {
+                return PhysicalKey::MouseWheelAxis;
+            }
+            if (value == "Gamepad_RightX") {
+                return PhysicalKey::GamepadRightX;
+            }
+            if (value == "Gamepad_RightY") {
+                return PhysicalKey::GamepadRightY;
+            }
+            return std::nullopt;
+        }
+        case 15ULL: {
+            if (value == "LeftMouseButton") {
+                return PhysicalKey::LeftMouseButton;
+            }
+            if (value == "MouseScrollDown") {
+                return PhysicalKey::MouseScrollDown;
+            }
+            if (value == "Gamepad_DPad_Up") {
+                return PhysicalKey::GamepadDPadUp;
+            }
+            return std::nullopt;
+        }
+        case 16ULL: {
+            if (value == "RightMouseButton") {
+                return PhysicalKey::RightMouseButton;
+            }
+            if (value == "ThumbMouseButton") {
+                return PhysicalKey::ThumbMouseButton;
+            }
+            return std::nullopt;
+        }
+        case 17ULL: {
+            if (value == "MiddleMouseButton") {
+                return PhysicalKey::MiddleMouseButton;
+            }
+            if (value == "ThumbMouseButton2") {
+                return PhysicalKey::ThumbMouseButton2;
+            }
+            if (value == "Gamepad_DPad_Down") {
+                return PhysicalKey::GamepadDPadDown;
+            }
+            if (value == "Gamepad_DPad_Left") {
+                return PhysicalKey::GamepadDPadLeft;
+            }
+            return std::nullopt;
+        }
+        case 18ULL: {
+            if (value == "Gamepad_DPad_Right") {
+                return PhysicalKey::GamepadDPadRight;
+            }
+            return std::nullopt;
+        }
+        case 19ULL: {
+            if (value == "Gamepad_LeftTrigger") {
+                return PhysicalKey::GamepadLeftTrigger;
+            }
+            return std::nullopt;
+        }
+        case 20ULL: {
+            if (value == "Gamepad_Special_Left") {
+                return PhysicalKey::GamepadSpecialLeft;
+            }
+            if (value == "Gamepad_LeftShoulder") {
+                return PhysicalKey::GamepadLeftShoulder;
+            }
+            if (value == "Gamepad_LeftStick_Up") {
+                return PhysicalKey::GamepadLeftStickUp;
+            }
+            if (value == "Gamepad_RightTrigger") {
+                return PhysicalKey::GamepadRightTrigger;
+            }
+            return std::nullopt;
+        }
+        case 21ULL: {
+            if (value == "Gamepad_Special_Right") {
+                return PhysicalKey::GamepadSpecialRight;
+            }
+            if (value == "Gamepad_RightShoulder") {
+                return PhysicalKey::GamepadRightShoulder;
+            }
+            if (value == "Gamepad_RightStick_Up") {
+                return PhysicalKey::GamepadRightStickUp;
+            }
+            return std::nullopt;
+        }
+        case 22ULL: {
+            if (value == "Gamepad_FaceButton_Top") {
+                return PhysicalKey::GamepadFaceButtonTop;
+            }
+            if (value == "Gamepad_LeftThumbstick") {
+                return PhysicalKey::GamepadLeftThumbstick;
+            }
+            if (value == "Gamepad_LeftStick_Down") {
+                return PhysicalKey::GamepadLeftStickDown;
+            }
+            if (value == "Gamepad_LeftStick_Left") {
+                return PhysicalKey::GamepadLeftStickLeft;
+            }
+            return std::nullopt;
+        }
+        case 23ULL: {
+            switch (static_cast<unsigned char>(value[8ULL])) {
+                case 'F': {
+                    if (value == "Gamepad_FaceButton_Left") {
+                        return PhysicalKey::GamepadFaceButtonLeft;
+                    }
+                    return std::nullopt;
+                }
+                case 'L': {
+                    if (value == "Gamepad_LeftTriggerAxis") {
+                        return PhysicalKey::GamepadLeftTriggerAxis;
+                    }
+                    if (value == "Gamepad_LeftStick_Right") {
+                        return PhysicalKey::GamepadLeftStickRight;
+                    }
+                    return std::nullopt;
+                }
+                case 'R': {
+                    if (value == "Gamepad_RightThumbstick") {
+                        return PhysicalKey::GamepadRightThumbstick;
+                    }
+                    if (value == "Gamepad_RightStick_Left") {
+                        return PhysicalKey::GamepadRightStickLeft;
+                    }
+                    if (value == "Gamepad_RightStick_Down") {
+                        return PhysicalKey::GamepadRightStickDown;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 24ULL: {
+            if (value == "Gamepad_FaceButton_Right") {
+                return PhysicalKey::GamepadFaceButtonRight;
+            }
+            if (value == "Gamepad_RightTriggerAxis") {
+                return PhysicalKey::GamepadRightTriggerAxis;
+            }
+            if (value == "Gamepad_RightStick_Right") {
+                return PhysicalKey::GamepadRightStickRight;
+            }
+            return std::nullopt;
+        }
+        case 25ULL: {
+            if (value == "Gamepad_FaceButton_Bottom") {
+                return PhysicalKey::GamepadFaceButtonBottom;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
+        }
+    }
+}
+
+inline constexpr std::array<PhysicalKey, 108ULL> physical_key_keyboard_key_values{
     PhysicalKey::A,
     PhysicalKey::B,
     PhysicalKey::C,
@@ -211,6 +1043,34 @@ inline constexpr std::array<PhysicalKey, 130ULL> physical_key_keyboard_mouse_but
     PhysicalKey::X,
     PhysicalKey::Y,
     PhysicalKey::Z,
+    PhysicalKey::One,
+    PhysicalKey::Two,
+    PhysicalKey::Three,
+    PhysicalKey::Four,
+    PhysicalKey::Five,
+    PhysicalKey::Six,
+    PhysicalKey::Seven,
+    PhysicalKey::Eight,
+    PhysicalKey::Nine,
+    PhysicalKey::Zero,
+    PhysicalKey::Enter,
+    PhysicalKey::Escape,
+    PhysicalKey::BackSpace,
+    PhysicalKey::Tab,
+    PhysicalKey::SpaceBar,
+    PhysicalKey::Hyphen,
+    PhysicalKey::Equals,
+    PhysicalKey::LeftBracket,
+    PhysicalKey::RightBracket,
+    PhysicalKey::Backslash,
+    PhysicalKey::NonUSHash,
+    PhysicalKey::Semicolon,
+    PhysicalKey::Apostrophe,
+    PhysicalKey::Tilde,
+    PhysicalKey::Comma,
+    PhysicalKey::Period,
+    PhysicalKey::Slash,
+    PhysicalKey::CapsLock,
     PhysicalKey::F1,
     PhysicalKey::F2,
     PhysicalKey::F3,
@@ -223,32 +1083,6 @@ inline constexpr std::array<PhysicalKey, 130ULL> physical_key_keyboard_mouse_but
     PhysicalKey::F10,
     PhysicalKey::F11,
     PhysicalKey::F12,
-    PhysicalKey::Zero,
-    PhysicalKey::One,
-    PhysicalKey::Two,
-    PhysicalKey::Three,
-    PhysicalKey::Four,
-    PhysicalKey::Five,
-    PhysicalKey::Six,
-    PhysicalKey::Seven,
-    PhysicalKey::Eight,
-    PhysicalKey::Nine,
-    PhysicalKey::NumPadOne,
-    PhysicalKey::NumPadTwo,
-    PhysicalKey::NumPadThree,
-    PhysicalKey::NumPadFour,
-    PhysicalKey::NumPadFive,
-    PhysicalKey::NumPadSix,
-    PhysicalKey::NumPadSeven,
-    PhysicalKey::NumPadEight,
-    PhysicalKey::NumPadNine,
-    PhysicalKey::NumPadZero,
-    PhysicalKey::Enter,
-    PhysicalKey::Escape,
-    PhysicalKey::BackSpace,
-    PhysicalKey::Tab,
-    PhysicalKey::SpaceBar,
-    PhysicalKey::CapsLock,
     PhysicalKey::PrintScreen,
     PhysicalKey::ScrollLock,
     PhysicalKey::Pause,
@@ -267,7 +1101,138 @@ inline constexpr std::array<PhysicalKey, 130ULL> physical_key_keyboard_mouse_but
     PhysicalKey::Multiply,
     PhysicalKey::Subtract,
     PhysicalKey::Add,
+    PhysicalKey::NumPadEnter,
+    PhysicalKey::NumPadOne,
+    PhysicalKey::NumPadTwo,
+    PhysicalKey::NumPadThree,
+    PhysicalKey::NumPadFour,
+    PhysicalKey::NumPadFive,
+    PhysicalKey::NumPadSix,
+    PhysicalKey::NumPadSeven,
+    PhysicalKey::NumPadEight,
+    PhysicalKey::NumPadNine,
+    PhysicalKey::NumPadZero,
     PhysicalKey::Decimal,
+    PhysicalKey::NonUSBackslash,
+    PhysicalKey::VolumeMute,
+    PhysicalKey::VolumeUp,
+    PhysicalKey::VolumeDown,
+    PhysicalKey::LeftControl,
+    PhysicalKey::LeftShift,
+    PhysicalKey::LeftAlt,
+    PhysicalKey::LeftCommand,
+    PhysicalKey::RightControl,
+    PhysicalKey::RightShift,
+    PhysicalKey::RightAlt,
+    PhysicalKey::RightCommand};
+
+[[nodiscard]] constexpr auto is_keyboard_key(PhysicalKey const value) noexcept -> bool {
+    return (value >= PhysicalKey::A && value <= PhysicalKey::NonUSBackslash) ||
+           (value >= PhysicalKey::VolumeMute && value <= PhysicalKey::VolumeDown) ||
+           (value >= PhysicalKey::LeftControl && value <= PhysicalKey::RightCommand);
+}
+
+inline constexpr std::array<PhysicalKey, 113ULL> physical_key_keyboard_mouse_button_values{
+    PhysicalKey::A,
+    PhysicalKey::B,
+    PhysicalKey::C,
+    PhysicalKey::D,
+    PhysicalKey::E,
+    PhysicalKey::F,
+    PhysicalKey::G,
+    PhysicalKey::H,
+    PhysicalKey::I,
+    PhysicalKey::J,
+    PhysicalKey::K,
+    PhysicalKey::L,
+    PhysicalKey::M,
+    PhysicalKey::N,
+    PhysicalKey::O,
+    PhysicalKey::P,
+    PhysicalKey::Q,
+    PhysicalKey::R,
+    PhysicalKey::S,
+    PhysicalKey::T,
+    PhysicalKey::U,
+    PhysicalKey::V,
+    PhysicalKey::W,
+    PhysicalKey::X,
+    PhysicalKey::Y,
+    PhysicalKey::Z,
+    PhysicalKey::One,
+    PhysicalKey::Two,
+    PhysicalKey::Three,
+    PhysicalKey::Four,
+    PhysicalKey::Five,
+    PhysicalKey::Six,
+    PhysicalKey::Seven,
+    PhysicalKey::Eight,
+    PhysicalKey::Nine,
+    PhysicalKey::Zero,
+    PhysicalKey::Enter,
+    PhysicalKey::Escape,
+    PhysicalKey::BackSpace,
+    PhysicalKey::Tab,
+    PhysicalKey::SpaceBar,
+    PhysicalKey::Hyphen,
+    PhysicalKey::Equals,
+    PhysicalKey::LeftBracket,
+    PhysicalKey::RightBracket,
+    PhysicalKey::Backslash,
+    PhysicalKey::NonUSHash,
+    PhysicalKey::Semicolon,
+    PhysicalKey::Apostrophe,
+    PhysicalKey::Tilde,
+    PhysicalKey::Comma,
+    PhysicalKey::Period,
+    PhysicalKey::Slash,
+    PhysicalKey::CapsLock,
+    PhysicalKey::F1,
+    PhysicalKey::F2,
+    PhysicalKey::F3,
+    PhysicalKey::F4,
+    PhysicalKey::F5,
+    PhysicalKey::F6,
+    PhysicalKey::F7,
+    PhysicalKey::F8,
+    PhysicalKey::F9,
+    PhysicalKey::F10,
+    PhysicalKey::F11,
+    PhysicalKey::F12,
+    PhysicalKey::PrintScreen,
+    PhysicalKey::ScrollLock,
+    PhysicalKey::Pause,
+    PhysicalKey::Insert,
+    PhysicalKey::Home,
+    PhysicalKey::PageUp,
+    PhysicalKey::Delete,
+    PhysicalKey::End,
+    PhysicalKey::PageDown,
+    PhysicalKey::Right,
+    PhysicalKey::Left,
+    PhysicalKey::Down,
+    PhysicalKey::Up,
+    PhysicalKey::NumLock,
+    PhysicalKey::Divide,
+    PhysicalKey::Multiply,
+    PhysicalKey::Subtract,
+    PhysicalKey::Add,
+    PhysicalKey::NumPadEnter,
+    PhysicalKey::NumPadOne,
+    PhysicalKey::NumPadTwo,
+    PhysicalKey::NumPadThree,
+    PhysicalKey::NumPadFour,
+    PhysicalKey::NumPadFive,
+    PhysicalKey::NumPadSix,
+    PhysicalKey::NumPadSeven,
+    PhysicalKey::NumPadEight,
+    PhysicalKey::NumPadNine,
+    PhysicalKey::NumPadZero,
+    PhysicalKey::Decimal,
+    PhysicalKey::NonUSBackslash,
+    PhysicalKey::VolumeMute,
+    PhysicalKey::VolumeUp,
+    PhysicalKey::VolumeDown,
     PhysicalKey::LeftControl,
     PhysicalKey::LeftShift,
     PhysicalKey::LeftAlt,
@@ -276,47 +1241,17 @@ inline constexpr std::array<PhysicalKey, 130ULL> physical_key_keyboard_mouse_but
     PhysicalKey::RightShift,
     PhysicalKey::RightAlt,
     PhysicalKey::RightCommand,
-    PhysicalKey::MediaNext,
-    PhysicalKey::MediaPrevious,
-    PhysicalKey::MediaPlayPause,
-    PhysicalKey::MediaStop,
-    PhysicalKey::VolumeUp,
-    PhysicalKey::VolumeDown,
-    PhysicalKey::VolumeMute,
     PhysicalKey::LeftMouseButton,
     PhysicalKey::RightMouseButton,
     PhysicalKey::MiddleMouseButton,
     PhysicalKey::ThumbMouseButton,
-    PhysicalKey::ThumbMouseButton2,
-    PhysicalKey::Hyphen,
-    PhysicalKey::Equals,
-    PhysicalKey::LeftBracket,
-    PhysicalKey::RightBracket,
-    PhysicalKey::Backslash,
-    PhysicalKey::Semicolon,
-    PhysicalKey::Apostrophe,
-    PhysicalKey::Tilde,
-    PhysicalKey::Comma,
-    PhysicalKey::Period,
-    PhysicalKey::Slash,
-    PhysicalKey::Underscore,
-    PhysicalKey::Ampersand,
-    PhysicalKey::Asterix,
-    PhysicalKey::Caret,
-    PhysicalKey::Colon,
-    PhysicalKey::Dollar,
-    PhysicalKey::Exclamation,
-    PhysicalKey::LeftParantheses,
-    PhysicalKey::RightParantheses,
-    PhysicalKey::Quote,
-    PhysicalKey::AAccentGrave,
-    PhysicalKey::EAccentGrave,
-    PhysicalKey::EAccentAigu,
-    PhysicalKey::CCedille,
-    PhysicalKey::Section};
+    PhysicalKey::ThumbMouseButton2};
 
 [[nodiscard]] constexpr auto is_keyboard_mouse_button(PhysicalKey const value) noexcept -> bool {
-    return value >= PhysicalKey::Character && value <= PhysicalKey::Section;
+    return (value >= PhysicalKey::A && value <= PhysicalKey::NonUSBackslash) ||
+           (value >= PhysicalKey::VolumeMute && value <= PhysicalKey::VolumeDown) ||
+           (value >= PhysicalKey::LeftControl && value <= PhysicalKey::RightCommand) ||
+           (value >= PhysicalKey::LeftMouseButton && value <= PhysicalKey::ThumbMouseButton2);
 }
 
 inline constexpr std::array<PhysicalKey, 30ULL> physical_key_gamepad_control_values{
@@ -383,7 +1318,6 @@ inline constexpr MinMax<PhysicalKey> enum_range<PhysicalKey>{PhysicalKey::Unboun
 template <>
 struct EnumTraits<PhysicalKey> {
     static constexpr std::array values{PhysicalKey::Unbound,
-                                       PhysicalKey::Character,
                                        PhysicalKey::A,
                                        PhysicalKey::B,
                                        PhysicalKey::C,
@@ -410,6 +1344,34 @@ struct EnumTraits<PhysicalKey> {
                                        PhysicalKey::X,
                                        PhysicalKey::Y,
                                        PhysicalKey::Z,
+                                       PhysicalKey::One,
+                                       PhysicalKey::Two,
+                                       PhysicalKey::Three,
+                                       PhysicalKey::Four,
+                                       PhysicalKey::Five,
+                                       PhysicalKey::Six,
+                                       PhysicalKey::Seven,
+                                       PhysicalKey::Eight,
+                                       PhysicalKey::Nine,
+                                       PhysicalKey::Zero,
+                                       PhysicalKey::Enter,
+                                       PhysicalKey::Escape,
+                                       PhysicalKey::BackSpace,
+                                       PhysicalKey::Tab,
+                                       PhysicalKey::SpaceBar,
+                                       PhysicalKey::Hyphen,
+                                       PhysicalKey::Equals,
+                                       PhysicalKey::LeftBracket,
+                                       PhysicalKey::RightBracket,
+                                       PhysicalKey::Backslash,
+                                       PhysicalKey::NonUSHash,
+                                       PhysicalKey::Semicolon,
+                                       PhysicalKey::Apostrophe,
+                                       PhysicalKey::Tilde,
+                                       PhysicalKey::Comma,
+                                       PhysicalKey::Period,
+                                       PhysicalKey::Slash,
+                                       PhysicalKey::CapsLock,
                                        PhysicalKey::F1,
                                        PhysicalKey::F2,
                                        PhysicalKey::F3,
@@ -422,32 +1384,6 @@ struct EnumTraits<PhysicalKey> {
                                        PhysicalKey::F10,
                                        PhysicalKey::F11,
                                        PhysicalKey::F12,
-                                       PhysicalKey::Zero,
-                                       PhysicalKey::One,
-                                       PhysicalKey::Two,
-                                       PhysicalKey::Three,
-                                       PhysicalKey::Four,
-                                       PhysicalKey::Five,
-                                       PhysicalKey::Six,
-                                       PhysicalKey::Seven,
-                                       PhysicalKey::Eight,
-                                       PhysicalKey::Nine,
-                                       PhysicalKey::NumPadOne,
-                                       PhysicalKey::NumPadTwo,
-                                       PhysicalKey::NumPadThree,
-                                       PhysicalKey::NumPadFour,
-                                       PhysicalKey::NumPadFive,
-                                       PhysicalKey::NumPadSix,
-                                       PhysicalKey::NumPadSeven,
-                                       PhysicalKey::NumPadEight,
-                                       PhysicalKey::NumPadNine,
-                                       PhysicalKey::NumPadZero,
-                                       PhysicalKey::Enter,
-                                       PhysicalKey::Escape,
-                                       PhysicalKey::BackSpace,
-                                       PhysicalKey::Tab,
-                                       PhysicalKey::SpaceBar,
-                                       PhysicalKey::CapsLock,
                                        PhysicalKey::PrintScreen,
                                        PhysicalKey::ScrollLock,
                                        PhysicalKey::Pause,
@@ -466,7 +1402,22 @@ struct EnumTraits<PhysicalKey> {
                                        PhysicalKey::Multiply,
                                        PhysicalKey::Subtract,
                                        PhysicalKey::Add,
+                                       PhysicalKey::NumPadEnter,
+                                       PhysicalKey::NumPadOne,
+                                       PhysicalKey::NumPadTwo,
+                                       PhysicalKey::NumPadThree,
+                                       PhysicalKey::NumPadFour,
+                                       PhysicalKey::NumPadFive,
+                                       PhysicalKey::NumPadSix,
+                                       PhysicalKey::NumPadSeven,
+                                       PhysicalKey::NumPadEight,
+                                       PhysicalKey::NumPadNine,
+                                       PhysicalKey::NumPadZero,
                                        PhysicalKey::Decimal,
+                                       PhysicalKey::NonUSBackslash,
+                                       PhysicalKey::VolumeMute,
+                                       PhysicalKey::VolumeUp,
+                                       PhysicalKey::VolumeDown,
                                        PhysicalKey::LeftControl,
                                        PhysicalKey::LeftShift,
                                        PhysicalKey::LeftAlt,
@@ -475,44 +1426,11 @@ struct EnumTraits<PhysicalKey> {
                                        PhysicalKey::RightShift,
                                        PhysicalKey::RightAlt,
                                        PhysicalKey::RightCommand,
-                                       PhysicalKey::MediaNext,
-                                       PhysicalKey::MediaPrevious,
-                                       PhysicalKey::MediaPlayPause,
-                                       PhysicalKey::MediaStop,
-                                       PhysicalKey::VolumeUp,
-                                       PhysicalKey::VolumeDown,
-                                       PhysicalKey::VolumeMute,
                                        PhysicalKey::LeftMouseButton,
                                        PhysicalKey::RightMouseButton,
                                        PhysicalKey::MiddleMouseButton,
                                        PhysicalKey::ThumbMouseButton,
                                        PhysicalKey::ThumbMouseButton2,
-                                       PhysicalKey::Hyphen,
-                                       PhysicalKey::Equals,
-                                       PhysicalKey::LeftBracket,
-                                       PhysicalKey::RightBracket,
-                                       PhysicalKey::Backslash,
-                                       PhysicalKey::Semicolon,
-                                       PhysicalKey::Apostrophe,
-                                       PhysicalKey::Tilde,
-                                       PhysicalKey::Comma,
-                                       PhysicalKey::Period,
-                                       PhysicalKey::Slash,
-                                       PhysicalKey::Underscore,
-                                       PhysicalKey::Ampersand,
-                                       PhysicalKey::Asterix,
-                                       PhysicalKey::Caret,
-                                       PhysicalKey::Colon,
-                                       PhysicalKey::Dollar,
-                                       PhysicalKey::Exclamation,
-                                       PhysicalKey::LeftParantheses,
-                                       PhysicalKey::RightParantheses,
-                                       PhysicalKey::Quote,
-                                       PhysicalKey::AAccentGrave,
-                                       PhysicalKey::EAccentGrave,
-                                       PhysicalKey::EAccentAigu,
-                                       PhysicalKey::CCedille,
-                                       PhysicalKey::Section,
                                        PhysicalKey::MouseX,
                                        PhysicalKey::MouseY,
                                        PhysicalKey::MouseScrollUp,
@@ -552,43 +1470,191 @@ struct EnumTraits<PhysicalKey> {
 };
 
 template <>
-inline constexpr auto enum_strings<PhysicalKey, Serialized>{PackedStrings{
-    "Unbound\000Character\000A\000B\000C\000D\000E\000F\000G\000H\000I\000J\000K\000L\000M\000N\000"
-    "O\000P\000Q\000R\000S\000T\000U\000V\000W\000X\000Y\000Z\000F1\000F2\000F3\000F4\000F5\000F6"
-    "\000F7\000F8\000F9\000F10\000F11\000F12\000Zero\000One\000Two\000Three\000Four\000Five\000Six"
-    "\000Seven\000Eight\000Nine\000NumPadOne\000NumPadTwo\000NumPadThree\000NumPadFour\000NumPadFiv"
-    "e\000NumPadSix\000NumPadSeven\000NumPadEight\000NumPadNine\000NumPadZero\000Enter\000Escape"
-    "\000BackSpace\000Tab\000SpaceBar\000CapsLock\000PrintScreen\000ScrollLock\000Pause\000Insert"
-    "\000Home\000PageUp\000Delete\000End\000PageDown\000Right\000Left\000Down\000Up\000NumLock\000D"
-    "ivide\000Multiply\000Subtract\000Add\000Decimal\000LeftControl\000LeftShift\000LeftAlt\000Left"
-    "Command\000RightControl\000RightShift\000RightAlt\000RightCommand\000MediaNext\000MediaPreviou"
-    "s\000MediaPlayPause\000MediaStop\000VolumeUp\000VolumeDown\000VolumeMute\000LeftMouseButton"
-    "\000RightMouseButton\000MiddleMouseButton\000ThumbMouseButton\000ThumbMouseButton2\000Hyphen"
-    "\000Equals\000LeftBracket\000RightBracket\000Backslash\000Semicolon\000Apostrophe\000Tilde\000"
-    "Comma\000Period\000Slash\000Underscore\000Ampersand\000Asterix\000Caret\000Colon\000Dollar\000"
-    "Exclamation\000LeftParantheses\000RightParantheses\000Quote\000A_AccentGrave\000E_"
-    "AccentGrave\000E_AccentAigu\000C_"
-    "Cedille\000Section\000MouseX\000MouseY\000MouseScrollUp\000MouseScrollDown\000Mouse2D\000Mouse"
-    "WheelAxis\000Gamepad_FaceButton_Bottom\000Gamepad_FaceButton_Right\000Gamepad_FaceButton_"
-    "Top\000Gamepad_FaceButton_Left\000Gamepad_Special_Left\000Gamepad_Special_Right\000Gamepad_"
-    "LeftThumbstick\000Gamepad_RightThumbstick\000Gamepad_LeftShoulder\000Gamepad_"
-    "RightShoulder\000Gamepad_DPad_Up\000Gamepad_DPad_Down\000Gamepad_DPad_Left\000Gamepad_DPad_"
-    "Right\000Gamepad_LeftX\000Gamepad_LeftY\000Gamepad_RightX\000Gamepad_RightY\000Gamepad_"
-    "LeftTriggerAxis\000Gamepad_RightTriggerAxis\000Gamepad_LeftStick_Up\000Gamepad_LeftStick_"
-    "Down\000Gamepad_LeftStick_Right\000Gamepad_RightStick_Right\000Gamepad_RightStick_"
-    "Up\000Gamepad_LeftTrigger\000Gamepad_RightTrigger\000Gamepad_LeftStick_Left\000Gamepad_"
-    "RightStick_Left\000Gamepad_RightStick_Down",
-    std::array<std::uint16_t, 168>{
-        0,    8,    18,   20,   22,   24,   26,   28,   30,   32,   34,   36,   38,   40,
-        42,   44,   46,   48,   50,   52,   54,   56,   58,   60,   62,   64,   66,   68,
-        70,   73,   76,   79,   82,   85,   88,   91,   94,   97,   101,  105,  109,  114,
-        118,  122,  128,  133,  138,  142,  148,  154,  159,  169,  179,  191,  202,  213,
-        223,  235,  247,  258,  269,  275,  282,  292,  296,  305,  314,  326,  337,  343,
-        350,  355,  362,  369,  373,  382,  388,  393,  398,  401,  409,  416,  425,  434,
-        438,  446,  458,  468,  476,  488,  501,  512,  521,  534,  544,  558,  573,  583,
-        592,  603,  614,  630,  647,  665,  682,  700,  707,  714,  726,  739,  749,  759,
-        770,  776,  782,  789,  795,  806,  816,  824,  830,  836,  843,  855,  871,  888,
-        894,  908,  922,  935,  945,  953,  960,  967,  981,  997,  1005, 1020, 1046, 1071,
-        1094, 1118, 1139, 1161, 1184, 1208, 1229, 1251, 1267, 1285, 1303, 1322, 1336, 1350,
-        1365, 1380, 1404, 1429, 1450, 1473, 1497, 1522, 1544, 1564, 1585, 1608, 1632, 1656}}};
+inline constexpr auto enum_strings<PhysicalKey, Serialized>{SparseEnumStrings{
+    std::array{PhysicalKey::Unbound,
+               PhysicalKey::A,
+               PhysicalKey::B,
+               PhysicalKey::C,
+               PhysicalKey::D,
+               PhysicalKey::E,
+               PhysicalKey::F,
+               PhysicalKey::G,
+               PhysicalKey::H,
+               PhysicalKey::I,
+               PhysicalKey::J,
+               PhysicalKey::K,
+               PhysicalKey::L,
+               PhysicalKey::M,
+               PhysicalKey::N,
+               PhysicalKey::O,
+               PhysicalKey::P,
+               PhysicalKey::Q,
+               PhysicalKey::R,
+               PhysicalKey::S,
+               PhysicalKey::T,
+               PhysicalKey::U,
+               PhysicalKey::V,
+               PhysicalKey::W,
+               PhysicalKey::X,
+               PhysicalKey::Y,
+               PhysicalKey::Z,
+               PhysicalKey::One,
+               PhysicalKey::Two,
+               PhysicalKey::Three,
+               PhysicalKey::Four,
+               PhysicalKey::Five,
+               PhysicalKey::Six,
+               PhysicalKey::Seven,
+               PhysicalKey::Eight,
+               PhysicalKey::Nine,
+               PhysicalKey::Zero,
+               PhysicalKey::Enter,
+               PhysicalKey::Escape,
+               PhysicalKey::BackSpace,
+               PhysicalKey::Tab,
+               PhysicalKey::SpaceBar,
+               PhysicalKey::Hyphen,
+               PhysicalKey::Equals,
+               PhysicalKey::LeftBracket,
+               PhysicalKey::RightBracket,
+               PhysicalKey::Backslash,
+               PhysicalKey::NonUSHash,
+               PhysicalKey::Semicolon,
+               PhysicalKey::Apostrophe,
+               PhysicalKey::Tilde,
+               PhysicalKey::Comma,
+               PhysicalKey::Period,
+               PhysicalKey::Slash,
+               PhysicalKey::CapsLock,
+               PhysicalKey::F1,
+               PhysicalKey::F2,
+               PhysicalKey::F3,
+               PhysicalKey::F4,
+               PhysicalKey::F5,
+               PhysicalKey::F6,
+               PhysicalKey::F7,
+               PhysicalKey::F8,
+               PhysicalKey::F9,
+               PhysicalKey::F10,
+               PhysicalKey::F11,
+               PhysicalKey::F12,
+               PhysicalKey::PrintScreen,
+               PhysicalKey::ScrollLock,
+               PhysicalKey::Pause,
+               PhysicalKey::Insert,
+               PhysicalKey::Home,
+               PhysicalKey::PageUp,
+               PhysicalKey::Delete,
+               PhysicalKey::End,
+               PhysicalKey::PageDown,
+               PhysicalKey::Right,
+               PhysicalKey::Left,
+               PhysicalKey::Down,
+               PhysicalKey::Up,
+               PhysicalKey::NumLock,
+               PhysicalKey::Divide,
+               PhysicalKey::Multiply,
+               PhysicalKey::Subtract,
+               PhysicalKey::Add,
+               PhysicalKey::NumPadEnter,
+               PhysicalKey::NumPadOne,
+               PhysicalKey::NumPadTwo,
+               PhysicalKey::NumPadThree,
+               PhysicalKey::NumPadFour,
+               PhysicalKey::NumPadFive,
+               PhysicalKey::NumPadSix,
+               PhysicalKey::NumPadSeven,
+               PhysicalKey::NumPadEight,
+               PhysicalKey::NumPadNine,
+               PhysicalKey::NumPadZero,
+               PhysicalKey::Decimal,
+               PhysicalKey::NonUSBackslash,
+               PhysicalKey::VolumeMute,
+               PhysicalKey::VolumeUp,
+               PhysicalKey::VolumeDown,
+               PhysicalKey::LeftControl,
+               PhysicalKey::LeftShift,
+               PhysicalKey::LeftAlt,
+               PhysicalKey::LeftCommand,
+               PhysicalKey::RightControl,
+               PhysicalKey::RightShift,
+               PhysicalKey::RightAlt,
+               PhysicalKey::RightCommand,
+               PhysicalKey::LeftMouseButton,
+               PhysicalKey::RightMouseButton,
+               PhysicalKey::MiddleMouseButton,
+               PhysicalKey::ThumbMouseButton,
+               PhysicalKey::ThumbMouseButton2,
+               PhysicalKey::MouseX,
+               PhysicalKey::MouseY,
+               PhysicalKey::MouseScrollUp,
+               PhysicalKey::MouseScrollDown,
+               PhysicalKey::Mouse2D,
+               PhysicalKey::MouseWheelAxis,
+               PhysicalKey::GamepadFaceButtonBottom,
+               PhysicalKey::GamepadFaceButtonRight,
+               PhysicalKey::GamepadFaceButtonTop,
+               PhysicalKey::GamepadFaceButtonLeft,
+               PhysicalKey::GamepadSpecialLeft,
+               PhysicalKey::GamepadSpecialRight,
+               PhysicalKey::GamepadLeftThumbstick,
+               PhysicalKey::GamepadRightThumbstick,
+               PhysicalKey::GamepadLeftShoulder,
+               PhysicalKey::GamepadRightShoulder,
+               PhysicalKey::GamepadDPadUp,
+               PhysicalKey::GamepadDPadDown,
+               PhysicalKey::GamepadDPadLeft,
+               PhysicalKey::GamepadDPadRight,
+               PhysicalKey::GamepadLeftX,
+               PhysicalKey::GamepadLeftY,
+               PhysicalKey::GamepadRightX,
+               PhysicalKey::GamepadRightY,
+               PhysicalKey::GamepadLeftTriggerAxis,
+               PhysicalKey::GamepadRightTriggerAxis,
+               PhysicalKey::GamepadLeftStickUp,
+               PhysicalKey::GamepadLeftStickDown,
+               PhysicalKey::GamepadLeftStickRight,
+               PhysicalKey::GamepadRightStickRight,
+               PhysicalKey::GamepadRightStickUp,
+               PhysicalKey::GamepadLeftTrigger,
+               PhysicalKey::GamepadRightTrigger,
+               PhysicalKey::GamepadLeftStickLeft,
+               PhysicalKey::GamepadRightStickLeft,
+               PhysicalKey::GamepadRightStickDown},
+    PackedStrings{
+        "Unbound\000A\000B\000C\000D\000E\000F\000G\000H\000I\000J\000K\000L\000M\000N\000O\000P"
+        "\000Q\000R\000S\000T\000U\000V\000W\000X\000Y\000Z\000One\000Two\000Three\000Four\000Five"
+        "\000Six\000Seven\000Eight\000Nine\000Zero\000Enter\000Escape\000BackSpace\000Tab\000SpaceB"
+        "ar\000Hyphen\000Equals\000LeftBracket\000RightBracket\000Backslash\000NonUSHash\000Semicol"
+        "on\000Apostrophe\000Tilde\000Comma\000Period\000Slash\000CapsLock\000F1\000F2\000F3\000F4"
+        "\000F5\000F6\000F7\000F8\000F9\000F10\000F11\000F12\000PrintScreen\000ScrollLock\000Pause"
+        "\000Insert\000Home\000PageUp\000Delete\000End\000PageDown\000Right\000Left\000Down\000Up"
+        "\000NumLock\000Divide\000Multiply\000Subtract\000Add\000NumPadEnter\000NumPadOne\000NumPad"
+        "Two\000NumPadThree\000NumPadFour\000NumPadFive\000NumPadSix\000NumPadSeven\000NumPadEight"
+        "\000NumPadNine\000NumPadZero\000Decimal\000NonUSBackslash\000VolumeMute\000VolumeUp\000Vol"
+        "umeDown\000LeftControl\000LeftShift\000LeftAlt\000LeftCommand\000RightControl\000RightShif"
+        "t\000RightAlt\000RightCommand\000LeftMouseButton\000RightMouseButton\000MiddleMouseButton"
+        "\000ThumbMouseButton\000ThumbMouseButton2\000MouseX\000MouseY\000MouseScrollUp\000MouseScr"
+        "ollDown\000Mouse2D\000MouseWheelAxis\000Gamepad_FaceButton_Bottom\000Gamepad_FaceButton_"
+        "Right\000Gamepad_FaceButton_Top\000Gamepad_FaceButton_Left\000Gamepad_Special_"
+        "Left\000Gamepad_Special_Right\000Gamepad_LeftThumbstick\000Gamepad_"
+        "RightThumbstick\000Gamepad_LeftShoulder\000Gamepad_RightShoulder\000Gamepad_DPad_"
+        "Up\000Gamepad_DPad_Down\000Gamepad_DPad_Left\000Gamepad_DPad_Right\000Gamepad_"
+        "LeftX\000Gamepad_LeftY\000Gamepad_RightX\000Gamepad_RightY\000Gamepad_"
+        "LeftTriggerAxis\000Gamepad_RightTriggerAxis\000Gamepad_LeftStick_Up\000Gamepad_LeftStick_"
+        "Down\000Gamepad_LeftStick_Right\000Gamepad_RightStick_Right\000Gamepad_RightStick_"
+        "Up\000Gamepad_LeftTrigger\000Gamepad_RightTrigger\000Gamepad_LeftStick_Left\000Gamepad_"
+        "RightStick_Left\000Gamepad_RightStick_Down",
+        std::array<std::uint16_t, 151>{
+            0,    8,    10,   12,   14,   16,   18,   20,   22,   24,   26,   28,   30,   32,
+            34,   36,   38,   40,   42,   44,   46,   48,   50,   52,   54,   56,   58,   60,
+            64,   68,   74,   79,   84,   88,   94,   100,  105,  110,  116,  123,  133,  137,
+            146,  153,  160,  172,  185,  195,  205,  215,  226,  232,  238,  245,  251,  260,
+            263,  266,  269,  272,  275,  278,  281,  284,  287,  291,  295,  299,  311,  322,
+            328,  335,  340,  347,  354,  358,  367,  373,  378,  383,  386,  394,  401,  410,
+            419,  423,  435,  445,  455,  467,  478,  489,  499,  511,  523,  534,  545,  553,
+            568,  579,  588,  599,  611,  621,  629,  641,  654,  665,  674,  687,  703,  720,
+            738,  755,  773,  780,  787,  801,  817,  825,  840,  866,  891,  914,  938,  959,
+            981,  1004, 1028, 1049, 1071, 1087, 1105, 1123, 1142, 1156, 1170, 1185, 1200, 1224,
+            1249, 1270, 1293, 1317, 1342, 1364, 1384, 1405, 1428, 1452, 1476}}}};
 } // namespace ioj

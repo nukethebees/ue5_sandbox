@@ -64,6 +64,12 @@
   :pass-by value
   (integer :signed false :bit-width 8))
 
+(type native_uint16
+  :spelling "std::uint16_t"
+  :header "cstdint"
+  :pass-by value
+  (integer :signed false :bit-width 16))
+
 (type native_int32
   :spelling "std::int32_t"
   :header "cstdint"
@@ -285,8 +291,7 @@
 (type native_entity_ids :spelling "std::vector<ioj::levels::EntityId>" :header "ioj/levels/identifiers.h")
 (type native_level_ids :spelling "std::vector<ioj::levels::LevelId>" :header "ioj/levels/identifiers.h")
 (type flight_mapping :spelling "ioj::FlightMapping" :header "ioj/input/flight_mapping.h")
-(type input_key_code :spelling "ioj::KeyCode" :header "ioj/input/key_code.h")
-(type optional_key_bindings :spelling "std::optional<std::vector<ioj::KeyBinding>>" :header "ioj/settings/key_binding.h")
+(type flight_bindings :spelling "ioj::FlightBindings" :header "ioj/input/flight_bindings.h")
 (type native_string :spelling "std::string" :header "string")
 
 (type native_cell_coord :spelling "ioj::sim::collision::CellCoord" :header "ioj/sim/collision/cell_coord.h")

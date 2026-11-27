@@ -113,14 +113,9 @@ auto UOptionsDraft::save(GameSettingCategory category) -> bool {
 
     auto requested{draft_.pending()};
     if (category == GameSettingCategory::Controls && input_is_dirty()) {
-        std::vector<KeyBinding> overrides;
         for (auto const& row : bindings_) {
-            if (row.is_modified()) {
-                auto const key{native_binding_key(row.current_key)};
-                overrides.push_back({row.address.mapping, key});
-            }
+            requested.controls.bindings[row.address.mapping] = native_binding_key(row.current_key);
         }
-        requested.controls.bindings = std::move(overrides);
     }
 
     queue_preferences(
@@ -366,7 +361,7 @@ auto UOptionsDraft::all_control_bindings() const -> TArray<FControlBindingView> 
     TArray<FControlBindingView> result;
 
     for (auto const& control : flight_controls()) {
-        auto const key{bound_key(control, draft_.pending().controls)};
+        auto const key{draft_.pending().controls.bindings[control.mapping]};
         auto const group{
             control.group == BindingGroup::Utility  ? EControlBindingGroup::Utility
             : control.group == BindingGroup::Combat ? EControlBindingGroup::Combat

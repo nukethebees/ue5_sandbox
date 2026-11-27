@@ -2,8 +2,7 @@
 
 #include <ioj/input/actions.h>
 #include <ioj/input/flight_mapping.h>
-#include <ioj/input/key_code.h>
-#include <ioj/settings/controls_settings.h>
+#include <ioj/input/physical_key.h>
 
 #include <span>
 #include <string_view>
@@ -11,11 +10,10 @@
 namespace ioj {
 struct FlightControl {
     std::string_view label;
-    KeyCode default_key;
+    PhysicalKey default_key;
     FlightMapping mapping;
     BindingGroup group;
 };
-auto accepts_binding(FlightMapping mapping, KeyCode key) -> bool;
+auto accepts_binding(FlightMapping mapping, PhysicalKey key) -> bool;
 auto flight_controls() -> std::span<FlightControl const>;
-auto bound_key(FlightControl const& control, ControlsSettings const& settings) -> KeyCode;
 }

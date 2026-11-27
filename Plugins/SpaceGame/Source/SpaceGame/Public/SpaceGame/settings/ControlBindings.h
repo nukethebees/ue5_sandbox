@@ -11,9 +11,9 @@ inline auto can_hold_chord_key(FKey const& key) -> bool {
            key != EKeys::MouseScrollUp && key != EKeys::MouseScrollDown;
 }
 
-inline auto native_binding_key(FKey const& key) -> KeyCode {
-    return key.IsValid() ? parse_key(to_string(key.GetFName().ToString()))
-                         : KeyCode{};
+inline auto native_binding_key(FKey const& key) -> PhysicalKey {
+    return try_parse_serialized_physical_key(to_string(key.GetFName().ToString()))
+        .value_or(PhysicalKey::Unbound);
 }
 
 inline auto control_binding_identity(FControlBindingAddress const& address,

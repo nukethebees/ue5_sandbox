@@ -1,6 +1,7 @@
 #include "SGameOptionsView.h"
 
 #include "input/BindingCapture.h"
+#include "SpaceGame/settings/ControlBindings.h"
 #include "SpaceGame/settings/GameVideoSettings.h"
 #include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
@@ -861,7 +862,7 @@ auto SGameOptionsView::accept_binding_key(FKey const key) -> FReply {
 
     capture_error_ = FText::GetEmpty();
     if (!accepts_binding(target->address.mapping,
-                                parse_key(to_string(key.GetFName().ToString())))) {
+                                native_binding_key(key))) {
         capture_error_ =
             NSLOCTEXT("OptionsMenu",
                       "PauseButtonRequired",

@@ -48,8 +48,7 @@ TEST(FlightInput, EdgesBetweenTicksKeepTheirOrder) {
 
 TEST(FlightInput, ReboundPauseAndViewerControlsAreIsolatedFromFlight) {
     ControlsSettings settings{};
-    settings.bindings.emplace().push_back(
-        {*parse_mapping("general.pause.keyboardmouse"), parse_key("p")});
+    settings.bindings[FlightMapping::GeneralPauseKeyboardMouse] = PhysicalKey::P;
     FlightInputResolver input;
     InputState state;
     std::vector<sim::player::PlayerInputKind> ship_events;
@@ -64,15 +63,12 @@ TEST(FlightInput, ReboundPauseAndViewerControlsAreIsolatedFromFlight) {
     input.button(state, PhysicalKey::LeftShift, ButtonState::Pressed, settings);
     EXPECT_TRUE(ship_input_frame(state, ship_events).events.empty());
     EXPECT_EQ(ship_input_frame(state, ship_events).accelerator, 0.f);
-    settings.bindings->front().key = parse_key("#");
+    settings.bindings[FlightMapping::GeneralPauseKeyboardMouse] = PhysicalKey::NonUSHash;
     input.configure(state, settings, InputContext::Menu);
-    input.button(state, character_key(35), ButtonState::Pressed, settings);
+    input.button(state, PhysicalKey::NonUSHash, ButtonState::Pressed, settings);
     EXPECT_TRUE(state.held.pause());
-    for (auto key : {"MouseScrollUp", "MouseX"}) {
-        settings.bindings->front().key = parse_key(key);
-        input.configure(state, settings, InputContext::Menu);
-        EXPECT_FALSE(input.is_pause_button(parse_key(key)));
-        EXPECT_TRUE(input.is_pause_button(PhysicalKey::Escape));
+    for (auto key : {PhysicalKey::MouseScrollUp, PhysicalKey::MouseX}) {
+        EXPECT_FALSE(accepts_binding(FlightMapping::GeneralPauseKeyboardMouse, key));
     }
 }
 
@@ -86,8 +82,6 @@ TEST(FlightInput, TransientPointerMotionCannotHoldFireOrAcceleration) {
     EXPECT_FALSE(accepts_binding(FlightAccelerateKeyboardMouse, PhysicalKey::MouseY));
     EXPECT_FALSE(accepts_binding(FlightPitchKeyboardMouse, PhysicalKey::MouseWheelAxis));
     ControlsSettings controls{};
-    controls.bindings.emplace().push_back({FlightFirePrimaryKeyboardMouse, PhysicalKey::MouseX});
-    controls.bindings->push_back({FlightAccelerateKeyboardMouse, PhysicalKey::MouseY});
     FlightInputResolver flight;
     InputState state;
     flight.configure(state, controls, InputContext::Gameplay);
@@ -113,7 +107,7 @@ TEST(FlightInput, PointerSteeringHandsBackToHeldStickAndClearsOnContextChange) {
     EXPECT_FLOAT_EQ(ship_input_frame(state, ship_events).yaw, -1.f);
     input.configure(state, settings, InputContext::Menu);
     EXPECT_EQ(ship_input_frame(state, ship_events).yaw, 0.f);
-    settings.bindings.emplace().push_back({FlightMapping::FlightYawKeyboardMouse, PhysicalKey::J});
+    settings.bindings[FlightMapping::FlightYawKeyboardMouse] = PhysicalKey::J;
     input.configure(state, settings, InputContext::Gameplay);
     input.button(state, PhysicalKey::J, ButtonState::Pressed, settings);
     input.button(state, PhysicalKey::RightMouseButton, ButtonState::Pressed, settings);

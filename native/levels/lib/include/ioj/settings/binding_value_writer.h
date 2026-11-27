@@ -1,19 +1,25 @@
 #pragma once
 
-#include <ioj/input/key_code.h>
+#include <ioj/input/flight_bindings.h>
 #include <ioj/s7/writer.h>
+
+#include <string>
 
 namespace ioj::s7 {
 template <>
-struct TypeWriter<FlightMapping> {
-    static auto write(SExprIR& ir, FlightMapping value, FlightMapping const*) -> Expr {
-        return ir.string(std::string{to_serialized_string(value)});
-    }
-};
-template <>
-struct TypeWriter<KeyCode> {
-    static auto write(SExprIR& ir, KeyCode value, KeyCode const*) -> Expr {
-        return ir.string(serialized_key(value));
+struct TypeWriter<FlightBindings> {
+    static auto write(SExprIR& ir, FlightBindings const& bindings, FlightBindings const*) -> Expr {
+        auto list{ir.form("list")};
+        auto const defaults{default_flight_bindings()};
+        for (auto mapping : EnumTraits<FlightMapping>::values) {
+            if (bindings[mapping] != defaults[mapping]) {
+                auto pair{ir.form("list")};
+                pair.add(ir.string(std::string{to_serialized_string(mapping)}));
+                pair.add(ir.string(std::string{to_serialized_string(bindings[mapping])}));
+                list.add(pair.build());
+            }
+        }
+        return list.build();
     }
 };
 }

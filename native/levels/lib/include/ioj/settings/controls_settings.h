@@ -5,17 +5,15 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
-#include "ioj/settings/key_binding.h"
+#include "ioj/input/flight_bindings.h"
 
 #include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 namespace ioj {
 struct ControlsSettings {
@@ -107,7 +105,7 @@ struct ControlsSettings {
     bool invert_mouse_yaw{};
     bool invert_gamepad_pitch{};
     bool invert_gamepad_yaw{};
-    std::optional<std::vector<ioj::KeyBinding>> bindings{};
+    FlightBindings bindings{default_flight_bindings()};
 };
 
 template <>

@@ -1,33 +1,44 @@
 #pragma once
 
-#include <ioj/input/key_code.h>
+#include <ioj/input/flight_bindings.h>
+#include <ioj/input/flight_controls.h>
 #include <ioj/s7/reader.h>
+
+#include <array>
+#include <format>
+#include <string>
+#include <string_view>
+#include <utility>
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<FlightMapping> {
+struct TypeReader<FlightBindings> {
     static auto read(Reader const& reader, NodeIndex node, std::string_view path)
-        -> ReadResult<FlightMapping> {
-        auto name{s7::read<std::string>(reader, node, path)};
-        if (!name) {
-            return std::unexpected{std::move(name.error())};
+        -> ReadResult<FlightBindings> {
+        auto entries{reader.list(node, path)};
+        if (!entries) {
+            return std::unexpected{std::move(entries.error())};
         }
-        if (auto mapping{parse_mapping(*name)}) {
-            return *mapping;
+
+        auto bindings{default_flight_bindings()};
+        for (auto entry : *entries) {
+            auto pair{s7::read<std::array<std::string, 2>>(reader, entry, path)};
+            if (!pair) {
+                return std::unexpected{std::move(pair.error())};
+            }
+
+            auto const mapping{try_parse_serialized_flight_mapping((*pair)[0])};
+            auto const key{try_parse_serialized_physical_key((*pair)[1])};
+            if (!mapping || !key ||
+                (*key != PhysicalKey::Unbound && !accepts_binding(*mapping, *key))) {
+                return read_error(
+                    AstErrorCode::InvalidType,
+                    path,
+                    std::format("Invalid binding '{}' for '{}'", (*pair)[1], (*pair)[0]));
+            }
+            bindings[*mapping] = *key;
         }
-        return read_error(
-            AstErrorCode::UnknownSymbol, path, std::format("Unknown control mapping '{}'", *name));
-    }
-};
-template <>
-struct TypeReader<KeyCode> {
-    static auto read(Reader const& reader, NodeIndex node, std::string_view path)
-        -> ReadResult<KeyCode> {
-        auto name{s7::read<std::string>(reader, node, path)};
-        if (!name) {
-            return std::unexpected{std::move(name.error())};
-        }
-        return parse_key(*name);
+        return bindings;
     }
 };
 }

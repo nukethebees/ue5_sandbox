@@ -110,27 +110,14 @@
     (member ui_volume float :initializer "" :required true :finite true :minimum 0 :maximum 1)
     (projections (cpp))))
 
-(module key_binding
-  :header "native/levels/lib/include/ioj/settings/key_binding.h"
-  :header-include "ioj/settings/key_binding.h"
-  :namespace ioj
-  (record KeyBinding :comparison equality
-    :generate-s7-reader true :generate-s7-writer true :s7-tag "key-binding" :s7-positional true
-    :s7-reader-includes ("ioj/settings/binding_value_reader.h")
-    :s7-writer-includes ("ioj/settings/binding_value_writer.h")
-    (member mapping @flight_mapping :initializer "")
-    (member key @input_key_code :initializer "")
-    (projections (cpp))))
-
 (module controls_settings
   :header "native/levels/lib/include/ioj/settings/controls_settings.h"
   :header-include "ioj/settings/controls_settings.h"
   :namespace ioj
-  :prelude ("#include <optional>" "#include <vector>")
   (record ControlsSettings :comparison equality :generate-visitor true
     :generate-s7-reader true :generate-s7-writer true :s7-tag "controls-settings"
-    :s7-reader-includes ("ioj/settings/key_binding_reader.h")
-    :s7-writer-includes ("ioj/settings/key_binding_writer.h")
+    :s7-reader-includes ("ioj/settings/binding_value_reader.h")
+    :s7-writer-includes ("ioj/settings/binding_value_writer.h")
     (member mouse_turn_sensitivity float :initializer "" :required true :finite true :minimum 0.01 :maximum 2.0)
     (member gamepad_turn_sensitivity float :initializer "" :required true :finite true :minimum 0.25 :maximum 2.0)
     (member gamepad_turn_dead_zone float :initializer "" :required true :finite true :minimum 0.0 :maximum 0.5)
@@ -138,7 +125,7 @@
     (member invert_mouse_yaw bool :initializer "" :required true)
     (member invert_gamepad_pitch bool :initializer "" :required true)
     (member invert_gamepad_yaw bool :initializer "" :required true)
-    (member bindings @optional_key_bindings :initializer "")
+    (member bindings @flight_bindings :initializer "default_flight_bindings()")
     (projections (cpp))))
 
 (module game_settings_state

@@ -34,11 +34,13 @@ constexpr std::array gamepad_axes{
     GamepadAxisKeys{PhysicalKey::GamepadLeftTriggerAxis, PhysicalKey::GamepadLeftTrigger},
     GamepadAxisKeys{PhysicalKey::GamepadRightTriggerAxis, PhysicalKey::GamepadRightTrigger},
 };
-constexpr std::array pointer_keys{PhysicalKey::LeftMouseButton,
-                                  PhysicalKey::RightMouseButton,
-                                  PhysicalKey::MiddleMouseButton,
-                                  PhysicalKey::ThumbMouseButton,
-                                  PhysicalKey::ThumbMouseButton2};
+constexpr std::array pointer_keys{
+    PhysicalKey::LeftMouseButton,
+    PhysicalKey::RightMouseButton,
+    PhysicalKey::MiddleMouseButton,
+    PhysicalKey::ThumbMouseButton,
+    PhysicalKey::ThumbMouseButton2,
+};
 constexpr EnumArray<float, ObserverSpeedPreset> observer_speeds{
     std::array{5000.f, 15000.f, 50000.f, 150000.f, 500000.f}};
 
@@ -65,6 +67,7 @@ auto menu_action(PhysicalKey key, bool shift) -> std::optional<DigitalAction> {
             return DigitalAction::MenuRight;
         case PhysicalKey::Tab:
             return shift ? DigitalAction::MenuPrevious : DigitalAction::MenuNext;
+        case PhysicalKey::NumPadEnter:
         case PhysicalKey::Enter:
         case PhysicalKey::SpaceBar:
         case PhysicalKey::GamepadFaceButtonBottom:
@@ -121,7 +124,7 @@ auto observer_action(PhysicalKey key) -> std::optional<DigitalAction> {
             return {};
     }
 }
-auto track_button(PhysicalInputState& state, KeyCode key, ButtonState edge, bool repeat = false)
+auto track_button(PhysicalInputState& state, PhysicalKey key, ButtonState edge, bool repeat = false)
     -> bool {
     if (repeat) {
         return std::ranges::contains(state.held, key);
@@ -134,7 +137,7 @@ auto track_button(PhysicalInputState& state, KeyCode key, ButtonState edge, bool
     }
     return false;
 }
-auto axis_edge(PhysicalInputState& state, KeyCode key, float magnitude)
+auto axis_edge(PhysicalInputState& state, PhysicalKey key, float magnitude)
     -> std::optional<ButtonState> {
     auto const held{std::ranges::contains(state.held, key)};
     auto const active{held ? magnitude > 0.40f : magnitude >= 0.50f};
@@ -235,7 +238,7 @@ void GameInput::publish_transitions(host::InputEvents& output, std::size_t first
     }
 }
 void GameInput::routed_button(host::InputEvents& output,
-                              KeyCode key,
+                              PhysicalKey key,
                               DigitalAction action,
                               ButtonState edge) {
     auto found{std::ranges::find(routed_buttons_, key, &RoutedButton::key)};
@@ -253,14 +256,14 @@ void GameInput::routed_button(host::InputEvents& output,
     }
 
     auto const direction{std::ranges::find(digital_action_repeatable_navigation_values, action)};
-    if (direction != digital_action_repeatable_navigation_values.end() && is_gamepad_control(key.key)) {
+    if (direction != digital_action_repeatable_navigation_values.end() && is_gamepad_control(key)) {
         auto& delay{
             repeat_delays_[direction - digital_action_repeatable_navigation_values.begin()]};
         if (edge == ButtonState::Pressed && delay == 0.) {
             delay = 0.4;
         } else if (edge == ButtonState::Released &&
                    !std::ranges::any_of(routed_buttons_, [action](auto source) {
-                       return source.action == action && is_gamepad_control(source.key.key);
+                       return source.action == action && is_gamepad_control(source.key);
                    })) {
             delay = 0.;
         }
@@ -279,7 +282,7 @@ void GameInput::routed_button(host::InputEvents& output,
                                  : ObserverLookMode::Pointer;
     }
 }
-void GameInput::button(host::InputEvents& output, KeyCode key, ButtonState edge, std::uint32_t character, bool repeat) {
+void GameInput::button(host::InputEvents& output, PhysicalKey key, ButtonState edge, bool repeat) {
     auto const down{edge != ButtonState::Released};
     if ((route_.resume_available || route_.context == InputContext::Observer ||
          route_.context == InputContext::Gameplay) &&
@@ -292,7 +295,7 @@ void GameInput::button(host::InputEvents& output, KeyCode key, ButtonState edge,
         return;
     }
     if (route_.context == InputContext::Menu && menu_mode_ != MenuInputMode::Navigation) {
-        output.emplace_back(host::MenuKey{key, character, down, repeat, physical_.modifiers});
+        output.emplace_back(host::MenuKey{key, down, repeat, physical_.modifiers});
         return;
     }
     if (repeat || edge == ButtonState::Released) {
@@ -310,7 +313,7 @@ void GameInput::button(host::InputEvents& output, KeyCode key, ButtonState edge,
         return;
     }
     auto const navigation{
-        menu_action(key.key,
+        menu_action(key,
                     route_.context == InputContext::Menu &&
                         (physical_.modifiers.left_shift() || physical_.modifiers.right_shift()))};
     if (route_.context == InputContext::Menu && navigation) {
@@ -318,7 +321,7 @@ void GameInput::button(host::InputEvents& output, KeyCode key, ButtonState edge,
         return;
     }
     if (route_.context == InputContext::Observer) {
-        if (auto action{observer_action(key.key)}) {
+        if (auto action{observer_action(key)}) {
             routed_button(output, key, *action, edge);
         }
         return;
@@ -339,14 +342,14 @@ void GameInput::resolve(host::InputEvents& output, PhysicalEvent const& event) {
     std::visit([&](auto const& value) { apply(output, value); }, event);
 }
 void GameInput::apply(host::InputEvents& output, PhysicalButton event) {
-    if (!is_gamepad_control(event.key.key)) {
+    if (!is_gamepad_control(event.key)) {
         physical_.modifiers = event.modifiers;
     }
     if (!track_button(physical_, event.key, event.state, event.repeat) ||
         physical_.focus == WindowFocus::Lost) {
         return;
     }
-    button(output, event.key, event.state, event.character, event.repeat);
+    button(output, event.key, event.state, event.repeat);
     auto const modifiers{physical_.modifiers};
     if (editing_text() && event.key == PhysicalKey::BackSpace &&
         event.state != ButtonState::Released && !modifiers.left_control() &&
@@ -360,8 +363,7 @@ void GameInput::apply(host::InputEvents& output, TextInput const& event) {
     }
 }
 void GameInput::apply(host::InputEvents& output, PhysicalPointerButton event) {
-    if (!track_button(physical_, event.key, event.state) ||
-        physical_.focus == WindowFocus::Lost) {
+    if (!track_button(physical_, event.key, event.state) || physical_.focus == WindowFocus::Lost) {
         return;
     }
     auto const found{std::ranges::find(game_input_tables::pointer_keys, event.key)};
@@ -446,7 +448,8 @@ void GameInput::apply(host::InputEvents& output, PhysicalAxis event) {
     physical_.gamepad_axes[axis - game_input_tables::gamepad_axes.begin()] = sample;
     auto const edge{axis_edge(physical_, axis->axis, std::abs(sample))};
     auto const focused{physical_.focus == WindowFocus::Gained};
-    if (focused && route_.context == InputContext::Menu && menu_mode_ != MenuInputMode::Navigation) {
+    if (focused && route_.context == InputContext::Menu &&
+        menu_mode_ != MenuInputMode::Navigation) {
         output.emplace_back(host::MenuAxis{event.key, sample, physical_.modifiers});
     } else if (focused && route_.context == InputContext::Gameplay) {
         if (edge) {
@@ -456,7 +459,10 @@ void GameInput::apply(host::InputEvents& output, PhysicalAxis event) {
     }
     auto direction = [&](PhysicalKey key, float position) {
         if (key != PhysicalKey::Unbound) {
-            if (auto change{axis_edge(physical_, key, position)}; change && focused) {
+            if (auto change{axis_edge(physical_, key, position)};
+                change && focused &&
+                !(route_.context == InputContext::Menu &&
+                  menu_mode_ == MenuInputMode::BindingCapture)) {
                 button(output, key, *change);
             }
         }
@@ -476,11 +482,11 @@ void GameInput::apply(host::InputEvents& output, GamepadDisconnected) {
         }
     }
     for (auto key : physical_.held) {
-        if (physical_.focus == WindowFocus::Gained && is_gamepad_control(key.key)) {
+        if (physical_.focus == WindowFocus::Gained && is_gamepad_control(key)) {
             button(output, key, ButtonState::Released);
         }
     }
-    std::erase_if(physical_.held, [](KeyCode key) { return is_gamepad_control(key.key); });
+    std::erase_if(physical_.held, [](PhysicalKey key) { return is_gamepad_control(key); });
 }
 void GameInput::apply(host::InputEvents& output, WindowFocus focus) {
     if (std::exchange(physical_.focus, focus) == focus) {

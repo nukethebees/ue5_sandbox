@@ -2,8 +2,8 @@
 
 #include <ioj/host/modifiers.h>
 #include <ioj/host/pause_menu.h>
-#include <ioj/input/key_code.h>
-#include <ioj/input/menu_navigation.h>
+#include <ioj/input/actions.h>
+#include <ioj/input/physical_key.h>
 #include <ioj/vector.h>
 
 #include <cstdint>
@@ -45,14 +45,13 @@ struct MenuButton {
     Modifiers modifiers;
 };
 struct MenuKey {
-    KeyCode key;
-    std::uint32_t character{};
+    PhysicalKey key;
     bool down{};
     bool repeat{};
     Modifiers modifiers{};
 };
 struct MenuAxis {
-    KeyCode key;
+    PhysicalKey key;
     float value;
     Modifiers modifiers;
 };

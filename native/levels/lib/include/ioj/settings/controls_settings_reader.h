@@ -5,8 +5,8 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
+#include "ioj/settings/binding_value_reader.h"
 #include "ioj/settings/controls_settings.h"
-#include "ioj/settings/key_binding_reader.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>

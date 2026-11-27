@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/input/key_code.h>
+#include <ioj/input/physical_key.h>
 #include <ioj/settings/control_binding_address.h>
 
 #include <cstdint>
@@ -9,8 +9,8 @@
 namespace ioj {
 struct ControlBindingSnapshot {
     ControlBindingAddress address{};
-    KeyCode current_key{};
-    KeyCode default_key{};
+    PhysicalKey current_key{};
+    PhysicalKey default_key{};
     std::optional<ControlBindingAddress> chord{};
 };
 }

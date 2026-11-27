@@ -3,7 +3,7 @@
 #include <ioj/host/modifiers.h>
 #include <ioj/input/actions.h>
 #include <ioj/input/button_state.h>
-#include <ioj/input/key_code.h>
+#include <ioj/input/physical_key.h>
 #include <ioj/vector.h>
 
 #include <cstdint>
@@ -12,8 +12,7 @@
 
 namespace ioj {
 struct PhysicalButton {
-    KeyCode key;
-    std::uint32_t character{};
+    PhysicalKey key;
     host::Modifiers modifiers{};
     ButtonState state{};
     bool repeat{};

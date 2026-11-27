@@ -3,8 +3,8 @@
 
 #pragma once
 
+#include "ioj/settings/binding_value_writer.h"
 #include "ioj/settings/controls_settings.h"
-#include "ioj/settings/key_binding_writer.h"
 #include <ioj/s7/writer.h>
 
 #include <string_view>

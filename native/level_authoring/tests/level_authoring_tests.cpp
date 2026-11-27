@@ -183,9 +183,8 @@ TEST(NativeSettings, ReboundClearedAndResetKeysSurviveReload) {
     PlayerSettings settings;
     ASSERT_TRUE(settings.load(IOJ_LEVEL_SCRIPTS, path, desktop, LaunchDisplayMode::Windowed));
     auto edited{settings.applied()};
-    edited.controls.bindings =
-        std::vector<KeyBinding>{{FlightMapping::FlightBoostKeyboardMouse, PhysicalKey::B},
-                                {FlightMapping::FlightFirePrimaryGamepad, PhysicalKey::Unbound}};
+    edited.controls.bindings[FlightMapping::FlightBoostKeyboardMouse] = PhysicalKey::B;
+    edited.controls.bindings[FlightMapping::FlightFirePrimaryGamepad] = PhysicalKey::Unbound;
     auto saved{settings.save_category(GameSettingCategory::Controls, edited, settings.applied())};
     ASSERT_TRUE(saved) << saved.error();
     auto loaded{read_user_settings(IOJ_LEVEL_SCRIPTS, path, desktop)};
@@ -193,7 +192,7 @@ TEST(NativeSettings, ReboundClearedAndResetKeysSurviveReload) {
     EXPECT_EQ(loaded->applied.controls.bindings, edited.controls.bindings);
 
     settings.apply(edited.controls);
-    edited.controls.bindings->clear();
+    edited.controls.bindings = default_flight_bindings();
     saved = settings.save_category(GameSettingCategory::Controls, edited, settings.applied());
     ASSERT_TRUE(saved) << saved.error();
     loaded = read_user_settings(IOJ_LEVEL_SCRIPTS, path, desktop);

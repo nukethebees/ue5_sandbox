@@ -85,9 +85,6 @@ native/levels/lib/include/ioj/settings/game_window_mode.h
 native/levels/lib/include/ioj/settings/geometry_shapes.h
 native/levels/lib/include/ioj/settings/geometry_shapes_reader.h
 native/levels/lib/include/ioj/settings/geometry_shapes_writer.h
-native/levels/lib/include/ioj/settings/key_binding.h
-native/levels/lib/include/ioj/settings/key_binding_reader.h
-native/levels/lib/include/ioj/settings/key_binding_writer.h
 native/levels/lib/include/ioj/settings/laser_presentation.h
 native/levels/lib/include/ioj/settings/laser_presentation_reader.h
 native/levels/lib/include/ioj/settings/laser_presentation_writer.h

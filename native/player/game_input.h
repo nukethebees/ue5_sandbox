@@ -18,7 +18,7 @@ struct InputRoute {
 };
 
 struct PhysicalInputState {
-    std::vector<KeyCode> held;
+    std::vector<PhysicalKey> held;
     std::array<float, 6> gamepad_axes{};
     host::Modifiers modifiers{};
     WindowFocus focus{WindowFocus::Gained};
@@ -39,17 +39,13 @@ class GameInput {
     void append_frame_commands(double seconds, host::InputEvents& output) const;
   private:
     struct RoutedButton {
-        KeyCode key;
+        PhysicalKey key;
         DigitalAction action;
     };
 
-    void button(host::InputEvents& output,
-                KeyCode key,
-                ButtonState edge,
-                std::uint32_t character = {},
-                bool repeat = false);
+    void button(host::InputEvents& output, PhysicalKey key, ButtonState edge, bool repeat = false);
     void routed_button(host::InputEvents& output,
-                       KeyCode key,
+                       PhysicalKey key,
                        DigitalAction action,
                        ButtonState edge);
     void publish_transitions(host::InputEvents& output, std::size_t first);

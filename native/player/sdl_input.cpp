@@ -9,112 +9,6 @@
 
 namespace ioj {
 namespace {
-auto keyboard_key(SDL_KeyboardEvent const& key) -> KeyCode {
-    static constexpr PhysicalKey keypad[]{PhysicalKey::NumPadOne,
-                                          PhysicalKey::NumPadTwo,
-                                          PhysicalKey::NumPadThree,
-                                          PhysicalKey::NumPadFour,
-                                          PhysicalKey::NumPadFive,
-                                          PhysicalKey::NumPadSix,
-                                          PhysicalKey::NumPadSeven,
-                                          PhysicalKey::NumPadEight,
-                                          PhysicalKey::NumPadNine,
-                                          PhysicalKey::NumPadZero};
-    if (key.scancode >= SDL_SCANCODE_KP_1 && key.scancode <= SDL_SCANCODE_KP_0) {
-        return keypad[key.scancode - SDL_SCANCODE_KP_1];
-    }
-    if (key.scancode >= SDL_SCANCODE_F1 && key.scancode <= SDL_SCANCODE_F12) {
-        return static_cast<PhysicalKey>(std::to_underlying(PhysicalKey::F1) + key.scancode -
-                                        SDL_SCANCODE_F1);
-    }
-    switch (key.scancode) {
-        case SDL_SCANCODE_RETURN:
-            return PhysicalKey::Enter;
-        case SDL_SCANCODE_ESCAPE:
-            return PhysicalKey::Escape;
-        case SDL_SCANCODE_BACKSPACE:
-            return PhysicalKey::BackSpace;
-        case SDL_SCANCODE_TAB:
-            return PhysicalKey::Tab;
-        case SDL_SCANCODE_SPACE:
-            return PhysicalKey::SpaceBar;
-        case SDL_SCANCODE_CAPSLOCK:
-            return PhysicalKey::CapsLock;
-        case SDL_SCANCODE_PRINTSCREEN:
-            return PhysicalKey::PrintScreen;
-        case SDL_SCANCODE_SCROLLLOCK:
-            return PhysicalKey::ScrollLock;
-        case SDL_SCANCODE_PAUSE:
-            return PhysicalKey::Pause;
-        case SDL_SCANCODE_INSERT:
-            return PhysicalKey::Insert;
-        case SDL_SCANCODE_HOME:
-            return PhysicalKey::Home;
-        case SDL_SCANCODE_PAGEUP:
-            return PhysicalKey::PageUp;
-        case SDL_SCANCODE_DELETE:
-            return PhysicalKey::Delete;
-        case SDL_SCANCODE_END:
-            return PhysicalKey::End;
-        case SDL_SCANCODE_PAGEDOWN:
-            return PhysicalKey::PageDown;
-        case SDL_SCANCODE_RIGHT:
-            return PhysicalKey::Right;
-        case SDL_SCANCODE_LEFT:
-            return PhysicalKey::Left;
-        case SDL_SCANCODE_DOWN:
-            return PhysicalKey::Down;
-        case SDL_SCANCODE_UP:
-            return PhysicalKey::Up;
-        case SDL_SCANCODE_NUMLOCKCLEAR:
-            return PhysicalKey::NumLock;
-        case SDL_SCANCODE_KP_DIVIDE:
-            return PhysicalKey::Divide;
-        case SDL_SCANCODE_KP_MULTIPLY:
-            return PhysicalKey::Multiply;
-        case SDL_SCANCODE_KP_MINUS:
-            return PhysicalKey::Subtract;
-        case SDL_SCANCODE_KP_PLUS:
-            return PhysicalKey::Add;
-        case SDL_SCANCODE_KP_ENTER:
-            return PhysicalKey::Enter;
-        case SDL_SCANCODE_KP_PERIOD:
-            return PhysicalKey::Decimal;
-        case SDL_SCANCODE_LCTRL:
-            return PhysicalKey::LeftControl;
-        case SDL_SCANCODE_LSHIFT:
-            return PhysicalKey::LeftShift;
-        case SDL_SCANCODE_LALT:
-            return PhysicalKey::LeftAlt;
-        case SDL_SCANCODE_LGUI:
-            return PhysicalKey::LeftCommand;
-        case SDL_SCANCODE_RCTRL:
-            return PhysicalKey::RightControl;
-        case SDL_SCANCODE_RSHIFT:
-            return PhysicalKey::RightShift;
-        case SDL_SCANCODE_RALT:
-            return PhysicalKey::RightAlt;
-        case SDL_SCANCODE_RGUI:
-            return PhysicalKey::RightCommand;
-        case SDL_SCANCODE_MEDIA_NEXT_TRACK:
-            return PhysicalKey::MediaNext;
-        case SDL_SCANCODE_MEDIA_PREVIOUS_TRACK:
-            return PhysicalKey::MediaPrevious;
-        case SDL_SCANCODE_MEDIA_PLAY_PAUSE:
-            return PhysicalKey::MediaPlayPause;
-        case SDL_SCANCODE_MEDIA_STOP:
-            return PhysicalKey::MediaStop;
-        case SDL_SCANCODE_VOLUMEUP:
-            return PhysicalKey::VolumeUp;
-        case SDL_SCANCODE_VOLUMEDOWN:
-            return PhysicalKey::VolumeDown;
-        case SDL_SCANCODE_MUTE:
-            return PhysicalKey::VolumeMute;
-        default:
-            return key.key >= 32 && key.key <= 0x10ffff ? character_key(key.key)
-                                                        : KeyCode{};
-    }
-}
 auto pad_button(std::size_t button) -> PhysicalKey {
     switch (button) {
         case SDL_GAMEPAD_BUTTON_SOUTH:
@@ -186,7 +80,8 @@ constexpr std::array<PhysicalKey, SDL_GAMEPAD_AXIS_COUNT> axis_keys{
     PhysicalKey::GamepadRightX,
     PhysicalKey::GamepadRightY,
     PhysicalKey::GamepadLeftTriggerAxis,
-    PhysicalKey::GamepadRightTriggerAxis};
+    PhysicalKey::GamepadRightTriggerAxis,
+};
 
 }
 
@@ -247,11 +142,14 @@ auto SdlInput::translate(SDL_Event const& event) -> std::optional<PhysicalEvent>
             return WindowFocus::Gained;
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP: {
-            return PhysicalButton{keyboard_key(event.key),
-                                         event.key.key,
-                                         modifiers(event.key.mod),
-                                         event.key.down ? Pressed : Released,
-                                         event.key.repeat};
+            auto const key{static_cast<PhysicalKey>(event.key.scancode)};
+            if (is_keyboard_key(key)) {
+                return PhysicalButton{key,
+                                      modifiers(event.key.mod),
+                                      event.key.down ? Pressed : Released,
+                                      event.key.repeat};
+            }
+            break;
         }
         case SDL_EVENT_TEXT_INPUT:
             return TextInput{event.text.text};
@@ -267,18 +165,17 @@ auto SdlInput::translate(SDL_Event const& event) -> std::optional<PhysicalEvent>
         }
         case SDL_EVENT_MOUSE_MOTION:
             return PointerMotion{{event.motion.x, event.motion.y},
-                                        {event.motion.xrel, event.motion.yrel}};
+                                 {event.motion.xrel, event.motion.yrel}};
         case SDL_EVENT_MOUSE_WHEEL:
-            return WheelMotion{
-                {event.wheel.mouse_x, event.wheel.mouse_y},
-                event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y : event.wheel.y};
+            return WheelMotion{{event.wheel.mouse_x, event.wheel.mouse_y},
+                               event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y
+                                                                               : event.wheel.y};
         case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
         case SDL_EVENT_GAMEPAD_BUTTON_UP:
             if (gamepad_ && SDL_GetGamepadID(gamepad_) == event.gbutton.which) {
                 auto const code{pad_button(event.gbutton.button)};
                 if (code != PhysicalKey::Unbound) {
-                    return PhysicalButton{
-                        code, 0, {}, event.gbutton.down ? Pressed : Released};
+                    return PhysicalButton{code, {}, event.gbutton.down ? Pressed : Released};
                 }
             }
             break;

@@ -82,8 +82,7 @@ void present_steering(std::optional<Vector2d> steering) {
     }
     player->present_steering(position);
 }
-void ui_key(
-    KeyCode code, std::uint32_t character, bool down, bool repeat, Modifiers modifiers) {
+void ui_key(PhysicalKey code, bool down, bool repeat, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
     auto const key{binding_key(code)};
     if (!key.IsValid()) {
@@ -91,14 +90,14 @@ void ui_key(
     }
 
     auto const device{IPlatformInputDeviceMapper::Get().GetDefaultInputDevice()};
-    FKeyEvent const event{key, modifier_state(modifiers), device, repeat, character, 0};
+    FKeyEvent const event{key, modifier_state(modifiers), device, repeat, 0, 0};
     if (down) {
         slate.ProcessKeyDownEvent(event);
     } else {
         slate.ProcessKeyUpEvent(event);
     }
 }
-void ui_axis(KeyCode code, float value, Modifiers modifiers) {
+void ui_axis(PhysicalKey code, float value, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
     auto const device{IPlatformInputDeviceMapper::Get().GetDefaultInputDevice()};
     slate.ProcessAnalogInputEvent(FAnalogInputEvent{
@@ -199,14 +198,14 @@ void present_menu_button(MenuButton button) {
             key = PhysicalKey::Escape;
             break;
     }
-    ui_key(key, 0, button.down, button.repeat, button.modifiers);
+    ui_key(key, button.down, button.repeat, button.modifiers);
 }
 void present_input(PresentationEvent const& event) {
     std::visit(
         [](auto const& item) {
             using T = std::decay_t<decltype(item)>;
             if constexpr (std::is_same_v<T, MenuKey>) {
-                ui_key(item.key, item.character, item.down, item.repeat, item.modifiers);
+                ui_key(item.key, item.down, item.repeat, item.modifiers);
             } else if constexpr (std::is_same_v<T, MenuAxis>) {
                 ui_axis(item.key, item.value, item.modifiers);
             } else if constexpr (std::is_same_v<T, MenuText>) {
