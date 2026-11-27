@@ -22,6 +22,9 @@
 #include <Widgets/SWindow.h>
 #include <Widgets/Text/SMultiLineEditableText.h>
 
+#include <type_traits>
+#include <variant>
+
 namespace ioj::host {
 namespace {
 auto controller() -> ASpaceGamePlayerController* {
@@ -88,6 +91,7 @@ void pause_or_exit_viewer() {
     check(player);
     player->pause_or_exit_viewer();
 }
+namespace {
 void present_viewer_motion(ViewerMotion const& motion, double delta_seconds) {
     auto* const player{controller()};
     check(player);
@@ -171,6 +175,7 @@ void ui_text(std::string_view text, Modifiers modifiers) {
             FCharacterEvent{characters[i], modifier_state(modifiers), 0, false});
     }
 }
+}
 void select_benchmark_button(bool end_selected) {
     auto* player{controller()};
     check(player);
@@ -192,5 +197,26 @@ void activate_main_item(input::MainMenuItem item) {
         }
     }
 }
+void present_input(PresentationEvent const& event) {
+    std::visit(
+        [](auto const& item) {
+            using T = std::decay_t<decltype(item)>;
+            if constexpr (std::is_same_v<T, MenuKey>) {
+                ui_key(item.key, item.character, item.down, item.repeat, item.modifiers);
+            } else if constexpr (std::is_same_v<T, MenuAxis>) {
+                ui_axis(item.key, item.value, item.modifiers);
+            } else if constexpr (std::is_same_v<T, MenuText>) {
+                ui_text(item.text, item.modifiers);
+            } else if constexpr (std::is_same_v<T, MenuPointer>) {
+                ui_pointer(item.pointer, item.modifiers);
+            } else if constexpr (std::is_same_v<T, ViewerStep>) {
+                present_viewer_motion(item.motion, item.seconds);
+            } else {
+                present_steering(item.direction);
+            }
+        },
+        event);
+}
+
 }
 #endif

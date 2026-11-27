@@ -6,7 +6,8 @@
 
 #include <array>
 #include <cstddef>
-#include <string_view>
+#include <span>
+#include <vector>
 
 struct SDL_Window;
 
@@ -23,6 +24,7 @@ class SdlInput {
     void begin_frame();
     void handle(SDL_Event const& event);
     void finish_frame(double dt);
+    auto events() const -> std::span<host::PresentationEvent const> { return events_; }
     auto ship_frame() const { return flight_.frame(); }
   private:
     void key(input::KeyCode code, bool down, bool repeat, Uint32 character);
@@ -35,6 +37,7 @@ class SdlInput {
     host::InputRoute route_{};
     host::Modifiers modifiers_{};
     input::FlightInput flight_;
+    std::vector<host::PresentationEvent> events_;
     Uint32 ui_mouse_buttons_{};
     std::array<float, SDL_GAMEPAD_AXIS_COUNT> axes_{};
     std::array<bool, SDL_GAMEPAD_BUTTON_COUNT> pad_buttons_{};

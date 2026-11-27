@@ -16,7 +16,7 @@ namespace ioj::host::tests {
 static_assert(sizeof(Modifiers) == 2);
 struct Presentation {
     InputRoute route;
-    std::vector<std::string> keys;
+    std::vector<input::KeyCode> keys;
     std::vector<PointerAction> pointer;
     std::string text;
     std::optional<ViewerMotion> motion;
@@ -30,21 +30,20 @@ void read_legacy_key_bindings(void*, LegacyBindingSink) {}
 void pause_or_exit_viewer() {
     ++tests::presentation.pauses;
 }
-void present_steering(std::optional<Vector2d>) {}
-void present_viewer_motion(ViewerMotion const& motion, double) {
-    tests::presentation.motion = motion;
-}
-void ui_key(input::KeyCode code, std::uint32_t, bool down, bool, Modifiers) {
-    if (down) {
-        tests::presentation.keys.emplace_back(input::serialized_key(code));
+void present_input(PresentationEvent const& event) {
+    auto& view{tests::presentation};
+    if (auto const* key{std::get_if<MenuKey>(&event)}; key && key->down) {
+        view.keys.push_back(key->key);
     }
-}
-void ui_axis(input::KeyCode, float, Modifiers) {}
-void ui_pointer(PointerInput const& event, Modifiers) {
-    tests::presentation.pointer.push_back(event.action);
-}
-void ui_text(std::string_view text, Modifiers) {
-    tests::presentation.text.append(text);
+    if (auto const* text{std::get_if<MenuText>(&event)}) {
+        view.text += text->text;
+    }
+    if (auto const* pointer{std::get_if<MenuPointer>(&event)}) {
+        view.pointer.push_back(pointer->pointer.action);
+    }
+    if (auto const* step{std::get_if<ViewerStep>(&event)}) {
+        view.motion = step->motion;
+    }
 }
 }
 
@@ -71,8 +70,15 @@ class SdlPlayerInput : public ::testing::Test {
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
             input_->handle(event);
+            consume();
         }
         input_->finish_frame(0.016);
+        consume();
+    }
+    void consume() {
+        for (auto const& event : input_->events()) {
+            host::present_input(event);
+        }
     }
     void press(SDL_Keycode key, SDL_Scancode scancode) {
         SDL_Event event{};
@@ -97,7 +103,7 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     text.text.text = "abc";
     ASSERT_TRUE(SDL_PushEvent(&text));
     frame();
-    EXPECT_EQ(view.keys, (std::vector<std::string>{"Down"}));
+    EXPECT_EQ(view.keys, (std::vector<input::KeyCode>{PhysicalKey::Down}));
     EXPECT_EQ(view.text, "abc");
 
     view.route = {input::Context::Gameplay, false};

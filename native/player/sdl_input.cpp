@@ -195,6 +195,7 @@ SdlInput::~SdlInput() {
     SDL_CloseGamepad(gamepad_);
 }
 void SdlInput::begin_frame() {
+    events_.clear();
     flight_.begin_frame();
 }
 void SdlInput::synchronize(host::InputRoute current, host::MenuStatus menu) {
@@ -237,7 +238,7 @@ void SdlInput::refresh_bindings() {
 }
 void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character) {
     if (route_.context == input::Context::Menu) {
-        host::ui_key(code, character, down, repeat, modifiers_);
+        events_.emplace_back(host::MenuKey{code, character, down, repeat, modifiers_});
         return;
     }
     if (repeat || code == PhysicalKey::Unbound) {
@@ -277,6 +278,7 @@ void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character
     }
 }
 void SdlInput::handle(SDL_Event const& event) {
+    events_.clear();
     if (event.type == SDL_EVENT_GAMEPAD_ADDED || event.type == SDL_EVENT_GAMEPAD_REMOVED) {
         if (gamepad_ && event.type == SDL_EVENT_GAMEPAD_REMOVED &&
             SDL_GetGamepadID(gamepad_) == event.gdevice.which) {
@@ -327,13 +329,13 @@ void SdlInput::handle(SDL_Event const& event) {
             if (event.key.down && event.key.key == SDLK_BACKSPACE &&
                 route_.context == input::Context::Menu && !(mod & (SDL_KMOD_CTRL | SDL_KMOD_ALT)) &&
                 SDL_TextInputActive(&window_)) {
-                host::ui_text("\b", modifiers_);
+                events_.emplace_back(host::MenuText{"\b", modifiers_});
             }
             break;
         }
         case SDL_EVENT_TEXT_INPUT:
             if (route_.context == input::Context::Menu) {
-                host::ui_text(event.text.text, modifiers_);
+                events_.emplace_back(host::MenuText{event.text.text, modifiers_});
             }
             break;
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -352,11 +354,10 @@ void SdlInput::handle(SDL_Event const& event) {
                 ui_mouse_buttons_ |= mask;
                 auto const action{button.clicks == 2 ? host::PointerAction::DoubleClick
                                                      : host::PointerAction::Down};
-                host::ui_pointer({action, name, button.x, button.y, 0.f}, modifiers_);
+                events_.emplace_back(host::MenuPointer{{action, name, button.x, button.y, 0.f}, modifiers_});
             } else if (!button.down && (ui_mouse_buttons_ & mask)) {
                 ui_mouse_buttons_ &= ~mask;
-                host::ui_pointer({host::PointerAction::Up, name, button.x, button.y, 0.f},
-                                 modifiers_);
+                events_.emplace_back(host::MenuPointer{{host::PointerAction::Up, name, button.x, button.y, 0.f}, modifiers_});
             }
             if (route_.context != input::Context::Menu) {
                 key(name, button.down, false, 0);
@@ -371,21 +372,18 @@ void SdlInput::handle(SDL_Event const& event) {
                 viewer_dx_ += event.motion.xrel;
                 viewer_dy_ -= event.motion.yrel;
             } else {
-                host::ui_pointer(
-                    {host::PointerAction::Move, PhysicalKey::Unbound, event.motion.x, event.motion.y, 0.f},
-                    modifiers_);
+                events_.emplace_back(host::MenuPointer{{host::PointerAction::Move, PhysicalKey::Unbound, event.motion.x, event.motion.y, 0.f}, modifiers_});
             }
             break;
         case SDL_EVENT_MOUSE_WHEEL: {
             auto const amount{event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y
                                                                               : event.wheel.y};
             if (route_.context == input::Context::Menu) {
-                host::ui_pointer({host::PointerAction::Wheel,
+                events_.emplace_back(host::MenuPointer{{host::PointerAction::Wheel,
                                   PhysicalKey::Unbound,
                                   event.wheel.mouse_x,
                                   event.wheel.mouse_y,
-                                  amount},
-                                 modifiers_);
+                                  amount}, modifiers_});
             } else if (route_.movable_viewer) {
                 speed_index_ = std::clamp(speed_index_ + (amount > 0.f) - (amount < 0.f), 0, 4);
             } else if (route_.context == input::Context::Gameplay && amount != 0.f) {
@@ -430,7 +428,7 @@ void SdlInput::axis_value(std::size_t axis, float value) {
     auto const before{axes_[axis]};
     axes_[axis] = value;
     if (route_.context == input::Context::Menu) {
-        host::ui_axis(axis_keys[axis], value, modifiers_);
+        events_.emplace_back(host::MenuAxis{axis_keys[axis], value, modifiers_});
     } else if ((route_.context == input::Context::Gameplay || route_.movable_viewer) &&
                flight_.update(axis_keys[axis], value, controls_)) {
         host::pause_or_exit_viewer();
@@ -458,6 +456,7 @@ void SdlInput::release_gamepad() {
     }
 }
 void SdlInput::finish_frame(double dt) {
+    events_.clear();
     if (route_.context == input::Context::Menu && SDL_GetKeyboardFocus() == &window_) {
         for (std::size_t i{}; i < dpad_repeat_.size(); ++i) {
             auto& delay{dpad_repeat_[i]};
@@ -472,23 +471,23 @@ void SdlInput::finish_frame(double dt) {
         // Slate applies its own repeat interval to held analog navigation.
         for (auto axis : {SDL_GAMEPAD_AXIS_LEFTX, SDL_GAMEPAD_AXIS_LEFTY}) {
             if (std::abs(axes_[axis]) >= 0.5f) {
-                host::ui_axis(axis_keys[axis], axes_[axis], modifiers_);
+                events_.emplace_back(host::MenuAxis{axis_keys[axis], axes_[axis], modifiers_});
             }
         }
     }
     if (route_.context == input::Context::Gameplay) {
-        host::present_steering(flight_.steering());
+        events_.emplace_back(host::SteeringIndicator{flight_.steering()});
     }
     if (route_.movable_viewer) {
         auto const speed{viewer_speeds[speed_index_] * (viewer_buttons_[6] ? 4.f : 1.f)};
-        host::present_viewer_motion({float(viewer_buttons_[0] - viewer_buttons_[1]),
-                                     float(viewer_buttons_[2] - viewer_buttons_[3]),
-                                     float(viewer_buttons_[4] - viewer_buttons_[5]),
-                                     viewer_dx_ * 0.1f,
-                                     viewer_dy_ * 0.1f,
-                                     speed,
-                                     viewer_looking_},
-                                    dt);
+        events_.emplace_back(host::ViewerStep{{float(viewer_buttons_[0] - viewer_buttons_[1]),
+                                               float(viewer_buttons_[2] - viewer_buttons_[3]),
+                                               float(viewer_buttons_[4] - viewer_buttons_[5]),
+                                               viewer_dx_ * 0.1f,
+                                               viewer_dy_ * 0.1f,
+                                               speed,
+                                               viewer_looking_},
+                                              dt});
     }
     viewer_dx_ = 0.f;
     viewer_dy_ = 0.f;

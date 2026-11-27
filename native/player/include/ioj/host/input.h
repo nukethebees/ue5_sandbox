@@ -9,6 +9,7 @@
 #include <span>
 #include <variant>
 #include <optional>
+#include <string>
 #include <string_view>
 
 namespace ioj::host {
@@ -56,6 +57,36 @@ struct ViewerMotion {
     bool looking;
 };
 
+struct MenuKey {
+    input::KeyCode key;
+    std::uint32_t character{};
+    bool down{};
+    bool repeat{};
+    Modifiers modifiers{};
+};
+struct MenuAxis {
+    input::KeyCode key;
+    float value;
+    Modifiers modifiers;
+};
+struct MenuPointer {
+    PointerInput pointer;
+    Modifiers modifiers;
+};
+struct MenuText {
+    std::string text;
+    Modifiers modifiers;
+};
+struct SteeringIndicator {
+    std::optional<Vector2d> direction;
+};
+struct ViewerStep {
+    ViewerMotion motion;
+    double seconds;
+};
+using PresentationEvent =
+    std::variant<MenuKey, MenuAxis, MenuPointer, MenuText, SteeringIndicator, ViewerStep>;
+
 #ifdef IOJ_PLAYER_EXPORTS
 #define IOJ_INPUT_API __declspec(dllexport)
 #else
@@ -65,13 +96,7 @@ IOJ_INPUT_API auto menu_status() -> MenuStatus;
 using LegacyBindingSink = void (*)(void*, FlightMapping mapping, input::KeyCode key);
 IOJ_INPUT_API void read_legacy_key_bindings(void* destination, LegacyBindingSink sink);
 IOJ_INPUT_API void pause_or_exit_viewer();
-IOJ_INPUT_API void present_steering(std::optional<Vector2d> steering);
-IOJ_INPUT_API void present_viewer_motion(ViewerMotion const& motion, double delta_seconds);
-IOJ_INPUT_API void ui_key(
-    input::KeyCode code, std::uint32_t character, bool down, bool repeat, Modifiers modifiers);
-IOJ_INPUT_API void ui_axis(input::KeyCode code, float value, Modifiers modifiers);
-IOJ_INPUT_API void ui_pointer(PointerInput const& event, Modifiers modifiers);
-IOJ_INPUT_API void ui_text(std::string_view text, Modifiers modifiers);
+IOJ_INPUT_API void present_input(PresentationEvent const& event);
 IOJ_INPUT_API void select_benchmark_button(bool end_selected);
 IOJ_INPUT_API void focus_main_item(input::MainMenuItem item);
 IOJ_INPUT_API void activate_main_item(input::MainMenuItem item);

@@ -358,6 +358,12 @@ auto Application::play(Window& window,
             }
         }
     };
+    auto consume_input = [&] {
+        for (auto const& event : input.events()) {
+            host::present_input(event);
+            process_widget_actions();
+        }
+    };
     auto last_input_frame{previous_frame_time};
     while (!IojPlayer_ExitRequested()) {
         IojPlayer_BeginFrame();
@@ -368,7 +374,7 @@ auto Application::play(Window& window,
         bool viewport_changed{};
         while (SDL_PollEvent(&event)) {
             input.handle(event);
-            process_widget_actions();
+            consume_input();
             synchronize_input();
             switch (event.type) {
                 case SDL_EVENT_QUIT:
@@ -417,6 +423,7 @@ auto Application::play(Window& window,
         last_input_frame = input_time;
         synchronize_input();
         input.finish_frame(std::min(input_delta.count(), max_frame_delta_seconds));
+        consume_input();
         if (auto result{tick_engine()}; !result) {
             return result;
         }
