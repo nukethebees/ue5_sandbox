@@ -34,6 +34,9 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     ASpaceGamePlayerController();
     void pause_or_exit_viewer();
     auto main_menu() const -> UMainMenuWidget* { return modal_ui_.main_menu(); }
+    auto pause_visible() const -> bool { return modal_ui_.is_pause_active(); }
+    auto accepts_resume() const -> bool { return modal_ui_.accepts_resume(); }
+    void request_resume() { modal_ui_.request_resume(); }
     void present_viewer_motion(host::ViewerMotion const& motion, double dt);
     void present_steering(TOptional<FVector2D> position);
     void Tick(float dt) override;

@@ -92,6 +92,27 @@ auto initialize_presentation(LoadedLevel& level) -> bool {
     }
     return initialized;
 }
+auto input_route(LoadedLevel const* level, host::MenuStatus menu) -> host::InputRoute {
+    if (!level || level->presentation_setup || menu.pause_visible) {
+        return {input::Context::Menu, false, menu.accepts_resume};
+    }
+    switch (level->control_context) {
+        case levels::ControlContext::Observer:
+            return {input::Context::BenchmarkViewer, true};
+        case levels::ControlContext::Benchmark:
+            return {input::Context::BenchmarkViewer, false};
+        case levels::ControlContext::Player: {
+            auto const* ship{level->simulation.player_ship_simulation()};
+            if (ship && ship->is_alive(level->simulation.entity_tables().health)) {
+                return {input::Context::Gameplay};
+            }
+            break;
+        }
+        case levels::ControlContext::None:
+            break;
+    }
+    return {};
+}
 void advance_level(sim::LevelSim& simulation, double delta_seconds) {
     auto const state{simulation.state()};
     simulation.advance(delta_seconds);
@@ -289,6 +310,10 @@ auto Application::play(Window& window,
     std::vector<AvailableLevel> available_levels;
 
     SdlInput input{*window.sdl_window(), settings_.applied().controls};
+    auto synchronize_input = [&] {
+        auto const menu{host::menu_status()};
+        input.synchronize(input_route(storage.get(), menu), menu);
+    };
     auto process_widget_actions = [&] {
         for (auto const& action : host::take_widget_actions()) {
             host::activate_main_item(std::get<input::MainMenuItem>(action));
@@ -298,12 +323,14 @@ auto Application::play(Window& window,
     while (!IojPlayer_ExitRequested()) {
         IojPlayer_BeginFrame();
         input.begin_frame();
+        synchronize_input();
         SDL_Event event;
         bool close_requested{};
         bool viewport_changed{};
         while (SDL_PollEvent(&event)) {
             input.handle(event);
             process_widget_actions();
+            synchronize_input();
             switch (event.type) {
                 case SDL_EVENT_QUIT:
                 case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
@@ -349,6 +376,7 @@ auto Application::play(Window& window,
         auto const input_time{std::chrono::steady_clock::now()};
         auto const input_delta{std::chrono::duration<double>{input_time - last_input_frame}};
         last_input_frame = input_time;
+        synchronize_input();
         input.finish_frame(std::min(input_delta.count(), max_frame_delta_seconds));
         if (auto result{tick_engine()}; !result) {
             return result;

@@ -18,13 +18,13 @@ class SdlInput {
     SdlInput(SdlInput const&) = delete;
     auto operator=(SdlInput const&) -> SdlInput& = delete;
 
+    void synchronize(host::InputRoute current, host::MenuStatus menu);
     void refresh_bindings();
     void begin_frame();
     void handle(SDL_Event const& event);
     void finish_frame(double dt);
     auto ship_frame() const { return flight_.frame(); }
   private:
-    void synchronize();
     void key(input::KeyCode code, bool down, bool repeat, Uint32 character);
     void axis_value(std::size_t axis, float value);
     void release_gamepad();

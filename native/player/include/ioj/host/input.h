@@ -15,7 +15,16 @@ namespace ioj::host {
 struct InputRoute {
     input::Context context{};
     bool movable_viewer{};
+    bool resume_available{};
     bool operator==(InputRoute const&) const = default;
+};
+
+struct MenuStatus {
+    bool pause_visible{};
+    bool accepts_resume{};
+    bool editing_text{};
+    bool capturing_binding{};
+    std::optional<input::MainMenuItem> main_focus;
 };
 
 enum class PlayerAction {
@@ -52,7 +61,7 @@ struct ViewerMotion {
 #else
 #define IOJ_INPUT_API __declspec(dllimport)
 #endif
-IOJ_INPUT_API auto input_route() -> InputRoute;
+IOJ_INPUT_API auto menu_status() -> MenuStatus;
 using LegacyBindingSink = void (*)(void*, FlightMapping mapping, input::KeyCode key);
 IOJ_INPUT_API void read_legacy_key_bindings(void* destination, LegacyBindingSink sink);
 IOJ_INPUT_API void pause_or_exit_viewer();
@@ -63,7 +72,6 @@ IOJ_INPUT_API void ui_key(
 IOJ_INPUT_API void ui_axis(input::KeyCode code, float value, Modifiers modifiers);
 IOJ_INPUT_API void ui_pointer(PointerInput const& event, Modifiers modifiers);
 IOJ_INPUT_API void ui_text(std::string_view text, Modifiers modifiers);
-IOJ_INPUT_API auto editing_text() -> bool;
 IOJ_INPUT_API void focus_main_item(input::MainMenuItem item);
 IOJ_INPUT_API void activate_main_item(input::MainMenuItem item);
 IOJ_INPUT_API auto take_widget_actions() -> std::span<WidgetAction const>;

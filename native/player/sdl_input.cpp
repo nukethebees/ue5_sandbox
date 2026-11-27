@@ -196,10 +196,8 @@ SdlInput::~SdlInput() {
 }
 void SdlInput::begin_frame() {
     flight_.begin_frame();
-    synchronize();
 }
-void SdlInput::synchronize() {
-    auto const current{host::input_route()};
+void SdlInput::synchronize(host::InputRoute current, host::MenuStatus menu) {
     if (route_ != current) {
         viewer_buttons_ = {};
         viewer_looking_ = false;
@@ -215,7 +213,7 @@ void SdlInput::synchronize() {
     if (SDL_GetWindowRelativeMouseMode(&window_) != relative) {
         SDL_SetWindowRelativeMouseMode(&window_, relative);
     }
-    bool const editing{focused && current.context == input::Context::Menu && host::editing_text()};
+    bool const editing{focused && current.context == input::Context::Menu && menu.editing_text};
     if (SDL_TextInputActive(&window_) != editing) {
         if (editing) {
             SDL_StartTextInput(&window_);
@@ -312,7 +310,6 @@ void SdlInput::handle(SDL_Event const& event) {
     if (SDL_GetKeyboardFocus() != &window_) {
         return;
     }
-    synchronize();
     switch (event.type) {
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP: {
@@ -329,7 +326,7 @@ void SdlInput::handle(SDL_Event const& event) {
             key(keyboard_key(event.key), event.key.down, event.key.repeat, event.key.key);
             if (event.key.down && event.key.key == SDLK_BACKSPACE &&
                 route_.context == input::Context::Menu && !(mod & (SDL_KMOD_CTRL | SDL_KMOD_ALT)) &&
-                host::editing_text()) {
+                SDL_TextInputActive(&window_)) {
                 host::ui_text("\b", modifiers_);
             }
             break;
@@ -461,7 +458,6 @@ void SdlInput::release_gamepad() {
     }
 }
 void SdlInput::finish_frame(double dt) {
-    synchronize();
     if (route_.context == input::Context::Menu && SDL_GetKeyboardFocus() == &window_) {
         for (std::size_t i{}; i < dpad_repeat_.size(); ++i) {
             auto& delay{dpad_repeat_[i]};

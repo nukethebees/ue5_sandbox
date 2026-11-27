@@ -9,7 +9,10 @@ namespace ioj {
 LoadedLevel::LoadedLevel(sim::LevelSimInitData&& data,
                          memory::BumpResource& arena,
                          presentation::LevelPresentationSetup setup)
-    : simulation{std::move(data), arena}
+    : control_context{setup.presentation_mode == levels::PresentationMode::SimulationOnly
+                          ? levels::ControlContext::Benchmark
+                          : setup.control_context}
+    , simulation{std::move(data), arena}
     , presentation_setup{std::move(setup)} {}
 
 LevelStorage::LevelStorage()

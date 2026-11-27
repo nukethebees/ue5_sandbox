@@ -12,6 +12,7 @@ struct LoadedLevel {
                 memory::BumpResource& arena,
                 presentation::LevelPresentationSetup setup);
 
+    levels::ControlContext control_context;
     sim::LevelSim simulation;
     std::optional<presentation::LevelPresentationSetup> presentation_setup;
 };

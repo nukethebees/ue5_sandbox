@@ -26,9 +26,6 @@ Presentation presentation;
 }
 
 namespace ioj::host {
-auto input_route() -> InputRoute {
-    return tests::presentation.route;
-}
 void read_legacy_key_bindings(void*, LegacyBindingSink) {}
 void pause_or_exit_viewer() {
     ++tests::presentation.pauses;
@@ -48,9 +45,6 @@ void ui_pointer(PointerInput const& event, Modifiers) {
 }
 void ui_text(std::string_view text, Modifiers) {
     tests::presentation.text.append(text);
-}
-auto editing_text() -> bool {
-    return true;
 }
 }
 
@@ -73,6 +67,7 @@ class SdlPlayerInput : public ::testing::Test {
     }
     void frame() {
         input_->begin_frame();
+        input_->synchronize(host::tests::presentation.route, {.editing_text = true});
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
             input_->handle(event);

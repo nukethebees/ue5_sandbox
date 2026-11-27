@@ -1,4 +1,5 @@
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+#include "input/BindingCapture.h"
 #include "input/BindingKey.h"
 #include <ioj/host/input.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
@@ -16,7 +17,9 @@
 #include <InputCoreTypes.h>
 #include <Kismet/GameplayStatics.h>
 #include <UserSettings/EnhancedInputUserSettings.h>
+#include <Widgets/Input/SEditableText.h>
 #include <Widgets/SWindow.h>
+#include <Widgets/Text/SMultiLineEditableText.h>
 
 namespace ioj::host {
 namespace {
@@ -36,21 +39,19 @@ auto modifier_state(Modifiers modifiers) -> FModifierKeysState {
             modifiers.caps_lock()};
 }
 }
-auto input_route() -> InputRoute {
+auto menu_status() -> MenuStatus {
     auto* const player{controller()};
-    if (player) {
-        switch (player->get_active_control_context()) {
-            case levels::ControlContext::Player:
-                return {input::Context::Gameplay, false};
-            case levels::ControlContext::Observer:
-                return {input::Context::BenchmarkViewer, true};
-            case levels::ControlContext::Benchmark:
-                return {input::Context::BenchmarkViewer, false};
-            case levels::ControlContext::None:
-                break;
-        }
-    }
-    return {input::Context::Menu, false};
+    auto const widget{FSlateApplication::Get().GetKeyboardFocusedWidget()};
+    auto const editing{
+        widget &&
+        (widget->GetType() == SEditableText::StaticWidgetClass().GetWidgetType() ||
+         widget->GetType() == SMultiLineEditableText::StaticWidgetClass().GetWidgetType())};
+    auto const* main{player ? player->main_menu() : nullptr};
+    return {player && player->pause_visible(),
+            player && player->accepts_resume(),
+            editing,
+            widget && widget->GetMetaData<FBindingCapture>().IsValid(),
+            main ? main->focused_item() : std::nullopt};
 }
 void read_legacy_key_bindings(void* destination, LegacyBindingSink sink) {
     static constexpr TCHAR slot[]{TEXT("SpaceGameInputSettings")};
@@ -182,11 +183,6 @@ void activate_main_item(input::MainMenuItem item) {
             main->activate_item(item);
         }
     }
-}
-auto editing_text() -> bool {
-    auto const widget{FSlateApplication::Get().GetKeyboardFocusedWidget()};
-    return widget && (widget->GetType() == TEXT("SEditableText") ||
-                      widget->GetType() == TEXT("SMultiLineEditableText"));
 }
 }
 #endif
