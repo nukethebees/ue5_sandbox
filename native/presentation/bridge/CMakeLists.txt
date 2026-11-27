@@ -2,6 +2,7 @@ add_library(native-presentation-bridge STATIC)
 target_sources(native-presentation-bridge
   PRIVATE
     src/completed_level.cpp
+    src/level_catalog.cpp
     src/mission_frame.cpp
 )
 target_include_directories(native-presentation-bridge
@@ -15,6 +16,7 @@ target_link_libraries(native-presentation-bridge
     native-presentation
     native-simulation
     native-profiles
+    native-level-authoring
 )
 ioj_apply_native_abi(native-presentation-bridge)
 ioj_enable_warnings(native-presentation-bridge)

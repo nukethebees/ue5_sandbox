@@ -4,6 +4,7 @@
 #include "player/engine.h"
 #include "player/window.h"
 #include <ioj/bridge/completed_level.h>
+#include <ioj/bridge/level_catalog.h>
 #include <ioj/bridge/mission_frame.h>
 #include <ioj/files.h>
 #include <ioj/host/game_host_api.h>
@@ -14,7 +15,6 @@
 #include <ioj/presentation/profile_view.h>
 #include <ioj/profiles/file_profile_storage.h>
 #include <ioj/profiles/level_score.h>
-#include <ioj/profiles/progression.h>
 #include <ioj/profiles/sample_profile_records.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/system_capabilities.h>
@@ -365,51 +365,9 @@ void Application::publish_catalog() {
     }
 
     catalog_.emplace(std::move(*loaded));
-    std::vector<presentation::MissionListing> missions;
-    std::vector<levels::CampaignDefinition const*> campaigns;
-    std::string errors;
-    auto append_error = [&](std::string const& error) {
-        if (!errors.empty()) {
-            errors += '\n';
-        }
-        errors += error;
-    };
-    auto completed = [&](levels::LevelId const& id) {
-        return profiles::summarize_level_progress(id, profiles_.active_records()).state() ==
-               profiles::LevelProgressState::Completed;
-    };
-    missions.reserve(catalog_->levels.size());
-    for (auto const& entry : catalog_->levels) {
-        auto& row{missions.emplace_back()};
-        row.path = path_to_utf8(entry.source_path);
-        row.script = entry.source_text;
-        if (!entry.definition) {
-            row.error = levels::format_diagnostics(entry.definition.error());
-            append_error(row.error);
-            continue;
-        }
-
-        auto const& definition{*entry.definition};
-        row.metadata = &definition.metadata();
-        row.category = levels::authoring::catalog_category(definition);
-        row.team_count = levels::participating_teams(definition).size();
-        row.entity_count = definition.entities().size();
-        row.has_player = !definition.player_entity_id().empty();
-        row.progress =
-            profiles::summarize_level_progress(row.metadata->id, profiles_.active_records());
-        row.indicator = profiles::level_completion_indicator_state(row.progress,
-                                                                   row.metadata->par_time_seconds);
-        row.prerequisites = profiles::evaluate_unlock(definition, completed);
-        row.unlocked = row.prerequisites.unlocked(settings_.application().unlock_all_missions);
-    }
-    for (auto const& entry : catalog_->campaigns) {
-        if (entry.definition) {
-            campaigns.push_back(&*entry.definition);
-        } else {
-            append_error(levels::format_diagnostics(entry.definition.error()));
-        }
-    }
-    host::present_catalog({directory, errors, missions, campaigns});
+    auto const rows{bridge::make_catalog_rows(
+        *catalog_, profiles_.active_records(), settings_.application().unlock_all_missions)};
+    host::present_catalog({directory, rows.errors, rows.listings, rows.campaigns});
 }
 
 void Application::publish_profiles() const {
