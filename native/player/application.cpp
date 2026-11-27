@@ -309,7 +309,8 @@ auto Application::play(Window& window,
     std::vector<AvailableLevel> available_levels;
 
     SdlInput devices{*window.sdl_window()};
-    GameInput input{settings_.applied().controls};
+    GameInput input{settings_.applied().controls,
+                    devices.focused() ? input::WindowFocus::Gained : input::WindowFocus::Lost};
     std::vector<host::InputEvent> commands;
     std::vector<sim::player::PlayerInputKind> ship_events;
     auto synchronize_input = [&] {

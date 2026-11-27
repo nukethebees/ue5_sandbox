@@ -65,7 +65,7 @@ class SdlPlayerInput : public ::testing::Test {
         ASSERT_NE(window_, nullptr) << SDL_GetError();
         ASSERT_EQ(SDL_GetKeyboardFocus(), window_);
         devices_.emplace(*window_);
-        input_.emplace(settings_);
+        input_.emplace(settings_, input::WindowFocus::Gained);
     }
     void TearDown() override {
         input_.reset();
@@ -293,12 +293,13 @@ TEST_F(SdlPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
     EXPECT_EQ(input_->state().observer_speed, input::ObserverSpeedPreset::Fast);
     EXPECT_EQ(input_->state().axes_2d[input::Axis2DAction::ObserverLookDelta],
               (Vector2f{20.f, -10.f}));
-    input_->resolve(commands_, input::FocusLost{});
+    input_->resolve(commands_, input::WindowFocus::Lost);
     EXPECT_FALSE(input_->relative_mouse());
     EXPECT_TRUE(input_->state().released.observer_right());
     EXPECT_EQ(input_->state().axes_2d[input::Axis2DAction::ObserverLookDelta], Vector2f{});
 
     view.route = {input::Context::Menu};
+    input_->resolve(commands_, input::WindowFocus::Gained);
     frame();
     input_->resolve(
         commands_,
@@ -307,6 +308,27 @@ TEST_F(SdlPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
     ASSERT_EQ(commands_.size(), 2u);
     EXPECT_FALSE(std::get<host::MenuButton>(commands_.front()).repeat);
     EXPECT_TRUE(std::get<host::MenuButton>(commands_.back()).repeat);
+}
+
+TEST_F(SdlPlayerInput, FocusChangesAndButtonsInOnePollRespectEventOrder) {
+    host::tests::presentation.route = {input::Context::Gameplay};
+    frame();
+    auto focus = [&](SDL_EventType kind) {
+        SDL_Event event{};
+        event.window.type = kind;
+        event.window.windowID = SDL_GetWindowID(window_);
+        ASSERT_TRUE(SDL_PushEvent(&event));
+    };
+
+    focus(SDL_EVENT_WINDOW_FOCUS_LOST);
+    press(SDLK_LSHIFT, SDL_SCANCODE_LSHIFT);
+    focus(SDL_EVENT_WINDOW_FOCUS_GAINED);
+    press(SDLK_S, SDL_SCANCODE_S);
+    frame();
+    EXPECT_FALSE(input_->state().held.boost());
+    EXPECT_TRUE(input_->state().held.brake());
+    ship_frame();
+    EXPECT_EQ(ship_events_, std::vector{sim::player::PlayerInputKind::BrakePressed});
 }
 
 TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {
@@ -391,10 +413,9 @@ TEST_F(SdlPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocus) {
     EXPECT_FALSE(input_->state().held.fire());
     sample(0.3f);
     sample(0.6f);
-    input_->resolve(commands_, input::FocusLost{});
-    input::FocusGained baseline;
-    baseline.gamepad_axes[5] = 0.7f;
-    input_->resolve(commands_, baseline);
+    input_->resolve(commands_, input::WindowFocus::Lost);
+    sample(0.7f);
+    input_->resolve(commands_, input::WindowFocus::Gained);
     sample(0.8f);
     EXPECT_FALSE(input_->state().held.fire());
     sample(0.39f);
@@ -417,6 +438,26 @@ TEST_F(SdlPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocus) {
                            FireReleased,
                            FirePressed,
                            FireReleased}));
+}
+
+TEST_F(SdlPlayerInput, RebindingFireToAnAlreadyHeldStickWaitsForNeutral) {
+    input_->synchronize(commands_, {input::Context::Gameplay}, {});
+    auto sample = [&](float value) {
+        input_->resolve(commands_, input::PhysicalAxis{PhysicalKey::GamepadRightX, value});
+    };
+    sample(-0.8f);
+    settings_.bindings.emplace().push_back(
+        {FlightMapping::StarfoxFirePrimaryGamepad, PhysicalKey::GamepadRightX});
+    input_->refresh_bindings(commands_);
+    sample(-0.6f);
+    EXPECT_TRUE(input_->state().transitions.empty());
+    sample(-0.4f);
+    sample(-0.5f);
+    EXPECT_TRUE(input_->state().held.fire());
+    sample(-0.45f);
+    EXPECT_TRUE(input_->state().held.fire());
+    sample(-0.4f);
+    EXPECT_FALSE(input_->state().held.fire());
 }
 
 TEST_F(SdlPlayerInput, UnpluggingVirtualGamepadReleasesFlightButton) {

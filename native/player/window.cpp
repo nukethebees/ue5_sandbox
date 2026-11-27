@@ -3,6 +3,7 @@
 #include <ioj/settings/player_settings.h>
 
 #include <SDL3/SDL_error.h>
+#include <SDL3/SDL_hints.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_stdinc.h>
@@ -22,6 +23,7 @@ Window::~Window() {
 
 auto Window::create() -> ApplicationResult {
     SDL_SetMainReady();
+    SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         return ApplicationResult{std::unexpect, SDL_GetError()};
     }

@@ -21,11 +21,12 @@ struct PhysicalInputState {
     std::vector<input::KeyCode> held;
     std::array<float, 6> gamepad_axes{};
     host::Modifiers modifiers{};
+    input::WindowFocus focus{input::WindowFocus::Gained};
 };
 
 class GameInput {
   public:
-    explicit GameInput(ControlsSettings const& controls);
+    GameInput(ControlsSettings const& controls, input::WindowFocus focus);
 
     void
         synchronize(std::vector<host::InputEvent>& output, InputRoute route, host::MenuStatus menu);
@@ -58,8 +59,7 @@ class GameInput {
     void apply(std::vector<host::InputEvent>& output, input::PointerMotion event);
     void apply(std::vector<host::InputEvent>& output, input::WheelMotion event);
     void apply(std::vector<host::InputEvent>& output, input::TextInput const& event);
-    void apply(std::vector<host::InputEvent>& output, input::FocusLost);
-    void apply(std::vector<host::InputEvent>& output, input::FocusGained const& event);
+    void apply(std::vector<host::InputEvent>& output, input::WindowFocus focus);
     void apply(std::vector<host::InputEvent>& output, input::GamepadDisconnected);
     void release_context(std::vector<host::InputEvent>& output);
 

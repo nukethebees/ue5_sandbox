@@ -236,49 +236,15 @@ auto SdlInput::translate(SDL_Event const& event) -> std::optional<input::Physica
         }
         return {};
     }
-    if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
-        return input::FocusLost{};
-    }
-    if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED &&
-        event.window.windowID == SDL_GetWindowID(&window_)) {
-        input::FocusGained baseline;
-        baseline.modifiers = modifiers(SDL_GetModState());
-        int count{};
-        auto const* keyboard{SDL_GetKeyboardState(&count)};
-        for (int i{}; i < count; ++i) {
-            if (keyboard[i]) {
-                SDL_KeyboardEvent key{};
-                key.scancode = static_cast<SDL_Scancode>(i);
-                key.key = SDL_GetKeyFromScancode(key.scancode, SDL_KMOD_NONE, true);
-                baseline.held.push_back(keyboard_key(key));
-            }
-        }
-        auto const mouse{SDL_GetMouseState(nullptr, nullptr)};
-        for (Uint8 i{SDL_BUTTON_LEFT}; i <= SDL_BUTTON_X2; ++i) {
-            if (mouse & SDL_BUTTON_MASK(i)) {
-                baseline.held.emplace_back(mouse_key(i));
-            }
-        }
-        if (gamepad_) {
-            for (int i{}; i < SDL_GAMEPAD_BUTTON_COUNT; ++i) {
-                auto const key{pad_button(i)};
-                if (key != PhysicalKey::Unbound &&
-                    SDL_GetGamepadButton(gamepad_, static_cast<SDL_GamepadButton>(i))) {
-                    baseline.held.emplace_back(key);
-                }
-            }
-            static_assert(axis_keys.size() == baseline.gamepad_axes.size());
-            for (std::size_t i{}; i < axis_keys.size(); ++i) {
-                auto const axis{static_cast<SDL_GamepadAxis>(i)};
-                baseline.gamepad_axes[i] = axis_value(axis, SDL_GetGamepadAxis(gamepad_, axis));
-            }
-        }
-        return baseline;
-    }
-    if (!focused()) {
+    auto const* target{SDL_GetWindowFromEvent(&event)};
+    if (target && target != &window_) {
         return {};
     }
     switch (event.type) {
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+            return input::WindowFocus::Lost;
+        case SDL_EVENT_WINDOW_FOCUS_GAINED:
+            return input::WindowFocus::Gained;
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP: {
             return input::PhysicalButton{keyboard_key(event.key),
