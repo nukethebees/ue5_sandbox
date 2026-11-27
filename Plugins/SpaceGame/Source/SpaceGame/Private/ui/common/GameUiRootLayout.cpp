@@ -8,9 +8,20 @@
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
-#include <Widgets/CommonActivatableWidgetContainer.h>
+#include <Components/Overlay.h>
+#include <Components/OverlaySlot.h>
 
 namespace ioj {
+namespace {
+void show_widget(UOverlay& panel, UMenuActivatableWidget& widget) {
+    auto* const slot{panel.AddChildToOverlay(&widget)};
+    slot->SetHorizontalAlignment(HAlign_Fill);
+    slot->SetVerticalAlignment(VAlign_Fill);
+    if (auto* target{widget.focus_target()}) {
+        target->SetFocus();
+    }
+}
+}
 auto UGameUiRootLayout::initialise(UTestBatchGameUiData& ui_data) -> bool {
     if (!IsValid(screen_stack) || !IsValid(modal_stack)) {
         UE_LOG(LogSandboxUI,
@@ -32,16 +43,10 @@ auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
         return false;
     }
 
-    screen_stack->ClearWidgets();
+    screen_stack->ClearChildren();
     auto const main_menu_class{ui_data->get_widget_class<UMainMenuWidget>()};
     auto const level_select_class{ui_data->get_widget_class<ULevelSelectWidget>()};
-    auto* const main_menu{screen_stack->AddWidget<UMainMenuWidget>(
-        main_menu_class,
-        [level_select_class, show_level_select_screen, preferred_level_id](
-            UMainMenuWidget& widget) {
-            widget.prepare_for_open(
-                level_select_class, show_level_select_screen, preferred_level_id);
-        })};
+    auto* const main_menu{CreateWidget<UMainMenuWidget>(GetOwningPlayer(), main_menu_class)};
     if (!IsValid(main_menu)) {
         UE_LOG(LogSandboxUI,
                Error,
@@ -49,6 +54,8 @@ auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
         return false;
     }
 
+    main_menu->prepare_for_open(level_select_class, show_level_select_screen, preferred_level_id);
+    show_widget(*screen_stack, *main_menu);
     return true;
 }
 
@@ -60,11 +67,11 @@ auto UGameUiRootLayout::show_pause_menu() -> UPauseMenuWidget* {
                TEXT("UGameUiRootLayout::show_pause_menu: Root is not initialised."));
         return nullptr;
     }
-    if (auto* const active_pause{Cast<UPauseMenuWidget>(modal_stack->GetActiveWidget())};
+    if (auto* const active_pause{Cast<UPauseMenuWidget>(modal_stack->GetChildAt(0))};
         IsValid(active_pause)) {
         return active_pause;
     }
-    if (IsValid(modal_stack->GetActiveWidget())) {
+    if (IsValid(modal_stack->GetChildAt(0))) {
         UE_LOG(LogSandboxUI,
                Warning,
                TEXT("UGameUiRootLayout::show_pause_menu: Another modal is already active."));
@@ -72,12 +79,15 @@ auto UGameUiRootLayout::show_pause_menu() -> UPauseMenuWidget* {
     }
 
     auto const pause_menu_class{ui_data->get_widget_class<UPauseMenuWidget>()};
-    auto* const pause_menu{modal_stack->AddWidget<UPauseMenuWidget>(
-        pause_menu_class, [](UPauseMenuWidget& widget) { widget.prepare_for_open(); })};
+    auto* const pause_menu{CreateWidget<UPauseMenuWidget>(GetOwningPlayer(), pause_menu_class)};
     if (!IsValid(pause_menu)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("UGameUiRootLayout::show_pause_menu: Failed to push the pause menu."));
+    }
+    if (IsValid(pause_menu)) {
+        pause_menu->prepare_for_open();
+        show_widget(*modal_stack, *pause_menu);
     }
     return pause_menu;
 }
@@ -90,11 +100,11 @@ auto UGameUiRootLayout::show_level_completion(FLevelCompletion data) -> ULevelCo
                TEXT("UGameUiRootLayout::show_level_completion: Root is not initialised."));
         return nullptr;
     }
-    if (auto* const active_completion{Cast<ULevelCompletionWidget>(modal_stack->GetActiveWidget())};
+    if (auto* const active_completion{Cast<ULevelCompletionWidget>(modal_stack->GetChildAt(0))};
         IsValid(active_completion)) {
         return active_completion;
     }
-    if (IsValid(modal_stack->GetActiveWidget())) {
+    if (IsValid(modal_stack->GetChildAt(0))) {
         UE_LOG(LogSandboxUI,
                Warning,
                TEXT("UGameUiRootLayout::show_level_completion: Another modal is already active."));
@@ -102,58 +112,31 @@ auto UGameUiRootLayout::show_level_completion(FLevelCompletion data) -> ULevelCo
     }
 
     auto const completion_class{ui_data->get_widget_class<ULevelCompletionWidget>()};
-    auto* const completion{modal_stack->AddWidget<ULevelCompletionWidget>(
-        completion_class, [data = MoveTemp(data)](ULevelCompletionWidget& widget) mutable {
-            widget.prepare_for_open(MoveTemp(data));
-        })};
+    auto* const completion{
+        CreateWidget<ULevelCompletionWidget>(GetOwningPlayer(), completion_class)};
     if (!IsValid(completion)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("UGameUiRootLayout::show_level_completion: Failed to push completion."));
     }
+    if (IsValid(completion)) {
+        completion->prepare_for_open(MoveTemp(data));
+        show_widget(*modal_stack, *completion);
+    }
     return completion;
+}
+
+auto UGameUiRootLayout::main_menu() const -> UMainMenuWidget* {
+    return Cast<UMainMenuWidget>(screen_stack->GetChildAt(0));
 }
 
 void UGameUiRootLayout::clear_menus() {
     if (IsValid(modal_stack)) {
-        modal_stack->ClearWidgets();
+        modal_stack->ClearChildren();
     }
     if (IsValid(screen_stack)) {
-        screen_stack->ClearWidgets();
+        screen_stack->ClearChildren();
     }
-}
-
-auto UGameUiRootLayout::get_active_screen() const -> UCommonActivatableWidget* {
-    return IsValid(screen_stack) ? screen_stack->GetActiveWidget() : nullptr;
-}
-
-auto UGameUiRootLayout::get_active_modal() const -> UCommonActivatableWidget* {
-    return IsValid(modal_stack) ? modal_stack->GetActiveWidget() : nullptr;
-}
-
-auto UGameUiRootLayout::get_screen_count() const -> int32 {
-    return IsValid(screen_stack) ? screen_stack->GetNumWidgets() : 0;
-}
-
-auto UGameUiRootLayout::get_modal_count() const -> int32 {
-    return IsValid(modal_stack) ? modal_stack->GetNumWidgets() : 0;
-}
-
-TOptional<FUIInputConfig> UGameUiRootLayout::GetDesiredInputConfig() const {
-    if (IsValid(screen_stack) && screen_stack->GetNumWidgets() > 0) {
-        auto config{FUIInputConfig{ECommonInputMode::Menu,
-                                   EMouseCaptureMode::NoCapture,
-                                   EMouseLockMode::DoNotLock,
-                                   false}};
-        config.bIgnoreMoveInput = true;
-        config.bIgnoreLookInput = true;
-        return config;
-    }
-
-    return FUIInputConfig{ECommonInputMode::Game,
-                          EMouseCaptureMode::CapturePermanently_IncludingInitialMouseDown,
-                          EMouseLockMode::LockOnCapture,
-                          true};
 }
 
 }

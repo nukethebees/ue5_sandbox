@@ -14,6 +14,7 @@ class UTestBatchGameUiData;
 class ASpaceGamePlayerController;
 class UGameUiRootLayout;
 class UPauseMenuWidget;
+class UMainMenuWidget;
 class ULevelCompletionWidget;
 
 USTRUCT()
@@ -29,6 +30,7 @@ struct SPACEGAME_API FPlayerModalUi {
     // Main menu
     /* **************************************** */
     auto show_main_menu() -> bool;
+    auto main_menu() const -> UMainMenuWidget*;
     /* **************************************** */
     // Modal widgets and callbacks
     /* **************************************** */
@@ -40,7 +42,8 @@ struct SPACEGAME_API FPlayerModalUi {
     void clear_menus(ASpaceGamePlayerController& owner);
     void close_pause(ASpaceGamePlayerController& owner);
     void close_completion(ASpaceGamePlayerController& owner);
-    void deactivate_pause();
+    auto accepts_resume() const -> bool;
+    void request_resume();
     auto has_root() const -> bool;
     auto has_modal() const -> bool;
     auto completed_level_id() const -> FName;

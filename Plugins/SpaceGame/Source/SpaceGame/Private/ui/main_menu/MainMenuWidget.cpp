@@ -91,7 +91,7 @@ void UMainMenuWidget::ReleaseSlateResources(bool const release_children) {
     view_.Reset();
 }
 
-auto UMainMenuWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
+auto UMainMenuWidget::focus_target() const -> UWidget* {
     return const_cast<UMainMenuWidget*>(this);
 }
 
@@ -111,7 +111,7 @@ auto UMainMenuWidget::NativeOnFocusReceived(FGeometry const& geometry,
     return FReply::Handled();
 }
 
-auto UMainMenuWidget::NativeOnHandleBackAction() -> bool {
+auto UMainMenuWidget::handle_back() -> bool {
     if (page_modal_visible_) {
         if (IsValid(options_widget_) && options_widget_->page() == EMenuPage::DataArchive &&
             IsValid(save_game_viewer_)) {

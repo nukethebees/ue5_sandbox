@@ -23,6 +23,8 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     /* **************************************** */
     [[nodiscard]] auto get_options_widget() const -> UOptionsWidget* { return options_widget; }
     void prepare_for_open();
+    bool accepts_resume() const { return !terminal_action_requested_ && !options_modal_visible_; }
+    void handle_resume();
 
     FPauseReturnToLevelSelectRequested return_to_level_select_requested;
     FPauseQuitRequested quit_requested;
@@ -32,10 +34,8 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     /* **************************************** */
     void NativeOnInitialized() override;
     void NativeConstruct() override;
-    void NativeOnActivated() override;
-    auto NativeGetDesiredFocusTarget() const -> UWidget* override;
-    FReply NativeOnKeyDown(FGeometry const& geometry, FKeyEvent const& event) override;
-    auto NativeOnHandleBackAction() -> bool override;
+    auto focus_target() const -> UWidget* override;
+    auto handle_back() -> bool override;
 
     /* **************************************** */
     // Bound widgets
@@ -65,12 +65,10 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     /* **************************************** */
     // Navigation callbacks
     /* **************************************** */
-    void handle_resume();
     void handle_audio();
     void handle_controls();
     void handle_return_to_level_select();
     void handle_quit();
-    void handle_toggle_action();
 
     /* **************************************** */
     // View state and presentation

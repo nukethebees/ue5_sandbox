@@ -3,24 +3,17 @@
 #include <InputCoreTypes.h>
 
 namespace ioj {
-UMenuActivatableWidget::UMenuActivatableWidget() {
-    bIsBackHandler = false;
-    bAutoRestoreFocus = true;
+void UMenuActivatableWidget::close() {
+    RemoveFromParent();
+    closed.Broadcast();
 }
 
 FReply UMenuActivatableWidget::NativeOnKeyDown(FGeometry const& geometry, FKeyEvent const& event) {
     if ((event.GetKey() == EKeys::Escape || event.GetKey() == EKeys::Gamepad_FaceButton_Right) &&
-        !event.IsRepeat() && NativeOnHandleBackAction()) {
+        !event.IsRepeat() && handle_back()) {
         return FReply::Handled();
     }
     return Super::NativeOnKeyDown(geometry, event);
 }
 
-TOptional<FUIInputConfig> UMenuActivatableWidget::GetDesiredInputConfig() const {
-    auto config{FUIInputConfig{
-        ECommonInputMode::Menu, EMouseCaptureMode::NoCapture, EMouseLockMode::DoNotLock, false}};
-    config.bIgnoreMoveInput = true;
-    config.bIgnoreLookInput = true;
-    return config;
-}
 }

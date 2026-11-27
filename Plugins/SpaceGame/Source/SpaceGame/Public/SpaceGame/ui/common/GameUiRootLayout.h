@@ -3,11 +3,11 @@
 #include <SpaceGame/levels/LevelCompletion.h>
 #include <SpaceGame/levels/LevelOutcome.h>
 
-#include <CommonActivatableWidget.h>
+#include <Blueprint/UserWidget.h>
 
 #include "GameUiRootLayout.generated.h"
 
-class UCommonActivatableWidgetStack;
+class UOverlay;
 namespace ioj {
 class UTestBatchGameUiData;
 class ULevelSelectWidget;
@@ -16,7 +16,7 @@ class UMainMenuWidget;
 class UPauseMenuWidget;
 
 UCLASS()
-class SPACEGAME_API UGameUiRootLayout : public UCommonActivatableWidget {
+class SPACEGAME_API UGameUiRootLayout : public UUserWidget {
     GENERATED_BODY()
   public:
     auto initialise(UTestBatchGameUiData& ui_data) -> bool;
@@ -24,19 +24,14 @@ class SPACEGAME_API UGameUiRootLayout : public UCommonActivatableWidget {
     auto show_pause_menu() -> UPauseMenuWidget*;
     auto show_level_completion(FLevelCompletion data) -> ULevelCompletionWidget*;
     void clear_menus();
+    auto main_menu() const -> UMainMenuWidget*;
 
-    [[nodiscard]] auto get_active_screen() const -> UCommonActivatableWidget*;
-    [[nodiscard]] auto get_active_modal() const -> UCommonActivatableWidget*;
-    [[nodiscard]] auto get_screen_count() const -> int32;
-    [[nodiscard]] auto get_modal_count() const -> int32;
-
-    TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
   protected:
     UPROPERTY(meta = (BindWidget))
-    UCommonActivatableWidgetStack* screen_stack{nullptr};
+    UOverlay* screen_stack{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UCommonActivatableWidgetStack* modal_stack{nullptr};
+    UOverlay* modal_stack{nullptr};
   private:
     TWeakObjectPtr<UTestBatchGameUiData> ui_data_;
 };

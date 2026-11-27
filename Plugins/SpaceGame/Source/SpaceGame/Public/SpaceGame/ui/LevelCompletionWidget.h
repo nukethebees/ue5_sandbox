@@ -36,8 +36,8 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     FReturnToLevelSelectRequested return_to_level_select_requested;
   protected:
     void NativeOnInitialized() override;
-    auto NativeGetDesiredFocusTarget() const -> UWidget* override;
-    auto NativeOnHandleBackAction() -> bool override;
+    auto focus_target() const -> UWidget* override;
+    auto handle_back() -> bool override;
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
     void ReleaseSlateResources(bool release_children) override;

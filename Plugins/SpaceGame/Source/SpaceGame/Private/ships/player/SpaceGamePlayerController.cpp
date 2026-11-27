@@ -342,7 +342,7 @@ void ASpaceGamePlayerController::toggle_pause_game() {
         case sim::LevelState::Uninitialised:
         case sim::LevelState::Paused: {
             if (modal_ui_.is_pause_active()) {
-                modal_ui_.deactivate_pause();
+                modal_ui_.request_resume();
             } else if (!modal_ui_.has_completion()) {
                 resume_game();
             }

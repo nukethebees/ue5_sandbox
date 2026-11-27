@@ -55,11 +55,11 @@ void ULevelCompletionWidget::NativeOnInitialized() {
     refresh_view();
 }
 
-auto ULevelCompletionWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
+auto ULevelCompletionWidget::focus_target() const -> UWidget* {
     return const_cast<ULevelCompletionWidget*>(this);
 }
 
-auto ULevelCompletionWidget::NativeOnHandleBackAction() -> bool {
+auto ULevelCompletionWidget::handle_back() -> bool {
     return true;
 }
 

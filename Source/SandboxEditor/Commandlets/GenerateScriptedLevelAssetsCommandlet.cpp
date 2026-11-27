@@ -54,7 +54,6 @@
 #include <UObject/UnrealType.h>
 #include <WidgetBlueprint.h>
 #include <WidgetBlueprintOperationUtils.h>
-#include <Widgets/CommonActivatableWidgetContainer.h>
 
 namespace {
 constexpr TCHAR widget_object_path[]{
@@ -248,11 +247,10 @@ auto generate_root_layout_widget() -> UClass* {
 
     auto& tree{*blueprint->WidgetTree};
     auto* const root{tree.ConstructWidget<UOverlay>()};
-    auto* const screen_stack{
-        make_widget<UCommonActivatableWidgetStack>(tree, TEXT("screen_stack"))};
-    auto* const modal_stack{make_widget<UCommonActivatableWidgetStack>(tree, TEXT("modal_stack"))};
+    auto* const screen_stack{make_widget<UOverlay>(tree, TEXT("screen_stack"))};
+    auto* const modal_stack{make_widget<UOverlay>(tree, TEXT("modal_stack"))};
     for (auto* const stack : {screen_stack, modal_stack}) {
-        stack->SetTransitionDuration(0.0f);
+        stack->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
         auto* const slot{root->AddChildToOverlay(stack)};
         slot->SetHorizontalAlignment(HAlign_Fill);
         slot->SetVerticalAlignment(VAlign_Fill);

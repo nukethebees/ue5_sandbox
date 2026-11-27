@@ -45,13 +45,11 @@ auto FPlayerModalUi::initialise_root(ASpaceGamePlayerController& owner,
 
     root_ = root;
     root->AddToPlayerScreen(100);
-    root->ActivateWidget();
     return true;
 }
 void FPlayerModalUi::shutdown(ASpaceGamePlayerController& owner) {
     clear_menus(owner);
     if (IsValid(root_)) {
-        root_->DeactivateWidget();
         root_->RemoveFromParent();
     }
 
@@ -64,6 +62,9 @@ auto FPlayerModalUi::has_root() const -> bool {
 /* **************************************** */
 // Main menu
 /* **************************************** */
+auto FPlayerModalUi::main_menu() const -> UMainMenuWidget* {
+    return IsValid(root_) && !has_modal() ? root_->main_menu() : nullptr;
+}
 auto FPlayerModalUi::show_main_menu() -> bool {
     if (!has_root()) {
         UE_LOG(LogSandboxController,
@@ -101,9 +102,8 @@ auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner) -> bool {
         &owner, &ASpaceGamePlayerController::return_to_level_select);
     pause_menu_->quit_requested.RemoveAll(&owner);
     pause_menu_->quit_requested.AddUObject(&owner, &ASpaceGamePlayerController::quit_game);
-    pause_menu_->OnDeactivated().RemoveAll(&owner);
-    pause_menu_->OnDeactivated().AddUObject(&owner,
-                                            &ASpaceGamePlayerController::on_pause_menu_deactivated);
+    pause_menu_->closed.RemoveAll(&owner);
+    pause_menu_->closed.AddUObject(&owner, &ASpaceGamePlayerController::on_pause_menu_deactivated);
     return true;
 }
 auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
@@ -121,31 +121,31 @@ auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
     completion_menu_->return_to_level_select_requested.RemoveAll(&owner);
     completion_menu_->return_to_level_select_requested.AddUObject(
         &owner, &ASpaceGamePlayerController::return_to_level_select);
-    completion_menu_->OnDeactivated().RemoveAll(&owner);
-    completion_menu_->OnDeactivated().AddUObject(
+    completion_menu_->closed.RemoveAll(&owner);
+    completion_menu_->closed.AddUObject(
         &owner, &ASpaceGamePlayerController::on_completion_menu_deactivated);
     return true;
 }
 void FPlayerModalUi::detach_callbacks(ASpaceGamePlayerController& owner) {
     if (IsValid(pause_menu_)) {
-        pause_menu_->OnDeactivated().RemoveAll(&owner);
+        pause_menu_->closed.RemoveAll(&owner);
         pause_menu_->return_to_level_select_requested.RemoveAll(&owner);
         pause_menu_->quit_requested.RemoveAll(&owner);
     }
 
     if (IsValid(completion_menu_)) {
-        completion_menu_->OnDeactivated().RemoveAll(&owner);
+        completion_menu_->closed.RemoveAll(&owner);
         completion_menu_->return_to_level_select_requested.RemoveAll(&owner);
     }
 }
 void FPlayerModalUi::clear_modals(ASpaceGamePlayerController& owner) {
     detach_callbacks(owner);
     if (IsValid(pause_menu_)) {
-        pause_menu_->DeactivateWidget();
+        pause_menu_->close();
     }
 
     if (IsValid(completion_menu_)) {
-        completion_menu_->DeactivateWidget();
+        completion_menu_->close();
     }
 
     pause_menu_ = nullptr;
@@ -160,7 +160,7 @@ void FPlayerModalUi::clear_menus(ASpaceGamePlayerController& owner) {
 }
 void FPlayerModalUi::close_pause(ASpaceGamePlayerController& owner) {
     if (IsValid(pause_menu_)) {
-        pause_menu_->OnDeactivated().RemoveAll(&owner);
+        pause_menu_->closed.RemoveAll(&owner);
         pause_menu_->return_to_level_select_requested.RemoveAll(&owner);
         pause_menu_->quit_requested.RemoveAll(&owner);
     }
@@ -169,15 +169,18 @@ void FPlayerModalUi::close_pause(ASpaceGamePlayerController& owner) {
 }
 void FPlayerModalUi::close_completion(ASpaceGamePlayerController& owner) {
     if (IsValid(completion_menu_)) {
-        completion_menu_->OnDeactivated().RemoveAll(&owner);
+        completion_menu_->closed.RemoveAll(&owner);
         completion_menu_->return_to_level_select_requested.RemoveAll(&owner);
     }
 
     completion_menu_ = nullptr;
 }
-void FPlayerModalUi::deactivate_pause() {
-    if (IsValid(pause_menu_)) {
-        pause_menu_->DeactivateWidget();
+auto FPlayerModalUi::accepts_resume() const -> bool {
+    return is_pause_active() && pause_menu_->accepts_resume();
+}
+void FPlayerModalUi::request_resume() {
+    if (accepts_resume()) {
+        pause_menu_->handle_resume();
     }
 }
 auto FPlayerModalUi::has_modal() const -> bool {
@@ -187,10 +190,10 @@ auto FPlayerModalUi::has_completion() const -> bool {
     return IsValid(completion_menu_);
 }
 auto FPlayerModalUi::is_pause_active() const -> bool {
-    return IsValid(pause_menu_) && pause_menu_->IsActivated();
+    return IsValid(pause_menu_) && pause_menu_->GetParent() != nullptr;
 }
 auto FPlayerModalUi::is_completion_active() const -> bool {
-    return IsValid(completion_menu_) && completion_menu_->IsActivated();
+    return IsValid(completion_menu_) && completion_menu_->GetParent() != nullptr;
 }
 
 /* **************************************** */

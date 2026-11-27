@@ -26,10 +26,10 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     void NativeOnInitialized() override;
     auto RebuildWidget() -> TSharedRef<SWidget> override;
     void ReleaseSlateResources(bool release_children) override;
-    auto NativeGetDesiredFocusTarget() const -> UWidget* override;
+    auto focus_target() const -> UWidget* override;
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
-    auto NativeOnHandleBackAction() -> bool override;
+    auto handle_back() -> bool override;
   private:
     void create_content_widgets();
     void request_page(EMenuPage page);

@@ -4,8 +4,6 @@
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
-#include <ioj/input/flight_input.h>
-#include <SpaceGame/UnrealMessages.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
@@ -63,33 +61,15 @@ void UPauseMenuWidget::prepare_for_open() {
     terminal_action_requested_ = false;
     options_modal_visible_ = false;
     set_navigation_enabled(true);
-}
-
-void UPauseMenuWidget::NativeOnActivated() {
     select_page(EMenuPage::Audio);
-    Super::NativeOnActivated();
 }
 
-auto UPauseMenuWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
+auto UPauseMenuWidget::focus_target() const -> UWidget* {
     return resume_button->focus_target();
 }
 
-FReply UPauseMenuWidget::NativeOnKeyDown(FGeometry const& geometry, FKeyEvent const& event) {
-    if (!event.IsRepeat()) {
-        auto const key{to_string(event.GetKey().GetFName().ToString())};
-        for (auto const& control : input::flight_controls()) {
-            if (control.action == input::FlightAction::Pause &&
-                input::bound_key(control, player_settings().applied_values.controls) == input::parse_key(key)) {
-                handle_toggle_action();
-                return FReply::Handled();
-            }
-        }
-    }
-    return Super::NativeOnKeyDown(geometry, event);
-}
-
-auto UPauseMenuWidget::NativeOnHandleBackAction() -> bool {
-    handle_toggle_action();
+auto UPauseMenuWidget::handle_back() -> bool {
+    handle_resume();
     return true;
 }
 
@@ -115,10 +95,6 @@ void UPauseMenuWidget::handle_return_to_level_select() {
 
 void UPauseMenuWidget::handle_quit() {
     request_close(FSimpleDelegate::CreateUObject(this, &ThisClass::complete_quit));
-}
-
-void UPauseMenuWidget::handle_toggle_action() {
-    request_close(FSimpleDelegate::CreateUObject(this, &ThisClass::complete_resume));
 }
 
 void UPauseMenuWidget::select_page(EMenuPage const page) {
@@ -156,7 +132,7 @@ void UPauseMenuWidget::request_close(FSimpleDelegate continuation) {
 }
 
 void UPauseMenuWidget::complete_resume() {
-    DeactivateWidget();
+    close();
 }
 
 void UPauseMenuWidget::complete_return_to_level_select() {
