@@ -1,9 +1,9 @@
 #include <ioj/settings/game_settings_edit_state.h>
 
-#include <ioj/are_equal.h>
 #include <ioj/enum_strings.h>
 #include <ioj/enum_traits.h>
 #include <ioj/input/logical/flight_controls.h>
+#include <ioj/members.h>
 
 #include <algorithm>
 #include <array>
@@ -42,15 +42,7 @@ auto enum_choices() -> std::vector<GameSettingChoice> {
 auto graphics_preset(GameSettingsState const& state) -> GameGraphicsPreset {
     auto const& video{state.video};
     auto const quality{video.view_distance_quality};
-    if (!are_equal(quality,
-                   video.aa_quality,
-                   video.shadow_quality,
-                   video.global_illumination_quality,
-                   video.reflections_quality,
-                   video.post_processing_quality,
-                   video.texture_quality,
-                   video.effects_quality,
-                   video.shading_quality)) {
+    if (!members_equal(quality, video)) {
         return GameGraphicsPreset::Custom;
     }
 
@@ -178,15 +170,7 @@ void apply_graphics_preset(GameSettingsState& state, GameGraphicsPreset const pr
 
     auto const quality{static_cast<GameQualityLevel>(static_cast<std::uint8_t>(preset) - 1)};
     state.video.overall_quality = preset;
-    state.video.view_distance_quality = quality;
-    state.video.aa_quality = quality;
-    state.video.shadow_quality = quality;
-    state.video.global_illumination_quality = quality;
-    state.video.reflections_quality = quality;
-    state.video.post_processing_quality = quality;
-    state.video.texture_quality = quality;
-    state.video.effects_quality = quality;
-    state.video.shading_quality = quality;
+    assign_members(quality, state.video);
 }
 }
 

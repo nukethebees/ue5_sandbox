@@ -155,6 +155,7 @@ target_sources(native-core-tests
     tests/enum_range_tests.cpp
     tests/interpolation_tests.cpp
     tests/invoke_tests.cpp
+    tests/members_tests.cpp
     tests/lock_free_mpsc_queue_tests.cpp
     tests/loop_bounds_tests.cpp
     tests/monitored_lock_free_mpsc_queue_tests.cpp
