@@ -8,6 +8,12 @@
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 #include <ioj/host/game_host_api.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
+#include <SpaceGame/ui/main_menu/MainMenuWidget.h>
+
+#include <Engine/Engine.h>
+#include <Engine/GameViewportClient.h>
+#include <Engine/World.h>
 #endif
 
 #include <Misc/AssertionMacros.h>
@@ -26,13 +32,10 @@ KeyboardLayout keyboard;
 PlayerSettingsView attached_settings{};
 PlayerMenu* attached_menu{};
 SystemCapabilities const* attached_capabilities{};
-presentation::ProfileView published_profiles{};
 std::optional<session::LevelSelectRequest> menu_destination;
 std::span<ScreenResolution const> window_resolutions{};
 
 struct MessageBuffer {
-    std::vector<host::ProfileAction> profile_actions;
-    std::vector<TWeakObjectPtr<USaveGameViewerWidget>> profile_senders;
     std::vector<host::PreferenceEdit> preference_edits;
     std::vector<TWeakObjectPtr<UOptionsDraft>> preference_senders;
     host::NavigationRequest navigation_request;
@@ -50,7 +53,7 @@ FAutoConsoleCommand reset_profile_command{
     TEXT("spacegame_reset_test_profile"),
     TEXT("Replaces the dedicated Test Profile and activates it."),
     FConsoleCommandDelegate::CreateLambda(
-        [] { queue_profile_action(host::ProfileActionKind::ResetTestProfile, {}, nullptr); })};
+        [] { endpoint.send(host::UnrealMessageKind::ResetTestProfile); })};
 #endif
 }
 
@@ -74,17 +77,9 @@ auto system_capabilities() -> SystemCapabilities const& {
     return *attached_capabilities;
 }
 
-auto player_profiles() -> presentation::ProfileView const& {
-    return published_profiles;
+void request_profile_refresh() {
+    endpoint.send(host::UnrealMessageKind::RefreshProfiles);
 }
-
-void queue_profile_action(host::ProfileActionKind kind,
-                          std::string_view profile_name_or_id,
-                          USaveGameViewerWidget* widget) {
-    pending.profile_actions.push_back({kind, std::string{profile_name_or_id}});
-    pending.profile_senders.emplace_back(widget);
-}
-
 void queue_preferences(host::PreferenceEdit edit, UOptionsDraft& draft) {
     pending.preference_edits.push_back(std::move(edit));
     pending.preference_senders.emplace_back(&draft);
@@ -146,6 +141,10 @@ void clear_requested_simulation_mode() {
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
+    auto* const viewport{GEngine ? GEngine->GameViewport.Get() : nullptr};
+    auto* const world{viewport ? viewport->GetWorld() : nullptr};
+    auto* const player{world ? Cast<ASpaceGamePlayerController>(world->GetFirstPlayerController())
+                             : nullptr};
     for (auto const [kind, index] : messages.order) {
         using enum NativeMessageKind;
         switch (kind) {
@@ -160,6 +159,20 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
                 break;
             case Pause:
                 pause_presented(host::present_pause(messages.pause_commands[index]));
+                break;
+            case Profiles:
+                if (auto* main{player ? player->main_menu() : nullptr}) {
+                    if (auto* widget{main->save_game_viewer()}) {
+                        widget->present_profiles(messages.profiles[index]);
+                    }
+                }
+                break;
+            case ProfileResult:
+                if (auto* main{player ? player->main_menu() : nullptr}) {
+                    if (auto* widget{main->save_game_viewer()}) {
+                        widget->show_create_result(messages.profile_results[index]);
+                    }
+                }
                 break;
             case Keyboard:
                 keyboard = *messages.keyboards[index];
@@ -193,14 +206,8 @@ void host::present_settings(PlayerSettingsView const& settings,
     window_resolutions = resolutions;
     attached_settings = settings;
 }
-void host::present_profiles(presentation::ProfileView const& profiles) {
-    published_profiles = profiles;
-}
-
 void clear_consumed_messages() {
     published.catalog_request.Reset();
-    published.profile_actions.clear();
-    published.profile_senders.clear();
     published.preference_edits.clear();
     published.preference_senders.clear();
     published.navigation_request.emplace<std::monostate>();
@@ -216,18 +223,10 @@ auto host::take_widget_actions() -> std::span<WidgetAction const> {
 auto host::take_messages() -> HostRequests {
     std::swap(pending, published);
 
-    return {published.profile_actions,
-            published.preference_edits,
+    return {published.preference_edits,
             published.navigation_request,
             published.requested_simulation_mode,
             published.catalog_request.IsValid()};
-}
-
-void host::profile_result(std::size_t index, profiles::CreateProfileResult result) {
-    if (auto* widget{published.profile_senders[index].Get()}) {
-        auto const& action{published.profile_actions[index]};
-        widget->profile_action_finished(action.kind, action.profile_name_or_id, result);
-    }
 }
 
 void host::preference_result(std::size_t index, std::string_view error) {
@@ -245,7 +244,6 @@ void detach_player() {
     pending = MessageBuffer{};
     menu_destination.reset();
     window_resolutions = {};
-    published_profiles = {};
     attached_settings = {};
     attached_capabilities = nullptr;
     attached_menu = nullptr;

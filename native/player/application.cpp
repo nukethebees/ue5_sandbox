@@ -242,13 +242,15 @@ auto Application::run(CliArgs args) -> ApplicationResult {
 
     return shutdown_result;
 }
-namespace {
-struct PlayerInputSession {
-    PlayerInputSession(Window& game_window,
+struct Application::PlayerInputSession {
+    PlayerInputSession(Application& owner,
+                       Window& game_window,
                        PlayerSettings const& player_settings,
                        PlayerMenu& player_menu,
                        LevelStorage& levels)
-        : storage{levels}
+        : application{owner}
+        , endpoint{owner.endpoint_}
+        , storage{levels}
         , window{game_window}
         , settings{player_settings}
         , menu{player_menu}
@@ -338,6 +340,23 @@ struct PlayerInputSession {
     }
 
     void present_menu(MenuUpdate const& update) {
+        if (update.operation == MenuOperation::Activate) {
+            if (update.target.kind == MenuTarget::Kind::Profile ||
+                update.target.kind == MenuTarget::Kind::Outcome) {
+                application.publish_profiles();
+            } else if (update.target.kind == MenuTarget::Kind::Control) {
+                switch (update.target.control()) {
+                    case MenuControl::ConfirmCreate:
+                    case MenuControl::ActivateProfile:
+                    case MenuControl::RefreshProfiles:
+                    case MenuControl::ResetProfile:
+                        application.profile_action(update.target.control());
+                        return;
+                    default:
+                        break;
+                }
+            }
+        }
         if (menu.prompt == OptionsPrompt::Dirty && update.operation == MenuOperation::Activate) {
             auto const choice{update.target.control()};
             menu.set_prompt(OptionsPrompt::None);
@@ -356,7 +375,8 @@ struct PlayerInputSession {
     }
     void process_widget_actions() {
         auto const& replies{endpoint.exchange()};
-        for (auto const [kind, index] : replies.order) {
+        for (std::size_t cursor{}; cursor < replies.order.size(); ++cursor) {
+            auto const [kind, index]{replies.order[cursor]};
             switch (kind) {
                 case host::UnrealMessageKind::PauseInteraction: {
                     auto const event{replies.pause_events[index]};
@@ -388,6 +408,12 @@ struct PlayerInputSession {
                         pause_presentation = std::unexpected{
                             "Could not present the native pause menu. See the game log."};
                     }
+                    break;
+                case host::UnrealMessageKind::RefreshProfiles:
+                    application.profile_action(MenuControl::RefreshProfiles);
+                    break;
+                case host::UnrealMessageKind::ResetTestProfile:
+                    application.profile_action(MenuControl::ResetProfile);
                     break;
                 case host::UnrealMessageKind::Setting: {
                     auto const& change{replies.settings[index]};
@@ -510,7 +536,8 @@ struct PlayerInputSession {
         return events;
     }
 
-    host::NativeEndpoint endpoint;
+    Application& application;
+    host::NativeEndpoint& endpoint;
     LevelStorage& storage;
     Window& window;
     PlayerSettings const& settings;
@@ -520,7 +547,6 @@ struct PlayerInputSession {
     bool return_requested{};
     bool quit_requested{};
 };
-}
 
 auto Application::play(Window& window,
                        LevelStorage& storage,
@@ -555,7 +581,7 @@ auto Application::play(Window& window,
     auto const deadline{last_input_frame + std::chrono::minutes{2}};
     std::vector<AvailableLevel> available_levels;
 
-    PlayerInputSession play_input{window, settings_, menu_, storage};
+    PlayerInputSession play_input{*this, window, settings_, menu_, storage};
     while (!IojPlayer_ExitRequested()) {
         IojPlayer_BeginFrame();
         if (menu_.prompt == OptionsPrompt::Display && !menu_.saving &&
@@ -626,7 +652,6 @@ auto Application::play(Window& window,
             play_input.input.refresh_bindings();
             play_input.consume_commands();
         }
-        process_profile_actions(messages.profile_actions);
 
         if (messages.refresh_catalog) {
             available_levels = publish_catalog(scripts_directory);
@@ -780,6 +805,14 @@ auto Application::publish_catalog(std::filesystem::path const& scripts_directory
 }
 
 void Application::publish_profiles() {
+    if (!std::ranges::contains(profile_browser_.summaries(),
+                               menu_.selected_profile,
+                               &profiles::ProfileSummary::profile_id)) {
+        menu_.selected_profile = profile_browser_.active_profile_id();
+    }
+    if (!menu_.selected_profile.empty()) {
+        profile_browser_.load_profile_report(profiles_, menu_.selected_profile);
+    }
     presentation::ProfileView view{
         profile_browser_.active_profile_id(), profile_browser_.summaries(), {}};
     if (auto const* report{profile_browser_.loaded_profile_report()}) {
@@ -802,59 +835,49 @@ void Application::publish_profiles() {
     if (!std::ranges::contains(menu_.outcomes, menu_.selected_outcome)) {
         menu_.selected_outcome = menu_.outcomes.empty() ? std::string{} : menu_.outcomes.front();
     }
-    host::present_profiles(view);
+    endpoint_.present_profiles(view);
+    endpoint_.exchange();
 }
 
-void Application::process_profile_actions(std::span<host::ProfileAction const> actions) {
-    using enum host::ProfileActionKind;
-    auto const count{actions.size()};
-    for (std::size_t index{}; index < count; ++index) {
-        auto const& action{actions[index]};
-        auto result{profiles::CreateProfileResult::succeeded};
-        switch (action.kind) {
-            case Create:
-                result = profiles_.create_profile(action.profile_name_or_id).result;
-                break;
-            case Activate:
-                if (!profiles_.activate_profile(action.profile_name_or_id)) {
-                    result = profiles::CreateProfileResult::persistence_failed;
-                }
-                break;
-            case ResetTestProfile:
-#if IOJ_SHIPPING
-                std::unreachable();
-#else
-                if (!profiles_.reset_test_profile(profiles::sample_profile_records())) {
-                    result = profiles::CreateProfileResult::persistence_failed;
-                }
-#endif
-                break;
-            case Refresh:
-                break;
-            case SelectReport:
-                if (!profile_browser_.load_profile_report(profiles_, action.profile_name_or_id)) {
-                    result = profiles::CreateProfileResult::persistence_failed;
-                }
-                break;
-        }
-
-        if (result == profiles::CreateProfileResult::succeeded && action.kind != SelectReport) {
-            profile_browser_.refresh(profiles_);
-            if (action.kind != Refresh) {
-                menu_.selected_profile = profile_browser_.active_profile_id();
-            }
-            if (action.kind == Create && menu_.create_profile) {
+void Application::profile_action(MenuControl action) {
+    using Result = profiles::CreateProfileResult;
+    auto result{Result::succeeded};
+    switch (action) {
+        case MenuControl::ConfirmCreate:
+            result = profiles_.create_profile(menu_.profile_name).result;
+            if (result == Result::succeeded) {
                 menu_.set_create_profile(false);
             }
-        }
-
-        if (result == profiles::CreateProfileResult::persistence_failed) {
-            std::println(stderr, "Profile operation failed for '{}'", action.profile_name_or_id);
-        }
-
-        publish_profiles();
-        host::profile_result(index, result);
+            endpoint_.profile_result(result);
+            break;
+        case MenuControl::ActivateProfile:
+            if (!profiles_.activate_profile(menu_.selected_profile)) {
+                result = Result::persistence_failed;
+            }
+            break;
+        case MenuControl::ResetProfile:
+#if IOJ_SHIPPING
+            return;
+#else
+            if (!profiles_.reset_test_profile(profiles::sample_profile_records())) {
+                result = Result::persistence_failed;
+            }
+            break;
+#endif
+        case MenuControl::RefreshProfiles:
+            break;
+        default:
+            std::unreachable();
     }
+    if (result == Result::succeeded) {
+        profile_browser_.refresh(profiles_);
+        if (action != MenuControl::RefreshProfiles) {
+            menu_.selected_profile = profile_browser_.active_profile_id();
+        }
+    } else if (result == Result::persistence_failed) {
+        std::println(stderr, "Profile operation failed");
+    }
+    publish_profiles();
 }
 
 auto Application::process_preferences(Window& window, std::span<host::PreferenceEdit const> edits)

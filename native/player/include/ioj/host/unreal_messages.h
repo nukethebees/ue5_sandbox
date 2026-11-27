@@ -12,13 +12,6 @@
 #include <variant>
 
 namespace ioj::host {
-enum class ProfileActionKind { Create, Activate, Refresh, SelectReport, ResetTestProfile };
-
-struct ProfileAction {
-    ProfileActionKind kind;
-    std::string profile_name_or_id;
-};
-
 enum class PreferenceAction { Save, PreviewDisplay, RevertDisplay };
 
 struct PreferenceEdit {
@@ -36,7 +29,6 @@ struct LevelSelection {
 using NavigationRequest = std::variant<std::monostate, LevelSelection, session::LevelSelectRequest>;
 
 struct HostRequests {
-    std::span<ProfileAction const> profile_actions;
     std::span<PreferenceEdit const> preference_edits;
     NavigationRequest const& navigation_request;
     std::optional<levels::LaunchMode> requested_simulation_mode;

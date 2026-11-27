@@ -1,6 +1,7 @@
 #pragma once
 
 #include "player/engine.h"
+#include "player/native_endpoint.h"
 #include <ioj/host/unreal_messages.h>
 #include <ioj/input/dispatch/player_menu.h>
 #include <ioj/levels/launch_options.h>
@@ -24,6 +25,7 @@ class Application {
     static auto run(CliArgs args) -> ApplicationResult;
 
   private:
+    struct PlayerInputSession;
     struct AvailableLevel {
         levels::LevelDefinition definition;
         std::filesystem::path source_path;
@@ -39,7 +41,7 @@ class Application {
     auto publish_catalog(std::filesystem::path const& scripts_directory)
         -> std::vector<AvailableLevel>;
     void publish_profiles();
-    void process_profile_actions(std::span<host::ProfileAction const> actions);
+    void profile_action(MenuControl action);
     auto process_preferences(Window& window, std::span<host::PreferenceEdit const> edits) -> bool;
     auto launch_level(LevelStorage& storage, std::filesystem::path const& path)
         -> ApplicationResult;
@@ -49,6 +51,7 @@ class Application {
                       levels::LaunchOptions options) -> ApplicationResult;
     void unload_level(LevelStorage& storage, sim::RunEndReason reason, bool show_results);
 
+    host::NativeEndpoint endpoint_;
     PlayerSettings settings_;
     PlayerMenu menu_;
     profiles::ProfileManager profiles_;

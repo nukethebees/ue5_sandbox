@@ -3,6 +3,7 @@
 #include "SpaceGame/ui/common/HiveWidgets.h"
 #include "SpaceGame/ui/common/SGameButton.h"
 #include <SpaceGame/ui/common/SMenuEditableText.h>
+#include <SpaceGame/UnrealMessages.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -48,14 +49,6 @@ void SSaveGameViewerView::Construct(FArguments const& args) {
     style_ = args._Style;
     audio_ = args._Audio;
     check(style_ != nullptr);
-    on_profile_selected_ = args._OnProfileSelected;
-    on_outcome_selected_ = args._OnOutcomeSelected;
-    on_refresh_ = args._OnRefresh;
-    on_begin_create_ = args._OnBeginCreate;
-    on_create_ = args._OnCreate;
-    on_cancel_create_ = args._OnCancelCreate;
-    on_activate_ = args._OnActivate;
-    on_reset_test_profile_ = args._OnResetTestProfile;
 
     auto const body{
         SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[build_profiles()] +
@@ -79,21 +72,6 @@ void SSaveGameViewerView::replace_state(FSaveGameViewState const& state) {
     state_ = state;
     rebuild_profiles();
     rebuild_outcomes();
-    rebuild_statistics();
-    update_details();
-}
-
-void SSaveGameViewerView::replace_profile(FSaveGameViewState const& state) {
-    state_ = state;
-    update_profile_selection();
-    rebuild_outcomes();
-    rebuild_statistics();
-    update_details();
-}
-
-void SSaveGameViewerView::update_outcome(FSaveGameViewState const& state) {
-    state_ = state;
-    update_outcome_selection();
     rebuild_statistics();
     update_details();
 }
@@ -130,12 +108,11 @@ auto SSaveGameViewerView::OnFocusReceived(FGeometry const& geometry, FFocusEvent
     -> FReply {
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
-    present({player_menu().focus, MenuOperation::Focus});
+    present({menu_presentation().focus, MenuOperation::Focus});
     return FReply::Handled();
 }
 
 void SSaveGameViewerView::present(MenuUpdate const& update) {
-    auto const activate{update.operation == MenuOperation::Activate};
     if (update.target.is_row()) {
         auto const* row{&update.target};
         auto const id{to_fstring(row->id)};
@@ -143,55 +120,38 @@ void SSaveGameViewerView::present(MenuUpdate const& update) {
             auto const index{state_.profiles.IndexOfByPredicate(
                 [&](auto const& entry) { return entry.profile_id == id; })};
             if (profile_buttons_.IsValidIndex(index)) {
-                if (activate) {
-                    on_profile_selected_.ExecuteIfBound(id);
-                }
                 profile_buttons_[index]->focus();
             }
         } else {
             auto const index{state_.outcomes.IndexOfByPredicate(
                 [&](auto const& entry) { return entry.outcome_id == id; })};
             if (outcome_buttons_.IsValidIndex(index)) {
-                if (activate) {
-                    on_outcome_selected_.ExecuteIfBound(id);
-                }
                 outcome_buttons_[index]->focus();
             }
         }
     } else if (update.target.kind == MenuTarget::Kind::Control) {
         auto const control{update.target.control()};
-        auto apply = [activate](auto const& button, auto const& action) {
-            if (activate) {
-                action.ExecuteIfBound();
-            } else {
-                button->focus();
-            }
-        };
         switch (control) {
             case MenuControl::RefreshProfiles:
-                apply(refresh_button_, on_refresh_);
+                refresh_button_->focus();
                 break;
             case MenuControl::ActivateProfile:
-                apply(activate_button_, on_activate_);
+                activate_button_->focus();
                 break;
             case MenuControl::ResetProfile:
-                apply(reset_button_, on_reset_test_profile_);
+                reset_button_->focus();
                 break;
             case MenuControl::CreateProfile:
-                apply(create_button_, on_begin_create_);
+                create_button_->focus();
                 break;
             case MenuControl::CancelCreate:
-                apply(cancel_button_, on_cancel_create_);
+                cancel_button_->focus();
                 break;
             case MenuControl::ProfileName:
                 FSlateApplication::Get().SetKeyboardFocus(profile_name_input_);
                 break;
             case MenuControl::ConfirmCreate:
-                if (activate) {
-                    on_create_.ExecuteIfBound(profile_name_input_->GetText().ToString());
-                } else {
-                    confirm_button_->focus();
-                }
+                confirm_button_->focus();
                 break;
             default:
                 break;
@@ -391,6 +351,10 @@ auto SSaveGameViewerView::build_create_prompt() -> TSharedRef<SWidget> {
                                               "SaveGameViewer", "ProfileNameHint", "Record name"))
                                           .Font(style_->text(EGameTextStyle::Body).Font)
                                           .ColorAndOpacity(style_->palette().text_primary)
+                                          .OnTextChanged_Lambda([](FText const& text) {
+                                              edit_menu_text(MenuControl::ProfileName,
+                                                             to_string(text.ToString()));
+                                          })
                                           .OnTextCommitted(
                                               this, &SSaveGameViewerView::handle_name_committed)]]};
 

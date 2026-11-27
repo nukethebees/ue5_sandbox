@@ -1,6 +1,5 @@
 #pragma once
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include <ioj/host/unreal_messages.h>
 #include <ioj/presentation/profile_view.h>
 #include <ioj/profiles/create_profile_result.h>
 #include <ioj/profiles/save_browser.h>
@@ -65,12 +64,8 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
 
     void present(MenuUpdate const& update);
 
-    void select_profile(FString const& profile_id);
-    void select_outcome(FString const& outcome_id);
-    void refresh();
-    void profile_action_finished(host::ProfileActionKind kind,
-                                 std::string_view text,
-                                 profiles::CreateProfileResult result);
+    void present_profiles(presentation::ProfileView const& browser);
+    void show_create_result(profiles::CreateProfileResult result);
     void begin_create_profile();
     void cancel_create_profile();
 
@@ -88,19 +83,12 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     /* **************************************** */
     // Profile actions
     /* **************************************** */
-    void handle_create_profile(FString const& display_name);
-    void handle_activate_profile();
-    void handle_reset_test_profile();
-    void show_create_result(profiles::CreateProfileResult result);
     void show_create_profile_error(FText const& error);
 
     /* **************************************** */
     // Data sources and selection
     /* **************************************** */
-    void rebuild_profiles();
-    void apply_profile_selection(FString const& profile_id);
     void rebuild_outcomes(presentation::ProfileReportView const& report);
-    void apply_outcome_selection(FString const& outcome_id);
     void show_profile(profiles::ProfileSummary const& profile, std::string_view active_profile_id);
     void show_outcome(profiles::LevelOutcomeSummary const& outcome);
     void show_empty_profiles();
@@ -109,8 +97,6 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     // State publication
     /* **************************************** */
     void publish_all();
-    void publish_profile();
-    void publish_outcome();
 
     /* **************************************** */
     // State

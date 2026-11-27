@@ -25,6 +25,7 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     void focus_item(MainMenuItem item);
     void activate_item(MainMenuItem item);
 
+    auto save_game_viewer() const -> USaveGameViewerWidget* { return save_game_viewer_; }
     void prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class);
   protected:
     void NativeOnInitialized() override;

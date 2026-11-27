@@ -21,10 +21,7 @@ void edit_setting(GameSetting setting, GameSettingValue value);
 SPACEGAME_API auto player_menu() -> PlayerMenu&;
 SPACEGAME_API auto player_settings() -> PlayerSettingsView const&;
 SPACEGAME_API auto system_capabilities() -> SystemCapabilities const&;
-SPACEGAME_API auto player_profiles() -> presentation::ProfileView const&;
-void queue_profile_action(host::ProfileActionKind kind,
-                          std::string_view profile_name_or_id,
-                          USaveGameViewerWidget* widget);
+void request_profile_refresh();
 void queue_preferences(host::PreferenceEdit edit, UOptionsDraft& draft);
 SPACEGAME_API void request_level(host::LevelSelection level);
 SPACEGAME_API void request_level_catalog(ULevelSelectWidget& widget);

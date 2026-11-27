@@ -14,10 +14,6 @@ namespace ioj {
 enum class MenuControl;
 class SGameButton;
 
-DECLARE_DELEGATE_OneParam(FOnSaveProfileSelected, FString const&);
-DECLARE_DELEGATE_OneParam(FOnSaveOutcomeSelected, FString const&);
-DECLARE_DELEGATE_OneParam(FOnCreateSaveProfile, FString const&);
-
 class SSaveGameViewerView final : public SCompoundWidget {
   public:
     SLATE_BEGIN_ARGS(SSaveGameViewerView)
@@ -25,14 +21,6 @@ class SSaveGameViewerView final : public SCompoundWidget {
         , _Audio() {}
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
     SLATE_ARGUMENT(FGameAudioFacade, Audio)
-    SLATE_EVENT(FOnSaveProfileSelected, OnProfileSelected)
-    SLATE_EVENT(FOnSaveOutcomeSelected, OnOutcomeSelected)
-    SLATE_EVENT(FSimpleDelegate, OnRefresh)
-    SLATE_EVENT(FSimpleDelegate, OnBeginCreate)
-    SLATE_EVENT(FOnCreateSaveProfile, OnCreate)
-    SLATE_EVENT(FSimpleDelegate, OnCancelCreate)
-    SLATE_EVENT(FSimpleDelegate, OnActivate)
-    SLATE_EVENT(FSimpleDelegate, OnResetTestProfile)
     SLATE_END_ARGS()
 
     /* **************************************** */
@@ -40,8 +28,6 @@ class SSaveGameViewerView final : public SCompoundWidget {
     /* **************************************** */
     void Construct(FArguments const& args);
     void replace_state(FSaveGameViewState const& state);
-    void replace_profile(FSaveGameViewState const& state);
-    void update_outcome(FSaveGameViewState const& state);
     void present(MenuUpdate const& update);
     void show_create_profile();
     void hide_create_profile();
@@ -82,14 +68,6 @@ class SSaveGameViewerView final : public SCompoundWidget {
     FGameUiStyle const* style_{};
     FGameAudioFacade audio_{};
     FSaveGameViewState state_{};
-    FOnSaveProfileSelected on_profile_selected_{};
-    FOnSaveOutcomeSelected on_outcome_selected_{};
-    FSimpleDelegate on_refresh_{};
-    FSimpleDelegate on_begin_create_{};
-    FOnCreateSaveProfile on_create_{};
-    FSimpleDelegate on_cancel_create_{};
-    FSimpleDelegate on_activate_{};
-    FSimpleDelegate on_reset_test_profile_{};
 
     TSharedPtr<SVerticalBox> profile_rows_{};
     TSharedPtr<SVerticalBox> outcome_rows_{};

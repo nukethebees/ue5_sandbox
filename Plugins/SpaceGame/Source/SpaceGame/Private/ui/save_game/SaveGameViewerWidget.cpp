@@ -57,27 +57,15 @@ void USaveGameViewerWidget::NativeOnInitialized() {
         fallback_style_ = default_theme->compile();
     }
 
-    rebuild_profiles();
+    request_profile_refresh();
 }
 
 auto USaveGameViewerWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const* const style{IsValid(style_) ? &style_->get_ui_style() : &fallback_style_};
-    auto result{
-        SAssignNew(view_, SSaveGameViewerView)
-            .Style(style)
-            .Audio(IsValid(style_) ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
-                                   : FGameAudioFacade{})
-            .OnProfileSelected(
-                FOnSaveProfileSelected::CreateUObject(this, &ThisClass::select_profile))
-            .OnOutcomeSelected(
-                FOnSaveOutcomeSelected::CreateUObject(this, &ThisClass::select_outcome))
-            .OnRefresh(FSimpleDelegate::CreateUObject(this, &ThisClass::refresh))
-            .OnBeginCreate(FSimpleDelegate::CreateUObject(this, &ThisClass::begin_create_profile))
-            .OnCreate(FOnCreateSaveProfile::CreateUObject(this, &ThisClass::handle_create_profile))
-            .OnCancelCreate(FSimpleDelegate::CreateUObject(this, &ThisClass::cancel_create_profile))
-            .OnActivate(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_activate_profile))
-            .OnResetTestProfile(
-                FSimpleDelegate::CreateUObject(this, &ThisClass::handle_reset_test_profile))};
+    auto result{SAssignNew(view_, SSaveGameViewerView)
+                    .Style(style)
+                    .Audio(IsValid(style_) ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
+                                           : FGameAudioFacade{})};
     publish_all();
     return result;
 }
@@ -91,7 +79,7 @@ auto USaveGameViewerWidget::NativeOnFocusReceived(FGeometry const& geometry,
                                                   FFocusEvent const& focus_event) -> FReply {
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
-    present({player_menu().focus, MenuOperation::Focus});
+    present({menu_presentation().focus, MenuOperation::Focus});
     return FReply::Handled();
 }
 
@@ -99,13 +87,19 @@ auto USaveGameViewerWidget::NativeOnFocusReceived(FGeometry const& geometry,
 // Navigation and profile actions
 /* **************************************** */
 void USaveGameViewerWidget::present(MenuUpdate const& update) {
+    if (update.operation == MenuOperation::Activate &&
+        update.target == MenuTarget{MenuControl::CreateProfile}) {
+        begin_create_profile();
+        return;
+    }
+    if (update.operation == MenuOperation::Activate &&
+        update.target == MenuTarget{MenuControl::CancelCreate}) {
+        cancel_create_profile();
+        return;
+    }
     if (view_) {
         view_->present(update);
     }
-}
-
-void USaveGameViewerWidget::refresh() {
-    queue_profile_action(host::ProfileActionKind::Refresh, {}, this);
 }
 
 void USaveGameViewerWidget::begin_create_profile() {
@@ -124,50 +118,10 @@ void USaveGameViewerWidget::cancel_create_profile() {
     modal_state_changed.Broadcast(false);
 }
 
-void USaveGameViewerWidget::handle_create_profile(FString const& display_name) {
-    queue_profile_action(host::ProfileActionKind::Create, to_string(display_name), this);
-}
-
-void USaveGameViewerWidget::profile_action_finished(host::ProfileActionKind kind,
-                                                    std::string_view text,
-                                                    profiles::CreateProfileResult result) {
-    using enum host::ProfileActionKind;
-    switch (kind) {
-        case Create:
-            show_create_result(result);
-            return;
-        case Activate:
-        case ResetTestProfile:
-            if (result == profiles::CreateProfileResult::succeeded) {
-                rebuild_profiles();
-            }
-
-            return;
-        case Refresh:
-            rebuild_profiles();
-            present({player_menu().focus, MenuOperation::Focus});
-            return;
-        case SelectReport:
-            if (player_menu().selected_profile == text) {
-                auto const& report{player_profiles().report};
-                if (result == profiles::CreateProfileResult::succeeded && report) {
-                    rebuild_outcomes(*report);
-                } else {
-                    rebuild_outcomes({});
-                }
-
-                publish_profile();
-            }
-
-            return;
-    }
-}
-
 void USaveGameViewerWidget::show_create_result(profiles::CreateProfileResult result) {
     switch (result) {
         case profiles::CreateProfileResult::succeeded: {
             cancel_create_profile();
-            rebuild_profiles();
             return;
         }
         case profiles::CreateProfileResult::empty_name: {
@@ -194,16 +148,6 @@ void USaveGameViewerWidget::show_create_result(profiles::CreateProfileResult res
     }
 }
 
-void USaveGameViewerWidget::handle_activate_profile() {
-    queue_profile_action(host::ProfileActionKind::Activate, player_menu().selected_profile, this);
-}
-
-void USaveGameViewerWidget::handle_reset_test_profile() {
-#if !UE_BUILD_SHIPPING
-    queue_profile_action(host::ProfileActionKind::ResetTestProfile, {}, this);
-#endif
-}
-
 /* **************************************** */
 // Data sources and selection
 /* **************************************** */
@@ -213,9 +157,8 @@ void USaveGameViewerWidget::show_create_profile_error(FText const& error) {
     }
 }
 
-void USaveGameViewerWidget::rebuild_profiles() {
+void USaveGameViewerWidget::present_profiles(presentation::ProfileView const& browser) {
     view_state_ = FSaveGameViewState{};
-    auto const& browser{player_profiles()};
     auto const profiles{browser.summaries};
     if (profiles.empty()) {
         show_empty_profiles();
@@ -239,33 +182,15 @@ void USaveGameViewerWidget::rebuild_profiles() {
         FText::Format(NSLOCTEXT("SaveGameViewer", "ArchiveStatus", "{0} SERVICE RECORDS AVAILABLE"),
                       FText::AsNumber(profile_count));
 
-    apply_profile_selection(to_fstring(player_menu().selected_profile));
-
-    publish_all();
-}
-
-void USaveGameViewerWidget::select_profile(FString const& profile_id) {
-    apply_profile_selection(profile_id);
-    publish_profile();
-}
-
-void USaveGameViewerWidget::apply_profile_selection(FString const& profile_id) {
-    auto const& browser{player_profiles()};
-
-    auto const profiles{browser.summaries};
-    auto const profile_count{static_cast<int32>(profiles.size())};
     for (int32 index{}; index < profile_count; ++index) {
-        auto const& profile{profiles[index]};
-        if (profile.profile_id != TCHAR_TO_UTF8(*profile_id)) {
-            continue;
+        if (profiles[index].profile_id == menu_presentation().selected_profile) {
+            view_state_.selected_profile_index = index;
+            show_profile(profiles[index], browser.active_profile_id);
+            break;
         }
-
-        view_state_.selected_profile_index = index;
-        show_profile(profile, browser.active_profile_id);
-
-        queue_profile_action(host::ProfileActionKind::SelectReport, to_string(profile_id), this);
-        return;
     }
+    rebuild_outcomes(browser.report.value_or(presentation::ProfileReportView{}));
+    publish_all();
 }
 
 void USaveGameViewerWidget::rebuild_outcomes(presentation::ProfileReportView const& report) {
@@ -292,27 +217,11 @@ void USaveGameViewerWidget::rebuild_outcomes(presentation::ProfileReportView con
         });
     }
 
-    apply_outcome_selection(to_fstring(player_menu().selected_outcome));
-}
-
-void USaveGameViewerWidget::select_outcome(FString const& outcome_id) {
-    apply_outcome_selection(outcome_id);
-    publish_outcome();
-}
-
-void USaveGameViewerWidget::apply_outcome_selection(FString const& outcome_id) {
-    auto const& report{player_profiles().report};
-    if (!report || report->profile_id != player_menu().selected_profile) {
-        return;
-    }
-
-    auto const outcome_count{static_cast<int32>(report->outcomes.size())};
     for (int32 index{}; index < outcome_count; ++index) {
-        auto const& outcome{report->outcomes[index]};
-        if (outcome.outcome_id == TCHAR_TO_UTF8(*outcome_id)) {
+        if (report.outcomes[index].outcome_id == menu_presentation().selected_outcome) {
             view_state_.selected_outcome_index = index;
-            show_outcome(outcome);
-            return;
+            show_outcome(report.outcomes[index]);
+            break;
         }
     }
 }
@@ -384,15 +293,4 @@ void USaveGameViewerWidget::publish_all() {
     }
 }
 
-void USaveGameViewerWidget::publish_profile() {
-    if (view_.IsValid()) {
-        view_->replace_profile(view_state_);
-    }
-}
-
-void USaveGameViewerWidget::publish_outcome() {
-    if (view_.IsValid()) {
-        view_->update_outcome(view_state_);
-    }
-}
 } // namespace ioj

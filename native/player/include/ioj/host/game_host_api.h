@@ -48,9 +48,7 @@ namespace host {
 IOJ_PLAYER_API void present_catalog(presentation::LevelCatalogView const& catalog);
 IOJ_PLAYER_API void present_settings(PlayerSettingsView const& settings,
                                      std::span<ScreenResolution const> resolutions);
-IOJ_PLAYER_API void present_profiles(presentation::ProfileView const& profiles);
 IOJ_PLAYER_API auto take_messages() -> HostRequests;
-IOJ_PLAYER_API void profile_result(std::size_t index, profiles::CreateProfileResult result);
 IOJ_PLAYER_API void preference_result(std::size_t index, std::string_view error);
 }
 #undef IOJ_PLAYER_API
