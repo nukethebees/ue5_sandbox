@@ -34,22 +34,6 @@ auto modifier_state(Modifiers modifiers) -> FModifierKeysState {
             modifiers.right_command(),
             modifiers.caps_lock()};
 }
-auto mouse_button(int button) -> FKey {
-    switch (button) {
-        case 1:
-            return EKeys::LeftMouseButton;
-        case 2:
-            return EKeys::MiddleMouseButton;
-        case 3:
-            return EKeys::RightMouseButton;
-        case 4:
-            return EKeys::ThumbMouseButton;
-        case 5:
-            return EKeys::ThumbMouseButton2;
-        default:
-            return EKeys::Invalid;
-    }
-}
 }
 auto input_route() -> InputRoute {
     auto* const player{controller()};
@@ -116,9 +100,9 @@ void present_steering(std::optional<Vector2d> steering) {
     player->present_steering(position);
 }
 void ui_key(
-    std::string_view name, std::uint32_t character, bool down, bool repeat, Modifiers modifiers) {
+    input::KeyCode code, std::uint32_t character, bool down, bool repeat, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
-    auto const key{binding_key(input::parse_key(name))};
+    auto const key{binding_key(code)};
     if (!key.IsValid()) {
         return;
     }
@@ -131,11 +115,11 @@ void ui_key(
         slate.ProcessKeyUpEvent(event);
     }
 }
-void ui_axis(std::string_view name, float value, Modifiers modifiers) {
+void ui_axis(input::KeyCode code, float value, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
     auto const device{IPlatformInputDeviceMapper::Get().GetDefaultInputDevice()};
     slate.ProcessAnalogInputEvent(FAnalogInputEvent{
-        FKey{FName{*to_fstring(name)}}, modifier_state(modifiers), device, false, 0, 0, value});
+        binding_key(code), modifier_state(modifiers), device, false, 0, 0, value});
 }
 void ui_pointer(PointerInput const& event, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
@@ -144,7 +128,7 @@ void ui_pointer(PointerInput const& event, Modifiers modifiers) {
         return;
     }
     FVector2D const position{window->GetPositionInScreen() + FVector2D{event.x, event.y}};
-    auto const button{mouse_button(event.button)};
+    auto const button{binding_key(event.button)};
     auto pressed{slate.GetPressedMouseButtons()};
     if (event.action == PointerAction::Down || event.action == PointerAction::DoubleClick) {
         pressed.Add(button);

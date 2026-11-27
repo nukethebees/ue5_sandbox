@@ -8,237 +8,183 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
-#include <string>
+#include <utility>
 
 namespace ioj {
 namespace {
-auto key_name(SDL_KeyboardEvent const& key) -> std::string {
-    static constexpr char const* digits[]{
-        "Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"};
-    static constexpr char const* keypad[]{"NumPadOne",
-                                          "NumPadTwo",
-                                          "NumPadThree",
-                                          "NumPadFour",
-                                          "NumPadFive",
-                                          "NumPadSix",
-                                          "NumPadSeven",
-                                          "NumPadEight",
-                                          "NumPadNine",
-                                          "NumPadZero"};
-    if (key.key >= SDLK_A && key.key <= SDLK_Z) {
-        return std::string(1, static_cast<char>('A' + key.key - SDLK_A));
-    }
-    if (key.key >= SDLK_0 && key.key <= SDLK_9) {
-        return digits[key.key - SDLK_0];
-    }
+auto keyboard_key(SDL_KeyboardEvent const& key) -> input::KeyCode {
+    static constexpr PhysicalKey keypad[]{PhysicalKey::NumPadOne,
+                                          PhysicalKey::NumPadTwo,
+                                          PhysicalKey::NumPadThree,
+                                          PhysicalKey::NumPadFour,
+                                          PhysicalKey::NumPadFive,
+                                          PhysicalKey::NumPadSix,
+                                          PhysicalKey::NumPadSeven,
+                                          PhysicalKey::NumPadEight,
+                                          PhysicalKey::NumPadNine,
+                                          PhysicalKey::NumPadZero};
     if (key.scancode >= SDL_SCANCODE_KP_1 && key.scancode <= SDL_SCANCODE_KP_0) {
         return keypad[key.scancode - SDL_SCANCODE_KP_1];
     }
     if (key.scancode >= SDL_SCANCODE_F1 && key.scancode <= SDL_SCANCODE_F12) {
-        return "F" + std::to_string(key.scancode - SDL_SCANCODE_F1 + 1);
-    }
-    switch (key.key) {
-        case SDLK_MINUS:
-            return "Hyphen";
-        case SDLK_EQUALS:
-            return "Equals";
-        case SDLK_LEFTBRACKET:
-            return "LeftBracket";
-        case SDLK_RIGHTBRACKET:
-            return "RightBracket";
-        case SDLK_BACKSLASH:
-            return "Backslash";
-        case SDLK_SEMICOLON:
-            return "Semicolon";
-        case SDLK_APOSTROPHE:
-            return "Apostrophe";
-        case SDLK_GRAVE:
-            return "Tilde";
-        case SDLK_COMMA:
-            return "Comma";
-        case SDLK_PERIOD:
-            return "Period";
-        case SDLK_SLASH:
-            return "Slash";
-        case SDLK_UNDERSCORE:
-            return "Underscore";
-        case SDLK_AMPERSAND:
-            return "Ampersand";
-        case SDLK_ASTERISK:
-            return "Asterix";
-        case SDLK_CARET:
-            return "Caret";
-        case SDLK_COLON:
-            return "Colon";
-        case SDLK_DOLLAR:
-            return "Dollar";
-        case SDLK_EXCLAIM:
-            return "Exclamation";
-        case SDLK_LEFTPAREN:
-            return "LeftParantheses";
-        case SDLK_RIGHTPAREN:
-            return "RightParantheses";
-        case SDLK_DBLAPOSTROPHE:
-            return "Quote";
-        case 0xe0:
-            return "A_AccentGrave";
-        case 0xe8:
-            return "E_AccentGrave";
-        case 0xe9:
-            return "E_AccentAigu";
-        case 0xe7:
-            return "C_Cedille";
-        case 0xa7:
-            return "Section";
-        default:
-            break;
+        return static_cast<PhysicalKey>(std::to_underlying(PhysicalKey::F1) + key.scancode -
+                                        SDL_SCANCODE_F1);
     }
     switch (key.scancode) {
         case SDL_SCANCODE_RETURN:
-            return "Enter";
+            return PhysicalKey::Enter;
         case SDL_SCANCODE_ESCAPE:
-            return "Escape";
+            return PhysicalKey::Escape;
         case SDL_SCANCODE_BACKSPACE:
-            return "BackSpace";
+            return PhysicalKey::BackSpace;
         case SDL_SCANCODE_TAB:
-            return "Tab";
+            return PhysicalKey::Tab;
         case SDL_SCANCODE_SPACE:
-            return "SpaceBar";
+            return PhysicalKey::SpaceBar;
         case SDL_SCANCODE_CAPSLOCK:
-            return "CapsLock";
+            return PhysicalKey::CapsLock;
         case SDL_SCANCODE_PRINTSCREEN:
-            return "PrintScreen";
+            return PhysicalKey::PrintScreen;
         case SDL_SCANCODE_SCROLLLOCK:
-            return "ScrollLock";
+            return PhysicalKey::ScrollLock;
         case SDL_SCANCODE_PAUSE:
-            return "Pause";
+            return PhysicalKey::Pause;
         case SDL_SCANCODE_INSERT:
-            return "Insert";
+            return PhysicalKey::Insert;
         case SDL_SCANCODE_HOME:
-            return "Home";
+            return PhysicalKey::Home;
         case SDL_SCANCODE_PAGEUP:
-            return "PageUp";
+            return PhysicalKey::PageUp;
         case SDL_SCANCODE_DELETE:
-            return "Delete";
+            return PhysicalKey::Delete;
         case SDL_SCANCODE_END:
-            return "End";
+            return PhysicalKey::End;
         case SDL_SCANCODE_PAGEDOWN:
-            return "PageDown";
+            return PhysicalKey::PageDown;
         case SDL_SCANCODE_RIGHT:
-            return "Right";
+            return PhysicalKey::Right;
         case SDL_SCANCODE_LEFT:
-            return "Left";
+            return PhysicalKey::Left;
         case SDL_SCANCODE_DOWN:
-            return "Down";
+            return PhysicalKey::Down;
         case SDL_SCANCODE_UP:
-            return "Up";
+            return PhysicalKey::Up;
         case SDL_SCANCODE_NUMLOCKCLEAR:
-            return "NumLock";
+            return PhysicalKey::NumLock;
         case SDL_SCANCODE_KP_DIVIDE:
-            return "Divide";
+            return PhysicalKey::Divide;
         case SDL_SCANCODE_KP_MULTIPLY:
-            return "Multiply";
+            return PhysicalKey::Multiply;
         case SDL_SCANCODE_KP_MINUS:
-            return "Subtract";
+            return PhysicalKey::Subtract;
         case SDL_SCANCODE_KP_PLUS:
-            return "Add";
+            return PhysicalKey::Add;
         case SDL_SCANCODE_KP_ENTER:
-            return "Enter";
+            return PhysicalKey::Enter;
         case SDL_SCANCODE_KP_PERIOD:
-            return "Decimal";
+            return PhysicalKey::Decimal;
         case SDL_SCANCODE_LCTRL:
-            return "LeftControl";
+            return PhysicalKey::LeftControl;
         case SDL_SCANCODE_LSHIFT:
-            return "LeftShift";
+            return PhysicalKey::LeftShift;
         case SDL_SCANCODE_LALT:
-            return "LeftAlt";
+            return PhysicalKey::LeftAlt;
         case SDL_SCANCODE_LGUI:
-            return "LeftCommand";
+            return PhysicalKey::LeftCommand;
         case SDL_SCANCODE_RCTRL:
-            return "RightControl";
+            return PhysicalKey::RightControl;
         case SDL_SCANCODE_RSHIFT:
-            return "RightShift";
+            return PhysicalKey::RightShift;
         case SDL_SCANCODE_RALT:
-            return "RightAlt";
+            return PhysicalKey::RightAlt;
         case SDL_SCANCODE_RGUI:
-            return "RightCommand";
+            return PhysicalKey::RightCommand;
         case SDL_SCANCODE_MEDIA_NEXT_TRACK:
-            return "MediaNext";
+            return PhysicalKey::MediaNext;
         case SDL_SCANCODE_MEDIA_PREVIOUS_TRACK:
-            return "MediaPrevious";
+            return PhysicalKey::MediaPrevious;
         case SDL_SCANCODE_MEDIA_PLAY_PAUSE:
-            return "MediaPlayPause";
+            return PhysicalKey::MediaPlayPause;
         case SDL_SCANCODE_MEDIA_STOP:
-            return "MediaStop";
+            return PhysicalKey::MediaStop;
         case SDL_SCANCODE_VOLUMEUP:
-            return "VolumeUp";
+            return PhysicalKey::VolumeUp;
         case SDL_SCANCODE_VOLUMEDOWN:
-            return "VolumeDown";
+            return PhysicalKey::VolumeDown;
         case SDL_SCANCODE_MUTE:
-            return "VolumeMute";
+            return PhysicalKey::VolumeMute;
         default:
-            return key.key >= 32 && key.key <= 0x10ffff
-                     ? "UnknownCharCode_" + std::to_string(key.key)
-                     : std::string{};
+            return key.key >= 32 && key.key <= 0x10ffff ? input::character_key(key.key)
+                                                        : input::KeyCode{};
     }
 }
-auto pad_button(std::size_t button) -> std::string_view {
+auto pad_button(std::size_t button) -> PhysicalKey {
     switch (button) {
         case SDL_GAMEPAD_BUTTON_SOUTH:
-            return "Gamepad_FaceButton_Bottom";
+            return PhysicalKey::GamepadFaceButtonBottom;
         case SDL_GAMEPAD_BUTTON_EAST:
-            return "Gamepad_FaceButton_Right";
+            return PhysicalKey::GamepadFaceButtonRight;
         case SDL_GAMEPAD_BUTTON_NORTH:
-            return "Gamepad_FaceButton_Top";
+            return PhysicalKey::GamepadFaceButtonTop;
         case SDL_GAMEPAD_BUTTON_WEST:
-            return "Gamepad_FaceButton_Left";
+            return PhysicalKey::GamepadFaceButtonLeft;
         case SDL_GAMEPAD_BUTTON_BACK:
-            return "Gamepad_Special_Left";
+            return PhysicalKey::GamepadSpecialLeft;
         case SDL_GAMEPAD_BUTTON_START:
-            return "Gamepad_Special_Right";
+            return PhysicalKey::GamepadSpecialRight;
         case SDL_GAMEPAD_BUTTON_LEFT_STICK:
-            return "Gamepad_LeftThumbstick";
+            return PhysicalKey::GamepadLeftThumbstick;
         case SDL_GAMEPAD_BUTTON_RIGHT_STICK:
-            return "Gamepad_RightThumbstick";
+            return PhysicalKey::GamepadRightThumbstick;
         case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
-            return "Gamepad_LeftShoulder";
+            return PhysicalKey::GamepadLeftShoulder;
         case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
-            return "Gamepad_RightShoulder";
+            return PhysicalKey::GamepadRightShoulder;
         case SDL_GAMEPAD_BUTTON_DPAD_UP:
-            return "Gamepad_DPad_Up";
+            return PhysicalKey::GamepadDPadUp;
         case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
-            return "Gamepad_DPad_Down";
+            return PhysicalKey::GamepadDPadDown;
         case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
-            return "Gamepad_DPad_Left";
+            return PhysicalKey::GamepadDPadLeft;
         case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:
-            return "Gamepad_DPad_Right";
+            return PhysicalKey::GamepadDPadRight;
         default:
             return {};
     }
 }
-auto mouse_key(Uint8 button) -> std::string_view {
+auto mouse_key(Uint8 button) -> PhysicalKey {
     switch (button) {
         case SDL_BUTTON_LEFT:
-            return "LeftMouseButton";
+            return PhysicalKey::LeftMouseButton;
         case SDL_BUTTON_RIGHT:
-            return "RightMouseButton";
+            return PhysicalKey::RightMouseButton;
         case SDL_BUTTON_MIDDLE:
-            return "MiddleMouseButton";
+            return PhysicalKey::MiddleMouseButton;
         case SDL_BUTTON_X1:
-            return "ThumbMouseButton";
+            return PhysicalKey::ThumbMouseButton;
         case SDL_BUTTON_X2:
-            return "ThumbMouseButton2";
+            return PhysicalKey::ThumbMouseButton2;
         default:
             return {};
     }
 }
-constexpr std::array<std::string_view, SDL_GAMEPAD_AXIS_COUNT> axis_names{
-    "Gamepad_LeftX",
-    "Gamepad_LeftY",
-    "Gamepad_RightX",
-    "Gamepad_RightY",
-    "Gamepad_LeftTriggerAxis",
-    "Gamepad_RightTriggerAxis"};
+constexpr std::array<PhysicalKey, SDL_GAMEPAD_AXIS_COUNT> axis_keys{
+    PhysicalKey::GamepadLeftX,
+    PhysicalKey::GamepadLeftY,
+    PhysicalKey::GamepadRightX,
+    PhysicalKey::GamepadRightY,
+    PhysicalKey::GamepadLeftTriggerAxis,
+    PhysicalKey::GamepadRightTriggerAxis};
+constexpr std::array<PhysicalKey, 6> positive_keys{PhysicalKey::GamepadLeftStickRight,
+                                                   PhysicalKey::GamepadLeftStickUp,
+                                                   PhysicalKey::GamepadRightStickRight,
+                                                   PhysicalKey::GamepadRightStickUp,
+                                                   PhysicalKey::GamepadLeftTrigger,
+                                                   PhysicalKey::GamepadRightTrigger};
+constexpr std::array<PhysicalKey, 4> negative_keys{PhysicalKey::GamepadLeftStickLeft,
+                                                   PhysicalKey::GamepadLeftStickDown,
+                                                   PhysicalKey::GamepadRightStickLeft,
+                                                   PhysicalKey::GamepadRightStickDown};
 constexpr std::array<float, 5> viewer_speeds{5000.f, 15000.f, 50000.f, 150000.f, 500000.f};
 }
 
@@ -264,7 +210,7 @@ void SdlInput::synchronize() {
         flight_.configure(controls_, current.context);
         if (current.context == input::Context::Gameplay) {
             for (std::size_t axis{}; axis < axes_.size(); ++axis) {
-                flight_.restore_axis(input::parse_key(axis_names[axis]), axes_[axis], controls_);
+                flight_.restore_axis(axis_keys[axis], axes_[axis], controls_);
             }
         }
     }
@@ -283,23 +229,23 @@ void SdlInput::synchronize() {
         }
     }
 }
-void SdlInput::key(std::string_view name, bool down, bool repeat, Uint32 character) {
+void SdlInput::key(input::KeyCode code, bool down, bool repeat, Uint32 character) {
     if (route_.context == input::Context::Menu) {
-        host::ui_key(name, character, down, repeat, modifiers_);
+        host::ui_key(code, character, down, repeat, modifiers_);
         return;
     }
-    if (repeat || name.empty()) {
+    if (repeat || code == PhysicalKey::Unbound) {
         return;
     }
     if (route_.context == input::Context::Gameplay) {
-        if (flight_.update(input::parse_key(name), down ? 1.f : 0.f, controls_)) {
+        if (flight_.update(code, down ? 1.f : 0.f, controls_)) {
             host::pause_or_exit_viewer();
         }
         return;
     }
 
-    if (down && ((!route_.movable_viewer && name == "Escape") ||
-                 (route_.movable_viewer && flight_.update(input::parse_key(name), 1.f, controls_)))) {
+    if (down && ((!route_.movable_viewer && code == PhysicalKey::Escape) ||
+                 (route_.movable_viewer && flight_.update(code, 1.f, controls_)))) {
         host::pause_or_exit_viewer();
         return;
     }
@@ -307,14 +253,19 @@ void SdlInput::key(std::string_view name, bool down, bool repeat, Uint32 charact
         return;
     }
     if (!down) {
-        flight_.update(input::parse_key(name), 0.f, controls_);
+        flight_.update(code, 0.f, controls_);
     }
-    if (name == "RightMouseButton" && down) {
+    if (code == PhysicalKey::RightMouseButton && down) {
         viewer_looking_ = !viewer_looking_;
     }
-    static constexpr std::array<std::string_view, 7> movement_keys{
-        "D", "A", "W", "S", "E", "Q", "LeftShift"};
-    auto const found{std::ranges::find(movement_keys, name)};
+    static constexpr std::array<PhysicalKey, 7> movement_keys{PhysicalKey::D,
+                                                              PhysicalKey::A,
+                                                              PhysicalKey::W,
+                                                              PhysicalKey::S,
+                                                              PhysicalKey::E,
+                                                              PhysicalKey::Q,
+                                                              PhysicalKey::LeftShift};
+    auto const found{std::ranges::find(movement_keys, code.key)};
     if (found != movement_keys.end()) {
         viewer_buttons_[static_cast<std::size_t>(found - movement_keys.begin())] = down;
     }
@@ -367,7 +318,7 @@ void SdlInput::handle(SDL_Event const& event) {
                                          bool(mod & SDL_KMOD_LGUI),
                                          bool(mod & SDL_KMOD_RGUI),
                                          bool(mod & SDL_KMOD_CAPS)};
-            key(key_name(event.key), event.key.down, event.key.repeat, event.key.key);
+            key(keyboard_key(event.key), event.key.down, event.key.repeat, event.key.key);
             if (event.key.down && event.key.key == SDLK_BACKSPACE &&
                 route_.context == input::Context::Menu && !(mod & (SDL_KMOD_CTRL | SDL_KMOD_ALT)) &&
                 host::editing_text()) {
@@ -384,7 +335,7 @@ void SdlInput::handle(SDL_Event const& event) {
         case SDL_EVENT_MOUSE_BUTTON_UP: {
             auto const& button{event.button};
             auto const name{mouse_key(button.button)};
-            if (name.empty()) {
+            if (name == PhysicalKey::Unbound) {
                 break;
             }
             auto const mask{SDL_BUTTON_MASK(button.button)};
@@ -396,10 +347,10 @@ void SdlInput::handle(SDL_Event const& event) {
                 ui_mouse_buttons_ |= mask;
                 auto const action{button.clicks == 2 ? host::PointerAction::DoubleClick
                                                      : host::PointerAction::Down};
-                host::ui_pointer({action, button.button, button.x, button.y, 0.f}, modifiers_);
+                host::ui_pointer({action, name, button.x, button.y, 0.f}, modifiers_);
             } else if (!button.down && (ui_mouse_buttons_ & mask)) {
                 ui_mouse_buttons_ &= ~mask;
-                host::ui_pointer({host::PointerAction::Up, button.button, button.x, button.y, 0.f},
+                host::ui_pointer({host::PointerAction::Up, name, button.x, button.y, 0.f},
                                  modifiers_);
             }
             if (route_.context != input::Context::Menu) {
@@ -416,7 +367,7 @@ void SdlInput::handle(SDL_Event const& event) {
                 viewer_dy_ -= event.motion.yrel;
             } else {
                 host::ui_pointer(
-                    {host::PointerAction::Move, 0, event.motion.x, event.motion.y, 0.f},
+                    {host::PointerAction::Move, PhysicalKey::Unbound, event.motion.x, event.motion.y, 0.f},
                     modifiers_);
             }
             break;
@@ -425,7 +376,7 @@ void SdlInput::handle(SDL_Event const& event) {
                                                                               : event.wheel.y};
             if (route_.context == input::Context::Menu) {
                 host::ui_pointer({host::PointerAction::Wheel,
-                                  0,
+                                  PhysicalKey::Unbound,
                                   event.wheel.mouse_x,
                                   event.wheel.mouse_y,
                                   amount},
@@ -433,7 +384,7 @@ void SdlInput::handle(SDL_Event const& event) {
             } else if (route_.movable_viewer) {
                 speed_index_ = std::clamp(speed_index_ + (amount > 0.f) - (amount < 0.f), 0, 4);
             } else if (route_.context == input::Context::Gameplay && amount != 0.f) {
-                auto const name{amount > 0.f ? "MouseScrollUp" : "MouseScrollDown"};
+                auto const name{amount > 0.f ? PhysicalKey::MouseScrollUp : PhysicalKey::MouseScrollDown};
                 key(name, true, false, 0);
                 key(name, false, false, 0);
             }
@@ -443,7 +394,7 @@ void SdlInput::handle(SDL_Event const& event) {
         case SDL_EVENT_GAMEPAD_BUTTON_UP:
             if (gamepad_ && SDL_GetGamepadID(gamepad_) == event.gbutton.which) {
                 auto const name{pad_button(event.gbutton.button)};
-                if (!name.empty()) {
+                if (name != PhysicalKey::Unbound) {
                     auto const button{event.gbutton.button};
                     pad_buttons_[button] = event.gbutton.down;
                     if (button >= SDL_GAMEPAD_BUTTON_DPAD_UP &&
@@ -474,27 +425,17 @@ void SdlInput::axis_value(std::size_t axis, float value) {
     auto const before{axes_[axis]};
     axes_[axis] = value;
     if (route_.context == input::Context::Menu) {
-        host::ui_axis(axis_names[axis], value, modifiers_);
+        host::ui_axis(axis_keys[axis], value, modifiers_);
     } else if ((route_.context == input::Context::Gameplay || route_.movable_viewer) &&
-               flight_.update(input::parse_key(axis_names[axis]), value, controls_)) {
+               flight_.update(axis_keys[axis], value, controls_)) {
         host::pause_or_exit_viewer();
     }
     // Digital aliases are independently rebindable in the Controls menu.
-    static constexpr std::array<std::string_view, 6> positive{"Gamepad_LeftStick_Right",
-                                                              "Gamepad_LeftStick_Up",
-                                                              "Gamepad_RightStick_Right",
-                                                              "Gamepad_RightStick_Up",
-                                                              "Gamepad_LeftTrigger",
-                                                              "Gamepad_RightTrigger"};
-    static constexpr std::array<std::string_view, 4> negative{"Gamepad_LeftStick_Left",
-                                                              "Gamepad_LeftStick_Down",
-                                                              "Gamepad_RightStick_Left",
-                                                              "Gamepad_RightStick_Down"};
     if ((before >= 0.5f) != (value >= 0.5f)) {
-        key(positive[axis], value >= 0.5f, false, 0);
+        key(positive_keys[axis], value >= 0.5f, false, 0);
     }
-    if (axis < negative.size() && (before <= -0.5f) != (value <= -0.5f)) {
-        key(negative[axis], value <= -0.5f, false, 0);
+    if (axis < negative_keys.size() && (before <= -0.5f) != (value <= -0.5f)) {
+        key(negative_keys[axis], value <= -0.5f, false, 0);
     }
 }
 void SdlInput::release_gamepad() {
@@ -527,7 +468,7 @@ void SdlInput::finish_frame(double dt) {
         // Slate applies its own repeat interval to held analog navigation.
         for (auto axis : {SDL_GAMEPAD_AXIS_LEFTX, SDL_GAMEPAD_AXIS_LEFTY}) {
             if (std::abs(axes_[axis]) >= 0.5f) {
-                host::ui_axis(axis_names[axis], axes_[axis], modifiers_);
+                host::ui_axis(axis_keys[axis], axes_[axis], modifiers_);
             }
         }
     }

@@ -37,12 +37,12 @@ void present_steering(std::optional<Vector2d>) {}
 void present_viewer_motion(ViewerMotion const& motion, double) {
     tests::presentation.motion = motion;
 }
-void ui_key(std::string_view name, std::uint32_t, bool down, bool, Modifiers) {
+void ui_key(input::KeyCode code, std::uint32_t, bool down, bool, Modifiers) {
     if (down) {
-        tests::presentation.keys.emplace_back(name);
+        tests::presentation.keys.emplace_back(input::serialized_key(code));
     }
 }
-void ui_axis(std::string_view, float, Modifiers) {}
+void ui_axis(input::KeyCode, float, Modifiers) {}
 void ui_pointer(PointerInput const& event, Modifiers) {
     tests::presentation.pointer.push_back(event.action);
 }

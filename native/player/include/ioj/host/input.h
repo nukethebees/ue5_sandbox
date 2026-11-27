@@ -17,7 +17,7 @@ struct InputRoute {
 enum class PointerAction { Move, Down, Up, DoubleClick, Wheel };
 struct PointerInput {
     PointerAction action;
-    int button;
+    PhysicalKey button;
     float x;
     float y;
     float wheel;
@@ -45,8 +45,8 @@ IOJ_INPUT_API void pause_or_exit_viewer();
 IOJ_INPUT_API void present_steering(std::optional<Vector2d> steering);
 IOJ_INPUT_API void present_viewer_motion(ViewerMotion const& motion, double delta_seconds);
 IOJ_INPUT_API void ui_key(
-    std::string_view name, std::uint32_t character, bool down, bool repeat, Modifiers modifiers);
-IOJ_INPUT_API void ui_axis(std::string_view name, float value, Modifiers modifiers);
+    input::KeyCode code, std::uint32_t character, bool down, bool repeat, Modifiers modifiers);
+IOJ_INPUT_API void ui_axis(input::KeyCode code, float value, Modifiers modifiers);
 IOJ_INPUT_API void ui_pointer(PointerInput const& event, Modifiers modifiers);
 IOJ_INPUT_API void ui_text(std::string_view text, Modifiers modifiers);
 IOJ_INPUT_API auto editing_text() -> bool;

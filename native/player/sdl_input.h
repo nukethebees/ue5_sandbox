@@ -24,7 +24,7 @@ class SdlInput {
     auto ship_frame() const { return flight_.frame(); }
   private:
     void synchronize();
-    void key(std::string_view name, bool down, bool repeat, Uint32 character);
+    void key(input::KeyCode code, bool down, bool repeat, Uint32 character);
     void axis_value(std::size_t axis, float value);
     void release_gamepad();
 
