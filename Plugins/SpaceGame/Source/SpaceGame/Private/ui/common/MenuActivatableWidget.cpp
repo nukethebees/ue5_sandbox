@@ -1,18 +1,19 @@
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 
-#include <Input/UIActionBindingHandle.h>
-#include <InputMappingContext.h>
-#include <UObject/ConstructorHelpers.h>
+#include <InputCoreTypes.h>
 
 namespace ioj {
 UMenuActivatableWidget::UMenuActivatableWidget() {
-    bIsBackHandler = true;
+    bIsBackHandler = false;
     bAutoRestoreFocus = true;
+}
 
-    static ConstructorHelpers::FObjectFinder<UInputMappingContext> const menu_mapping{
-        TEXT("/SpaceGame/Input/UI/IMC_menu")};
-    InputMapping = menu_mapping.Object;
-    InputMappingPriority = 1000;
+FReply UMenuActivatableWidget::NativeOnKeyDown(FGeometry const& geometry, FKeyEvent const& event) {
+    if ((event.GetKey() == EKeys::Escape || event.GetKey() == EKeys::Gamepad_FaceButton_Right) &&
+        !event.IsRepeat() && NativeOnHandleBackAction()) {
+        return FReply::Handled();
+    }
+    return Super::NativeOnKeyDown(geometry, event);
 }
 
 TOptional<FUIInputConfig> UMenuActivatableWidget::GetDesiredInputConfig() const {

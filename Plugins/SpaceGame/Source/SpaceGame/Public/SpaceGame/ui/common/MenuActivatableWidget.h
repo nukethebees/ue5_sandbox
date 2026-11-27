@@ -11,6 +11,7 @@ class SPACEGAME_API UMenuActivatableWidget : public UCommonActivatableWidget {
   public:
     UMenuActivatableWidget();
 
+    FReply NativeOnKeyDown(FGeometry const& geometry, FKeyEvent const& event) override;
     TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
 };
 }
