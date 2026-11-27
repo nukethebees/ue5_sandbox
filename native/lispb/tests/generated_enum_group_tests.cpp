@@ -1,4 +1,5 @@
 #include "GroupedEnums.h"
+#include "ReadableRecords.h"
 #include <ioj/enum_array.h>
 #include <ioj/enum_range_array.h>
 #include <ioj/enum_strings.h>
@@ -15,6 +16,36 @@
 #include <vector>
 
 namespace codegen_compile_fixture::groups {
+static_assert(std::same_as<decltype(std::declval<KeyedFields&>().get<Action::Kill>()), float&>);
+static_assert(
+    std::same_as<decltype(std::declval<KeyedFields const&>().get(Sparse::Negative)), int const&>);
+static_assert(std::same_as<decltype(std::declval<KeyedFields&&>().get<Action::Move>()), bool&&>);
+static_assert(
+    std::same_as<decltype(std::declval<KeyedFields const&&>().get(Sparse::Negative)), int const&&>);
+static_assert(std::same_as<decltype(std::declval<KeyedBits&>().get<Action::Move>()), bool>);
+TEST(EnumAccessors, RuntimeKeysPreserveReferencesAndPackedNeighbors) {
+    KeyedFields fields{};
+    auto key{Sparse::Negative};
+    fields.set(key, 21);
+    fields.get(key) *= 2;
+    EXPECT_EQ(fields.count, 42);
+    static_assert(std::to_underlying(Priority::One) == std::to_underlying(Action::Move));
+    fields.set<Priority::One>(true);
+    EXPECT_FALSE(fields.get<Action::Move>());
+    EXPECT_TRUE(fields.get(Priority::One));
+    fields.set<Action::Kill>(1.5f);
+    EXPECT_EQ(fields.weight, 1.5f);
+    KeyedBits bits{};
+    bits.set(Action::Kill, true);
+    bits.set<Action::Move>(true);
+    EXPECT_EQ(bits.raw_value(), 9u);
+    bits.set(Action::Move, false);
+    EXPECT_TRUE(bits.get<Action::Kill>());
+    EXPECT_EQ(bits.raw_value(), 8u);
+    bits.set(Sparse::Positive, std::array{false, true});
+    EXPECT_EQ(bits.get<Sparse::Positive>(), (std::array{false, true}));
+    EXPECT_EQ(bits.raw_value(), 40u);
+}
 static_assert(is_actionable(Action::Kill));
 static_assert(!is_actionable(Action::Timer));
 static_assert(noexcept(is_actionable(Action::Kill)));

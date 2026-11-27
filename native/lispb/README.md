@@ -38,6 +38,12 @@ Include `<name>_view.h` to borrow column pointers and a shared row count. The co
 
 Reading `(:weapon :count 2)` keeps the default damage of 5. A fresh read requires `count`. `read_override` starts from an existing record. Required fields may be omitted in an override. Omitted fields retain their values, nested records merge, and collections replace the whole field. Unknown and duplicate names fail validation. Use `:s7-exclude true` for C++-only fields and `:generate-s7-writer true` for serialization. [Level inputs](../../lispb/schema/level_inputs.lispb) · [Settings](../../lispb/schema/settings.lispb)
 
+## Enum-keyed record members
+
+Use `:enum-accessor (@Enum Enumerator)` on a member to generate `get<Key>()` and `set<Key>(value)`. Ordinary getters return references. Packed accessors use the field’s existing read and write operations. Tagged unions require updating the tag and payload together.
+
+A record may map keys from several enums and may use a subset of each enum. Keys must be unique within the record, including aliases for the same enum value. When all mapped members for an enum have the same access type, use `get(key)` and `set(key, value)` with a mapped runtime key.
+
 ## Enum helpers
 
 Use `:helpers` for identifiers, serialized names, display labels, and formatting. String tables require unique dense values starting at zero. Mark enum members with groups to generate membership predicates and ordered value arrays. [Simulation enums](../../lispb/schema/native_simulation_enums.lispb)

@@ -197,6 +197,7 @@ target_sources(codegen-lib PRIVATE
   src/single_allocation_soa_model.cpp
   src/packed_value_lowering.cpp
   src/record_lowering.cpp
+  src/enum_accessor_lowering.cpp
   src/record_reader_lowering.cpp
   src/record_writer_lowering.cpp
   src/union_lowering.cpp
@@ -408,6 +409,15 @@ set_tests_properties(S7ReaderRejectsUnsupportedMember PROPERTIES
   LABELS "all;native;codegen;compile-contract;subprocess"
   RESOURCE_LOCK codegen-negative-build
 )
+add_library(codegen-reject-unmapped-key OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/unsupported_enum_accessor.cpp)
+target_link_libraries(codegen-reject-unmapped-key PRIVATE codegen-generated-compile-fixture sandbox::native_defaults native-core)
+add_test(NAME EnumAccessorRejectsUnmappedKey
+  COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
+    -DREJECT_TARGET=codegen-reject-unmapped-key "-DEXPECTED_DIAGNOSTIC=Unsupported enum accessor key"
+    -P "${PROJECT_SOURCE_DIR}/cmake/expect_compile_failure.cmake"
+)
+set_tests_properties(EnumAccessorRejectsUnmappedKey PROPERTIES
+  LABELS "all;native;codegen;compile-contract;subprocess" RESOURCE_LOCK codegen-negative-build)
 foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
   set(reject_target "codegen-reject-single-${restriction}")
   add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/rejected_leaf.cpp)

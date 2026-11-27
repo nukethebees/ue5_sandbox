@@ -1,4 +1,5 @@
 #include "declaration_emission.h"
+#include "enum_accessor_lowering.h"
 #include "lowering.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
@@ -209,6 +210,14 @@ class RecordLowering : public CppIRBuilder {
         if (records.generate_visitor[row]) {
             members.append(record_visitor(ctx, record_id, name));
         }
+        std::vector<EnumAccessorMember> keyed_members;
+        for (auto const member : ctx.declarations.items(records.members[row])) {
+            if (auto const key{record_members.enum_accessor[member]}) {
+                keyed_members.push_back(
+                    {*key, record_members.name[member], lower_member_type(ctx, member)});
+            }
+        }
+        members.append(lower_enum_accessors(ctx, keyed_members, false));
         for (auto const member : ctx.declarations.items(records.members[row])) {
             auto const member_row{record_members.index(member)};
             auto const initializer{record_members.initializer[member_row]};

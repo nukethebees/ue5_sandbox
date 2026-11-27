@@ -61,6 +61,19 @@
 (module readers_fixture
   :header "ReadableRecords.h"
   :namespace codegen_compile_fixture
+  (record KeyedFields
+    (member count int :enum-accessor (@grouped_enum_fixture/Sparse Negative))
+    (member enabled bool :enum-accessor (@grouped_enum_fixture/Priority One))
+    (member active bool :enum-accessor (@grouped_enum_fixture/Action Move))
+    (member total int :enum-accessor (@grouped_enum_fixture/Sparse Positive))
+    (member weight float :enum-accessor (@grouped_enum_fixture/Action Kill))
+    (projections (cpp)))
+  (record KeyedBits :layout packed :bits 8
+    (member move bool :bits 1 :enum-accessor (@grouped_enum_fixture/Action Move))
+    (reserved gap :bits 2)
+    (member kill bool :bits 1 :enum-accessor (@grouped_enum_fixture/Action Kill))
+    (member pair bool :count 2 :enum-accessor (@grouped_enum_fixture/Sparse Positive))
+    (projections (cpp :storage std::uint8_t)))
   (enum ReaderEnum std::uint8_t :native-api true :helpers (traits to-serialized-string)
     (value Mixed :serialized-name "MixedCase")
     (projections (cpp)))

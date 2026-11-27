@@ -3,14 +3,17 @@
 
 #pragma once
 
+#include "GroupedEnums.h"
 #include "ioj/constrained_strings.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
+#include "ioj/packed_value.h"
 #include "PlainEnums.h"
 
 #include <array>
 #include <cassert>
+#include <compare>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -21,6 +24,261 @@
 #include <vector>
 
 namespace codegen_compile_fixture {
+struct KeyedFields {
+    template <auto Key>
+    constexpr decltype(auto) get(this auto&& self) {
+        if constexpr (std::same_as<decltype(Key), groups::Action>) {
+            if constexpr (Key == groups::Action::Move) {
+                return (static_cast<decltype(self)&&>(self).active);
+            } else if constexpr (Key == groups::Action::Kill) {
+                return (static_cast<decltype(self)&&>(self).weight);
+            } else {
+                static_assert(false, "Unsupported enum accessor key");
+            }
+        } else if constexpr (std::same_as<decltype(Key), groups::Priority>) {
+            if constexpr (Key == groups::Priority::One) {
+                return (static_cast<decltype(self)&&>(self).enabled);
+            } else {
+                static_assert(false, "Unsupported enum accessor key");
+            }
+        } else if constexpr (std::same_as<decltype(Key), groups::Sparse>) {
+            if constexpr (Key == groups::Sparse::Negative) {
+                return (static_cast<decltype(self)&&>(self).count);
+            } else if constexpr (Key == groups::Sparse::Positive) {
+                return (static_cast<decltype(self)&&>(self).total);
+            } else {
+                static_assert(false, "Unsupported enum accessor key");
+            }
+        } else {
+            static_assert(false, "Unsupported enum accessor key");
+        }
+    }
+
+    template <auto Key>
+    constexpr void set(this auto& self, auto&& value) {
+        if constexpr (std::same_as<decltype(Key), groups::Action>) {
+            if constexpr (Key == groups::Action::Move) {
+                self.active = static_cast<decltype(value)&&>(value);
+            } else if constexpr (Key == groups::Action::Kill) {
+                self.weight = static_cast<decltype(value)&&>(value);
+            } else {
+                static_assert(false, "Unsupported enum accessor key");
+            }
+        } else if constexpr (std::same_as<decltype(Key), groups::Priority>) {
+            if constexpr (Key == groups::Priority::One) {
+                self.enabled = static_cast<decltype(value)&&>(value);
+            } else {
+                static_assert(false, "Unsupported enum accessor key");
+            }
+        } else if constexpr (std::same_as<decltype(Key), groups::Sparse>) {
+            if constexpr (Key == groups::Sparse::Negative) {
+                self.count = static_cast<decltype(value)&&>(value);
+            } else if constexpr (Key == groups::Sparse::Positive) {
+                self.total = static_cast<decltype(value)&&>(value);
+            } else {
+                static_assert(false, "Unsupported enum accessor key");
+            }
+        } else {
+            static_assert(false, "Unsupported enum accessor key");
+        }
+    }
+
+    constexpr decltype(auto) get(this auto&& self, groups::Priority key) {
+        switch (key) {
+            case groups::Priority::One:
+                return static_cast<decltype(self)&&>(self).template get<groups::Priority::One>();
+            default:
+                assert((false && "Unmapped enum accessor key"));
+                std::unreachable();
+        }
+    }
+
+    constexpr void set(this auto& self, groups::Priority key, bool value) {
+        switch (key) {
+            case groups::Priority::One:
+                return self.template set<groups::Priority::One>(
+                    static_cast<decltype(value)&&>(value));
+            default:
+                assert((false && "Unmapped enum accessor key"));
+                std::unreachable();
+        }
+    }
+
+    constexpr decltype(auto) get(this auto&& self, groups::Sparse key) {
+        switch (key) {
+            case groups::Sparse::Negative:
+                return static_cast<decltype(self)&&>(self).template get<groups::Sparse::Negative>();
+            case groups::Sparse::Positive:
+                return static_cast<decltype(self)&&>(self).template get<groups::Sparse::Positive>();
+            default:
+                assert((false && "Unmapped enum accessor key"));
+                std::unreachable();
+        }
+    }
+
+    constexpr void set(this auto& self, groups::Sparse key, int value) {
+        switch (key) {
+            case groups::Sparse::Negative:
+                return self.template set<groups::Sparse::Negative>(
+                    static_cast<decltype(value)&&>(value));
+            case groups::Sparse::Positive:
+                return self.template set<groups::Sparse::Positive>(
+                    static_cast<decltype(value)&&>(value));
+            default:
+                assert((false && "Unmapped enum accessor key"));
+                std::unreachable();
+        }
+    }
+
+    int count;
+    bool enabled;
+    bool active;
+    int total;
+    float weight;
+};
+
+struct KeyedBits;
+
+namespace detail {
+using KeyedBitsBase = ioj::PackedValueBase<KeyedBits, ioj::PackedStorage<std::uint8_t, 8>{0}>;
+} // namespace detail
+
+struct KeyedBits : detail::KeyedBitsBase {
+  public:
+    // Storage
+    using Base = detail::KeyedBitsBase;
+    using packed_integer_tag = ioj::packed::integer_tag;
+
+    // move
+    static constexpr ioj::PackedField<storage_type, bool, 0, 1> move_layout{};
+
+    // kill
+    static constexpr ioj::PackedField<storage_type, bool, 3, 1> kill_layout{};
+
+    // pair_0
+    static constexpr ioj::PackedField<storage_type, bool, 4, 1> pair_0_layout{};
+
+    // pair_1
+    static constexpr ioj::PackedField<storage_type, bool, 5, 1> pair_1_layout{};
+
+    constexpr KeyedBits() noexcept = default;
+    constexpr explicit KeyedBits(bool const move_value,
+                                 bool const kill_value,
+                                 bool const pair_0_value,
+                                 bool const pair_1_value) noexcept
+        : Base{static_cast<storage_type>(ioj::packed_pack<decltype(move_layout)>(move_value) |
+                                         ioj::packed_pack<decltype(kill_layout)>(kill_value) |
+                                         ioj::packed_pack<decltype(pair_0_layout)>(pair_0_value) |
+                                         ioj::packed_pack<decltype(pair_1_layout)>(pair_1_value))} {
+
+    }
+
+    [[nodiscard]] constexpr auto operator<=>(KeyedBits const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto move() const noexcept -> bool {
+        return extract<decltype(move_layout)>();
+    }
+    constexpr void set_move(bool const value) noexcept { insert<decltype(move_layout)>(value); }
+    [[nodiscard]] constexpr auto kill() const noexcept -> bool {
+        return extract<decltype(kill_layout)>();
+    }
+    constexpr void set_kill(bool const value) noexcept { insert<decltype(kill_layout)>(value); }
+    [[nodiscard]] constexpr auto pair_0() const noexcept -> bool {
+        return extract<decltype(pair_0_layout)>();
+    }
+    constexpr void set_pair_0(bool const value) noexcept { insert<decltype(pair_0_layout)>(value); }
+    [[nodiscard]] constexpr auto pair_1() const noexcept -> bool {
+        return extract<decltype(pair_1_layout)>();
+    }
+    constexpr void set_pair_1(bool const value) noexcept { insert<decltype(pair_1_layout)>(value); }
+    template <auto Key>
+    constexpr decltype(auto) get(this auto const& self) {
+        if constexpr (std::same_as<decltype(Key), groups::Action>) {
+            if constexpr (Key == groups::Action::Move) {
+                return self.move();
+            } else if constexpr (Key == groups::Action::Kill) {
+                return self.kill();
+            } else {
+                static_assert(false, "Unsupported enum accessor key");
+            }
+        } else if constexpr (std::same_as<decltype(Key), groups::Sparse>) {
+            if constexpr (Key == groups::Sparse::Positive) {
+                return std::array<bool, 2>{self.pair_0(), self.pair_1()};
+            } else {
+                static_assert(false, "Unsupported enum accessor key");
+            }
+        } else {
+            static_assert(false, "Unsupported enum accessor key");
+        }
+    }
+    template <auto Key>
+    constexpr void set(this auto& self, auto&& value) {
+        if constexpr (std::same_as<decltype(Key), groups::Action>) {
+            if constexpr (Key == groups::Action::Move) {
+                self.set_move(static_cast<decltype(value)&&>(value));
+            } else if constexpr (Key == groups::Action::Kill) {
+                self.set_kill(static_cast<decltype(value)&&>(value));
+            } else {
+                static_assert(false, "Unsupported enum accessor key");
+            }
+        } else if constexpr (std::same_as<decltype(Key), groups::Sparse>) {
+            if constexpr (Key == groups::Sparse::Positive) {
+                self.set_pair_0(value[0ULL]);
+                self.set_pair_1(value[1ULL]);
+            } else {
+                static_assert(false, "Unsupported enum accessor key");
+            }
+        } else {
+            static_assert(false, "Unsupported enum accessor key");
+        }
+    }
+    constexpr decltype(auto) get(this auto const& self, groups::Action key) {
+        switch (key) {
+            case groups::Action::Move:
+                return self.template get<groups::Action::Move>();
+            case groups::Action::Kill:
+                return self.template get<groups::Action::Kill>();
+            default:
+                assert((false && "Unmapped enum accessor key"));
+                std::unreachable();
+        }
+    }
+    constexpr void set(this auto& self, groups::Action key, bool value) {
+        switch (key) {
+            case groups::Action::Move:
+                return self.template set<groups::Action::Move>(
+                    static_cast<decltype(value)&&>(value));
+            case groups::Action::Kill:
+                return self.template set<groups::Action::Kill>(
+                    static_cast<decltype(value)&&>(value));
+            default:
+                assert((false && "Unmapped enum accessor key"));
+                std::unreachable();
+        }
+    }
+    constexpr decltype(auto) get(this auto const& self, groups::Sparse key) {
+        switch (key) {
+            case groups::Sparse::Positive:
+                return self.template get<groups::Sparse::Positive>();
+            default:
+                assert((false && "Unmapped enum accessor key"));
+                std::unreachable();
+        }
+    }
+    constexpr void set(this auto& self, groups::Sparse key, std::array<bool, 2> value) {
+        switch (key) {
+            case groups::Sparse::Positive:
+                return self.template set<groups::Sparse::Positive>(
+                    static_cast<decltype(value)&&>(value));
+            default:
+                assert((false && "Unmapped enum accessor key"));
+                std::unreachable();
+        }
+    }
+};
+
+static_assert(ioj::valid_packed_value_layout<KeyedBits>());
+
 using ReaderEnumUnderlying = std::uint8_t;
 
 // Logical bit width: 1.

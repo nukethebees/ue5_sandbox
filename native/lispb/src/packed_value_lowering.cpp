@@ -1,4 +1,5 @@
 #include "declaration_emission.h"
+#include "enum_accessor_lowering.h"
 #include "lowering.h"
 #include "lowering_context.h"
 #include "packed_value_internal.h"
@@ -24,6 +25,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -122,6 +124,40 @@ class PackedEmitter : public CppIRBuilder {
                        NameOrigin::global,
                        {dependency("ioj::PackedStorage", "ioj/packed_value.h")})));
         packed_members();
+        if (graph_.definition(type_).kind() == schema::TypeDefinitionKind::record) {
+            std::vector<EnumAccessorMember> keyed_members;
+            for (auto const& placement : layout_.placements) {
+                if (placement.parent || placement.reserved) {
+                    continue;
+                }
+                auto const source{graph_.definitions().children.source[placement.child]};
+                if (auto const key{context_.declarations.child_occurrences.enum_accessor[source]}) {
+                    if (placement.discriminator) {
+                        throw std::invalid_argument{
+                            "enum-accessor cannot independently set packed discriminator: " +
+                            placement.path};
+                    }
+                    if (!addressable(placement)) {
+                        throw std::invalid_argument{
+                            "enum-accessor needs an addressable packed member: " + placement.path};
+                    }
+                    auto const type{value_type(context_, placement.type, placement.bits)};
+                    auto const& children{context_.declarations.child_occurrences};
+                    if (auto const count{children.count[source]}) {
+                        auto const field{children.name[source]};
+                        if (keyed_members.empty() || keyed_members.back().field != field) {
+                            auto const array{template_type(
+                                std_types().array, {type, intern_type(std::to_string(*count))})};
+                            keyed_members.push_back({*key, field, array});
+                        }
+                        keyed_members.back().elements.push_back(text(field_name(placement)));
+                    } else {
+                        keyed_members.push_back({*key, text(field_name(placement)), type});
+                    }
+                }
+            }
+            append(functions_, lower_enum_accessors(context_, keyed_members, true));
+        }
         Nodes members{access()};
         members.push_back(lines(1));
         append(members, metadata_);
