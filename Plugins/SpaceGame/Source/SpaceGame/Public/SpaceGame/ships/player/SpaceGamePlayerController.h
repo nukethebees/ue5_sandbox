@@ -28,7 +28,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
 
     friend struct FShipControlContext;
     friend struct FObserverControlContext;
-    friend struct FBenchmarkControlContext;
     friend struct FPlayerHudLifecycle;
     friend struct FPlayerModalUi;
     friend class ATestBatchOrchestrator;
