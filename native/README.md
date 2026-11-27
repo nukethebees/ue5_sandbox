@@ -5,7 +5,7 @@ Build and test the simulation without Unreal. [Native build](../README.md#other-
 | Task | Guide |
 | --- | --- |
 | Change the simulation tick | [Phase order and data lifetime](simulation/ARCHITECTURE.md) |
-| Load a mission | [Level loading](level_authoring/ARCHITECTURE.md) |
+| Load a level | [Level loading](level_authoring/ARCHITECTURE.md) |
 | Generate schemas or SoA types | [Lispb](lispb/README.md) |
 | Read or write a save | [Profiles](profiles/README.md) |
 | Configure the game or user preferences | [S7 settings](../LevelScripts/README.md#settings) |

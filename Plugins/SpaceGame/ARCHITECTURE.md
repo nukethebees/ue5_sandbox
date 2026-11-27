@@ -9,7 +9,7 @@ flowchart TD
     H --> V[Player view and HUD]
 ```
 
-Application owns the main loop, the current LevelSim and its reusable arena. It constructs the simulation paused using the mission's spawn data and static collision boxes. Once Unreal binds its presentation actors, Application starts the simulation if requested. Unreal reads the simulation after fixed ticks and publishes menu actions and input in frame messages. Application detaches presentation before destroying the level and resetting the arena.
+Application owns the main loop. The native player constructs the simulation from the authored level and keeps only the resolved presentation inputs across world travel. When the world is ready, Unreal initializes its actors from those inputs and the first frame. The player then handles an initial terminal result or starts the simulation according to the requested mode. Frame columns are borrowed for each synchronous presentation call. On unload, the player publishes results, destroys the simulation, and rewinds its reusable arena.
 
 Carriers launch fighters in a vertical column above their collision bounds. Preview the column on the capital proxy.
 

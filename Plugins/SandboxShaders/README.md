@@ -4,7 +4,7 @@
 
 | System | Use |
 | --- | --- |
-| GPU Starfield | Set `starfield` in mission settings. For an editor preview, set `settings_file` on the actor and click **Load Preview Settings**. |
+| GPU Starfield | Set `starfield` in level settings. For an editor preview, set `settings_file` on the actor and click **Load Preview Settings**. |
 | Celestial Backdrop | Place `ACelestialBackdropActor`, set radius and sun direction, then assign an appearance profile. Layered mode supports opaque depth. Analytic mode draws one translucent proxy. |
 | Space Dust | Tune the player camera's velocity streaks in `FPlayerShipConfig::space_dust`. Open **Development → Space Dust Flight Lab**. In a non-shipping build, try `space_dust.preset off`, `default`, or `strong`. |
 

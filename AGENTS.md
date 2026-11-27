@@ -3,6 +3,7 @@ Unreal Engine 5.8 project.
 # Project Context
 
 * Simulation-heavy C++ space combat game with heavy SoA use. Prefer simple, explicit systems.
+* A playable level may be called a mission in player-facing text. Use level terminology in code, scripts, tools and architecture. Application owns process lifecycle and coordinates subsystems. Keep subsystem implementation with its native owner.
 * Prefer `native/` for faster builds and tests until Unreal integration is needed.
   Standalone developer tools may live under `tools/`.
 

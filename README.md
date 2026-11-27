@@ -63,7 +63,7 @@ ctest --test-dir out/build/native -L '^native-simulation$' -LE 'soak|compile-con
 
 ## Guides
 
-- [Author a mission](LevelScripts/README.md)
+- [Author a level](LevelScripts/README.md)
 - [Regenerate C++ or assets](native/lispb/README.md)
 - [Open a shader or UI showcase](Plugins/SandboxExperiments/README.md)
 - [Compare revisions or capture a trace](docs/benchmarks.md)
