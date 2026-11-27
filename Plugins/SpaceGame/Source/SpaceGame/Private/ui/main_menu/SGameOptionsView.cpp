@@ -1,7 +1,7 @@
 #include "SGameOptionsView.h"
 
 #include "input/BindingCapture.h"
-#include "SpaceGame/settings/ControlBindings.h"
+#include "input/BindingKey.h"
 #include "SpaceGame/settings/GameVideoSettings.h"
 #include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
@@ -297,28 +297,16 @@ auto SGameOptionsView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key
         close_binding_management(true);
         return FReply::Handled();
     }
-    if (captured_binding_.IsSet() && captured_chord_.IsSet() && !chord_capture_.is_complete()) {
-        if (key_event.IsRepeat()) {
-            return FReply::Handled();
-        }
-        return accept_chord_key(key, true);
-    }
-    if (captured_binding_.IsSet() && !captured_chord_.IsSet() && captured_key_ == EKeys::Invalid) {
-        return accept_binding_key(key);
-    }
-
     auto buttons{TArray<TSharedPtr<SGameButton>>{}};
     if (dirty_prompt_visible_) {
         buttons = {dirty_apply_button_, dirty_discard_button_, dirty_stay_button_};
     } else if (display_prompt_visible_) {
         buttons = {confirm_display_button_, revert_display_button_};
-    } else if (captured_chord_.IsSet() && capture_prompt_->GetVisibility().IsVisible()) {
-        buttons = {chord_confirm_button_, chord_clear_button_, chord_cancel_button_};
     } else if (captured_binding_.IsSet()) {
         buttons = {conflict_replace_button_, conflict_cancel_button_};
     } else if (binding_management_visible_) {
         buttons = {binding_change_button_};
-        if (managed_binding_.IsSet() && managed_binding_->current_key.IsValid()) {
+        if (managed_binding_.IsSet() && managed_binding_->current_key != PhysicalKey::Unbound) {
             buttons.Add(binding_clear_button_);
         }
         if (managed_binding_.IsSet() && managed_binding_->is_modified()) {
@@ -352,61 +340,6 @@ auto SGameOptionsView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key
     auto const next_index{(current_index + direction + button_count) % button_count};
     buttons[next_index]->focus();
     return FReply::Handled();
-}
-
-auto SGameOptionsView::OnKeyUp(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply {
-    if (captured_binding_.IsSet() && captured_chord_.IsSet()) {
-        return release_chord_key(key_event.GetKey());
-    }
-    return SCompoundWidget::OnKeyUp(geometry, key_event);
-}
-
-auto SGameOptionsView::OnMouseButtonDown(FGeometry const& geometry,
-                                         FPointerEvent const& mouse_event) -> FReply {
-    if (captured_binding_.IsSet() && captured_chord_.IsSet() && !chord_capture_.is_complete()) {
-        return accept_chord_key(mouse_event.GetEffectingButton(), true);
-    }
-    if (captured_binding_.IsSet() && !captured_chord_.IsSet() && captured_key_ == EKeys::Invalid) {
-        return accept_binding_key(mouse_event.GetEffectingButton());
-    }
-    return SCompoundWidget::OnMouseButtonDown(geometry, mouse_event);
-}
-
-auto SGameOptionsView::OnMouseButtonUp(FGeometry const& geometry, FPointerEvent const& mouse_event)
-    -> FReply {
-    if (captured_binding_.IsSet() && captured_chord_.IsSet()) {
-        return release_chord_key(mouse_event.GetEffectingButton());
-    }
-    return SCompoundWidget::OnMouseButtonUp(geometry, mouse_event);
-}
-
-auto SGameOptionsView::OnAnalogValueChanged(FGeometry const& geometry,
-                                            FAnalogInputEvent const& analog_event) -> FReply {
-    if (captured_binding_.IsSet() && captured_chord_.IsSet() && !chord_capture_.is_complete() &&
-        FMath::Abs(analog_event.GetAnalogValue()) >= 0.5f) {
-        return accept_chord_key(analog_event.GetKey(), false);
-    }
-    if (captured_binding_.IsSet() && !captured_chord_.IsSet() && captured_key_ == EKeys::Invalid &&
-        FMath::Abs(analog_event.GetAnalogValue()) >= 0.5f) {
-        return accept_binding_key(analog_event.GetKey());
-    }
-    return SCompoundWidget::OnAnalogValueChanged(geometry, analog_event);
-}
-
-auto SGameOptionsView::OnMouseWheel(FGeometry const& geometry, FPointerEvent const& mouse_event)
-    -> FReply {
-    if (captured_binding_.IsSet() && captured_chord_.IsSet() && !chord_capture_.is_complete() &&
-        !FMath::IsNearlyZero(mouse_event.GetWheelDelta())) {
-        return accept_chord_key(mouse_event.GetWheelDelta() > 0.0f ? EKeys::MouseScrollUp
-                                                                   : EKeys::MouseScrollDown,
-                                false);
-    }
-    if (captured_binding_.IsSet() && !captured_chord_.IsSet() && captured_key_ == EKeys::Invalid &&
-        !FMath::IsNearlyZero(mouse_event.GetWheelDelta())) {
-        return accept_binding_key(mouse_event.GetWheelDelta() > 0.0f ? EKeys::MouseScrollUp
-                                                                     : EKeys::MouseScrollDown);
-    }
-    return SCompoundWidget::OnMouseWheel(geometry, mouse_event);
 }
 
 /* **************************************** */
@@ -626,10 +559,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                   .Text(NSLOCTEXT("OptionsMenu", "KeyboardMouseDevice", "Keyboard & Mouse"))
                   .OnClicked_Lambda([this] {
                       controls_device_ = GameSettingDevice::KeyboardMouse;
-                      request_controls_rebuild(FControlsFocusIdentity{
-                          .kind = EControlsFocusKind::Device,
-                          .device = GameSettingDevice::KeyboardMouse,
-                      });
+                      request_controls_rebuild(
+                          FControlsFocusIdentity{GameSettingDevice::KeyboardMouse});
                       return FReply::Handled();
                   })] +
          SHorizontalBox::Slot().FillWidth(
@@ -640,31 +571,21 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                        .Text(NSLOCTEXT("OptionsMenu", "ControllerDevice", "Controller"))
                        .OnClicked_Lambda([this] {
                            controls_device_ = GameSettingDevice::Controller;
-                           request_controls_rebuild(FControlsFocusIdentity{
-                               .kind = EControlsFocusKind::Device,
-                               .device = GameSettingDevice::Controller,
-                           });
+                           request_controls_rebuild(
+                               FControlsFocusIdentity{GameSettingDevice::Controller});
                            return FReply::Handled();
                        })]];
     add_section(NSLOCTEXT("OptionsMenu", "InputDeviceSection", "Input Device"), device_rows);
-    register_controls_focus(
-        FControlsFocusIdentity{
-            .kind = EControlsFocusKind::Device,
-            .device = GameSettingDevice::KeyboardMouse,
-        },
-        keyboard_mouse_button.ToSharedRef());
-    register_controls_focus(
-        FControlsFocusIdentity{
-            .kind = EControlsFocusKind::Device,
-            .device = GameSettingDevice::Controller,
-        },
-        controller_button.ToSharedRef());
+    register_controls_focus(FControlsFocusIdentity{GameSettingDevice::KeyboardMouse},
+                            keyboard_mouse_button.ToSharedRef());
+    register_controls_focus(FControlsFocusIdentity{GameSettingDevice::Controller},
+                            controller_button.ToSharedRef());
     focus_page_ = [keyboard_mouse_button] { keyboard_mouse_button->focus(); };
 
     add_setting_sections(GameSettingDevice::Shared);
     add_setting_sections(controls_device_);
 
-    auto const bindings{settings->control_bindings(controls_device_type())};
+    auto const bindings{settings->control_bindings(controls_device_)};
     FText binding_category;
     TSharedPtr<SVerticalBox> binding_rows;
     auto const flush_binding_category = [&] {
@@ -750,29 +671,16 @@ auto SGameOptionsView::handle_deferred_controls_restore(double const current_tim
 
 auto SGameOptionsView::build_binding_button(FControlBindingView const& binding)
     -> TSharedRef<SWidget> {
-    auto const component_key_text{binding.current_key.IsValid()
-                                      ? binding.current_key.GetDisplayName()
-                                      : NSLOCTEXT("OptionsMenu", "UnboundControl", "Unbound")};
-    auto key_text{component_key_text};
-    if (binding.chord.IsSet() && binding.current_key.IsValid()) {
-        auto const chord_key_text{binding.chord->current_key.IsValid()
-                                      ? binding.chord->current_key.GetDisplayName()
-                                      : NSLOCTEXT("OptionsMenu", "UnboundChord", "Unbound")};
-        key_text = FText::Format(NSLOCTEXT("OptionsMenu", "ChordBindingFormat", "{0} + {1}"),
-                                 chord_key_text,
-                                 component_key_text);
-    }
-
     TSharedPtr<SGameButton> button;
     auto result{SAssignNew(button, SGameButton)
                     .Style(&style_->button(EGameButtonStyle::Secondary))
                     .Audio(audio_)
-                    .Text(key_text)
+                    .Text_Lambda([key = binding.current_key] { return binding_label(key); })
                     .OnClicked_Lambda([this, binding] {
                         open_binding_management(binding);
                         return FReply::Handled();
                     })};
-    register_controls_focus(binding_focus_identity(binding), button.ToSharedRef());
+    register_controls_focus(binding.mapping, button.ToSharedRef());
     return result;
 }
 
@@ -790,7 +698,7 @@ void SGameOptionsView::close_binding_management(bool const restore_focus) {
     }
     auto const identity{
         managed_binding_.IsSet()
-            ? TOptional<FControlsFocusIdentity>{binding_focus_identity(managed_binding_.GetValue())}
+            ? TOptional<FControlsFocusIdentity>{FControlsFocusIdentity{managed_binding_->mapping}}
             : TOptional<FControlsFocusIdentity>{}};
     binding_management_visible_ = false;
     binding_management_prompt_->SetVisibility(EVisibility::Collapsed);
@@ -804,161 +712,59 @@ void SGameOptionsView::close_binding_management(bool const restore_focus) {
 void SGameOptionsView::begin_binding_capture(FControlBindingView const& binding) {
     binding_management_visible_ = false;
     binding_management_prompt_->SetVisibility(EVisibility::Collapsed);
-    captured_binding_ = binding.address;
-    AddMetadata(MakeShared<FBindingCapture>());
-    captured_chord_.Reset();
-    chord_capture_.clear();
-    captured_key_ = EKeys::Invalid;
+    captured_binding_ = binding.mapping;
+    auto capture{MakeShared<FBindingCapture>()};
+    capture->on_key.BindSP(this, &SGameOptionsView::handle_capture_key);
+    AddMetadata(capture);
+    captured_key_ = PhysicalKey::Unbound;
     capture_error_ = FText::GetEmpty();
     capture_prompt_->SetVisibility(EVisibility::Visible);
     FSlateApplication::Get().SetKeyboardFocus(SharedThis(this), EFocusCause::SetDirectly);
 }
 
-void SGameOptionsView::begin_chord_capture(FControlBindingView const& binding) {
-    if (!binding.chord.IsSet()) {
-        begin_binding_capture(binding);
+void SGameOptionsView::handle_capture_key(PhysicalKey key) {
+    if (key == PhysicalKey::Escape || key == PhysicalKey::GamepadFaceButtonRight) {
+        close_binding_prompt(true);
         return;
     }
-    binding_management_visible_ = false;
-    binding_management_prompt_->SetVisibility(EVisibility::Collapsed);
-    captured_binding_ = binding.address;
-    AddMetadata(MakeShared<FBindingCapture>());
-    captured_chord_ = binding.chord;
-    captured_chord_dependent_count_ = 0;
-    if (auto const* const settings{settings_.Get()}) {
-        for (auto const& candidate :
-             settings->control_bindings(EHardwareDevicePrimaryType::Unspecified)) {
-            if (candidate.chord.IsSet() && candidate.chord->address == binding.chord->address) {
-                ++captured_chord_dependent_count_;
-            }
-        }
-    }
-    clear_chord_capture();
-    capture_prompt_->SetVisibility(EVisibility::Visible);
-    FSlateApplication::Get().SetKeyboardFocus(SharedThis(this), EFocusCause::SetDirectly);
+
+    accept_binding_key(key);
 }
 
-auto SGameOptionsView::accept_binding_key(FKey const key) -> FReply {
+void SGameOptionsView::accept_binding_key(PhysicalKey key) {
     auto* const settings{settings_.Get()};
-    if (settings == nullptr || !captured_binding_.IsSet() || !key.IsValid()) {
-        return FReply::Handled();
-    }
-    auto const mappings{settings->control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-    auto const* const target{mappings.FindByPredicate([this](auto const& candidate) {
-        return candidate.address == captured_binding_.GetValue();
-    })};
-    if (target == nullptr ||
-        (target->device_type == EHardwareDevicePrimaryType::Gamepad) != key.IsGamepadKey()) {
-        capture_error_ =
-            target != nullptr && target->device_type == EHardwareDevicePrimaryType::Gamepad
-                ? NSLOCTEXT("OptionsMenu",
-                            "ControllerInputRequired",
-                            "Use a controller input for this binding.")
-                : NSLOCTEXT("OptionsMenu",
-                            "KeyboardMouseInputRequired",
-                            "Use a keyboard or mouse input for this binding.");
-        return FReply::Handled();
+    if (!settings || !captured_binding_) {
+        return;
     }
 
+    if (key != PhysicalKey::Unbound && !accepts_binding(*captured_binding_, key)) {
+        capture_error_ = NSLOCTEXT(
+            "OptionsMenu", "UnsupportedBinding", "Choose a supported input for this control.");
+        return;
+    }
     capture_error_ = FText::GetEmpty();
-    if (!accepts_binding(target->address.mapping,
-                                native_binding_key(key))) {
-        capture_error_ =
-            NSLOCTEXT("OptionsMenu",
-                      "PauseButtonRequired",
-                      "Choose a keyboard key, mouse button, or controller button for Pause.");
-        return FReply::Handled();
-    }
-
     auto const conflicts{settings->binding_conflicts(captured_binding_.GetValue(), key)};
     capture_prompt_->SetVisibility(EVisibility::Collapsed);
     if (!conflicts.IsEmpty()) {
         captured_key_ = key;
         conflict_prompt_->SetVisibility(EVisibility::Visible);
         conflict_replace_button_->focus();
-        return FReply::Handled();
+        return;
     }
     if (!settings->set_control_binding(captured_binding_.GetValue(), key, false)) {
         capture_error_ = NSLOCTEXT(
             "OptionsMenu", "BindingApplyFailed", "Could not apply the binding. Please try again.");
         capture_prompt_->SetVisibility(EVisibility::Visible);
-        return FReply::Handled();
+        return;
     }
     complete_binding_change();
-    return FReply::Handled();
-}
-
-auto SGameOptionsView::accept_chord_key(FKey const key, bool const can_be_held) -> FReply {
-    auto* const settings{settings_.Get()};
-    if (settings == nullptr || !captured_binding_.IsSet() || !captured_chord_.IsSet() ||
-        !key.IsValid() || chord_capture_.is_complete()) {
-        return FReply::Handled();
-    }
-    auto const mappings{settings->control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-    auto const* const target{mappings.FindByPredicate([this](auto const& candidate) {
-        return candidate.address == captured_binding_.GetValue();
-    })};
-    if (target == nullptr ||
-        (target->device_type == EHardwareDevicePrimaryType::Gamepad) != key.IsGamepadKey()) {
-        capture_error_ =
-            target != nullptr && target->device_type == EHardwareDevicePrimaryType::Gamepad
-                ? NSLOCTEXT("OptionsMenu",
-                            "ControllerInputRequired",
-                            "Use a controller input for this binding.")
-                : NSLOCTEXT("OptionsMenu",
-                            "KeyboardMouseInputRequired",
-                            "Use a keyboard or mouse input for this binding.");
-        return FReply::Handled();
-    }
-    capture_error_ = FText::GetEmpty();
-    if (chord_capture_.accept(key, can_be_held) && chord_confirm_button_.IsValid()) {
-        chord_confirm_button_->focus();
-    }
-    return FReply::Handled();
-}
-
-auto SGameOptionsView::release_chord_key(FKey const key) -> FReply {
-    chord_capture_.release(key);
-    return FReply::Handled();
-}
-
-void SGameOptionsView::clear_chord_capture() {
-    chord_capture_.clear();
-    capture_error_ = FText::GetEmpty();
-}
-
-auto SGameOptionsView::confirm_chord_capture() -> FReply {
-    auto* const settings{settings_.Get()};
-    if (settings == nullptr || !captured_binding_.IsSet() || !captured_chord_.IsSet() ||
-        !chord_capture_.is_complete()) {
-        return FReply::Handled();
-    }
-    auto const conflicts{settings->chord_binding_conflicts(
-        captured_binding_.GetValue(), chord_capture_.activator_key(), chord_capture_.action_key())};
-    capture_prompt_->SetVisibility(EVisibility::Collapsed);
-    if (!conflicts.IsEmpty()) {
-        conflict_prompt_->SetVisibility(EVisibility::Visible);
-        conflict_replace_button_->focus();
-        return FReply::Handled();
-    }
-    if (!settings->set_control_chord(captured_binding_.GetValue(),
-                                     chord_capture_.activator_key(),
-                                     chord_capture_.action_key(),
-                                     false)) {
-        capture_error_ = NSLOCTEXT(
-            "OptionsMenu", "BindingApplyFailed", "Could not apply the binding. Please try again.");
-        capture_prompt_->SetVisibility(EVisibility::Visible);
-        return FReply::Handled();
-    }
-    complete_binding_change();
-    return FReply::Handled();
 }
 
 void SGameOptionsView::close_binding_prompt(bool const restore_focus) {
     auto const was_open{captured_binding_.IsSet()};
     auto const identity{
         managed_binding_.IsSet()
-            ? TOptional<FControlsFocusIdentity>{binding_focus_identity(managed_binding_.GetValue())}
+            ? TOptional<FControlsFocusIdentity>{FControlsFocusIdentity{managed_binding_->mapping}}
             : TOptional<FControlsFocusIdentity>{}};
     if (capture_prompt_.IsValid()) {
         capture_prompt_->SetVisibility(EVisibility::Collapsed);
@@ -970,10 +776,7 @@ void SGameOptionsView::close_binding_prompt(bool const restore_focus) {
         RemoveMetaData(capture.ToSharedRef());
     }
     captured_binding_.Reset();
-    captured_chord_.Reset();
-    clear_chord_capture();
-    captured_key_ = EKeys::Invalid;
-    captured_chord_dependent_count_ = 0;
+    captured_key_ = PhysicalKey::Unbound;
     managed_binding_.Reset();
     if (restore_focus && identity.IsSet()) {
         restore_controls_focus(identity.GetValue());
@@ -986,7 +789,7 @@ void SGameOptionsView::close_binding_prompt(bool const restore_focus) {
 void SGameOptionsView::complete_binding_change() {
     auto const identity{
         managed_binding_.IsSet()
-            ? TOptional<FControlsFocusIdentity>{binding_focus_identity(managed_binding_.GetValue())}
+            ? TOptional<FControlsFocusIdentity>{FControlsFocusIdentity{managed_binding_->mapping}}
             : TOptional<FControlsFocusIdentity>{}};
     close_binding_prompt(false);
     request_controls_rebuild(identity);
@@ -1314,11 +1117,7 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                             return FReply::Handled();
                         }
                         auto const binding{managed_binding_.GetValue()};
-                        if (binding.chord.IsSet()) {
-                            begin_chord_capture(binding);
-                        } else {
-                            begin_binding_capture(binding);
-                        }
+                        begin_binding_capture(binding);
                         return FReply::Handled();
                     })};
     auto clear{SAssignNew(binding_clear_button_, SGameButton)
@@ -1326,16 +1125,17 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                    .Audio(audio_)
                    .Text(NSLOCTEXT("OptionsMenu", "ClearBinding", "Clear"))
                    .Enabled_Lambda([this] {
-                       return managed_binding_.IsSet() && managed_binding_->current_key.IsValid();
+                       return managed_binding_.IsSet() &&
+                              managed_binding_->current_key != PhysicalKey::Unbound;
                    })
                    .OnClicked_Lambda([this] {
                        if (!managed_binding_.IsSet()) {
                            return FReply::Handled();
                        }
-                       auto const identity{binding_focus_identity(managed_binding_.GetValue())};
-                       auto const address{managed_binding_->address};
+                       auto const identity{FControlsFocusIdentity{managed_binding_->mapping}};
                        if (auto* const settings{settings_.Get()}) {
-                           settings->clear_control_binding(address);
+                           settings->set_control_binding(
+                               managed_binding_->mapping, PhysicalKey::Unbound, false);
                        }
                        close_binding_management(false);
                        request_controls_rebuild(identity);
@@ -1352,13 +1152,9 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                        if (!managed_binding_.IsSet()) {
                            return FReply::Handled();
                        }
-                       auto const identity{binding_focus_identity(managed_binding_.GetValue())};
-                       auto const address{managed_binding_->address};
-                       if (auto* const settings{settings_.Get()}) {
-                           settings->reset_control_binding(address);
-                       }
-                       close_binding_management(false);
-                       request_controls_rebuild(identity);
+                       auto const binding{managed_binding_.GetValue()};
+                       begin_binding_capture(binding);
+                       accept_binding_key(binding.default_key);
                        return FReply::Handled();
                    })};
     auto cancel{SAssignNew(binding_cancel_button_, SGameButton)
@@ -1374,18 +1170,7 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
             return FText::GetEmpty();
         }
         auto const& binding{managed_binding_.GetValue()};
-        auto const component_key_text{binding.current_key.IsValid()
-                                          ? binding.current_key.GetDisplayName()
-                                          : NSLOCTEXT("OptionsMenu", "UnboundControl", "Unbound")};
-        auto key_text{component_key_text};
-        if (binding.chord.IsSet() && binding.current_key.IsValid()) {
-            auto const chord_key_text{binding.chord->current_key.IsValid()
-                                          ? binding.chord->current_key.GetDisplayName()
-                                          : NSLOCTEXT("OptionsMenu", "UnboundChord", "Unbound")};
-            key_text = FText::Format(NSLOCTEXT("OptionsMenu", "ChordBindingFormat", "{0} + {1}"),
-                                     chord_key_text,
-                                     component_key_text);
-        }
+        auto const key_text{binding_label(binding.current_key)};
         return FText::Format(
             NSLOCTEXT("OptionsMenu", "BindingManagementPrompt", "{0}\n\nCurrent binding: {1}"),
             binding.display_name,
@@ -1395,90 +1180,19 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
 }
 
 auto SGameOptionsView::build_capture_prompt() -> TSharedRef<SWidget> {
-    auto confirm{SAssignNew(chord_confirm_button_, SGameButton)
-                     .Style(&style_->button(EGameButtonStyle::Primary))
-                     .Audio(audio_)
-                     .Text(NSLOCTEXT("OptionsMenu", "ConfirmChordCapture", "Confirm"))
-                     .Enabled_Lambda(
-                         [this] { return captured_chord_.IsSet() && chord_capture_.is_complete(); })
-                     .Visibility_Lambda([this] {
-                         return captured_chord_.IsSet() ? EVisibility::Visible
-                                                        : EVisibility::Collapsed;
-                     })
-                     .OnClicked_Lambda([this] { return confirm_chord_capture(); })};
-    auto clear{SAssignNew(chord_clear_button_, SGameButton)
-                   .Style(&style_->button(EGameButtonStyle::Secondary))
-                   .Audio(audio_)
-                   .Text(NSLOCTEXT("OptionsMenu", "ClearChordCapture", "Clear Capture"))
-                   .Visibility_Lambda([this] {
-                       return captured_chord_.IsSet() ? EVisibility::Visible
-                                                      : EVisibility::Collapsed;
-                   })
-                   .OnClicked_Lambda([this] {
-                       clear_chord_capture();
-                       FSlateApplication::Get().SetKeyboardFocus(SharedThis(this),
-                                                                 EFocusCause::SetDirectly);
-                       return FReply::Handled();
-                   })};
-    auto cancel{SAssignNew(chord_cancel_button_, SGameButton)
-                    .Style(&style_->button(EGameButtonStyle::Secondary))
-                    .Audio(audio_)
-                    .Text(NSLOCTEXT("OptionsMenu", "CancelChordCapture", "Cancel"))
-                    .Visibility_Lambda([this] {
-                        return captured_chord_.IsSet() ? EVisibility::Visible
-                                                       : EVisibility::Collapsed;
-                    })
-                    .OnClicked_Lambda([this] {
-                        close_binding_prompt(true);
-                        return FReply::Handled();
-                    })};
     auto title{TAttribute<FText>::CreateLambda([this] {
         if (!capture_error_.IsEmpty()) {
             return capture_error_;
         }
-        if (!captured_chord_.IsSet()) {
-            return controls_device_type() == EHardwareDevicePrimaryType::Gamepad
-                     ? NSLOCTEXT("OptionsMenu",
-                                 "CaptureControllerBindingPrompt",
-                                 "Press a controller input. Press Back to cancel.")
-                     : NSLOCTEXT("OptionsMenu",
-                                 "CaptureKeyboardMouseBindingPrompt",
-                                 "Press a keyboard or mouse input. Press Back to cancel.");
-        }
-
-        FText candidate;
-        if (chord_capture_.is_complete()) {
-            candidate =
-                FText::Format(NSLOCTEXT("OptionsMenu", "CapturedChord", "Captured: {0} + {1}"),
-                              chord_capture_.activator_key().GetDisplayName(),
-                              chord_capture_.action_key().GetDisplayName());
-        } else if (chord_capture_.held_key().IsValid()) {
-            candidate = FText::Format(NSLOCTEXT("OptionsMenu", "PartialChord", "Held: {0} + …"),
-                                      chord_capture_.held_key().GetDisplayName());
-        } else {
-            candidate = NSLOCTEXT("OptionsMenu", "WaitingForChord", "Waiting for input…");
-        }
-        auto const shared_warning{
-            captured_chord_dependent_count_ > 1
-                ? FText::Format(NSLOCTEXT("OptionsMenu",
-                                          "SharedChordActivator",
-                                          "\nThe first input is shared by {0} chorded bindings."),
-                                FText::AsNumber(captured_chord_dependent_count_))
-                : FText::GetEmpty()};
-        auto const instruction{
-            controls_device_type() == EHardwareDevicePrimaryType::Gamepad
-                ? NSLOCTEXT("OptionsMenu",
-                            "CaptureControllerChordPrompt",
-                            "Hold a controller activator, then press the controller action input.")
-                : NSLOCTEXT("OptionsMenu",
-                            "CaptureKeyboardMouseChordPrompt",
-                            "Hold a keyboard or mouse activator, then press the action input.")};
-        return FText::Format(NSLOCTEXT("OptionsMenu", "CaptureChordPrompt", "{0}\n\n{1}{2}"),
-                             instruction,
-                             candidate,
-                             shared_warning);
+        return controls_device_ == GameSettingDevice::Controller
+                 ? NSLOCTEXT("OptionsMenu",
+                             "CaptureControllerBindingPrompt",
+                             "Press a controller input. Press Back to cancel.")
+                 : NSLOCTEXT("OptionsMenu",
+                             "CaptureKeyboardMouseBindingPrompt",
+                             "Press a keyboard or mouse input. Press Escape to cancel.");
     })};
-    return build_modal(MoveTemp(title), {confirm, clear, cancel});
+    return build_modal(MoveTemp(title), {});
 }
 
 auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
@@ -1490,16 +1204,8 @@ auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
                          auto applied{false};
                          if (auto* const settings{settings_.Get()};
                              captured_binding_.IsSet() && settings != nullptr) {
-                             if (captured_chord_.IsSet()) {
-                                 applied =
-                                     settings->set_control_chord(captured_binding_.GetValue(),
-                                                                 chord_capture_.activator_key(),
-                                                                 chord_capture_.action_key(),
-                                                                 true);
-                             } else {
-                                 applied = settings->set_control_binding(
-                                     captured_binding_.GetValue(), captured_key_, true);
-                             }
+                             applied = settings->set_control_binding(
+                                 *captured_binding_, captured_key_, true);
                          }
                          if (!applied) {
                              capture_error_ =
@@ -1523,26 +1229,10 @@ auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
         if (!capture_error_.IsEmpty()) {
             return capture_error_;
         }
-        auto const captured_input{
-            captured_chord_.IsSet() && chord_capture_.is_complete()
-                ? FText::Format(NSLOCTEXT("OptionsMenu", "ChordConflictValue", "{0} + {1}"),
-                                chord_capture_.activator_key().GetDisplayName(),
-                                chord_capture_.action_key().GetDisplayName())
-                : captured_key_.GetDisplayName()};
-
+        auto const captured_input{binding_label(captured_key_)};
         TArray<FText> conflicting_controls;
-        if (auto* const settings{settings_.Get()};
-            captured_binding_.IsSet() && settings != nullptr) {
-            auto const conflicts{
-                captured_chord_.IsSet() && chord_capture_.is_complete()
-                    ? settings->chord_binding_conflicts(captured_binding_.GetValue(),
-                                                        chord_capture_.activator_key(),
-                                                        chord_capture_.action_key())
-                    : settings->binding_conflicts(captured_binding_.GetValue(), captured_key_)};
-            conflicting_controls.Reserve(conflicts.Num());
-            for (auto const& conflict : conflicts) {
-                conflicting_controls.Add(conflict.display_name);
-            }
+        if (auto* settings{settings_.Get()}; captured_binding_ && settings) {
+            conflicting_controls = settings->binding_conflicts(*captured_binding_, captured_key_);
         }
 
         auto const conflicting_control_text{
@@ -1625,12 +1315,6 @@ auto SGameOptionsView::format_range_value(GameSettingDescriptor const& descripto
     }
 }
 
-auto SGameOptionsView::controls_device_type() const -> EHardwareDevicePrimaryType {
-    return controls_device_ == GameSettingDevice::Controller
-             ? EHardwareDevicePrimaryType::Gamepad
-             : EHardwareDevicePrimaryType::KeyboardAndMouse;
-}
-
 auto SGameOptionsView::controls_focus_identity() const -> TOptional<FControlsFocusIdentity> {
     for (auto const& target : controls_focus_targets_) {
         if (target.has_focus && target.has_focus()) {
@@ -1638,17 +1322,6 @@ auto SGameOptionsView::controls_focus_identity() const -> TOptional<FControlsFoc
         }
     }
     return {};
-}
-
-auto SGameOptionsView::binding_focus_identity(FControlBindingView const& binding) const
-    -> FControlsFocusIdentity {
-    return {
-        .kind = EControlsFocusKind::Binding,
-        .device = binding.device_type == EHardwareDevicePrimaryType::Gamepad
-                    ? GameSettingDevice::Controller
-                    : GameSettingDevice::KeyboardMouse,
-        .binding = control_binding_identity(binding.address, binding.device_type),
-    };
 }
 
 void SGameOptionsView::register_controls_focus(FControlsFocusIdentity const identity,
@@ -1670,10 +1343,7 @@ void SGameOptionsView::restore_controls_focus(FControlsFocusIdentity const& iden
         return;
     }
 
-    auto const selected_device{FControlsFocusIdentity{
-        .kind = EControlsFocusKind::Device,
-        .device = controls_device_,
-    }};
+    auto const selected_device{FControlsFocusIdentity{controls_device_}};
     target = controls_focus_targets_.FindByPredicate(
         [&selected_device](FControlsFocusTarget const& candidate) {
             return candidate.identity == selected_device;

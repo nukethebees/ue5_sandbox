@@ -1,13 +1,14 @@
 #pragma once
 
 #include "ioj/settings/game_settings.h"
-#include "SpaceGame/ui/main_menu/ControlChordCapture.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include <SpaceGame/settings/ControlBindings.h>
+#include <SpaceGame/settings/ControlBindingView.h>
 
 #include <Widgets/SCompoundWidget.h>
+
+#include <variant>
 
 class SBox;
 class SVerticalBox;
@@ -22,17 +23,7 @@ class SGameButton;
 class UOptionsDraft;
 struct SystemCapabilities;
 
-enum class EControlsFocusKind : uint8 { Device, Binding };
-
-struct FControlsFocusIdentity {
-    EControlsFocusKind kind{EControlsFocusKind::Device};
-    GameSettingDevice device{GameSettingDevice::Shared};
-    ControlBindingIdentity binding{};
-
-    auto operator==(FControlsFocusIdentity const& other) const -> bool {
-        return kind == other.kind && device == other.device && binding == other.binding;
-    }
-};
+using FControlsFocusIdentity = std::variant<GameSettingDevice, FlightMapping>;
 
 struct FControlsFocusTarget {
     FControlsFocusIdentity identity{};
@@ -86,15 +77,6 @@ class SGameOptionsView final : public SCompoundWidget {
     auto OnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
     auto OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply override;
-    auto OnKeyUp(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply override;
-    auto OnAnalogValueChanged(FGeometry const& geometry, FAnalogInputEvent const& analog_event)
-        -> FReply override;
-    auto OnMouseButtonDown(FGeometry const& geometry, FPointerEvent const& mouse_event)
-        -> FReply override;
-    auto OnMouseButtonUp(FGeometry const& geometry, FPointerEvent const& mouse_event)
-        -> FReply override;
-    auto OnMouseWheel(FGeometry const& geometry, FPointerEvent const& mouse_event)
-        -> FReply override;
   private:
     /* **************************************** */
     // Layout construction
@@ -120,12 +102,8 @@ class SGameOptionsView final : public SCompoundWidget {
     void open_binding_management(FControlBindingView const& binding);
     void close_binding_management(bool restore_focus);
     void begin_binding_capture(FControlBindingView const& binding);
-    void begin_chord_capture(FControlBindingView const& binding);
-    auto accept_binding_key(FKey key) -> FReply;
-    auto accept_chord_key(FKey key, bool can_be_held) -> FReply;
-    auto release_chord_key(FKey key) -> FReply;
-    void clear_chord_capture();
-    auto confirm_chord_capture() -> FReply;
+    void handle_capture_key(PhysicalKey key);
+    void accept_binding_key(PhysicalKey key);
     void close_binding_prompt(bool restore_focus);
     void complete_binding_change();
 
@@ -148,9 +126,7 @@ class SGameOptionsView final : public SCompoundWidget {
     /* **************************************** */
     auto setting_float(GameSetting setting) const -> float;
     auto format_range_value(GameSettingDescriptor const& descriptor) const -> FText;
-    auto controls_device_type() const -> EHardwareDevicePrimaryType;
     auto controls_focus_identity() const -> TOptional<FControlsFocusIdentity>;
-    auto binding_focus_identity(FControlBindingView const& binding) const -> FControlsFocusIdentity;
     void register_controls_focus(FControlsFocusIdentity identity,
                                  TSharedRef<SGameButton> const& button);
     void restore_controls_focus(FControlsFocusIdentity const& identity);
@@ -184,9 +160,6 @@ class SGameOptionsView final : public SCompoundWidget {
     TSharedPtr<SGameButton> revert_display_button_{};
     TSharedPtr<SGameButton> conflict_replace_button_{};
     TSharedPtr<SGameButton> conflict_cancel_button_{};
-    TSharedPtr<SGameButton> chord_confirm_button_{};
-    TSharedPtr<SGameButton> chord_clear_button_{};
-    TSharedPtr<SGameButton> chord_cancel_button_{};
     TSharedPtr<SGameButton> binding_change_button_{};
     TSharedPtr<SGameButton> binding_clear_button_{};
     TSharedPtr<SGameButton> binding_reset_button_{};
@@ -200,12 +173,9 @@ class SGameOptionsView final : public SCompoundWidget {
     TSharedPtr<SVerticalBox> controls_content_{};
     TSharedPtr<SScrollBox> controls_scroll_box_{};
     TOptional<FControlBindingView> managed_binding_{};
-    TOptional<FControlBindingAddress> captured_binding_{};
-    TOptional<FControlChordBindingView> captured_chord_{};
-    FControlChordCapture chord_capture_{};
-    FKey captured_key_{};
+    TOptional<FlightMapping> captured_binding_{};
+    PhysicalKey captured_key_{};
     FText capture_error_{};
-    int32 captured_chord_dependent_count_{};
     TArray<FControlsFocusTarget> controls_focus_targets_{};
     TOptional<FControlsFocusIdentity> pending_controls_focus_{};
     TOptional<FControlsFocusIdentity> pending_controls_rebuild_focus_{};

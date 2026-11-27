@@ -201,16 +201,42 @@ void present_menu_button(MenuButton button) {
     ui_key(key, button.down, button.repeat, button.modifiers);
 }
 void present_input(PresentationEvent const& event) {
+    auto const focused{FSlateApplication::Get().GetKeyboardFocusedWidget()};
+    auto capture{focused ? focused->GetMetaData<FBindingCapture>() : nullptr};
     std::visit(
-        [](auto const& item) {
+        [&capture](auto const& item) {
             using T = std::decay_t<decltype(item)>;
             if constexpr (std::is_same_v<T, MenuKey>) {
+                if (capture) {
+                    if (item.down && !item.repeat) {
+                        capture->on_key.Execute(item.key);
+                    }
+                    return;
+                }
                 ui_key(item.key, item.down, item.repeat, item.modifiers);
             } else if constexpr (std::is_same_v<T, MenuAxis>) {
+                if (capture) {
+                    if (FMath::Abs(item.value) >= 0.5f) {
+                        capture->on_key.Execute(item.key);
+                    }
+                    return;
+                }
                 ui_axis(item.key, item.value, item.modifiers);
             } else if constexpr (std::is_same_v<T, MenuText>) {
                 ui_text(item.text, item.modifiers);
             } else if constexpr (std::is_same_v<T, MenuPointer>) {
+                if (capture) {
+                    if (item.pointer.action == PointerAction::Down ||
+                        item.pointer.action == PointerAction::DoubleClick) {
+                        capture->on_key.Execute(item.pointer.button);
+                    } else if (item.pointer.action == PointerAction::Wheel &&
+                               item.pointer.wheel != 0.f) {
+                        capture->on_key.Execute(item.pointer.wheel > 0.f
+                                                    ? PhysicalKey::MouseScrollUp
+                                                    : PhysicalKey::MouseScrollDown);
+                    }
+                    return;
+                }
                 ui_pointer(item.pointer, item.modifiers);
             } else if constexpr (std::is_same_v<T, ViewerStep>) {
                 present_viewer_motion(item.motion, item.seconds);

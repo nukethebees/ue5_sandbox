@@ -1,19 +1,9 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "UObject/Object.h"
+#include <ioj/input/actions.h>
 
-#include "ControlBindingMetadata.generated.h"
+#include <Internationalization/Text.h>
 
 namespace ioj {
-
-UENUM()
-enum class EControlBindingGroup : uint8 {
-    Flight,
-    Combat,
-    Utility,
-};
-
-SPACEGAME_API auto control_binding_group_label(EControlBindingGroup group) -> FText;
-
-} // namespace ioj
+auto control_binding_group_label(BindingGroup group) -> FText;
+}

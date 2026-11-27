@@ -2,13 +2,13 @@
 
 namespace ioj {
 
-auto control_binding_group_label(EControlBindingGroup const group) -> FText {
+auto control_binding_group_label(BindingGroup const group) -> FText {
     switch (group) {
-        case EControlBindingGroup::Flight:
+        case BindingGroup::Flight:
             return NSLOCTEXT("Controls", "FlightCategory", "Flight");
-        case EControlBindingGroup::Combat:
+        case BindingGroup::Combat:
             return NSLOCTEXT("Controls", "CombatCategory", "Combat");
-        case EControlBindingGroup::Utility:
+        case BindingGroup::Utility:
             return NSLOCTEXT("Controls", "UtilityCategory", "Utility");
     }
     return FText::GetEmpty();

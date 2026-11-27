@@ -1,6 +1,3 @@
-#include <ioj/settings/control_binding_address.h>
-#include <ioj/settings/control_binding_snapshot.h>
-#include <ioj/settings/control_bindings.h>
 #include <ioj/settings/game_anti_aliasing_method.h>
 #include <ioj/settings/game_graphics_preset.h>
 #include <ioj/settings/game_quality_level.h>
@@ -107,48 +104,6 @@ TEST(GameSettings, NormalizesRangesAndChecksSuppliedCapabilities) {
               GameSettingDevice::KeyboardMouse);
     EXPECT_EQ(game_setting_descriptor(GameSetting::GamepadTurnDeadZone).device,
               GameSettingDevice::Controller);
-}
-
-TEST(GameSettings, BindingIdentityIgnoresProfileAndDistinguishesSlotsAndDevices) {
-    ControlBindingAddress first{1, FlightMapping::FlightFirePrimaryKeyboardMouse, 1};
-    auto second{first};
-    second.profile_index = 2;
-    EXPECT_EQ(control_binding_identity(first, 1), control_binding_identity(second, 1));
-    second.slot = 2;
-    EXPECT_NE(control_binding_identity(first, 1), control_binding_identity(second, 1));
-    EXPECT_NE(control_binding_identity(first, 1), control_binding_identity(first, 2));
-    EXPECT_TRUE(control_binding_matches_device(1, 0, 0));
-    EXPECT_TRUE(control_binding_matches_device(1, 1, 0));
-    EXPECT_FALSE(control_binding_matches_device(1, 2, 0));
-}
-
-TEST(GameSettings, BindingConflictsRespectHardwareProfileAndChord) {
-    std::array<ControlBindingSnapshot, 5> bindings{{
-        {.address = {1, FlightMapping::FlightFirePrimaryKeyboardMouse, 1},
-         .current_key = PhysicalKey::SpaceBar},
-        {.address = {1, FlightMapping::FlightBoostKeyboardMouse, 1},
-         .current_key = PhysicalKey::SpaceBar},
-        {.address = {1, FlightMapping::FlightBrakeKeyboardMouse, 1},
-         .current_key = PhysicalKey::SpaceBar},
-        {.address = {2, FlightMapping::FlightBoostKeyboardMouse, 1},
-         .current_key = PhysicalKey::SpaceBar},
-        {.address = {1, FlightMapping::FlightBoostGamepad, 1},
-         .current_key = PhysicalKey::SpaceBar},
-    }};
-    EXPECT_EQ(control_binding_conflicts(bindings, bindings[0].address, PhysicalKey::SpaceBar),
-              (std::vector<std::size_t>{1, 2}));
-    bindings[0].chord = ControlBindingAddress{1, FlightMapping::FlightSteerKeyboardMouse, 1};
-    EXPECT_TRUE(
-        control_binding_conflicts(bindings, bindings[0].address, PhysicalKey::SpaceBar).empty());
-    bindings[2].chord = bindings[0].chord;
-    EXPECT_EQ(control_chord_binding_conflicts(
-                  bindings, bindings[0].address, PhysicalKey::SpaceBar, PhysicalKey::SpaceBar),
-              (std::vector<std::size_t>{1, 2}));
-    auto reordered{bindings};
-    std::swap(reordered.front(), reordered.back());
-    EXPECT_FALSE(control_bindings_changed(reordered, bindings));
-    reordered[0].current_key = PhysicalKey::A;
-    EXPECT_TRUE(control_bindings_changed(reordered, bindings));
 }
 
 TEST(GameSettings, BindingConflictsReplaceOnlyTheOtherMapping) {

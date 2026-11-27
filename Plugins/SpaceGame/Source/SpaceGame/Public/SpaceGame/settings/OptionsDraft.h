@@ -2,7 +2,6 @@
 
 #include "SpaceGame/settings/GameVideoSettings.h"
 #include <ioj/host/unreal_messages.h>
-#include <ioj/settings/control_binding_snapshot.h>
 #include <ioj/settings/game_setting.h>
 #include <ioj/settings/game_setting_category.h>
 #include <ioj/settings/game_setting_descriptor.h>
@@ -10,7 +9,6 @@
 #include <ioj/settings/game_settings_edit_state.h>
 #include <ioj/settings/game_settings_state.h>
 #include <ioj/settings/settings_result.h>
-#include <SpaceGame/settings/ControlBindingAddress.h>
 #include <SpaceGame/settings/ControlBindingView.h>
 #include <SpaceGame/settings/GameSettingOption.h>
 
@@ -21,8 +19,6 @@
 #include "UObject/ObjectMacros.h"
 #include "UObject/WeakObjectPtrTemplates.h"
 #include <Containers/Array.h>
-#include <GameFramework/InputSettings.h>
-#include <InputCoreTypes.h>
 
 #include <string_view>
 #include <vector>
@@ -44,7 +40,7 @@ class SPACEGAME_API UOptionsDraft final : public UObject {
     /* **************************************** */
     // Editing
     /* **************************************** */
-    void load(ULocalPlayer* local_player, GameSettingCategory category);
+    void load(ULocalPlayer* local_player);
     void cancel();
     auto apply(GameSettingCategory category) -> bool;
     void preference_finished(host::PreferenceEdit const& edit, std::string_view error);
@@ -69,23 +65,10 @@ class SPACEGAME_API UOptionsDraft final : public UObject {
     /* **************************************** */
     // Control bindings
     /* **************************************** */
-    auto control_bindings(EHardwareDevicePrimaryType device_type) const
-        -> TArray<FControlBindingView>;
-    auto binding_conflicts(FControlBindingAddress const& address, FKey const& key) const
-        -> TArray<FControlBindingView>;
-    auto chord_binding_conflicts(FControlBindingAddress const& address,
-                                 FKey const& activator_key,
-                                 FKey const& action_key) const -> TArray<FControlBindingView>;
-    auto set_control_binding(FControlBindingAddress const& address,
-                             FKey const& key,
-                             bool replace_conflicts) -> bool;
-    auto set_control_chord(FControlBindingAddress const& address,
-                           FKey const& activator_key,
-                           FKey const& action_key,
-                           bool replace_conflicts) -> bool;
-    auto clear_control_binding(FControlBindingAddress const& address) -> bool;
-    auto reset_control_binding(FControlBindingAddress const& address) -> bool;
-    auto reset_all_control_bindings() -> bool;
+    auto control_bindings(GameSettingDevice device) const -> TArray<FControlBindingView>;
+    auto binding_conflicts(FlightMapping mapping, PhysicalKey key) const -> TArray<FText>;
+    auto set_control_binding(FlightMapping mapping, PhysicalKey key, bool replace_conflicts)
+        -> bool;
 
     FSettingsSaveCompleted save_completed;
     FGameSettingsChanged settings_changed;
@@ -102,10 +85,7 @@ class SPACEGAME_API UOptionsDraft final : public UObject {
     /* **************************************** */
     // Control binding helpers
     /* **************************************** */
-    auto all_control_bindings() const -> TArray<FControlBindingView>;
-    void set_draft_key(FControlBindingAddress const& address, FKey const& key);
     auto save(GameSettingCategory category) -> bool;
-    auto input_is_dirty() const -> bool;
 
     /* **************************************** */
     // State
@@ -116,8 +96,6 @@ class SPACEGAME_API UOptionsDraft final : public UObject {
     GameSettingsEditState draft_;
     double confirmation_deadline_{};
     bool save_pending_{};
-    TArray<FControlBindingView> bindings_;
-    TArray<FControlBindingView> original_bindings_;
     FTSTicker::FDelegateHandle display_confirmation_ticker_;
 };
 

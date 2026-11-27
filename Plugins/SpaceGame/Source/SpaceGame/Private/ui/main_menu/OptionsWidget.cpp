@@ -113,7 +113,7 @@ void UOptionsWidget::select_page(EMenuPage page, FSimpleDelegate shown) {
 void UOptionsWidget::open_page(EMenuPage page, FSimpleDelegate shown) {
     page_ = page;
     if (auto category{settings_category(page)}) {
-        settings_->load(GetOwningLocalPlayer(), *category);
+        settings_->load(GetOwningLocalPlayer());
     }
     if (options_view_.IsValid()) {
         options_view_->show_page();

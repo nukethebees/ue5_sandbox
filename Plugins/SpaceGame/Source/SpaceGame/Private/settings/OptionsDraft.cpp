@@ -1,20 +1,16 @@
 #include "SpaceGame/settings/OptionsDraft.h"
 
-#include "input/BindingKey.h"
-#include "SpaceGame/settings/ControlBindingAddress.h"
-#include "SpaceGame/settings/ControlBindings.h"
 #include "SpaceGame/settings/ControlBindingView.h"
-#include "SpaceGame/settings/ControlChordBindingView.h"
 #include "SpaceGame/settings/GameSettingOption.h"
 #include "SpaceGame/UnrealMessages.h"
 #include <ioj/input/flight_controls.h>
-#include <ioj/settings/control_bindings.h>
 #include <ioj/settings/game_setting.h>
 #include <ioj/settings/game_setting_category.h>
 #include <ioj/settings/game_setting_option_provider.h>
 #include <ioj/settings/game_setting_value.h>
 #include <ioj/settings/game_settings.h>
 #include <ioj/settings/player_settings_view.h>
+#include <SpaceGame/input/ControlBindingMetadata.h>
 #include <SpaceGamePresentation/audio/GameAudio.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -24,10 +20,8 @@
 #include "CoreGlobals.h"
 #include "Engine/Engine.h"
 #include "Engine/LocalPlayer.h"
-#include "GameFramework/InputSettings.h"
 #include "HAL/Platform.h"
 #include "HAL/PlatformTime.h"
-#include "InputCoreTypes.h"
 #include "Logging/LogMacros.h"
 #include "Logging/LogVerbosity.h"
 #include "Misc/AssertionMacros.h"
@@ -39,6 +33,7 @@
 #include <Misc/App.h>
 #include <Misc/MessageDialog.h>
 
+#include <algorithm>
 #include <string>
 #include <variant>
 
@@ -56,7 +51,7 @@ void report_settings_error(std::string const& error) {
 /* **************************************** */
 // Lifecycle
 /* **************************************** */
-void UOptionsDraft::load(ULocalPlayer* player, GameSettingCategory category) {
+void UOptionsDraft::load(ULocalPlayer* player) {
     if (save_pending_) {
         return;
     }
@@ -65,9 +60,6 @@ void UOptionsDraft::load(ULocalPlayer* player, GameSettingCategory category) {
     auto const& settings{player_settings()};
     editing_local_player_ = player;
     draft_.begin(settings.applied_values, settings.defaults);
-    bindings_ = category == GameSettingCategory::Controls ? all_control_bindings()
-                                                          : TArray<FControlBindingView>{};
-    original_bindings_ = bindings_;
     settings_changed.Broadcast();
 }
 
@@ -81,7 +73,6 @@ void UOptionsDraft::cancel() {
     }
 
     draft_.cancel();
-    bindings_ = original_bindings_;
     settings_changed.Broadcast();
 }
 
@@ -111,15 +102,8 @@ auto UOptionsDraft::save(GameSettingCategory category) -> bool {
         return false;
     }
 
-    auto requested{draft_.pending()};
-    if (category == GameSettingCategory::Controls && input_is_dirty()) {
-        for (auto const& row : bindings_) {
-            requested.controls.bindings[row.address.mapping] = native_binding_key(row.current_key);
-        }
-    }
-
-    queue_preferences(
-        {host::PreferenceAction::Save, category, std::move(requested), draft_.applied()}, *this);
+    queue_preferences({host::PreferenceAction::Save, category, draft_.pending(), draft_.applied()},
+                      *this);
     save_pending_ = true;
     return true;
 }
@@ -148,7 +132,6 @@ void UOptionsDraft::preference_finished(host::PreferenceEdit const& edit, std::s
         return;
     }
 
-    bool const bindings_changed{category == GameSettingCategory::Controls && input_is_dirty()};
     if (!error.empty()) {
         std::string message{error};
         auto restored{apply_settings(category, draft_.applied())};
@@ -161,10 +144,6 @@ void UOptionsDraft::preference_finished(host::PreferenceEdit const& edit, std::s
 
         save_completed.Broadcast(false);
         return;
-    }
-
-    if (bindings_changed) {
-        original_bindings_ = bindings_;
     }
 
     draft_.begin(player_settings().applied_values, player_settings().defaults);
@@ -210,8 +189,6 @@ void UOptionsDraft::reset_category(GameSettingCategory category) {
         if (!is_available(GameSetting::Resolution)) {
             draft_.set_setting(GameSetting::Resolution, draft_.applied().video.resolution);
         }
-    } else if (category == GameSettingCategory::Controls) {
-        reset_all_control_bindings();
     }
 
     settings_changed.Broadcast();
@@ -301,18 +278,10 @@ auto UOptionsDraft::is_available(GameSetting const setting) const -> bool {
 }
 
 auto UOptionsDraft::is_dirty() const -> bool {
-    return draft_.is_dirty() || input_is_dirty();
+    return draft_.is_dirty();
 }
 
 auto UOptionsDraft::is_at_defaults(GameSettingCategory const category) const -> bool {
-    if (category == GameSettingCategory::Controls) {
-        auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-        if (bindings.ContainsByPredicate(
-                [](auto const& binding) { return binding.is_modified(); })) {
-            return false;
-        }
-    }
-
     return draft_.is_at_defaults(category);
 }
 
@@ -357,216 +326,38 @@ auto UOptionsDraft::tick_display_confirmation(float const delta_seconds) -> bool
 // Control bindings
 /* **************************************** */
 
-auto UOptionsDraft::all_control_bindings() const -> TArray<FControlBindingView> {
+auto UOptionsDraft::control_bindings(GameSettingDevice device) const
+    -> TArray<FControlBindingView> {
     TArray<FControlBindingView> result;
-
     for (auto const& control : flight_controls()) {
-        auto const key{draft_.pending().controls.bindings[control.mapping]};
-        auto const group{
-            control.group == BindingGroup::Utility  ? EControlBindingGroup::Utility
-            : control.group == BindingGroup::Combat ? EControlBindingGroup::Combat
-                                                           : EControlBindingGroup::Flight};
-        auto const device{is_gamepad_mapping(control.mapping)
-                              ? FHardwareDeviceIdentifier::DefaultGamepad
-                              : FHardwareDeviceIdentifier::DefaultKeyboardAndMouse};
-        result.Add(FControlBindingView{
-            .address = {.mapping = control.mapping},
-            .display_name = FText::FromString(to_fstring(control.label)),
-            .display_category = control_binding_group_label(group),
-            .display_group = group,
-            .device_type = device.PrimaryDeviceType,
-            .current_key = binding_key(key),
-            .default_key = binding_key(control.default_key),
-        });
+        if (is_gamepad_mapping(control.mapping) == (device == GameSettingDevice::Controller)) {
+            result.Add(FControlBindingView{control.mapping,
+                                           FText::FromString(to_fstring(control.label)),
+                                           control_binding_group_label(control.group),
+                                           draft_.pending().controls.bindings[control.mapping],
+                                           draft_.defaults().controls.bindings[control.mapping]});
+        }
     }
-
     return result;
 }
-
-auto UOptionsDraft::control_bindings(EHardwareDevicePrimaryType const device_type) const
-    -> TArray<FControlBindingView> {
-    return bindings_.FilterByPredicate([device_type](auto const& binding) {
-        return control_binding_matches_device(binding, device_type);
-    });
-}
-
-auto UOptionsDraft::binding_conflicts(FControlBindingAddress const& address, FKey const& key) const
-    -> TArray<FControlBindingView> {
-    if (!key.IsValid()) {
-        return {};
+auto UOptionsDraft::binding_conflicts(FlightMapping mapping, PhysicalKey key) const
+    -> TArray<FText> {
+    TArray<FText> result;
+    auto const conflicts{draft_.binding_conflicts(mapping, key)};
+    for (auto const& control : flight_controls()) {
+        if (std::ranges::contains(conflicts, control.mapping)) {
+            result.Add(FText::FromString(to_fstring(control.label)));
+        }
     }
-
-    auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-    auto const native{native_control_bindings(bindings)};
-    TArray<FControlBindingView> result;
-    for (auto const index : control_binding_conflicts(native, address, native_binding_key(key))) {
-        result.Add(bindings[static_cast<int32>(index)]);
-    }
-
     return result;
 }
-
-auto UOptionsDraft::chord_binding_conflicts(FControlBindingAddress const& address,
-                                            FKey const& activator_key,
-                                            FKey const& action_key) const
-    -> TArray<FControlBindingView> {
-    if (!activator_key.IsValid() || !action_key.IsValid()) {
-        return {};
-    }
-
-    auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-    auto const native{native_control_bindings(bindings)};
-    TArray<FControlBindingView> result;
-    for (auto const index : control_chord_binding_conflicts(
-             native, address, native_binding_key(activator_key), native_binding_key(action_key))) {
-        result.Add(bindings[static_cast<int32>(index)]);
-    }
-
-    return result;
-}
-
-auto UOptionsDraft::set_control_binding(FControlBindingAddress const& address,
-                                        FKey const& key,
-                                        bool const replace_conflicts) -> bool {
-    if (!editing_local_player_.IsValid() || !key.IsValid()) {
+auto UOptionsDraft::set_control_binding(FlightMapping mapping,
+                                        PhysicalKey key,
+                                        bool replace_conflicts) -> bool {
+    if (!draft_.set_binding(mapping, key, replace_conflicts)) {
         return false;
     }
-
-    auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-    auto const* const target{bindings.FindByPredicate(
-        [&address](auto const& binding) { return binding.address == address; })};
-    if (target == nullptr ||
-        (target->device_type == EHardwareDevicePrimaryType::Gamepad) != key.IsGamepadKey()) {
-        return false;
-    }
-
-    if (!accepts_binding(address.mapping, native_binding_key(key))) {
-        return false;
-    }
-    auto const conflicts{binding_conflicts(address, key)};
-    if (!conflicts.IsEmpty() && !replace_conflicts) {
-        return false;
-    }
-
-    for (auto const& conflict : conflicts) {
-        set_draft_key(conflict.address, EKeys::Invalid);
-    }
-
-    set_draft_key(address, key);
     settings_changed.Broadcast();
     return true;
 }
-
-auto UOptionsDraft::set_control_chord(FControlBindingAddress const& address,
-                                      FKey const& activator_key,
-                                      FKey const& action_key,
-                                      bool const replace_conflicts) -> bool {
-    if (!editing_local_player_.IsValid() || !can_hold_chord_key(activator_key) ||
-        !action_key.IsValid() || activator_key == action_key) {
-        return false;
-    }
-
-    auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-    auto const* const target{bindings.FindByPredicate(
-        [&address](auto const& binding) { return binding.address == address; })};
-    if (target == nullptr || !target->chord.IsSet()) {
-        return false;
-    }
-
-    auto const gamepad{target->device_type == EHardwareDevicePrimaryType::Gamepad};
-    if (activator_key.IsGamepadKey() != gamepad || action_key.IsGamepadKey() != gamepad) {
-        return false;
-    }
-
-    auto const conflicts{chord_binding_conflicts(address, activator_key, action_key)};
-    if (!conflicts.IsEmpty() && !replace_conflicts) {
-        return false;
-    }
-
-    for (auto const& conflict : conflicts) {
-        set_draft_key(conflict.address, EKeys::Invalid);
-    }
-
-    set_draft_key(target->chord->address, activator_key);
-    set_draft_key(address, action_key);
-    settings_changed.Broadcast();
-    return true;
 }
-
-auto UOptionsDraft::clear_control_binding(FControlBindingAddress const& address) -> bool {
-    if (!editing_local_player_.IsValid()) {
-        return false;
-    }
-
-    auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-    auto const* const target{bindings.FindByPredicate(
-        [&address](auto const& binding) { return binding.address == address; })};
-    if (target == nullptr || !target->current_key.IsValid()) {
-        return false;
-    }
-
-    set_draft_key(address, EKeys::Invalid);
-    settings_changed.Broadcast();
-    return true;
-}
-
-auto UOptionsDraft::reset_control_binding(FControlBindingAddress const& address) -> bool {
-    if (!editing_local_player_.IsValid()) {
-        return false;
-    }
-
-    auto const* binding{
-        bindings_.FindByPredicate([&](auto const& item) { return item.address == address; })};
-    if (!binding) {
-        return false;
-    }
-
-    set_draft_key(address, binding->default_key);
-    settings_changed.Broadcast();
-    return true;
-}
-
-auto UOptionsDraft::reset_all_control_bindings() -> bool {
-    if (!editing_local_player_.IsValid()) {
-        return false;
-    }
-
-    auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-    for (auto const& binding : bindings) {
-        set_draft_key(binding.address, binding.default_key);
-        if (binding.chord) {
-            set_draft_key(binding.chord->address, binding.chord->default_key);
-        }
-    }
-
-    settings_changed.Broadcast();
-    return true;
-}
-
-/* **************************************** */
-// Input edit state
-/* **************************************** */
-void UOptionsDraft::set_draft_key(FControlBindingAddress const& address, FKey const& key) {
-    for (auto& binding : bindings_) {
-        if (binding.address == address) {
-            binding.current_key = key;
-        }
-
-        if (binding.chord && binding.chord->address == address) {
-            binding.chord->current_key = key;
-        }
-    }
-}
-auto UOptionsDraft::input_is_dirty() const -> bool {
-    for (int32 i{}; i < bindings_.Num(); ++i) {
-        auto const& binding{bindings_[i]};
-        auto const& original{original_bindings_[i]};
-        if (binding.current_key != original.current_key ||
-            (binding.chord && binding.chord->current_key != original.chord->current_key)) {
-            return true;
-        }
-    }
-
-    return false;
-}
-} // namespace ioj

@@ -1,21 +1,17 @@
 #pragma once
 
-#include <SpaceGame/input/ControlBindingMetadata.h>
-#include <SpaceGame/settings/ControlChordBindingView.h>
+#include <ioj/input/flight_bindings.h>
 
-#include <GameFramework/InputSettings.h>
+#include <Internationalization/Text.h>
 
 namespace ioj {
 struct FControlBindingView {
     auto is_modified() const -> bool { return current_key != default_key; }
 
-    FControlBindingAddress address;
+    FlightMapping mapping;
     FText display_name;
     FText display_category;
-    EControlBindingGroup display_group{EControlBindingGroup::Flight};
-    EHardwareDevicePrimaryType device_type{EHardwareDevicePrimaryType::Unspecified};
-    FKey current_key;
-    FKey default_key;
-    TOptional<FControlChordBindingView> chord;
+    PhysicalKey current_key;
+    PhysicalKey default_key;
 };
 }
