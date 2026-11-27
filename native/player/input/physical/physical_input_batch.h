@@ -1,12 +1,8 @@
 #pragma once
 
 #include "player/input/physical/physical_input.h"
-#include <ioj/input/physical/axes.h>
-#include <ioj/input/physical/buttons.h>
 #include <ioj/input/physical/event_kind.h>
-#include <ioj/input/physical/motions.h>
-#include <ioj/input/physical/pointer_buttons.h>
-#include <ioj/input/physical/wheels.h>
+#include <ioj/input/physical/physical_input_tables.h>
 
 #include <cstddef>
 #include <utility>

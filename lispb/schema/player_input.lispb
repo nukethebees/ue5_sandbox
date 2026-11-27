@@ -403,41 +403,29 @@
     (value FocusLost)
     (projections (cpp))))
 
-(module physical_buttons
-  :header "native/player/include/ioj/input/physical/buttons.h"
+(module physical_input_tables
+  :header "native/player/include/ioj/input/physical/physical_input_tables.h"
   :namespace ioj
   (struct PhysicalButtonsRows
     (member keys array @input_key)
     (member modifiers array @input_modifiers)
     (member states array @button_edge)
-    (member repeats array bool)))
+    (member repeats array bool))
 
-(module physical_pointer_buttons
-  :header "native/player/include/ioj/input/physical/pointer_buttons.h"
-  :namespace ioj
   (struct PhysicalPointerButtonsRows
     (member positions array @input_point)
     (member keys array @input_key)
     (member states array @button_edge)
-    (member clicks array @native_uint8)))
+    (member clicks array @native_uint8))
 
-(module physical_axes
-  :header "native/player/include/ioj/input/physical/axes.h"
-  :namespace ioj
   (struct PhysicalAxesRows
     (member keys array @input_key)
-    (member positions array float)))
+    (member positions array float))
 
-(module physical_motions
-  :header "native/player/include/ioj/input/physical/motions.h"
-  :namespace ioj
   (struct PhysicalMotionsRows
     (member positions array @input_point)
-    (member deltas array @input_point)))
+    (member deltas array @input_point))
 
-(module physical_wheels
-  :header "native/player/include/ioj/input/physical/wheels.h"
-  :namespace ioj
   (struct PhysicalWheelsRows
     (member positions array @input_point)
     (member steps array float)))
