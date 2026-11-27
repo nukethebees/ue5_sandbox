@@ -28,6 +28,7 @@ static_assert(!is_keyboard_key(static_cast<PhysicalKey>(SDL_SCANCODE_F24)));
 static_assert(!is_keyboard_key(PhysicalKey::LeftMouseButton));
 static_assert(!is_keyboard_key(PhysicalKey::GamepadLeftX));
 struct Presentation {
+    std::vector<KeyboardLabel> labels;
     InputRoute route;
     MenuStatus menu;
     Modifiers modifiers;
@@ -43,6 +44,9 @@ Presentation presentation;
 
 namespace ioj::host {
 
+void present_keyboard_layout(std::span<KeyboardLabel const> labels) {
+    tests::presentation.labels.assign(labels.begin(), labels.end());
+}
 void present_input(PresentationEvent const& event) {
     auto& view{tests::presentation};
     if (auto const* key{std::get_if<MenuKey>(&event)}; key && key->down) {
@@ -150,6 +154,10 @@ class SdlPlayerInput : public ::testing::Test {
 
 TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     auto& view{host::tests::presentation};
+    auto const label{std::ranges::find(view.labels, PhysicalKey::W, &host::KeyboardLabel::key)};
+    ASSERT_NE(label, view.labels.end());
+    EXPECT_EQ(label->name,
+              SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_SCANCODE_W, SDL_KMOD_NONE, false)));
     press(SDLK_DOWN, SDL_SCANCODE_DOWN);
     frame();
     view.menu.input_mode = MenuInputMode::TextEntry;

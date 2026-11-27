@@ -15,6 +15,11 @@
 #include <vector>
 
 namespace ioj::host {
+struct KeyboardLabel {
+    PhysicalKey key;
+    std::string name;
+};
+
 struct MenuStatus {
     MenuInputMode input_mode{MenuInputMode::Navigation};
     std::optional<MainMenuItem> main_focus;
@@ -81,6 +86,7 @@ using InputEvents = std::vector<InputEvent>;
 #else
 #define IOJ_INPUT_API __declspec(dllimport)
 #endif
+IOJ_INPUT_API void present_keyboard_layout(std::span<KeyboardLabel const> labels);
 IOJ_INPUT_API auto menu_status() -> MenuStatus;
 IOJ_INPUT_API auto present_pause(PauseCommand command) -> bool;
 IOJ_INPUT_API void select_benchmark_button(bool end_selected);

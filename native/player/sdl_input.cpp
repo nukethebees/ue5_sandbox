@@ -1,5 +1,7 @@
 #include "player/sdl_input.h"
 
+#include <ioj/host/input.h>
+
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_video.h>
@@ -9,6 +11,18 @@
 
 namespace ioj {
 namespace {
+void present_keyboard_layout() {
+    std::array<host::KeyboardLabel, physical_key_keyboard_key_values.size()> labels;
+    for (std::size_t i{}; i < labels.size(); ++i) {
+        auto const key{physical_key_keyboard_key_values[i]};
+        auto const scan{static_cast<SDL_Scancode>(key)};
+        auto const logical{SDL_GetKeyFromScancode(scan, SDL_KMOD_NONE, false)};
+        auto const* name{SDL_GetKeyName(logical)};
+        labels[i] = {key, *name ? name : SDL_GetScancodeName(scan)};
+    }
+    host::present_keyboard_layout(labels);
+}
+
 auto pad_button(std::size_t button) -> PhysicalKey {
     switch (button) {
         case SDL_GAMEPAD_BUTTON_SOUTH:
@@ -86,7 +100,9 @@ constexpr std::array<PhysicalKey, SDL_GAMEPAD_AXIS_COUNT> axis_keys{
 }
 
 SdlInput::SdlInput(SDL_Window& window)
-    : window_{window} {}
+    : window_{window} {
+    present_keyboard_layout();
+}
 SdlInput::~SdlInput() {
     SDL_CloseGamepad(gamepad_);
 }
@@ -110,6 +126,11 @@ void SdlInput::set_window_modes(bool relative_mouse, bool text_input) {
 }
 auto SdlInput::translate(SDL_Event const& event) -> std::optional<PhysicalEvent> {
     using enum ButtonState;
+    if (event.type == SDL_EVENT_KEYMAP_CHANGED) {
+        present_keyboard_layout();
+        return {};
+    }
+
     if (event.type == SDL_EVENT_GAMEPAD_ADDED || event.type == SDL_EVENT_GAMEPAD_REMOVED) {
         bool const removed{gamepad_ && event.type == SDL_EVENT_GAMEPAD_REMOVED &&
                            SDL_GetGamepadID(gamepad_) == event.gdevice.which};
