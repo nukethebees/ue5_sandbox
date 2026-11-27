@@ -314,9 +314,48 @@ auto Application::play(Window& window,
         auto const menu{host::menu_status()};
         input.synchronize(input_route(storage.get(), menu), menu);
     };
+    bool end_selected{};
+    bool end_benchmark{};
+    auto dispatch = [&](host::PlayerAction action) {
+        auto* const level{storage.get()};
+        if (!level || level->presentation_setup || end_benchmark) {
+            return;
+        }
+        auto& simulation{level->simulation};
+        using enum host::PlayerAction;
+        if (action == BenchmarkActivate) {
+            action = end_selected ? EndBenchmark : ToggleBenchmark;
+        }
+        switch (action) {
+            case OpenPause:
+            case RequestResume:
+                break;
+            case BenchmarkNext:
+                end_selected = !end_selected;
+                host::select_benchmark_button(end_selected);
+                break;
+            case ToggleBenchmark:
+                if (simulation.state() == sim::LevelState::Running) {
+                    simulation.pause();
+                } else if (simulation.state() == sim::LevelState::Paused) {
+                    simulation.start();
+                    previous_frame_time = std::chrono::steady_clock::now();
+                }
+                break;
+            case EndBenchmark:
+                end_benchmark = true;
+                break;
+            case BenchmarkActivate:
+                break;
+        }
+    };
     auto process_widget_actions = [&] {
         for (auto const& action : host::take_widget_actions()) {
-            host::activate_main_item(std::get<input::MainMenuItem>(action));
+            if (auto const* item{std::get_if<input::MainMenuItem>(&action)}) {
+                host::activate_main_item(*item);
+            } else {
+                dispatch(std::get<host::PlayerAction>(action));
+            }
         }
     };
     auto last_input_frame{previous_frame_time};
@@ -384,6 +423,13 @@ auto Application::play(Window& window,
 
         process_widget_actions();
         auto const messages{host::take_messages()};
+        if (end_benchmark) {
+            auto const id{storage.get()->simulation.level_metadata().id};
+            unload_level(storage, sim::RunEndReason::WorldEnd, false);
+            host::open_menu(id.value, {});
+            end_benchmark = false;
+            continue;
+        }
         process_preferences(window, input, messages.preference_edits);
         process_profile_actions(messages.profile_actions);
 
@@ -427,6 +473,7 @@ auto Application::play(Window& window,
         }
 
         if (level->presentation_setup && host::level_world_ready()) {
+            end_selected = false;
             if (!initialize_presentation(*level)) {
                 unload_level(storage, sim::RunEndReason::WorldEnd, false);
                 if (exit_when_ready) {

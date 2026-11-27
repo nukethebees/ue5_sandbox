@@ -3,6 +3,7 @@
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/UnrealMessages.h>
 #include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
@@ -194,21 +195,21 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
                                              .state = weak->get_state()}
                               : FRunHudState{};
     });
-    created_widget->pause_requested.AddUObject(&owner,
-                                               &ASpaceGamePlayerController::toggle_run_pause);
-    created_widget->end_requested.AddUObject(&owner,
-                                             &ASpaceGamePlayerController::return_to_level_select);
+    created_widget->pause_requested.AddLambda(
+        [] { queue_input_action(host::PlayerAction::ToggleBenchmark); });
+    created_widget->end_requested.AddLambda(
+        [] { queue_input_action(host::PlayerAction::EndBenchmark); });
     created_widget->AddToPlayerScreen(100);
     created_widget->select_button(false);
     return true;
 }
-void FPlayerHudLifecycle::shutdown_benchmark(ASpaceGamePlayerController& owner) {
+void FPlayerHudLifecycle::shutdown_benchmark() {
     if (!IsValid(benchmark_hud_widget_)) {
         return;
     }
 
-    benchmark_hud_widget_->end_requested.RemoveAll(&owner);
-    benchmark_hud_widget_->pause_requested.RemoveAll(&owner);
+    benchmark_hud_widget_->end_requested.Clear();
+    benchmark_hud_widget_->pause_requested.Clear();
     benchmark_hud_widget_->RemoveFromParent();
     benchmark_hud_widget_ = nullptr;
 }

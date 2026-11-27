@@ -72,6 +72,7 @@ IOJ_INPUT_API void ui_key(
 IOJ_INPUT_API void ui_axis(input::KeyCode code, float value, Modifiers modifiers);
 IOJ_INPUT_API void ui_pointer(PointerInput const& event, Modifiers modifiers);
 IOJ_INPUT_API void ui_text(std::string_view text, Modifiers modifiers);
+IOJ_INPUT_API void select_benchmark_button(bool end_selected);
 IOJ_INPUT_API void focus_main_item(input::MainMenuItem item);
 IOJ_INPUT_API void activate_main_item(input::MainMenuItem item);
 IOJ_INPUT_API auto take_widget_actions() -> std::span<WidgetAction const>;

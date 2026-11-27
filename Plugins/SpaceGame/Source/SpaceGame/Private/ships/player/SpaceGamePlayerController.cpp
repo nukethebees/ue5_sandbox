@@ -65,7 +65,7 @@ void ASpaceGamePlayerController::initialise_main_menu() {
     detach_ship();
     set_control_context(levels::ControlContext::None);
     hud_.shutdown();
-    hud_.shutdown_benchmark(*this);
+    hud_.shutdown_benchmark();
     if (!modal_ui_.initialise_root(*this, ui_data) || !modal_ui_.show_main_menu()) {
         return;
     }
@@ -79,7 +79,7 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
     detach_ship();
     set_control_context(levels::ControlContext::None);
     hud_.shutdown();
-    hud_.shutdown_benchmark(*this);
+    hud_.shutdown_benchmark();
     modal_ui_.shutdown(*this);
     Super::EndPlay(reason);
 }
@@ -227,7 +227,7 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
         return false;
     }
 
-    hud_.shutdown_benchmark(*this);
+    hud_.shutdown_benchmark();
     if (!modal_ui_.initialise_root(*this, ui_data) ||
         !hud_.initialise(
             *this, orchestrator_.Get(), ui_data, levels::ControlContext::Observer, viewer_speed_)) {
@@ -354,21 +354,6 @@ void ASpaceGamePlayerController::toggle_pause_game() {
                    TEXT("ASpaceGamePlayerController::toggle_pause_game: Orchestrator is stopped."));
             break;
         }
-    }
-}
-void ASpaceGamePlayerController::toggle_run_pause() {
-    auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator)) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ASpaceGamePlayerController::toggle_run_pause: Orchestrator is invalid."));
-        return;
-    }
-
-    if (orchestrator->get_state() == sim::LevelState::Running) {
-        orchestrator->pause_simulation();
-    } else if (orchestrator->get_state() == sim::LevelState::Paused) {
-        orchestrator->start_simulation();
     }
 }
 void ASpaceGamePlayerController::show_initial_pause_menu() {
@@ -502,7 +487,7 @@ void ASpaceGamePlayerController::finish_level() {
     set_control_context(levels::ControlContext::None);
     hud_.cancel_restore();
     hud_.shutdown();
-    hud_.shutdown_benchmark(*this);
+    hud_.shutdown_benchmark();
 }
 void ASpaceGamePlayerController::show_level_completion(FLevelCompletion const& completion) {
     if (!is_gameplay_mode() || return_to_level_select_pending_) {
@@ -543,7 +528,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
 
     modal_ui_.clear_menus(*this);
     hud_.cancel_restore();
-    hud_.shutdown_benchmark(*this);
+    hud_.shutdown_benchmark();
     set_control_context(levels::ControlContext::None);
 }
 void ASpaceGamePlayerController::quit_game() {

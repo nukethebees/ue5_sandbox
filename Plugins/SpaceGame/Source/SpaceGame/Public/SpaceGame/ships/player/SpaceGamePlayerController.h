@@ -94,7 +94,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     // Modal and simulation transitions
     /* **************************************** */
     void toggle_pause_game();
-    void toggle_run_pause();
     void show_initial_pause_menu();
     auto open_pause_menu() -> bool;
     auto suspend_gameplay_for_modal() -> bool;

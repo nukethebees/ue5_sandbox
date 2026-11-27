@@ -4,6 +4,7 @@
 #include <ioj/host/input.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
+#include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -168,6 +169,13 @@ void ui_text(std::string_view text, Modifiers modifiers) {
     for (int32 i{}; i < characters.Len(); ++i) {
         slate.ProcessKeyCharEvent(
             FCharacterEvent{characters[i], modifier_state(modifiers), 0, false});
+    }
+}
+void select_benchmark_button(bool end_selected) {
+    auto* player{controller()};
+    check(player);
+    if (auto* hud{player->get_benchmark_hud()}) {
+        hud->select_button(end_selected);
     }
 }
 void focus_main_item(input::MainMenuItem item) {
