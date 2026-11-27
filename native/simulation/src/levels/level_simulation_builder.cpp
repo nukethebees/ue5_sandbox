@@ -173,9 +173,8 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
             return LevelSimulationBuildResult{std::unexpect, std::move(ticks.error())};
         }
         auto& events{inputs.level_events};
-        auto const timer{inputs.timers.add()};
+        auto const timer{inputs.timers.start_run_limit(*ticks)};
         auto const elapsed{inputs.conditions.add_timer_elapsed(timer)};
-        events.enqueue(events.add_start_timer_event({timer, *ticks}));
         std::array const effects{events.add_stop_event(RunEndReason::DurationReached)};
         events.add_trigger(elapsed, effects);
     }

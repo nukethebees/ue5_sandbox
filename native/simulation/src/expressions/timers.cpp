@@ -1,5 +1,6 @@
 #include <ioj/sim/expressions/timers.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 
@@ -33,6 +34,25 @@ void Timers::start(TimerHandle const handle, TimerTicks const duration) {
     state = detail::TimerState::Started;
     remaining_ticks_.push_back(duration);
     owners_.push_back(handle);
+}
+auto Timers::start_run_limit(TimerTicks const duration) -> TimerHandle {
+    assert(!run_limit_.is_valid());
+    run_limit_ = add();
+    start(run_limit_, duration);
+    return run_limit_;
+}
+auto Timers::run_ticks_remaining() const -> std::optional<TimerTicks> {
+    if (!run_limit_.is_valid()) {
+        return std::nullopt;
+    }
+
+    if (elapsed(run_limit_)) {
+        return 0;
+    }
+
+    auto const it{std::ranges::find(owners_, run_limit_)};
+    assert(it != owners_.end());
+    return remaining_ticks_[static_cast<std::size_t>(it - owners_.begin())];
 }
 void Timers::tick(TimerTicks const ticks) {
     assert(ticks >= 0);

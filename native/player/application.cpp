@@ -554,10 +554,8 @@ auto Application::launch_mission(session::MissionLaunchRequest mission) -> Appli
 }
 void Application::bind_level() {
     auto const mode{mission_to_bind_->options.launch_mode};
-    mission_duration_seconds_ = mission_to_bind_->options.simulated_duration_seconds.transform(
-        [](auto value) { return value.get(); });
     auto const bound{host::bind_level(bridge::mission_init(*mission_to_bind_, *level_),
-                                      bridge::mission_frame(*level_, mission_duration_seconds_))};
+                                      bridge::mission_frame(*level_))};
     mission_to_bind_.reset();
     if (!bound) {
         unload_level(sim::RunEndReason::WorldEnd, false);
@@ -573,7 +571,7 @@ void Application::bind_level() {
 void Application::advance_level(double delta_seconds) {
     auto const state{level_->state()};
     level_->advance(delta_seconds);
-    auto const frame{bridge::mission_frame(*level_, mission_duration_seconds_)};
+    auto const frame{bridge::mission_frame(*level_)};
     auto const visual_delta{
         level_->state() == sim::LevelState::Running || !frame.events.ticks.empty() ? delta_seconds
                                                                                    : 0.0};

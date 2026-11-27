@@ -104,7 +104,7 @@ auto mission_init(session::MissionLaunchRequest const& mission, sim::LevelSim co
     return init;
 }
 
-auto mission_frame(sim::LevelSim const& level, std::optional<double> duration_seconds)
+auto mission_frame(sim::LevelSim const& level)
     -> presentation::MissionFrame {
     auto const view{level.read_access()};
     auto const capitals{view.capitals().get_entities()};
@@ -116,7 +116,8 @@ auto mission_frame(sim::LevelSim const& level, std::optional<double> duration_se
     auto const bounds{level.spatial_query_manager().entity_collision_bounds()};
     using enum sim::EntityType;
     presentation::MissionFrame frame{
-        .status = {.completed_tick = level.clock().get_completed_ticks(), .state = level.state()},
+        .status = {.completed_tick = level.clock().get_completed_ticks(), .state = level.state(),
+                   .ticks_remaining = level.run_ticks_remaining()},
         .agents = {{{CapitalShip,
                      capitals.entity_ids(),
                      capitals.view_locations().resolve(),
@@ -158,12 +159,6 @@ auto mission_frame(sim::LevelSim const& level, std::optional<double> duration_se
             [](auto... columns) { return sim::collision::world_aabbs::ConstView{columns...}; }),
         .entity_counts = {view.entity_ledger().count_alive_per_team_and_type()},
         .events = frame_events(view.frame_events())};
-    if (duration_seconds) {
-        auto const& clock{level.clock()};
-        auto const end{clock.duration_to_tick_period(Duration::make(*duration_seconds)).get()};
-        auto const tick{clock.get_completed_ticks().value()};
-        frame.status.ticks_remaining = tick >= end ? 0 : end - tick;
-    }
     if (auto const* player{view.player()}) {
         frame.player = player_frame(*player, view);
         frame.sampled_speed.emplace(player->speed_samples, player->speed_sample_index);

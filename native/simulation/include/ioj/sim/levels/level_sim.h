@@ -7,6 +7,7 @@
 #include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
+#include <ioj/sim/expressions/timer_ticks.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/levels/level_event_manager.h>
@@ -110,6 +111,9 @@ struct LevelSim {
     auto events() -> LevelEventManager& { return event_manager_; }
     auto events() const -> LevelEventManager const& { return event_manager_; }
     auto task_manager() const -> tasks::TaskManager const& { return task_manager_; }
+    auto run_ticks_remaining() const -> std::optional<TimerTicks> {
+        return timers_.run_ticks_remaining();
+    }
     auto level_metadata() const -> levels::LevelMetadata const& { return level_metadata_; }
     auto spatial_query_manager() const -> SpatialQueryManager const& { return spatial_queries_; }
     auto memory_manager() const noexcept -> LevelMemoryManager const& { return memory_manager_; }
