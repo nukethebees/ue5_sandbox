@@ -37,7 +37,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void present_level(time_type delta_seconds, presentation::LevelFrame const& frame);
     auto initialize_level(presentation::LevelInit const& level,
                           presentation::LevelFrame const& frame) -> FLevelLoadResult;
-    void handle_level_start_failure(FString message);
+    void release_level();
     void finish_level(profiles::CompletedLevel const& completed,
                       bool scored,
                       bool new_best,
@@ -97,7 +97,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Level initialization
     /* **************************************** */
-    void release_level();
 
     /* **************************************** */
     // Presentation

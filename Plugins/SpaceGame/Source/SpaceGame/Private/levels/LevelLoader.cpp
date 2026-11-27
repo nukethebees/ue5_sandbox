@@ -3,7 +3,6 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/UnrealMessages.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -114,11 +113,6 @@ auto FLevelLoadErrors::format(FStringView const source_path) const -> FString {
     return FString::Printf(TEXT("Failed to load '%s':\n%s"),
                            *FString{source_path},
                            *FString::Join(messages, TEXT("\n")));
-}
-
-void FLevelLoader::report_failure(UWorld* const world, FString message) {
-    UE_LOG(LogSandbox, Error, TEXT("%s"), *message);
-    request_menu({.launch_error = to_string(message)});
 }
 
 auto FLevelLoader::load(FLevelActorLoadRequest const& request) -> FLevelLoadResult {

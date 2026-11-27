@@ -259,11 +259,6 @@ auto ATestBatchOrchestrator::initialize_level(presentation::LevelInit const& lev
     UE_LOG(LogSandbox, Display, TEXT("Level ready: %s"), *to_fstring(level.setup.source_path));
     return {};
 }
-void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
-    release_level();
-    FLevelLoader::report_failure(GetWorld(), MoveTemp(message));
-}
-
 /* **************************************** */
 // Presentation integration
 /* **************************************** */

@@ -8,12 +8,17 @@
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 #include <ioj/host/game_host_api.h>
+#include <ioj/host/level_host.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <Engine/Engine.h>
 #include <Engine/GameViewportClient.h>
 #include <Engine/World.h>
+#include <Kismet/GameplayStatics.h>
 #endif
 
 #include <Misc/AssertionMacros.h>
@@ -140,6 +145,38 @@ void clear_requested_simulation_mode() {
 }
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
+namespace {
+TWeakObjectPtr<ATestBatchOrchestrator> level_world;
+}
+void attach_level_world(ATestBatchOrchestrator& actor) {
+    check(!level_world.IsValid());
+    level_world = &actor;
+}
+void detach_level_world(ATestBatchOrchestrator& actor) {
+    if (level_world.Get(true) == &actor) {
+        level_world.Reset();
+    }
+}
+namespace host {
+auto level_world_ready() -> bool {
+    return level_world.IsValid();
+}
+void open_level() {
+    level_world.Reset();
+    UGameplayStatics::OpenLevel(GEngine->GameViewport->GetWorld(),
+                                TEXT("/SpaceGame/Levels/GameRuntime"));
+}
+void open_menu(std::string_view preferred_level_id, std::string_view error) {
+    menu_selection().emplace(levels::LevelId{std::string{preferred_level_id}}, std::string{error});
+    level_world.Reset();
+    UGameplayStatics::OpenLevel(GEngine->GameViewport->GetWorld(),
+                                TEXT("/SpaceGame/Levels/MainMenu"));
+}
+auto presents_level() -> bool {
+    return level_world.IsValid() && level_world->has_level();
+}
+
+}
 void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
     auto* const viewport{GEngine ? GEngine->GameViewport.Get() : nullptr};
     auto* const world{viewport ? viewport->GetWorld() : nullptr};
@@ -160,6 +197,49 @@ void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
             case Pause:
                 pause_presented(host::present_pause(messages.pause_commands[index]));
                 break;
+            case Viewer: {
+                auto const& step{messages.viewer_steps[index]};
+                player->present_viewer_motion(step.motion, step.seconds);
+                break;
+            }
+            case Steering: {
+                TOptional<FVector2D> position;
+                if (auto direction{messages.steering[index]}) {
+                    position.Emplace(direction->x(), direction->y());
+                }
+                player->present_steering(position);
+                break;
+            }
+            case InitializeLevel: {
+                auto const& init{messages.initializations[index]};
+                auto result{level_world->initialize_level(init.level, init.frame)};
+                std::string error;
+                if (!result) {
+                    auto const message{
+                        result.error().format(to_fstring(init.level.setup.source_path))};
+                    UE_LOG(LogTemp, Error, TEXT("%s"), *message);
+                    level_world->release_level();
+                    error = to_string(message);
+                }
+                level_initialized(std::move(error));
+                break;
+            }
+            case Frame: {
+                auto const& frame{messages.frames[index]};
+                level_world->present_level(frame.seconds, frame.frame);
+                break;
+            }
+            case SimulationPaused:
+                level_world->on_simulation_paused.Broadcast();
+                break;
+            case Finish: {
+                auto const& result{messages.completions[index]};
+                if (level_world.IsValid() && level_world->has_level()) {
+                    level_world->finish_level(
+                        result.level, result.scored, result.new_best, result.show_results);
+                }
+                break;
+            }
             case Profiles:
                 if (auto* main{player ? player->main_menu() : nullptr}) {
                     if (auto* widget{main->save_game_viewer()}) {

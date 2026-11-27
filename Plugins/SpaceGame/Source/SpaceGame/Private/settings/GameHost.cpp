@@ -38,18 +38,6 @@
 #include <utility>
 
 namespace ioj {
-namespace {
-TWeakObjectPtr<ATestBatchOrchestrator> level_world;
-}
-void attach_level_world(ATestBatchOrchestrator& actor) {
-    check(!level_world.IsValid());
-    level_world = &actor;
-}
-void detach_level_world(ATestBatchOrchestrator& actor) {
-    if (level_world.Get(true) == &actor) {
-        level_world.Reset();
-    }
-}
 namespace host {
 namespace {
 auto controller() -> ASpaceGamePlayerController* {
@@ -72,63 +60,6 @@ void select_benchmark_button(bool end_selected) {
 void present_menu(MenuUpdate const& update) {
     if (auto* player{controller()}) {
         player->present_menu(update);
-    }
-}
-void present_viewer(ViewerStep const& step) {
-    auto* const player{controller()};
-    check(player);
-    player->present_viewer_motion(step.motion, step.seconds);
-}
-void present_steering(std::optional<Vector2d> direction) {
-    auto* const player{controller()};
-    check(player);
-    TOptional<FVector2D> position;
-    if (direction) {
-        position.Emplace(direction->x(), direction->y());
-    }
-    player->present_steering(position);
-}
-auto level_world_ready() -> bool {
-    return level_world.IsValid();
-}
-void open_level() {
-    level_world.Reset();
-    UGameplayStatics::OpenLevel(GEngine->GameViewport->GetWorld(),
-                                TEXT("/SpaceGame/Levels/GameRuntime"));
-}
-void open_menu(std::string_view preferred_level_id, std::string_view error) {
-    menu_selection().emplace(levels::LevelId{std::string{preferred_level_id}}, std::string{error});
-    level_world.Reset();
-    UGameplayStatics::OpenLevel(GEngine->GameViewport->GetWorld(),
-                                TEXT("/SpaceGame/Levels/MainMenu"));
-}
-auto initialize_level(presentation::LevelInit const& level, presentation::LevelFrame const& frame)
-    -> bool {
-    auto result{level_world->initialize_level(level, frame)};
-    if (!result) {
-        level_world->handle_level_start_failure(
-            result.error().format(to_fstring(level.setup.source_path)));
-        return false;
-    }
-
-    return true;
-}
-auto presents_level() -> bool {
-    return level_world.IsValid() && level_world->has_level();
-}
-
-void present_level(double delta_seconds, presentation::LevelFrame const& frame) {
-    level_world->present_level(delta_seconds, frame);
-}
-void simulation_paused() {
-    level_world->on_simulation_paused.Broadcast();
-}
-void finish_level(profiles::CompletedLevel const& completed,
-                  bool scored,
-                  bool new_best,
-                  bool show_results) {
-    if (level_world.IsValid() && level_world->has_level()) {
-        level_world->finish_level(completed, scored, new_best, show_results);
     }
 }
 }

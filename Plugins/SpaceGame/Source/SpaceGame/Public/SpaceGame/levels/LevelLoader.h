@@ -55,6 +55,5 @@ struct FLevelActorLoadRequest {
 class SPACEGAME_API FLevelLoader {
   public:
     static auto load(FLevelActorLoadRequest const& request) -> FLevelLoadResult;
-    static void report_failure(UWorld* world, FString message);
 };
 }

@@ -81,21 +81,24 @@ auto open_profiles(std::filesystem::path const& project_directory,
     return manager;
 }
 
-auto initialize_presentation(LoadedLevel& level) -> bool {
+auto initialize_presentation(LoadedLevel& level, host::NativeEndpoint& endpoint) -> std::string {
     auto const mode{level.presentation_setup->launch_mode};
     auto& simulation{level.simulation};
-    auto const initialized{
-        host::initialize_level(bridge::level_init(*level.presentation_setup, simulation),
-                               bridge::level_frame(simulation))};
+    endpoint.initialize_level({bridge::level_init(*level.presentation_setup, simulation),
+                               bridge::level_frame(simulation)});
+    auto const& reply{endpoint.exchange()};
+    assert(!reply.level_results.empty());
+    auto error{reply.level_results.back()};
     level.presentation_setup.reset();
 
-    if (initialized && mode == levels::LaunchMode::Running &&
+    if (error.empty() && mode == levels::LaunchMode::Running &&
         simulation.state() == sim::LevelState::Paused) {
         simulation.start();
     }
-    return initialized;
+    return error;
 }
-void advance_level(sim::LevelSim& simulation, double delta_seconds) {
+void
+    advance_level(sim::LevelSim& simulation, double delta_seconds, host::NativeEndpoint& endpoint) {
     auto const state{simulation.state()};
     simulation.advance(delta_seconds);
     auto const frame{bridge::level_frame(simulation)};
@@ -103,11 +106,12 @@ void advance_level(sim::LevelSim& simulation, double delta_seconds) {
                                     !frame.events.ticks.empty()
                                 ? delta_seconds
                                 : 0.0};
-    host::present_level(visual_delta, frame);
+    endpoint.present_frame({visual_delta, frame});
 
     if (state == sim::LevelState::Running && simulation.state() == sim::LevelState::Paused) {
-        host::simulation_paused();
+        endpoint.send(host::NativeMessageKind::SimulationPaused);
     }
+    endpoint.exchange();
 }
 }
 
@@ -403,6 +407,8 @@ struct Application::PlayerInputSession {
                     }
                     break;
                 }
+                case host::UnrealMessageKind::LevelInitialized:
+                    break;
                 case host::UnrealMessageKind::PausePresented:
                     if (!replies.pause_results[index]) {
                         pause_presentation = std::unexpected{
@@ -595,10 +601,13 @@ auto Application::play(Window& window,
         auto const frame_seconds{std::min(input_delta.count(), max_frame_delta_seconds)};
         auto const window_events{play_input.advance(frame_seconds)};
         if (auto step{play_input.input.viewer_step(frame_seconds)}) {
-            host::present_viewer(*step);
+            endpoint_.step_viewer(*step);
         }
         if (play_input.routing().context == InputContext::Gameplay) {
-            host::present_steering(play_input.input.steering());
+            endpoint_.present_steering(play_input.input.steering());
+        }
+        if (endpoint_.size() != 0) {
+            play_input.process_widget_actions();
         }
         if (window_events.display_changed) {
             if (auto result{window.refresh_resolutions()}; !result) {
@@ -703,12 +712,14 @@ auto Application::play(Window& window,
                                         levels::LaunchMode::Paused &&
                                     (level->control_context == levels::ControlContext::Player ||
                                      level->control_context == levels::ControlContext::Observer)};
-            if (!initialize_presentation(*level)) {
+            if (auto error{initialize_presentation(*level, endpoint_)}; !error.empty()) {
+                menu_.selected_level = level->simulation.level_metadata().id.value;
                 unload_level(storage, sim::RunEndReason::WorldEnd, false);
                 if (exit_when_ready) {
-                    return ApplicationResult{std::unexpect,
-                                             "Level initialization failed. See the game log."};
+                    return ApplicationResult{std::unexpect, std::move(error)};
                 }
+                menu_.open(MenuScreen::Main, !menu_.selected_level.empty());
+                host::open_menu(menu_.selected_level, error);
                 continue;
             }
 
@@ -733,7 +744,7 @@ auto Application::play(Window& window,
             if (messages.requested_simulation_mode) {
                 level->set_simulation_mode(*messages.requested_simulation_mode);
             }
-            advance_level(level->simulation, level->elapsed_seconds());
+            advance_level(level->simulation, level->elapsed_seconds(), endpoint_);
             level->update_pause(menu_.screen == MenuScreen::Pause);
             if (level->simulation.state() == sim::LevelState::Stopped) {
                 unload_level(storage, sim::RunEndReason::LevelCompleted, true);
@@ -1011,7 +1022,8 @@ void Application::unload_level(LevelStorage& storage, sim::RunEndReason reason, 
         if (show_results) {
             menu_.open(MenuScreen::Completion);
         }
-        host::finish_level(completed, score.has_value(), saved.new_best_time, show_results);
+        endpoint_.finish_level({completed, score.has_value(), saved.new_best_time, show_results});
+        endpoint_.exchange();
     }
 
     storage.unload();
