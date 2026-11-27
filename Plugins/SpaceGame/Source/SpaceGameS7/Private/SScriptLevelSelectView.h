@@ -90,11 +90,11 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     TSharedPtr<SEditableText> battle_duration_input_{};
     TSharedPtr<STextBlock> battle_duration_error_{};
     TSharedPtr<SGameButton> launch_button_{};
-    TSharedPtr<SGameButton> mission_category_button_{};
+    TSharedPtr<SGameButton> level_category_button_{};
     TSharedPtr<SGameButton> battle_viewer_category_button_{};
     TSharedPtr<SGameButton> benchmark_category_button_{};
     TArray<TSharedPtr<SGameButton>> level_buttons_{};
-    LevelCatalogCategory category_{LevelCatalogCategory::Mission};
+    LevelCatalogCategory category_{LevelCatalogCategory::Playable};
     int32 selected_button_index_{INDEX_NONE};
     bool selected_level_can_launch_{};
     bool battle_speed_valid_{true};

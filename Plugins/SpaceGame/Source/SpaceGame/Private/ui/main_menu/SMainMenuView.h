@@ -19,12 +19,12 @@ class SMainMenuView final : public SCompoundWidget {
   public:
     SLATE_BEGIN_ARGS(SMainMenuView)
         : _Style(nullptr)
-        , _Page(EMenuPage::SelectMission)
+        , _Page(EMenuPage::SelectLevel)
         , _Audio() {}
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
     SLATE_ATTRIBUTE(EMenuPage, Page)
     SLATE_ARGUMENT(FGameAudioFacade, Audio)
-    SLATE_NAMED_SLOT(FArguments, MissionContent)
+    SLATE_NAMED_SLOT(FArguments, LevelContent)
     SLATE_NAMED_SLOT(FArguments, ArchiveContent)
     SLATE_NAMED_SLOT(FArguments, OptionsContent)
     SLATE_EVENT(FOnMainMenuPageSelected, OnPageSelected)
@@ -34,7 +34,7 @@ class SMainMenuView final : public SCompoundWidget {
 
     void Construct(FArguments const& args);
     void refresh_page();
-    void set_mission_content(TSharedRef<SWidget> content);
+    void set_level_content(TSharedRef<SWidget> content);
     void set_navigation_enabled(bool enabled);
     void focus_navigation();
     void focus_content_on_next_focus();
@@ -65,7 +65,7 @@ class SMainMenuView final : public SCompoundWidget {
     TArray<TSharedPtr<SHiveNavigationButton>> page_buttons_{};
     TSharedPtr<SHiveNavigationButton> quit_button_{};
     TSharedPtr<SWidgetSwitcher> content_switcher_{};
-    TSharedPtr<SBox> mission_content_{};
+    TSharedPtr<SBox> level_content_{};
     TAttribute<EMenuPage> page_;
     bool navigation_enabled_{true};
     bool focus_content_next_{};

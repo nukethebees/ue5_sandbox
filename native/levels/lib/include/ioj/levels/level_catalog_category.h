@@ -5,7 +5,7 @@ class LevelDefinition;
 }
 
 namespace ioj::levels::authoring {
-enum class LevelCatalogCategory { Mission, BattleViewer, Benchmark };
+enum class LevelCatalogCategory { Playable, BattleViewer, Benchmark };
 
 [[nodiscard]] auto catalog_category(LevelDefinition const& definition) noexcept
     -> LevelCatalogCategory;

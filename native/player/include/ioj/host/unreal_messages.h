@@ -28,13 +28,12 @@ struct PreferenceEdit {
     GameSettingsState original_settings;
 };
 
-struct MissionSelection {
+struct LevelSelection {
     levels::LevelId id;
     levels::LaunchOptions options;
 };
 
-using NavigationRequest =
-    std::variant<std::monostate, MissionSelection, session::LevelSelectRequest>;
+using NavigationRequest = std::variant<std::monostate, LevelSelection, session::LevelSelectRequest>;
 
 struct UnrealMessages {
     std::span<ProfileAction const> profile_actions;

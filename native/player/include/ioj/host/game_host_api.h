@@ -14,7 +14,7 @@ struct UnrealMessages;
 
 namespace ioj::presentation {
 struct ProfileView;
-struct MissionCatalogView;
+struct LevelCatalogView;
 }
 namespace ioj {
 struct SystemCapabilities;
@@ -40,7 +40,7 @@ namespace host {
 // Call once after the Unreal tick. Views last until the next BeginFrame or detach.
 // BeginFrame clears consumed requests and input edges. Axes carry forward.
 // Requests queued while handling results belong to the next batch.
-IOJ_PLAYER_API void present_catalog(presentation::MissionCatalogView const& catalog);
+IOJ_PLAYER_API void present_catalog(presentation::LevelCatalogView const& catalog);
 IOJ_PLAYER_API void present_settings(PlayerSettingsView const& settings,
                                      std::span<ScreenResolution const> resolutions);
 IOJ_PLAYER_API void present_profiles(presentation::ProfileView const& profiles);

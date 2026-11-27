@@ -36,10 +36,10 @@ void UMainMenuWidget::NativeOnInitialized() {
 }
 
 void UMainMenuWidget::prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class,
-                                       bool const focus_mission_content,
+                                       bool const focus_level_content,
                                        FName const preferred_level_id) {
     level_select_class_ = level_select_class;
-    focus_mission_content_ = focus_mission_content;
+    focus_level_content_ = focus_level_content;
     preferred_level_id_ = preferred_level_id;
     create_content_widgets();
 
@@ -47,11 +47,11 @@ void UMainMenuWidget::prepare_for_open(TSubclassOf<ULevelSelectWidget> level_sel
         level_select_widget_->prepare_for_open(preferred_level_id_);
         level_select_widget_->refresh();
         if (view_.IsValid()) {
-            view_->set_mission_content(level_select_widget_->TakeWidget());
+            view_->set_level_content(level_select_widget_->TakeWidget());
         }
     }
 
-    if (focus_mission_content_ && view_.IsValid()) {
+    if (focus_level_content_ && view_.IsValid()) {
         view_->focus_content_on_next_focus();
     }
 }
@@ -59,8 +59,8 @@ void UMainMenuWidget::prepare_for_open(TSubclassOf<ULevelSelectWidget> level_sel
 auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
     create_content_widgets();
     auto const* const style{IsValid(style_) ? &style_->get_ui_style() : &fallback_style_};
-    auto const mission_content{IsValid(level_select_widget_) ? level_select_widget_->TakeWidget()
-                                                             : SNullWidget::NullWidget};
+    auto const level_content{IsValid(level_select_widget_) ? level_select_widget_->TakeWidget()
+                                                           : SNullWidget::NullWidget};
     auto const archive_content{IsValid(save_game_viewer_) ? save_game_viewer_->TakeWidget()
                                                           : SNullWidget::NullWidget};
     auto const options_content{IsValid(options_widget_) ? options_widget_->TakeWidget()
@@ -72,14 +72,14 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
             .Page_UObject(options_widget_, &UOptionsWidget::page)
             .Audio(IsValid(style_) ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
                                    : FGameAudioFacade{})
-            .MissionContent()[mission_content]
+            .LevelContent()[level_content]
             .ArchiveContent()[archive_content]
             .OptionsContent()[options_content]
             .OnPageSelected(FOnMainMenuPageSelected::CreateUObject(this, &ThisClass::request_page))
             .OnQuit(FSimpleDelegate::CreateUObject(this, &ThisClass::request_quit))
             .OnFocusContent(
                 FSimpleDelegate::CreateUObject(this, &ThisClass::focus_active_content))};
-    if (focus_mission_content_) {
+    if (focus_level_content_) {
         view_->focus_content_on_next_focus();
     }
 
@@ -100,8 +100,8 @@ auto UMainMenuWidget::NativeOnFocusReceived(FGeometry const& geometry,
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
     if (view_.IsValid()) {
-        if (focus_mission_content_) {
-            focus_mission_content_ = false;
+        if (focus_level_content_) {
+            focus_level_content_ = false;
             focus_active_content();
         } else {
             view_->focus_navigation();
@@ -193,7 +193,7 @@ void UMainMenuWidget::show_page(EMenuPage const page) {
         view_->refresh_page();
     }
 
-    if (page == EMenuPage::SelectMission && IsValid(level_select_widget_)) {
+    if (page == EMenuPage::SelectLevel && IsValid(level_select_widget_)) {
         level_select_widget_->refresh();
     }
 }
@@ -216,7 +216,7 @@ void UMainMenuWidget::quit_game() {
 }
 
 void UMainMenuWidget::focus_active_content() {
-    if (IsValid(options_widget_) && options_widget_->page() == EMenuPage::SelectMission &&
+    if (IsValid(options_widget_) && options_widget_->page() == EMenuPage::SelectLevel &&
         IsValid(level_select_widget_)) {
         level_select_widget_->focus_primary_action();
     } else if (IsValid(options_widget_) && options_widget_->page() == EMenuPage::DataArchive &&

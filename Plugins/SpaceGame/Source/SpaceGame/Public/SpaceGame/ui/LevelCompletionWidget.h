@@ -22,7 +22,7 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     ULevelCompletionWidget();
 
     void prepare_for_open(FLevelCompletion completion);
-    void request_return_to_mission_control();
+    void request_return_to_level_select();
     auto completion() const -> FLevelCompletion const& { return completion_; }
 
     [[nodiscard]] auto get_level_display_name() const -> FString const& {

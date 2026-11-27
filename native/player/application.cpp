@@ -11,7 +11,7 @@
 #include <ioj/host/level_host.h>
 #include <ioj/host/mission_startup.h>
 #include <ioj/levels/authoring/definition_reader.h>
-#include <ioj/presentation/mission_catalog.h>
+#include <ioj/presentation/level_catalog.h>
 #include <ioj/presentation/profile_view.h>
 #include <ioj/profiles/file_profile_storage.h>
 #include <ioj/profiles/level_score.h>
@@ -300,7 +300,7 @@ auto Application::play(Window& window,
             continue;
         }
 
-        if (auto const* mission{std::get_if<host::MissionSelection>(&navigation)}) {
+        if (auto const* mission{std::get_if<host::LevelSelection>(&navigation)}) {
             unload_level(sim::RunEndReason::WorldEnd, false);
             if (catalog_) {
                 auto const entry{std::ranges::find_if(catalog_->levels, [&](auto const& candidate) {

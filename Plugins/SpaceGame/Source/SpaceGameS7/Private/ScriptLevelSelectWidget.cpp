@@ -106,12 +106,12 @@ auto description_with_requirements(FLevelScriptEntry const& entry,
 auto entry_matches_category(FLevelScriptEntry const& entry, LevelCatalogCategory const category)
     -> bool {
     if (!entry) {
-        return category == LevelCatalogCategory::Mission;
+        return category == LevelCatalogCategory::Playable;
     }
 
     auto const content_category{entry.category};
-    return category == LevelCatalogCategory::Mission
-             ? content_category == LevelCatalogCategory::Mission
+    return category == LevelCatalogCategory::Playable
+             ? content_category == LevelCatalogCategory::Playable
              : content_category == LevelCatalogCategory::BattleViewer;
 }
 
@@ -182,18 +182,18 @@ auto UScriptLevelSelectWidget::NativeOnFocusReceived(FGeometry const& geometry,
 }
 
 void UScriptLevelSelectWidget::refresh_levels() {
-    active_category_ = LevelCatalogCategory::Mission;
+    active_category_ = LevelCatalogCategory::Playable;
     entries_.Reset();
     campaigns_.Reset();
     catalog_directory_.Reset();
     catalog_error_.Reset();
 
-    request_mission_catalog(*this);
+    request_level_catalog(*this);
 }
 
-void UScriptLevelSelectWidget::present_catalog(presentation::MissionCatalogView const& catalog) {
-    entries_.Reset(static_cast<int32>(catalog.missions.size()));
-    for (auto const& row : catalog.missions) {
+void UScriptLevelSelectWidget::present_catalog(presentation::LevelCatalogView const& catalog) {
+    entries_.Reset(static_cast<int32>(catalog.levels.size()));
+    for (auto const& row : catalog.levels) {
         auto& entry{entries_.Emplace_GetRef()};
         entry.path = to_fstring(row.path);
         entry.filename = FPaths::GetCleanFilename(entry.path);
@@ -240,11 +240,11 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
     selected_level_id_ = NAME_None;
     view_state_ = FLevelSelectViewState{};
     view_state_.category = active_category_;
-    if (active_category_ != LevelCatalogCategory::Mission) {
+    if (active_category_ != LevelCatalogCategory::Playable) {
         view_state_.playerless_time_scale = get_active_playerless_time_scale();
     }
 
-    if (active_category_ == LevelCatalogCategory::Mission) {
+    if (active_category_ == LevelCatalogCategory::Playable) {
         view_state_.title = NSLOCTEXT("LevelSelect", "SelectLevel", "SELECT AN OPERATION");
         view_state_.description = NSLOCTEXT(
             "LevelSelect", "SelectLevelDetail", "Select a mission record to review its directive.");
@@ -331,15 +331,16 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
         }
 
         if (!has_other_levels) {
-            add_header(active_category_ == LevelCatalogCategory::Mission ? TEXT("Other Operations")
-                                                                         : TEXT("Other Scenarios"));
+            add_header(active_category_ == LevelCatalogCategory::Playable
+                           ? TEXT("Other Operations")
+                           : TEXT("Other Scenarios"));
             has_other_levels = true;
         }
 
         add_level(index);
     }
 
-    if (active_category_ == LevelCatalogCategory::Mission) {
+    if (active_category_ == LevelCatalogCategory::Playable) {
         bool has_invalid_levels{};
         for (int32 index{}; index < entry_count; ++index) {
             if (entries_[index]) {
@@ -357,7 +358,7 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
 
     auto status{catalog_error_};
     if (status.IsEmpty() && visible_entry_count == 0) {
-        if (active_category_ == LevelCatalogCategory::Mission) {
+        if (active_category_ == LevelCatalogCategory::Playable) {
             status = FString::Printf(TEXT("No mission scripts found in %s"), *catalog_directory_);
         } else if (active_category_ == LevelCatalogCategory::Benchmark) {
             status =
@@ -367,7 +368,7 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
                                      *catalog_directory_);
         }
     } else if (status.IsEmpty()) {
-        if (active_category_ == LevelCatalogCategory::Mission) {
+        if (active_category_ == LevelCatalogCategory::Playable) {
             status = FString::Printf(TEXT("%d mission records available across %d campaigns."),
                                      visible_entry_count,
                                      visible_campaign_count);
@@ -464,7 +465,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
 }
 
 void UScriptLevelSelectWidget::handle_launch() {
-    auto const time_scale{active_category_ != LevelCatalogCategory::Mission
+    auto const time_scale{active_category_ != LevelCatalogCategory::Playable
                               ? get_active_playerless_time_scale()
                               : TOptional<double>{levels::launch::default_time_scale}};
     if (!time_scale.IsSet()) {
@@ -474,7 +475,7 @@ void UScriptLevelSelectWidget::handle_launch() {
     ::ioj::levels::LaunchOptions options{
         .requested_time_scale = levels::launch::TimeScale::make(time_scale.GetValue()),
     };
-    if (active_category_ != LevelCatalogCategory::Mission) {
+    if (active_category_ != LevelCatalogCategory::Playable) {
         options.presentation_mode = battle_simulation_only_
                                       ? ::ioj::levels::PresentationMode::SimulationOnly
                                       : ::ioj::levels::PresentationMode::Visual;
@@ -529,12 +530,12 @@ void UScriptLevelSelectWidget::launch_selected_level(::ioj::levels::LaunchOption
         return;
     }
 
-    options.control_context = active_category_ == LevelCatalogCategory::Mission
+    options.control_context = active_category_ == LevelCatalogCategory::Playable
                                 ? ::ioj::levels::ControlContext::Player
                             : active_category_ == LevelCatalogCategory::Benchmark
                                 ? ::ioj::levels::ControlContext::Benchmark
                                 : ::ioj::levels::ControlContext::Observer;
-    request_mission({selected_entry.id, options});
+    request_level({selected_entry.id, options});
     view_state_.can_launch = false;
     if (options.control_context == ::ioj::levels::ControlContext::Benchmark) {
         view_state_.status = NSLOCTEXT("LevelSelect", "StartingBenchmark", "STARTING BENCHMARK...");

@@ -12,7 +12,7 @@
 #include <string_view>
 
 namespace ioj::presentation {
-struct MissionListing {
+struct LevelListing {
     std::string path;
     std::string_view script;
     std::string error;
@@ -26,10 +26,10 @@ struct MissionListing {
     profiles::UnlockStatus prerequisites{};
     bool unlocked{};
 };
-struct MissionCatalogView {
+struct LevelCatalogView {
     std::string_view directory;
     std::string_view error;
-    std::span<MissionListing const> missions;
+    std::span<LevelListing const> levels;
     std::span<levels::CampaignDefinition const* const> campaigns;
 };
 }

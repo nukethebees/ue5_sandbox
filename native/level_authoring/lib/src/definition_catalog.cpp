@@ -165,7 +165,7 @@ void validate_campaigns(std::vector<DefinitionEntry<CampaignDefinition>>& campai
 
 auto catalog_category(LevelDefinition const& definition) noexcept -> LevelCatalogCategory {
     return definition.player_entity_id().empty() ? LevelCatalogCategory::BattleViewer
-                                                 : LevelCatalogCategory::Mission;
+                                                 : LevelCatalogCategory::Playable;
 }
 
 DefinitionCatalog::DefinitionCatalog(

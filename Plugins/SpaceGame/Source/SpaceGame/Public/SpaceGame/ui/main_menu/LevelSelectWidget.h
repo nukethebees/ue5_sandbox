@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/presentation/mission_catalog.h>
+#include <ioj/presentation/level_catalog.h>
 
 #include "Blueprint/UserWidget.h"
 
@@ -15,7 +15,7 @@ class SPACEGAME_API ULevelSelectWidget : public UUserWidget {
 
     void prepare_for_open(FName preferred_level_id) noexcept;
     virtual void refresh() {}
-    virtual void present_catalog(presentation::MissionCatalogView const&) {}
+    virtual void present_catalog(presentation::LevelCatalogView const&) {}
     virtual void focus_primary_action() {}
   protected:
     [[nodiscard]] auto get_preferred_level_id() const noexcept -> FName {

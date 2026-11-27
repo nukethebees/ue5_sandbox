@@ -34,7 +34,7 @@ void SLevelCompletionView::Construct(FArguments const& args) {
     style_ = args._Style;
     audio_ = args._Audio;
     check(style_ != nullptr);
-    on_return_to_mission_control_ = args._OnReturnToMissionControl;
+    on_return_to_level_select_ = args._OnReturnToLevelSelect;
 
     auto const body{
         SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[build_summary()] +
@@ -58,15 +58,15 @@ void SLevelCompletionView::set_completion(FLevelCompletion const& completion) {
     auto const new_best_time{completion.new_best_time};
 
     auto const succeeded{state == ELevelOutcome::Victory};
-    mission_name_->SetText(level_display_name.IsEmpty()
-                               ? NSLOCTEXT("LevelCompletion", "UnknownMission", "UNNAMED OPERATION")
-                               : FText::FromString(level_display_name.ToUpper()));
-    mission_result_->SetText(
+    level_name_->SetText(level_display_name.IsEmpty()
+                             ? NSLOCTEXT("LevelCompletion", "UnknownMission", "UNNAMED OPERATION")
+                             : FText::FromString(level_display_name.ToUpper()));
+    level_result_->SetText(
         state == ELevelOutcome::Stopped ? NSLOCTEXT("LevelCompletion", "Stopped", "LEVEL ENDED")
         : succeeded ? NSLOCTEXT("LevelCompletion", "MissionComplete", "MISSION COMPLETE")
                     : NSLOCTEXT("LevelCompletion", "MissionFailed", "MISSION FAILED"));
-    mission_result_->SetColorAndOpacity(succeeded ? style_->palette().success
-                                                  : style_->palette().danger);
+    level_result_->SetColorAndOpacity(succeeded ? style_->palette().success
+                                                : style_->palette().danger);
     failure_reason_->SetText(level_completion_detail::reason_text(end_reason));
     failure_reason_->SetColorAndOpacity(style_->palette().danger);
     failure_reason_->SetVisibility(succeeded ? EVisibility::Collapsed
@@ -137,11 +137,11 @@ auto SLevelCompletionView::build_summary() -> TSharedRef<SWidget> {
                 18.0f})[SNew(STextBlock)
                             .Text(NSLOCTEXT("LevelCompletion", "SummaryCaption", "MISSION RECORD"))
                             .TextStyle(&style_->text(EGameTextStyle::Caption))];
-    details->AddSlot().AutoHeight()[SAssignNew(mission_name_, STextBlock)
+    details->AddSlot().AutoHeight()[SAssignNew(level_name_, STextBlock)
                                         .TextStyle(&style_->text(EGameTextStyle::Heading2))
                                         .AutoWrapText(true)];
     details->AddSlot().AutoHeight().Padding(
-        FMargin{0.0f, 10.0f, 0.0f, 4.0f})[SAssignNew(mission_result_, STextBlock)
+        FMargin{0.0f, 10.0f, 0.0f, 4.0f})[SAssignNew(level_result_, STextBlock)
                                               .TextStyle(&style_->text(EGameTextStyle::Heading3))];
     details->AddSlot().AutoHeight()[SAssignNew(failure_reason_, STextBlock)
                                         .TextStyle(&style_->text(EGameTextStyle::Caption))
@@ -200,8 +200,7 @@ auto SLevelCompletionView::build_footer() -> TSharedRef<SWidget> {
             .Style(&style_->button(EGameButtonStyle::Primary))
             .Audio(audio_)
             .Text(NSLOCTEXT("LevelCompletion", "Return", "Return to Mission Control"))
-            .OnClicked(
-                this, &SLevelCompletionView::activate_action, on_return_to_mission_control_)};
+            .OnClicked(this, &SLevelCompletionView::activate_action, on_return_to_level_select_)};
     return_button_ = return_button;
 
     return SNew(SBorder)

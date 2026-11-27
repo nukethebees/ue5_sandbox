@@ -57,7 +57,7 @@ void SScriptLevelSelectView::update_state(FLevelSelectViewState const& state) {
                                            ? EVisibility::Collapsed
                                            : EVisibility::HitTestInvisible);
     selected_level_can_launch_ = state.can_launch;
-    auto const playerless{category_ != LevelCatalogCategory::Mission};
+    auto const playerless{category_ != LevelCatalogCategory::Playable};
     if (playerless) {
         auto const speed_text{
             state.playerless_time_scale.IsSet()
@@ -103,22 +103,22 @@ auto SScriptLevelSelectView::OnFocusReceived(FGeometry const& geometry,
 auto SScriptLevelSelectView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event)
     -> FReply {
     auto const key{key_event.GetKey()};
-    auto const category_has_focus{mission_category_button_->has_focus() ||
+    auto const category_has_focus{level_category_button_->has_focus() ||
                                   battle_viewer_category_button_->has_focus() ||
                                   benchmark_category_button_->has_focus()};
     if (category_has_focus) {
         if (key == EKeys::Left || key == EKeys::Gamepad_DPad_Left) {
-            if (category_ != LevelCatalogCategory::Mission) {
+            if (category_ != LevelCatalogCategory::Playable) {
                 auto const previous{category_ == LevelCatalogCategory::Benchmark
                                         ? LevelCatalogCategory::BattleViewer
-                                        : LevelCatalogCategory::Mission};
+                                        : LevelCatalogCategory::Playable};
                 handle_category_selected(previous);
                 focus_active_category();
                 return FReply::Handled();
             }
         } else if (key == EKeys::Right || key == EKeys::Gamepad_DPad_Right) {
             if (category_ != LevelCatalogCategory::Benchmark) {
-                auto const next{category_ == LevelCatalogCategory::Mission
+                auto const next{category_ == LevelCatalogCategory::Playable
                                     ? LevelCatalogCategory::BattleViewer
                                     : LevelCatalogCategory::Benchmark};
                 handle_category_selected(next);
@@ -168,13 +168,14 @@ auto SScriptLevelSelectView::OnKeyDown(FGeometry const& geometry, FKeyEvent cons
 }
 
 auto SScriptLevelSelectView::build_header() -> TSharedRef<SWidget> {
-    auto const mission_button{SAssignNew(mission_category_button_, SGameButton)
-                                  .Style(&style_->button(EGameButtonStyle::Secondary))
-                                  .Text(NSLOCTEXT("LevelSelect", "Missions", "MISSIONS"))
-                                  .Selected(true)
-                                  .OnClicked(this,
-                                             &SScriptLevelSelectView::handle_category_selected,
-                                             LevelCatalogCategory::Mission)};
+    auto const playable_level_button{
+        SAssignNew(level_category_button_, SGameButton)
+            .Style(&style_->button(EGameButtonStyle::Secondary))
+            .Text(NSLOCTEXT("LevelSelect", "Missions", "MISSIONS"))
+            .Selected(true)
+            .OnClicked(this,
+                       &SScriptLevelSelectView::handle_category_selected,
+                       LevelCatalogCategory::Playable)};
     auto const battle_viewer_button{
         SAssignNew(battle_viewer_category_button_, SGameButton)
             .Style(&style_->button(EGameButtonStyle::Secondary))
@@ -193,7 +194,7 @@ auto SScriptLevelSelectView::build_header() -> TSharedRef<SWidget> {
         &style_->chrome().frame_border,
         &style_->text(EGameTextStyle::Caption),
         &style_->text(EGameTextStyle::Heading3),
-        mission_button,
+        playable_level_button,
         battle_viewer_button,
         benchmark_button);
 }
@@ -348,7 +349,7 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
 
 auto SScriptLevelSelectView::catalog_caption() const -> FText {
     switch (category_) {
-        case LevelCatalogCategory::Mission:
+        case LevelCatalogCategory::Playable:
             return NSLOCTEXT("LevelSelect", "MissionCatalogCaption", "MISSION ARCHIVE");
         case LevelCatalogCategory::BattleViewer:
             return NSLOCTEXT("LevelSelect", "BattleCatalogCaption", "BATTLE ARCHIVE");
@@ -360,20 +361,20 @@ auto SScriptLevelSelectView::catalog_caption() const -> FText {
 }
 
 auto SScriptLevelSelectView::catalog_title() const -> FText {
-    return category_ == LevelCatalogCategory::Mission
+    return category_ == LevelCatalogCategory::Playable
              ? NSLOCTEXT("LevelSelect", "MissionCatalogTitle", "OPERATIONS")
              : NSLOCTEXT("LevelSelect", "BattleCatalogTitle", "SCENARIOS");
 }
 
 auto SScriptLevelSelectView::directive_title() const -> FText {
-    return category_ == LevelCatalogCategory::Mission
+    return category_ == LevelCatalogCategory::Playable
              ? NSLOCTEXT("LevelSelect", "MissionDirective", "MISSION DIRECTIVE")
              : NSLOCTEXT("LevelSelect", "ScenarioDefinition", "SCENARIO DEFINITION");
 }
 
 auto SScriptLevelSelectView::launch_text() const -> FText {
     switch (category_) {
-        case LevelCatalogCategory::Mission:
+        case LevelCatalogCategory::Playable:
             return NSLOCTEXT("LevelSelect", "Launch", "Launch Mission");
         case LevelCatalogCategory::BattleViewer:
             return NSLOCTEXT("LevelSelect", "ViewBattle", "View Battle");
@@ -439,7 +440,7 @@ void SScriptLevelSelectView::handle_simulation_only_changed(ECheckBoxState const
 }
 
 void SScriptLevelSelectView::update_launch_availability() {
-    auto const speed_is_valid{category_ == LevelCatalogCategory::Mission ||
+    auto const speed_is_valid{category_ == LevelCatalogCategory::Playable ||
                               (battle_speed_valid_ && battle_duration_valid_)};
     launch_button_->SetEnabled(selected_level_can_launch_ && speed_is_valid);
 }
@@ -488,8 +489,8 @@ void SScriptLevelSelectView::update_selection(int32 const button_index) {
 }
 
 void SScriptLevelSelectView::update_category_selection() {
-    if (mission_category_button_.IsValid()) {
-        mission_category_button_->set_selected(category_ == LevelCatalogCategory::Mission);
+    if (level_category_button_.IsValid()) {
+        level_category_button_->set_selected(category_ == LevelCatalogCategory::Playable);
     }
 
     if (battle_viewer_category_button_.IsValid()) {
@@ -503,7 +504,7 @@ void SScriptLevelSelectView::update_category_selection() {
 }
 
 void SScriptLevelSelectView::focus_active_category() {
-    auto const& button{category_ == LevelCatalogCategory::Mission ? mission_category_button_
+    auto const& button{category_ == LevelCatalogCategory::Playable ? level_category_button_
                        : category_ == LevelCatalogCategory::BattleViewer
                            ? battle_viewer_category_button_
                            : benchmark_category_button_};

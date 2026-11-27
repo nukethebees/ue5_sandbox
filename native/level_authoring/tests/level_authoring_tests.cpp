@@ -1191,7 +1191,7 @@ TEST(NativeLevelAuthoringCatalog, ResolvesInvalidEntriesAndOrdersValidCampaigns)
     EXPECT_FALSE(catalog.levels[0].definition);
     EXPECT_FALSE(catalog.levels[1].definition);
     ASSERT_TRUE(catalog.levels[2].definition);
-    EXPECT_EQ(catalog_category(*catalog.levels[2].definition), LevelCatalogCategory::Mission);
+    EXPECT_EQ(catalog_category(*catalog.levels[2].definition), LevelCatalogCategory::Playable);
     EXPECT_EQ(catalog.campaigns[0].source_path, "first-alpha.scm");
     EXPECT_EQ(catalog.campaigns[1].source_path, "second-alpha.scm");
     EXPECT_EQ(catalog.campaigns[2].source_path, "zulu.scm");

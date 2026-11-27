@@ -20,7 +20,7 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     UMainMenuWidget();
 
     void prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class,
-                          bool focus_mission_content,
+                          bool focus_level_content,
                           FName preferred_level_id);
   protected:
     void NativeOnInitialized() override;
@@ -52,7 +52,7 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     TSharedPtr<SMainMenuView> view_{};
     FGameUiStyle fallback_style_{};
     FName preferred_level_id_{NAME_None};
-    bool focus_mission_content_{};
+    bool focus_level_content_{};
     bool page_modal_visible_{};
 };
 } // namespace ioj

@@ -6,7 +6,7 @@
 
 namespace ioj {
 enum class EMenuPage : uint8 {
-    SelectMission,
+    SelectLevel,
     DataArchive,
     Video,
     Gameplay,
@@ -28,7 +28,7 @@ inline auto settings_category(EMenuPage page) -> TOptional<GameSettingCategory> 
             return GameSettingCategory::Controls;
         case EMenuPage::Accessibility:
             return GameSettingCategory::Accessibility;
-        case EMenuPage::SelectMission:
+        case EMenuPage::SelectLevel:
         case EMenuPage::DataArchive:
         case EMenuPage::System:
             return {};

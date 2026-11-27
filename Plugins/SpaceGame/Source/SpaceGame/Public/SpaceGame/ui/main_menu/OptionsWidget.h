@@ -59,6 +59,6 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
 
     TSharedPtr<SGameOptionsView> options_view_{};
     FSimpleDelegate leave_continuation_{};
-    EMenuPage page_{EMenuPage::SelectMission};
+    EMenuPage page_{EMenuPage::SelectLevel};
 };
 } // namespace ioj

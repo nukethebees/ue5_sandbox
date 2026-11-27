@@ -45,13 +45,13 @@ void ULevelCompletionWidget::NativeOnInitialized() {
     }
 
     auto const* const style{IsValid(style_) ? &style_->get_ui_style() : &fallback_style_};
-    view_host->SetContent(SAssignNew(view_, SLevelCompletionView)
-                              .Style(style)
-                              .Audio(IsValid(style_)
-                                         ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
-                                         : FGameAudioFacade{})
-                              .OnReturnToMissionControl(FSimpleDelegate::CreateUObject(
-                                  this, &ThisClass::request_return_to_mission_control)));
+    view_host->SetContent(
+        SAssignNew(view_, SLevelCompletionView)
+            .Style(style)
+            .Audio(IsValid(style_) ? GetGameInstance()->GetSubsystem<UGameAudio>()->facade()
+                                   : FGameAudioFacade{})
+            .OnReturnToLevelSelect(
+                FSimpleDelegate::CreateUObject(this, &ThisClass::request_return_to_level_select)));
     refresh_view();
 }
 
@@ -79,7 +79,7 @@ void ULevelCompletionWidget::ReleaseSlateResources(bool const release_children) 
     view_.Reset();
 }
 
-void ULevelCompletionWidget::request_return_to_mission_control() {
+void ULevelCompletionWidget::request_return_to_level_select() {
     if (action_requested_) {
         return;
     }

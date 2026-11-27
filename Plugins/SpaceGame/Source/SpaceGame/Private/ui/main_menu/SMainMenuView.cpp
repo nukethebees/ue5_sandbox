@@ -20,9 +20,9 @@ void SMainMenuView::Construct(FArguments const& args) {
     on_quit_ = args._OnQuit;
     on_focus_content_ = args._OnFocusContent;
 
-    SAssignNew(mission_content_, SBox)[args._MissionContent.Widget];
+    SAssignNew(level_content_, SBox)[args._LevelContent.Widget];
     SAssignNew(content_switcher_, SWidgetSwitcher) +
-        SWidgetSwitcher::Slot()[mission_content_.ToSharedRef()] +
+        SWidgetSwitcher::Slot()[level_content_.ToSharedRef()] +
         SWidgetSwitcher::Slot()[args._ArchiveContent.Widget] +
         SWidgetSwitcher::Slot()[args._OptionsContent.Widget];
 
@@ -56,9 +56,9 @@ void SMainMenuView::refresh_page() {
     }
 }
 
-void SMainMenuView::set_mission_content(TSharedRef<SWidget> content) {
-    if (mission_content_.IsValid()) {
-        mission_content_->SetContent(MoveTemp(content));
+void SMainMenuView::set_level_content(TSharedRef<SWidget> content) {
+    if (level_content_.IsValid()) {
+        level_content_->SetContent(MoveTemp(content));
     }
 }
 
@@ -175,7 +175,7 @@ auto SMainMenuView::build_navigation() -> TSharedRef<SWidget> {
                            .TextStyle(&style_->text(EGameTextStyle::Caption))];
     add_section(navigation, NSLOCTEXT("MainMenu", "OperationsSection", "OPERATIONS"));
     add_page(navigation,
-             EMenuPage::SelectMission,
+             EMenuPage::SelectLevel,
              NSLOCTEXT("MainMenu", "SelectMission", "Select Mission"),
              EGameUiIcon::Hive);
     add_page(navigation,
@@ -281,7 +281,7 @@ auto SMainMenuView::handle_quit() -> FReply {
 }
 
 auto SMainMenuView::page_content_index(EMenuPage const page) const -> int32 {
-    if (page == EMenuPage::SelectMission) {
+    if (page == EMenuPage::SelectLevel) {
         return 0;
     }
     if (page == EMenuPage::DataArchive) {

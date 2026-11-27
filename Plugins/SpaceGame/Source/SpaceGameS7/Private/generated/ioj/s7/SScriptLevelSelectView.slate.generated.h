@@ -28,7 +28,7 @@ struct SScriptLevelSelectViewBuilder {
     auto BuildHeader(auto&& frame_border,
                      auto&& caption_style,
                      auto&& heading_style,
-                     auto&& mission_button,
+                     auto&& playable_level_button,
                      auto&& battle_viewer_button,
                      auto&& benchmark_button) {
 #line 26 "SScriptLevelSelectView.lispb"
@@ -47,16 +47,16 @@ struct SScriptLevelSelectViewBuilder {
                SandboxUI::Slate::hbox_auto_slot()
                    [SNew(SBorder)
                         .BorderImage(frame_border)
-                        .Padding(1.0)
-                            [SNew(SHorizontalBox) +
-                             SandboxUI::Slate::hbox_auto_slot()[SNew(SBox).WidthOverride(
-                                 150.0)[std::forward<decltype(mission_button)>(mission_button)]] +
-                             SandboxUI::Slate::hbox_auto_slot()[SNew(SBox).WidthOverride(
-                                 190.0)[std::forward<decltype(battle_viewer_button)>(
-                                 battle_viewer_button)]] +
-                             SandboxUI::Slate::hbox_auto_slot()[SNew(SBox).WidthOverride(
-                                 160.0)[std::forward<decltype(benchmark_button)>(
-                                 benchmark_button)]]]];
+                        .Padding(1.0)[SNew(SHorizontalBox) +
+                                      SandboxUI::Slate::hbox_auto_slot()[SNew(SBox).WidthOverride(
+                                          150.0)[std::forward<decltype(playable_level_button)>(
+                                          playable_level_button)]] +
+                                      SandboxUI::Slate::hbox_auto_slot()[SNew(SBox).WidthOverride(
+                                          190.0)[std::forward<decltype(battle_viewer_button)>(
+                                          battle_viewer_button)]] +
+                                      SandboxUI::Slate::hbox_auto_slot()[SNew(SBox).WidthOverride(
+                                          160.0)[std::forward<decltype(benchmark_button)>(
+                                          benchmark_button)]]]];
     }
 
     auto BuildCatalog(auto&& navigation_background,

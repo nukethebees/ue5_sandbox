@@ -34,7 +34,7 @@ struct FLevelSelectViewState {
     FText details{};
     FText script{};
     FText launch_mode_status{};
-    LevelCatalogCategory category{LevelCatalogCategory::Mission};
+    LevelCatalogCategory category{LevelCatalogCategory::Playable};
     TOptional<double> playerless_time_scale{};
     int32 selected_button_index{INDEX_NONE};
     bool can_launch{};
@@ -51,7 +51,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     }
     [[nodiscard]] auto can_launch_selected_level() const noexcept -> bool {
         return view_state_.can_launch &&
-               (active_category_ == LevelCatalogCategory::Mission ||
+               (active_category_ == LevelCatalogCategory::Playable ||
                 (get_active_playerless_time_scale().IsSet() && battle_duration_valid_));
     }
     [[nodiscard]] auto get_active_category() const noexcept -> LevelCatalogCategory {
@@ -59,7 +59,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     }
 
     void refresh() override;
-    void present_catalog(presentation::MissionCatalogView const& catalog) override;
+    void present_catalog(presentation::LevelCatalogView const& catalog) override;
     void focus_primary_action() override;
   protected:
     void NativeOnInitialized() override;
@@ -100,7 +100,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     UGameUiStyleSubsystem* style_{nullptr};
     int32 selected_entry_index_{INDEX_NONE};
     FName selected_level_id_{NAME_None};
-    LevelCatalogCategory active_category_{LevelCatalogCategory::Mission};
+    LevelCatalogCategory active_category_{LevelCatalogCategory::Playable};
     TOptional<double> battle_viewer_time_scale_{1.0};
     TOptional<double> benchmark_time_scale_{10.0};
     TOptional<double> battle_duration_{};

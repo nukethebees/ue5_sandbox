@@ -20,7 +20,7 @@
       (value frame_border)
       (value caption_style)
       (value heading_style)
-      (existing mission_button)
+      (existing playable_level_button)
       (existing battle_viewer_button)
       (existing benchmark_button))
     (hbox
@@ -37,7 +37,7 @@
           :BorderImage frame_border
           :Padding 1
           (hbox
-            (auto (SBox :WidthOverride 150 (existing mission_button)))
+            (auto (SBox :WidthOverride 150 (existing playable_level_button)))
             (auto (SBox :WidthOverride 190 (existing battle_viewer_button)))
             (auto (SBox :WidthOverride 160 (existing benchmark_button))))))))
 

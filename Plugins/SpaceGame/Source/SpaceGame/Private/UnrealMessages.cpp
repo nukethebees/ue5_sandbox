@@ -74,12 +74,12 @@ void queue_preferences(host::PreferenceEdit edit, UOptionsDraft& draft) {
     pending.preference_senders.emplace_back(&draft);
 }
 
-void request_mission_catalog(ULevelSelectWidget& widget) {
+void request_level_catalog(ULevelSelectWidget& widget) {
     pending.catalog_request = &widget;
 }
 
-void request_mission(host::MissionSelection mission) {
-    pending.navigation_request = std::move(mission);
+void request_level(host::LevelSelection level) {
+    pending.navigation_request = std::move(level);
 }
 
 bool request_menu(session::LevelSelectRequest request) {
@@ -119,7 +119,7 @@ void reset_level_input() {
 void IojPlayer_Attach(SystemCapabilities const& capabilities) {
     attached_capabilities = &capabilities;
 }
-void host::present_catalog(presentation::MissionCatalogView const& catalog) {
+void host::present_catalog(presentation::LevelCatalogView const& catalog) {
     if (auto* widget{published.catalog_request.Get()}) {
         widget->present_catalog(catalog);
     }

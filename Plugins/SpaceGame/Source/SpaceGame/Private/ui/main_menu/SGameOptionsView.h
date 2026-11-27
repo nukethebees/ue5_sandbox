@@ -49,7 +49,7 @@ class SGameOptionsView final : public SCompoundWidget {
         : _Settings(nullptr)
         , _Capabilities(nullptr)
         , _Style(nullptr)
-        , _Page(EMenuPage::SelectMission)
+        , _Page(EMenuPage::SelectLevel)
         , _Audio() {}
     SLATE_ARGUMENT(UOptionsDraft*, Settings)
     SLATE_ARGUMENT(SystemCapabilities const*, Capabilities)
