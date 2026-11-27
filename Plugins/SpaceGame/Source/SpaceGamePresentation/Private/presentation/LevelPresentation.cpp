@@ -8,26 +8,24 @@
 #include <SandboxISMCComponent.h>
 
 namespace ioj {
-auto FLevelPresentationResources::is_valid() const -> bool {
-    return IsValid(lasers) && IsValid(capital_ships) && IsValid(fighters) && IsValid(turrets) &&
-           IsValid(spinners) && IsValid(sparks);
-}
-FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resources,
+FLevelPresentation::FLevelPresentation(FLevelPresentationComponents const& components,
+                                       FLevelVisualConfig visual_config,
+                                       TOptional<FPlayerPresentationResources> player_resources,
                                        presentation::LevelFrame const& frame,
                                        FGameAudioFacade audio)
-    : config_{resources.config}
+    : config{MoveTemp(visual_config)}
     , audio_{audio}
-    , sparks{*resources.sparks}
-    , lasers{*resources.lasers}
-    , capital_ships{*resources.capital_ships}
-    , capital_ship_fighters{*resources.fighters}
-    , turrets{*resources.turrets}
-    , spinners{*resources.spinners} {
-    auto const& config{config_};
-    resources.sparks->initialise(config.sparks);
+    , sparks{*components.sparks}
+    , lasers{*components.lasers}
+    , capital_ships{*components.capital_ships}
+    , capital_ship_fighters{*components.fighters}
+    , turrets{*components.turrets}
+    , spinners{*components.spinners} {
+    components.sparks->initialise(config.sparks);
     sparks.clear();
-    if (resources.player.IsSet() && frame.player.has_value()) {
-        player_.Emplace(resources.player.GetValue(),
+    check(player_resources.IsSet() == frame.player.has_value());
+    if (player_resources.IsSet()) {
+        player_.Emplace(player_resources.GetValue(),
                         config.player_ship,
                         config.presentation.player_ship,
                         *frame.player);

@@ -29,19 +29,19 @@ void FLevelPresentationHost::configure_collision_grid(
     components_.collision_grid->configure(MoveTemp(settings));
 }
 
-void FLevelPresentationHost::initialise(FLevelVisualConfig const& config,
+void FLevelPresentationHost::initialise(FLevelVisualConfig config,
                                         TOptional<FPlayerPresentationResources> player,
                                         FGameAudioFacade audio,
-                                        presentation::LevelInit const& level,
+                                        sim::collision::world_aabbs::ConstView static_bounds,
+                                        sim::EntityTypeRadii const& radii,
                                         presentation::LevelFrame const& frame) {
     check(!presentation_.IsSet());
     check(components_.is_valid());
 
-    auto const resources{make_resources(config, MoveTemp(player))};
-    presentation_.Emplace(resources, frame, audio);
-    components_.collision_grid->set_static_bounds(level.static_bounds);
+    presentation_.Emplace(components_, MoveTemp(config), MoveTemp(player), frame, audio);
+    components_.collision_grid->set_static_bounds(static_bounds);
     components_.collision_grid->update_entity_bounds(frame.entity_bounds);
-    hud_manager_.initialise(frame, level.radii, config, components_.soft_targets);
+    hud_manager_.initialise(frame, radii, presentation_->config, components_.soft_targets);
 }
 
 void FLevelPresentationHost::reset() {
@@ -69,19 +69,6 @@ void FLevelPresentationHost::tick(double const dt, presentation::LevelFrame cons
     components_.collision_grid->update_entity_bounds(frame.entity_bounds);
     hud_manager_.advance(dt, frame);
     presentation_->tick(static_cast<float>(dt), frame);
-}
-
-auto FLevelPresentationHost::make_resources(FLevelVisualConfig const& config,
-                                            TOptional<FPlayerPresentationResources> player) const
-    -> FLevelPresentationResources {
-    return {.lasers = components_.lasers,
-            .capital_ships = components_.capital_ships,
-            .fighters = components_.fighters,
-            .turrets = components_.turrets,
-            .spinners = components_.spinners,
-            .sparks = components_.sparks,
-            .config = config,
-            .player = MoveTemp(player)};
 }
 
 } // namespace ioj

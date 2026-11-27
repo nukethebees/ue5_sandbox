@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/levels/control_context.h>
-#include <ioj/presentation/level_init.h>
+#include <ioj/presentation/level_frame.h>
 
 #include <CoreMinimal.h>
 
@@ -46,7 +46,8 @@ struct FLevelVisualLoad {
 struct FLevelActorLoadRequest {
     UWorld& world;
     USpaceGameLevelConfig const& config;
-    presentation::LevelPresentationSetup const& setup;
+    std::optional<presentation::PlayerFrame> const& player_frame;
+    std::optional<Transform3d> const& camera;
     TObjectPtr<ATestSpaceShip>& player;
     std::optional<FLevelVisualLoad> visual;
 };

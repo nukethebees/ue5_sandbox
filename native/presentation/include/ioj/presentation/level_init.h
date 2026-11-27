@@ -4,9 +4,7 @@
 #include <ioj/levels/control_context.h>
 #include <ioj/levels/launch_mode.h>
 #include <ioj/levels/presentation_mode.h>
-#include <ioj/levels/team.h>
 #include <ioj/presentation/entity_overlay_health_maximums.h>
-#include <ioj/rotator_types.h>
 #include <ioj/settings/presentation.h>
 #include <ioj/sim/collision/collision_grid_spec.h>
 #include <ioj/sim/collision/world_aabbs_view.h>
@@ -19,13 +17,6 @@
 #include <string_view>
 
 namespace ioj::presentation {
-struct PlayerSpawn {
-    Team team;
-    Vector3d position;
-    Rotator3d rotation;
-    std::optional<std::int32_t> initial_health;
-};
-
 struct LevelPresentationSetup {
     std::string source_path;
     levels::ControlContext control_context;
@@ -36,7 +27,6 @@ struct LevelPresentationSetup {
     starfield::Settings starfield;
     EntityOverlayHealthMaximums health_maximums;
     std::int32_t laser_reserve;
-    std::optional<PlayerSpawn> player{};
     std::optional<Transform3d> camera{};
 };
 

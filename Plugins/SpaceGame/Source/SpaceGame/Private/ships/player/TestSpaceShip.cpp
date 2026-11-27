@@ -69,13 +69,19 @@ ATestSpaceShip::ATestSpaceShip()
     configure_ship_mesh();
 }
 
+void ATestSpaceShip::present_player(Team player_team, sim::ShipHealth health, Vector3d velocity) {
+    team = to_unreal(player_team);
+    player_snapshot_.emplace(FShipHealth{health.health.value(), health.max_health.value()},
+                             to_unreal(velocity));
+}
+
 void ATestSpaceShip::clear_player_frame() {
     reset_level_input();
-    player_frame_.reset();
+    player_snapshot_.reset();
 }
 
 auto ATestSpaceShip::input_events() -> sim::player::PlayerInputEvents& {
-    checkf(player_frame_, TEXT("Player input requires bound simulation commands"));
+    checkf(player_snapshot_, TEXT("Player input requires bound simulation commands"));
     return ship_input();
 }
 
@@ -94,16 +100,12 @@ void ATestSpaceShip::configure_ship_mesh() {
 /* **************************************** */
 // Entity identity and configuration
 /* **************************************** */
-auto ATestSpaceShip::get_unique_id() const noexcept -> sim::EntityId {
-    return player_frame_ ? player_frame_->id : sim::EntityId{};
-}
-
 auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
-    return player_frame_ ? to_unreal(player_frame_->team) : team;
+    return team;
 }
 
 void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
-    checkf(!player_frame_, TEXT("Set the authored team before binding the ship"));
+    checkf(!player_snapshot_, TEXT("Set the authored team before binding the ship"));
     team = new_team;
 }
 
@@ -112,7 +114,7 @@ void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
 /* **************************************** */
 
 auto ATestSpaceShip::GetVelocity() const -> FVector {
-    return player_frame_ ? to_unreal(player_frame_->flight.ship_velocity) : FVector::ZeroVector;
+    return player_snapshot_ ? player_snapshot_->velocity : FVector::ZeroVector;
 }
 
 /* **************************************** */
@@ -121,14 +123,6 @@ auto ATestSpaceShip::GetVelocity() const -> FVector {
 
 void ATestSpaceShip::upgrade_laser() {
     input_events().upgrade_laser();
-}
-
-auto ATestSpaceShip::get_laser_trigger_mode() const noexcept -> ETestShipTriggerMode {
-    return to_unreal(player_frame_->status.trigger_mode);
-}
-
-auto ATestSpaceShip::get_laser_firing_mode() const noexcept -> sim::LaserFiringState {
-    return player_frame_->firing_mode;
 }
 
 void ATestSpaceShip::select_next_laser_trigger_mode() noexcept {
@@ -140,7 +134,7 @@ void ATestSpaceShip::select_previous_laser_trigger_mode() noexcept {
 }
 
 void ATestSpaceShip::set_laser_trigger_mode(ETestShipTriggerMode const value) noexcept {
-    if (player_frame_) {
+    if (player_snapshot_) {
         input_events().set_laser_trigger_mode(to_native(value));
     }
 }
@@ -149,12 +143,7 @@ void ATestSpaceShip::set_laser_trigger_mode(ETestShipTriggerMode const value) no
 // Health and collision
 /* **************************************** */
 auto ATestSpaceShip::get_health_info() const -> FShipHealth {
-    if (!player_frame_) {
-        return FShipHealth{initial_health_};
-    }
-
-    auto const native_health{player_frame_->status.health};
-    return {native_health.health.value(), native_health.max_health.value()};
+    return player_snapshot_ ? player_snapshot_->health : FShipHealth{1000};
 }
 
 auto ATestSpaceShip::is_alive() const noexcept -> bool {
@@ -163,10 +152,6 @@ auto ATestSpaceShip::is_alive() const noexcept -> bool {
 
 auto ATestSpaceShip::get_collision_mesh() const -> UStaticMesh const* {
     return ship_mesh ? ship_mesh->GetStaticMesh() : nullptr;
-}
-
-auto ATestSpaceShip::get_middle_socket() const -> FTransform {
-    return to_unreal(player_frame_->middle_socket);
 }
 
 /* **************************************** */

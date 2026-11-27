@@ -6,19 +6,6 @@
 #include <SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h>
 
 namespace ioj {
-struct SPACEGAMEPRESENTATION_API FLevelPresentationComponents {
-    auto is_valid() const -> bool;
-
-    USandboxISMCComponent* lasers{};
-    UInstancedStaticMeshComponent* capital_ships{};
-    USandboxISMCComponent* fighters{};
-    UInstancedStaticMeshComponent* turrets{};
-    UInstancedStaticMeshComponent* spinners{};
-    USparkRendererComponent* sparks{};
-    UInstancedStaticMeshComponent* soft_targets{};
-    UCollisionGridVisualizationComponent* collision_grid{};
-};
-
 // The actor retains reflected component ownership. Initialise after the native level finishes
 // initialisation, and reset before destroying that level or the components.
 class SPACEGAMEPRESENTATION_API FLevelPresentationHost {
@@ -31,17 +18,16 @@ class SPACEGAMEPRESENTATION_API FLevelPresentationHost {
 
     void bind_components(FLevelPresentationComponents components);
     void configure_collision_grid(TOptional<FCollisionGridVisualizationSettings> settings);
-    void initialise(FLevelVisualConfig const& config,
+    void initialise(FLevelVisualConfig config,
                     TOptional<FPlayerPresentationResources> player,
                     FGameAudioFacade audio,
-                    presentation::LevelInit const& level,
+                    sim::collision::world_aabbs::ConstView static_bounds,
+                    sim::EntityTypeRadii const& radii,
                     presentation::LevelFrame const& frame);
     void reset();
     void tick(double dt, presentation::LevelFrame const& frame);
 
-    auto make_resources(FLevelVisualConfig const& config,
-                        TOptional<FPlayerPresentationResources> player) const
-        -> FLevelPresentationResources;
+    auto components() const -> FLevelPresentationComponents const& { return components_; }
     auto get_hud_manager() -> FHUDManager& { return hud_manager_; }
     auto get_presentation() const -> FLevelPresentation const* {
         return presentation_.IsSet() ? &presentation_.GetValue() : nullptr;

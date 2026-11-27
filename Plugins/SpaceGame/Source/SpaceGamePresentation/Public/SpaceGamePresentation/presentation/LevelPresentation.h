@@ -12,20 +12,25 @@
 #include <SpaceGameRendering/SparkEffects.h>
 
 namespace ioj {
-struct SPACEGAMEPRESENTATION_API FLevelPresentationResources {
-    USandboxISMCComponent* lasers{nullptr};
-    UInstancedStaticMeshComponent* capital_ships{nullptr};
-    USandboxISMCComponent* fighters{nullptr};
-    UInstancedStaticMeshComponent* turrets{nullptr};
-    UInstancedStaticMeshComponent* spinners{nullptr};
-    USparkRendererComponent* sparks{nullptr};
-    FLevelVisualConfig config;
-    TOptional<FPlayerPresentationResources> player;
+class UCollisionGridVisualizationComponent;
+
+struct SPACEGAMEPRESENTATION_API FLevelPresentationComponents {
     auto is_valid() const -> bool;
+
+    USandboxISMCComponent* lasers{};
+    UInstancedStaticMeshComponent* capital_ships{};
+    USandboxISMCComponent* fighters{};
+    UInstancedStaticMeshComponent* turrets{};
+    UInstancedStaticMeshComponent* spinners{};
+    USparkRendererComponent* sparks{};
+    UInstancedStaticMeshComponent* soft_targets{};
+    UCollisionGridVisualizationComponent* collision_grid{};
 };
 
 struct SPACEGAMEPRESENTATION_API FLevelPresentation {
-    FLevelPresentation(FLevelPresentationResources const& resources,
+    FLevelPresentation(FLevelPresentationComponents const& components,
+                       FLevelVisualConfig config,
+                       TOptional<FPlayerPresentationResources> player_resources,
                        presentation::LevelFrame const& frame,
                        FGameAudioFacade audio);
     FLevelPresentation(FLevelPresentation const&) = delete;
@@ -34,8 +39,8 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     auto operator=(FLevelPresentation&&) -> FLevelPresentation& = delete;
 
     void tick(float dt, presentation::LevelFrame const& frame);
+    FLevelVisualConfig const config;
   private:
-    FLevelVisualConfig config_;
     FGameAudioFacade audio_;
   public:
     FSparkEffects sparks;

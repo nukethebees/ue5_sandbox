@@ -79,14 +79,6 @@ auto make_level_presentation_setup(levels::LevelDefinition const& definition,
                             settings.fighters.health.get().value(),
                             settings.turrets.max_health.get().value()},
         .laser_reserve = settings.laser_projectiles.n_preallocated_instances.get()};
-    if (!definition.player_entity_id().empty()) {
-        auto const& spawn{definition.entity(definition.player_entity_id())};
-        init.player.emplace(
-            spawn.team,
-            spawn.position,
-            spawn.rotation,
-            spawn.overrides.health.transform([](auto health) { return health.get().value(); }));
-    }
     if (auto const& camera{definition.camera()}) {
         std::vector<Vector3d> positions;
         positions.reserve(camera->target_entity_ids.size());

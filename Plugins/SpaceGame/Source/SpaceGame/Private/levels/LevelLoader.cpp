@@ -4,12 +4,10 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/UnrealMessages.h>
-#include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/strings.h>
 #include <SandboxCoreEngine/TransformConversion.h>
-#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Camera/CameraActor.h>
 #include <CoreGlobals.h>
@@ -34,41 +32,20 @@ auto world_contains(UWorld& world) -> bool {
 }
 
 auto finish_spawn(AActor& actor, FTransform const& transform) -> bool {
-    return IsValid(UGameplayStatics::FinishSpawningActor(&actor, transform));
+    if (IsValid(UGameplayStatics::FinishSpawningActor(&actor, transform))) {
+        return true;
+    }
+    if (IsValid(&actor)) {
+        actor.Destroy();
+    }
+    return false;
 }
-
-class FSpawnedActorTransaction final {
-  public:
-    explicit FSpawnedActorTransaction(int32 const expected_actor_count) {
-        actors_.Reserve(expected_actor_count);
-    }
-
-    FSpawnedActorTransaction(FSpawnedActorTransaction const&) = delete;
-    auto operator=(FSpawnedActorTransaction const&) -> FSpawnedActorTransaction& = delete;
-
-    ~FSpawnedActorTransaction() {
-        for (auto* const actor : actors_) {
-            if (IsValid(actor)) {
-                actor->Destroy();
-            }
-        }
-    }
-
-    void add(AActor& actor) { actors_.Add(&actor); }
-    void commit() noexcept { actors_.Reset(); }
-  private:
-    TArray<AActor*> actors_{};
-};
 
 auto spawn_player(UWorld& world,
                   USpaceGameLevelConfig const& config,
-                  presentation::PlayerSpawn const& entity,
-                  FSpawnedActorTransaction& transaction,
+                  presentation::PlayerFrame const& entity,
                   FLevelLoadErrors& result) -> ATestSpaceShip* {
-    auto const team{to_unreal(entity.team)};
-    auto const transform{
-        FTransform{FRotator{entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll},
-                   ioj::to_unreal(entity.position)}};
+    auto const transform{to_unreal(entity.transform)};
     auto* const player{
         world.SpawnActorDeferred<ATestSpaceShip>(config.classes.player_ship_class, transform)};
     if (!IsValid(player)) {
@@ -78,11 +55,7 @@ auto spawn_player(UWorld& world,
         return nullptr;
     }
 
-    transaction.add(*player);
-    player->set_team(team);
-    if (entity.initial_health) {
-        player->set_initial_health(*entity.initial_health);
-    }
+    player->present_player(entity.team, entity.status.health, entity.flight.ship_velocity);
 
     if (!finish_spawn(*player, transform)) {
         add_error(result,
@@ -97,7 +70,6 @@ auto spawn_player(UWorld& world,
 auto spawn_initial_camera(UWorld& world,
                           ASpaceGamePlayerController& player_controller,
                           Transform3d const& initial_camera,
-                          FSpawnedActorTransaction& transaction,
                           FLevelLoadErrors& result,
                           levels::ControlContext const control_context) -> bool {
     auto const transform{to_unreal(initial_camera)};
@@ -110,7 +82,6 @@ auto spawn_initial_camera(UWorld& world,
         return false;
     }
 
-    transaction.add(*camera);
     if (!finish_spawn(*camera, transform)) {
         add_error(result,
                   ELevelLoadErrorCode::ActorSpawnFailed,
@@ -119,6 +90,9 @@ auto spawn_initial_camera(UWorld& world,
     }
 
     if (!player_controller.activate_playerless_camera(*camera, control_context)) {
+        if (IsValid(camera)) {
+            camera->Destroy();
+        }
         add_error(result,
                   ELevelLoadErrorCode::MissingInfrastructure,
                   TEXT("Failed to activate the playerless control context"));
@@ -151,9 +125,8 @@ auto FLevelLoader::load(FLevelActorLoadRequest const& request) -> FLevelLoadResu
     FLevelLoadResult result{std::unexpect};
     auto& errors{result.error()};
     auto& world{request.world};
-    auto const& setup{request.setup};
     auto const& config{request.config};
-    auto const has_player{setup.player.has_value()};
+    auto const has_player{request.player_frame.has_value()};
     auto const& visual{request.visual};
     if (!has_player && visual &&
         visual->playerless_control_context != levels::ControlContext::Observer &&
@@ -178,31 +151,23 @@ auto FLevelLoader::load(FLevelActorLoadRequest const& request) -> FLevelLoadResu
         return result;
     }
 
-    FSpawnedActorTransaction transaction{1 + (setup.camera ? 1 : 0)};
-    ATestSpaceShip* player{nullptr};
-    if (has_player && visual) {
-        player = spawn_player(world, config, *setup.player, transaction, errors);
+    if (!visual) {
+        return {};
+    }
+
+    if (request.player_frame) {
+        auto* const player{spawn_player(world, config, *request.player_frame, errors)};
         if (!IsValid(player)) {
             return result;
         }
-    }
-
-    if (visual && setup.camera) {
-        if (!spawn_initial_camera(world,
-                                  visual->controller,
-                                  *setup.camera,
-                                  transaction,
-                                  errors,
-                                  visual->playerless_control_context)) {
-            return result;
-        }
-    } else if (visual) {
-        check(IsValid(player));
         request.player = player;
-        visual->controller.Possess(player);
+    } else if (!spawn_initial_camera(world,
+                                     visual->controller,
+                                     request.camera.value(),
+                                     errors,
+                                     visual->playerless_control_context)) {
+        return result;
     }
-
-    transaction.commit();
     return {};
 }
 }

@@ -190,7 +190,7 @@ auto ATestBatchOrchestrator::initialize_level(presentation::LevelInit const& lev
                         TEXT("Authored level requires a space-game player controller"));
         }
 
-        if (!get_presentation_resources(level).is_valid()) {
+        if (!presentation_host_.components().is_valid()) {
             return fail(ELevelLoadErrorCode::MissingInfrastructure,
                         TEXT("Orchestrator simulation infrastructure is incomplete"));
         }
@@ -200,7 +200,8 @@ auto ATestBatchOrchestrator::initialize_level(presentation::LevelInit const& lev
 
     auto loaded{FLevelLoader::load({.world = *world,
                                     .config = *level_config,
-                                    .setup = level.setup,
+                                    .player_frame = frame.player,
+                                    .camera = level.setup.camera,
                                     .player = player_ship,
                                     .visual = visual})};
     if (!loaded) {
@@ -226,29 +227,26 @@ auto ATestBatchOrchestrator::initialize_level(presentation::LevelInit const& lev
         }
     }
 
-    auto const resources{get_presentation_resources(level)};
-    if (is_presentation_enabled() && !resources.is_valid()) {
-        return fail(ELevelLoadErrorCode::MissingInfrastructure,
-                    TEXT("Level presentation resources are incomplete"));
-    }
-
     auto* const audio{GetGameInstance()->GetSubsystem<UGameAudio>()};
     check(audio);
     status_ = frame.status;
     level_id_ = FName{to_fstring(level.id)};
     grid_ = level.grid;
     refresh_collision_grid_visualization();
-    if (IsValid(player_ship) && frame.player) {
-        player_ship->present_player(*frame.player);
-    }
-
     if (is_presentation_enabled()) {
         presentation_host_.initialise(
-            resources.config, resources.player, audio->facade(), level, frame);
+            level_config->get_visual_config(level.setup),
+            IsValid(player_ship)
+                ? TOptional<FPlayerPresentationResources>{player_ship->get_presentation_resources()}
+                : NullOpt,
+            audio->facade(),
+            level.static_bounds,
+            level.radii,
+            frame);
         auto* controller{
             CastChecked<ASpaceGamePlayerController>(GetWorld()->GetFirstPlayerController())};
         if (IsValid(player_ship)) {
-            controller->activate_ship_control();
+            controller->Possess(player_ship);
         }
         if (level.setup.launch_mode == levels::LaunchMode::Paused) {
             controller->show_initial_pause_menu();
@@ -305,14 +303,6 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
 
     presentation_host_.configure_collision_grid(MoveTemp(settings));
 }
-auto ATestBatchOrchestrator::get_presentation_resources(presentation::LevelInit const& level) const
-    -> FLevelPresentationResources {
-    return presentation_host_.make_resources(
-        level_config->get_visual_config(level.setup),
-        IsValid(player_ship)
-            ? TOptional<FPlayerPresentationResources>{player_ship->get_presentation_resources()}
-            : NullOpt);
-}
 
 /* **************************************** */
 // Simulation state
@@ -330,7 +320,8 @@ void ATestBatchOrchestrator::present_level(time_type const delta_seconds,
     check(status_);
     status_ = frame.status;
     if (IsValid(player_ship) && frame.player) {
-        player_ship->present_player(*frame.player);
+        auto const& player{*frame.player};
+        player_ship->present_player(player.team, player.status.health, player.flight.ship_velocity);
     }
     presentation_host_.tick(delta_seconds, frame);
 
