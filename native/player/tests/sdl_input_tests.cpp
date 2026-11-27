@@ -1,7 +1,7 @@
 #include "player/input/input_system.h"
 #include "player/pause_menu.h"
 #include <ioj/host/input.h>
-#include <ioj/input/dispatch/menu_navigation.h>
+#include <ioj/input/dispatch/player_menu.h>
 
 #include <gtest/gtest.h>
 #include <SDL3/SDL_error.h>
@@ -221,9 +221,30 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     frame();
     EXPECT_EQ(view.keys, (std::vector<PhysicalKey>{PhysicalKey::Down, PhysicalKey::NumPadEnter}));
     EXPECT_EQ(view.commands.size(), 3u);
-    EXPECT_EQ(move_main_selection(MainMenuItem::SelectLevel, MenuCommand::Up), MainMenuItem::Quit);
-    EXPECT_EQ(move_main_selection(MainMenuItem::Quit, MenuCommand::Down),
-              MainMenuItem::SelectLevel);
+    PlayerMenu menu;
+    PlayerSettingsView settings{};
+    ASSERT_TRUE(menu.navigate(MenuCommand::Up, false, settings, {}));
+    EXPECT_EQ(menu.focus, MenuTarget{MainMenuItem::Quit});
+    ASSERT_TRUE(menu.navigate(MenuCommand::Down, false, settings, {}));
+    EXPECT_EQ(menu.focus, MenuTarget{MainMenuItem::SelectLevel});
+
+    using Category = levels::authoring::LevelCatalogCategory;
+    menu.levels = {{"battle", Category::BattleViewer, true}};
+    ASSERT_TRUE(menu.activate(Category::Benchmark, settings, {}));
+    ASSERT_TRUE(menu.navigate(MenuCommand::Down, false, settings, {}));
+    EXPECT_EQ(menu.focus, (MenuTarget{MenuRow{MenuRow::Kind::Level, "battle"}}));
+    ASSERT_TRUE(menu.navigate(MenuCommand::Up, false, settings, {}));
+    EXPECT_EQ(menu.focus, MenuTarget{Category::Benchmark});
+
+    ASSERT_TRUE(menu.activate(MainMenuItem::Audio, settings, {}));
+    ASSERT_TRUE(menu.draft.set_setting(GameSetting::MasterVolume, 0.4f));
+    ASSERT_TRUE(menu.activate(MainMenuItem::Controls, settings, {}));
+    EXPECT_EQ(menu.page, MainMenuItem::Audio);
+    EXPECT_EQ(menu.prompt, OptionsPrompt::Dirty);
+    EXPECT_EQ(menu.focus, MenuTarget{MenuControl::Save});
+    menu.set_prompt(OptionsPrompt::None);
+    EXPECT_FALSE(menu.finish_main_leave(false));
+    EXPECT_EQ(menu.focus, MenuTarget{MainMenuItem::Audio});
 }
 
 class LogicalPlayerInput : public ::testing::Test {
