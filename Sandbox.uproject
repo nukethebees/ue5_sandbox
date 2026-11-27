@@ -420,23 +420,12 @@
 			"Enabled": true
 		},
 		{
-			"Name": "EnhancedInput",
-			"Enabled": true
-		},
-		{
 			"Name": "CommonUI",
 			"Enabled": false
 		},
 		{
 			"Name": "Niagara",
 			"Enabled": true
-		},
-		{
-			"Name": "XInputDevice",
-			"Enabled": true,
-			"SupportedTargetPlatforms": [
-				"Win64"
-			]
 		},
 		{
 			"Name": "SandboxCore",
@@ -464,10 +453,6 @@
 		},
 		{
 			"Name": "SpaceGame",
-			"Enabled": true
-		},
-		{
-			"Name": "SteamController",
 			"Enabled": true
 		},
 		{

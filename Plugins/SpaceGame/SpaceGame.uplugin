@@ -11,10 +11,6 @@
 	"Installed": false,
 	"Plugins": [
 		{
-			"Name": "EnhancedInput",
-			"Enabled": true
-		},
-		{
 			"Name": "Niagara",
 			"Enabled": true
 		},

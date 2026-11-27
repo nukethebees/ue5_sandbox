@@ -27,7 +27,6 @@ public class SpaceGame : ModuleRules
             "Core",
             "CoreUObject",
             "DeveloperSettings",
-            "EnhancedInput",
             "Engine",
             "GameplayTags",
             "InputCore",

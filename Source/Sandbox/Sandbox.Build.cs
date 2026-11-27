@@ -33,7 +33,6 @@ public class Sandbox : ModuleRules
 
         PrivateDependencyModuleNames.AddRange(new string[] {
             "DeveloperSettings",
-            "EnhancedInput",
             "InputCore",
             "Niagara",
             "Slate",

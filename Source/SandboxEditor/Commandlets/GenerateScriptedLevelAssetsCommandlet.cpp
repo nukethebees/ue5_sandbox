@@ -48,7 +48,6 @@
 #include <Kismet2/BlueprintEditorUtils.h>
 #include <Kismet2/KismetEditorUtilities.h>
 #include <Misc/PackageName.h>
-#include <PlayerMappableKeySettings.h>
 #include <UObject/Package.h>
 #include <UObject/SavePackage.h>
 #include <UObject/UnrealType.h>

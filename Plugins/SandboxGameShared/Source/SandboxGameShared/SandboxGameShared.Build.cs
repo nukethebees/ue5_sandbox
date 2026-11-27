@@ -18,7 +18,6 @@ public class SandboxGameShared : ModuleRules
             "CoreUObject",
             "DeveloperSettings",
             "Engine",
-            "EnhancedInput",
             "Niagara",
             "Slate",
             "SlateCore",

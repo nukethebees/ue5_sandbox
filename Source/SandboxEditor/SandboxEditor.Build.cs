@@ -73,7 +73,6 @@ public class SandboxEditor : ModuleRules
             "EditorSubsystem",
             "EditorStyle",
             "EditorWidgets",
-            "EnhancedInput",
             "EngineSettings", // Engine configuration access
             "GraphEditor",
             "MaterialEditor",
