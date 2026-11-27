@@ -1,5 +1,6 @@
 #include "SGameOptionsView.h"
 
+#include "input/BindingCapture.h"
 #include "SpaceGame/settings/GameVideoSettings.h"
 #include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
@@ -803,6 +804,7 @@ void SGameOptionsView::begin_binding_capture(FControlBindingView const& binding)
     binding_management_visible_ = false;
     binding_management_prompt_->SetVisibility(EVisibility::Collapsed);
     captured_binding_ = binding.address;
+    AddMetadata(MakeShared<FBindingCapture>());
     captured_chord_.Reset();
     chord_capture_.clear();
     captured_key_ = EKeys::Invalid;
@@ -819,6 +821,7 @@ void SGameOptionsView::begin_chord_capture(FControlBindingView const& binding) {
     binding_management_visible_ = false;
     binding_management_prompt_->SetVisibility(EVisibility::Collapsed);
     captured_binding_ = binding.address;
+    AddMetadata(MakeShared<FBindingCapture>());
     captured_chord_ = binding.chord;
     captured_chord_dependent_count_ = 0;
     if (auto const* const settings{settings_.Get()}) {
@@ -961,6 +964,9 @@ void SGameOptionsView::close_binding_prompt(bool const restore_focus) {
     }
     if (conflict_prompt_.IsValid()) {
         conflict_prompt_->SetVisibility(EVisibility::Collapsed);
+    }
+    if (auto capture{GetMetaData<FBindingCapture>()}) {
+        RemoveMetaData(capture.ToSharedRef());
     }
     captured_binding_.Reset();
     captured_chord_.Reset();
