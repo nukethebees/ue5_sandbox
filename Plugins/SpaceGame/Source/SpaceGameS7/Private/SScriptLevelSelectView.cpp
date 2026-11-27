@@ -3,13 +3,12 @@
 #include <ioj/levels/launch_options.h>
 #include <SpaceGame/ui/common/HiveWidgets.h>
 #include <SpaceGame/ui/common/SGameButton.h>
+#include <SpaceGame/ui/common/SMenuEditableText.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
 
 #include <SandboxUI/slate/SlateSlots.h>
 
-#include <ioj/input/dispatch/player_menu.h>
 #include <Framework/Application/SlateApplication.h>
-#include <InputCoreTypes.h>
 #include <Widgets/Input/SCheckBox.h>
 #include <Widgets/Input/SEditableText.h>
 #include <Widgets/Layout/SBorder.h>
@@ -83,89 +82,11 @@ void SScriptLevelSelectView::update_state(FLevelSelectViewState const& state) {
     Invalidate(EInvalidateWidgetReason::Layout | EInvalidateWidgetReason::Paint);
 }
 
-void SScriptLevelSelectView::focus_selected_level() {
-    if (level_buttons_.IsEmpty()) {
-        focus_active_category();
-        return;
-    }
-
-    auto const button_index{
-        level_buttons_.IsValidIndex(selected_button_index_) ? selected_button_index_ : 0};
-    focus_level(button_index);
-}
-
 auto SScriptLevelSelectView::OnFocusReceived(FGeometry const& geometry,
                                              FFocusEvent const& focus_event) -> FReply {
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
-    focus_selected_level();
-    return FReply::Handled();
-}
-
-auto SScriptLevelSelectView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event)
-    -> FReply {
-    auto const key{key_event.GetKey()};
-    auto const category_has_focus{level_category_button_->has_focus() ||
-                                  battle_viewer_category_button_->has_focus() ||
-                                  benchmark_category_button_->has_focus()};
-    if (category_has_focus) {
-        if (key == EKeys::Left || key == EKeys::Gamepad_DPad_Left) {
-            if (category_ != LevelCatalogCategory::Playable) {
-                auto const previous{category_ == LevelCatalogCategory::Benchmark
-                                        ? LevelCatalogCategory::BattleViewer
-                                        : LevelCatalogCategory::Playable};
-                handle_category_selected(previous);
-                focus_active_category();
-                return FReply::Handled();
-            }
-        } else if (key == EKeys::Right || key == EKeys::Gamepad_DPad_Right) {
-            if (category_ != LevelCatalogCategory::Benchmark) {
-                auto const next{category_ == LevelCatalogCategory::Playable
-                                    ? LevelCatalogCategory::BattleViewer
-                                    : LevelCatalogCategory::Benchmark};
-                handle_category_selected(next);
-                focus_active_category();
-                return FReply::Handled();
-            }
-        } else if (key == EKeys::Down || key == EKeys::Gamepad_DPad_Down) {
-            focus_selected_level();
-            return FReply::Handled();
-        }
-
-        return SCompoundWidget::OnKeyDown(geometry, key_event);
-    }
-
-    int32 current_index{INDEX_NONE};
-    auto const button_count{level_buttons_.Num()};
-    for (int32 index{}; index < button_count; ++index) {
-        if (level_buttons_[index].IsValid() && level_buttons_[index]->has_focus()) {
-            current_index = index;
-            break;
-        }
-    }
-
-    if (current_index == INDEX_NONE) {
-        return SCompoundWidget::OnKeyDown(geometry, key_event);
-    }
-
-    if ((key == EKeys::Up || key == EKeys::Gamepad_DPad_Up) && current_index == 0) {
-        focus_active_category();
-        return FReply::Handled();
-    }
-
-    auto direction{0};
-    if (key == EKeys::Up || key == EKeys::Gamepad_DPad_Up) {
-        direction = -1;
-    } else if (key == EKeys::Down || key == EKeys::Gamepad_DPad_Down) {
-        direction = 1;
-    }
-
-    if (direction == 0 || level_buttons_.IsEmpty()) {
-        return SCompoundWidget::OnKeyDown(geometry, key_event);
-    }
-
-    current_index = (current_index + direction + button_count) % button_count;
-    focus_level(current_index);
+    present({player_menu().focus, MenuOperation::Focus});
     return FReply::Handled();
 }
 
@@ -278,7 +199,7 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
         180.0f)[SAssignNew(launch_button_, SGameButton)
                     .Style(&style_->button(EGameButtonStyle::Primary))
                     .Text(this, &SScriptLevelSelectView::launch_text)
-                    .OnClicked(this, &SScriptLevelSelectView::handle_action, on_launch_)]};
+                    .OnClicked(this, &SScriptLevelSelectView::request_launch)]};
     auto const battle_speed{
         SAssignNew(battle_options_, SVerticalBox) +
         SVerticalBox::Slot().AutoHeight()
@@ -297,7 +218,9 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
                           [SNew(SBorder)
                                .BorderImage(&style_->chrome().navigation_background)
                                .Padding(FMargin{10.0f, 6.0f})[SNew(SBox).WidthOverride(
-                                   80.0f)[SAssignNew(battle_speed_input_, SEditableText)
+                                   80.0f)[SAssignNew(battle_speed_input_,
+                                                     SMenuEditableText,
+                                                     MenuControl::BattleSpeed)
                                               .Text(FText::FromString(TEXT("1")))
                                               .Font(style_->text(EGameTextStyle::Body).Font)
                                               .ColorAndOpacity(style_->palette().text_primary)
@@ -331,7 +254,8 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
                                     .TextStyle(&style_->text(EGameTextStyle::Caption))] +
              SHorizontalBox::Slot().AutoWidth().Padding(
                  FMargin{10.0f, 0.0f})[SNew(SBox).WidthOverride(
-                 80.0f)[SAssignNew(battle_duration_input_, SEditableText)
+                 80.0f)[SAssignNew(
+                            battle_duration_input_, SMenuEditableText, MenuControl::BattleDuration)
                             .HintText(NSLOCTEXT("LevelSelect", "UnlimitedDuration", "Unlimited"))
                             .Font(style_->text(EGameTextStyle::Body).Font)
                             .ColorAndOpacity(style_->palette().text_primary)
@@ -439,21 +363,17 @@ auto SScriptLevelSelectView::launch_text() const -> FText {
 
 auto SScriptLevelSelectView::handle_category_selected(LevelCatalogCategory const category)
     -> FReply {
-    category_ = category;
-    update_category_selection();
-    on_category_selected_.ExecuteIfBound(category);
+    hit_menu_control(category);
     return FReply::Handled();
 }
 
 auto SScriptLevelSelectView::handle_level_selected(int32 const button_index) -> FReply {
-    selected_button_index_ = button_index;
-    update_selection(button_index);
-    on_level_selected_.ExecuteIfBound(button_index);
+    hit_menu_control(MenuRow{MenuRow::Kind::Level, level_ids_[button_index]});
     return FReply::Handled();
 }
 
-auto SScriptLevelSelectView::handle_action(FSimpleDelegate delegate) -> FReply {
-    delegate.ExecuteIfBound();
+auto SScriptLevelSelectView::request_launch() -> FReply {
+    hit_menu_control(MenuControl::Launch);
     return FReply::Handled();
 }
 
@@ -494,6 +414,7 @@ void SScriptLevelSelectView::handle_simulation_only_changed(ECheckBoxState const
 void SScriptLevelSelectView::update_launch_availability() {
     auto const speed_is_valid{category_ == LevelCatalogCategory::Playable ||
                               (battle_speed_valid_ && battle_duration_valid_)};
+    player_menu().launch_options_valid = speed_is_valid;
     launch_button_->SetEnabled(selected_level_can_launch_ && speed_is_valid);
 }
 
@@ -554,16 +475,6 @@ void SScriptLevelSelectView::update_category_selection() {
 
     if (benchmark_category_button_.IsValid()) {
         benchmark_category_button_->set_selected(category_ == LevelCatalogCategory::Benchmark);
-    }
-}
-
-void SScriptLevelSelectView::focus_active_category() {
-    auto const& button{category_ == LevelCatalogCategory::Playable ? level_category_button_
-                       : category_ == LevelCatalogCategory::BattleViewer
-                           ? battle_viewer_category_button_
-                           : benchmark_category_button_};
-    if (button.IsValid()) {
-        button->focus();
     }
 }
 

@@ -159,12 +159,6 @@ void UScriptLevelSelectWidget::refresh() {
     refresh_levels();
 }
 
-void UScriptLevelSelectWidget::focus_primary_action() {
-    if (view_.IsValid()) {
-        view_->focus_selected_level();
-    }
-}
-
 void UScriptLevelSelectWidget::ReleaseSlateResources(bool const release_children) {
     Super::ReleaseSlateResources(release_children);
     view_.Reset();
@@ -175,7 +169,7 @@ auto UScriptLevelSelectWidget::NativeOnFocusReceived(FGeometry const& geometry,
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
     if (view_.IsValid()) {
-        view_->focus_selected_level();
+        view_->present({player_menu().focus, MenuOperation::Focus});
     }
 
     return FReply::Handled();
@@ -188,7 +182,7 @@ void UScriptLevelSelectWidget::present(MenuUpdate const& update) {
 }
 
 void UScriptLevelSelectWidget::refresh_levels() {
-    active_category_ = LevelCatalogCategory::Playable;
+    active_category_ = player_menu().category;
     entries_.Reset();
     campaigns_.Reset();
     catalog_directory_.Reset();
@@ -237,13 +231,12 @@ void UScriptLevelSelectWidget::present_catalog(presentation::LevelCatalogView co
     }
 
     menu_selection().reset();
-    rebuild_catalog(get_preferred_level_id());
+    rebuild_catalog();
 }
 
-void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
+void UScriptLevelSelectWidget::rebuild_catalog() {
     level_entry_indices_.Reset();
     selected_entry_index_ = INDEX_NONE;
-    selected_level_id_ = NAME_None;
     view_state_ = FLevelSelectViewState{};
     view_state_.category = active_category_;
     if (active_category_ != LevelCatalogCategory::Playable) {
@@ -283,23 +276,23 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
     auto add_header = [this](FString const& label) {
         view_state_.rows.Add(FLevelSelectViewRow{FText::FromString(label.ToUpper()), true});
     };
-    auto add_level = [this, focus_level_id, &preferred_button_index, &visible_entry_count](
-                         int32 const entry_index) {
-        auto const& entry{entries_[entry_index]};
-        auto indicator_state{profiles::CompletionIndicatorState::Incomplete};
-        if (entry) {
-            indicator_state = entry.indicator;
-            if (preferred_button_index == INDEX_NONE && !focus_level_id.IsNone() &&
-                levels::authoring::to_unreal(entry.id).value == focus_level_id) {
+    auto add_level =
+        [this, &preferred_button_index, &visible_entry_count](int32 const entry_index) {
+            auto const& entry{entries_[entry_index]};
+            auto indicator_state{profiles::CompletionIndicatorState::Incomplete};
+            if (entry) {
+                indicator_state = entry.indicator;
+            }
+
+            auto const id{entry ? entry.id.value : to_string(entry.path)};
+            if (id == player_menu().selected_level) {
                 preferred_button_index = level_entry_indices_.Num();
             }
-        }
-
-        view_state_.rows.Add(
-            FLevelSelectViewRow{FText::FromString(entry.display_title), false, indicator_state, entry ? entry.id.value : to_string(entry.path)});
-        level_entry_indices_.Add(entry_index);
-        ++visible_entry_count;
-    };
+            view_state_.rows.Add(FLevelSelectViewRow{
+                FText::FromString(entry.display_title), false, indicator_state, id});
+            level_entry_indices_.Add(entry_index);
+            ++visible_entry_count;
+        };
 
     TSet<FLevelId> grouped_levels;
     for (auto const& campaign : campaigns_) {
@@ -392,11 +385,15 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
 
     view_state_.status = FText::FromString(status);
 
-    if (!level_entry_indices_.IsEmpty()) {
-        apply_level_selection(preferred_button_index != INDEX_NONE ? preferred_button_index : 0);
+    if (preferred_button_index != INDEX_NONE) {
+        apply_level_selection(preferred_button_index);
     }
 
     publish_catalog();
+    if (view_ && std::holds_alternative<MenuRow>(player_menu().focus) &&
+        player_menu().page == MainMenuItem::SelectLevel) {
+        view_->present({player_menu().focus, MenuOperation::Focus});
+    }
 }
 
 void UScriptLevelSelectWidget::select_category(LevelCatalogCategory const category) {
@@ -405,7 +402,7 @@ void UScriptLevelSelectWidget::select_category(LevelCatalogCategory const catego
     }
 
     active_category_ = category;
-    rebuild_catalog(NAME_None);
+    rebuild_catalog();
 }
 
 void UScriptLevelSelectWidget::select_level(int32 const button_index) {
@@ -432,9 +429,6 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
     }
 
     selected_entry_index_ = entry_index;
-    selected_level_id_ = entries_[entry_index]
-                           ? levels::authoring::to_unreal(entries_[entry_index].id).value
-                           : NAME_None;
     view_state_.selected_button_index = button_index;
 
     auto const& entry{entries_[entry_index]};

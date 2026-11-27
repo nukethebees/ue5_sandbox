@@ -9,6 +9,7 @@
 #include "ScriptLevelSelectWidget.generated.h"
 
 namespace ioj {
+struct MenuUpdate;
 class UGameUiStyleSubsystem;
 }
 
@@ -47,9 +48,6 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
   public:
     UScriptLevelSelectWidget();
 
-    [[nodiscard]] auto get_selected_level_id() const noexcept -> FName {
-        return selected_level_id_;
-    }
     [[nodiscard]] auto can_launch_selected_level() const noexcept -> bool {
         return view_state_.can_launch &&
                (active_category_ == LevelCatalogCategory::Playable ||
@@ -59,10 +57,9 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
         return active_category_;
     }
 
-    void present(MenuUpdate const& update) override;
     void refresh() override;
     void present_catalog(presentation::LevelCatalogView const& catalog) override;
-    void focus_primary_action() override;
+    void present(MenuUpdate const& update) override;
   protected:
     void NativeOnInitialized() override;
     auto RebuildWidget() -> TSharedRef<SWidget> override;
@@ -72,7 +69,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
   private:
     void launch_selected_level(::ioj::levels::LaunchOptions options);
     void refresh_levels();
-    void rebuild_catalog(FName focus_level_id);
+    void rebuild_catalog();
     void select_category(LevelCatalogCategory category);
     void select_level(int32 button_index);
     void set_battle_time_scale(TOptional<double> time_scale);
@@ -101,7 +98,6 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     UPROPERTY(Transient)
     UGameUiStyleSubsystem* style_{nullptr};
     int32 selected_entry_index_{INDEX_NONE};
-    FName selected_level_id_{NAME_None};
     LevelCatalogCategory active_category_{LevelCatalogCategory::Playable};
     TOptional<double> battle_viewer_time_scale_{1.0};
     TOptional<double> benchmark_time_scale_{10.0};

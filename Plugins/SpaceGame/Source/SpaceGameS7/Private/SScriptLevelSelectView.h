@@ -42,12 +42,10 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     void replace_catalog(FLevelSelectViewState const& state);
     void present(MenuUpdate const& update);
     void update_state(FLevelSelectViewState const& state);
-    void focus_selected_level();
 
     auto SupportsKeyboardFocus() const -> bool override { return true; }
     auto OnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
-    auto OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply override;
   private:
     auto build_header() -> TSharedRef<SWidget>;
     auto build_catalog() -> TSharedRef<SWidget>;
@@ -58,7 +56,7 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     auto launch_text() const -> FText;
     auto handle_category_selected(LevelCatalogCategory category) -> FReply;
     auto handle_level_selected(int32 button_index) -> FReply;
-    auto handle_action(FSimpleDelegate delegate) -> FReply;
+    auto request_launch() -> FReply;
     void handle_battle_speed_changed(FText const& text);
     void handle_battle_duration_changed(FText const& text);
     void handle_simulation_only_changed(ECheckBoxState state);
@@ -66,7 +64,6 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     void rebuild_catalog(FLevelSelectViewState const& state);
     void update_selection(int32 button_index);
     void update_category_selection();
-    void focus_active_category();
     void focus_level(int32 button_index);
 
     FGameUiStyle const* style_{};

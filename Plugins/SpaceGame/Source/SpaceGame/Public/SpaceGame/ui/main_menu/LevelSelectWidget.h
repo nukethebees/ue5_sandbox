@@ -14,16 +14,8 @@ class SPACEGAME_API ULevelSelectWidget : public UUserWidget {
   public:
     ULevelSelectWidget(FObjectInitializer const& object_initializer = FObjectInitializer::Get());
 
-    void prepare_for_open(FName preferred_level_id) noexcept;
     virtual void refresh() {}
     virtual void present_catalog(presentation::LevelCatalogView const&) {}
     virtual void present(MenuUpdate const&) {}
-    virtual void focus_primary_action() {}
-  protected:
-    [[nodiscard]] auto get_preferred_level_id() const noexcept -> FName {
-        return preferred_level_id_;
-    }
-  private:
-    FName preferred_level_id_{NAME_None};
 };
 }

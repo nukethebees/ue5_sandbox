@@ -6,8 +6,4 @@ ULevelSelectWidget::ULevelSelectWidget(FObjectInitializer const& object_initiali
     SetIsFocusable(true);
 }
 
-void ULevelSelectWidget::prepare_for_open(FName const preferred_level_id) noexcept {
-    preferred_level_id_ = preferred_level_id;
-}
-
 }
