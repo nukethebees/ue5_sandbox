@@ -154,6 +154,8 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     expected.set_left_command(true);
     expected.set_caps_lock(true);
     EXPECT_EQ(view.modifiers, expected);
+    input_->resolve(commands_,
+                    input::PhysicalButton{PhysicalKey::Tab, 0, {}, input::ButtonState::Released});
     press(SDLK_TAB,
           SDL_SCANCODE_TAB,
           SDL_KMOD_LSHIFT | SDL_KMOD_RCTRL | SDL_KMOD_LALT | SDL_KMOD_RGUI);
@@ -206,6 +208,42 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
               input::MainMenuItem::Quit);
     EXPECT_EQ(input::move_main_selection(input::MainMenuItem::Quit, input::MenuCommand::Down),
               input::MainMenuItem::SelectLevel);
+}
+
+TEST_F(SdlPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModifiers) {
+    using enum input::ButtonState;
+    host::Modifiers shift{};
+    shift.set_left_shift(true);
+    auto key = [&](PhysicalKey code, input::ButtonState edge, host::Modifiers modifiers = {}) {
+        input_->resolve(commands_, input::PhysicalButton{code, 0, modifiers, edge});
+    };
+    key(PhysicalKey::Tab, Pressed, shift);
+    key(PhysicalKey::Tab, Repeated);
+    key(PhysicalKey::Tab, Released);
+    key(PhysicalKey::Tab, Repeated);
+    key(PhysicalKey::GamepadDPadDown, Pressed);
+    key(PhysicalKey::Down, Pressed);
+    input_->repeat_navigation(commands_, 0.41);
+    key(PhysicalKey::GamepadDPadDown, Released);
+    input_->repeat_navigation(commands_, 0.41);
+    input_->synchronize(commands_, {input::Context::Gameplay}, {});
+
+    ASSERT_EQ(commands_.size(), 6u);
+    auto const& transitions{input_->state().transitions};
+    ASSERT_EQ(transitions.size(), commands_.size());
+    for (std::size_t i{}; i < commands_.size(); ++i) {
+        auto const& button{std::get<host::MenuButton>(commands_[i])};
+        EXPECT_EQ(button.command, i < 3 ? input::MenuCommand::Previous : input::MenuCommand::Down);
+        EXPECT_EQ(button.down, i != 2 && i != 5);
+        EXPECT_EQ(button.repeat, i == 1 || i == 4);
+        EXPECT_EQ(button.modifiers.left_shift(), i == 0);
+        EXPECT_EQ(transitions[i].action,
+                  i < 3 ? input::DigitalAction::MenuPrevious : input::DigitalAction::MenuDown);
+        EXPECT_EQ(transitions[i].state,
+                  button.repeat ? Repeated
+                  : button.down ? Pressed
+                                : Released);
+    }
 }
 
 TEST_F(SdlPlayerInput, PauseReroutesTheNextEventInTheSamePoll) {

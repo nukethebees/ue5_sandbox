@@ -219,7 +219,14 @@ void present_menu_button(MenuButton button) {
             key = PhysicalKey::Right;
             break;
         case input::MenuCommand::Next:
+            button.modifiers.set_left_shift(false);
+            button.modifiers.set_right_shift(false);
+            key = PhysicalKey::Tab;
+            break;
         case input::MenuCommand::Previous:
+            if (!button.modifiers.left_shift() && !button.modifiers.right_shift()) {
+                button.modifiers.set_left_shift(true);
+            }
             key = PhysicalKey::Tab;
             break;
         case input::MenuCommand::Accept:

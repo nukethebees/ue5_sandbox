@@ -41,14 +41,10 @@ constexpr std::array gamepad_axes{
     GamepadAxisKeys{PhysicalKey::GamepadLeftTriggerAxis, PhysicalKey::GamepadLeftTrigger},
     GamepadAxisKeys{PhysicalKey::GamepadRightTriggerAxis, PhysicalKey::GamepadRightTrigger},
 };
-constexpr std::array repeat_keys{PhysicalKey::GamepadDPadUp,
-                                 PhysicalKey::GamepadDPadDown,
-                                 PhysicalKey::GamepadDPadLeft,
-                                 PhysicalKey::GamepadDPadRight,
-                                 PhysicalKey::GamepadLeftStickRight,
-                                 PhysicalKey::GamepadLeftStickLeft,
-                                 PhysicalKey::GamepadLeftStickUp,
-                                 PhysicalKey::GamepadLeftStickDown};
+constexpr std::array repeating_actions{DigitalAction::MenuUp,
+                                       DigitalAction::MenuDown,
+                                       DigitalAction::MenuLeft,
+                                       DigitalAction::MenuRight};
 constexpr std::array menu_actions{DigitalAction::MenuUp,
                                   DigitalAction::MenuDown,
                                   DigitalAction::MenuLeft,
@@ -161,6 +157,16 @@ void GameInput::refresh_bindings(std::vector<host::InputEvent>& output) {
 }
 void GameInput::publish_transitions(std::vector<host::InputEvent>& output, std::size_t first) {
     for (auto const payload : std::span{state_.transitions}.subspan(first)) {
+        auto const menu{std::ranges::find(game_input_tables::menu_actions, payload.action)};
+        if (menu != game_input_tables::menu_actions.end()) {
+            auto const command{
+                static_cast<MenuCommand>(menu - game_input_tables::menu_actions.begin())};
+            output.emplace_back(host::MenuButton{command,
+                                                 payload.state != ButtonState::Released,
+                                                 payload.state == ButtonState::Repeated,
+                                                 physical_.modifiers});
+            continue;
+        }
         if (payload.state == ButtonState::Pressed) {
             using enum host::PlayerAction;
             switch (payload.action) {
@@ -190,29 +196,39 @@ void GameInput::routed_button(std::vector<host::InputEvent>& output,
                               DigitalAction action,
                               ButtonState edge) {
     auto found{std::ranges::find(routed_buttons_, key, &RoutedButton::key)};
-    if (edge == ButtonState::Pressed && found != routed_buttons_.end() && found->action != action) {
-        auto const previous{std::exchange(found->action, action)};
-        if (!std::ranges::contains(routed_buttons_, previous, &RoutedButton::action)) {
-            state_.button(previous, ButtonState::Released);
+    if (edge == ButtonState::Pressed) {
+        if (found != routed_buttons_.end()) {
+            return;
         }
-    }
-    if (edge == ButtonState::Released) {
+        routed_buttons_.push_back({key, action});
+    } else {
         if (found == routed_buttons_.end()) {
             return;
         }
         action = found->action;
-        routed_buttons_.erase(found);
-        if (std::ranges::contains(routed_buttons_, action, &RoutedButton::action)) {
-            return;
+        if (edge == ButtonState::Released) {
+            routed_buttons_.erase(found);
         }
-    } else if (found == routed_buttons_.end() && edge == ButtonState::Pressed) {
-        routed_buttons_.push_back({key, action});
+    }
+    auto const direction{std::ranges::find(game_input_tables::repeating_actions, action)};
+    if (direction != game_input_tables::repeating_actions.end() && is_gamepad_control(key.key)) {
+        auto& delay{repeat_delays_[direction - game_input_tables::repeating_actions.begin()]};
+        if (edge == ButtonState::Pressed && delay == 0.) {
+            delay = 0.4;
+        } else if (edge == ButtonState::Released &&
+                   !std::ranges::any_of(routed_buttons_, [action](auto source) {
+                       return source.action == action && is_gamepad_control(source.key.key);
+                   })) {
+            delay = 0.;
+        }
+    }
+    if (edge == ButtonState::Released &&
+        std::ranges::contains(routed_buttons_, action, &RoutedButton::action)) {
+        return;
     }
     auto const first{state_.transitions.size()};
     state_.button(action, edge);
-    if (route_.context == Context::Benchmark) {
-        publish_transitions(output, first);
-    }
+    publish_transitions(output, first);
     if (action == DigitalAction::ObserverToggleLook && first != state_.transitions.size() &&
         edge == ButtonState::Pressed) {
         state_.observer_look = state_.observer_look == input::ObserverLookMode::Pointer
@@ -226,13 +242,6 @@ void GameInput::button(std::vector<host::InputEvent>& output,
                        std::uint32_t character) {
     auto const down{edge != ButtonState::Released};
     auto const repeat{edge == ButtonState::Repeated};
-    if (route_.context == Context::Menu && menu_mode_ == input::MenuInputMode::Navigation &&
-        !repeat) {
-        auto const direction{std::ranges::find(game_input_tables::repeat_keys, key.key)};
-        if (direction != game_input_tables::repeat_keys.end()) {
-            repeat_delays_[direction - game_input_tables::repeat_keys.begin()] = down ? 0.4 : 0.0;
-        }
-    }
     if ((route_.resume_available || route_.context == Context::Observer ||
          route_.context == Context::Gameplay) &&
         (route_.context == Context::Gameplay || flight_.is_pause_button(key))) {
@@ -245,21 +254,20 @@ void GameInput::button(std::vector<host::InputEvent>& output,
         output.emplace_back(host::MenuKey{key, character, down, repeat, physical_.modifiers});
         return;
     }
+    if (edge != ButtonState::Pressed) {
+        auto const source{std::ranges::find(routed_buttons_, key, &RoutedButton::key)};
+        if (source != routed_buttons_.end() && (!repeat || route_.context == Context::Menu)) {
+            routed_button(output, key, source->action, edge);
+        }
+        return;
+    }
     auto const command{input::menu_command(
         key.key,
         route_.context == Context::Menu &&
             (physical_.modifiers.left_shift() || physical_.modifiers.right_shift()))};
     if (route_.context == Context::Menu && command) {
-        output.emplace_back(host::MenuButton{*command, down, repeat, physical_.modifiers});
         routed_button(
             output, key, game_input_tables::menu_actions[std::to_underlying(*command)], edge);
-        return;
-    }
-    if (edge == ButtonState::Released) {
-        auto const found{std::ranges::find(routed_buttons_, key, &RoutedButton::key)};
-        if (found != routed_buttons_.end()) {
-            routed_button(output, key, found->action, edge);
-        }
         return;
     }
     if (route_.context == Context::Observer) {
@@ -413,12 +421,14 @@ void GameInput::apply(std::vector<host::InputEvent>& output, input::FocusLost) {
     flight_.reset(state_);
 }
 void GameInput::repeat_navigation(std::vector<host::InputEvent>& output, double seconds) {
-    for (std::size_t i{}; i < game_input_tables::repeat_keys.size(); ++i) {
+    for (std::size_t i{}; i < game_input_tables::repeating_actions.size(); ++i) {
         auto& delay{repeat_delays_[i]};
         if (delay > 0.) {
             delay -= seconds;
             if (delay <= 0.) {
-                button(output, game_input_tables::repeat_keys[i], ButtonState::Repeated);
+                auto const first{state_.transitions.size()};
+                state_.button(game_input_tables::repeating_actions[i], ButtonState::Repeated);
+                publish_transitions(output, first);
                 delay = 0.1;
             }
         }

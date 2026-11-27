@@ -2,6 +2,9 @@
 
 namespace ioj::input {
 void InputState::button(DigitalAction action, ButtonState edge) {
+    if (edge == ButtonState::Repeated && !held.get(action)) {
+        return;
+    }
     if (edge != ButtonState::Repeated) {
         auto const down{edge == ButtonState::Pressed};
         if (held.get(action) == down) {

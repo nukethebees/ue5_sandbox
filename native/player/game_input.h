@@ -67,7 +67,7 @@ class GameInput {
     input::InputState state_;
     input::FlightInputResolver flight_;
     std::vector<RoutedButton> routed_buttons_;
-    std::array<double, 8> repeat_delays_{};
+    std::array<double, 4> repeat_delays_{};
     std::uint8_t pointer_capture_{};
     InputRoute route_{};
     input::MenuInputMode menu_mode_{};
