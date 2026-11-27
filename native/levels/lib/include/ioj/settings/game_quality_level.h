@@ -43,6 +43,10 @@ struct EnumTraits<GameQualityLevel> {
 };
 
 template <>
+inline constexpr auto enum_strings<GameQualityLevel, Display>{
+    PackedStrings{"Low\000Medium\000High\000Epic", std::array<std::uint8_t, 5>{0, 4, 11, 16, 21}}};
+
+template <>
 inline constexpr auto enum_strings<GameQualityLevel, Serialized>{
     PackedStrings{"low\000medium\000high\000epic", std::array<std::uint8_t, 5>{0, 4, 11, 16, 21}}};
 } // namespace ioj

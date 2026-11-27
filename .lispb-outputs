@@ -67,6 +67,7 @@ native/levels/lib/include/ioj/settings/entity_overlay.h
 native/levels/lib/include/ioj/settings/entity_overlay_reader.h
 native/levels/lib/include/ioj/settings/entity_overlay_writer.h
 native/levels/lib/include/ioj/settings/game_anti_aliasing_method.h
+native/levels/lib/include/ioj/settings/game_graphics_preset.h
 native/levels/lib/include/ioj/settings/game_quality_level.h
 native/levels/lib/include/ioj/settings/game_setting.h
 native/levels/lib/include/ioj/settings/game_setting_availability_provider.h

@@ -17,7 +17,7 @@
   :namespace ioj
   (enum GameWindowMode @native_uint8
     :native-api true
-    :helpers (traits to-serialized-string try-parse-serialized)
+    :helpers (traits to-display-string to-serialized-string try-parse-serialized)
     (value Windowed :serialized-name "windowed")
     (value Borderless :serialized-name "borderless")
     (value Fullscreen :serialized-name "fullscreen")
@@ -29,11 +29,25 @@
   :namespace ioj
   (enum GameQualityLevel @native_uint8
     :native-api true
-    :helpers (traits to-serialized-string try-parse-serialized)
+    :helpers (traits to-display-string to-serialized-string try-parse-serialized)
     (value Low :serialized-name "low")
     (value Medium :serialized-name "medium")
     (value High :serialized-name "high")
     (value Epic :serialized-name "epic")
+    (projections (cpp))))
+
+(module game_graphics_preset
+  :header "native/levels/lib/include/ioj/settings/game_graphics_preset.h"
+  :header-include "ioj/settings/game_graphics_preset.h"
+  :namespace ioj
+  (enum GameGraphicsPreset @native_uint8
+    :native-api true
+    :helpers (traits to-display-string)
+    (value Custom)
+    (value Low)
+    (value Medium)
+    (value High)
+    (value Epic)
     (projections (cpp))))
 
 (module game_anti_aliasing_method
@@ -42,7 +56,7 @@
   :namespace ioj
   (enum GameAntiAliasingMethod @native_uint8
     :native-api true
-    :helpers (traits to-serialized-string try-parse-serialized)
+    :helpers (traits to-display-string to-serialized-string try-parse-serialized)
     (value Off :serialized-name "off")
     (value FXAA :serialized-name "fxaa")
     (value TAA :serialized-name "taa")

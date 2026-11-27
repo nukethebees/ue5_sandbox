@@ -68,6 +68,10 @@ struct EnumTraits<GameAntiAliasingMethod> {
 };
 
 template <>
+inline constexpr auto enum_strings<GameAntiAliasingMethod, Display>{PackedStrings{
+    "Off\000FXAA\000TAA\000TSR\000SMAA", std::array<std::uint8_t, 6>{0, 4, 9, 13, 17, 22}}};
+
+template <>
 inline constexpr auto enum_strings<GameAntiAliasingMethod, Serialized>{PackedStrings{
     "off\000fxaa\000taa\000tsr\000smaa", std::array<std::uint8_t, 6>{0, 4, 9, 13, 17, 22}}};
 } // namespace ioj

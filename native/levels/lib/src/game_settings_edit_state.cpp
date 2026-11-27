@@ -1,13 +1,17 @@
 #include <ioj/settings/game_settings_edit_state.h>
 
 #include <ioj/are_equal.h>
+#include <ioj/enum_strings.h>
+#include <ioj/enum_traits.h>
 #include <ioj/input/logical/flight_controls.h>
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <format>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace ioj {
 namespace {
@@ -21,6 +25,17 @@ auto setting_values_equal(GameSettingValue const& left, GameSettingValue const& 
     return left == right;
 }
 
+template <typename Enum>
+auto enum_choices() -> std::vector<GameSettingChoice> {
+    auto const& values{EnumTraits<Enum>::values};
+    std::vector<GameSettingChoice> choices;
+    choices.reserve(values.size());
+    for (auto const value : values) {
+        choices.push_back({value, std::string{to_display_string(value)}});
+    }
+
+    return choices;
+}
 }
 
 auto graphics_preset(GameSettingsState const& state) -> GameGraphicsPreset {
@@ -114,9 +129,7 @@ auto game_setting_choices(GameSettingOptionProvider const provider,
             return result;
         }
         case GameSettingOptionProvider::WindowModes:
-            return {{GameWindowMode::Windowed, "Windowed"},
-                    {GameWindowMode::Borderless, "Borderless"},
-                    {GameWindowMode::Fullscreen, "Fullscreen"}};
+            return enum_choices<GameWindowMode>();
         case GameSettingOptionProvider::FrameRateLimits: {
             std::vector<GameSettingChoice> result{{0.f, "Uncapped"}};
             for (auto const limit : {30, 60, 90, 120, 144, 165, 240}) {
@@ -126,22 +139,11 @@ auto game_setting_choices(GameSettingOptionProvider const provider,
             return result;
         }
         case GameSettingOptionProvider::AAMethods:
-            return {{GameAntiAliasingMethod::Off, "Off"},
-                    {GameAntiAliasingMethod::FXAA, "FXAA"},
-                    {GameAntiAliasingMethod::TAA, "TAA"},
-                    {GameAntiAliasingMethod::TSR, "TSR"},
-                    {GameAntiAliasingMethod::SMAA, "SMAA"}};
+            return enum_choices<GameAntiAliasingMethod>();
         case GameSettingOptionProvider::GraphicsPresets:
-            return {{GameGraphicsPreset::Custom, "Custom"},
-                    {GameGraphicsPreset::Low, "Low"},
-                    {GameGraphicsPreset::Medium, "Medium"},
-                    {GameGraphicsPreset::High, "High"},
-                    {GameGraphicsPreset::Epic, "Epic"}};
+            return enum_choices<GameGraphicsPreset>();
         case GameSettingOptionProvider::QualityLevels:
-            return {{GameQualityLevel::Low, "Low"},
-                    {GameQualityLevel::Medium, "Medium"},
-                    {GameQualityLevel::High, "High"},
-                    {GameQualityLevel::Epic, "Epic"}};
+            return enum_choices<GameQualityLevel>();
         case GameSettingOptionProvider::None:
             return {};
     }

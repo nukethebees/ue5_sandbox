@@ -40,6 +40,10 @@ struct EnumTraits<GameWindowMode> {
 };
 
 template <>
+inline constexpr auto enum_strings<GameWindowMode, Display>{PackedStrings{
+    "Windowed\000Borderless\000Fullscreen", std::array<std::uint8_t, 4>{0, 9, 20, 31}}};
+
+template <>
 inline constexpr auto enum_strings<GameWindowMode, Serialized>{PackedStrings{
     "windowed\000borderless\000fullscreen", std::array<std::uint8_t, 4>{0, 9, 20, 31}}};
 } // namespace ioj
