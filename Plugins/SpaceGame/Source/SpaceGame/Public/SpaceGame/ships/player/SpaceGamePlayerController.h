@@ -10,6 +10,10 @@
 
 #include "SpaceGamePlayerController.generated.h"
 
+namespace ioj::host {
+struct ViewerMotion;
+}
+
 class ACameraActor;
 class UEnhancedInputUserSettings;
 struct FLevelCompletion;
@@ -36,6 +40,9 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     ASpaceGamePlayerController();
     bool InputKey(FInputKeyEventArgs const& event_args) override;
     void SetupInputComponent() override;
+    void pause_or_exit_viewer();
+    void present_viewer_motion(host::ViewerMotion const& motion, double dt);
+    void present_steering(TOptional<FVector2D> position);
     void Tick(float dt) override;
     void show_main_menu();
     auto activate_playerless_camera(ACameraActor& camera, levels::ControlContext context) -> bool;
@@ -134,6 +141,9 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
 
     FPlayerControlContexts control_contexts_;
     TWeakObjectPtr<UEnhancedInputUserSettings> registered_input_settings_;
+    TWeakObjectPtr<ACameraActor> viewer_camera_;
+    float viewer_speed_{50000.f};
+    bool viewer_looking_{};
     TWeakObjectPtr<ATestBatchOrchestrator> orchestrator_;
     EPlayerControllerMode mode_{EPlayerControllerMode::Gameplay};
     bool begin_play_finished_{false};

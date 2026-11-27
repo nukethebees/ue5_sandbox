@@ -1,5 +1,7 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 
+#include <ioj/host/input.h>
+
 #include <SandboxGameShared/utilities/macros/null_checks.hpp>
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
@@ -446,6 +448,7 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
     }
 
     bind_orchestrator_events();
+    viewer_camera_ = &camera;
     control_contexts_.set_camera(&camera);
     SetViewTarget(&camera);
     if (context == levels::ControlContext::Benchmark) {
@@ -494,6 +497,42 @@ auto ASpaceGamePlayerController::activate_run_controls() -> bool {
 
     SetActorTickEnabled(true);
     return true;
+}
+void ASpaceGamePlayerController::present_steering(TOptional<FVector2D> position) {
+    hud_.set_mouse_steering(position);
+}
+void ASpaceGamePlayerController::pause_or_exit_viewer() {
+    if (get_active_control_context() == levels::ControlContext::Benchmark) {
+        return_to_level_select();
+    } else {
+        toggle_pause_game();
+    }
+}
+void ASpaceGamePlayerController::present_viewer_motion(host::ViewerMotion const& motion,
+                                                       double dt) {
+    if (get_active_control_context() != levels::ControlContext::Observer) {
+        return;
+    }
+    auto& camera{*viewer_camera_.Get()};
+    if (viewer_looking_ != motion.looking) {
+        viewer_looking_ = motion.looking;
+        set_observer_look_active(viewer_looking_);
+    }
+    if (viewer_speed_ != motion.speed) {
+        viewer_speed_ = motion.speed;
+        set_observer_movement_speed(viewer_speed_);
+    }
+    if (motion.yaw != 0.f || motion.pitch != 0.f) {
+        auto rotation{camera.GetActorRotation()};
+        rotation.Yaw += motion.yaw;
+        rotation.Pitch = FMath::ClampAngle(rotation.Pitch + motion.pitch, -89., 89.);
+        rotation.Roll = 0.;
+        camera.SetActorRotation(rotation);
+    }
+    auto const planar{(camera.GetActorRightVector() * motion.right +
+                       camera.GetActorForwardVector() * motion.forward)
+                          .GetClampedToMaxSize(1.)};
+    camera.AddActorWorldOffset((planar + FVector::UpVector * motion.up) * motion.speed * dt);
 }
 void ASpaceGamePlayerController::set_observer_look_active(bool const active) {
     if (active) {

@@ -1,11 +1,14 @@
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 #include "input/BindingKey.h"
 #include <ioj/host/input.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 
 #include <SandboxCoreEngine/strings.h>
 
 #include <Engine/Engine.h>
 #include <Engine/GameViewportClient.h>
+#include <Engine/LocalPlayer.h>
+#include <Engine/World.h>
 #include <Framework/Application/SlateApplication.h>
 #include <GenericPlatform/GenericPlatformInputDeviceMapper.h>
 #include <Input/Events.h>
@@ -16,6 +19,10 @@
 
 namespace ioj::host {
 namespace {
+auto controller() -> ASpaceGamePlayerController* {
+    auto* const world{GEngine->GameViewport->GetWorld()};
+    return world ? Cast<ASpaceGamePlayerController>(world->GetFirstPlayerController()) : nullptr;
+}
 auto modifier_state(Modifiers modifiers) -> FModifierKeysState {
     return {modifiers.left_shift,
             modifiers.right_shift,
@@ -44,6 +51,22 @@ auto mouse_button(int button) -> FKey {
     }
 }
 }
+auto input_route() -> InputRoute {
+    auto* const player{controller()};
+    if (player) {
+        switch (player->get_active_control_context()) {
+            case levels::ControlContext::Player:
+                return {input::Context::Gameplay, false};
+            case levels::ControlContext::Observer:
+                return {input::Context::BenchmarkViewer, true};
+            case levels::ControlContext::Benchmark:
+                return {input::Context::BenchmarkViewer, false};
+            case levels::ControlContext::None:
+                break;
+        }
+    }
+    return {input::Context::Menu, false};
+}
 void read_legacy_key_bindings(void* destination, LegacyBindingSink sink) {
     static constexpr TCHAR slot[]{TEXT("SpaceGameInputSettings")};
     if (!UGameplayStatics::DoesSaveGameExist(slot, 0)) {
@@ -70,6 +93,25 @@ void read_legacy_key_bindings(void* destination, LegacyBindingSink sink) {
             }
         }
     }
+}
+void pause_or_exit_viewer() {
+    auto* const player{controller()};
+    check(player);
+    player->pause_or_exit_viewer();
+}
+void present_viewer_motion(ViewerMotion const& motion, double delta_seconds) {
+    auto* const player{controller()};
+    check(player);
+    player->present_viewer_motion(motion, delta_seconds);
+}
+void present_steering(std::optional<Vector2d> steering) {
+    auto* const player{controller()};
+    check(player);
+    TOptional<FVector2D> position;
+    if (steering) {
+        position.Emplace(steering->x(), steering->y());
+    }
+    player->present_steering(position);
 }
 void ui_key(
     std::string_view name, std::uint32_t character, bool down, bool repeat, Modifiers modifiers) {
