@@ -1,6 +1,6 @@
-#include "player/sdl_input.h"
+#include "player/input/physical/sdl_input.h"
 
-#include <ioj/host/input.h>
+#include <ioj/input/dispatch/events.h>
 
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_mouse.h>

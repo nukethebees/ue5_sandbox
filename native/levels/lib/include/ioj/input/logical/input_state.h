@@ -1,8 +1,8 @@
 #pragma once
 
 #include <ioj/enum_array.h>
-#include <ioj/input/actions.h>
-#include <ioj/input/button_state.h>
+#include <ioj/input/logical/actions.h>
+#include <ioj/input/physical/button_state.h>
 #include <ioj/vector.h>
 
 #include <optional>

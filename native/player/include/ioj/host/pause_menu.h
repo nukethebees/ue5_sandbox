@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/host/input_actions.h>
+#include <ioj/input/dispatch/input_actions.h>
 
 namespace ioj::host {
 struct PauseCommand {

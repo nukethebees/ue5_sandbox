@@ -1,8 +1,8 @@
-#include "player/game_input.h"
+#include "player/input/logical/game_input.h"
+#include "player/input/physical/sdl_input.h"
 #include "player/pause_menu.h"
-#include "player/sdl_input.h"
-#include <ioj/input/menu_navigation.h>
-#include <ioj/input/ship_input.h>
+#include <ioj/input/dispatch/menu_navigation.h>
+#include <ioj/input/dispatch/ship_input.h>
 
 #include <gtest/gtest.h>
 #include <SDL3/SDL_error.h>

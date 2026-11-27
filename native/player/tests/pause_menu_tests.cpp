@@ -1,4 +1,4 @@
-#include "player/game_input.h"
+#include "player/input/logical/game_input.h"
 #include "player/pause_menu.h"
 
 #include <gtest/gtest.h>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/input/actions.h>
+#include <ioj/input/logical/actions.h>
 
 #include <Internationalization/Text.h>
 

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "player/engine.h"
-#include <ioj/host/input.h>
 #include <ioj/host/unreal_messages.h>
+#include <ioj/input/dispatch/events.h>
 #include <ioj/levels/launch_options.h>
 #include <ioj/levels/level_definition.h>
 #include <ioj/profiles/profile_manager.h>

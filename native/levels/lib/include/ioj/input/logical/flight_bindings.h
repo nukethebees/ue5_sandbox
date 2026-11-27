@@ -1,8 +1,8 @@
 #pragma once
 
 #include <ioj/enum_array.h>
-#include <ioj/input/flight_mapping.h>
-#include <ioj/input/physical_key.h>
+#include <ioj/input/logical/flight_mapping.h>
+#include <ioj/input/physical/physical_key.h>
 
 namespace ioj {
 using FlightBindings = EnumArray<PhysicalKey, FlightMapping>;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "player/physical_input.h"
+#include "player/input/physical/physical_input.h"
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_gamepad.h>

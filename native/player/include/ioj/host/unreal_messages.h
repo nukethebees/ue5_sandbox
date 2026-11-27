@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/host/input.h>
+#include <ioj/input/dispatch/events.h>
 #include <ioj/levels/launch_options.h>
 #include <ioj/session/level_select_request.h>
 #include <ioj/settings/game_setting_category.h>

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "player/physical_input.h"
-#include <ioj/host/input.h>
-#include <ioj/input/flight_input.h>
+#include "player/input/physical/physical_input.h"
+#include <ioj/input/dispatch/events.h>
+#include <ioj/input/logical/flight_input.h>
 
 #include <array>
 #include <cstddef>
@@ -15,13 +15,6 @@ struct InputRoute {
     InputContext context{};
     bool resume_available{};
     bool operator==(InputRoute const&) const = default;
-};
-
-struct PhysicalInputState {
-    std::vector<PhysicalKey> held;
-    std::array<float, 6> gamepad_axes{};
-    host::Modifiers modifiers{};
-    WindowFocus focus{WindowFocus::Gained};
 };
 
 class GameInput {

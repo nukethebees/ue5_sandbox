@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/input/physical_key.h>
+#include <ioj/input/physical/physical_key.h>
 
 #include <Delegates/Delegate.h>
 #include <Types/ISlateMetaData.h>

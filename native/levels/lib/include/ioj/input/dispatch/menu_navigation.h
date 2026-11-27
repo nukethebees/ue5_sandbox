@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/input/actions.h>
+#include <ioj/input/logical/actions.h>
 
 namespace ioj {
 constexpr auto move_main_selection(MainMenuItem selected, MenuCommand direction) -> MainMenuItem {

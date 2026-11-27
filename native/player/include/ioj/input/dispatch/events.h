@@ -1,9 +1,9 @@
 #pragma once
 
-#include <ioj/host/modifiers.h>
 #include <ioj/host/pause_menu.h>
-#include <ioj/input/actions.h>
-#include <ioj/input/physical_key.h>
+#include <ioj/input/logical/actions.h>
+#include <ioj/input/physical/modifiers.h>
+#include <ioj/input/physical/physical_key.h>
 #include <ioj/vector.h>
 
 #include <cstdint>

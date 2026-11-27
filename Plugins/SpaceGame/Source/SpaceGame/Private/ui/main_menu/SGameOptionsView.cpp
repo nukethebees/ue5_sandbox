@@ -6,7 +6,7 @@
 #include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
 #include "SpaceGame/ui/common/SGameButton.h"
-#include <ioj/input/flight_controls.h>
+#include <ioj/input/logical/flight_controls.h>
 #include <ioj/system_capabilities.h>
 
 #include "SandboxUI/slate/SlateSlots.h"

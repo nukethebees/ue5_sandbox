@@ -1,6 +1,6 @@
 #include <ioj/settings/game_settings_edit_state.h>
 
-#include <ioj/input/flight_controls.h>
+#include <ioj/input/logical/flight_controls.h>
 
 #include <algorithm>
 #include <cassert>

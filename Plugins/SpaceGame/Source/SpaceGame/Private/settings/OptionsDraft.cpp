@@ -3,7 +3,7 @@
 #include "SpaceGame/settings/ControlBindingView.h"
 #include "SpaceGame/settings/GameSettingOption.h"
 #include "SpaceGame/UnrealMessages.h"
-#include <ioj/input/flight_controls.h>
+#include <ioj/input/logical/flight_controls.h>
 #include <ioj/settings/game_setting.h>
 #include <ioj/settings/game_setting_category.h>
 #include <ioj/settings/game_setting_option_provider.h>

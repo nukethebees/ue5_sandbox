@@ -1,4 +1,4 @@
-#include "ioj/input/response.h"
+#include "ioj/input/logical/response.h"
 #include "ioj/vector_value_math.h"
 
 #include <algorithm>

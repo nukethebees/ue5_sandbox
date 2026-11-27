@@ -1,16 +1,24 @@
 #pragma once
 
-#include <ioj/host/modifiers.h>
-#include <ioj/input/actions.h>
-#include <ioj/input/button_state.h>
-#include <ioj/input/physical_key.h>
+#include <ioj/input/physical/button_state.h>
+#include <ioj/input/physical/modifiers.h>
+#include <ioj/input/physical/physical_key.h>
 #include <ioj/vector.h>
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <variant>
+#include <vector>
 
 namespace ioj {
+struct PhysicalInputState {
+    std::vector<PhysicalKey> held;
+    std::array<float, 6> gamepad_axes{};
+    host::Modifiers modifiers{};
+    WindowFocus focus{WindowFocus::Gained};
+};
+
 struct PhysicalButton {
     PhysicalKey key;
     host::Modifiers modifiers{};

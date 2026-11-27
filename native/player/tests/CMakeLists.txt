@@ -3,8 +3,8 @@ target_sources(native-player-input-tests
   PRIVATE
     sdl_input_tests.cpp
     pause_menu_tests.cpp
-    ../sdl_input.cpp
-    ../game_input.cpp
+    ../input/physical/sdl_input.cpp
+    ../input/logical/game_input.cpp
     ../pause_menu.cpp
 )
 target_include_directories(native-player-input-tests PRIVATE ../.. ../include)

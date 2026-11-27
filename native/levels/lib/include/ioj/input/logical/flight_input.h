@@ -1,12 +1,28 @@
 #pragma once
 
-#include <ioj/input/flight_controls.h>
-#include <ioj/input/input_state.h>
+#include <ioj/input/logical/flight_controls.h>
+#include <ioj/input/logical/input_state.h>
 #include <ioj/settings/controls_settings.h>
 
 #include <array>
 
 namespace ioj {
+auto clamp_sensitivity(float value) noexcept -> float;
+auto clamp_dead_zone(float value) noexcept -> float;
+
+auto apply_response(float value,
+                    InputResponse response,
+                    FlightAxis axis,
+                    ControlsSettings const& settings) noexcept -> float;
+auto apply_response(Vector2d value,
+                    InputResponse response,
+                    FlightAxis axis,
+                    ControlsSettings const& settings) noexcept -> Vector2d;
+auto apply_response(Vector3d value,
+                    InputResponse response,
+                    FlightAxis axis,
+                    ControlsSettings const& settings) noexcept -> Vector3d;
+
 class FlightInputResolver {
   public:
     void configure(InputState& state, ControlsSettings const& controls, InputContext context);

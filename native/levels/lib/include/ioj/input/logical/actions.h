@@ -298,18 +298,6 @@ enum class FlightAxis : FlightAxisUnderlying {
 template <>
 inline constexpr MinMax<FlightAxis> enum_range<FlightAxis>{FlightAxis::None, FlightAxis::Yaw};
 
-using WindowFocusUnderlying = std::uint8_t;
-
-// Logical bit width: 1.
-enum class WindowFocus : WindowFocusUnderlying {
-    Lost,
-    Gained,
-};
-
-template <>
-inline constexpr MinMax<WindowFocus> enum_range<WindowFocus>{WindowFocus::Lost,
-                                                             WindowFocus::Gained};
-
 struct DigitalActions;
 
 namespace detail {
@@ -1018,11 +1006,6 @@ struct EnumTraits<InputResponse> {
 template <>
 struct EnumTraits<FlightAxis> {
     static constexpr std::array values{FlightAxis::None, FlightAxis::Pitch, FlightAxis::Yaw};
-};
-
-template <>
-struct EnumTraits<WindowFocus> {
-    static constexpr std::array values{WindowFocus::Lost, WindowFocus::Gained};
 };
 
 } // namespace ioj

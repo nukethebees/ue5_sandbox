@@ -22,9 +22,26 @@ template <>
 inline constexpr MinMax<ButtonState> enum_range<ButtonState>{ButtonState::Released,
                                                              ButtonState::Pressed};
 
+using WindowFocusUnderlying = std::uint8_t;
+
+// Logical bit width: 1.
+enum class WindowFocus : WindowFocusUnderlying {
+    Lost,
+    Gained,
+};
+
+template <>
+inline constexpr MinMax<WindowFocus> enum_range<WindowFocus>{WindowFocus::Lost,
+                                                             WindowFocus::Gained};
+
 template <>
 struct EnumTraits<ButtonState> {
     static constexpr std::array values{ButtonState::Released, ButtonState::Pressed};
+};
+
+template <>
+struct EnumTraits<WindowFocus> {
+    static constexpr std::array values{WindowFocus::Lost, WindowFocus::Gained};
 };
 
 } // namespace ioj

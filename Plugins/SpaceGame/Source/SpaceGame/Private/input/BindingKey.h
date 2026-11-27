@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/input/physical_key.h>
+#include <ioj/input/physical/physical_key.h>
 
 #include <InputCoreTypes.h>
 

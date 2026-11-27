@@ -2,9 +2,9 @@
 
 #include "player/cli_args.h"
 #include "player/engine.h"
-#include "player/game_input.h"
+#include "player/input/logical/game_input.h"
+#include "player/input/physical/sdl_input.h"
 #include "player/loaded_level.h"
-#include "player/sdl_input.h"
 #include "player/window.h"
 #include <ioj/bridge/completed_level.h>
 #include <ioj/bridge/level_catalog.h>
@@ -12,8 +12,8 @@
 #include <ioj/files.h>
 #include <ioj/host/game_host_api.h>
 #include <ioj/host/level_host.h>
-#include <ioj/input/menu_navigation.h>
-#include <ioj/input/ship_input.h>
+#include <ioj/input/dispatch/menu_navigation.h>
+#include <ioj/input/dispatch/ship_input.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/presentation/level_catalog.h>
 #include <ioj/presentation/profile_view.h>

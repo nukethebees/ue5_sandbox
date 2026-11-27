@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/input/menu_navigation.h>
+#include <ioj/input/dispatch/menu_navigation.h>
 #include <ioj/settings/game_setting_category.h>
 
 #include <Misc/Optional.h>

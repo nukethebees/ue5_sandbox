@@ -2,7 +2,7 @@
 
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include <ioj/input/menu_navigation.h>
+#include <ioj/input/dispatch/menu_navigation.h>
 
 #include <optional>
 

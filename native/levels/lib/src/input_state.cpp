@@ -1,4 +1,4 @@
-#include <ioj/input/input_state.h>
+#include <ioj/input/logical/input_state.h>
 
 namespace ioj {
 void InputState::button(DigitalAction action, ButtonState edge) {

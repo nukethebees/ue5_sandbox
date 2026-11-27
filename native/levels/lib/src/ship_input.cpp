@@ -1,6 +1,6 @@
-#include <ioj/input/ship_input.h>
+#include <ioj/input/dispatch/ship_input.h>
 
-#include <ioj/input/input_state.h>
+#include <ioj/input/logical/input_state.h>
 
 namespace ioj {
 auto ship_input_frame(InputState const& state, std::vector<sim::player::PlayerInputKind>& events)

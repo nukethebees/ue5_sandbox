@@ -1,8 +1,8 @@
 #pragma once
 
-#include <ioj/input/actions.h>
-#include <ioj/input/flight_mapping.h>
-#include <ioj/input/physical_key.h>
+#include <ioj/input/logical/actions.h>
+#include <ioj/input/logical/flight_mapping.h>
+#include <ioj/input/physical/physical_key.h>
 
 #include <span>
 #include <string_view>

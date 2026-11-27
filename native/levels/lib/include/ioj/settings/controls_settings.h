@@ -5,7 +5,7 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
-#include "ioj/input/flight_bindings.h"
+#include "ioj/input/logical/flight_bindings.h"
 
 #include <array>
 #include <cassert>

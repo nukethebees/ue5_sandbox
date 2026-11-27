@@ -1,5 +1,5 @@
-#include <ioj/input/flight_input.h>
-#include <ioj/input/ship_input.h>
+#include <ioj/input/dispatch/ship_input.h>
+#include <ioj/input/logical/flight_input.h>
 
 #include <gtest/gtest.h>
 

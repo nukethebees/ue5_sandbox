@@ -28,10 +28,10 @@ native/level_authoring/lib/include/ioj/levels/authoring/record_constructors.h
 native/levels/lib/include/ioj/gfx/starfield_settings.h
 native/levels/lib/include/ioj/gfx/starfield_settings_reader.h
 native/levels/lib/include/ioj/gfx/starfield_settings_writer.h
-native/levels/lib/include/ioj/input/actions.h
-native/levels/lib/include/ioj/input/button_state.h
-native/levels/lib/include/ioj/input/flight_mapping.h
-native/levels/lib/include/ioj/input/physical_key.h
+native/levels/lib/include/ioj/input/logical/actions.h
+native/levels/lib/include/ioj/input/physical/button_state.h
+native/levels/lib/include/ioj/input/logical/flight_mapping.h
+native/levels/lib/include/ioj/input/physical/physical_key.h
 native/levels/lib/include/ioj/levels/campaign_definition.h
 native/levels/lib/include/ioj/levels/campaign_definition_reader.h
 native/levels/lib/include/ioj/levels/campaign_definition_writer.h
@@ -169,8 +169,8 @@ native/levels/lib/include/ioj/world_aabb.h
 native/levels/lib/include/ioj/world_aabb_reader.h
 native/levels/lib/include/ioj/world_aabb_writer.h
 native/levels/lib/src/game_settings.cpp
-native/player/include/ioj/host/input_actions.h
-native/player/include/ioj/host/modifiers.h
+native/player/include/ioj/input/dispatch/input_actions.h
+native/player/include/ioj/input/physical/modifiers.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data_compact_view.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data_view.h

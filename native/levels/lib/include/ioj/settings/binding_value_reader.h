@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ioj/input/flight_bindings.h>
-#include <ioj/input/flight_controls.h>
+#include <ioj/input/logical/flight_bindings.h>
+#include <ioj/input/logical/flight_controls.h>
 #include <ioj/s7/reader.h>
 
 #include <array>

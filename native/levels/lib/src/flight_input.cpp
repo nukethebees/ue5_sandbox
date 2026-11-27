@@ -1,6 +1,5 @@
-#include <ioj/input/flight_input.h>
+#include <ioj/input/logical/flight_input.h>
 
-#include <ioj/input/response.h>
 #include <ioj/vector_value_math.h>
 
 #include <algorithm>

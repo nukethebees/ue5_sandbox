@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/input/flight_bindings.h>
+#include <ioj/input/logical/flight_bindings.h>
 
 #include <Internationalization/Text.h>
 
