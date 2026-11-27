@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ioj/input/physical/keyboard_layout.h>
 #include <ioj/input/logical/flight_controls.h>
 #include <ioj/input/physical/physical_key.h>
 #include <ioj/levels/launch_options.h>
@@ -101,9 +100,6 @@ struct MenuTarget {
     std::string id;
 };
 
-struct MenuHit {
-    MenuTarget target;
-};
 struct MenuUpdate {
     MenuTarget target;
     MenuOperation operation;
@@ -194,6 +190,5 @@ struct PlayerMenu : MenuPresentation {
     bool show_reset_profile{};
     std::optional<MainMenuItem> pending_page;
     std::string profile_name;
-    KeyboardLayout keyboard;
 };
 }

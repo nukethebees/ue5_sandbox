@@ -25,7 +25,6 @@ target_sources(IojPlayer
     "${host_directory}/application.cpp"
     "${host_directory}/input/input_system.cpp"
     "${host_directory}/input/physical/physical_input_system.cpp"
-    "${host_directory}/input/logical/logical_input_system.cpp"
     "${host_directory}/pause_menu.cpp"
     "${host_directory}/loaded_level.cpp"
     "${host_directory}/engine.cpp"

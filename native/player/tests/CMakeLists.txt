@@ -5,7 +5,6 @@ target_sources(native-player-input-tests
     pause_menu_tests.cpp
     ../input/input_system.cpp
     ../input/physical/physical_input_system.cpp
-    ../input/logical/logical_input_system.cpp
     ../pause_menu.cpp
 )
 target_include_directories(native-player-input-tests PRIVATE ../.. ../include ../../../Plugins/SpaceGame/Source/SpaceGame/Private)

@@ -1,7 +1,6 @@
-#include "UnrealEndpoint.h"
 #include "player/input/input_system.h"
 #include "player/pause_menu.h"
-#include <ioj/host/input.h>
+#include "UnrealEndpoint.h"
 #include <ioj/input/dispatch/player_menu.h>
 
 #include <gtest/gtest.h>
@@ -17,7 +16,6 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -30,7 +28,6 @@ static_assert(!is_keyboard_key(static_cast<PhysicalKey>(SDL_SCANCODE_F24)));
 static_assert(!is_keyboard_key(PhysicalKey::LeftMouseButton));
 static_assert(!is_keyboard_key(PhysicalKey::GamepadLeftX));
 struct Presentation {
-    KeyboardLayout layout;
     InputRoute route;
     MenuInputMode mode{};
     Modifiers modifiers;
@@ -45,11 +42,13 @@ Presentation presentation;
 }
 
 namespace ioj::tests {
-class SdlPlayerInput
-    : public ::testing::Test
-    , public InputReceiver {
+class SdlPlayerInput : public ::testing::Test {
   protected:
+    PlayerMenu menu_;
     PauseMenu pause_menu_;
+    host::NativeEndpoint endpoint_;
+    host::UnrealEndpoint unreal_;
+    std::optional<MenuTarget> pointer_hit_;
     std::vector<host::PauseCommand> pause_commands_;
     void SetUp() override {
         SDL_SetMainReady();
@@ -58,7 +57,7 @@ class SdlPlayerInput
         window_ = SDL_CreateWindow("Input test", 100, 100, 0);
         ASSERT_NE(window_, nullptr) << SDL_GetError();
         ASSERT_EQ(SDL_GetKeyboardFocus(), window_);
-        input_.emplace(*window_, settings_, host::tests::presentation.layout);
+        input_.emplace(*window_, settings_, endpoint_);
     }
     void TearDown() override {
         input_.reset();
@@ -66,52 +65,78 @@ class SdlPlayerInput
         SDL_Quit();
     }
     void frame() {
-        input_->advance(0.016, *this);
-        if (auto step{input_->viewer_step(0.016)}) {
-            host::tests::presentation.motion = step->motion;
-        }
-    }
-    auto routing() const -> InputRouting override {
-        return {pause_menu_.route(host::tests::presentation.route), host::tests::presentation.mode};
-    }
-    void consume(host::InputBatch events) override {
         auto& view{host::tests::presentation};
-        std::visit(
-            [&](auto rows) {
-                using T = typename decltype(rows)::value_type;
-                for (auto const& row : rows) {
-                    if constexpr (std::is_same_v<T, host::PlayerAction>) {
-                        view.actions.push_back(row);
-                        if (auto command{pause_menu_.handle(row, sim::LevelState::Running)}) {
-                            pause_commands_.push_back(*command);
-                            if (command->kind == host::PauseCommandKind::CheckLeave) {
+        input_->poll();
+        auto const& physical{input_->events()};
+        std::size_t cursor{};
+        do {
+            auto const route{pause_menu_.route(view.route)};
+            input_->synchronize(route, view.mode);
+            cursor = input_->map_events(physical, cursor);
+            for (auto const& command : input_->commands()) {
+                switch (command.kind) {
+                    case InputCommand::Kind::Action:
+                        view.actions.push_back(command.action);
+                        if (auto update{
+                                pause_menu_.handle(command.action, sim::LevelState::Running)}) {
+                            pause_commands_.push_back(*update);
+                            if (update->kind == host::PauseCommandKind::CheckLeave) {
                                 pause_menu_.widget_event(
-                                    {host::PauseWidgetEventKind::LeaveAccepted, command->item});
+                                    {host::PauseWidgetEventKind::LeaveAccepted, update->item});
                             }
                         }
-                    } else if constexpr (std::is_same_v<T, host::MenuButton>) {
-                        if (row.down && pause_menu_.view == PauseMenuView::Sidebar) {
-                            if (auto command{pause_menu_.navigate(row.command, row.repeat)}) {
-                                pause_commands_.push_back(*command);
+                        break;
+                    case InputCommand::Kind::Navigation:
+                        if (command.button.down && pause_menu_.view == PauseMenuView::Sidebar) {
+                            if (auto update{pause_menu_.navigate(command.button.command,
+                                                                 command.button.repeat)}) {
+                                pause_commands_.push_back(*update);
                             }
-                        } else if (row.down) {
-                            view.commands.push_back(row.command);
-                            view.modifiers = row.modifiers;
+                        } else if (command.button.down) {
+                            view.commands.push_back(command.button.command);
+                            view.modifiers = command.button.modifiers;
                         }
-                    } else if constexpr (std::is_same_v<T, host::MenuPointer>) {
-                        view.pointer.push_back(row.pointer.action);
-                    } else if constexpr (std::is_same_v<T, host::MenuText>) {
-                        view.text += row.text;
-                    } else if constexpr (std::is_same_v<T, host::MenuKey>) {
-                        if (row.down) {
-                            view.keys.push_back(row.key);
-                        }
-                    } else {
-                        view.keys.push_back(row);
-                    }
+                        break;
+                    case InputCommand::Kind::Capture:
+                        view.keys.push_back(command.key);
+                        break;
                 }
-            },
-            events);
+            }
+            input_->clear_commands();
+            auto const outgoing{endpoint_.messages()};
+            for (auto const [kind, index] : outgoing.order) {
+                switch (kind) {
+                    case host::NativeMessageKind::Key:
+                        if (outgoing.keys[index].down) {
+                            view.keys.push_back(outgoing.keys[index].key);
+                        }
+                        break;
+                    case host::NativeMessageKind::Text:
+                        view.text += outgoing.texts[index].text;
+                        break;
+                    case host::NativeMessageKind::Pointer:
+                        view.pointer.push_back(outgoing.pointers[index].action);
+                        if (pointer_hit_ && view.pointer.back() == host::PointerAction::Down) {
+                            unreal_.hit(*pointer_hit_);
+                        }
+                        break;
+                    default:
+                        ADD_FAILURE();
+                        break;
+                }
+            }
+            endpoint_.clear();
+            auto const replies{unreal_.messages()};
+            for (auto const [kind, index] : replies.order) {
+                ASSERT_EQ(kind, host::UnrealMessageKind::Hit);
+                ASSERT_TRUE(menu_.activate(replies.hits[index], {}, {}));
+                view.mode = menu_.input_mode();
+            }
+            unreal_.clear();
+        } while (cursor < physical.order.size());
+        if (auto step{input_->viewer_step(0.016)}) {
+            view.motion = step->motion;
+        }
     }
     void key_event(SDL_Keycode key,
                    SDL_Scancode scancode,
@@ -129,12 +154,12 @@ class SdlPlayerInput
     ControlsSettings settings_{};
     SDL_Window* window_{};
     std::optional<InputSystem> input_;
-    auto ship_frame() const { return input_->ship_input(); }
+    auto ship_frame() { return input_->ship_input(); }
 };
 
 TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     auto& view{host::tests::presentation};
-    EXPECT_EQ(view.layout.label(PhysicalKey::W),
+    EXPECT_EQ(input_->keyboard().label(PhysicalKey::W),
               SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_SCANCODE_W, SDL_KMOD_NONE, false)));
     key_event(SDLK_DOWN, SDL_SCANCODE_DOWN);
     frame();
@@ -239,18 +264,45 @@ TEST_F(SdlPlayerInput, RoutesQueuedInputAcrossMenuFlightViewerAndBenchmark) {
     EXPECT_EQ(menu.focus, MenuTarget{MainMenuItem::Audio});
 }
 
-class LogicalPlayerInput : public ::testing::Test {
+class LogicalPlayerInput : public SdlPlayerInput {
   protected:
     void map() {
-        input_.map_until_dispatch(dispatch_, batch_, 0);
+        input_->map_events(batch_, 0);
         batch_.clear();
     }
-    ControlsSettings settings_;
-    PhysicalInputState physical_;
     PhysicalInputBatch batch_;
-    LogicalInputSystem input_{settings_, physical_};
-    InputDispatcher dispatch_;
 };
+
+TEST_F(SdlPlayerInput, SlateHitChangesHowTheNextKeyInThePollIsMapped) {
+    ASSERT_TRUE(menu_.activate(levels::authoring::LevelCatalogCategory::BattleViewer, {}, {}));
+    pointer_hit_ = MenuControl::BattleSpeed;
+    SDL_Event pointer{};
+    pointer.button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    pointer.button.windowID = SDL_GetWindowID(window_);
+    pointer.button.button = SDL_BUTTON_LEFT;
+    pointer.button.down = true;
+    ASSERT_TRUE(SDL_PushEvent(&pointer));
+    key_event(SDLK_BACKSPACE, SDL_SCANCODE_BACKSPACE);
+    frame();
+    EXPECT_EQ(host::tests::presentation.text, "\b");
+}
+TEST_F(SdlPlayerInput, ReplyHandlesPreserveOrderAcrossPayloadTypesAndReset) {
+    unreal_.hit(MenuControl::BattleSpeed);
+    unreal_.edit_text({MenuControl::BattleSpeed, "2"});
+    unreal_.hit(MenuControl::Launch);
+    auto const replies{unreal_.messages()};
+    ASSERT_EQ(replies.order.size(), 3u);
+    EXPECT_EQ(replies.order[0].kind, host::UnrealMessageKind::Hit);
+    EXPECT_EQ(replies.hits[replies.order[0].index], MenuTarget{MenuControl::BattleSpeed});
+    EXPECT_EQ(replies.order[1].kind, host::UnrealMessageKind::EditText);
+    EXPECT_EQ(replies.edits[replies.order[1].index].value, "2");
+    EXPECT_EQ(replies.order[2].kind, host::UnrealMessageKind::Hit);
+    EXPECT_EQ(replies.hits[replies.order[2].index], MenuTarget{MenuControl::Launch});
+    unreal_.clear();
+    EXPECT_TRUE(unreal_.messages().order.empty());
+    unreal_.hit(MenuControl::Launch);
+    EXPECT_EQ(unreal_.messages().order.front().index, 0u);
+}
 
 TEST_F(LogicalPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModifiers) {
     using enum ButtonState;
@@ -269,17 +321,17 @@ TEST_F(LogicalPlayerInput, MenuCommandsFollowSemanticOwnershipAndRetainEventModi
     key(PhysicalKey::Tab, Pressed, {}, true);
     key(PhysicalKey::GamepadDPadDown, Pressed);
     key(PhysicalKey::Down, Pressed);
-    input_.repeat_navigation(dispatch_, 0.41);
+    input_->repeat_navigation(0.41);
     key(PhysicalKey::GamepadDPadDown, Released);
-    input_.repeat_navigation(dispatch_, 0.41);
-    input_.synchronize(dispatch_, {InputContext::Gameplay}, {});
+    input_->repeat_navigation(0.41);
+    input_->synchronize({InputContext::Gameplay}, {});
 
-    ASSERT_EQ(dispatch_.size(), 6u);
-    auto const& transitions{input_.state().transitions};
+    ASSERT_EQ(input_->commands().size(), 6u);
+    auto const& transitions{input_->state().transitions};
     ASSERT_EQ(transitions.size(), 4u);
     std::size_t transition_index{};
-    for (std::size_t i{}; i < dispatch_.size(); ++i) {
-        auto const& button{dispatch_.buttons()[i]};
+    for (std::size_t i{}; i < input_->commands().size(); ++i) {
+        auto const& button{input_->commands()[i].button};
         EXPECT_EQ(button.command, i < 3 ? MenuCommand::Previous : MenuCommand::Down);
         EXPECT_EQ(button.down, i != 2 && i != 5);
         EXPECT_EQ(button.repeat, i == 1 || i == 4);
@@ -311,7 +363,7 @@ TEST_F(SdlPlayerInput, PauseReroutesTheNextEventInTheSamePoll) {
 }
 
 TEST_F(LogicalPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
-    input_.synchronize(dispatch_, {InputContext::Observer}, {});
+    input_->synchronize({InputContext::Observer}, {});
     batch_.pointer_button({}, PhysicalKey::RightMouseButton, ButtonState::Pressed, 1);
     map();
     batch_.motion({}, {20.f, 10.f});
@@ -320,27 +372,27 @@ TEST_F(LogicalPlayerInput, FocusLossClearsHeldActionsAndObserverMotion) {
     map();
     batch_.button(PhysicalKey::D, {}, ButtonState::Pressed);
     map();
-    EXPECT_TRUE(input_.state().held.observer_right());
-    auto const step{input_.viewer_step(0.016)};
+    EXPECT_TRUE(input_->state().held.observer_right());
+    auto const step{input_->viewer_step(0.016)};
     ASSERT_TRUE(step);
     EXPECT_FLOAT_EQ(step->motion.speed, 150000.f);
-    EXPECT_EQ(input_.state().axes_2d[Axis2DAction::ObserverLookDelta], (Vector2f{20.f, -10.f}));
+    EXPECT_EQ(input_->state().axes_2d[Axis2DAction::ObserverLookDelta], (Vector2f{20.f, -10.f}));
     batch_.order.push_back({PhysicalEventKind::FocusLost, 0});
     map();
-    EXPECT_FALSE(input_.relative_mouse());
-    EXPECT_FALSE(input_.state().held.observer_right());
-    EXPECT_EQ(input_.state().axes_2d[Axis2DAction::ObserverLookDelta], Vector2f{});
+    EXPECT_FALSE(input_->relative_mouse());
+    EXPECT_FALSE(input_->state().held.observer_right());
+    EXPECT_EQ(input_->state().axes_2d[Axis2DAction::ObserverLookDelta], Vector2f{});
 
     batch_.order.push_back({PhysicalEventKind::FocusGained, 0});
     map();
-    input_.synchronize(dispatch_, {InputContext::Menu}, {});
-    dispatch_.begin_frame();
+    input_->synchronize({InputContext::Menu}, {});
+    input_->clear_commands();
     batch_.button(PhysicalKey::GamepadDPadDown, {}, ButtonState::Pressed);
     map();
-    input_.repeat_navigation(dispatch_, 0.41);
-    ASSERT_EQ(dispatch_.size(), 2u);
-    EXPECT_FALSE(dispatch_.buttons().front().repeat);
-    EXPECT_TRUE(dispatch_.buttons().back().repeat);
+    input_->repeat_navigation(0.41);
+    ASSERT_EQ(input_->commands().size(), 2u);
+    EXPECT_FALSE(input_->commands().front().button.repeat);
+    EXPECT_TRUE(input_->commands().back().button.repeat);
 }
 
 TEST_F(SdlPlayerInput, FocusChangesAndButtonsInOnePollRespectEventOrder) {
@@ -423,7 +475,7 @@ TEST_F(SdlPlayerInput, PointerReleaseFollowsMenuPressAcrossContextChange) {
 
 TEST_F(LogicalPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocus) {
     using enum sim::player::PlayerInputKind;
-    auto route = [&](InputContext context) { input_.synchronize(dispatch_, {context}, {}); };
+    auto route = [&](InputContext context) { input_->synchronize({context}, {}); };
     auto sample = [&](float value) {
         batch_.axis(PhysicalKey::GamepadRightTriggerAxis, value);
         map();
@@ -435,12 +487,12 @@ TEST_F(LogicalPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocu
     route(InputContext::Menu);
     route(InputContext::Gameplay);
     sample(0.9f);
-    EXPECT_FALSE(input_.state().held.fire());
+    EXPECT_FALSE(input_->state().held.fire());
     sample(0.40f);
     sample(0.51f);
-    input_.refresh_bindings(dispatch_);
+    input_->refresh_bindings();
     sample(0.7f);
-    EXPECT_FALSE(input_.state().held.fire());
+    EXPECT_FALSE(input_->state().held.fire());
     sample(0.3f);
     sample(0.6f);
     batch_.order.push_back({PhysicalEventKind::FocusLost, 0});
@@ -449,18 +501,17 @@ TEST_F(LogicalPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocu
     batch_.order.push_back({PhysicalEventKind::FocusGained, 0});
     map();
     sample(0.8f);
-    EXPECT_FALSE(input_.state().held.fire());
+    EXPECT_FALSE(input_->state().held.fire());
     sample(0.39f);
     sample(0.6f);
     batch_.pointer_button({}, PhysicalKey::LeftMouseButton, ButtonState::Pressed, 1);
     map();
     batch_.order.push_back({PhysicalEventKind::Disconnect, 0});
     map();
-    EXPECT_TRUE(input_.state().held.fire());
+    EXPECT_TRUE(input_->state().held.fire());
     batch_.pointer_button({}, PhysicalKey::LeftMouseButton, ButtonState::Released, 1);
     map();
-    dispatch_.publish_ship(input_.state());
-    EXPECT_TRUE(std::ranges::equal(dispatch_.ship_input().events,
+    EXPECT_TRUE(std::ranges::equal(input_->ship_input().events,
                                    std::array{FirePressed,
                                               FireReleased,
                                               FirePressed,
@@ -472,23 +523,23 @@ TEST_F(LogicalPlayerInput, HeldAxisNeedsANewActivationAcrossContextRebindAndFocu
 }
 
 TEST_F(LogicalPlayerInput, RebindingFireToAnAlreadyHeldStickWaitsForNeutral) {
-    input_.synchronize(dispatch_, {InputContext::Gameplay}, {});
+    input_->synchronize({InputContext::Gameplay}, {});
     auto sample = [&](float value) {
         batch_.axis(PhysicalKey::GamepadRightX, value);
         map();
     };
     sample(-0.8f);
     settings_.bindings[FlightMapping::FlightFirePrimaryGamepad] = PhysicalKey::GamepadRightX;
-    input_.refresh_bindings(dispatch_);
+    input_->refresh_bindings();
     sample(-0.6f);
-    EXPECT_TRUE(input_.state().transitions.empty());
+    EXPECT_TRUE(input_->state().transitions.empty());
     sample(-0.4f);
     sample(-0.5f);
-    EXPECT_TRUE(input_.state().held.fire());
+    EXPECT_TRUE(input_->state().held.fire());
     sample(-0.45f);
-    EXPECT_TRUE(input_.state().held.fire());
+    EXPECT_TRUE(input_->state().held.fire());
     sample(-0.4f);
-    EXPECT_FALSE(input_.state().held.fire());
+    EXPECT_FALSE(input_->state().held.fire());
 }
 
 TEST_F(SdlPlayerInput, UnpluggingVirtualGamepadReleasesFlightButton) {
@@ -534,24 +585,4 @@ TEST_F(SdlPlayerInput, UnpluggingVirtualGamepadReleasesFlightButton) {
     ASSERT_EQ(ship_frame().events.size(), 1u);
     EXPECT_EQ(ship_frame().events.front(), sim::player::PlayerInputKind::BoostReleased);
 }
-
-TEST(UnrealEndpoint, ReplyHandlesPreserveOrderAcrossPayloadTypesAndReset) {
-    host::UnrealEndpoint unreal_;
-    unreal_.hit(MenuControl::BattleSpeed);
-    unreal_.edit_text({MenuControl::BattleSpeed, "2"});
-    unreal_.hit(MenuControl::Launch);
-    auto const replies{unreal_.messages()};
-    ASSERT_EQ(replies.order.size(), 3u);
-    EXPECT_EQ(replies.order[0].kind, host::UnrealMessageKind::Hit);
-    EXPECT_EQ(replies.hits[replies.order[0].index], MenuTarget{MenuControl::BattleSpeed});
-    EXPECT_EQ(replies.order[1].kind, host::UnrealMessageKind::EditText);
-    EXPECT_EQ(replies.edits[replies.order[1].index].value, "2");
-    EXPECT_EQ(replies.order[2].kind, host::UnrealMessageKind::Hit);
-    EXPECT_EQ(replies.hits[replies.order[2].index], MenuTarget{MenuControl::Launch});
-    unreal_.clear();
-    EXPECT_TRUE(unreal_.messages().order.empty());
-    unreal_.hit(MenuControl::Launch);
-    EXPECT_EQ(unreal_.messages().order.front().index, 0u);
-}
-
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ioj/host/pause_menu.h>
 #include <ioj/input/dispatch/events.h>
 #include <ioj/input/dispatch/player_menu.h>
 #include <ioj/input/physical/keyboard_layout.h>

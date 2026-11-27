@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/host/pause_menu.h>
+#include <ioj/input/dispatch/events.h>
 #include <ioj/input/logical/actions.h>
 #include <ioj/levels/launch_mode.h>
 #include <ioj/sim/levels/level_state.h>

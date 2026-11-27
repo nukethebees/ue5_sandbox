@@ -118,9 +118,8 @@ auto PhysicalInputState::axis_edge(PhysicalKey key, float magnitude) -> std::opt
     return edge;
 }
 
-PhysicalInputSystem::PhysicalInputSystem(SDL_Window& window, KeyboardLayout& layout)
-    : window_{window}
-    , layout_{layout} {
+PhysicalInputSystem::PhysicalInputSystem(SDL_Window& window)
+    : window_{window} {
     state_.focus = focused() ? WindowFocus::Gained : WindowFocus::Lost;
     refresh_keyboard_layout(layout_);
 }
@@ -151,6 +150,10 @@ auto PhysicalInputSystem::poll() -> WindowInputEvents {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
+            case SDL_EVENT_KEYMAP_CHANGED:
+                refresh_keyboard_layout(layout_);
+                window.keyboard_changed = true;
+                break;
             case SDL_EVENT_QUIT:
             case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
                 window.close_requested = true;
@@ -173,11 +176,6 @@ auto PhysicalInputSystem::poll() -> WindowInputEvents {
 }
 void PhysicalInputSystem::collect(SDL_Event const& event) {
     using enum ButtonState;
-    if (event.type == SDL_EVENT_KEYMAP_CHANGED) {
-        refresh_keyboard_layout(layout_);
-        return;
-    }
-
     if (event.type == SDL_EVENT_GAMEPAD_ADDED || event.type == SDL_EVENT_GAMEPAD_REMOVED) {
         bool const removed{gamepad_ && event.type == SDL_EVENT_GAMEPAD_REMOVED &&
                            SDL_GetGamepadID(gamepad_) == event.gdevice.which};

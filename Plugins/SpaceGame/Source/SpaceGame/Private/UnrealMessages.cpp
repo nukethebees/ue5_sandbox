@@ -1,9 +1,10 @@
 #include "SpaceGame/UnrealMessages.h"
 
-#include "UnrealEndpoint.h"
+#include "settings/GameHost.h"
 #include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
+#include "UnrealEndpoint.h"
 
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 #include <ioj/host/game_host_api.h>
@@ -21,6 +22,7 @@
 namespace ioj {
 namespace {
 host::UnrealEndpoint endpoint;
+KeyboardLayout keyboard;
 PlayerSettingsView attached_settings{};
 PlayerMenu* attached_menu{};
 SystemCapabilities const* attached_capabilities{};
@@ -52,6 +54,9 @@ FAutoConsoleCommand reset_profile_command{
 #endif
 }
 
+auto keyboard_layout() -> KeyboardLayout const& {
+    return keyboard;
+}
 auto player_menu() -> PlayerMenu& {
     check(attached_menu);
     return *attached_menu;
@@ -111,7 +116,7 @@ auto supported_resolutions() -> std::span<ScreenResolution const> {
 }
 
 void hit_menu_control(MenuTarget target) {
-    queue_input_action(MenuHit{std::move(target)});
+    endpoint.hit(std::move(target));
 }
 void request_player_action(host::PlayerAction action) {
     endpoint.player_action(action);
@@ -130,8 +135,26 @@ void clear_requested_simulation_mode() {
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 void host::UnrealEndpoint::receive(host::NativeMessages const& messages) {
     for (auto const [kind, index] : messages.order) {
-        check(kind == NativeMessageKind::Benchmark);
-        host::select_benchmark_button(messages.benchmark_selections[index] != 0);
+        using enum NativeMessageKind;
+        switch (kind) {
+            case Key:
+                host::present_input(messages.keys[index]);
+                break;
+            case Text:
+                host::present_input(messages.texts[index]);
+                break;
+            case Pointer:
+                host::present_input(messages.pointers[index]);
+                break;
+            case Keyboard:
+                keyboard = *messages.keyboards[index];
+                break;
+            case Benchmark:
+                host::select_benchmark_button(messages.benchmark_selections[index] != 0);
+                break;
+            default:
+                checkNoEntry();
+        }
     }
 }
 void IojPlayer_Exchange(host::NativeMessages const& outgoing, host::UnrealMessages& incoming) {

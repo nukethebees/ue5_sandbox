@@ -243,7 +243,7 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     return shutdown_result;
 }
 namespace {
-struct PlayerInputSession : InputReceiver {
+struct PlayerInputSession {
     PlayerInputSession(Window& game_window,
                        PlayerSettings const& player_settings,
                        PlayerMenu& player_menu,
@@ -252,9 +252,11 @@ struct PlayerInputSession : InputReceiver {
         , window{game_window}
         , settings{player_settings}
         , menu{player_menu}
-        , input{*window.sdl_window(), settings.applied().controls, menu.keyboard} {}
+        , input{*window.sdl_window(), settings.applied().controls, endpoint} {
+        endpoint.present_keyboard(&input.keyboard());
+    }
 
-    auto routing() const -> InputRouting override {
+    auto routing() const -> InputRoute {
         auto const* level{storage.get()};
         auto route{level && !level->presentation_setup
                        ? level->pause_menu.route(InputRoute{level->input_context()})
@@ -263,7 +265,7 @@ struct PlayerInputSession : InputReceiver {
             menu.draft.binding_edit().prompt != BindingPrompt::Closed || menu.saving) {
             route.resume_available = false;
         }
-        return {route, menu.input_mode()};
+        return route;
     }
     void update_pause_simulation(LoadedLevel& level) {
         auto const request{level.pause_menu.simulation_request(level.simulation.state())};
@@ -365,8 +367,20 @@ struct PlayerInputSession : InputReceiver {
     void process_widget_actions() {
         auto const& replies{endpoint.exchange()};
         for (auto const [kind, index] : replies.order) {
-            assert(kind == host::UnrealMessageKind::Action);
-            dispatch(replies.actions[index]);
+            switch (kind) {
+                case host::UnrealMessageKind::Action:
+                    dispatch(replies.actions[index]);
+                    break;
+                case host::UnrealMessageKind::Hit:
+                    if (auto update{menu.activate(replies.hits[index],
+                                                  settings.view(),
+                                                  window.supported_resolutions())}) {
+                        present_menu(*update);
+                    }
+                    break;
+                default:
+                    std::unreachable();
+            }
         }
         endpoint.release_replies();
         for (;;) {
@@ -375,12 +389,7 @@ struct PlayerInputSession : InputReceiver {
                 break;
             }
             for (auto const& action : actions) {
-                if (auto const* hit{std::get_if<MenuHit>(&action)}) {
-                    if (auto update{menu.activate(
-                            hit->target, settings.view(), window.supported_resolutions())}) {
-                        present_menu(*update);
-                    }
-                } else if (auto const* event{std::get_if<host::PauseWidgetEvent>(&action)}) {
+                if (auto const* event{std::get_if<host::PauseWidgetEvent>(&action)}) {
                     if (auto* level{storage.get()}) {
                         present_pause(*level, level->pause_menu.widget_event(*event));
                     }
@@ -392,60 +401,73 @@ struct PlayerInputSession : InputReceiver {
             }
         }
     }
-    void navigate_menu(host::MenuButton button) {
+    void navigate_menu(MenuButton button) {
         if (auto update{menu.navigate(
                 button.command, button.repeat, settings.view(), window.supported_resolutions())}) {
             present_menu(*update);
         }
     }
-    void consume(std::span<host::PlayerAction const> actions) {
-        for (auto action : actions) {
-            dispatch(action);
-            process_widget_actions();
+    void navigate(MenuButton button) {
+        if (!button.down) {
+            return;
         }
-    }
-    void consume(std::span<PhysicalKey const> keys) {
-        for (auto key : keys) {
-            menu.draft.capture_binding(key);
+        auto* level{storage.get()};
+        if (menu.draft.binding_edit().prompt != BindingPrompt::Closed) {
+            menu.draft.navigate_binding(button.command, button.repeat);
             host::present_menu({menu.draft.binding_edit().mapping, MenuOperation::BindingPrompt});
+        } else if (level &&
+                   (level->pause_menu.view == PauseMenuView::Sidebar ||
+                    (level->pause_menu.view == PauseMenuView::Options &&
+                     button.command == MenuCommand::Back)) &&
+                   !level->pause_menu.options_modal && menu.prompt == OptionsPrompt::None) {
+            present_pause(*level, level->pause_menu.navigate(button.command, button.repeat));
+        } else {
+            navigate_menu(button);
         }
     }
-    void consume(std::span<host::MenuButton const> buttons) {
-        for (auto const& button : buttons) {
-            if (!button.down) {
+    void consume_commands() {
+        for (auto const& command : input.commands()) {
+            switch (command.kind) {
+                case InputCommand::Kind::Action:
+                    dispatch(command.action);
+                    break;
+                case InputCommand::Kind::Capture:
+                    menu.draft.capture_binding(command.key);
+                    host::present_menu(
+                        {menu.draft.binding_edit().mapping, MenuOperation::BindingPrompt});
+                    break;
+                case InputCommand::Kind::Navigation:
+                    navigate(command.button);
+                    break;
+            }
+        }
+        input.clear_commands();
+    }
+    auto advance(double seconds) -> WindowInputEvents {
+        auto const events{input.poll()};
+        if (events.keyboard_changed) {
+            endpoint.present_keyboard(&input.keyboard());
+        }
+        auto const& batch{input.events()};
+        std::size_t cursor{};
+        for (;;) {
+            input.synchronize(routing(), menu.input_mode());
+            if (!input.commands().empty()) {
+                consume_commands();
+                process_widget_actions();
                 continue;
             }
-            auto* level{storage.get()};
-            if (menu.draft.binding_edit().prompt != BindingPrompt::Closed) {
-                menu.draft.navigate_binding(button.command, button.repeat);
-                host::present_menu(
-                    {menu.draft.binding_edit().mapping, MenuOperation::BindingPrompt});
-            } else if (level &&
-                       (level->pause_menu.view == PauseMenuView::Sidebar ||
-                        (level->pause_menu.view == PauseMenuView::Options &&
-                         button.command == MenuCommand::Back)) &&
-                       !level->pause_menu.options_modal && menu.prompt == OptionsPrompt::None) {
-                present_pause(*level, level->pause_menu.navigate(button.command, button.repeat));
-            } else {
-                navigate_menu(button);
+            if (cursor == batch.order.size()) {
+                break;
             }
+            cursor = input.map_events(batch, cursor);
+            consume_commands();
             process_widget_actions();
         }
-    }
-    void consume(host::InputBatch events) override {
-        std::visit(
-            [this](auto rows) {
-                using Row = typename decltype(rows)::value_type;
-                if constexpr (std::is_same_v<Row, host::MenuKey> ||
-                              std::is_same_v<Row, host::MenuText> ||
-                              std::is_same_v<Row, host::MenuPointer>) {
-                    host::present_input(rows);
-                } else {
-                    consume(rows);
-                }
-            },
-            events);
+        input.repeat_navigation(seconds);
+        consume_commands();
         process_widget_actions();
+        return events;
     }
 
     host::NativeEndpoint endpoint;
@@ -504,11 +526,11 @@ auto Application::play(Window& window,
         auto const input_delta{std::chrono::duration<double>{input_time - last_input_frame}};
         last_input_frame = input_time;
         auto const frame_seconds{std::min(input_delta.count(), max_frame_delta_seconds)};
-        auto const window_events{play_input.input.advance(frame_seconds, play_input)};
+        auto const window_events{play_input.advance(frame_seconds)};
         if (auto step{play_input.input.viewer_step(frame_seconds)}) {
             host::present_viewer(*step);
         }
-        if (play_input.routing().route.context == InputContext::Gameplay) {
+        if (play_input.routing().context == InputContext::Gameplay) {
             host::present_steering(play_input.input.steering());
         }
         if (window_events.display_changed) {
@@ -559,7 +581,8 @@ auto Application::play(Window& window,
             continue;
         }
         if (process_preferences(window, messages.preference_edits)) {
-            play_input.input.refresh_bindings(play_input);
+            play_input.input.refresh_bindings();
+            play_input.consume_commands();
         }
         process_profile_actions(messages.profile_actions);
 

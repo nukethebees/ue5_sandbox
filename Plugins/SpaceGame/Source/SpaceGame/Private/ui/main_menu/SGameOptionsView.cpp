@@ -30,7 +30,7 @@
 namespace ioj {
 namespace {
 auto binding_label(PhysicalKey key) -> FText {
-    return FText::FromString(to_fstring(player_menu().keyboard.label(key)));
+    return FText::FromString(to_fstring(keyboard_layout().label(key)));
 }
 
 struct FSimdFeatureDisplay {

@@ -7,17 +7,27 @@
 #include <ioj/vector.h>
 
 #include <optional>
-#include <span>
 #include <string>
-#include <variant>
 
 namespace ioj::host {
-struct PointerInput {
+struct PauseCommand {
+    PauseCommandKind kind;
+    PauseMenuItem item{PauseMenuItem::Resume};
+    bool operator==(PauseCommand const&) const = default;
+};
+
+struct PauseWidgetEvent {
+    PauseWidgetEventKind kind;
+    PauseMenuItem item{PauseMenuItem::Resume};
+};
+
+struct MenuPointer {
     PointerAction action;
     PhysicalKey button;
     float x;
     float y;
     float wheel;
+    Modifiers modifiers;
 };
 
 struct ViewerMotion {
@@ -30,21 +40,11 @@ struct ViewerMotion {
     bool looking;
 };
 
-struct MenuButton {
-    MenuCommand command;
-    bool down;
-    bool repeat;
-    Modifiers modifiers;
-};
 struct MenuKey {
     PhysicalKey key;
     bool down{};
     bool repeat{};
     Modifiers modifiers{};
-};
-struct MenuPointer {
-    PointerInput pointer;
-    Modifiers modifiers;
 };
 struct MenuText {
     std::string text;
@@ -54,10 +54,5 @@ struct ViewerStep {
     ViewerMotion motion;
     double seconds;
 };
-using InputBatch = std::variant<std::span<PlayerAction const>,
-                                std::span<MenuButton const>,
-                                std::span<PhysicalKey const>,
-                                std::span<MenuKey const>,
-                                std::span<MenuPointer const>,
-                                std::span<MenuText const>>;
+
 }

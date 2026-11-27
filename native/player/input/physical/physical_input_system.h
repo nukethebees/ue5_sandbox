@@ -2,7 +2,7 @@
 
 #include "player/input/physical/physical_input.h"
 #include "player/input/physical/physical_input_batch.h"
-#include <ioj/input/dispatch/player_menu.h>
+#include <ioj/input/physical/keyboard_layout.h>
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_gamepad.h>
@@ -14,11 +14,12 @@ struct WindowInputEvents {
     bool close_requested{};
     bool viewport_changed{};
     bool display_changed{};
+    bool keyboard_changed{};
 };
 
 class PhysicalInputSystem {
   public:
-    PhysicalInputSystem(SDL_Window& window, KeyboardLayout& layout);
+    explicit PhysicalInputSystem(SDL_Window& window);
     ~PhysicalInputSystem();
     PhysicalInputSystem(PhysicalInputSystem const&) = delete;
     auto operator=(PhysicalInputSystem const&) -> PhysicalInputSystem& = delete;
@@ -27,12 +28,13 @@ class PhysicalInputSystem {
     auto poll() -> WindowInputEvents;
     auto events() const -> PhysicalInputBatch const& { return events_; }
     auto state() -> PhysicalInputState& { return state_; }
+    auto keyboard() const -> KeyboardLayout const& { return layout_; }
     auto focused() const -> bool;
   private:
     void collect(SDL_Event const& event);
 
     SDL_Window& window_;
-    KeyboardLayout& layout_;
+    KeyboardLayout layout_;
     PhysicalInputBatch events_;
     PhysicalInputState state_;
     SDL_Gamepad* gamepad_{};
