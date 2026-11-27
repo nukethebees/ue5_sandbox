@@ -70,7 +70,7 @@ void queue_profile_action(host::ProfileActionKind kind,
 }
 
 void queue_preferences(host::PreferenceEdit edit, UOptionsDraft& draft) {
-    pending.preference_edits.push_back(edit);
+    pending.preference_edits.push_back(std::move(edit));
     pending.preference_senders.emplace_back(&draft);
 }
 

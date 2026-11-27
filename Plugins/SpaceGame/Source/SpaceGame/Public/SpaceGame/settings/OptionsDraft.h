@@ -33,8 +33,6 @@ class ULocalPlayer;
 
 namespace ioj {
 
-class USpaceGameInputUserSettings;
-
 DECLARE_MULTICAST_DELEGATE(FGameSettingsChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FDisplayConfirmationChanged, bool);
 DECLARE_MULTICAST_DELEGATE_OneParam(FSettingsSaveCompleted, bool);
@@ -100,20 +98,12 @@ class SPACEGAME_API UOptionsDraft final : public UObject {
     /* **************************************** */
     void finish_display_confirmation();
     auto tick_display_confirmation(float delta_seconds) -> bool;
-    auto input_user_settings() const -> USpaceGameInputUserSettings*;
 
     /* **************************************** */
     // Control binding helpers
     /* **************************************** */
     auto all_control_bindings() const -> TArray<FControlBindingView>;
-    auto map_control_binding(USpaceGameInputUserSettings& settings,
-                             FControlBindingAddress const& address,
-                             FKey const& key) const -> bool;
-    auto unmap_control_binding(USpaceGameInputUserSettings& settings,
-                               FControlBindingAddress const& address) const -> bool;
-    void set_draft_key(FControlBindingAddress const& address, FKey key);
-    auto apply_input_bindings(TArray<FControlBindingView> const& bindings,
-                              TArray<FControlBindingView> const& previous) -> bool;
+    void set_draft_key(FControlBindingAddress const& address, FKey const& key);
     auto save(GameSettingCategory category) -> bool;
     auto input_is_dirty() const -> bool;
 

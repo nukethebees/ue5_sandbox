@@ -1,12 +1,13 @@
 #include "SpaceGame/settings/OptionsDraft.h"
 
-#include "SpaceGame/input/SpaceGameInputUserSettings.h"
+#include "input/BindingKey.h"
 #include "SpaceGame/settings/ControlBindingAddress.h"
 #include "SpaceGame/settings/ControlBindings.h"
 #include "SpaceGame/settings/ControlBindingView.h"
 #include "SpaceGame/settings/ControlChordBindingView.h"
 #include "SpaceGame/settings/GameSettingOption.h"
 #include "SpaceGame/UnrealMessages.h"
+#include <ioj/input/flight_input.h>
 #include <ioj/settings/control_bindings.h>
 #include <ioj/settings/game_setting.h>
 #include <ioj/settings/game_setting_category.h>
@@ -23,9 +24,7 @@
 #include "CoreGlobals.h"
 #include "Engine/Engine.h"
 #include "Engine/LocalPlayer.h"
-#include "EnhancedInputSubsystems.h"
 #include "GameFramework/InputSettings.h"
-#include "GameplayTagContainer.h"
 #include "HAL/Platform.h"
 #include "HAL/PlatformTime.h"
 #include "InputCoreTypes.h"
@@ -36,7 +35,6 @@
 #include "Templates/Casts.h"
 #include "Templates/UnrealTemplate.h"
 #include "UObject/Object.h"
-#include "UserSettings/EnhancedInputUserSettings.h"
 #include <Engine/GameInstance.h>
 #include <Misc/App.h>
 #include <Misc/MessageDialog.h>
@@ -108,33 +106,27 @@ auto UOptionsDraft::apply(GameSettingCategory category) -> bool {
 }
 
 auto UOptionsDraft::save(GameSettingCategory category) -> bool {
-    bool const bindings_changed{category == GameSettingCategory::Controls && input_is_dirty()};
-    if (bindings_changed && !apply_input_bindings(bindings_, original_bindings_)) {
-        apply_input_bindings(original_bindings_, bindings_);
-        report_settings_error("Applying control bindings failed");
+    if (auto result{apply_settings(category, draft_.pending())}; !result) {
+        report_settings_error("Applying settings failed: " + result.error());
         return false;
     }
 
-    if (auto applied{apply_settings(category, draft_.pending())}; !applied) {
-        if (bindings_changed) {
-            apply_input_bindings(original_bindings_, bindings_);
+    auto requested{draft_.pending()};
+    if (category == GameSettingCategory::Controls && input_is_dirty()) {
+        std::vector<KeyBinding> overrides;
+        for (auto const& row : bindings_) {
+            if (row.is_modified()) {
+                auto const key{row.current_key.IsValid()
+                                   ? to_string(row.current_key.GetFName().ToString())
+                                   : std::string{}};
+                overrides.push_back({to_string(row.address.mapping_name.ToString()), key});
+            }
         }
-
-        report_settings_error("Applying settings failed: " + applied.error());
-        return false;
+        requested.controls.bindings = std::move(overrides);
     }
 
-    if (bindings_changed && !input_user_settings()->save_profile()) {
-        apply_input_bindings(original_bindings_, bindings_);
-        auto restored{apply_settings(category, draft_.applied())};
-        report_settings_error(
-            "Saving the Enhanced Input profile failed" +
-            (restored ? std::string{} : "; restoring settings failed: " + restored.error()));
-        return false;
-    }
-
-    queue_preferences({host::PreferenceAction::Save, category, draft_.pending(), draft_.applied()},
-                      *this);
+    queue_preferences(
+        {host::PreferenceAction::Save, category, std::move(requested), draft_.applied()}, *this);
     save_pending_ = true;
     return true;
 }
@@ -167,12 +159,6 @@ void UOptionsDraft::preference_finished(host::PreferenceEdit const& edit, std::s
     if (!error.empty()) {
         std::string message{error};
         auto restored{apply_settings(category, draft_.applied())};
-        if (bindings_changed) {
-            if (!apply_input_bindings(original_bindings_, bindings_) ||
-                !input_user_settings()->save_profile()) {
-                message += "; restoring the Enhanced Input profile failed";
-            }
-        }
 
         report_settings_error("Saving settings failed: " + message +
                               (restored ? "" : "; restoring settings failed: " + restored.error()));
@@ -188,10 +174,9 @@ void UOptionsDraft::preference_finished(host::PreferenceEdit const& edit, std::s
         original_bindings_ = bindings_;
     }
 
-    draft_.commit_all();
+    draft_.begin(player_settings().applied_values, player_settings().defaults);
     settings_changed.Broadcast();
     if (is_awaiting_display_confirmation()) {
-        draft_.begin(player_settings().applied_values, player_settings().defaults);
         finish_display_confirmation();
     }
 
@@ -375,16 +360,6 @@ auto UOptionsDraft::tick_display_confirmation(float const delta_seconds) -> bool
     return true;
 }
 
-auto UOptionsDraft::input_user_settings() const -> USpaceGameInputUserSettings* {
-    auto* const local_player{editing_local_player_.Get()};
-    auto* const subsystem{
-        local_player != nullptr
-            ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)
-            : nullptr};
-    return subsystem != nullptr ? Cast<USpaceGameInputUserSettings>(subsystem->GetUserSettings())
-                                : nullptr;
-}
-
 /* **************************************** */
 // Control bindings
 /* **************************************** */
@@ -392,61 +367,25 @@ auto UOptionsDraft::input_user_settings() const -> USpaceGameInputUserSettings* 
 auto UOptionsDraft::all_control_bindings() const -> TArray<FControlBindingView> {
     TArray<FControlBindingView> result;
 
-    auto const* const settings{input_user_settings()};
-    if (settings == nullptr) {
-        return result;
-    }
-
-    for (auto const& profile_pair : settings->GetAllAvailableKeyProfiles()) {
-        auto const* const profile{profile_pair.Value.Get()};
-        if (!IsValid(profile)) {
-            continue;
-        }
-
-        for (auto const& row : profile->GetPlayerMappingRows()) {
-            for (auto const& mapping : row.Value.Mappings) {
-                auto const* const presentation{
-                    settings->control_binding_metadata(profile_pair.Key, mapping)};
-                if (presentation == nullptr) {
-                    continue;
-                }
-                TOptional<FControlChordBindingView> chord;
-                if (auto const* const chord_mapping{
-                        settings->chord_mapping_for_mapping(profile_pair.Key, mapping)}) {
-                    chord = FControlChordBindingView{
-                        .address =
-                            {
-                                .profile_id = profile_pair.Key,
-                                .mapping_name = chord_mapping->GetMappingName(),
-                                .hardware_device_id =
-                                    chord_mapping->GetHardwareDeviceId().HardwareDeviceIdentifier,
-                                .slot = chord_mapping->GetSlot(),
-                            },
-                        .current_key = chord_mapping->GetCurrentKey(),
-                        .default_key = chord_mapping->GetDefaultKey(),
-                    };
-                }
-
-                result.Add(FControlBindingView{
-                    .address =
-                        {
-                            .profile_id = profile_pair.Key,
-                            .mapping_name = mapping.GetMappingName(),
-                            .hardware_device_id =
-                                mapping.GetHardwareDeviceId().HardwareDeviceIdentifier,
-                            .slot = mapping.GetSlot(),
-                        },
-                    .display_name = mapping.GetDisplayName(),
-                    .display_category = mapping.GetDisplayCategory(),
-                    .display_group = presentation->group,
-                    .display_order = presentation->display_order,
-                    .device_type = mapping.GetPrimaryDeviceType(),
-                    .current_key = mapping.GetCurrentKey(),
-                    .default_key = mapping.GetDefaultKey(),
-                    .chord = MoveTemp(chord),
-                });
-            }
-        }
+    for (auto const& control : input::flight_controls()) {
+        auto const key{input::bound_key(control, draft_.pending().controls)};
+        auto const group{
+            control.action == input::FlightAction::Pause  ? EControlBindingGroup::Utility
+            : control.action == input::FlightAction::Fire ? EControlBindingGroup::Combat
+                                                          : EControlBindingGroup::Flight};
+        auto const device{control.gamepad ? FHardwareDeviceIdentifier::DefaultGamepad
+                                          : FHardwareDeviceIdentifier::DefaultKeyboardAndMouse};
+        result.Add(FControlBindingView{
+            .address = {.mapping_name = FName{*to_fstring(control.mapping)},
+                        .hardware_device_id = device.HardwareDeviceIdentifier},
+            .display_name = FText::FromString(to_fstring(control.label)),
+            .display_category = control_binding_group_label(group),
+            .display_group = group,
+            .display_order = control.display_order,
+            .device_type = device.PrimaryDeviceType,
+            .current_key = binding_key(key),
+            .default_key = binding_key(control.default_key),
+        });
     }
 
     result.Sort([](auto const& left, auto const& right) {
@@ -470,7 +409,7 @@ auto UOptionsDraft::all_control_bindings() const -> TArray<FControlBindingView> 
             return left.address.mapping_name.LexicalLess(right.address.mapping_name);
         }
 
-        return static_cast<uint8>(left.address.slot) < static_cast<uint8>(right.address.slot);
+        return left.address.slot < right.address.slot;
     });
 
     return result;
@@ -478,16 +417,7 @@ auto UOptionsDraft::all_control_bindings() const -> TArray<FControlBindingView> 
 
 auto UOptionsDraft::control_bindings(EHardwareDevicePrimaryType const device_type) const
     -> TArray<FControlBindingView> {
-    auto* const settings{input_user_settings()};
-    if (settings == nullptr) {
-        return {};
-    }
-
-    auto bindings{bindings_.FilterByPredicate([settings](auto const& binding) {
-        return binding.address.profile_id == settings->GetActiveKeyProfileId();
-    })};
-
-    return bindings.FilterByPredicate([device_type](auto const& binding) {
+    return bindings_.FilterByPredicate([device_type](auto const& binding) {
         return control_binding_matches_device(binding, device_type);
     });
 }
@@ -533,58 +463,10 @@ auto UOptionsDraft::chord_binding_conflicts(FControlBindingAddress const& addres
     return result;
 }
 
-auto UOptionsDraft::map_control_binding(USpaceGameInputUserSettings& settings,
-                                        FControlBindingAddress const& address,
-                                        FKey const& key) const -> bool {
-    FMapPlayerKeyArgs arguments{};
-    arguments.MappingName = address.mapping_name;
-    arguments.Slot = address.slot;
-    arguments.NewKey = key;
-    arguments.HardwareDeviceId = address.hardware_device_id;
-    arguments.ProfileIdString = address.profile_id;
-    arguments.bDeferOnSettingsChangedBroadcast = false;
-
-    FGameplayTagContainer failure_reason;
-    settings.MapPlayerKey(arguments, failure_reason);
-    if (!failure_reason.IsEmpty()) {
-        UE_LOG(LogTemp,
-               Warning,
-               TEXT("Could not map control '%s': %s"),
-               *address.mapping_name.ToString(),
-               *failure_reason.ToStringSimple());
-        return false;
-    }
-
-    return true;
-}
-
-auto UOptionsDraft::unmap_control_binding(USpaceGameInputUserSettings& settings,
-                                          FControlBindingAddress const& address) const -> bool {
-    FMapPlayerKeyArgs arguments{};
-    arguments.MappingName = address.mapping_name;
-    arguments.Slot = address.slot;
-    arguments.HardwareDeviceId = address.hardware_device_id;
-    arguments.ProfileIdString = address.profile_id;
-    FGameplayTagContainer failure_reason;
-    settings.UnMapPlayerKey(arguments, failure_reason);
-    if (!failure_reason.IsEmpty()) {
-        UE_LOG(LogTemp,
-               Warning,
-               TEXT("Could not reset control '%s': %s"),
-               *address.mapping_name.ToString(),
-               *failure_reason.ToStringSimple());
-        return false;
-    }
-
-    return true;
-}
-
 auto UOptionsDraft::set_control_binding(FControlBindingAddress const& address,
                                         FKey const& key,
                                         bool const replace_conflicts) -> bool {
-    auto* const settings{input_user_settings()};
-    if (!editing_local_player_.IsValid() || settings == nullptr || !key.IsValid() ||
-        address.profile_id != settings->GetActiveKeyProfileId()) {
+    if (!editing_local_player_.IsValid() || !key.IsValid()) {
         return false;
     }
 
@@ -614,10 +496,8 @@ auto UOptionsDraft::set_control_chord(FControlBindingAddress const& address,
                                       FKey const& activator_key,
                                       FKey const& action_key,
                                       bool const replace_conflicts) -> bool {
-    auto* const settings{input_user_settings()};
-    if (!editing_local_player_.IsValid() || settings == nullptr ||
-        !can_hold_chord_key(activator_key) || !action_key.IsValid() ||
-        activator_key == action_key || address.profile_id != settings->GetActiveKeyProfileId()) {
+    if (!editing_local_player_.IsValid() || !can_hold_chord_key(activator_key) ||
+        !action_key.IsValid() || activator_key == action_key) {
         return false;
     }
 
@@ -649,9 +529,7 @@ auto UOptionsDraft::set_control_chord(FControlBindingAddress const& address,
 }
 
 auto UOptionsDraft::clear_control_binding(FControlBindingAddress const& address) -> bool {
-    auto* const settings{input_user_settings()};
-    if (!editing_local_player_.IsValid() || settings == nullptr ||
-        address.profile_id != settings->GetActiveKeyProfileId()) {
+    if (!editing_local_player_.IsValid()) {
         return false;
     }
 
@@ -668,8 +546,7 @@ auto UOptionsDraft::clear_control_binding(FControlBindingAddress const& address)
 }
 
 auto UOptionsDraft::reset_control_binding(FControlBindingAddress const& address) -> bool {
-    auto* const settings{input_user_settings()};
-    if (!editing_local_player_.IsValid() || settings == nullptr) {
+    if (!editing_local_player_.IsValid()) {
         return false;
     }
 
@@ -685,8 +562,7 @@ auto UOptionsDraft::reset_control_binding(FControlBindingAddress const& address)
 }
 
 auto UOptionsDraft::reset_all_control_bindings() -> bool {
-    auto* const settings{input_user_settings()};
-    if (!editing_local_player_.IsValid() || settings == nullptr) {
+    if (!editing_local_player_.IsValid()) {
         return false;
     }
 
@@ -705,7 +581,7 @@ auto UOptionsDraft::reset_all_control_bindings() -> bool {
 /* **************************************** */
 // Input edit state
 /* **************************************** */
-void UOptionsDraft::set_draft_key(FControlBindingAddress const& address, FKey key) {
+void UOptionsDraft::set_draft_key(FControlBindingAddress const& address, FKey const& key) {
     for (auto& binding : bindings_) {
         if (binding.address == address) {
             binding.current_key = key;
@@ -715,33 +591,6 @@ void UOptionsDraft::set_draft_key(FControlBindingAddress const& address, FKey ke
             binding.chord->current_key = key;
         }
     }
-}
-auto UOptionsDraft::apply_input_bindings(TArray<FControlBindingView> const& bindings,
-                                         TArray<FControlBindingView> const& previous) -> bool {
-    auto* settings{input_user_settings()};
-    if (!settings) {
-        return false;
-    }
-
-    auto const apply_key = [&](auto const& binding, auto const& before) {
-        if (binding.current_key == before.current_key) {
-            return true;
-        }
-
-        return binding.current_key == binding.default_key
-                 ? unmap_control_binding(*settings, binding.address)
-                 : map_control_binding(*settings, binding.address, binding.current_key);
-    };
-    for (int32 index{}; index < bindings.Num(); ++index) {
-        auto const& binding{bindings[index]};
-        auto const& before{previous[index]};
-        if (!apply_key(binding, before) ||
-            (binding.chord && !apply_key(*binding.chord, *before.chord))) {
-            return false;
-        }
-    }
-    settings->ApplySettings();
-    return true;
 }
 auto UOptionsDraft::input_is_dirty() const -> bool {
     for (int32 i{}; i < bindings_.Num(); ++i) {

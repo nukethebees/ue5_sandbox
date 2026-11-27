@@ -1,7 +1,6 @@
 #pragma once
 
 #include <CoreMinimal.h>
-#include <UserSettings/EnhancedInputUserSettings.h>
 
 namespace ioj {
 struct FControlBindingAddress {
@@ -10,6 +9,6 @@ struct FControlBindingAddress {
     FString profile_id;
     FName mapping_name;
     FName hardware_device_id;
-    EPlayerMappableKeySlot slot{EPlayerMappableKeySlot::Unspecified};
+    uint32 slot{};
 };
 }

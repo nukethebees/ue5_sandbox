@@ -3,6 +3,8 @@
 #include <SpaceGame/input/ControlBindingMetadata.h>
 #include <SpaceGame/settings/ControlChordBindingView.h>
 
+#include <GameFramework/InputSettings.h>
+
 namespace ioj {
 struct FControlBindingView {
     auto is_modified() const -> bool { return current_key != default_key; }
