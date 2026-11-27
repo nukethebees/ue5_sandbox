@@ -3,8 +3,10 @@
 namespace ioj {
 InputReceiver::~InputReceiver() = default;
 
-InputSystem::InputSystem(SDL_Window& window, ControlsSettings const& settings)
-    : physical_{window}
+InputSystem::InputSystem(SDL_Window& window,
+                         ControlsSettings const& settings,
+                         KeyboardLayout& layout)
+    : physical_{window, layout}
     , logical_{settings, physical_.state()} {}
 
 void InputSystem::synchronize(InputReceiver& receiver) {

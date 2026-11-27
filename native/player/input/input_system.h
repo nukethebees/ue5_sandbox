@@ -23,7 +23,7 @@ struct InputReceiver {
 
 class InputSystem {
   public:
-    InputSystem(SDL_Window& window, ControlsSettings const& settings);
+    InputSystem(SDL_Window& window, ControlsSettings const& settings, KeyboardLayout& layout);
     auto advance(double delta_seconds, InputReceiver& receiver) -> WindowInputEvents;
     void refresh_bindings(InputReceiver& receiver);
 

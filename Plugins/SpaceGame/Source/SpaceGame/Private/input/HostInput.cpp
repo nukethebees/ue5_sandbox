@@ -1,6 +1,6 @@
 #if defined(UE_LIBRARY_ENABLED) && UE_LIBRARY_ENABLED
 #include "input/BindingCapture.h"
-#include "input/BindingKey.h"
+#include <SpaceGame/UnrealMessages.h>
 #include <ioj/host/input.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
@@ -29,6 +29,25 @@ auto controller() -> ASpaceGamePlayerController* {
     auto* const world{GEngine->GameViewport->GetWorld()};
     return world ? Cast<ASpaceGamePlayerController>(world->GetFirstPlayerController()) : nullptr;
 }
+auto slate_key(PhysicalKey key) -> FKey {
+    if (key == PhysicalKey::Unbound) {
+        return EKeys::Invalid;
+    }
+    if (key == PhysicalKey::NumPadEnter) {
+        return EKeys::Enter;
+    }
+    if (is_keyboard_key(key)) {
+        auto const label{to_fstring(player_menu().keyboard.label(key))};
+        if (label.Len() == 1) {
+            auto const logical{FInputKeyManager::Get().GetKeyFromCodes(0, label[0])};
+            if (logical.IsValid()) {
+                return logical;
+            }
+        }
+    }
+    return FKey{FName{*to_fstring(to_serialized_string(key))}};
+}
+
 auto modifier_state(Modifiers modifiers) -> FModifierKeysState {
     return {modifiers.left_shift(),
             modifiers.right_shift(),
@@ -84,7 +103,7 @@ void present_steering(std::optional<Vector2d> steering) {
 }
 void ui_key(PhysicalKey code, bool down, bool repeat, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
-    auto const key{binding_key(code)};
+    auto const key{slate_key(code)};
     if (!key.IsValid()) {
         return;
     }
@@ -101,7 +120,7 @@ void ui_axis(PhysicalKey code, float value, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
     auto const device{IPlatformInputDeviceMapper::Get().GetDefaultInputDevice()};
     slate.ProcessAnalogInputEvent(FAnalogInputEvent{
-        binding_key(code), modifier_state(modifiers), device, false, 0, 0, value});
+        slate_key(code), modifier_state(modifiers), device, false, 0, 0, value});
 }
 void ui_pointer(PointerInput const& event, Modifiers modifiers) {
     auto& slate{FSlateApplication::Get()};
@@ -110,7 +129,7 @@ void ui_pointer(PointerInput const& event, Modifiers modifiers) {
         return;
     }
     FVector2D const position{window->GetPositionInScreen() + FVector2D{event.x, event.y}};
-    auto const button{binding_key(event.button)};
+    auto const button{slate_key(event.button)};
     auto pressed{slate.GetPressedMouseButtons()};
     if (event.action == PointerAction::Down || event.action == PointerAction::DoubleClick) {
         pressed.Add(button);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "player/input/physical/physical_input_batch.h"
+#include <ioj/input/dispatch/player_menu.h>
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_gamepad.h>
@@ -16,7 +17,7 @@ struct WindowInputEvents {
 
 class PhysicalInputSystem {
   public:
-    explicit PhysicalInputSystem(SDL_Window& window);
+    PhysicalInputSystem(SDL_Window& window, KeyboardLayout& layout);
     ~PhysicalInputSystem();
     PhysicalInputSystem(PhysicalInputSystem const&) = delete;
     auto operator=(PhysicalInputSystem const&) -> PhysicalInputSystem& = delete;
@@ -30,6 +31,7 @@ class PhysicalInputSystem {
     void collect(SDL_Event const& event);
 
     SDL_Window& window_;
+    KeyboardLayout& layout_;
     PhysicalInputBatch events_;
     PhysicalInputState state_;
     SDL_Gamepad* gamepad_{};

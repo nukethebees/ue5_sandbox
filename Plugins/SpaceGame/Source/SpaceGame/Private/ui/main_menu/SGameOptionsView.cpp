@@ -1,7 +1,7 @@
 #include "SGameOptionsView.h"
 
 #include "input/BindingCapture.h"
-#include "input/BindingKey.h"
+#include <SpaceGame/UnrealMessages.h>
 #include "SpaceGame/settings/GameVideoSettings.h"
 #include "SpaceGame/settings/OptionsDraft.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
@@ -30,6 +30,10 @@
 
 namespace ioj {
 namespace {
+auto binding_label(PhysicalKey key) -> FText {
+    return FText::FromString(to_fstring(player_menu().keyboard.label(key)));
+}
+
 struct FSimdFeatureDisplay {
     bool supported{};
     TCHAR const* name{};

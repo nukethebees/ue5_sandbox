@@ -261,11 +261,12 @@ namespace {
 struct PlayerInputSession : InputReceiver {
     PlayerInputSession(SDL_Window& window,
                        ControlsSettings const& controls,
+                       KeyboardLayout& layout,
                        LevelStorage& levels,
                        std::chrono::steady_clock::time_point& previous_frame)
         : storage{levels}
         , previous_frame_time{previous_frame}
-        , input{window, controls} {}
+        , input{window, controls, layout} {}
 
     auto routing() const -> InputRouting override {
         auto const menu{host::menu_status()};
@@ -423,7 +424,7 @@ auto Application::play(Window& window,
     std::vector<AvailableLevel> available_levels;
 
     PlayerInputSession play_input{
-        *window.sdl_window(), settings_.applied().controls, storage, previous_frame_time};
+        *window.sdl_window(), settings_.applied().controls, menu_.keyboard, storage, previous_frame_time};
     auto last_input_frame{previous_frame_time};
     while (!IojPlayer_ExitRequested()) {
         IojPlayer_BeginFrame();
