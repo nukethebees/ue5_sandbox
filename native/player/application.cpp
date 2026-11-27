@@ -2,6 +2,7 @@
 
 #include "player/cli_args.h"
 #include "player/engine.h"
+#include "player/loaded_level.h"
 #include "player/window.h"
 #include <ioj/bridge/completed_level.h>
 #include <ioj/bridge/level_catalog.h>
@@ -15,6 +16,7 @@
 #include <ioj/profiles/file_profile_storage.h>
 #include <ioj/profiles/level_score.h>
 #include <ioj/profiles/sample_profile_records.h>
+#include <ioj/sim/levels/level_sim.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/system_capabilities.h>
 
@@ -73,6 +75,35 @@ auto open_profiles(std::filesystem::path const& project_directory,
     }
 
     return manager;
+}
+
+auto initialize_presentation(LoadedLevel& level) -> bool {
+    auto const mode{level.presentation_setup->launch_mode};
+    auto& simulation{level.simulation};
+    auto const initialized{
+        host::initialize_level(bridge::level_init(*level.presentation_setup, simulation),
+                               bridge::level_frame(simulation))};
+    level.presentation_setup.reset();
+
+    if (initialized && mode == levels::LaunchMode::Running &&
+        simulation.state() == sim::LevelState::Paused) {
+        simulation.start();
+    }
+    return initialized;
+}
+void advance_level(sim::LevelSim& simulation, double delta_seconds) {
+    auto const state{simulation.state()};
+    simulation.advance(delta_seconds);
+    auto const frame{bridge::level_frame(simulation)};
+    auto const visual_delta{simulation.state() == sim::LevelState::Running ||
+                                    !frame.events.ticks.empty()
+                                ? delta_seconds
+                                : 0.0};
+    host::present_level(visual_delta, frame);
+
+    if (state == sim::LevelState::Running && simulation.state() == sim::LevelState::Paused) {
+        host::simulation_paused();
+    }
 }
 }
 
@@ -164,6 +195,7 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     auto const capabilities{query_system_capabilities()};
     auto const engine_command_line{
         engine_arguments(project_directory, settings.launch_display_mode(), args.user_directory)};
+    LevelStorage storage;
     IojPlayer_Attach(capabilities);
     host::present_settings(settings.view(), window.supported_resolutions());
     application.publish_profiles();
@@ -174,8 +206,8 @@ auto Application::run(CliArgs args) -> ApplicationResult {
 
     Result play_result;
     try {
-        play_result =
-            application.play(window, args.level_path, scripts_directory, args.exit_when_ready);
+        play_result = application.play(
+            window, storage, args.level_path, scripts_directory, args.exit_when_ready);
     } catch (std::exception const& error) {
         play_result = std::unexpected{std::string{error.what()}};
     } catch (...) {
@@ -183,7 +215,7 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     }
 
     try {
-        application.unload_level(sim::RunEndReason::WorldEnd, false);
+        application.unload_level(storage, sim::RunEndReason::WorldEnd, false);
     } catch (...) {
         shutdown_engine(window);
         throw;
@@ -201,6 +233,7 @@ auto Application::run(CliArgs args) -> ApplicationResult {
     return shutdown_result;
 }
 auto Application::play(Window& window,
+                       LevelStorage& storage,
                        std::filesystem::path const& level_path,
                        std::filesystem::path const& scripts_directory,
                        bool exit_when_ready) -> ApplicationResult {
@@ -222,7 +255,7 @@ auto Application::play(Window& window,
     }
 
     if (!level_path.empty()) {
-        if (auto result{launch_level(level_path)}; !result) {
+        if (auto result{launch_level(storage, level_path)}; !result) {
             return result;
         }
     }
@@ -294,19 +327,21 @@ auto Application::play(Window& window,
             return ApplicationResult{std::unexpect, "Level startup was cancelled"};
         }
         if (auto const* menu{std::get_if<session::LevelSelectRequest>(&navigation)}) {
-            unload_level(sim::RunEndReason::WorldEnd, false);
+            unload_level(storage, sim::RunEndReason::WorldEnd, false);
             host::open_menu(menu->preferred_level_id.value, menu->launch_error);
             continue;
         }
 
         if (auto const* selection{std::get_if<host::LevelSelection>(&navigation)}) {
-            unload_level(sim::RunEndReason::WorldEnd, false);
+            unload_level(storage, sim::RunEndReason::WorldEnd, false);
             auto const entry{std::ranges::find_if(available_levels, [&](auto const& candidate) {
                 return candidate.definition.metadata().id == selection->id;
             })};
             if (entry != available_levels.end()) {
-                auto result{launch_level(
-                    entry->definition, path_to_utf8(entry->source_path), selection->options)};
+                auto result{launch_level(storage,
+                                         entry->definition,
+                                         path_to_utf8(entry->source_path),
+                                         selection->options)};
                 available_levels = std::vector<AvailableLevel>{};
                 if (!result) {
                     host::open_menu(selection->id.value, result.error());
@@ -317,18 +352,25 @@ auto Application::play(Window& window,
             continue;
         }
 
-        auto* const level{levels_.get()};
+        auto* const level{storage.get()};
         if (!level) {
             continue;
         }
 
         if (level->presentation_setup && host::level_world_ready()) {
-            auto const initialized{initialize_presentation(*level)};
-            if (exit_when_ready) {
-                if (!initialized) {
+            if (!initialize_presentation(*level)) {
+                unload_level(storage, sim::RunEndReason::WorldEnd, false);
+                if (exit_when_ready) {
                     return ApplicationResult{std::unexpect,
                                              "Level initialization failed. See the game log."};
                 }
+                continue;
+            }
+
+            if (level->simulation.state() == sim::LevelState::Stopped) {
+                unload_level(storage, sim::RunEndReason::LevelCompleted, true);
+            }
+            if (exit_when_ready) {
                 std::println("Ready: {}", path_to_utf8(level_path));
                 return {};
             }
@@ -347,6 +389,9 @@ auto Application::play(Window& window,
 
             if (auto delta_seconds{host::take_frame_delta_seconds()}) {
                 advance_level(level->simulation, *delta_seconds);
+                if (level->simulation.state() == sim::LevelState::Stopped) {
+                    unload_level(storage, sim::RunEndReason::LevelCompleted, true);
+                }
             }
         }
     }
@@ -488,7 +533,8 @@ void Application::process_preferences(Window& window, std::span<host::Preference
     }
 }
 
-auto Application::launch_level(std::filesystem::path const& path) -> ApplicationResult {
+auto Application::launch_level(LevelStorage& storage, std::filesystem::path const& path)
+    -> ApplicationResult {
     auto definition{levels::authoring::DefinitionReader::for_level(path).read_level_file(path)};
     if (!definition) {
         return ApplicationResult{std::unexpect, levels::format_diagnostics(definition.error())};
@@ -497,9 +543,10 @@ auto Application::launch_level(std::filesystem::path const& path) -> Application
     levels::LaunchOptions options;
     options.control_context =
         definition->camera() ? levels::ControlContext::Observer : levels::ControlContext::Player;
-    return launch_level(*definition, path_to_utf8(path), options);
+    return launch_level(storage, *definition, path_to_utf8(path), options);
 }
-auto Application::launch_level(levels::LevelDefinition const& definition,
+auto Application::launch_level(LevelStorage& storage,
+                               levels::LevelDefinition const& definition,
                                std::string source_path,
                                levels::LaunchOptions options) -> ApplicationResult {
     if (settings_.application().start_levels_paused) {
@@ -521,51 +568,14 @@ auto Application::launch_level(levels::LevelDefinition const& definition,
         return ApplicationResult{std::unexpect, std::move(errors)};
     }
 
-    levels_.load(
+    storage.load(
         std::move(*built),
         bridge::make_level_presentation_setup(definition, std::move(source_path), options));
     host::open_level();
     return {};
 }
-auto Application::initialize_presentation(LoadedLevel& level) -> bool {
-    auto const mode{level.presentation_setup->launch_mode};
-    auto& simulation{level.simulation};
-    auto const initialized{
-        host::initialize_level(bridge::level_init(*level.presentation_setup, simulation),
-                               bridge::level_frame(simulation))};
-    level.presentation_setup.reset();
-
-    if (!initialized) {
-        unload_level(sim::RunEndReason::WorldEnd, false);
-        return false;
-    }
-
-    if (simulation.state() == sim::LevelState::Stopped) {
-        unload_level(sim::RunEndReason::LevelCompleted, true);
-    } else if (mode == levels::LaunchMode::Running &&
-               simulation.state() == sim::LevelState::Paused) {
-        simulation.start();
-    }
-    return true;
-}
-void Application::advance_level(sim::LevelSim& simulation, double delta_seconds) {
-    auto const state{simulation.state()};
-    simulation.advance(delta_seconds);
-    auto const frame{bridge::level_frame(simulation)};
-    auto const visual_delta{simulation.state() == sim::LevelState::Running ||
-                                    !frame.events.ticks.empty()
-                                ? delta_seconds
-                                : 0.0};
-    host::present_level(visual_delta, frame);
-
-    if (simulation.state() == sim::LevelState::Stopped) {
-        unload_level(sim::RunEndReason::LevelCompleted, true);
-    } else if (state == sim::LevelState::Running && simulation.state() == sim::LevelState::Paused) {
-        host::simulation_paused();
-    }
-}
-void Application::unload_level(sim::RunEndReason reason, bool show_results) {
-    auto* const level{levels_.get()};
+void Application::unload_level(LevelStorage& storage, sim::RunEndReason reason, bool show_results) {
+    auto* const level{storage.get()};
     if (!level) {
         return;
     }
@@ -588,6 +598,6 @@ void Application::unload_level(sim::RunEndReason reason, bool show_results) {
         host::finish_level(completed, score.has_value(), saved.new_best_time, show_results);
     }
 
-    levels_.unload();
+    storage.unload();
 }
 }
