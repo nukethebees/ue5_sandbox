@@ -356,7 +356,7 @@ auto Application::play(Window& window,
 
         process_widget_actions();
         auto const messages{host::take_messages()};
-        process_preferences(window, messages.preference_edits);
+        process_preferences(window, input, messages.preference_edits);
         process_profile_actions(messages.profile_actions);
 
         if (messages.refresh_catalog) {
@@ -530,7 +530,9 @@ void Application::process_profile_actions(std::span<host::ProfileAction const> a
     }
 }
 
-void Application::process_preferences(Window& window, std::span<host::PreferenceEdit const> edits) {
+void Application::process_preferences(Window& window,
+                                      SdlInput& input,
+                                      std::span<host::PreferenceEdit const> edits) {
     auto const count{edits.size()};
     for (std::size_t index{}; index < count; ++index) {
         auto const& edit{edits[index]};
@@ -568,6 +570,7 @@ void Application::process_preferences(Window& window, std::span<host::Preference
                 break;
             case GameSettingCategory::Controls:
                 settings_.apply(edit.values.controls);
+                input.refresh_bindings();
                 break;
             case GameSettingCategory::Gameplay:
             case GameSettingCategory::Accessibility:

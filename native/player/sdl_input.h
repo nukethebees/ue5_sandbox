@@ -18,6 +18,7 @@ class SdlInput {
     SdlInput(SdlInput const&) = delete;
     auto operator=(SdlInput const&) -> SdlInput& = delete;
 
+    void refresh_bindings();
     void begin_frame();
     void handle(SDL_Event const& event);
     void finish_frame(double dt);

@@ -207,12 +207,7 @@ void SdlInput::synchronize() {
         viewer_dy_ = 0.f;
         dpad_repeat_ = {};
         route_ = current;
-        flight_.configure(controls_, current.context);
-        if (current.context == input::Context::Gameplay) {
-            for (std::size_t axis{}; axis < axes_.size(); ++axis) {
-                flight_.restore_axis(axis_keys[axis], axes_[axis], controls_);
-            }
-        }
+        refresh_bindings();
     }
     bool const focused{SDL_GetKeyboardFocus() == &window_};
     auto const relative{focused &&
@@ -226,6 +221,19 @@ void SdlInput::synchronize() {
             SDL_StartTextInput(&window_);
         } else {
             SDL_StopTextInput(&window_);
+        }
+    }
+}
+void SdlInput::refresh_bindings() {
+    flight_.configure(controls_, route_.context);
+    if (route_.context == input::Context::Gameplay) {
+        for (std::size_t axis{}; axis < axes_.size(); ++axis) {
+            float const position{axes_[axis]};
+            flight_.restore_axis(axis_keys[axis], position, controls_);
+            flight_.restore_axis(positive_keys[axis], position >= 0.5f ? 1.f : 0.f, controls_);
+            if (axis < negative_keys.size()) {
+                flight_.restore_axis(negative_keys[axis], position <= -0.5f ? 1.f : 0.f, controls_);
+            }
         }
     }
 }
